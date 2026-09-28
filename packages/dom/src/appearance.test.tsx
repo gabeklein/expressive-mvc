@@ -113,6 +113,28 @@ describe('appearance', () => {
     expect(getComputedStyle(button).letterSpacing).toBe('1px');
   });
 
+  it('will pass a caller rule to an unmanaged component field', async () => {
+    class Badge extends Component {
+      _accent?: boolean = false;
+
+      render() {
+        return <span>{String(this._accent)}</span>;
+      }
+    }
+
+    function Card() {
+      return <Badge _accent />;
+    }
+
+    style(Card, { _accent: { color: 'red' } });
+
+    const node = mount(<Card />).querySelector('span')!;
+
+    expect(node.textContent).toBe('true');
+    expect(node.className).toBe('Card_accent-d1');
+    expect(getComputedStyle(node).color).toBe('red');
+  });
+
   it('will let the caller with the most doors win', () => {
     function Leaf() {
       return <span>leaf</span>;

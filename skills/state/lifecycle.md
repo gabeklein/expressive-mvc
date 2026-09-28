@@ -83,7 +83,7 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment throws `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`). The throw is an abort signal: a continuation writing after teardown stops there instead of running on against a dead state - loops like `do { this.again = false; await ... } while (this.again)` depend on it. To drop them instead, handle `Caught.Destroyed` - on `State` for the whole app (the usual port of an "ignore updates after unmount" shim), or on one class to keep the abort everywhere else: `State.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })`. A dropped write no longer stops a loop that polls a flag it writes.
+- Assignment throws `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`) - `_` fields excepted ([state.md](state.md#unmanaged-instance-data)). The throw is an abort signal: a continuation writing after teardown stops there instead of running on against a dead state - loops like `do { this.again = false; await ... } while (this.again)` depend on it. To drop them instead, handle `Caught.Destroyed` - on `State` for the whole app (the usual port of an "ignore updates after unmount" shim), or on one class to keep the abort everywhere else: `State.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })`. A dropped write no longer stops a loop that polls a flag it writes.
 - Silent updates (`state.set(assign, true)`) drop without a report.
 - Subscribing (`get(effect)`, `set(callback)`) still throws.
 

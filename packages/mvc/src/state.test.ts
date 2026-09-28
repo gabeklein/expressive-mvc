@@ -2615,15 +2615,15 @@ describe('set method', () => {
     let observed: string | null = null;
 
     class Test extends State {
-      _foo = 'foo';
+      value = 'foo';
 
       get foo() {
-        return this._foo;
+        return this.value;
       }
 
       set foo(value: string) {
         observed = value;
-        this._foo = value;
+        this.value = value;
       }
     }
 
@@ -2631,10 +2631,238 @@ describe('set method', () => {
 
     test.set({ foo: 'bar' });
 
-    await expect(test).toHaveUpdated('_foo');
+    await expect(test).toHaveUpdated('value');
 
     expect(test.foo).toBe('bar');
     expect(observed as string | null).toBe('bar');
+  });
+});
+
+describe('unmanaged keys', () => {
+  it('will not manage _ keys', async () => {
+    class Test extends State {
+      value = 1;
+      _handle = 'foo';
+    }
+
+    const test = Test.new();
+
+    test._handle = 'bar';
+
+    await expect(test).not.toHaveUpdated();
+    expect(test._handle).toBe('bar');
+    expect(test.get()).toEqual({ value: 1 });
+  });
+
+  it('will define _ keys as non-enumerable', () => {
+    class Test extends State {
+      value = 1;
+      _handle = 'foo';
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).toEqual(['value']);
+    expect(Object.getOwnPropertyDescriptor(test, '_handle')).toMatchObject({
+      enumerable: false,
+      configurable: true
+    });
+  });
+
+  it('will write _ keys thru a subscriber', async () => {
+    class Test extends State {
+      value = 1;
+      _effect = 'foo';
+      _computed = 0;
+
+      get doubled() {
+        return (this._computed = this.value * 2);
+      }
+    }
+
+    const test = Test.new();
+
+    test.get((self) => {
+      self._effect = `bar-${self.value}`;
+    });
+
+    expect(test._effect).toBe('bar-1');
+    expect(test.doubled).toBe(2);
+    expect(test._computed).toBe(2);
+
+    test.value = 2;
+    await expect(test).toHaveUpdated();
+
+    expect(test._effect).toBe('bar-2');
+  });
+
+  it('will ignore overlay onto a getter-only _ accessor', () => {
+    class Test extends State {
+      get _fixed() {
+        return 'foo';
+      }
+    }
+
+    const test = Test.new({ _fixed: 'bar' } as {});
+
+    expect(() => test.set({ _fixed: 'baz' })).not.toThrow();
+    expect(test._fixed).toBe('foo');
+  });
+
+  it('will run _ accessors against a non-State receiver', () => {
+    class Test extends State {
+      get _self(): unknown {
+        return this;
+      }
+
+      set _self(value: unknown) {
+        (this as any).written = value;
+      }
+    }
+
+    const receiver = {} as { written?: unknown };
+
+    Test.new();
+
+    expect(Reflect.get(Test.prototype, '_self', receiver)).toBe(receiver);
+
+    Reflect.set(Test.prototype, '_self', 1, receiver);
+
+    expect(receiver.written).toBe(1);
+  });
+
+  it('will accept _ keys from overlay', async () => {
+    class Test extends State {
+      _config = 'foo';
+    }
+
+    const test = Test.new({ _config: 'bar' });
+
+    expect(test._config).toBe('bar');
+
+    test.set({ _config: 'baz' });
+
+    expect(test._config).toBe('baz');
+  });
+
+  it('will write _ keys after destroy', () => {
+    class Test extends State {
+      value = 1;
+      _handle: string | null = 'foo';
+    }
+
+    const test = Test.new();
+
+    test.set(null);
+
+    expect(() => { test._handle = null }).not.toThrow();
+    expect(() => { test.value = 2 }).toThrow();
+  });
+
+  it('will not compute _ getters', () => {
+    const getter = vi.fn(() => 'foo');
+
+    class Test extends State {
+      get _derived() {
+        return getter();
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test._derived).toBe('foo');
+    expect(test._derived).toBe('foo');
+    expect(getter).toBeCalledTimes(2);
+    expect(Object.getOwnPropertyDescriptor(test, '_derived')).toBeUndefined();
+  });
+
+  it('will bind _ accessors to the instance', async () => {
+    class Test extends State {
+      value = 1;
+      #secret = 10;
+
+      get _secret() {
+        return this.#secret;
+      }
+
+      set _secret(next: number) {
+        this.#secret = next;
+      }
+
+      get total() {
+        return this.value + this._secret;
+      }
+    }
+
+    const test = Test.new();
+    const effect = vi.fn((self: Test) => void self._secret);
+
+    test.get(effect);
+
+    expect(test.total).toBe(11);
+
+    test.is._secret = 20;
+    test.value = 2;
+
+    await expect(test).toHaveUpdated();
+    expect(test.total).toBe(22);
+    expect(effect).toBeCalledTimes(1);
+  });
+
+  it('will not subscribe thru _ accessors', async () => {
+    class Test extends State {
+      value = 1;
+
+      get _value() {
+        return this.value;
+      }
+
+      get total() {
+        return this._value;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.total).toBe(1);
+
+    test.value = 2;
+
+    await expect(test).toHaveUpdated('value');
+    expect(test.total).toBe(1);
+  });
+
+  it('will bind setter-only _ accessors', () => {
+    let written: unknown;
+
+    class Test extends State {
+      set _sink(value: number) {
+        written = this;
+      }
+    }
+
+    const test = Test.new();
+
+    test.get((self) => { self._sink = 1 });
+
+    expect(written).toBe(test);
+  });
+
+  it('will exclude _ keys from field types', () => {
+    class Test extends State {
+      value = 1;
+      _handle = 'foo';
+    }
+
+    const values: State.Values<Test> = { value: 1 };
+    const assign: State.Assign<Test> = { _handle: 'bar' };
+
+    const property: State.Property<Test> = '_handle';
+
+    // @ts-expect-error - _ keys are not fields
+    const field: State.Field<Test> = '_handle';
+
+    expect([values, assign, property, field]).toBeDefined();
   });
 });
 

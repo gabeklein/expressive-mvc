@@ -123,13 +123,16 @@ declare namespace State {
 
   /** Object overlay to override values and methods on a state. */
   type Assign<T> = Record<string, unknown> & {
-    [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
+    [K in Property<T>]?: T[K] extends (...args: infer A) => infer R
     ? (this: T, ...args: A) => R
     : T[K];
   };
 
   /** Subset of `keyof T` not defined by base State. **/
-  type Field<T> = Exclude<keyof T, keyof State>;
+  type Property<T> = Exclude<keyof T, keyof State>;
+
+  /** Managed subset of Property<T> - excludes unmanaged `_` keys. **/
+  type Field<T> = Exclude<Property<T>, `_${string}`>;
 
   /** Any valid key for state, including but not limited to Field<T>. */
   type Event<T = State> = Field<T> | number | symbol | (string & {});
@@ -549,7 +552,10 @@ function init(state: State, ...args: State.Args) {
     for (const key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
 
-      if ('value' in desc && desc.configurable) apply(state, key, desc, true);
+      if (!('value' in desc) || !desc.configurable) continue;
+
+      if (key[0] == '_') unmanaged(state, key, desc.value);
+      else apply(state, key, desc, true);
     }
   }
 
@@ -621,6 +627,15 @@ function init(state: State, ...args: State.Args) {
   PENDING.add(state);
 }
 
+function unmanaged(state: State, key: string, value: unknown) {
+  define(state, key, {
+    configurable: true,
+    enumerable: false,
+    get: () => value,
+    set: (next) => { value = next }
+  });
+}
+
 /**
  * Apply instructions and inherited event listeners. Ensure class metadata is ready.
  *
@@ -668,9 +683,20 @@ function bootstrap(T: State.Extends) {
     )) {
       if (key == 'constructor' || !desc.configurable) continue;
 
-      if (typeof desc.get == 'function') {
-        if (desc.configurable && typeof desc.set != 'function')
-          getters.set(key, desc.get);
+      const { get, set } = desc;
+
+      if (key[0] == '_' && (get || set)) {
+        define(type.prototype, key, {
+          ...desc,
+          get: get && function (this: State) { return get.call(this.is || this) },
+          set: set && function (this: State, value: unknown) { set.call(this.is || this, value) }
+        });
+
+        continue;
+      }
+
+      if (typeof get == 'function') {
+        if (typeof set != 'function') getters.set(key, get);
 
         continue;
       }
@@ -1008,7 +1034,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
       if (set) {
         set.call(state, data[key], silent);
       } else {
-        (state as any)[key] = data[key];
+        Reflect.set(state, key, data[key]);
       }
     }
   }

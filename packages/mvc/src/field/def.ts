@@ -50,6 +50,9 @@ State.on((self) => {
 
     if (!entry) continue;
 
+    if (key[0] == '_')
+      throw new Error(`${self}.${key} is unmanaged - instructions cannot apply to _ keys.`);
+
     const [instruction, pending] = entry;
 
     APPLY.set(property.value, null);

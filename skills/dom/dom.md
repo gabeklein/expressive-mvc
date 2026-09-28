@@ -75,7 +75,7 @@ style(Button, {
 - A rule applies when `_name` is truthy on an element, or when the element's host tag is `name`. `0` and `''` do not activate - a rule is on or off, while a macro still treats `0` as a value. Each applied rule is one class named after its source, such as `Button_active`. Nested inside a rule body, `_name` opens a descendant scope.
 - Bare keys at the top of a map form a **base rule** applied to each of the component's host roots - `padding` above styles every root `Button` renders, through fragments.
 - A map never reaches inside a child component. Rules, base declarations and tag matches apply to the elements that component renders; a descendant scope handed to a child through `style` covers that child's own output and stops there. Only the class chain inherits - `Derived` sees `Base`'s rules.
-- Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door.
+- Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door. A class Component declaring a matching unmanaged `_` field also receives the value ([state.md](../state/state.md#unmanaged-instance-data)). The value is not reactive, and writing it does not restyle - style is resolved in the caller's render. A component styles its own output through `_rule` in its own render; anything driving behavior belongs in a managed prop.
 - `$name` is reserved for host instructions and throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 

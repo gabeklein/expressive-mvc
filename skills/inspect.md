@@ -44,7 +44,7 @@ Ownership: a State in a plain field, `has` pool, or `map` is that owner's child;
 
 - `until` - what to wait for first, for work that waits on I/O, where quiet arrives before the change does. Unmet within `timeout`, `act` throws - the error names what never arrived and carries `frames` and `pending`.
   - `{ 'Chat.status': 'ready' }` - each address holds that value, compared as `get` returns it - past its caps (depth 2, 240-char strings) a value never matches, so compare a leaf. Precise everywhere: a loading write doesn't count, a value the step already awaited is met at once, and it reads current values, so the journal's filters don't apply. Prefer it.
-  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). An address naming no State throws right away. Under an app's recording filters, the addresses join the window's recording. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself never counts; use the value form there.
+  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). An address naming no State throws right away. So does a `_` key - unmanaged, it emits no frames; use the value form. Under an app's recording filters, the addresses join the window's recording. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself never counts; use the value form there.
 - `record` - filters for this window instead of the journal's (`{ types: [], paths: [], keys: [] }` records everything); the journal's recording is restored after. Filtered-out events don't count as activity - narrow to exclude a poller or animation loop rather than raising the timeout.
 
 ## Orphans
@@ -83,7 +83,7 @@ inspect.set('Composer.draft', 'x')
 await inspect.call('Composer.submit', 'x')
 ```
 
-Reads come from stored values, never accessors - no getter, factory, or suspense fires. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested States serialize to `{ $ref, $type }` - follow one with `get(`${$ref}.key`)`; caps: strings 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
+Reads come from stored values, never accessors - no getter, factory, or suspense fires. An unmanaged `_` key reads only when addressed by name; whole-state views omit it. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested States serialize to `{ $ref, $type }` - follow one with `get(`${$ref}.key`)`; caps: strings 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
 
 A selection reads several keys as one snapshot - one synchronous pass, so no write lands between them, unlike separate `get`s over the bridge or relay. `true` takes a value as `get` would; an object picks keys and descends through States (keeping `$ref`), `Map`s and objects, applying to each element of a list (capped at 24). Relay: `["get", "Sidebar", { "status": true }]`.
 

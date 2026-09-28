@@ -85,29 +85,31 @@ for (const [key, value] of state) {
 
 ### Unmanaged Instance Data
 
-Opaque handles (unsubscribe functions, timers, snapshots) are not reactive state: writes should neither notify nor throw thru the managed setter after destroy. TypeScript `private` does not opt out (any enumerable own field is managed); ES `#private` escapes management but cannot be read from computeds (the tracking subject is not the instance). Define the field non-enumerable via `def`:
+A `_` prefix opts a class field out of management - handles, config, soft-private values. Writes never notify and never throw after destroy, and land on the instance from any context - effect, computed, or render. The field is non-enumerable, so it is absent from `get()`, `Object.keys()`, iteration, `ref(this)`, and `State.Values`. Overlays still assign it: constructor args, `set({ ... })`, and Component props - an omitted prop resets to `undefined`, as for managed props. An overlay onto a getter-only `_` accessor is ignored. The sweep runs at activation - a `_` key first assigned later (e.g. in `new()`) is enumerable; declare it as a field.
 
 ```ts
-import { State, def } from '@expressive/mvc';
-
-function put<T>(initial?: T): T {
-  return def((key, self) => {
-    Object.defineProperty(self, key, {
-      value: initial as T,
-      writable: true,
-      enumerable: false,
-      configurable: true
-    });
-  }) as T;
-}
-
 class Job extends State {
   progress = 0;                              // reactive
-  unwatch = put<(() => void) | null>(null);  // unmanaged
+  _unwatch: (() => void) | null = null;      // unmanaged
 }
 ```
 
-The `def` factory returns void, so no managed property is applied. A destroyed instance is frozen - clean up before then: `const stop = this.unwatch; this.unwatch = null; stop?.();`. A handle only lifecycle touches is simpler as a `new()` closure variable.
+`#private` is for logic only. Computeds and effects run against the tracking subject, not the instance, so `this.#x` there throws. Methods and `_` accessors are bound to the instance - a `_` getter is the bridge from `#private` to reactive code:
+
+```ts
+class Session extends State {
+  user = '';
+  #token = '';
+
+  get _authorized() { return this.#token !== ''; }
+  get greeting() { return this._authorized ? `Hi ${this.user}` : 'Sign in'; }
+}
+```
+
+- A `_` accessor is never computed or cached and never subscribes - running on the instance, its reads bypass the tracking subject, managed fields included. Deliberate: a subscribing `_` getter would be an uncached computed hidden behind the unmanaged prefix. Derived from managed state → a plain getter (computed); a computed reads its managed dependencies directly.
+- An instruction on a `_` key throws.
+- TypeScript `private` does not opt out.
+- A handle only lifecycle touches is simpler as a `new()` closure variable.
 
 ## The `is` Property
 

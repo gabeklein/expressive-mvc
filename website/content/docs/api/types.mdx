@@ -33,16 +33,22 @@ function create<T extends State>(Type: State.Type<T>): T;
 
 ## Field introspection
 
+### `State.Property<T>`
+
+Keys of `T` excluding inherited `State` members (`get`, `set`, `is`, etc.). This includes [unmanaged](/docs/guides/state-classes#unmanaged-properties) `_` keys, so it's the key set for overlays like `State.Assign<T>` and component props.
+
 ### `State.Field<T>`
 
-Keys of `T` excluding inherited `State` members (`get`, `set`, `is`, etc.).
+Managed keys only - `State.Property<T>` without `_` keys. Snapshots (`State.Values<T>`), `ref` proxies and instruction keys use this.
 
 ```ts
 class MyState extends State {
   foo = 1;
   bar = 'hello';
+  _handle = null;
 }
 
+type Properties = State.Property<MyState>; // 'foo' | 'bar' | '_handle'
 type Fields = State.Field<MyState>; // 'foo' | 'bar'
 ```
 
@@ -151,7 +157,7 @@ Object overlay type. Maps each field to its value type, preserving method `this`
 
 ```ts
 type Assign<T> = Record<string, unknown> & {
-  [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
+  [K in Property<T>]?: T[K] extends (...args: infer A) => infer R
     ? (this: T, ...args: A) => R
     : T[K];
 };
