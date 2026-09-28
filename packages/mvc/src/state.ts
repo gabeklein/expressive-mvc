@@ -1197,11 +1197,11 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
     setup.add(handler);
   }
 
-  for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(next))) {
+  for (const key of Reflect.ownKeys(next)) {
     if (key == 'prototype' || key == 'length' || key == 'name') continue;
 
     if (Object.getOwnPropertyDescriptor(prev, key)?.configurable !== false)
-      define(prev, key, desc);
+      define(prev, key, Object.getOwnPropertyDescriptor(next, key)!);
   }
 
   for (const key of Object.getOwnPropertyNames(proto))

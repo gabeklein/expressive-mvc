@@ -5,6 +5,8 @@ import { parseAst } from 'vite';
 
 import { accept, inject as hot, verify } from './hot';
 
+const SYMBOL = Symbol('static');
+
 let count = 0;
 const module = () => `module-${count++}`;
 
@@ -273,6 +275,7 @@ describe('accept', () => {
         }
       }
       Object.defineProperty(Test, 'fixed', { value: label });
+      Object.defineProperty(Test, SYMBOL, { value: label, configurable: true });
       return Test;
     };
 
@@ -284,6 +287,7 @@ describe('accept', () => {
     expect(Test.label).toBe('after');
     expect(Test.describe()).toBe('after');
     expect(Test.fixed).toBe('before');
+    expect(Test[SYMBOL]).toBe('after');
   });
 
   it('will run type handlers again', () => {
@@ -574,29 +578,35 @@ describe('verify', () => {
   class Test extends State {}
 
   it('will pass without next exports', () => {
-    expect(verify({ Test })).toBeUndefined();
+    expect(verify({ Test }, undefined, true)).toBeUndefined();
   });
 
   it('will pass unchanged exports', () => {
-    expect(verify({ Test, value: 1 }, { Test, value: 1 })).toBeUndefined();
+    expect(verify({ Test, value: 1 }, { Test, value: 1 }, true)).toBeUndefined();
   });
 
   it('will pass a changed component', () => {
     const App = () => null;
 
-    expect(verify({ App }, { App: () => null })).toBeUndefined();
+    expect(verify({ App }, { App: () => null }, true)).toBeUndefined();
   });
 
   it('will reload for a changed State class', () => {
-    expect(verify({ Test }, { Test: class Test extends State {} })).toBe('reload');
+    expect(verify({ Test }, { Test: class Test extends State {} }, true)).toBe('reload');
   });
 
   it('will reject another changed export', () => {
-    expect(verify({ value: 1 }, { value: 2 })).toBe('"value" export cannot be hot-patched.');
+    expect(verify({ value: 1 }, { value: 2 }, true)).toBe('"value" export cannot be hot-patched.');
+  });
+
+  it('will reject a changed component the host does not refresh', () => {
+    const App = () => null;
+
+    expect(verify({ App }, { App: () => null }, false)).toBe('"App" export cannot be hot-patched.');
   });
 
   it('will reject a removed export', () => {
-    expect(verify({ App: () => null }, {})).toBe('"App" export cannot be hot-patched.');
+    expect(verify({ App: () => null }, {}, true)).toBe('"App" export cannot be hot-patched.');
   });
 });
 
@@ -618,6 +628,15 @@ describe('inject', () => {
     expect(code).toContain('A = __hot.A;');
     expect(code).toContain('B = __hot.B;');
     expect(code).toContain('import.meta.hot.accept(');
+  });
+
+  it('will verify for a host which refreshes components', () => {
+    expect(inject('class A {}')).toContain('__expressive.verify(__exports, next, true)');
+  });
+
+  it('will verify for a host which does not refresh components', () => {
+    expect(hot('/src/app.js', parseAst('class A {}'), { refresh: false }))
+      .toContain('__expressive.verify(__exports, next, false)');
   });
 
   it('will not bind a class it cannot reassign', () => {

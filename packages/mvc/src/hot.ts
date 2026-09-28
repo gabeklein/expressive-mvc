@@ -94,9 +94,10 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
 
 /**
  * Compare a module's exports across runs. Returns `'reload'` if a State class
- * changed shape, a message if another export importers hold went stale.
+ * changed shape, a message if another export importers hold went stale. A
+ * changed component passes only where the host `refresh`es components itself.
  */
-function verify(prev: Record<string, unknown>, next?: Record<string, unknown>) {
+function verify(prev: Record<string, unknown>, next: Record<string, unknown> | undefined, refresh: boolean) {
   if (!next) return;
 
   for (const key of Object.keys(prev)) {
@@ -107,12 +108,11 @@ function verify(prev: Record<string, unknown>, next?: Record<string, unknown>) {
 
     if (isState(before) || isState(after)) return 'reload';
 
-    if (typeof after != 'function' || !/^[A-Z]/.test(after.name))
+    if (!refresh || typeof after != 'function' || !/^[A-Z]/.test(after.name))
       return `"${key}" export cannot be hot-patched.`;
   }
 }
 
-/** Code to append to a module, binding it to `accept` and `verify`. */
 /** Top-level classes a module can reassign, and its exports by local binding. */
 function scan(body: Node[]) {
   const classes: string[] = [];
@@ -158,8 +158,9 @@ function scan(body: Node[]) {
  *
  * @param id - Stable per module; the same on every run.
  * @param program - The module parsed as ESTree.
+ * @param options.refresh - Host refreshes function components itself (React Refresh).
  */
-function inject(id: string, program: { body: Node[] }) {
+function inject(id: string, program: { body: Node[] }, { refresh = true } = {}) {
   const { classes, exports } = scan(program.body);
 
   if (!classes.length) return '';
@@ -178,7 +179,7 @@ import { hot as __expressive } from '@expressive/mvc/runtime';
 if (import.meta.hot) {
   const __exports = { ${record} };
   import.meta.hot.accept((next) => {
-    const verdict = __expressive.verify(__exports, next);
+    const verdict = __expressive.verify(__exports, next, ${refresh});
     if (verdict === 'reload' && typeof location == 'object') location.reload();
     else if (verdict) import.meta.hot.invalidate(verdict);
   });
