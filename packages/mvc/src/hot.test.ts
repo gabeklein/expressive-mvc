@@ -570,4 +570,182 @@ describe('accept', () => {
 
     error.mockRestore();
   });
+
+  it('will rebuild render for a Component with no live instance', () => {
+    const id = module();
+
+    vi.stubGlobal('WeakRef', class {
+      deref() {}
+    });
+
+    const version = (text: string) => {
+      class Test extends Component {
+        render() {
+          return text;
+        }
+      }
+      return Test;
+    };
+
+    const Test = version('before');
+
+    accept(id, { Test });
+    Test.new().render();
+    accept(id, { Test: version('after') });
+
+    expect(Test.new().render()).toBe('after');
+  });
+
+  it('will extend a subclass with no live instance', () => {
+    const id = module();
+
+    vi.stubGlobal('WeakRef', class {
+      deref() {}
+    });
+
+    const Before = (() => {
+      class Test extends State {
+        value = 2;
+        gone() {}
+        kept() {}
+      }
+      return Test;
+    })();
+
+    const After = (() => {
+      class Test extends State {
+        value = 2;
+        get double() {
+          return this.value * 2;
+        }
+      }
+      return Test;
+    })();
+
+    accept(id, { Test: Before });
+
+    class Sub extends Before {}
+    class Deep extends Sub {
+      kept() {}
+    }
+
+    Deep.new();
+    accept(id, { Test: After });
+
+    const sub = Sub.new() as any;
+    const deep = Deep.new() as any;
+
+    expect(Object.getOwnPropertyDescriptor(sub, 'double')?.get).toBeTypeOf('function');
+    expect(Object.getOwnPropertyDescriptor(deep, 'double')?.get).toBeTypeOf('function');
+    expect(sub.double).toBe(4);
+    expect('gone' in sub).toBe(false);
+    expect(deep.kept).toBeTypeOf('function');
+  });
+
+  it('will drop a removed method from live instances', () => {
+    const id = module();
+
+    const Before = (() => {
+      class Test extends State {
+        gone() {}
+      }
+      return Test;
+    })();
+
+    const After = (() => {
+      class Test extends State {}
+      return Test;
+    })();
+
+    accept(id, { Test: Before });
+
+    const test = Before.new() as any;
+    const untouched = Before.new() as any;
+
+    test.gone();
+    accept(id, { Test: After });
+
+    expect(test.gone).toBeUndefined();
+    expect(untouched.gone).toBeUndefined();
+  });
+
+  it('will not activate an instance a patch reaches', async () => {
+    const id = module();
+
+    const version = (step: number) => {
+      class Test extends State {
+        value = 1;
+        bump() {
+          this.value += step;
+        }
+      }
+      return Test;
+    };
+
+    const Test = version(1);
+
+    accept(id, { Test });
+
+    const test = new Test();
+
+    accept(id, { Test: version(10) });
+    await Promise.resolve();
+
+    expect(Object.getOwnPropertyDescriptor(test, 'value')?.get).toBeUndefined();
+  });
+
+  it('will not pass the refresh to update listeners', async () => {
+    const id = module();
+    const listener = vi.fn();
+
+    const version = (step: number) => {
+      class Test extends State {
+        value = 1;
+        bump() {
+          this.value += step;
+        }
+      }
+      return Test;
+    };
+
+    const Test = version(1);
+
+    accept(id, { Test });
+
+    const test = Test.new();
+
+    test.set(listener);
+    accept(id, { Test: version(10) });
+    await expect(test).toHaveUpdated();
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('will not patch a getter which gained a setter', () => {
+    const id = module();
+
+    const Before = (() => {
+      class Test extends State {
+        get value() {
+          return 1;
+        }
+      }
+      return Test;
+    })();
+
+    const After = (() => {
+      class Test extends State {
+        get value() {
+          return 1;
+        }
+        set value(_: number) {}
+      }
+      return Test;
+    })();
+
+    accept(id, { Test: Before });
+
+    expect(accept(id, { Test: After }).Test).toBe(After);
+  });
 });
+

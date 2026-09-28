@@ -49,6 +49,12 @@ const PAST = new WeakSet<Function>();
 /** Live instances, tracked once hot patching is enabled. */
 let LIVE: Set<WeakRef<State>> | undefined;
 
+/** Bootstrapped subclasses of each class, tracked once hot patching is enabled. */
+const SUBCLASSES = new WeakMap<Function, Set<State.Extends>>();
+
+/** Event every observer treats as watched, forcing a refresh after a hot patch. */
+const REFRESH = Symbol.for('@expressive/mvc.refresh');
+
 /** Stale flags for compute closures awaiting refresh on next access. */
 const STALE = new WeakSet<() => void>();
 
@@ -445,7 +451,7 @@ abstract class State {
         if (
           typeof key == 'string' ||
           typeof key == 'number' ||
-          typeof key == 'symbol'
+          typeof key == 'symbol' && key !== REFRESH
         )
           return arg1.call(self, key, self);
       });
@@ -686,6 +692,14 @@ function bootstrap(T: State.Extends) {
     }
 
     for (const setupType of onType) setupType(type);
+
+    if (LIVE) {
+      const parent = Object.getPrototypeOf(type);
+      let children = SUBCLASSES.get(parent);
+
+      if (!children) SUBCLASSES.set(parent, (children = new Set()));
+      children.add(type);
+    }
 
     METHODS.set(type, (keys = new Map(keys)));
     GETTERS.set(type, (getters = new Map(getters)));
@@ -1204,8 +1218,18 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
       define(prev, key, Object.getOwnPropertyDescriptor(next, key)!);
   }
 
+  const removed = new Map<string, Function>();
+
   for (const key of Object.getOwnPropertyNames(proto))
     if (key != 'constructor' && !(key in incoming)) {
+      const bind = keys?.get(key);
+
+      if (bind && Object.getOwnPropertyDescriptor(proto, key)!.get === bind) {
+        PAST.add(UNBIND.get(bind));
+        removed.set(key, bind);
+        keys!.delete(key);
+      }
+
       Reflect.deleteProperty(proto, key);
       getters?.delete(key);
     }
@@ -1251,14 +1275,19 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
     else if (state instanceof prev) live.push(state);
   }
 
-  for (const type of new Set(live.map((state) => state.constructor as State.Extends))) {
-    if (type === prev) continue;
+  const descendants = new Set([prev, ...live.map((state) => state.constructor as State.Extends)]);
 
+  for (const type of descendants) for (const child of SUBCLASSES.get(type) || []) descendants.add(child);
+
+  descendants.delete(prev);
+
+  for (const type of descendants) {
     const inherit = METHODS.get(type)!;
     const computed = GETTERS.get(type)!;
 
     for (const [key, bind] of keys!) if (!knownKeys.has(key) && !inherit.has(key)) inherit.set(key, bind);
     for (const [key, get] of getters!) if (!knownGetters.has(key) && !computed.has(key)) computed.set(key, get);
+    for (const [key, bind] of removed) if (inherit.get(key) === bind) inherit.delete(key);
   }
 
   for (const state of live) {
@@ -1270,6 +1299,9 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
       if (desc.set) desc.set.call(state, value);
       else if (PAST.has(UNBIND.get(desc.value))) delete (state as any)[key];
     }
+
+    for (const key of removed.keys())
+      if (PAST.has(UNBIND.get(Object.getOwnPropertyDescriptor(state, key)?.value))) delete (state as any)[key];
 
     for (const [key, get] of GETTERS.get(state.constructor)!)
       if (!knownGetters.has(key) && get === getters!.get(key)) compute.call(state, get, key);

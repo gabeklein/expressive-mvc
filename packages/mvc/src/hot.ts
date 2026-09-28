@@ -1,14 +1,13 @@
 import { rechain } from './component';
-import { event } from './observable';
+import { event, observer } from './observable';
 import { State, handlers, patch, track } from './state';
 
 interface Entry {
   type: Function;
   shape: string;
-  kinds: Record<string, 'get' | 'fn'>;
+  kinds: Record<string, 'get' | 'accessor' | 'fn'>;
   own: ReturnType<typeof handlers>;
 }
-
 
 const MODULES = new Map<string, Record<string, Entry>>();
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
@@ -28,7 +27,7 @@ function describe(type: Function): Entry {
       for (const fn of [desc.value, desc.get, desc.set])
         if (typeof fn == 'function' && fn !== type) {
           shape = shape.replace(text.call(fn), '');
-          if (target !== type) kinds[key] = desc.get ? 'get' : 'fn';
+          if (target !== type) kinds[key] = desc.set ? 'accessor' : desc.get ? 'get' : 'fn';
         }
 
   return { type, shape: shape.replace(/\s+/g, ' '), kinds, own: handlers(type as State.Extends) };
@@ -55,6 +54,7 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
 
   const output: Record<string, unknown> = { ...classes };
   const refresh = new Set<State>();
+  let patched = false;
 
   track();
 
@@ -74,6 +74,7 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
 
     try {
       for (const state of patch(prev.type as State.Extends, type, prev.own)) refresh.add(state);
+      patched = true;
       known[name] = { ...next, type: prev.type };
       output[name] = prev.type;
     } catch (error) {
@@ -82,10 +83,9 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
     }
   }
 
-  if (refresh.size) {
-    rechain();
-    for (const state of refresh) event(state, REFRESH);
-  }
+  if (patched) rechain();
+
+  for (const state of refresh) if (observer(state)?.ready) event(state, REFRESH);
 
   return output as T;
 }
