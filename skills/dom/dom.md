@@ -31,17 +31,17 @@ unmount();
 
 Supported output: intrinsic HTML/SVG elements, fragments, strings/numbers/bigints, FCs, `Component` classes and instances, `has.List` / `has.Pool`, `map.Managed`, portals, arrays, and empty boolean/null/undefined values. Keys preserve DOM ranges across reorder.
 
-Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClickCapture`) with native event objects and propagation. There is no synthetic event layer: `onChange` on a text field fires on commit - use `onInput` per keystroke.
+Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClickCapture`) with native event objects and propagation. There is no synthetic event layer: `onChange` on a text field fires on commit - use `onInput` per keystroke. Names are native event names; `onDoubleClick` is also accepted for `onDblClick`. `event.currentTarget` is typed as the element; `event.target` is not, since it may be a descendant.
 
-`value` and `checked` apply after children and other props and are compared with the live element on every render, so `<select value>`, range bounds, and bound inputs follow state. A handler that rejects input without changing state leaves the typed value until the next render - set `event.currentTarget.value` to revert immediately. `class`, `style`, `dangerouslySetInnerHTML`, callback/object refs, DOM properties, `data-*`, and `aria-*` are supported.
+`value` and `checked` apply after children and other props and are compared with the live element on every render, so `<select value>`, range bounds, and bound inputs follow state. As in React, a controlled `value` or `checked` is restored after the event its handler listens to (`onInput` → `input`, `onChange` → `change`; with no handler, `change` for checkboxes, radios and selects, `input` otherwise), once any resulting render has landed. A handler that rejects input - or no handler at all - keeps the field on state; accepted input is left untouched, caret included. Both are properties only: no `value`/`checked` attribute and no textarea text, so `form.reset()` clears bound fields rather than restoring the last render, and `[value=…]` selectors do not match. `className`, `style`, `dangerouslySetInnerHTML`, callback/object refs, DOM properties, `data-*`, and `aria-*` are supported. `data-*`, `aria-*`, `draggable`, `spellcheck` and `contenteditable` write booleans as `"true"`/`"false"` - pass `undefined` to omit one for presence selectors. `autofocus` (or `autoFocus`) focuses the element when it is inserted into the document (browsers honor the attribute only at page load).
 
 ## Styles
 
-`style` recursively flattens arrays. Falsy entries are ignored, strings become DOM class tokens, and objects merge left-to-right into inline declarations. The inline result follows the browser cascade and normally overrides class rules. Use `class` for an external browser-only class; it is prepended to classes from `style`.
+`style` recursively flattens arrays. Falsy entries are ignored, strings become DOM class tokens, and objects merge left-to-right into inline declarations. The inline result follows the browser cascade and normally overrides class rules. Use `className` for an external browser-only class; it is prepended to classes from `style`.
 
 ```tsx
 <button
-  class="external-widget"
+  className="external-widget"
   style={[
     'button',
     active && 'active',
@@ -50,7 +50,7 @@ Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClick
 />
 ```
 
-`className` is ignored, including through untyped spreads. A string in `style` is a class token, not CSS declaration text. Treat arrays and objects as immutable render values—replace them when their contents change.
+Classes use React's `className` - the DOM property name. The attribute spelling `class` is not accepted, and is ignored through untyped spreads. A string in `style` is a class token, not CSS declaration text. Treat arrays and objects as immutable render values—replace them when their contents change.
 
 ### Component appearance rules
 
@@ -121,7 +121,7 @@ macro({ mx: (value: number) => ({ marginLeft: `${value}px`, marginRight: `${valu
 
 Declaration merging is whole-program, so the augmentation may sit anywhere - above the registration, below it, or in another module. A declared name is checked where it registers *and* where it is called; an undeclared one still registers, but a typed map cannot call it. With no pack at all, CSS properties, rules and `--variables` work as they are.
 
-`class` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
+`className` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 
 ```tsx
 function Field({ style }: { style?: JSX.IntrinsicElements['div']['style'] }) {
@@ -167,7 +167,7 @@ function Row({ id }: { id: string }) {
 
 ## Lazy, boundaries, transitions
 
-`lazy(loader)` accepts a module default export or a directly exported component. A Component supplies a suspense boundary unless `fallback = false`; `Provider fallback={...}` adds one explicitly. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders. `Component.catch(error)` handles render failures and retries after it completes.
+`lazy(loader)` accepts a module default export or a directly exported component. A Component supplies a suspense boundary unless `fallback = false`; `Provider fallback={...}` adds one explicitly. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders. `Component.catch(error)` handles render failures and retries after it completes; until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
 
 ```tsx
 const Settings = lazy(() => import('./Settings'));

@@ -15,7 +15,7 @@ import {
 import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
 import { Provider, provide } from './context';
 import { applyDeclarations } from './declarations';
-import { claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
+import { afterFlush, claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
 import type { Key, Node as RenderNode, VNode } from './vnode';
 
@@ -59,6 +59,7 @@ interface Fiber {
   portals?: [Fiber, DocumentFragment][];
   dead?: boolean;
   waitingOn?: Boundary;
+  recovering?: object;
   stash?: DocumentFragment;
   placeholder?: Fiber;
   staging?: DocumentFragment;
@@ -101,6 +102,11 @@ const SVG = 'http://www.w3.org/2000/svg';
 const dirty = new Set<Boundary>();
 const stashes = new WeakMap<globalThis.Node, Fiber>();
 const CONTROLS = ['checked', 'value'];
+const ENUMERATED = ['contentEditable', 'contenteditable', 'draggable', 'spellcheck'];
+const ALIASES: Record<string, string> = { autoFocus: 'autofocus', contentEditable: 'contenteditable', htmlFor: 'for' };
+const focusing: Element[] = [];
+const controlled = new WeakMap<Element, Fiber>();
+const restoring = new WeakSet<Document>();
 let passiveRender = false;
 let inserting: (() => void)[] | undefined;
 let depth = 0;
@@ -461,9 +467,12 @@ function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.
   };
 
   parent.insertBefore(element, before);
-  return complete(fiber, () => {
+  complete(fiber, () => {
     patchProps(fiber, value.props, appearance);
   });
+
+  if (value.props.autofocus || value.props.autoFocus) focusing.push(element);
+  return fiber;
 }
 
 function pass<T>(work: () => T): T {
@@ -472,8 +481,16 @@ function pass<T>(work: () => T): T {
   try {
     return work();
   } finally {
-    if (!--depth) settle();
+    if (!--depth) {
+      settle();
+      focus();
+    }
   }
+}
+
+function focus() {
+  for (const element of focusing.splice(0))
+    if (element.isConnected) (element as HTMLElement).focus();
 }
 
 function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true | PromiseLike<unknown> | void {
@@ -505,7 +522,7 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
           queued.forEach((run) => run());
         }
 
-        unwait(fiber);
+        if (!fiber.recovering) unwait(fiber);
         fiber.retried = undefined;
         return true;
       } catch (thrown) {
@@ -702,15 +719,15 @@ function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
 
     thrown.then(
       () => resume(() => passive ? transition(() => schedule(scope)) : schedule(scope)),
-      (error) => resume(() => pass(() => recover(fiber, error)))
+      (error) => resume(() => pass(() => recover(fiber, error, fiber.boundary)))
     );
     return thrown;
   }
 
-  recover(fiber, thrown);
+  recover(fiber, thrown, fiber.boundary);
 }
 
-function recover(fiber: Fiber, thrown: unknown, boundary = fiber.boundary) {
+function recover(fiber: Fiber, thrown: unknown, boundary: Boundary | undefined) {
   const error = thrown instanceof Error ? thrown : new Error(String(thrown));
 
   while (boundary && !boundary.catch) boundary = boundary.parent;
@@ -719,16 +736,21 @@ function recover(fiber: Fiber, thrown: unknown, boundary = fiber.boundary) {
 
   const handler = boundary;
 
+  const token = {};
+
   wait(fiber, handler);
+  fiber.recovering = token;
 
   Promise.resolve(handler.catch!(error)).then(
     () => {
+      if (fiber.recovering !== token) return;
+      fiber.recovering = undefined;
       if (!fiber.scope!.active || fiber.retried) return;
       fiber.retried = true;
       schedule(fiber.scope!);
     },
     (next) => {
-      if (fiber.scope!.active) pass(() => recover(fiber, next, handler.parent));
+      if (fiber.recovering === token && fiber.scope!.active) pass(() => recover(fiber, next, handler.parent));
     }
   );
 }
@@ -911,12 +933,12 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   }
 
   for (const key of Object.keys({ ...previous, ...next })) {
-    if (key.startsWith('_') || key == 'children' || key == 'class' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
+    if (key.startsWith('_') || key == 'children' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
     if (previous[key] === next[key]) continue;
     patchProp(fiber, element, key, previous[key], next[key]);
   }
 
-  const claimed = claim(element, appearance, resolved, next.class, next.style);
+  const claimed = claim(element, appearance, resolved, next.className, next.style);
 
   applyClaim(element, fiber.claimed, claimed);
   fiber.claimed = claimed;
@@ -945,6 +967,18 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
     if (differs) patchProp(fiber, element, key, previous[key], value);
   }
 
+  if (CONTROLS.some((key) => next[key] != null)) {
+    const document = element.ownerDocument;
+
+    controlled.set(element, fiber);
+
+    if (!restoring.has(document)) {
+      restoring.add(document);
+      document.addEventListener('input', restoreTarget);
+      document.addEventListener('change', restoreTarget);
+    }
+  }
+
   if (previous.ref !== next.ref) patchProp(fiber, element, 'ref', previous.ref, next.ref);
 }
 
@@ -962,7 +996,8 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
 
   if (/^on[A-Z]/.test(key)) {
     const capture = key.endsWith('Capture');
-    const name = (capture ? key.slice(2, -7) : key.slice(2)).toLowerCase();
+    const lower = (capture ? key.slice(2, -7) : key.slice(2)).toLowerCase();
+    const name = lower == 'doubleclick' ? 'dblclick' : lower;
     const id = `${name}:${capture}`;
     const current = fiber.events!.get(id);
 
@@ -974,9 +1009,9 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
     return;
   }
 
-  const name = key == 'htmlFor' ? 'for' : key;
+  const name = ALIASES[key] || key;
 
-  if (key.startsWith('aria-') && next != null) {
+  if ((key.startsWith('aria-') || key.startsWith('data-') || ENUMERATED.includes(key)) && next != null) {
     element.setAttribute(name, String(next));
     return;
   }
@@ -991,11 +1026,12 @@ function patchProp(fiber: Fiber, element: Element, key: string, previous: any, n
             ? 0
             : '';
       } catch {}
+    element.removeAttribute(element.namespaceURI === SVG ? name.toLowerCase() : name);
     element.removeAttribute(name);
     return;
   }
 
-  if (key in element && !key.startsWith('data-') && element.namespaceURI !== SVG)
+  if (key in element && (element.namespaceURI !== SVG || settable(element, key)))
     try {
       (element as any)[key] = next;
       return;
@@ -1103,6 +1139,42 @@ function collect(value: Style, collected: Collected, doors: number) {
 
 function appendClasses(classes: string[], value: unknown) {
   if (typeof value == 'string') classes.push(...value.split(/\s+/).filter(Boolean));
+}
+
+function restoreTarget(event: Event) {
+  const element = event.target as HTMLInputElement;
+  const fiber = controlled.get(element);
+
+  if (fiber && event.type == settles(fiber.props!, element))
+    queueMicrotask(() => afterFlush(() => restore(fiber)));
+}
+
+function settles(props: Record<string, any>, element: HTMLInputElement) {
+  if (props.onInput) return 'input';
+  if (props.onChange) return 'change';
+  return element.type == 'checkbox' || element.type == 'radio' || element.localName == 'select' ? 'change' : 'input';
+}
+
+function restore(fiber: Fiber) {
+  const element = fiber.start as any;
+
+  for (const key of CONTROLS) {
+    const value = fiber.props![key];
+
+    if (value == null || fiber.dead) continue;
+    if (key == 'value' ? String(element.value) !== String(value) : element[key] !== value)
+      element[key] = value;
+  }
+}
+
+function settable(element: Element, key: string) {
+  let target: object = element;
+  let descriptor: PropertyDescriptor | undefined;
+
+  while (!(descriptor = Object.getOwnPropertyDescriptor(target, key)))
+    target = Object.getPrototypeOf(target);
+
+  return !!(descriptor.set || descriptor.writable);
 }
 
 function applyRef(ref: unknown, value: Element | null) {

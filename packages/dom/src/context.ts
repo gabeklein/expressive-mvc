@@ -24,7 +24,7 @@ namespace Provider {
   }
 
   export type Props<T extends State = State> = SharedProps & {
-    for: Context.Accept<T>;
+    for?: Context.Accept<T>;
     is?: ForEach<T>;
   } & Record<string, unknown>;
 }
@@ -39,7 +39,7 @@ function provide<T extends State>(context: Context, props: Provider.Props<T>) {
   let single: State | undefined;
   const solo = State.is(input) || input instanceof State;
 
-  context.set(input, (state, owned) => {
+  context.set(input || {}, (state, owned) => {
     if (solo) single = state;
     is?.(state as T);
 

@@ -12,6 +12,7 @@ interface Schedulable {
 
 const urgent = new Set<Schedulable>();
 const passive = new Set<Schedulable>();
+const after: (() => void)[] = [];
 
 let depth = 0;
 let urgentQueued = false;
@@ -38,6 +39,17 @@ function flush(scopes: Set<Schedulable>) {
 function flushUrgent() {
   urgentQueued = false;
   flush(urgent);
+
+  for (const run of after.splice(0)) run();
+}
+
+function afterFlush(run: () => void) {
+  after.push(run);
+
+  if (!urgentQueued) {
+    urgentQueued = true;
+    queueMicrotask(flushUrgent);
+  }
 }
 
 function flushPassive() {
@@ -169,5 +181,5 @@ function unschedule(scope: Schedulable) {
   unblock(scope);
 }
 
-export { claim, release, schedule, settle, transition, unschedule };
+export { afterFlush, claim, release, schedule, settle, transition, unschedule };
 export type { Schedulable };

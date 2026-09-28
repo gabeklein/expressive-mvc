@@ -6,8 +6,8 @@ import { flushMicrotasks } from '../test.setup';
 import { vnode } from './vnode';
 
 if (false) {
-  // @ts-expect-error @expressive/dom uses the native class prop.
-  <div className="legacy" />;
+  // @ts-expect-error @expressive/dom uses className, not the class attribute name.
+  <div class="legacy" />;
 }
 
 describe('render', () => {
@@ -26,7 +26,7 @@ describe('render', () => {
           return (
             <div
               aria-label="greeting"
-              class="ready"
+              className="ready"
               data-state="open"
               hidden
               onClick={first}
@@ -49,7 +49,7 @@ describe('render', () => {
         if (this.mode == 1)
           return (
             <div
-              class="next"
+              className="next"
               data-state={false}
               hidden={false}
               onClick={second}
@@ -93,7 +93,7 @@ describe('render', () => {
     await flushMicrotasks();
     expect(root.querySelector('div')).toBe(node);
     expect(node.className).toBe('next next-style');
-    expect(node.hasAttribute('data-state')).toBe(false);
+    expect(node.getAttribute('data-state')).toBe('false');
     expect(node.hidden).toBe(false);
     expect(node.title).toBe('');
     expect(node.style.height).toBe('12px');
@@ -426,8 +426,8 @@ describe('render', () => {
       render() {
         return (
           <div
-            {...({ className: 'legacy' } as any)}
-            class={this.native}
+            {...({ class: 'legacy' } as any)}
+            className={this.native}
             style={this.mode == 0 ? this.initial : this.mode == 1 ? ['next', { height: 4 }] : null}
           />
         );
@@ -468,7 +468,7 @@ describe('render', () => {
   });
 
   it('will forward style through component roots', async () => {
-    const Leaf = (_props: any) => <div class="leaf" style={['local', { color: 'blue' }]} />;
+    const Leaf = (_props: any) => <div className="leaf" style={['local', { color: 'blue' }]} />;
     const Middle = (_props: any) => <Leaf style={['inner', { color: 'green', height: 4 }]} />;
 
     class View extends Component {
@@ -498,7 +498,7 @@ describe('render', () => {
   });
 
   it('will not forward class through components', () => {
-    const Leaf = (_props: any) => <div class="leaf" />;
+    const Leaf = (_props: any) => <div className="leaf" />;
     const root = document.createElement('main');
 
     render(<Leaf {...({ class: 'outer' } as any)} />, root);
@@ -703,8 +703,8 @@ describe('render', () => {
             <label htmlFor="shape">shape</label>
             <svg viewBox="0 0 10 10" {...({ focusable: true } as any)}>
               <circle
-                {...({ className: 'legacy' } as any)}
-                class="shape"
+                {...({ class: 'legacy' } as any)}
+                className="shape"
                 cx={5}
                 cy={5}
                 r={4}
@@ -753,6 +753,255 @@ describe('render', () => {
 
     expect(after.map((node) => node.textContent)).toEqual(['c', 'a', 'b']);
     expect(after).toEqual([before[2], before[0], before[1]]);
+  });
+
+  it('will assign settable properties on SVG elements', () => {
+    const root = document.createElement('main');
+    render(<svg tabIndex={0} viewBox="0 0 10 10" />, root);
+
+    const svg = root.querySelector('svg')!;
+    expect(svg.getAttribute('tabindex')).toBe('0');
+    expect(svg.hasAttribute('tabIndex')).toBe(false);
+    expect(svg.getAttribute('viewBox')).toBe('0 0 10 10');
+  });
+
+  it('will remove an SVG property attribute when unset', async () => {
+    class Dial extends Component {
+      on = true;
+
+      render() {
+        return <svg tabIndex={this.on ? 0 : undefined} />;
+      }
+    }
+
+    let dial!: Dial;
+    const root = document.createElement('main');
+    render(<Dial is={(value) => (dial = value)} />, root);
+    const svg = root.querySelector('svg')!;
+
+    dial.on = false;
+    await flushMicrotasks();
+    expect(svg.hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('will write contentEditable as an enumerated attribute', () => {
+    const root = document.createElement('main');
+    render(<><div contentEditable={false} /><div contentEditable={true} /></>, root);
+    const [off, on] = root.querySelectorAll('div');
+
+    expect(off.getAttribute('contenteditable')).toBe('false');
+    expect(on.getAttribute('contenteditable')).toBe('true');
+  });
+
+  it('will stringify booleans on data and enumerated attributes', async () => {
+    class Flags extends Component {
+      on = true;
+
+      render() {
+        const { on } = this;
+        return <a data-on={on} draggable={on} spellcheck={!on} aria-hidden={on} />;
+      }
+    }
+
+    let flags!: Flags;
+    const root = document.createElement('main');
+    render(<Flags is={(value) => (flags = value)} />, root);
+    const link = root.querySelector('a')!;
+
+    expect(link.getAttribute('data-on')).toBe('true');
+    expect(link.getAttribute('draggable')).toBe('true');
+    expect(link.getAttribute('spellcheck')).toBe('false');
+    expect(link.getAttribute('aria-hidden')).toBe('true');
+
+    flags.on = false;
+    await flushMicrotasks();
+    expect(link.getAttribute('data-on')).toBe('false');
+    expect(link.getAttribute('draggable')).toBe('false');
+    expect(link.getAttribute('spellcheck')).toBe('true');
+    expect(link.getAttribute('aria-hidden')).toBe('false');
+  });
+
+  it('will focus an autofocus element once it is inserted', async () => {
+    class Editor extends Component {
+      editing = false;
+      tick = 0;
+
+      render() {
+        const { editing, tick } = this;
+        return editing ? <input autofocus data-tick={tick} /> : <button>edit</button>;
+      }
+    }
+
+    let editor!: Editor;
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<Editor is={(value) => (editor = value)} />, root);
+
+    editor.editing = true;
+    await flushMicrotasks();
+    const input = root.querySelector('input')!;
+    expect(document.activeElement).toBe(input);
+
+    input.blur();
+    editor.tick++;
+    await flushMicrotasks();
+    expect(document.activeElement).not.toBe(input);
+  });
+
+  it('will restore a controlled value when a write is rejected', async () => {
+    class Name extends Component {
+      name = 'abc';
+
+      render() {
+        return (
+          <input
+            value={this.name}
+            onInput={(event) => {
+              const next = event.currentTarget.value;
+              if (next.length <= 3) this.name = next;
+            }}
+          />
+        );
+      }
+    }
+
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<Name />, root);
+    const input = root.querySelector('input')!;
+
+    input.value = 'abcd';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushMicrotasks();
+    expect(input.value).toBe('abc');
+
+    input.value = 'ab';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushMicrotasks();
+    expect(input.value).toBe('ab');
+  });
+
+  it('will not touch a controlled value the handler accepted', async () => {
+    let writes = 0;
+
+    class Name extends Component {
+      name = 'hello';
+
+      render() {
+        return <input value={this.name} onInput={(event) => (this.name = event.currentTarget.value)} />;
+      }
+    }
+
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<Name />, root);
+    const input = root.querySelector('input')!;
+    const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value')!;
+
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      get: () => descriptor.get!.call(input),
+      set: (value) => {
+        writes++;
+        descriptor.set!.call(input, value);
+      }
+    });
+
+    input.value = 'hel!lo';
+    writes = 0;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushMicrotasks();
+
+    expect(input.value).toBe('hel!lo');
+    expect(writes).toBe(0);
+  });
+
+  it('will restore after the event a controlled handler listens to', async () => {
+    class Form extends Component {
+      agreed = false;
+      text = 'a';
+
+      render() {
+        const { agreed, text } = this;
+
+        return (
+          <>
+            <input type="checkbox" checked={agreed} onChange={(event) => (this.agreed = event.currentTarget.checked)} />
+            <input value={text} onChange={(event) => (this.text = event.currentTarget.value)} />
+          </>
+        );
+      }
+    }
+
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<Form />, root);
+    const [box, field] = root.querySelectorAll('input');
+
+    box.checked = true;
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushMicrotasks();
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    await flushMicrotasks();
+    expect(box.checked).toBe(true);
+
+    field.value = 'ab';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushMicrotasks();
+    expect(field.value).toBe('ab');
+
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+    await flushMicrotasks();
+    expect(field.value).toBe('ab');
+  });
+
+  it('will keep a controlled field without a handler on its value', async () => {
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<><input value="fixed" /><input type="checkbox" checked={false} /><input /><select value="b"><option value="a" /><option value="b" /></select></>, root);
+    const [text, box, free] = root.querySelectorAll('input');
+    const select = root.querySelector('select')!;
+
+    select.value = 'a';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+
+    free.value = 'free';
+    free.dispatchEvent(new Event('input', { bubbles: true }));
+
+    text.value = 'typed';
+    text.dispatchEvent(new Event('input', { bubbles: true }));
+    box.checked = true;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    await flushMicrotasks();
+
+    expect(text.value).toBe('fixed');
+    expect(box.checked).toBe(false);
+    expect(free.value).toBe('free');
+    expect(select.value).toBe('b');
+  });
+
+  it('will accept React spellings of autofocus and double click', () => {
+    const clicked = vi.fn();
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<><input autoFocus /><span onDoubleClick={clicked} /></>, root);
+
+    expect(document.activeElement).toBe(root.querySelector('input'));
+
+    root.querySelector('span')!.dispatchEvent(new MouseEvent('dblclick'));
+    expect(clicked).toHaveBeenCalledOnce();
+  });
+
+  it('will not focus an autofocus element outside the document', () => {
+    const root = document.createElement('main');
+    render(<input autofocus />, root);
+
+    expect(document.activeElement).not.toBe(root.querySelector('input'));
+  });
+
+  it('will type event currentTarget as the host element', () => {
+    const values: string[] = [];
+    const root = document.createElement('main');
+    render(<input onInput={(event) => values.push(event.currentTarget.value)} />, root);
+
+    const input = root.querySelector('input')!;
+    input.value = 'typed';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(values).toEqual(['typed']);
   });
 
   it('will render MVC collections directly', async () => {
