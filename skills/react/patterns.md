@@ -182,15 +182,15 @@ class Attachment extends Component {
   file = set<File>();
   job?: UploadJob;
   composer = get(Composer);
-  stop = put<(() => void) | null>(null);  // unmanaged - see state/state.md
+  _stop: (() => void) | null = null;  // unmanaged - see state/state.md
 
   get uploading() {
     return !this.job?.done;
   }
 
   protected new() {
-    this.stop = api.upload(this.file, (job) => { this.job = job; });
-    return () => this.stop?.();
+    this._stop = api.upload(this.file, (job) => { this.job = job; });
+    return () => this._stop?.();
   }
 
   toApi(): AttachmentDto {

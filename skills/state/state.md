@@ -85,29 +85,19 @@ for (const [key, value] of state) {
 
 ### Unmanaged Instance Data
 
-Opaque handles (unsubscribe functions, timers, snapshots) are not reactive state: writes should neither notify nor throw thru the managed setter after destroy. TypeScript `private` does not opt out (any enumerable own field is managed); ES `#private` escapes management but cannot be read from computeds (the tracking subject is not the instance). Define the field non-enumerable via `def`:
+A `_` prefix opts a field out of management - handles, config, soft-private values. Writes never notify and never throw after destroy. The field is non-enumerable, so it is absent from `get()`, `Object.keys()`, iteration, `ref(this)`, and `State.Values`. Overlays still assign it: constructor args, `set({ ... })`, and Component props.
 
 ```ts
-import { State, def } from '@expressive/mvc';
-
-function put<T>(initial?: T): T {
-  return def((key, self) => {
-    Object.defineProperty(self, key, {
-      value: initial as T,
-      writable: true,
-      enumerable: false,
-      configurable: true
-    });
-  }) as T;
-}
-
 class Job extends State {
   progress = 0;                              // reactive
-  unwatch = put<(() => void) | null>(null);  // unmanaged
+  _unwatch: (() => void) | null = null;      // unmanaged
 }
 ```
 
-The `def` factory returns void, so no managed property is applied. A destroyed instance is frozen - clean up before then: `const stop = this.unwatch; this.unwatch = null; stop?.();`. A handle only lifecycle touches is simpler as a `new()` closure variable.
+- A `_` getter stays a plain accessor - never computed or cached.
+- An instruction on a `_` key throws.
+- TypeScript `private` does not opt out; ES `#private` throws in computeds (the tracking subject is not the instance) and re-initializes unsafely on Components.
+- A handle only lifecycle touches is simpler as a `new()` closure variable.
 
 ## The `is` Property
 
