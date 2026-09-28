@@ -43,10 +43,10 @@ Each page has a Playwright spec beside it: `pages/<group>/<page>/App.spec.ts`. `
 
 ```bash
 cd examples && bun run e2e                           # both hosts
-../node_modules/.bin/playwright test pages/router    # one group
+bunx playwright test pages/router/            # one group (trailing slash: exact folder)
 bun run dev:dom                                      # dom frames: /dom.html?page=<group>/<page>
 ```
 
 - Import `{ expect, test }` from `e2e.ts`. `open('<group>/<page>')` loads the page standalone on the project's host (React at `/?page=`, dom at `/dom.html?page=`). Any `pageerror` or `console.error` fails the test.
-- Drive the page's own story, the one its copy states, with role and text locators and web-first assertions. Stub network with `page.route`, and time with `page.clock`.
+- Drive the page's own story, the one its copy states, with role and text locators and web-first assertions. Stub network with `page.route`. For time, install the clock before `open()`. Pause it (`install({ time: 0 })` then `pauseAt(1000)`) when the spec asserts exact readouts: an unpaused clock still follows real time, which flakes on slow runners. Router navigation flushes run on timers, so router specs keep the clock running and sample while holding.
 - A spec must pass on both projects without branching on `host`. The one intended exception is `component/boundary`'s nested-boundary rebuild.

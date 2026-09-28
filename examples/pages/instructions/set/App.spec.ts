@@ -1,7 +1,8 @@
 import { expect, test } from '../../../e2e';
 
 test('will reject long names and debounce the search', async ({ page, open }) => {
-  await page.clock.install();
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
   await open('instructions/set');
   const name = page.getByLabel('Display name');
   const query = page.getByLabel('Search');

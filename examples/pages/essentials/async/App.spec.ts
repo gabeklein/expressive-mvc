@@ -5,7 +5,8 @@ const random = (page: Page, value: number) =>
   page.addInitScript((value) => { Math.random = () => value; }, value);
 
 test('will count down and replace an agent', async ({ page, open }) => {
-  await page.clock.install();
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
   await page.route('https://randomuser.me/api?nat=gb&results=1', (route) =>
     route.fulfill({ json: { results: [{ name: { last: 'Smith' } }] } }));
   await open('essentials/async');
@@ -28,7 +29,8 @@ test('will count down and replace an agent', async ({ page, open }) => {
 
 test('will explode the cat when time runs out', async ({ page, open }) => {
   await random(page, 0.9);
-  await page.clock.install();
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
   await open('essentials/async');
 
   await page.clock.runFor(29000);
@@ -42,7 +44,8 @@ test('will explode the cat when time runs out', async ({ page, open }) => {
 
 test('will spare the cat when time runs out', async ({ page, open }) => {
   await random(page, 0.1);
-  await page.clock.install();
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
   await open('essentials/async');
 
   await page.clock.runFor(30000);

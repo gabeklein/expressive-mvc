@@ -1,7 +1,8 @@
 import { expect, test } from '../../../e2e';
 
 test('will suspend the profile and count followers in place', async ({ page, open }) => {
-  await page.clock.install();
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
   await open('instructions/set-factory');
   const pending = page.locator('.pending');
   const card = page.locator('.card');

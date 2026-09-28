@@ -1,7 +1,8 @@
 import { expect, test } from '../../../e2e';
 
 test('will show each fallback until its value resolves', async ({ page, open }) => {
-  await page.clock.install();
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
   await open('component/suspense');
   const own = page.locator('.card').nth(0);
   const deferred = page.locator('.card').nth(1);

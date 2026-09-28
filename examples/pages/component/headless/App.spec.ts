@@ -1,7 +1,8 @@
 import { expect, test } from '../../../e2e';
 
 test('will tick two scopes at their own rates', async ({ page, open }) => {
-  await page.clock.install();
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
   await open('component/headless');
   const readouts = page.locator('.pair > .readout');
   const [fast, slow] = [readouts.nth(0).locator('strong'), readouts.nth(1).locator('strong')];

@@ -4,7 +4,8 @@ const MOUNTED = ['new() · constructed', 'ref() · element attached', 'mount() �
 const UNMOUNTED = ['ref() · element detached', 'mount() cleanup · unmounted', 'new() cleanup · destroyed'];
 
 test('will fire each seam and unwind on unmount', async ({ page, open }) => {
-  await page.clock.install();
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
   await page.setViewportSize({ width: 800, height: 600 });
   await open('component/lifecycle');
   const trace = page.locator('.trace li');

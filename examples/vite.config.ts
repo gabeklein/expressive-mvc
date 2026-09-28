@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     cacheDir: dom ? 'node_modules/.vite-dom' : undefined,
+    optimizeDeps: dom ? { entries: ['dom.html'] } : undefined,
     plugins: dom ? [inspect()] : [react(), inspect()],
     esbuild: dom ? { jsx: 'automatic', jsxImportSource: '@expressive/dom' } : undefined,
     // Dev-only: resolve workspace packages to TS source for hot-reload sans `dist`.
