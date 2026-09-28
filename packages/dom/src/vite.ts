@@ -9,21 +9,28 @@ const COMPONENT = /^[A-Z]/;
 const FUNCTION = ['ArrowFunctionExpression', 'FunctionExpression'];
 
 /**
- * Top-level classes a module can reassign, function components by name, and
- * its exports by local binding.
+ * Top-level classes a module can reassign, those declaring private members,
+ * function components by name, and its exports by local binding.
  */
 function scan(body: Node[]) {
   const classes: string[] = [];
+  const hidden: string[] = [];
   const components: string[] = [];
   const exports: Record<string, string> = {};
 
+  function add(name: string, node: Node) {
+    classes.push(name);
+
+    if (node.body.body.some((member: Node) => member.key?.type == 'PrivateIdentifier')) hidden.push(name);
+  }
+
   function collect(node: Node) {
-    if (node.type == 'ClassDeclaration' && node.id) classes.push(node.id.name);
+    if (node.type == 'ClassDeclaration' && node.id) add(node.id.name, node);
     else if (node.type == 'FunctionDeclaration' && COMPONENT.test(node.id?.name)) components.push(node.id.name);
     else if (node.type == 'VariableDeclaration')
       for (const { id, init } of node.declarations) {
         if (id.type != 'Identifier') continue;
-        if (init?.type == 'ClassExpression' && node.kind != 'const') classes.push(id.name);
+        if (init?.type == 'ClassExpression' && node.kind != 'const') add(id.name, init);
         else if (FUNCTION.includes(init?.type) && COMPONENT.test(id.name)) components.push(id.name);
       }
   }
@@ -52,7 +59,7 @@ function scan(body: Node[]) {
     } else collect(node);
   }
 
-  return { classes, components, exports };
+  return { classes, hidden, components, exports };
 }
 
 /**
@@ -62,13 +69,17 @@ function scan(body: Node[]) {
  * invalidates importers.
  */
 function inject(id: string, body: Node[]) {
-  const { classes, components, exports } = scan(body);
+  const { classes, hidden, components, exports } = scan(body);
 
   if (!classes.length && !components.length) return '';
 
   const list = classes.join(', ');
   const record = Object.entries(exports).map(([name, local]) => `${JSON.stringify(name)}: ${local}`);
   const refresh = Object.keys(exports).filter((name) => components.includes(exports[name]));
+  const notes = hidden.map(
+    (name) =>
+      `${JSON.stringify(name)}: ${JSON.stringify(`[expressive] ${name} (${id}) declares #private members, so edits to its module will trigger a full reload. Use _ properties instead to keep HMR.`)}`
+  );
   const lines = ['', `import { State as __State } from '@expressive/mvc';`];
 
   if (classes.length)
@@ -87,13 +98,33 @@ function inject(id: string, body: Node[]) {
     );
 
   lines.push(`if (import.meta.hot) {
+  const __notes = { ${notes.join(', ')} };
+  const __flag = (key) => 'expressive:private:' + ${JSON.stringify(id)} + ':' + key;
+  for (const key in __notes)
+    try {
+      if (sessionStorage.getItem(__flag(key)) == 'due') {
+        console.warn(__notes[key]);
+        sessionStorage.setItem(__flag(key), 'shown');
+      }
+    } catch {}
   const __before = import.meta.hot.data.expressive;
   const __classes = (import.meta.hot.data.expressive = { ${list} });
   for (const key in __before)
     if (__classes[key] !== __before[key] && __classes[key]?.prototype instanceof __State) {
-      if (typeof location != 'object') import.meta.hot.invalidate();
-      else {
-        dispatchEvent(new CustomEvent('expressive:reload', { detail: { module: ${JSON.stringify(id)}, class: key, reason: 'class changed shape' } }));
+      const note = __notes[key];
+      if (typeof location != 'object') {
+        const warned = (import.meta.hot.data.warned ||= {});
+        if (note && !warned[key]) console.warn(note);
+        warned[key] = true;
+        import.meta.hot.invalidate();
+      } else {
+        if (note)
+          try {
+            if (!sessionStorage.getItem(__flag(key))) sessionStorage.setItem(__flag(key), 'due');
+          } catch {
+            console.warn(note);
+          }
+        dispatchEvent(new CustomEvent('expressive:reload', { detail: { module: ${JSON.stringify(id)}, class: key, reason: note ? 'private members' : 'class changed shape' } }));
         location.reload();
       }
       break;
