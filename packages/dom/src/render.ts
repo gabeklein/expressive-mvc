@@ -15,7 +15,7 @@ import {
 import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
 import { Provider, provide } from './context';
 import { applyDeclarations } from './declarations';
-import { claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
+import { afterFlush, claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
 import type { Key, Node as RenderNode, VNode } from './vnode';
 
@@ -64,6 +64,7 @@ interface Fiber {
   placeholder?: Fiber;
   staging?: DocumentFragment;
   inserted?: (() => void)[];
+  restore?: () => void;
   render?: () => RenderNode;
   appearance?: Appearance;
   consumed?: boolean;
@@ -965,6 +966,12 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
     if (differs) patchProp(fiber, element, key, previous[key], value);
   }
 
+  if (!fiber.restore && CONTROLS.some((key) => next[key] != null)) {
+    fiber.restore = () => queueMicrotask(() => afterFlush(() => restore(fiber)));
+    element.addEventListener('input', fiber.restore);
+    element.addEventListener('change', fiber.restore);
+  }
+
   if (previous.ref !== next.ref) patchProp(fiber, element, 'ref', previous.ref, next.ref);
 }
 
@@ -1125,6 +1132,18 @@ function collect(value: Style, collected: Collected, doors: number) {
 
 function appendClasses(classes: string[], value: unknown) {
   if (typeof value == 'string') classes.push(...value.split(/\s+/).filter(Boolean));
+}
+
+function restore(fiber: Fiber) {
+  const element = fiber.start as any;
+
+  for (const key of CONTROLS) {
+    const value = fiber.props![key];
+
+    if (value == null || fiber.dead) continue;
+    if (key == 'value' ? String(element.value) !== String(value) : element[key] !== value)
+      element[key] = value;
+  }
 }
 
 function settable(element: Element, key: string) {

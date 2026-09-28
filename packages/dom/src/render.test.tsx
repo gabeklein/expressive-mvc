@@ -847,6 +847,87 @@ describe('render', () => {
     expect(document.activeElement).not.toBe(input);
   });
 
+  it('will restore a controlled value when a write is rejected', async () => {
+    class Name extends Component {
+      name = 'abc';
+
+      render() {
+        return (
+          <input
+            value={this.name}
+            onInput={(event) => {
+              const next = event.currentTarget.value;
+              if (next.length <= 3) this.name = next;
+            }}
+          />
+        );
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Name />, root);
+    const input = root.querySelector('input')!;
+
+    input.value = 'abcd';
+    input.dispatchEvent(new Event('input'));
+    await flushMicrotasks();
+    expect(input.value).toBe('abc');
+
+    input.value = 'ab';
+    input.dispatchEvent(new Event('input'));
+    await flushMicrotasks();
+    expect(input.value).toBe('ab');
+  });
+
+  it('will not touch a controlled value the handler accepted', async () => {
+    let writes = 0;
+
+    class Name extends Component {
+      name = 'hello';
+
+      render() {
+        return <input value={this.name} onInput={(event) => (this.name = event.currentTarget.value)} />;
+      }
+    }
+
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<Name />, root);
+    const input = root.querySelector('input')!;
+    const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value')!;
+
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      get: () => descriptor.get!.call(input),
+      set: (value) => {
+        writes++;
+        descriptor.set!.call(input, value);
+      }
+    });
+
+    input.value = 'hel!lo';
+    writes = 0;
+    input.dispatchEvent(new Event('input'));
+    await flushMicrotasks();
+
+    expect(input.value).toBe('hel!lo');
+    expect(writes).toBe(0);
+  });
+
+  it('will keep a controlled field without a handler on its value', async () => {
+    const root = document.createElement('main');
+    render(<><input value="fixed" /><input type="checkbox" checked={false} /></>, root);
+    const [text, box] = root.querySelectorAll('input');
+
+    text.value = 'typed';
+    text.dispatchEvent(new Event('input'));
+    box.checked = true;
+    box.dispatchEvent(new Event('change'));
+    await flushMicrotasks();
+
+    expect(text.value).toBe('fixed');
+    expect(box.checked).toBe(false);
+  });
+
   it('will accept React spellings of autofocus and double click', () => {
     const clicked = vi.fn();
     const root = document.body.appendChild(document.createElement('main'));
