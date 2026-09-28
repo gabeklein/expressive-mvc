@@ -17,9 +17,7 @@ export default () => (
     </p>
     <Account />
     <small>
-      Keep <code>#</code> fields on a <code>State</code> and use them from
-      methods. A Component may be constructed twice under React StrictMode,
-      which a private field does not survive; getters and{' '}
+      Use <code>#</code> fields from methods. Getters and{' '}
       <code>render()</code> run against a tracking proxy, which cannot read
       them.
     </small>

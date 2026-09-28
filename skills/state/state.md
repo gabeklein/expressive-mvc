@@ -108,7 +108,6 @@ class Session extends State {
 
 - A `_` accessor is never computed or cached and never subscribes - running on the instance, its reads bypass the tracking subject, managed fields included. Deliberate: a subscribing `_` getter would be an uncached computed hidden behind the unmanaged prefix. Derived from managed state → a plain getter (computed); a computed reads its managed dependencies directly.
 - An instruction on a `_` key throws.
-- `#private` on a `Component` throws under React StrictMode - double construction returns the first instance, and field initializers re-run on it (`Cannot initialize #x twice`). Keep `#` fields on a State the Component owns.
 - TypeScript `private` does not opt out.
 - A handle only lifecycle touches is simpler as a `new()` closure variable.
 
