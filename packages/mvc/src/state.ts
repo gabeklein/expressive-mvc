@@ -123,13 +123,13 @@ declare namespace State {
 
   /** Object overlay to override values and methods on a state. */
   type Assign<T> = Record<string, unknown> & {
-    [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
+    [K in Exclude<keyof T, keyof State>]?: T[K] extends (...args: infer A) => infer R
     ? (this: T, ...args: A) => R
     : T[K];
   };
 
-  /** Subset of `keyof T` not defined by base State. **/
-  type Field<T> = Exclude<keyof T, keyof State>;
+  /** Subset of `keyof T` not defined by base State, less unmanaged `_` keys. **/
+  type Field<T> = Exclude<keyof T, keyof State | `_${string}`>;
 
   /** Any valid key for state, including but not limited to Field<T>. */
   type Event<T = State> = Field<T> | number | symbol | (string & {});
@@ -549,7 +549,10 @@ function init(state: State, ...args: State.Args) {
     for (const key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
 
-      if ('value' in desc && desc.configurable) apply(state, key, desc, true);
+      if (!('value' in desc) || !desc.configurable) continue;
+
+      if (key[0] == '_') define(state, key, { ...desc, enumerable: false });
+      else apply(state, key, desc, true);
     }
   }
 
@@ -669,7 +672,7 @@ function bootstrap(T: State.Extends) {
       if (key == 'constructor' || !desc.configurable) continue;
 
       if (typeof desc.get == 'function') {
-        if (desc.configurable && typeof desc.set != 'function')
+        if (typeof desc.set != 'function' && key[0] != '_')
           getters.set(key, desc.get);
 
         continue;

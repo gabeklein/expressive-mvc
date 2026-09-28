@@ -110,6 +110,21 @@ it('will reset omitted props on reassignment', async () => {
   expect(foo.other).toBeUndefined();
 });
 
+it('will accept _ keys as props', async () => {
+  class Foo extends Component {
+    _config?: string = 'foo';
+  }
+
+  const foo = Foo.new({ _config: 'bar' });
+
+  expect(foo._config).toBe('bar');
+
+  (foo as any).props = { _config: 'baz' };
+  await foo.set();
+
+  expect(foo._config).toBe('baz');
+});
+
 // Seam: React may instantiate the class twice with the same props object
 // (StrictMode) and keeps either the first (16-17) or the second (18+). Each
 // construction is a full instance; whichever activates releases the other.

@@ -267,6 +267,16 @@ describe('instruction', () => {
   });
 });
 
+describe('unmanaged keys', () => {
+  it('will throw if applied to _ key', () => {
+    class Test extends State {
+      _property = def(() => ({ value: 'hello' }));
+    }
+
+    expect(() => Test.new()).toThrow(/is unmanaged/);
+  });
+});
+
 describe('reuse', () => {
   it('will throw if instruction already applied elsewhere', () => {
     let stolen: any;

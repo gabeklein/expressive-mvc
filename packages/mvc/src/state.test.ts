@@ -2615,15 +2615,15 @@ describe('set method', () => {
     let observed: string | null = null;
 
     class Test extends State {
-      _foo = 'foo';
+      value = 'foo';
 
       get foo() {
-        return this._foo;
+        return this.value;
       }
 
       set foo(value: string) {
         observed = value;
-        this._foo = value;
+        this.value = value;
       }
     }
 
@@ -2631,10 +2631,104 @@ describe('set method', () => {
 
     test.set({ foo: 'bar' });
 
-    await expect(test).toHaveUpdated('_foo');
+    await expect(test).toHaveUpdated('value');
 
     expect(test.foo).toBe('bar');
     expect(observed as string | null).toBe('bar');
+  });
+});
+
+describe('unmanaged keys', () => {
+  it('will not manage _ keys', async () => {
+    class Test extends State {
+      value = 1;
+      _handle = 'foo';
+    }
+
+    const test = Test.new();
+
+    test._handle = 'bar';
+
+    await expect(test).not.toHaveUpdated();
+    expect(test._handle).toBe('bar');
+    expect(test.get()).toEqual({ value: 1 });
+  });
+
+  it('will define _ keys as non-enumerable', () => {
+    class Test extends State {
+      value = 1;
+      _handle = 'foo';
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).toEqual(['value']);
+    expect(Object.getOwnPropertyDescriptor(test, '_handle')).toEqual({
+      value: 'foo',
+      writable: true,
+      enumerable: false,
+      configurable: true
+    });
+  });
+
+  it('will accept _ keys from overlay', async () => {
+    class Test extends State {
+      _config = 'foo';
+    }
+
+    const test = Test.new({ _config: 'bar' });
+
+    expect(test._config).toBe('bar');
+
+    test.set({ _config: 'baz' });
+
+    expect(test._config).toBe('baz');
+  });
+
+  it('will write _ keys after destroy', () => {
+    class Test extends State {
+      value = 1;
+      _handle: string | null = 'foo';
+    }
+
+    const test = Test.new();
+
+    test.set(null);
+
+    expect(() => { test._handle = null }).not.toThrow();
+    expect(() => { test.value = 2 }).toThrow();
+  });
+
+  it('will not compute _ getters', () => {
+    const getter = vi.fn(() => 'foo');
+
+    class Test extends State {
+      get _derived() {
+        return getter();
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test._derived).toBe('foo');
+    expect(test._derived).toBe('foo');
+    expect(getter).toBeCalledTimes(2);
+    expect(Object.getOwnPropertyDescriptor(test, '_derived')).toBeUndefined();
+  });
+
+  it('will exclude _ keys from field types', () => {
+    class Test extends State {
+      value = 1;
+      _handle = 'foo';
+    }
+
+    const values: State.Values<Test> = { value: 1 };
+    const assign: State.Assign<Test> = { _handle: 'bar' };
+
+    // @ts-expect-error - _ keys are not fields
+    const field: State.Field<Test> = '_handle';
+
+    expect([values, assign, field]).toBeDefined();
   });
 });
 
