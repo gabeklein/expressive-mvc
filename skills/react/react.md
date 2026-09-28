@@ -207,7 +207,7 @@ export default defineConfig({ plugins: [react(), expressive()] });
 
 Editing a `State` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render` and subcomponents. React Refresh keeps function components. A field, constructor or `new()` change reloads the page ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). Dev server only.
 
-A class must be top-level `class X` or `let X = class` - a `const` binding cannot be patched. An anonymous `export default` is not checked for staleness.
+A class must be top-level `class X` or `let X = class` - a `const` binding cannot be patched. `export default X;` exports a snapshot, so its importers are not checked for staleness - prefer `export default class X` or `export { X as default }`; likewise an anonymous `export default`.
 
 ---
 
