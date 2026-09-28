@@ -1,5 +1,5 @@
 import { Component, has } from '@expressive/mvc';
-import { Provider, render } from '@expressive/dom';
+import { Provider, css, macro, render, style } from '@expressive/dom';
 import { Link, Route, Router } from '@expressive/router';
 
 class Item extends Component {
@@ -9,6 +9,9 @@ class Item extends Component {
     return <li>{this.name}</li>;
   }
 }
+
+macro(css);
+style(Item, { px: 4, _first: { mx: 2 } });
 
 class List extends Component {
   items = has(Item);
