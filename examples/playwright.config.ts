@@ -9,7 +9,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
-  use: { browserName: 'chromium' },
+  use: { browserName: 'chromium', trace: process.env.CI ? 'retain-on-failure' : 'off' },
   projects: [
     { name: 'react', use: { baseURL: `http://localhost:${react}/` } },
     { name: 'dom', use: { baseURL: `http://localhost:${dom}/` } }
