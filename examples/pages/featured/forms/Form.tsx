@@ -1,4 +1,4 @@
-import { Component, ref } from '@expressive/react';
+import { Component, ref } from '@expressive/mvc';
 
 // Base class: binds inputs and provides context to children.
 export class Form extends Component {

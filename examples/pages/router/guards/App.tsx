@@ -1,8 +1,7 @@
 import './App.css';
 
-import State, { Component } from '@expressive/react';
+import { State, Component } from '@expressive/mvc';
 import { Link, Route, Router } from '@expressive/router';
-import type { ReactNode } from 'react';
 
 const DOCS = ['charter', 'ledger'];
 
@@ -62,7 +61,7 @@ class Guarded extends Component {
   }
 }
 
-const Frame = (props: { children?: ReactNode }) => (
+const Frame = (props: { children?: Component.Node }) => (
   <>
     <nav className="nav">
       <Link to="/">Lobby</Link>

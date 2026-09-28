@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, has } from '@expressive/react';
+import { Component, has } from '@expressive/mvc';
 
 // `has(Item)` is an owned pool. `add` spawns a member and returns it;
 // members carry their own identity, so dropping the pool into the tree
@@ -50,7 +50,7 @@ export default class TodoList extends Component {
             <input
               value={draft}
               placeholder="Add a task…"
-              onChange={(e) => (this.draft = e.target.value)}
+              onInput={(e) => (this.draft = e.currentTarget.value)}
             />
             <button type="submit" aria-label="add">+</button>
           </form>

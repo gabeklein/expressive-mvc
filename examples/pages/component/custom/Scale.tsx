@@ -1,4 +1,4 @@
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 export class Scale extends Component {
   value = 1;

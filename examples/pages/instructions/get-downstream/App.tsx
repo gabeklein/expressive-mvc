@@ -1,6 +1,7 @@
 import './App.css';
 
-import State, { Component, get, has, Provider } from '@expressive/react';
+import { State, Component, get, has } from '@expressive/mvc';
+import { Provider } from '@expressive/react';
 
 export default () => (
   <div className="container">
@@ -66,7 +67,7 @@ class Ballot extends Component {
           <input
             value={draft}
             placeholder="Add a write-in"
-            onChange={(e) => (this.draft = e.target.value)}
+            onInput={(e) => (this.draft = e.currentTarget.value)}
           />
           <button type="submit">Add</button>
         </form>

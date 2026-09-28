@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, def } from '@expressive/react';
+import { Component, def } from '@expressive/mvc';
 
 // `def` is the low-level primitive every other instruction is built on. Its
 // factory runs at init and returns a property descriptor; a `set` that
@@ -53,7 +53,7 @@ class Profile extends Component {
           <input
             value={handle}
             placeholder="Type A Name"
-            onChange={(e) => (this.handle = e.target.value)}
+            onInput={(e) => (this.handle = e.currentTarget.value)}
           />
         </label>
       </div>

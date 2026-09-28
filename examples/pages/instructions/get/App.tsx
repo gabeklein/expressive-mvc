@@ -1,7 +1,6 @@
 import './App.css';
 
-import { Component, get } from '@expressive/react';
-import type { ReactNode } from 'react';
+import { Component, get } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
@@ -68,14 +67,14 @@ class Field extends Component {
           value={value}
           disabled={form?.locked}
           placeholder={form?.locked ? 'locked' : `Your ${label.toLowerCase()}`}
-          onChange={(e) => (this.value = e.target.value)}
+          onInput={(e) => (this.value = e.currentTarget.value)}
         />
       </label>
     );
   }
 }
 
-const Group = (props: { title: string; children?: ReactNode }) => (
+const Group = (props: { title: string; children?: Component.Node }) => (
   <fieldset className="group">
     <legend>{props.title}</legend>
     {props.children}

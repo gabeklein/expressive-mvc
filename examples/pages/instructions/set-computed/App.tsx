@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, set } from '@expressive/react';
+import { Component, set } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
@@ -41,7 +41,7 @@ class Invoice extends Component {
           <input
             type="number"
             value={hours}
-            onChange={(e) => (this.hours = +e.target.value)}
+            onInput={(e) => (this.hours = +e.currentTarget.value)}
           />
         </label>
 
@@ -50,7 +50,7 @@ class Invoice extends Component {
           <input
             type="number"
             value={rate}
-            onChange={(e) => (this.rate = +e.target.value)}
+            onInput={(e) => (this.rate = +e.currentTarget.value)}
           />
         </label>
 
@@ -60,7 +60,7 @@ class Invoice extends Component {
             type="range"
             max={50}
             value={discount}
-            onChange={(e) => (this.discount = +e.target.value)}
+            onInput={(e) => (this.discount = +e.currentTarget.value)}
           />
         </label>
 

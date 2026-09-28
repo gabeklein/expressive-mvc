@@ -1,6 +1,7 @@
 import './App.css';
 
-import State, { Consumer, Provider } from '@expressive/react';
+import { State } from '@expressive/mvc';
+import { Consumer, Provider } from '@expressive/react';
 
 const SHELF = [
   { name: 'Espresso', price: 3 },

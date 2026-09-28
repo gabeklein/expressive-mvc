@@ -1,10 +1,10 @@
 import './Button.css';
 
-import type { ButtonHTMLAttributes } from 'react';
+import type { JSX } from '@expressive/mvc/jsx-runtime';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+type ButtonProps = JSX.IntrinsicElements['button'] & {
   primary?: boolean;
-}
+};
 
 export default ({ primary, className, ...rest }: ButtonProps) => (
   <button
