@@ -671,9 +671,20 @@ function bootstrap(T: State.Extends) {
     )) {
       if (key == 'constructor' || !desc.configurable) continue;
 
-      if (typeof desc.get == 'function') {
-        if (typeof desc.set != 'function' && key[0] != '_')
-          getters.set(key, desc.get);
+      const { get, set } = desc;
+
+      if (key[0] == '_' && (get || set)) {
+        define(type.prototype, key, {
+          ...desc,
+          get: get && function (this: State) { return get.call(this.is) },
+          set: set && function (this: State, value: unknown) { set.call(this.is, value) }
+        });
+
+        continue;
+      }
+
+      if (typeof get == 'function') {
+        if (typeof set != 'function') getters.set(key, get);
 
         continue;
       }

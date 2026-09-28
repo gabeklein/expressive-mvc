@@ -2716,6 +2716,78 @@ describe('unmanaged keys', () => {
     expect(Object.getOwnPropertyDescriptor(test, '_derived')).toBeUndefined();
   });
 
+  it('will bind _ accessors to the instance', async () => {
+    class Test extends State {
+      value = 1;
+      #secret = 10;
+
+      get _secret() {
+        return this.#secret;
+      }
+
+      set _secret(next: number) {
+        this.#secret = next;
+      }
+
+      get total() {
+        return this.value + this._secret;
+      }
+    }
+
+    const test = Test.new();
+    const effect = vi.fn((self: Test) => void self._secret);
+
+    test.get(effect);
+
+    expect(test.total).toBe(11);
+
+    test.is._secret = 20;
+    test.value = 2;
+
+    await expect(test).toHaveUpdated();
+    expect(test.total).toBe(22);
+    expect(effect).toBeCalledTimes(1);
+  });
+
+  it('will not subscribe thru _ accessors', async () => {
+    class Test extends State {
+      value = 1;
+
+      get _value() {
+        return this.value;
+      }
+
+      get total() {
+        return this._value;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.total).toBe(1);
+
+    test.value = 2;
+
+    await expect(test).toHaveUpdated('value');
+    expect(test.total).toBe(1);
+  });
+
+  it('will bind setter-only _ accessors', () => {
+    let written: unknown;
+
+    class Test extends State {
+      set _sink(value: number) {
+        written = this;
+      }
+    }
+
+    const test = Test.new();
+
+    test.get((self) => { self._sink = 1 });
+
+    expect(written).toBe(test);
+  });
+
   it('will exclude _ keys from field types', () => {
     class Test extends State {
       value = 1;
