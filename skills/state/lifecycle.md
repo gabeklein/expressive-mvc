@@ -185,6 +185,6 @@ Under a dev server with a class HMR plugin (`@expressive/react/vite`, `@expressi
 - handlers the module registered with `on()` are replaced by its new ones; handlers from elsewhere stay;
 - `new()`, constructor arguments and field initializers do not rerun.
 
-A change a patch cannot carry reloads instead: a field, the constructor or `new()`, or a member switching between method and getter.
+A change a patch cannot carry reloads instead: a field, the constructor or `new()`, or a member switching between method and getter. A class declaring private (`#`) members reloads on every edit - new methods cannot reach private slots of live instances. Subclasses and bases without their own `#` members still patch; keep private state in `_`-prefixed fields to keep a class hot.
 
 Build integrations bind a module through `hot.accept(id, classes)` on `@expressive/mvc/runtime`, called at the end of each run: `id` is stable per module, `classes` its top-level `class X` / `let X = class` bindings. It returns the class to use for each - the one first loaded, patched, or a new one when the change is incompatible - and the module reassigns its bindings. A replaced class means the module should reload. The registry is keyed by `id`, not the bundler's hot API, so it holds wherever edited modules re-run while mvc stays loaded - the browser, and Vite's server module runner, which patches long-lived server instances the same way. `bun --hot` re-evaluates every module, mvc included, so nothing carries across it.

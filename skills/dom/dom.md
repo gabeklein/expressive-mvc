@@ -208,7 +208,7 @@ import expressive from '@expressive/dom/vite';
 export default defineConfig({ plugins: [expressive()] });
 ```
 
-Editing a `State` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). A field, constructor or `new()` change reloads the page. Dev server only. A class must be top-level `class X` or `let X = class`; `export default X;` exports a snapshot, so prefer `export default class X` or `export { X as default }`.
+Editing a `State` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members. Dev server only. A class must be top-level `class X` or `let X = class`; `export default X;` exports a snapshot, so prefer `export default class X` or `export { X as default }`.
 
 Function components are not refreshed: a module exporting one reloads when edited, and so does a class sharing that module. Keep classes and the function components that render them in separate modules to keep class edits hot.
 
