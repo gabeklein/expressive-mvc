@@ -10,10 +10,24 @@ install in the `setup` action doubles as the internal-dependency desync guard -
 a workspace version that falls outside a sibling's range cannot reach main.
 
 Non-blocking signals: `changeset status` (a preview of which packages would
-bump) and `npm publish --dry-run` pack validation for the publishable packages.
+bump) and bundle size.
 
-A parallel `dist-smoke` job runs `dist-smoke.ts` (see below) on Node 24, so a
-dist a consumer cannot load fails the PR that caused it rather than the release.
+Beside `verify`, one run per push also holds:
+
+- `dist-smoke` - `dist-smoke.ts` (see below) on Node 24, so a dist a consumer
+  cannot load fails the PR that caused it rather than the release.
+- `e2e` - every example page's Playwright spec on React and dom.
+- `native` - calls `native.yml` for a PR labeled `react-native`.
+
+`verify` and `e2e` are required checks, matched by job name - renaming either
+job needs the branch protection updated with it.
+
+A PR in a GitHub stack runs as if it targets the stack's base, so the `main`
+filter covers every layer. `verify` runs on each layer; the other three run only
+on the top one (`stack.position == stack.size`), whose head is what lands when
+the stack merges - a skipped required check counts as passed. A PR merely based
+on another PR's branch, outside a stack, runs nothing: create stacks with
+`gh stack`.
 
 ## release.yml (push -> main)
 
@@ -53,11 +67,13 @@ stream - the engine's weak-key constraint, dispatch batching, computed getters,
 suspense, context, `map`/`has`/`ref`, both routers, error recovery, and a write
 re-rendering through the native renderer.
 
-Opt a PR in with the `react-native` label; unlabeled PRs skip the job without
-claiming a runner. It also runs monthly, which is what catches an Expo or React
-Native SDK bump breaking resolution when no PR is involved. `workflow_dispatch`
-takes a `configuration` choice; otherwise the run is Release - minified Hermes
-bytecode with `__DEV__` false, the only configuration where an uncaught render
+Opt a PR in with the `react-native` label: adding it runs the gauntlet at once,
+and `pr.yml` calls it on every later push. Only adding a label creates a
+separate Native run - skipped unless the label is `react-native`. It also runs
+monthly, which is what catches an Expo or React Native SDK bump breaking
+resolution when no PR is involved. `workflow_dispatch` takes a `configuration`
+choice; otherwise the run is Release - minified Hermes bytecode with `__DEV__`
+false, the only configuration where an uncaught render
 error is fatal rather than a redbox.
 
 A Release build embeds the bundle, so the app's console never reaches Metro -
