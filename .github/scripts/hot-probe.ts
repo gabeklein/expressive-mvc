@@ -219,10 +219,26 @@ export class Page extends Component {
   }
 }
 `,
+  'away.tsx': `import { Component } from '@expressive/mvc';
+
+(window as any).__away = ((window as any).__away || 0) + 1;
+
+export class Away extends Component {
+  render() {
+    return <p id="away">away</p>;
+  }
+}
+`,
   'routed.tsx': `import { Route } from '@expressive/router';
 import { Page } from './page';
+import { Away } from './away';
 
-export const Routed = () => <Route as={Page} />;
+export const Routed = () => (
+  <Route>
+    <Route as={Page} />
+    <Route to="away" as={Away} />
+  </Route>
+);
 `,
   'badge.tsx': `import { Component } from '@expressive/mvc';
 import { style } from '@expressive/dom';
@@ -300,6 +316,90 @@ export class Pill extends Component {
   }
 }
 `,
+  'vault.tsx': `import { Component } from '@expressive/mvc';
+
+export class Vault extends Component {
+  #key = 'k';
+
+  reveal() {
+    return 'vault ' + this.#key;
+  }
+
+  render() {
+    return <p id="vault">{this.reveal()}</p>;
+  }
+}
+`,
+  'deck.tsx': `import { Component } from '@expressive/mvc';
+
+export class Deck extends Component {
+  title = 'deck';
+
+  Header() {
+    const { title } = this;
+
+    return <h2 id="deck">{title} head</h2>;
+  }
+
+  render() {
+    return <this.Header />;
+  }
+}
+`,
+  'guard.tsx': `import { Component } from '@expressive/mvc';
+
+function Fuse({ label }: { label: string }) {
+  const { armed } = Guard.get();
+
+  if (armed) throw new Error('boom');
+
+  return <p id="guard">{label}</p>;
+}
+
+export class Guard extends Component {
+  armed = false;
+
+  async catch() {
+    this.fallback = <p id="guard">caught</p>;
+    await new Promise((resolve) => ((window as any).__recover = resolve));
+  }
+
+  render() {
+    return <Fuse label="safe" />;
+  }
+}
+`,
+  'stage.tsx': `import { Component, pending, set } from '@expressive/mvc';
+
+function Scene() {
+  const stage = Stage.get();
+  const { step } = stage;
+
+  if (step == 2) return <p id="stage">{stage.label(step)} {stage.extra}</p>;
+
+  return <p id="stage">{stage.label(step)}</p>;
+}
+
+export class Stage extends Component {
+  step = 1;
+  extra = set<string>();
+  fallback = <p id="stage">wait</p>;
+
+  go() {
+    pending(() => {
+      this.step = 2;
+    });
+  }
+
+  label(step: number) {
+    return 'scene ' + step;
+  }
+
+  render() {
+    return <Scene />;
+  }
+}
+`,
   'labels.ts': `import { State } from '@expressive/mvc';
 
 export const PREFIX = 'note';
@@ -357,6 +457,10 @@ import { Shell } from './shell';
 import { Kit } from './kit';
 import { Pill } from './pill';
 import { Noted } from './noted';
+import { Vault } from './vault';
+import { Deck } from './deck';
+import { Guard } from './guard';
+import { Stage } from './stage';
 ${badge ? "import { Wrapper } from './badge';\n" : ''}
 export const App = () => (
   <Provider for={{ Settings, Theme }}>
@@ -375,6 +479,10 @@ export const App = () => (
     <Pill tag="a" />
     <Pill tag="b" />
     <Noted />
+    <Vault />
+    <Deck />
+    <Guard />
+    <Stage />
     ${badge ? '<Wrapper />' : ''}
   </Provider>
 );
@@ -852,10 +960,74 @@ async function run(mode: Mode) {
       check(await alive(), 'page reloaded');
     });
 
+    await scenario('subcomponent takes an edit, its state kept', async () => {
+      await relay('set', 'Deck.title', 'd2');
+      await see('#deck', 'd2 head');
+      await edit('deck.tsx', 'head</h2>', 'top</h2>');
+      await see('#deck', 'd2 top');
+      await relay('set', 'Deck.title', 'd3');
+      await see('#deck', 'd3 top');
+      check(await alive(), 'page reloaded');
+    });
+
+    await scenario('component edited while showing its error recovers into the edit', async () => {
+      await see('#guard', 'safe');
+      await relay('set', 'Guard.armed', true);
+      await see('#guard', 'caught');
+      await edit('guard.tsx', '<Fuse label="safe" />', '<Fuse label="sound" />');
+
+      const since = await relay('journal.seq');
+      await until(async () => (await hot(since)).patched('Guard') || (await browser.text('#guard')) == 'sound').catch(() => {});
+      await relay('set', 'Guard.armed', false);
+      await browser.eval('window.__recover?.()');
+      await see('#guard', 'sound');
+      check(await alive(), 'page reloaded');
+    });
+
+    await scenario('edit during a pending transition applies once it resolves', async () => {
+      await see('#stage', 'scene 1');
+      await relay('call', 'Stage.go');
+      await edit('stage.tsx', "return 'scene ' + step;", "return 'stage ' + step;");
+      await sleep(300);
+      await relay('set', 'Stage.extra', 'x');
+      await see('#stage', 'stage 2 x');
+      check(await alive(), 'page reloaded');
+    });
+
+    await scenario('page patched while unmounted shows the edit when navigated to', async () => {
+      const runs = await browser.eval('window.__away');
+      await edit('away.tsx', 'away</p>', 'gone</p>');
+      await until(async () => (await browser.eval('window.__away')) > runs);
+      await relay('call', 'Router.goto', '/away');
+      await see('#away', 'gone');
+      await relay('call', 'Router.goto', '/');
+      await until(() => browser.text('#page'));
+      check(await alive(), 'page reloaded');
+    });
+
     await scenario('edits leave no more orphaned instances than a fresh page', async () => {
       await until(async () => (await orphans()) <= baseline).catch(async () => {
         throw new Error(`${await orphans()} orphans, ${baseline} on a fresh page`);
       });
+    });
+
+    const rearm = async () => {
+      await until(async () => (await (await fetch(`${base}/__inspect`)).json()).length > 0);
+      await browser.eval(`window.__probe = 'alive'`);
+    };
+
+    await scenario('class with private members reloads on edit and says why', async () => {
+      await see('#vault', 'vault k');
+      await edit('vault.tsx', "return 'vault ' +", "return 'safe ' +");
+      await until(async () => !(await alive()) && (await browser.text('#vault')) == 'safe k', 10000);
+
+      const reload = await until(async () => {
+        const events = (await relay('journal.frames')).flatMap((frame: any) => frame.events);
+        return events.find((e: any) => e.kind == 'hot' && e.key == 'reload' && e.value?.class == 'Vault');
+      });
+
+      check(reload, 'no reload recorded for Vault');
+      await rearm();
     });
 
     await scenario('renaming a class across modules reloads into a working app', async () => {
@@ -866,7 +1038,7 @@ async function run(mode: Mode) {
       await relay('set', 'Clock.seconds', 12);
       await see('#clock', '[12s]');
       check(!(await overlay()), 'error overlay up');
-      await browser.eval(`window.__probe = 'alive'`);
+      await rearm();
     });
 
     await scenario('field change reloads and says why', async () => {
