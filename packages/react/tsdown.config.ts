@@ -2,7 +2,7 @@ import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   clean: true,
-  dts: true,
+  dts: { compilerOptions: { paths: {} } },
   sourcemap: true,
   outDir: 'dist',
   outExtensions: () => ({ js: '.js' }),
