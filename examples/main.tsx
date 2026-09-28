@@ -21,7 +21,13 @@ if (window.self === window.top && !new URLSearchParams(location.search).has('pag
   document.body.classList.add('example');
 
   // Await the module so render commits promptly.
-  const { default: Example } = await loadFrame()();
+  const load = loadFrame();
+
+  // Standalone frames start at `/`, where an iframe in the shell would be, so
+  // BrowserRouter examples see the same address either way.
+  history.replaceState(null, '', '/');
+
+  const { default: Example } = await load();
 
   root.render(
     <Suspense>

@@ -5,6 +5,10 @@ import { jsx } from '@expressive/dom/jsx-runtime';
 
 import { loadFrame } from '../pages';
 
-const { default: Example } = await loadFrame()();
+const load = loadFrame();
+
+history.replaceState(null, '', '/');
+
+const { default: Example } = await load();
 
 render(jsx(Example, {}), document.getElementById('root')!);
