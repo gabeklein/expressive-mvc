@@ -94,9 +94,21 @@ class Job extends State {
 }
 ```
 
-- A `_` getter stays a plain accessor - never computed or cached.
+`#private` is for logic only. Computeds and effects run against the tracking subject, not the instance, so `this.#x` there throws. Methods and `_` accessors are bound to the instance - a `_` getter is the bridge from `#private` to reactive code:
+
+```ts
+class Session extends State {
+  user = '';
+  #token = '';
+
+  get _authorized() { return this.#token !== ''; }
+  get greeting() { return this._authorized ? `Hi ${this.user}` : 'Sign in'; }
+}
+```
+
+- A `_` accessor is never computed or cached and never subscribes - including to managed fields it reads. A computed reads its managed dependencies directly.
 - An instruction on a `_` key throws.
-- TypeScript `private` does not opt out; ES `#private` throws in computeds (the tracking subject is not the instance) and re-initializes unsafely on Components.
+- TypeScript `private` does not opt out.
 - A handle only lifecycle touches is simpler as a `new()` closure variable.
 
 ## The `is` Property

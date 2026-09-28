@@ -97,6 +97,7 @@ Not every accessor gets promoted. A getter stays a plain JS accessor (no trackin
 - it has a paired setter: `get foo() {}` + `set foo(v) {}`
 - it was installed via `Object.defineProperty` on the prototype - descriptors made that way default to `configurable: false`
 - it lives on the base `State` class itself
+- its name starts with `_` - see [unmanaged properties](/docs/guides/state-classes#unmanaged-properties); it also runs against the real instance, so it can read `#private` fields
 
 The paired-setter case is also the opt-out: use get/set pairs for native accessor semantics, a bare getter for derived data.
 
