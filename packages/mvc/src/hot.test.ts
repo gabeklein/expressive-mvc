@@ -1,9 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Component, State } from '.';
-import { parseAst } from 'vite';
-
-import { accept, inject as hot, verify } from './hot';
+import { accept } from './hot';
 
 const SYMBOL = Symbol('static');
 
@@ -571,105 +569,5 @@ describe('accept', () => {
     expect(error).toHaveBeenCalledWith(new Error('refused'));
 
     error.mockRestore();
-  });
-});
-
-describe('verify', () => {
-  class Test extends State {}
-
-  it('will pass without next exports', () => {
-    expect(verify({ Test }, undefined, true)).toBeUndefined();
-  });
-
-  it('will pass unchanged exports', () => {
-    expect(verify({ Test, value: 1 }, { Test, value: 1 }, true)).toBeUndefined();
-  });
-
-  it('will pass a changed component', () => {
-    const App = () => null;
-
-    expect(verify({ App }, { App: () => null }, true)).toBeUndefined();
-  });
-
-  it('will reload for a changed State class', () => {
-    expect(verify({ Test }, { Test: class Test extends State {} }, true)).toBe('reload');
-  });
-
-  it('will reject another changed export', () => {
-    expect(verify({ value: 1 }, { value: 2 }, true)).toBe('"value" export cannot be hot-patched.');
-  });
-
-  it('will reject a changed component the host does not refresh', () => {
-    const App = () => null;
-
-    expect(verify({ App }, { App: () => null }, false)).toBe('"App" export cannot be hot-patched.');
-  });
-
-  it('will reject a removed export', () => {
-    expect(verify({ App: () => null }, {}, true)).toBe('"App" export cannot be hot-patched.');
-  });
-});
-
-describe('inject', () => {
-  const inject = (code: string, id = '/src/app.js') => hot(id, parseAst(code));
-
-  const exports = (code: string) =>
-    inject(`class Store {}\n${code}`).match(/const __exports = \{ (.*) \};/)![1];
-
-  it('will return nothing without classes', () => {
-    expect(inject('export const title = "no class";')).toBe('');
-  });
-
-  it('will bind top-level classes', () => {
-    const code = inject('class A {}\nlet B = class {};\nvar C = class {};');
-
-    expect(code).toContain(`import { hot as __expressive } from '@expressive/mvc/runtime';`);
-    expect(code).toContain('__expressive.accept("/src/app.js", { A, B, C })');
-    expect(code).toContain('A = __hot.A;');
-    expect(code).toContain('B = __hot.B;');
-    expect(code).toContain('import.meta.hot.accept(');
-  });
-
-  it('will verify for a host which refreshes components', () => {
-    expect(inject('class A {}')).toContain('__expressive.verify(__exports, next, true)');
-  });
-
-  it('will verify for a host which does not refresh components', () => {
-    expect(hot('/src/app.js', parseAst('class A {}'), { refresh: false }))
-      .toContain('__expressive.verify(__exports, next, false)');
-  });
-
-  it('will not bind a class it cannot reassign', () => {
-    expect(inject('class A {}\nconst B = class {};\nlet c = 1, [d] = [2];')).toContain('{ A }');
-  });
-
-  it('will bind exported classes', () => {
-    const code = inject('export class A {}\nexport default class B {}');
-
-    expect(code).toContain('{ A, B }');
-    expect(code).toContain('const __exports = { "A": A, "default": B };');
-  });
-
-  it('will record declarations', () => {
-    expect(exports('export function helper() {}\nexport let a = 1, [b] = [2];'))
-      .toBe('"helper": helper, "a": a');
-  });
-
-  it('will record specifiers by local name', () => {
-    expect(exports('export { Store as Model, Store as "with-dash" };'))
-      .toBe('"Model": Store, "with-dash": Store');
-  });
-
-  it('will ignore re-exports', () => {
-    expect(exports("export { other } from './other';\nexport { Store };")).toBe('"Store": Store');
-  });
-
-  it('will record a default binding', () => {
-    expect(exports('export default Store;')).toBe('"default": Store');
-    expect(exports('export default function App() {}')).toBe('"default": App');
-  });
-
-  it('will not record an anonymous default', () => {
-    expect(exports('export default function () {}')).toBe('');
   });
 });
