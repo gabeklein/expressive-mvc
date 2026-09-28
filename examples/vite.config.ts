@@ -8,16 +8,27 @@ import inspect from '../packages/inspect/src/vite';
 const src = (pkg: string) =>
   fileURLToPath(new URL(`../packages/${pkg}/src`, import.meta.url));
 
-export default defineConfig({
-  plugins: [react(), inspect()],
-  // Dev-only: resolve workspace packages to TS source for hot-reload sans `dist`.
-  resolve: {
-    alias: {
-      '@common': fileURLToPath(new URL('./common', import.meta.url)),
-      '@expressive/inspect': src('inspect'),
-      '@expressive/router': src('router'),
-      '@expressive/react': src('react'),
-      '@expressive/mvc': src('mvc')
+// `--mode dom` serves example frames (dom.html) on @expressive/dom: pages compile
+// against its JSX runtime and their `@expressive/react` imports (Provider,
+// Consumer) resolve to dom's equivalents. The React shell is not served there.
+export default defineConfig(({ mode }) => {
+  const dom = mode == 'dom';
+
+  return {
+    cacheDir: dom ? 'node_modules/.vite-dom' : undefined,
+    optimizeDeps: dom ? { entries: ['dom.html'] } : undefined,
+    plugins: dom ? [inspect()] : [react(), inspect()],
+    esbuild: dom ? { jsx: 'automatic', jsxImportSource: '@expressive/dom' } : undefined,
+    // Dev-only: resolve workspace packages to TS source for hot-reload sans `dist`.
+    resolve: {
+      alias: {
+        '@common': fileURLToPath(new URL('./common', import.meta.url)),
+        '@expressive/inspect': src('inspect'),
+        '@expressive/router': src('router'),
+        '@expressive/react': src(dom ? 'dom' : 'react'),
+        '@expressive/dom': src('dom'),
+        '@expressive/mvc': src('mvc')
+      }
     }
-  }
+  };
 });

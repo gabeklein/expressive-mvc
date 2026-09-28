@@ -27,17 +27,26 @@ Style:
 - Instance-rendering demos use a swappable class member (`active` holding an instance that gets reassigned), not a module-scope singleton placed twice - the lesson is that the field decides what renders, never what exists.
 - Reuse the theme tokens from `global.css` (`--s1..6`, `--accent`, `--surface`, ...); register each page in its group's `index.ts` manifest.
 
-## Runtime smoke pass
+## Host-agnostic source
 
-A page that type-checks and builds can still be broken. Run every new or edited batch through a throwaway harness, then delete both files before committing (this package ships no test script):
+Every page runs on `@expressive/react` and `@expressive/dom` unchanged. Keep it that way:
+
+- Import `State`, `Component` and instructions from `@expressive/mvc`. Only `Provider` / `Consumer` come from `@expressive/react`, which dom mode aliases.
+- No `react` imports in pages. Use `Component.Node` for children, and structural types for handler parameters that need annotating.
+- Text fields use `onInput` (identical on React). Checkboxes and selects keep `onChange`.
+- No `Suspense`: give the component that owns the pending value a `fallback`.
+- SVG presentation values that differ in attribute casing between hosts (`strokeDasharray`) go in `style`.
+
+## Specs
+
+Each page has a Playwright spec beside it: `pages/<group>/<page>/App.spec.ts`. `coverage.spec.ts` fails when a page lacks one. Specs are excluded from the published source.
 
 ```bash
-cd examples && bun test --preload ./smoke.dom.ts smoke.test.tsx
+cd examples && bun run e2e                           # both hosts
+bunx playwright test pages/router/            # one group (trailing slash: exact folder)
+bun run dev:dom                                      # dom frames: /dom.html?page=<group>/<page>
 ```
 
-- `smoke.dom.ts` is a two-line throwaway: import `GlobalRegistrator` from `@happy-dom/global-registrator` and `register()` it, so `document` exists before `@testing-library/*` evaluates. (The old `packages/react/test.dom.ts` preload was deleted in the vitest migration.)
-- `import.meta.glob` is Vite-only and undefined under `bun test` - enumerate `pages/<group>/<example>/App.tsx` with `readdirSync` and `await import()` each. CSS imports resolve fine.
-- A render-only pass catches crashes, not dead reactivity. Drive interactions with `fireEvent` and assert on `container.textContent`.
-- Flush pattern: `await act(async () => fireEvent.click(x)); await settle()` where `settle = ms => act(() => new Promise(r => setTimeout(r, ms)))`. Nesting the settle *inside* the same `act` callback reports the previous render's DOM and invents phantom bugs.
-
-When layout or a real browser crash is in question, happy-dom is not enough - it renders what React computes, not what the page looks like. Use `puppeteer-core` (dev-install, revert the lockfile after) with `executablePath` pointed at installed Chrome, headless, against `bun run dev`. The example itself renders in an iframe: find it via `page.frames()`, screenshot the `iframe` element handle to actually look at it, collect `pageerror` + `console`, and assert `scrollWidth <= clientWidth` to catch content overflowing the example pane.
+- Import `{ expect, test }` from `e2e.ts`. `open('<group>/<page>')` loads the page standalone on the project's host (React at `/?page=`, dom at `/dom.html?page=`). Any `pageerror` or `console.error` fails the test.
+- Drive the page's own story, the one its copy states, with role and text locators and web-first assertions. Stub network with `page.route`. For time, install the clock before `open()`. Pause it (`install({ time: 0 })` then `pauseAt(1000)`) when the spec asserts exact readouts: an unpaused clock still follows real time, which flakes on slow runners. Router navigation flushes run on timers, so router specs keep the clock running and sample while holding.
+- A spec must pass on both projects without branching on `host`. The one intended exception is `component/boundary`'s nested-boundary rebuild.
