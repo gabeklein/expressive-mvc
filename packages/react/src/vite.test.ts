@@ -7,15 +7,15 @@ import expressive from './vite';
 
 type Result = Promise<{ code: string; map: null } | undefined>;
 
-function transform(code: string, id = '/src/app.js', runtime: string | null = '/mvc/src/runtime.js'): Result {
+function transform(code: string, id = '/src/app.js', runtime: string | null = '/mvc/src/runtime.js', ssr?: boolean): Result {
   const hook = expressive().transform as Function;
   const resolve = async () => runtime && { id: runtime };
 
-  return hook.call({ parse: parseAst, resolve }, code, id);
+  return hook.call({ parse: parseAst, resolve }, code, id, ssr === undefined ? undefined : { ssr });
 }
 
-async function inject(code: string) {
-  return (await transform(code))!.code.slice(code.length);
+async function inject(code: string, ssr?: boolean) {
+  return (await transform(code, undefined, undefined, ssr))!.code.slice(code.length);
 }
 
 interface Run {
@@ -23,15 +23,15 @@ interface Run {
   replace?: Record<string, unknown>;
   before?: Record<string, unknown>;
   next?: Record<string, unknown>;
-  page?: boolean;
+  ssr?: boolean;
   data?: Record<string, unknown>;
 }
 
-async function run(code: string, { locals, replace = {}, before, next, page = true, data = {} }: Run) {
-  const output = await inject(code);
+async function run(code: string, { locals, replace = {}, before, next, ssr = false, data = {} }: Run) {
+  const output = await inject(code, ssr);
   const body = output.replace(/^import .*$/gm, '').replaceAll('import.meta.hot', 'hot');
   const hot = { data: Object.assign(data, before && { expressive: before }), accept: vi.fn(), invalidate: vi.fn() };
-  const location = page ? { reload: vi.fn() } : undefined;
+  const location = ssr ? undefined : { reload: vi.fn() };
   const expressive = { accept: (_id: string, classes: Record<string, unknown>) => ({ ...classes, ...replace }) };
 
   new Function('hot', 'location', '__expressive', '__State', ...Object.keys(locals), body)(
@@ -187,14 +187,27 @@ describe('update', () => {
     expect(announce.mock.calls[0][0].detail).toEqual({ module: '/src/app.js', class: 'Local', reason: 'class changed shape' });
   });
 
-  it('will invalidate a class it could not patch where there is no page', async () => {
+  it('will leave a class it could not patch to the host on the server', async () => {
+    const announce = vi.fn();
+
+    addEventListener('expressive:reload', announce);
+
     const { hot } = await run(source, {
       locals: { Store, Local: class Local extends State {}, Plain, App, value: 1 },
       before: { Store, Local: Store, Plain },
-      page: false
+      ssr: true
     });
 
-    expect(hot.invalidate).toHaveBeenCalledWith();
+    removeEventListener('expressive:reload', announce);
+
+    expect(hot.invalidate).not.toHaveBeenCalled();
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it('will keep browser-only code out of the server', async () => {
+    const code = await inject('export class Vault { #key = 1; }', true);
+
+    expect(code).not.toMatch(/sessionStorage|location|dispatchEvent|invalidate\(\)/);
   });
 
   it('will ignore a class no longer declared', async () => {
@@ -302,16 +315,16 @@ describe('private members', () => {
     expect(warn).toHaveBeenCalledWith(note);
   });
 
-  it('will warn once where there is no page', async () => {
+  it('will warn once on the server', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const data = {};
 
-    const first = await degrade({ page: false, data });
-    const second = await degrade({ page: false, data });
+    await run(source, { locals: { Vault, Open: Vault }, ssr: true, data });
+    await degrade({ ssr: true, data });
+    const last = await degrade({ ssr: true, data });
 
     expect(warn).toHaveBeenCalledOnce();
-    expect(warn).toHaveBeenCalledWith(note);
-    expect(first.hot.invalidate).toHaveBeenCalled();
-    expect(second.hot.invalidate).toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(note.replace('will trigger a full reload', 'replace it instead of patching'));
+    expect(last.hot.invalidate).not.toHaveBeenCalled();
   });
 });
