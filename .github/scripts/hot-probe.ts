@@ -12,22 +12,19 @@ import reactHot from '../../packages/react/src/vite';
  * app's toolchain, runs under a Vite dev server with the host's hot plugin and
  * inspect's relay; headless Chrome loads it, and each scenario edits a module
  * and asserts - through the relay where state is the question - that the edit
- * applied, state survived and the app still works. Skips when Chrome is
- * absent; set `CHROME` to a binary.
+ * applied, state survived and the app still works. A server section drives
+ * Vite's module runner the way a session host would. The browser modes skip
+ * when Chrome is absent; set `CHROME` to a binary.
  */
 const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-
-if (!(await Bun.file(CHROME).exists())) {
-  console.log(`No Chrome at ${CHROME} - set CHROME to run the hot probe.`);
-  process.exit(0);
-}
+const chrome = await Bun.file(CHROME).exists();
 
 type Mode = 'react' | 'strict' | 'dom';
 
 const host = (mode: Mode) => (mode == 'dom' ? 'dom' : 'react');
 
 const examples = createRequire(resolve('examples/package.json'));
-const { createServer } = (await import(examples.resolve('vite'))) as typeof import('vite');
+const { createServer, createServerModuleRunner } = (await import(examples.resolve('vite'))) as typeof import('vite');
 const { default: react } = (await import(examples.resolve('@vitejs/plugin-react'))) as typeof import('@vitejs/plugin-react');
 
 const ROOT = resolve('examples/.hot-probe');
@@ -1076,13 +1073,130 @@ async function run(mode: Mode) {
   return results.filter(([, ok]) => !ok).length;
 }
 
+async function server() {
+  const dir = join(ROOT, 'server');
+  const results: boolean[] = [];
+
+  write(dir, {
+    'base.ts': `import { State } from '@expressive/mvc';
+
+export class Base extends State {
+  a = 1;
+
+  hello() {
+    return 'old';
+  }
+}
+`,
+    'session.ts': `import { Base } from './base';
+
+export class Session extends Base {
+  greet() {
+    return 'hi ' + this.hello();
+  }
+}
+`
+  });
+
+  const vite = await createServer({
+    configFile: false,
+    root: dir,
+    logLevel: 'silent',
+    cacheDir: join(ROOT, '.vite-server'),
+    plugins: [reactHot()],
+    resolve: { alias: { '@expressive/mvc': src('mvc') } },
+    server: { middlewareMode: true }
+  });
+
+  const runner = createServerModuleRunner(vite.environments.ssr, { hmr: { logger: false } });
+  const { hot } = await runner.import('@expressive/mvc/runtime');
+  const sessions = new Map<string, any>();
+  const replaced: string[] = [];
+
+  hot.replaced(({ name, prev }: { name: string; prev: Function }) => {
+    replaced.push(name);
+    for (const [key, session] of sessions)
+      if (session instanceof prev) {
+        session.set(null);
+        sessions.delete(key);
+      }
+  });
+
+  const session = async (key: string) => {
+    if (!sessions.has(key)) sessions.set(key, (await runner.import('/session.ts')).Session.new());
+    return sessions.get(key);
+  };
+
+  const edit = async (file: string, from: string, to: string) => {
+    const path = join(dir, file);
+    await Bun.write(path, (await Bun.file(path).text()).replace(from, to));
+  };
+
+  const scenario = async (name: string, body: () => Promise<void>) => {
+    try {
+      await body();
+      results.push(true);
+      console.log(`PASS [server] ${name}`);
+    } catch (error) {
+      results.push(false);
+      console.log(`FAIL [server] ${name} - ${error instanceof Error ? error.message : error}`);
+    }
+  };
+
+  const check = (condition: unknown, message: string) => {
+    if (!condition) throw new Error(message);
+  };
+
+  try {
+    const first = await session('u1');
+    first.a = 5;
+
+    await scenario('method edit patches a long-lived session in place', async () => {
+      await edit('base.ts', "return 'old';", "return 'new';");
+      await until(async () => (await session('u1')).greet() == 'hi new');
+      check((await session('u1')) === first, 'session was rebuilt');
+      check(first.a == 5, `state lost: a = ${first.a}`);
+      check(!replaced.length, `reported replaced: ${replaced}`);
+    });
+
+    await scenario('field edit on a base retires sessions through hot.replaced', async () => {
+      await edit('base.ts', 'a = 1;', 'a = 1;\n  b = 2;');
+      await until(async () => replaced.includes('Base'));
+      check(!sessions.has('u1'), 'session not retired');
+    });
+
+    await scenario('rematerialized session extends the new base', async () => {
+      const next = await session('u1');
+      check(next !== first, 'same instance');
+      check(next.b == 2, `new field missing: b = ${next.b}`);
+      check(next.greet() == 'hi new', `stale base method: ${next.greet()}`);
+      check(replaced.includes('Session'), `subclass not reported: ${replaced}`);
+    });
+
+    await scenario('server transform carries no browser-only code', async () => {
+      const result = await vite.environments.ssr.transformRequest('/base.ts');
+      const code = result?.code ?? '';
+      check(/\.hot\.accept\("\/base\.ts"/.test(code), 'no hot binding injected');
+      check(!/sessionStorage|location\.reload|dispatchEvent/.test(code), 'browser-only code in the ssr transform');
+    });
+  } finally {
+    await runner.close();
+    await vite.close();
+  }
+
+  return results.filter((ok) => !ok).length;
+}
+
 let failed = 0;
 
 try {
-  for (const mode of ['react', 'strict', 'dom'] as const) failed += await run(mode);
+  failed += await server();
+
+  if (chrome) for (const mode of ['react', 'strict', 'dom'] as const) failed += await run(mode);
+  else console.log(`No Chrome at ${CHROME} - set CHROME to run the browser modes.`);
 } finally {
   rmSync(ROOT, { recursive: true, force: true });
 }
 
-console.log(failed ? `\n${failed} hot reload scenario(s) failed.` : '\nHot reload verified in Chrome.');
+console.log(failed ? `\n${failed} hot reload scenario(s) failed.` : '\nHot reload verified.');
 process.exit(failed ? 1 : 0);
