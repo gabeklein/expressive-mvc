@@ -24,8 +24,14 @@ Bare-named files under `app/` are support modules, not routes. `Page` may be a f
 `class Page extends Route` (from `@expressive/dev`), which owns its scope: read `this.match`,
 override `children`, set `Catch` / `NotFound`.
 
-JSX compiles against `@expressive/dom`; set `"jsxImportSource": "@expressive/dom"` in the app's
-tsconfig.
+JSX compiles against `@expressive/dom`. For types, set `"jsxImportSource": "@expressive/dom"` in the
+app's tsconfig and add a declaration file that loads dom's `State` augmentation (`State.use()` and
+friends), since no app module imports `@expressive/dom` itself:
+
+```ts
+// env.d.ts
+import "@expressive/dom";
+```
 
 ## Server lane
 
@@ -63,5 +69,6 @@ generated server entry imports.
 
 ## Example
 
-`example/` is a routed app with an api module. From this package, after `bun run build` at the
-repo root: `node dist/cli.js dev` inside `example/`.
+`example/` is a routed app with an api module, a workspace package of its own. Its tsconfig maps
+`@expressive/*` to the package sources, so the editor needs no build. Running it does: after
+`bun run build` at the repo root, `bun run dev`, `bun run build` or `bun run start` inside `example/`.

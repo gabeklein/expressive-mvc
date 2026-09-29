@@ -7,11 +7,16 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@expressive/dom",
     "strict": true,
-    "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
-    "resolveJsonModule": true
+    "useDefineForClassFields": true,
+    "paths": {
+      "@expressive/mvc/*": ["../../mvc/src/*"],
+      "@expressive/dom/*": ["../../dom/src/*"],
+      "@expressive/*": ["../../*/src"]
+    }
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
 }

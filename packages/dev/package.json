@@ -45,8 +45,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && vitest run",
-    "example": "bun run build && node dist/cli.js dev"
+    "test": "tsc --noEmit && vitest run"
   },
   "dependencies": {
     "@expressive/inspect": "workspace:^",

@@ -67,6 +67,15 @@
         "@expressive/router": "^0.9.1",
       },
     },
+    "packages/dev/example": {
+      "name": "@expressive/dev-example",
+      "dependencies": {
+        "@expressive/dev": "workspace:*",
+        "@expressive/dom": "workspace:*",
+        "@expressive/mvc": "workspace:*",
+        "@expressive/router": "workspace:*",
+      },
+    },
     "packages/dom": {
       "name": "@expressive/dom",
       "version": "0.2.0",
@@ -396,6 +405,8 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.1", "", { "os": "win32", "cpu": "x64" }, "sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A=="],
 
     "@expressive/dev": ["@expressive/dev@workspace:packages/dev"],
+
+    "@expressive/dev-example": ["@expressive/dev-example@workspace:packages/dev/example"],
 
     "@expressive/dom": ["@expressive/dom@workspace:packages/dom"],
 

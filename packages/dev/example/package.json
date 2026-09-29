@@ -1,0 +1,16 @@
+{
+  "name": "@expressive/dev-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "expressive dev",
+    "build": "expressive build",
+    "start": "node dist/server/index.js"
+  },
+  "dependencies": {
+    "@expressive/dev": "workspace:*",
+    "@expressive/dom": "workspace:*",
+    "@expressive/mvc": "workspace:*",
+    "@expressive/router": "workspace:*"
+  }
+}
