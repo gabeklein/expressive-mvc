@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Component, State } from '.';
-import { accept } from './hot';
+import { accept, replaced } from './hot';
 
 const SYMBOL = Symbol('static');
 
@@ -580,6 +580,51 @@ describe('accept', () => {
     expect(accept(id, { Test: make('b') }).Test).toBe(Before);
   });
 
+  it('will replace a subclass whose parent was replaced', () => {
+    const base = module();
+    const sub = module();
+    const extend = (Parent: typeof State) =>
+      class Sub extends Parent {
+        name() {
+          return 'sub';
+        }
+      };
+
+    class Base extends State {
+      a = 1;
+    }
+
+    class Wider extends State {
+      a = 1;
+      b = 2;
+    }
+
+    const Sub = accept(sub, { Sub: extend(accept(base, { Base }).Base) }).Sub;
+    const Next = extend(accept(base, { Base: Wider }).Base);
+
+    expect(accept(sub, { Sub: Next }).Sub).toBe(Next);
+    expect(Next).not.toBe(Sub);
+    expect((Next.new() as unknown as Wider).b).toBe(2);
+  });
+
+  it('will patch a subclass whose parent was patched', () => {
+    const base = module();
+    const sub = module();
+    const make = (label: string) =>
+      class Base extends State {
+        hello() {
+          return label;
+        }
+      };
+    const extend = (Parent: typeof State) => class Sub extends Parent {};
+
+    const Base = accept(base, { Base: make('a') }).Base;
+    const Sub = accept(sub, { Sub: extend(Base) }).Sub;
+
+    expect(accept(sub, { Sub: extend(accept(base, { Base: make('b') }).Base) }).Sub).toBe(Sub);
+    expect((Sub.new() as unknown as InstanceType<ReturnType<typeof make>>).hello()).toBe('b');
+  });
+
   it('will not patch a member which changed kind', () => {
     const id = module();
 
@@ -905,3 +950,109 @@ describe('accept', () => {
   });
 });
 
+describe('replaced', () => {
+  const version = (extra: boolean) =>
+    extra
+      ? class Test extends State {
+          value = 1;
+          other = 2;
+        }
+      : class Test extends State {
+          value = 1;
+        };
+
+  it('will report a replaced class before accept returns', () => {
+    const id = module();
+    const listener = vi.fn();
+    const release = replaced(listener);
+    const Test = version(false);
+    const Next = version(true);
+
+    accept(id, { Test });
+    expect(listener).not.toHaveBeenCalled();
+
+    accept(id, { Test: Next });
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenCalledWith({ id, name: 'Test', prev: Test, next: Next });
+
+    release();
+  });
+
+  it('will not report a patched class', () => {
+    const id = module();
+    const listener = vi.fn();
+    const release = replaced(listener);
+
+    accept(id, { Test: version(false) });
+    accept(id, { Test: version(false) });
+
+    expect(listener).not.toHaveBeenCalled();
+    release();
+  });
+
+  it('will report a class whose patch threw', () => {
+    const id = module();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const listener = vi.fn();
+    const release = replaced(listener);
+    let runs = 0;
+
+    const make = () => {
+      class Test extends State {}
+
+      Test.on({
+        type() {
+          if (runs++) throw new Error('refused');
+        }
+      });
+
+      return Test;
+    };
+
+    const Test = make();
+
+    accept(id, { Test });
+    Test.new();
+
+    const Next = make();
+
+    accept(id, { Test: Next });
+
+    expect(listener).toHaveBeenCalledWith({ id, name: 'Test', prev: Test, next: Next });
+
+    release();
+    error.mockRestore();
+  });
+
+  it('will stop reporting once released', () => {
+    const id = module();
+    const listener = vi.fn();
+
+    replaced(listener)();
+    accept(id, { Test: version(false) });
+    accept(id, { Test: version(true) });
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('will report to every listener if one throws', () => {
+    const id = module();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failure = new Error('listener');
+    const release = replaced(() => {
+      throw failure;
+    });
+    const listener = vi.fn();
+    const also = replaced(listener);
+
+    accept(id, { Test: version(false) });
+    accept(id, { Test: version(true) });
+
+    expect(error).toHaveBeenCalledWith(failure);
+    expect(listener).toHaveBeenCalledOnce();
+
+    release();
+    also();
+    error.mockRestore();
+  });
+});

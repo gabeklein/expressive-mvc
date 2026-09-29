@@ -9,7 +9,19 @@ interface Entry {
   own: ReturnType<typeof handlers>;
 }
 
+interface Replaced {
+  /** Module id the class was accepted under. */
+  id: string;
+  /** Local declaration name of the class. */
+  name: string;
+  /** Class live instances belong to. */
+  prev: State.Extends;
+  /** Class that took its place. */
+  next: State.Extends;
+}
+
 const MODULES = new Map<string, Record<string, Entry>>();
+const LISTENERS = new Set<(event: Replaced) => void>();
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const PRIVATE = /(?:^|[\s;{}*])#[\w$]+(?=[\s=;(}])/;
 
@@ -36,6 +48,7 @@ function describe(type: Function): Entry {
 
 function compatible(prev: Entry, next: Entry) {
   if (prev.shape !== next.shape || PRIVATE.test(next.shape)) return false;
+  if (Object.getPrototypeOf(prev.type) !== Object.getPrototypeOf(next.type)) return false;
 
   for (const key in next.kinds)
     if (key in prev.kinds && prev.kinds[key] !== next.kinds[key]) return false;
@@ -46,7 +59,8 @@ function compatible(prev: Entry, next: Entry) {
 /**
  * Keep a module's State classes stable across runs. A class seen before is
  * patched with its replacement and returned in its place, refreshing live
- * instances; one whose shape changed is returned as-is.
+ * instances; one whose shape or parent changed is returned as-is, and
+ * reported to `replaced` listeners before `accept` returns.
  */
 function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
   let known = MODULES.get(id);
@@ -55,6 +69,7 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
 
   const output: Record<string, unknown> = { ...classes };
   const refresh = new Set<State>();
+  const replace: Replaced[] = [];
   let patched = false;
 
   track();
@@ -69,6 +84,7 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
     const next = describe(type);
 
     if (!prev || !compatible(prev, next)) {
+      if (prev) replace.push({ id, name, prev: prev.type as State.Extends, next: type });
       known[name] = next;
       continue;
     }
@@ -80,6 +96,7 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
       output[name] = prev.type;
     } catch (error) {
       console.error(error);
+      replace.push({ id, name, prev: prev.type as State.Extends, next: type });
       known[name] = next;
     }
   }
@@ -88,7 +105,26 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
 
   for (const state of refresh) if (observer(state)?.ready) event(state, REFRESH);
 
+  for (const event of replace)
+    for (const listener of LISTENERS)
+      try {
+        listener(event);
+      } catch (error) {
+        console.error(error);
+      }
+
   return output as T;
 }
 
-export { accept };
+/**
+ * Observe classes `accept` replaced instead of patching. Fires synchronously
+ * inside `accept`, while the module re-runs, so a host can retire instances of
+ * `prev` before anything resolves the module again.
+ */
+function replaced(listener: (event: Replaced) => void): () => void {
+  LISTENERS.add(listener);
+  return () => void LISTENERS.delete(listener);
+}
+
+export { accept, replaced };
+export type { Replaced };
