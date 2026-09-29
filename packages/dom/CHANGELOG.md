@@ -1,5 +1,17 @@
 # @expressive/dom
 
+## 0.2.0
+
+### Minor Changes
+
+- [#412](https://github.com/gabeklein/expressive-mvc/pull/412) [`a450c4f`](https://github.com/gabeklein/expressive-mvc/commit/a450c4f494b4fef28821c8d6382c5532886a8716) Add `@expressive/dom/vite`, a dev-server plugin for hot reload: editing a `State` or `Component` class patches it in place, keeping instance state, including its subcomponents and `style()` maps; editing a top-level function component re-renders it in place with its `State.use()` instances kept. In the `ssr` environment the injected code carries no browser-only code and leaves a replaced class to the host (`hot.replaced` on `@expressive/mvc/runtime`).
+
+### Patch Changes
+
+- [#420](https://github.com/gabeklein/expressive-mvc/pull/420) [`b9ad926`](https://github.com/gabeklein/expressive-mvc/commit/b9ad926b45b69495f93d4ad165f963ae34f4b0e7) Published declarations now type the `css` pack's `mx`, `my`, `px`, `py` and `size` macros. The 0.1.0 declarations dropped them, so a style map using one failed to type-check outside the repo.
+- Updated dependencies [[`a450c4f`](https://github.com/gabeklein/expressive-mvc/commit/a450c4f494b4fef28821c8d6382c5532886a8716), [`66abbfb`](https://github.com/gabeklein/expressive-mvc/commit/66abbfbc6034af1be394aabc82f4bb3f9989a855), [`724b803`](https://github.com/gabeklein/expressive-mvc/commit/724b80351261a899f57f1ee2d9b1a67f16f07d0e)]:
+  - @expressive/mvc@0.87.0
+
 ## 0.1.0
 
 ### Minor Changes

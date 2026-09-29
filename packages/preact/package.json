@@ -33,7 +33,7 @@
     "tsdown": "^0.20.1"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.86.0",
+    "@expressive/mvc": "^0.87.0",
     "preact": "^10.0.0"
   }
 }

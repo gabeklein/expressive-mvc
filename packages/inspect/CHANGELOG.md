@@ -1,5 +1,17 @@
 # @expressive/inspect
 
+## 0.3.0
+
+### Minor Changes
+
+- [#421](https://github.com/gabeklein/expressive-mvc/pull/421) [`570613a`](https://github.com/gabeklein/expressive-mvc/commit/570613a6fdd60cf1e1820e1e46076c7df26a1c84) Record hot updates in the journal. A hot-patched instance gets a `hot` event (`key: 'patch'`) instead of an opaque symbol event, and `summary()` counts them; the Vite client marks each update (`update`, with module paths) and opens the page a full reload brings up with a `reload` event carrying the reason. `journal.hot(key, value?)` records a page-level marker. With `calls: true`, recorded methods now follow a hot patch - previously the call wrapper kept the old implementation - and methods an edit adds are recorded too.
+
+### Patch Changes
+
+- [#417](https://github.com/gabeklein/expressive-mvc/pull/417) [`724b803`](https://github.com/gabeklein/expressive-mvc/commit/724b80351261a899f57f1ee2d9b1a67f16f07d0e) `get` and value-form `until` read unmanaged `_` keys when addressed by name. Address-form `until` on a `_` key throws immediately, since those keys emit no frames. Whole-state views still omit them.
+- Updated dependencies [[`a450c4f`](https://github.com/gabeklein/expressive-mvc/commit/a450c4f494b4fef28821c8d6382c5532886a8716), [`66abbfb`](https://github.com/gabeklein/expressive-mvc/commit/66abbfbc6034af1be394aabc82f4bb3f9989a855), [`724b803`](https://github.com/gabeklein/expressive-mvc/commit/724b80351261a899f57f1ee2d9b1a67f16f07d0e)]:
+  - @expressive/mvc@0.87.0
+
 ## 0.2.0
 
 ### Minor Changes
