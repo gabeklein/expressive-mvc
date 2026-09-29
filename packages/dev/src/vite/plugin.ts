@@ -31,6 +31,8 @@ const DEPS = [
 
 const HOSTED = ["@expressive/inspect/vite/client", "@expressive/inspect/install", "@expressive/inspect"];
 
+const SHARED = ["@expressive/mvc", "@expressive/dom", "@expressive/router", "@expressive/inspect", "@expressive/dev"];
+
 export function expressive(): Plugin<Host> {
   let root = process.cwd();
   let project: Project;
@@ -67,6 +69,7 @@ export function expressive(): Plugin<Host> {
         oxc: { jsx: { runtime: "automatic", importSource: "@expressive/dom" } },
         optimizeDeps: { entries, include: DEPS },
         resolve: { alias: hosted() },
+        environments: { ssr: { resolve: { external: SHARED } } },
         build: env.isSsrBuild ? undefined : { rollupOptions: { input: project.htmlPath ?? join(root, "index.html") } },
       };
     },

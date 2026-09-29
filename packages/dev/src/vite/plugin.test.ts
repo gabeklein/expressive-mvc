@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { createServer as listen, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { build, createServer, type InlineConfig, type ViteDevServer } from "vite";
+import { build, createServer, createServerModuleRunner, type InlineConfig, type ViteDevServer } from "vite";
 
 import { serverBuild } from "./build";
 import { expressive } from "./plugin";
@@ -106,6 +107,32 @@ describe("vite host", () => {
     expect(await fetch(base + "api/ping").then(r => r.json())).toBe("pong");
     expect(await fetch(base + "api/greetings/hello", { method: "POST", body: '["Gabe"]' }).then(r => r.json())).toBe("Hello Gabe!");
     expect((await fetch(base + "api/greetings/nope")).status).toBe(404);
+  });
+
+  it("will share linked Expressive packages between the host and the module runner", async () => {
+    const root = project({
+      "app/index.tsx": PAGE,
+      "app/api/probe.ts": 'export { State } from "@expressive/mvc";',
+      "linked/mvc/package.json": JSON.stringify({ name: "@expressive/mvc", type: "module", exports: "./index.js" }),
+      "linked/mvc/index.js": "export class State {}",
+    });
+    mkdirSync(join(root, "node_modules/@expressive"), { recursive: true });
+    symlinkSync(join(root, "linked/mvc"), join(root, "node_modules/@expressive/mvc"), "dir");
+
+    const server = await createServer({
+      root,
+      configFile: false,
+      logLevel: "silent",
+      plugins: [expressive()],
+      optimizeDeps: { noDiscovery: true, include: [] },
+    });
+    servers.push(server);
+
+    const runner = createServerModuleRunner(server.environments.ssr);
+    const { State } = await runner.import(join(root, "app/api/probe.ts"));
+    await runner.close();
+
+    expect(State).toBe(createRequire(join(root, "index.js"))("@expressive/mvc").State);
   });
 
   it("builds the node service with index.ts and every api module", async () => {
