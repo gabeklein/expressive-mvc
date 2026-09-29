@@ -137,3 +137,4 @@ export function propsOf(node: unknown): Record<string, unknown> {
   return HOST.propsOf(node);
 }
 
+export * as hot from './hot';

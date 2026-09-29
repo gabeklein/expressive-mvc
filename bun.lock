@@ -50,10 +50,15 @@
         "@expressive/mvc": "workspace:^",
         "@types/node": "^25.2.0",
         "tsdown": "^0.20.1",
+        "vite": "^7.3.1",
       },
       "peerDependencies": {
         "@expressive/mvc": "^0.86.0",
+        "vite": ">=5",
       },
+      "optionalPeers": [
+        "vite",
+      ],
     },
     "packages/inspect": {
       "name": "@expressive/inspect",
@@ -109,11 +114,16 @@
         "react-dom": "^19",
         "react-refresh": "^0.18.0",
         "tsdown": "^0.20.1",
+        "vite": "^7.3.1",
       },
       "peerDependencies": {
         "@expressive/mvc": "^0.86.0",
         "react": ">=16.14.0 <20.0.0",
+        "vite": ">=5",
       },
+      "optionalPeers": [
+        "vite",
+      ],
     },
     "packages/router": {
       "name": "@expressive/router",

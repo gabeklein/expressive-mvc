@@ -9,4 +9,8 @@ for (const [name, value] of Object.entries({ State, Component, Consumer, Provide
 
 assert.equal(jsx('div', { children: 'ready' }).type, 'div');
 
-console.log('dom: import shape ok');
+const { default: domHot } = await import('@expressive/dom/vite');
+
+assert.equal(domHot().name, '@expressive/dom:hot');
+
+console.log('dom: import shape + vite ok');

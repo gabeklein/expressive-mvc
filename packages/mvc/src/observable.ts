@@ -47,6 +47,9 @@ interface Observing {
 const Observer: unique symbol = Symbol('Observer');
 const Observing: unique symbol = Symbol('Observing');
 
+/** Event every observer treats as watched, to force a refresh. */
+const REFRESH = Symbol.for('@expressive/mvc.refresh');
+
 interface Observable { [Observer]?: Observer | null }
 interface Observed { [Observing]?: Observing }
 
@@ -92,7 +95,7 @@ function observe<T extends object>(
   const observing: Observing = { callback, watching, required, release: cleanup };
 
   const release = listener(object, (key) => {
-    if (watching.has(key)) return observing.callback();
+    if (watching.has(key) || key === REFRESH) return observing.callback();
   });
 
   cleanup.push(release);

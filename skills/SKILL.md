@@ -305,7 +305,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [state/get.md](state/get.md) - Instance `.get()` method: read values, run effects, context lookup
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
 - [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense, when a derivation should stay local
-- [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases
+- [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases; hot patching and the `hot` seam
 - [state/context.md](state/context.md) - Context system, global root, home context, ownership rules
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
@@ -313,13 +313,13 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### React
 
-- [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), Provider, Consumer, transparent writes, ForceRefresh
+- [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), Provider, Consumer, transparent writes, ForceRefresh, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, effects
 
 ### JSX
 
-- [dom/dom.md](dom/dom.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, exclusions
+- [dom/dom.md](dom/dom.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, Vite hot reload, exclusions
 
 ### Router
 

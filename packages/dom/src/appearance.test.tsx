@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Component } from '@expressive/mvc';
 import { macro, render, style } from './index';
+import { hot } from '@expressive/mvc/runtime';
 import { flushMicrotasks } from '../test.setup';
 import { createAppearanceRoute, createStyleScope, resolveAppearance } from './appearance';
 import { applyDeclarations } from './declarations';
@@ -642,4 +643,38 @@ describe('appearance', () => {
     expect(resolveAppearance(scope, { _active: true })?.blocks).toHaveLength(1);
   });
 
+});
+
+describe('hot patch', () => {
+  it('will carry a style map to the patched class', async () => {
+    const version = (color: string) => {
+      class Swatch extends Component {
+        render() {
+          return <div />;
+        }
+      }
+
+      style(Swatch, { color });
+
+      return Swatch;
+    };
+
+    const Swatch = version('red');
+
+    hot.accept('dom-style', { Swatch });
+
+    const node = mount(<Swatch />).querySelector('div')!;
+    const rule = () => {
+      const { sheet } = document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!;
+      return [...sheet!.cssRules].find((rule) => rule.cssText.startsWith(`.${node.className}{`)
+        || rule.cssText.startsWith(`.${node.className} {`))!.cssText;
+    };
+
+    expect(rule()).toContain('red');
+
+    hot.accept('dom-style', { Swatch: version('blue') });
+    await flushMicrotasks();
+
+    expect(rule()).toContain('blue');
+  });
 });

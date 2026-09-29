@@ -5,6 +5,7 @@ import { Consumer, Provider, render } from './index';
 import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
+import { hot } from '@expressive/mvc/runtime';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('MVC adapter', () => {
@@ -440,5 +441,50 @@ describe('MVC adapter', () => {
 
   it('will reserve Provider execution for the renderer', () => {
     expect(() => (Provider as any)({})).toThrow('must be rendered');
+  });
+});
+
+describe('hot patch', () => {
+  const version = (text: string) => {
+    class Panel extends Component {
+      value = 1;
+
+      Label() {
+        return <b>{text}</b>;
+      }
+
+      render() {
+        const { value, Label } = this;
+        return <><Label />{value}</>;
+      }
+    }
+    return Panel;
+  };
+
+  it('will patch a subcomponent in place', async () => {
+    const Panel = version('before');
+    const root = document.createElement('main');
+
+    hot.accept('dom-subcomponent-live', { Panel });
+    render(<Panel />, root);
+
+    expect(root.textContent).toBe('before1');
+
+    hot.accept('dom-subcomponent-live', { Panel: version('after') });
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('after1');
+  });
+
+  it('will patch a subcomponent for new instances', () => {
+    const Panel = version('before');
+    const root = document.createElement('main');
+
+    hot.accept('dom-subcomponent-new', { Panel });
+    render(<Panel />, root)();
+    hot.accept('dom-subcomponent-new', { Panel: version('after') });
+    render(<Panel />, root);
+
+    expect(root.textContent).toBe('after1');
   });
 });

@@ -176,3 +176,15 @@ Other failures:
 
 - **Reading uninitialized required values** - throws a Suspense-compatible error (Promise with Error properties) that resolves when the value is assigned, or rejects if the state is destroyed first.
 - **Circular updates** - an effect updating a property it reads does not re-trigger in the same cycle; the update lands in the next batch.
+
+## Hot Patching
+
+Under a dev server with a class HMR plugin (`@expressive/react/vite`, `@expressive/dom/vite`), an edited class is patched onto the one already loaded - identity holds for context, imports and `instanceof`. Live instances keep their values and refresh:
+
+- methods, getters, `render`, subcomponents and statics take the new definition; a new getter becomes computed on live instances;
+- handlers the module registered with `on()` are replaced by its new ones; handlers from elsewhere stay;
+- `new()`, constructor arguments and field initializers do not rerun.
+
+A change a patch cannot carry reloads instead: a field, the constructor or `new()`, a member switching between method and getter, or a parent class that was itself replaced. A class declaring private (`#`) members reloads whenever its module re-runs - new methods cannot reach private slots of live instances; the first such reload per session logs a console warning. Subclasses and bases in other modules without their own `#` members still patch. Keep private state in `_` properties, or give a `#` class its own module.
+
+Build integrations bind a module through `hot.accept(id, classes)` on `@expressive/mvc/runtime`, called at the end of each run: `id` is stable per module, `classes` its top-level `class X` / `let X = class` bindings. It returns the class to use for each - the one first loaded, patched, or a new one when the change is incompatible - and the module reassigns its bindings. A replaced class means the module should reload; `hot.replaced(listener)` reports each one - `{ id, name, prev, next }` - synchronously while the module re-runs, so a server host can retire instances of `prev` before anything resolves the module again, and returns an unsubscribe. The Vite plugins' server (`ssr`) transform only reports - what happens to those instances is the host's decision. A changed non-class export still invalidates the module there, so the runner re-evaluates it on the next import. The registry is keyed by `id`, not the bundler's hot API, so it holds wherever edited modules re-run while mvc stays loaded - the browser, and Vite's server module runner, which patches long-lived server instances the same way. `bun --hot` re-evaluates every module, mvc included, so nothing carries across it.

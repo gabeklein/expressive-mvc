@@ -44,6 +44,10 @@
     "./adapter": {
       "types": "./dist/adapter.d.ts",
       "default": "./dist/adapter.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
     }
   },
   "engines": {
@@ -65,10 +69,17 @@
     "react": "^19",
     "react-dom": "^19",
     "react-refresh": "^0.18.0",
-    "tsdown": "^0.20.1"
+    "tsdown": "^0.20.1",
+    "vite": "^7.3.1"
   },
   "peerDependencies": {
     "@expressive/mvc": "^0.86.0",
-    "react": ">=16.14.0 <20.0.0"
+    "react": ">=16.14.0 <20.0.0",
+    "vite": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
   }
 }

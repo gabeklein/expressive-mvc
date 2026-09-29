@@ -22,28 +22,28 @@ import { withWorkspaceLinks } from './workspace-links';
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 6160,
+    limit: 6320,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 9900,
+    limit: 10150,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 9930,
+    limit: 10190,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 10710,
+    limit: 10970,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 12800,
+    limit: 13110,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
@@ -62,17 +62,17 @@ const CASES = [
   },
   {
     name: 'router: everything',
-    limit: 12850,
+    limit: 13160,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'inspect: install',
-    limit: 11510,
+    limit: 11790,
     code: `import '@expressive/inspect/install';`
   },
   {
     name: 'react + router',
-    limit: 16900,
+    limit: 17280,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`

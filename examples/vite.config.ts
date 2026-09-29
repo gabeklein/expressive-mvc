@@ -2,6 +2,8 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import inspect from '../packages/inspect/src/vite';
+import domHot from '../packages/dom/src/vite';
+import reactHot from '../packages/react/src/vite';
 
   // Aliasing each `src` dir (not its index) lets prefix-rewrite resolve subpaths
   // like `@expressive/mvc/observable` too.
@@ -17,7 +19,7 @@ export default defineConfig(({ mode }) => {
   return {
     cacheDir: dom ? 'node_modules/.vite-dom' : undefined,
     optimizeDeps: dom ? { entries: ['dom.html'] } : undefined,
-    plugins: dom ? [inspect()] : [react(), inspect()],
+    plugins: dom ? [inspect(), domHot()] : [react(), inspect(), reactHot()],
     esbuild: dom ? { jsx: 'automatic', jsxImportSource: '@expressive/dom' } : undefined,
     // Dev-only: resolve workspace packages to TS source for hot-reload sans `dist`.
     resolve: {

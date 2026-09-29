@@ -27,4 +27,8 @@ assert.equal(
   '<b>patched</b>'
 );
 
-console.log('react: hook render + Component render ok');
+const { default: reactHot } = await import('@expressive/react/vite');
+
+assert.equal(reactHot().name, '@expressive/react:hot');
+
+console.log('react: hook render + Component render + vite ok');
