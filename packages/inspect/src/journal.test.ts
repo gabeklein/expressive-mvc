@@ -1,4 +1,5 @@
 import { State } from '@expressive/mvc';
+import { hot } from '@expressive/mvc/runtime';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockWarn } from '../test.setup';
@@ -444,5 +445,186 @@ describe('journal', () => {
     const frames = journal.frames();
     expect(frames.length).toBe(500);
     expect(frames[0].seq).toBe(6);
+  });
+});
+
+describe('hot', () => {
+  let count = 0;
+
+  const version = (step: number, extra?: boolean) => {
+    class Counter extends State {
+      value = 0;
+      bump() {
+        this.value += step;
+      }
+    }
+
+    if (extra)
+      Object.defineProperty(Counter.prototype, 'reset', {
+        configurable: true,
+        writable: true,
+        value(this: Counter) {
+          this.value = 0;
+        }
+      });
+
+    return Counter;
+  };
+
+  it('will follow a hot patch while recording calls', async () => {
+    const id = `journal-${count++}`;
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+
+    const Counter = version(1);
+
+    hot.accept(id, { Counter });
+
+    const counter = Counter.new();
+
+    counter.bump();
+    hot.accept(id, { Counter: version(10, true) });
+    await flushMicrotasks();
+
+    counter.bump();
+    (counter as any).reset();
+    await flushMicrotasks();
+
+    const events = journal.frames().flatMap((frame) => frame.events);
+
+    expect(counter.value).toBe(0);
+    expect(events.filter((event) => event.kind == 'call').map((event) => event.key)).toEqual(['bump', 'bump', 'reset']);
+  });
+
+  it('will follow an inherited method while recording calls', async () => {
+    const id = `journal-${count++}`;
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+
+    const Counter = version(1);
+
+    hot.accept(id, { Counter });
+
+    class Sub extends Counter {}
+
+    const sub = Sub.new();
+
+    hot.accept(id, { Counter: version(10) });
+    await flushMicrotasks();
+
+    sub.bump();
+
+    expect(sub.value).toBe(10);
+  });
+
+  it('will drop a recorded method a patch removed', async () => {
+    const id = `journal-${count++}`;
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+
+    const Before = (() => {
+      class Counter extends State {
+        gone() {}
+      }
+      return Counter;
+    })();
+
+    const After = (() => {
+      class Counter extends State {}
+      return Counter;
+    })();
+
+    hot.accept(id, { Counter: Before });
+
+    const counter = Before.new() as any;
+
+    hot.accept(id, { Counter: After });
+    await flushMicrotasks();
+
+    expect(counter.gone).toBeUndefined();
+  });
+
+  it('will drop a wrapper once calls stop recording', async () => {
+    const id = `journal-${count++}`;
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+
+    const Before = (() => {
+      class Counter extends State {
+        gone() {}
+      }
+      return Counter;
+    })();
+
+    const After = (() => {
+      class Counter extends State {}
+      return Counter;
+    })();
+
+    hot.accept(id, { Counter: Before });
+
+    const counter = Before.new() as any;
+
+    journal.record({ calls: false });
+    hot.accept(id, { Counter: After });
+    await flushMicrotasks();
+
+    expect(counter.gone).toBeUndefined();
+  });
+
+  it('will record a patch as hot', async () => {
+    const id = `journal-${count++}`;
+
+    attach();
+    journal.record({ level: 'keys' });
+
+    const Counter = version(1);
+
+    hot.accept(id, { Counter });
+
+    const counter = Counter.new();
+
+    hot.accept(id, { Counter: version(10) });
+    await flushMicrotasks();
+
+    expect(journal.frames().flatMap((frame) => frame.events)).toEqual([
+      { id: String(counter), type: 'Counter', key: 'patch', kind: 'hot' }
+    ]);
+    expect(journal.summary()[0].hot).toBe(1);
+  });
+
+  it('will not record a patch filtered out', async () => {
+    const id = `journal-${count++}`;
+
+    attach();
+    journal.record({ level: 'keys', types: ['Other'] });
+
+    const Counter = version(1);
+
+    hot.accept(id, { Counter });
+    Counter.new();
+    hot.accept(id, { Counter: version(10) });
+    await flushMicrotasks();
+
+    expect(journal.frames()).toEqual([]);
+  });
+
+  it('will record a page-level hot update while on', async () => {
+    journal.hot('update', ['/src/app.ts']);
+    expect(journal.frames()).toEqual([]);
+
+    journal.record({ level: 'keys' });
+    journal.hot('update', ['/src/app.ts']);
+    journal.hot('reload');
+
+    expect(journal.frames()[0].events).toEqual([
+      { id: '', type: 'vite', key: 'update', kind: 'hot', value: ['/src/app.ts'] },
+      { id: '', type: 'vite', key: 'reload', kind: 'hot' }
+    ]);
+    expect(journal.summary()).toEqual([]);
   });
 });

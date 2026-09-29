@@ -21,12 +21,14 @@ function channel() {
     send: (event, data) => void sent.push([event, data])
   };
 
+  const emit = (event: string, data?: unknown) => listeners.get(event)!(data);
+
   async function ask(rid: number, call?: unknown) {
     await listeners.get('expressive-inspect:ask')!({ rid, call });
     return sent.at(-1)![1];
   }
 
-  return { hot, sent, ask };
+  return { hot, sent, ask, emit };
 }
 
 beforeEach(() => {
@@ -173,5 +175,90 @@ describe('connect', () => {
       }
     } as never;
     expect(await ask(1, [['fail'], []])).toEqual({ rid: 1, error: 'plain' });
+  });
+});
+
+describe('hot', () => {
+  function storage() {
+    const values = new Map<string, string>();
+    return {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => void values.set(key, value),
+      removeItem: (key: string) => void values.delete(key)
+    };
+  }
+
+  const reloads = () =>
+    journal.frames().flatMap((frame) => frame.events).filter((event) => event.key == 'reload');
+
+  beforeEach(() => journal.reset());
+
+  it('will record a hot update', () => {
+    const { hot, emit } = channel();
+
+    connect(hot);
+    emit('vite:beforeUpdate', { updates: [{ path: '/src/app.ts' }] });
+
+    expect(journal.frames().at(-1)!.events.at(-1)).toEqual({
+      id: '', type: 'vite', key: 'update', kind: 'hot', value: ['/src/app.ts']
+    });
+  });
+
+  it('will carry a full reload into the next page', () => {
+    vi.stubGlobal('sessionStorage', storage());
+
+    const first = channel();
+
+    connect(first.hot);
+    first.emit('vite:beforeFullReload', { path: '/src/model.ts', triggeredBy: '/src/model.ts' });
+
+    journal.reset();
+    connect(channel().hot);
+
+    expect(reloads()).toEqual([
+      { id: '', type: 'vite', key: 'reload', kind: 'hot', value: { path: '/src/model.ts', triggeredBy: '/src/model.ts' } }
+    ]);
+
+    journal.reset();
+    connect(channel().hot);
+
+    expect(reloads()).toEqual([]);
+  });
+
+  it('will carry a reload a plugin announced', () => {
+    const listeners = new Map<string, (event: unknown) => void>();
+
+    vi.stubGlobal('sessionStorage', storage());
+    vi.stubGlobal('addEventListener', (name: string, listener: (event: unknown) => void) => listeners.set(name, listener));
+
+    connect(channel().hot);
+    listeners.get('expressive:reload')!({ detail: { module: '/src/model.ts', class: 'Store', reason: 'class changed shape' } });
+
+    journal.reset();
+    connect(channel().hot);
+
+    expect(reloads()[0].value).toEqual({ module: '/src/model.ts', class: 'Store', reason: 'class changed shape' });
+  });
+
+  it('will remember a reload without detail', () => {
+    vi.stubGlobal('sessionStorage', storage());
+
+    const first = channel();
+
+    connect(first.hot);
+    first.emit('vite:beforeFullReload');
+
+    journal.reset();
+    connect(channel().hot);
+
+    expect(reloads()[0].value).toEqual({});
+  });
+
+  it('will do without session storage', () => {
+    const first = channel();
+
+    connect(first.hot);
+
+    expect(() => first.emit('vite:beforeFullReload', {})).not.toThrow();
   });
 });

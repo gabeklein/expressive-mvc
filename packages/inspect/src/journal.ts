@@ -21,7 +21,7 @@ export interface Event {
   id: string;
   type: string;
   key: string;
-  kind: 'update' | 'event' | 'call' | 'destroy' | 'caught';
+  kind: 'update' | 'event' | 'call' | 'destroy' | 'caught' | 'hot';
   value?: unknown;
   args?: unknown[];
 }
@@ -44,6 +44,8 @@ export interface Summary {
   calls: Record<string, number>;
   /** `caught` reports. */
   caught: number;
+  /** Hot patches applied to it. */
+  hot: number;
   destroyed: boolean;
 }
 
@@ -121,15 +123,18 @@ export const journal = {
 
     for (const frame of journal.frames(query))
       for (const event of frame.events) {
+        if (!event.id) continue;
+
         let entry = by.get(event.id);
 
-        if (!entry) by.set(event.id, (entry = { id: event.id, type: event.type, last: 0, keys: {}, calls: {}, caught: 0, destroyed: false }));
+        if (!entry) by.set(event.id, (entry = { id: event.id, type: event.type, last: 0, keys: {}, calls: {}, caught: 0, hot: 0, destroyed: false }));
 
         entry.last = frame.seq;
 
         if (event.kind === 'destroy') entry.destroyed = true;
         else if (event.kind === 'call') entry.calls[event.key] = (entry.calls[event.key] || 0) + 1;
         else if (event.kind === 'caught') entry.caught++;
+        else if (event.kind === 'hot') entry.hot++;
         else {
           const key = (entry.keys[event.key] ||= { count: 0 });
           key.count++;
@@ -138,6 +143,18 @@ export const journal = {
       }
 
     return [...by.values()].sort((a, b) => b.last - a.last);
+  },
+
+  /**
+   * Record a page-level hot update: `key` names it (`update`, `reload`), `value`
+   * its detail. Recorded unfiltered while the journal is on.
+   */
+  hot(key: string, value?: unknown): void {
+    if (config.level === 'off') return;
+
+    const event: Event = { id: '', type: 'vite', key, kind: 'hot' };
+    if (value !== undefined) event.value = value;
+    push(event);
   },
 
   clear(): void {
@@ -217,6 +234,10 @@ export function noteCaught(error: Caught, name: string): { handled: boolean } | 
   const value = { case: name, message: error.message, stack: error.stack, handled: true };
   push({ id: String(state), type: labelOf(state.constructor as typeof State), key: key ?? '', kind: 'caught', value });
   return value;
+}
+
+export function notePatch(state: State): void {
+  if (wants(state)) push({ id: String(state), type: labelOf(state.constructor as typeof State), key: 'patch', kind: 'hot' });
 }
 
 export function noteDestroy(state: State): void {

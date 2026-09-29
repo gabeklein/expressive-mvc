@@ -31,10 +31,44 @@ async function act(step: unknown, options?: Act) {
   return { value: value ?? null, frames, settled, pending, missing };
 }
 
+const RELOAD = '@expressive/inspect.reload';
+
+/** Keep a reload's reason past the reload, for the next page's journal. */
+function remember(reason: unknown) {
+  try {
+    sessionStorage.setItem(RELOAD, JSON.stringify(reason));
+  } catch {}
+}
+
+function recall() {
+  try {
+    const reason = sessionStorage.getItem(RELOAD);
+
+    if (reason === null) return;
+
+    sessionStorage.removeItem(RELOAD);
+    return JSON.parse(reason);
+  } catch {}
+}
+
 export function connect(hot: Hot) {
   const id = Math.random().toString(36).slice(2, 8);
 
   if (journal('record').level === 'off') journal('record', { level: 'keys' });
+
+  const reloaded = recall();
+
+  if (reloaded) journal('hot', 'reload', reloaded);
+
+  hot.on('vite:beforeUpdate', ({ updates }: { updates: { path: string }[] }) => {
+    journal('hot', 'update', updates.map((update) => update.path));
+  });
+
+  hot.on('vite:beforeFullReload', ({ path, triggeredBy }: { path?: string; triggeredBy?: string } = {}) => {
+    remember({ path, triggeredBy });
+  });
+
+  globalThis.addEventListener?.('expressive:reload', (event) => remember((event as CustomEvent).detail));
 
   hot.on('expressive-inspect:ask', async ({ rid, call }: Ask) => {
     try {

@@ -152,12 +152,16 @@ ${replace}  const __exports = { ${record.join(', ')} };
 
 /** Hot-patch classes and refresh function components in place during `vite` dev. */
 export default function expressive(): Plugin {
+  let root = '';
   let runtime: Promise<(string | null | undefined)[]> | undefined;
 
   return {
     name: '@expressive/dom:hot',
     apply: 'serve',
     enforce: 'post',
+    configResolved(config) {
+      root = config.root;
+    },
     async transform(code, id, options) {
       const [file] = id.split('?');
 
@@ -171,7 +175,7 @@ export default function expressive(): Plugin {
 
       for (const own of await runtime) if (own && file.startsWith(own)) return;
 
-      const output = inject(file, this.parse(code).body as Node[], options?.ssr);
+      const output = inject(file.startsWith(root + '/') ? file.slice(root.length) : file, this.parse(code).body as Node[], options?.ssr);
 
       if (output) return { code: code + output, map: null };
     }

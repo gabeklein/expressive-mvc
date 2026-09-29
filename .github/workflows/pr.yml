@@ -108,6 +108,21 @@ jobs:
           path: examples/test-results
           retention-days: 7
 
+  hot:
+    if: >-
+      github.event.pull_request.stack == null ||
+      github.event.pull_request.stack.position == github.event.pull_request.stack.size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - name: Hot reload in Chrome
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: bun .github/scripts/hot-probe.ts
+
   native:
     if: >-
       contains(github.event.pull_request.labels.*.name, 'react-native') && (
