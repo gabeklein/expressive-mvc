@@ -204,6 +204,16 @@ describe('update', () => {
     expect(announce).not.toHaveBeenCalled();
   });
 
+  it('will invalidate importers of a changed plain export on the server', async () => {
+    const { hot } = await run(source, {
+      locals: { Store, Local: Store, Plain, App, value: 1 },
+      next: { Store, App, value: 2 },
+      ssr: true
+    });
+
+    expect(hot.invalidate).toHaveBeenCalledWith('"value" export cannot be hot-patched.');
+  });
+
   it('will keep browser-only code out of the server', async () => {
     const code = await inject('export class Vault { #key = 1; }', true);
 
