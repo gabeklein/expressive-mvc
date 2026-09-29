@@ -1,5 +1,19 @@
 # @expressive/mvc
 
+## 0.87.0
+
+### Minor Changes
+
+- [#412](https://github.com/gabeklein/expressive-mvc/pull/412) [`a450c4f`](https://github.com/gabeklein/expressive-mvc/commit/a450c4f494b4fef28821c8d6382c5532886a8716) Add `hot.accept(id, classes)` to `@expressive/mvc/runtime` - the seam build integrations bind for class HMR. An edited `State` or `Component` class is patched onto the one already loaded and returned in its place: live instances keep their values and refresh with the new methods, getters, `render` and statics, and handlers the module registered with `on()` are replaced. A change a patch cannot carry (fields, constructor, `new()`, a member switching between method and getter) returns the new class instead, so the integration reloads - as does a subclass whose parent was replaced. `hot.replaced(listener)` reports each replaced class (`{ id, name, prev, next }`) synchronously inside `accept`, so a server host can retire instances of `prev`. The registry is keyed by module id rather than a bundler hot API, so it works in the browser and in Vite's server-side module runner alike.
+
+- [#417](https://github.com/gabeklein/expressive-mvc/pull/417) [`724b803`](https://github.com/gabeklein/expressive-mvc/commit/724b80351261a899f57f1ee2d9b1a67f16f07d0e) Fields prefixed with `_` are no longer managed. They are defined non-enumerable, never notify, stay writable after destroy, and are excluded from `get()`, iteration, `ref(this)`, and `State.Field` / `State.Values`. The new `State.Property<T>` keeps all own keys, `_` included, for overlays - `State.Assign` and React `Provider` props use it. Writes from effects, computeds, and render land on the instance. Overlays (constructor args, `set({ ... })`, Component props) still assign them, ignoring getter-only `_` accessors. A `_` prototype accessor stays plain rather than computed and always runs against the instance, so it can read `#private` fields from computeds and effects without subscribing. An instruction on a `_` key throws.
+
+  **Breaking:** a `_` field used as reactive state - such as a backing field behind a getter - no longer updates subscribers. Rename it without the prefix.
+
+### Patch Changes
+
+- [#419](https://github.com/gabeklein/expressive-mvc/pull/419) [`66abbfb`](https://github.com/gabeklein/expressive-mvc/commit/66abbfbc6034af1be394aabc82f4bb3f9989a855) A Component constructed twice for one element (React StrictMode) no longer returns the first instance from its constructor. Each construction is a full instance; whichever the host activates releases the other along with state its field initializers created. Fixes `#private` fields on Components throwing `Cannot initialize #x twice on the same object`, and field initializers running twice on the kept instance.
+
 ## 0.86.0
 
 ### Minor Changes
