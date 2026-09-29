@@ -4,6 +4,7 @@ import { watch } from '@expressive/mvc/observable';
 import { Fragment } from '@expressive/mvc/runtime';
 
 import { commit, dispose, enter } from './adapter';
+import { latest, same, track, untrack } from './hot';
 import type { Scope } from './adapter';
 import {
   appearanceRoot,
@@ -254,7 +255,8 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   fiber.boundary = boundary;
   fiber.appearance = resolved.appearance;
   fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
-  fiber.render = () => enter(fiber.scope!, () => (fiber.type as Function)(fiber.props));
+  fiber.render = () => enter(fiber.scope!, () => latest(fiber.type as Function)(fiber.props));
+  track(fiber.type as Function, fiber.scope);
   probing(fiber);
 
   return complete(fiber, () => {
@@ -842,6 +844,12 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
   } else if (old.kind == 'function') {
     const vnode = value as VNode;
     const resolved = componentProps(vnode.type, vnode.props, appearance);
+    if (old.type !== vnode.type) {
+      untrack(old.type as Function, old.scope!);
+      old.type = vnode.type;
+      old.scope!.hot = true;
+      track(old.type as Function, old.scope!);
+    }
     old.appearance = resolved.appearance;
     old.props = observe(resolved.props);
     rerun(old, () => runFunction(old, passiveRender));
@@ -885,7 +893,7 @@ function compatible(fiber: Fiber, value: RenderNode) {
   if (isCollection(value))
     return fiber.kind == 'collection' && fiber.source === value;
   if (!isVNode(value)) return false;
-  if (fiber.key !== value.key || fiber.type !== value.type) return false;
+  if (fiber.key !== value.key || !same(fiber.type, value.type)) return false;
   if (fiber.kind == 'portal') return fiber.portalContainer === value.props.container;
   return true;
 }
@@ -1095,7 +1103,7 @@ function renderedAppearance(fiber: Fiber): Appearance | undefined {
   const style = fiber.props?.style as Style;
   const entries = (fiber.appearance?.entries || []).map(({ hops, style }) => ({ hops: hops + 1, style }));
   const inherited = fiber.appearance?.context || appearanceRoot();
-  const context = enterAppearance(inherited, fiber.type as Function);
+  const context = enterAppearance(inherited, latest(fiber.type as Function));
 
   if (context?.base && context !== inherited)
     entries.push({ hops: 0, style: context.base as Style });
@@ -1192,6 +1200,7 @@ function unmountFiber(fiber: Fiber) {
   if (fiber.placeholder) unmountFiber(fiber.placeholder);
 
   fiber.suspended?.forEach((clear) => clear());
+  if (fiber.kind == 'function') untrack(fiber.type as Function, fiber.scope!);
   if (fiber.scope) dispose(fiber.scope);
   fiber.release?.();
 

@@ -24,6 +24,7 @@ interface Scope extends Schedulable {
   active: boolean;
   childContext: Context;
   context: Context;
+  hot?: boolean;
   kind: 'component' | 'function' | 'collection';
   subscriptions: (() => void)[];
   uses: UseSlot[];
@@ -46,11 +47,16 @@ function enter<T>(scope: Scope, render: () => T): T {
   try {
     const output = render();
 
-    if (scope.kind == 'function' && scope.useIndex !== scope.uses.length)
-      throw new Error('State.use() calls must keep the same order on every function-component render.');
+    if (scope.kind == 'function' && scope.useIndex !== scope.uses.length) {
+      if (!scope.hot)
+        throw new Error('State.use() calls must keep the same order on every function-component render.');
+
+      truncate(scope, scope.useIndex);
+    }
 
     return output;
   } finally {
+    scope.hot = undefined;
     current = parent;
     collecting = releases;
     scope.subscriptions.forEach((release) => release());
@@ -63,8 +69,12 @@ function dispose(scope: Scope) {
   unschedule(scope);
   scope.subscriptions.forEach((release) => release());
   scope.subscriptions = [];
+  truncate(scope, 0);
+}
 
-  for (let i = scope.uses.length - 1; i >= 0; i--) {
+/** Destroy the `State.use()` slots of a scope from `index` on. */
+function truncate(scope: Scope, index: number) {
+  for (let i = scope.uses.length - 1; i >= index; i--) {
     const slot = scope.uses[i];
 
     slot.release();
@@ -73,7 +83,7 @@ function dispose(scope: Scope) {
     slot.instance.set(null);
   }
 
-  scope.uses = [];
+  scope.uses.length = index;
 }
 
 function commit(scope: Scope) {
@@ -192,8 +202,13 @@ declare module '@expressive/mvc' {
   const index = scope.useIndex++;
   let slot = scope.uses[index] as UseSlot | undefined;
 
-  if (slot && slot.Type !== this)
-    throw new Error('State.use() calls must keep the same order on every function-component render.');
+  if (slot && slot.Type !== this) {
+    if (!scope.hot)
+      throw new Error('State.use() calls must keep the same order on every function-component render.');
+
+    truncate(scope, index);
+    slot = undefined;
+  }
 
   if (!slot) {
     let instance!: T;

@@ -9,7 +9,8 @@ type Result = Promise<{ code: string; map: null } | undefined>;
 
 function transform(code: string, id = '/src/app.js', runtime: string | null = '/mvc/src/runtime.js', ssr?: boolean): Result {
   const hook = expressive().transform as Function;
-  const resolve = async () => runtime && { id: runtime };
+  const resolve = async (entry: string) =>
+    runtime && { id: entry.includes('/dom/') ? '/dom/src/jsx-dev-runtime.js' : runtime };
 
   return hook.call({ parse: parseAst, resolve }, code, id, ssr === undefined ? undefined : { ssr });
 }
@@ -34,8 +35,8 @@ async function run(code: string, { locals, replace = {}, before, next, ssr = fal
   const location = ssr ? undefined : { reload: vi.fn() };
   const expressive = { accept: (_id: string, classes: Record<string, unknown>) => ({ ...classes, ...replace }) };
 
-  new Function('hot', 'location', '__expressive', '__State', ...Object.keys(locals), body)(
-    hot, location, expressive, State, ...Object.values(locals)
+  new Function('hot', 'location', '__expressive', '__State', '__refresh', ...Object.keys(locals), body)(
+    hot, location, expressive, State, vi.fn(), ...Object.values(locals)
   );
 
   if (next) hot.accept.mock.calls[0][0](next);
@@ -56,6 +57,10 @@ describe('skip', () => {
     expect(await transform('class A {}', '/mvc/src/state.js')).toBeUndefined();
   });
 
+  it('will skip the dom runtime itself', async () => {
+    expect(await transform('export const App = () => null;', '/dom/src/lazy.js')).toBeUndefined();
+  });
+
   it('will transform without a resolved runtime', async () => {
     expect(await transform('class A {}', '/src/app.js', null)).toBeDefined();
   });
@@ -64,7 +69,7 @@ describe('skip', () => {
     expect(await transform('class A {}', '/node_modules/lib/index.js')).toBeUndefined();
   });
 
-  it('will skip a module without classes', async () => {
+  it('will skip a module without classes or components', async () => {
     expect(await transform('export const title = "no class";')).toBeUndefined();
   });
 
@@ -81,7 +86,7 @@ it('will resolve the runtime once', async () => {
   await hook.call(context, 'class A {}', '/src/a.js');
   await hook.call(context, 'class B {}', '/src/b.js');
 
-  expect(resolve).toHaveBeenCalledTimes(1);
+  expect(resolve).toHaveBeenCalledTimes(2);
 });
 
 it('will append the binding and keep source maps', async () => {
@@ -111,6 +116,39 @@ describe('classes', () => {
 
     expect(code).toContain('{ A, B }');
     expect(code).toContain('const __exports = { "A": A, "default": B };');
+  });
+});
+
+describe('components', () => {
+  it('will register top-level function components', async () => {
+    const code = await inject(
+      'function App() {}\nconst Card = () => null;\nlet Row = function () {};\nexport default function Page() {}'
+    );
+
+    expect(code).toContain(`import { hot as __refresh } from '@expressive/dom/jsx-dev-runtime';`);
+    expect(code).toContain('__refresh("/src/app.js", { App, Card, Row, Page });');
+  });
+
+  it('will not register other functions', async () => {
+    const code = await inject(
+      'function App() {}\nfunction helper() {}\nconst format = () => 1;\nconst [Pair] = [() => 1];\nconst Value = 1;\nexport default function () {}'
+    );
+
+    expect(code).toContain('{ App }');
+  });
+
+  it('will bind a module of only components', async () => {
+    const code = await inject('export const App = () => null;');
+
+    expect(code).not.toContain('__expressive');
+    expect(code).toContain('__refresh(');
+  });
+
+  it('will bind a module of only classes', async () => {
+    const code = await inject('export class Store {}');
+
+    expect(code).toContain('__expressive.accept(');
+    expect(code).not.toContain('__refresh');
   });
 });
 
@@ -241,13 +279,13 @@ describe('update', () => {
     expect(hot.invalidate).not.toHaveBeenCalled();
   });
 
-  it('will invalidate a changed component', async () => {
+  it('will pass a changed component', async () => {
     const { hot } = await run(source, {
       locals: { Store, Local: Store, Plain, App, value: 1 },
       next: { Store, App: () => null, value: 1 }
     });
 
-    expect(hot.invalidate).toHaveBeenCalledWith('"App" export cannot be hot-patched.');
+    expect(hot.invalidate).not.toHaveBeenCalled();
   });
 
   it('will invalidate another changed export', async () => {

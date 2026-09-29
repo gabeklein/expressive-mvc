@@ -210,7 +210,7 @@ export default defineConfig({ plugins: [expressive()] });
 
 Editing a `State` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members. Dev server only. A class must be top-level `class X` or `let X = class`; `export default X;` exports a snapshot, so prefer `export default class X` or `export { X as default }`.
 
-Function components are not refreshed: a module exporting one reloads when edited, and so does a class sharing that module. Keep classes and the function components that render them in separate modules to keep class edits hot.
+A top-level function component (`function View()`, `const View = () => …`, PascalCase) re-renders in place with its `State.use()` instances kept; if its `State.use()` calls change order, the slots from the first change on are recreated. An anonymous `export default` is not refreshed - the module reloads.
 
 ## Boundaries
 
