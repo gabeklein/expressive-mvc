@@ -1,3 +1,5 @@
+/** @jsxImportSource @expressive/mvc */
+
 import type { Component } from "@expressive/mvc";
 
 export function NotFound(): Component.Node {
