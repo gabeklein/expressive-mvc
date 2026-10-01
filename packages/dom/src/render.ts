@@ -35,15 +35,12 @@ interface Renderable extends State {
   props?: Record<string, any>;
   key?: Key;
   fallback?: RenderNode | false;
-  catch?(error: Error): Promise<void> | void;
+  catch?(error: Error, instance: Renderable): Promise<void> | void;
   mount?(): (() => void) | void;
   render?(props?: any): RenderNode;
 }
 
-interface Placement {
-  fallback?: RenderNode | false;
-  catch?(error: Error, instance: Renderable): Promise<void> | void;
-}
+type Placement = Pick<Renderable, 'fallback' | 'catch'>;
 
 interface Fiber {
   kind: Kind;
