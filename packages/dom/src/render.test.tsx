@@ -1314,3 +1314,256 @@ describe('render', () => {
     expect(root.textContent).toBe('');
   });
 });
+
+describe('renderable State', () => {
+  it('will render a State with a render method', async () => {
+    const lifecycle: string[] = [];
+    let panel!: Panel;
+
+    class Panel extends State {
+      label = 'idle';
+      count = 0;
+
+      mount() {
+        lifecycle.push('mount');
+        return () => lifecycle.push('unmount');
+      }
+
+      render() {
+        return <span>{this.label}:{this.count}</span>;
+      }
+    }
+
+    const root = document.createElement('main');
+    const release = render(<Panel label="busy" is={(value) => (panel = value)} />, root);
+
+    expect(root.textContent).toBe('busy:0');
+    expect(lifecycle).toEqual(['mount']);
+
+    panel.count = 2;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('busy:2');
+
+    release();
+    expect(lifecycle).toEqual(['mount', 'unmount']);
+    expect(panel.get(null)).toBe(true);
+  });
+
+  it('will apply props to fields and pass the rest to render', async () => {
+    class Panel extends State {
+      label = '';
+
+      render(props: { children?: Component.Node }) {
+        return <b>{this.label}{props.children}</b>;
+      }
+    }
+
+    class App extends Component {
+      label = 'one';
+      render() {
+        return <Panel label={this.label}>!</Panel>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    expect(root.textContent).toBe('one!');
+
+    app.label = 'two';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('two!');
+  });
+
+  it('will reset a field when its prop is dropped', async () => {
+    class Panel extends State {
+      label?: string = 'default';
+      render() {
+        return <b>{this.label ?? 'none'}</b>;
+      }
+    }
+
+    class App extends Component {
+      passing = true;
+      render() {
+        return this.passing ? <Panel label="given" /> : <Panel />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    expect(root.textContent).toBe('given');
+
+    app.passing = false;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('none');
+  });
+
+  it('will pass children through and provide a State without render', async () => {
+    class Session extends State {
+      name = 'Ada';
+    }
+
+    let session!: Session;
+
+    function Leaf() {
+      return <b>{Session.get().name}</b>;
+    }
+
+    function Sibling() {
+      return <i>{Session.get(false) ? 'leak' : 'none'}</i>;
+    }
+
+    const root = document.createElement('main');
+    const release = render(
+      <>
+        <Session name="Grace" is={(value) => (session = value)}>
+          <Leaf />
+        </Session>
+        <Sibling />
+      </>,
+      root
+    );
+
+    expect(root.textContent).toBe('Gracenone');
+
+    session.name = 'Hopper';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('Hoppernone');
+
+    release();
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will render a client extension of a plain State', async () => {
+    class Session extends State {
+      user = 'anon';
+    }
+
+    class SessionView extends Session {
+      render() {
+        return <span>{this.user}</span>;
+      }
+    }
+
+    function Leaf() {
+      return <b>{Session.get().user}</b>;
+    }
+
+    let view!: SessionView;
+    const root = document.createElement('main');
+    render(
+      <SessionView user="ada" is={(value) => (view = value)}>
+        <Leaf />
+      </SessionView>,
+      root
+    );
+
+    expect(root.textContent).toBe('ada');
+    expect(view).toBeInstanceOf(Session);
+
+    view.user = 'grace';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('grace');
+  });
+
+  it('will render a State instance inline', async () => {
+    class Panel extends State {
+      label = 'inline';
+      render() {
+        return <span>{this.label}</span>;
+      }
+    }
+
+    const panel = Panel.new();
+    const root = document.createElement('main');
+    render(<div>{panel}</div>, root);
+    expect(root.textContent).toBe('inline');
+
+    panel.label = 'changed';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('changed');
+    expect(panel.get(null)).toBe(false);
+  });
+
+  it('will not render a State instance without a render method', () => {
+    class Bare extends State {}
+    const root = document.createElement('main');
+    expect(() => render(<div>{Bare.new() as never}</div>, root)).toThrow('Cannot render');
+  });
+
+  it('will own a boundary only when a State declares fallback or catch', async () => {
+    class Bare extends State {
+      broken = true;
+      render() {
+        if (this.broken) throw new Error('broken');
+        return <p>bare</p>;
+      }
+    }
+
+    class Guarded extends State {
+      fallback = <i>guarded</i>;
+      broken = true;
+
+      catch() {
+        this.broken = false;
+      }
+
+      render() {
+        if (this.broken) throw new Error('broken');
+        return <p>guarded</p>;
+      }
+    }
+
+    class App extends Component {
+      fallback = <i>outer</i>;
+      caught = 0;
+
+      catch() {
+        this.caught++;
+      }
+
+      render() {
+        return <Bare />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    expect(root.textContent).toBe('outer');
+    expect(app.caught).toBe(1);
+
+    const other = document.createElement('main');
+    render(<Guarded />, other);
+    expect(other.textContent).toBe('guarded');
+    await flushMicrotasks();
+    expect(other.textContent).toBe('guarded');
+  });
+
+  it('will reconcile keyed renderable States', async () => {
+    class Item extends State {
+      value = '';
+      render() {
+        return <li>{this.value}</li>;
+      }
+    }
+
+    class App extends Component {
+      items = ['a', 'b'];
+      render() {
+        return <ul>{this.items.map((value) => <Item key={value} value={value} />)}</ul>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    expect(root.textContent).toBe('ab');
+
+    app.items = ['b', 'c'];
+    await flushMicrotasks();
+    expect(root.textContent).toBe('bc');
+  });
+});

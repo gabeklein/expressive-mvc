@@ -29,7 +29,7 @@ const unmount = render(<App />, document.getElementById('app')!);
 unmount();
 ```
 
-Supported output: intrinsic HTML/SVG elements, fragments, strings/numbers/bigints, FCs, `Component` classes and instances, `has.List` / `has.Pool`, `map.Managed`, portals, arrays, and empty boolean/null/undefined values. Keys preserve DOM ranges across reorder.
+Supported output: intrinsic HTML/SVG elements, fragments, strings/numbers/bigints, FCs, `State` classes and instances with `render` (`Component` included), `State` classes without one, `has.List` / `has.Pool`, `map.Managed`, portals, arrays, and empty boolean/null/undefined values. Keys preserve DOM ranges across reorder.
 
 Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClickCapture`) with native event objects and propagation. There is no synthetic event layer: `onChange` on a text field fires on commit - use `onInput` per keystroke. Names are native event names; `onDoubleClick` is also accepted for `onDblClick`. `event.currentTarget` is typed as the element; `event.target` is not, since it may be a descendant.
 
@@ -146,7 +146,9 @@ function Total() {
 
 `State.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it.
 
-`State.use()` creates an MVC-owned State in an FC slot. Calls must remain top-level and in stable order. The instance persists across renders, receives `use(...args)` each render when defined, runs `mount()` after its first DOM commit, and is destroyed on unmount. `State.use()` in `Component.render()` is an error—put owned state on the Component as a field.
+`State.use()` creates an MVC-owned State in an FC slot. Calls must remain top-level and in stable order. The instance persists across renders, receives `use(...args)` each render when defined, runs `mount()` after its first DOM commit, and is destroyed on unmount. `State.use()` in `Component.render()` is an error—put owned state on the Component as a field. The instance is provided to the FC's output: descendants resolve it with `State.get()`, siblings do not.
+
+Any `State` class renders as an element. With `render(props)` it produces content like a Component: attributes assign matching fields (a dropped attribute resets its field to `undefined`), `is` receives the instance after fields apply, `render` receives the attributes, `mount()` runs after first commit, and the instance is destroyed on unmount. Without `render` it passes `children` through. Either way the instance is in context for its subtree - `<Session name="x">…</Session>` is a Provider. A client class may extend a server State and add `render`; the server class stays host-free. An instance with `render` also renders inline. Component-only: PascalCase subcomponents and `this.props`.
 
 ```tsx
 class Selection extends State {
@@ -163,11 +165,11 @@ function Row({ id }: { id: string }) {
 }
 ```
 
-`Provider`, `Consumer`, implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
+`Provider`, `Consumer`, State elements, `State.use()`, implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
 
 ## Lazy, boundaries, transitions
 
-`lazy(loader)` accepts a module default export or a directly exported component. A Component supplies a suspense boundary unless `fallback = false`; `Provider fallback={...}` adds one explicitly. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders. `Component.catch(error)` handles render failures and retries after it completes; until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
+`lazy(loader)` accepts a module default export or a directly exported component. A Component supplies a suspense boundary unless `fallback = false`; a State element only when it declares `fallback` or `catch`; `Provider fallback={...}` adds one explicitly. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders. `Component.catch(error)` handles render failures and retries after it completes; until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
 
 ```tsx
 const Settings = lazy(() => import('./Settings'));
