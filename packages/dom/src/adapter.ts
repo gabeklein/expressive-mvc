@@ -1,4 +1,4 @@
-import { Component, Context, State, unbind } from '@expressive/mvc';
+import { Context, State, toJSX } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 
 import { schedule, transition, unschedule } from './scheduler';
@@ -159,10 +159,6 @@ declare module '@expressive/mvc' {
     ): T;
   }
 
-  namespace Component {
-    const use: never;
-  }
-
   interface Component {
     mount?(): (() => void) | void;
   }
@@ -257,61 +253,7 @@ declare module '@expressive/mvc' {
   return slot.proxy as T;
 };
 
-Object.defineProperty(Component, 'use', {
-  configurable: true,
-  value() {
-    throw new Error(`${this} is a Component - render it instead of calling use().`);
-  }
-});
-
-State.on({
-  type(type) {
-    subcomponents(type.prototype);
-  },
-  pre(self) {
-    subcomponents(self);
-  }
-});
-
-function subcomponents(target: object) {
-  for (const key of Object.getOwnPropertyNames(target)) {
-    if (!/^[A-Z]/.test(key)) continue;
-
-    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
-
-    if (typeof value != 'function') continue;
-
-    Object.defineProperty(target, key, {
-      configurable: true,
-      get(this: State) {
-        const owner = this.is;
-        let render = unbind(value);
-        const Subcomponent = (props: unknown) =>
-          render.call(tracked(owner), props);
-
-        Object.defineProperty(owner, key, {
-          configurable: true,
-          get: () => Subcomponent,
-          set(next: Function) {
-            render = next;
-          }
-        });
-
-        return Subcomponent;
-      },
-      set(this: State, next: unknown) {
-        Object.defineProperty(this, key, {
-          value: next,
-          writable: true,
-          enumerable: true,
-          configurable: true
-        });
-
-        subcomponents(this);
-      }
-    });
-  }
-}
+State.on(toJSX((owner) => tracked(owner)));
 
 export { commit, dispose, enter };
 export type { Scope };

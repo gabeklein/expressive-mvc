@@ -1,4 +1,4 @@
-import { Component, Context, State, unbind } from '@expressive/mvc';
+import { Component, Context, State, composed } from '@expressive/mvc';
 import { has, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 import { Fragment } from '@expressive/mvc/jsx-runtime';
@@ -344,7 +344,7 @@ function mountComponent(
   fiber.owned = owned;
   fiber.appearance = appearance;
   fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
-  fiber.render = () => enter(fiber.scope!, () => content(instance).call(fiber.value, fiber.props));
+  fiber.render = () => enter(fiber.scope!, () => composed(instance).call(fiber.value, fiber.props));
   probing(fiber);
 
   let first = true;
@@ -927,14 +927,6 @@ function source(value: RenderNode): RenderNode {
 
 function renderable(value: unknown): value is Renderable {
   return value instanceof State && typeof (value as Renderable).render == 'function';
-}
-
-function content(instance: Renderable) {
-  return unbind(instance.render) || passthrough;
-}
-
-function passthrough(props: { children?: RenderNode }) {
-  return props.children;
 }
 
 function merge(previous: Record<string, any>, next: Record<string, any>) {
