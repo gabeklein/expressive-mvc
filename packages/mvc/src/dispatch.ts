@@ -109,9 +109,9 @@ function flush() {
       else handler();
     } catch (err) {
       REPORT.as('Effect', scheduled.owner, err);
-    } finally {
-      current = replaying = undefined;
     }
+
+    current = replaying = undefined;
 
     if (!scheduled.holds) drop(scheduled);
   }
