@@ -1,6 +1,6 @@
 import { State, Context, Component } from '@expressive/mvc';
 import type { UseState } from '@expressive/mvc';
-import { Runtime, useFactory, useHook, useReap, type Reap } from './runtime';
+import { Runtime, useFactory, useHook } from './runtime';
 
 let shared: any;
 
@@ -102,15 +102,9 @@ function Provider<T extends State>({
   ...props
 }: Provider.Props<T>) {
   const ambient = useAmbient();
-  const reap = useFactory(() => ({}) as Reap);
-
-  useReap(reap);
-
+  const context = useFactory(() => new Context(ambient));
   const digest: Digest<T> = useHook((returns) => {
-    const context = new Context(ambient);
     const fresh: State[] = [];
-
-    reap.abandon = () => context.pop();
 
     let applied: Context.Accept<T> | undefined;
     let solo: State | undefined;
@@ -135,16 +129,13 @@ function Provider<T extends State>({
     });
 
     return () => {
-      reap.committed = true;
-
       const release = fresh.map((state) => (state as UseState).mount?.());
 
       return () => {
         for (const done of release) if (typeof done == 'function') done();
-        context.pop();
       };
     };
-  });
+  }, () => context.pop());
 
   return createProvider(
     digest(props),

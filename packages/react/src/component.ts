@@ -1,6 +1,6 @@
 import { Component, unbind } from '@expressive/mvc';
 import { createProvider, type Context } from './context';
-import { Runtime, useReap, useWatch, type Reap } from './runtime';
+import { Runtime, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
   namespace Component {
@@ -144,30 +144,20 @@ function render(from: Component, context: Context) {
   const { createElement } = Runtime;
   const { commit, remove } = Runtime.dedupe(from, context);
   const { is: owner, render } = from;
-  const reap: Reap = {
-    abandon() {
-      remove();
-      context.pop();
-    }
+  const teardown = () => {
+    remove();
+    context.pop();
   };
 
   const Render = () => render.call(from, from.props);
   const Component = () => {
-    useReap(reap);
-
     from = useWatch(from, () => {
-      reap.committed = true;
-
       const release = owner.mount?.();
 
       commit();
 
-      return () => {
-        if (typeof release == 'function') release();
-        remove();
-        context.pop();
-      };
-    });
+      return release;
+    }, teardown);
 
     return createFrame(from, context, createElement(Render));
   };

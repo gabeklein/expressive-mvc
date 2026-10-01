@@ -1,6 +1,6 @@
 import { State, Context } from '@expressive/mvc';
 import type { UseState } from '@expressive/mvc';
-import { useFactory, useReap, useWatch, type Reap } from './runtime';
+import { useFactory, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
   interface UseState extends State {
@@ -53,7 +53,7 @@ State.use = function use<T extends State>(
   ...args: State.UseArgs<T>
 ) {
   const outer = Context.get();
-  const [render, reap] = useFactory(() => {
+  const render = useFactory(() => {
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as State.Assign<T>);
 
@@ -68,16 +68,14 @@ State.use = function use<T extends State>(
     });
 
     const context = outer.push(instance);
-    const reap: Reap = {
-      abandon() {
-        context.pop();
-        instance.set(null);
-      }
+    const teardown = () => {
+      context.pop();
+      instance.set(null);
     };
 
     let ready = false;
 
-    const render = (args: State.Args<T>) => {
+    return (args: State.Args<T>) => {
       if (ready) {
         ready = false;
         Promise.resolve(use(...args)).finally(() => {
@@ -87,22 +85,10 @@ State.use = function use<T extends State>(
 
       return useWatch(instance, () => {
         ready = true;
-        reap.committed = true;
-
-        const release = (instance as UseState).mount?.();
-
-        return () => {
-          if (typeof release == 'function') release();
-          context.pop();
-          instance.set(null);
-        };
-      });
+        return (instance as UseState).mount?.();
+      }, teardown);
     };
-
-    return [render, reap] as const;
   });
-
-  useReap(reap);
 
   return render(args);
 };

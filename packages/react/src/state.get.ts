@@ -1,6 +1,6 @@
 import { State, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
-import { Runtime, publish, useFactory, useSettle, useSetup, type Queue } from './runtime';
+import { Runtime, useFactory, useSettle, useSetup, useWeak } from './runtime';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -78,7 +78,7 @@ State.get = function get<T extends State>(
   const [tick, next] = Runtime.useState(0);
   const claim = useSettle(tick);
   const local = Context.get();
-  const queue = useFactory((): Queue => ({}));
+  const dispatch = useWeak(next);
   const render = useFactory(() => {
     let unwatch: (() => void) | undefined;
     let mounted = false;
@@ -88,9 +88,7 @@ State.get = function get<T extends State>(
 
     function update() {
       pending = false;
-
-      if (queue.update) queue.update((x) => x + 1);
-      else queue.queued = true;
+      dispatch.deref()!((x) => x + 1);
     }
 
     function observed() {
@@ -205,8 +203,6 @@ State.get = function get<T extends State>(
       return value === undefined ? null : value;
     };
   });
-
-  Runtime.useEffect(publish(queue, next), []);
 
   return render();
 };
