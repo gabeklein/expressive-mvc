@@ -133,13 +133,6 @@ declare namespace State {
     bind?(this: T, key: string, fn: Function): void;
 
     /**
-     * Runs before every method call with the key and arguments; a throw aborts
-     * the call. Any `call` handler on a class wraps all its methods, so this is
-     * for introspection and hard interrupts during development.
-     */
-    call?(this: T, key: string, args: unknown[]): void;
-
-    /**
      * Receives a `Caught` mvc reports for this State or a subclass - most-derived
      * class first, last registered first. Return it (or a replacement) to pass it
      * on; return nothing to handle it; throw to let it escape uncaught. Passed off
@@ -515,9 +508,9 @@ abstract class State {
    * Register a lifecycle handler for this State and its subclasses.
    *
    * Hooks by cadence - `type` (per-class, at bootstrap), `pre` (per-instance,
-   * before values are observed), `new` (per-instance, with `new()`), `bind`
-   * (per method binding), and `call` (per method call). A function returned
-   * from `pre` or `new` runs when the instance is destroyed.
+   * before values are observed), `new` (per-instance, with `new()`), and `bind`
+   * (per method binding). A function returned from `pre` or `new` runs when the
+   * instance is destroyed.
    *
    * @returns Function to remove the handler.
    */
@@ -763,25 +756,12 @@ function classify(
       if (is.hasOwnProperty(key) && !original) return value as Function;
 
       const fn = original || value;
-      const found = hooks(is.constructor as State.Extends);
-      const calls = [...found.call];
-      const bound = calls.length
-        ? function (...args: unknown[]) {
-            for (const handler of calls) handler.call(is, key, args);
-            return fn.apply(is, args);
-          }
-        : fn.bind(is);
-
-      if (calls.length)
-        Object.defineProperties(bound, {
-          name: { value: `bound ${fn.name}` },
-          length: { value: fn.length }
-        });
+      const bound = fn.bind(is);
 
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
 
-      for (const handler of found.bind) handler.call(is, key, bound);
+      for (const handler of binders(is.constructor as State.Extends)) handler.call(is, key, bound);
 
       return bound;
     }
@@ -793,18 +773,10 @@ function classify(
   }
 }
 
-type Hooks = {
-  bind: Set<NonNullable<State.On['bind']>>;
-  call: Set<NonNullable<State.On['call']>>;
-};
+function binders(T: State.Extends): Set<NonNullable<State.On['bind']>> {
+  const found = T === State ? new Set<NonNullable<State.On['bind']>>() : binders(Object.getPrototypeOf(T));
 
-function hooks(T: State.Extends): Hooks {
-  const found: Hooks = T === State ? { bind: new Set(), call: new Set() } : hooks(Object.getPrototypeOf(T));
-
-  for (const handler of SETUP.get(T) || []) {
-    if (handler.bind) found.bind.add(handler.bind);
-    if (handler.call) found.call.add(handler.call);
-  }
+  for (const handler of SETUP.get(T) || []) if (handler.bind) found.add(handler.bind);
 
   return found;
 }

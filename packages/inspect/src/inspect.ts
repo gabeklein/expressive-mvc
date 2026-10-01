@@ -1,4 +1,4 @@
-import { Caught, Context, State } from '@expressive/mvc';
+import { Caught, Context, State, unbind } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 import { isElement } from '@expressive/mvc/runtime';
 
@@ -275,11 +275,7 @@ export function attach(Type: typeof State = State): () => void {
   if (!hooks.has(Type)) {
     const observed = new Map<typeof State, () => void>();
     const stopCatch = Type.on({ catch: unhandled });
-    const stopCall = Type.on({
-      call(key, args) {
-        if (key != 'render') noteCall(this, key, args);
-      }
-    });
+    const stopCall = Type.on({ type: trace, bind: retrace });
     const stopSetup = Type.on({
       pre(this: State) {
         const self = this.is;
@@ -462,6 +458,50 @@ export async function call(address: string, ...args: unknown[]): Promise<unknown
   if (typeof method !== 'function') throw new Error(`No method at ${address}.`);
 
   return serialize(await method.apply(state, args));
+}
+
+const TRACED = new WeakSet<Function>();
+
+/** Wrap a class's own methods before they bind, so each call is recorded. */
+function trace(type: typeof State) {
+  const proto = type.prototype as unknown as Record<string, Function>;
+
+  for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto)))
+    if (key != 'constructor' && key != 'render' && typeof desc.value == 'function' && desc.configurable)
+      proto[key] = traced(key, desc.value);
+}
+
+/**
+ * Rebind a method replaced through `set()` to a traced copy, so `unbind` still yields a function honoring `this`.
+ * A class bootstrapped before attach keeps its methods untraced - wrapped per instance, a hot patch would keep them.
+ */
+function retrace(this: State, key: string, fn: Function) {
+  const source = unbind(fn);
+  let proto = Object.getPrototypeOf(this);
+
+  while (!Object.prototype.hasOwnProperty.call(proto, key)) proto = Object.getPrototypeOf(proto);
+
+  if (key == 'render' || TRACED.has(source) || source === unbind(Object.getOwnPropertyDescriptor(proto, key)!.get!)) return;
+
+  const self = this as unknown as Record<string, Function>;
+
+  delete self[key];
+  self[key] = traced(key, source);
+}
+
+/** A `super` call reaches the base wrapper too; only the one `this[key]` resolves to records. */
+function traced(key: string, fn: Function) {
+  const wrapper = Object.defineProperties(
+    function (this: Record<string, Function>, ...args: unknown[]) {
+      if (unbind(this[key]) === wrapper) noteCall(this as unknown as State, key, args);
+      return fn.apply(this, args);
+    },
+    { name: { value: fn.name }, length: { value: fn.length } }
+  );
+
+  TRACED.add(wrapper);
+
+  return wrapper;
 }
 
 /** Observe the host commit: adapters call `mount?.()` once an instance is placed. */

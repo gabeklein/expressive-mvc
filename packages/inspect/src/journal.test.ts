@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { State, unbind } from '@expressive/mvc';
 import { hot } from '@expressive/mvc/runtime';
 import { describe, expect, it } from 'vitest';
 
@@ -157,6 +157,57 @@ describe('journal', () => {
     composer.set({ submit: (text: string) => text.length * 2 });
     expect(composer.submit('bb')).toBe(4);
     expect(journal.history({ key: 'submit' }).map((h) => h.event.args)).toEqual([['a'], ['bb']]);
+  });
+
+  it('will keep this for a replaced method called unbound', () => {
+    class Test extends State {
+      self(): unknown {
+        return undefined;
+      }
+    }
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+    const test = Test.new();
+    const other = {};
+    test.set({ self() { return this; } });
+    expect(unbind(test.self).call(other)).toBe(other);
+  });
+
+  it('will not record calls of a class bootstrapped before attach', () => {
+    class Early extends State {
+      go() {}
+    }
+
+    Early.new();
+    attach();
+    journal.record({ level: 'keys', calls: true });
+
+    const early = Early.new();
+
+    early.go();
+    early.go();
+
+    expect(journal.history({ key: 'go' })).toEqual([]);
+  });
+
+  it('will record a super call once', () => {
+    class Base extends State {
+      go() {
+        return 1;
+      }
+    }
+
+    class Sub extends Base {
+      go() {
+        return super.go() + 1;
+      }
+    }
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+    expect(Sub.new().go()).toBe(2);
+    expect(journal.history({ key: 'go' }).length).toBe(1);
   });
 
   it('will not record render', () => {

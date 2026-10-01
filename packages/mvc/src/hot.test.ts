@@ -413,22 +413,6 @@ describe('accept', () => {
       expect(handler).toHaveBeenLastCalledWith('bump', test.bump);
     });
 
-    it('will use a call handler a patch adds', () => {
-      const id = module();
-      const call = vi.fn();
-      const Test = version(1);
-
-      accept(id, { Test });
-
-      const test = Test.new();
-
-      test.bump();
-      accept(id, { Test: version(1, { call }) });
-      test.bump();
-
-      expect(call).toBeCalledTimes(1);
-    });
-
     it('will keep an observed method assigned to an instance', () => {
       const id = module();
       const handler = vi.fn();
