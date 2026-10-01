@@ -3592,6 +3592,254 @@ describe('on pre / new stages (static)', () => {
   });
 });
 
+describe('on bind stage (static)', () => {
+  it('will run on first access with key and bound function', () => {
+    class Test extends State {
+      foo() {
+        return this;
+      }
+    }
+
+    const handler = vi.fn();
+
+    Test.on({ bind: handler });
+
+    const test = Test.new();
+
+    expect(handler).not.toBeCalled();
+
+    const { foo } = test;
+
+    expect(handler).toBeCalledTimes(1);
+    expect(handler).toBeCalledWith('foo', foo);
+    expect(handler.mock.contexts[0]).toBe(test);
+    expect(foo()).toBe(test);
+    expect(test.foo).toBe(foo);
+    expect(handler).toBeCalledTimes(1);
+  });
+
+  it('will bind natively without a call handler', () => {
+    class Test extends State {
+      foo() {}
+    }
+
+    Test.on({ bind: () => {} });
+
+    expect(Test.new().foo).not.toHaveProperty('prototype');
+  });
+
+  it('will run on replacement by assignment before first read, or through set', () => {
+    class Test extends State {
+      foo() {
+        return 'before';
+      }
+    }
+
+    const handler = vi.fn();
+
+    Test.on({ bind: handler });
+
+    const test = Test.new();
+
+    test.foo = () => 'assigned';
+    expect(handler).toHaveBeenLastCalledWith('foo', test.foo);
+    expect(test.foo()).toBe('assigned');
+
+    test.set({ foo: () => 'set' });
+    expect(handler).toHaveBeenLastCalledWith('foo', test.foo);
+    expect(test.foo()).toBe('set');
+
+    expect(handler).toBeCalledTimes(2);
+  });
+
+  it.fails('will bind and observe a replacement assigned after first read', () => {
+    class Test extends State {
+      foo(): unknown {
+        return 'before';
+      }
+    }
+
+    const bind = vi.fn();
+    const call = vi.fn();
+
+    Test.on({ bind, call });
+
+    const test = Test.new();
+
+    test.foo();
+    test.foo = function (this: unknown) {
+      return this;
+    };
+
+    const { foo } = test;
+
+    expect(foo()).toBe(test);
+    expect(bind).toBeCalledTimes(2);
+    expect(call).toBeCalledTimes(2);
+  });
+
+  it('will run base then subclass handlers, once each', () => {
+    class Base extends State {
+      foo() {}
+    }
+
+    class Sub extends Base {}
+
+    const order: string[] = [];
+    const tag = (name: string) => ({ bind: () => void order.push(name) });
+    const shared = tag('shared');
+
+    Base.on(tag('base'));
+    Base.on(shared);
+    Sub.on(tag('sub'));
+    Sub.on(shared);
+
+    Base.new().foo;
+    expect(order).toEqual(['base', 'shared']);
+
+    order.length = 0;
+    Sub.new().foo;
+    expect(order).toEqual(['base', 'shared', 'sub']);
+  });
+
+  it('will run for a handler registered after bootstrap', () => {
+    class Test extends State {
+      foo() {}
+    }
+
+    Test.new().foo;
+
+    const handler = vi.fn();
+    const stop = Test.on({ bind: handler });
+
+    Test.new().foo;
+    expect(handler).toBeCalledTimes(1);
+
+    stop();
+    Test.new().foo;
+    expect(handler).toBeCalledTimes(1);
+  });
+
+  it('will let a handler read the method', () => {
+    class Test extends State {
+      foo() {}
+    }
+
+    const read = vi.fn();
+
+    Test.on({
+      bind(key) {
+        read((this as any)[key]);
+      }
+    });
+
+    const test = Test.new();
+
+    expect(read).toBeCalledWith(test.foo);
+  });
+});
+
+describe('on call stage (static)', () => {
+  it('will run before each call with key and arguments', () => {
+    const order: unknown[] = [];
+
+    class Test extends State {
+      foo(a: number, b: number) {
+        order.push('call');
+        return a + b;
+      }
+    }
+
+    let context: Test | undefined;
+
+    Test.on({
+      call(key, args) {
+        context = this;
+        order.push([key.toUpperCase(), ...args]);
+      }
+    });
+
+    const test = Test.new();
+    const { foo } = test;
+
+    expect(foo(1, 2)).toBe(3);
+    expect(order).toEqual([['FOO', 1, 2], 'call']);
+    expect(context).toBe(test);
+  });
+
+  it('will abort the call if a handler throws', () => {
+    const call = vi.fn();
+
+    class Test extends State {
+      foo() {
+        call();
+      }
+    }
+
+    Test.on({
+      call() {
+        throw new Error('blocked');
+      }
+    });
+
+    const test = Test.new();
+
+    expect(() => test.foo()).toThrow('blocked');
+    expect(call).not.toBeCalled();
+  });
+
+  it('will run base then subclass handlers, once each', () => {
+    class Base extends State {
+      foo() {}
+    }
+
+    class Sub extends Base {}
+
+    const order: string[] = [];
+    const tag = (name: string) => ({ call: () => void order.push(name) });
+    const shared = tag('shared');
+
+    Base.on(tag('base'));
+    Base.on(shared);
+    Sub.on(tag('sub'));
+    Sub.on(shared);
+
+    Sub.new().foo();
+    expect(order).toEqual(['base', 'shared', 'sub']);
+  });
+
+  it('will pass the wrapped function to bind handlers', () => {
+    class Test extends State {
+      foo() {}
+    }
+
+    const bind = vi.fn();
+    const call = vi.fn();
+
+    Test.on({ bind, call });
+
+    const test = Test.new();
+
+    test.foo();
+
+    expect(bind).toBeCalledWith('foo', test.foo);
+    expect(call).toBeCalledTimes(1);
+  });
+
+  it('will keep the bound name and length', () => {
+    class Test extends State {
+      foo(_a: number, _b: number) {}
+    }
+
+    Test.on({ call: () => {} });
+
+    const { foo } = Test.new();
+
+    expect(foo.name).toBe('bound foo');
+    expect(foo.length).toBe(2);
+  });
+});
+
 it('will add its State to the global copies list once', () => {
   class Test extends State {}
 

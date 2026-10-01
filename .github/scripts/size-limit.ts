@@ -22,7 +22,7 @@ import { withWorkspaceLinks } from './workspace-links';
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 6320,
+    limit: 6470,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
@@ -67,7 +67,7 @@ const CASES = [
   },
   {
     name: 'inspect: install',
-    limit: 11790,
+    limit: 12090,
     code: `import '@expressive/inspect/install';`
   },
   {
