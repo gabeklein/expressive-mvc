@@ -3618,7 +3618,7 @@ describe('on bind stage (static)', () => {
     expect(handler).toBeCalledTimes(1);
   });
 
-  it('will bind natively without an invoke handler', () => {
+  it('will bind natively without a call handler', () => {
     class Test extends State {
       foo() {}
     }
@@ -3662,7 +3662,7 @@ describe('on bind stage (static)', () => {
     const bind = vi.fn();
     const call = vi.fn();
 
-    Test.on({ bind, invoke: call });
+    Test.on({ bind, call });
 
     const test = Test.new();
 
@@ -3739,7 +3739,7 @@ describe('on bind stage (static)', () => {
   });
 });
 
-describe('on invoke stage (static)', () => {
+describe('on call stage (static)', () => {
   it('will run before each call with key and arguments', () => {
     const order: unknown[] = [];
 
@@ -3753,7 +3753,7 @@ describe('on invoke stage (static)', () => {
     let context: Test | undefined;
 
     Test.on({
-      invoke(key, args) {
+      call(key, args) {
         context = this;
         order.push([key.toUpperCase(), ...args]);
       }
@@ -3777,7 +3777,7 @@ describe('on invoke stage (static)', () => {
     }
 
     Test.on({
-      invoke() {
+      call() {
         throw new Error('blocked');
       }
     });
@@ -3796,7 +3796,7 @@ describe('on invoke stage (static)', () => {
     class Sub extends Base {}
 
     const order: string[] = [];
-    const tag = (name: string) => ({ invoke: () => void order.push(name) });
+    const tag = (name: string) => ({ call: () => void order.push(name) });
     const shared = tag('shared');
 
     Base.on(tag('base'));
@@ -3816,7 +3816,7 @@ describe('on invoke stage (static)', () => {
     const bind = vi.fn();
     const call = vi.fn();
 
-    Test.on({ bind, invoke: call });
+    Test.on({ bind, call });
 
     const test = Test.new();
 
@@ -3831,7 +3831,7 @@ describe('on invoke stage (static)', () => {
       foo() {}
     }
 
-    Test.on({ invoke: () => {} });
+    Test.on({ call: () => {} });
 
     expect(Test.new().foo.name).toBe('bound foo');
   });

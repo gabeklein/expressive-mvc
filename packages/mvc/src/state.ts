@@ -134,10 +134,10 @@ declare namespace State {
 
     /**
      * Runs before every method call with the key and arguments; a throw aborts
-     * the call. Any `invoke` handler on a class wraps all its methods, so this is
+     * the call. Any `call` handler on a class wraps all its methods, so this is
      * for introspection and hard interrupts during development.
      */
-    invoke?(this: T, key: string, args: unknown[]): void;
+    call?(this: T, key: string, args: unknown[]): void;
 
     /**
      * Receives a `Caught` mvc reports for this State or a subclass - most-derived
@@ -516,7 +516,7 @@ abstract class State {
    *
    * Hooks by cadence - `type` (per-class, at bootstrap), `pre` (per-instance,
    * before values are observed), `new` (per-instance, with `new()`), `bind`
-   * (per method binding), and `invoke` (per method call). A function returned
+   * (per method binding), and `call` (per method call). A function returned
    * from `pre` or `new` runs when the instance is destroyed.
    *
    * @returns Function to remove the handler.
@@ -764,7 +764,7 @@ function classify(
 
       const fn = original || value;
       const found = hooks(is.constructor as State.Extends);
-      const calls = [...found.invoke];
+      const calls = [...found.call];
       const bound = calls.length
         ? function (...args: unknown[]) {
             for (const handler of calls) handler.call(is, key, args);
@@ -791,17 +791,16 @@ function classify(
 
 type Hooks = {
   bind: Set<NonNullable<State.On['bind']>>;
-  invoke: Set<NonNullable<State.On['invoke']>>;
+  call: Set<NonNullable<State.On['call']>>;
 };
 
 function hooks(T: State.Extends): Hooks {
-  const found: Hooks = T === State ? { bind: new Set(), invoke: new Set() } : hooks(Object.getPrototypeOf(T));
+  const found: Hooks = T === State ? { bind: new Set(), call: new Set() } : hooks(Object.getPrototypeOf(T));
 
-  for (const handler of SETUP.get(T) || [])
-    if (typeof handler == 'object') {
-      if (handler.bind) found.bind.add(handler.bind);
-      if (handler.invoke) found.invoke.add(handler.invoke);
-    }
+  for (const handler of SETUP.get(T) || []) {
+    if (handler.bind) found.bind.add(handler.bind);
+    if (handler.call) found.call.add(handler.call);
+  }
 
   return found;
 }

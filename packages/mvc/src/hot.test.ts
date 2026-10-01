@@ -413,7 +413,7 @@ describe('accept', () => {
       expect(handler).toHaveBeenLastCalledWith('bump', test.bump);
     });
 
-    it('will use an invoke handler a patch adds', () => {
+    it('will use a call handler a patch adds', () => {
       const id = module();
       const call = vi.fn();
       const Test = version(1);
@@ -423,7 +423,7 @@ describe('accept', () => {
       const test = Test.new();
 
       test.bump();
-      accept(id, { Test: version(1, { invoke: call }) });
+      accept(id, { Test: version(1, { call }) });
       test.bump();
 
       expect(call).toBeCalledTimes(1);
