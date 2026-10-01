@@ -116,8 +116,8 @@ function createFrame(from: Component, context: Context, children: unknown) {
  * unmount.
  */
 function render(from: Component, context: Context) {
-  const { createElement } = Runtime;
-  const { commit, remove } = Runtime.dedupe(from, context);
+  const { createElement, dedupe } = Runtime;
+  const attempt = dedupe?.(from, context);
   const { is: owner, render } = from;
 
   const Render = () => render.call(from, from.props);
@@ -125,11 +125,11 @@ function render(from: Component, context: Context) {
     from = useWatch(from, () => {
       const release = owner.mount?.();
 
-      commit();
+      attempt?.commit();
 
       return () => {
         if (typeof release == 'function') release();
-        remove();
+        attempt?.remove();
         context.pop();
       };
     });

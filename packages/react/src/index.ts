@@ -1,14 +1,6 @@
 import { Component } from '@expressive/mvc';
 import { State } from './adapter';
-import React, {
-  createContext,
-  createElement,
-  Suspense,
-  useContext,
-  useEffect,
-  useRef,
-  useState
-} from 'react';
+import * as React from 'react';
 
 import './element';
 import './jsx-runtime';
@@ -24,15 +16,15 @@ Object.defineProperty(Component.prototype, 'isReactComponent', {
 Object.assign(Runtime, {
   dedupe,
   ErrorBoundary,
-  createElement,
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useRef,
+  createElement: React.createElement,
+  createContext: React.createContext,
+  useContext: React.useContext,
+  useEffect: React.useEffect,
+  useState: React.useState,
+  useRef: React.useRef,
   useSyncExternalStore: React.useSyncExternalStore,
-  transition: React.startTransition,
-  Suspense,
+  startTransition: React.startTransition,
+  Suspense: React.Suspense,
   ignore: [
     'updater',
     'refs',
