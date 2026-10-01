@@ -1,12 +1,25 @@
 import { rechain } from './component';
 import { event, observer } from './observable';
-import { State, handlers, patch, track } from './state';
+import {
+  State,
+  GETTERS,
+  LATEST,
+  LIVE,
+  METHODS,
+  SETUP,
+  SUBCLASSES,
+  UNBIND,
+  classify,
+  compute,
+  track,
+  type Handler
+} from './state';
 
 interface Entry {
   type: Function;
   shape: string;
   kinds: Record<string, 'get' | 'accessor' | 'fn'>;
-  own: ReturnType<typeof handlers>;
+  own: Handler[];
 }
 
 interface Replaced {
@@ -20,10 +33,145 @@ interface Replaced {
   next: State.Extends;
 }
 
+const define = Object.defineProperty;
+
+/** Method implementations replaced by a hot patch. */
+const PAST = new WeakSet<Function>();
+
 const MODULES = new Map<string, Record<string, Entry>>();
 const LISTENERS = new Set<(event: Replaced) => void>();
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const PRIVATE = /(?:^|[\s;{}*])#[\w$]+(?=[\s=;(}])/;
+
+/**
+ * Move the members of `next` onto `prev`, which keeps its identity. Returns the
+ * live instances of `prev`, each needing a refresh.
+ */
+function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[] {
+  const proto = prev.prototype;
+  const incoming = Object.getOwnPropertyDescriptors(next.prototype);
+  const keys = METHODS.get(prev);
+  const getters = GETTERS.get(prev);
+  const methods = new Map<string, Function>();
+  const knownKeys = new Set(keys?.keys());
+  const knownGetters = new Set(getters?.keys());
+
+  let setup = SETUP.get(prev);
+
+  for (const handler of own) setup!.delete(handler);
+
+  for (const handler of handlers(next)) {
+    if (!setup) SETUP.set(prev, (setup = new Set()));
+    setup.add(handler);
+  }
+
+  for (const key of Reflect.ownKeys(next)) {
+    if (key == 'prototype' || key == 'length' || key == 'name') continue;
+
+    if (Object.getOwnPropertyDescriptor(prev, key)?.configurable !== false)
+      define(prev, key, Object.getOwnPropertyDescriptor(next, key)!);
+  }
+
+  const removed = new Set<string>();
+
+  for (const key of Object.getOwnPropertyNames(proto))
+    if (key != 'constructor' && !(key in incoming)) {
+      const bind = keys?.get(key);
+
+      if (bind && Object.getOwnPropertyDescriptor(proto, key)!.get === bind) {
+        PAST.add(UNBIND.get(bind));
+        keys!.delete(key);
+      }
+
+      removed.add(key);
+      Reflect.deleteProperty(proto, key);
+      getters?.delete(key);
+    }
+
+  for (const [key, desc] of Object.entries(incoming)) {
+    if (key == 'constructor') continue;
+
+    const current = Object.getOwnPropertyDescriptor(proto, key);
+
+    if (typeof desc.value == 'function') methods.set(key, desc.value);
+
+    if (current?.configurable === false) {
+      if (current.writable) (proto as any)[key] = desc.value;
+      continue;
+    }
+
+    if (current?.get && keys?.get(key) === current.get) PAST.add(UNBIND.get(current.get));
+
+    const getter = getters?.get(key);
+
+    if (getter) LATEST.set(getter, desc.get!);
+
+    define(proto, key, { ...desc, configurable: true });
+  }
+
+  if (keys) {
+    for (let T: State.Extends = prev; ; T = Object.getPrototypeOf(T)) {
+      for (const handler of SETUP.get(T) || [])
+        if (handler.type) handler.type(prev);
+
+      if (T === State) break;
+    }
+
+    classify(prev, keys, getters!);
+  }
+
+  const live: State[] = [];
+
+  for (const ref of LIVE!) {
+    const state = ref.deref();
+
+    if (!state) LIVE!.delete(ref);
+    else if (state instanceof prev) live.push(state);
+  }
+
+  const descendants = new Set([prev, ...live.map((state) => state.constructor as State.Extends)]);
+
+  for (const type of descendants) for (const child of SUBCLASSES.get(type) || []) descendants.add(child);
+
+  descendants.delete(prev);
+
+  for (const type of descendants) {
+    const inherit = METHODS.get(type)!;
+    const computed = GETTERS.get(type)!;
+
+    for (const [key, bind] of keys!) if (!knownKeys.has(key) && !inherit.has(key)) inherit.set(key, bind);
+    for (const [key, get] of getters!) if (!knownGetters.has(key) && !computed.has(key)) computed.set(key, get);
+    for (const key of removed)
+      if (!(key in type.prototype)) {
+        inherit.delete(key);
+        computed.delete(key);
+      }
+  }
+
+  for (const state of live) {
+    for (const [key, value] of methods) {
+      const desc = Object.getOwnPropertyDescriptor(state, key);
+
+      if (!desc) continue;
+
+      if (desc.set) desc.set.call(state, value);
+      else if (PAST.has(UNBIND.get(desc.value))) delete (state as any)[key];
+    }
+
+    for (const key of removed)
+      if (PAST.has(UNBIND.get(Object.getOwnPropertyDescriptor(state, key)?.value))) delete (state as any)[key];
+
+    for (const [key, get] of GETTERS.get(state.constructor)!)
+      if (!knownGetters.has(key) && get === getters!.get(key)) compute.call(state, get, key);
+  }
+
+  return live;
+}
+
+/** Lifecycle handlers registered on a class itself. */
+function handlers(type: State.Extends): Handler[] {
+  return [...(SETUP.get(type) || [])];
+}
 
 function isState(value: unknown): value is State.Extends {
   return typeof value == 'function' && value.prototype instanceof State;
