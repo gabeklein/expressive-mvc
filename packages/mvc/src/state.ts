@@ -758,10 +758,10 @@ function classify(
 
       const fn = original || value;
       const handlers = binders(is.constructor as State.Extends);
-      const observers: (((args: unknown[]) => void) | void)[] = [];
+      const observers: ((args: unknown[]) => void)[] = [];
       const bound = handlers.size
         ? function (...args: unknown[]) {
-            for (const observe of observers) observe?.(args);
+            for (const observe of observers) observe(args);
             return fn.apply(is, args);
           }
         : fn.bind(is);
@@ -771,7 +771,10 @@ function classify(
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
 
-      for (const handler of handlers) observers.push(handler.call(is, key, bound));
+      for (const handler of handlers) {
+        const observe = handler.call(is, key, bound);
+        if (observe) observers.push(observe);
+      }
 
       return bound;
     }
