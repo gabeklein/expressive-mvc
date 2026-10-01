@@ -127,11 +127,17 @@ declare namespace State {
 
     /**
      * Runs each time a method is bound to an instance - first access,
-     * reassignment, and the rebind after a hot patch. Receives the key and the
-     * bound function. May return an observer, called with the arguments before
-     * each call of that binding; a throw aborts the call.
+     * reassignment, and the rebind after a hot patch - with the key and the
+     * bound function. Tooling and development use.
      */
-    bind?(this: T, key: string, fn: Function): void | ((args: unknown[]) => void);
+    bind?(this: T, key: string, fn: Function): void;
+
+    /**
+     * Runs before every method call with the key and arguments; a throw aborts
+     * the call. Any `call` handler on a class wraps all its methods, so this is
+     * for introspection and hard interrupts during development.
+     */
+    call?(this: T, key: string, args: unknown[]): void;
 
     /**
      * Receives a `Caught` mvc reports for this State or a subclass - most-derived
@@ -509,9 +515,9 @@ abstract class State {
    * Register a lifecycle handler for this State and its subclasses.
    *
    * Hooks by cadence - `type` (per-class, at bootstrap), `pre` (per-instance,
-   * before values are observed), `new` (per-instance, with `new()`), and `bind`
-   * (per method binding). A function returned from `pre` or `new` runs when the
-   * instance is destroyed.
+   * before values are observed), `new` (per-instance, with `new()`), `bind`
+   * (per method binding), and `call` (per method call). A function returned
+   * from `pre` or `new` runs when the instance is destroyed.
    *
    * @returns Function to remove the handler.
    */
@@ -757,24 +763,21 @@ function classify(
       if (is.hasOwnProperty(key) && !original) return value as Function;
 
       const fn = original || value;
-      const handlers = binders(is.constructor as State.Extends);
-      const observers: ((args: unknown[]) => void)[] = [];
-      const bound = handlers.size
+      const found = hooks(is.constructor as State.Extends);
+      const calls = [...found.call];
+      const bound = calls.length
         ? function (...args: unknown[]) {
-            for (const observe of observers) observe(args);
+            for (const handler of calls) handler.call(is, key, args);
             return fn.apply(is, args);
           }
         : fn.bind(is);
 
-      if (handlers.size) define(bound, 'name', { value: `bound ${fn.name}` });
+      if (calls.length) define(bound, 'name', { value: `bound ${fn.name}` });
 
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
 
-      for (const handler of handlers) {
-        const observe = handler.call(is, key, bound);
-        if (observe) observers.push(observe);
-      }
+      for (const handler of found.bind) handler.call(is, key, bound);
 
       return bound;
     }
@@ -786,13 +789,21 @@ function classify(
   }
 }
 
-function binders(T: State.Extends): Set<NonNullable<State.On['bind']>> {
-  const handlers = T === State ? new Set<NonNullable<State.On['bind']>>() : binders(Object.getPrototypeOf(T));
+type Hooks = {
+  bind: Set<NonNullable<State.On['bind']>>;
+  call: Set<NonNullable<State.On['call']>>;
+};
+
+function hooks(T: State.Extends): Hooks {
+  const found: Hooks = T === State ? { bind: new Set(), call: new Set() } : hooks(Object.getPrototypeOf(T));
 
   for (const handler of SETUP.get(T) || [])
-    if (typeof handler == 'object' && handler.bind) handlers.add(handler.bind);
+    if (typeof handler == 'object') {
+      if (handler.bind) found.bind.add(handler.bind);
+      if (handler.call) found.call.add(handler.call);
+    }
 
-  return handlers;
+  return found;
 }
 
 /**

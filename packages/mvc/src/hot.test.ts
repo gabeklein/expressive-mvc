@@ -384,28 +384,28 @@ describe('accept', () => {
   });
 
   describe('bind handlers', () => {
-    const version = (step: number, bind?: State.On['bind']) => {
+    const version = (step: number, handler?: State.On) => {
       class Test extends State {
         value = 0;
         bump() {
           this.value += step;
         }
       }
-      if (bind) Test.on({ bind });
+      if (handler) Test.on(handler);
       return Test;
     };
 
     it('will run again for a patched method', () => {
       const id = module();
       const handler = vi.fn();
-      const Test = version(1, handler);
+      const Test = version(1, { bind: handler });
 
       accept(id, { Test });
 
       const test = Test.new();
 
       test.bump();
-      accept(id, { Test: version(10, handler) });
+      accept(id, { Test: version(10, { bind: handler }) });
       test.bump();
 
       expect(test.value).toBe(11);
@@ -413,9 +413,9 @@ describe('accept', () => {
       expect(handler).toHaveBeenLastCalledWith('bump', test.bump);
     });
 
-    it('will use one a patch adds', () => {
+    it('will use a call handler a patch adds', () => {
       const id = module();
-      const observe = vi.fn();
+      const call = vi.fn();
       const Test = version(1);
 
       accept(id, { Test });
@@ -423,16 +423,16 @@ describe('accept', () => {
       const test = Test.new();
 
       test.bump();
-      accept(id, { Test: version(1, () => observe) });
+      accept(id, { Test: version(1, { call }) });
       test.bump();
 
-      expect(observe).toBeCalledTimes(1);
+      expect(call).toBeCalledTimes(1);
     });
 
     it('will keep an observed method assigned to an instance', () => {
       const id = module();
       const handler = vi.fn();
-      const Test = version(1, handler);
+      const Test = version(1, { bind: handler });
 
       accept(id, { Test });
 
@@ -444,7 +444,7 @@ describe('accept', () => {
         }
       });
 
-      accept(id, { Test: version(10, handler) });
+      accept(id, { Test: version(10, { bind: handler }) });
       test.bump();
 
       expect(test.value).toBe(100);
