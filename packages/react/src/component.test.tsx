@@ -1,5 +1,5 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
-import { vi, expect, it, describe } from 'vitest';
+import { afterEach, beforeEach, vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
@@ -1774,5 +1774,89 @@ describe('strict mode', () => {
     expect(order).toEqual(['construct', 'construct', 'init']);
 
     element.unmount();
+  });
+});
+
+describe('abandoned render', () => {
+  const live = new Set<Component>();
+
+  class Test extends Component {
+    new() {
+      live.add(this);
+      return () => live.delete(this);
+    }
+  }
+
+  function suspense() {
+    const promise = mockPromise<void>();
+    let done = false;
+
+    const Wait = () => {
+      if (!done) throw promise.then(() => (done = true));
+      return null;
+    };
+
+    return { Wait, resolve: () => promise.resolve() };
+  }
+
+  beforeEach(() => live.clear());
+  afterEach(() => vi.useRealTimers());
+
+  it('will destroy attempts superseded by a commit', async () => {
+    const { Wait, resolve } = suspense();
+
+    render(
+      <Suspense fallback={null}>
+        <Test />
+        <Wait />
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+
+    expect(live.size).toBe(1);
+  });
+
+  it.fails('will destroy a first mount removed while suspended', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    const { Wait } = suspense();
+    const element = render(
+      <Suspense fallback={null}>
+        <Test />
+        <Wait />
+      </Suspense>
+    );
+
+    element.rerender(null);
+    await act(async () => vi.runAllTimers());
+
+    expect(live.size).toBe(0);
+  });
+
+  it.fails('will destroy a dropped transition render', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    const { Wait } = suspense();
+    let show!: (shown: boolean) => void;
+
+    const App = () => {
+      const [shown, setShown] = React.useState(false);
+      show = setShown;
+
+      return (
+        <Suspense fallback={null}>
+          {shown && <><Test /><Wait /></>}
+        </Suspense>
+      );
+    };
+
+    render(<App />);
+
+    await act(async () => React.startTransition(() => show(true)));
+    await act(async () => React.startTransition(() => show(false)));
+    await act(async () => vi.runAllTimers());
+
+    expect(live.size).toBe(0);
   });
 });
