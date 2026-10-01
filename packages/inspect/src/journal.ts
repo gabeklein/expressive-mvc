@@ -13,7 +13,7 @@ export interface Options {
   paths?: string[];
   /** Property names to record on any type. */
   keys?: string[];
-  /** Also record method calls (wraps instance methods except `render`). */
+  /** Also record method calls, except `render`. */
   calls?: boolean;
 }
 

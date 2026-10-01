@@ -138,7 +138,7 @@ describe('journal', () => {
     expect(journal.history({ key: 'submit' })[0].event.args).toEqual(['hey']);
   });
 
-  it('will wrap already-live instances when calls turn on', () => {
+  it('will record calls of live instances once calls turn on', () => {
     attach();
     const composer = Composer.new();
     journal.record({ calls: true });
@@ -147,6 +147,39 @@ describe('journal', () => {
     const calls = journal.history({ key: 'submit' });
     expect(calls.length).toBe(1);
     expect(calls[0].event.args).toBeUndefined();
+  });
+
+  it('will record a method replaced through set', () => {
+    attach();
+    journal.record({ level: 'values', calls: true });
+    const composer = Composer.new();
+    composer.submit('a');
+    composer.set({ submit: (text: string) => text.length * 2 });
+    expect(composer.submit('bb')).toBe(4);
+    expect(journal.history({ key: 'submit' }).map((h) => h.event.args)).toEqual([['a'], ['bb']]);
+  });
+
+  it('will not record render', () => {
+    class View extends State {
+      render() {
+        return null;
+      }
+    }
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+    View.new().render();
+    expect(journal.history({ key: 'render' })).toEqual([]);
+  });
+
+  it('will stop recording calls once turned off', () => {
+    attach();
+    journal.record({ level: 'keys', calls: true });
+    const composer = Composer.new();
+    composer.submit('a');
+    journal.record({ calls: false });
+    composer.submit('b');
+    expect(journal.history({ key: 'submit' }).length).toBe(1);
   });
 
   it('will not record calls unless asked', () => {
@@ -541,35 +574,7 @@ describe('hot', () => {
 
     const counter = Before.new() as any;
 
-    hot.accept(id, { Counter: After });
-    await flushMicrotasks();
-
-    expect(counter.gone).toBeUndefined();
-  });
-
-  it('will drop a wrapper once calls stop recording', async () => {
-    const id = `journal-${count++}`;
-
-    attach();
-    journal.record({ level: 'keys', calls: true });
-
-    const Before = (() => {
-      class Counter extends State {
-        gone() {}
-      }
-      return Counter;
-    })();
-
-    const After = (() => {
-      class Counter extends State {}
-      return Counter;
-    })();
-
-    hot.accept(id, { Counter: Before });
-
-    const counter = Before.new() as any;
-
-    journal.record({ calls: false });
+    counter.gone();
     hot.accept(id, { Counter: After });
     await flushMicrotasks();
 
