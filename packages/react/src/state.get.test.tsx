@@ -12,7 +12,7 @@ import {
   type MockInstance
 } from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { mockPromise, flushMicrotasks } from '../test.setup';
+import { collect, mockPromise, flushMicrotasks } from '../test.setup';
 import { Runtime } from './runtime';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
@@ -1468,4 +1468,69 @@ describe('State.get - fast refresh', () => {
 
     expect(element.container.textContent).toBe('20');
   });
+});
+
+describe('abandoned render', () => {
+  it('will not hold an abandoned render', async () => {
+    const live = new Set<State>();
+
+    class Parent extends State {}
+
+    class Test extends State {
+      new() {
+        live.add(this);
+        return () => live.delete(this);
+      }
+    }
+
+    const Child = () => {
+      Test.use();
+      Parent.get();
+      return null;
+    };
+
+    const promise = mockPromise<void>();
+    const Wait = () => {
+      throw promise;
+    };
+
+    const element = render(
+      <Provider for={Parent}>
+        <Suspense fallback={null}>
+          <Child />
+          <Wait />
+        </Suspense>
+      </Provider>
+    );
+
+    element.rerender(<Provider for={Parent} />);
+    await act(collect);
+
+    expect(live.size).toBe(0);
+  });
+});
+
+it('will apply a refresh requested before commit', () => {
+  class Parent extends State {
+    value = 'foo';
+  }
+
+  const didRender = vi.fn();
+  const Child = () => {
+    const value = Parent.get((parent, refresh) => {
+      refresh();
+      return parent.value;
+    });
+
+    didRender(value);
+    return null;
+  };
+
+  render(
+    <Provider for={Parent}>
+      <Child />
+    </Provider>
+  );
+
+  expect(didRender).toHaveBeenCalledTimes(2);
 });

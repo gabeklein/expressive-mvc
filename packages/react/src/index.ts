@@ -21,6 +21,17 @@ Object.defineProperty(Component.prototype, 'isReactComponent', {
   value: true
 });
 
+const FIBER = new WeakMap<Component, { deref(): unknown }>();
+
+Object.defineProperty(Component.prototype, '_reactInternals', {
+  get(this: Component) {
+    return FIBER.get(this)?.deref();
+  },
+  set(this: Component, fiber: object) {
+    FIBER.set(this, typeof WeakRef == 'function' ? new WeakRef(fiber) : { deref: () => fiber });
+  }
+});
+
 Object.assign(Runtime, {
   dedupe,
   ErrorBoundary,
@@ -36,7 +47,6 @@ Object.assign(Runtime, {
   ignore: [
     'updater',
     'refs',
-    '_reactInternals',
     '_reactInternalInstance'
   ]
 });

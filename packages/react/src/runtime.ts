@@ -20,9 +20,12 @@ interface Setup {
   release?: (() => void) | void;
 }
 
-interface Hook<T> extends Setup {
+export interface Queue {
   queued?: boolean;
   update?: (next: (previous: number) => number) => void;
+}
+
+interface Hook<T> extends Setup, Queue {
   output: T;
 }
 
@@ -54,7 +57,7 @@ export const Runtime = {} as {
 
 const noop = () => () => {};
 
-export function useFactory<T extends Function>(factory: () => T) {
+export function useFactory<T extends object>(factory: () => T) {
   const ref = Runtime.useRef<T | null>(null);
   return ref.current || (ref.current = factory());
 }
@@ -172,26 +175,48 @@ export function useHook<T = void>(
         claim();
         self.update?.((x) => x + 1);
       }
-      else if (self.update) self.queued = true;
+      else if (self.rendered) self.queued = true;
     }, reset);
 
-    return () => {
-      const cleanup = mount();
-
-      if (self.queued) {
-        self.queued = false;
-        self.update!((x) => x + 1);
-      }
-
-      return cleanup;
-    };
+    return mount;
   });
 
   const claim = useSettle(tick);
 
-  current.update = update;
+  Runtime.useEffect(publish(current, update), []);
 
   return current.output;
+}
+
+export function publish(queue: Queue, update: NonNullable<Queue['update']>) {
+  return () => {
+    queue.update = update;
+
+    if (queue.queued) {
+      queue.queued = false;
+      update((x) => x + 1);
+    }
+  };
+}
+
+export interface Reap {
+  committed?: boolean;
+  abandon(): void;
+}
+
+let reaper: FinalizationRegistry<Reap> | null | undefined;
+
+export function useReap(reap: Reap) {
+  const ref = Runtime.useRef<object | null>(null);
+
+  if (ref.current) return;
+
+  if (reaper === undefined)
+    reaper = typeof FinalizationRegistry == 'function'
+      ? new FinalizationRegistry((reap) => reap.committed || reap.abandon())
+      : null;
+
+  reaper?.register((ref.current = {}), reap);
 }
 
 export function useWatch<T extends object>(

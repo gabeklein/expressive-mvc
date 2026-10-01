@@ -1,8 +1,8 @@
 import React, { Suspense } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { flushMicrotasks, mockPromise } from '../test.setup';
+import { collect, flushMicrotasks, mockPromise } from '../test.setup';
 import { pending } from '@expressive/mvc';
 import * as Refresh from 'react-refresh/runtime';
 
@@ -690,9 +690,8 @@ describe('abandoned render', () => {
   }
 
   beforeEach(() => live.clear());
-  afterEach(() => vi.useRealTimers());
 
-  it.fails('will destroy attempts superseded by a commit', async () => {
+  it('will destroy attempts superseded by a commit', async () => {
     const { Wait, resolve } = suspense();
 
     render(
@@ -703,13 +702,12 @@ describe('abandoned render', () => {
     );
 
     await act(async () => resolve());
+    await act(collect);
 
     expect(live.size).toBe(1);
   });
 
-  it.fails('will destroy a first mount removed while suspended', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-
+  it('will destroy a first mount removed while suspended', async () => {
     const { Wait } = suspense();
     const element = render(
       <Suspense fallback={null}>
@@ -719,14 +717,34 @@ describe('abandoned render', () => {
     );
 
     element.rerender(null);
-    await act(async () => vi.runAllTimers());
+    await act(collect);
 
     expect(live.size).toBe(0);
   });
 
-  it.fails('will destroy a dropped transition render', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  it('will keep an instance hidden by Activity', async () => {
+    const element = render(
+      <React.Activity mode="hidden">
+        <Child />
+      </React.Activity>
+    );
 
+    await act(collect);
+
+    expect(live.size).toBe(1);
+
+    element.rerender(
+      <React.Activity mode="visible">
+        <Child />
+      </React.Activity>
+    );
+
+    await act(collect);
+
+    expect(live.size).toBe(1);
+  });
+
+  it('will destroy a dropped transition render', async () => {
     const { Wait } = suspense();
     let show!: (shown: boolean) => void;
 
@@ -745,7 +763,7 @@ describe('abandoned render', () => {
 
     await act(async () => React.startTransition(() => show(true)));
     await act(async () => React.startTransition(() => show(false)));
-    await act(async () => vi.runAllTimers());
+    await act(collect);
 
     expect(live.size).toBe(0);
   });

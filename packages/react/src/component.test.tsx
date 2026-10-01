@@ -1,9 +1,9 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, vi, expect, it, describe } from 'vitest';
+import { beforeEach, vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
+import { collect, mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
 import { hot } from '@expressive/mvc/runtime';
 import { Component, Consumer, State, pending, set } from '.';
 
@@ -1778,7 +1778,7 @@ describe('strict mode', () => {
 });
 
 describe('abandoned render', () => {
-  const live = new Set<Component>();
+  const live = new Set<object>();
 
   class Test extends Component {
     new() {
@@ -1800,7 +1800,6 @@ describe('abandoned render', () => {
   }
 
   beforeEach(() => live.clear());
-  afterEach(() => vi.useRealTimers());
 
   it('will destroy attempts superseded by a commit', async () => {
     const { Wait, resolve } = suspense();
@@ -1813,13 +1812,12 @@ describe('abandoned render', () => {
     );
 
     await act(async () => resolve());
+    await act(collect);
 
     expect(live.size).toBe(1);
   });
 
-  it.fails('will destroy a first mount removed while suspended', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-
+  it('will destroy a first mount removed while suspended', async () => {
     const { Wait } = suspense();
     const element = render(
       <Suspense fallback={null}>
@@ -1829,14 +1827,12 @@ describe('abandoned render', () => {
     );
 
     element.rerender(null);
-    await act(async () => vi.runAllTimers());
+    await act(collect);
 
     expect(live.size).toBe(0);
   });
 
-  it.fails('will destroy a dropped transition render', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-
+  it('will destroy a dropped transition render', async () => {
     const { Wait } = suspense();
     let show!: (shown: boolean) => void;
 
@@ -1855,7 +1851,7 @@ describe('abandoned render', () => {
 
     await act(async () => React.startTransition(() => show(true)));
     await act(async () => React.startTransition(() => show(false)));
-    await act(async () => vi.runAllTimers());
+    await act(collect);
 
     expect(live.size).toBe(0);
   });
