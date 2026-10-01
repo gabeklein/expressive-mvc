@@ -43,12 +43,6 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 /** Replacement for a getter captured by live computed properties, for hot patching. */
 const LATEST = new WeakMap<Function, Function>();
 
-/** Live instances, tracked once hot patching is enabled. */
-let LIVE: Set<WeakRef<State>> | undefined;
-
-/** Bootstrapped subclasses of each class, tracked once hot patching is enabled. */
-const SUBCLASSES = new WeakMap<Function, Set<State.Extends>>();
-
 /** Event every observer treats as watched, forcing a refresh after a hot patch. */
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 
@@ -569,7 +563,6 @@ function init(state: State, ...args: State.Args) {
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
-  LIVE?.add(new WeakRef(state));
 
   function observe() {
     for (const key in state) {
@@ -695,14 +688,6 @@ function bootstrap(T: State.Extends) {
     }
 
     for (const setupType of onType) setupType(type);
-
-    if (LIVE) {
-      const parent = Object.getPrototypeOf(type);
-      let children = SUBCLASSES.get(parent);
-
-      if (!children) SUBCLASSES.set(parent, (children = new Set()));
-      children.add(type);
-    }
 
     METHODS.set(type, (keys = new Map(keys)));
     GETTERS.set(type, (getters = new Map(getters)));
@@ -1178,11 +1163,6 @@ function latest(getter: Function) {
   return getter;
 }
 
-/** Begin tracking live instances, so a hot patch can reach them. */
-function track() {
-  LIVE ||= new Set();
-}
-
 /** Random alphanumberic of length 6; always starts with a letter. */
 function uid() {
   return (0.278 + Math.random() * 0.722)
@@ -1213,4 +1193,4 @@ function parent(child: object, value?: State | null) {
 }
 
 export type { Handler };
-export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, track, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST, LIVE, SUBCLASSES };
+export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };

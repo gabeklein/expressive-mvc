@@ -1,17 +1,14 @@
 import { rechain } from './component';
-import { event, observer } from './observable';
+import { event } from './observable';
 import {
   State,
   GETTERS,
   LATEST,
-  LIVE,
   METHODS,
   SETUP,
-  SUBCLASSES,
   UNBIND,
   classify,
   compute,
-  track,
   type Handler
 } from './state';
 
@@ -38,10 +35,40 @@ const define = Object.defineProperty;
 /** Method implementations replaced by a hot patch. */
 const PAST = new WeakSet<Function>();
 
+/** Live instances, tracked once hot patching is enabled. */
+let LIVE: Set<WeakRef<State>> | undefined;
+
+/** Bootstrapped subclasses of each class, tracked once hot patching is enabled. */
+const SUBCLASSES = new WeakMap<Function, Set<State.Extends>>();
+
 const MODULES = new Map<string, Record<string, Entry>>();
 const LISTENERS = new Set<(event: Replaced) => void>();
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const PRIVATE = /(?:^|[\s;{}*])#[\w$]+(?=[\s=;(}])/;
+
+/** Begin tracking live instances, so a hot patch can reach them. */
+function track() {
+  if (LIVE) return;
+
+  LIVE = new Set();
+
+  State.on({
+    type(type) {
+      const parent = Object.getPrototypeOf(type);
+      let children = SUBCLASSES.get(parent);
+
+      if (!children) SUBCLASSES.set(parent, (children = new Set()));
+      children.add(type);
+    },
+    pre(state) {
+      const ref = new WeakRef(state);
+
+      LIVE!.add(ref);
+
+      return () => LIVE!.delete(ref);
+    }
+  });
+}
 
 /**
  * Move the members of `next` onto `prev`, which keeps its identity. Returns the
@@ -251,7 +278,7 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
 
   if (patched) rechain();
 
-  for (const state of refresh) if (observer(state)?.ready) event(state, REFRESH);
+  for (const state of refresh) event(state, REFRESH);
 
   for (const event of replace)
     for (const listener of LISTENERS)
