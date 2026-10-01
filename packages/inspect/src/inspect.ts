@@ -2,7 +2,7 @@ import { Caught, Context, State } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 import { isElement } from '@expressive/mvc/runtime';
 
-import { journal, note, noteCall, noteCaught, noteDestroy, notePatch, recordsCalls, type Frame, type Query } from './journal';
+import { journal, note, noteCall, noteCaught, noteDestroy, notePatch, type Frame, type Query } from './journal';
 import { entries, parsePath, project, serialize, walk, type Select } from './serialize';
 import { bracket } from './bracket';
 import { tick, unreached, unsettled, type Act } from './settle';
@@ -53,7 +53,6 @@ const CASES = ['Destroyed', 'Inactive', 'Getter', 'Init', 'Effect'] as const;
 const COPIES = Symbol.for('@expressive/mvc');
 
 type Case = (typeof CASES)[number];
-const wrapped = new WeakMap<State, Set<string>>();
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const wrappers = new WeakMap<State, Instance>();
 const spans = new WeakMap<State, Span>();
@@ -276,6 +275,11 @@ export function attach(Type: typeof State = State): () => void {
   if (!hooks.has(Type)) {
     const observed = new Map<typeof State, () => void>();
     const stopCatch = Type.on({ catch: unhandled });
+    const stopCall = Type.on({
+      call(key, args) {
+        if (key != 'render') noteCall(this, key, args);
+      }
+    });
     const stopSetup = Type.on({
       pre(this: State) {
         const self = this.is;
@@ -291,13 +295,8 @@ export function attach(Type: typeof State = State): () => void {
           span.settled = true;
         }, 0);
         version++;
-        if (recordsCalls()) wrap(self);
         mounts(self);
-        const unpatch = listener(self, () => {
-          unwrap(self);
-          if (recordsCalls()) wrap(self);
-          notePatch(self);
-        }, REFRESH);
+        const unpatch = listener(self, () => notePatch(self), REFRESH);
         const stop = self.set((key) => {
           const store = entries(self);
           if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
@@ -314,10 +313,10 @@ export function attach(Type: typeof State = State): () => void {
         };
       }
     });
-
     hooks.set(Type, () => {
       for (const stop of observed.values()) stop();
       stopCatch();
+      stopCall();
       stopSetup();
     });
   }
@@ -465,10 +464,6 @@ export async function call(address: string, ...args: unknown[]): Promise<unknown
   return serialize(await method.apply(state, args));
 }
 
-export function wrapAll(): void {
-  for (const state of registered()) wrap(state);
-}
-
 /** Observe the host commit: adapters call `mount?.()` once an instance is placed. */
 function mounts(state: State) {
   const target = state as State & { mount?: (...args: unknown[]) => unknown };
@@ -498,46 +493,6 @@ function describe(state: State, parents: Map<State, State>): Model {
   const parent = parents.get(state);
   if (parent) model.parent = String(parent);
   return model;
-}
-
-function wrap(state: State) {
-  let keys = wrapped.get(state);
-  if (!keys) wrapped.set(state, (keys = new Set(['render'])));
-
-  const target = state as unknown as Record<string, Function>;
-
-  for (let proto = Object.getPrototypeOf(state); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
-    for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
-      if (keys.has(key) || typeof desc.get !== 'function' || desc.get !== desc.set) continue;
-
-      keys.add(key);
-
-      target[key] = function (this: unknown, ...args: unknown[]) {
-        noteCall(state, key, args);
-        return latest(state, key).apply(this, args);
-      };
-    }
-}
-
-/** Drop wrappers of methods a hot patch removed. */
-function unwrap(state: State) {
-  const keys = wrapped.get(state);
-
-  if (keys)
-    for (const key of keys)
-      if (key != 'render' && !(key in Object.getPrototypeOf(state))) {
-        delete (state as unknown as Record<string, unknown>)[key];
-        keys.delete(key);
-      }
-}
-
-/** A method's current implementation - through its accessor, so a hot patch is followed. */
-function latest(state: State, key: string): Function {
-  let proto = Object.getPrototypeOf(state);
-
-  while (!Object.prototype.hasOwnProperty.call(proto, key)) proto = Object.getPrototypeOf(proto);
-
-  return Object.getOwnPropertyDescriptor(proto, key)!.get!.call(state);
 }
 
 function ownership(): Map<State, State> {

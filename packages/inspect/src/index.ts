@@ -1,5 +1,5 @@
-import { act, attach, call, clearCaught, detach, find, get, health, Instance, instances, models, orphans, roots, set, tree, wrapAll } from './inspect';
-import { journal as base, type Options } from './journal';
+import { act, attach, call, clearCaught, detach, find, get, health, Instance, instances, models, orphans, roots, set, tree } from './inspect';
+import { journal as base } from './journal';
 import { label, resolve } from './types';
 
 export type { Health, Model, Node } from './inspect';
@@ -12,11 +12,6 @@ export { parsePath, serialize } from './serialize';
 
 export const journal = {
   ...base,
-  record(options?: Options) {
-    const config = base.record(options);
-    if (config.calls && config.level !== 'off') wrapAll();
-    return config;
-  },
   clear() {
     base.clear();
     clearCaught();
