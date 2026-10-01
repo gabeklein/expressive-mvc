@@ -14,4 +14,3 @@ export default State;
 export { Context } from './context';
 export { Component } from './component';
 export { pending } from './dispatch';
-export { Caught } from './caught';

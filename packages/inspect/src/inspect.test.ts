@@ -1,4 +1,4 @@
-import { Caught, State, has, map, set } from '@expressive/mvc';
+import { State, has, map, set } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockUncaught, mockWarn } from '../test.setup';
@@ -377,7 +377,7 @@ describe('health', () => {
       text = '';
     }
 
-    const stop = State.on({ catch: (error) => (error instanceof Caught.Destroyed ? undefined : error) });
+    const stop = State.on({ catch: (error, kind) => (kind == 'Destroyed' ? undefined : error) });
     const late = Late.new();
 
     late.set(null);
@@ -439,7 +439,7 @@ describe('health', () => {
       text = '';
     }
 
-    const stop = State.on({ catch: (error) => (error instanceof Caught.Destroyed ? undefined : error) });
+    const stop = State.on({ catch: (error, kind) => (kind == 'Destroyed' ? undefined : error) });
     const dropped = Dropped.new();
 
     dropped.set(null);
@@ -478,6 +478,30 @@ describe('health', () => {
     expect(health().caught.Destroyed).toBe(0);
   });
 
+  it('will record a thrown value that is not an Error', async () => {
+    const caught = mockUncaught();
+    attach();
+    journal.record({ level: 'keys' });
+
+    class Thrower extends State {
+      value = 0;
+    }
+
+    const thrower = Thrower.new();
+
+    thrower.get(($) => {
+      if ($.value) throw 'bad';
+    });
+
+    thrower.value = 1;
+    await flushMicrotasks();
+
+    expect(caught).toEqual(['bad']);
+    expect(journal.history({ type: 'Thrower' }).map(({ event }) => event.value)).toContainEqual(
+      expect.objectContaining({ case: 'Effect', message: 'bad', stack: undefined, handled: false })
+    );
+  });
+
   it('will count caught reports in the summary', async () => {
     mockUncaught();
     attach();
@@ -491,7 +515,7 @@ describe('health', () => {
     expect(journal.summary({ id: String(note) })[0]).toMatchObject({ caught: 1, destroyed: true });
   });
 
-  it('will record a replacement it has no case for without counting it', async () => {
+  it('will record a replacement under the kind it replaced', async () => {
     const caught = mockUncaught();
     attach();
     journal.record({ level: 'keys' });
@@ -501,18 +525,18 @@ describe('health', () => {
     }
 
     const replaced = Replaced.new();
-    const stop = Replaced.on({ catch: (error) => new Caught(error.state, 'replaced') });
+    const stop = Replaced.on({ catch: () => new Error('replaced') });
 
     replaced.set(null);
     replaced.text = 'late';
     stop();
     await flushMicrotasks();
 
-    expect(health().caught.Destroyed).toBe(0);
+    expect(health().caught.Destroyed).toBe(1);
     expect(journal.history({ type: 'Replaced' }).map(({ event }) => event.value)).toContainEqual(
-      expect.objectContaining({ case: 'Caught', message: 'replaced', handled: false })
+      expect.objectContaining({ case: 'Destroyed', message: 'replaced', handled: false })
     );
-    expect(caught).toEqual([expect.objectContaining({ message: 'replaced' })]);
+    expect(caught).toEqual([]);
   });
 
   it('will count loaded copies of mvc and warn once', () => {

@@ -1,4 +1,4 @@
-import { Caught, Context, State, unbind } from '@expressive/mvc';
+import { Context, State, unbind } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 import { isElement } from '@expressive/mvc/runtime';
 
@@ -49,10 +49,8 @@ const weak = (state: State): Row['ref'] =>
 const live = new Map<string, Row>();
 const hooks = new Map<typeof State, () => void>();
 
-const CASES = ['Destroyed', 'Inactive', 'Getter', 'Init', 'Effect'] as const;
 const COPIES = Symbol.for('@expressive/mvc');
 
-type Case = (typeof CASES)[number];
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const wrappers = new WeakMap<State, Instance>();
 const spans = new WeakMap<State, Span>();
@@ -65,23 +63,23 @@ let tally = counts();
 let copies = 1;
 let unwatch: (() => void) | undefined;
 
-function counts(): Record<Case, number> {
+function counts(): Record<string, number> {
   return { Destroyed: 0, Inactive: 0, Getter: 0, Init: 0, Effect: 0 };
 }
 
-const noted = new WeakMap<Caught, { handled: boolean } | undefined>();
+/** The report `observe` last saw - the chain is synchronous, so `unhandled` checks it against its own. */
+let last: { error: unknown; event?: { handled: boolean } } | undefined;
 
-function observe(error: Caught) {
-  const name = CASES.find((type) => error instanceof Caught[type]);
-  if (name) tally[name]++;
-  noted.set(error, noteCaught(error, name || 'Caught'));
+function observe(this: State, error: unknown, kind: string, key?: string) {
+  tally[kind]++;
+  last = { error, event: noteCaught(this, error, kind, key) };
   return error;
 }
 
-function unhandled(error: Caught) {
-  if (!noted.has(error)) observe(error);
-  const event = noted.get(error);
-  if (event) event.handled = false;
+function unhandled(this: State, error: unknown, kind: string, key?: string) {
+  if (last?.error !== error) observe.call(this, error, kind, key);
+  if (last!.event) last!.event.handled = false;
+  last = undefined;
   return error;
 }
 
@@ -384,8 +382,8 @@ export interface Health {
   collected: number;
   /** Loaded copies of `@expressive/mvc` - more than 1 means inspect cannot see every State. */
   copies: number;
-  /** `Caught` reports by case, including ones an app handler went on to handle; zeroed by `journal.clear()`. */
-  caught: Record<Case, number>;
+  /** Reports by kind, including ones an app handler went on to handle; zeroed by `journal.clear()`. */
+  caught: Record<string, number>;
 }
 
 /** Counts worth a look before trusting what inspect shows. */
