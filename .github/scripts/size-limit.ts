@@ -16,63 +16,63 @@ import { withWorkspaceLinks } from './workspace-links';
  * toolchain drift does not.
  *
  * 10 kB is the line the maintainer cares about: `react: typical app`, the site's
- * headline figure, crossed it at 10.14 kB in 2026-09 (State.on({ catch }), Caught,
+ * headline figure, crossed it at 10.14 kB in 2026-09 (State.on({ catch }), the error-report classes,
  * the copies registry) - further growth there needs a deliberate decision.
  */
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 6470,
+    limit: 6130,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 10150,
+    limit: 9960,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 10190,
+    limit: 10000,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 10970,
+    limit: 10780,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 13110,
+    limit: 12930,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'dom: renderer',
-    limit: 17860,
+    limit: 17680,
     code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
            import { Consumer, Provider, createPortal, lazy, render } from '@expressive/dom';
            console.log(State, Component, Context, Consumer, Provider, createPortal, def, get, has, lazy, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',
-    limit: 20120,
+    limit: 19920,
     code: `import * as mvc from '@expressive/mvc';
            import * as dom from '@expressive/dom';
            console.log(mvc, dom);`
   },
   {
     name: 'router: everything',
-    limit: 13160,
+    limit: 13000,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'inspect: install',
-    limit: 12090,
+    limit: 11700,
     code: `import '@expressive/inspect/install';`
   },
   {
     name: 'react + router',
-    limit: 17280,
+    limit: 17090,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
