@@ -52,6 +52,12 @@ declare namespace Component {
      * letting suspension bubble to an ancestor.
      */
     fallback?: Component.Node;
+
+    /**
+     * Called when this element's content throws, ahead of the class's own
+     * `catch`. A returned promise retries once settled.
+     */
+    catch?: (error: Error, instance: T) => Promise<void> | void;
   }
 
   type StateProps<T extends State> = {
@@ -162,7 +168,7 @@ class Component extends State {
    * await async recovery, or await user interaction before retrying. If you
    * assign a fallback within catch, it will be reverted after resolved.
    */
-  catch?(error: Error): Promise<void> | void;
+  catch?(error: Error, instance: this): Promise<void> | void;
 }
 
 /**

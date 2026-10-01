@@ -335,7 +335,7 @@ function mountComponent(
     ? {
         catch: element.catch || instance.catch ? (error) => {
           const handler = owned && (fiber.props as Placement).catch;
-          return handler ? handler(error, instance) : instance.catch!(error);
+          return (handler || instance.catch)!.call(instance, error, instance);
         } : undefined,
         fallback: () => {
           const placed = owned ? (fiber.props as Placement).fallback : undefined;
