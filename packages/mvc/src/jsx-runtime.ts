@@ -1,5 +1,15 @@
 import type { Component } from './component';
-import type { State } from './state';
+import type { State } from '@expressive/mvc';
+
+declare module '@expressive/mvc' {
+  namespace State {
+    /** JSX attributes of a State with no `props` member: its settable fields, `is`, and what `render` accepts. */
+    type Props<T extends State> =
+      & Component.StateProps<T>
+      & { is?: (instance: T) => void }
+      & Component.RenderProps<T extends { render: infer R } ? R : never>;
+  }
+}
 
 /**
  * Per-adapter interpretation manifest. Each adapter augments this interface to
@@ -161,7 +171,7 @@ export declare namespace JSX {
   type LibraryManagedAttributes<C, P> =
     C extends abstract new (...args: any[]) => infer I
       ? I extends { props: infer Q } ? Q
-      : I extends State ? Component.Attributes<I>
+      : I extends State ? State.Props<I>
       : P
       : P;
   interface ElementChildrenAttribute { children: {} }

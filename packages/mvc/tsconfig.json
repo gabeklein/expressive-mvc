@@ -9,7 +9,22 @@
     "noUnusedLocals": true,
     "strict": true,
     "types": [],
-    "lib": ["ES2023", "dom"]
+    "lib": [
+      "ES2023",
+      "dom"
+    ],
+    "paths": {
+      "@expressive/mvc": [
+        "./src/index.ts"
+      ],
+      "@expressive/mvc/*": [
+        "./src/*"
+      ]
+    }
   },
-  "exclude": ["node_modules", "dist", "vitest.config.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "vitest.config.ts"
+  ]
 }

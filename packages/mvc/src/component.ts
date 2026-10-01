@@ -65,12 +65,6 @@ declare namespace Component {
     & StateProps<T>
     & BaseProps<T>
     & RenderProps<T['render']>;
-
-  /** JSX attributes of a State with no `props` member: its settable fields, `is`, and what `render` accepts. */
-  type Attributes<T extends State> =
-    & StateProps<T>
-    & { is?: (instance: T) => void }
-    & RenderProps<T extends { render: infer R } ? R : never>;
 }
 
 class Component extends State {
