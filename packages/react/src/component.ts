@@ -104,7 +104,7 @@ function createFrame(from: Component, context: Context, children: unknown) {
 
   children = createProvider(context, children);
 
-  return from.catch
+  return from.props.catch || from.catch
     ? createElement(Runtime.ErrorBoundary, { self: from, children })
     : children;
 }

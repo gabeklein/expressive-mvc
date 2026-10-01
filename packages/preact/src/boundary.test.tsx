@@ -73,6 +73,101 @@ describe('error boundary', () => {
     expect(screen).toHaveText('Recovered');
   });
 
+  it('will recover through a catch attribute', async () => {
+    let shouldThrow = true;
+    let resolve!: () => void;
+    let instance!: Boundary;
+    const received = vi.fn();
+
+    const MaybeThrows = () => {
+      if (shouldThrow) throw new Error('boom');
+      return <span>Recovered</span>;
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      render() {
+        return <MaybeThrows />;
+      }
+    }
+
+    render(
+      <Boundary
+        is={(value) => (instance = value)}
+        catch={async (error, self) => {
+          received(error.message, self);
+          await new Promise<void>((r) => {
+            resolve = r;
+          });
+          shouldThrow = false;
+        }}
+      />
+    );
+
+    expect(screen).toHaveText('Oops');
+    expect(received).toHaveBeenCalledWith('boom', instance);
+
+    await act(async () => resolve());
+    await settle();
+
+    expect(screen).toHaveText('Recovered');
+  });
+
+  it('will prefer a catch attribute over the member', () => {
+    const member = vi.fn();
+    const attribute = vi.fn(() => new Promise<void>(() => {}));
+
+    const Throws = () => {
+      throw new Error('boom');
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      catch(error: Error, self: this) {
+        member(error.message, self);
+        return new Promise<void>(() => {});
+      }
+
+      render() {
+        return <Throws />;
+      }
+    }
+
+    render(<Boundary catch={attribute} />);
+
+    expect(screen).toHaveText('Oops');
+    expect(attribute).toHaveBeenCalled();
+    expect(member).not.toHaveBeenCalled();
+  });
+
+  it('will pass the instance to a member catch', () => {
+    const member = vi.fn();
+    let instance!: Boundary;
+
+    const Throws = () => {
+      throw new Error('boom');
+    };
+
+    class Boundary extends Component {
+      fallback = (<span>Oops</span>);
+
+      catch(error: Error, self: this) {
+        member(error.message, self);
+        return new Promise<void>(() => {});
+      }
+
+      render() {
+        return <Throws />;
+      }
+    }
+
+    render(<Boundary is={(value) => (instance = value)} />);
+
+    expect(member).toHaveBeenCalledWith('boom', instance);
+  });
+
   it('will restore fallback after catch resolves', async () => {
     let throwing: any = new Error('boom');
     let resolve!: () => void;
