@@ -1,3 +1,4 @@
+import { owner } from './adapter';
 import type { Scope } from './adapter';
 import { schedule } from './scheduler';
 
@@ -17,6 +18,13 @@ function latest(type: Function) {
 /** Whether two element types are one component, across hot edits. */
 function same(a: unknown, b: unknown) {
   if (a === b) return true;
+
+  const sub = owner(a);
+
+  if (sub) {
+    const other = owner(b);
+    return !!other && other.owner === sub.owner && other.key === sub.key;
+  }
 
   const family = typeof a == 'function' && FAMILY.get(a);
 
