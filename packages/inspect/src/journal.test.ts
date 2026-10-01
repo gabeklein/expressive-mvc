@@ -1,5 +1,5 @@
 import { State, unbind } from '@expressive/mvc';
-import { hot } from '@expressive/mvc/runtime';
+import { hot } from '@expressive/mvc/jsx-runtime';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockWarn } from '../test.setup';

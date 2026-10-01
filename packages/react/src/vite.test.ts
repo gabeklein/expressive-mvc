@@ -100,7 +100,7 @@ it('will name a module by its path from the project root', async () => {
 it('will append the binding and keep source maps', async () => {
   const { code, map } = (await transform('class A {}', '/src/app.js?t=123'))!;
 
-  expect(code).toContain(`import { hot as __expressive } from '@expressive/mvc/runtime';`);
+  expect(code).toContain(`import { hot as __expressive } from '@expressive/mvc/jsx-runtime';`);
   expect(code).toContain('__expressive.accept("/src/app.js", { A })');
   expect(code).toContain('import.meta.hot.accept(');
   expect(map).toBeNull();

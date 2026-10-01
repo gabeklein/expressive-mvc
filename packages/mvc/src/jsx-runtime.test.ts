@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks } from '../test.setup';
 import { State } from './state';
 
-import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './runtime';
+import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './jsx-runtime';
 import { enqueue, pending } from './dispatch';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
-import * as compat from './jsx-runtime';
-import type { HostRuntime } from './runtime';
+import * as entry from './jsx-runtime';
+import type { HostRuntime } from './jsx-runtime';
 
 const HOST_FRAGMENT = Symbol('host.Fragment');
 
@@ -143,11 +143,11 @@ describe('introspection', () => {
 });
 
 describe('jsx-runtime module', () => {
-  it('will carry exactly the transform contract', () => {
-    expect(Object.keys(compat).sort()).toEqual(['Fragment', 'jsx', 'jsxs']);
-    expect(compat.jsx).toBe(jsx);
-    expect(compat.jsxs).toBe(jsxs);
-    expect(compat.Fragment).toBe(Fragment);
+  it('will carry transform contract and host seams', () => {
+    expect(Object.keys(entry).sort()).toEqual([
+      'Fragment', 'childrenOf', 'host', 'hot', 'isElement',
+      'jsx', 'jsxDEV', 'jsxs', 'propsOf', 'typeOf'
+    ]);
   });
 
   it('will wait on a subscriber which claims absorption', async () => {

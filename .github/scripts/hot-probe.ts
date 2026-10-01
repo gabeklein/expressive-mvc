@@ -1119,7 +1119,7 @@ export class Session extends Base {
   });
 
   const runner = createServerModuleRunner(vite.environments.ssr, { hmr: { logger: false } });
-  const { hot } = await runner.import('@expressive/mvc/runtime');
+  const { hot } = await runner.import('@expressive/mvc/jsx-runtime');
   const sessions = new Map<string, any>();
   const replaced: string[] = [];
 

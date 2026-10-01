@@ -121,7 +121,7 @@ function inject(id: string, body: Node[], ssr = false) {
 
   if (classes.length)
     lines.push(
-      `import { hot as __expressive } from '@expressive/mvc/runtime';`,
+      `import { hot as __expressive } from '@expressive/mvc/jsx-runtime';`,
       '{',
       `  const __hot = __expressive.accept(${JSON.stringify(id)}, { ${list} });`,
       ...classes.map((name) => `  ${name} = __hot.${name};`),
@@ -168,7 +168,7 @@ export default function expressive(): Plugin {
       if (!SOURCE.test(file) || file.includes('/node_modules/')) return;
 
       runtime ||= Promise.all(
-        ['@expressive/mvc/runtime', '@expressive/dom/jsx-dev-runtime'].map((entry) =>
+        ['@expressive/mvc/jsx-runtime', '@expressive/dom/jsx-dev-runtime'].map((entry) =>
           this.resolve(entry).then((found) => found && dirname(found.id))
         )
       );

@@ -1,7 +1,7 @@
 import { Component, Context } from '@expressive/mvc';
 import { has, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
-import { Fragment } from '@expressive/mvc/runtime';
+import { Fragment } from '@expressive/mvc/jsx-runtime';
 
 import { commit, dispose, enter } from './adapter';
 import { latest, same, track, untrack } from './hot';

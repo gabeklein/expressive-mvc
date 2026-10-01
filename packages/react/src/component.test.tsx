@@ -4,7 +4,7 @@ import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
-import { hot } from '@expressive/mvc/runtime';
+import { hot } from '@expressive/mvc/jsx-runtime';
 import { Component, Consumer, State, pending, set } from '.';
 
 it('will create and provide instance', () => {

@@ -1,6 +1,6 @@
 import { Context, State, unbind } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
-import { isElement } from '@expressive/mvc/runtime';
+import { isElement } from '@expressive/mvc/jsx-runtime';
 
 import { journal, note, noteCall, noteCaught, noteDestroy, notePatch, type Frame, type Query } from './journal';
 import { entries, parsePath, project, serialize, walk, type Select } from './serialize';

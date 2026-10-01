@@ -1,5 +1,5 @@
 import { Context, State } from '@expressive/mvc';
-import { host } from '@expressive/mvc/runtime';
+import { host } from '@expressive/mvc/jsx-runtime';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks } from '../test.setup';

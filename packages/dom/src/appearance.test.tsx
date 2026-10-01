@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Component } from '@expressive/mvc';
 import { macro, render, style } from './index';
-import { hot } from '@expressive/mvc/runtime';
+import { hot } from '@expressive/mvc/jsx-runtime';
 import { flushMicrotasks } from '../test.setup';
 import { createAppearanceRoute, createStyleScope, resolveAppearance } from './appearance';
 import { applyDeclarations } from './declarations';

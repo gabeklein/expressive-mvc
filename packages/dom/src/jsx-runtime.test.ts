@@ -8,7 +8,7 @@ import {
   jsxs as coreJsxs,
   propsOf,
   typeOf
-} from '@expressive/mvc/runtime';
+} from '@expressive/mvc/jsx-runtime';
 
 import './jsx-runtime';
 import { jsxDEV } from './jsx-dev-runtime';
