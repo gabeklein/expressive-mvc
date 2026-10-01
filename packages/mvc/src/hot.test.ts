@@ -299,8 +299,8 @@ describe('accept', () => {
         }
       }
 
-      Test.on(() => {});
-      Test.on({ after() {} });
+      Test.on({ pre: () => {} });
+      Test.on({ new() {} });
       Test.on({
         type(type) {
           if (Object.getOwnPropertyDescriptor(type.prototype, 'Sealed')!.configurable)
@@ -342,12 +342,14 @@ describe('accept', () => {
 
     const Test = version('before');
 
-    Test.on((self) => {
-      Object.defineProperty(self, 'label', {
-        configurable: true,
-        get: () => () => 'own',
-        set: received
-      });
+    Test.on({
+      pre(self) {
+        Object.defineProperty(self, 'label', {
+          configurable: true,
+          get: () => () => 'own',
+          set: received
+        });
+      }
     });
 
     accept(id, { Test });
@@ -365,14 +367,14 @@ describe('accept', () => {
 
     const version = (handler?: () => void) => {
       class Test extends State {}
-      if (handler) Test.on(handler);
+      if (handler) Test.on({ pre: handler });
       return Test;
     };
 
     const Test = version(before);
 
     accept(id, { Test });
-    Test.on(outside);
+    Test.on({ pre: outside });
     accept(id, { Test: version(after) });
     Test.new();
 
@@ -387,7 +389,7 @@ describe('accept', () => {
 
     const version = (handler?: () => void) => {
       class Test extends State {}
-      if (handler) Test.on(handler);
+      if (handler) Test.on({ pre: handler });
       return Test;
     };
 
