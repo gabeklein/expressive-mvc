@@ -753,3 +753,21 @@ describe('dispatch', () => {
     expect(settled).toEqual(['first', 'second']);
   });
 });
+
+describe('without State', () => {
+  it('will let a handler error escape as thrown', async () => {
+    vi.resetModules();
+
+    const { enqueue } = await vi.importActual<typeof import('./dispatch')>('./dispatch');
+    const caught = mockUncaught();
+    const oops = new Error('oops');
+
+    enqueue(() => {
+      throw oops;
+    }, undefined, {});
+
+    await flushMicrotasks();
+
+    expect(caught).toEqual([oops]);
+  });
+});

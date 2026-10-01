@@ -1,5 +1,6 @@
 import { Context, join } from './context';
 import { Caught } from './caught';
+import { REPORT } from './dispatch';
 import {
   capture,
   event,
@@ -1142,27 +1143,20 @@ function report(caught: Caught) {
   try {
     for (const handler of handlers) if (!(error = handler.call(caught.state, error))) return;
   } catch (err) {
-    return escape(err);
+    return REPORT.error(err);
   }
 
   if (error instanceof Caught.Destroyed) return;
   if (error.warning) console.warn(error);
-  else escape(error);
+  else REPORT.error(error);
 }
 
-function escape(err: unknown) {
-  queueMicrotask(() => {
-    throw err;
-  });
-}
-
-/** Error thrown by a handler replaying in dispatch, attributed to the State which queued it. */
-function fault(err: unknown, owner?: object) {
+REPORT.as = (kind, owner, cause) => {
   const state = owner instanceof State ? owner : owner && PARENT.get(owner);
 
-  if (state) report(new Caught.Effect(state, err));
-  else escape(err);
-}
+  if (state) report(new Caught.Effect(state, cause));
+  else REPORT.error(cause);
+};
 
 /**
  * Hand a value stored by an owning writer to that property's adopter,
@@ -1358,4 +1352,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, fault, patch, track, handlers };
+export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, patch, track, handlers };
