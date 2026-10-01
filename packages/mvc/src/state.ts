@@ -141,7 +141,7 @@ declare namespace State {
      * Passed off the end, a destroyed write outputs nothing, `Inactive` warns,
      * anything else escapes uncaught.
      */
-    catch?(this: T, error: unknown, kind: string, key?: string): unknown;
+    catch?(this: T, error: unknown, kind: 'Effect' | 'Getter' | 'Init' | 'Destroyed' | 'Inactive', key?: string): unknown;
   }
 
   /** Object overlay to override values and methods on a state. */
@@ -1133,7 +1133,7 @@ function update<T>(
  * the end, a destroyed write outputs nothing, `Inactive` warns, anything else escapes uncaught;
  * so does a handler's throw.
  */
-function report(kind: string, owner: object | undefined, error: unknown, key?: string) {
+function report(kind: Parameters<NonNullable<State.On['catch']>>[1], owner: object | undefined, error: unknown, key?: string) {
   const state = owner instanceof State ? owner : owner && PARENT.get(owner);
 
   if (!state) return REPORT.error(error);

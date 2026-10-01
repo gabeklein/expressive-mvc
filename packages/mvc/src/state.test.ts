@@ -3770,6 +3770,13 @@ describe('on catch stage (static)', () => {
     const handler = vi.fn();
 
     Test.on({ catch: handler });
+    Test.on({
+      catch(error, kind) {
+        // @ts-expect-error - not a kind
+        if (kind == 'Unknown') return;
+        return error;
+      }
+    });
 
     const test = Test.new();
 

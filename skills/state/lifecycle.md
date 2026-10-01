@@ -132,7 +132,7 @@ state.get((current) => {
 
 ## Error Handling
 
-What mvc does not throw it hands to `catch` handlers on the class chain - [State.on()](state.md#stateon) - as what was thrown, with its `kind` and `key` where one applies. Unhandled: a destroyed write outputs nothing, `Inactive` warns, anything else escapes uncaught (fails a test run, crashes a Node process).
+An instance failing out of turn - not at a call that could catch it - reaches the `catch` stage of [State.on()](state.md#stateon) on its class chain, as what was thrown, with its `kind` and `key` where one applies. Unhandled: a destroyed write outputs nothing, `Inactive` warns, anything else escapes uncaught (fails a test run, crashes a Node process).
 
 | `kind`      | `error`                       | When                                                                   |
 | ----------- | ----------------------------- | ---------------------------------------------------------------------- |
