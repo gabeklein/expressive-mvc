@@ -49,42 +49,32 @@ Counter.is(subCounter); // true if subCounter extends Counter
 
 ### `State.on(handler)`
 
-Register a lifecycle handler for this class and its subclasses. Returns a function to remove the handler.
-
-The bare-function form is per-instance setup:
+Register lifecycle handlers, keyed by phase, for this class and its subclasses. Returns a function to remove them.
 
 ```ts
-const stop = Counter.on(function (this: Counter) {
-  // runs for every Counter constructed
-  return () => {
-    /* per-instance cleanup */
-  };
+const stop = Counter.on({
+  type(T) {
+    /* once per class, at bootstrap */
+  },
+  pre() {
+    /* per instance, before own values are observed */
+    return () => {
+      /* per-instance cleanup */
+    };
+  },
+  new() {
+    /* per instance, with the instance's new() */
+  }
 });
 ```
 
 Handlers run ancestor-first. The same handler registered on a parent and child only runs once.
 
-Pass an object to hook by phase instead:
-
-```ts
-Counter.on({
-  type(T) {
-    /* once per class, at bootstrap */
-  },
-  before() {
-    /* per instance - same slot as the bare form */
-  },
-  after() {
-    /* per instance, at the new() slot */
-  }
-});
-```
-
-Activation is a queue: `before` handlers, then own fields become managed, then constructor args and the `new()` hook, then `after` handlers, then context registration. So each phase means:
+Activation is a queue: `pre` handlers, then own fields become managed, then constructor args and the `new()` hook, then `new` handlers, then context registration. So each phase means:
 
 - `type` - runs once when the class first bootstraps, before its members are classified and bound. Receives the class itself, so a handler can inspect or reshape the prototype first. Registered on a base class, it runs for each subclass too.
-- `before` - per-instance, before properties are observed and before `new()`. A bare function passed to `on` is sugar for `{ before }`. May return a cleanup, further constructor args, or an object of values to assign.
-- `after` - per-instance, at the `new()` slot - own values are observed and constructor args applied by then. May return a cleanup.
+- `pre` - per-instance, before properties are observed and before `new()`. May return a cleanup, further constructor args, or an object of values to assign.
+- `new` - per-instance, with the instance's `new()` - own values are observed and constructor args applied by then. May return a cleanup.
 
 ### `State.use(...args)` <small>(React)</small>
 
