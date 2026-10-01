@@ -1,4 +1,5 @@
 import type { Component } from './component';
+import type { State } from './state';
 
 /**
  * Per-adapter interpretation manifest. Each adapter augments this interface to
@@ -145,12 +146,24 @@ export declare namespace JSX {
     | ((props: any) => Component.Node)
     | (abstract new (...args: any[]) => ElementClass);
   /**
-   * Gates class element types on the `render` contract alone - requiring full
+   * Any State renders as a class element - one with `render` produces content,
+   * one without passes children through and provides itself. Requiring full
    * `Component` assignability trips contravariance on `props` members (e.g.
    * the `is` callback narrows per subclass), rejecting every subclass.
    */
-  interface ElementClass { render(props?: any): Component.Node }
-  interface ElementAttributesProperty { props: {} }
+  interface ElementClass extends State { render?(props?: any): Component.Node }
+  /**
+   * Empty, so a class element's attributes resolve from its instance type and
+   * {@link LibraryManagedAttributes} picks `props` when declared, else derives
+   * them from the State.
+   */
+  interface ElementAttributesProperty {}
+  type LibraryManagedAttributes<C, P> =
+    C extends abstract new (...args: any[]) => infer I
+      ? I extends { props: infer Q } ? Q
+      : I extends State ? Component.Attributes<I>
+      : P
+      : P;
   interface ElementChildrenAttribute { children: {} }
   interface IntrinsicAttributes { key?: string | number | null }
   /**
