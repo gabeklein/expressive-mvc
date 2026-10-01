@@ -12,5 +12,5 @@ export { State, unbind } from './state';
 /** @deprecated Import `{ State }` as a named export. Adapter-augmented `State.*` types are not visible through the default alias. */
 export default State;
 export { Context } from './context';
-export { Component, composed, toJSX } from './component';
+export { Component } from './component';
 export { pending } from './dispatch';

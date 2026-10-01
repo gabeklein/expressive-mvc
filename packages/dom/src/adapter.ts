@@ -1,5 +1,6 @@
-import { Context, State, toJSX } from '@expressive/mvc';
+import { Context, State } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
+import { toJSX } from '@expressive/mvc/jsx-runtime';
 
 import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';

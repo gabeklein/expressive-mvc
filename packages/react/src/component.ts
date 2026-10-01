@@ -1,4 +1,5 @@
-import { Component, toJSX } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
+import { toJSX } from '@expressive/mvc/jsx-runtime';
 import { createProvider, type Context } from './context';
 import { Runtime, useWatch } from './runtime';
 
