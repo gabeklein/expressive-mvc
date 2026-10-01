@@ -105,6 +105,35 @@ describe('MVC adapter', () => {
     expect(local.get(null)).toBe(true);
   });
 
+  it('will provide a State.use instance to descendants', async () => {
+    class Session extends State {
+      name = 'Ada';
+    }
+
+    let session!: Session;
+
+    function Leaf() {
+      return <b>{Session.get().name}</b>;
+    }
+
+    function Sibling() {
+      return <i>{Session.get(false) ? 'leak' : 'none'}</i>;
+    }
+
+    function Host() {
+      session = Session.use();
+      return <Leaf />;
+    }
+
+    const root = document.createElement('main');
+    render(<><Host /><Sibling /></>, root);
+    expect(root.textContent).toBe('Adanone');
+
+    session.name = 'Grace';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('Gracenone');
+  });
+
   it('will call a State use method on every render', async () => {
     const calls: number[] = [];
 
