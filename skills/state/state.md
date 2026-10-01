@@ -204,7 +204,7 @@ const stop = Counter.on({
 - Handlers run ancestor-first; one registered on both parent and child runs once.
 - Tooling and development use - introspection and hard interrupts:
   - `bind(key, fn)` runs, `this` the instance, each time a method binds - first read, an assigned replacement (through `set()`, or `=` before first read), the rebind after a hot patch; `fn` is the bound function.
-  - `call(key, args)` runs before every method call; a throw aborts the call, synchronously even for an async method. Any `call` handler wraps every method of its class - without one, methods bind natively at no per-call cost.
+  - `invoke(key, args)` runs before every method call; a throw aborts the call, synchronously even for an async method. Any `invoke` handler wraps every method of its class - without one, methods bind natively at no per-call cost.
   - A handler registered later misses existing bindings.
 - `catch(error)` receives each `Caught` mvc reports for the class ([lifecycle.md](lifecycle.md#error-handling)), `this` the instance - like nested `catch` blocks: most-derived class first, last registered first. Return the error (or a replacement `Caught`) to pass it on; return nothing to handle it; throw to escape uncaught at once - to the writer for a destroyed write. Passed off the end, a warning logs and anything else is thrown - to the writer for a destroyed write, otherwise uncaught.
 

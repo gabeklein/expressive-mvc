@@ -3618,7 +3618,7 @@ describe('on bind stage (static)', () => {
     expect(handler).toBeCalledTimes(1);
   });
 
-  it('will bind natively without a call handler', () => {
+  it('will bind natively without an invoke handler', () => {
     class Test extends State {
       foo() {}
     }
@@ -3662,7 +3662,7 @@ describe('on bind stage (static)', () => {
     const bind = vi.fn();
     const call = vi.fn();
 
-    Test.on({ bind, call });
+    Test.on({ bind, invoke: call });
 
     const test = Test.new();
 
@@ -3739,7 +3739,7 @@ describe('on bind stage (static)', () => {
   });
 });
 
-describe('on call stage (static)', () => {
+describe('on invoke stage (static)', () => {
   it('will run before each call with key and arguments', () => {
     const order: unknown[] = [];
 
@@ -3750,16 +3750,21 @@ describe('on call stage (static)', () => {
       }
     }
 
-    const handler = vi.fn((key: string, args: unknown[]) => void order.push([key, ...args]));
+    let context: Test | undefined;
 
-    Test.on({ call: handler });
+    Test.on({
+      invoke(key, args) {
+        context = this;
+        order.push([key.toUpperCase(), ...args]);
+      }
+    });
 
     const test = Test.new();
     const { foo } = test;
 
     expect(foo(1, 2)).toBe(3);
-    expect(order).toEqual([['foo', 1, 2], 'call']);
-    expect(handler.mock.contexts[0]).toBe(test);
+    expect(order).toEqual([['FOO', 1, 2], 'call']);
+    expect(context).toBe(test);
   });
 
   it('will abort the call if a handler throws', () => {
@@ -3772,7 +3777,7 @@ describe('on call stage (static)', () => {
     }
 
     Test.on({
-      call() {
+      invoke() {
         throw new Error('blocked');
       }
     });
@@ -3791,7 +3796,7 @@ describe('on call stage (static)', () => {
     class Sub extends Base {}
 
     const order: string[] = [];
-    const tag = (name: string) => ({ call: () => void order.push(name) });
+    const tag = (name: string) => ({ invoke: () => void order.push(name) });
     const shared = tag('shared');
 
     Base.on(tag('base'));
@@ -3811,7 +3816,7 @@ describe('on call stage (static)', () => {
     const bind = vi.fn();
     const call = vi.fn();
 
-    Test.on({ bind, call });
+    Test.on({ bind, invoke: call });
 
     const test = Test.new();
 
@@ -3826,7 +3831,7 @@ describe('on call stage (static)', () => {
       foo() {}
     }
 
-    Test.on({ call: () => {} });
+    Test.on({ invoke: () => {} });
 
     expect(Test.new().foo.name).toBe('bound foo');
   });
