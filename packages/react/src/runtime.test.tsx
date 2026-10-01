@@ -587,3 +587,37 @@ describe('pending teardown', () => {
     expect(settled).toBe(true);
   });
 });
+
+describe('useReap', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('will not reap without FinalizationRegistry', async () => {
+    vi.resetModules();
+    vi.stubGlobal('FinalizationRegistry', undefined);
+
+    const { State } = await import('.');
+
+    class Test extends State {
+      value = 'foo';
+    }
+
+    const Child = () => <>{Test.use().value}</>;
+    const element = render(<Child />);
+
+    expect(element.container.textContent).toBe('foo');
+    element.unmount();
+  });
+
+  it('will hold fiber without WeakRef', () => {
+    const instance = new Component();
+    const fiber = {};
+
+    vi.stubGlobal('WeakRef', undefined);
+    Reflect.set(instance, '_reactInternals', fiber);
+    vi.unstubAllGlobals();
+
+    expect(Reflect.get(instance, '_reactInternals')).toBe(fiber);
+  });
+});

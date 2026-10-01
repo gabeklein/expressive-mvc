@@ -170,6 +170,32 @@ describe('BrowserRouter', () => {
   });
 });
 
+describe('history patch', () => {
+  it('notices external pushState after an earlier router is destroyed', () => {
+    location('/');
+
+    const first = new Context({ BrowserRouter });
+    const second = new Context({ BrowserRouter });
+
+    first.pop();
+    act(() => window.history.pushState(null, '', '/after'));
+
+    expect(second.get(BrowserRouter).path).toBe('/after');
+    second.pop();
+  });
+
+  it('will restore history once every router is destroyed', () => {
+    const { pushState, replaceState } = window.history;
+    const router = BrowserRouter.new();
+
+    expect(window.history.pushState).not.toBe(pushState);
+    router.set(null);
+
+    expect(window.history.pushState).toBe(pushState);
+    expect(window.history.replaceState).toBe(replaceState);
+  });
+});
+
 describe('navigation settlement', () => {
   it('does not report the initial browser synchronization as navigation', () => {
     location('/initial?x=1#intro');

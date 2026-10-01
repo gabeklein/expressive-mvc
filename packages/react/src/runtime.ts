@@ -18,12 +18,17 @@ interface Setup {
   lapsed?: boolean;
   commit?: () => (() => void) | void;
   release?: (() => void) | void;
+  teardown?: () => void;
 }
 
 interface Hook<T> extends Setup {
   queued?: boolean;
-  update?: (next: (previous: number) => number) => void;
+  update?: Weak<(next: (previous: number) => number) => void>;
   output: T;
+}
+
+interface Weak<T> {
+  deref(): T | undefined;
 }
 
 export const Runtime = {} as {
@@ -54,7 +59,7 @@ export const Runtime = {} as {
 
 const noop = () => () => {};
 
-export function useFactory<T extends Function>(factory: () => T) {
+export function useFactory<T extends object>(factory: () => T) {
   const ref = Runtime.useRef<T | null>(null);
   return ref.current || (ref.current = factory());
 }
@@ -102,7 +107,8 @@ export function useSettle(tick: number) {
  * @returns The hook's own record, plus the render counter and its setter.
  */
 export function useSetup<T extends Setup>(
-  init: (self: T, reset: () => void) => () => (() => void) | void
+  init: (self: T, reset: () => void) => () => (() => void) | void,
+  teardown?: () => void
 ) {
   const { current } = Runtime.useRef({ rendered: 0, revision: 0 } as T);
 
@@ -114,6 +120,8 @@ export function useSetup<T extends Setup>(
 
     return current.rendered++;
   });
+
+  useReap(current, teardown);
 
   const getRevision = (current.getRevision ||= () => current.revision);
 
@@ -136,19 +144,50 @@ export function useSetup<T extends Setup>(
 
     return () => {
       if (!current.fresh) {
-        if (--current.rendered <= 0) current.release?.();
+        if (--current.rendered <= 0) release(current);
         return;
       }
 
       current.lapsed = true;
 
       queueMicrotask(() => {
-        if (current.lapsed) current.release?.();
+        if (current.lapsed) release(current);
       });
     }
   }, []);
 
   return [current, tick, update] as const;
+}
+
+function release(setup: Setup) {
+  setup.release?.();
+  setup.teardown?.();
+}
+
+let reaper: FinalizationRegistry<Setup> | null | undefined;
+
+function useReap(setup: Setup, teardown?: () => void) {
+  const token = Runtime.useRef<object | null>(null);
+
+  if (!teardown || setup.teardown) return;
+
+  setup.teardown = teardown;
+
+  if (reaper === undefined)
+    reaper = typeof FinalizationRegistry == 'function'
+      ? new FinalizationRegistry((setup) => setup.mounted || setup.teardown!())
+      : null;
+
+  reaper?.register((token.current = {}), setup);
+}
+
+export function weak<T extends object>(value: T): Weak<T> {
+  return typeof WeakRef == 'function' ? new WeakRef(value) : { deref: () => value };
+}
+
+export function useWeak<T extends object>(value: T) {
+  const ref = Runtime.useRef<Weak<T> | null>(null);
+  return (ref.current ||= weak(value));
 }
 
 /**
@@ -162,7 +201,8 @@ export function useHook<T = void>(
   callback: (
     refresh: (next: T) => void,
     reset: () => void
-  ) => () => (() => void) | void
+  ) => () => (() => void) | void,
+  teardown?: () => void
 ) {
   const [current, tick, update] = useSetup<Hook<T>>((self, reset) => {
     const mount = callback((next) => {
@@ -170,7 +210,7 @@ export function useHook<T = void>(
 
       if (self.mounted) {
         claim();
-        self.update?.((x) => x + 1);
+        self.update?.deref()!((x) => x + 1);
       }
       else if (self.update) self.queued = true;
     }, reset);
@@ -180,23 +220,24 @@ export function useHook<T = void>(
 
       if (self.queued) {
         self.queued = false;
-        self.update!((x) => x + 1);
+        self.update!.deref()!((x) => x + 1);
       }
 
       return cleanup;
     };
-  });
+  }, teardown);
 
   const claim = useSettle(tick);
 
-  current.update = update;
+  current.update ||= weak(update);
 
   return current.output;
 }
 
 export function useWatch<T extends object>(
   from: T,
-  mount?: () => (() => void) | void
+  mount?: () => (() => void) | void,
+  teardown?: () => void
 ) {
   return useHook<T>((refresh, reset) => {
     const release = watch(from, (current) => {
@@ -212,8 +253,8 @@ export function useWatch<T extends object>(
 
       return () => {
         release();
-        cleanup?.();
+        if (typeof cleanup == 'function') cleanup();
       };
     };
-  }) ?? from;
+  }, teardown) ?? from;
 }

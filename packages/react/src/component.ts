@@ -144,6 +144,10 @@ function render(from: Component, context: Context) {
   const { createElement } = Runtime;
   const { commit, remove } = Runtime.dedupe(from, context);
   const { is: owner, render } = from;
+  const teardown = () => {
+    remove();
+    context.pop();
+  };
 
   const Render = () => render.call(from, from.props);
   const Component = () => {
@@ -152,12 +156,8 @@ function render(from: Component, context: Context) {
 
       commit();
 
-      return () => {
-        if (typeof release == 'function') release();
-        remove();
-        context.pop();
-      };
-    });
+      return release;
+    }, teardown);
 
     return createFrame(from, context, createElement(Render));
   };

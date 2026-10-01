@@ -1,9 +1,9 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
-import { vi, expect, it, describe } from 'vitest';
+import { beforeEach, vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
+import { collect, mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
 import { hot } from '@expressive/mvc/runtime';
 import { Component, Consumer, State, pending, set } from '.';
 
@@ -1774,5 +1774,85 @@ describe('strict mode', () => {
     expect(order).toEqual(['construct', 'construct', 'init']);
 
     element.unmount();
+  });
+});
+
+describe('abandoned render', () => {
+  const live = new Set<object>();
+
+  class Test extends Component {
+    new() {
+      live.add(this);
+      return () => live.delete(this);
+    }
+  }
+
+  function suspense() {
+    const promise = mockPromise<void>();
+    let done = false;
+
+    const Wait = () => {
+      if (!done) throw promise.then(() => (done = true));
+      return null;
+    };
+
+    return { Wait, resolve: () => promise.resolve() };
+  }
+
+  beforeEach(() => live.clear());
+
+  it('will destroy attempts superseded by a commit', async () => {
+    const { Wait, resolve } = suspense();
+
+    render(
+      <Suspense fallback={null}>
+        <Test />
+        <Wait />
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+    await act(collect);
+
+    expect(live.size).toBe(1);
+  });
+
+  it('will destroy a first mount removed while suspended', async () => {
+    const { Wait } = suspense();
+    const element = render(
+      <Suspense fallback={null}>
+        <Test />
+        <Wait />
+      </Suspense>
+    );
+
+    element.rerender(null);
+    await act(collect);
+
+    expect(live.size).toBe(0);
+  });
+
+  it('will destroy a dropped transition render', async () => {
+    const { Wait } = suspense();
+    let show!: (shown: boolean) => void;
+
+    const App = () => {
+      const [shown, setShown] = React.useState(false);
+      show = setShown;
+
+      return (
+        <Suspense fallback={null}>
+          {shown && <><Test /><Wait /></>}
+        </Suspense>
+      );
+    };
+
+    render(<App />);
+
+    await act(async () => React.startTransition(() => show(true)));
+    await act(async () => React.startTransition(() => show(false)));
+    await act(collect);
+
+    expect(live.size).toBe(0);
   });
 });

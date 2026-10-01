@@ -12,7 +12,7 @@ import {
 
 import { act, render, screen } from '@testing-library/react';
 import { State, Consumer, Context, get, Provider, set } from '.';
-import { flushMicrotasks } from '../test.setup';
+import { collect, flushMicrotasks, mockPromise } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
 
@@ -1217,5 +1217,63 @@ describe('root global', () => {
     );
 
     instance.set(null);
+  });
+});
+
+describe('abandoned render', () => {
+  const live = new Set<State>();
+
+  class Test extends State {
+    new() {
+      live.add(this);
+      return () => live.delete(this);
+    }
+  }
+
+  function suspense() {
+    const promise = mockPromise<void>();
+    let done = false;
+
+    const Wait = () => {
+      if (!done) throw promise.then(() => (done = true));
+      return null;
+    };
+
+    return { Wait, resolve: () => promise.resolve() };
+  }
+
+  beforeEach(() => live.clear());
+
+  it('will destroy attempts superseded by a commit', async () => {
+    const { Wait, resolve } = suspense();
+
+    render(
+      <Suspense fallback={null}>
+        <Provider for={Test}>
+          <Wait />
+        </Provider>
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+    await act(collect);
+
+    expect(live.size).toBe(1);
+  });
+
+  it('will destroy a first mount removed while suspended', async () => {
+    const { Wait } = suspense();
+    const element = render(
+      <Suspense fallback={null}>
+        <Provider for={Test}>
+          <Wait />
+        </Provider>
+      </Suspense>
+    );
+
+    element.rerender(null);
+    await act(collect);
+
+    expect(live.size).toBe(0);
   });
 });

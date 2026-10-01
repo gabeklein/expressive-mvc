@@ -170,6 +170,8 @@ Pick the seam by what the work needs:
 
 Setup accompanying the instance itself goes in `new()`; anything touching `window`, timers or subscriptions goes in `mount()`.
 
+React can discard a render before committing it - a suspended first mount, a dropped transition. Instances an owning path created there are already activated, so `new()` ran; the adapter destroys them once React releases the attempt, at garbage collection rather than promptly. `mount()` runs only for the attempt that commits - another reason effects belong there.
+
 ### Server render (SSR / RSC)
 
 Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Effects don't run, so `mount()` never fires; `new()` and `use()` do. Request-safety rules:

@@ -1,6 +1,6 @@
 import { State, Context, Component } from '@expressive/mvc';
 import type { UseState } from '@expressive/mvc';
-import { Runtime, useHook } from './runtime';
+import { Runtime, useFactory, useHook } from './runtime';
 
 let shared: any;
 
@@ -102,8 +102,8 @@ function Provider<T extends State>({
   ...props
 }: Provider.Props<T>) {
   const ambient = useAmbient();
+  const context = useFactory(() => new Context(ambient));
   const digest: Digest<T> = useHook((returns) => {
-    const context = new Context(ambient);
     const fresh: State[] = [];
 
     let applied: Context.Accept<T> | undefined;
@@ -133,10 +133,9 @@ function Provider<T extends State>({
 
       return () => {
         for (const done of release) if (typeof done == 'function') done();
-        context.pop();
       };
     };
-  });
+  }, () => context.pop());
 
   return createProvider(
     digest(props),

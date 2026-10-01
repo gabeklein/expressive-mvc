@@ -14,11 +14,23 @@ import './element';
 import './jsx-runtime';
 
 import { Runtime } from './adapter';
+import { weak } from './runtime';
 import { ErrorBoundary, dedupe } from './boundary';
 
 // React detects class components by this brand (preact reads `prototype.render`).
 Object.defineProperty(Component.prototype, 'isReactComponent', {
   value: true
+});
+
+const FIBER = new WeakMap<Component, { deref(): unknown }>();
+
+Object.defineProperty(Component.prototype, '_reactInternals', {
+  get(this: Component) {
+    return FIBER.get(this)?.deref();
+  },
+  set(this: Component, fiber: object) {
+    FIBER.set(this, weak(fiber));
+  }
 });
 
 Object.assign(Runtime, {
@@ -36,7 +48,6 @@ Object.assign(Runtime, {
   ignore: [
     'updater',
     'refs',
-    '_reactInternals',
     '_reactInternalInstance'
   ]
 });
