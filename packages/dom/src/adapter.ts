@@ -267,10 +267,7 @@ Object.defineProperty(Component, 'use', {
 State.on({
   type(type) {
     subcomponents(type.prototype);
-  }
-});
-
-Component.on({
+  },
   pre(self) {
     subcomponents(self);
   }

@@ -66,21 +66,21 @@ describe('hot', () => {
     const After = version('after');
 
     class Host extends State {
-      View = Before;
+      view = Before;
     }
 
     hot(id, { View: Before });
 
     const host = Host.new();
     const Parent = () => {
-      const { View } = Host.get();
+      const View = Host.get().view;
       return <View />;
     };
 
     const root = mount(<Provider for={host}><Parent /></Provider>);
 
     hot(id, { View: After });
-    host.View = After;
+    host.view = After;
     await flushMicrotasks();
 
     expect(root.textContent).toBe('after');
