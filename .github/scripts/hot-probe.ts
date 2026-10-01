@@ -551,17 +551,7 @@ class Browser {
   warnings: string[] = [];
 
   async open(url: string, profile: string) {
-    const port = 9300 + Math.floor(Math.random() * 500);
-
-    this.proc = Bun.spawn([
-      CHROME, '--headless=new', '--disable-gpu', '--no-sandbox', `--remote-debugging-port=${port}`,
-      `--user-data-dir=${profile}`, 'about:blank'
-    ], { stdout: 'ignore', stderr: 'ignore' });
-
-    const targets = await until(async () => {
-      const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-      return list.find((target: any) => target.type == 'page');
-    }, 10000);
+    const targets = await this.launch(profile).catch(() => this.launch(profile));
 
     this.ws = new WebSocket(targets.webSocketDebuggerUrl);
     await new Promise((ready) => (this.ws.onopen = ready));
@@ -578,6 +568,26 @@ class Browser {
 
     await this.send('Runtime.enable');
     await this.send('Page.navigate', { url });
+  }
+
+  private async launch(profile: string) {
+    const port = 9300 + Math.floor(Math.random() * 500);
+
+    this.proc = Bun.spawn([
+      CHROME, '--headless=new', '--disable-gpu', '--no-sandbox', `--remote-debugging-port=${port}`,
+      `--user-data-dir=${profile}`, 'about:blank'
+    ], { stdout: 'ignore', stderr: 'ignore' });
+
+    try {
+      return await until(async () => {
+        const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
+        return list.find((target: any) => target.type == 'page');
+      }, 15000);
+    } catch (error) {
+      this.proc.kill();
+      await this.proc.exited;
+      throw error;
+    }
   }
 
   send(method: string, params = {}) {
