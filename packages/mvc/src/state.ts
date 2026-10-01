@@ -136,7 +136,7 @@ declare namespace State {
      * Receives what an effect, refreshing getter or async initializer of this State
      * or a subclass threw, a destroyed write, or an instance never activated - with
      * its `kind` (`Effect`, `Getter`, `Init`, `Destroyed`, `Inactive`) and `key` where
-     * one applies. Most-derived class first, last registered first. Return the error
+     * one applies. Most-derived class first, last registered first, each once. Return the error
      * (or another) to pass it on; return nothing to handle it; throw to let it escape.
      * Passed off the end, a destroyed write outputs nothing, `Inactive` warns,
      * anything else escapes uncaught.
@@ -763,7 +763,7 @@ function classify(
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
 
-      for (const handler of new Set(stages(is.constructor as State.Extends, 'bind'))) handler.call(is, key, bound);
+      for (const handler of stages(is.constructor as State.Extends, 'bind')) handler.call(is, key, bound);
 
       return bound;
     }
@@ -775,11 +775,11 @@ function classify(
   }
 }
 
-/** Handlers of one stage along the class chain - ancestor first, in registration order. */
-function stages<K extends 'bind' | 'catch'>(T: State.Extends, key: K): NonNullable<State.On[K]>[] {
-  const found = T === State ? [] : stages(Object.getPrototypeOf(T), key);
+/** Handlers of one stage along the class chain - ancestor first, in registration order, each once. */
+function stages<K extends 'bind' | 'catch'>(T: State.Extends, key: K): Set<NonNullable<State.On[K]>> {
+  const found = T === State ? new Set<NonNullable<State.On[K]>>() : stages(Object.getPrototypeOf(T), key);
 
-  for (const handler of SETUP.get(T) || []) if (handler[key]) found.push(handler[key]!);
+  for (const handler of SETUP.get(T) || []) if (handler[key]) found.add(handler[key]!);
 
   return found;
 }
@@ -1129,8 +1129,9 @@ function update<T>(
 
 /**
  * Pass an error along `catch` handlers - most-derived class first, last registered
- * first - until one returns nothing. Passed off the end, a destroyed write outputs nothing,
- * `Inactive` warns, anything else escapes uncaught; so does a handler's throw.
+ * first, one on several classes once at the outermost - until one returns nothing. Passed off
+ * the end, a destroyed write outputs nothing, `Inactive` warns, anything else escapes uncaught;
+ * so does a handler's throw.
  */
 function report(kind: string, owner: object | undefined, error: unknown, key?: string) {
   const state = owner instanceof State ? owner : owner && PARENT.get(owner);
@@ -1138,7 +1139,7 @@ function report(kind: string, owner: object | undefined, error: unknown, key?: s
   if (!state) return REPORT.error(error);
 
   try {
-    for (const handler of new Set(stages(state.constructor as State.Extends, 'catch').reverse()))
+    for (const handler of [...stages(state.constructor as State.Extends, 'catch')].reverse())
       if ((error = handler.call(state, error, kind, key)) === undefined) return;
 
     if (kind == 'Inactive') console.warn(error);

@@ -3753,7 +3753,7 @@ describe('on catch stage (static)', () => {
     expect(warn).not.toBeCalled();
   });
 
-  it('will pass along subclass then base, last registered first, once each', async () => {
+  it('will pass along subclass then base, last registered first, once each at the outermost', async () => {
     class Base extends State {
       foo = 0;
     }
@@ -3783,7 +3783,7 @@ describe('on catch stage (static)', () => {
 
     expect(caught).toEqual([]);
     expect(warn).not.toBeCalled();
-    expect(order).toEqual(['shared', 'sub', 'base']);
+    expect(order).toEqual(['sub', 'shared', 'base']);
   });
 
   it('will stop at the first handler returning nothing', () => {
