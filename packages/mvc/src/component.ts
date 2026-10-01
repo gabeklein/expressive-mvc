@@ -130,14 +130,10 @@ class Component extends State {
       this.set(merge(this.props));
     });
 
-    const self = this;
-
     Object.defineProperty(this, 'render', {
       writable: true,
       configurable: true,
-      value(this: Component, props?: {}) {
-        return composed(self).call(this, props);
-      }
+      value: compose
     });
   }
 
@@ -150,9 +146,7 @@ class Component extends State {
    * via `props = {} as { ... }`. Without a parameter (the default below),
    * children pass through.
    *
-   * The constructor installs a composed `render` per instance; the bootstrap
-   * `type` pass seals this and any override non-configurable, keeping it the
-   * content-render seam the chain reads.
+   * The constructor installs a composed `render` per instance.
    */
   render(props?: {}): Component.Node {
     const { children } = (props || this.props) as { children?: Component.Node };
@@ -193,19 +187,8 @@ Component.on({
         enumerable: false,
         writable: false
       });
-  },
-  type(type) {
-    seal(type.prototype);
   }
 });
-
-/** Keep `render` the content seam classification leaves unbound. */
-function seal(proto: object) {
-  const desc = Object.getOwnPropertyDescriptor(proto, 'render');
-
-  if (desc && typeof desc.value == 'function')
-    Object.defineProperty(proto, 'render', { ...desc, configurable: false });
-}
 
 Object.defineProperty(Component, 'use', {
   configurable: true,
@@ -213,24 +196,6 @@ Object.defineProperty(Component, 'use', {
     throw new Error(`${this} is a Component - render it as an element instead of calling use().`);
   }
 });
-
-/**
- * Handlers a host registers (on `State` or `Component`) to make a class
- * renderable: `render` sealed, and PascalCase methods and function fields
- * rewritten into subcomponents whose `this` is `observe(owner)` - the host's
- * tracking proxy for the current render.
- */
-function toJSX(observe: (owner: State) => State): State.On<State> {
-  return {
-    type(type) {
-      seal(type.prototype);
-      subcomponents(type.prototype, observe);
-    },
-    before(self) {
-      subcomponents(self, observe);
-    }
-  };
-}
 
 function subcomponents(target: object, observe: (owner: State) => State) {
   for (const key of Object.getOwnPropertyNames(target)) {
@@ -272,49 +237,44 @@ function subcomponents(target: object, observe: (owner: State) => State) {
 }
 
 /**
- * The composed content render for an instance's class: content renders up the
- * prototype chain, each base layer receiving the subclass's as a lazy
+ * Render `this` through its class's composed content render: content renders
+ * up the prototype chain, each base layer receiving the subclass's as a lazy
  * `children` getter. Falls back to passing `children` through.
  */
-function composed(target: State): Function {
-  const cached = CHAIN.get(target.constructor);
+function compose(this: State, props?: {}) {
+  const type = this.constructor;
+  let render = CHAIN.get(type);
 
-  if (cached) return cached;
-
-  let render: Function | undefined;
-  let proto = target;
-
-  while (
-    (proto = Object.getPrototypeOf(proto)) !== Component.prototype &&
-    proto !== State.prototype
-  ) {
-    const desc = Object.getOwnPropertyDescriptor(proto, 'render');
-
-    if (desc) {
-      const layer = unbind(desc.get || desc.value);
-      render = render ? compose(layer, render) : layer;
-    }
+  function method(from: Function) {
+    const desc = Object.getOwnPropertyDescriptor(from.prototype, 'render');
+    if (desc) return unbind(desc.get || desc.value) as Function;
   }
 
-  if (!render)
-    render = Component.prototype.render;
+  if (!render) {
+    function wrap(outer: Function, inner: Function): Function {
+      return function (this: Component, props?: {}) {
+        const self = this;
+        return outer.call(self, {
+          ...props,
+          get children() {
+            return inner.call(self, props);
+          }
+        });
+      };
+    }
 
-  CHAIN.set(target.constructor, render);
+    for (let T = type; T !== Component && T !== State; T = Object.getPrototypeOf(T)) {
+      const next = method(T);
 
-  return render;
-}
+      if (next) render = render ? wrap(next, render) : next;
+    }
 
-/** Wrap an outer render so it receives `inner` as a lazy `children` getter. */
-function compose(outer: Function, inner: Function): Function {
-  return function (this: Component, props?: {}) {
-    const self = this;
-    return outer.call(self, {
-      ...props,
-      get children() {
-        return inner.call(self, props);
-      }
-    });
-  };
+    if (!render) render = method(Component)!;
+
+    CHAIN.set(type, render);
+  }
+
+  return render.call(this, props);
 }
 
 /** Drop composed renders, so each is rebuilt from current prototypes. */
@@ -322,4 +282,4 @@ function rechain() {
   CHAIN = new WeakMap();
 }
 
-export { Component, composed, rechain, toJSX };
+export { Component, compose, rechain, subcomponents };

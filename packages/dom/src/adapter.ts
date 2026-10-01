@@ -1,6 +1,6 @@
 import { Context, State } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
-import { toJSX } from '@expressive/mvc/jsx-runtime';
+import { subcomponents } from '@expressive/mvc/jsx-runtime';
 
 import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';
@@ -254,7 +254,14 @@ declare module '@expressive/mvc' {
   return slot.proxy as T;
 };
 
-State.on(toJSX((owner) => tracked(owner)));
+State.on({
+  type(T) {
+    subcomponents(T.prototype, tracked);
+  },
+  pre(self) {
+    subcomponents(self, tracked);
+  }
+})
 
 export { commit, dispose, enter };
 export type { Scope };

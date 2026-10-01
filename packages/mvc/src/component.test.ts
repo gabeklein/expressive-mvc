@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
-import { Component, composed, toJSX } from './component';
+import { Component, compose, subcomponents } from './component';
 import { Context } from './context';
 import { pending } from './dispatch';
 import { State, event } from './state';
@@ -409,12 +409,17 @@ describe('transition', () => {
   });
 });
 
-describe('toJSX', () => {
+describe('subcomponents', () => {
   const observed = new WeakSet<State>();
   const observe = (owner: State) => {
     observed.add(owner);
     return owner;
   };
+  const register = (Host: State.Extends, observe: (owner: State) => State) =>
+    Host.on({
+      type: (T) => subcomponents(T.prototype, observe),
+      pre: (self) => subcomponents(self, observe)
+    });
 
   it('will render a PascalCase method with the observed owner', () => {
     class Host extends State {
@@ -424,7 +429,7 @@ describe('toJSX', () => {
       }
     }
 
-    Host.on(toJSX(observe));
+    register(Host, observe);
 
     const host = Host.new();
     const Label = host.Label as unknown as () => string;
@@ -442,7 +447,7 @@ describe('toJSX', () => {
       };
     }
 
-    Host.on(toJSX(observe));
+    register(Host, observe);
 
     const host = Host.new();
     const Label = host.Label as unknown as () => string;
@@ -466,7 +471,7 @@ describe('toJSX', () => {
       }
     }
 
-    Host.on(toJSX(observe));
+    register(Host, observe);
 
     const host = Host.new();
 
@@ -478,7 +483,7 @@ describe('toJSX', () => {
     expect(observed.has(host)).toBe(true);
   });
 
-  it('will seal render and leave a PascalCase value managed', () => {
+  it('will leave a PascalCase value managed', () => {
     class Host extends State {
       Value = 1;
       render() {
@@ -486,11 +491,10 @@ describe('toJSX', () => {
       }
     }
 
-    Host.on(toJSX(observe));
+    register(Host, observe);
 
     const host = Host.new();
 
-    expect(Object.getOwnPropertyDescriptor(Host.prototype, 'render')!.configurable).toBe(false);
     expect(host.get()).toHaveProperty('Value', 1);
   });
 });
@@ -511,7 +515,32 @@ describe('composed', () => {
 
     const page = Page.new();
 
-    expect(composed(page).call(page, {})).toBe('[page]');
+    expect(compose.call(page, {})).toBe('[page]');
+  });
+
+  it('will compose a render sealed by the host', () => {
+    class Frame extends State {
+      render(props?: { children?: unknown }) {
+        return `[${props?.children}]`;
+      }
+    }
+
+    Frame.on({
+      type({ prototype }) {
+        const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
+        Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
+      }
+    });
+
+    class Page extends Frame {
+      render() {
+        return 'page';
+      }
+    }
+
+    const page = Page.new();
+
+    expect(compose.call(page, {})).toBe('[page]');
   });
 
   it('will pass children through for a State without render', () => {
@@ -519,7 +548,7 @@ describe('composed', () => {
 
     const bare = Bare.new();
 
-    expect(composed(bare).call(bare, { children: 'c' })).toBe('c');
+    expect(compose.call(bare, { children: 'c' })).toBe('c');
   });
 });
 

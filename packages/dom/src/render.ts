@@ -1,7 +1,7 @@
 import { Component, Context, State } from '@expressive/mvc';
 import { has, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
-import { Fragment, composed } from '@expressive/mvc/jsx-runtime';
+import { Fragment, compose } from '@expressive/mvc/jsx-runtime';
 
 import { commit, dispose, enter } from './adapter';
 import { latest, same, track, untrack } from './hot';
@@ -344,7 +344,7 @@ function mountComponent(
   fiber.owned = owned;
   fiber.appearance = appearance;
   fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
-  fiber.render = () => enter(fiber.scope!, () => composed(instance).call(fiber.value, fiber.props));
+  fiber.render = () => enter(fiber.scope!, () => compose.call(fiber.value as State, fiber.props));
   probing(fiber);
 
   let first = true;

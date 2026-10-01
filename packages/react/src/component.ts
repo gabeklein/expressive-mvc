@@ -1,5 +1,5 @@
 import { Component } from '@expressive/mvc';
-import { toJSX } from '@expressive/mvc/jsx-runtime';
+import { subcomponents } from '@expressive/mvc/jsx-runtime';
 import { createProvider, type Context } from './context';
 import { Runtime, useWatch } from './runtime';
 
@@ -40,14 +40,17 @@ Object.defineProperties(Component.prototype, {
   }
 });
 
-const jsx = toJSX((owner) => useWatch(owner));
-
 /**
  * On the root Component, host own-property keys are trapped so each lands as a
  * plain own property (out of observed state); each adapter assigns its own set.
  */
 Component.on({
   type(type) {
+    const render = Object.getOwnPropertyDescriptor(type.prototype, 'render');
+
+    if (typeof render?.value == 'function')
+      Object.defineProperty(type.prototype, 'render', { ...render, configurable: false });
+
     if (type === Component)
       for (const key of Runtime.ignore)
         Object.defineProperty(Component.prototype, key, {
@@ -56,9 +59,11 @@ Component.on({
           }
         });
 
-    jsx.type!(type);
+    subcomponents(type.prototype, useWatch);
   },
-  pre: jsx.pre
+  pre(self) {
+    subcomponents(self, useWatch);
+  }
 });
 
 function bootstrap(this: Component, context: Context){
