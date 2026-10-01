@@ -268,7 +268,7 @@ Component.on({
   type(type) {
     subcomponents(type.prototype);
   },
-  before(self) {
+  pre(self) {
     subcomponents(self);
   }
 });

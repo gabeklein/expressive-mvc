@@ -24,7 +24,7 @@ const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 const PENDING = new Set<State | (() => void)>();
 
 /** External lifecycle listeners for any given State class. */
-type Handler = State.Init<any> | State.On<any>;
+type Handler = State.On<any>;
 
 const SETUP = new WeakMap<State.Extends, Set<Handler>>();
 
@@ -102,10 +102,7 @@ declare namespace State {
     thisArg: T
   ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
 
-  /**
-   * Lifecycle handlers for `State.on`, keyed by when they run. A bare `Init`
-   * function passed to `on` is sugar for `{ before }`.
-   */
+  /** Lifecycle handlers for `State.on`, keyed by when they run. */
   interface On<T extends State = State> {
     /**
      * Per-class setup, run once when the class is first bootstrapped - before
@@ -116,17 +113,17 @@ declare namespace State {
     type?(type: State.Extends<T>): void;
 
     /**
-     * Per-instance setup, run in the `prepare` phase before `observe` and the
-     * `new()` hook. Equivalent to passing a bare function to `on`. May return a
-     * cleanup, constructor args, or an assign overlay.
+     * Per-instance setup, run before own values are observed and before
+     * constructor args and `new()`. May return a cleanup, constructor args, or
+     * an assign overlay.
      */
-    before?(this: T, thisArg: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
+    pre?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
 
     /**
-     * Per-instance setup, run at the `new()` slot - after own values are
-     * observed and constructor args applied. May return a cleanup function.
+     * Per-instance setup, run with the instance's `new()` - after own values
+     * are observed and constructor args applied. May return a cleanup function.
      */
-    after?(this: T, self: T): void | (() => void);
+    new?(this: T, self: T): void | (() => void);
 
     /**
      * Receives a `Caught` mvc reports for this State or a subclass - most-derived
@@ -503,18 +500,19 @@ abstract class State {
   /**
    * Register a lifecycle handler for this State and its subclasses.
    *
-   * A bare function is per-instance setup run in the `prepare` phase (sugar for
-   * `{ before }`); if it returns a function, that runs when the instance is
-   * destroyed. Pass a {@link State.On} object to hook by cadence - `type`
-   * (per-class, at bootstrap), `before` (per-instance, before `new()`), and
-   * `after` (per-instance, at the `new()` slot).
+   * Hooks by cadence - `type` (per-class, at bootstrap), `pre` (per-instance,
+   * before values are observed), and `new` (per-instance, with `new()`). A
+   * function returned from `pre` or `new` runs when the instance is destroyed.
    *
    * @returns Function to remove the handler.
    */
   static on<T extends State>(
     this: State.Extends<T>,
-    handler: State.Init<T> | State.On<T>
+    handler: State.On<T>
   ) {
+    if (typeof handler == 'function')
+      throw new TypeError(`${this.name}.on takes handlers by stage - pass { pre: fn }.`);
+
     let setup = SETUP.get(this);
 
     if (!setup) SETUP.set(this, (setup = new Set()));
@@ -675,13 +673,11 @@ function bootstrap(T: State.Extends) {
   }
 
   for (const type of chain) {
-    for (const handler of SETUP.get(type) || [])
-      if (typeof handler == 'function') before.add(handler);
-      else {
-        if (handler.before) before.add(handler.before);
-        if (handler.after) after.add(handler.after);
-        if (handler.type) onType.add(handler.type);
-      }
+    for (const handler of SETUP.get(type) || []) {
+      if (handler.pre) before.add(handler.pre);
+      if (handler.new) after.add(handler.new);
+      if (handler.type) onType.add(handler.type);
+    }
 
     if (type === State) continue;
 
@@ -1123,7 +1119,7 @@ function report(caught: Caught, sync?: boolean) {
 
   for (let T = caught.state.constructor as State.Extends; ; T = Object.getPrototypeOf(T)) {
     for (const handler of [...(SETUP.get(T) || [])].reverse())
-      if (typeof handler == 'object' && handler.catch) handlers.add(handler.catch);
+      if (handler.catch) handlers.add(handler.catch);
 
     if (T === State) break;
   }
@@ -1258,7 +1254,7 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
   if (keys) {
     for (let T: State.Extends = prev; ; T = Object.getPrototypeOf(T)) {
       for (const handler of SETUP.get(T) || [])
-        if (typeof handler == 'object' && handler.type) handler.type(prev);
+        if (handler.type) handler.type(prev);
 
       if (T === State) break;
     }

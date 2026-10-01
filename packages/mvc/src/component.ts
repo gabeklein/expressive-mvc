@@ -187,7 +187,7 @@ Object.defineProperty(Component.prototype, 'key', {
  * reads (and which adapters like preact detect as the class-component marker).
  */
 Component.on({
-  before(self) {
+  pre(self) {
     const key = Object.getOwnPropertyDescriptor(self, 'key');
 
     if (key?.configurable)

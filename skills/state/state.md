@@ -184,18 +184,23 @@ Counter.is(OtherState); // false
 
 ### `State.on()`
 
-Registers a lifecycle handler for every instance of this class or its subclasses. Returns an unsubscribe function.
+Registers lifecycle handlers, keyed by stage, for every instance of this class or its subclasses. Returns an unsubscribe function.
 
 ```ts
-const stop = Counter.on(function (this: Counter) {
-  // runs for every Counter instance on init
-  return () => {
-    /* cleanup on destroy */
-  };
+const stop = Counter.on({
+  pre() {
+    // every Counter, before own values are observed
+    return () => {
+      /* cleanup on destroy */
+    };
+  },
+  new() {
+    // every Counter, with its new() - args applied
+  }
 });
 ```
 
-- A bare function is per-instance setup before `new()` (sugar for `{ before }`). An object hooks by cadence: `type(Class)` once per class at bootstrap, `before` per instance before `new()`, `after` per instance at the `new()` slot.
+- `type(Class)` runs once per class at bootstrap. `pre` runs per instance before own values are observed, args and `new()` - may return a cleanup, args, or an assign overlay. `new` runs per instance with its `new()`, after args apply - may return a cleanup.
 - Handlers run ancestor-first; one registered on both parent and child runs once.
 - `catch(error)` receives each `Caught` mvc reports for the class ([lifecycle.md](lifecycle.md#error-handling)), `this` the instance - like nested `catch` blocks: most-derived class first, last registered first. Return the error (or a replacement `Caught`) to pass it on; return nothing to handle it; throw to escape uncaught at once - to the writer for a destroyed write. Passed off the end, a warning logs and anything else is thrown - to the writer for a destroyed write, otherwise uncaught.
 
