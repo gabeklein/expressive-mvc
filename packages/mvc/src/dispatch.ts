@@ -108,7 +108,7 @@ function flush() {
       if (transition) transition(handler);
       else handler();
     } catch (err) {
-      REPORT.as('Effect', scheduled.owner, err);
+      REPORT.as('effect', scheduled.owner, err);
     }
 
     current = replaying = undefined;

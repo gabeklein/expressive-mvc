@@ -2316,7 +2316,7 @@ describe('set method', () => {
         expect(handler).toBeCalledTimes(1);
         expect(handler).toBeCalledWith(
           expect.objectContaining({ message: expect.stringMatching(/Tried to update [\w-]+\.foo but state is destroyed\./) }),
-          'Destroyed',
+          'dead',
           'foo'
         );
         expect(handler.mock.contexts[0]).toBe(test);
@@ -2334,7 +2334,7 @@ describe('set method', () => {
         test.set(null);
         test.set('foo', { value: 1 });
 
-        expect(handler).toBeCalledWith(expect.any(Error), 'Destroyed', 'foo');
+        expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
       });
 
       it('will store and report assign', () => {
@@ -2350,7 +2350,7 @@ describe('set method', () => {
         test.set({ foo: 1 });
 
         expect(test.foo).toBe(1);
-        expect(handler).toBeCalledWith(expect.any(Error), 'Destroyed', 'foo');
+        expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
       });
 
       it('will let a continuation that writes after teardown run to completion', async () => {
@@ -2387,7 +2387,7 @@ describe('set method', () => {
         }
 
         const caught = mockUncaught();
-        const stop = Test.on({ catch: (error, kind) => (kind == 'Destroyed' ? undefined : error) });
+        const stop = Test.on({ catch: (error, kind) => (kind == 'dead' ? undefined : error) });
         const test = Test.new();
 
         test.set(null);
@@ -3783,7 +3783,7 @@ describe('on catch stage (static)', () => {
     test.set(null);
     test.foo = 1;
 
-    expect(handler).toBeCalledWith(expect.objectContaining({ message: expect.stringMatching(DESTROYED) }), 'Destroyed', 'foo');
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: expect.stringMatching(DESTROYED) }), 'dead', 'foo');
     expect(handler.mock.contexts[0]).toBe(test);
     expect(warn).not.toBeCalled();
   });
@@ -3860,7 +3860,7 @@ describe('on catch stage (static)', () => {
     stopBase();
     await flushMicrotasks();
 
-    expect(base).toBeCalledWith(replaced, 'Destroyed', 'foo');
+    expect(base).toBeCalledWith(replaced, 'dead', 'foo');
     expect(caught).toEqual([]);
     expect(warn).not.toBeCalled();
   });
@@ -3878,7 +3878,7 @@ describe('on catch stage (static)', () => {
     test.foo = 1;
     stop();
 
-    expect(handler).toBeCalledWith(expect.any(Error), 'Destroyed', 'foo');
+    expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
   });
 
   it('will not reach handlers of an unrelated class', async () => {
@@ -3955,7 +3955,7 @@ describe('on catch stage (static)', () => {
     test.fail = true;
     await expect(test).toHaveUpdated();
 
-    expect(handler).toBeCalledWith(oops, 'Getter', 'value');
+    expect(handler).toBeCalledWith(oops, 'getter', 'value');
   });
 
   it('will pass on a falsy value thrown', async () => {
@@ -3976,7 +3976,7 @@ describe('on catch stage (static)', () => {
     test.foo = 1;
     await flushMicrotasks();
 
-    expect(handler).toBeCalledWith(0, 'Effect', undefined);
+    expect(handler).toBeCalledWith(0, 'effect', undefined);
     expect(caught).toEqual([0]);
   });
 
@@ -3999,7 +3999,7 @@ describe('on catch stage (static)', () => {
     test.list.push(1);
     await flushMicrotasks();
 
-    expect(handler).toBeCalledWith(oops, 'Effect', undefined);
+    expect(handler).toBeCalledWith(oops, 'effect', undefined);
     expect(handler.mock.contexts[0]).toBe(test);
   });
 

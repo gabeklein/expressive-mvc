@@ -64,7 +64,7 @@ let copies = 1;
 let unwatch: (() => void) | undefined;
 
 function counts(): Record<string, number> {
-  return { Destroyed: 0, Inactive: 0, Getter: 0, Init: 0, Effect: 0 };
+  return { dead: 0, unused: 0, getter: 0, setup: 0, effect: 0 };
 }
 
 /** The report `observe` last saw - the chain is synchronous, so `unhandled` checks it against its own. */

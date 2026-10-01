@@ -135,13 +135,13 @@ declare namespace State {
     /**
      * Receives what an effect, refreshing getter or async initializer of this State
      * or a subclass threw, a destroyed write, or an instance never activated - with
-     * its `kind` (`Effect`, `Getter`, `Init`, `Destroyed`, `Inactive`) and `key` where
+     * its `kind` (`effect`, `getter`, `setup`, `dead`, `unused`) and `key` where
      * one applies. Most-derived class first, last registered first, each once. Return the error
      * (or another) to pass it on; return nothing to handle it; throw to let it escape.
-     * Passed off the end, a destroyed write outputs nothing, `Inactive` warns,
+     * Passed off the end, a destroyed write outputs nothing, `unused` warns,
      * anything else escapes uncaught.
      */
-    catch?(this: T, error: unknown, kind: 'Effect' | 'Getter' | 'Init' | 'Destroyed' | 'Inactive', key?: string): unknown;
+    catch?(this: T, error: unknown, kind: 'effect' | 'getter' | 'setup' | 'dead' | 'unused', key?: string): unknown;
   }
 
   /** Object overlay to override values and methods on a state. */
@@ -620,7 +620,7 @@ function init(state: State, ...args: State.Args) {
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
         if (out instanceof Promise)
-          out.catch((err) => report('Init', state, err));
+          out.catch((err) => report('setup', state, err));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);
@@ -644,7 +644,7 @@ function init(state: State, ...args: State.Args) {
 
       for (const item of PENDING)
         if (typeof item == 'function') item();
-        else report('Inactive', item, new Error(`${item} was constructed but never activated.`));
+        else report('unused', item, new Error(`${item} was constructed but never activated.`));
 
       PENDING.clear();
     });
@@ -828,7 +828,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
         throw err;
       }
 
-      if (!(err instanceof Promise)) report('Getter', this, err, key);
+      if (!(err instanceof Promise)) report('getter', this, err, key);
     }
 
     update(this, key, next, !isAsync);
@@ -1111,7 +1111,7 @@ function update<T>(
   if (value instanceof State) value = value.is as T;
 
   if (observer(state) === null) {
-    if (!silent) report('Destroyed', state, new Error(`Tried to update ${state}.${String(key)} but state is destroyed.`), String(key));
+    if (!silent) report('dead', state, new Error(`Tried to update ${state}.${String(key)} but state is destroyed.`), String(key));
     store[key] = value;
     return false;
   }
@@ -1130,7 +1130,7 @@ function update<T>(
 /**
  * Pass an error along `catch` handlers - most-derived class first, last registered
  * first, one on several classes once at the outermost - until one returns nothing. Passed off
- * the end, a destroyed write outputs nothing, `Inactive` warns, anything else escapes uncaught;
+ * the end, a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught;
  * so does a handler's throw.
  */
 function report(kind: Parameters<NonNullable<State.On['catch']>>[1], owner: object | undefined, error: unknown, key?: string) {
@@ -1142,8 +1142,8 @@ function report(kind: Parameters<NonNullable<State.On['catch']>>[1], owner: obje
     for (const handler of [...stages(state.constructor as State.Extends, 'catch')].reverse())
       if ((error = handler.call(state, error, kind, key)) === undefined) return;
 
-    if (kind == 'Inactive') console.warn(error);
-    else if (kind != 'Destroyed') REPORT.error(error);
+    if (kind == 'unused') console.warn(error);
+    else if (kind != 'dead') REPORT.error(error);
   } catch (err) {
     REPORT.error(err);
   }
