@@ -3657,7 +3657,7 @@ describe('on bind stage (static)', () => {
     expect(call).not.toBeCalled();
   });
 
-  it('will run again on reassignment', () => {
+  it('will run on replacement by assignment before first read, or through set', () => {
     class Test extends State {
       foo() {
         return 'before';
@@ -3671,12 +3671,16 @@ describe('on bind stage (static)', () => {
 
     const test = Test.new();
 
-    test.foo = () => 'after';
+    test.foo = () => 'assigned';
+    expect(handler).toHaveBeenLastCalledWith('foo', test.foo);
+    expect(test.foo()).toBe('assigned');
 
-    expect(handler).toBeCalledTimes(1);
-    expect(handler).toBeCalledWith('foo', test.foo);
-    expect(test.foo()).toBe('after');
-    expect(observe).toBeCalledTimes(1);
+    test.set({ foo: () => 'set' });
+    expect(handler).toHaveBeenLastCalledWith('foo', test.foo);
+    expect(test.foo()).toBe('set');
+
+    expect(handler).toBeCalledTimes(2);
+    expect(observe).toBeCalledTimes(2);
   });
 
   it.fails('will bind and observe a replacement assigned after first read', () => {
@@ -3703,25 +3707,6 @@ describe('on bind stage (static)', () => {
     expect(foo()).toBe(test);
     expect(handler).toBeCalledTimes(2);
     expect(observe).toBeCalledTimes(2);
-  });
-
-  it('will run on assign', () => {
-    class Test extends State {
-      foo() {
-        return 'before';
-      }
-    }
-
-    const handler = vi.fn();
-
-    Test.on({ bind: handler });
-
-    const test = Test.new();
-
-    test.set({ foo: () => 'after' });
-
-    expect(handler).toBeCalledWith('foo', test.foo);
-    expect(test.foo()).toBe('after');
   });
 
   it('will run base then subclass handlers, once each', () => {

@@ -383,94 +383,73 @@ describe('accept', () => {
     expect(outside).toHaveBeenCalledTimes(1);
   });
 
-  it('will run bind handlers again for a patched method', () => {
-    const id = module();
-    const handler = vi.fn();
-
-    const version = (step: number) => {
+  describe('bind handlers', () => {
+    const version = (step: number, bind?: State.On['bind']) => {
       class Test extends State {
         value = 0;
         bump() {
           this.value += step;
         }
       }
+      if (bind) Test.on({ bind });
       return Test;
     };
 
-    const Test = version(1);
+    it('will run again for a patched method', () => {
+      const id = module();
+      const handler = vi.fn();
+      const Test = version(1, handler);
 
-    accept(id, { Test });
-    Test.on({ bind: handler });
+      accept(id, { Test });
 
-    const test = Test.new();
+      const test = Test.new();
 
-    test.bump();
-    accept(id, { Test: version(10) });
-    test.bump();
+      test.bump();
+      accept(id, { Test: version(10, handler) });
+      test.bump();
 
-    expect(test.value).toBe(11);
-    expect(handler).toBeCalledTimes(2);
-    expect(handler).toHaveBeenLastCalledWith('bump', test.bump);
-  });
-
-  it('will use bind handlers a patch adds', () => {
-    const id = module();
-    const observe = vi.fn();
-
-    const version = (handler?: State.On['bind']) => {
-      class Test extends State {
-        bump(_step: number) {}
-      }
-      if (handler) Test.on({ bind: handler });
-      return Test;
-    };
-
-    const Test = version();
-
-    accept(id, { Test });
-
-    const test = Test.new();
-
-    test.bump(1);
-    accept(id, { Test: version(() => observe) });
-    test.bump(2);
-
-    expect(observe).toBeCalledTimes(1);
-    expect(observe).toBeCalledWith([2]);
-  });
-
-  it('will keep an observed method assigned to an instance', () => {
-    const id = module();
-    const handler = vi.fn();
-
-    const version = (step: number) => {
-      class Test extends State {
-        value = 0;
-        bump() {
-          this.value += step;
-        }
-      }
-      return Test;
-    };
-
-    const Test = version(1);
-
-    accept(id, { Test });
-    Test.on({ bind: handler });
-
-    const test = Test.new();
-
-    test.set({
-      bump() {
-        this.value = 100;
-      }
+      expect(test.value).toBe(11);
+      expect(handler).toBeCalledTimes(2);
+      expect(handler).toHaveBeenLastCalledWith('bump', test.bump);
     });
 
-    accept(id, { Test: version(10) });
-    test.bump();
+    it('will use one a patch adds', () => {
+      const id = module();
+      const observe = vi.fn();
+      const Test = version(1);
 
-    expect(test.value).toBe(100);
-    expect(handler).toBeCalledTimes(1);
+      accept(id, { Test });
+
+      const test = Test.new();
+
+      test.bump();
+      accept(id, { Test: version(1, () => observe) });
+      test.bump();
+
+      expect(observe).toBeCalledTimes(1);
+    });
+
+    it('will keep an observed method assigned to an instance', () => {
+      const id = module();
+      const handler = vi.fn();
+      const Test = version(1, handler);
+
+      accept(id, { Test });
+
+      const test = Test.new();
+
+      test.set({
+        bump() {
+          this.value = 100;
+        }
+      });
+
+      accept(id, { Test: version(10, handler) });
+      test.bump();
+
+      expect(test.value).toBe(100);
+      expect(handler).toBeCalledTimes(1);
+    });
   });
 
   it('will add handlers to a class without', () => {
