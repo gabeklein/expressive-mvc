@@ -126,6 +126,14 @@ declare namespace State {
     new?(this: T, self: T): void | (() => void);
 
     /**
+     * Runs each time a method is bound to an instance - first access,
+     * reassignment, and the rebind after a hot patch. Receives the key and the
+     * bound function. May return an observer, called with the arguments before
+     * each call of that binding; a throw aborts the call.
+     */
+    bind?(this: T, key: string, fn: Function): void | ((args: unknown[]) => void);
+
+    /**
      * Receives a `Caught` mvc reports for this State or a subclass - most-derived
      * class first, last registered first. Return it (or a replacement) to pass it
      * on; return nothing to handle it; throw to let it escape uncaught. Passed off
@@ -501,8 +509,9 @@ abstract class State {
    * Register a lifecycle handler for this State and its subclasses.
    *
    * Hooks by cadence - `type` (per-class, at bootstrap), `pre` (per-instance,
-   * before values are observed), and `new` (per-instance, with `new()`). A
-   * function returned from `pre` or `new` runs when the instance is destroyed.
+   * before values are observed), `new` (per-instance, with `new()`), and `bind`
+   * (per method binding). A function returned from `pre` or `new` runs when the
+   * instance is destroyed.
    *
    * @returns Function to remove the handler.
    */
@@ -748,10 +757,24 @@ function classify(
       if (is.hasOwnProperty(key) && !original) return value as Function;
 
       const fn = original || value;
-      const bound = fn.bind(is);
+      const handlers = binders(is.constructor as State.Extends);
+      const observers: ((args: unknown[]) => void)[] = [];
+      const bound = handlers.size
+        ? function (...args: unknown[]) {
+            for (const observe of observers) observe(args);
+            return fn.apply(is, args);
+          }
+        : fn.bind(is);
+
+      if (handlers.size) define(bound, 'name', { value: `bound ${fn.name}` });
 
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
+
+      for (const handler of handlers) {
+        const observe = handler.call(is, key, bound);
+        if (observe) observers.push(observe);
+      }
 
       return bound;
     }
@@ -761,6 +784,22 @@ function classify(
     keys.set(key, bind);
     define(type.prototype, key, { get: bind, set: bind });
   }
+}
+
+function binders(type: State.Extends) {
+  const chain: State.Extends[] = [];
+  const handlers = new Set<NonNullable<State.On['bind']>>();
+
+  for (let T = type; ; T = Object.getPrototypeOf(T)) {
+    chain.unshift(T);
+    if (T === State) break;
+  }
+
+  for (const T of chain)
+    for (const handler of SETUP.get(T) || [])
+      if (typeof handler == 'object' && handler.bind) handlers.add(handler.bind);
+
+  return handlers;
 }
 
 /**
