@@ -1542,6 +1542,29 @@ describe('renderable State', () => {
     expect(other.textContent).toBe('guarded');
   });
 
+  it('will bind PascalCase methods of a renderable State as subcomponents', async () => {
+    class Panel extends State {
+      label = 'one';
+
+      Label() {
+        return <b>{this.label}</b>;
+      }
+
+      render() {
+        return <this.Label />;
+      }
+    }
+
+    let panel!: Panel;
+    const root = document.createElement('main');
+    render(<Panel is={(value) => (panel = value)} />, root);
+    expect(root.textContent).toBe('one');
+
+    panel.label = 'two';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('two');
+  });
+
   it('will reconcile keyed renderable States', async () => {
     class Item extends State {
       value = '';
