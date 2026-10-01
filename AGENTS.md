@@ -75,6 +75,10 @@ failure.
 - Negative: `it('will not trigger update')`
 - Error: `it('will throw if not found')`
 
+### Pinned gaps
+
+A defect filed to the board instead of fixed, with a deterministic repro, gets an `it.fails` test asserting the desired behavior, named in the board item. Keep it minimal - setup only through paths passing tests already cover, then the assertions: `it.fails` accepts any throw, so broken setup would keep it failing for the wrong reason. The fixing PR drops `.fails`. Not for design questions, docs drift, or browser-only and timing-dependent behavior - those stay board-only.
+
 ### Verify runtime, not just build
 
 `bun .github/scripts/cascade-probe.ts` drives `@expressive/dom`'s styling through real Chrome and asserts the cascade with `getComputedStyle` - door ordering, inline over class, descendant scopes, custom properties, stylesheet recreation. happy-dom's CSSOM does not order a stylesheet the way a browser does, so a cascade change is not verified until this passes. It skips when Chrome is absent; set `CHROME` to point at a binary.
