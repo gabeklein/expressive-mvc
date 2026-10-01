@@ -140,10 +140,12 @@ export class Control extends Component {
   }
 }
 
-Control.on((self) => {
-  if (!self.parent) return;
-  self.Handle = self.parent.Handle;
-  if (self.row === undefined) self.row = !self.parent.row;
+Control.on({
+  pre(self) {
+    if (!self.parent) return;
+    self.Handle = self.parent.Handle;
+    if (self.row === undefined) self.row = !self.parent.row;
+  }
 });
 
 function onDrag(...handle: DragEvent[]) {

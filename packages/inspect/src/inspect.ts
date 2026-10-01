@@ -276,41 +276,43 @@ export function attach(Type: typeof State = State): () => void {
   if (!hooks.has(Type)) {
     const observed = new Map<typeof State, () => void>();
     const stopCatch = Type.on({ catch: unhandled });
-    const stopSetup = Type.on(function (this: State) {
-      const self = this.is;
-      const T = self.constructor as typeof State;
-      const id = String(self);
-      const span: Span = { since: Date.now(), claimed: false, settled: false };
-      if (!observed.has(T)) observed.set(T, T.on({ catch: observe }));
-      seen(T);
-      live.set(id, { ref: weak(self) });
-      spans.set(self, span);
-      reaper.register(self, id, self);
-      setTimeout(() => {
-        span.settled = true;
-      }, 0);
-      version++;
-      if (recordsCalls()) wrap(self);
-      mounts(self);
-      const unpatch = listener(self, () => {
-        unwrap(self);
-        if (recordsCalls()) wrap(self);
-        notePatch(self);
-      }, REFRESH);
-      const stop = self.set((key) => {
-        const store = entries(self);
-        if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
-        note(self, key, store);
-      });
-      return () => {
-        stop();
-        unpatch();
-        live.delete(id);
-        reaper.unregister(self);
-        span.until = Date.now();
+    const stopSetup = Type.on({
+      pre(this: State) {
+        const self = this.is;
+        const T = self.constructor as typeof State;
+        const id = String(self);
+        const span: Span = { since: Date.now(), claimed: false, settled: false };
+        if (!observed.has(T)) observed.set(T, T.on({ catch: observe }));
+        seen(T);
+        live.set(id, { ref: weak(self) });
+        spans.set(self, span);
+        reaper.register(self, id, self);
+        setTimeout(() => {
+          span.settled = true;
+        }, 0);
         version++;
-        noteDestroy(self);
-      };
+        if (recordsCalls()) wrap(self);
+        mounts(self);
+        const unpatch = listener(self, () => {
+          unwrap(self);
+          if (recordsCalls()) wrap(self);
+          notePatch(self);
+        }, REFRESH);
+        const stop = self.set((key) => {
+          const store = entries(self);
+          if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
+          note(self, key, store);
+        });
+        return () => {
+          stop();
+          unpatch();
+          live.delete(id);
+          reaper.unregister(self);
+          span.until = Date.now();
+          version++;
+          noteDestroy(self);
+        };
+      }
     });
 
     hooks.set(Type, () => {
