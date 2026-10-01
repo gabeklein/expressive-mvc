@@ -3679,6 +3679,32 @@ describe('on bind stage (static)', () => {
     expect(observe).toBeCalledTimes(1);
   });
 
+  it.fails('will bind and observe a replacement assigned after first read', () => {
+    class Test extends State {
+      foo(): unknown {
+        return 'before';
+      }
+    }
+
+    const observe = vi.fn();
+    const handler = vi.fn(() => observe);
+
+    Test.on({ bind: handler });
+
+    const test = Test.new();
+
+    test.foo();
+    test.foo = function (this: unknown) {
+      return this;
+    };
+
+    const { foo } = test;
+
+    expect(foo()).toBe(test);
+    expect(handler).toBeCalledTimes(2);
+    expect(observe).toBeCalledTimes(2);
+  });
+
   it('will run on assign', () => {
     class Test extends State {
       foo() {
