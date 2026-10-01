@@ -7,7 +7,7 @@ import expressive from './vite';
 
 type Result = Promise<{ code: string; map: null } | undefined>;
 
-function transform(code: string, id = '/src/app.js', runtime: string | null = '/mvc/src/runtime.js', ssr?: boolean): Result {
+function transform(code: string, id = '/src/app.js', runtime: string | null = '/mvc/src/hot.js', ssr?: boolean): Result {
   const hook = expressive().transform as Function;
   const resolve = async () => runtime && { id: runtime };
 
@@ -74,7 +74,7 @@ describe('skip', () => {
 });
 
 it('will resolve the runtime once', async () => {
-  const resolve = vi.fn(async () => ({ id: '/mvc/src/runtime.js' }));
+  const resolve = vi.fn(async () => ({ id: '/mvc/src/hot.js' }));
   const hook = expressive().transform as Function;
   const context = { parse: parseAst, resolve };
 
@@ -100,7 +100,7 @@ it('will name a module by its path from the project root', async () => {
 it('will append the binding and keep source maps', async () => {
   const { code, map } = (await transform('class A {}', '/src/app.js?t=123'))!;
 
-  expect(code).toContain(`import { hot as __expressive } from '@expressive/mvc/jsx-runtime';`);
+  expect(code).toContain(`import * as __expressive from '@expressive/mvc/hot';`);
   expect(code).toContain('__expressive.accept("/src/app.js", { A })');
   expect(code).toContain('import.meta.hot.accept(');
   expect(map).toBeNull();

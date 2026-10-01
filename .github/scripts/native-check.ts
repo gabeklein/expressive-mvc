@@ -25,6 +25,7 @@ const SUBPATHS = [
   '@expressive/mvc',
   '@expressive/mvc/jsx-runtime',
   '@expressive/mvc/observable',
+  '@expressive/mvc/hot',
   '@expressive/react',
   '@expressive/react/adapter',
   '@expressive/router',

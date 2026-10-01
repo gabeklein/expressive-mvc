@@ -37,6 +37,10 @@
       "types": "./dist/observable.d.ts",
       "default": "./dist/observable.js"
     },
+    "./hot": {
+      "types": "./dist/hot.d.ts",
+      "default": "./dist/hot.js"
+    },
     "./jsx-runtime": {
       "types": "./dist/jsx-runtime.d.ts",
       "default": "./dist/jsx-runtime.js"

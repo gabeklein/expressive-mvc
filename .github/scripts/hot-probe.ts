@@ -1119,7 +1119,7 @@ export class Session extends Base {
   });
 
   const runner = createServerModuleRunner(vite.environments.ssr, { hmr: { logger: false } });
-  const { hot } = await runner.import('@expressive/mvc/jsx-runtime');
+  const hot = await runner.import('@expressive/mvc/hot');
   const sessions = new Map<string, any>();
   const replaced: string[] = [];
 
@@ -1186,7 +1186,7 @@ export class Session extends Base {
     await scenario('server transform carries no browser-only code', async () => {
       const result = await vite.environments.ssr.transformRequest('/base.ts');
       const code = result?.code ?? '';
-      check(/\.hot\.accept\("\/base\.ts"/.test(code), 'no hot binding injected');
+      check(/\.accept\("\/base\.ts"/.test(code), 'no hot binding injected');
       check(!/sessionStorage|location\.reload|dispatchEvent/.test(code), 'browser-only code in the ssr transform');
     });
   } finally {

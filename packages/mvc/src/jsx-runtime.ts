@@ -137,7 +137,6 @@ export function propsOf(node: unknown): Record<string, unknown> {
   return HOST.propsOf(node);
 }
 
-export * as hot from './hot';
 
 export declare namespace JSX {
   type Element = Component.Node;
