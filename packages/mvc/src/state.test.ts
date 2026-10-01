@@ -3826,14 +3826,17 @@ describe('on call stage (static)', () => {
     expect(call).toBeCalledTimes(1);
   });
 
-  it('will keep the bound name', () => {
+  it('will keep the bound name and length', () => {
     class Test extends State {
-      foo() {}
+      foo(_a: number, _b: number) {}
     }
 
     Test.on({ call: () => {} });
 
-    expect(Test.new().foo.name).toBe('bound foo');
+    const { foo } = Test.new();
+
+    expect(foo.name).toBe('bound foo');
+    expect(foo.length).toBe(2);
   });
 });
 

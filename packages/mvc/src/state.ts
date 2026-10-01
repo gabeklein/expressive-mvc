@@ -772,7 +772,11 @@ function classify(
           }
         : fn.bind(is);
 
-      if (calls.length) define(bound, 'name', { value: `bound ${fn.name}` });
+      if (calls.length)
+        Object.defineProperties(bound, {
+          name: { value: `bound ${fn.name}` },
+          length: { value: fn.length }
+        });
 
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
