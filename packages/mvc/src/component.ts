@@ -23,6 +23,9 @@ type Acceptable<T> = {
 }[keyof T];
 
 declare namespace Component {
+  /** Not available - a Component is rendered, not used. */
+  const use: never;
+
   /**
    * Host element type produced by `Component.render`. Delegates to the
    * {@link Host} manifest on the jsx-runtime entry; falls back to `any`
@@ -133,7 +136,7 @@ class Component extends State {
       writable: true,
       configurable: true,
       value(this: Component, props?: {}) {
-        return render(self).call(this, props);
+        return composed(self).call(this, props);
       }
     });
   }
@@ -181,11 +184,6 @@ Object.defineProperty(Component.prototype, 'key', {
   }
 });
 
-/**
- * Seal each class's own `render` non-configurable at bootstrap so member
- * classification leaves it unbound - it stays the content-render seam the chain
- * reads (and which adapters like preact detect as the class-component marker).
- */
 Component.on({
   pre(self) {
     const key = Object.getOwnPropertyDescriptor(self, 'key');
@@ -197,23 +195,88 @@ Component.on({
       });
   },
   type(type) {
-    const desc = Object.getOwnPropertyDescriptor(type.prototype, 'render');
+    seal(type.prototype);
+  }
+});
 
-    if (desc && typeof desc.value == 'function')
-      Object.defineProperty(type.prototype, 'render', {
-        ...desc,
-        configurable: false
-      });
+/** Keep `render` the content seam classification leaves unbound. */
+function seal(proto: object) {
+  const desc = Object.getOwnPropertyDescriptor(proto, 'render');
+
+  if (desc && typeof desc.value == 'function')
+    Object.defineProperty(proto, 'render', { ...desc, configurable: false });
+}
+
+Object.defineProperty(Component, 'use', {
+  configurable: true,
+  value() {
+    throw new Error(`${this} is a Component - render it as an element instead of calling use().`);
   }
 });
 
 /**
- * Build (or fetch the cached) composed content render for an instance's class.
- * Walks the prototype chain for content renders strictly below Component - the
- * default render on Component.prototype is excluded and serves as the fallback
- * when a class authors none.
+ * Handlers a host registers (on `State` or `Component`) to make a class
+ * renderable: `render` sealed, and PascalCase methods and function fields
+ * rewritten into subcomponents whose `this` is `observe(owner)` - the host's
+ * tracking proxy for the current render.
  */
-function render(target: Component) {
+function toJSX(observe: (owner: State) => State): State.On<State> {
+  return {
+    type(type) {
+      seal(type.prototype);
+      subcomponents(type.prototype, observe);
+    },
+    before(self) {
+      subcomponents(self, observe);
+    }
+  };
+}
+
+function subcomponents(target: object, observe: (owner: State) => State) {
+  for (const key of Object.getOwnPropertyNames(target)) {
+    if (!/^[A-Z]/.test(key)) continue;
+
+    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
+
+    if (typeof value != 'function') continue;
+
+    Object.defineProperty(target, key, {
+      configurable: true,
+      get(this: State) {
+        const owner = this.is;
+        let render = unbind(value);
+        const Subcomponent = (props: unknown) => render.call(observe(owner), props);
+
+        Object.defineProperty(owner, key, {
+          configurable: true,
+          get: () => Subcomponent,
+          set(next: Function) {
+            render = next;
+          }
+        });
+
+        return Subcomponent;
+      },
+      set(this: State, next: unknown) {
+        Object.defineProperty(this, key, {
+          value: next,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+
+        subcomponents(this, observe);
+      }
+    });
+  }
+}
+
+/**
+ * The composed content render for an instance's class: content renders up the
+ * prototype chain, each base layer receiving the subclass's as a lazy
+ * `children` getter. Falls back to passing `children` through.
+ */
+function composed(target: State): Function {
   const cached = CHAIN.get(target.constructor);
 
   if (cached) return cached;
@@ -221,7 +284,10 @@ function render(target: Component) {
   let render: Function | undefined;
   let proto = target;
 
-  while ((proto = Object.getPrototypeOf(proto)) !== Component.prototype) {
+  while (
+    (proto = Object.getPrototypeOf(proto)) !== Component.prototype &&
+    proto !== State.prototype
+  ) {
     const desc = Object.getOwnPropertyDescriptor(proto, 'render');
 
     if (desc) {
@@ -256,4 +322,4 @@ function rechain() {
   CHAIN = new WeakMap();
 }
 
-export { Component, rechain };
+export { Component, composed, rechain, toJSX };
