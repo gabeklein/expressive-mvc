@@ -1,4 +1,4 @@
-import { Caught, Context, State } from '@expressive/mvc';
+import { Caught, Context, State, unbind } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
 import { isElement } from '@expressive/mvc/runtime';
 
@@ -275,11 +275,7 @@ export function attach(Type: typeof State = State): () => void {
   if (!hooks.has(Type)) {
     const observed = new Map<typeof State, () => void>();
     const stopCatch = Type.on({ catch: unhandled });
-    const stopCall = Type.on({
-      call(key, args) {
-        if (key != 'render') noteCall(this, key, args);
-      }
-    });
+    const stopCall = Type.on({ type: trace, bind: retrace });
     const stopSetup = Type.on({
       pre(this: State) {
         const self = this.is;
@@ -462,6 +458,46 @@ export async function call(address: string, ...args: unknown[]): Promise<unknown
   if (typeof method !== 'function') throw new Error(`No method at ${address}.`);
 
   return serialize(await method.apply(state, args));
+}
+
+const TRACED = new WeakSet<Function>();
+
+/** Wrap a class's own methods before they bind; a `super` call reaches the base wrapper and is not recorded twice. */
+function trace(type: typeof State) {
+  const proto = type.prototype as unknown as Record<string, Function>;
+
+  for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
+    const fn = desc.value;
+
+    if (key == 'constructor' || key == 'render' || typeof fn != 'function' || !desc.configurable) continue;
+
+    const traced = Object.defineProperties(
+      function (this: Record<string, Function>, ...args: unknown[]) {
+        if (unbind(this[key]) === traced) noteCall(this as unknown as State, key, args);
+        return fn.apply(this, args);
+      },
+      { name: { value: fn.name }, length: { value: fn.length } }
+    );
+
+    TRACED.add(traced);
+    proto[key] = traced;
+  }
+}
+
+/** Record a method bound from outside the prototype - a replacement through `set()`. */
+function retrace(this: State, key: string, fn: Function) {
+  if (key == 'render' || TRACED.has(unbind(fn))) return;
+
+  const self = this;
+
+  Object.defineProperty(this, key, {
+    configurable: true,
+    writable: true,
+    value(...args: unknown[]) {
+      noteCall(self, key, args);
+      return fn.apply(self, args);
+    }
+  });
 }
 
 /** Observe the host commit: adapters call `mount?.()` once an instance is placed. */
