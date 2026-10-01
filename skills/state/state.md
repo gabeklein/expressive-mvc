@@ -56,7 +56,7 @@ await pending(() => {
 - **No host registered:** no priority applies, but the promise still resolves once every subscriber has replayed - how headless code waits out a whole cascade, not just the first flush. Contrast `state.set()`, which resolves on the next flush of *that* state ([set.md](set.md)).
 - **Nesting:** a nested call settles its own consequences and joins the outer call.
 - **Suspending effect:** if an effect throws a promise, settlement waits for its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and squash into that retry. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its state releases the hold and prevents revival.
-- **Errors:** an exception from `work` propagates synchronously; updates queued before it still dispatch. The promise never rejects - a reader throwing during replay is reported as `Caught.Effect` ([lifecycle.md](lifecycle.md#error-handling)), never to the writer, so no catch is needed.
+- **Errors:** an exception from `work` propagates synchronously; updates queued before it still dispatch. The promise never rejects - a reader throwing during replay is reported with kind `Effect` ([lifecycle.md](lifecycle.md#error-handling)), never to the writer, so no catch is needed.
 
 `pending()` with no arguments is the reader half. Inside a replay carrying pending work it returns a release callback, and settlement waits on that instead of on the replay returning - how the React adapter holds until commit. A hand-written `watch` effect can do the same; elsewhere it returns `undefined`.
 
@@ -203,13 +203,13 @@ const stop = Counter.on({
 - `type(Class)` runs once per class at bootstrap. `pre` runs per instance before own values are observed, args and `new()` - may return a cleanup, args, or an assign overlay. `new` runs per instance with its `new()`, after args apply - may return a cleanup.
 - Handlers run ancestor-first; one registered on both parent and child runs once.
 - `bind(key, fn)` runs, `this` the instance, each time a method binds - first read, an assigned replacement (through `set()`, or `=` before first read), the rebind after a hot patch; `fn` is the bound function. A handler registered later misses existing bindings. Tooling use.
-- `catch(error)` receives each `Caught` mvc reports for the class ([lifecycle.md](lifecycle.md#error-handling)), `this` the instance - like nested `catch` blocks: most-derived class first, last registered first. Return the error (or a replacement `Caught`) to pass it on; return nothing to handle it; throw to escape uncaught at once. Passed off the end, a destroyed write outputs nothing, a warning logs, and anything else escapes uncaught.
+- `catch(error, kind, key?)` receives what mvc reports for the class ([lifecycle.md](lifecycle.md#error-handling)), `this` the instance - like nested `catch` blocks: most-derived class first, last registered first. Return the error (or another) to pass it on; return nothing to handle it; throw to escape uncaught at once. Passed off the end, a destroyed write outputs nothing, `Inactive` warns, and anything else escapes uncaught.
 
 ```ts
 State.on({
-  catch(error) {
+  catch(error, kind) {
     record(error); // observe
-    if (!error.warning) return error; // pass on - unhandled, it throws
+    if (kind != 'Inactive') return error; // pass on - unhandled, it throws
   } // warnings handled
 });
 ```
