@@ -3460,6 +3460,34 @@ describe('on type stage (static)', () => {
 });
 
 describe('on combined stages (static)', () => {
+  it('will run a function once per stage however often it is registered', () => {
+    class Base extends State {
+      foo = 0;
+
+      method() {}
+    }
+
+    class Test extends Base {}
+
+    const type = vi.fn();
+    const pre = vi.fn();
+    const bind = vi.fn();
+    const handle = vi.fn();
+
+    for (const T of [Base, Test, Test]) T.on({ type, pre, bind, catch: handle });
+
+    const test = Test.new();
+
+    void test.method;
+    test.set(null);
+    test.foo = 1;
+
+    expect(type).toBeCalledTimes(2);
+    expect(pre).toBeCalledTimes(1);
+    expect(bind).toBeCalledTimes(1);
+    expect(handle).toBeCalledTimes(1);
+  });
+
   it('will hook multiple stages from one handler object', () => {
     const order: string[] = [];
 
