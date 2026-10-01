@@ -203,45 +203,6 @@ Object.defineProperty(Component, 'use', {
   }
 });
 
-function subcomponents(target: object, observe: (owner: State) => State) {
-  for (const key of Object.getOwnPropertyNames(target)) {
-    if (!/^[A-Z]/.test(key)) continue;
-
-    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
-
-    if (typeof value != 'function') continue;
-
-    Object.defineProperty(target, key, {
-      configurable: true,
-      get(this: State) {
-        const owner = this.is;
-        let render = unbind(value);
-        const Subcomponent = (props: unknown) => render.call(observe(owner), props);
-
-        Object.defineProperty(owner, key, {
-          configurable: true,
-          get: () => Subcomponent,
-          set(next: Function) {
-            render = next;
-          }
-        });
-
-        return Subcomponent;
-      },
-      set(this: State, next: unknown) {
-        Object.defineProperty(this, key, {
-          value: next,
-          writable: true,
-          enumerable: true,
-          configurable: true
-        });
-
-        subcomponents(this, observe);
-      }
-    });
-  }
-}
-
 /**
  * Render `this` through its class's composed content render: content renders
  * up the prototype chain, each base layer receiving the subclass's as a lazy
@@ -288,4 +249,4 @@ function rechain() {
   CHAIN = new WeakMap();
 }
 
-export { Component, compose, rechain, subcomponents };
+export { Component, compose, rechain };

@@ -1,6 +1,6 @@
 import type { Component } from './component';
 
-export { compose, subcomponents } from './component';
+export { compose } from './component';
 
 /**
  * Per-adapter interpretation manifest. Each adapter augments this interface to

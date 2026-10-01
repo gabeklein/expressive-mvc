@@ -1,5 +1,4 @@
-import { Component } from '@expressive/mvc';
-import { subcomponents } from '@expressive/mvc/jsx-runtime';
+import { Component, State, unbind } from '@expressive/mvc';
 import { createProvider, type Context } from './context';
 import { Runtime, useWatch } from './runtime';
 
@@ -59,12 +58,51 @@ Component.on({
           }
         });
 
-    subcomponents(type.prototype, useWatch);
+    subcomponents(type.prototype);
   },
   pre(self) {
-    subcomponents(self, useWatch);
+    subcomponents(self);
   }
 });
+
+function subcomponents(target: object) {
+  for (const key of Object.getOwnPropertyNames(target)) {
+    if (!/^[A-Z]/.test(key)) continue;
+
+    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
+
+    if (typeof value != 'function') continue;
+
+    Object.defineProperty(target, key, {
+      configurable: true,
+      get(this: State) {
+        const owner = this.is;
+        let render = unbind(value);
+        const Subcomponent = (props: unknown) => render.call(useWatch(owner), props);
+
+        Object.defineProperty(owner, key, {
+          configurable: true,
+          get: () => Subcomponent,
+          set(next: Function) {
+            render = next;
+          }
+        });
+
+        return Subcomponent;
+      },
+      set(this: State, next: unknown) {
+        Object.defineProperty(this, key, {
+          value: next,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+
+        subcomponents(this);
+      }
+    });
+  }
+}
 
 function bootstrap(this: Component, context: Context){
   context = context.push();
