@@ -147,6 +147,8 @@ class Viewport extends State {
 | `<Component />`               | yes     | yes       |
 | `<Provider for={State}>`      | yes     | yes       |
 | `<Provider for={instance}>`   | no      | no        |
+| `<Component for={State}>`     | yes     | yes       |
+| `<Component for={instance}>`  | no      | no        |
 | `State.get()`                 | no      | no        |
 | `{instance}`                  | no      | no        |
 | `State.new()`                 | no host | no        |
@@ -369,6 +371,8 @@ Do not alias `is` merely because something will be written - writes never need t
 ---
 
 ## Provider & Consumer
+
+`<Component for={…}>` provides one State with no default boundary - see [context.md](../state/context.md#providing-with-component).
 
 ```tsx
 import { Provider, Consumer } from '@expressive/react';

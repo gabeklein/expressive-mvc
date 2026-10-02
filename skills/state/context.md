@@ -12,6 +12,7 @@ Recorded per instance (internal `LOOKUP` map); first explicit claim wins, and no
 | `new Context(StateClass)`                    | That context     |
 | `new State()` then `new Context(instance)`   | That context     |
 | `Provider for={StateClass}` (React)          | Provider context |
+| `<Component for={StateClass}>`               | Component context |
 
 > A bare `State.new()` resolves its `get()` lookups against root either way, but only *registers* into root - becoming findable by others - when the class opts in with `static global`. Registering is what locks a global's home to root; a private instance only falls back to root, so the first explicit context to claim it later still becomes its home. See [Root Context](#root-context).
 
@@ -159,6 +160,22 @@ ctx.get(Foo); // Bar instance - heals
 
 Unlike root - where a same-type duplicate throws and ancestor contests evict permanently - scoped contexts model "candidates available here," root models "the global instance."
 
+## Providing with Component
+
+Bare `Component` (not a subclass) given `for` provides one State to its children, in any host:
+
+```tsx
+<Component for={Session} name="Ada" is={(session) => …}>…</Component>  // constructed, owned
+<Component for={session} name="Ada">…</Component>                      // provided as-is
+```
+
+- A class is constructed, owned and destroyed with the element; `is` receives it; its `mount()` runs with the element's.
+- An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted, like a field.
+- Other attributes assign to the provided State, on every render.
+- Changing `for` releases the previous item, then provides the next.
+- No suspense boundary unless `fallback` or `catch` is passed. Bare `<Component>` without `for` keeps `fallback = null`.
+- One item only - several belong to a parent State that owns them.
+
 ## API Surface
 
 ```ts
@@ -181,4 +198,4 @@ Context.get(state);                    // static: state's home context
 Context.root;                          // global registry
 ```
 
-Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).
+Primarily consumed via the [`get` instruction](../field/get.md) and [`<Component for>`](#providing-with-component).

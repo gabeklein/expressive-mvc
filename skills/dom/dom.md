@@ -165,7 +165,7 @@ function Row({ id }: { id: string }) {
 }
 ```
 
-`Provider`, `Consumer`, State elements, `State.use()`, implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
+`<Component for>` ([context.md](../state/context.md#providing-with-component)), `Provider`, `Consumer`, State elements, `State.use()`, implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
 
 ## Lazy, boundaries, transitions
 
