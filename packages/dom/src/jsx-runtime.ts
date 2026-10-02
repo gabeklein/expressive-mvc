@@ -146,7 +146,7 @@ export declare namespace JSX {
   interface ElementAttributesProperty {}
   type LibraryManagedAttributes<C, P> =
     C extends abstract new (...args: any[]) => infer I
-      ? I extends { props: infer Q } ? Q
+      ? P extends { props: infer Q } ? Q
       : I extends State ? State.Props<I>
       : P
       : P;

@@ -676,6 +676,29 @@ describe('Component for', () => {
     expect(released).toBeCalledTimes(1);
   });
 
+  it('will type attributes from for', () => {
+    class Typed extends State {
+      name = '';
+      age = 0;
+    }
+
+    class Sub extends Component {}
+
+    void (() => [
+      <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
+      <Component for={Typed.new()} age={2} />,
+      <Component fallback={null} />,
+      // @ts-expect-error
+      <Component for={Typed} name={1} />,
+      // @ts-expect-error
+      <Component for={Typed} nope="x" />,
+      // @ts-expect-error
+      <Component for={Typed.new()} is={() => {}} />,
+      // @ts-expect-error
+      <Sub for={Typed} />
+    ]);
+  });
+
   it('will not add a suspense boundary', async () => {
     const gate = mockPromise<void>();
 

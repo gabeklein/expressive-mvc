@@ -4,7 +4,7 @@ import { State, adopt, trailing, unbind } from './state';
 
 import type { Host } from './jsx-runtime';
 
-const PENDING = new WeakMap<object, Component>();
+const PENDING = new WeakMap<object, Component<any>>();
 
 /** Per-class composed content render. */
 let CHAIN = new WeakMap<Function, Function>();
@@ -22,25 +22,14 @@ type Acceptable<T> = {
   >;
 }[keyof T];
 
-/** Whether `T` adds nothing to `Component` - no keys, and neither `fallback` nor `render` overridden. */
-type Bare<T extends Component> = [Exclude<keyof T, keyof Component>] extends [never]
-  ? IfEquals<T['fallback'], Component['fallback'], IfEquals<T['render'], Component['render'], true, false>, false>
-  : false;
-
-/**
- * Attributes of a bare `Component` providing `for` to its children. A class
- * is constructed, owned and handed to `is`; an instance is provided as-is.
- * Other attributes assign to the provided State. No default boundary.
- */
-type ForProps = {
+type ForProps<T extends State> = {
   children?: Component.Node;
   fallback?: Component.Node | false;
   catch?: (error: Error, instance: Component) => Promise<void> | void;
-  [key: string]: unknown;
 } & (
-  | { for: State.Extends; is?: (instance: any) => void }
-  | { for: State | undefined; is?: never }
-);
+  | { for: State.Extends<T>; is?: (instance: T) => void }
+  | { for: T | undefined; is?: never }
+) & { [K in Exclude<keyof T, keyof State> & Acceptable<T>]?: T[K] };
 
 declare namespace Component {
   /**
@@ -53,7 +42,7 @@ declare namespace Component {
    */
   type Node = Host extends { node: infer T } ? T : any;
 
-  interface BaseProps<T extends Component> {
+  interface BaseProps<T extends Component<any>> {
     /**
      * Callback for newly created instance. Only called once.
      *
@@ -87,22 +76,20 @@ declare namespace Component {
     : NonNullable<P>
     : { children?: Component.Node };
 
-  type Props<T extends Component> = (Bare<T> extends true ? ForProps : never)
-    | (
-      & StateProps<T>
-      & BaseProps<T>
-      & RenderProps<T['render']>
-    );
+  type Props<T extends Component<any>> =
+    & StateProps<T>
+    & BaseProps<T>
+    & RenderProps<T['render']>;
 }
 
-class Component extends State {
+class Component<P extends State = never> extends State {
   /**
    * All JSX attributes passed to this component.
    * Includes state-derived props, render props, and built-in props like `is` and `fallback`.
    *
    * Will incorperate extra props you declare as props parameter in `render` method.
    */
-  declare readonly props: Component.Props<this>;
+  declare readonly props: [P] extends [never] ? Component.Props<this> : ForProps<P>;
 
   /** Stable identity used when this instance is rendered in a collection. */
   declare readonly key: string;
@@ -218,7 +205,7 @@ Component.on({
   }
 });
 
-function provide(self: Component) {
+function provide(self: Component<any>) {
   let input: unknown;
   let target: State | undefined;
   let owned: { mount?(): unknown } | undefined;
