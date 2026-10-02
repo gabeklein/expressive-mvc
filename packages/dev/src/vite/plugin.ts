@@ -20,7 +20,7 @@ export interface Host {
 
 const DEPS = [
   "@expressive/mvc",
-  "@expressive/mvc/runtime",
+  "@expressive/mvc/hot",
   "@expressive/mvc/jsx-runtime",
   "@expressive/dom",
   "@expressive/dom/jsx-runtime",
