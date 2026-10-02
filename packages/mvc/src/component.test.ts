@@ -461,3 +461,121 @@ describe('composed', () => {
     expect(compose.call(bare, { children: 'c' })).toBe('c');
   });
 });
+
+describe('for', () => {
+  class Session extends State {
+    name = 'none';
+  }
+
+  it('will construct and provide a class', () => {
+    const is = vi.fn();
+    const provider = Component.new({ for: Session, name: 'Ada', is } as any);
+    const context = new Context().push(provider);
+    const session = context.get(Session);
+
+    expect(session.name).toBe('Ada');
+    expect(is).toBeCalledWith(session);
+    expect(is).not.toBeCalledWith(provider);
+  });
+
+  it('will destroy a provided class with the provider', () => {
+    const provider = Component.new({ for: Session } as any);
+    const context = new Context().push(provider);
+    const session = context.get(Session);
+
+    provider.set(null);
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will provide an instance without owning it', () => {
+    const session = Session.new();
+    const provider = Component.new({ for: session, name: 'Ada' } as any);
+    const context = new Context().push(provider);
+
+    expect(context.get(Session)).toBe(session);
+    expect(session.name).toBe('Ada');
+
+    provider.set(null);
+
+    expect(session.get(null)).toBe(false);
+  });
+
+  it('will adopt an instance not yet active', () => {
+    const session = new Session();
+    const provider = Component.new({ for: session } as any);
+
+    expect(new Context().push(provider).get(Session)).toBe(session);
+
+    provider.set(null);
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will forward props on update', async () => {
+    const provider = Component.new({ for: Session, name: 'Ada' } as any);
+    const context = new Context().push(provider);
+    const session = context.get(Session);
+
+    (provider as any).props = { for: Session, name: 'Grace' };
+    await expect(session).toHaveUpdated('name');
+
+    expect(session.name).toBe('Grace');
+    expect(context.get(Session)).toBe(session);
+  });
+
+  it('will release the previous item when for changes', async () => {
+    const provider = Component.new({ for: Session } as any);
+    const context = new Context().push(provider);
+    const first = context.get(Session);
+    const next = Session.new();
+
+    (provider as any).props = { for: next };
+    await flushMicrotasks();
+
+    expect(first.get(null)).toBe(true);
+    expect(context.get(Session)).toBe(next);
+
+    (provider as any).props = {};
+    await flushMicrotasks();
+
+    expect(next.get(null)).toBe(false);
+    expect(context.get(Session, false)).toBeUndefined();
+  });
+
+  it('will mount only a class it constructed', () => {
+    const cleanup = vi.fn();
+
+    class Owned extends State {
+      mount() {
+        return cleanup;
+      }
+    }
+
+    const owned = Component.new({ for: Owned } as any) as any;
+    const placed = Component.new({ for: Owned.new() } as any) as any;
+    const plain = Component.new({ for: Session } as any) as any;
+
+    expect(owned.mount()).toBe(cleanup);
+    expect(placed.mount()).toBeUndefined();
+    expect(plain.mount()).toBeUndefined();
+  });
+
+  it('will not default a boundary', () => {
+    const provider = Component.new({ for: Session } as any);
+    const bounded = Component.new({ for: Session, fallback: 'wait' } as any);
+
+    expect(provider.fallback).toBe(false);
+    expect(bounded.fallback).toBe('wait');
+  });
+
+  it('will not provide from a subclass', () => {
+    class Sub extends Component {}
+
+    const sub = Sub.new({ for: Session } as any);
+    const context = new Context().push(sub);
+
+    expect(sub.fallback).toBe(null);
+    expect(context.get(Session, false)).toBeUndefined();
+  });
+});

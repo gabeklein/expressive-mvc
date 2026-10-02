@@ -1,6 +1,6 @@
 import { Context } from './context';
 import { set } from './field/set';
-import { State, trailing, unbind } from './state';
+import { State, adopt, trailing, unbind } from './state';
 
 import type { Host } from './jsx-runtime';
 
@@ -21,6 +21,26 @@ type Acceptable<T> = {
     P, never
   >;
 }[keyof T];
+
+/** Whether `T` adds nothing to `Component` - no keys, and neither `fallback` nor `render` overridden. */
+type Bare<T extends Component> = [Exclude<keyof T, keyof Component>] extends [never]
+  ? IfEquals<T['fallback'], Component['fallback'], IfEquals<T['render'], Component['render'], true, false>, false>
+  : false;
+
+/**
+ * Attributes of a bare `Component` providing `for` to its children. A class
+ * is constructed, owned and handed to `is`; an instance is provided as-is.
+ * Other attributes assign to the provided State. No default boundary.
+ */
+type ForProps = {
+  children?: Component.Node;
+  fallback?: Component.Node | false;
+  catch?: (error: Error, instance: Component) => Promise<void> | void;
+  [key: string]: unknown;
+} & (
+  | { for: State.Extends; is?: (instance: any) => void }
+  | { for: State | undefined; is?: never }
+);
 
 declare namespace Component {
   /**
@@ -67,10 +87,12 @@ declare namespace Component {
     : NonNullable<P>
     : { children?: Component.Node };
 
-  type Props<T extends Component> =
-    & StateProps<T>
-    & BaseProps<T>
-    & RenderProps<T['render']>;
+  type Props<T extends Component> = (Bare<T> extends true ? ForProps : never)
+    | (
+      & StateProps<T>
+      & BaseProps<T>
+      & RenderProps<T['render']>
+    );
 }
 
 class Component extends State {
@@ -101,6 +123,7 @@ class Component extends State {
 
     const seen = {} as Record<string, undefined>;
     const twin = PENDING.get(props);
+    const provider = new.target === Component && 'for' in props;
 
     if (typeof props == 'object') merge(props);
 
@@ -120,7 +143,9 @@ class Component extends State {
           other.set(null);
         }
 
-        props.is?.(this);
+        if (provider) provide(this);
+        else props.is?.(this);
+
         Object.defineProperty(this, 'props', { enumerable: false });
         PENDING.delete(props);
       }
@@ -192,6 +217,42 @@ Component.on({
       });
   }
 });
+
+function provide(self: Component) {
+  let input: unknown;
+  let target: State | undefined;
+  let owned: { mount?(): unknown } | undefined;
+
+  Object.defineProperty(self, 'mount', {
+    configurable: true,
+    value: () => owned?.mount?.()
+  });
+
+  function sync() {
+    const { for: next, is, children, fallback, catch: _catch, ...rest } = self.props as Record<string, any>;
+
+    if (fallback === undefined) self.fallback = false;
+
+    if (next !== input) {
+      input = next;
+
+      if (State.is(next)) {
+        adopt(self, 'for', (target = new (next as State.Type)(rest)));
+        owned = target as typeof owned;
+        is?.(target);
+        return;
+      }
+
+      owned = undefined;
+      adopt(self, 'for', (target = next instanceof State ? next : undefined));
+    }
+
+    target?.set(rest);
+  }
+
+  sync();
+  self.set('props', sync);
+}
 
 /**
  * Render `this` through its class's composed content render: content renders
