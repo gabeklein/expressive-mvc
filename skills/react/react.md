@@ -154,7 +154,7 @@ class Viewport extends State {
 `<Component for={State}>` runs the provided State's `mount()` with its own commit:
 
 - Like any parent, it mounts *after* its descendants (React commits bottom-up) - a descendant should react to provided state by subscription, not read it imperatively in its own `mount()`.
-- Replacing `for` mid-life provides the new State without mounting it. Key the element (`<Component key={name} for={Type}>`) to make the swap a fresh mount.
+- Replacing `for` with another class unmounts and destroys the previous State, then mounts the new one.
 
 The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. A hook firing once per observer is not a lifecycle - to react to an instance a component does not own, subscribe with `State.get()` or an event.
 

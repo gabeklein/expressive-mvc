@@ -416,7 +416,7 @@ describe('MVC adapter', () => {
     expect(root.textContent).toBe('plain');
   });
 
-  it.fails('will transfer Component for lifecycle when its State type changes', async () => {
+  it('will transfer Component for lifecycle when its State type changes', async () => {
     const lifecycle: string[] = [];
 
     class First extends State {
