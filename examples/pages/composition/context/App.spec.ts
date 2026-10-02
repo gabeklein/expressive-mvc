@@ -1,6 +1,6 @@
 import { expect, test } from '../../../e2e';
 
-test('will provide a map and update each reader by field', async ({ page, open }) => {
+test('will provide a root and its child and update each reader by field', async ({ page, open }) => {
   await open('composition/context');
   const greeting = page.locator('.greeting');
   const badge = page.locator('.badge');

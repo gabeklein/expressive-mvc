@@ -31,7 +31,7 @@ Style:
 
 Every page runs on `@expressive/react` and `@expressive/dom` unchanged. Keep it that way:
 
-- Import `State`, `Component` and instructions from `@expressive/mvc`. Only `Provider` / `Consumer` come from `@expressive/react`, which dom mode aliases.
+- Import `State`, `Component` and instructions from `@expressive/mvc`; provide state with `<Component for={…}>`. `@expressive/react` is aliased to dom in dom mode.
 - No `react` imports in pages. Use `Component.Node` for children, and structural types for handler parameters that need annotating.
 - Text fields use `onInput` (identical on React). Checkboxes and selects keep `onChange`.
 - No `Suspense`: give the component that owns the pending value a `fallback`.

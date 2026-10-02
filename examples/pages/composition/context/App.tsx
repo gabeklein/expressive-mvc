@@ -1,7 +1,6 @@
 import './App.css';
 
-import { State } from '@expressive/mvc';
-import { Consumer, Provider } from '@expressive/react';
+import { Component, State } from '@expressive/mvc';
 
 const SHELF = [
   { name: 'Espresso', price: 3 },
@@ -13,21 +12,20 @@ export default () => (
   <div className="container">
     <h1>Context</h1>
     <p>
-      <code>Provider</code> puts state in context - a class it constructs and will
-      destroy, an instance it leaves alone, or a map of several at once. Anything
-      below finds it by class with <code>.get()</code>, which is the difference
+      <code>{'<Component for>'}</code> puts state in context - a class it constructs
+      and will destroy, or an instance it leaves alone. A State's own child states
+      come along: the shop owns its cart, so one element provides both. Anything
+      below finds either by class with <code>.get()</code>, which is the difference
       between joining state and creating it.
     </p>
-    <Provider for={{ shop: Shop, cart: Cart }}>
+    <Component for={Shop}>
       <div className="counter">
         <Greeting />
         <Shelf />
         <Badge />
-        <Consumer for={Cart}>
-          {(cart) => <p className="total">Total ${cart.total}</p>}
-        </Consumer>
+        <Total />
       </div>
-    </Provider>
+    </Component>
     <small>
       Subscriptions are per component and per field: the badge tracks{' '}
       <code>count</code>, the total tracks <code>total</code>, and the greeting
@@ -38,10 +36,6 @@ export default () => (
   </div>
 );
 
-class Shop extends State {
-  barista = 'Ada';
-}
-
 class Cart extends State {
   count = 0;
   total = 0;
@@ -50,6 +44,11 @@ class Cart extends State {
     this.count++;
     this.total += price;
   }
+}
+
+class Shop extends State {
+  barista = 'Ada';
+  cart = new Cart();
 }
 
 const Greeting = () => {
@@ -76,4 +75,10 @@ const Badge = () => {
   const { count } = Cart.get();
 
   return <p className="badge">{count} in cart</p>;
+};
+
+const Total = () => {
+  const { total } = Cart.get();
+
+  return <p className="total">Total ${total}</p>;
 };

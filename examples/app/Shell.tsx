@@ -1,4 +1,4 @@
-import { Component, get, Provider, ref } from '@expressive/react';
+import { Component, get, ref } from '@expressive/react';
 import { BrowserRouter, Link, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';
@@ -11,13 +11,15 @@ import type { Directory } from '../pages';
 
 const Shell = ({ tree, default: home }: { tree: Directory[]; default?: string }) => {
   return (
-    <Provider for={{ Theme, BrowserRouter }}>
-      <Route as={Window}>
-        {home && <Route redirect={`/${home}`} />}
-        {tree.map(renderDirectory)}
-        <Route none as={NotFound} />
-      </Route>
-    </Provider>
+    <Component for={Theme}>
+      <Component for={BrowserRouter}>
+        <Route as={Window}>
+          {home && <Route redirect={`/${home}`} />}
+          {tree.map(renderDirectory)}
+          <Route none as={NotFound} />
+        </Route>
+      </Component>
+    </Component>
   );
 };
 
