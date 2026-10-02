@@ -445,7 +445,7 @@ describe('accept', () => {
 
       expect(test.value).toBe(11);
       expect(handler).toBeCalledTimes(2);
-      expect(handler).toHaveBeenLastCalledWith('bump', test.bump);
+      expect(handler).toHaveBeenLastCalledWith('bump', test.bump, test);
     });
 
     it('will keep an observed method assigned to an instance', () => {

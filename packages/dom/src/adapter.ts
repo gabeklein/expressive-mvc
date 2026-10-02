@@ -256,8 +256,8 @@ declare module '@expressive/mvc' {
 const OWNERS = new WeakMap<Function, { owner: State; key: string }>();
 
 State.on({
-  bind(key, fn) {
-    if (/^[A-Z]/.test(key)) OWNERS.set(fn, { owner: this, key });
+  bind(key, fn, owner) {
+    if (/^[A-Z]/.test(key)) OWNERS.set(fn, { owner, key });
   }
 });
 
