@@ -1,4 +1,4 @@
-import { Fragment, host } from '@expressive/mvc/runtime';
+import { Fragment, host } from '@expressive/mvc/jsx-runtime';
 
 import { childrenOf, isVNode, vnode } from './vnode';
 import type { Node, VNode } from './vnode';
@@ -71,7 +71,7 @@ type Intrinsics = {
   [K in keyof SVGElementTagNameMap]: Attributes<SVGElementTagNameMap[K]> & SVGAttributes;
 };
 
-declare module '@expressive/mvc/runtime' {
+declare module '@expressive/mvc/jsx-runtime' {
   interface Host {
     node: Node;
     intrinsics: Intrinsics;
