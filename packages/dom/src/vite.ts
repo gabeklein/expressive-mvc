@@ -139,7 +139,6 @@ function inject(id: string, body: Node[], ssr = false) {
     hidden.map((name) => [name, `[expressive] ${name} (${id}) declares #private members, so edits to its module ${effect}. Use _ properties instead to keep HMR.`])
   );
   const replace = ssr ? server(notes, list) : browser(key, notes, list);
-
   const lines = [
     `import { State as __State } from '@expressive/mvc';`,
     classes.length && `import { accept as __accept } from '@expressive/mvc/hot';`,
