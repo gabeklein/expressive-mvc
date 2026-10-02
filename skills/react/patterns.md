@@ -328,7 +328,6 @@ Construction stays with the consumer - `session = new Session()` on the entrypoi
 
 ```tsx
 import { State, Component, get } from '@expressive/mvc';
-import { Provider } from '@expressive/react';
 
 class Theme extends State {
   color = 'blue';
@@ -361,9 +360,9 @@ class ThemedWidget extends Component {
 
 function App() {
   return (
-    <Provider for={Theme}>
+    <Component for={Theme}>
       <ThemedWidget />
-    </Provider>
+    </Component>
   );
 }
 ```

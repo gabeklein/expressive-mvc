@@ -13,14 +13,14 @@ export { State, State as default }; // augmented with React features
 export { Context, def, get, ref, set, pending }; // re-exported from @expressive/mvc
 export { has, map }; // collection instructions, React-aware facades
 export { Component }; // React Component class
-export { Provider, Consumer }; // explicit context components
+export { Provider }; // deprecated - use <Component for>
 ```
 
 ## Quick Start
 
 ```tsx
 import { State, Component, get, set, ref } from '@expressive/mvc';
-import { Provider } from '@expressive/react';
+import '@expressive/react'; // once, in the entry module
 
 class Counter extends Component {
   count = 0;
@@ -145,18 +145,16 @@ class Viewport extends State {
 | ----------------------------- | ------- | --------- |
 | `State.use()`                 | yes     | yes       |
 | `<Component />`               | yes     | yes       |
-| `<Provider for={State}>`      | yes     | yes       |
-| `<Provider for={instance}>`   | no      | no        |
 | `<Component for={State}>`     | yes     | yes       |
 | `<Component for={instance}>`  | no      | no        |
 | `State.get()`                 | no      | no        |
 | `{instance}`                  | no      | no        |
 | `State.new()`                 | no host | no        |
 
-A `Provider` decides per entry: `for={{ Session, theme }}` mounts `Session` (which it constructed and will destroy) and leaves `theme` alone. Since `mount()` belongs to the Provider's own commit:
+`<Component for={State}>` runs the provided State's `mount()` with its own commit:
 
 - Like any parent, it mounts *after* its descendants (React commits bottom-up) - a descendant should react to provided state by subscription, not read it imperatively in its own `mount()`.
-- Replacing `for` mid-life provides the new State without mounting it. Key the Provider (`<Provider key={name} for={Type}>`) to make the swap a fresh mount.
+- Replacing `for` mid-life provides the new State without mounting it. Key the element (`<Component key={name} for={Type}>`) to make the swap a fresh mount.
 
 The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. A hook firing once per observer is not a lifecycle - to react to an instance a component does not own, subscribe with `State.get()` or an event.
 
@@ -176,11 +174,11 @@ Setup accompanying the instance itself goes in `new()`; anything touching `windo
 
 Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Effects don't run, so `mount()` never fires; `new()` and `use()` do. Request-safety rules:
 
-- **Request state goes in a `<Provider>`.** Each render builds its own context, so provided instances are isolated per request.
-- **A `static global` is process-wide, *shared across requests* on the server** (globals are not sealed - a `global` is trusted to be mutable process state like config, flags or a warmed cache). Keep per-request data out; put it behind a Provider.
+- **Request state goes in a `<Component for>`.** Each render builds its own context, so provided instances are isolated per request.
+- **A `static global` is process-wide, *shared across requests* on the server** (globals are not sealed - a `global` is trusted to be mutable process state like config, flags or a warmed cache). Keep per-request data out; provide it with `<Component for>`.
 - **Resources belong in `mount()` or the request handler, never `new()`.** `new()` runs on the server but its returned teardown does not (no unmount), so a socket or handle opened there leaks. `mount()` is client-only; server-side resources are the framework's request scope to open and close.
 
-To render a specific request's data (a path, a session), provide it per request: `<Provider for={Session} …>`. For this reason `Router` is a client-only global - on the server it is per-render, so paths never bleed between requests; provide `<Provider for={Router}>` to render a request's path.
+To render a specific request's data (a path, a session), provide it per request: `<Component for={Session} …>`. For this reason `Router` is a client-only global - on the server it is per-render, so paths never bleed between requests; provide `<Component for={Router} path={…}>` to render a request's path.
 
 ### React Native
 
@@ -215,7 +213,7 @@ A class must be top-level `class X` or `let X = class` - a `const` binding canno
 
 ## State.get() - Context Hook
 
-Fetches an instance from context (provided by `Provider` or `Component`) and independently subscribes to accessed properties. Available on all State.
+Fetches an instance from context (provided by a `Component` or `<Component for>`) and independently subscribes to accessed properties. Available on all State.
 
 ```tsx
 function Profile() {
@@ -305,7 +303,7 @@ const data = AppState.get(($, refresh) => {
 
 ### Reactive context
 
-If the upstream instance is replaced in context (e.g. Provider re-created), the hook resubscribes to the new instance and refreshes.
+If the upstream instance is replaced in context (e.g. `<Component for>` given a new item), the hook resubscribes to the new instance and refreshes.
 
 ---
 
@@ -370,57 +368,11 @@ Do not alias `is` merely because something will be written - writes never need t
 
 ---
 
-## Provider & Consumer
+## Providing state
 
-`<Component for={…}>` provides one State with no default boundary - see [context.md](../state/context.md#providing-with-component).
+`<Component for={AppState}>` provides one State to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); `mount()` timing in [mount() method](#mount-method). For a render-prop read, write an FC calling `AppState.get()`.
 
-```tsx
-import { Provider, Consumer } from '@expressive/react';
-
-<Provider for={AppState}><App /></Provider>
-
-// Multiple states
-<Provider for={{ app: AppState, user: UserState }}><App /></Provider>
-
-// With instance
-<Provider for={existingInstance}><App /></Provider>
-
-// With init callback
-<Provider for={AppState} is={(instance) => { instance.user = "Bob"; }}>
-  <App />
-</Provider>
-
-// With suspense fallback
-<Provider for={AppState} fallback={<Loading />}>
-  <App />
-</Provider>
-
-// State fields as JSX attributes (single `for` only)
-<Provider for={AppState} user="Bob">
-  <App />
-</Provider>
-```
-
-### Provider props
-
-| Prop       | Type                                    | Description                                        |
-| ---------- | --------------------------------------- | -------------------------------------------------- |
-| `for`      | `State \| State.Type \| Context.Accept` | State instance, class, or map to provide           |
-| `is`       | `(instance) => void`                    | Called for each registered instance (created or given); return ignored |
-| `fallback` | `ReactNode`                             | When set, wraps children in a Suspense boundary    |
-| `name`     | `string`                                | Suspense boundary name for React DevTools          |
-| `children` | `ReactNode`                             | Content rendered within provider                   |
-| `[field]`  | varies                                  | State fields merged into the instance (single `for`) |
-
-Provider creates instances from classes, or uses given instances directly. Created instances are destroyed on unmount; given ones are not.
-
-### Consumer
-
-```tsx
-<Consumer for={AppState}>{(app) => <p>{app.user}</p>}</Consumer>
-```
-
-Uses `State.get()` internally - the child function receives a tracking proxy.
+`Provider` still works but is deprecated - replace `<Provider for={X}>` with `<Component for={X}>`.
 
 ---
 
