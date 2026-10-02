@@ -294,9 +294,9 @@ describe('private members', () => {
   it('will note only classes declaring them', async () => {
     const code = await inject('class A { #a; }\nlet B = class { #b() {} };\nclass C { c = 1; }');
 
-    expect(code).toContain('"A": "[expressive] A (/src/app.js)');
-    expect(code).toContain('"B": "[expressive] B (/src/app.js)');
-    expect(code).not.toContain('"C": "[expressive]');
+    expect(code).toContain('"A":"[expressive] A (/src/app.js)');
+    expect(code).toContain('"B":"[expressive] B (/src/app.js)');
+    expect(code).not.toContain('"C":"[expressive]');
   });
 
   it('will warn once, after the reload', async () => {

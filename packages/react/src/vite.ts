@@ -54,8 +54,8 @@ function scan(body: Node[]) {
   return { classes, hidden, exports };
 }
 
-const server = (notes: string, list: string) => `\
-  const __notes = { ${notes} };
+const server = (notes: Record<string, string>, list: string) => `\
+  const __notes = ${JSON.stringify(notes)};
   const __before = import.meta.hot.data.expressive;
   const __classes = (import.meta.hot.data.expressive = { ${list} });
   const __warned = (import.meta.hot.data.warned ||= {});
@@ -63,11 +63,10 @@ const server = (notes: string, list: string) => `\
     if (__before && __classes[key] !== __before[key] && !__warned[key]) {
       __warned[key] = true;
       console.warn(__notes[key]);
-    }
-`;
+    }`;
 
-const browser = (id: string, notes: string, list: string) => `\
-  const __notes = { ${notes} };
+const browser = (id: string, notes: Record<string, string>, list: string) => `\
+  const __notes = ${JSON.stringify(notes)};
   const __flag = (key) => 'expressive:private:' + ${id} + ':' + key;
   for (const key in __notes)
     try {
@@ -90,19 +89,18 @@ const browser = (id: string, notes: string, list: string) => `\
       dispatchEvent(new CustomEvent('expressive:reload', { detail: { module: ${id}, class: key, reason: note ? 'private members' : 'class changed shape' } }));
       location.reload();
       break;
-    }
-`;
+    }`;
 
-const patchClasses = (id: string, classes: string[]) => `
-import { accept as __accept } from '@expressive/mvc/hot';
+const patchClasses = (id: string, classes: string[]) => `\
 {
   const __hot = __accept(${id}, { ${classes.join(', ')} });
   ${classes.map((name) => `${name} = __hot.${name};`).join('\n  ')}
 }`;
 
-const acceptUpdates = (replace: string, record: string) => `
+const acceptUpdates = (replace: string, record: string) => `\
 if (import.meta.hot) {
-${replace}  const __exports = { ${record} };
+${replace}
+  const __exports = { ${record} };
   import.meta.hot.accept((next) => {
     if (!next) return;
     for (const key in __exports) {
@@ -111,8 +109,7 @@ ${replace}  const __exports = { ${record} };
         return import.meta.hot.invalidate(\`"\${key}" export cannot be hot-patched.\`);
     }
   });
-}
-`;
+}`;
 
 /**
  * Bind a module's classes to `hot.accept`. A State class it could not patch
@@ -128,16 +125,19 @@ function inject(id: string, body: Node[], ssr = false) {
   const list = classes.join(', ');
   const record = Object.entries(exports).map(([name, local]) => `${JSON.stringify(name)}: ${local}`);
   const effect = ssr ? 'replace it instead of patching' : 'will trigger a full reload';
-  const notes = hidden
-    .map(
-      (name) =>
-        `${JSON.stringify(name)}: ${JSON.stringify(`[expressive] ${name} (${id}) declares #private members, so edits to its module ${effect}. Use _ properties instead to keep HMR.`)}`
-    )
-    .join(', ');
+  const notes = Object.fromEntries(
+    hidden.map((name) => [name, `[expressive] ${name} (${id}) declares #private members, so edits to its module ${effect}. Use _ properties instead to keep HMR.`])
+  );
   const replace = ssr ? server(notes, list) : browser(key, notes, list);
 
-  return `
-import { State as __State } from '@expressive/mvc';${patchClasses(key, classes)}${acceptUpdates(replace, record.join(', '))}`;
+  const lines = [
+    `import { State as __State } from '@expressive/mvc';`,
+    `import { accept as __accept } from '@expressive/mvc/hot';`,
+    patchClasses(key, classes),
+    acceptUpdates(replace, record.join(', '))
+  ];
+
+  return `\n${lines.join('\n')}\n`;
 }
 
 /** Hot-patch State and Component classes in place during `vite` dev. */
