@@ -222,10 +222,25 @@ function provide(self: Component) {
   let input: unknown;
   let target: State | undefined;
   let owned: { mount?(): unknown } | undefined;
+  let mounted = false;
+  let release: unknown;
+
+  function unmount() {
+    if (typeof release == 'function') release();
+    release = undefined;
+  }
 
   Object.defineProperty(self, 'mount', {
     configurable: true,
-    value: () => owned?.mount?.()
+    value() {
+      mounted = true;
+      release = owned?.mount?.();
+
+      return () => {
+        mounted = false;
+        unmount();
+      };
+    }
   });
 
   function sync() {
@@ -235,11 +250,13 @@ function provide(self: Component) {
 
     if (next !== input) {
       input = next;
+      unmount();
 
       if (State.is(next)) {
         adopt(self, 'for', (target = new (next as State.Type)(rest)));
         owned = target as typeof owned;
         is?.(target);
+        if (mounted) release = owned!.mount?.();
         return;
       }
 

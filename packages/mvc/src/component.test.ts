@@ -556,9 +556,48 @@ describe('for', () => {
     const placed = Component.new({ for: Owned.new() } as any) as any;
     const plain = Component.new({ for: Session } as any) as any;
 
-    expect(owned.mount()).toBe(cleanup);
-    expect(placed.mount()).toBeUndefined();
-    expect(plain.mount()).toBeUndefined();
+    owned.mount()();
+    placed.mount()();
+    plain.mount()();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will hand mount to the next class when for changes', async () => {
+    const log: string[] = [];
+
+    const tracked = (name: string) => class extends State {
+      mount() {
+        log.push(name + ':mount');
+        return () => log.push(name + ':unmount');
+      }
+
+      protected new() {
+        return () => log.push(name + ':destroy');
+      }
+    };
+
+    const First = tracked('first');
+    const Second = tracked('second');
+    const provider = Component.new({ for: First } as any) as any;
+    const release = provider.mount();
+
+    provider.props = { for: Second };
+    await flushMicrotasks();
+
+    provider.props = { for: Session };
+    await flushMicrotasks();
+
+    release();
+
+    expect(log).toEqual([
+      'first:mount',
+      'first:unmount',
+      'first:destroy',
+      'second:mount',
+      'second:unmount',
+      'second:destroy'
+    ]);
   });
 
   it('will not default a boundary', () => {

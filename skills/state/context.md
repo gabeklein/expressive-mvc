@@ -169,7 +169,7 @@ Bare `Component` (not a subclass) given `for` provides one State to its children
 <Component for={session} name="Ada">…</Component>                      // provided as-is
 ```
 
-- A class is constructed, owned and destroyed with the element; `is` receives it; its `mount()` runs with the element's.
+- A class is constructed, owned and destroyed with the element; `is` receives it; its `mount()` runs with the element's, and a replacement class takes over the mount.
 - An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted, like a field.
 - Other attributes assign to the provided State, on every render.
 - Changing `for` releases the previous item, then provides the next.

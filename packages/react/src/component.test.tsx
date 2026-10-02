@@ -1898,6 +1898,33 @@ describe('for', () => {
     expect(released).toBeCalledTimes(1);
   });
 
+  it('will hand mount to the next class when for changes', async () => {
+    const log: string[] = [];
+
+    class First extends State {
+      mount() {
+        log.push('first:mount');
+        return () => log.push('first:unmount');
+      }
+    }
+
+    class Second extends State {
+      mount() {
+        log.push('second:mount');
+        return () => log.push('second:unmount');
+      }
+    }
+
+    const view = render(<Component for={First} />);
+
+    view.rerender(<Component for={Second} />);
+    await act(async () => {});
+
+    view.unmount();
+
+    expect(log).toEqual(['first:mount', 'first:unmount', 'second:mount', 'second:unmount']);
+  });
+
   it('will not add a suspense boundary', async () => {
     const gate = mockPromise();
 
