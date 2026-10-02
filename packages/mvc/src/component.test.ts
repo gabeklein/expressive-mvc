@@ -461,7 +461,3 @@ describe('composed', () => {
     expect(compose.call(bare, { children: 'c' })).toBe('c');
   });
 });
-
-it('will not allow use on a Component', () => {
-  expect(() => (Component as any).use()).toThrow('render it as an element');
-});

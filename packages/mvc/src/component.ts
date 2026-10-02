@@ -23,9 +23,6 @@ type Acceptable<T> = {
 }[keyof T];
 
 declare namespace Component {
-  /** Not available - a Component is rendered, not used. */
-  const use: never;
-
   /**
    * Host element type produced by `Component.render`. Delegates to the
    * {@link Host} manifest on the jsx-runtime entry; falls back to `any`
@@ -193,13 +190,6 @@ Component.on({
         enumerable: false,
         writable: false
       });
-  }
-});
-
-Object.defineProperty(Component, 'use', {
-  configurable: true,
-  value() {
-    throw new Error(`${this} is a Component - render it as an element instead of calling use().`);
   }
 });
 

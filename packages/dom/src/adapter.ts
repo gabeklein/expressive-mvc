@@ -1,4 +1,4 @@
-import { Context, State, unbind } from '@expressive/mvc';
+import { Component, Context, State, unbind } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 
 import { schedule, transition, unschedule } from './scheduler';
@@ -159,6 +159,10 @@ declare module '@expressive/mvc' {
     ): T;
   }
 
+  namespace Component {
+    const use: never;
+  }
+
   interface Component {
     mount?(): (() => void) | void;
   }
@@ -252,6 +256,13 @@ declare module '@expressive/mvc' {
   scope.childContext = slot.context;
   return slot.proxy as T;
 };
+
+Object.defineProperty(Component, 'use', {
+  configurable: true,
+  value() {
+    throw new Error(`${this} is a Component - render it instead of calling use().`);
+  }
+});
 
 const OWNERS = new WeakMap<Function, { owner: State; key: string }>();
 

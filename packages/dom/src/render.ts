@@ -286,9 +286,9 @@ function mountOwnedComponent(
   const resolved = componentProps(value.type, value.props, appearance);
   const Type = value.type as new (...args: unknown[]) => Renderable;
   const props = observe(resolved.props);
-  const instance: Renderable = Type.prototype instanceof Component
-    ? new Type(props)
-    : new Type(props, () => props.is?.(instance));
+  const instance: Renderable = new Type(props,
+    Type.prototype instanceof Component ? undefined : () => props.is?.(instance)
+  );
 
   return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props);
 }
