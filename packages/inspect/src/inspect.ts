@@ -1,8 +1,8 @@
-import { Caught, Context, State } from '@expressive/mvc';
+import { Context, State, unbind } from '@expressive/mvc';
 import { listener } from '@expressive/mvc/observable';
-import { isElement } from '@expressive/mvc/runtime';
+import { isElement } from '@expressive/mvc/jsx-runtime';
 
-import { journal, note, noteCall, noteCaught, noteDestroy, notePatch, recordsCalls, type Frame, type Query } from './journal';
+import { journal, note, noteCall, noteCaught, noteDestroy, notePatch, type Frame, type Query } from './journal';
 import { entries, parsePath, project, serialize, walk, type Select } from './serialize';
 import { bracket } from './bracket';
 import { tick, unreached, unsettled, type Act } from './settle';
@@ -49,11 +49,8 @@ const weak = (state: State): Row['ref'] =>
 const live = new Map<string, Row>();
 const hooks = new Map<typeof State, () => void>();
 
-const CASES = ['Destroyed', 'Inactive', 'Getter', 'Init', 'Effect'] as const;
 const COPIES = Symbol.for('@expressive/mvc');
 
-type Case = (typeof CASES)[number];
-const wrapped = new WeakMap<State, Set<string>>();
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const wrappers = new WeakMap<State, Instance>();
 const spans = new WeakMap<State, Span>();
@@ -66,23 +63,23 @@ let tally = counts();
 let copies = 1;
 let unwatch: (() => void) | undefined;
 
-function counts(): Record<Case, number> {
-  return { Destroyed: 0, Inactive: 0, Getter: 0, Init: 0, Effect: 0 };
+function counts(): Record<string, number> {
+  return { dead: 0, unused: 0, getter: 0, setup: 0, effect: 0 };
 }
 
-const noted = new WeakMap<Caught, { handled: boolean } | undefined>();
+/** The report `observe` last saw - the chain is synchronous, so `unhandled` checks it against its own. */
+let last: { error: unknown; event?: { handled: boolean } } | undefined;
 
-function observe(error: Caught) {
-  const name = CASES.find((type) => error instanceof Caught[type]);
-  if (name) tally[name]++;
-  noted.set(error, noteCaught(error, name || 'Caught'));
+function observe(this: State, error: unknown, kind: string, key?: string) {
+  tally[kind]++;
+  last = { error, event: noteCaught(this, error, kind, key) };
   return error;
 }
 
-function unhandled(error: Caught) {
-  if (!noted.has(error)) observe(error);
-  const event = noted.get(error);
-  if (event) event.handled = false;
+function unhandled(this: State, error: unknown, kind: string, key?: string) {
+  if (last?.error !== error) observe.call(this, error, kind, key);
+  if (last!.event) last!.event.handled = false;
+  last = undefined;
   return error;
 }
 
@@ -276,46 +273,44 @@ export function attach(Type: typeof State = State): () => void {
   if (!hooks.has(Type)) {
     const observed = new Map<typeof State, () => void>();
     const stopCatch = Type.on({ catch: unhandled });
-    const stopSetup = Type.on(function (this: State) {
-      const self = this.is;
-      const T = self.constructor as typeof State;
-      const id = String(self);
-      const span: Span = { since: Date.now(), claimed: false, settled: false };
-      if (!observed.has(T)) observed.set(T, T.on({ catch: observe }));
-      seen(T);
-      live.set(id, { ref: weak(self) });
-      spans.set(self, span);
-      reaper.register(self, id, self);
-      setTimeout(() => {
-        span.settled = true;
-      }, 0);
-      version++;
-      if (recordsCalls()) wrap(self);
-      mounts(self);
-      const unpatch = listener(self, () => {
-        unwrap(self);
-        if (recordsCalls()) wrap(self);
-        notePatch(self);
-      }, REFRESH);
-      const stop = self.set((key) => {
-        const store = entries(self);
-        if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
-        note(self, key, store);
-      });
-      return () => {
-        stop();
-        unpatch();
-        live.delete(id);
-        reaper.unregister(self);
-        span.until = Date.now();
+    const stopCall = Type.on({ type: trace, bind: retrace });
+    const stopSetup = Type.on({
+      pre(this: State) {
+        const self = this.is;
+        const T = self.constructor as typeof State;
+        const id = String(self);
+        const span: Span = { since: Date.now(), claimed: false, settled: false };
+        if (!observed.has(T)) observed.set(T, T.on({ catch: observe }));
+        seen(T);
+        live.set(id, { ref: weak(self) });
+        spans.set(self, span);
+        reaper.register(self, id, self);
+        setTimeout(() => {
+          span.settled = true;
+        }, 0);
         version++;
-        noteDestroy(self);
-      };
+        mounts(self);
+        const unpatch = listener(self, () => notePatch(self), REFRESH);
+        const stop = self.set((key) => {
+          const store = entries(self);
+          if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
+          note(self, key, store);
+        });
+        return () => {
+          stop();
+          unpatch();
+          live.delete(id);
+          reaper.unregister(self);
+          span.until = Date.now();
+          version++;
+          noteDestroy(self);
+        };
+      }
     });
-
     hooks.set(Type, () => {
       for (const stop of observed.values()) stop();
       stopCatch();
+      stopCall();
       stopSetup();
     });
   }
@@ -387,8 +382,8 @@ export interface Health {
   collected: number;
   /** Loaded copies of `@expressive/mvc` - more than 1 means inspect cannot see every State. */
   copies: number;
-  /** `Caught` reports by case, including ones an app handler went on to handle; zeroed by `journal.clear()`. */
-  caught: Record<Case, number>;
+  /** Reports by kind, including ones an app handler went on to handle; zeroed by `journal.clear()`. */
+  caught: Record<string, number>;
 }
 
 /** Counts worth a look before trusting what inspect shows. */
@@ -463,8 +458,48 @@ export async function call(address: string, ...args: unknown[]): Promise<unknown
   return serialize(await method.apply(state, args));
 }
 
-export function wrapAll(): void {
-  for (const state of registered()) wrap(state);
+const TRACED = new WeakSet<Function>();
+
+/** Wrap a class's own methods before they bind, so each call is recorded. */
+function trace(type: typeof State) {
+  const proto = type.prototype as unknown as Record<string, Function>;
+
+  for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto)))
+    if (key != 'constructor' && key != 'render' && typeof desc.value == 'function' && desc.configurable)
+      proto[key] = traced(key, desc.value);
+}
+
+/**
+ * Rebind a method replaced through `set()` to a traced copy, so `unbind` still yields a function honoring `this`.
+ * A class bootstrapped before attach keeps its methods untraced - wrapped per instance, a hot patch would keep them.
+ */
+function retrace(this: State, key: string, fn: Function) {
+  const source = unbind(fn);
+  let proto = Object.getPrototypeOf(this);
+
+  while (!Object.prototype.hasOwnProperty.call(proto, key)) proto = Object.getPrototypeOf(proto);
+
+  if (key == 'render' || TRACED.has(source) || source === unbind(Object.getOwnPropertyDescriptor(proto, key)!.get!)) return;
+
+  const self = this as unknown as Record<string, Function>;
+
+  delete self[key];
+  self[key] = traced(key, source);
+}
+
+/** A `super` call reaches the base wrapper too; only the one `this[key]` resolves to records. */
+function traced(key: string, fn: Function) {
+  const wrapper = Object.defineProperties(
+    function (this: Record<string, Function>, ...args: unknown[]) {
+      if (unbind(this[key]) === wrapper) noteCall(this as unknown as State, key, args);
+      return fn.apply(this, args);
+    },
+    { name: { value: fn.name }, length: { value: fn.length } }
+  );
+
+  TRACED.add(wrapper);
+
+  return wrapper;
 }
 
 /** Observe the host commit: adapters call `mount?.()` once an instance is placed. */
@@ -496,46 +531,6 @@ function describe(state: State, parents: Map<State, State>): Model {
   const parent = parents.get(state);
   if (parent) model.parent = String(parent);
   return model;
-}
-
-function wrap(state: State) {
-  let keys = wrapped.get(state);
-  if (!keys) wrapped.set(state, (keys = new Set(['render'])));
-
-  const target = state as unknown as Record<string, Function>;
-
-  for (let proto = Object.getPrototypeOf(state); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
-    for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
-      if (keys.has(key) || typeof desc.get !== 'function' || desc.get !== desc.set) continue;
-
-      keys.add(key);
-
-      target[key] = function (this: unknown, ...args: unknown[]) {
-        noteCall(state, key, args);
-        return latest(state, key).apply(this, args);
-      };
-    }
-}
-
-/** Drop wrappers of methods a hot patch removed. */
-function unwrap(state: State) {
-  const keys = wrapped.get(state);
-
-  if (keys)
-    for (const key of keys)
-      if (key != 'render' && !(key in Object.getPrototypeOf(state))) {
-        delete (state as unknown as Record<string, unknown>)[key];
-        keys.delete(key);
-      }
-}
-
-/** A method's current implementation - through its accessor, so a hot patch is followed. */
-function latest(state: State, key: string): Function {
-  let proto = Object.getPrototypeOf(state);
-
-  while (!Object.prototype.hasOwnProperty.call(proto, key)) proto = Object.getPrototypeOf(proto);
-
-  return Object.getOwnPropertyDescriptor(proto, key)!.get!.call(state);
 }
 
 function ownership(): Map<State, State> {

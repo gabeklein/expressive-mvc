@@ -4,7 +4,7 @@ import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
-import { hot } from '@expressive/mvc/runtime';
+import * as hot from '@expressive/mvc/hot';
 import { Component, Consumer, State, pending, set } from '.';
 
 it('will create and provide instance', () => {
@@ -1761,9 +1761,7 @@ describe('strict mode', () => {
       }
     }
 
-    Control.on(() => {
-      order.push('init');
-    });
+    Control.on({ pre: () => void order.push('init') });
 
     const element = render(
       <React.StrictMode>

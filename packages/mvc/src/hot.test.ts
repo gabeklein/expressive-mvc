@@ -299,8 +299,8 @@ describe('accept', () => {
         }
       }
 
-      Test.on(() => {});
-      Test.on({ after() {} });
+      Test.on({ pre: () => {} });
+      Test.on({ new() {} });
       Test.on({
         type(type) {
           if (Object.getOwnPropertyDescriptor(type.prototype, 'Sealed')!.configurable)
@@ -342,12 +342,14 @@ describe('accept', () => {
 
     const Test = version('before');
 
-    Test.on((self) => {
-      Object.defineProperty(self, 'label', {
-        configurable: true,
-        get: () => () => 'own',
-        set: received
-      });
+    Test.on({
+      pre(self) {
+        Object.defineProperty(self, 'label', {
+          configurable: true,
+          get: () => () => 'own',
+          set: received
+        });
+      }
     });
 
     accept(id, { Test });
@@ -365,14 +367,14 @@ describe('accept', () => {
 
     const version = (handler?: () => void) => {
       class Test extends State {}
-      if (handler) Test.on(handler);
+      if (handler) Test.on({ pre: handler });
       return Test;
     };
 
     const Test = version(before);
 
     accept(id, { Test });
-    Test.on(outside);
+    Test.on({ pre: outside });
     accept(id, { Test: version(after) });
     Test.new();
 
@@ -381,13 +383,66 @@ describe('accept', () => {
     expect(outside).toHaveBeenCalledTimes(1);
   });
 
+  describe('bind handlers', () => {
+    const version = (step: number, handler?: State.On) => {
+      class Test extends State {
+        value = 0;
+        bump() {
+          this.value += step;
+        }
+      }
+      if (handler) Test.on(handler);
+      return Test;
+    };
+
+    it('will run again for a patched method', () => {
+      const id = module();
+      const handler = vi.fn();
+      const Test = version(1, { bind: handler });
+
+      accept(id, { Test });
+
+      const test = Test.new();
+
+      test.bump();
+      accept(id, { Test: version(10, { bind: handler }) });
+      test.bump();
+
+      expect(test.value).toBe(11);
+      expect(handler).toBeCalledTimes(2);
+      expect(handler).toHaveBeenLastCalledWith('bump', test.bump);
+    });
+
+    it('will keep an observed method assigned to an instance', () => {
+      const id = module();
+      const handler = vi.fn();
+      const Test = version(1, { bind: handler });
+
+      accept(id, { Test });
+
+      const test = Test.new();
+
+      test.set({
+        bump() {
+          this.value = 100;
+        }
+      });
+
+      accept(id, { Test: version(10, { bind: handler }) });
+      test.bump();
+
+      expect(test.value).toBe(100);
+      expect(handler).toBeCalledTimes(1);
+    });
+  });
+
   it('will add handlers to a class without', () => {
     const id = module();
     const handler = vi.fn();
 
     const version = (handler?: () => void) => {
       class Test extends State {}
-      if (handler) Test.on(handler);
+      if (handler) Test.on({ pre: handler });
       return Test;
     };
 
@@ -490,6 +545,32 @@ describe('accept', () => {
     test.bump();
 
     expect(test.value).toBe(10);
+  });
+
+  it('will not patch a destroyed instance', () => {
+    const id = module();
+
+    const version = (step: number) => {
+      class Test extends State {
+        value = 0;
+        bump() {
+          this.value += step;
+        }
+      }
+      return Test;
+    };
+
+    const Test = version(1);
+
+    accept(id, { Test });
+
+    const test = Test.new();
+    const { bump } = test;
+
+    test.set(null);
+    accept(id, { Test: version(10) });
+
+    expect(test.bump).toBe(bump);
   });
 
   it('will not patch a class which changed shape', () => {

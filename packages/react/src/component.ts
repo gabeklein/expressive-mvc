@@ -85,7 +85,7 @@ Component.on({
     // capitalized methods into subcomponents
     subcomponents(type.prototype);
   },
-  before(self){
+  pre(self){
     // capitalized instance fields into subcomponents
     subcomponents(self);
   }

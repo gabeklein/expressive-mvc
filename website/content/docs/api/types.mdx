@@ -139,13 +139,13 @@ type Init<T> = (
 
 ### `State.On<T>`
 
-Handler object accepted by `State.on()` - hooks lifecycle by phase. A bare `Init` function passed to `on` is sugar for `{ before }`.
+Handler object accepted by `State.on()` - hooks lifecycle by phase.
 
 ```ts
 interface On<T> {
   type?(type: State.Extends<T>): void;
-  before?(this: T, thisArg: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
-  after?(this: T, self: T): void | (() => void);
+  pre?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
+  new?(this: T, self: T): void | (() => void);
 }
 ```
 

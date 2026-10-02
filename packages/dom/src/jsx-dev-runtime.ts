@@ -1,4 +1,4 @@
-import { Fragment } from '@expressive/mvc/runtime';
+import { Fragment } from '@expressive/mvc/jsx-runtime';
 
 import { vnode } from './vnode';
 import type { VNode } from './vnode';

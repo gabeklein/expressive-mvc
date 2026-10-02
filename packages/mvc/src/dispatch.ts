@@ -1,5 +1,3 @@
-import { fault } from './state';
-
 type Handler = () => void;
 type Transition = (work: Handler) => void;
 
@@ -19,6 +17,18 @@ interface Scheduled {
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
+
+/** Where errors caught in a flush go - `as` takes a report, `error` throws what is left uncaught. */
+const REPORT = {
+  as(kind: string, owner?: object, cause?: unknown, key?: string): void {
+    REPORT.error(cause);
+  },
+  error(err: unknown): void {
+    queueMicrotask(() => {
+      throw err;
+    });
+  }
+};
 let current: Iterable<Pending> | undefined;
 let replaying: Scheduled | undefined;
 
@@ -98,10 +108,10 @@ function flush() {
       if (transition) transition(handler);
       else handler();
     } catch (err) {
-      fault(err, scheduled.owner);
-    } finally {
-      current = replaying = undefined;
+      REPORT.as('effect', scheduled.owner, err);
     }
+
+    current = replaying = undefined;
 
     if (!scheduled.holds) drop(scheduled);
   }
@@ -172,4 +182,4 @@ function pending(work?: Handler): Promise<void> | (() => void) | undefined {
   return promise;
 }
 
-export { enqueue, hold, pending };
+export { enqueue, hold, pending, REPORT };

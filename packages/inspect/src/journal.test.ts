@@ -1,5 +1,5 @@
-import { State } from '@expressive/mvc';
-import { hot } from '@expressive/mvc/runtime';
+import { State, unbind } from '@expressive/mvc';
+import * as hot from '@expressive/mvc/hot';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockWarn } from '../test.setup';
@@ -138,7 +138,7 @@ describe('journal', () => {
     expect(journal.history({ key: 'submit' })[0].event.args).toEqual(['hey']);
   });
 
-  it('will wrap already-live instances when calls turn on', () => {
+  it('will record calls of live instances once calls turn on', () => {
     attach();
     const composer = Composer.new();
     journal.record({ calls: true });
@@ -147,6 +147,90 @@ describe('journal', () => {
     const calls = journal.history({ key: 'submit' });
     expect(calls.length).toBe(1);
     expect(calls[0].event.args).toBeUndefined();
+  });
+
+  it('will record a method replaced through set', () => {
+    attach();
+    journal.record({ level: 'values', calls: true });
+    const composer = Composer.new();
+    composer.submit('a');
+    composer.set({ submit: (text: string) => text.length * 2 });
+    expect(composer.submit('bb')).toBe(4);
+    expect(journal.history({ key: 'submit' }).map((h) => h.event.args)).toEqual([['a'], ['bb']]);
+  });
+
+  it('will keep this for a replaced method called unbound', () => {
+    class Test extends State {
+      self(): unknown {
+        return undefined;
+      }
+    }
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+    const test = Test.new();
+    const other = {};
+    test.set({ self() { return this; } });
+    expect(unbind(test.self).call(other)).toBe(other);
+  });
+
+  it('will not record calls of a class bootstrapped before attach', () => {
+    class Early extends State {
+      go() {}
+    }
+
+    Early.new();
+    attach();
+    journal.record({ level: 'keys', calls: true });
+
+    const early = Early.new();
+
+    early.go();
+    early.go();
+
+    expect(journal.history({ key: 'go' })).toEqual([]);
+  });
+
+  it('will record a super call once', () => {
+    class Base extends State {
+      go() {
+        return 1;
+      }
+    }
+
+    class Sub extends Base {
+      go() {
+        return super.go() + 1;
+      }
+    }
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+    expect(Sub.new().go()).toBe(2);
+    expect(journal.history({ key: 'go' }).length).toBe(1);
+  });
+
+  it('will not record render', () => {
+    class View extends State {
+      render() {
+        return null;
+      }
+    }
+
+    attach();
+    journal.record({ level: 'keys', calls: true });
+    View.new().render();
+    expect(journal.history({ key: 'render' })).toEqual([]);
+  });
+
+  it('will stop recording calls once turned off', () => {
+    attach();
+    journal.record({ level: 'keys', calls: true });
+    const composer = Composer.new();
+    composer.submit('a');
+    journal.record({ calls: false });
+    composer.submit('b');
+    expect(journal.history({ key: 'submit' }).length).toBe(1);
   });
 
   it('will not record calls unless asked', () => {
@@ -541,35 +625,7 @@ describe('hot', () => {
 
     const counter = Before.new() as any;
 
-    hot.accept(id, { Counter: After });
-    await flushMicrotasks();
-
-    expect(counter.gone).toBeUndefined();
-  });
-
-  it('will drop a wrapper once calls stop recording', async () => {
-    const id = `journal-${count++}`;
-
-    attach();
-    journal.record({ level: 'keys', calls: true });
-
-    const Before = (() => {
-      class Counter extends State {
-        gone() {}
-      }
-      return Counter;
-    })();
-
-    const After = (() => {
-      class Counter extends State {}
-      return Counter;
-    })();
-
-    hot.accept(id, { Counter: Before });
-
-    const counter = Before.new() as any;
-
-    journal.record({ calls: false });
+    counter.gone();
     hot.accept(id, { Counter: After });
     await flushMicrotasks();
 

@@ -1,5 +1,5 @@
 import { Context, join } from './context';
-import { Caught } from './caught';
+import { REPORT } from './dispatch';
 import {
   capture,
   event,
@@ -24,7 +24,7 @@ const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 const PENDING = new Set<State | (() => void)>();
 
 /** External lifecycle listeners for any given State class. */
-type Handler = State.Init<any> | State.On<any>;
+type Handler = State.On<any>;
 
 const SETUP = new WeakMap<State.Extends, Set<Handler>>();
 
@@ -42,15 +42,6 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
 /** Replacement for a getter captured by live computed properties, for hot patching. */
 const LATEST = new WeakMap<Function, Function>();
-
-/** Method implementations replaced by a hot patch. */
-const PAST = new WeakSet<Function>();
-
-/** Live instances, tracked once hot patching is enabled. */
-let LIVE: Set<WeakRef<State>> | undefined;
-
-/** Bootstrapped subclasses of each class, tracked once hot patching is enabled. */
-const SUBCLASSES = new WeakMap<Function, Set<State.Extends>>();
 
 /** Event every observer treats as watched, forcing a refresh after a hot patch. */
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
@@ -102,10 +93,7 @@ declare namespace State {
     thisArg: T
   ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
 
-  /**
-   * Lifecycle handlers for `State.on`, keyed by when they run. A bare `Init`
-   * function passed to `on` is sugar for `{ before }`.
-   */
+  /** Lifecycle handlers for `State.on`, keyed by when they run. */
   interface On<T extends State = State> {
     /**
      * Per-class setup, run once when the class is first bootstrapped - before
@@ -116,26 +104,35 @@ declare namespace State {
     type?(type: State.Extends<T>): void;
 
     /**
-     * Per-instance setup, run in the `prepare` phase before `observe` and the
-     * `new()` hook. Equivalent to passing a bare function to `on`. May return a
-     * cleanup, constructor args, or an assign overlay.
+     * Per-instance setup, run before own values are observed and before
+     * constructor args and `new()`. May return a cleanup, constructor args, or
+     * an assign overlay.
      */
-    before?(this: T, thisArg: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
+    pre?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
 
     /**
-     * Per-instance setup, run at the `new()` slot - after own values are
-     * observed and constructor args applied. May return a cleanup function.
+     * Per-instance setup, run with the instance's `new()` - after own values
+     * are observed and constructor args applied. May return a cleanup function.
      */
-    after?(this: T, self: T): void | (() => void);
+    new?(this: T, self: T): void | (() => void);
 
     /**
-     * Receives a `Caught` mvc reports for this State or a subclass - most-derived
-     * class first, last registered first. Return it (or a replacement) to pass it
-     * on; return nothing to handle it; throw to let it escape uncaught. Passed off
-     * the end, a warning logs and anything else is thrown - to the writer for a
-     * destroyed write, else uncaught.
+     * Runs each time a method is bound to an instance - first access,
+     * reassignment, and the rebind after a hot patch - with the key and the
+     * bound function. Tooling and development use.
      */
-    catch?(this: T, error: Caught): Caught | void;
+    bind?(this: T, key: string, fn: Function): void;
+
+    /**
+     * Receives what an effect, refreshing getter or async initializer of this State
+     * or a subclass threw, a destroyed write, or an instance never activated - with
+     * its `kind` (`effect`, `getter`, `setup`, `dead`, `unused`) and `key` where
+     * one applies. Most-derived class first, last registered first, each once. Return the error
+     * (or another) to pass it on; return nothing to handle it; throw to let it escape.
+     * Passed off the end, a destroyed write outputs nothing, `unused` warns,
+     * anything else escapes uncaught.
+     */
+    catch?(this: T, error: unknown, kind: 'effect' | 'getter' | 'setup' | 'dead' | 'unused', key?: string): unknown;
   }
 
   /** Object overlay to override values and methods on a state. */
@@ -368,7 +365,7 @@ abstract class State {
    * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
-   * @param silent - If true, listeners will not be notified. If state is destroyed, drops the update without reporting it.
+   * @param silent - If true, listeners will not be notified. If state is destroyed, stores the update without reporting it.
    * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
@@ -405,7 +402,7 @@ abstract class State {
   set(key: State.Event<this>): State.Updated<this>;
 
   /**
-   * Declare an end to updates. This event is final and will freeze state.
+   * Declare an end to updates. This event is final - later writes are stored but never dispatched.
    * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
    *
    * @param status - `null` to end updates.
@@ -503,18 +500,20 @@ abstract class State {
   /**
    * Register a lifecycle handler for this State and its subclasses.
    *
-   * A bare function is per-instance setup run in the `prepare` phase (sugar for
-   * `{ before }`); if it returns a function, that runs when the instance is
-   * destroyed. Pass a {@link State.On} object to hook by cadence - `type`
-   * (per-class, at bootstrap), `before` (per-instance, before `new()`), and
-   * `after` (per-instance, at the `new()` slot).
+   * Hooks by cadence - `type` (per-class, at bootstrap), `pre` (per-instance,
+   * before values are observed), `new` (per-instance, with `new()`), and `bind`
+   * (per method binding). A function returned from `pre` or `new` runs when the
+   * instance is destroyed.
    *
    * @returns Function to remove the handler.
    */
   static on<T extends State>(
     this: State.Extends<T>,
-    handler: State.Init<T> | State.On<T>
+    handler: State.On<T>
   ) {
+    if (typeof handler == 'function')
+      throw new TypeError(`${this.name}.on takes handlers by stage - pass { pre: fn }.`);
+
     let setup = SETUP.get(this);
 
     if (!setup) SETUP.set(this, (setup = new Set()));
@@ -564,7 +563,6 @@ function init(state: State, ...args: State.Args) {
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
-  LIVE?.add(new WeakRef(state));
 
   function observe() {
     for (const key in state) {
@@ -612,7 +610,7 @@ function init(state: State, ...args: State.Args) {
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
         if (out instanceof Promise)
-          out.catch((err) => report(new Caught.Init(state, err)));
+          out.catch((err) => report('setup', state, err));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);
@@ -636,7 +634,7 @@ function init(state: State, ...args: State.Args) {
 
       for (const item of PENDING)
         if (typeof item == 'function') item();
-        else report(new Caught.Inactive(item));
+        else report('unused', item, new Error(`${item} was constructed but never activated.`));
 
       PENDING.clear();
     });
@@ -675,13 +673,11 @@ function bootstrap(T: State.Extends) {
   }
 
   for (const type of chain) {
-    for (const handler of SETUP.get(type) || [])
-      if (typeof handler == 'function') before.add(handler);
-      else {
-        if (handler.before) before.add(handler.before);
-        if (handler.after) after.add(handler.after);
-        if (handler.type) onType.add(handler.type);
-      }
+    for (const handler of SETUP.get(type) || []) {
+      if (handler.pre) before.add(handler.pre);
+      if (handler.new) after.add(handler.new);
+      if (handler.type) onType.add(handler.type);
+    }
 
     if (type === State) continue;
 
@@ -692,14 +688,6 @@ function bootstrap(T: State.Extends) {
     }
 
     for (const setupType of onType) setupType(type);
-
-    if (LIVE) {
-      const parent = Object.getPrototypeOf(type);
-      let children = SUBCLASSES.get(parent);
-
-      if (!children) SUBCLASSES.set(parent, (children = new Set()));
-      children.add(type);
-    }
 
     METHODS.set(type, (keys = new Map(keys)));
     GETTERS.set(type, (getters = new Map(getters)));
@@ -757,6 +745,8 @@ function classify(
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
 
+      for (const handler of stages(is.constructor as State.Extends, 'bind')) handler.call(is, key, bound);
+
       return bound;
     }
 
@@ -765,6 +755,15 @@ function classify(
     keys.set(key, bind);
     define(type.prototype, key, { get: bind, set: bind });
   }
+}
+
+/** Handlers of one stage along the class chain - ancestor first, in registration order, each once. */
+function stages<K extends 'bind' | 'catch'>(T: State.Extends, key: K): Set<NonNullable<State.On[K]>> {
+  const found = T === State ? new Set<NonNullable<State.On[K]>>() : stages(Object.getPrototypeOf(T), key);
+
+  for (const handler of SETUP.get(T) || []) if (handler[key]) found.add(handler[key]!);
+
+  return found;
 }
 
 /**
@@ -811,7 +810,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
         throw err;
       }
 
-      if (!(err instanceof Promise)) report(new Caught.Getter(this, key, err));
+      if (!(err instanceof Promise)) report('getter', this, err, key);
     }
 
     update(this, key, next, !isAsync);
@@ -1080,7 +1079,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
  *
  * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
  *
- * A destroyed state reports the write - thrown to the writer unless a `catch` handler takes it - and returns `false`; `silent` skips both, and dispatch.
+ * A destroyed state stores the write without dispatch, reports it unless `silent`, and returns `false`.
  */
 function update<T>(
   state: State,
@@ -1089,14 +1088,15 @@ function update<T>(
   silent?: boolean,
   own?: boolean
 ) {
-  if (observer(state) === null) {
-    if (!silent) report(new Caught.Destroyed(state, String(key)), true);
-    return false;
-  }
-
   const store = STORE.get(state)!;
 
   if (value instanceof State) value = value.is as T;
+
+  if (observer(state) === null) {
+    if (!silent) report('dead', state, new Error(`Tried to update ${state}.${String(key)} but state is destroyed.`), String(key));
+    store[key] = value;
+    return false;
+  }
 
   if (key in store && value === store[key]) return false;
 
@@ -1110,49 +1110,28 @@ function update<T>(
 }
 
 /**
- * Pass a caught error along `catch` handlers - most-derived class first, last registered
- * first - until one returns nothing. Passed off the end, a warning logs and anything
- * else is thrown - to the caller when `sync`, else uncaught. So is a handler's throw,
- * and one wrapping an error a handler already threw escapes that error unreported.
+ * Pass an error along `catch` handlers - most-derived class first, last registered
+ * first, one on several classes once at the outermost - until one returns nothing. Passed off
+ * the end, a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught;
+ * so does a handler's throw.
  */
-function report(caught: Caught, sync?: boolean) {
-  const handlers = new Set<NonNullable<State.On['catch']>>();
-  let error: Caught | void = caught;
-
-  if (caught.cause instanceof Caught) return escape(caught.cause);
-
-  for (let T = caught.state.constructor as State.Extends; ; T = Object.getPrototypeOf(T)) {
-    for (const handler of [...(SETUP.get(T) || [])].reverse())
-      if (typeof handler == 'object' && handler.catch) handlers.add(handler.catch);
-
-    if (T === State) break;
-  }
-
-  try {
-    for (const handler of handlers) if (!(error = handler.call(caught.state, error))) return;
-  } catch (err) {
-    if (sync) throw err;
-    return escape(err);
-  }
-
-  if (error.warning) console.warn(error);
-  else if (sync) throw error;
-  else escape(error);
-}
-
-function escape(err: unknown) {
-  queueMicrotask(() => {
-    throw err;
-  });
-}
-
-/** Error thrown by a handler replaying in dispatch, attributed to the State which queued it. */
-function fault(err: unknown, owner?: object) {
+function report(kind: Parameters<NonNullable<State.On['catch']>>[1], owner: object | undefined, error: unknown, key?: string) {
   const state = owner instanceof State ? owner : owner && PARENT.get(owner);
 
-  if (state) report(new Caught.Effect(state, err));
-  else escape(err);
+  if (!state) return REPORT.error(error);
+
+  try {
+    for (const handler of [...stages(state.constructor as State.Extends, 'catch')].reverse())
+      if ((error = handler.call(state, error, kind, key)) === undefined) return;
+
+    if (kind == 'unused') console.warn(error);
+    else if (kind != 'dead') REPORT.error(error);
+  } catch (err) {
+    REPORT.error(err);
+  }
 }
+
+REPORT.as = report;
 
 /**
  * Hand a value stored by an owning writer to that property's adopter,
@@ -1184,141 +1163,6 @@ function latest(getter: Function) {
   return getter;
 }
 
-/** Begin tracking live instances, so a hot patch can reach them. */
-function track() {
-  LIVE ||= new Set();
-}
-
-/**
- * Move the members of `next` onto `prev`, which keeps its identity. Returns the
- * live instances of `prev`, each needing a refresh.
- */
-function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[] {
-  const proto = prev.prototype;
-  const incoming = Object.getOwnPropertyDescriptors(next.prototype);
-  const keys = METHODS.get(prev);
-  const getters = GETTERS.get(prev);
-  const methods = new Map<string, Function>();
-  const knownKeys = new Set(keys?.keys());
-  const knownGetters = new Set(getters?.keys());
-
-  let setup = SETUP.get(prev);
-
-  for (const handler of own) setup!.delete(handler);
-
-  for (const handler of handlers(next)) {
-    if (!setup) SETUP.set(prev, (setup = new Set()));
-    setup.add(handler);
-  }
-
-  for (const key of Reflect.ownKeys(next)) {
-    if (key == 'prototype' || key == 'length' || key == 'name') continue;
-
-    if (Object.getOwnPropertyDescriptor(prev, key)?.configurable !== false)
-      define(prev, key, Object.getOwnPropertyDescriptor(next, key)!);
-  }
-
-  const removed = new Set<string>();
-
-  for (const key of Object.getOwnPropertyNames(proto))
-    if (key != 'constructor' && !(key in incoming)) {
-      const bind = keys?.get(key);
-
-      if (bind && Object.getOwnPropertyDescriptor(proto, key)!.get === bind) {
-        PAST.add(UNBIND.get(bind));
-        keys!.delete(key);
-      }
-
-      removed.add(key);
-      Reflect.deleteProperty(proto, key);
-      getters?.delete(key);
-    }
-
-  for (const [key, desc] of Object.entries(incoming)) {
-    if (key == 'constructor') continue;
-
-    const current = Object.getOwnPropertyDescriptor(proto, key);
-
-    if (typeof desc.value == 'function') methods.set(key, desc.value);
-
-    if (current?.configurable === false) {
-      if (current.writable) (proto as any)[key] = desc.value;
-      continue;
-    }
-
-    if (current?.get && keys?.get(key) === current.get) PAST.add(UNBIND.get(current.get));
-
-    const getter = getters?.get(key);
-
-    if (getter) LATEST.set(getter, desc.get!);
-
-    define(proto, key, { ...desc, configurable: true });
-  }
-
-  if (keys) {
-    for (let T: State.Extends = prev; ; T = Object.getPrototypeOf(T)) {
-      for (const handler of SETUP.get(T) || [])
-        if (typeof handler == 'object' && handler.type) handler.type(prev);
-
-      if (T === State) break;
-    }
-
-    classify(prev, keys, getters!);
-  }
-
-  const live: State[] = [];
-
-  for (const ref of LIVE!) {
-    const state = ref.deref();
-
-    if (!state) LIVE!.delete(ref);
-    else if (state instanceof prev) live.push(state);
-  }
-
-  const descendants = new Set([prev, ...live.map((state) => state.constructor as State.Extends)]);
-
-  for (const type of descendants) for (const child of SUBCLASSES.get(type) || []) descendants.add(child);
-
-  descendants.delete(prev);
-
-  for (const type of descendants) {
-    const inherit = METHODS.get(type)!;
-    const computed = GETTERS.get(type)!;
-
-    for (const [key, bind] of keys!) if (!knownKeys.has(key) && !inherit.has(key)) inherit.set(key, bind);
-    for (const [key, get] of getters!) if (!knownGetters.has(key) && !computed.has(key)) computed.set(key, get);
-    for (const key of removed)
-      if (!(key in type.prototype)) {
-        inherit.delete(key);
-        computed.delete(key);
-      }
-  }
-
-  for (const state of live) {
-    for (const [key, value] of methods) {
-      const desc = Object.getOwnPropertyDescriptor(state, key);
-
-      if (!desc) continue;
-
-      if (desc.set) desc.set.call(state, value);
-      else if (PAST.has(UNBIND.get(desc.value))) delete (state as any)[key];
-    }
-
-    for (const key of removed)
-      if (PAST.has(UNBIND.get(Object.getOwnPropertyDescriptor(state, key)?.value))) delete (state as any)[key];
-
-    for (const [key, get] of GETTERS.get(state.constructor)!)
-      if (!knownGetters.has(key) && get === getters!.get(key)) compute.call(state, get, key);
-  }
-
-  return live;
-}
-
-/** Lifecycle handlers registered on a class itself. */
-function handlers(type: State.Extends): Handler[] {
-  return [...(SETUP.get(type) || [])];
-}
-
 /** Random alphanumberic of length 6; always starts with a letter. */
 function uid() {
   return (0.278 + Math.random() * 0.722)
@@ -1348,4 +1192,5 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, fault, patch, track, handlers };
+export type { Handler };
+export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };

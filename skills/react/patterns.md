@@ -308,15 +308,17 @@ export class Session extends State {
 // webview/session.ts - the adapter; views import Session from here
 export { Session } from '../domain/session';
 
-Session.on(function (this: Session) {
-  const onMessage = (event: MessageEvent<HostToView>) => {
-    if (event.data?.type === 'state')
-      this.set(event.data.values as State.Assign<Session>);
-  };
+Session.on({
+  pre() {
+    const onMessage = (event: MessageEvent<HostToView>) => {
+      if (event.data?.type === 'state')
+        this.set(event.data.values as State.Assign<Session>);
+    };
 
-  window.addEventListener('message', onMessage);
-  signal('ready');
-  return () => window.removeEventListener('message', onMessage);
+    window.addEventListener('message', onMessage);
+    signal('ready');
+    return () => window.removeEventListener('message', onMessage);
+  }
 });
 ```
 

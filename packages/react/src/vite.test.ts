@@ -7,7 +7,7 @@ import expressive from './vite';
 
 type Result = Promise<{ code: string; map: null } | undefined>;
 
-function transform(code: string, id = '/src/app.js', runtime: string | null = '/mvc/src/runtime.js', ssr?: boolean): Result {
+function transform(code: string, id = '/src/app.js', runtime: string | null = '/mvc/src/hot.js', ssr?: boolean): Result {
   const hook = expressive().transform as Function;
   const resolve = async () => runtime && { id: runtime };
 
@@ -32,10 +32,10 @@ async function run(code: string, { locals, replace = {}, before, next, ssr = fal
   const body = output.replace(/^import .*$/gm, '').replaceAll('import.meta.hot', 'hot');
   const hot = { data: Object.assign(data, before && { expressive: before }), accept: vi.fn(), invalidate: vi.fn() };
   const location = ssr ? undefined : { reload: vi.fn() };
-  const expressive = { accept: (_id: string, classes: Record<string, unknown>) => ({ ...classes, ...replace }) };
+  const accept = (_id: string, classes: Record<string, unknown>) => ({ ...classes, ...replace });
 
-  new Function('hot', 'location', '__expressive', '__State', ...Object.keys(locals), body)(
-    hot, location, expressive, State, ...Object.values(locals)
+  new Function('hot', 'location', '__accept', '__State', ...Object.keys(locals), body)(
+    hot, location, accept, State, ...Object.values(locals)
   );
 
   if (next) hot.accept.mock.calls[0][0](next);
@@ -74,7 +74,7 @@ describe('skip', () => {
 });
 
 it('will resolve the runtime once', async () => {
-  const resolve = vi.fn(async () => ({ id: '/mvc/src/runtime.js' }));
+  const resolve = vi.fn(async () => ({ id: '/mvc/src/hot.js' }));
   const hook = expressive().transform as Function;
   const context = { parse: parseAst, resolve };
 
@@ -100,8 +100,8 @@ it('will name a module by its path from the project root', async () => {
 it('will append the binding and keep source maps', async () => {
   const { code, map } = (await transform('class A {}', '/src/app.js?t=123'))!;
 
-  expect(code).toContain(`import { hot as __expressive } from '@expressive/mvc/runtime';`);
-  expect(code).toContain('__expressive.accept("/src/app.js", { A })');
+  expect(code).toContain(`import { accept as __accept } from '@expressive/mvc/hot';`);
+  expect(code).toContain('__accept("/src/app.js", { A })');
   expect(code).toContain('import.meta.hot.accept(');
   expect(map).toBeNull();
 });
@@ -294,9 +294,9 @@ describe('private members', () => {
   it('will note only classes declaring them', async () => {
     const code = await inject('class A { #a; }\nlet B = class { #b() {} };\nclass C { c = 1; }');
 
-    expect(code).toContain('"A": "[expressive] A (/src/app.js)');
-    expect(code).toContain('"B": "[expressive] B (/src/app.js)');
-    expect(code).not.toContain('"C": "[expressive]');
+    expect(code).toContain('"A":"[expressive] A (/src/app.js)');
+    expect(code).toContain('"B":"[expressive] B (/src/app.js)');
+    expect(code).not.toContain('"C":"[expressive]');
   });
 
   it('will warn once, after the reload', async () => {

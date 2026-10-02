@@ -1,4 +1,4 @@
-import { Caught, State } from '@expressive/mvc';
+import { State } from '@expressive/mvc';
 
 import { parsePath, serialize } from './serialize';
 import { labelOf, seen } from './types';
@@ -13,7 +13,7 @@ export interface Options {
   paths?: string[];
   /** Property names to record on any type. */
   keys?: string[];
-  /** Also record method calls (wraps instance methods except `render`). */
+  /** Also record method calls, except `render`. */
   calls?: boolean;
 }
 
@@ -228,10 +228,14 @@ export function noteCall(state: State, key: string, args: unknown[]): void {
   push(event);
 }
 
-export function noteCaught(error: Caught, name: string): { handled: boolean } | undefined {
-  const { state, key } = error;
+export function noteCaught(state: State, error: unknown, kind: string, key?: string): { handled: boolean } | undefined {
   if (!wants(state, key)) return;
-  const value = { case: name, message: error.message, stack: error.stack, handled: true };
+  const value = {
+    case: kind,
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+    handled: true
+  };
   push({ id: String(state), type: labelOf(state.constructor as typeof State), key: key ?? '', kind: 'caught', value });
   return value;
 }

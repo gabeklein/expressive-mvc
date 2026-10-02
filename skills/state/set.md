@@ -91,7 +91,7 @@ const stop = state.set((key, source) => {
 });
 ```
 
-- Return a function to run it once when the batch settles (deduped across assignments in the same tick); if it throws, it is reported as `Caught.Effect` ([lifecycle.md](lifecycle.md#error-handling)).
+- Return a function to run it once when the batch settles (deduped across assignments in the same tick); if it throws, it is reported with kind `effect` ([lifecycle.md](lifecycle.md#error-handling)).
 - Return `null` to unsubscribe.
 
 ### Dispatch event
@@ -115,7 +115,7 @@ state.set(42); // number event
 set(status: null): void
 ```
 
-Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, state frozen. Afterward, assignment throws `Caught.Destroyed` unless a `catch` handler takes it; silent `set(assign, true)` drops without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
+Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, dispatch stops. Afterward, assignment is stored without dispatch and reported to `catch` handlers with kind `dead`; unhandled, it outputs nothing. Silent `set(assign, true)` stores without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
 
 ```ts
 state.set(null);

@@ -678,7 +678,7 @@ describe('errors', () => {
 
     await expect(test).toHaveUpdated();
 
-    expect(caught).toEqual([expect.objectContaining({ state: test, cause: expected })]);
+    expect(caught).toEqual([expected]);
   });
 });
 

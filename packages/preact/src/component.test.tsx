@@ -1040,9 +1040,7 @@ describe('strict mode', () => {
       }
     }
 
-    Control.on(() => {
-      order.push('init');
-    });
+    Control.on({ pre: () => void order.push('init') });
 
     const element = render(
       <StrictMode>

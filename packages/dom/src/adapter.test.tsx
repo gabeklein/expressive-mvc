@@ -5,7 +5,7 @@ import { Consumer, Provider, render } from './index';
 import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
-import { hot } from '@expressive/mvc/runtime';
+import * as hot from '@expressive/mvc/hot';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('MVC adapter', () => {

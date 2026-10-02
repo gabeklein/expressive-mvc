@@ -2,7 +2,7 @@ import { Context } from './context';
 import { set } from './field/set';
 import { State, trailing, unbind } from './state';
 
-import type { Host } from './runtime';
+import type { Host } from './jsx-runtime';
 
 const PENDING = new WeakMap<object, Component>();
 
@@ -187,7 +187,7 @@ Object.defineProperty(Component.prototype, 'key', {
  * reads (and which adapters like preact detect as the class-component marker).
  */
 Component.on({
-  before(self) {
+  pre(self) {
     const key = Object.getOwnPropertyDescriptor(self, 'key');
 
     if (key?.configurable)

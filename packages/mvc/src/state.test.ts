@@ -6,7 +6,8 @@ import { ref } from './field/ref';
 import { set } from './field/set';
 import { State, update } from './state';
 import { event, listener, watch } from './observable';
-import { Caught } from './caught';
+
+const DESTROYED = /but state is destroyed/;
 import { has } from './field/has';
 
 it('will extend custom class', () => {
@@ -2265,7 +2266,7 @@ describe('set method', () => {
       test.foo = 1;
 
       await expect(test).toHaveUpdated();
-      expect(caught).toEqual([expect.objectContaining({ state: test, cause: oops })]);
+      expect(caught).toEqual([oops]);
 
       done();
     });
@@ -2295,67 +2296,69 @@ describe('set method', () => {
     describe('destroyed', () => {
       const warn = mockWarn();
 
-      it('will throw an update to the writer', () => {
+      it('will store an update without dispatch and report it to catch', () => {
         class Test extends State {
           foo = 0;
         }
 
         const callback = vi.fn();
+        const handler = vi.fn();
         const test = Test.new();
 
+        Test.on({ catch: handler });
         test.set(callback);
         test.foo++;
-
         test.set(null);
 
-        let thrown: unknown;
-
-        try {
-          test.foo++;
-        } catch (error) {
-          thrown = error;
-        }
-
-        expect(thrown).toBeInstanceOf(Caught.Destroyed);
-        expect(thrown).toMatchObject({
-          state: test,
-          key: 'foo',
-          warning: false,
-          message: expect.stringMatching(/Tried to update [\w-]+\.foo but state is destroyed\./)
-        });
-        expect(test.foo).toBe(1);
+        expect(() => test.foo++).not.toThrow();
+        expect(test.foo).toBe(2);
         expect(callback).toBeCalledTimes(1);
+        expect(handler).toBeCalledTimes(1);
+        expect(handler).toBeCalledWith(
+          expect.objectContaining({ message: expect.stringMatching(/Tried to update [\w-]+\.foo but state is destroyed\./) }),
+          'dead',
+          'foo'
+        );
+        expect(handler.mock.contexts[0]).toBe(test);
       });
 
-      it('will throw set with config', () => {
+      it('will report set with config', () => {
         class Test extends State {
           foo = 0;
         }
 
+        const handler = vi.fn();
         const test = Test.new();
 
+        Test.on({ catch: handler });
         test.set(null);
+        test.set('foo', { value: 1 });
 
-        expect(() => test.set('foo', { value: 1 })).toThrow(Caught.Destroyed);
+        expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
       });
 
-      it('will throw assign', () => {
+      it('will store and report assign', () => {
         class Test extends State {
           foo = 0;
         }
 
+        const handler = vi.fn();
         const test = Test.new();
 
+        Test.on({ catch: handler });
         test.set(null);
+        test.set({ foo: 1 });
 
-        expect(() => test.set({ foo: 1 })).toThrow(Caught.Destroyed);
+        expect(test.foo).toBe(1);
+        expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
       });
 
-      it('will stop a continuation that writes after teardown', async () => {
+      it('will let a continuation that writes after teardown run to completion', async () => {
         class Loop extends State {
           again = true;
         }
 
+        const caught = mockUncaught();
         const loop = Loop.new();
         let runs = 0;
 
@@ -2370,57 +2373,63 @@ describe('set method', () => {
         loop.again = true;
         loop.set(null);
 
-        await expect(work).rejects.toBeInstanceOf(Caught.Destroyed);
+        await expect(work).resolves.toBeUndefined();
+        await flushMicrotasks();
+
         expect(runs).toBe(2);
+        expect(caught).toEqual([]);
+        expect(warn).not.toBeCalled();
       });
 
-      it('will keep state off the enumerable keys of a report', () => {
+      it('will store a write a catch handler takes', async () => {
         class Test extends State {
           foo = 0;
         }
 
-        const test = Test.new();
-
-        test.set(null);
-
-        try {
-          test.foo = 1;
-        } catch (error) {
-          expect((error as Caught).state).toBe(test);
-          expect(Object.keys(error as object)).not.toContain('state');
-        }
-
-        expect.assertions(2);
-      });
-
-      it('will drop a write a catch handler takes', () => {
-        class Test extends State {
-          foo = 0;
-        }
-
-        const stop = Test.on({ catch: (error) => (error instanceof Caught.Destroyed ? undefined : error) });
+        const caught = mockUncaught();
+        const stop = Test.on({ catch: (error, kind) => (kind == 'dead' ? undefined : error) });
         const test = Test.new();
 
         test.set(null);
         test.foo = 1;
         test.set({ foo: 2 });
         stop();
+        await flushMicrotasks();
 
-        expect(test.foo).toBe(0);
+        expect(test.foo).toBe(2);
+        expect(caught).toEqual([]);
         expect(warn).not.toBeCalled();
       });
 
-      it('will drop assign silently when silent', () => {
+      it('will store a silent assign without a report', () => {
         class Test extends State {
           foo = 0;
         }
 
+        const handler = vi.fn();
         const test = Test.new();
 
+        Test.on({ catch: handler });
         test.set(null);
         test.set({ foo: 1 }, true);
 
-        expect(test.foo).toBe(0);
+        expect(test.foo).toBe(1);
+        expect(handler).not.toBeCalled();
+      });
+
+      it('will output nothing for a destroyed write left unhandled', async () => {
+        class Test extends State {
+          foo = 0;
+        }
+
+        const caught = mockUncaught();
+        const test = Test.new();
+
+        test.set(null);
+        test.foo = 1;
+        await flushMicrotasks();
+
+        expect(caught).toEqual([]);
         expect(warn).not.toBeCalled();
       });
     });
@@ -2438,7 +2447,7 @@ describe('set method', () => {
       expect(test.foo).toBe(2);
     });
 
-    it('will silently skip update after destroyed', () => {
+    it('will silently store update after destroyed', () => {
       class Test extends State {
         foo = 0;
       }
@@ -2447,10 +2456,10 @@ describe('set method', () => {
       test.set(null);
 
       expect(update(test, 'foo', 1, true)).toBe(false);
-      expect(test.foo).toBe(0);
+      expect(test.foo).toBe(1);
     });
 
-    it('will silently skip set after destroyed', () => {
+    it('will silently store set after destroyed', () => {
       class Test extends State {
         foo = 0;
       }
@@ -2464,7 +2473,7 @@ describe('set method', () => {
       test.set({ foo: 1 }, true);
 
       expect(callback).not.toBeCalled();
-      expect(test.foo).toBe(0);
+      expect(test.foo).toBe(1);
     });
 
     it.todo('will throw clear error on bad update', () => {});
@@ -2756,7 +2765,7 @@ describe('unmanaged keys', () => {
     test.set(null);
 
     expect(() => { test._handle = null }).not.toThrow();
-    expect(() => { test.value = 2 }).toThrow();
+    expect(test._handle).toBeNull();
   });
 
   it('will not compute _ getters', () => {
@@ -3096,13 +3105,7 @@ describe('new method (static)', () => {
 
     await expect(test).not.toHaveUpdated();
 
-    expect(caught).toEqual([
-      expect.objectContaining({
-        state: test,
-        cause: expects,
-        message: `Async error in constructor for ${test.constructor}: State callback rejected.`
-      })
-    ]);
+    expect(caught).toEqual([expects]);
   });
 
   it('will inject both properties and methods', () => {
@@ -3278,11 +3281,17 @@ describe('is method (static)', () => {
 });
 
 describe('on method (static)', () => {
+  it('will throw if given a bare function', () => {
+    class Test extends State {}
+
+    expect(() => Test.on((() => {}) as any)).toThrow('Test.on takes handlers by stage - pass { pre: fn }.');
+  });
+
   it('will run callback on create', () => {
     class Test extends State {}
 
     const cb = vi.fn();
-    const done = Test.on(cb);
+    const done = Test.on({ pre: cb });
     const test = Test.new();
 
     expect(cb).toBeCalledWith(test);
@@ -3294,7 +3303,7 @@ describe('on method (static)', () => {
     class Test extends State {}
 
     const cleanup = vi.fn();
-    const done = Test.on(() => cleanup);
+    const done = Test.on({ pre: () => cleanup });
     const test = Test.new();
 
     expect(cleanup).not.toBeCalled();
@@ -3312,8 +3321,8 @@ describe('on method (static)', () => {
     const createTest = vi.fn();
     const createTest2 = vi.fn();
 
-    Test.on(createTest);
-    Test2.on(createTest2);
+    Test.on({ pre: createTest });
+    Test2.on({ pre: createTest2 });
 
     const test = Test2.new();
 
@@ -3330,9 +3339,9 @@ describe('on method (static)', () => {
 
     const order: string[] = [];
 
-    A.on(() => void order.push('A'));
-    B.on(() => void order.push('B'));
-    C.on(() => void order.push('C'));
+    A.on({ pre: () => void order.push('A') });
+    B.on({ pre: () => void order.push('B') });
+    C.on({ pre: () => void order.push('C') });
 
     C.new();
 
@@ -3344,16 +3353,16 @@ describe('on method (static)', () => {
 
     class A extends State {}
 
-    A.on(() => void order.push('A'));
+    A.on({ pre: () => void order.push('A') });
 
     const attach = <T extends typeof A>(type: T) => {
-      type.on(() => void order.push('anonymous'));
+      type.on({ pre: () => void order.push('anonymous') });
       return type;
     };
 
     class C extends attach(class extends A {}) {}
 
-    C.on(() => void order.push('C'));
+    C.on({ pre: () => void order.push('C') });
 
     expect(Object.getPrototypeOf(C).name).toBe('');
 
@@ -3368,8 +3377,8 @@ describe('on method (static)', () => {
 
     const didCreate = vi.fn();
 
-    Test.on(didCreate);
-    Test2.on(didCreate);
+    Test.on({ pre: didCreate });
+    Test2.on({ pre: didCreate });
 
     Test2.new();
 
@@ -3380,7 +3389,7 @@ describe('on method (static)', () => {
     class Test extends State {}
 
     const cb = vi.fn();
-    const done = Test.on(cb);
+    const done = Test.on({ pre: cb });
 
     Test.new();
     expect(cb).toBeCalled();
@@ -3398,9 +3407,9 @@ describe('on method (static)', () => {
     const cb2 = vi.fn();
 
     // First .on() creates the setup Set (line 455)
-    Fresh.on(cb1);
+    Fresh.on({ pre: cb1 });
     // Second .on() reuses existing Set
-    Fresh.on(cb2);
+    Fresh.on({ pre: cb2 });
 
     Fresh.new();
     expect(cb1).toBeCalledTimes(1);
@@ -3451,6 +3460,34 @@ describe('on type stage (static)', () => {
 });
 
 describe('on combined stages (static)', () => {
+  it('will run a function once per stage however often it is registered', () => {
+    class Base extends State {
+      foo = 0;
+
+      method() {}
+    }
+
+    class Test extends Base {}
+
+    const type = vi.fn();
+    const pre = vi.fn();
+    const bind = vi.fn();
+    const handle = vi.fn();
+
+    for (const T of [Base, Test, Test]) T.on({ type, pre, bind, catch: handle });
+
+    const test = Test.new();
+
+    void test.method;
+    test.set(null);
+    test.foo = 1;
+
+    expect(type).toBeCalledTimes(2);
+    expect(pre).toBeCalledTimes(1);
+    expect(bind).toBeCalledTimes(1);
+    expect(handle).toBeCalledTimes(1);
+  });
+
   it('will hook multiple stages from one handler object', () => {
     const order: string[] = [];
 
@@ -3458,14 +3495,13 @@ describe('on combined stages (static)', () => {
 
     Test.on({
       type: () => void order.push('type'),
-      before: () => void order.push('before'),
-      after: () => void order.push('after')
+      pre: () => void order.push('pre'),
+      new: () => void order.push('new')
     });
 
     Test.new();
 
-    // type per-class at bootstrap, then before/after per-instance around new()
-    expect(order).toEqual(['type', 'before', 'after']);
+    expect(order).toEqual(['type', 'pre', 'new']);
   });
 
   it('will run a shared handler once across base and subclass', () => {
@@ -3474,7 +3510,7 @@ describe('on combined stages (static)', () => {
     class Base extends State {}
     class Sub extends Base {}
 
-    const handler = { before: fn };
+    const handler = { pre: fn };
 
     Base.on(handler);
     Sub.on(handler);
@@ -3555,8 +3591,8 @@ describe('enumerable prototype members', () => {
   });
 });
 
-describe('on before / after stages (static)', () => {
-  it('will run before in prepare and after at the new() slot', () => {
+describe('on pre / new stages (static)', () => {
+  it('will run pre before own values and new with the instance new()', () => {
     const order: string[] = [];
 
     class Test extends State {
@@ -3564,20 +3600,20 @@ describe('on before / after stages (static)', () => {
       new() { order.push('new'); }
     }
 
-    Test.on({ before: () => void order.push('before') });
-    Test.on({ after: () => void order.push('after') });
+    Test.on({ pre: () => void order.push('pre') });
+    Test.on({ new: () => void order.push('on new') });
 
     Test.new();
 
-    expect(order).toEqual(['before', 'new', 'after']);
+    expect(order).toEqual(['pre', 'new', 'on new']);
   });
 
-  it('will run after cleanup on destroy', () => {
+  it('will run new cleanup on destroy', () => {
     const cleanup = vi.fn();
 
     class Test extends State {}
 
-    Test.on({ after: () => cleanup });
+    Test.on({ new: () => cleanup });
 
     const test = Test.new();
     expect(cleanup).not.toBeCalled();
@@ -3587,22 +3623,146 @@ describe('on before / after stages (static)', () => {
   });
 });
 
-it('will add its State to the global copies list once', () => {
-  class Test extends State {}
+describe('on bind stage (static)', () => {
+  it('will run on first access with key and bound function', () => {
+    class Test extends State {
+      foo() {
+        return this;
+      }
+    }
 
-  Test.new();
-  Test.new();
+    const handler = vi.fn();
 
-  const copies = (globalThis as Record<symbol, unknown[]>)[Symbol.for('@expressive/mvc')];
+    Test.on({ bind: handler });
 
-  expect(copies.filter((entry) => entry === State)).toEqual([State]);
+    const test = Test.new();
+
+    expect(handler).not.toBeCalled();
+
+    const { foo } = test;
+
+    expect(handler).toBeCalledTimes(1);
+    expect(handler).toBeCalledWith('foo', foo);
+    expect(handler.mock.contexts[0]).toBe(test);
+    expect(foo()).toBe(test);
+    expect(test.foo).toBe(foo);
+    expect(handler).toBeCalledTimes(1);
+  });
+
+  it('will run on replacement by assignment before first read, or through set', () => {
+    class Test extends State {
+      foo() {
+        return 'before';
+      }
+    }
+
+    const handler = vi.fn();
+
+    Test.on({ bind: handler });
+
+    const test = Test.new();
+
+    test.foo = () => 'assigned';
+    expect(handler).toHaveBeenLastCalledWith('foo', test.foo);
+    expect(test.foo()).toBe('assigned');
+
+    test.set({ foo: () => 'set' });
+    expect(handler).toHaveBeenLastCalledWith('foo', test.foo);
+    expect(test.foo()).toBe('set');
+
+    expect(handler).toBeCalledTimes(2);
+  });
+
+  it.fails('will bind and observe a replacement assigned after first read', () => {
+    class Test extends State {
+      foo(): unknown {
+        return 'before';
+      }
+    }
+
+    const bind = vi.fn();
+
+    Test.on({ bind });
+
+    const test = Test.new();
+
+    test.foo();
+    test.foo = function (this: unknown) {
+      return this;
+    };
+
+    const { foo } = test;
+
+    expect(foo()).toBe(test);
+    expect(bind).toBeCalledTimes(2);
+  });
+
+  it('will run base then subclass handlers, once each', () => {
+    class Base extends State {
+      foo() {}
+    }
+
+    class Sub extends Base {}
+
+    const order: string[] = [];
+    const tag = (name: string) => ({ bind: () => void order.push(name) });
+    const shared = tag('shared');
+
+    Base.on(tag('base'));
+    Base.on(shared);
+    Sub.on(tag('sub'));
+    Sub.on(shared);
+
+    Base.new().foo;
+    expect(order).toEqual(['base', 'shared']);
+
+    order.length = 0;
+    Sub.new().foo;
+    expect(order).toEqual(['base', 'shared', 'sub']);
+  });
+
+  it('will run for a handler registered after bootstrap', () => {
+    class Test extends State {
+      foo() {}
+    }
+
+    Test.new().foo;
+
+    const handler = vi.fn();
+    const stop = Test.on({ bind: handler });
+
+    Test.new().foo;
+    expect(handler).toBeCalledTimes(1);
+
+    stop();
+    Test.new().foo;
+    expect(handler).toBeCalledTimes(1);
+  });
+
+  it('will let a handler read the method', () => {
+    class Test extends State {
+      foo() {}
+    }
+
+    const read = vi.fn();
+
+    Test.on({
+      bind(key) {
+        read((this as any)[key]);
+      }
+    });
+
+    const test = Test.new();
+
+    expect(read).toBeCalledWith(test.foo);
+  });
 });
 
 describe('on catch stage (static)', () => {
   const warn = mockWarn();
   const error = mockError();
 
-  it('will hand an issue to catch instead of logging it', () => {
+  it('will hand a destroyed write to catch with its kind and key', () => {
     class Test extends State {
       foo = 0;
     }
@@ -3610,18 +3770,25 @@ describe('on catch stage (static)', () => {
     const handler = vi.fn();
 
     Test.on({ catch: handler });
+    Test.on({
+      catch(error, kind) {
+        // @ts-expect-error - not a kind
+        if (kind == 'Unknown') return;
+        return error;
+      }
+    });
 
     const test = Test.new();
 
     test.set(null);
     test.foo = 1;
 
-    expect(handler).toBeCalledWith(expect.any(Caught.Destroyed));
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: expect.stringMatching(DESTROYED) }), 'dead', 'foo');
     expect(handler.mock.contexts[0]).toBe(test);
     expect(warn).not.toBeCalled();
   });
 
-  it('will pass along subclass then base, last registered first, once each', () => {
+  it('will pass along subclass then base, last registered first, once each at the outermost', async () => {
     class Base extends State {
       foo = 0;
     }
@@ -3630,7 +3797,7 @@ describe('on catch stage (static)', () => {
 
     const order: string[] = [];
     const pass = (name: string) => ({
-      catch: (issue: Caught) => {
+      catch: (issue: unknown) => {
         order.push(name);
         return issue;
       }
@@ -3642,12 +3809,16 @@ describe('on catch stage (static)', () => {
     Sub.on(pass('sub'));
     Sub.on(shared);
 
+    const caught = mockUncaught();
     const sub = Sub.new();
 
     sub.set(null);
+    sub.foo = 1;
+    await flushMicrotasks();
 
-    expect(() => (sub.foo = 1)).toThrow(Caught.Destroyed);
-    expect(order).toEqual(['shared', 'sub', 'base']);
+    expect(caught).toEqual([]);
+    expect(warn).not.toBeCalled();
+    expect(order).toEqual(['sub', 'shared', 'base']);
   });
 
   it('will stop at the first handler returning nothing', () => {
@@ -3676,27 +3847,21 @@ describe('on catch stage (static)', () => {
       foo = 0;
     }
 
-    const base = vi.fn((issue: Caught) => issue);
-    const replaced = new Caught.Init(Test.new(), 'replaced');
+    const base = vi.fn((issue: unknown) => issue);
+    const replaced = new Error('replaced');
     const stopBase = State.on({ catch: base });
     const stop = Test.on({ catch: () => replaced });
+    const caught = mockUncaught();
     const test = Test.new();
 
     test.set(null);
-
-    let thrown: unknown;
-
-    try {
-      test.foo = 1;
-    } catch (error) {
-      thrown = error;
-    }
-
+    test.foo = 1;
     stop();
     stopBase();
+    await flushMicrotasks();
 
-    expect(base).toBeCalledWith(replaced);
-    expect(thrown).toBe(replaced);
+    expect(base).toBeCalledWith(replaced, 'dead', 'foo');
+    expect(caught).toEqual([]);
     expect(warn).not.toBeCalled();
   });
 
@@ -3713,10 +3878,10 @@ describe('on catch stage (static)', () => {
     test.foo = 1;
     stop();
 
-    expect(handler).toBeCalledWith(expect.any(Caught.Destroyed));
+    expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
   });
 
-  it('will not reach handlers of an unrelated class', () => {
+  it('will not reach handlers of an unrelated class', async () => {
     class Test extends State {
       foo = 0;
     }
@@ -3729,28 +3894,25 @@ describe('on catch stage (static)', () => {
 
     const test = Test.new();
 
-    test.set(null);
+    const caught = mockUncaught();
 
-    expect(() => (test.foo = 1)).toThrow(Caught.Destroyed);
+    test.set(null);
+    test.foo = 1;
+    await flushMicrotasks();
+
+    expect(caught).toEqual([]);
+    expect(warn).not.toBeCalled();
     expect(handler).not.toBeCalled();
   });
 
-  it('will throw to the writer when rethrown at a synchronous site', () => {
-    class Test extends State {
-      foo = 0;
-    }
+  it('will warn of a state never activated', async () => {
+    class Test extends State {}
 
-    Test.on({
-      catch(issue) {
-        throw issue;
-      }
-    });
+    const test = new Test();
 
-    const test = Test.new();
+    await flushMicrotasks();
 
-    test.set(null);
-
-    expect(() => (test.foo = 1)).toThrow(Caught.Destroyed);
+    expect(warn).toBeCalledWith(expect.objectContaining({ message: `${test} was constructed but never activated.` }));
   });
 
   it('will escape uncaught when rethrown at an async site', async () => {
@@ -3767,41 +3929,55 @@ describe('on catch stage (static)', () => {
     new Test();
     await flushMicrotasks();
 
-    expect(caught).toEqual([expect.any(Caught.Inactive)]);
+    expect(caught).toEqual([expect.objectContaining({ message: expect.stringMatching(/never activated/) })]);
   });
 
-  it('will let a handler swallow only warnings', async () => {
+  it('will hand over what a refreshing getter threw', async () => {
+    const oops = new Error('oops');
+
     class Test extends State {
       foo = 0;
       fail = false;
 
       get value() {
-        if (this.fail) throw new Error('oops');
+        if (this.fail) throw oops;
         return this.foo;
       }
     }
 
-    const seen: boolean[] = [];
+    const handler = vi.fn();
 
-    Test.on({
-      catch(issue) {
-        seen.push(issue.warning);
-        if (!issue.warning) throw issue;
-      }
-    });
+    Test.on({ catch: handler });
 
-    const caught = mockUncaught();
     const test = Test.new();
 
     void test.value;
     test.fail = true;
     await expect(test).toHaveUpdated();
 
-    new Test();
+    expect(handler).toBeCalledWith(oops, 'getter', 'value');
+  });
+
+  it('will pass on a falsy value thrown', async () => {
+    class Test extends State {
+      foo = 0;
+    }
+
+    const handler = vi.fn((issue: unknown) => issue);
+    const caught = mockUncaught();
+    const test = Test.new();
+
+    Test.on({ catch: handler });
+
+    test.get(($) => {
+      if ($.foo) throw 0;
+    });
+
+    test.foo = 1;
     await flushMicrotasks();
 
-    expect(seen).toEqual([false, true]);
-    expect(caught).toEqual([expect.any(Caught.Getter)]);
+    expect(handler).toBeCalledWith(0, 'effect', undefined);
+    expect(caught).toEqual([0]);
   });
 
   it('will attribute an effect error to the owner of a collection', async () => {
@@ -3823,11 +3999,11 @@ describe('on catch stage (static)', () => {
     test.list.push(1);
     await flushMicrotasks();
 
-    expect(handler).toBeCalledWith(expect.any(Caught.Effect));
-    expect(handler).toBeCalledWith(expect.objectContaining({ state: test, cause: oops }));
+    expect(handler).toBeCalledWith(oops, 'effect', undefined);
+    expect(handler.mock.contexts[0]).toBe(test);
   });
 
-  it('will not report again an issue a handler rethrew', async () => {
+  it('will escape a report a handler rethrew without reaching the writer', async () => {
     class Target extends State {
       foo = 0;
     }
@@ -3860,7 +4036,7 @@ describe('on catch stage (static)', () => {
     await flushMicrotasks();
 
     expect(handler).not.toBeCalled();
-    expect(caught).toEqual([expect.any(Caught.Destroyed)]);
+    expect(caught).toEqual([expect.objectContaining({ message: expect.stringMatching(DESTROYED) })]);
   });
 
   it('will ignore a non-function returned by a listener', async () => {
@@ -4386,14 +4562,7 @@ describe('computed (getters)', () => {
 
       expect(warn).not.toBeCalled();
       expect(error).not.toBeCalled();
-      expect(caught).toEqual([
-        expect.objectContaining({
-          state,
-          key: 'value',
-          cause: expect.any(Error),
-          message: `An exception was thrown while refreshing ${state.constructor}.value.`
-        })
-      ]);
+      expect(caught).toEqual([expect.any(Error)]);
     });
   });
 
@@ -4553,7 +4722,7 @@ describe('activation', () => {
     await flushMicrotasks();
 
     expect(warn).toBeCalledWith(
-      expect.objectContaining({ state, message: `${state} was constructed but never activated.` })
+      expect.objectContaining({ message: `${state} was constructed but never activated.` })
     );
   });
 
@@ -4689,7 +4858,7 @@ describe('activation', () => {
     await flushMicrotasks();
 
     expect(warn).toBeCalledTimes(1);
-    expect(warn).toBeCalledWith(expect.objectContaining({ state: other }));
+    expect(warn).toBeCalledWith(expect.objectContaining({ message: `${other} was constructed but never activated.` }));
   });
 
   it('will not warn if placed in a context', async () => {

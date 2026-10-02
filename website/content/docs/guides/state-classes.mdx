@@ -226,15 +226,17 @@ class Resource extends State {
 To run setup for *every* instance of a class (and its subclasses), register a handler with `State.on()`:
 
 ```ts
-const stop = Timer.on(function () {
-  // runs for each Timer on init
-  return () => {
-    /* cleanup on destroy */
-  };
+const stop = Timer.on({
+  pre() {
+    // runs for each Timer on init
+    return () => {
+      /* cleanup on destroy */
+    };
+  }
 });
 ```
 
-A bare function runs per-instance, before `new()`. There's also an object form (`{ type, before, after }`) for hooking specific phases - see [API: State](/docs/api/state).
+`pre` runs per-instance, before `new()`; `new` runs with it, and `type` once per class - see [API: State](/docs/api/state).
 
 ### The `use()` hook (React only)
 
