@@ -202,24 +202,7 @@ function compose(this: State, props?: {}) {
   const type = this.constructor;
   let render = CHAIN.get(type);
 
-  function method(from: Function) {
-    const desc = Object.getOwnPropertyDescriptor(from.prototype, 'render');
-    if (desc) return unbind(desc.get || desc.value) as Function;
-  }
-
   if (!render) {
-    function wrap(outer: Function, inner: Function): Function {
-      return function (this: Component, props?: {}) {
-        const self = this;
-        return outer.call(self, {
-          ...props,
-          get children() {
-            return inner.call(self, props);
-          }
-        });
-      };
-    }
-
     for (let T = type; T !== Component && T !== State; T = Object.getPrototypeOf(T)) {
       const next = method(T);
 
@@ -232,6 +215,23 @@ function compose(this: State, props?: {}) {
   }
 
   return render.call(this, props);
+}
+
+function method(from: Function) {
+  const desc = Object.getOwnPropertyDescriptor(from.prototype, 'render');
+  if (desc) return unbind(desc.get || desc.value) as Function;
+}
+
+function wrap(outer: Function, inner: Function): Function {
+  return function (this: State, props?: {}) {
+    const self = this;
+    return outer.call(self, {
+      ...props,
+      get children() {
+        return inner.call(self, props);
+      }
+    });
+  };
 }
 
 /** Drop composed renders, so each is rebuilt from current prototypes. */
