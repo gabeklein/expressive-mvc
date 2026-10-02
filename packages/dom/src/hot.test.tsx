@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { State } from '@expressive/mvc';
-import type { Component } from '@expressive/mvc';
+import { Component, State } from '@expressive/mvc';
 import { hot } from './hot';
-import { Provider, render, style } from './index';
+import { render, style } from './index';
 import { flushMicrotasks } from '../test.setup';
 
 let count = 0;
@@ -77,7 +76,7 @@ describe('hot', () => {
       return <View />;
     };
 
-    const root = mount(<Provider for={host}><Parent /></Provider>);
+    const root = mount(<Component for={host}><Parent /></Component>);
 
     hot(id, { View: After });
     host.view = After;

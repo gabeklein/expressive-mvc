@@ -5,16 +5,18 @@ import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
-import { Component, Consumer, State, pending, set } from '.';
+import { Component, State, pending, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends Component {
     foo = 'bar';
   }
 
+  const Value = () => Control.get().foo;
+
   render(
     <Control>
-      <Consumer for={Control}>{(c) => c.foo}</Consumer>
+      <Value />
     </Control>
   );
 
@@ -319,25 +321,27 @@ describe('element props', () => {
   }
 
   it('will accept managed values', () => {
+    function Check() {
+      expect(Foo.get().value).toBe('baz');
+      return null;
+    }
+
     render(
       <Foo value="baz">
-        <Consumer for={Foo}>
-          {(c) => {
-            expect(c.value).toBe('baz');
-          }}
-        </Consumer>
+        <Check />
       </Foo>
     );
   });
 
   it('will assign values to instance', () => {
+    function Check() {
+      expect(Foo.get().value).toBe('foobar');
+      return null;
+    }
+
     render(
       <Foo value="foobar">
-        <Consumer for={Foo}>
-          {(i) => {
-            expect(i.value).toBe('foobar');
-          }}
-        </Consumer>
+        <Check />
       </Foo>
     );
   });
@@ -390,15 +394,16 @@ describe('element props', () => {
   });
 
   it('will not assign foreign values', () => {
+    function Check() {
+      // @ts-expect-error
+      expect(Foo.get().nonValue).toBeUndefined();
+      return null;
+    }
+
     render(
       // @ts-expect-error
       <Foo nonValue="foobar">
-        <Consumer for={Foo}>
-          {(i) => {
-            // @ts-expect-error
-            expect(i.nonValue).toBeUndefined();
-          }}
-        </Consumer>
+        <Check />
       </Foo>
     );
   });

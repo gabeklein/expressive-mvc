@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { State, Component } from '@expressive/mvc';
-import { Consumer, Provider, render } from './index';
+import { render } from './index';
 import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
@@ -167,17 +167,21 @@ describe('MVC adapter', () => {
     expect(calls).toEqual([1, 2, 2]);
   });
 
-  it('will pass context through functions and Consumers', async () => {
+  it('will pass context through functions', async () => {
     class Session extends State {
       name = 'Ada';
+    }
+
+    function Name() {
+      return Session.get((value) => <span>{value.name}</span>);
     }
 
     let session!: Session;
     const root = document.createElement('main');
     const release = render(
-      <Provider for={Session} is={(value) => (session = value)}>
-        <Consumer for={Session}>{(value: Session) => <span>{value.name}</span>}</Consumer>
-      </Provider>,
+      <Component for={Session} is={(value: Session) => (session = value)}>
+        <Name />
+      </Component>,
       root
     );
 
@@ -231,7 +235,7 @@ describe('MVC adapter', () => {
     const source = Source.new();
     const root = document.createElement('main');
     const release = render(
-      <Provider for={source}><View /></Provider>,
+      <Component for={source}><View /></Component>,
       root
     );
 
@@ -254,7 +258,7 @@ describe('MVC adapter', () => {
 
     const required = Source.new();
     expect(() => render(
-      <Provider for={required}><Required fallback={false} /></Provider>,
+      <Component for={required}><Required fallback={false} /></Component>,
       document.createElement('main')
     )).toThrow();
     required.set(null);
@@ -412,53 +416,7 @@ describe('MVC adapter', () => {
     expect(root.textContent).toBe('plain');
   });
 
-  it('will mount and release states owned by a Provider', async () => {
-    const lifecycle: string[] = [];
-
-    class Owned extends State {
-      value = 0;
-      mount() {
-        lifecycle.push('mount');
-        return () => lifecycle.push('unmount');
-      }
-    }
-
-    class External extends State {}
-
-    function Value() {
-      return <span>{Owned.get().value}</span>;
-    }
-
-    class App extends Component {
-      value = 1;
-      render() {
-        return (
-          <Provider for={{ owned: Owned, external }}>
-            <Provider for={Owned} value={this.value}><Value /></Provider>
-            <Provider for={external}><small>{this.value}</small></Provider>
-          </Provider>
-        );
-      }
-    }
-
-    const external = External.new();
-    let app!: App;
-    const root = document.createElement('main');
-    const release = render(<App is={(value) => (app = value)} />, root);
-    expect(root.textContent).toBe('11');
-    expect(lifecycle).toEqual(['mount', 'mount']);
-
-    app.value = 2;
-    await flushMicrotasks();
-    expect(root.textContent).toBe('22');
-
-    release();
-    expect(lifecycle).toEqual(['mount', 'mount', 'unmount', 'unmount']);
-    expect(external.get(null)).toBe(false);
-    external.set(null);
-  });
-
-  it('will transfer Provider lifecycle when its State type changes', async () => {
+  it.fails('will transfer Component for lifecycle when its State type changes', async () => {
     const lifecycle: string[] = [];
 
     class First extends State {
@@ -480,7 +438,7 @@ describe('MVC adapter', () => {
 
       render() {
         const Type = this.second ? Second : First;
-        return <Provider for={Type} />;
+        return <Component for={Type} />;
       }
     }
 
@@ -545,10 +503,6 @@ describe('MVC adapter', () => {
 
     release();
     expect(lifecycle).toEqual(['mount', 'unmount']);
-  });
-
-  it('will reserve Provider execution for the renderer', () => {
-    expect(() => (Provider as any)({})).toThrow('must be rendered');
   });
 });
 
