@@ -4,4 +4,4 @@ import './component';
 
 export { State } from '@expressive/mvc';
 export { Runtime } from './runtime';
-export { Consumer, Provider } from './context';
+export { Provider } from './context';

@@ -14,14 +14,13 @@ import {
   enterAppearance
 } from './appearance-protocol';
 import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
-import { Provider, provide } from './context';
 import { applyDeclarations } from './declarations';
 import { afterFlush, claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
 import type { Key, Node as RenderNode, VNode } from './vnode';
 
 type Container = Element | DocumentFragment;
-type Kind = 'collection' | 'component' | 'element' | 'fragment' | 'function' | 'portal' | 'provider' | 'text';
+type Kind = 'collection' | 'component' | 'element' | 'fragment' | 'function' | 'portal' | 'text';
 
 interface Boundary {
   catch?: (error: Error) => Promise<void> | void;
@@ -235,7 +234,6 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
 
   if (value.type === Fragment) return mountFragment(value, parent, before, context, boundary, appearance);
   if (value.type === PORTAL) return mountPortal(value, parent, before, context, boundary, appearance);
-  if (value.type === Provider) return mountProvider(value, parent, before, context, boundary, appearance);
   if (typeof value.type == 'string') return mountElement(value, parent, before, context, boundary, appearance);
   if (typeof value.type != 'function')
     throw new Error(`Cannot render ${String(value.type)}.`);
@@ -412,31 +410,6 @@ function runCollection(fiber: Fiber, passive: boolean) {
     const value = fiber.value as Iterable<unknown>;
     return value instanceof map.Managed ? [...value.values()] : [...value];
   });
-}
-
-function mountProvider(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, inherited?: Boundary, appearance?: Appearance) {
-  const fiber = range('provider', parent, before, context);
-  const childContext = new Context(context);
-
-  fiber.key = value.key;
-  fiber.type = Provider;
-  fiber.props = value.props;
-  fiber.appearance = appearance;
-  fiber.childContext = childContext;
-  const commit = provide(childContext, value.props as any);
-
-  const boundary = value.props.fallback !== undefined
-    ? { fallback: () => fiber.props!.fallback, owner: fiber, parent: inherited }
-    : inherited;
-
-  fiber.boundary = boundary;
-  if (boundary !== inherited) fiber.ownBoundary = boundary;
-  complete(fiber, () => {
-    reconcile(fiber, value.props.children, childContext, boundary, appearance);
-  });
-  commit();
-
-  return fiber;
 }
 
 function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
@@ -892,12 +865,6 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
     }
     old.props = props;
     rerun(old, () => runComponent(old, passiveRender));
-  } else if (old.kind == 'provider') {
-    old.appearance = appearance;
-    old.props = (value as VNode).props;
-    const commit = provide(old.childContext!, old.props as any);
-    reconcile(old, old.props!.children, old.childContext!, old.boundary, appearance);
-    commit();
   } else {
     old.appearance = appearance;
     const vnode = value as VNode;
@@ -1253,8 +1220,6 @@ function unmountFiber(fiber: Fiber) {
     if (typeof fiber.cleanup == 'function') fiber.cleanup();
     fiber.childContext?.pop();
     if (fiber.owned && !fiber.instance!.get(null)) fiber.instance!.set(null);
-  } else if (fiber.kind == 'provider') {
-    fiber.childContext?.pop();
   } else if (fiber.kind == 'portal') {
     (fiber.portalStart as ChildNode).remove();
     (fiber.portalEnd as ChildNode).remove();
