@@ -36,6 +36,7 @@ class Caught extends Error {
   /** A write to a destroyed state - stored without dispatch, so the writer reads it back. */
   static Destroyed = class Destroyed extends Caught {
     readonly name = 'Caught.Destroyed';
+    readonly warning = true;
 
     constructor(state: State, key: string) {
       super(state, `Tried to update ${state}.${key} but state is destroyed.`, key);

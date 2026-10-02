@@ -83,8 +83,8 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment is stored without dispatch - the writer reads back what it wrote, so a continuation runs to its end instead of stopping. Each such write is reported as `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`); unhandled, it escapes uncaught. `_` fields are unmanaged and never report ([state.md](state.md#unmanaged-instance-data)).
-- A late write means work outlived its owner - cancel it in a cleanup (`new()`'s returned function, an effect's cleanup) rather than tolerating it. Where late writes are expected, handle them: `State.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })` - the write is stored either way.
+- Assignment is stored without dispatch - the writer reads back what it wrote, so a continuation runs to its end instead of stopping. Each such write is reported as `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`), a warning - unhandled, it logs. `_` fields are unmanaged and never report ([state.md](state.md#unmanaged-instance-data)).
+- A late write means work outlived its owner - cancel it in a cleanup (`new()`'s returned function, an effect's cleanup) rather than tolerating it. Where late writes are expected, handle them to silence the warning: `State.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })` - the write is stored either way. To fail a test run on any warning instead, throw from a handler: `State.on({ catch: (e) => { throw e } })`.
 - Silent updates (`state.set(assign, true)`) store without a report.
 - Subscribing (`get(effect)`, `set(callback)`) still throws.
 
@@ -136,7 +136,7 @@ What mvc does not throw it reports as a `Caught` (an `Error` exported from `@exp
 
 | `Caught.`   | `warning` | When                                                                   |
 | ----------- | --------- | ---------------------------------------------------------------------- |
-| `Destroyed` | `false`   | write to a destroyed state - stored without dispatch                  |
+| `Destroyed` | `true`    | write to a destroyed state - stored without dispatch                  |
 | `Inactive`  | `true`    | constructed, never activated in that tick                              |
 | `Getter`    | `false`   | getter threw while refreshing - value becomes `undefined`; `cause`     |
 | `Init`      | `false`   | async initializer or `new()` rejected - state still created; `cause`   |

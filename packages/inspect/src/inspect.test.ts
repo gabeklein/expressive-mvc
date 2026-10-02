@@ -358,7 +358,7 @@ describe('health', () => {
   }
 
   it('will count caught reports by case and pass them on', async () => {
-    const caught = mockUncaught();
+    const warn = mockWarn();
     attach();
     const note = Note.new();
 
@@ -366,7 +366,7 @@ describe('health', () => {
     note.text = 'late';
     await flushMicrotasks();
 
-    expect(caught).toEqual([expect.any(Caught.Destroyed)]);
+    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
     expect(health().caught).toEqual({ Destroyed: 1, Inactive: 0, Getter: 0, Init: 0, Effect: 0 });
   });
 
@@ -388,7 +388,7 @@ describe('health', () => {
   });
 
   it('will stop observing a class when detached', async () => {
-    const caught = mockUncaught();
+    const warn = mockWarn();
     const stop = attach();
 
     class Gone extends State {
@@ -403,7 +403,7 @@ describe('health', () => {
     gone.text = 'late';
     await flushMicrotasks();
 
-    expect(caught).toEqual([expect.any(Caught.Destroyed)]);
+    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
     expect(health().caught.Destroyed).toBe(0);
   });
 

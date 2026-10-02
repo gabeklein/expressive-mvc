@@ -2314,11 +2314,12 @@ describe('set method', () => {
 
         await flushMicrotasks();
 
-        expect(caught).toEqual([expect.any(Caught.Destroyed)]);
-        expect(caught[0]).toMatchObject({
+        expect(caught).toEqual([]);
+        expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
+        expect(warn.mock.calls[0][0]).toMatchObject({
           state: test,
           key: 'foo',
-          warning: false,
+          warning: true,
           message: expect.stringMatching(/Tried to update [\w-]+\.foo but state is destroyed\./)
         });
       });
@@ -2335,7 +2336,8 @@ describe('set method', () => {
         test.set('foo', { value: 1 });
         await flushMicrotasks();
 
-        expect(caught).toEqual([expect.any(Caught.Destroyed)]);
+        expect(caught).toEqual([]);
+        expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
       });
 
       it('will store and report assign', async () => {
@@ -2351,7 +2353,8 @@ describe('set method', () => {
         await flushMicrotasks();
 
         expect(test.foo).toBe(1);
-        expect(caught).toEqual([expect.any(Caught.Destroyed)]);
+        expect(caught).toEqual([]);
+        expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
       });
 
       it('will let a continuation that writes after teardown run to completion', async () => {
@@ -2378,7 +2381,8 @@ describe('set method', () => {
         await flushMicrotasks();
 
         expect(runs).toBe(2);
-        expect(caught).toEqual([expect.any(Caught.Destroyed)]);
+        expect(caught).toEqual([]);
+        expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
       });
 
       it('will keep state off the enumerable keys of a report', () => {
@@ -3788,7 +3792,8 @@ describe('on catch stage (static)', () => {
     sub.foo = 1;
     await flushMicrotasks();
 
-    expect(caught).toEqual([expect.any(Caught.Destroyed)]);
+    expect(caught).toEqual([]);
+    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
     expect(order).toEqual(['shared', 'sub', 'base']);
   });
 
@@ -3871,7 +3876,8 @@ describe('on catch stage (static)', () => {
     test.foo = 1;
     await flushMicrotasks();
 
-    expect(caught).toEqual([expect.any(Caught.Destroyed)]);
+    expect(caught).toEqual([]);
+    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
     expect(handler).not.toBeCalled();
   });
 
@@ -3949,7 +3955,7 @@ describe('on catch stage (static)', () => {
     expect(handler).toBeCalledWith(expect.objectContaining({ state: test, cause: oops }));
   });
 
-  it('will not report again an issue a handler rethrew', async () => {
+  it('will escape a report a handler rethrew without reaching the writer', async () => {
     class Target extends State {
       foo = 0;
     }
