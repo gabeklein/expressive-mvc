@@ -55,7 +55,7 @@ class Timer extends State {
 - `function` - called with `this` as the instance; may return a cleanup function, an object to assign, an array to process, or a Promise
 - `object` - assigned to state properties
 - `array` - flattened and re-processed
-- `Promise` (returned by a callback) - a rejection is reported as `Caught.Init` ([Error Handling](#error-handling))
+- `Promise` (returned by a callback) - a rejection is reported with kind `setup` ([Error Handling](#error-handling))
 
 > **Timing:** args (and assigned props, in adapters) apply during activation, *after* field initializers and `State.on` setup. A trailing arg callback - like `new()` and an `on({ new })` handler - sees applied values. The JS constructor body and `on({ pre })` setup run *before* the merge and see only field defaults; don't read an applied prop there.
 
@@ -83,7 +83,7 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment is stored without dispatch - the writer reads back what it wrote, so a continuation runs to its end. Each such write is reported to `catch` handlers as `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`); unhandled, it outputs nothing. Silent updates (`state.set(assign, true)`) store without a report. `_` fields are unmanaged and never report ([state.md](state.md#unmanaged-instance-data)).
+- Assignment is stored without dispatch - the writer reads back what it wrote, so a continuation runs to its end. Each such write is reported to `catch` handlers with kind `dead` (`Tried to update {state}.{key} but state is destroyed.`); unhandled, it outputs nothing. Silent updates (`state.set(assign, true)`) store without a report. `_` fields are unmanaged and never report ([state.md](state.md#unmanaged-instance-data)).
 - A one-shot completion writing late is harmless. Repeated late writes mean work outlived its owner - an interval or subscription never cleaned up. Cancel it in a cleanup (`new()`'s returned function, an effect's cleanup); do not guard writes. Inspect counts destroyed writes per instance.
 - To enforce cleanup in tests, escalate from a handler: `State.on({ catch: (e) => { throw e } })` fails the run on a destroyed write, as on any report.
 - Subscribing (`get(effect)`, `set(callback)`) still throws.
@@ -132,17 +132,15 @@ state.get((current) => {
 
 ## Error Handling
 
-What mvc does not throw it reports as a `Caught` (an `Error` exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: a destroyed write outputs nothing, `console.warn` if `error.warning`, else it escapes uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply. `message` names the class and ends with what was thrown (`An exception was thrown by an effect of Chat: socket closed`), so a tracker groups by it; the instance is `error.state`.
+An instance failing out of turn - not at a call that could catch it - reaches the `catch` stage of [State.on()](state.md#stateon) on its class chain, as what was thrown, with its `kind` and `key` where one applies. Unhandled: a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught (fails a test run, crashes a Node process).
 
-| `Caught.`   | `warning` | When                                                                   |
-| ----------- | --------- | ---------------------------------------------------------------------- |
-| `Destroyed` | `true`    | write to a destroyed state - stored without dispatch; unhandled, no output |
-| `Inactive`  | `true`    | constructed, never activated in that tick                              |
-| `Getter`    | `false`   | getter threw while refreshing - value becomes `undefined`; `cause`     |
-| `Init`      | `false`   | async initializer or `new()` rejected - state still created; `cause`   |
-| `Effect`    | `false`   | effect or listener threw during a flush; `cause` - collections resolve to their owner |
-
-`error.name` is the case (`Caught.Effect`), minify-safe - console output and error trackers show it.
+| `kind`      | `error`                       | When                                                                   |
+| ----------- | ----------------------------- | ---------------------------------------------------------------------- |
+| `dead` | `Error` (`Tried to update {state}.{key} but state is destroyed.`) | write to a destroyed state - stored without dispatch; unhandled, no output |
+| `unused`  | `Error` (`{state} was constructed but never activated.`) | constructed, never activated in that tick                              |
+| `getter`    | what the getter threw; `key`  | getter threw while refreshing - value becomes `undefined`              |
+| `setup`      | the rejection                 | async initializer or `new()` rejected - state still created            |
+| `effect`    | what was thrown               | effect or listener threw during a flush - collections resolve to their owner |
 
 `catch` is class-level policy. `Component.catch()` is a separate per-instance boundary for child render errors - a Component's own effect errors reach `State.on({ catch })`, not its boundary.
 
@@ -150,25 +148,29 @@ Error tracker (Sentry shown - any capture call fits) - report with State context
 
 ```ts
 State.on({
-  catch(error) {
-    if (error.warning) return error;
-    Sentry.captureException(error, { tags: { state: String(this), key: error.key } });
+  catch(error, kind, key) {
+    if (kind == 'unused') return error;
+    Sentry.captureException(error, { tags: { state: String(this), kind, key } });
   }
 });
 ```
 
-Sentry follows `cause`, so the original error and its stack arrive with the report.
+Log instead of escaping - a long-running process that should survive a failing effect - and let `unused` and destroyed writes keep their default:
 
-Log instead of escaping - a long-running process that should survive a failing effect: `State.on({ catch: Caught.log })`. It logs and handles errors; warnings pass on.
+```ts
+State.on({
+  catch: (error, kind) => (kind == 'unused' || kind == 'dead' ? error : void console.error(error))
+});
+```
 
 Tests - assert on reports, not console output. A handled report does not escape to fail the run:
 
 ```ts
-const caught: Caught[] = [];
-const stop = Composer.on({ catch: (error) => void caught.push(error) });
+const caught: string[] = [];
+const stop = Composer.on({ catch: (error, kind) => void caught.push(kind) });
 
 // ...trigger the failure, flush
-expect(caught).toEqual([expect.any(Caught.Effect)]);
+expect(caught).toEqual(['effect']);
 stop();
 ```
 

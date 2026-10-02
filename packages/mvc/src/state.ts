@@ -1,5 +1,5 @@
 import { Context, join } from './context';
-import { Caught } from './caught';
+import { REPORT } from './dispatch';
 import {
   capture,
   event,
@@ -133,12 +133,15 @@ declare namespace State {
     bind?(this: T, key: string, fn: Function): void;
 
     /**
-     * Receives a `Caught` mvc reports for this State or a subclass - most-derived
-     * class first, last registered first. Return it (or a replacement) to pass it
-     * on; return nothing to handle it; throw to let it escape uncaught. Passed off
-     * the end, a warning logs and anything else escapes uncaught.
+     * Receives what an effect, refreshing getter or async initializer of this State
+     * or a subclass threw, a destroyed write, or an instance never activated - with
+     * its `kind` (`effect`, `getter`, `setup`, `dead`, `unused`) and `key` where
+     * one applies. Most-derived class first, last registered first, each once. Return the error
+     * (or another) to pass it on; return nothing to handle it; throw to let it escape.
+     * Passed off the end, a destroyed write outputs nothing, `unused` warns,
+     * anything else escapes uncaught.
      */
-    catch?(this: T, error: Caught): Caught | void;
+    catch?(this: T, error: unknown, kind: 'effect' | 'getter' | 'setup' | 'dead' | 'unused', key?: string): unknown;
   }
 
   /** Object overlay to override values and methods on a state. */
@@ -617,7 +620,7 @@ function init(state: State, ...args: State.Args) {
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
         if (out instanceof Promise)
-          out.catch((err) => report(new Caught.Init(state, err)));
+          out.catch((err) => report('setup', state, err));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);
@@ -641,7 +644,7 @@ function init(state: State, ...args: State.Args) {
 
       for (const item of PENDING)
         if (typeof item == 'function') item();
-        else report(new Caught.Inactive(item));
+        else report('unused', item, new Error(`${item} was constructed but never activated.`));
 
       PENDING.clear();
     });
@@ -760,7 +763,7 @@ function classify(
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
 
-      for (const handler of binders(is.constructor as State.Extends)) handler.call(is, key, bound);
+      for (const handler of stages(is.constructor as State.Extends, 'bind')) handler.call(is, key, bound);
 
       return bound;
     }
@@ -772,10 +775,11 @@ function classify(
   }
 }
 
-function binders(T: State.Extends): Set<NonNullable<State.On['bind']>> {
-  const found = T === State ? new Set<NonNullable<State.On['bind']>>() : binders(Object.getPrototypeOf(T));
+/** Handlers of one stage along the class chain - ancestor first, in registration order, each once. */
+function stages<K extends 'bind' | 'catch'>(T: State.Extends, key: K): Set<NonNullable<State.On[K]>> {
+  const found = T === State ? new Set<NonNullable<State.On[K]>>() : stages(Object.getPrototypeOf(T), key);
 
-  for (const handler of SETUP.get(T) || []) if (handler.bind) found.add(handler.bind);
+  for (const handler of SETUP.get(T) || []) if (handler[key]) found.add(handler[key]!);
 
   return found;
 }
@@ -824,7 +828,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
         throw err;
       }
 
-      if (!(err instanceof Promise)) report(new Caught.Getter(this, key, err));
+      if (!(err instanceof Promise)) report('getter', this, err, key);
     }
 
     update(this, key, next, !isAsync);
@@ -1107,7 +1111,7 @@ function update<T>(
   if (value instanceof State) value = value.is as T;
 
   if (observer(state) === null) {
-    if (!silent) report(new Caught.Destroyed(state, String(key)));
+    if (!silent) report('dead', state, new Error(`Tried to update ${state}.${String(key)} but state is destroyed.`), String(key));
     store[key] = value;
     return false;
   }
@@ -1124,45 +1128,28 @@ function update<T>(
 }
 
 /**
- * Pass a caught error along `catch` handlers - most-derived class first, last registered
- * first - until one returns nothing. Passed off the end, a destroyed write is dropped
- * silently, a warning logs, and anything else escapes uncaught; so does a handler's throw.
+ * Pass an error along `catch` handlers - most-derived class first, last registered
+ * first, one on several classes once at the outermost - until one returns nothing. Passed off
+ * the end, a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught;
+ * so does a handler's throw.
  */
-function report(caught: Caught) {
-  const handlers = new Set<NonNullable<State.On['catch']>>();
-  let error: Caught | void = caught;
-
-  for (let T = caught.state.constructor as State.Extends; ; T = Object.getPrototypeOf(T)) {
-    for (const handler of [...(SETUP.get(T) || [])].reverse())
-      if (handler.catch) handlers.add(handler.catch);
-
-    if (T === State) break;
-  }
-
-  try {
-    for (const handler of handlers) if (!(error = handler.call(caught.state, error))) return;
-  } catch (err) {
-    return escape(err);
-  }
-
-  if (error instanceof Caught.Destroyed) return;
-  if (error.warning) console.warn(error);
-  else escape(error);
-}
-
-function escape(err: unknown) {
-  queueMicrotask(() => {
-    throw err;
-  });
-}
-
-/** Error thrown by a handler replaying in dispatch, attributed to the State which queued it. */
-function fault(err: unknown, owner?: object) {
+function report(kind: Parameters<NonNullable<State.On['catch']>>[1], owner: object | undefined, error: unknown, key?: string) {
   const state = owner instanceof State ? owner : owner && PARENT.get(owner);
 
-  if (state) report(new Caught.Effect(state, err));
-  else escape(err);
+  if (!state) return REPORT.error(error);
+
+  try {
+    for (const handler of [...stages(state.constructor as State.Extends, 'catch')].reverse())
+      if ((error = handler.call(state, error, kind, key)) === undefined) return;
+
+    if (kind == 'unused') console.warn(error);
+    else if (kind != 'dead') REPORT.error(error);
+  } catch (err) {
+    REPORT.error(err);
+  }
 }
+
+REPORT.as = report;
 
 /**
  * Hand a value stored by an owning writer to that property's adopter,
@@ -1358,4 +1345,4 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, fault, patch, track, handlers };
+export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, patch, track, handlers };
