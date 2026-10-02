@@ -357,13 +357,16 @@ describe('health', () => {
     text = '';
   }
 
-  it('will count caught reports by case and pass them on', () => {
+  it('will count caught reports by case and pass them on', async () => {
+    const caught = mockUncaught();
     attach();
     const note = Note.new();
 
     note.set(null);
+    note.text = 'late';
+    await flushMicrotasks();
 
-    expect(() => (note.text = 'late')).toThrow(Caught.Destroyed);
+    expect(caught).toEqual([expect.any(Caught.Destroyed)]);
     expect(health().caught).toEqual({ Destroyed: 1, Inactive: 0, Getter: 0, Init: 0, Effect: 0 });
   });
 
@@ -384,7 +387,8 @@ describe('health', () => {
     expect(health().caught.Destroyed).toBe(1);
   });
 
-  it('will stop observing a class when detached', () => {
+  it('will stop observing a class when detached', async () => {
+    const caught = mockUncaught();
     const stop = attach();
 
     class Gone extends State {
@@ -396,17 +400,21 @@ describe('health', () => {
     stop();
     gone.set(null);
 
-    expect(() => (gone.text = 'late')).toThrow(Caught.Destroyed);
+    gone.text = 'late';
+    await flushMicrotasks();
+
+    expect(caught).toEqual([expect.any(Caught.Destroyed)]);
     expect(health().caught.Destroyed).toBe(0);
   });
 
   it('will record a caught report in the journal', async () => {
+    mockUncaught();
     attach();
     journal.record({ level: 'keys' });
     const note = Note.new();
 
     note.set(null);
-    expect(() => (note.text = 'late')).toThrow();
+    note.text = 'late';
     await flushMicrotasks();
 
     expect(journal.history({ key: 'text' }).map(({ event }) => event)).toContainEqual({
@@ -458,11 +466,12 @@ describe('health', () => {
   });
 
   it('will reset caught counts when the journal clears', () => {
+    mockUncaught();
     attach();
     const note = Note.new();
 
     note.set(null);
-    expect(() => (note.text = 'late')).toThrow();
+    note.text = 'late';
     expect(health().caught.Destroyed).toBe(1);
 
     journal.clear();
@@ -470,12 +479,13 @@ describe('health', () => {
   });
 
   it('will count caught reports in the summary', async () => {
+    mockUncaught();
     attach();
     journal.record({ level: 'keys' });
     const note = Note.new();
 
     note.set(null);
-    expect(() => (note.text = 'late')).toThrow();
+    note.text = 'late';
     await flushMicrotasks();
 
     expect(journal.summary({ id: String(note) })[0]).toMatchObject({ caught: 1, destroyed: true });
@@ -494,7 +504,7 @@ describe('health', () => {
     const stop = Replaced.on({ catch: (error) => new Caught(error.state, 'replaced') });
 
     replaced.set(null);
-    expect(() => (replaced.text = 'late')).toThrow('replaced');
+    replaced.text = 'late';
     stop();
     await flushMicrotasks();
 
@@ -502,7 +512,7 @@ describe('health', () => {
     expect(journal.history({ type: 'Replaced' }).map(({ event }) => event.value)).toContainEqual(
       expect.objectContaining({ case: 'Caught', message: 'replaced', handled: false })
     );
-    expect(caught).toEqual([]);
+    expect(caught).toEqual([expect.objectContaining({ message: 'replaced' })]);
   });
 
   it('will count loaded copies of mvc and warn once', () => {

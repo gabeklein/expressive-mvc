@@ -85,9 +85,16 @@ describe('State.use', () => {
 
       hook.unmount();
 
+      const reports: unknown[] = [];
+      const stop = Test.on({ catch: (error) => void reports.push(error) });
+
       expect(() => {
         hook.result.current.value = 'baz';
-      }).toThrow();
+      }).not.toThrow();
+
+      stop();
+
+      expect(reports).toEqual([expect.objectContaining({ message: expect.stringMatching(/but state is destroyed/) })]);
     });
 
   });
