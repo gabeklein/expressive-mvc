@@ -56,15 +56,12 @@ function track() {
     type(type) {
       const parent = Object.getPrototypeOf(type);
       let children = SUBCLASSES.get(parent);
-
       if (!children) SUBCLASSES.set(parent, (children = new Set()));
       children.add(type);
     },
     pre(state) {
       const ref = new WeakRef(state);
-
       LIVE!.add(ref);
-
       return () => LIVE!.delete(ref);
     }
   });
@@ -86,7 +83,6 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
   let setup = SETUP.get(prev);
 
   for (const handler of own) setup!.delete(handler);
-
   for (const handler of handlers(next)) {
     if (!setup) SETUP.set(prev, (setup = new Set()));
     setup.add(handler);
@@ -94,7 +90,6 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
 
   for (const key of Reflect.ownKeys(next)) {
     if (key == 'prototype' || key == 'length' || key == 'name') continue;
-
     if (Object.getOwnPropertyDescriptor(prev, key)?.configurable !== false)
       define(prev, key, Object.getOwnPropertyDescriptor(next, key)!);
   }
@@ -121,13 +116,13 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
     const current = Object.getOwnPropertyDescriptor(proto, key);
 
     if (typeof desc.value == 'function') methods.set(key, desc.value);
-
     if (current?.configurable === false) {
       if (current.writable) (proto as any)[key] = desc.value;
       continue;
     }
 
-    if (current?.get && keys?.get(key) === current.get) PAST.add(UNBIND.get(current.get));
+    if (current?.get && keys?.get(key) === current.get)
+      PAST.add(UNBIND.get(current.get));
 
     const getter = getters?.get(key);
 
@@ -180,7 +175,6 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
       const desc = Object.getOwnPropertyDescriptor(state, key);
 
       if (!desc) continue;
-
       if (desc.set) desc.set.call(state, value);
       else if (PAST.has(UNBIND.get(desc.value))) delete (state as any)[key];
     }
