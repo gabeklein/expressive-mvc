@@ -3,7 +3,6 @@ import { defineConfig } from 'tsdown';
 export default defineConfig({
   clean: true,
   dts: true,
-  external: ['@expressive/mvc'],
   entry: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/mocks.ts'],
   format: ['esm'],
   outDir: 'dist',
