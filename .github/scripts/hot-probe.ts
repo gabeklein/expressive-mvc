@@ -1186,7 +1186,7 @@ export class Session extends Base {
     await scenario('server transform carries no browser-only code', async () => {
       const result = await vite.environments.ssr.transformRequest('/base.ts');
       const code = result?.code ?? '';
-      check(/\.accept\("\/base\.ts"/.test(code), 'no hot binding injected');
+      check(/\.accept\)\("\/base\.ts"/.test(code), 'no hot binding injected');
       check(!/sessionStorage|location\.reload|dispatchEvent/.test(code), 'browser-only code in the ssr transform');
     });
   } finally {

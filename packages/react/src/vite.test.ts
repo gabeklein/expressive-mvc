@@ -32,10 +32,10 @@ async function run(code: string, { locals, replace = {}, before, next, ssr = fal
   const body = output.replace(/^import .*$/gm, '').replaceAll('import.meta.hot', 'hot');
   const hot = { data: Object.assign(data, before && { expressive: before }), accept: vi.fn(), invalidate: vi.fn() };
   const location = ssr ? undefined : { reload: vi.fn() };
-  const expressive = { accept: (_id: string, classes: Record<string, unknown>) => ({ ...classes, ...replace }) };
+  const accept = (_id: string, classes: Record<string, unknown>) => ({ ...classes, ...replace });
 
-  new Function('hot', 'location', '__expressive', '__State', ...Object.keys(locals), body)(
-    hot, location, expressive, State, ...Object.values(locals)
+  new Function('hot', 'location', '__accept', '__State', ...Object.keys(locals), body)(
+    hot, location, accept, State, ...Object.values(locals)
   );
 
   if (next) hot.accept.mock.calls[0][0](next);
@@ -100,8 +100,8 @@ it('will name a module by its path from the project root', async () => {
 it('will append the binding and keep source maps', async () => {
   const { code, map } = (await transform('class A {}', '/src/app.js?t=123'))!;
 
-  expect(code).toContain(`import * as __expressive from '@expressive/mvc/hot';`);
-  expect(code).toContain('__expressive.accept("/src/app.js", { A })');
+  expect(code).toContain(`import { accept as __accept } from '@expressive/mvc/hot';`);
+  expect(code).toContain('__accept("/src/app.js", { A })');
   expect(code).toContain('import.meta.hot.accept(');
   expect(map).toBeNull();
 });

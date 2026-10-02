@@ -62,27 +62,8 @@ function scan(body: Node[]) {
   return { classes, hidden, components, exports };
 }
 
-/**
- * Bind a module's classes to `hot.accept` and its function components to dom's
- * refresh. A State class it could not patch reloads the page; after an update,
- * a changed component re-renders in place and any other changed export
- * invalidates importers.
- */
-function inject(id: string, body: Node[], ssr = false) {
-  const { classes, hidden, components, exports } = scan(body);
-
-  if (!classes.length && !components.length) return '';
-
-  const list = classes.join(', ');
-  const record = Object.entries(exports).map(([name, local]) => `${JSON.stringify(name)}: ${local}`);
-  const refresh = Object.keys(exports).filter((name) => components.includes(exports[name]));
-  const effect = ssr ? 'replace it instead of patching' : 'will trigger a full reload';
-  const notes = hidden.map(
-    (name) =>
-      `${JSON.stringify(name)}: ${JSON.stringify(`[expressive] ${name} (${id}) declares #private members, so edits to its module ${effect}. Use _ properties instead to keep HMR.`)}`
-  );
-  const replace = ssr
-    ? `  const __notes = { ${notes.join(', ')} };
+const server = (notes: string, list: string) => `\
+  const __notes = { ${notes} };
   const __before = import.meta.hot.data.expressive;
   const __classes = (import.meta.hot.data.expressive = { ${list} });
   const __warned = (import.meta.hot.data.warned ||= {});
@@ -91,9 +72,11 @@ function inject(id: string, body: Node[], ssr = false) {
       __warned[key] = true;
       console.warn(__notes[key]);
     }
-`
-    : `  const __notes = { ${notes.join(', ')} };
-  const __flag = (key) => 'expressive:private:' + ${JSON.stringify(id)} + ':' + key;
+`;
+
+const browser = (id: string, notes: string, list: string) => `\
+  const __notes = { ${notes} };
+  const __flag = (key) => 'expressive:private:' + ${id} + ':' + key;
   for (const key in __notes)
     try {
       if (sessionStorage.getItem(__flag(key)) == 'due') {
@@ -112,30 +95,26 @@ function inject(id: string, body: Node[], ssr = false) {
         } catch {
           console.warn(note);
         }
-      dispatchEvent(new CustomEvent('expressive:reload', { detail: { module: ${JSON.stringify(id)}, class: key, reason: note ? 'private members' : 'class changed shape' } }));
+      dispatchEvent(new CustomEvent('expressive:reload', { detail: { module: ${id}, class: key, reason: note ? 'private members' : 'class changed shape' } }));
       location.reload();
       break;
     }
 `;
-  const lines = ['', `import { State as __State } from '@expressive/mvc';`];
 
-  if (classes.length)
-    lines.push(
-      `import * as __expressive from '@expressive/mvc/hot';`,
-      '{',
-      `  const __hot = __expressive.accept(${JSON.stringify(id)}, { ${list} });`,
-      ...classes.map((name) => `  ${name} = __hot.${name};`),
-      '}'
-    );
+const patchClasses = (id: string, classes: string[]) => `
+import { accept as __accept } from '@expressive/mvc/hot';
+{
+  const __hot = __accept(${id}, { ${classes.join(', ')} });
+  ${classes.map((name) => `${name} = __hot.${name};`).join('\n  ')}
+}`;
 
-  if (components.length)
-    lines.push(
-      `import { hot as __refresh } from '@expressive/dom/jsx-dev-runtime';`,
-      `__refresh(${JSON.stringify(id)}, { ${components.join(', ')} });`
-    );
+const refreshComponents = (id: string, components: string[]) => `
+import { hot as __refresh } from '@expressive/dom/jsx-dev-runtime';
+__refresh(${id}, { ${components.join(', ')} });`;
 
-  lines.push(`if (import.meta.hot) {
-${replace}  const __exports = { ${record.join(', ')} };
+const acceptUpdates = (replace: string, record: string, refresh: string[]) => `
+if (import.meta.hot) {
+${replace}  const __exports = { ${record} };
   import.meta.hot.accept((next) => {
     if (!next) return;
     for (const key in __exports) {
@@ -145,9 +124,36 @@ ${replace}  const __exports = { ${record.join(', ')} };
     }
   });
 }
-`);
+`;
 
-  return lines.join('\n');
+/**
+ * Bind a module's classes to `hot.accept` and its function components to dom's
+ * refresh. A State class it could not patch reloads the page; after an update,
+ * a changed component re-renders in place and any other changed export
+ * invalidates importers.
+ */
+function inject(id: string, body: Node[], ssr = false) {
+  const { classes, hidden, components, exports } = scan(body);
+
+  if (!classes.length && !components.length) return '';
+
+  const key = JSON.stringify(id);
+  const list = classes.join(', ');
+  const record = Object.entries(exports).map(([name, local]) => `${JSON.stringify(name)}: ${local}`);
+  const refresh = Object.keys(exports).filter((name) => components.includes(exports[name]));
+  const effect = ssr ? 'replace it instead of patching' : 'will trigger a full reload';
+  const notes = hidden
+    .map(
+      (name) =>
+        `${JSON.stringify(name)}: ${JSON.stringify(`[expressive] ${name} (${id}) declares #private members, so edits to its module ${effect}. Use _ properties instead to keep HMR.`)}`
+    )
+    .join(', ');
+  const replace = ssr ? server(notes, list) : browser(key, notes, list);
+
+  return `
+import { State as __State } from '@expressive/mvc';${classes.length ? patchClasses(key, classes) : ''}${
+    components.length ? refreshComponents(key, components) : ''
+  }${acceptUpdates(replace, record.join(', '), refresh)}`;
 }
 
 /** Hot-patch classes and refresh function components in place during `vite` dev. */
