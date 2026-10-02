@@ -83,7 +83,7 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment is stored without dispatch - the writer reads back what it wrote, so a continuation runs to its end. Each such write is reported to `catch` handlers as `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`), silent ones included; unhandled, it outputs nothing. `_` fields are unmanaged and never report ([state.md](state.md#unmanaged-instance-data)).
+- Assignment is stored without dispatch - the writer reads back what it wrote, so a continuation runs to its end. Each such write is reported to `catch` handlers as `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`); unhandled, it outputs nothing. Silent updates (`state.set(assign, true)`) store without a report. `_` fields are unmanaged and never report ([state.md](state.md#unmanaged-instance-data)).
 - A one-shot completion writing late is harmless. Repeated late writes mean work outlived its owner - an interval or subscription never cleaned up. Cancel it in a cleanup (`new()`'s returned function, an effect's cleanup); do not guard writes. Inspect counts destroyed writes per instance.
 - To enforce cleanup in tests, escalate from a handler: `State.on({ catch: (e) => { throw e } })` fails the run on a destroyed write, as on any report.
 - Subscribing (`get(effect)`, `set(callback)`) still throws.

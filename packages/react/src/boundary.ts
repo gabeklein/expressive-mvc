@@ -75,7 +75,7 @@ export class ErrorBoundary extends React.Component<{
 
     Promise.resolve(self.catch!(error))
       .then(() => reset(), reset)
-      .finally(() => self.get(null) || self.set({ fallback }, true));
+      .finally(() => self.set({ fallback }, true));
   }
 
   componentDidUpdate() {

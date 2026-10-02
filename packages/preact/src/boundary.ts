@@ -43,7 +43,7 @@ export class ErrorBoundary extends PreactComponent<{
 
     Promise.resolve(self.catch!(error))
       .then(() => reset(), reset)
-      .finally(() => self.get(null) || self.set({ fallback }, true));
+      .finally(() => self.set({ fallback }, true));
   }
 
   componentDidUpdate() {

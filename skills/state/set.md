@@ -115,7 +115,7 @@ state.set(42); // number event
 set(status: null): void
 ```
 
-Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, dispatch stops. Afterward, assignment is stored without dispatch and reported to `catch` handlers as `Caught.Destroyed`; unhandled, it outputs nothing. Full order: [lifecycle.md](lifecycle.md#destruction).
+Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, dispatch stops. Afterward, assignment is stored without dispatch and reported to `catch` handlers as `Caught.Destroyed`; unhandled, it outputs nothing. Silent `set(assign, true)` stores without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
 
 ```ts
 state.set(null);

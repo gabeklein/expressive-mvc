@@ -2416,7 +2416,7 @@ describe('set method', () => {
         expect(warn).not.toBeCalled();
       });
 
-      it('will report a silent assign too', () => {
+      it('will store a silent assign without a report', () => {
         class Test extends State {
           foo = 0;
         }
@@ -2429,8 +2429,7 @@ describe('set method', () => {
         test.set({ foo: 1 }, true);
 
         expect(test.foo).toBe(1);
-        expect(handler).toBeCalledWith(expect.any(Caught.Destroyed));
-        expect(warn).not.toBeCalled();
+        expect(handler).not.toBeCalled();
       });
 
       it('will output nothing for a destroyed write left unhandled', async () => {

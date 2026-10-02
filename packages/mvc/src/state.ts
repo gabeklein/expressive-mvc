@@ -371,7 +371,7 @@ abstract class State {
    * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
-   * @param silent - If true, listeners will not be notified.
+   * @param silent - If true, listeners will not be notified. If state is destroyed, stores the update without reporting it.
    * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
@@ -1093,7 +1093,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
  *
  * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
  *
- * A destroyed state stores the write without dispatch, reports it, and returns `false`.
+ * A destroyed state stores the write without dispatch, reports it unless `silent`, and returns `false`.
  */
 function update<T>(
   state: State,
@@ -1107,7 +1107,7 @@ function update<T>(
   if (value instanceof State) value = value.is as T;
 
   if (observer(state) === null) {
-    report(new Caught.Destroyed(state, String(key)));
+    if (!silent) report(new Caught.Destroyed(state, String(key)));
     store[key] = value;
     return false;
   }
