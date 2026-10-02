@@ -33,7 +33,7 @@ class Caught extends Error {
     console.error(error);
   }
 
-  /** A write to a destroyed state - stored without dispatch, so the writer reads it back. */
+  /** A write to a destroyed state - stored without dispatch, so the writer reads it back. Unhandled, it is dropped silently. */
   static Destroyed = class Destroyed extends Caught {
     readonly name = 'Caught.Destroyed';
     readonly warning = true;

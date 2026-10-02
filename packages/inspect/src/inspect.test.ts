@@ -366,7 +366,7 @@ describe('health', () => {
     note.text = 'late';
     await flushMicrotasks();
 
-    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
+    expect(warn).not.toBeCalled();
     expect(health().caught).toEqual({ Destroyed: 1, Inactive: 0, Getter: 0, Init: 0, Effect: 0 });
   });
 
@@ -403,7 +403,7 @@ describe('health', () => {
     gone.text = 'late';
     await flushMicrotasks();
 
-    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
+    expect(warn).not.toBeCalled();
     expect(health().caught.Destroyed).toBe(0);
   });
 

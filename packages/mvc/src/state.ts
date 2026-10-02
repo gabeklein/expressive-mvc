@@ -371,7 +371,7 @@ abstract class State {
    * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
-   * @param silent - If true, listeners will not be notified. If state is destroyed, stores the update without reporting it.
+   * @param silent - If true, listeners will not be notified.
    * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
@@ -1093,7 +1093,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
  *
  * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
  *
- * A destroyed state stores the write without dispatch, reports it, and returns `false`; `silent` skips the report.
+ * A destroyed state stores the write without dispatch, reports it, and returns `false`.
  */
 function update<T>(
   state: State,
@@ -1107,7 +1107,7 @@ function update<T>(
   if (value instanceof State) value = value.is as T;
 
   if (observer(state) === null) {
-    if (!silent) report(new Caught.Destroyed(state, String(key)));
+    report(new Caught.Destroyed(state, String(key)));
     store[key] = value;
     return false;
   }
@@ -1125,8 +1125,8 @@ function update<T>(
 
 /**
  * Pass a caught error along `catch` handlers - most-derived class first, last registered
- * first - until one returns nothing. Passed off the end, a warning logs and anything
- * else escapes uncaught; so does a handler's throw.
+ * first - until one returns nothing. Passed off the end, a destroyed write is dropped
+ * silently, a warning logs, and anything else escapes uncaught; so does a handler's throw.
  */
 function report(caught: Caught) {
   const handlers = new Set<NonNullable<State.On['catch']>>();
@@ -1145,6 +1145,7 @@ function report(caught: Caught) {
     return escape(err);
   }
 
+  if (error instanceof Caught.Destroyed) return;
   if (error.warning) console.warn(error);
   else escape(error);
 }

@@ -83,9 +83,9 @@ Children always go before parents; nested contexts destroy inner-to-outer.
 
 Afterward:
 
-- Assignment is stored without dispatch - the writer reads back what it wrote, so a continuation runs to its end instead of stopping. Each such write is reported as `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`), a warning - unhandled, it logs. `_` fields are unmanaged and never report ([state.md](state.md#unmanaged-instance-data)).
-- A late write means work outlived its owner - cancel it in a cleanup (`new()`'s returned function, an effect's cleanup) rather than tolerating it. Where late writes are expected, handle them to silence the warning: `State.on({ catch: (e) => e instanceof Caught.Destroyed ? undefined : e })` - the write is stored either way. To fail a test run on any warning instead, throw from a handler: `State.on({ catch: (e) => { throw e } })`.
-- Silent updates (`state.set(assign, true)`) store without a report.
+- Assignment is stored without dispatch - the writer reads back what it wrote, so a continuation runs to its end. Each such write is reported to `catch` handlers as `Caught.Destroyed` (`Tried to update {state}.{key} but state is destroyed.`), silent ones included; unhandled, it outputs nothing. `_` fields are unmanaged and never report ([state.md](state.md#unmanaged-instance-data)).
+- A one-shot completion writing late is harmless. Repeated late writes mean work outlived its owner - an interval or subscription never cleaned up. Cancel it in a cleanup (`new()`'s returned function, an effect's cleanup); do not guard writes. Inspect counts destroyed writes per instance.
+- To enforce cleanup in tests, escalate from a handler: `State.on({ catch: (e) => { throw e } })` fails the run on a destroyed write, as on any report.
 - Subscribing (`get(effect)`, `set(callback)`) still throws.
 
 ## Batching
@@ -132,11 +132,11 @@ state.get((current) => {
 
 ## Error Handling
 
-What mvc does not throw it reports as a `Caught` (an `Error` exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: `console.warn` if `error.warning`, else it escapes uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply. `message` names the class and ends with what was thrown (`An exception was thrown by an effect of Chat: socket closed`), so a tracker groups by it; the instance is `error.state`.
+What mvc does not throw it reports as a `Caught` (an `Error` exported from `@expressive/mvc`, cases as static properties) to `catch` handlers on the class chain - [State.on()](state.md#stateon). Unhandled: a destroyed write outputs nothing, `console.warn` if `error.warning`, else it escapes uncaught (fails a test run, crashes a Node process). Every report carries `state`; `key` and `cause` where they apply. `message` names the class and ends with what was thrown (`An exception was thrown by an effect of Chat: socket closed`), so a tracker groups by it; the instance is `error.state`.
 
 | `Caught.`   | `warning` | When                                                                   |
 | ----------- | --------- | ---------------------------------------------------------------------- |
-| `Destroyed` | `true`    | write to a destroyed state - stored without dispatch                  |
+| `Destroyed` | `true`    | write to a destroyed state - stored without dispatch; unhandled, no output |
 | `Inactive`  | `true`    | constructed, never activated in that tick                              |
 | `Getter`    | `false`   | getter threw while refreshing - value becomes `undefined`; `cause`     |
 | `Init`      | `false`   | async initializer or `new()` rejected - state still created; `cause`   |

@@ -2295,15 +2295,16 @@ describe('set method', () => {
     describe('destroyed', () => {
       const warn = mockWarn();
 
-      it('will store an update without dispatch and report it', async () => {
+      it('will store an update without dispatch and report it to catch', () => {
         class Test extends State {
           foo = 0;
         }
 
         const callback = vi.fn();
-        const caught = mockUncaught();
+        const handler = vi.fn();
         const test = Test.new();
 
+        Test.on({ catch: handler });
         test.set(callback);
         test.foo++;
         test.set(null);
@@ -2311,12 +2312,8 @@ describe('set method', () => {
         expect(() => test.foo++).not.toThrow();
         expect(test.foo).toBe(2);
         expect(callback).toBeCalledTimes(1);
-
-        await flushMicrotasks();
-
-        expect(caught).toEqual([]);
-        expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
-        expect(warn.mock.calls[0][0]).toMatchObject({
+        expect(handler).toBeCalledTimes(1);
+        expect(handler.mock.calls[0][0]).toMatchObject({
           state: test,
           key: 'foo',
           warning: true,
@@ -2324,37 +2321,35 @@ describe('set method', () => {
         });
       });
 
-      it('will report set with config', async () => {
+      it('will report set with config', () => {
         class Test extends State {
           foo = 0;
         }
 
-        const caught = mockUncaught();
+        const handler = vi.fn();
         const test = Test.new();
 
+        Test.on({ catch: handler });
         test.set(null);
         test.set('foo', { value: 1 });
-        await flushMicrotasks();
 
-        expect(caught).toEqual([]);
-        expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
+        expect(handler).toBeCalledWith(expect.any(Caught.Destroyed));
       });
 
-      it('will store and report assign', async () => {
+      it('will store and report assign', () => {
         class Test extends State {
           foo = 0;
         }
 
-        const caught = mockUncaught();
+        const handler = vi.fn();
         const test = Test.new();
 
+        Test.on({ catch: handler });
         test.set(null);
         test.set({ foo: 1 });
-        await flushMicrotasks();
 
         expect(test.foo).toBe(1);
-        expect(caught).toEqual([]);
-        expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
+        expect(handler).toBeCalledWith(expect.any(Caught.Destroyed));
       });
 
       it('will let a continuation that writes after teardown run to completion', async () => {
@@ -2382,7 +2377,7 @@ describe('set method', () => {
 
         expect(runs).toBe(2);
         expect(caught).toEqual([]);
-        expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
+        expect(warn).not.toBeCalled();
       });
 
       it('will keep state off the enumerable keys of a report', () => {
@@ -2421,7 +2416,24 @@ describe('set method', () => {
         expect(warn).not.toBeCalled();
       });
 
-      it('will store assign without a report when silent', async () => {
+      it('will report a silent assign too', () => {
+        class Test extends State {
+          foo = 0;
+        }
+
+        const handler = vi.fn();
+        const test = Test.new();
+
+        Test.on({ catch: handler });
+        test.set(null);
+        test.set({ foo: 1 }, true);
+
+        expect(test.foo).toBe(1);
+        expect(handler).toBeCalledWith(expect.any(Caught.Destroyed));
+        expect(warn).not.toBeCalled();
+      });
+
+      it('will output nothing for a destroyed write left unhandled', async () => {
         class Test extends State {
           foo = 0;
         }
@@ -2430,10 +2442,9 @@ describe('set method', () => {
         const test = Test.new();
 
         test.set(null);
-        test.set({ foo: 1 }, true);
+        test.foo = 1;
         await flushMicrotasks();
 
-        expect(test.foo).toBe(1);
         expect(caught).toEqual([]);
         expect(warn).not.toBeCalled();
       });
@@ -3793,7 +3804,7 @@ describe('on catch stage (static)', () => {
     await flushMicrotasks();
 
     expect(caught).toEqual([]);
-    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
+    expect(warn).not.toBeCalled();
     expect(order).toEqual(['shared', 'sub', 'base']);
   });
 
@@ -3877,7 +3888,7 @@ describe('on catch stage (static)', () => {
     await flushMicrotasks();
 
     expect(caught).toEqual([]);
-    expect(warn).toBeCalledWith(expect.any(Caught.Destroyed));
+    expect(warn).not.toBeCalled();
     expect(handler).not.toBeCalled();
   });
 
