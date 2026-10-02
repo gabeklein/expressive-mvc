@@ -73,13 +73,10 @@ describe('log', () => {
     error.mockRestore();
   });
 
-  it('will pass on warnings and destroyed writes', () => {
-    const test = Test.new();
-    const inactive = new Caught.Inactive(test);
-    const destroyed = new Caught.Destroyed(test, 'foo');
+  it('will pass on warnings', () => {
+    const inactive = new Caught.Inactive(Test.new());
 
     expect(Caught.log(inactive)).toBe(inactive);
-    expect(Caught.log(destroyed)).toBe(destroyed);
   });
 
   it('will serve as a catch handler', async () => {

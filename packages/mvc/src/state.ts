@@ -136,8 +136,7 @@ declare namespace State {
      * Receives a `Caught` mvc reports for this State or a subclass - most-derived
      * class first, last registered first. Return it (or a replacement) to pass it
      * on; return nothing to handle it; throw to let it escape uncaught. Passed off
-     * the end, a warning logs and anything else is thrown - to the writer for a
-     * destroyed write, else uncaught.
+     * the end, a warning logs and anything else escapes uncaught.
      */
     catch?(this: T, error: Caught): Caught | void;
   }
@@ -372,7 +371,7 @@ abstract class State {
    * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
-   * @param silent - If true, listeners will not be notified. If state is destroyed, drops the update without reporting it.
+   * @param silent - If true, listeners will not be notified. If state is destroyed, stores the update without reporting it.
    * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
@@ -409,7 +408,7 @@ abstract class State {
   set(key: State.Event<this>): State.Updated<this>;
 
   /**
-   * Declare an end to updates. This event is final and will freeze state.
+   * Declare an end to updates. This event is final - later writes are stored but never dispatched.
    * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
    *
    * @param status - `null` to end updates.
@@ -1094,7 +1093,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
  *
  * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
  *
- * A destroyed state reports the write - thrown to the writer unless a `catch` handler takes it - and returns `false`; `silent` skips both, and dispatch.
+ * A destroyed state stores the write without dispatch, reports it unless `silent`, and returns `false`.
  */
 function update<T>(
   state: State,
@@ -1103,14 +1102,15 @@ function update<T>(
   silent?: boolean,
   own?: boolean
 ) {
-  if (observer(state) === null) {
-    if (!silent) report(new Caught.Destroyed(state, String(key)), true);
-    return false;
-  }
-
   const store = STORE.get(state)!;
 
   if (value instanceof State) value = value.is as T;
+
+  if (observer(state) === null) {
+    if (!silent) report(new Caught.Destroyed(state, String(key)));
+    store[key] = value;
+    return false;
+  }
 
   if (key in store && value === store[key]) return false;
 
@@ -1125,15 +1125,12 @@ function update<T>(
 
 /**
  * Pass a caught error along `catch` handlers - most-derived class first, last registered
- * first - until one returns nothing. Passed off the end, a warning logs and anything
- * else is thrown - to the caller when `sync`, else uncaught. So is a handler's throw,
- * and one wrapping an error a handler already threw escapes that error unreported.
+ * first - until one returns nothing. Passed off the end, a destroyed write is dropped
+ * silently, a warning logs, and anything else escapes uncaught; so does a handler's throw.
  */
-function report(caught: Caught, sync?: boolean) {
+function report(caught: Caught) {
   const handlers = new Set<NonNullable<State.On['catch']>>();
   let error: Caught | void = caught;
-
-  if (caught.cause instanceof Caught) return escape(caught.cause);
 
   for (let T = caught.state.constructor as State.Extends; ; T = Object.getPrototypeOf(T)) {
     for (const handler of [...(SETUP.get(T) || [])].reverse())
@@ -1145,12 +1142,11 @@ function report(caught: Caught, sync?: boolean) {
   try {
     for (const handler of handlers) if (!(error = handler.call(caught.state, error))) return;
   } catch (err) {
-    if (sync) throw err;
     return escape(err);
   }
 
+  if (error instanceof Caught.Destroyed) return;
   if (error.warning) console.warn(error);
-  else if (sync) throw error;
   else escape(error);
 }
 

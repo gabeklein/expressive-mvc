@@ -27,15 +27,16 @@ class Caught extends Error {
     Object.defineProperty(this, 'state', { value: state });
   }
 
-  /** A `catch` handler logging what would otherwise escape uncaught; warnings and destroyed writes pass on. */
+  /** A `catch` handler logging what would otherwise escape uncaught; warnings pass on. */
   static log(error: Caught): Caught | void {
-    if (error.warning || error instanceof Caught.Destroyed) return error;
+    if (error.warning) return error;
     console.error(error);
   }
 
-  /** A write to a destroyed state - thrown to the writer unless a handler takes it. */
+  /** A write to a destroyed state - stored without dispatch, so the writer reads it back. Unhandled, it is dropped silently. */
   static Destroyed = class Destroyed extends Caught {
     readonly name = 'Caught.Destroyed';
+    readonly warning = true;
 
     constructor(state: State, key: string) {
       super(state, `Tried to update ${state}.${key} but state is destroyed.`, key);
