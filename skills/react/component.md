@@ -476,7 +476,7 @@ function SidebarItems() {
 - `new()` - once after init, synchronously; runs during server render. Return cleanup for teardown.
 - `render(props)` - every render.
 - `mount()` - once when `<MyComponent />` commits, client only. Return cleanup for unmount. Not called for an instance placed as `{instance}` - the placing component does not own it (see [react.md](react.md)).
-- `catch(error, instance)` - error boundary.
+- `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `State.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
 `MyComponent.use()` throws - a Component is rendered (`<MyComponent />` or `{instance}`), not used. For a bare instance use `MyComponent.new()`.

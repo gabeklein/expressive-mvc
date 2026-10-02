@@ -181,7 +181,7 @@ class Boundary extends State {}
 </Boundary>;
 ```
 
-`catch(error)` - the member, or the attribute's `catch(error, instance)` - handles render failures and retries after it completes; until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
+`catch(error, instance)` - member or attribute - handles render failures and retries after it completes (lifecycle failures go to `State.on({ catch })` instead); until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
 
 ```tsx
 const Settings = lazy(() => import('./Settings'));
