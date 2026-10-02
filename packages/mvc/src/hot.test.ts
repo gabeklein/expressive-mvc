@@ -547,6 +547,32 @@ describe('accept', () => {
     expect(test.value).toBe(10);
   });
 
+  it('will not patch a destroyed instance', () => {
+    const id = module();
+
+    const version = (step: number) => {
+      class Test extends State {
+        value = 0;
+        bump() {
+          this.value += step;
+        }
+      }
+      return Test;
+    };
+
+    const Test = version(1);
+
+    accept(id, { Test });
+
+    const test = Test.new();
+    const { bump } = test;
+
+    test.set(null);
+    accept(id, { Test: version(10) });
+
+    expect(test.bump).toBe(bump);
+  });
+
   it('will not patch a class which changed shape', () => {
     const id = module();
 
