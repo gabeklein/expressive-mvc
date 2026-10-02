@@ -1776,3 +1776,143 @@ describe('strict mode', () => {
     element.unmount();
   });
 });
+
+describe('for', () => {
+  class Session extends State {
+    name = 'none';
+  }
+
+  function Name() {
+    return <>{Session.get().name}</>;
+  }
+
+  it('will construct and provide a class', () => {
+    let session!: Session;
+
+    render(
+      <Component for={Session} name="Ada" is={(s: Session) => (session = s)}>
+        <Name />
+      </Component>
+    );
+
+    expect(screen).toHaveText('Ada');
+    expect(session).toBeInstanceOf(Session);
+  });
+
+  it('will destroy a provided class on unmount', () => {
+    let session!: Session;
+
+    const view = render(
+      <Component for={Session} is={(s: Session) => (session = s)}>
+        <Name />
+      </Component>
+    );
+
+    view.unmount();
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will provide an instance without owning it', async () => {
+    const session = Session.new();
+
+    const view = render(
+      <Component for={session} name="Grace">
+        <Name />
+      </Component>
+    );
+
+    expect(screen).toHaveText('Grace');
+
+    view.unmount();
+
+    expect(session.get(null)).toBe(false);
+  });
+
+  it('will forward props on rerender', async () => {
+    const session = Session.new();
+    const view = render(
+      <Component for={session} name="Ada">
+        <Name />
+      </Component>
+    );
+
+    view.rerender(
+      <Component for={session} name="Grace">
+        <Name />
+      </Component>
+    );
+
+    await act(async () => {});
+
+    expect(session.name).toBe('Grace');
+    expect(screen).toHaveText('Grace');
+  });
+
+  it('will keep one provided class under StrictMode', () => {
+    const made: Session[] = [];
+
+    class Tracked extends Session {
+      protected new() {
+        made.push(this);
+      }
+    }
+
+    function Read() {
+      return <>{String(made.indexOf(Tracked.get().is))}</>;
+    }
+
+    const view = render(
+      <React.StrictMode>
+        <Component for={Tracked}>
+          <Read />
+        </Component>
+      </React.StrictMode>
+    );
+
+    expect(made).toHaveLength(1);
+    expect(screen).toHaveText('0');
+
+    view.unmount();
+
+    expect(made[0].get(null)).toBe(true);
+  });
+
+  it('will mount a class it constructed', () => {
+    const mounted = vi.fn();
+    const released = vi.fn();
+
+    class Owned extends State {
+      mount() {
+        mounted();
+        return released;
+      }
+    }
+
+    const view = render(<Component for={Owned} />);
+
+    expect(mounted).toBeCalledTimes(1);
+
+    view.unmount();
+
+    expect(released).toBeCalledTimes(1);
+  });
+
+  it('will not add a suspense boundary', async () => {
+    const gate = mockPromise();
+
+    function Wait(): React.ReactNode {
+      throw gate;
+    }
+
+    render(
+      <Suspense fallback="outer">
+        <Component for={Session}>
+          <Wait />
+        </Component>
+      </Suspense>
+    );
+
+    expect(screen).toHaveText('outer');
+  });
+});
