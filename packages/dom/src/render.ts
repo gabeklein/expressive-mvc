@@ -121,6 +121,8 @@ const controlled = new WeakMap<Element, Fiber>();
 const restoring = new WeakSet<Document>();
 let passiveRender = false;
 let inserting: (() => void)[] | undefined;
+const parked = new Map<Fiber, (() => void)[]>();
+const parkedIn = new WeakMap<globalThis.Node, Fiber>();
 let depth = 0;
 let settling = false;
 let rendering: object | undefined;
@@ -205,7 +207,11 @@ function complete<T extends Fiber>(fiber: T, work: () => void): T {
     work();
   } catch (error) {
     if (error instanceof Held) {
-      move(fiber, document.createDocumentFragment(), null);
+      const out = document.createDocumentFragment();
+
+      move(fiber, out, null);
+      parked.set(fiber, []);
+      parkedIn.set(out, fiber);
       error.fiber = fiber;
     } else unmountFiber(fiber);
 
@@ -392,11 +398,14 @@ function mountComponent(
   }, undefined, transition);
 
   Object.defineProperty(fiber, 'value', { get: () => proxy });
-  complete(fiber, () => {
-    runComponent(fiber, passiveRender);
-  });
+  try {
+    complete(fiber, () => {
+      runComponent(fiber, passiveRender);
+    });
+  } finally {
+    if (owned && !fiber.dead) inserted(fiber, () => (fiber.cleanup = instance.mount?.()));
+  }
 
-  if (owned) inserted(fiber, () => (fiber.cleanup = instance.mount?.()));
   return fiber;
 }
 
@@ -572,7 +581,9 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
 }
 
 function inserted(fiber: Fiber, run: () => void) {
-  if (inserting) inserting.push(() => fiber.dead || run());
+  const queue = inserting || parked.size && parked.get(parkedIn.get(fiber.start.getRootNode())!);
+
+  if (queue) queue.push(() => fiber.dead || run());
   else run();
 }
 
@@ -845,10 +856,23 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
     if (!used.has(child)) unmountFiber(child);
 
   let anchor = before;
+  const unparked: [Fiber, (() => void)[]][] = [];
+
   for (let index = next.length - 1; index >= 0; index--) {
-    move(next[index], parent, anchor);
-    anchor = next[index].start;
+    const child = next[index];
+    const queue = parked.get(child);
+
+    move(child, parent, anchor);
+    anchor = child.start;
+
+    if (queue) {
+      parked.delete(child);
+      unparked.push([child, queue]);
+    }
   }
+
+  for (const [child, queue] of unparked)
+    for (const run of queue) inserted(child, run);
 
   owner.children = next;
 }
@@ -1237,6 +1261,7 @@ function applyRef(ref: unknown, value: Element | null) {
 
 function unmountFiber(fiber: Fiber) {
   fiber.dead = true;
+  parked.delete(fiber);
   unwait(fiber);
 
   for (let index = fiber.children.length - 1; index >= 0; index--)

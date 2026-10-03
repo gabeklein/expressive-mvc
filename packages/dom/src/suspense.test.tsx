@@ -268,6 +268,8 @@ describe('suspense and recovery', () => {
   });
 
   describe('a transition revealing State that loads', () => {
+    let root: HTMLElement;
+
     function setup() {
       const loaded = mockPromise<string>();
       const lives: string[] = [];
@@ -278,6 +280,10 @@ describe('suspense and recovery', () => {
         protected new() {
           lives.push('new');
           return () => lives.push('gone');
+        }
+
+        mount() {
+          lives.push(`mount: ${root.textContent}`);
         }
       }
 
@@ -296,7 +302,7 @@ describe('suspense and recovery', () => {
       }
 
       let app!: App;
-      const root = document.createElement('main');
+      root = document.createElement('main');
       render(<App is={(value) => (app = value)} />, root);
       pending(() => (app.open = true));
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -314,7 +320,7 @@ describe('suspense and recovery', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(root.textContent).toBe('ready');
-      expect(lives).toEqual(['new']);
+      expect(lives).toEqual(['new', 'mount: ready']);
     });
 
     it('will keep a State element and commit once it loads', async () => {
@@ -322,6 +328,10 @@ describe('suspense and recovery', () => {
 
       class Panel extends State {
         data = new Data();
+
+        mount() {
+          lives.push(`panel mount: ${root.textContent}`);
+        }
 
         render() {
           return <b>{this.data.value}</b>;
@@ -336,7 +346,7 @@ describe('suspense and recovery', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(root.textContent).toBe('ready');
-      expect(lives).toEqual(['new']);
+      expect(lives).toEqual(['new', 'panel mount: ready']);
     });
 
     it('will hold new markup around it off the page until it loads', async () => {
@@ -350,7 +360,7 @@ describe('suspense and recovery', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<section><h2>title</h2><b>ready</b></section>');
-      expect(lives).toEqual(['new']);
+      expect(lives).toEqual(['new', 'mount: titleready']);
     });
   });
 
