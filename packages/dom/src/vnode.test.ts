@@ -27,11 +27,11 @@ describe('VNode', () => {
   });
 
   it('will create a portal node from the Portal element type', () => {
-    const to = document.createElement('aside');
-    const node = vnode(Portal, { to, children: 'hello' }, 'modal');
+    const into = document.createElement('aside');
+    const node = vnode(Portal, { into, children: 'hello' }, 'modal');
 
     expect(node.type).toBe(PORTAL);
     expect(node.key).toBe('modal');
-    expect(node.props).toEqual({ to, children: 'hello' });
+    expect(node.props).toEqual({ into, children: 'hello' });
   });
 });

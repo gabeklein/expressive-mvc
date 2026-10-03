@@ -207,10 +207,10 @@ await pending(() => {
 
 ## Portals
 
-`<Portal to={element}>` renders its children into another `Element` or `DocumentFragment` while retaining logical MVC context, ownership and boundaries.
+`<Portal into={element}>` renders its children into another `Element` or `DocumentFragment` while retaining logical MVC context, ownership and boundaries.
 
 ```tsx
-return <Portal to={document.body}><Dialog /></Portal>;
+return <Portal into={document.body}><Dialog /></Portal>;
 ```
 
 ## Hot reload (Vite)

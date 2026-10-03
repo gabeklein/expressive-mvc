@@ -1111,7 +1111,7 @@ describe('render', () => {
       target = aside;
 
       render() {
-        return <Portal to={this.target}><button>{this.message}</button></Portal>;
+        return <Portal into={this.target}><button>{this.message}</button></Portal>;
       }
     }
 

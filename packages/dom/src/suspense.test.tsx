@@ -721,7 +721,7 @@ describe('suspense and recovery', () => {
       extra = true;
 
       render() {
-        return <><Portal to={target}><b>modal</b></Portal>{this.extra && <Portal to={target}><u>extra</u></Portal>}<Lazy /></>;
+        return <><Portal into={target}><b>modal</b></Portal>{this.extra && <Portal into={target}><u>extra</u></Portal>}<Lazy /></>;
       }
     }
 
