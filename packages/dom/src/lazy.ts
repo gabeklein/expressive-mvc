@@ -10,22 +10,31 @@ type Attributes<T> = [T] extends [never] ? {}
 function lazy<T extends ComponentType>(load: () => Promise<T | { default: T }>): (props: Attributes<T>) => Node {
   let pending: Promise<void> | undefined;
   let resolved: ComponentType | undefined;
+  let failed: { error: unknown } | undefined;
 
   return function Lazy(props) {
     if (resolved) return vnode(resolved, props);
 
-    throw (pending ||= load()
-      .then((module) => {
+    if (failed) {
+      const { error } = failed;
+      failed = undefined;
+      throw error;
+    }
+
+    throw (pending ||= load().then(
+      (module) => {
         const output = typeof module == 'function' ? module : module?.default;
 
-        if (typeof output != 'function') throw new Error('lazy() loader resolved no component.');
+        if (typeof output == 'function') resolved = output;
+        else failed = { error: new Error('lazy() loader resolved no component.') };
 
-        resolved = output;
-      })
-      .catch((error) => {
         pending = undefined;
-        throw error;
-      }));
+      },
+      (error) => {
+        failed = { error };
+        pending = undefined;
+      }
+    ));
   };
 }
 

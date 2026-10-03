@@ -54,7 +54,8 @@ describe('lazy', () => {
     }
 
     loaded.reject(0);
-    await expect(pending).rejects.toBe(0);
+    await pending;
+    expect(() => Lazy({})).toThrow(0);
   });
 
   it('will reject a module with no component', async () => {
@@ -69,7 +70,8 @@ describe('lazy', () => {
     }
 
     loaded.resolve({});
-    await expect(pending).rejects.toThrow('lazy() loader resolved no component.');
+    await pending;
+    expect(() => Lazy({})).toThrow('lazy() loader resolved no component.');
   });
 
   it('will load again after a rejection', async () => {
@@ -87,7 +89,9 @@ describe('lazy', () => {
     const first = suspend()!;
 
     attempts[0].reject(new Error('chunk'));
-    await expect(first).rejects.toThrow('chunk');
+    await first;
+
+    expect(() => Lazy({})).toThrow('chunk');
 
     const second = suspend()!;
 

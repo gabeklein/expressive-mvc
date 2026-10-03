@@ -65,6 +65,20 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('ready');
   });
 
+  it('will report a failed lazy view without a catch, not reject unhandled', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const Lazy = lazy(() => Promise.reject(new Error('chunk')));
+    const root = document.createElement('main');
+
+    render(<Component fallback={<i>wait</i>}><Lazy /></Component>, root);
+
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(error.mock.calls.flat().some((x) => String(x).includes('chunk'))).toBe(true);
+    error.mockRestore();
+  });
+
   it('will let Component for own a lazy fallback', async () => {
     class Session extends State {}
     const loaded = mockPromise<() => Component.Node>();
