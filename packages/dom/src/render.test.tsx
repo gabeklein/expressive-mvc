@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, has, map } from '@expressive/mvc';
-import { Portal, lazy, render } from './index';
+import { Fragment, Portal, lazy, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 import { vnode } from './vnode';
 
@@ -1180,6 +1180,28 @@ describe('render', () => {
 
     one.remove();
     two.remove();
+  });
+
+  it('will keep keyed fragments across a reorder', async () => {
+    class List extends State {
+      order = ['a', 'b'];
+
+      render() {
+        return <>{this.order.map((id) => <Fragment key={id}><dt>{id}</dt><dd>{id}</dd></Fragment>)}</>;
+      }
+    }
+
+    let list!: List;
+    const root = document.createElement('dl');
+    render(<List is={(value) => (list = value)} />, root);
+
+    const first = root.querySelector('dt');
+
+    list.order = ['b', 'a'];
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('bbaa');
+    expect(root.querySelectorAll('dt')[1]).toBe(first);
   });
 
   it('will render and move portal children with logical context', async () => {
