@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, State, pending } from '@expressive/mvc';
+import { Component, State, pending, set } from '@expressive/mvc';
 import { Portal, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
@@ -265,6 +265,93 @@ describe('suspense and recovery', () => {
     await flushMicrotasks();
     expect(root.textContent).toBe('staylazy');
     expect(settled).toBe(true);
+  });
+
+  describe('a transition revealing State that loads', () => {
+    function setup() {
+      const loaded = mockPromise<string>();
+      const lives: string[] = [];
+
+      class Data extends State {
+        value = set(() => loaded);
+
+        protected new() {
+          lives.push('new');
+          return () => lives.push('gone');
+        }
+      }
+
+      return { loaded, lives, Data };
+    }
+
+    async function reveal(Child: () => Component.Node, wrap = false) {
+      class App extends Component {
+        open = false;
+        fallback = <i>loading</i>;
+
+        render() {
+          if (!this.open) return <p>closed</p>;
+          return wrap ? <section><h2>title</h2><Child /></section> : <Child />;
+        }
+      }
+
+      let app!: App;
+      const root = document.createElement('main');
+      render(<App is={(value) => (app = value)} />, root);
+      pending(() => (app.open = true));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      return root;
+    }
+
+    it('will keep a State.use() instance and commit once it loads', async () => {
+      const { loaded, lives, Data } = setup();
+      const root = await reveal(() => <b>{Data.use().value}</b>);
+
+      expect(root.textContent).toBe('closed');
+
+      loaded.resolve('ready');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(root.textContent).toBe('ready');
+      expect(lives).toEqual(['new']);
+    });
+
+    it('will keep a State element and commit once it loads', async () => {
+      const { loaded, lives, Data } = setup();
+
+      class Panel extends State {
+        data = new Data();
+
+        render() {
+          return <b>{this.data.value}</b>;
+        }
+      }
+
+      const root = await reveal(() => <Panel />);
+
+      expect(root.textContent).toBe('closed');
+
+      loaded.resolve('ready');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(root.textContent).toBe('ready');
+      expect(lives).toEqual(['new']);
+    });
+
+    it('will hold new markup around it off the page until it loads', async () => {
+      const { loaded, lives, Data } = setup();
+      const root = await reveal(() => <b>{Data.use().value}</b>, true);
+
+      expect(root.textContent).toBe('closed');
+      expect(root.querySelector('section')).toBeNull();
+
+      loaded.resolve('ready');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<section><h2>title</h2><b>ready</b></section>');
+      expect(lives).toEqual(['new']);
+    });
   });
 
   it('will keep siblings consistent when a transition suspends mid-list', async () => {

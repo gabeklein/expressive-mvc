@@ -187,11 +187,28 @@ function makeScope(kind: Scope['kind'], context: Context, update: (passive: bool
   };
 }
 
+class Held implements PromiseLike<unknown> {
+  fiber?: Fiber;
+
+  constructor(readonly waiting: PromiseLike<unknown>) {}
+
+  then<A = unknown, B = never>(
+    resolved?: ((value: unknown) => A | PromiseLike<A>) | null,
+    rejected?: ((reason: unknown) => B | PromiseLike<B>) | null
+  ): PromiseLike<A | B> {
+    return this.waiting.then(resolved, rejected);
+  }
+}
+
 function complete<T extends Fiber>(fiber: T, work: () => void): T {
   try {
     work();
   } catch (error) {
-    unmountFiber(fiber);
+    if (error instanceof Held) {
+      move(fiber, document.createDocumentFragment(), null);
+      error.fiber = fiber;
+    } else unmountFiber(fiber);
+
     throw error;
   }
 
@@ -515,6 +532,7 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
   const previous = passiveRender;
   const scope = fiber.scope!;
   const probed = scope.probed;
+  const empty = !fiber.children.length;
 
   scope.probed = undefined;
   passiveRender ||= passive;
@@ -544,7 +562,7 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
         fiber.retried = undefined;
         return true;
       } catch (thrown) {
-        return suspend(fiber, thrown, passive);
+        return suspend(fiber, thrown, passive, empty);
       }
     });
   } finally {
@@ -706,12 +724,12 @@ function moveRange(start: globalThis.Node, end: globalThis.Node, target: globalT
   }
 }
 
-function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
+function suspend(fiber: Fiber, thrown: unknown, passive: boolean, empty: boolean) {
   const boundary = fiber.boundary;
 
   if (isThenable(thrown)) {
     if (!boundary) throw thrown;
-    if (passive && !fiber.children.length && depth > 1) throw thrown;
+    if (passive && empty && depth > 1) throw thrown instanceof Held ? thrown : new Held(thrown);
     if (!passive) wait(fiber, boundary);
 
     const scope = fiber.scope!;
@@ -814,6 +832,11 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
       next.push(patch(child, value, parent, before, context, boundary, appearance));
     }
   } catch (error) {
+    if (error instanceof Held && error.fiber) {
+      next.push(error.fiber);
+      error.fiber = undefined;
+    }
+
     owner.children = [...next, ...old.filter((child) => !child.dead && !next.includes(child))];
     throw error;
   }
