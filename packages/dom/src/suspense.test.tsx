@@ -26,6 +26,45 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('ready');
   });
 
+  it('will load a failed lazy view again when catch resolves', async () => {
+    let attempt = 0;
+    let retry!: () => void;
+    const caught: string[] = [];
+    const Lazy = lazy(() =>
+      ++attempt == 1
+        ? Promise.reject(new Error('chunk'))
+        : Promise.resolve(() => <b>ready</b>)
+    );
+
+    class Page extends State {
+      fallback = <i>wait</i>;
+
+      catch(error: Error) {
+        caught.push(error.message);
+        return new Promise<void>((resolve) => (retry = resolve));
+      }
+
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Page />, root);
+
+    await flushMicrotasks();
+    expect(caught).toEqual(['chunk']);
+    expect(root.textContent).toBe('wait');
+
+    retry();
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(attempt).toBe(2);
+    expect(caught).toEqual(['chunk']);
+    expect(root.textContent).toBe('ready');
+  });
+
   it('will let Component for own a lazy fallback', async () => {
     class Session extends State {}
     const loaded = mockPromise<() => Component.Node>();

@@ -1,38 +1,31 @@
-import type { ComponentType, FunctionComponent } from './vnode';
+import type { JSX } from './jsx-runtime';
+import type { ComponentType, Node } from './vnode';
 import { vnode } from './vnode';
 
-type Module<P> = { default: ComponentType<P> } | ComponentType<P>;
+type Attributes<T> = [T] extends [never] ? {}
+  : T extends abstract new (...args: any[]) => infer I
+  ? JSX.LibraryManagedAttributes<T, I>
+  : T extends (props: infer P) => any ? P : never;
 
-function lazy<P>(load: () => Promise<Module<P>>): FunctionComponent<P> {
+function lazy<T extends ComponentType>(load: () => Promise<T | { default: T }>): (props: Attributes<T>) => Node {
   let pending: Promise<void> | undefined;
-  let resolved: ComponentType<P> | undefined;
-  let rejected: unknown;
-  let failed = false;
+  let resolved: ComponentType | undefined;
 
-  return function Lazy(props: P) {
-    if (failed) throw rejected;
+  return function Lazy(props) {
     if (resolved) return vnode(resolved, props);
 
-    if (!pending)
-      pending = load().then(
-        (module) => {
-          const output = typeof module == 'function' ? module : module?.default;
+    throw (pending ||= load()
+      .then((module) => {
+        const output = typeof module == 'function' ? module : module?.default;
 
-          if (typeof output != 'function') {
-            failed = true;
-            rejected = new Error('lazy() loader resolved no component.');
-            return;
-          }
+        if (typeof output != 'function') throw new Error('lazy() loader resolved no component.');
 
-          resolved = output;
-        },
-        (error) => {
-          failed = true;
-          rejected = error;
-        }
-      );
-
-    throw pending;
+        resolved = output;
+      })
+      .catch((error) => {
+        pending = undefined;
+        throw error;
+      }));
   };
 }
 
