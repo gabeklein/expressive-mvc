@@ -458,7 +458,7 @@ export class Shell extends Component {
 function app(mode: Mode) {
   const badge = mode == 'dom';
 
-  return `import { Provider } from 'host';
+  return `import { Component } from '@expressive/mvc';
 import { Timer } from './timer';
 import { Clock } from './clock';
 import { Settings } from './settings';
@@ -481,7 +481,8 @@ import { Guard } from './guard';
 import { Stage } from './stage';
 ${badge ? "import { Wrapper } from './badge';\nimport { Folio } from './folio';\n" : ''}
 export const App = () => (
-  <Provider for={{ Settings, Theme }}>
+  <Component for={Settings}>
+  <Component for={Theme}>
     <Timer />
     <Clock />
     <Parent />
@@ -502,7 +503,8 @@ export const App = () => (
     <Guard />
     <Stage />
     ${badge ? '<Wrapper /><Folio />' : ''}
-  </Provider>
+  </Component>
+  </Component>
 );
 `;
 }
