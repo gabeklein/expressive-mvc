@@ -1717,28 +1717,27 @@ describe('renderable State', () => {
     expect(root.textContent).toBe('two');
   });
 
-  it('will bind a PascalCase function field of a renderable State as a subcomponent', async () => {
-    function Label(this: Panel) {
-      return <b>{this.label}</b>;
-    }
+  it('will render a PascalCase function field as a plain function component', async () => {
+    const First = ({ text }: { text: string }) => <b>{text}</b>;
+    const Second = ({ text }: { text: string }) => <i>{text}</i>;
 
     class Panel extends State {
-      label = 'one';
-      Label = Label;
+      Badge = First;
 
       render() {
-        return <this.Label />;
+        return <this.Badge text="x" />;
       }
     }
 
     let panel!: Panel;
     const root = document.createElement('main');
     render(<Panel is={(value) => (panel = value)} />, root);
-    expect(root.textContent).toBe('one');
+    expect(root.querySelector('b')?.textContent).toBe('x');
+    expect(panel.Badge).toBe(First);
 
-    panel.label = 'two';
+    panel.Badge = Second;
     await flushMicrotasks();
-    expect(root.textContent).toBe('two');
+    expect(root.querySelector('i')?.textContent).toBe('x');
   });
 
   it('will compose render layers of a renderable State', async () => {

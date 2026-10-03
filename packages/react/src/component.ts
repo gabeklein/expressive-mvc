@@ -1,9 +1,17 @@
-import { Component } from '@expressive/mvc';
-import { subcomponents } from '@expressive/mvc/jsx-runtime';
+import { Component, unbind } from '@expressive/mvc';
 import { createProvider, type Context } from './context';
 import { Runtime, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
+  namespace Component {
+    /**
+     * Not available - a Component is rendered, not a hook.
+     * Render it with `<Component />` or `{component}`.
+     * For a bare instance use `Component.new()`.
+     */
+    const use: never;
+  }
+
   interface Component {
     /**
      * Optional hook called once this Component commits. Return a function to
@@ -40,6 +48,15 @@ Object.defineProperties(Component.prototype, {
   }
 });
 
+Object.defineProperty(Component, 'use', {
+  configurable: true,
+  value() {
+    throw new Error(
+      `${this} is a Component - render as an element instead of calling use().`
+    );
+  }
+});
+
 /**
  * On the root Component, host own-property keys are trapped so each lands as a
  * plain own property (out of observed state); each adapter assigns its own set.
@@ -59,10 +76,10 @@ Component.on({
           }
         });
 
-    subcomponents(type.prototype, useWatch);
+    subcomponents(type.prototype);
   },
   pre(self) {
-    subcomponents(self, useWatch);
+    subcomponents(self);
   }
 });
 
@@ -138,6 +155,44 @@ function render(from: Component, context: Context) {
   };
 
   return () => createElement(Component);
+}
+
+/** Rewrite each own capitalized function on `target` into a subcomponent. */
+function subcomponents(target: object) {
+  for (const key of Object.getOwnPropertyNames(target)) {
+    if (!/^[A-Z]/.test(key)) continue;
+    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
+    if (typeof value != 'function') continue;
+    Object.defineProperty(target, key, {
+      configurable: true,
+      get(this: Component) {
+        const owner = this.is;
+        let render = unbind(value);
+        const Component = (props: unknown) =>
+          render.call(useWatch(owner), props);
+
+        Object.defineProperty(owner, key, {
+          configurable: true,
+          get: () => Component,
+          set(fn: Function) {
+            render = fn;
+          }
+        });
+
+        return Component;
+      },
+      set(this: Component, value: unknown) {
+        Object.defineProperty(this, key, {
+          value,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+
+        subcomponents(this);
+      }
+    });
+  }
 }
 
 export { createFrame };

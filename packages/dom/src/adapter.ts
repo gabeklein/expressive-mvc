@@ -1,6 +1,5 @@
-import { Context, State } from '@expressive/mvc';
+import { Component, Context, State, unbind } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
-import { subcomponents } from '@expressive/mvc/jsx-runtime';
 
 import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';
@@ -160,6 +159,10 @@ declare module '@expressive/mvc' {
     ): T;
   }
 
+  namespace Component {
+    const use: never;
+  }
+
   interface Component {
     mount?(): (() => void) | void;
   }
@@ -254,14 +257,33 @@ declare module '@expressive/mvc' {
   return slot.proxy as T;
 };
 
-State.on({
-  type(T) {
-    subcomponents(T.prototype, tracked);
-  },
-  pre(self) {
-    subcomponents(self, tracked);
+Object.defineProperty(Component, 'use', {
+  configurable: true,
+  value() {
+    throw new Error(`${this} is a Component - render it instead of calling use().`);
   }
-})
+});
 
-export { commit, dispose, enter };
+const OWNERS = new WeakMap<Function, { owner: State; key: string }>();
+
+State.on({
+  bind(key, fn, owner) {
+    if (/^[A-Z]/.test(key)) OWNERS.set(fn, { owner, key });
+  }
+});
+
+function call(type: Function, props: unknown) {
+  const sub = OWNERS.get(type);
+
+  if (!sub) return type(props);
+
+  const { owner, key } = sub;
+  return unbind((owner as any)[key]).call(tracked(owner), props);
+}
+
+function owner(type: unknown) {
+  return typeof type == 'function' ? OWNERS.get(type) : undefined;
+}
+
+export { call, commit, dispose, enter, owner };
 export type { Scope };

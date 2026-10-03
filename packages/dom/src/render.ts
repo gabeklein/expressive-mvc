@@ -3,7 +3,7 @@ import { has, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 import { Fragment, compose } from '@expressive/mvc/jsx-runtime';
 
-import { commit, dispose, enter } from './adapter';
+import { call, commit, dispose, enter } from './adapter';
 import { latest, same, track, untrack } from './hot';
 import type { Scope } from './adapter';
 import {
@@ -266,7 +266,7 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   fiber.boundary = boundary;
   fiber.appearance = resolved.appearance;
   fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
-  fiber.render = () => enter(fiber.scope!, () => latest(fiber.type as Function)(fiber.props));
+  fiber.render = () => enter(fiber.scope!, () => call(latest(fiber.type as Function), fiber.props));
   track(fiber.type as Function, fiber.scope);
   probing(fiber);
 
@@ -286,9 +286,9 @@ function mountOwnedComponent(
   const resolved = componentProps(value.type, value.props, appearance);
   const Type = value.type as new (...args: unknown[]) => Renderable;
   const props = observe(resolved.props);
-  const instance: Renderable = Type.prototype instanceof Component
-    ? new Type(props)
-    : new Type(props, () => props.is?.(instance));
+  const instance: Renderable = new Type(props,
+    Type.prototype instanceof Component ? undefined : () => props.is?.(instance)
+  );
 
   return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props);
 }

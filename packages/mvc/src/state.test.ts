@@ -3642,7 +3642,7 @@ describe('on bind stage (static)', () => {
     const { foo } = test;
 
     expect(handler).toBeCalledTimes(1);
-    expect(handler).toBeCalledWith('foo', foo);
+    expect(handler).toBeCalledWith('foo', foo, test);
     expect(handler.mock.contexts[0]).toBe(test);
     expect(foo()).toBe(test);
     expect(test.foo).toBe(foo);
@@ -3663,11 +3663,11 @@ describe('on bind stage (static)', () => {
     const test = Test.new();
 
     test.foo = () => 'assigned';
-    expect(handler).toHaveBeenLastCalledWith('foo', test.foo);
+    expect(handler).toHaveBeenLastCalledWith('foo', test.foo, test);
     expect(test.foo()).toBe('assigned');
 
     test.set({ foo: () => 'set' });
-    expect(handler).toHaveBeenLastCalledWith('foo', test.foo);
+    expect(handler).toHaveBeenLastCalledWith('foo', test.foo, test);
     expect(test.foo()).toBe('set');
 
     expect(handler).toBeCalledTimes(2);

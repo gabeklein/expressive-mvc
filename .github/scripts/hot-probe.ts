@@ -343,6 +343,27 @@ export class Deck extends Component {
   }
 }
 `,
+  'folio.tsx': `import { State } from '@expressive/mvc';
+
+class Hits extends State {
+  count = 0;
+}
+
+export class Folio extends State {
+  title = 'folio';
+
+  Header() {
+    const { title } = this;
+    const hits = Hits.use();
+
+    return <h3 id="folio" onClick={() => hits.count++}>{title} head {hits.count}</h3>;
+  }
+
+  render() {
+    return <this.Header />;
+  }
+}
+`,
   'guard.tsx': `import { Component } from '@expressive/mvc';
 
 function Fuse({ label }: { label: string }) {
@@ -458,7 +479,7 @@ import { Vault } from './vault';
 import { Deck } from './deck';
 import { Guard } from './guard';
 import { Stage } from './stage';
-${badge ? "import { Wrapper } from './badge';\n" : ''}
+${badge ? "import { Wrapper } from './badge';\nimport { Folio } from './folio';\n" : ''}
 export const App = () => (
   <Provider for={{ Settings, Theme }}>
     <Timer />
@@ -480,7 +501,7 @@ export const App = () => (
     <Deck />
     <Guard />
     <Stage />
-    ${badge ? '<Wrapper />' : ''}
+    ${badge ? '<Wrapper /><Folio />' : ''}
   </Provider>
 );
 `;
@@ -646,7 +667,10 @@ async function run(mode: Mode) {
     'main.tsx': main[mode]
   };
 
-  if (mode != 'dom') delete files['badge.tsx'];
+  if (mode != 'dom') {
+    delete files['badge.tsx'];
+    delete files['folio.tsx'];
+  }
 
   write(dir, {
     ...files,
@@ -979,6 +1003,17 @@ async function run(mode: Mode) {
       await see('#deck', 'd3 top');
       check(await alive(), 'page reloaded');
     });
+
+    if (mode == 'dom')
+      await scenario('plain State subcomponent takes an edit, its owner and slots kept (dom)', async () => {
+        await browser.eval(`document.getElementById('folio').click()`);
+        await see('#folio', 'folio head 1');
+        await edit('folio.tsx', 'head {hits.count}', 'top {hits.count}');
+        await see('#folio', 'folio top 1');
+        await relay('set', 'Folio.title', 'f2');
+        await see('#folio', 'f2 top 1');
+        check(await alive(), 'page reloaded');
+      });
 
     await scenario('component edited while showing its error recovers into the edit', async () => {
       await see('#guard', 'safe');

@@ -307,7 +307,7 @@ describe('use method', () => {
     class Test extends Component {}
 
     expect(() => (Test as any).use()).toThrow(
-      'Test is a Component - render it as an element instead of calling use().'
+      'Test is a Component - render as an element instead of calling use().'
     );
   });
 });

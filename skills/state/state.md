@@ -202,7 +202,7 @@ const stop = Counter.on({
 
 - `type(Class)` runs once per class at bootstrap. `pre` runs per instance before own values are observed, args and `new()` - may return a cleanup, args, or an assign overlay. `new` runs per instance with its `new()`, after args apply - may return a cleanup.
 - Handlers run ancestor-first. A function runs once per stage, however often or on however many classes it is registered.
-- `bind(key, fn)` runs, `this` the instance, each time a method binds - first read, an assigned replacement (through `set()`, or `=` before first read), the rebind after a hot patch; `fn` is the bound function. A handler registered later misses existing bindings. Tooling use.
+- `bind(key, fn, self)` runs, `this` and `self` the instance, each time a method binds - first read, an assigned replacement (through `set()`, or `=` before first read), the rebind after a hot patch; `fn` is the bound function. A handler registered later misses existing bindings. Tooling use.
 - `catch(error, kind, key?)` runs when an instance fails out of turn - `kind` is where in its lifecycle: `setup` (async construction), `effect` or `getter` (an update), `dead` (a write after teardown), `unused` (never activated) - [lifecycle.md](lifecycle.md#error-handling). `this` is the instance - like nested `catch` blocks: most-derived class first, last registered first; one registered on several classes runs once, at the outermost. Return the error (or another) to pass it on; return nothing to handle it; throw to escape uncaught at once. Passed off the end, a destroyed write outputs nothing, `unused` warns, and anything else escapes uncaught.
 
 ```ts

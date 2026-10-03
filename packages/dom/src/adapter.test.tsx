@@ -201,7 +201,7 @@ describe('MVC adapter', () => {
 
     expect(() => Value.get()).toThrow('may only run while @expressive/dom is rendering');
     expect(() => Value.use()).toThrow('may only run while @expressive/dom is rendering');
-    expect(() => (View as any).use()).toThrow('render it as an element instead of calling use()');
+    expect(() => (View as any).use()).toThrow('render it instead of calling use()');
     expect(() => render(<View />, document.createElement('main'))).toThrow(
       'only available at the top level of a function component'
     );
@@ -285,15 +285,9 @@ describe('MVC adapter', () => {
     context.pop();
   });
 
-  it('will turn capitalized methods and fields into owner-bound subcomponents', async () => {
+  it('will render capitalized methods as owner-bound subcomponents', async () => {
     class Panel extends Component {
       value = 'one';
-      Heading = function (this: Panel, { suffix }: { suffix: string }) {
-        return <h1>{this.value}{suffix}</h1>;
-      };
-      NotAFunction = 1;
-
-      helper() {}
 
       Label({ suffix }: { suffix: string }) {
         return <span>{this.value}{suffix}</span>;
@@ -310,27 +304,112 @@ describe('MVC adapter', () => {
       }
 
       render() {
-        const { Footer, Heading, Label } = this;
-        return <>{<Heading suffix="!" />}{<Label suffix="?" />}{<Footer />}</>;
+        const { Footer, Label } = this;
+        return <><Label suffix="?" /><Footer /></>;
       }
     }
 
     let panel!: Panel;
     const root = document.createElement('main');
     render(<Panel is={(value) => (panel = value)} />, root);
-    expect(root.textContent).toBe('one!one?one');
+    expect(root.textContent).toBe('one?one');
 
     panel.value = 'two';
     await flushMicrotasks();
-    expect(root.textContent).toBe('two!two?two');
-    expect(typeof panel.Label).toBe('function');
+    expect(root.textContent).toBe('two?two');
 
-    (panel as any).Label = function () {
-      return <span>{this.value}:override</span>;
-    };
+    panel.set({
+      Label(this: Panel) {
+        return <span>{this.value}:override</span>;
+      }
+    } as never);
     panel.value = 'three';
     await flushMicrotasks();
-    expect(root.textContent).toBe('three!three:overridethree');
+    expect(root.textContent).toBe('three:overridethree');
+  });
+
+  it('will leave capitalized methods callable outside render', () => {
+    class Store extends State {
+      Parse(text: string) {
+        return text.toUpperCase();
+      }
+    }
+
+    const store = Store.new();
+    expect(store.Parse('x')).toBe('X');
+  });
+
+  it('will track the owner of a subcomponent rendered elsewhere', async () => {
+    class Row extends State {
+      label = 'a';
+
+      Cell() {
+        return <i>{this.label}</i>;
+      }
+    }
+
+    function Slot({ Cell }: { Cell: () => Component.Node }) {
+      return <Cell />;
+    }
+
+    class Table extends Component {
+      row = new Row();
+
+      render() {
+        return <><this.row.Cell /><Slot Cell={this.row.Cell} /></>;
+      }
+    }
+
+    let table!: Table;
+    const root = document.createElement('main');
+    render(<Table is={(value) => (table = value)} />, root);
+    expect(root.textContent).toBe('aa');
+
+    table.row.label = 'b';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('bb');
+  });
+
+  it('will not treat subcomponents of different owners as one', async () => {
+    class Row extends State {
+      label: string;
+
+      constructor(label: string) {
+        super();
+        this.label = label;
+      }
+
+      Cell() {
+        return <i>{this.label}</i>;
+      }
+    }
+
+    const Plain = () => <i>plain</i>;
+
+    class Table extends Component {
+      first = new Row('a');
+      second = new Row('b');
+      pick = 0;
+
+      render() {
+        const { pick, first, second } = this;
+        const Cell = pick == 0 ? first.Cell : pick == 1 ? second.Cell : Plain;
+        return <Cell />;
+      }
+    }
+
+    let table!: Table;
+    const root = document.createElement('main');
+    render(<Table is={(value) => (table = value)} />, root);
+    expect(root.textContent).toBe('a');
+
+    table.pick = 1;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('b');
+
+    table.pick = 2;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('plain');
   });
 
   it('will mount and release states owned by a Provider', async () => {
