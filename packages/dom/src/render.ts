@@ -414,7 +414,7 @@ function runCollection(fiber: Fiber, passive: boolean) {
 
 function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const marker = document.createComment('portal');
-  const container = target(value.props.into);
+  const container = target(value.props.into, parent);
   const portalStart = document.createComment('portal-root');
   const portalEnd = document.createComment('/portal-root');
 
@@ -442,10 +442,13 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
   });
 }
 
-function target(into: unknown): Container {
+function target(into: unknown, parent: globalThis.Node): Container {
   if (typeof into != 'string') return into as Container;
 
-  const found = document.querySelectorAll(into);
+  const root = parent.getRootNode();
+  const found = [...document.querySelectorAll(into)];
+
+  if (root instanceof DocumentFragment) found.push(...root.querySelectorAll(into));
 
   if (found.length != 1)
     throw new Error(`Portal target "${into}" ${found.length ? 'is ambiguous' : 'was not found'}.`);

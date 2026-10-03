@@ -1142,6 +1142,30 @@ describe('render', () => {
     second.remove();
   });
 
+  it('will resolve a selector target rendered beside it off-document', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+
+    class Page extends State {
+      fallback = <i>wait</i>;
+
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    document.body.append(root);
+    render(<Page />, root);
+
+    loaded.resolve(() => <><div id="slot" /><Portal into="#slot"><b>moved</b></Portal></>);
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(root.querySelector('#slot')!.textContent).toBe('moved');
+    root.remove();
+  });
+
   it('will throw if a selector target is missing or ambiguous', () => {
     const one = document.createElement('i');
     const two = document.createElement('i');
