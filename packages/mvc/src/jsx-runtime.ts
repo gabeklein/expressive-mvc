@@ -6,7 +6,9 @@ export { compose } from './component';
  * Per-adapter interpretation manifest. Each adapter augments this interface to
  * declare how it renders; the first member is `node` - the element type produced
  * by `Component.render` (surfaced as `Component.Node`) - alongside `intrinsics`,
- * the host's tag map (surfaced as `JSX.IntrinsicElements`).
+ * the host's tag map (surfaced as `JSX.IntrinsicElements`), and optionally
+ * `element`, further element types the host renders (joined into
+ * `JSX.ElementType`).
  *
  * ```ts
  * declare module '@expressive/mvc/jsx-runtime' {
@@ -145,7 +147,8 @@ export declare namespace JSX {
   type ElementType =
     | keyof IntrinsicElements
     | ((props: any) => Component.Node)
-    | (abstract new (...args: any[]) => ElementClass);
+    | (abstract new (...args: any[]) => ElementClass)
+    | (Host extends { element: infer T } ? T : never);
   /**
    * Gates class element types on the `render` contract alone - requiring full
    * `Component` assignability trips contravariance on `props` members (e.g.

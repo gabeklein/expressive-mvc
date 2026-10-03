@@ -10,5 +10,5 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@expressive/dom"
   },
-  "include": ["app.tsx", "classic.tsx", "defaults.tsx"]
+  "include": ["app.tsx", "other.tsx", "classic.tsx", "defaults.tsx"]
 }

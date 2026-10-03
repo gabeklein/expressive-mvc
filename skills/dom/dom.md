@@ -17,7 +17,7 @@ The initial `0.1` release is a usable, tested browser renderer for dogfooding, n
 
 ```tsx
 import { State, Component, pending } from '@expressive/mvc';
-import { Portal, lazy, render } from '@expressive/dom';
+import { Portal, render } from '@expressive/dom';
 ```
 
 ## Render
@@ -169,9 +169,9 @@ function Row({ id }: { id: string }) {
 
 `<Component for>` ([context.md](../state/context.md#providing-with-component)), State elements, `State.use()`, implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
 
-## Lazy, boundaries, transitions
+## Code splitting, boundaries, transitions
 
-`lazy(loader)` accepts a module default export or a directly exported component - a function component, State or Component class, with attributes typed from it. Call it at module scope. A failed load rejects to the nearest `catch`; the next render after recovery loads again. A Component supplies a suspense boundary unless `fallback = false`. A State element has one only when it declares `fallback` or `catch`, or receives either as an attribute - `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence over the member and still passes through to a field of that name. The boundary exists from mount: a placement mounted with neither attribute nor member never gains one, though a present `fallback` or `catch` may change. The attribute types narrow to a declared member's type, so a mismatch fails at the element. Function components never own a boundary; `fallback` on them is an ordinary prop. A placed instance (`{page}`) uses its members. `<Component fallback={…}>` adds one explicitly, with or without `for`. With no boundary above, a suspension throws from `render()` - give the root one: `render(<App fallback={null} />, el)`. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders.
+A function component returning a promise renders what it resolves to - a module's default export or a component itself (function, State or Component class): `const Settings = () => import('./Settings')`. Its first render suspends on the load; later renders and placements reuse the result without calling it again. Attributes pass to, and are typed from, the loaded component. It takes no parameters - props never change what loads. Declare it at module scope - one created per render loads every render. There is no `lazy`. A failed load rejects to the nearest `catch`; the next render after recovery loads again. A Component supplies a suspense boundary unless `fallback = false`. A State element has one only when it declares `fallback` or `catch`, or receives either as an attribute - `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence over the member and still passes through to a field of that name. The boundary exists from mount: a placement mounted with neither attribute nor member never gains one, though a present `fallback` or `catch` may change. The attribute types narrow to a declared member's type, so a mismatch fails at the element. Function components never own a boundary; `fallback` on them is an ordinary prop. A placed instance (`{page}`) uses its members. `<Component fallback={…}>` adds one explicitly, with or without `for`. With no boundary above, a suspension throws from `render()` - give the root one: `render(<App fallback={null} />, el)`. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders.
 
 Suspending destroys nothing. Instances below a boundary - including one that suspends itself - keep their state and retry in place, so a State may own its loading and error state and suspend in its own `render`. A boundary for plain content is an empty State:
 
@@ -186,7 +186,7 @@ class Boundary extends State {}
 `catch(error, instance)` - member or attribute - handles render failures and retries after it completes (lifecycle failures go to `State.on({ catch })` instead); until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
 
 ```tsx
-const Settings = lazy(() => import('./Settings'));
+const Settings = () => import('./Settings');
 
 class App extends Component {
   fallback = <p>Loading…</p>;

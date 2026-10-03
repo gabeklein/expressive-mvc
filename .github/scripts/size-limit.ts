@@ -50,8 +50,8 @@ const CASES = [
     name: 'dom: renderer',
     limit: 17680,
     code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
-           import { Fragment, Portal, createElement, lazy, render } from '@expressive/dom';
-           console.log(State, Component, Context, Fragment, Portal, createElement, def, get, has, lazy, map, pending, ref, render, set);`
+           import { Fragment, Portal, createElement, render } from '@expressive/dom';
+           console.log(State, Component, Context, Fragment, Portal, createElement, def, get, has, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',

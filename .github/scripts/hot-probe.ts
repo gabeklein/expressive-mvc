@@ -442,9 +442,12 @@ export class Noted extends Component {
 };
 
 const shell = (from: string) => `import { Component } from '@expressive/mvc';
-import { lazy } from '${from}';
+${from == 'react'
+  ? `import { lazy } from 'react';
 
-const Late = lazy(() => import('./late'));
+const Late = lazy(() => import('./late'));`
+  : `
+const Late = () => import('./late');`}
 
 export class Shell extends Component {
   fallback = <p id="late">wait</p>;
