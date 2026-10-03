@@ -15,7 +15,7 @@ app/                  file-based routes
   docs/[...].tsx      /docs/*      catch-all
   api/                server modules; never part of the client tree
 app.tsx | src/app.tsx single root component instead of app/ (default export)
-index.ts              optional service entry, run on the server: export default app({ port })
+index.ts              optional service entry, run on the server: export default config({ port })
 index.html            optional custom shell (#root and the entry script are injected if missing)
 vite.config.ts        optional, merged under the host's config
 ```

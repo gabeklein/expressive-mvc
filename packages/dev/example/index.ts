@@ -1,5 +1,5 @@
-import { app } from "@expressive/dev";
+import { config } from "@expressive/dev";
 
-export default app({
+export default config({
   port: 3100,
 });

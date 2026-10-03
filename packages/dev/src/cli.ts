@@ -13,7 +13,7 @@ Project layout:
   app/                   File-based routes (index.tsx, [slug].tsx, (static).tsx, [...].tsx)
   app/api/               Server modules: exports serve at POST /api/<module>/<fn> (JSON array body)
   app.tsx | src/app.tsx  Or: a single root component (default export)
-  index.ts               Optional. Service entry on the server (export default app({ port }))
+  index.ts               Optional. Service entry on the server (export default config({ port }))
   index.html             Optional. Custom HTML shell
   vite.config.ts         Optional. Extra Vite config, merged under Expressive's
 `;
