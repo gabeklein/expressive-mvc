@@ -1,7 +1,9 @@
-import { State } from "@expressive/mvc";
+import { State, set } from "@expressive/mvc";
+
+import { list } from "./api";
 
 export default class Blog extends State {
-  posts = ["hello", "world"];
+  posts = set(() => list());
 }
 
 export function Page() {

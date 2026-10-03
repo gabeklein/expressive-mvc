@@ -12,6 +12,7 @@ import { serverBuild } from "./build";
 import { expressive } from "./plugin";
 
 const PAGE = "export function Page(){ return <h1>hi</h1> }";
+const CALLS = (name: string) => `export function Page(){ ${name}(); return <h1>hi</h1> }`;
 const PACKAGES = fileURLToPath(new URL("../../../", import.meta.url));
 
 const SOURCES: InlineConfig["resolve"] = {
@@ -136,11 +137,78 @@ describe("vite host", () => {
     expect(State).toBe(createRequire(join(root, "index.js"))("@expressive/mvc").State);
   });
 
+  it("will give the browser a stub for each server module, and the server the module", async () => {
+    const root = project({
+      "app/index.tsx": "import { hello } from \"./api/greetings\";\n" + PAGE,
+      "app/api/greetings.ts": "import { readFileSync } from 'node:fs';\nexport async function hello(name = 'World') { return `Hello ${name}!`; }\nexport default () => {};",
+      "app/blog/[slug]/api.ts": "export const like = (n = 1) => n + 1;\nexport function share() {}",
+      "app/blog/[slug]/index.tsx": "import { like } from \"./api\";\n" + PAGE,
+    });
+    const server = await serve(root);
+
+    const client = await server.transformRequest("/app/api/greetings.ts");
+    expect(client?.code).toMatch(/const scope = \["api",\s*"greetings"\]/);
+    expect(client?.code).toContain('export const hello = (...args) => call(scope, "hello", args)');
+    expect(client?.code).not.toContain("node:fs");
+    expect(client?.code).not.toContain("default");
+
+    const sidecar = await server.transformRequest("/app/blog/[slug]/api.ts");
+    expect(sidecar?.code).toMatch(/const scope = \["blog",\s*":slug"\]/);
+    expect(sidecar?.code).toContain('"like"');
+    expect(sidecar?.code).toContain('"share"');
+
+    const rpc = await server.transformRequest("/.expressive/rpc.ts");
+    expect(rpc?.code).toContain("export async function call");
+
+    const real = await server.environments.ssr.transformRequest(join(root, "app/blog/[slug]/api.ts"));
+    expect(real?.code).toContain("n + 1");
+  });
+
+  it("will throw if a page imports a sidecar outside its own scope", async () => {
+    const root = project({
+      "app/index.tsx": PAGE,
+      "app/blog/api.ts": "export const list = () => [];",
+      "app/blog/index.tsx": "import { list } from \"./api\";\n" + CALLS("list"),
+      "app/blog/[slug].tsx": "import { list } from \"./api\";\n" + CALLS("list"),
+      "app/about/index.tsx": "import { list } from \"../blog/api\";\n" + CALLS("list"),
+    });
+    const server = await serve(root);
+
+    await expect(server.transformRequest("/app/blog/index.tsx")).resolves.toBeTruthy();
+    await expect(server.transformRequest("/app/blog/[slug].tsx")).resolves.toBeTruthy();
+    await expect(server.transformRequest("/app/about/index.tsx")).rejects.toThrow("only its own folder and those below it may call");
+  });
+
+  it("serves sidecar functions by POST at the scope's path on the module runner", async () => {
+    const root = project({
+      "app/index.tsx": PAGE,
+      "app/api.ts": "export const ping = () => 'pong';",
+      "app/blog/[slug]/api.ts": "export default () => { if (globalThis.locked) throw new Error('locked'); };\nexport const like = (n = 1) => n + 1;",
+      "app/blog/[slug]/index.tsx": PAGE,
+    });
+    const server = await serve(root);
+
+    const socket = listen(server.middlewares);
+    sockets.push(socket);
+    await new Promise<void>(ready => socket.listen(0, ready));
+    const base = `http://localhost:${(socket.address() as AddressInfo).port}/`;
+    const post = (path: string, body = "[]") => fetch(base + path, { method: "POST", body });
+
+    expect(await post("ping").then(r => r.json())).toBe("pong");
+    expect(await post("blog/hello/like", "[2]").then(r => r.json())).toBe(3);
+    expect((await post("blog/hello/nope")).status).toBe(404);
+
+    (globalThis as any).locked = true;
+    expect(await post("blog/hello/like").then(r => r.json())).toEqual({ error: "locked" });
+    delete (globalThis as any).locked;
+  });
+
   it("builds the node service with index.ts and every api module", async () => {
     const root = project({
       "app/index.tsx": PAGE,
       "app/api/greetings.ts": "export async function hello() { return 'hi'; }",
       "app/api/blog/posts.ts": "export const list = () => [];",
+      "app/blog/[slug]/api.ts": "export const like = () => 1;",
       "index.ts": "export default { port: 4000 };",
     });
     const config = serverBuild(root, { write: false });
@@ -157,6 +225,7 @@ describe("vite host", () => {
     expect(entry).toContain('"greetings"');
     expect(entry).toContain('"blog/posts"');
     expect(entry).toMatch(/port: 4(000|e3)/);
+    expect(entry).toContain('pattern: ["blog", ":slug"]');
   });
 
   it("builds a static site with a bundled entry and no dev script", async () => {

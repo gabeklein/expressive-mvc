@@ -112,7 +112,7 @@ interface Tag {
   label: string;
 }
 
-function classify(raw: string, bareIsRoute: boolean): Tag | null {
+export function classify(raw: string, bareIsRoute: boolean): Tag | null {
   if (raw === "index") return { kind: "index", segment: "", label: "" };
 
   const paren = /^\((.+)\)$/.exec(raw);

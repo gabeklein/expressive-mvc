@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { dispatch, sendFile, type Api } from ".";
+import { dispatch, dispatchScope, sendFile, type Api, type Scope } from ".";
 
 const api: Api = {
   "": async () => ({ ping: () => "pong" }),
@@ -99,5 +99,65 @@ describe("static files", () => {
     expect(sendFile(response() as any, dir, "/assets")).toBe(false);
     expect(sendFile(response() as any, dir, "/../" + dir.split("/").pop() + "/index.html")).toBe(false);
     expect(sendFile(response() as any, join(dir, "assets"), "/../index.html")).toBe(false);
+  });
+});
+
+describe("scope dispatch", () => {
+  const order: string[] = [];
+
+  const scopes: Scope[] = [
+    { pattern: [], load: async () => ({ default: () => { order.push("root"); }, ping: () => "pong" }) },
+    { pattern: ["blog"], load: async () => ({ default: () => { order.push("blog"); }, list: () => ["a"], hidden: 1 }) },
+    { pattern: ["blog", ":slug"], load: async () => ({ like: (n = 1) => n + 1 }) },
+    { pattern: ["blog", "new"], load: async () => ({ like: () => "static" }) },
+    { pattern: ["admin"], load: async () => ({ default: () => { throw new Error("denied"); }, wipe: () => "gone" }) },
+    { pattern: ["docs", "*"], load: async () => ({ read: () => "doc" }) },
+    { pattern: ["shop"], load: async () => ({ default: class Cart {}, buy: () => "bought" }) },
+  ];
+
+  const post = async (path: string, body = "") => {
+    order.length = 0;
+    const reply = await dispatchScope(scopes, "POST", path, async () => body);
+    return reply && { status: reply.status, value: JSON.parse(reply.body) };
+  };
+
+  it("will call a function on the scope whose path precedes it", async () => {
+    expect(await post("/ping")).toEqual({ status: 200, value: "pong" });
+    expect(await post("/blog/list")).toEqual({ status: 200, value: ["a"] });
+  });
+
+  it("will match params, preferring a static segment", async () => {
+    expect(await post("/blog/hello/like", "[4]")).toEqual({ status: 200, value: 5 });
+    expect(await post("/blog/new/like")).toEqual({ status: 200, value: "static" });
+  });
+
+  it("will match a catch-all with one or more segments", async () => {
+    expect(await post("/docs/a/b/read")).toEqual({ status: 200, value: "doc" });
+    expect(await post("/docs/read")).toBeUndefined();
+  });
+
+  it("will run default hooks from the root down before the function", async () => {
+    await post("/blog/hello/like");
+    expect(order).toEqual(["root", "blog"]);
+  });
+
+  it("will not call the function when a hook throws", async () => {
+    expect(await post("/admin/wipe")).toEqual({ status: 500, value: { error: "denied" } });
+  });
+
+  it("will not run a default class as a hook", async () => {
+    expect(await post("/shop/buy")).toEqual({ status: 200, value: "bought" });
+  });
+
+  it("will 404 for a missing or non-function export, or default", async () => {
+    expect((await post("/blog/nope"))?.status).toBe(404);
+    expect((await post("/blog/hidden"))?.status).toBe(404);
+    expect((await post("/blog/default"))?.status).toBe(404);
+  });
+
+  it("will pass when no scope matches or the method is not POST", async () => {
+    expect(await post("/elsewhere/deep/fn")).toBeUndefined();
+    expect(await dispatchScope(scopes, "GET", "/blog/list", async () => "")).toBeUndefined();
+    expect(await dispatchScope(scopes, "POST", "/", async () => "")).toBeUndefined();
   });
 });

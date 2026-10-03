@@ -1,5 +1,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { basename, extname, join, relative } from "node:path";
+import { basename, extname, join, relative, sep } from "node:path";
+
+import { classify } from "./routes";
 
 export interface Project {
   root: string;
@@ -113,14 +115,61 @@ export function apiModules(root: string): Map<string, string> {
   return out;
 }
 
-export function serverEntry(project: Project, api: Map<string, string>, from: string): string {
+export interface Sidecar {
+  pattern: string[];
+  file: string;
+}
+
+export function sidecars(appDir: string | undefined): Sidecar[] {
+  const out: Sidecar[] = [];
+
+  if (!appDir || !existsSync(appDir)) return out;
+
+  (function walk(folder: string, pattern: string[]) {
+    for (const entry of readdirSync(folder)) {
+      const full = join(folder, entry);
+
+      if (statSync(full).isDirectory()) {
+        if (entry === "api" && folder === appDir) continue;
+        walk(full, [...pattern, classify(entry, true)!.segment]);
+        continue;
+      }
+
+      if (API_EXT.has(extname(entry)) && basename(entry, extname(entry)) === "api") out.push({ pattern, file: full });
+    }
+  })(appDir, []);
+
+  return out;
+}
+
+export function lane(project: Project, file: string): string[] | undefined {
+  const { appDir } = project;
+  const ext = extname(file);
+
+  if (!appDir || !file.startsWith(appDir + sep) || !API_EXT.has(ext) || /\.(test|spec)\.\w+$/.test(file)) return;
+
+  const rel = relative(appDir, file).split(sep);
+
+  if (rel[0] === "api") {
+    const key = rel.slice(1).join("/").slice(0, -ext.length);
+    return ["api", ...key.split("/").filter(part => part !== "index")];
+  }
+
+  if (basename(file, ext) !== "api") return;
+
+  return rel.slice(0, -1).map(entry => classify(entry, true)!.segment);
+}
+
+export function serverEntry(project: Project, api: Map<string, string>, scopes: Sidecar[], from: string): string {
   const modules = [...api].map(([key, file], i) => ({ key, name: `api${i}`, spec: relImport(from, file) }));
+  const sides = scopes.map(({ pattern, file }, i) => ({ pattern, name: `scope${i}`, spec: relImport(from, file) }));
 
   return [
     `import { fileURLToPath } from "node:url";`,
     `import { serve } from "@expressive/dev";`,
     project.configPath ? `import config from ${JSON.stringify(relImport(from, project.configPath))};` : `const config = {};`,
     ...modules.map(m => `import * as ${m.name} from ${JSON.stringify(m.spec)};`),
+    ...sides.map(m => `import * as ${m.name} from ${JSON.stringify(m.spec)};`),
     "",
     "serve({",
     "  config,",
@@ -128,6 +177,9 @@ export function serverEntry(project: Project, api: Map<string, string>, from: st
     "  api: {",
     ...modules.map(m => `    ${JSON.stringify(m.key)}: async () => ${m.name},`),
     "  },",
+    "  scopes: [",
+    ...sides.map(m => `    { pattern: ${JSON.stringify(m.pattern)}, load: async () => ${m.name} },`),
+    "  ],",
     "});",
     "",
   ].join("\n");

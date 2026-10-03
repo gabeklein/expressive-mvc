@@ -1,8 +1,10 @@
 import { State, set, type Component } from "@expressive/mvc";
 import { Link } from "@expressive/dev";
 
+import { hello } from "./api/greetings";
+
 class Greeting extends State {
-  message = set(() => call<string>("greetings/hello", "Expressive"));
+  message = set(() => hello("Expressive"));
 }
 
 export function Layout(props: { children?: Component.Node }) {
@@ -44,13 +46,4 @@ export function Catch({ error, retry }: { error: Error; retry: () => void }) {
       Something broke: {error.message} <button onClick={retry}>Retry</button>
     </p>
   );
-}
-
-async function call<T>(path: string, ...args: unknown[]): Promise<T> {
-  const response = await fetch(`/api/${path}`, { method: "POST", body: JSON.stringify(args) });
-  const result = await response.json();
-
-  if (!response.ok) throw new Error(result.error);
-
-  return result;
 }

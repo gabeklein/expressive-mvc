@@ -39,20 +39,37 @@ augmentation (`State.use()` and friends), so nothing else is needed.
 
 ## Server lane
 
-`index.ts` and everything under `app/api/` run on the server: in dev on Vite's module runner, so
-an edit takes effect on the next request; in production inside `dist/server/index.js`.
+`index.ts`, everything under `app/api/`, and any `api.ts` beside a page run on the server: in dev
+on Vite's module runner, so an edit takes effect on the next request; in production inside
+`dist/server/index.js`. The browser never receives their code.
 
-Each `app/api/**/*.ts` module's function exports are endpoints. The module's path under
-`app/api/` is the prefix (`index.ts` is the root), the export name the last segment:
+**`app/api/**`** is the app's API. Each module's function exports are endpoints at its path:
 
 ```
-app/api/index.ts        export const ping = () => "pong"          GET  /api/ping
+app/api/index.ts        export const ping = () => "pong"          GET|POST /api/ping
 app/api/greetings.ts    export async function hello(name) {...}   POST /api/greetings/hello   body: ["Gabe"]
-app/api/blog/posts.ts   export const list = () => [...]           GET  /api/blog/posts/list
 ```
 
-`POST` passes the JSON array body as arguments, `GET` passes none. The result is JSON; a thrown
-error is `{ "error": message }` with 500, an unknown module or export 404, a non-array body 400.
+**`api.ts` beside a page** is that scope's sidecar. Its exports are endpoints at the scope's path,
+POST only, since GET there is the page:
+
+```
+app/api.ts              export const ping = () => "pong"          POST /ping
+app/blog/api.ts         export async function list() {...}        POST /blog/list
+app/blog/[slug]/api.ts  export async function like() {...}        POST /blog/hello/like
+```
+
+A sidecar's `default` function is a hook: before any function runs, the hooks of its scope and
+every scope above it run from the root down, and a throw stops the call.
+
+**Calling from the client.** Import the function. In the browser the module is replaced by a stub
+that posts its arguments, so `import { list } from "./api"` then `await list()` is the whole
+API; types are the server module's own. A sidecar may be imported from its own folder and those
+below it; anything else is a build error, since only there does the current location fill the
+scope's params. `app/api/**` may be imported from anywhere.
+
+`POST` takes a JSON array of arguments and answers JSON. A thrown error is `{ "error": message }`
+with 500, an unknown function 404, a malformed body 400.
 
 ## Commands
 
