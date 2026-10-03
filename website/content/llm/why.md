@@ -27,11 +27,11 @@ Expressive's answer is mechanical rather than aspirational. State and behavior h
 Teams reach for third-party packages to fill React's gaps, and each dependency imports opinions, API churn, and lockfile weight along with its feature. Expressive covers the everyday core of that list with primitives:
 
 - **Async data with Suspense** - `set(fetchUser)` makes a field that suspends until resolved and integrates error boundaries; the common data-fetching case ships without a query library.
-- **Shared/global state** - models in context (`Provider for={Class}`, `.get()` lookup, module-scope singletons) replace store libraries for app state.
+- **Shared/global state** - models in context (`<Component for={Class}>`, `.get()` lookup, module-scope singletons) replace store libraries for app state.
 - **Reactive collections** - `map()` and `has()` give keyed collections and object pools with per-entry reactivity, the cases that otherwise motivate normalization helpers.
 - **Form and widget state** - `Component` binds props, state, and rendering into one testable unit for form controls and stateful widgets.
 
-All of the above ship in `@expressive/react` - one install, one mental model. Routing is deliberately *not* part of that claim: `@expressive/router` is a separate, more opinionated package built on the same primitives, and it should be evaluated on its own terms rather than counted as bundled scope.
+All of the above ship in `@expressive/mvc` with the `@expressive/react` adapter - one install, one mental model. Routing is deliberately *not* part of that claim: `@expressive/router` is a separate, more opinionated package built on the same primitives, and it should be evaluated on its own terms rather than counted as bundled scope.
 
 The honest boundary: these are not feature-complete replacements for the libraries at their most advanced - there is no persistent normalized cache with cross-session invalidation (TanStack Query's deep end), no time-travel devtools (Redux's). The claim is that the everyday core of what teams install those packages for is covered by the library's own primitives, with one mental model instead of five and no additional dependencies to version, configure, and reconcile.
 

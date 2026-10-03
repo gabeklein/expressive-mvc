@@ -7,11 +7,11 @@ Positioning for the adoption question: whether to render Expressive MVC with `@e
 A browser renderer for MVC components with no React underneath. `State`, `Component`, instructions, context and `@expressive/router` are the same packages; what changes is the host. [Measured per import shape](https://expressive.dev/docs/guides/bundle-size/), gzip, including `@expressive/mvc`:
 
 - `Component` + `render` alone: ~15.5 kB
-- the renderer and all of mvc: ~16.8 kB
-- the same with the styling system: ~19.0 kB
+- the renderer and all of mvc: ~17.0 kB
+- the same with the styling system: ~19.2 kB
 - the same with `@expressive/router`: ~20.4 kB
 
-These replace `react` + `react-dom`; they don't add to them. Budgets are checked on every pull request, and an over-budget shape fails the site build.
+These replace `react` + `react-dom`; they don't add to them. Budgets are checked on every pull request; an over-budget shape is flagged on the PR.
 
 Status: `0.1`, the first release. It's a tested renderer for applications prepared to track pre-1.0 changes, not an LTS contract.
 
@@ -40,7 +40,7 @@ dom is not a React clone. Where it differs, the difference is meant to be net-po
 - A pre-release audit using the examples corpus as user stories ([record](https://github.com/gabeklein/expressive-mvc/blob/111785fc0/examples/smoke/AUDIT.md)): 53 interaction scenarios over all 42 example pages, run on both renderers in happy-dom, with the React adapter as the spec. It found five renderer bugs the unit suite couldn't see (three of them in how dom composes with mvc's tracking and `pending()`, surfacing on router pages), plus several React-parity differences. All were fixed before release in [#406](https://github.com/gabeklein/expressive-mvc/pull/406)–[#408](https://github.com/gabeklein/expressive-mvc/pull/408), each pinned by a unit test or a type check. On the fixed renderer, dom passes every scenario except the nested-boundary difference above, which is intended. Independent adversarial reviews of each fix then found and fixed further regressions before release, each also pinned by a test.
 - The fixed renderer, driven in real Chrome: all 42 ported example pages loading and surviving interaction, and a consumer app from the packed tarballs.
 
-Not yet measured: performance against other renderers, memory and listener leaks over long sessions, and interop with libraries that mutate the DOM themselves. The dom-only features (`style`, `macro`, `Portal`, loader components) have their own suite but were exercised by the audit only incidentally. None of these is claimed.
+Not yet measured: performance against other renderers, memory and listener leaks over long sessions, and interop with libraries that mutate the DOM themselves. The dom-only features (`style`, `macro`, `Portal`, function components returning a promise) have their own suite but were exercised by the audit only incidentally. None of these is claimed.
 
 ## When to prefer the React adapter
 
@@ -55,4 +55,4 @@ Not yet measured: performance against other renderers, memory and listener leaks
 - Embeds and widgets, where a React runtime would otherwise be the largest dependency.
 - Teams that want no hooks beyond `State.use()`.
 
-An Expressive codebase moves between the two hosts with its models unchanged. With imports from `@expressive/mvc`, the recommended path, only `Provider` and `Consumer` come from the host package, and both hosts export them with the same props. The remaining port is small: `onChange` → `onInput` on text fields (equivalent on React), React event-type annotations dropped or inferred, and `Suspense` → a Component `fallback`.
+An Expressive codebase moves between the two hosts with its models unchanged. `State`, `Component` and instructions import from `@expressive/mvc` on both; providing is `<Component for>` on both. The host package contributes only the entry: `import '@expressive/react'`, or `render` from `@expressive/dom`. The remaining port is small: `onChange` → `onInput` on text fields (equivalent on React), React event-type annotations dropped or inferred, and `Suspense` → a Component `fallback`.

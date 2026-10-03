@@ -6,42 +6,60 @@ description: Install, write your first state class, and learn how the pieces fit
 ## Install
 
 ```bash
-npm install @expressive/react
+npm install @expressive/mvc @expressive/react
 ```
 
-That's the only package a React app needs - it includes the framework-agnostic core and the React adapter.
+`@expressive/mvc` is the framework-agnostic core and a peer dependency of the adapter, so install both. `State`, `Component`, and every instruction are named exports of the core:
 
 ```ts
-import State from '@expressive/react';
+import { State, Component, get, set, ref } from '@expressive/mvc';
 ```
 
-`State` is the default export. Instructions and utilities are named exports:
+`@expressive/react` supplies the host. Import it once, for its side effect, in your entry module:
 
 ```ts
-import State, { Component, Provider, get, set, ref } from '@expressive/react';
+// main.tsx
+import '@expressive/react';
 ```
+
+Its re-exports of the core, and its default export of `State`, are deprecated - import from `@expressive/mvc` by name. Routing is a separate package, `@expressive/router`.
 
 > Working with an agent? `npx skills add gabeklein/expressive-mvc` teaches it the whole API in one shot.
 
 ### Requirements
 
-React **16.14 or newer** — interacts with `react/jsx-runtime`. React is a peer dependency; nothing else is.
+React **16.14 or newer** — interacts with `react/jsx-runtime`. React and `@expressive/mvc` are peer dependencies; nothing else is required.
 
 On **React 18+** the adapter will validate model revisions before each commit, so a concurrent render that yields mid-work can never commit a tree mixing two revisions of one model. React 16 and 17 do not yield mid-render, so nothing to validate — behavior is equivalent - no interleaving to protect against. See [Concurrent rendering](/docs/guides/concurrent) for the full contract.
 
 ### Size
 
-The whole install is about **11 kB** gzip with everything imported, and closer to **9 kB** for a typical app. Numbers are measured per import shape and gated in CI — see [Bundle size](/docs/guides/bundle-size).
+The whole install is about **12.5 kB** gzip with everything imported, and closer to **10.5 kB** for a typical app. Numbers are measured per import shape and gated in CI — see [Bundle size](/docs/guides/bundle-size).
 
 ### React Native
 
 The same package covers React Native and Expo — Metro resolves the adapter without extra configuration.
 
-There is nothing renderer-specific to port — the adapter imports only `react` and `react/jsx-runtime` — and it has been exercised on an iOS simulator and an Android emulator in both Debug and Release builds: render and re-render on write through the native renderer, context through a `Provider`, suspense, and error recovery. Every release additionally gates on a check that installs the published tarballs into a throwaway Expo app (SDK 57, React Native 0.86) and asserts Metro resolves them for iOS and Android, that the build compiles to Hermes bytecode, and that class fields keep their semantics under either of Metro's transform paths. Three things to know:
+There is nothing renderer-specific to port — the adapter imports only `react` and `react/jsx-runtime` — and it has been exercised on an iOS simulator and an Android emulator in both Debug and Release builds: render and re-render on write through the native renderer, context, suspense, and error recovery. Every release additionally gates on a check that installs the published tarballs into a throwaway Expo app (SDK 57, React Native 0.86) and asserts Metro resolves them for iOS and Android, that the build compiles to Hermes bytecode, and that class fields keep their semantics under either of Metro's transform paths. Three things to know:
 
 - Testing with `jest-expo` needs `@expressive` added to `transformIgnorePatterns`, because the build is ESM-only and Jest skips `node_modules` by default.
 - `BrowserRouter` from `@expressive/router` reads `window.location`, which React Native does not define. Use `Router` instead — it keeps path and history in memory.
 - `Link` and `NavLinks` render `<a>` and `<ul>`, which have no native host yet. Drive navigation from `Router` and render your own `Pressable`.
+
+### Hot reload (Vite)
+
+Add the adapter's Vite plugin beside React's:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import expressive from '@expressive/react/vite';
+
+export default defineConfig({ plugins: [react(), expressive()] });
+```
+
+Editing a `State` or `Component` class then patches it in place - instances keep their values and re-render with the new methods, getters, `render`, and subcomponents, while React Refresh keeps your function components. Changing a field, the constructor, or `new()` reloads the page, as does editing a module that declares a class with `#private` members. The class must be a top-level `class X` (or `let X = class`) - a `const` binding cannot be patched. Dev server only; production builds are untouched.
 
 <br />
 
@@ -104,7 +122,7 @@ Here's that same idea running for real - edit it if you like:
 A todo list with a computed value, local persistence, and a dash of validation - all in one class:
 
 ```tsx
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 interface Todo {
   id: number;

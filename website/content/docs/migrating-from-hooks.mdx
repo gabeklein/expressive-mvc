@@ -22,13 +22,20 @@ This is deliberately bottom-up. You don't need buy-in from the whole team before
 ## Step 1 - Install and import
 
 ```bash
-npm install @expressive/react
+npm install @expressive/mvc @expressive/react
 ```
 
-Expressive has zero peer dependencies beyond React. It doesn't touch your existing state libraries - Redux, Zustand, React Query, Jotai, Recoil, and friends all continue to work.
+`@expressive/mvc` is the core and a peer dependency of the adapter; beyond it, Expressive needs only React. It doesn't touch your existing state libraries - Redux, Zustand, React Query, Jotai, Recoil, and friends all continue to work.
+
+Import the adapter once in your entry module, then import everything else from the core by name:
 
 ```ts
-import State, { Component, Provider, get, set, ref } from '@expressive/react';
+// main.tsx
+import '@expressive/react';
+```
+
+```ts
+import { State, Component, get, set, ref } from '@expressive/mvc';
 ```
 
 <br />
@@ -187,7 +194,7 @@ Run the component, test the behavior, and delete the old hook calls. If somethin
 
 ## Step 5 - Share without Provider stacks
 
-Use `Provider` to introduce a headless model or an app/root state at a boundary:
+Use `<Component for>` to introduce a headless model or an app/root state at a boundary:
 
 ```tsx
 // Before
@@ -221,10 +228,10 @@ class Theme extends State {
 
 function App() {
   return (
-    <Provider for={Theme}>
+    <Component for={Theme}>
       <Header />
       <Main />
-    </Provider>
+    </Component>
   );
 }
 
@@ -240,7 +247,7 @@ function Header() {
 
 The class _is_ the context key. No manual `createContext`, no default values, no `Provider.Consumer` render props.
 
-Child States of one provided are too. You do not need a Provider for every small controller:
+Child States of one provided are too. You do not need a `<Component for>` per controller - one element provides one State, so gather several as fields of a parent:
 
 ```tsx
 class Control extends State {
@@ -248,9 +255,9 @@ class Control extends State {
   auth = new Auth();
 }
 
-<Provider for={Control}>
+<Component for={Control}>
   <App />
-</Provider>;
+</Component>;
 
 function Header() {
   const { color } = Theme.get();
@@ -258,9 +265,9 @@ function Header() {
 }
 ```
 
-> App-wide globals don't even need the Provider - declare the class [`static global`](/docs/guides/context#globals-and-the-root-context) and a module-scope `Theme.new()` registers into the root context, findable by `Theme.get()` from anywhere. [See it in the Playground.](/examples/composition/globals)
+> App-wide globals don't even need an element - declare the class [`static global`](/docs/guides/context#globals-and-the-root-context) and a module-scope `Theme.new()` registers into the root context, findable by `Theme.get()` from anywhere. [See it in the Playground.](/examples/composition/globals)
 
-Use `Component` instead when the owner needs to exist in the React tree. A `Boundary` may have little UI, but its Suspense/ErrorBoundary placement is the point. A `Toasts` root also belongs in the tree, but it should justify `render()` by injecting toast subcomponents beside the wrapped app.
+Use a `Component` subclass instead when the owner itself needs to exist in the React tree. A `Boundary` may have little UI, but its Suspense/ErrorBoundary placement is the point. A `Toasts` root also belongs in the tree, but it should justify `render()` by injecting toast subcomponents beside the wrapped app.
 
 <br />
 
@@ -304,7 +311,7 @@ class Cart extends State {
 }
 ```
 
-The class version is shorter, testable without rendering, and shareable across components via `Provider`.
+The class version is shorter, testable without rendering, and shareable across components via `<Component for>`.
 
 <br />
 
@@ -357,7 +364,7 @@ this.items = [...this.items, item]; // works
 Copy-on-write is the habit worth keeping from hooks. But when a collection is mutated *a lot* - a game board, a live buffer, rows edited in place - declare it with `has()` and mutate away:
 
 ```ts
-import { has } from '@expressive/react';
+import { has } from '@expressive/mvc';
 
 class Game extends State {
   board = has<string>(Array(9).fill(''));
