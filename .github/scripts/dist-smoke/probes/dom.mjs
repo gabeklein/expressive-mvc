@@ -4,8 +4,10 @@ import { Portal, lazy, macro, render, style } from '@expressive/dom';
 import { jsx, jsxs } from '@expressive/dom/jsx-runtime';
 import { jsxDEV } from '@expressive/dom/jsx-dev-runtime';
 
-for (const [name, value] of Object.entries({ State, Component, Portal, lazy, macro, render, style, jsx, jsxs, jsxDEV }))
+for (const [name, value] of Object.entries({ State, Component, lazy, macro, render, style, jsx, jsxs, jsxDEV }))
   assert.equal(typeof value, 'function', name + ' is not exported by the built dist');
+
+assert.equal(typeof Portal, 'symbol', 'Portal is not exported by the built dist');
 
 assert.equal(jsx('div', { children: 'ready' }).type, 'div');
 
