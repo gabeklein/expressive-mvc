@@ -1,4 +1,4 @@
-import { Context, State } from '@expressive/mvc';
+import { Component, Context, State } from '@expressive/mvc';
 import { host } from '@expressive/mvc/jsx-runtime';
 import { describe, expect, it } from 'vitest';
 
@@ -81,6 +81,14 @@ describe('orphans under a host', () => {
     await flushMicrotasks();
     expect(plain.mount()).toBeUndefined();
     expect(Instance.of(plain).claimed).toBe(true);
+  });
+
+  it('will claim a Component providing for', async () => {
+    attach();
+    const provider = Component.new({ for: Widget } as any) as Component & { mount(): unknown };
+    await flushMicrotasks();
+    provider.mount();
+    expect(Instance.of(provider).claimed).toBe(true);
   });
 
   it('will claim owned children and root-provided globals', async () => {

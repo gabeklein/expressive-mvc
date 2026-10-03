@@ -217,15 +217,20 @@ function provide(self: Component<any>) {
     release = undefined;
   }
 
+  const inherited = (self as { mount?(): unknown }).mount;
+
   Object.defineProperty(self, 'mount', {
     configurable: true,
     value() {
+      const done = inherited?.call(self);
+
       mounted = true;
       release = owned?.mount?.();
 
       return () => {
         mounted = false;
         unmount();
+        if (typeof done == 'function') done();
       };
     }
   });

@@ -600,6 +600,36 @@ describe('for', () => {
     ]);
   });
 
+  it('will keep a mount defined before it provides', () => {
+    const order: string[] = [];
+
+    class Owned extends State {
+      mount() {
+        order.push('owned');
+        return () => order.push('owned:done');
+      }
+    }
+
+    const stop = Component.on({
+      pre(self) {
+        Object.defineProperty(self, 'mount', {
+          configurable: true,
+          value: () => {
+            order.push('inherited');
+            return () => order.push('inherited:done');
+          }
+        });
+      }
+    });
+
+    const provider = Component.new({ for: Owned } as any) as any;
+
+    stop();
+    provider.mount()();
+
+    expect(order).toEqual(['inherited', 'owned', 'owned:done', 'inherited:done']);
+  });
+
   it('will not default a boundary', () => {
     const provider = Component.new({ for: Session } as any);
     const bounded = Component.new({ for: Session, fallback: 'wait' } as any);
