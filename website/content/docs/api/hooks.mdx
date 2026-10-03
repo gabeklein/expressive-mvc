@@ -1,12 +1,12 @@
 ---
 title: React Hooks
-description: State.use, State.get, Provider, and Consumer
+description: State.use, State.get, and Provider
 ---
 
-The React adapter augments the `State` class with two static methods (`use` and `get`), and provides two components (`Provider` and `Consumer`). These are the React-specific entry points to Expressive.
+The React adapter augments the `State` class with two static methods (`use` and `get`), and provides `Provider`, which is deprecated in favor of `<Component for={…}>`. These are the React-specific entry points to Expressive.
 
 ```tsx
-import State, { Provider, Consumer } from '@expressive/react';
+import State, { Provider } from '@expressive/react';
 ```
 
 <br />
@@ -221,17 +221,16 @@ For multi-state providers, the `is` callback runs once per created instance and 
 
 <br />
 
-## `Consumer`
+## Reading context inline
 
-Render-prop access to context state.
+`Consumer` was removed. Read context with `State.get()` in a small function component:
 
 ```tsx
-<Consumer for={Theme}>
-  {(theme) => <p style={{ color: theme.color }}>Themed</p>}
-</Consumer>
+const Themed = () => {
+  const theme = Theme.get();
+  return <p style={{ color: theme.color }}>Themed</p>;
+};
 ```
-
-The child function receives a tracking proxy, so property reads subscribe just like `State.get()`.
 
 <br />
 
