@@ -1961,7 +1961,11 @@ describe('for', () => {
 
     class Sub extends Component {}
 
+    const plain: Component = Component.new();
+    const list: Component[] = [new Component(), plain];
+
     void (() => [
+      list,
       <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
       <Component for={Typed.new()} age={2} />,
       <Component fallback={null} />,

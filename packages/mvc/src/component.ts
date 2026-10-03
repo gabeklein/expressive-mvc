@@ -82,14 +82,14 @@ declare namespace Component {
     & RenderProps<T['render']>;
 }
 
-class Component<P extends State = never> extends State {
+class Component<P = unknown> extends State {
   /**
    * All JSX attributes passed to this component.
    * Includes state-derived props, render props, and built-in props like `is` and `fallback`.
    *
    * Will incorperate extra props you declare as props parameter in `render` method.
    */
-  declare readonly props: [P] extends [never] ? Component.Props<this> : ForProps<P>;
+  declare readonly props: [P] extends [State] ? ForProps<P> : Component.Props<this>;
 
   /** Stable identity used when this instance is rendered in a collection. */
   declare readonly key: string;
