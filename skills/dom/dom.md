@@ -169,7 +169,19 @@ function Row({ id }: { id: string }) {
 
 ## Lazy, boundaries, transitions
 
-`lazy(loader)` accepts a module default export or a directly exported component. A Component supplies a suspense boundary unless `fallback = false`; a State element only when it declares `fallback` or `catch`; `Provider fallback={...}` adds one explicitly. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders. `Component.catch(error)` handles render failures and retries after it completes; until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
+`lazy(loader)` accepts a module default export or a directly exported component. A Component supplies a suspense boundary unless `fallback = false`. A State element has one only when it declares `fallback` or `catch`, or receives either as an attribute - `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence over the member and still passes through to a field of that name. The boundary exists from mount: a placement mounted with neither attribute nor member never gains one, though a present `fallback` or `catch` may change. The attribute types narrow to a declared member's type, so a mismatch fails at the element. Function components never own a boundary; `fallback` on them is an ordinary prop. A placed instance (`{page}`) uses its members. `Provider fallback={...}` adds one explicitly. With no boundary above, a suspension throws from `render()` - give the root one: `render(<App fallback={null} />, el)`. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders.
+
+Suspending destroys nothing. Instances below a boundary - including one that suspends itself - keep their state and retry in place, so a State may own its loading and error state and suspend in its own `render`. A boundary for plain content is an empty State:
+
+```tsx
+class Boundary extends State {}
+
+<Boundary fallback={<Spinner />}>
+  <Report />
+</Boundary>;
+```
+
+`catch(error, instance)` - member or attribute - handles render failures and retries after it completes (lifecycle failures go to `State.on({ catch })` instead); until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
 
 ```tsx
 const Settings = lazy(() => import('./Settings'));
@@ -185,7 +197,7 @@ class App extends Component {
 
 MVC `pending(work)` runs `work` inline and defers subscriber DOM work. If the replacement suspends, the committed range remains until it can complete; an urgent suspension shows its fallback. Its promise resolves after the replacement commits or the affected scope unmounts. Scopes one transition updates commit together: if one suspends in its own render, or below a scope that currently renders nothing, none commit until it resolves - a route swap holds the outgoing page, and a guarded child does not render past its suspended guard. A suspension found deeper, inside content a scope already shows, retains that scope's range only: scopes of the transition already patched keep their update, as do siblings patched before the suspending child.
 
-`Component.catch` retries once after it completes; a render that fails again keeps the fallback until state it read changes. A portal inside a hidden boundary is hidden with it; one first mounted while the boundary is hidden appears immediately.
+`catch` retries once after it completes; a render that fails again keeps the fallback until state it read changes. A portal inside a hidden boundary is hidden with it; one first mounted while the boundary is hidden appears immediately.
 
 ```tsx
 await pending(() => {

@@ -82,11 +82,20 @@ declare module '@expressive/mvc/jsx-runtime' {
 
 declare module '@expressive/mvc' {
   namespace State {
-    /** JSX attributes of a State with no `props` member: its settable fields, `is`, and what `render` accepts. */
+    /** JSX attributes of a State with no `props` member: its settable fields, `is`, a boundary, and what `render` accepts. */
     type Props<T extends State> =
       & Component.StateProps<T>
-      & { is?: (instance: T) => void }
+      & {
+        is?: (instance: T) => void;
+        /** Shown while this element's content is suspended or recovering. `false` opts out. */
+        fallback?: Reserved<T, 'fallback', Component.Node | false>;
+        /** Called when this element's content throws. A returned promise retries once settled. */
+        catch?: Reserved<T, 'catch', (error: Error, instance: T) => Promise<void> | void>;
+      }
       & Component.RenderProps<T extends { render: infer R } ? R : never>;
+
+    /** Boundary attribute type, narrowed by a member of the same name so a mismatch fails at the element. */
+    type Reserved<T, K extends string, V> = K extends keyof T ? T[K] & V : V;
   }
 }
 

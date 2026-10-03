@@ -35,10 +35,12 @@ interface Renderable extends State {
   props?: Record<string, any>;
   key?: Key;
   fallback?: RenderNode | false;
-  catch?(error: Error): Promise<void> | void;
+  catch?(error: Error, instance: Renderable): Promise<void> | void;
   mount?(): (() => void) | void;
   render?(props?: any): RenderNode;
 }
+
+type Placement = Pick<Renderable, 'fallback' | 'catch'>;
 
 interface Fiber {
   kind: Kind;
@@ -324,11 +326,18 @@ function mountComponent(
 ) {
   const fiber = range('component', parent, before, context);
   const childContext = context.push(instance);
-  const { fallback } = instance;
-  const ownBoundary: Boundary | undefined = fallback !== undefined && fallback !== false || instance.catch
+  const element = (owned ? props : {}) as Placement;
+  const fallback = element.fallback !== undefined ? element.fallback : instance.fallback;
+  const ownBoundary: Boundary | undefined = fallback !== undefined && fallback !== false || element.catch || instance.catch
     ? {
-        catch: instance.catch?.bind(instance),
-        fallback: () => instance.fallback,
+        catch: element.catch || instance.catch ? (error) => {
+          const handler = owned && (fiber.props as Placement).catch;
+          return (handler || instance.catch)!.call(instance, error, instance);
+        } : undefined,
+        fallback: () => {
+          const placed = owned ? (fiber.props as Placement).fallback : undefined;
+          return placed !== undefined ? placed : instance.fallback;
+        },
         owner: fiber,
         parent: inherited
       }

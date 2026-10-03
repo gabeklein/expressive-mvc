@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, has, map } from '@expressive/mvc';
-import { createPortal, render } from './index';
-import { flushMicrotasks } from '../test.setup';
+import { createPortal, lazy, render } from './index';
+import { flushMicrotasks, mockPromise } from '../test.setup';
 import { vnode } from './vnode';
 
 if (false) {
@@ -1540,6 +1540,158 @@ describe('renderable State', () => {
     expect(other.textContent).toBe('guarded');
     await flushMicrotasks();
     expect(other.textContent).toBe('guarded');
+  });
+
+  it('will own a boundary from a fallback on the element', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+
+    class Plain extends State {
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Plain fallback={<i>loading</i>} />, root);
+    expect(root.textContent).toBe('loading');
+
+    loaded.resolve(() => <b>ready</b>);
+    await flushMicrotasks();
+    expect(root.textContent).toBe('ready');
+  });
+
+  it('will keep a State which suspends itself', async () => {
+    const loaded = mockPromise<void>();
+    const created = vi.fn();
+    let ready = false;
+
+    class Report extends State {
+      count = 1;
+
+      new() {
+        created();
+      }
+
+      render() {
+        if (!ready) throw loaded;
+        return <p>{this.count}</p>;
+      }
+    }
+
+    let report!: Report;
+    const root = document.createElement('main');
+    render(<Report is={(value) => (report = value)} fallback={<i>loading</i>} />, root);
+    expect(root.textContent).toBe('loading');
+
+    report.count = 2;
+    ready = true;
+    loaded.resolve();
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('2');
+    expect(created).toHaveBeenCalledTimes(1);
+  });
+
+  it('will prefer an element fallback over the member', () => {
+    const Lazy = lazy(() => new Promise<never>(() => {}));
+
+    class Guarded extends State {
+      fallback: Component.Node = <i>member</i>;
+
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Guarded fallback={<i>element</i>} />, root);
+    expect(root.textContent).toBe('element');
+
+    const other = document.createElement('main');
+    render(<Guarded />, other);
+    expect(other.textContent).toBe('member');
+
+    if (false) {
+      class Labelled extends State {
+        fallback = 'label' as const;
+      }
+
+      // @ts-expect-error a member named fallback narrows the element's attribute
+      <Labelled fallback={<i />} />;
+    }
+  });
+
+  it('will call an element catch with the error and instance', async () => {
+    const caught = vi.fn();
+    let plain!: Plain;
+
+    class Plain extends State {
+      broken = true;
+
+      render() {
+        if (this.broken) throw new Error('broken');
+        return <p>fixed</p>;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(
+      <Plain
+        is={(value) => (plain = value)}
+        fallback={<i>recovering</i>}
+        catch={(error: Error, instance: Plain) => {
+          caught(error.message, instance);
+          instance.broken = false;
+        }}
+      />,
+      root
+    );
+
+    expect(caught).toHaveBeenCalledWith('broken', plain);
+    expect(root.textContent).toBe('recovering');
+
+    await flushMicrotasks();
+    expect(root.textContent).toBe('fixed');
+  });
+
+  it('will not own a boundary from fallback on a function component', () => {
+    const received = vi.fn();
+    const Lazy = lazy(() => new Promise<never>(() => {}));
+
+    function View(props: { fallback?: string }) {
+      received(props.fallback);
+      return <Lazy />;
+    }
+
+    class Outer extends State {
+      fallback = <i>outer</i>;
+
+      render() {
+        return <View fallback="inner" />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Outer />, root);
+    expect(received).toHaveBeenCalledWith('inner');
+    expect(root.textContent).toBe('outer');
+  });
+
+  it('will use members for a placed instance', () => {
+    const Lazy = lazy(() => new Promise<never>(() => {}));
+
+    class Placed extends State {
+      fallback = <i>member</i>;
+
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<div>{Placed.new() as never}</div>, root);
+    expect(root.textContent).toBe('member');
   });
 
   it('will bind PascalCase methods of a renderable State as subcomponents', async () => {
