@@ -11,7 +11,6 @@ Recorded per instance (internal `LOOKUP` map); first explicit claim wins, and no
 | `State.new()`                                | `Context.root`   |
 | `new Context(StateClass)`                    | That context     |
 | `new State()` then `new Context(instance)`   | That context     |
-| `Provider for={StateClass}` (React)          | Provider context |
 | `<Component for={StateClass}>`               | Component context |
 
 > A bare `State.new()` resolves its `get()` lookups against root either way, but only *registers* into root - becoming findable by others - when the class opts in with `static global`. Registering is what locks a global's home to root; a private instance only falls back to root, so the first explicit context to claim it later still becomes its home. See [Root Context](#root-context).
@@ -80,12 +79,12 @@ Context.root.get(Private, false); // undefined - private, not a global
 
 Two rules keep a global deliberate:
 
-- **Re-declare on extend (runtime).** A subclass that would be global purely by inheriting `true` throws on activation; it must re-declare (`true` to keep, `false` to opt out). Checked only where the instance would actually register at root - a `<Provider>`-scoped one never trips it.
+- **Re-declare on extend (runtime).** A subclass that would be global purely by inheriting `true` throws on activation; it must re-declare (`true` to keep, `false` to opt out). Checked only where the instance would actually register at root - a `<Component for>`-scoped one never trips it.
 - **Lockout (compile-time).** A bare-literal `false` makes TypeScript reject a subclass `= true` (`TS2417`). Best-effort: a subclass escapes with a resolver (`static global = (() => true) as any`) or a wide cast - the sanctioned "I'm overriding the vendor" move. A plain `any`-cast boolean cannot.
 
-A context-claimed State never consults `global` - an instance provided by a `<Provider>` (or any explicit context) is unaffected by it.
+A context-claimed State never consults `global` - an instance provided by `<Component for>` (or any explicit context) is unaffected by it.
 
-> **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Provider>`. See [Server render](../react/react.md#server-render-ssr--rsc).
+> **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Component for>`. See [Server render](../react/react.md#server-render-ssr--rsc).
 
 ### Global Collision
 
@@ -118,7 +117,7 @@ Context.root.get(SubB);        // b
 
 ### Explicit Bypass
 
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses collision handling - no throw, no eviction. Global and explicit entries coexist; explicit wins on lookup.
+Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component for>`) bypasses collision handling - no throw, no eviction. Global and explicit entries coexist; explicit wins on lookup.
 
 ```ts
 const a = Sub.new();          // global, in root
@@ -174,7 +173,7 @@ Bare `Component` (not a subclass) given `for` provides one State to its children
 - Other attributes are typed from the provided State and assign to it on every render.
 - Changing `for` releases the previous item, then provides the next.
 - No suspense boundary unless `fallback` or `catch` is passed. Bare `<Component>` without `for` keeps `fallback = null`.
-- One item only - several belong to a parent State that owns them.
+- One item only - several belong to a parent State that owns them as fields (`class Root extends State { theme = new Theme(); router = new BrowserRouter() }`), where they resolve each other as siblings with `get()`. Nesting `<Component for>` elements works but is a smell: the inner State can `get` the outer, not the reverse.
 
 ## API Surface
 

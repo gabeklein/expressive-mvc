@@ -266,19 +266,16 @@ class Container extends State {
 
 <br />
 
-## Consumer (render prop)
+## Reading context inline
 
-For reading context inline without a new component:
+`Consumer` was removed. Read context with `State.get()` in a small function component - property reads subscribe as usual:
 
 ```tsx
-import { Consumer } from '@expressive/react';
-
-<Consumer for={Theme}>
-  {(theme) => <p style={{ color: theme.color }}>Themed text</p>}
-</Consumer>;
+const Themed = () => {
+  const theme = Theme.get();
+  return <p style={{ color: theme.color }}>Themed text</p>;
+};
 ```
-
-The child function receives a tracking proxy, so property reads subscribe just like `State.get()`.
 
 <br />
 

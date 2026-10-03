@@ -16,7 +16,7 @@ import {
 /**
  * Global only on the client. On the server there is no shared singleton, so a
  * per-request `path`/`query` can't bleed across requests; provide a `Router`
- * per-request (via `<Provider>`) to render a specific path there.
+ * per-request (`<Component for={Router} path={…}>`) to render a specific path there.
  */
 const clientOnly: State.Global = () => typeof window !== 'undefined';
 

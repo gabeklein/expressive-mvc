@@ -11,7 +11,7 @@ import {
 } from 'vitest';
 
 import { act, render, screen } from '@testing-library/preact';
-import { State, Consumer, Context, get, pending, Provider, set } from '.';
+import { State, Context, get, pending, Provider, set } from '.';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
@@ -36,30 +36,28 @@ class Baz extends Bar {}
 
 describe('Provider', () => {
   it('will create instance of given model', () => {
+    function Check() {
+      expect(Foo.get()).toBeInstanceOf(Foo);
+      return null;
+    }
+
     render(
       <Provider for={Foo}>
-        <Consumer for={Foo}>
-          {(i) => {
-            expect(i).toBeInstanceOf(Foo);
-          }}
-        </Consumer>
+        <Check />
       </Provider>
     );
   });
 
   it('will create all models in given object', () => {
+    function Check() {
+      expect(Foo.get()).toBeInstanceOf(Foo);
+      expect(Bar.get()).toBeInstanceOf(Bar);
+      return null;
+    }
+
     render(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Foo}>
-          {(i) => {
-            expect(i).toBeInstanceOf(Foo);
-          }}
-        </Consumer>
-        <Consumer for={Bar}>
-          {(i) => {
-            expect(i).toBeInstanceOf(Bar);
-          }}
-        </Consumer>
+        <Check />
       </Provider>
     );
   });
@@ -70,14 +68,17 @@ describe('Provider', () => {
       bar = 0;
     }
 
+    function Check() {
+      const { foo, bar } = Test.get();
+
+      expect(foo).toBe('hello');
+      expect(bar).toBe(42);
+      return null;
+    }
+
     render(
       <Provider for={Test} foo="hello" bar={42}>
-        <Consumer for={Test}>
-          {(i) => {
-            expect(i.foo).toBe('hello');
-            expect(i.bar).toBe(42);
-          }}
-        </Consumer>
+        <Check />
       </Provider>
     );
   });
@@ -89,13 +90,14 @@ describe('Provider', () => {
 
     const is = vi.fn();
 
+    function Check() {
+      expect(Test.get()).toBeInstanceOf(Test);
+      return null;
+    }
+
     render(
       <Provider for={Test} is={is}>
-        <Consumer for={Test}>
-          {(i) => {
-            expect(i).toBeInstanceOf(Test);
-          }}
-        </Consumer>
+        <Check />
       </Provider>
     );
 
@@ -140,13 +142,14 @@ describe('Provider', () => {
       foo = new Foo();
     }
 
+    function Check() {
+      expect(Foo.get()).toBeInstanceOf(Foo);
+      return null;
+    }
+
     render(
       <Provider for={Bar}>
-        <Consumer for={Foo}>
-          {(i) => {
-            expect(i).toBeInstanceOf(Foo);
-          }}
-        </Consumer>
+        <Check />
       </Provider>
     );
   });
@@ -156,14 +159,17 @@ describe('Provider', () => {
 
     class Test extends State {}
 
+    function Check() {
+      const test = Test.get();
+
+      expect(test).toBeInstanceOf(Test);
+      test.get(() => willDestroy);
+      return null;
+    }
+
     const element = render(
       <Provider for={{ Test }}>
-        <Consumer for={Test}>
-          {(i) => {
-            expect(i).toBeInstanceOf(Test);
-            i.get(() => willDestroy);
-          }}
-        </Consumer>
+        <Check />
       </Provider>
     );
 
@@ -178,9 +184,14 @@ describe('Provider', () => {
 
     const instance = Test.new();
 
+    function Check() {
+      Test.get().get(() => didUnmount);
+      return null;
+    }
+
     const element = render(
       <Provider for={{ instance }}>
-        <Consumer for={Test}>{(i) => void i.get(() => didUnmount)}</Consumer>
+        <Check />
       </Provider>
     );
 
@@ -398,67 +409,30 @@ describe('Provider', () => {
   });
 });
 
-describe('Consumer', () => {
-  it('will render with instance for child-function', async () => {
-    class Test extends State {
-      value = 'foo';
-    }
-
-    const instance = Test.new();
-    const didRender = vi.fn();
-
-    function onRender(instance: Test) {
-      const { value } = instance;
-      didRender(value);
-      return <span>{value}</span>;
-    }
-
-    render(
-      <Provider for={instance}>
-        <Consumer for={Test}>{onRender}</Consumer>
-      </Provider>
-    );
-
-    expect(didRender).toBeCalledWith('foo');
-
-    expect(screen).toHaveText('foo');
-
-    await act(async () => {
-      await instance.set({ value: 'bar' });
-    });
-
-    expect(didRender).toBeCalledWith('bar');
-
-    expect(screen).toHaveText('bar');
-  });
-
-  it('will throw if not found', () => {
-    const test = () => render(<Consumer for={Bar}>{(i) => void i}</Consumer>);
-
-    expect(test).toThrow('Could not find Bar in context.');
-  });
-
+describe('context', () => {
   it('will select extended class', () => {
+    function Check() {
+      expect(Bar.get()).toBeInstanceOf(Baz);
+      return null;
+    }
+
     render(
       <Provider for={Baz}>
-        <Consumer for={Bar}>
-          {(i) => {
-            expect(i).toBeInstanceOf(Baz);
-          }}
-        </Consumer>
+        <Check />
       </Provider>
     );
   });
 
   it('will select closest instance of same type', () => {
+    function Check() {
+      expect(Foo.get().value).toBe('inner');
+      return null;
+    }
+
     render(
       <Provider for={Foo} value="outer">
         <Provider for={Foo} value="inner">
-          <Consumer for={Foo}>
-            {(i) => {
-              expect(i.value).toBe('inner');
-            }}
-          </Consumer>
+          <Check />
         </Provider>
       </Provider>
     );
@@ -480,14 +454,15 @@ describe('get instruction', () => {
   }
 
   it('will attach where created by provider', () => {
+    function Check() {
+      expect(Foo.get().bar).toBeInstanceOf(Bar);
+      return null;
+    }
+
     render(
       <Provider for={Bar}>
         <Provider for={Foo}>
-          <Consumer for={Foo}>
-            {(i) => {
-              expect(i.bar).toBeInstanceOf(Bar);
-            }}
-          </Consumer>
+          <Check />
         </Provider>
       </Provider>
     );
@@ -501,18 +476,18 @@ describe('get instruction', () => {
       foo = get(Foo);
     }
 
+    function Check() {
+      const bar = Bar.get().is;
+      const foo = Foo.get().is;
+
+      expect(bar.foo.bar).toBe(bar);
+      expect(foo.bar.foo).toBe(foo);
+      return null;
+    }
+
     render(
       <Provider for={{ Foo, Bar }}>
-        <Consumer for={Bar}>
-          {({ is }) => {
-            expect(is.foo.bar).toBe(is);
-          }}
-        </Consumer>
-        <Consumer for={Foo}>
-          {({ is }) => {
-            expect(is.bar.foo).toBe(is);
-          }}
-        </Consumer>
+        <Check />
       </Provider>
     );
   });
@@ -757,13 +732,12 @@ describe('root global', () => {
   it('will get from root if not found in context', () => {
     const instance = Global.new();
 
-    render(
-      <Consumer for={Global}>
-        {({ is }) => {
-          expect(is).toBe(instance);
-        }}
-      </Consumer>
-    );
+    function Check() {
+      expect(Global.get().is).toBe(instance);
+      return null;
+    }
+
+    render(<Check />);
 
     instance.set(null);
   });
@@ -771,14 +745,17 @@ describe('root global', () => {
   it('will prefer Provider instance over root global', () => {
     const instance = Global.new();
 
+    function Check() {
+      const global = Global.get();
+
+      expect(global.is).not.toBe(instance);
+      expect(global).toBeInstanceOf(Global);
+      return null;
+    }
+
     render(
       <Provider for={Global}>
-        <Consumer for={Global}>
-          {(i) => {
-            expect(i).not.toBe(instance);
-            expect(i).toBeInstanceOf(Global);
-          }}
-        </Consumer>
+        <Check />
       </Provider>
     );
 

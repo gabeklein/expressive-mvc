@@ -1,5 +1,5 @@
 import { Component, has } from '@expressive/mvc';
-import { Provider, css, macro, render, style } from '@expressive/dom';
+import { css, macro, render, style } from '@expressive/dom';
 import { Link, Route, Router } from '@expressive/router';
 
 class Item extends Component {
@@ -40,7 +40,7 @@ class List extends Component {
 const Frame = (props: { children?: Component.Node }) => (
   <main>
     <Link to="/other">other</Link>
-    <Provider fallback={<p>loading</p>}>{props.children}</Provider>
+    <Component fallback={<p>loading</p>}>{props.children}</Component>
   </main>
 );
 

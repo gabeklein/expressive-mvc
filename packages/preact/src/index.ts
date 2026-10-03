@@ -48,7 +48,7 @@ Object.assign(Runtime, {
   ]
 });
 
-export { Consumer, Provider } from '@expressive/react/adapter'
+export { Provider } from '@expressive/react/adapter'
 
 import { State } from '@expressive/react/adapter'
 

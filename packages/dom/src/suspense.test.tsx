@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, pending } from '@expressive/mvc';
-import { Provider, createPortal, lazy, render } from './index';
+import { createPortal, lazy, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('suspense and recovery', () => {
@@ -26,16 +26,16 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('ready');
   });
 
-  it('will let a Provider own a lazy fallback', async () => {
+  it('will let Component for own a lazy fallback', async () => {
     class Session extends State {}
     const loaded = mockPromise<() => Component.Node>();
     const Lazy = lazy(() => loaded);
     const root = document.createElement('main');
 
     render(
-      <Provider for={Session} fallback={<i>waiting</i>}>
+      <Component for={Session} fallback={<i>waiting</i>}>
         <Lazy />
-      </Provider>,
+      </Component>,
       root
     );
     expect(root.textContent).toBe('waiting');
@@ -694,7 +694,7 @@ describe('suspense and recovery', () => {
       }
 
       render() {
-        return <Provider for={this.mode} fallback={<i>inner</i>}><Leaf /></Provider>;
+        return <Component for={this.mode} fallback={<i>inner</i>}><Leaf /></Component>;
       }
     }
 
@@ -1083,15 +1083,15 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('restored');
   });
 
-  it('will let a Provider without state own a fallback', async () => {
+  it('will let a bare Component own a fallback', async () => {
     const loaded = mockPromise<() => Component.Node>();
     const Lazy = lazy(() => loaded);
     const root = document.createElement('main');
 
     render(
-      <Provider fallback={<i>waiting</i>}>
+      <Component fallback={<i>waiting</i>}>
         <Lazy />
-      </Provider>,
+      </Component>,
       root
     );
     expect(root.textContent).toBe('waiting');

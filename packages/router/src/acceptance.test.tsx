@@ -1,6 +1,6 @@
 import { act, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Component, Consumer } from '@expressive/react';
+import { Component } from '@expressive/react';
 
 import { location, browserRouter } from '../test.setup';
 import { Route } from './route';
@@ -20,9 +20,7 @@ const BlogLayout = (props: { children?: React.ReactNode }) => (
   <section data-blog>{props.children}</section>
 );
 const BlogIndex = () => <p>blog-index</p>;
-const BlogPost = () => (
-  <Consumer for={Route}>{(r) => <article>post:{r.match!.slug}</article>}</Consumer>
-);
+const BlogPost = () => <article>post:{Route.get().match!.slug}</article>;
 const NotFound = () => <p>not-found</p>;
 
 function Tree() {
@@ -69,11 +67,10 @@ describe('acceptance: nested file-routing tree', () => {
   it('navigating /blog/a -> /blog/b preserves the BlogPost instance', async () => {
     location('/blog/a');
     let mountCount = 0;
+    const Slug = () => <span>{Route.get().match!.slug}</span>;
     const Tracked = () => {
       mountCount++;
-      return (
-        <Consumer for={Route}>{(r) => <span>{r.match!.slug}</span>}</Consumer>
-      );
+      return <Slug />;
     };
     const view = render(
       <Route to="/blog/*" as={BlogLayout}>
@@ -91,11 +88,7 @@ describe('acceptance: nested file-routing tree', () => {
 });
 
 describe('acceptance: nested Router', () => {
-  const Page = () => (
-    <Consumer for={CoreRouter}>
-      {(router) => <span>{router.path}</span>}
-    </Consumer>
-  );
+  const Page = () => <span>{CoreRouter.get().path}</span>;
 
   class Flow extends Component {
     router = new CoreRouter({ path: '/one' });

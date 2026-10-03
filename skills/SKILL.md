@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (State vs Component, has-pool domain rows, region controllers), dependency snapshots, presence boundaries with get(true), Provider/context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (State vs Component, has-pool domain rows, region controllers), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
@@ -12,7 +12,7 @@ Class-based reactive state for React. State classes define reactive properties, 
 | Package              | Status    | Description                                                       |
 | -------------------- | --------- | ----------------------------------------------------------------- |
 | `@expressive/mvc`    | Published | Framework-agnostic core. Primary import for State, Component, instructions. |
-| `@expressive/react`  | Published | React adapter. Supplies the host; `Provider` and `Consumer`.       |
+| `@expressive/react`  | Published | React adapter. Supplies the host.                                 |
 | `@expressive/dom`    | Preview   | MVC-native client DOM renderer without a framework dependency.     |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
@@ -24,11 +24,11 @@ Class-based reactive state for React. State classes define reactive properties, 
 npm install @expressive/mvc @expressive/react    # + @expressive/router for routing
 ```
 
-`@expressive/mvc` is a peer dependency - add it to `package.json` and import `State`, `Component` and every instruction from it, whatever the host. `@expressive/react` supplies the host: import it once from your entry module so it registers, and take `Provider` and `Consumer` from it where needed. Its re-exports of the core are deprecated and will be removed, as is the default export of `State` - adapter-augmented `State.*` types are invisible through the default alias, so import `{ State }` by name.
+`@expressive/mvc` is a peer dependency - add it to `package.json` and import `State`, `Component` and every instruction from it, whatever the host. `@expressive/react` supplies the host: import it once from your entry module so it registers. Its re-exports of the core are deprecated and will be removed, as is the default export of `State` - adapter-augmented `State.*` types are invisible through the default alias, so import `{ State }` by name.
 
 React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
 
-For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `State`, `Component` and instructions come from `@expressive/mvc`, while `render`, `createPortal`, `lazy`, `Provider`, `style` and `macro` come from `@expressive/dom`. Its FC model, renderer API, portals, lazy loading, and transition constraints are in [dom/dom.md](dom/dom.md).
+For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `State`, `Component` and instructions come from `@expressive/mvc`, while `render`, `createPortal`, `lazy`, `style` and `macro` come from `@expressive/dom`. Its FC model, renderer API, portals, lazy loading, and transition constraints are in [dom/dom.md](dom/dom.md).
 
 ## Start With Ownership, Not APIs
 
@@ -48,7 +48,7 @@ Counter-rules:
 - Avoid `Component` where a provided `State` suffices - Components carry React instance surface (`props`, `state`, `setState`, `forceUpdate`) that makes `.get()` IntelliSense noisier.
 - Prefer an FC over `Component` when state is zero or reducible and no boundary is wanted - a class holding only `get(...)` fields plus `render()` is an FC snapshotting `.get()`.
 - A render-less `Component` (children pass through while providing context and boundary placement) is only for cases where React tree placement is the feature: route controllers, progressive boundaries.
-- A provided State implicitly provides its child States - prefer `theme = new Theme()` on an existing owner over stacking Providers for every small controller.
+- A provided State implicitly provides its child States - prefer `theme = new Theme()` on an existing owner over stacking `<Component for>` elements for every small controller.
 
 ## Golden-Path Refactor Algorithm
 
@@ -59,7 +59,7 @@ Counter-rules:
 3. Choose `State`, `Component`, or a plain function component for each owner.
 4. Give every repeated UI entry own class in a `has` pool; actions about item belong on item.
 5. Split unrelated clusters remaining on page State to owned region States `composer = new Composer()`. Bias one concern per class - barrels are deliberate (page orchestrator, pool owner, mounting shell); shed a second concern the moment it appears, growing a feature or refactoring one alike.
-6. Provide classes directly `<Provider for={AppState}>` never an instance if only to provide it; the entrypoint Component's own fields provide implicitly - `main` only mounts `<Inbox />`.
+6. Provide classes directly `<Component for={AppState}>` never an instance if only to provide it; the entrypoint Component's own fields provide implicitly - `main` only mounts `<Inbox />`.
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
 9. Let contextual children call `.get()` instead of receiving drilled props.
@@ -77,7 +77,7 @@ Write output in the conventions of [react/style.md](react/style.md). They are op
 
 ```tsx
 import { State, Component, ref, def, get, has, map, pending, set } from '@expressive/mvc';
-import { Consumer, Provider } from '@expressive/react';
+import '@expressive/react'; // once, in the entry module
 ```
 
 ### State Class
@@ -148,7 +148,7 @@ function MyComponent() {
   return <button onClick={increment}>{count}</button>;
 }
 
-// Context state - reads nearest Provider, subscribes reactively
+// Context state - reads nearest provided instance, subscribes reactively
 function Child() {
   const { count } = Counter.get();
   return <span>{count}</span>;
@@ -240,9 +240,9 @@ function SettingsEditor() {
 
 This gives the child a strong contract - no fallback values threaded through its body. Declare gateable fields **optional** (`draft?: SettingsLocation`), not `| null`: the runtime check rejects only `undefined`, and `Required<T>` does not strip `null` from a union (see [react/react.md](react/react.md)). Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
 
-## Provider & Context
+## Providing Context
 
-Pass the class: `<Provider for={TransferState}>`. Pass an instance only when something else owns it (`<Provider for={counter}>` after `Counter.use()`). Several: `for={{ app: AppState, user: UserState }}`. `is` callbacks, fallback, field props: [react/react.md](react/react.md).
+Pass the class: `<Component for={TransferState}>`. Pass an instance only when something else owns it (`<Component for={counter}>` after `Counter.use()`). One item per element - several belong to a parent State owning them as fields, which makes them siblings; nesting `<Component for>` is a smell (the outer cannot `get` the inner). `is`, attributes, boundaries: [state/context.md](state/context.md#providing-with-component).
 
 ## Component Class
 
@@ -313,7 +313,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### React
 
-- [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), Provider, Consumer, transparent writes, ForceRefresh, Vite hot reload
+- [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), providing state, transparent writes, ForceRefresh, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, effects
 

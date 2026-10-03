@@ -11,8 +11,8 @@ const src = (pkg: string) =>
   fileURLToPath(new URL(`../packages/${pkg}/src`, import.meta.url));
 
 // `--mode dom` serves example frames (dom.html) on @expressive/dom: pages compile
-// against its JSX runtime and their `@expressive/react` imports (Provider,
-// Consumer) resolve to dom's equivalents. The React shell is not served there.
+// against its JSX runtime and any `@expressive/react` import resolves to dom.
+// The React shell is not served there.
 export default defineConfig(({ mode }) => {
   const dom = mode == 'dom';
 
