@@ -1,15 +1,7 @@
 import { Runtime } from '@expressive/react/adapter';
 import { Component } from '@expressive/mvc';
 import { options, type ComponentChildren } from 'preact';
-import {
-  createContext,
-  createElement,
-  Suspense,
-  useContext,
-  useEffect,
-  useRef,
-  useState
-} from 'preact/compat';
+import * as compat from 'preact/compat';
 
 import './jsx-runtime';
 import { ErrorBoundary } from './boundary';
@@ -32,20 +24,14 @@ function reject(children: ComponentChildren) {
 }
 
 Object.assign(Runtime, {
-  createElement,
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useRef,
-  Suspense,
+  createElement: compat.createElement,
+  createContext: compat.createContext,
+  useContext: compat.useContext,
+  useEffect: compat.useEffect,
+  useState: compat.useState,
+  useRef: compat.useRef,
+  Suspense: compat.Suspense,
   ErrorBoundary,
-  // Preact has no render-attempt stacking (no fiber-keyed supersession);
-  // teardown is owned by the context, so dedupe is a no-op.
-  dedupe: () => ({
-    commit() {},
-    remove() {}
-  }),
   ignore: [
     '__v',
     '__n',

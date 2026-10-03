@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
-import { Component } from './component';
+import { Component, compose, subcomponents } from './component';
 import { Context } from './context';
 import { pending } from './dispatch';
 import { State, event } from './state';
@@ -407,4 +407,151 @@ describe('transition', () => {
     expect(test.value).toBe('b');
     expect(settled).toBe(true);
   });
+});
+
+describe('subcomponents', () => {
+  const observed = new WeakSet<State>();
+  const observe = (owner: State) => {
+    observed.add(owner);
+    return owner;
+  };
+  const register = (Host: State.Extends, observe: (owner: State) => State) =>
+    Host.on({
+      type: (T) => subcomponents(T.prototype, observe),
+      pre: (self) => subcomponents(self, observe)
+    });
+
+  it('will render a PascalCase method with the observed owner', () => {
+    class Host extends State {
+      label = 'x';
+      Label(this: Host) {
+        return this.label;
+      }
+    }
+
+    register(Host, observe);
+
+    const host = Host.new();
+    const Label = host.Label as unknown as () => string;
+
+    expect(Label()).toBe('x');
+    expect(observed.has(host)).toBe(true);
+    expect(host.Label).toBe(Label);
+  });
+
+  it('will promote a PascalCase function field and take an override', () => {
+    class Host extends State {
+      label = 'x';
+      Label = function (this: Host) {
+        return this.label;
+      };
+    }
+
+    register(Host, observe);
+
+    const host = Host.new();
+    const Label = host.Label as unknown as () => string;
+
+    expect(host.get()).not.toHaveProperty('Label');
+    expect(Label()).toBe('x');
+
+    host.Label = function (this: Host) {
+      return this.label + '!';
+    };
+
+    expect(host.Label).toBe(Label);
+    expect(Label()).toBe('x!');
+  });
+
+  it('will wrap a subcomponent assigned before first access', () => {
+    class Host extends State {
+      label = 'x';
+      Label(this: Host) {
+        return this.label;
+      }
+    }
+
+    register(Host, observe);
+
+    const host = Host.new();
+
+    host.Label = function (this: Host) {
+      return this.label + '?';
+    };
+
+    expect((host.Label as unknown as () => string)()).toBe('x?');
+    expect(observed.has(host)).toBe(true);
+  });
+
+  it('will leave a PascalCase value managed', () => {
+    class Host extends State {
+      Value = 1;
+      render() {
+        return null;
+      }
+    }
+
+    register(Host, observe);
+
+    const host = Host.new();
+
+    expect(host.get()).toHaveProperty('Value', 1);
+  });
+});
+
+describe('composed', () => {
+  it('will compose render layers of a State', () => {
+    class Frame extends State {
+      render(props?: { children?: unknown }) {
+        return `[${props?.children}]`;
+      }
+    }
+
+    class Page extends Frame {
+      render() {
+        return 'page';
+      }
+    }
+
+    const page = Page.new();
+
+    expect(compose.call(page, {})).toBe('[page]');
+  });
+
+  it('will compose a render sealed by the host', () => {
+    class Frame extends State {
+      render(props?: { children?: unknown }) {
+        return `[${props?.children}]`;
+      }
+    }
+
+    Frame.on({
+      type({ prototype }) {
+        const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
+        Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
+      }
+    });
+
+    class Page extends Frame {
+      render() {
+        return 'page';
+      }
+    }
+
+    const page = Page.new();
+
+    expect(compose.call(page, {})).toBe('[page]');
+  });
+
+  it('will pass children through for a State without render', () => {
+    class Bare extends State {}
+
+    const bare = Bare.new();
+
+    expect(compose.call(bare, { children: 'c' })).toBe('c');
+  });
+});
+
+it('will not allow use on a Component', () => {
+  expect(() => (Component as any).use()).toThrow('render it as an element');
 });

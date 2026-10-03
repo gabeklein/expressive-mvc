@@ -37,7 +37,7 @@ export const Runtime = {} as {
   useRef<T>(initial: T): { current: T };
   /** Non-urgent bracket a subscriber replays through; absent where the host
    *  cannot defer, which keeps normal timing. */
-  transition?(work: () => void): void;
+  startTransition?(work: () => void): void;
   /** Consumed for pre-commit revision validation; absent where commits
    *  cannot interleave with writes. */
   useSyncExternalStore?(
@@ -45,8 +45,8 @@ export const Runtime = {} as {
     getSnapshot: () => number,
     getServerSnapshot?: () => number
   ): number;
-  /** Per-render-attempt lifecycle, set by each adapter (React stacks attempts; others no-op). */
-  dedupe(from: Component, context: Context): { commit(): void; remove(): void };
+  /** Per-render-attempt lifecycle; absent where render attempts do not stack. */
+  dedupe?(from: Component, context: Context): { commit(): void; remove(): void };
   /** Host error-boundary component, wrapping a Component whose `catch` is set. */
   ErrorBoundary: unknown;
   Suspense: any;
@@ -205,7 +205,7 @@ export function useWatch<T extends object>(
       return (update) => {
         if (update === true) reset();
       };
-    }, undefined, Runtime.transition);
+    }, undefined, Runtime.startTransition);
 
     return () => {
       const cleanup = mount?.();

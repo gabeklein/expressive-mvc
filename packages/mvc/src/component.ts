@@ -23,6 +23,9 @@ type Acceptable<T> = {
 }[keyof T];
 
 declare namespace Component {
+  /** Not available - a Component is rendered, not used. */
+  const use: never;
+
   /**
    * Host element type produced by `Component.render`. Delegates to the
    * {@link Host} manifest on the jsx-runtime entry; falls back to `any`
@@ -127,14 +130,10 @@ class Component extends State {
       this.set(merge(this.props));
     });
 
-    const self = this;
-
     Object.defineProperty(this, 'render', {
       writable: true,
       configurable: true,
-      value(this: Component, props?: {}) {
-        return render(self).call(this, props);
-      }
+      value: compose
     });
   }
 
@@ -147,9 +146,7 @@ class Component extends State {
    * via `props = {} as { ... }`. Without a parameter (the default below),
    * children pass through.
    *
-   * The constructor installs a composed `render` per instance; the bootstrap
-   * `type` pass seals this and any override non-configurable, keeping it the
-   * content-render seam the chain reads.
+   * The constructor installs a composed `render` per instance.
    */
   render(props?: {}): Component.Node {
     const { children } = (props || this.props) as { children?: Component.Node };
@@ -181,11 +178,6 @@ Object.defineProperty(Component.prototype, 'key', {
   }
 });
 
-/**
- * Seal each class's own `render` non-configurable at bootstrap so member
- * classification leaves it unbound - it stays the content-render seam the chain
- * reads (and which adapters like preact detect as the class-component marker).
- */
 Component.on({
   pre(self) {
     const key = Object.getOwnPropertyDescriptor(self, 'key');
@@ -195,60 +187,94 @@ Component.on({
         enumerable: false,
         writable: false
       });
-  },
-  type(type) {
-    const desc = Object.getOwnPropertyDescriptor(type.prototype, 'render');
-
-    if (desc && typeof desc.value == 'function')
-      Object.defineProperty(type.prototype, 'render', {
-        ...desc,
-        configurable: false
-      });
   }
 });
 
-/**
- * Build (or fetch the cached) composed content render for an instance's class.
- * Walks the prototype chain for content renders strictly below Component - the
- * default render on Component.prototype is excluded and serves as the fallback
- * when a class authors none.
- */
-function render(target: Component) {
-  const cached = CHAIN.get(target.constructor);
-
-  if (cached) return cached;
-
-  let render: Function | undefined;
-  let proto = target;
-
-  while ((proto = Object.getPrototypeOf(proto)) !== Component.prototype) {
-    const desc = Object.getOwnPropertyDescriptor(proto, 'render');
-
-    if (desc) {
-      const layer = unbind(desc.get || desc.value);
-      render = render ? compose(layer, render) : layer;
-    }
+Object.defineProperty(Component, 'use', {
+  configurable: true,
+  value() {
+    throw new Error(`${this} is a Component - render it as an element instead of calling use().`);
   }
+});
 
-  if (!render)
-    render = Component.prototype.render;
+function subcomponents(target: object, observe: (owner: State) => State) {
+  for (const key of Object.getOwnPropertyNames(target)) {
+    if (!/^[A-Z]/.test(key)) continue;
 
-  CHAIN.set(target.constructor, render);
+    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
 
-  return render;
-}
+    if (typeof value != 'function') continue;
 
-/** Wrap an outer render so it receives `inner` as a lazy `children` getter. */
-function compose(outer: Function, inner: Function): Function {
-  return function (this: Component, props?: {}) {
-    const self = this;
-    return outer.call(self, {
-      ...props,
-      get children() {
-        return inner.call(self, props);
+    Object.defineProperty(target, key, {
+      configurable: true,
+      get(this: State) {
+        const owner = this.is;
+        let render = unbind(value);
+        const Subcomponent = (props: unknown) => render.call(observe(owner), props);
+
+        Object.defineProperty(owner, key, {
+          configurable: true,
+          get: () => Subcomponent,
+          set(next: Function) {
+            render = next;
+          }
+        });
+
+        return Subcomponent;
+      },
+      set(this: State, next: unknown) {
+        Object.defineProperty(this, key, {
+          value: next,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+
+        subcomponents(this, observe);
       }
     });
-  };
+  }
+}
+
+/**
+ * Render `this` through its class's composed content render: content renders
+ * up the prototype chain, each base layer receiving the subclass's as a lazy
+ * `children` getter. Falls back to passing `children` through.
+ */
+function compose(this: State, props?: {}) {
+  const type = this.constructor;
+  let render = CHAIN.get(type);
+
+  function method(from: Function) {
+    const desc = Object.getOwnPropertyDescriptor(from.prototype, 'render');
+    if (desc) return unbind(desc.get || desc.value) as Function;
+  }
+
+  if (!render) {
+    function wrap(outer: Function, inner: Function): Function {
+      return function (this: Component, props?: {}) {
+        const self = this;
+        return outer.call(self, {
+          ...props,
+          get children() {
+            return inner.call(self, props);
+          }
+        });
+      };
+    }
+
+    for (let T = type; T !== Component && T !== State; T = Object.getPrototypeOf(T)) {
+      const next = method(T);
+
+      if (next) render = render ? wrap(next, render) : next;
+    }
+
+    if (!render) render = method(Component)!;
+
+    CHAIN.set(type, render);
+  }
+
+  return render.call(this, props);
 }
 
 /** Drop composed renders, so each is rebuilt from current prototypes. */
@@ -256,4 +282,4 @@ function rechain() {
   CHAIN = new WeakMap();
 }
 
-export { Component, rechain };
+export { Component, compose, rechain, subcomponents };

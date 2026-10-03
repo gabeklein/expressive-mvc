@@ -1589,6 +1589,30 @@ describe('renderable State', () => {
     expect(root.textContent).toBe('two');
   });
 
+  it('will compose render layers of a renderable State', async () => {
+    class Frame extends State {
+      render(props?: { children?: Component.Node }) {
+        return <b>{props?.children}!</b>;
+      }
+    }
+
+    class Page extends Frame {
+      label = 'page';
+      render() {
+        return <i>{this.label}</i>;
+      }
+    }
+
+    let page!: Page;
+    const root = document.createElement('main');
+    render(<Page is={(value) => (page = value)} />, root);
+    expect(root.textContent).toBe('page!');
+
+    page.label = 'next';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('next!');
+  });
+
   it('will reconcile keyed renderable States', async () => {
     class Item extends State {
       value = '';

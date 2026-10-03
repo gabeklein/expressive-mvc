@@ -327,6 +327,41 @@ describe('accept', () => {
     expect(test.Sealed).toBe('before');
   });
 
+  it('will patch a method the host sealed', () => {
+    const id = module();
+
+    const version = (label: string) => {
+      class Test extends State {
+        sealed() {
+          return label;
+        }
+      }
+
+      Test.on({
+        type({ prototype }) {
+          const desc = Object.getOwnPropertyDescriptor(prototype, 'sealed')!;
+
+          if (desc.configurable)
+            Object.defineProperty(prototype, 'sealed', { ...desc, configurable: false });
+        }
+      });
+
+      return Test;
+    };
+
+    const Test = version('before');
+
+    accept(id, { Test });
+
+    const test = Test.new() as any;
+
+    expect(test.sealed()).toBe('before');
+
+    accept(id, { Test: version('after') });
+
+    expect(test.sealed()).toBe('after');
+  });
+
   it('will pass a method to an instance setter', () => {
     const id = module();
     const received = vi.fn();
