@@ -43,6 +43,8 @@ avatar = set(async () => fetchAvatar(), false); // User['avatar'] | undefined
 ```
 
 > A `Component` gives you the boundary for free: set its `fallback` and any pending property in `render()` is covered, no `<Suspense>` wrapper needed. Details in [Components](/docs/guides/components#suspense). For a headless-State version of this pattern, see [essentials/async](/examples/essentials/async).
+>
+> Whichever boundary catches, the pending value must be owned **above** it. A boundary rebuilds the subtree it retries, so a State created below it is constructed again on every retry and requests again - a silent loop.
 
 <br />
 
@@ -63,7 +65,7 @@ class Session extends State {
 The async `user` factory reads `this.userId`. If `userId` hasn't been assigned, the factory itself suspends - and the cascade resolves automatically when `userId` arrives. You describe a dependency graph ("user depends on userId") and the library handles the timing. ✨
 
 > **Good to know:** <br/>
-> If the state is destroyed while something still awaits a pending property, that promise **rejects** (`Session is destroyed.`) rather than hang forever. Anything awaiting a suspense throw should expect that.
+> If the state is destroyed while something still awaits a pending property, that promise **rejects** (`Session-K3Q9ZB is destroyed.`) rather than hang forever. Anything awaiting a suspense throw should expect that.
 
 <br />
 
@@ -173,6 +175,8 @@ class Profile extends Component {
 ```
 
 The full `catch()` and `fallback` semantics live in [Components](/docs/guides/components#error-boundaries).
+
+A rejection nobody renders is different. An async `new()`, or a constructor callback returning a promise, has no reader for its failure to reach - the state is still created, and the rejection goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-stateon) with kind `setup`. Unhandled, it escapes uncaught. The same goes for an async method that keeps writing after its state is destroyed: those writes are stored, reported with kind `dead`, and unhandled, output nothing.
 
 <br />
 

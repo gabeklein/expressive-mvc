@@ -9,7 +9,7 @@ and `Link` is an extendable Component. It supports React through
 `@expressive/react`, but the router core imports only `@expressive/mvc`.
 
 ```bash
-npm install @expressive/router @expressive/react react
+npm install @expressive/router @expressive/mvc @expressive/react react
 ```
 
 The package is pre-1.0. Its public route and navigation contract is tested at
@@ -189,11 +189,11 @@ and `Group` subcomponents to match the application navigation.
 
 The `Route.redirect` prop runs before a matched route enters:
 
-| Guard result                  | Outcome                                        |
-| ----------------------------- | ---------------------------------------------- |
-| non-empty string              | Redirect there, replacing history.             |
-| `undefined`, `false`, or `''` | Allow the route.                               |
-| `null`                        | Cede the path to the nearest scoped `none` Route. |
+| Guard result         | Outcome                                           |
+| -------------------- | ------------------------------------------------- |
+| non-empty string     | Redirect there, replacing history.                |
+| `undefined` or `''`  | Allow the route.                                  |
+| `null`               | Cede the path to the nearest scoped `none` Route. |
 
 ```tsx
 <Route
@@ -205,9 +205,11 @@ The `Route.redirect` prop runs before a matched route enters:
 ```
 
 An async guard suspends. On cold load its `fallback` renders; during in-app
-navigation the previous page normally remains visible. Guard verdicts are
-cached while navigation stays inside the matched route space and re-evaluated
-after leaving and re-entering it.
+navigation the previous page normally remains visible. The guard takes no
+arguments; read state from the declaring class. Its verdict is cached per
+concrete path of the route's own pattern: navigation below the route reuses it,
+while leaving and re-entering, or changing the route's own params
+(`/document/1` to `/document/2` on `document/:id`), runs the guard again.
 
 Use `null` for a resource that should behave as not found. Put the leaf inside a
 scope with a `none` child so there is somewhere local to fall through.
@@ -222,9 +224,11 @@ const Report = lazy(() => import('./Report'));
 <Route to="reports/:id" fallback={<Spinner />} as={Report} />;
 ```
 
-Every navigation passes through protected `Router.navigate(work)`. Its default
-uses the host transition scheduler, so an in-app navigation which suspends holds
-the outgoing screen instead of flashing the route fallback. Cold load still
+Every navigation (`goto`, `Link`, query writes, `back`/`go`, and Back/Forward)
+passes through protected `Router.navigate(work)`. Its default is
+`pending(work)` from `@expressive/mvc`, which the React adapter applies as a
+non-urgent transition, so an in-app navigation which suspends holds the
+outgoing screen instead of flashing the route fallback. Cold load still
 uses `fallback` because no prior screen exists.
 
 `router.navigating` is true until the current navigation appears. Read it from a
@@ -291,7 +295,11 @@ the owning State should use `AbortController` or its own generation check.
   routing, redirects, loader serialization, and hydration are not a supported
   SSR routing system today.
 - On React Native, use `Router` and render navigation controls from native host
-  components. `BrowserRouter`, `Link`, and `NavLinks` are DOM-facing.
+  components that call `goto`. `BrowserRouter`, `Link`, and `NavLinks` are
+  DOM-facing.
+- A Component may own its own `Router` as a field. Routes it renders match that
+  router, with location and history isolated from any outer router, which suits
+  embedded flows such as a wizard.
 
 Current location state is pathname, single-valued query parameters, and an
 opaque fragment. Basename mounting, arbitrary `history.state`, automatic
@@ -310,9 +318,9 @@ it('renders a mission', async () => {
   const router = Router.new({ path: '/missions/moonraker' });
 
   render(
-    <Provider for={router}>
+    <Component for={router}>
       <AppRoutes />
-    </Provider>
+    </Component>
   );
 
   expect(screen.getByText('Operation moonraker')).toBeVisible();
@@ -328,11 +336,13 @@ the UI with the renderer's normal async helpers; `goto()` intentionally returns
 ## See it running
 
 - [Overview](/examples/router/overview)
+- [Browser history](/examples/router/browser)
 - [Params](/examples/router/params)
 - [Query](/examples/router/query)
 - [Guards](/examples/router/guards)
 - [Transitions](/examples/router/transitions)
 - [Generated navigation](/examples/router/nav)
+- [Wizard](/examples/router/wizard)
 
 <Playground of="router/overview" />
 

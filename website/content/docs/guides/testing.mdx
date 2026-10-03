@@ -295,8 +295,6 @@ afterEach(() => Context.root.pop());
 
 `pop()` removes every State registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch globals you won't miss it - the first time one does, you will.
 
-> `Context` is also re-exported from `@expressive/react`, so no extra dependency either way.
-
 <br />
 
 ## Testing destruction
@@ -319,15 +317,51 @@ test('cleans up on destroy', () => {
 });
 ```
 
+A write to a destroyed state doesn't throw - the value is stored without dispatch, so a late continuation runs to its end. Each such write is reported to `catch` handlers with kind `dead`, and unhandled it outputs nothing. That silence is right in production, but in tests a repeated late write usually means an interval or subscription outlived its owner. To make the run fail on one, escalate from a handler in your test setup:
+
+```ts
+import { State } from '@expressive/mvc';
+
+State.on({
+  catch(error) {
+    throw error;
+  }
+});
+```
+
+A handler's throw escapes uncaught, as does any report no handler takes. To assert on a failure rather than fail the run, record it instead - a handled report doesn't escape:
+
+```ts
+test('reports a write after destroy', () => {
+  class Clock extends State {
+    elapsed = 0;
+  }
+
+  const kinds: string[] = [];
+  const stop = Clock.on({ catch: (error, kind) => void kinds.push(kind) });
+
+  const clock = Clock.new();
+  clock.set(null);
+  clock.elapsed = 1;
+
+  expect(kinds).toEqual(['dead']);
+  expect(clock.elapsed).toBe(1);
+  stop();
+});
+```
+
+`State.on` returns a function removing the handler. Kinds and the default for each are listed under [API: State](/docs/api/state#error-handling).
+
 <br />
 
 ## Rendering a Component
 
-When you do want to mount a `Component` subclass, your normal React setup applies - Expressive adds nothing special to the harness. The one trick worth knowing: pass `is` to capture the instance, then drive it directly.
+When you do want to mount a `Component` subclass, your normal React setup applies - Expressive adds nothing special to the harness beyond importing `@expressive/react` once, as your app's entry does (a setup file works). The one trick worth knowing: pass `is` to capture the instance, then drive it directly.
 
 ```tsx
+import '@expressive/react';
 import { render, act, screen } from '@testing-library/react';
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 test('refreshes on update', async () => {
   class Control extends Component {

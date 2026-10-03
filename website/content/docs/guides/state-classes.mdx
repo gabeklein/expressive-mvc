@@ -6,7 +6,7 @@ description: Defining properties, methods, and lifecycle on State
 Everything in Expressive starts here. Reactivity, components, context, async - all of it builds on a class that extends `State`.
 
 ```ts
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class Counter extends State {
   count = 0;
@@ -70,7 +70,7 @@ All writes in the same tick batch into a single flush (via `queueMicrotask`), an
 
 Not everything on a class is state the UI should watch. Subscription handles, timers, configuration and bookkeeping belong on the instance, but a write to them shouldn't cause a render. There are two ways to keep a field out of the reactive system, and they work together.
 
-**A `_` prefix** on a class field marks it as unmanaged. Read and write it like any other property - from methods, effects, computeds or `render()`, the write always lands on the instance. It never notifies anyone, it's hidden from `get()`, iteration and `Object.keys()`, and writing to it after the instance is destroyed doesn't throw. Constructor arguments, `set({ ... })` and Component props can still assign it, so it's a good place for configuration a parent passes in without making it reactive. Like any prop, a `_` prop the parent stops passing resets to `undefined`.
+**A `_` prefix** on a class field marks it as unmanaged. Read and write it like any other property - from methods, effects, computeds or `render()`, the write always lands on the instance. It never notifies anyone, it's hidden from `get()`, iteration and `Object.keys()`, and writing to it after the instance is destroyed isn't reported. Constructor arguments, `set({ ... })` and Component props can still assign it, so it's a good place for configuration a parent passes in without making it reactive. Like any prop, a `_` prop the parent stops passing resets to `undefined`.
 
 ```ts
 class Job extends State {
@@ -185,7 +185,7 @@ A State has four phases:
 | Construction | `new MyState()`     | Fields are set to their initial values, no reactivity yet           |
 | Activation   | `State.new()`       | Properties become managed, constructor args run, `new()` hook fires |
 | Operation    | Property assignment | Batched updates flush via microtask, effects re-run                 |
-| Destruction  | `state.set(null)`   | Children destroyed first, listeners notified, state frozen          |
+| Destruction  | `state.set(null)`   | Children destroyed first, listeners notified, dispatch stops        |
 
 ### The `new()` hook
 
@@ -202,7 +202,7 @@ class Timer extends State {
 }
 ```
 
-`new()` runs once, after fields are initialized and constructor arguments are applied. Everything on `this` is live by then - assign, read, call methods, register effects.
+`new()` runs once, after fields are initialized and constructor arguments are applied. Everything on `this` is live by then - assign, read, call methods, register effects. [Hot reload](/docs/getting-started#hot-reload-vite) doesn't re-run it either: an edit to `new()` reloads the page, while other edits patch live instances in place.
 
 > **Timing:** the constructor body (and `State.on` setup) runs *before* arguments merge, so it only ever sees field defaults. `new()` runs *after* - making it the right place to read a value passed via `.new({ ... })`, or props in adapters.
 
@@ -236,7 +236,18 @@ const stop = Timer.on({
 });
 ```
 
-`pre` runs per-instance, before `new()`; `new` runs with it, and `type` once per class - see [API: State](/docs/api/state).
+`pre` runs per-instance, before `new()`; `new` runs with it, and `type` once per class - see [API: State](/docs/api/state#stateonhandler).
+
+A `catch` handler hears failures no caller was positioned to catch - a rejected async initializer (kind `setup`), a getter or effect throwing during an update (`getter`, `effect`), a write after destruction (`dead`), an instance constructed but never activated (`unused`). It receives the raw error, the `kind` string and, where one applies, the key. Return nothing to handle it, or return the error to pass it on. Passed off the end, a `dead` write outputs nothing, `unused` warns, and the rest escape uncaught.
+
+```ts
+State.on({
+  catch(error, kind, key) {
+    if (kind == 'unused') return error;
+    tracker.capture(error, { state: String(this), kind, key });
+  }
+});
+```
 
 ### The `use()` hook (React only)
 
@@ -280,13 +291,15 @@ Use `use()` for every-render bridging. For one-shot setup, prefer `new()`.
 state.set(null);
 ```
 
-This is automatic in React - `State.use()` destroys on unmount, `Provider` destroys on unmount. You rarely call it yourself. When destruction runs:
+This is automatic in React - `State.use()` destroys on unmount, and so does `<Component for={MyState}>` for the instance it constructs. You rarely call it yourself. When destruction runs:
 
 1. **Children are destroyed first**, inner-to-outer.
 2. **Listeners are notified** with a `null` signal.
 3. **Effect cleanups run** with their argument set to `null`.
 4. **The `new()` hook's returned cleanup** is called.
-5. **The state is frozen** - further writes throw.
+5. **Dispatch stops** - no further events or effects.
+
+A write that lands afterward - a late fetch, a timer nobody cleared - is stored without notifying anyone, so the code that made it runs to its end. Each such write is reported to [`catch` handlers](#class-level-setup-with-stateon) with kind `dead`; unhandled, it outputs nothing. One late completion is harmless; repeated late writes mean work outlived its owner, so cancel it in a cleanup rather than guarding writes. Subscribing to a destroyed state still throws.
 
 <br />
 
@@ -326,7 +339,7 @@ function UserStreet() {
 
 ## Constructor arguments
 
-Beyond initial values and callbacks, `.new()` / `.use()` accepts arrays of arguments (flattened) and promises (caught and logged if rejected). All are applied in order during activation:
+Beyond initial values and callbacks, `.new()` / `.use()` accepts arrays of arguments (flattened). A callback may return a cleanup, an object to assign, more arguments, or a promise - a rejected promise is reported to [`catch` handlers](#class-level-setup-with-stateon) with kind `setup` and, unhandled, escapes uncaught. All are applied in order during activation:
 
 ```ts
 const t = Test.new(
