@@ -5,6 +5,7 @@ import { Fragment, compose } from '@expressive/mvc/jsx-runtime';
 
 import { call, commit, dispose, enter } from './adapter';
 import { latest, same, track, untrack } from './hot';
+import { resolve } from './loader';
 import type { Scope } from './adapter';
 import {
   appearanceRoot,
@@ -264,7 +265,10 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   fiber.boundary = boundary;
   fiber.appearance = resolved.appearance;
   fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
-  fiber.render = () => enter(fiber.scope!, () => call(latest(fiber.type as Function), fiber.props));
+  fiber.render = () => enter(fiber.scope!, () => {
+    const type = latest(fiber.type as Function);
+    return resolve(type, fiber.props!, () => call(type, fiber.props));
+  });
   track(fiber.type as Function, fiber.scope);
   probing(fiber);
 

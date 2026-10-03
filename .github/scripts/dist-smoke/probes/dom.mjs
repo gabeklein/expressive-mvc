@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import State, { Component } from '@expressive/mvc';
-import { Fragment, Portal, createElement, lazy, macro, render, style } from '@expressive/dom';
+import { Fragment, Portal, createElement, macro, render, style } from '@expressive/dom';
 import { jsx, jsxs } from '@expressive/dom/jsx-runtime';
 import { jsxDEV } from '@expressive/dom/jsx-dev-runtime';
 
-for (const [name, value] of Object.entries({ State, Component, createElement, lazy, macro, render, style, jsx, jsxs, jsxDEV }))
+for (const [name, value] of Object.entries({ State, Component, createElement, macro, render, style, jsx, jsxs, jsxDEV }))
   assert.equal(typeof value, 'function', name + ' is not exported by the built dist');
 
 assert.equal(typeof Portal, 'symbol', 'Portal is not exported by the built dist');
