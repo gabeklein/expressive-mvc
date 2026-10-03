@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, has, map } from '@expressive/mvc';
-import { createPortal, render } from './index';
-import { flushMicrotasks } from '../test.setup';
+import { Fragment, Portal, lazy, render } from './index';
+import { flushMicrotasks, mockPromise } from '../test.setup';
 import { vnode } from './vnode';
 
 if (false) {
@@ -1102,16 +1102,118 @@ describe('render', () => {
     expect([...root.querySelectorAll('li')]).toEqual([b, a]);
   });
 
+  it('will resolve a selector target once and move when it changes', async () => {
+    const first = document.createElement('aside');
+    const second = document.createElement('aside');
+    const query = vi.spyOn(document, 'querySelectorAll');
+
+    first.id = 'first';
+    second.className = 'second';
+    document.body.append(first, second);
+
+    class Modal extends State {
+      message = 'open';
+      target = '#first';
+
+      render() {
+        return <Portal into={this.target}><b>{this.message}</b></Portal>;
+      }
+    }
+
+    let modal!: Modal;
+    const release = render(<Modal is={(value) => (modal = value)} />, document.createElement('main'));
+
+    expect(first.textContent).toBe('open');
+
+    modal.message = 'still';
+    await flushMicrotasks();
+    expect(first.textContent).toBe('still');
+    expect(query).toBeCalledTimes(1);
+
+    modal.target = '.second';
+    await flushMicrotasks();
+    expect(first.textContent).toBe('');
+    expect(second.textContent).toBe('still');
+    expect(query).toBeCalledTimes(2);
+
+    release();
+    query.mockRestore();
+    first.remove();
+    second.remove();
+  });
+
+  it('will resolve a selector target rendered beside it off-document', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+
+    class Page extends State {
+      fallback = <i>wait</i>;
+
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    document.body.append(root);
+    render(<Page />, root);
+
+    loaded.resolve(() => <><div id="slot" /><Portal into="#slot"><b>moved</b></Portal></>);
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(root.querySelector('#slot')!.textContent).toBe('moved');
+    root.remove();
+  });
+
+  it('will throw if a selector target is missing or ambiguous', () => {
+    const one = document.createElement('i');
+    const two = document.createElement('i');
+
+    one.className = two.className = 'many';
+    document.body.append(one, two);
+
+    expect(() => render(<Portal into="#none">x</Portal>, document.createElement('main')))
+      .toThrow('Portal target "#none" was not found.');
+    expect(() => render(<Portal into=".many">x</Portal>, document.createElement('main')))
+      .toThrow('Portal target ".many" is ambiguous.');
+
+    one.remove();
+    two.remove();
+  });
+
+  it('will keep keyed fragments across a reorder', async () => {
+    class List extends State {
+      order = ['a', 'b'];
+
+      render() {
+        return <>{this.order.map((id) => <Fragment key={id}><dt>{id}</dt><dd>{id}</dd></Fragment>)}</>;
+      }
+    }
+
+    let list!: List;
+    const root = document.createElement('dl');
+    render(<List is={(value) => (list = value)} />, root);
+
+    const first = root.querySelector('dt');
+
+    list.order = ['b', 'a'];
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('bbaa');
+    expect(root.querySelectorAll('dt')[1]).toBe(first);
+  });
+
   it('will render and move portal children with logical context', async () => {
-    const portal = document.createElement('aside');
+    const aside = document.createElement('aside');
     const nextPortal = document.createElement('aside');
 
     class Modal extends Component {
       message = 'open';
-      target = portal;
+      target = aside;
 
       render() {
-        return createPortal(<button>{this.message}</button>, this.target);
+        return <Portal into={this.target}><button>{this.message}</button></Portal>;
       }
     }
 
@@ -1120,15 +1222,15 @@ describe('render', () => {
     const release = render(<Modal is={(value) => (modal = value)} />, root);
 
     expect(root.querySelector('button')).toBeNull();
-    expect(portal.textContent).toBe('open');
+    expect(aside.textContent).toBe('open');
 
     modal.message = 'closed';
     await flushMicrotasks();
-    expect(portal.textContent).toBe('closed');
+    expect(aside.textContent).toBe('closed');
 
     modal.target = nextPortal;
     await flushMicrotasks();
-    expect(portal.textContent).toBe('');
+    expect(aside.textContent).toBe('');
     expect(nextPortal.textContent).toBe('closed');
 
     release();
@@ -1312,5 +1414,480 @@ describe('render', () => {
     expect(() => render({} as never, root)).toThrow('Cannot render');
     expect(() => render(vnode(Symbol('unknown'), {}), root)).toThrow('Cannot render');
     expect(root.textContent).toBe('');
+  });
+});
+
+describe('renderable State', () => {
+  it('will render a State with a render method', async () => {
+    const lifecycle: string[] = [];
+    let panel!: Panel;
+
+    class Panel extends State {
+      label = 'idle';
+      count = 0;
+
+      mount() {
+        lifecycle.push('mount');
+        return () => lifecycle.push('unmount');
+      }
+
+      render() {
+        return <span>{this.label}:{this.count}</span>;
+      }
+    }
+
+    const root = document.createElement('main');
+    const release = render(<Panel label="busy" is={(value) => (panel = value)} />, root);
+
+    expect(root.textContent).toBe('busy:0');
+    expect(lifecycle).toEqual(['mount']);
+
+    panel.count = 2;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('busy:2');
+
+    release();
+    expect(lifecycle).toEqual(['mount', 'unmount']);
+    expect(panel.get(null)).toBe(true);
+  });
+
+  it('will apply props to fields and pass the rest to render', async () => {
+    class Panel extends State {
+      label = '';
+
+      render(props: { children?: Component.Node }) {
+        return <b>{this.label}{props.children}</b>;
+      }
+    }
+
+    class App extends Component {
+      label = 'one';
+      render() {
+        return <Panel label={this.label}>!</Panel>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    expect(root.textContent).toBe('one!');
+
+    app.label = 'two';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('two!');
+  });
+
+  it('will reset a field when its prop is dropped', async () => {
+    class Panel extends State {
+      label?: string = 'default';
+      render() {
+        return <b>{this.label ?? 'none'}</b>;
+      }
+    }
+
+    class App extends Component {
+      passing = true;
+      render() {
+        return this.passing ? <Panel label="given" /> : <Panel />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    expect(root.textContent).toBe('given');
+
+    app.passing = false;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('none');
+  });
+
+  it('will pass children through and provide a State without render', async () => {
+    class Session extends State {
+      name = 'Ada';
+    }
+
+    let session!: Session;
+
+    function Leaf() {
+      return <b>{Session.get().name}</b>;
+    }
+
+    function Sibling() {
+      return <i>{Session.get(false) ? 'leak' : 'none'}</i>;
+    }
+
+    const root = document.createElement('main');
+    const release = render(
+      <>
+        <Session name="Grace" is={(value) => (session = value)}>
+          <Leaf />
+        </Session>
+        <Sibling />
+      </>,
+      root
+    );
+
+    expect(root.textContent).toBe('Gracenone');
+
+    session.name = 'Hopper';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('Hoppernone');
+
+    release();
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will render a client extension of a plain State', async () => {
+    class Session extends State {
+      user = 'anon';
+    }
+
+    class SessionView extends Session {
+      render() {
+        return <span>{this.user}</span>;
+      }
+    }
+
+    function Leaf() {
+      return <b>{Session.get().user}</b>;
+    }
+
+    let view!: SessionView;
+    const root = document.createElement('main');
+    render(
+      <SessionView user="ada" is={(value) => (view = value)}>
+        <Leaf />
+      </SessionView>,
+      root
+    );
+
+    expect(root.textContent).toBe('ada');
+    expect(view).toBeInstanceOf(Session);
+
+    view.user = 'grace';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('grace');
+  });
+
+  it('will render a State instance inline', async () => {
+    class Panel extends State {
+      label = 'inline';
+      render() {
+        return <span>{this.label}</span>;
+      }
+    }
+
+    const panel = Panel.new();
+    const root = document.createElement('main');
+    render(<div>{panel}</div>, root);
+    expect(root.textContent).toBe('inline');
+
+    panel.label = 'changed';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('changed');
+    expect(panel.get(null)).toBe(false);
+  });
+
+  it('will not render a State instance without a render method', () => {
+    class Bare extends State {}
+    const root = document.createElement('main');
+    expect(() => render(<div>{Bare.new() as never}</div>, root)).toThrow('Cannot render');
+  });
+
+  it('will own a boundary only when a State declares fallback or catch', async () => {
+    class Bare extends State {
+      broken = true;
+      render() {
+        if (this.broken) throw new Error('broken');
+        return <p>bare</p>;
+      }
+    }
+
+    class Guarded extends State {
+      fallback = <i>guarded</i>;
+      broken = true;
+
+      catch() {
+        this.broken = false;
+      }
+
+      render() {
+        if (this.broken) throw new Error('broken');
+        return <p>guarded</p>;
+      }
+    }
+
+    class App extends Component {
+      fallback = <i>outer</i>;
+      caught = 0;
+
+      catch() {
+        this.caught++;
+      }
+
+      render() {
+        return <Bare />;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    expect(root.textContent).toBe('outer');
+    expect(app.caught).toBe(1);
+
+    const other = document.createElement('main');
+    render(<Guarded />, other);
+    expect(other.textContent).toBe('guarded');
+    await flushMicrotasks();
+    expect(other.textContent).toBe('guarded');
+  });
+
+  it('will own a boundary from a fallback on the element', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = lazy(() => loaded);
+
+    class Plain extends State {
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Plain fallback={<i>loading</i>} />, root);
+    expect(root.textContent).toBe('loading');
+
+    loaded.resolve(() => <b>ready</b>);
+    await flushMicrotasks();
+    expect(root.textContent).toBe('ready');
+  });
+
+  it('will keep a State which suspends itself', async () => {
+    const loaded = mockPromise<void>();
+    const created = vi.fn();
+    let ready = false;
+
+    class Report extends State {
+      count = 1;
+
+      new() {
+        created();
+      }
+
+      render() {
+        if (!ready) throw loaded;
+        return <p>{this.count}</p>;
+      }
+    }
+
+    let report!: Report;
+    const root = document.createElement('main');
+    render(<Report is={(value) => (report = value)} fallback={<i>loading</i>} />, root);
+    expect(root.textContent).toBe('loading');
+
+    report.count = 2;
+    ready = true;
+    loaded.resolve();
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('2');
+    expect(created).toHaveBeenCalledTimes(1);
+  });
+
+  it('will prefer an element fallback over the member', () => {
+    const Lazy = lazy(() => new Promise<never>(() => {}));
+
+    class Guarded extends State {
+      fallback: Component.Node = <i>member</i>;
+
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Guarded fallback={<i>element</i>} />, root);
+    expect(root.textContent).toBe('element');
+
+    const other = document.createElement('main');
+    render(<Guarded />, other);
+    expect(other.textContent).toBe('member');
+
+    if (false) {
+      class Labelled extends State {
+        fallback = 'label' as const;
+      }
+
+      // @ts-expect-error a member named fallback narrows the element's attribute
+      <Labelled fallback={<i />} />;
+    }
+  });
+
+  it('will call an element catch with the error and instance', async () => {
+    const caught = vi.fn();
+    let plain!: Plain;
+
+    class Plain extends State {
+      broken = true;
+
+      render() {
+        if (this.broken) throw new Error('broken');
+        return <p>fixed</p>;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(
+      <Plain
+        is={(value) => (plain = value)}
+        fallback={<i>recovering</i>}
+        catch={(error: Error, instance: Plain) => {
+          caught(error.message, instance);
+          instance.broken = false;
+        }}
+      />,
+      root
+    );
+
+    expect(caught).toHaveBeenCalledWith('broken', plain);
+    expect(root.textContent).toBe('recovering');
+
+    await flushMicrotasks();
+    expect(root.textContent).toBe('fixed');
+  });
+
+  it('will not own a boundary from fallback on a function component', () => {
+    const received = vi.fn();
+    const Lazy = lazy(() => new Promise<never>(() => {}));
+
+    function View(props: { fallback?: string }) {
+      received(props.fallback);
+      return <Lazy />;
+    }
+
+    class Outer extends State {
+      fallback = <i>outer</i>;
+
+      render() {
+        return <View fallback="inner" />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Outer />, root);
+    expect(received).toHaveBeenCalledWith('inner');
+    expect(root.textContent).toBe('outer');
+  });
+
+  it('will use members for a placed instance', () => {
+    const Lazy = lazy(() => new Promise<never>(() => {}));
+
+    class Placed extends State {
+      fallback = <i>member</i>;
+
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<div>{Placed.new() as never}</div>, root);
+    expect(root.textContent).toBe('member');
+  });
+
+  it('will bind PascalCase methods of a renderable State as subcomponents', async () => {
+    class Panel extends State {
+      label = 'one';
+
+      Label() {
+        return <b>{this.label}</b>;
+      }
+
+      render() {
+        return <this.Label />;
+      }
+    }
+
+    let panel!: Panel;
+    const root = document.createElement('main');
+    render(<Panel is={(value) => (panel = value)} />, root);
+    expect(root.textContent).toBe('one');
+
+    panel.label = 'two';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('two');
+  });
+
+  it('will render a PascalCase function field as a plain function component', async () => {
+    const First = ({ text }: { text: string }) => <b>{text}</b>;
+    const Second = ({ text }: { text: string }) => <i>{text}</i>;
+
+    class Panel extends State {
+      Badge = First;
+
+      render() {
+        return <this.Badge text="x" />;
+      }
+    }
+
+    let panel!: Panel;
+    const root = document.createElement('main');
+    render(<Panel is={(value) => (panel = value)} />, root);
+    expect(root.querySelector('b')?.textContent).toBe('x');
+    expect(panel.Badge).toBe(First);
+
+    panel.Badge = Second;
+    await flushMicrotasks();
+    expect(root.querySelector('i')?.textContent).toBe('x');
+  });
+
+  it('will compose render layers of a renderable State', async () => {
+    class Frame extends State {
+      render(props?: { children?: Component.Node }) {
+        return <b>{props?.children}!</b>;
+      }
+    }
+
+    class Page extends Frame {
+      label = 'page';
+      render() {
+        return <i>{this.label}</i>;
+      }
+    }
+
+    let page!: Page;
+    const root = document.createElement('main');
+    render(<Page is={(value) => (page = value)} />, root);
+    expect(root.textContent).toBe('page!');
+
+    page.label = 'next';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('next!');
+  });
+
+  it('will reconcile keyed renderable States', async () => {
+    class Item extends State {
+      value = '';
+      render() {
+        return <li>{this.value}</li>;
+      }
+    }
+
+    class App extends Component {
+      items = ['a', 'b'];
+      render() {
+        return <ul>{this.items.map((value) => <Item key={value} value={value} />)}</ul>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+    expect(root.textContent).toBe('ab');
+
+    app.items = ['b', 'c'];
+    await flushMicrotasks();
+    expect(root.textContent).toBe('bc');
   });
 });

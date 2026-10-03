@@ -1,9 +1,9 @@
-import { Component, Context } from '@expressive/mvc';
+import { Component, Context, State } from '@expressive/mvc';
 import { has, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
-import { Fragment } from '@expressive/mvc/jsx-runtime';
+import { Fragment, compose } from '@expressive/mvc/jsx-runtime';
 
-import { commit, dispose, enter } from './adapter';
+import { call, commit, dispose, enter } from './adapter';
 import { latest, same, track, untrack } from './hot';
 import type { Scope } from './adapter';
 import {
@@ -14,14 +14,13 @@ import {
   enterAppearance
 } from './appearance-protocol';
 import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
-import { Provider, provide } from './context';
 import { applyDeclarations } from './declarations';
 import { afterFlush, claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
 import type { Key, Node as RenderNode, VNode } from './vnode';
 
 type Container = Element | DocumentFragment;
-type Kind = 'collection' | 'component' | 'element' | 'fragment' | 'function' | 'portal' | 'provider' | 'text';
+type Kind = 'collection' | 'component' | 'element' | 'fragment' | 'function' | 'portal' | 'text';
 
 interface Boundary {
   catch?: (error: Error) => Promise<void> | void;
@@ -30,6 +29,17 @@ interface Boundary {
   parent?: Boundary;
   waiting?: Set<Fiber>;
 }
+
+interface Renderable extends State {
+  props?: Record<string, any>;
+  key?: Key;
+  fallback?: RenderNode | false;
+  catch?(error: Error, instance: Renderable): Promise<void> | void;
+  mount?(): (() => void) | void;
+  render?(props?: any): RenderNode;
+}
+
+type Placement = Pick<Renderable, 'fallback' | 'catch'>;
 
 interface Fiber {
   kind: Kind;
@@ -48,7 +58,7 @@ interface Fiber {
   cleanup?: (() => void) | void;
   release?: () => void;
   childContext?: Context;
-  instance?: Component;
+  instance?: Renderable;
   owned?: boolean;
   events?: Map<string, EventListener>;
   portalStart?: globalThis.Node;
@@ -216,7 +226,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
     return { kind: 'text', value, context, start: text, end: text, children: [] };
   }
 
-  if (value instanceof Component) return mountComponent(value, parent, before, context, boundary, appearance);
+  if (renderable(value)) return mountComponent(value, parent, before, context, boundary, appearance);
   if (isCollection(value))
     return mountCollection(value, parent, before, context, boundary, appearance);
 
@@ -224,12 +234,11 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
 
   if (value.type === Fragment) return mountFragment(value, parent, before, context, boundary, appearance);
   if (value.type === PORTAL) return mountPortal(value, parent, before, context, boundary, appearance);
-  if (value.type === Provider) return mountProvider(value, parent, before, context, boundary, appearance);
   if (typeof value.type == 'string') return mountElement(value, parent, before, context, boundary, appearance);
   if (typeof value.type != 'function')
     throw new Error(`Cannot render ${String(value.type)}.`);
 
-  if (value.type.prototype instanceof Component)
+  if (value.type.prototype instanceof State)
     return mountOwnedComponent(value, parent, before, context, boundary, appearance);
 
   return mountFunction(value, parent, before, context, boundary, appearance);
@@ -255,7 +264,7 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   fiber.boundary = boundary;
   fiber.appearance = resolved.appearance;
   fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
-  fiber.render = () => enter(fiber.scope!, () => latest(fiber.type as Function)(fiber.props));
+  fiber.render = () => enter(fiber.scope!, () => call(latest(fiber.type as Function), fiber.props));
   track(fiber.type as Function, fiber.scope);
   probing(fiber);
 
@@ -273,8 +282,13 @@ function mountOwnedComponent(
   appearance?: Appearance
 ) {
   const resolved = componentProps(value.type, value.props, appearance);
-  const instance = new (value.type as new (props: any) => Component)(observe(resolved.props));
-  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key);
+  const Type = value.type as new (...args: unknown[]) => Renderable;
+  const props = observe(resolved.props);
+  const instance: Renderable = new Type(props,
+    Type.prototype instanceof Component ? undefined : () => props.is?.(instance)
+  );
+
+  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props);
 }
 
 function runFunction(fiber: Fiber, passive: boolean) {
@@ -298,7 +312,7 @@ function probing(fiber: Fiber) {
 }
 
 function mountComponent(
-  instance: Component,
+  instance: Renderable,
   parent: globalThis.Node,
   before: globalThis.Node | null,
   context: Context,
@@ -306,13 +320,22 @@ function mountComponent(
   appearance?: Appearance,
   owned = false,
   key?: Key,
+  props = instance.props
 ) {
   const fiber = range('component', parent, before, context);
   const childContext = context.push(instance);
-  const ownBoundary: Boundary | undefined = instance.fallback !== false || instance.catch
+  const element = (owned ? props : {}) as Placement;
+  const fallback = element.fallback !== undefined ? element.fallback : instance.fallback;
+  const ownBoundary: Boundary | undefined = fallback !== undefined && fallback !== false || element.catch || instance.catch
     ? {
-        catch: instance.catch?.bind(instance),
-        fallback: () => instance.fallback,
+        catch: element.catch || instance.catch ? (error) => {
+          const handler = owned && (fiber.props as Placement).catch;
+          return (handler || instance.catch)!.call(instance, error, instance);
+        } : undefined,
+        fallback: () => {
+          const placed = owned ? (fiber.props as Placement).fallback : undefined;
+          return placed !== undefined ? placed : instance.fallback;
+        },
         owner: fiber,
         parent: inherited
       }
@@ -324,11 +347,11 @@ function mountComponent(
   fiber.instance = instance;
   fiber.key = owned ? key : instance.key;
   fiber.type = instance.constructor;
-  fiber.props = instance.props as Record<string, any>;
+  fiber.props = props;
   fiber.owned = owned;
   fiber.appearance = appearance;
   fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
-  fiber.render = () => enter(fiber.scope!, () => instance.render.call(fiber.value, instance.props));
+  fiber.render = () => enter(fiber.scope!, () => compose.call(fiber.value as State, fiber.props));
   probing(fiber);
 
   let first = true;
@@ -389,34 +412,9 @@ function runCollection(fiber: Fiber, passive: boolean) {
   });
 }
 
-function mountProvider(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, inherited?: Boundary, appearance?: Appearance) {
-  const fiber = range('provider', parent, before, context);
-  const childContext = new Context(context);
-
-  fiber.key = value.key;
-  fiber.type = Provider;
-  fiber.props = value.props;
-  fiber.appearance = appearance;
-  fiber.childContext = childContext;
-  const commit = provide(childContext, value.props as any);
-
-  const boundary = value.props.fallback !== undefined
-    ? { fallback: () => fiber.props!.fallback, owner: fiber, parent: inherited }
-    : inherited;
-
-  fiber.boundary = boundary;
-  if (boundary !== inherited) fiber.ownBoundary = boundary;
-  complete(fiber, () => {
-    reconcile(fiber, value.props.children, childContext, boundary, appearance);
-  });
-  commit();
-
-  return fiber;
-}
-
 function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const marker = document.createComment('portal');
-  const container = value.props.container as Container;
+  const container = target(value.props.into, parent);
   const portalStart = document.createComment('portal-root');
   const portalEnd = document.createComment('/portal-root');
 
@@ -442,6 +440,20 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
   return complete(output, () => {
     reconcilePortal(output, value.props.children, context, boundary, appearance);
   });
+}
+
+function target(into: unknown, parent: globalThis.Node): Container {
+  if (typeof into != 'string') return into as Container;
+
+  const root = parent.getRootNode();
+  const found = [...document.querySelectorAll(into)];
+
+  if (root instanceof DocumentFragment) found.push(...root.querySelectorAll(into));
+
+  if (found.length != 1)
+    throw new Error(`Portal target "${into}" ${found.length ? 'is ambiguous' : 'was not found'}.`);
+
+  return found[0];
 }
 
 function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
@@ -856,21 +868,17 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
   } else if (old.kind == 'component') {
     const resolved = isVNode(value)
       ? componentProps(value.type, value.props, appearance)
-      : { appearance, props: old.instance!.props };
+      : { appearance, props: old.props! };
     old.appearance = resolved.appearance;
     const props = isVNode(value) ? observe(resolved.props) : resolved.props;
-    if (isVNode(value) && props !== old.instance!.props) {
+    if (isVNode(value) && props !== old.props) {
+      const instance = old.instance!;
       if (passiveRender) old.applied = true;
-      (old.instance as any).props = props;
+      if (instance instanceof Component) (instance as any).props = props;
+      else instance.set(merge(old.props!, props) as never);
     }
-    old.props = props as Record<string, any>;
+    old.props = props;
     rerun(old, () => runComponent(old, passiveRender));
-  } else if (old.kind == 'provider') {
-    old.appearance = appearance;
-    old.props = (value as VNode).props;
-    const commit = provide(old.childContext!, old.props as any);
-    reconcile(old, old.props!.children, old.childContext!, old.boundary, appearance);
-    commit();
   } else {
     old.appearance = appearance;
     const vnode = value as VNode;
@@ -889,17 +897,17 @@ function rerun(fiber: Fiber, run: () => void) {
 
 function compatible(fiber: Fiber, value: RenderNode) {
   if (fiber.kind == 'text') return ['string', 'number', 'bigint'].includes(typeof value);
-  if (value instanceof Component) return fiber.kind == 'component' && fiber.instance === value;
+  if (renderable(value)) return fiber.kind == 'component' && fiber.instance === value;
   if (isCollection(value))
     return fiber.kind == 'collection' && fiber.source === value;
   if (!isVNode(value)) return false;
   if (fiber.key !== value.key || !same(fiber.type, value.type)) return false;
-  if (fiber.kind == 'portal') return fiber.portalContainer === value.props.container;
+  if (fiber.kind == 'portal') return fiber.props!.into === value.props.into;
   return true;
 }
 
 function source(value: RenderNode): RenderNode {
-  if (value instanceof Component) return value.is;
+  if (value instanceof State) return value.is;
 
   while (isCollection(value) && isCollection(Object.getPrototypeOf(value)))
     value = Object.getPrototypeOf(value);
@@ -907,12 +915,22 @@ function source(value: RenderNode): RenderNode {
   return value;
 }
 
+function renderable(value: unknown): value is Renderable {
+  return value instanceof State && typeof (value as Renderable).render == 'function';
+}
+
+function merge(previous: Record<string, any>, next: Record<string, any>) {
+  const output: Record<string, any> = {};
+  for (const key in previous) output[key] = undefined;
+  return { ...output, ...next };
+}
+
 function isCollection(value: unknown): value is has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown> {
   return value instanceof has.List || value instanceof has.Pool || value instanceof map.Managed;
 }
 
 function keyOf(value: RenderNode): Key {
-  if (value instanceof Component) return value.key;
+  if (renderable(value)) return value.key;
   return isVNode(value) ? value.key : undefined;
 }
 
@@ -1216,8 +1234,6 @@ function unmountFiber(fiber: Fiber) {
     if (typeof fiber.cleanup == 'function') fiber.cleanup();
     fiber.childContext?.pop();
     if (fiber.owned && !fiber.instance!.get(null)) fiber.instance!.set(null);
-  } else if (fiber.kind == 'provider') {
-    fiber.childContext?.pop();
   } else if (fiber.kind == 'portal') {
     (fiber.portalStart as ChildNode).remove();
     (fiber.portalEnd as ChildNode).remove();

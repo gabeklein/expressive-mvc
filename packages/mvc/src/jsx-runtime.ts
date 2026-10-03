@@ -1,5 +1,7 @@
 import type { Component } from './component';
 
+export { compose } from './component';
+
 /**
  * Per-adapter interpretation manifest. Each adapter augments this interface to
  * declare how it renders; the first member is `node` - the element type produced

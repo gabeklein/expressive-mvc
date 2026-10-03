@@ -1,10 +1,10 @@
 import { Context } from './context';
 import { set } from './field/set';
-import { State, trailing, unbind } from './state';
+import { State, adopt, trailing, unbind } from './state';
 
 import type { Host } from './jsx-runtime';
 
-const PENDING = new WeakMap<object, Component>();
+const PENDING = new WeakMap<object, Component<any>>();
 
 /** Per-class composed content render. */
 let CHAIN = new WeakMap<Function, Function>();
@@ -22,6 +22,15 @@ type Acceptable<T> = {
   >;
 }[keyof T];
 
+type ForProps<T extends State> = {
+  children?: Component.Node;
+  fallback?: Component.Node | false;
+  catch?: (error: Error, instance: Component) => Promise<void> | void;
+} & (
+  | { for: State.Extends<T>; is?: (instance: T) => void }
+  | { for: T | undefined; is?: never }
+) & { [K in Exclude<keyof T, keyof State> & Acceptable<T>]?: T[K] };
+
 declare namespace Component {
   /**
    * Host element type produced by `Component.render`. Delegates to the
@@ -33,7 +42,7 @@ declare namespace Component {
    */
   type Node = Host extends { node: infer T } ? T : any;
 
-  interface BaseProps<T extends Component> {
+  interface BaseProps<T extends Component<any>> {
     /**
      * Callback for newly created instance. Only called once.
      *
@@ -49,6 +58,12 @@ declare namespace Component {
      * letting suspension bubble to an ancestor.
      */
     fallback?: Component.Node;
+
+    /**
+     * Called when this element's content throws, ahead of the class's own
+     * `catch`. A returned promise retries once settled.
+     */
+    catch?: (error: Error, instance: T) => Promise<void> | void;
   }
 
   type StateProps<T extends State> = {
@@ -61,20 +76,20 @@ declare namespace Component {
     : NonNullable<P>
     : { children?: Component.Node };
 
-  type Props<T extends Component> =
+  type Props<T extends Component<any>> =
     & StateProps<T>
     & BaseProps<T>
     & RenderProps<T['render']>;
 }
 
-class Component extends State {
+class Component<P = unknown> extends State {
   /**
    * All JSX attributes passed to this component.
    * Includes state-derived props, render props, and built-in props like `is` and `fallback`.
    *
    * Will incorperate extra props you declare as props parameter in `render` method.
    */
-  declare readonly props: Component.Props<this>;
+  declare readonly props: [P] extends [State] ? ForProps<P> : Component.Props<this>;
 
   /** Stable identity used when this instance is rendered in a collection. */
   declare readonly key: string;
@@ -95,6 +110,7 @@ class Component extends State {
 
     const seen = {} as Record<string, undefined>;
     const twin = PENDING.get(props);
+    const provider = new.target === Component && 'for' in props;
 
     if (typeof props == 'object') merge(props);
 
@@ -114,7 +130,9 @@ class Component extends State {
           other.set(null);
         }
 
-        props.is?.(this);
+        if (provider) provide(this);
+        else props.is?.(this);
+
         Object.defineProperty(this, 'props', { enumerable: false });
         PENDING.delete(props);
       }
@@ -127,14 +145,10 @@ class Component extends State {
       this.set(merge(this.props));
     });
 
-    const self = this;
-
     Object.defineProperty(this, 'render', {
       writable: true,
       configurable: true,
-      value(this: Component, props?: {}) {
-        return render(self).call(this, props);
-      }
+      value: compose
     });
   }
 
@@ -147,9 +161,7 @@ class Component extends State {
    * via `props = {} as { ... }`. Without a parameter (the default below),
    * children pass through.
    *
-   * The constructor installs a composed `render` per instance; the bootstrap
-   * `type` pass seals this and any override non-configurable, keeping it the
-   * content-render seam the chain reads.
+   * The constructor installs a composed `render` per instance.
    */
   render(props?: {}): Component.Node {
     const { children } = (props || this.props) as { children?: Component.Node };
@@ -165,7 +177,7 @@ class Component extends State {
    * await async recovery, or await user interaction before retrying. If you
    * assign a fallback within catch, it will be reverted after resolved.
    */
-  catch?(error: Error): Promise<void> | void;
+  catch?(error: Error, instance: this): Promise<void> | void;
 }
 
 /**
@@ -181,11 +193,6 @@ Object.defineProperty(Component.prototype, 'key', {
   }
 });
 
-/**
- * Seal each class's own `render` non-configurable at bootstrap so member
- * classification leaves it unbound - it stays the content-render seam the chain
- * reads (and which adapters like preact detect as the class-component marker).
- */
 Component.on({
   pre(self) {
     const key = Object.getOwnPropertyDescriptor(self, 'key');
@@ -195,52 +202,98 @@ Component.on({
         enumerable: false,
         writable: false
       });
-  },
-  type(type) {
-    const desc = Object.getOwnPropertyDescriptor(type.prototype, 'render');
-
-    if (desc && typeof desc.value == 'function')
-      Object.defineProperty(type.prototype, 'render', {
-        ...desc,
-        configurable: false
-      });
   }
 });
 
-/**
- * Build (or fetch the cached) composed content render for an instance's class.
- * Walks the prototype chain for content renders strictly below Component - the
- * default render on Component.prototype is excluded and serves as the fallback
- * when a class authors none.
- */
-function render(target: Component) {
-  const cached = CHAIN.get(target.constructor);
+function provide(self: Component<any>) {
+  let input: unknown;
+  let target: State | undefined;
+  let owned: { mount?(): unknown } | undefined;
+  let mounted = false;
+  let release: unknown;
 
-  if (cached) return cached;
-
-  let render: Function | undefined;
-  let proto = target;
-
-  while ((proto = Object.getPrototypeOf(proto)) !== Component.prototype) {
-    const desc = Object.getOwnPropertyDescriptor(proto, 'render');
-
-    if (desc) {
-      const layer = unbind(desc.get || desc.value);
-      render = render ? compose(layer, render) : layer;
-    }
+  function unmount() {
+    if (typeof release == 'function') release();
+    release = undefined;
   }
 
-  if (!render)
-    render = Component.prototype.render;
+  const inherited = (self as { mount?(): unknown }).mount;
 
-  CHAIN.set(target.constructor, render);
+  Object.defineProperty(self, 'mount', {
+    configurable: true,
+    value() {
+      const done = inherited?.call(self);
 
-  return render;
+      mounted = true;
+      release = owned?.mount?.();
+
+      return () => {
+        mounted = false;
+        unmount();
+        if (typeof done == 'function') done();
+      };
+    }
+  });
+
+  function sync() {
+    const { for: next, is, children, fallback, catch: _catch, ...rest } = self.props as Record<string, any>;
+
+    if (fallback === undefined) self.fallback = false;
+
+    if (next !== input) {
+      input = next;
+      unmount();
+
+      if (State.is(next)) {
+        adopt(self, 'for', (target = new (next as State.Type)(rest)));
+        owned = target as typeof owned;
+        is?.(target);
+        if (mounted) release = owned!.mount?.();
+        return;
+      }
+
+      owned = undefined;
+      adopt(self, 'for', (target = next instanceof State ? next : undefined));
+    }
+
+    target?.set(rest);
+  }
+
+  sync();
+  self.set('props', sync);
 }
 
-/** Wrap an outer render so it receives `inner` as a lazy `children` getter. */
-function compose(outer: Function, inner: Function): Function {
-  return function (this: Component, props?: {}) {
+/**
+ * Render `this` through its class's composed content render: content renders
+ * up the prototype chain, each base layer receiving the subclass's as a lazy
+ * `children` getter. Falls back to passing `children` through.
+ */
+function compose(this: State, props?: {}) {
+  const type = this.constructor;
+  let render = CHAIN.get(type);
+
+  if (!render) {
+    for (let T = type; T !== Component && T !== State; T = Object.getPrototypeOf(T)) {
+      const next = method(T);
+
+      if (next) render = render ? wrap(next, render) : next;
+    }
+
+    if (!render) render = method(Component)!;
+
+    CHAIN.set(type, render);
+  }
+
+  return render.call(this, props);
+}
+
+function method(from: Function) {
+  const desc = Object.getOwnPropertyDescriptor(from.prototype, 'render');
+  if (desc) return unbind(desc.get || desc.value) as Function;
+}
+
+function wrap(outer: Function, inner: Function): Function {
+  return function (this: State, props?: {}) {
     const self = this;
     return outer.call(self, {
       ...props,
@@ -256,4 +309,4 @@ function rechain() {
   CHAIN = new WeakMap();
 }
 
-export { Component, rechain };
+export { Component, compose, rechain };

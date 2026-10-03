@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, pending } from '@expressive/mvc';
-import { Provider, createPortal, lazy, render } from './index';
+import { Portal, lazy, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('suspense and recovery', () => {
@@ -26,16 +26,69 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('ready');
   });
 
-  it('will let a Provider own a lazy fallback', async () => {
+  it('will load a failed lazy view again when catch resolves', async () => {
+    let attempt = 0;
+    let retry!: () => void;
+    const caught: string[] = [];
+    const Lazy = lazy(() =>
+      ++attempt == 1
+        ? Promise.reject(new Error('chunk'))
+        : Promise.resolve(() => <b>ready</b>)
+    );
+
+    class Page extends State {
+      fallback = <i>wait</i>;
+
+      catch(error: Error) {
+        caught.push(error.message);
+        return new Promise<void>((resolve) => (retry = resolve));
+      }
+
+      render() {
+        return <Lazy />;
+      }
+    }
+
+    const root = document.createElement('main');
+    render(<Page />, root);
+
+    await flushMicrotasks();
+    expect(caught).toEqual(['chunk']);
+    expect(root.textContent).toBe('wait');
+
+    retry();
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(attempt).toBe(2);
+    expect(caught).toEqual(['chunk']);
+    expect(root.textContent).toBe('ready');
+  });
+
+  it('will report a failed lazy view without a catch, not reject unhandled', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const Lazy = lazy(() => Promise.reject(new Error('chunk')));
+    const root = document.createElement('main');
+
+    render(<Component fallback={<i>wait</i>}><Lazy /></Component>, root);
+
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(error.mock.calls.flat().some((x) => String(x).includes('chunk'))).toBe(true);
+    error.mockRestore();
+  });
+
+  it('will let Component for own a lazy fallback', async () => {
     class Session extends State {}
     const loaded = mockPromise<() => Component.Node>();
     const Lazy = lazy(() => loaded);
     const root = document.createElement('main');
 
     render(
-      <Provider for={Session} fallback={<i>waiting</i>}>
+      <Component for={Session} fallback={<i>waiting</i>}>
         <Lazy />
-      </Provider>,
+      </Component>,
       root
     );
     expect(root.textContent).toBe('waiting');
@@ -694,7 +747,7 @@ describe('suspense and recovery', () => {
       }
 
       render() {
-        return <Provider for={this.mode} fallback={<i>inner</i>}><Leaf /></Provider>;
+        return <Component for={this.mode} fallback={<i>inner</i>}><Leaf /></Component>;
       }
     }
 
@@ -721,7 +774,7 @@ describe('suspense and recovery', () => {
       extra = true;
 
       render() {
-        return <>{createPortal(<b>modal</b>, target)}{this.extra && createPortal(<u>extra</u>, target)}<Lazy /></>;
+        return <><Portal into={target}><b>modal</b></Portal>{this.extra && <Portal into={target}><u>extra</u></Portal>}<Lazy /></>;
       }
     }
 
@@ -1083,15 +1136,15 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('restored');
   });
 
-  it('will let a Provider without state own a fallback', async () => {
+  it('will let a bare Component own a fallback', async () => {
     const loaded = mockPromise<() => Component.Node>();
     const Lazy = lazy(() => loaded);
     const root = document.createElement('main');
 
     render(
-      <Provider fallback={<i>waiting</i>}>
+      <Component fallback={<i>waiting</i>}>
         <Lazy />
-      </Provider>,
+      </Component>,
       root
     );
     expect(root.textContent).toBe('waiting');

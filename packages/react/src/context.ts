@@ -37,26 +37,6 @@ Context.get = (state?: State) => {
   return _get(state);
 };
 
-declare namespace Consumer {
-  type Props<T extends State> = {
-    /** Type of controller to fetch from context. */
-    for: State.Extends<T>;
-
-    /**
-     * Render function, will receive instance of desired controller.
-     *
-     * Called every render of parent component.
-     * Similar to `State.get()`, updates to properties accessed in
-     * this function will cause a refresh when they change.
-     */
-    children: (value: T) => Component.Node | void;
-  };
-}
-
-function Consumer<T extends State>(props: Consumer.Props<T>) {
-  return props.for.get((i) => props.children(i));
-}
-
 declare namespace Provider {
   /**
    * Runs for each State registered by this Provider. Return value is ignored -
@@ -95,6 +75,7 @@ declare namespace Provider {
 
 type Digest<T extends State> = (props: Provider.Props<T>) => Context;
 
+/** @deprecated Use `<Component for={…}>`: one State per element, compose a parent State for several. */
 function Provider<T extends State>({
   children,
   fallback,
@@ -146,4 +127,4 @@ function Provider<T extends State>({
   );
 }
 
-export { Consumer, Provider, Context, createProvider };
+export { Provider, Context, createProvider };

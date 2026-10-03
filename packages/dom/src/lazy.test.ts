@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { State } from '@expressive/mvc';
 
 import { mockPromise } from '../test.setup';
 import { lazy } from './lazy';
@@ -41,7 +42,7 @@ describe('lazy', () => {
     expect(Lazy({ value: 2 })).toMatchObject({ props: { value: 2 } });
   });
 
-  it('will preserve a falsy rejection', async () => {
+  it('will reject with a falsy error', async () => {
     const loaded = mockPromise<() => null>();
     const Lazy = lazy(() => loaded);
     let pending!: Promise<unknown>;
@@ -71,5 +72,54 @@ describe('lazy', () => {
     loaded.resolve({});
     await pending;
     expect(() => Lazy({})).toThrow('lazy() loader resolved no component.');
+  });
+
+  it('will load again after a rejection', async () => {
+    const attempts = [mockPromise<() => null>(), mockPromise<() => null>()];
+    let calls = 0;
+    const Lazy = lazy(() => attempts[calls++]);
+    const suspend = () => {
+      try {
+        Lazy({});
+      } catch (error) {
+        return error as Promise<unknown>;
+      }
+    };
+
+    const first = suspend()!;
+
+    attempts[0].reject(new Error('chunk'));
+    await first;
+
+    expect(() => Lazy({})).toThrow('chunk');
+
+    const second = suspend()!;
+
+    expect(second).not.toBe(first);
+    expect(calls).toBe(2);
+
+    attempts[1].resolve(() => null);
+    await second;
+
+    expect(isVNode(Lazy({}))).toBe(true);
+  });
+
+  it('will type attributes from the loaded component', () => {
+    class Settings extends State {
+      theme = 'dark';
+    }
+
+    const Fn = (props: { size: number }) => props.size;
+    const LazyState = lazy(() => Promise.resolve({ default: Settings }));
+    const LazyFn = lazy(() => Promise.resolve(Fn));
+
+    void (() => [
+      LazyState({ theme: 'light' }),
+      LazyFn({ size: 1 }),
+      // @ts-expect-error
+      LazyState({ theme: 1 }),
+      // @ts-expect-error
+      LazyFn({ size: 'x' })
+    ]);
   });
 });

@@ -73,7 +73,7 @@ export class ErrorBoundary extends React.Component<{
       this.setState({ error });
     };
 
-    Promise.resolve(self.catch!(error))
+    Promise.resolve((self.props.catch || self.catch)!.call(self, error, self.is))
       .then(() => reset(), reset)
       .finally(() => self.set({ fallback }, true));
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
-import { Component } from './component';
+import { Component, compose } from './component';
 import { Context } from './context';
 import { pending } from './dispatch';
 import { State, event } from './state';
@@ -406,5 +406,245 @@ describe('transition', () => {
 
     expect(test.value).toBe('b');
     expect(settled).toBe(true);
+  });
+});
+
+describe('composed', () => {
+  it('will compose render layers of a State', () => {
+    class Frame extends State {
+      render(props?: { children?: unknown }) {
+        return `[${props?.children}]`;
+      }
+    }
+
+    class Page extends Frame {
+      render() {
+        return 'page';
+      }
+    }
+
+    const page = Page.new();
+
+    expect(compose.call(page, {})).toBe('[page]');
+  });
+
+  it('will compose a render sealed by the host', () => {
+    class Frame extends State {
+      render(props?: { children?: unknown }) {
+        return `[${props?.children}]`;
+      }
+    }
+
+    Frame.on({
+      type({ prototype }) {
+        const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
+        Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
+      }
+    });
+
+    class Page extends Frame {
+      render() {
+        return 'page';
+      }
+    }
+
+    const page = Page.new();
+
+    expect(compose.call(page, {})).toBe('[page]');
+  });
+
+  it('will pass children through for a State without render', () => {
+    class Bare extends State {}
+
+    const bare = Bare.new();
+
+    expect(compose.call(bare, { children: 'c' })).toBe('c');
+  });
+});
+
+describe('for', () => {
+  class Session extends State {
+    name = 'none';
+  }
+
+  it('will construct and provide a class', () => {
+    const is = vi.fn();
+    const provider = Component.new({ for: Session, name: 'Ada', is } as any);
+    const context = new Context().push(provider);
+    const session = context.get(Session);
+
+    expect(session.name).toBe('Ada');
+    expect(is).toBeCalledWith(session);
+    expect(is).not.toBeCalledWith(provider);
+  });
+
+  it('will destroy a provided class with the provider', () => {
+    const provider = Component.new({ for: Session } as any);
+    const context = new Context().push(provider);
+    const session = context.get(Session);
+
+    provider.set(null);
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will provide an instance without owning it', () => {
+    const session = Session.new();
+    const provider = Component.new({ for: session, name: 'Ada' } as any);
+    const context = new Context().push(provider);
+
+    expect(context.get(Session)).toBe(session);
+    expect(session.name).toBe('Ada');
+
+    provider.set(null);
+
+    expect(session.get(null)).toBe(false);
+  });
+
+  it('will adopt an instance not yet active', () => {
+    const session = new Session();
+    const provider = Component.new({ for: session } as any);
+
+    expect(new Context().push(provider).get(Session)).toBe(session);
+
+    provider.set(null);
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will forward props on update', async () => {
+    const provider = Component.new({ for: Session, name: 'Ada' } as any);
+    const context = new Context().push(provider);
+    const session = context.get(Session);
+
+    (provider as any).props = { for: Session, name: 'Grace' };
+    await expect(session).toHaveUpdated('name');
+
+    expect(session.name).toBe('Grace');
+    expect(context.get(Session)).toBe(session);
+  });
+
+  it('will release the previous item when for changes', async () => {
+    const provider = Component.new({ for: Session } as any);
+    const context = new Context().push(provider);
+    const first = context.get(Session);
+    const next = Session.new();
+
+    (provider as any).props = { for: next };
+    await flushMicrotasks();
+
+    expect(first.get(null)).toBe(true);
+    expect(context.get(Session)).toBe(next);
+
+    (provider as any).props = {};
+    await flushMicrotasks();
+
+    expect(next.get(null)).toBe(false);
+    expect(context.get(Session, false)).toBeUndefined();
+  });
+
+  it('will mount only a class it constructed', () => {
+    const cleanup = vi.fn();
+
+    class Owned extends State {
+      mount() {
+        return cleanup;
+      }
+    }
+
+    const owned = Component.new({ for: Owned } as any) as any;
+    const placed = Component.new({ for: Owned.new() } as any) as any;
+    const plain = Component.new({ for: Session } as any) as any;
+
+    owned.mount()();
+    placed.mount()();
+    plain.mount()();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will hand mount to the next class when for changes', async () => {
+    const log: string[] = [];
+
+    const tracked = (name: string) => class extends State {
+      mount() {
+        log.push(name + ':mount');
+        return () => log.push(name + ':unmount');
+      }
+
+      protected new() {
+        return () => log.push(name + ':destroy');
+      }
+    };
+
+    const First = tracked('first');
+    const Second = tracked('second');
+    const provider = Component.new({ for: First } as any) as any;
+    const release = provider.mount();
+
+    provider.props = { for: Second };
+    await flushMicrotasks();
+
+    provider.props = { for: Session };
+    await flushMicrotasks();
+
+    release();
+
+    expect(log).toEqual([
+      'first:mount',
+      'first:unmount',
+      'first:destroy',
+      'second:mount',
+      'second:unmount',
+      'second:destroy'
+    ]);
+  });
+
+  it('will keep a mount defined before it provides', () => {
+    const order: string[] = [];
+
+    class Owned extends State {
+      mount() {
+        order.push('owned');
+        return () => order.push('owned:done');
+      }
+    }
+
+    const stop = Component.on({
+      pre(self) {
+        Object.defineProperty(self, 'mount', {
+          configurable: true,
+          value: () => {
+            order.push('inherited');
+            return () => order.push('inherited:done');
+          }
+        });
+      }
+    });
+
+    const provider = Component.new({ for: Owned } as any) as any;
+
+    stop();
+    provider.mount()();
+
+    expect(order).toEqual(['inherited', 'owned', 'owned:done', 'inherited:done']);
+  });
+
+  it('will not default a boundary', () => {
+    const provider = Component.new({ for: Session } as any);
+    const bounded = Component.new({ for: Session, fallback: 'wait' } as any);
+
+    expect(provider.fallback).toBe(false);
+    expect(bounded.fallback).toBe('wait');
+  });
+
+  it('will not provide from a subclass', () => {
+    class Sub extends Component {}
+
+    const sub = Sub.new({ for: Session } as any);
+    const context = new Context().push(sub);
+
+    expect(sub.fallback).toBe(null);
+    expect(context.get(Session, false)).toBeUndefined();
   });
 });

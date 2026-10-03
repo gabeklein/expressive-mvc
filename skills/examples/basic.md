@@ -97,9 +97,7 @@ Rows that paint themselves become `Component` members placed as `{state.items}` 
 ## Async Data (with Suspense)
 
 ```tsx
-import { State, set } from '@expressive/mvc';
-import { Provider } from '@expressive/react';
-import { Suspense } from 'react';
+import { State, Component, set } from '@expressive/mvc';
 
 interface User {
   id: number;
@@ -126,14 +124,10 @@ function Profile() {
 }
 
 function App() {
-  const profile = UserProfile.use({ userId: 1 });
-
   return (
-    <Provider for={profile}>
-      <Suspense fallback={<p>Loading...</p>}>
-        <Profile />
-      </Suspense>
-    </Provider>
+    <Component for={UserProfile} userId={1} fallback={<p>Loading...</p>}>
+      <Profile />
+    </Component>
   );
 }
 ```
@@ -141,8 +135,7 @@ function App() {
 ## Shared Context (parent/child communication)
 
 ```tsx
-import { State, get } from '@expressive/mvc';
-import { Provider } from '@expressive/react';
+import { State, Component, get } from '@expressive/mvc';
 
 class Theme extends State {
   mode: 'light' | 'dark' = 'light';
@@ -169,10 +162,10 @@ function App() {
   const theme = Theme.use();
 
   return (
-    <Provider for={theme}>
+    <Component for={theme}>
       <button onClick={theme.toggle}>Toggle Theme</button>
       <PanelView />
-    </Provider>
+    </Component>
   );
 }
 

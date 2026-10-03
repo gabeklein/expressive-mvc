@@ -70,7 +70,7 @@ export class ReviewStep extends Component {
 
 **Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, or its boundary/suspense is wanted - lifecycle counts only when it manages owned state; a ref plus a DOM-sync reaction over context is still an FC. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`). Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
 
-**The app/route entrypoint is a Component** even when `render()` is pure composition - owning the construction graph is the state. The replica and each headless region are its fields; they provide implicitly, ship the last-resort boundary (`catch`, `fallback`), and are the introspection surface - a debugger or later agent reads the app's parts off the instance, not by walking Providers. `main` only mounts it: `createRoot(el).render(<Inbox />)` - no `Provider`, no `Session.new()` in bootstrap. "Stateless shell → FC" is a chrome rule; it never fires on the entrypoint.
+**The app/route entrypoint is a Component** even when `render()` is pure composition - owning the construction graph is the state. The replica and each headless region are its fields; they provide implicitly, ship the last-resort boundary (`catch`, `fallback`), and are the introspection surface - a debugger or later agent reads the app's parts off the instance, not by walking provider elements. `main` only mounts it: `createRoot(el).render(<Inbox />)` - no `<Component for>`, no `Session.new()` in bootstrap. "Stateless shell → FC" is a chrome rule; it never fires on the entrypoint.
 
 The forms, by role:
 
@@ -197,23 +197,23 @@ Unplug is dropping the `<Resize>` wrap and the height read. `class Composer exte
 function App() {
   const transfer = TransferState.use();
   return (
-    <Provider for={transfer}>
+    <Component for={transfer}>
       <TransferPage />
-    </Provider>
+    </Component>
   );
 }
 
-// Right: the class is the Provider target
+// Right: the class is the `for` target
 function App() {
   return (
-    <Provider for={TransferState}>
+    <Component for={TransferState}>
       <TransferPage />
-    </Provider>
+    </Component>
   );
 }
 ```
 
-Provide an instance only when preconfiguration or external ownership requires it. The app entrypoint needs neither: owned fields provide implicitly, so `main` mounts `<Inbox />` bare - a `Provider` plus `Session.new()` in bootstrap hides the construction graph.
+Provide an instance only when preconfiguration or external ownership requires it. The app entrypoint needs neither: owned fields provide implicitly, so `main` mounts `<Inbox />` bare - a `<Component for>` plus `Session.new()` in bootstrap hides the construction graph.
 
 ## 7. Move source state and behavior; do not translate setters
 
@@ -531,7 +531,7 @@ The checklist:
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
 - Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region States, each rendered feature unplugging by one import? *(default)*
 - Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
-- Is the app/route entrypoint a Component owning replica and regions as fields - `main` only mounting it, no bootstrap `Provider`? *(default)*
+- Is the app/route entrypoint a Component owning replica and regions as fields - `main` only mounting it, no bootstrap `<Component for>`? *(default)*
 - Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, regions held as State fields? *(invariant)*
 - Does every Component without chrome omit `render()` - no `return this.props.children`? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { State, Component } from '@expressive/mvc';
-import { Consumer, Provider, render } from './index';
+import { render } from './index';
 import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
@@ -105,6 +105,35 @@ describe('MVC adapter', () => {
     expect(local.get(null)).toBe(true);
   });
 
+  it('will provide a State.use instance to descendants', async () => {
+    class Session extends State {
+      name = 'Ada';
+    }
+
+    let session!: Session;
+
+    function Leaf() {
+      return <b>{Session.get().name}</b>;
+    }
+
+    function Sibling() {
+      return <i>{Session.get(false) ? 'leak' : 'none'}</i>;
+    }
+
+    function Host() {
+      session = Session.use();
+      return <Leaf />;
+    }
+
+    const root = document.createElement('main');
+    render(<><Host /><Sibling /></>, root);
+    expect(root.textContent).toBe('Adanone');
+
+    session.name = 'Grace';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('Gracenone');
+  });
+
   it('will call a State use method on every render', async () => {
     const calls: number[] = [];
 
@@ -138,17 +167,21 @@ describe('MVC adapter', () => {
     expect(calls).toEqual([1, 2, 2]);
   });
 
-  it('will pass context through functions and Consumers', async () => {
+  it('will pass context through functions', async () => {
     class Session extends State {
       name = 'Ada';
+    }
+
+    function Name() {
+      return Session.get((value) => <span>{value.name}</span>);
     }
 
     let session!: Session;
     const root = document.createElement('main');
     const release = render(
-      <Provider for={Session} is={(value) => (session = value)}>
-        <Consumer for={Session}>{(value: Session) => <span>{value.name}</span>}</Consumer>
-      </Provider>,
+      <Component for={Session} is={(value: Session) => (session = value)}>
+        <Name />
+      </Component>,
       root
     );
 
@@ -202,7 +235,7 @@ describe('MVC adapter', () => {
     const source = Source.new();
     const root = document.createElement('main');
     const release = render(
-      <Provider for={source}><View /></Provider>,
+      <Component for={source}><View /></Component>,
       root
     );
 
@@ -225,7 +258,7 @@ describe('MVC adapter', () => {
 
     const required = Source.new();
     expect(() => render(
-      <Provider for={required}><Required fallback={false} /></Provider>,
+      <Component for={required}><Required fallback={false} /></Component>,
       document.createElement('main')
     )).toThrow();
     required.set(null);
@@ -256,15 +289,9 @@ describe('MVC adapter', () => {
     context.pop();
   });
 
-  it('will turn capitalized methods and fields into owner-bound subcomponents', async () => {
+  it('will render capitalized methods as owner-bound subcomponents', async () => {
     class Panel extends Component {
       value = 'one';
-      Heading = function (this: Panel, { suffix }: { suffix: string }) {
-        return <h1>{this.value}{suffix}</h1>;
-      };
-      NotAFunction = 1;
-
-      helper() {}
 
       Label({ suffix }: { suffix: string }) {
         return <span>{this.value}{suffix}</span>;
@@ -281,76 +308,115 @@ describe('MVC adapter', () => {
       }
 
       render() {
-        const { Footer, Heading, Label } = this;
-        return <>{<Heading suffix="!" />}{<Label suffix="?" />}{<Footer />}</>;
+        const { Footer, Label } = this;
+        return <><Label suffix="?" /><Footer /></>;
       }
     }
 
     let panel!: Panel;
     const root = document.createElement('main');
     render(<Panel is={(value) => (panel = value)} />, root);
-    expect(root.textContent).toBe('one!one?one');
+    expect(root.textContent).toBe('one?one');
 
     panel.value = 'two';
     await flushMicrotasks();
-    expect(root.textContent).toBe('two!two?two');
-    expect(typeof panel.Label).toBe('function');
+    expect(root.textContent).toBe('two?two');
 
-    (panel as any).Label = function () {
-      return <span>{this.value}:override</span>;
-    };
+    panel.set({
+      Label(this: Panel) {
+        return <span>{this.value}:override</span>;
+      }
+    } as never);
     panel.value = 'three';
     await flushMicrotasks();
-    expect(root.textContent).toBe('three!three:overridethree');
+    expect(root.textContent).toBe('three:overridethree');
   });
 
-  it('will mount and release states owned by a Provider', async () => {
-    const lifecycle: string[] = [];
-
-    class Owned extends State {
-      value = 0;
-      mount() {
-        lifecycle.push('mount');
-        return () => lifecycle.push('unmount');
+  it('will leave capitalized methods callable outside render', () => {
+    class Store extends State {
+      Parse(text: string) {
+        return text.toUpperCase();
       }
     }
 
-    class External extends State {}
+    const store = Store.new();
+    expect(store.Parse('x')).toBe('X');
+  });
 
-    function Value() {
-      return <span>{Owned.get().value}</span>;
+  it('will track the owner of a subcomponent rendered elsewhere', async () => {
+    class Row extends State {
+      label = 'a';
+
+      Cell() {
+        return <i>{this.label}</i>;
+      }
     }
 
-    class App extends Component {
-      value = 1;
+    function Slot({ Cell }: { Cell: () => Component.Node }) {
+      return <Cell />;
+    }
+
+    class Table extends Component {
+      row = new Row();
+
       render() {
-        return (
-          <Provider for={{ owned: Owned, external }}>
-            <Provider for={Owned} value={this.value}><Value /></Provider>
-            <Provider for={external}><small>{this.value}</small></Provider>
-          </Provider>
-        );
+        return <><this.row.Cell /><Slot Cell={this.row.Cell} /></>;
       }
     }
 
-    const external = External.new();
-    let app!: App;
+    let table!: Table;
     const root = document.createElement('main');
-    const release = render(<App is={(value) => (app = value)} />, root);
-    expect(root.textContent).toBe('11');
-    expect(lifecycle).toEqual(['mount', 'mount']);
+    render(<Table is={(value) => (table = value)} />, root);
+    expect(root.textContent).toBe('aa');
 
-    app.value = 2;
+    table.row.label = 'b';
     await flushMicrotasks();
-    expect(root.textContent).toBe('22');
-
-    release();
-    expect(lifecycle).toEqual(['mount', 'mount', 'unmount', 'unmount']);
-    expect(external.get(null)).toBe(false);
-    external.set(null);
+    expect(root.textContent).toBe('bb');
   });
 
-  it('will transfer Provider lifecycle when its State type changes', async () => {
+  it('will not treat subcomponents of different owners as one', async () => {
+    class Row extends State {
+      label: string;
+
+      constructor(label: string) {
+        super();
+        this.label = label;
+      }
+
+      Cell() {
+        return <i>{this.label}</i>;
+      }
+    }
+
+    const Plain = () => <i>plain</i>;
+
+    class Table extends Component {
+      first = new Row('a');
+      second = new Row('b');
+      pick = 0;
+
+      render() {
+        const { pick, first, second } = this;
+        const Cell = pick == 0 ? first.Cell : pick == 1 ? second.Cell : Plain;
+        return <Cell />;
+      }
+    }
+
+    let table!: Table;
+    const root = document.createElement('main');
+    render(<Table is={(value) => (table = value)} />, root);
+    expect(root.textContent).toBe('a');
+
+    table.pick = 1;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('b');
+
+    table.pick = 2;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('plain');
+  });
+
+  it('will transfer Component for lifecycle when its State type changes', async () => {
     const lifecycle: string[] = [];
 
     class First extends State {
@@ -372,7 +438,7 @@ describe('MVC adapter', () => {
 
       render() {
         const Type = this.second ? Second : First;
-        return <Provider for={Type} />;
+        return <Component for={Type} />;
       }
     }
 
@@ -438,10 +504,6 @@ describe('MVC adapter', () => {
     release();
     expect(lifecycle).toEqual(['mount', 'unmount']);
   });
-
-  it('will reserve Provider execution for the renderer', () => {
-    expect(() => (Provider as any)({})).toThrow('must be rendered');
-  });
 });
 
 describe('hot patch', () => {
@@ -486,5 +548,164 @@ describe('hot patch', () => {
     render(<Panel />, root);
 
     expect(root.textContent).toBe('after1');
+  });
+});
+
+describe('Component for', () => {
+  class Session extends State {
+    name = 'none';
+  }
+
+  function Name() {
+    return <b>{Session.get().name}</b>;
+  }
+
+  it('will construct, own and provide a class', async () => {
+    let session!: Session;
+    const root = document.createElement('main');
+    const done = render(
+      <Component for={Session} name="Ada" is={(s: Session) => (session = s)}>
+        <Name />
+      </Component>,
+      root
+    );
+
+    expect(root.textContent).toBe('Ada');
+
+    done();
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will provide an instance and forward props on update', async () => {
+    const session = Session.new();
+
+    class App extends State {
+      value = 'Ada';
+
+      render() {
+        return (
+          <Component for={session} name={this.value}>
+            <Name />
+          </Component>
+        );
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    const done = render(<App is={(a) => (app = a)} />, root);
+
+    expect(root.textContent).toBe('Ada');
+
+    app.value = 'Grace';
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(session.name).toBe('Grace');
+    expect(root.textContent).toBe('Grace');
+
+    done();
+
+    expect(session.get(null)).toBe(false);
+  });
+
+  it('will mount a class it constructed', () => {
+    const mounted = vi.fn();
+    const released = vi.fn();
+
+    class Owned extends State {
+      mount() {
+        mounted();
+        return released;
+      }
+    }
+
+    const done = render(<Component for={Owned} />, document.createElement('main'));
+
+    expect(mounted).toBeCalledTimes(1);
+
+    done();
+
+    expect(released).toBeCalledTimes(1);
+  });
+
+  it('will replace an instance made each render', async () => {
+    const made: Session[] = [];
+
+    class App extends State {
+      n = 0;
+
+      render() {
+        const session = new Session();
+        made.push(session);
+        return <Component for={session} name={String(this.n)}><Name /></Component>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    const done = render(<App is={(a) => (app = a)} />, root);
+
+    app.n = 1;
+    await flushMicrotasks();
+
+    expect(made).toHaveLength(2);
+    expect(made[0].get(null)).toBe(true);
+    expect(made[1].get(null)).toBe(false);
+    expect(root.textContent).toBe('1');
+
+    done();
+
+    expect(made[1].get(null)).toBe(true);
+  });
+
+  it('will type attributes from for', () => {
+    class Typed extends State {
+      name = '';
+      age = 0;
+    }
+
+    class Sub extends Component {}
+
+    void (() => [
+      <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
+      <Component for={Typed.new()} age={2} />,
+      <Component fallback={null} />,
+      // @ts-expect-error
+      <Component for={Typed} name={1} />,
+      // @ts-expect-error
+      <Component for={Typed} nope="x" />,
+      // @ts-expect-error
+      <Component for={Typed.new()} is={() => {}} />,
+      // @ts-expect-error
+      <Sub for={Typed} />
+    ]);
+  });
+
+  it('will not add a suspense boundary', async () => {
+    const gate = mockPromise<void>();
+
+    class Wait extends State {
+      ready = false;
+
+      render() {
+        if (!this.ready) throw gate;
+        return <i>ready</i>;
+      }
+    }
+
+    const root = document.createElement('main');
+
+    render(
+      <Component fallback={<i>outer</i>}>
+        <Component for={Session}>
+          <Wait />
+        </Component>
+      </Component>,
+      root
+    );
+
+    expect(root.textContent).toBe('outer');
   });
 });

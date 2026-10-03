@@ -1,4 +1,6 @@
 import { Fragment, host } from '@expressive/mvc/jsx-runtime';
+import type { Component, State } from '@expressive/mvc';
+import type { JSX as Base } from '@expressive/mvc/jsx-runtime';
 
 import { childrenOf, isVNode, vnode } from './vnode';
 import type { Node, VNode } from './vnode';
@@ -78,6 +80,25 @@ declare module '@expressive/mvc/jsx-runtime' {
   }
 }
 
+declare module '@expressive/mvc' {
+  namespace State {
+    /** JSX attributes of a State with no `props` member: its settable fields, `is`, a boundary, and what `render` accepts. */
+    type Props<T extends State> =
+      & Component.StateProps<T>
+      & {
+        is?: (instance: T) => void;
+        /** Shown while this element's content is suspended or recovering. `false` opts out. */
+        fallback?: Reserved<T, 'fallback', Component.Node | false>;
+        /** Called when this element's content throws. A returned promise retries once settled. */
+        catch?: Reserved<T, 'catch', (error: Error, instance: T) => Promise<void> | void>;
+      }
+      & Component.RenderProps<T extends { render: infer R } ? R : never>;
+
+    /** Boundary attribute type, narrowed by a member of the same name so a mismatch fails at the element. */
+    type Reserved<T, K extends string, V> = K extends keyof T ? T[K] & V : V;
+  }
+}
+
 declare module '@expressive/mvc/jsx-runtime' {
   namespace JSX {
     interface IntrinsicAttributes {
@@ -106,4 +127,30 @@ const jsxs = vnode;
 
 export { Fragment, jsx, jsxs };
 export type { VNode as JSXElement };
-export type { JSX } from '@expressive/mvc/jsx-runtime';
+export declare namespace JSX {
+  type Element = Base.Element;
+  type ElementType =
+    | keyof IntrinsicElements
+    | ((props: any) => Component.Node)
+    | (abstract new (...args: any[]) => ElementClass);
+  /**
+   * Any State renders as a class element - one with `render` produces content,
+   * one without passes children through and provides itself.
+   */
+  interface ElementClass extends State { render?(props?: any): Component.Node }
+  /**
+   * Empty, so a class element's attributes resolve from its instance type and
+   * {@link LibraryManagedAttributes} picks `props` when declared, else derives
+   * them from the State.
+   */
+  interface ElementAttributesProperty {}
+  type LibraryManagedAttributes<C, P> =
+    C extends abstract new (...args: any[]) => infer I
+      ? P extends { props: infer Q } ? Q
+      : I extends State ? State.Props<I>
+      : P
+      : P;
+  interface ElementChildrenAttribute extends Base.ElementChildrenAttribute {}
+  interface IntrinsicAttributes extends Base.IntrinsicAttributes {}
+  type IntrinsicElements = Base.IntrinsicElements;
+}

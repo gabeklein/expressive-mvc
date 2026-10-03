@@ -5,16 +5,18 @@ import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
-import { Component, Consumer, State, pending, set } from '.';
+import { Component, State, pending, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends Component {
     foo = 'bar';
   }
 
+  const Value = () => Control.get().foo;
+
   render(
     <Control>
-      <Consumer for={Control}>{(c) => c.foo}</Consumer>
+      <Value />
     </Control>
   );
 
@@ -319,25 +321,27 @@ describe('element props', () => {
   }
 
   it('will accept managed values', () => {
+    function Check() {
+      expect(Foo.get().value).toBe('baz');
+      return null;
+    }
+
     render(
       <Foo value="baz">
-        <Consumer for={Foo}>
-          {(c) => {
-            expect(c.value).toBe('baz');
-          }}
-        </Consumer>
+        <Check />
       </Foo>
     );
   });
 
   it('will assign values to instance', () => {
+    function Check() {
+      expect(Foo.get().value).toBe('foobar');
+      return null;
+    }
+
     render(
       <Foo value="foobar">
-        <Consumer for={Foo}>
-          {(i) => {
-            expect(i.value).toBe('foobar');
-          }}
-        </Consumer>
+        <Check />
       </Foo>
     );
   });
@@ -390,15 +394,16 @@ describe('element props', () => {
   });
 
   it('will not assign foreign values', () => {
+    function Check() {
+      // @ts-expect-error
+      expect(Foo.get().nonValue).toBeUndefined();
+      return null;
+    }
+
     render(
       // @ts-expect-error
       <Foo nonValue="foobar">
-        <Consumer for={Foo}>
-          {(i) => {
-            // @ts-expect-error
-            expect(i.nonValue).toBeUndefined();
-          }}
-        </Consumer>
+        <Check />
       </Foo>
     );
   });
@@ -1774,5 +1779,227 @@ describe('strict mode', () => {
     expect(order).toEqual(['construct', 'construct', 'init']);
 
     element.unmount();
+  });
+});
+
+describe('for', () => {
+  class Session extends State {
+    name = 'none';
+  }
+
+  function Name() {
+    return <>{Session.get().name}</>;
+  }
+
+  it('will construct and provide a class', () => {
+    let session!: Session;
+
+    render(
+      <Component for={Session} name="Ada" is={(s: Session) => (session = s)}>
+        <Name />
+      </Component>
+    );
+
+    expect(screen).toHaveText('Ada');
+    expect(session).toBeInstanceOf(Session);
+  });
+
+  it('will destroy a provided class on unmount', () => {
+    let session!: Session;
+
+    const view = render(
+      <Component for={Session} is={(s: Session) => (session = s)}>
+        <Name />
+      </Component>
+    );
+
+    view.unmount();
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will provide an instance without owning it', async () => {
+    const session = Session.new();
+
+    const view = render(
+      <Component for={session} name="Grace">
+        <Name />
+      </Component>
+    );
+
+    expect(screen).toHaveText('Grace');
+
+    view.unmount();
+
+    expect(session.get(null)).toBe(false);
+  });
+
+  it('will forward props on rerender', async () => {
+    const session = Session.new();
+    const view = render(
+      <Component for={session} name="Ada">
+        <Name />
+      </Component>
+    );
+
+    view.rerender(
+      <Component for={session} name="Grace">
+        <Name />
+      </Component>
+    );
+
+    await act(async () => {});
+
+    expect(session.name).toBe('Grace');
+    expect(screen).toHaveText('Grace');
+  });
+
+  it('will keep one provided class under StrictMode', () => {
+    const made: Session[] = [];
+
+    class Tracked extends Session {
+      protected new() {
+        made.push(this);
+      }
+    }
+
+    function Read() {
+      return <>{String(made.indexOf(Tracked.get().is))}</>;
+    }
+
+    const view = render(
+      <React.StrictMode>
+        <Component for={Tracked}>
+          <Read />
+        </Component>
+      </React.StrictMode>
+    );
+
+    expect(made).toHaveLength(1);
+    expect(screen).toHaveText('0');
+
+    view.unmount();
+
+    expect(made[0].get(null)).toBe(true);
+  });
+
+  it('will mount a class it constructed', () => {
+    const mounted = vi.fn();
+    const released = vi.fn();
+
+    class Owned extends State {
+      mount() {
+        mounted();
+        return released;
+      }
+    }
+
+    const view = render(<Component for={Owned} />);
+
+    expect(mounted).toBeCalledTimes(1);
+
+    view.unmount();
+
+    expect(released).toBeCalledTimes(1);
+  });
+
+  it('will hand mount to the next class when for changes', async () => {
+    const log: string[] = [];
+
+    class First extends State {
+      mount() {
+        log.push('first:mount');
+        return () => log.push('first:unmount');
+      }
+    }
+
+    class Second extends State {
+      mount() {
+        log.push('second:mount');
+        return () => log.push('second:unmount');
+      }
+    }
+
+    const view = render(<Component for={First} />);
+
+    view.rerender(<Component for={Second} />);
+    await act(async () => {});
+
+    view.unmount();
+
+    expect(log).toEqual(['first:mount', 'first:unmount', 'second:mount', 'second:unmount']);
+  });
+
+  it('will replace an instance made each render', async () => {
+    const made: Session[] = [];
+
+    function Read() {
+      return <>{String(made.indexOf(Session.get().is))}</>;
+    }
+
+    function View({ n }: { n: number }) {
+      const session = new Session();
+      made.push(session);
+      return <Component for={session} name={String(n)}><Read /></Component>;
+    }
+
+    const view = render(<View n={0} />);
+
+    view.rerender(<View n={1} />);
+    await act(async () => {});
+
+    const live = made.filter((s) => !s.get(null));
+
+    expect(live).toHaveLength(1);
+    expect(screen).toHaveText(String(made.indexOf(live[0])));
+
+    view.unmount();
+
+    expect(made.every((s) => s.get(null))).toBe(true);
+  });
+
+  it('will type attributes from for', () => {
+    class Typed extends State {
+      name = '';
+      age = 0;
+    }
+
+    class Sub extends Component {}
+
+    const plain: Component = Component.new();
+    const list: Component[] = [new Component(), plain];
+
+    void (() => [
+      list,
+      <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
+      <Component for={Typed.new()} age={2} />,
+      <Component fallback={null} />,
+      // @ts-expect-error
+      <Component for={Typed} name={1} />,
+      // @ts-expect-error
+      <Component for={Typed} nope="x" />,
+      // @ts-expect-error
+      <Component for={Typed.new()} is={() => {}} />,
+      // @ts-expect-error
+      <Sub for={Typed} />
+    ]);
+  });
+
+  it('will not add a suspense boundary', async () => {
+    const gate = mockPromise();
+
+    function Wait(): React.ReactNode {
+      throw gate;
+    }
+
+    render(
+      <Suspense fallback="outer">
+        <Component for={Session}>
+          <Wait />
+        </Component>
+      </Suspense>
+    );
+
+    expect(screen).toHaveText('outer');
   });
 });

@@ -14,7 +14,7 @@ declare module '@expressive/mvc/jsx-runtime' {
 
 declare module '@expressive/mvc' {
   namespace Component {
-    interface BaseProps<T extends Component> {
+    interface BaseProps<T extends Component<any>> {
       /**
        * Ref which receives the instance of this component.
        * (Preact JSX does not add `ref` for non-preact classes, so it is

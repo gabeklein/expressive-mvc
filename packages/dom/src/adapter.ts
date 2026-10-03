@@ -264,54 +264,26 @@ Object.defineProperty(Component, 'use', {
   }
 });
 
-Component.on({
-  type(type) {
-    subcomponents(type.prototype);
-  },
-  pre(self) {
-    subcomponents(self);
+const OWNERS = new WeakMap<Function, { owner: State; key: string }>();
+
+State.on({
+  bind(key, fn, owner) {
+    if (/^[A-Z]/.test(key)) OWNERS.set(fn, { owner, key });
   }
 });
 
-function subcomponents(target: object) {
-  for (const key of Object.getOwnPropertyNames(target)) {
-    if (!/^[A-Z]/.test(key)) continue;
+function call(type: Function, props: unknown) {
+  const sub = OWNERS.get(type);
 
-    const { value } = Object.getOwnPropertyDescriptor(target, key)!;
+  if (!sub) return type(props);
 
-    if (typeof value != 'function') continue;
-
-    Object.defineProperty(target, key, {
-      configurable: true,
-      get(this: Component) {
-        const owner = this.is;
-        let render = unbind(value);
-        const Subcomponent = (props: unknown) =>
-          render.call(tracked(owner), props);
-
-        Object.defineProperty(owner, key, {
-          configurable: true,
-          get: () => Subcomponent,
-          set(next: Function) {
-            render = next;
-          }
-        });
-
-        return Subcomponent;
-      },
-      set(this: Component, next: unknown) {
-        Object.defineProperty(this, key, {
-          value: next,
-          writable: true,
-          enumerable: true,
-          configurable: true
-        });
-
-        subcomponents(this);
-      }
-    });
-  }
+  const { owner, key } = sub;
+  return unbind((owner as any)[key]).call(tracked(owner), props);
 }
 
-export { commit, dispose, enter };
+function owner(type: unknown) {
+  return typeof type == 'function' ? OWNERS.get(type) : undefined;
+}
+
+export { call, commit, dispose, enter, owner };
 export type { Scope };

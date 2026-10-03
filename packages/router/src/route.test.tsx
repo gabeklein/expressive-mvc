@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { lazy, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { Component, Consumer } from '@expressive/react';
+import { Component } from '@expressive/react';
 
 import { location, browserRouter, mockError, mockPromise, renderAct } from '../test.setup';
 import { Route } from './route';
@@ -10,13 +10,7 @@ import { Router } from './router';
 const router = browserRouter();
 
 const Home = () => <h1>Home</h1>;
-const Post = () => {
-  return (
-    <Consumer for={Route}>
-      {(r) => <article>id: {r.match!.id}</article>}
-    </Consumer>
-  );
-};
+const Post = () => <article>id: {Route.get().match!.id}</article>;
 
 /** Render an anonymous root Route over `children`, capturing it, then settle.
  * Returns the captured root plus the view for content assertions. */
@@ -77,11 +71,10 @@ describe('Route', () => {
     location('/posts/foo');
     let mountCount = 0;
 
+    const Id = () => <span>{Route.get().match!.id}</span>;
     const Page = () => {
       mountCount++;
-      return (
-        <Consumer for={Route}>{(r) => <span>{r.match!.id}</span>}</Consumer>
-      );
+      return <Id />;
     };
 
     const view = render(<Route to="/posts/:id" as={Page} />);
@@ -557,9 +550,7 @@ describe('Route', () => {
       <section><nav>chrome</nav>{props.children}</section>
     );
     const BlogIndex = () => <p>blog-index</p>;
-    const BlogPost = () => (
-      <Consumer for={Route}>{(r) => <p>post {r.match!.slug}</p>}</Consumer>
-    );
+    const BlogPost = () => <p>post {Route.get().match!.slug}</p>;
 
     it('layout mounts its prefix-matched child', () => {
       location('/blog');
@@ -622,9 +613,7 @@ describe('Route', () => {
       const UsersChrome = (props: { children?: React.ReactNode }) => (
         <>users/{props.children}</>
       );
-      const UserDetail = () => (
-        <Consumer for={Route}>{(r) => <span>{r.match!.id}</span>}</Consumer>
-      );
+      const UserDetail = () => <span>{Route.get().match!.id}</span>;
       const view = render(
         <Route to="/admin/*" as={AdminChrome}>
           <Route to="users/*" as={UsersChrome}>
@@ -750,9 +739,7 @@ describe('Route', () => {
 
     it('nested chrome persists across a param swap', async () => {
       location('/users/1');
-      const Id = () => (
-        <Consumer for={Route}>{(r) => <span>{r.match!.id}</span>}</Consumer>
-      );
+      const Id = () => <span>{Route.get().match!.id}</span>;
       let leaf!: Route;
       const view = render(
         <Route to="users" as={Chrome}>
@@ -1953,12 +1940,15 @@ describe('a Route passed as another Route', () => {
     let innerInst!: Route;
     let resolved!: Route;
 
+    const Resolve = () => {
+      resolved = Route.get().is;
+      return <span>inner</span>;
+    };
+
     class Inner extends Route {
       render() {
         innerInst = this.is;
-        return (
-          <Consumer for={Route}>{(r) => { resolved = r.is; return <span>inner</span>; }}</Consumer>
-        );
+        return <Resolve />;
       }
     }
 

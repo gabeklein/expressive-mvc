@@ -118,10 +118,10 @@ declare namespace State {
 
     /**
      * Runs each time a method is bound to an instance - first access,
-     * reassignment, and the rebind after a hot patch - with the key and the
-     * bound function. Tooling and development use.
+     * reassignment, and the rebind after a hot patch - with the key, the bound
+     * function and the instance. Tooling and development use.
      */
-    bind?(this: T, key: string, fn: Function): void;
+    bind?(this: T, key: string, fn: Function, self: T): void;
 
     /**
      * Receives what an effect, refreshing getter or async initializer of this State
@@ -745,7 +745,7 @@ function classify(
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
 
-      for (const handler of stages(is.constructor as State.Extends, 'bind')) handler.call(is, key, bound);
+      for (const handler of stages(is.constructor as State.Extends, 'bind')) handler.call(is, key, bound, is);
 
       return bound;
     }
@@ -1193,4 +1193,4 @@ function parent(child: object, value?: State | null) {
 }
 
 export type { Handler };
-export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
+export { adopt, event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };

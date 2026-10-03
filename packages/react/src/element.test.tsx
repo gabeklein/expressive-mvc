@@ -3,7 +3,7 @@ import { expect, it, describe, vi } from 'vitest';
 import React, { Suspense } from 'react';
 
 import { mockError, mockPromise } from '../test.setup';
-import { Component, Consumer, Provider, State, get, has, map } from '.';
+import { Component, Provider, State, get, has, map } from '.';
 import { pending } from '@expressive/mvc';
 
 describe('instance element', () => {
@@ -492,11 +492,15 @@ describe('instance element', () => {
   it('will resolve its own context per placement', async () => {
     const error = mockError();
 
+    function Value() {
+      return <span>{Item.get().value}</span>;
+    }
+
     class Item extends Component {
       value = '';
 
       render() {
-        return <Consumer for={Item}>{(self) => <span>{self.value}</span>}</Consumer>;
+        return <Value />;
       }
     }
 

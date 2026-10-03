@@ -4,7 +4,7 @@ import { vi, expect, it, describe } from 'vitest';
 import { ComponentChildren, createRef } from 'preact';
 import { StrictMode } from 'preact/compat';
 
-import { Component, Consumer, set } from '.';
+import { Component, set } from '.';
 import { flushMicrotasks } from '../test.setup';
 
 it('will create and provide instance', () => {
@@ -12,9 +12,11 @@ it('will create and provide instance', () => {
     foo = 'bar';
   }
 
+  const Value = () => <>{Control.get().foo}</>;
+
   render(
     <Control>
-      <Consumer for={Control}>{(c) => c.foo}</Consumer>
+      <Value />
     </Control>
   );
 
@@ -141,13 +143,14 @@ describe('element props', () => {
   }
 
   it('will accept managed values', () => {
+    function Check() {
+      expect(Foo.get().value).toBe('baz');
+      return null;
+    }
+
     render(
       <Foo value="baz">
-        <Consumer for={Foo}>
-          {(c) => {
-            expect(c.value).toBe('baz');
-          }}
-        </Consumer>
+        <Check />
       </Foo>
     );
   });
@@ -183,15 +186,16 @@ describe('element props', () => {
   });
 
   it('will not assign foreign values', () => {
+    function Check() {
+      // @ts-expect-error
+      expect(Foo.get().nonValue).toBeUndefined();
+      return null;
+    }
+
     render(
       // @ts-expect-error
       <Foo nonValue="foobar">
-        <Consumer for={Foo}>
-          {(i) => {
-            // @ts-expect-error
-            expect(i.nonValue).toBeUndefined();
-          }}
-        </Consumer>
+        <Check />
       </Foo>
     );
   });

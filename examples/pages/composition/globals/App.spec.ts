@@ -1,6 +1,6 @@
 import { expect, test } from '../../../e2e';
 
-test('will reach globals without Provider and update only the reader', async ({ page, open }) => {
+test('will reach globals without a provider and update only the reader', async ({ page, open }) => {
   await open('composition/globals');
   const card = (name: string) => page.locator('.card', { has: page.getByRole('heading', { name }) });
   const viewport = card('Viewport');
