@@ -6,10 +6,9 @@ const PORTAL = Symbol('@expressive/dom.portal');
 type Key = string | number | null | undefined;
 type FunctionComponent<P = any> = (props: P) => Node;
 interface ComponentInstance {
-  readonly props: any;
   render(props?: any): Node;
 }
-type ComponentType<P = any> = FunctionComponent<P> | (new (props: P) => ComponentInstance);
+type ComponentType<P = any> = FunctionComponent<P> | (abstract new (...args: any[]) => object);
 
 type Node =
   | VNode

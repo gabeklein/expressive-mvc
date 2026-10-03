@@ -264,7 +264,7 @@ Object.defineProperty(Component, 'use', {
   }
 });
 
-Component.on({
+State.on({
   type(type) {
     subcomponents(type.prototype);
   },
@@ -283,7 +283,7 @@ function subcomponents(target: object) {
 
     Object.defineProperty(target, key, {
       configurable: true,
-      get(this: Component) {
+      get(this: State) {
         const owner = this.is;
         let render = unbind(value);
         const Subcomponent = (props: unknown) =>
@@ -299,7 +299,7 @@ function subcomponents(target: object) {
 
         return Subcomponent;
       },
-      set(this: Component, next: unknown) {
+      set(this: State, next: unknown) {
         Object.defineProperty(this, key, {
           value: next,
           writable: true,
