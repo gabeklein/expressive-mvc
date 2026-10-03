@@ -6,7 +6,7 @@ description: Field initializers - set, get, ref, def, has, map - with every over
 Instructions are special initializers for class fields. They wire up reactive behavior declaratively.
 
 ```ts
-import { set, get, ref, def, has, map } from '@expressive/react';
+import { set, get, ref, def, has, map } from '@expressive/mvc';
 ```
 
 All instructions return a symbol at definition time that the library resolves into a real typed value during activation. TypeScript sees the declared type; the runtime sees the symbol until init.
@@ -226,7 +226,7 @@ form = get(FormState, true, false); // T | undefined
 - Upstream lookups check the direct parent first, then siblings under each ancestor (nearest wins), then walk the context hierarchy.
 - Siblings under one parent resolve each other regardless of field order - a required lookup waits for the parent to finish activating before throwing.
 - A state does not resolve itself.
-- Upstream callbacks are not reactive - they fire once per mount.
+- Upstream callbacks are not reactive - the upstream's own value changes do not re-run them.
 - Downstream collections ignore redundant registrations of the same instance.
 - Downstream callbacks run their cleanup before either side is destroyed.
 
@@ -279,7 +279,7 @@ form.refs.name.current; // current value of form.name
 form.refs.name.current = 'new'; // updates form.name
 ```
 
-Creates ref objects for every enumerable property. Must pass `this` - any other argument throws.
+Creates ref objects for every enumerable property. Takes a State instance - normally `this`, though another state works too; a plain object throws.
 
 - Reactive computed getters are included (read-only).
 - Factory-based properties (`set(() => ...)`) are excluded (non-enumerable).
@@ -293,12 +293,13 @@ class Form extends State {
 }
 ```
 
-Map function runs lazily once per key; return value is cached.
+Map function runs lazily once per key, with the state as `this` and second argument; return value is cached.
 
 ### `ref.Object<T>` shape
 
 ```ts
 interface ref.Object<T> {
+  (value: T | null): void;
   current: T;
   is: State;
   key: string;
@@ -356,7 +357,7 @@ Setter callbacks behave like `set()` callbacks: throw `false` to reject, throw `
 An owned reactive collection - an ordered list of values, or a pool of members the state spawns.
 
 ```ts
-import { has } from '@expressive/react';
+import { State, has } from '@expressive/mvc';
 
 class Game extends State {
   board = has<string>(Array(9).fill(''));
@@ -369,7 +370,39 @@ class Game extends State {
 
 `has()` is a proper instruction: the field resolves when the hosting state activates, which adopts the collection in the same step. It is not usable standalone, and the field is read-only - assigning over it throws.
 
-The argument selects one of two modes. Nothing, a falsy value (`null`/`false`, for conditional init), or an iterable makes an ordered list (`has.List<T>`) addressed by index. A `State` class or a factory makes a pool (`has.Pool<T, A>`) whose members exist only by being spawned through `add(...args)` - which forwards its arguments to the constructor exactly as `Type.new()` accepts them (or to the factory's own parameters) and returns the member.
+The argument selects one of two modes. Nothing, a falsy value (`null`/`false`, for conditional init), or an iterable makes an ordered list (`has.List<T>`) addressed by index. A `State` class or a factory makes a pool (`has.Pool`) whose members are spawned through `add(...args)` - which forwards its arguments to the constructor exactly as `Type.new()` accepts them (or to the factory's own parameters) and returns the member.
+
+| call                       | type             | insert                                              |
+| -------------------------- | ---------------- | --------------------------------------------------- |
+| `has<T>()` / `has(values)` | `has.List<T>`    | `push`, `put`, `set(index)`                         |
+| `has(Type)`                | `has.Create<T>`  | `add(...args)` spawns, `add(instance)` admits       |
+| `has(Type, 'id')`          | `has.From<T, K>` | `add(id)` spawns `new Type({ id })`, `add(instance)` admits |
+| `has(factory)`             | `has.Pool<T, A>` | `add(...args)` calls the factory                    |
+
+A class-mode pool also admits a ready-made member: `add(instance)` with a lone instance of the class (or a subclass) holds that value instead of constructing, so one field both spawns and injects. More than one argument always constructs. A factory pool never admits - route instances through the factory body instead (`has((item?: Item) => item || new Item())`).
+
+```ts
+class Store extends State {
+  items = has(Item);
+  selected = has(Item);
+}
+
+store.items.add({ value: 1 });      // spawns - owned
+store.items.add(new Item(fetched)); // admits fresh - owned
+store.selected.add(item);           // admits active member - guest
+```
+
+A factory returning `undefined` or `null` adds nothing, and `add` returns that value - so a factory can decide *whether* to add, and returning an existing instance makes `add` a lookup-or-create:
+
+```ts
+class Inbox extends State {
+  messages = has((dto: MessageDto) =>
+    dto.deleted ? undefined : new Message({ info: dto, id: dto.id })
+  );
+}
+```
+
+Members stay typed `T`; only `add`'s return widens to include the miss.
 
 A pool takes no initial argument, so seed it from the `new()` hook, which runs once the field has resolved:
 
@@ -383,7 +416,7 @@ class Board extends State {
 }
 ```
 
-Ownership follows freshness: a fresh (never-activated) `State` member - one the pool instantiates, or a `new Item()` the factory constructs - is owned and destroyed when deleted, cleared, or when the owner dies, while an already-activated value (`Item.new()`) stays a guest, held but never destroyed. Fresh members are parented to the hosting state and activate inside its context; a member that dies evicts itself.
+Ownership follows freshness: a fresh (never-activated) `State` member - one the pool instantiates, a `new Item()` the factory constructs, or one admitted directly - is owned and destroyed when deleted, cleared, or when the owner dies, while an already-activated value (`Item.new()`) stays a guest, held but never destroyed. Fresh members are parented to the hosting state and activate inside its context; a member that dies evicts itself.
 
 - Lists are positional: `get(index)` (negative counts from the end), `get(start, end)`, `get(predicate)`, `set(index, value)`, `put(index, ...values)`, `push`, `pop(index?, count?)`.
 - Pools address the member itself: `add`, `has(value)`, `delete(value)` - no index reads, no `push`. Repeat `add` of a present value is a no-op.
@@ -393,13 +426,23 @@ Ownership follows freshness: a fresh (never-activated) `State` member - one the 
 - Shallow - nested State, `map()`, and `has()` values keep their own reactivity when accessed through the collection.
 
 ```ts
-function has<T>(initial?: Iterable<T> | null): has.List<T>;
+function has<T>(initial?: Iterable<T> | false | null): has.List<T>;
 function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Create<T>;
 function has<T extends State, K extends State.Field<T>>(Type: new (...args: State.Args<T>) => T, fromKey: K): has.From<T, K>;
-function has<T, A extends unknown[]>(make: (...args: A) => T): has.Pool<T, A>;
+function has<R, A extends unknown[]>(make: (...args: A) => R): has.Pool<Exclude<R, null | undefined>, A, R>;
+
+interface has.Create<T extends State> extends has.Pool<T, State.Args<T>> {
+  add(...args: State.Args<T>): T; // spawn
+  add(instance: T): T;            // admit
+}
+
+interface has.From<T extends State, K extends State.Field<T>> extends has.Pool<T, [from: T[K]]> {
+  add(from: T[K]): T;             // spawn
+  add(instance: T): T;            // admit
+}
 ```
 
-`has.List` and `has.Pool` are the runtime classes - mode is class identity, and adapters extend their prototypes for rendering facades. In `@expressive/react` a collection of Components renders directly: `<ul>{this.todos}</ul>`.
+`has.List` and `has.Pool` are the runtime classes (`has.Create` and `has.From` type the class-mode pool) - mode is class identity, and adapters extend their prototypes for rendering facades. In `@expressive/react` a collection of Components renders directly: `<ul>{this.todos}</ul>`.
 
 > The deep dive - positional events, ownership and eviction, the seeding seam, and the shared read surface - lives at [Arrays & Collections](/docs/guides/collections).
 
@@ -410,7 +453,7 @@ function has<T, A extends unknown[]>(make: (...args: A) => T): has.Pool<T, A>;
 Keyed reactivity for `Map`.
 
 ```ts
-import { map } from '@expressive/react';
+import { State, map } from '@expressive/mvc';
 
 class Catalog extends State {
   products = map<string, Product>();
@@ -423,9 +466,9 @@ class Catalog extends State {
 
 `map()` is a proper instruction: the field resolves when the hosting state activates, which adopts the map in the same step. It is not usable standalone.
 
-The argument selects one of two modes. With no argument or an iterable of entries, it is a plain keyed map (`map.Insert<K, V>`, extending native `Map`) - you name and insert everything via `set(key, value)`. With a factory function, it is a keyed spawning map (`map.Create<A, V>`, keyed by the factory's first parameter): `set(key, ...rest)` invokes the factory with those arguments and stores the result at `key`, replacing (and destroying, if owned) any previous value.
+The argument selects one of two modes. With no argument, a falsy value, or an iterable of entries, it is a plain keyed map (`map.Insert<K, V>`, extending native `Map`) - you name and insert everything via `set(key, value)`. With a factory function, it is a keyed spawning map (`map.Create<A, V>`, keyed by the factory's first parameter): `set(key, ...rest)` invokes the factory with those arguments and stores the result at `key`, replacing (and destroying, if owned) any previous value.
 
-Spawning maps own what the factory makes - spawned `State` values are destroyed when deleted, cleared, or replaced - while a value the factory merely passes through from its arguments stays a guest (`(key, value?) => value || new Item()` is the guest-admitting pattern). Every map is adopted by its hosting state when the instruction resolves: fresh members are parented to the owner, activate inside its context, and are destroyed with it - already-activated values keep guest status. The field is read-only, and a `State` value that dies evicts itself from the map. `keys(fn)`, `values(fn)`, and `entries(fn)` return reusable iterables of transformed results - a fresh pass over live entries per iteration, tracking like their plain forms; `throw false` in the callback skips an entry.
+Ownership follows freshness in both modes, however a value arrives: a fresh (never-activated) `State` - handed to `set`, constructed by a factory, or in initial entries - is owned and destroyed when its entry is deleted, cleared, or replaced, while an already-activated value (`Item.new()`) stays a guest. In a spawning map, a value the factory merely passes through from its arguments is a guest too (`(key, value?) => value || new Item()` is the guest-admitting pattern). Every map is adopted by its hosting state when the instruction resolves: fresh members are parented to the owner, activate inside its context, and are destroyed with it - already-activated values keep guest status. The field is read-only, and a `State` value that dies evicts itself from the map. `keys(fn)`, `values(fn)`, and `entries(fn)` return reusable iterables of transformed results - a fresh pass over live entries per iteration, tracking like their plain forms; `throw false` in the callback skips an entry.
 
 ```ts
 class Cart extends State {
@@ -446,15 +489,24 @@ class Cart extends State {
 - Shallow - nested State, `map()`, and `has()` values keep their own reactivity when accessed through the map.
 
 ```ts
-function map<K, V>(entries?: Iterable<readonly [K, V]> | null): map.Insert<K, V>;
+function map<K, V>(entries?: Iterable<readonly [K, V]> | false | null): map.Insert<K, V>;
 function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
 
-// MapLike (internal base): key-addressed reads, removal, entry iteration, transforms - no insertion verb
+// runtime class: reactive native Map subclass - reads, removal, iteration, transforms
+class map.Managed<K, V> extends Map<K, V> {
+  get(): ReadonlyMap<K, State.Export<V>>;
+  get(key: K): V | undefined;
+  set(key: K, ...rest: unknown[]): this;
+  // has, delete, clear, keys/values/entries (with optional fn), forEach, size
+}
 
-interface map.Create<A extends [unknown, ...unknown[]], V> extends MapLike<A[0], V> {
+interface map.Create<A extends [unknown, ...unknown[]], V> extends map.Managed<A[0], V> {
   set(...args: A): this; // the factory's own signature; A[0] is the key
 }
 
-// sugar for the plain keyed form - one interface backs both modes
-type map.Insert<K, V> = map.Create<[key: K, value: V], V>;
+interface map.Insert<K, V> extends map.Managed<K, V> {
+  set(key: K, value: V): this;
+}
 ```
+
+Both modes are one runtime class, `map.Managed` - the seam adapters extend for rendering facades. In `@expressive/react` a map renders directly, values in order: `<ul>{this.items}</ul>`.
