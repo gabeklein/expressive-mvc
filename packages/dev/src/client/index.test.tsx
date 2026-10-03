@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // @vitest-environment-options { "url": "http://localhost/" }
 
+import { Component, State } from "@expressive/mvc";
 import { Link, Redirect } from "@expressive/router";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -357,5 +358,92 @@ describe("nav cycle: async guard <-> class Page", () => {
 
     expect(caught).toBe("");
     expect(root.querySelector("h1")?.textContent).toBe("post hello");
+  });
+});
+
+describe("scope: a default-exported class", () => {
+  browserRouter();
+
+  it("provides a State to the layout and the page while the route is matched", async () => {
+    const lives: string[] = [];
+
+    class Session extends State {
+      user = "ada";
+      protected new() {
+        lives.push("new");
+        return () => lives.push("gone");
+      }
+    }
+
+    const Shell = (props: { children?: any }) => {
+      const { user } = Session.get();
+      return <div data-shell>{user}:{props.children}</div>;
+    };
+    const Page = () => <span>{Session.get().user}</span>;
+    const Home = () => <span>home</span>;
+
+    const Tree = () => (
+      <Route>
+        <Route as={Home} />
+        <Route to="account" as={Shell} scope={Session}>
+          <Route as={Page} />
+        </Route>
+        <Route to="elsewhere" as={() => <Link to="/account">go</Link>} />
+      </Route>
+    );
+
+    location("/account");
+    const root = await mount(Tree);
+
+    expect(root.querySelector("[data-shell]")?.textContent).toBe("ada:ada");
+    expect(lives).toEqual(["new"]);
+
+    window.history.pushState(null, "", "/");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await settle();
+
+    expect(root.textContent).toBe("home");
+    expect(lives).toEqual(["new", "gone"]);
+  });
+
+  it("uses a Component class as the layout when none is set", async () => {
+    class Frame extends Component {
+      render(props: { children?: any }) {
+        return <section data-frame>{props.children}</section>;
+      }
+    }
+    const Page = () => <span>inside</span>;
+
+    const Tree = () => (
+      <Route>
+        <Route to="x" scope={Frame}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/x");
+    const root = await mount(Tree);
+    expect(root.querySelector("[data-frame]")?.textContent).toBe("inside");
+  });
+});
+
+describe("loaders", () => {
+  browserRouter();
+
+  it("renders a page whose module loads on demand", async () => {
+    const Page = () => <span>loaded</span>;
+    const Lazy = () => Promise.resolve({ Page }).then(m => m.Page);
+
+    const Tree = () => (
+      <Route>
+        <Route to="lazy" as={Lazy} fallback={<span>waiting</span>} />
+      </Route>
+    );
+
+    location("/lazy");
+    const root = await mount(Tree);
+    await settle();
+    expect(root.textContent).toBe("loaded");
   });
 });

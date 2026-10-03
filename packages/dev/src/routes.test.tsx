@@ -78,10 +78,30 @@ describe("app/ routing (codegen)", () => {
     expect(out).toMatch(/<Route to="admin" as={AdminLayout} enter={AdminEnter}>/);
   });
 
-  it("(about) is a static leaf → to=\"about\"", async () => {
+  it("(about) is a static leaf → to=\"about\", loaded on demand", async () => {
     const out = await generate({ "index.tsx": PAGE, "(about).tsx": PAGE });
-    expect(out).toContain('import { Page as About } from "../app/(about).tsx";');
+    expect(out).toContain('const About = () => import("../app/(about).tsx").then(m => m.Page);');
     expect(out).toContain('<Route to="about" as={About} />');
+    expect(out).toContain('import { Page as Root } from "../app/index.tsx";');
+  });
+
+  it("a module exporting Loading, Catch or a hook is imported statically", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(about).tsx": `${PAGE}\n${LOADING}`, "(admin).tsx": `${PAGE}\n${ENTER}` });
+    expect(out).toContain('import { Page as About, Loading as AboutLoading } from "../app/(about).tsx";');
+    expect(out).toContain('import AdminEnter, { Page as Admin } from "../app/(admin).tsx";');
+    expect(out).not.toContain("import(");
+  });
+
+  it("a default-exported class is the scope's State, not an entry hook", async () => {
+    const out = await generate({ "index.tsx": PAGE, "admin/index.tsx": `${PAGE}\nexport default class Session extends State {}`, "admin/[id].tsx": PAGE });
+    expect(out).toContain('import AdminScope, { Page as Admin } from "../app/admin/index.tsx";');
+    expect(out).toMatch(/<Route to="admin" scope={AdminScope}>/);
+    expect(out).not.toContain("enter={AdminScope}");
+  });
+
+  it("a default-exported class makes a lone page a scope", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(settings).tsx": `${PAGE}\nclass Panel extends State {}\nexport { Panel as default }` });
+    expect(out).toMatch(/<Route to="settings" scope={SettingsScope}>\s*<Route as={Settings} \/>/);
   });
 
   it("[slug] is a dynamic segment → to=\":slug\"", async () => {

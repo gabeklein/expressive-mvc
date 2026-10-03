@@ -8,5 +8,11 @@ export const scanExports: ExportScanner = async (source, path) => {
 
   await init;
 
-  return parse(code)[1].map(entry => entry.n);
+  const entries = parse(code)[1];
+  const local = entries.find(entry => entry.n === "default")?.ln;
+  const classDefault = local
+    ? new RegExp(`\\bclass\\s+${local}\\b`).test(code)
+    : /\bexport\s+default\s+(abstract\s+)?class\b/.test(code);
+
+  return { exports: entries.map(entry => entry.n), classDefault };
 };
