@@ -596,3 +596,162 @@ describe('hot patch', () => {
     expect(root.textContent).toBe('after1');
   });
 });
+
+describe('Component for', () => {
+  class Session extends State {
+    name = 'none';
+  }
+
+  function Name() {
+    return <b>{Session.get().name}</b>;
+  }
+
+  it('will construct, own and provide a class', async () => {
+    let session!: Session;
+    const root = document.createElement('main');
+    const done = render(
+      <Component for={Session} name="Ada" is={(s: Session) => (session = s)}>
+        <Name />
+      </Component>,
+      root
+    );
+
+    expect(root.textContent).toBe('Ada');
+
+    done();
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will provide an instance and forward props on update', async () => {
+    const session = Session.new();
+
+    class App extends State {
+      value = 'Ada';
+
+      render() {
+        return (
+          <Component for={session} name={this.value}>
+            <Name />
+          </Component>
+        );
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    const done = render(<App is={(a) => (app = a)} />, root);
+
+    expect(root.textContent).toBe('Ada');
+
+    app.value = 'Grace';
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(session.name).toBe('Grace');
+    expect(root.textContent).toBe('Grace');
+
+    done();
+
+    expect(session.get(null)).toBe(false);
+  });
+
+  it('will mount a class it constructed', () => {
+    const mounted = vi.fn();
+    const released = vi.fn();
+
+    class Owned extends State {
+      mount() {
+        mounted();
+        return released;
+      }
+    }
+
+    const done = render(<Component for={Owned} />, document.createElement('main'));
+
+    expect(mounted).toBeCalledTimes(1);
+
+    done();
+
+    expect(released).toBeCalledTimes(1);
+  });
+
+  it('will replace an instance made each render', async () => {
+    const made: Session[] = [];
+
+    class App extends State {
+      n = 0;
+
+      render() {
+        const session = new Session();
+        made.push(session);
+        return <Component for={session} name={String(this.n)}><Name /></Component>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    const done = render(<App is={(a) => (app = a)} />, root);
+
+    app.n = 1;
+    await flushMicrotasks();
+
+    expect(made).toHaveLength(2);
+    expect(made[0].get(null)).toBe(true);
+    expect(made[1].get(null)).toBe(false);
+    expect(root.textContent).toBe('1');
+
+    done();
+
+    expect(made[1].get(null)).toBe(true);
+  });
+
+  it('will type attributes from for', () => {
+    class Typed extends State {
+      name = '';
+      age = 0;
+    }
+
+    class Sub extends Component {}
+
+    void (() => [
+      <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
+      <Component for={Typed.new()} age={2} />,
+      <Component fallback={null} />,
+      // @ts-expect-error
+      <Component for={Typed} name={1} />,
+      // @ts-expect-error
+      <Component for={Typed} nope="x" />,
+      // @ts-expect-error
+      <Component for={Typed.new()} is={() => {}} />,
+      // @ts-expect-error
+      <Sub for={Typed} />
+    ]);
+  });
+
+  it('will not add a suspense boundary', async () => {
+    const gate = mockPromise<void>();
+
+    class Wait extends State {
+      ready = false;
+
+      render() {
+        if (!this.ready) throw gate;
+        return <i>ready</i>;
+      }
+    }
+
+    const root = document.createElement('main');
+
+    render(
+      <Component fallback={<i>outer</i>}>
+        <Component for={Session}>
+          <Wait />
+        </Component>
+      </Component>,
+      root
+    );
+
+    expect(root.textContent).toBe('outer');
+  });
+});

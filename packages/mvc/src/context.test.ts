@@ -149,6 +149,29 @@ it('will drop implicit child when property is overwritten', () => {
   expect(context.get(Foo)).toBe(foo2);
 });
 
+it('will drop a child held before the parent joined context', async () => {
+  class Foo extends State {}
+
+  class Parent extends State {
+    child?: Foo = undefined;
+  }
+
+  const foo = Foo.new();
+  const parent = Parent.new();
+
+  parent.child = foo;
+  await expect(parent).toHaveUpdated();
+
+  const context = new Context().push(parent);
+
+  expect(context.get(Foo)).toBe(foo);
+
+  parent.child = undefined;
+  await expect(parent).toHaveUpdated();
+
+  expect(context.get(Foo, false)).toBeUndefined();
+});
+
 it('will notify downstream subscriber when implicit child is replaced', () => {
   class Foo extends State {}
 

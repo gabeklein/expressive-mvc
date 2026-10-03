@@ -2,7 +2,7 @@ import { listener } from "./observable";
 import { event, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
-const HELD = new WeakMap<State, Set<State>>();
+const HELD = new WeakMap<State, Map<State, Set<() => void>>>();
 let ROOT: Context;
 
 type Accept<T extends State = State> =
@@ -291,7 +291,13 @@ class Context {
       onDone.clear();
     }
 
-    const held = Array.from(HELD.get(I) || [], (child) => this.add(child));
+    const held = Array.from(HELD.get(I) || [], ([child, added]) => {
+      const done = this.add(child);
+      added.add(done);
+      return () => {
+        if (added.delete(done)) done();
+      };
+    });
 
     function remove() {
       cleanup.delete(remove);
@@ -349,10 +355,18 @@ function join(state: State, value: State): () => void {
 
   if (ctx) return ctx.add(value);
 
-  const held = HELD.get(state) || new Set();
-  HELD.set(state, held.add(value));
+  const held = HELD.get(state) || new Map();
+  const added = new Set<() => void>();
 
-  return () => held.delete(value);
+  HELD.set(state, held.set(value, added));
+
+  return () => {
+    held.delete(value);
+    added.forEach((done) => {
+      added.delete(done);
+      done();
+    });
+  };
 }
 
 export { Context, join };

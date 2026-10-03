@@ -1193,4 +1193,4 @@ function parent(child: object, value?: State | null) {
 }
 
 export type { Handler };
-export { event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
+export { adopt, event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
