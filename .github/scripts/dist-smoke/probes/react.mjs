@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import State, { Component, Provider, Consumer, get, set, ref, def, has, map } from '@expressive/react';
+import State, { Component, Provider, get, set, ref, def, has, map } from '@expressive/react';
 
-for (const [name, value] of Object.entries({ State, Component, Provider, Consumer, get, set, ref, def, has, map }))
+for (const [name, value] of Object.entries({ State, Component, Provider, get, set, ref, def, has, map }))
   assert.equal(typeof value, 'function', name + ' is not exported by the built dist');
 
 class Counter extends State {
