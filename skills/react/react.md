@@ -9,10 +9,10 @@
 ## Exports
 
 ```ts
-export { State, State as default }; // augmented with React features
-export { Context, def, get, ref, set, pending }; // re-exported from @expressive/mvc
-export { has, map }; // collection instructions, React-aware facades
-export { Component }; // React Component class
+export { State, State as default }; // deprecated - import { State } from @expressive/mvc
+export { Context, def, get, ref, set, pending }; // deprecated re-exports of @expressive/mvc
+export { has, map }; // deprecated - import from @expressive/mvc
+export { Component }; // deprecated re-export of @expressive/mvc
 export { Provider }; // deprecated - use <Component for>
 ```
 
