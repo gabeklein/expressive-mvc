@@ -71,7 +71,7 @@ describe('lazy', () => {
 
     loaded.resolve({});
     await pending;
-    expect(() => Lazy({})).toThrow('lazy() loader resolved no component.');
+    expect(() => Lazy({})).toThrow('Loader resolved no component.');
   });
 
   it('will load again after a rejection', async () => {

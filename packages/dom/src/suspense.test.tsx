@@ -1354,4 +1354,114 @@ describe('suspense and recovery', () => {
 
     expect(root.textContent).toBe('');
   });
+  describe('loader components', () => {
+    it('will render the component a loader resolves with its props', async () => {
+      const loaded = mockPromise<{ default: (props: { name: string }) => Component.Node }>();
+      const load = vi.fn(() => loaded);
+      const Greeting = (_props: {}) => load();
+      const root = document.createElement('main');
+
+      render(<Component fallback={<i>loading</i>}><Greeting name="Ada" /><Greeting name="Bob" /></Component>, root);
+      expect(root.textContent).toBe('loading');
+
+      loaded.resolve({ default: ({ name }) => <b>{name}</b> });
+      await flushMicrotasks();
+
+      expect(root.textContent).toBe('AdaBob');
+      expect(load).toBeCalledTimes(1);
+
+      render(<Greeting name="Cy" />, document.createElement('main'));
+      expect(load).toBeCalledTimes(1);
+    });
+
+    it('will render a resolved State class', async () => {
+      class Counter extends State {
+        count = 0;
+
+        render() {
+          return <b>{this.count}</b>;
+        }
+      }
+
+      const Lazy = () => Promise.resolve(Counter);
+      const root = document.createElement('main');
+
+      render(<Component fallback={<i>loading</i>}><Lazy count={3} /></Component>, root);
+
+      await flushMicrotasks();
+      await flushMicrotasks();
+      expect(root.textContent).toBe('3');
+    });
+
+    it('will call a loader again after it fails and catch resolves', async () => {
+      let attempt = 0;
+      let retry!: () => void;
+      const Page = () =>
+        ++attempt == 1
+          ? Promise.reject(new Error('chunk'))
+          : Promise.resolve(() => <b>ready</b>);
+
+      class App extends State {
+        fallback = <i>wait</i>;
+
+        catch() {
+          return new Promise<void>((resolve) => (retry = resolve));
+        }
+
+        render() {
+          return <Page />;
+        }
+      }
+
+      const root = document.createElement('main');
+      render(<App />, root);
+
+      await flushMicrotasks();
+      expect(root.textContent).toBe('wait');
+
+      retry();
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      expect(attempt).toBe(2);
+      expect(root.textContent).toBe('ready');
+    });
+
+    it('will catch a loader resolving no component', async () => {
+      const caught: string[] = [];
+      const Page = () => Promise.resolve({} as { default: () => null });
+
+      class App extends State {
+        fallback = <i>wait</i>;
+
+        catch(error: Error) {
+          caught.push(error.message);
+          return new Promise<void>(() => {});
+        }
+
+        render() {
+          return <Page />;
+        }
+      }
+
+      render(<App />, document.createElement('main'));
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      expect(caught).toEqual(['Loader resolved no component.']);
+    });
+
+    it('will type attributes from the resolved component', () => {
+      const Fn = (props: { size: number }) => props.size;
+      const Lazy = () => Promise.resolve({ default: Fn });
+
+      void (() => [
+        <Lazy size={1} />,
+        // @ts-expect-error
+        <Lazy size="x" />,
+        // @ts-expect-error
+        <Lazy />
+      ]);
+    });
+  });
 });

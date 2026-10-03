@@ -4,6 +4,7 @@ import type { JSX as Base } from '@expressive/mvc/jsx-runtime';
 
 import { childrenOf, isVNode, vnode } from './vnode';
 import type { Node, VNode } from './vnode';
+import type { Attributes as Loaded, Module } from './lazy';
 
 type Words =
   | 'AnimationCancel' | 'AnimationEnd' | 'AnimationIteration' | 'AnimationStart'
@@ -132,6 +133,7 @@ export declare namespace JSX {
   type ElementType =
     | keyof IntrinsicElements
     | ((props: any) => Component.Node)
+    | ((props: any) => PromiseLike<Module>)
     | (abstract new (...args: any[]) => ElementClass);
   /**
    * Any State renders as a class element - one with `render` produces content,
@@ -149,6 +151,8 @@ export declare namespace JSX {
       ? P extends { props: infer Q } ? Q
       : I extends State ? State.Props<I>
       : P
+      : C extends (...args: any[]) => PromiseLike<Module<infer T>>
+      ? P & Loaded<T>
       : P;
   interface ElementChildrenAttribute extends Base.ElementChildrenAttribute {}
   interface IntrinsicAttributes extends Base.IntrinsicAttributes {}
