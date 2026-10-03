@@ -1357,7 +1357,7 @@ describe('suspense and recovery', () => {
     it('will render the component a loader resolves with its props', async () => {
       const loaded = mockPromise<{ default: (props: { name: string }) => Component.Node }>();
       const load = vi.fn(() => loaded);
-      const Greeting = (_props: {}) => load();
+      const Greeting = () => load();
       const root = document.createElement('main');
 
       render(<Component fallback={<i>loading</i>}><Greeting name="Ada" /><Greeting name="Bob" /></Component>, root);
@@ -1424,12 +1424,15 @@ describe('suspense and recovery', () => {
       const Fn = (props: { size: number }) => props.size;
       const Lazy = () => Promise.resolve({ default: Fn });
       const LazyState = () => Promise.resolve(Settings);
+      const Arity = (_props: { id: number }) => Promise.resolve(Fn);
 
       void (() => [
         <Lazy size={1} />,
         <LazyState theme="light" />,
         // @ts-expect-error
         <LazyState theme={1} />,
+        // @ts-expect-error
+        <Arity id={1} />,
         // @ts-expect-error
         <Lazy size="x" />,
         // @ts-expect-error

@@ -44,7 +44,7 @@ const Frame = (props: { children?: Component.Node }) => (
   </main>
 );
 
-const Other = () => <p id="other">other</p>;
+const Other = () => import('./other');
 
 export function mount(root: Element) {
   return render(

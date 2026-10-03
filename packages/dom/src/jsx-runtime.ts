@@ -78,6 +78,7 @@ declare module '@expressive/mvc/jsx-runtime' {
   interface Host {
     node: Node;
     intrinsics: Intrinsics;
+    element: () => PromiseLike<Module>;
   }
 }
 
@@ -133,7 +134,7 @@ export declare namespace JSX {
   type ElementType =
     | keyof IntrinsicElements
     | ((props: any) => Component.Node)
-    | ((props: any) => PromiseLike<Module>)
+    | (() => PromiseLike<Module>)
     | (abstract new (...args: any[]) => ElementClass);
   /**
    * Any State renders as a class element - one with `render` produces content,
@@ -151,8 +152,8 @@ export declare namespace JSX {
       ? P extends { props: infer Q } ? Q
       : I extends State ? State.Props<I>
       : P
-      : C extends (...args: any[]) => PromiseLike<Module<infer T>>
-      ? P & Loaded<T>
+      : C extends () => PromiseLike<Module<infer T>>
+      ? Loaded<T>
       : P;
   interface ElementChildrenAttribute extends Base.ElementChildrenAttribute {}
   interface IntrinsicAttributes extends Base.IntrinsicAttributes {}
