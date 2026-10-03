@@ -50,11 +50,5 @@ function resolve(type: Function, props: object, run: () => unknown): Node {
   );
 }
 
-function lazy<T extends ComponentType>(load: () => Promise<Module<T>>): (props: Attributes<T>) => Node {
-  return function Lazy(props) {
-    return resolve(Lazy, props, load);
-  };
-}
-
-export { lazy, resolve };
+export { resolve };
 export type { Attributes, Module };

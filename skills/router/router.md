@@ -112,10 +112,10 @@ Force-404 marks only the declined URL; navigating elsewhere clears it. `null` me
 
 ## Code-split pages
 
-`as` takes a lazy component - `React.lazy`, or anything that suspends while its module loads. A `Route` is its own suspense boundary: on cold load `fallback` shows while the chunk loads, then the page resolves in place - the Route instance, its `match`, and any ancestor layout survive. On in-app navigation the previous screen holds instead (see [Deferred presentation](#deferred-presentation)).
+`as` takes a lazy component - `React.lazy`, a dom loader (`() => import('./Document')`), or anything that suspends while its module loads. A `Route` is its own suspense boundary: on cold load `fallback` shows while the chunk loads, then the page resolves in place - the Route instance, its `match`, and any ancestor layout survive. On in-app navigation the previous screen holds instead (see [Deferred presentation](#deferred-presentation)).
 
 ```tsx
-const Document = lazy(() => import('./Document'));
+const Document = lazy(() => import('./Document')); // dom: () => import('./Document')
 
 <Route to="document/:id" fallback={<Spinner />} as={Document} />
 ```

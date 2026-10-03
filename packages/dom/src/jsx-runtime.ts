@@ -4,7 +4,7 @@ import type { JSX as Base } from '@expressive/mvc/jsx-runtime';
 
 import { childrenOf, isVNode, vnode } from './vnode';
 import type { Node, VNode } from './vnode';
-import type { Attributes as Loaded, Module } from './lazy';
+import type { Attributes as Loaded, Module } from './loader';
 
 type Words =
   | 'AnimationCancel' | 'AnimationEnd' | 'AnimationIteration' | 'AnimationStart'

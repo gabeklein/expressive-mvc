@@ -5,7 +5,7 @@ import { Fragment, compose } from '@expressive/mvc/jsx-runtime';
 
 import { call, commit, dispose, enter } from './adapter';
 import { latest, same, track, untrack } from './hot';
-import { resolve } from './lazy';
+import { resolve } from './loader';
 import type { Scope } from './adapter';
 import {
   appearanceRoot,

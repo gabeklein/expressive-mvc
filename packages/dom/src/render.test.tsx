@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, has, map } from '@expressive/mvc';
-import { Fragment, Portal, lazy, render } from './index';
+import { Fragment, Portal, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 import { vnode } from './vnode';
 
@@ -1144,7 +1144,7 @@ describe('render', () => {
 
   it('will resolve a selector target rendered beside it off-document', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class Page extends State {
       fallback = <i>wait</i>;
@@ -1646,7 +1646,7 @@ describe('renderable State', () => {
 
   it('will own a boundary from a fallback on the element', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class Plain extends State {
       render() {
@@ -1696,7 +1696,7 @@ describe('renderable State', () => {
   });
 
   it('will prefer an element fallback over the member', () => {
-    const Lazy = lazy(() => new Promise<never>(() => {}));
+    const Lazy = () => new Promise<never>(() => {});
 
     class Guarded extends State {
       fallback: Component.Node = <i>member</i>;
@@ -1759,7 +1759,7 @@ describe('renderable State', () => {
 
   it('will not own a boundary from fallback on a function component', () => {
     const received = vi.fn();
-    const Lazy = lazy(() => new Promise<never>(() => {}));
+    const Lazy = () => new Promise<never>(() => {});
 
     function View(props: { fallback?: string }) {
       received(props.fallback);
@@ -1781,7 +1781,7 @@ describe('renderable State', () => {
   });
 
   it('will use members for a placed instance', () => {
-    const Lazy = lazy(() => new Promise<never>(() => {}));
+    const Lazy = () => new Promise<never>(() => {});
 
     class Placed extends State {
       fallback = <i>member</i>;

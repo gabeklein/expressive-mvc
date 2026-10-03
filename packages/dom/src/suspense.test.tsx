@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, pending } from '@expressive/mvc';
-import { Portal, lazy, render } from './index';
+import { Portal, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('suspense and recovery', () => {
-  it('will show a Component fallback until a lazy view resolves', async () => {
+  it('will show a Component fallback until a loaded view resolves', async () => {
     const loaded = mockPromise<{ default: () => Component.Node }>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class App extends Component {
       fallback = <i>loading</i>;
@@ -26,15 +26,14 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('ready');
   });
 
-  it('will load a failed lazy view again when catch resolves', async () => {
+  it('will load a failed load again when catch resolves', async () => {
     let attempt = 0;
     let retry!: () => void;
     const caught: string[] = [];
-    const Lazy = lazy(() =>
+    const Lazy = () =>
       ++attempt == 1
         ? Promise.reject(new Error('chunk'))
-        : Promise.resolve(() => <b>ready</b>)
-    );
+        : Promise.resolve(() => <b>ready</b>);
 
     class Page extends State {
       fallback = <i>wait</i>;
@@ -65,9 +64,9 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('ready');
   });
 
-  it('will report a failed lazy view without a catch, not reject unhandled', async () => {
+  it('will report a failed load without a catch, not reject unhandled', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const Lazy = lazy(() => Promise.reject(new Error('chunk')));
+    const Lazy = () => Promise.reject(new Error('chunk'));
     const root = document.createElement('main');
 
     render(<Component fallback={<i>wait</i>}><Lazy /></Component>, root);
@@ -79,10 +78,10 @@ describe('suspense and recovery', () => {
     error.mockRestore();
   });
 
-  it('will let Component for own a lazy fallback', async () => {
+  it('will let Component for own a loader fallback', async () => {
     class Session extends State {}
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
     const root = document.createElement('main');
 
     render(
@@ -101,8 +100,8 @@ describe('suspense and recovery', () => {
   it('will replace a whole boundary with one fallback', async () => {
     const first = mockPromise<() => Component.Node>();
     const second = mockPromise<() => Component.Node>();
-    const First = lazy(() => first);
-    const Second = lazy(() => second);
+    const First = () => first;
+    const Second = () => second;
 
     class App extends Component {
       fallback = <i>loading</i>;
@@ -133,7 +132,7 @@ describe('suspense and recovery', () => {
 
   it('will keep hidden content live until it reveals', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class Label extends State {
       text = 'before';
@@ -168,7 +167,7 @@ describe('suspense and recovery', () => {
 
   it('will reveal a boundary when its suspended content unmounts', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     function Spinner() {
       return <i>loading</i>;
@@ -195,7 +194,7 @@ describe('suspense and recovery', () => {
 
   it('will drop a suspended boundary removed by its parent', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class Inner extends Component {
       fallback = <i>loading</i>;
@@ -230,7 +229,7 @@ describe('suspense and recovery', () => {
 
   it('will retry a transition which suspends from empty content', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class Flag extends State {
       on = false;
@@ -270,7 +269,7 @@ describe('suspense and recovery', () => {
 
   it('will keep siblings consistent when a transition suspends mid-list', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class App extends Component {
       next = false;
@@ -348,7 +347,7 @@ describe('suspense and recovery', () => {
 
   it('will hold a sibling swap when the incoming scope suspends below its render', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class Nav extends State {
       page = 'a';
@@ -766,7 +765,7 @@ describe('suspense and recovery', () => {
 
   it('will hide portal content while its boundary shows a fallback', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
     const target = document.createElement('aside');
 
     class App extends Component {
@@ -794,7 +793,7 @@ describe('suspense and recovery', () => {
 
   it('will create SVG content resolved while its boundary is hidden', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class Chart extends Component {
       render() {
@@ -874,7 +873,7 @@ describe('suspense and recovery', () => {
 
   it('will retain committed content while a transition suspends', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class App extends Component {
       next = false;
@@ -981,7 +980,7 @@ describe('suspense and recovery', () => {
 
   it('will clean an unmounted suspended scope before resolution', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class App extends Component {
       fallback = <i>loading</i>;
@@ -1001,7 +1000,7 @@ describe('suspense and recovery', () => {
 
   it('will settle pending work when a suspended scope unmounts', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
 
     class App extends Component {
       next = false;
@@ -1138,7 +1137,7 @@ describe('suspense and recovery', () => {
 
   it('will let a bare Component own a fallback', async () => {
     const loaded = mockPromise<() => Component.Node>();
-    const Lazy = lazy(() => loaded);
+    const Lazy = () => loaded;
     const root = document.createElement('main');
 
     render(
@@ -1393,40 +1392,6 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('3');
     });
 
-    it('will call a loader again after it fails and catch resolves', async () => {
-      let attempt = 0;
-      let retry!: () => void;
-      const Page = () =>
-        ++attempt == 1
-          ? Promise.reject(new Error('chunk'))
-          : Promise.resolve(() => <b>ready</b>);
-
-      class App extends State {
-        fallback = <i>wait</i>;
-
-        catch() {
-          return new Promise<void>((resolve) => (retry = resolve));
-        }
-
-        render() {
-          return <Page />;
-        }
-      }
-
-      const root = document.createElement('main');
-      render(<App />, root);
-
-      await flushMicrotasks();
-      expect(root.textContent).toBe('wait');
-
-      retry();
-      await flushMicrotasks();
-      await flushMicrotasks();
-
-      expect(attempt).toBe(2);
-      expect(root.textContent).toBe('ready');
-    });
-
     it('will catch a loader resolving no component', async () => {
       const caught: string[] = [];
       const Page = () => Promise.resolve({} as { default: () => null });
@@ -1452,11 +1417,19 @@ describe('suspense and recovery', () => {
     });
 
     it('will type attributes from the resolved component', () => {
+      class Settings extends State {
+        theme = 'dark';
+      }
+
       const Fn = (props: { size: number }) => props.size;
       const Lazy = () => Promise.resolve({ default: Fn });
+      const LazyState = () => Promise.resolve(Settings);
 
       void (() => [
         <Lazy size={1} />,
+        <LazyState theme="light" />,
+        // @ts-expect-error
+        <LazyState theme={1} />,
         // @ts-expect-error
         <Lazy size="x" />,
         // @ts-expect-error
