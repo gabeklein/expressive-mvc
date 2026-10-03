@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, has, map } from '@expressive/mvc';
-import { lazy, portal, render } from './index';
+import { Portal, lazy, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 import { vnode } from './vnode';
 
@@ -1111,7 +1111,7 @@ describe('render', () => {
       target = aside;
 
       render() {
-        return portal(<button>{this.message}</button>, this.target);
+        return <Portal to={this.target}><button>{this.message}</button></Portal>;
       }
     }
 

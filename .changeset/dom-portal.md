@@ -2,4 +2,4 @@
 '@expressive/dom': minor
 ---
 
-`createPortal` is renamed `portal`, matching dom's other lowercase helpers (`render`, `lazy`, `style`, `macro`). There is no alias: replace `createPortal(children, container, key?)` with `portal(children, container, key?)`.
+`createPortal(children, container, key?)` is replaced by a `Portal` element: `<Portal to={container} key={…}>{children}</Portal>`. The context, ownership and suspense behaviour are unchanged. There's no alias.

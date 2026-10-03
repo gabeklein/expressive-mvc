@@ -17,7 +17,7 @@ The initial `0.1` release is a usable, tested browser renderer for dogfooding, n
 
 ```tsx
 import { State, Component, pending } from '@expressive/mvc';
-import { lazy, portal, render } from '@expressive/dom';
+import { Portal, lazy, render } from '@expressive/dom';
 ```
 
 ## Render
@@ -207,10 +207,10 @@ await pending(() => {
 
 ## Portals
 
-`portal(children, container, key?)` renders into another `Element` or `DocumentFragment` while retaining logical MVC context and ownership.
+`<Portal to={element}>` renders its children into another `Element` or `DocumentFragment` while retaining logical MVC context, ownership and boundaries.
 
 ```tsx
-return portal(<Dialog />, document.body);
+return <Portal to={document.body}><Dialog /></Portal>;
 ```
 
 ## Hot reload (Vite)

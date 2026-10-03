@@ -414,7 +414,7 @@ function runCollection(fiber: Fiber, passive: boolean) {
 
 function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const marker = document.createComment('portal');
-  const container = value.props.container as Container;
+  const container = value.props.to as Container;
   const portalStart = document.createComment('portal-root');
   const portalEnd = document.createComment('/portal-root');
 
@@ -888,7 +888,7 @@ function compatible(fiber: Fiber, value: RenderNode) {
     return fiber.kind == 'collection' && fiber.source === value;
   if (!isVNode(value)) return false;
   if (fiber.key !== value.key || !same(fiber.type, value.type)) return false;
-  if (fiber.kind == 'portal') return fiber.portalContainer === value.props.container;
+  if (fiber.kind == 'portal') return fiber.portalContainer === value.props.to;
   return true;
 }
 
