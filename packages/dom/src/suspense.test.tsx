@@ -1353,6 +1353,37 @@ describe('suspense and recovery', () => {
 
     expect(root.textContent).toBe('');
   });
+  it.fails('will not render a child its parent removes in the same transition', async () => {
+    const seen: unknown[] = [];
+
+    class Parent extends State {
+      value?: { id: number } = { id: 1 };
+
+      render() {
+        return this.value ? <Child /> : <p>none</p>;
+      }
+    }
+
+    const Child = () => {
+      const { value } = Parent.get();
+      seen.push(value);
+      return <b>{value!.id}</b>;
+    };
+
+    let parent!: Parent;
+    const root = document.createElement('main');
+
+    render(<Parent is={(p) => (parent = p)} fallback={null} />, root);
+    pending(() => {
+      parent.value = undefined;
+    });
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('none');
+    expect(seen).toEqual([{ id: 1 }]);
+  });
+
   describe('loader components', () => {
     it('will render the component a loader resolves with its props', async () => {
       const loaded = mockPromise<{ default: (props: { name: string }) => Component.Node }>();
