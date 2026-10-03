@@ -242,7 +242,7 @@ This gives the child a strong contract - no fallback values threaded through its
 
 ## Providing Context
 
-Pass the class: `<Component for={TransferState}>`. Pass an instance only when something else owns it (`<Component for={counter}>` after `Counter.use()`). One item per element - several belong to a parent State owning them as fields. `is`, attributes, boundaries: [state/context.md](state/context.md#providing-with-component).
+Pass the class: `<Component for={TransferState}>`. Pass an instance only when something else owns it (`<Component for={counter}>` after `Counter.use()`). One item per element - several belong to a parent State owning them as fields, which makes them siblings; nesting `<Component for>` is a smell (the outer cannot `get` the inner). `is`, attributes, boundaries: [state/context.md](state/context.md#providing-with-component).
 
 ## Component Class
 

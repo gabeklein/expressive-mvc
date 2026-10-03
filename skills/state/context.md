@@ -173,7 +173,7 @@ Bare `Component` (not a subclass) given `for` provides one State to its children
 - Other attributes are typed from the provided State and assign to it on every render.
 - Changing `for` releases the previous item, then provides the next.
 - No suspense boundary unless `fallback` or `catch` is passed. Bare `<Component>` without `for` keeps `fallback = null`.
-- One item only - several belong to a parent State that owns them.
+- One item only - several belong to a parent State that owns them as fields (`class Root extends State { theme = new Theme(); router = new BrowserRouter() }`), where they resolve each other as siblings with `get()`. Nesting `<Component for>` elements works but is a smell: the inner State can `get` the outer, not the reverse.
 
 ## API Surface
 

@@ -1,3 +1,4 @@
+import { State } from '@expressive/mvc';
 import { Component, get, ref } from '@expressive/react';
 import { BrowserRouter, Link, NavLinks, Route, Router } from '@expressive/router';
 
@@ -9,16 +10,19 @@ import styles from './Shell.module.css';
 
 import type { Directory } from '../pages';
 
+class Root extends State {
+  theme = new Theme();
+  router = new BrowserRouter();
+}
+
 const Shell = ({ tree, default: home }: { tree: Directory[]; default?: string }) => {
   return (
-    <Component for={Theme}>
-      <Component for={BrowserRouter}>
-        <Route as={Window}>
-          {home && <Route redirect={`/${home}`} />}
-          {tree.map(renderDirectory)}
-          <Route none as={NotFound} />
-        </Route>
-      </Component>
+    <Component for={Root}>
+      <Route as={Window}>
+        {home && <Route redirect={`/${home}`} />}
+        {tree.map(renderDirectory)}
+        <Route none as={NotFound} />
+      </Route>
     </Component>
   );
 };
