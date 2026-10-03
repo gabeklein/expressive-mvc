@@ -676,6 +676,36 @@ describe('Component for', () => {
     expect(released).toBeCalledTimes(1);
   });
 
+  it('will replace an instance made each render', async () => {
+    const made: Session[] = [];
+
+    class App extends State {
+      n = 0;
+
+      render() {
+        const session = new Session();
+        made.push(session);
+        return <Component for={session} name={String(this.n)}><Name /></Component>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    const done = render(<App is={(a) => (app = a)} />, root);
+
+    app.n = 1;
+    await flushMicrotasks();
+
+    expect(made).toHaveLength(2);
+    expect(made[0].get(null)).toBe(true);
+    expect(made[1].get(null)).toBe(false);
+    expect(root.textContent).toBe('1');
+
+    done();
+
+    expect(made[1].get(null)).toBe(true);
+  });
+
   it('will type attributes from for', () => {
     class Typed extends State {
       name = '';

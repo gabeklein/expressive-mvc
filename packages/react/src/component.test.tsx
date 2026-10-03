@@ -1925,6 +1925,34 @@ describe('for', () => {
     expect(log).toEqual(['first:mount', 'first:unmount', 'second:mount', 'second:unmount']);
   });
 
+  it('will replace an instance made each render', async () => {
+    const made: Session[] = [];
+
+    function Read() {
+      return <>{String(made.indexOf(Session.get().is))}</>;
+    }
+
+    function View({ n }: { n: number }) {
+      const session = new Session();
+      made.push(session);
+      return <Component for={session} name={String(n)}><Read /></Component>;
+    }
+
+    const view = render(<View n={0} />);
+
+    view.rerender(<View n={1} />);
+    await act(async () => {});
+
+    const live = made.filter((s) => !s.get(null));
+
+    expect(live).toHaveLength(1);
+    expect(screen).toHaveText(String(made.indexOf(live[0])));
+
+    view.unmount();
+
+    expect(made.every((s) => s.get(null))).toBe(true);
+  });
+
   it('will type attributes from for', () => {
     class Typed extends State {
       name = '';

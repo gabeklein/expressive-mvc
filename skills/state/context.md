@@ -170,7 +170,7 @@ Bare `Component` (not a subclass) given `for` provides one State to its children
 ```
 
 - A class is constructed, owned and destroyed with the element; `is` receives it; its `mount()` runs with the element's, and a replacement class takes over the mount.
-- An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted, like a field.
+- An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted like a field - `for={new X()}` in render gives a State that lives for one render.
 - Other attributes are typed from the provided State and assign to it on every render.
 - Changing `for` releases the previous item, then provides the next.
 - No suspense boundary unless `fallback` or `catch` is passed. Bare `<Component>` without `for` keeps `fallback = null`.
