@@ -9,8 +9,6 @@
   },
   "dependencies": {
     "@expressive/dev": "workspace:*",
-    "@expressive/dom": "workspace:*",
-    "@expressive/mvc": "workspace:*",
-    "@expressive/router": "workspace:*"
+    "@expressive/mvc": "workspace:*"
   }
 }

@@ -1,5 +1,5 @@
-import { defineApp } from "@expressive/dev";
+import { app } from "@expressive/dev";
 
-export default defineApp({
+export default app({
   port: 3100,
 });

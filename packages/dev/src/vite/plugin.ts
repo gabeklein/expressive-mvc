@@ -27,6 +27,8 @@ const DEPS = [
   "@expressive/dom/jsx-dev-runtime",
   "@expressive/router",
   "@expressive/dev",
+  "@expressive/dev/jsx-runtime",
+  "@expressive/dev/jsx-dev-runtime",
 ];
 
 const HOSTED = ["@expressive/inspect/vite/client", "@expressive/inspect/install", "@expressive/inspect"];
@@ -66,7 +68,7 @@ export function expressive(): Plugin<Host> {
 
       return {
         appType: "custom",
-        oxc: { jsx: { runtime: "automatic", importSource: "@expressive/dom" } },
+        oxc: { jsx: { runtime: "automatic", importSource: "@expressive/dev" } },
         optimizeDeps: { entries, include: DEPS },
         resolve: { alias: hosted() },
         environments: { ssr: { resolve: { external: SHARED } } },

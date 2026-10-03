@@ -59,8 +59,8 @@ export function resolveProject(root: string): Project {
 
 export function bootstrap(appImport: string): string {
   return `\
-import { render } from "@expressive/dom";
-import { jsx } from "@expressive/dom/jsx-runtime";
+import { render } from "@expressive/dev";
+import { jsx } from "@expressive/dev/jsx-runtime";
 import App from ${JSON.stringify(appImport)};
 
 const el = document.getElementById("root");
@@ -118,7 +118,7 @@ export function serverEntry(project: Project, api: Map<string, string>, from: st
 
   return [
     `import { fileURLToPath } from "node:url";`,
-    `import { serve } from "@expressive/dev/server";`,
+    `import { serve } from "@expressive/dev";`,
     project.configPath ? `import config from ${JSON.stringify(relImport(from, project.configPath))};` : `const config = {};`,
     ...modules.map(m => `import * as ${m.name} from ${JSON.stringify(m.spec)};`),
     "",

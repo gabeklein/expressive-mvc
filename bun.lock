@@ -50,30 +50,26 @@
         "expressive": "dist/cli.js",
       },
       "dependencies": {
-        "@expressive/inspect": "workspace:^",
+        "@expressive/dom": "workspace:*",
+        "@expressive/inspect": "workspace:*",
+        "@expressive/router": "workspace:*",
         "es-module-lexer": "^1.6.0",
         "vite": "^8.0.0",
       },
       "devDependencies": {
-        "@expressive/dom": "workspace:^",
         "@expressive/mvc": "workspace:^",
-        "@expressive/router": "workspace:^",
         "@types/node": "^25.2.0",
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/dom": "^0.2.0",
         "@expressive/mvc": "^0.87.0",
-        "@expressive/router": "^0.9.1",
       },
     },
     "packages/dev/example": {
       "name": "@expressive/dev-example",
       "dependencies": {
         "@expressive/dev": "workspace:*",
-        "@expressive/dom": "workspace:*",
         "@expressive/mvc": "workspace:*",
-        "@expressive/router": "workspace:*",
       },
     },
     "packages/dom": {

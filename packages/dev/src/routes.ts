@@ -35,15 +35,14 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
 
   const imports = collectImports(root, outDir);
   const tree = emitNode(root, true, 2).join("\n");
-  const pageImports = root.exports.has("NotFound") ? "{ Route }" : "{ NotFound, Route }";
+  const pageImports = root.exports.has("NotFound") ? "{ Route, Router }" : "{ NotFound, Route, Router }";
 
   return [
-    `import { BrowserRouter } from "@expressive/router";`,
     `import ${pageImports} from "@expressive/dev";`,
     "",
     ...imports,
     "",
-    "const App = () => (\n  <BrowserRouter>", tree, "  </BrowserRouter>\n);\n",
+    "const App = () => (\n  <Router>", tree, "  </Router>\n);\n",
     "export default App;\n",
   ].join("\n");
 }

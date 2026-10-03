@@ -1,5 +1,5 @@
 import { State, set, type Component } from "@expressive/mvc";
-import { Link } from "@expressive/router";
+import { Link } from "@expressive/dev";
 
 class Greeting extends State {
   message = set(() => call<string>("greetings/hello", "Expressive"));

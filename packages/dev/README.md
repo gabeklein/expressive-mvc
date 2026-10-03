@@ -15,7 +15,7 @@ app/                  file-based routes
   docs/[...].tsx      /docs/*      catch-all
   api/                server modules; never part of the client tree
 app.tsx | src/app.tsx single root component instead of app/ (default export)
-index.ts              optional service entry, run on the server: export default defineApp({ port })
+index.ts              optional service entry, run on the server: export default app({ port })
 index.html            optional custom shell (#root and the entry script are injected if missing)
 vite.config.ts        optional, merged under the host's config
 ```
@@ -24,14 +24,9 @@ Bare-named files under `app/` are support modules, not routes. `Page` may be a f
 `class Page extends Route` (from `@expressive/dev`), which owns its scope: read `this.match`,
 override `children`, set `Catch` / `NotFound`.
 
-JSX compiles against `@expressive/dom`. For types, set `"jsxImportSource": "@expressive/dom"` in the
-app's tsconfig and add a declaration file that loads dom's `State` augmentation (`State.use()` and
-friends), since no app module imports `@expressive/dom` itself:
-
-```ts
-// env.d.ts
-import "@expressive/dom";
-```
+JSX compiles against `@expressive/dev`'s runtime, which is `@expressive/dom`'s. Set
+`"jsxImportSource": "@expressive/dev"` in the app's tsconfig; the types carry dom's `State`
+augmentation (`State.use()` and friends), so nothing else is needed.
 
 ## Server lane
 
@@ -64,8 +59,8 @@ are virtual, addressed under `/.expressive/`. The router module regenerates when
 vanish under `app/`.
 
 `@expressive/dev/vite` exports the `expressive()` plugin for a hand-written Vite config; the CLI
-adds it and `@expressive/inspect/vite`. `@expressive/dev/server` is the production runtime the
-generated server entry imports.
+adds it and `@expressive/inspect/vite`. The generated server entry imports `serve` from
+`@expressive/dev`, whose server build carries it.
 
 ## Example
 

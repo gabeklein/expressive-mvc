@@ -42,15 +42,15 @@ describe("app/ routing (codegen)", () => {
 
   it("root is always a scope; lone index becomes the \"/\" page + implicit 404", async () => {
     const out = await generate({ "index.tsx": PAGE });
-    expect(out).toContain('import { NotFound, Route } from "@expressive/dev";');
+    expect(out).toContain('import { NotFound, Route, Router } from "@expressive/dev";');
     expect(out).toContain('import { Page as Root } from "../app/index.tsx";');
     expect(out).toMatch(/<Route NotFound={NotFound}>\s*<Route as={Root} \/>/);
   });
 
   it("a user NotFound suppresses the implicit 404 (no NotFound import)", async () => {
     const out = await generate({ "index.tsx": `${PAGE}\n${NOTFOUND}` });
-    expect(out).toContain('import { Route } from "@expressive/dev";');
-    expect(out).not.toContain("{ NotFound, Route }");
+    expect(out).toContain('import { Route, Router } from "@expressive/dev";');
+    expect(out).not.toContain("{ NotFound, Route, Router }");
     expect(out).toContain("<Route NotFound={RootNotFound}>");
   });
 
@@ -125,7 +125,7 @@ describe("app/ routing (codegen)", () => {
 
   it("scans exports through TypeScript and JSX", async () => {
     const out = await generate({
-      "index.tsx": `import { Route } from "@expressive/dev";
+      "index.tsx": `import { Route, Router } from "@expressive/dev";
         type Props = { n: number };
         export class Page extends Route { render() { return <h1>{this.match?.x satisfies string | undefined}</h1>; } }
         export const Layout = (p: Props) => <div>{p.n}</div>;
@@ -138,7 +138,7 @@ describe("app/ routing (codegen)", () => {
     const out = await generate({ "index.tsx": PAGE });
     expect(out).toContain("const App = () => (");
     expect(out).toContain("export default App;");
-    expect(out).toContain('import { BrowserRouter } from "@expressive/router";');
+    expect(out).not.toContain("@expressive/router");
     expect(out).not.toContain("@expressive/react");
     expect(out).not.toContain("@expressive/dom");
   });
