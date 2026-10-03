@@ -1,5 +1,5 @@
-import { owner } from './adapter';
 import type { Scope } from './adapter';
+import { owner } from './adapter';
 import { schedule } from './scheduler';
 
 interface Family {
