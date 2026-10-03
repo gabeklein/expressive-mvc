@@ -414,7 +414,7 @@ function runCollection(fiber: Fiber, passive: boolean) {
 
 function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const marker = document.createComment('portal');
-  const container = value.props.container as Container;
+  const container = target(value.props.into, parent);
   const portalStart = document.createComment('portal-root');
   const portalEnd = document.createComment('/portal-root');
 
@@ -440,6 +440,20 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
   return complete(output, () => {
     reconcilePortal(output, value.props.children, context, boundary, appearance);
   });
+}
+
+function target(into: unknown, parent: globalThis.Node): Container {
+  if (typeof into != 'string') return into as Container;
+
+  const root = parent.getRootNode();
+  const found = [...document.querySelectorAll(into)];
+
+  if (root instanceof DocumentFragment) found.push(...root.querySelectorAll(into));
+
+  if (found.length != 1)
+    throw new Error(`Portal target "${into}" ${found.length ? 'is ambiguous' : 'was not found'}.`);
+
+  return found[0];
 }
 
 function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
@@ -888,7 +902,7 @@ function compatible(fiber: Fiber, value: RenderNode) {
     return fiber.kind == 'collection' && fiber.source === value;
   if (!isVNode(value)) return false;
   if (fiber.key !== value.key || !same(fiber.type, value.type)) return false;
-  if (fiber.kind == 'portal') return fiber.portalContainer === value.props.container;
+  if (fiber.kind == 'portal') return fiber.props!.into === value.props.into;
   return true;
 }
 

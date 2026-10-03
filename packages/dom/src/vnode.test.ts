@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PORTAL, VNODE, childrenOf, createPortal, isVNode, vnode } from './vnode';
+import { PORTAL, Portal, VNODE, childrenOf, isVNode, vnode } from './vnode';
 
 describe('VNode', () => {
   it('will create and recognize nodes', () => {
@@ -26,12 +26,12 @@ describe('VNode', () => {
     ]);
   });
 
-  it('will create a portal node', () => {
-    const container = document.createElement('aside');
-    const portal = createPortal('hello', container, 'modal');
+  it('will create a portal node from the Portal element type', () => {
+    const into = document.createElement('aside');
+    const node = vnode(Portal, { into, children: 'hello' }, 'modal');
 
-    expect(portal.type).toBe(PORTAL);
-    expect(portal.key).toBe('modal');
-    expect(portal.props).toEqual({ children: 'hello', container });
+    expect(node.type).toBe(PORTAL);
+    expect(node.key).toBe('modal');
+    expect(node.props).toEqual({ into, children: 'hello' });
   });
 });
