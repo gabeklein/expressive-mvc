@@ -57,7 +57,7 @@ function childrenOf(value: unknown): Node[] {
   return output;
 }
 
-function createPortal(children: Node, container: Element | DocumentFragment, key?: Key): VNode {
+function portal(children: Node, container: Element | DocumentFragment, key?: Key): VNode {
   return vnode(PORTAL, { children, container }, key);
 }
 
@@ -65,7 +65,7 @@ export {
   VNODE,
   PORTAL,
   childrenOf,
-  createPortal,
+  portal,
   isVNode,
   vnode
 };

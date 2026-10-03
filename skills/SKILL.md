@@ -28,7 +28,7 @@ npm install @expressive/mvc @expressive/react    # + @expressive/router for rout
 
 React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
 
-For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `State`, `Component` and instructions come from `@expressive/mvc`, while `render`, `createPortal`, `lazy`, `style` and `macro` come from `@expressive/dom`. Its FC model, renderer API, portals, lazy loading, and transition constraints are in [dom/dom.md](dom/dom.md).
+For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `State`, `Component` and instructions come from `@expressive/mvc`, while `render`, `portal`, `lazy`, `style` and `macro` come from `@expressive/dom`. Its FC model, renderer API, portals, lazy loading, and transition constraints are in [dom/dom.md](dom/dom.md).
 
 ## Start With Ownership, Not APIs
 

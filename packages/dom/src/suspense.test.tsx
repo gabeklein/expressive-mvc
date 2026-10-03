@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, pending } from '@expressive/mvc';
-import { createPortal, lazy, render } from './index';
+import { lazy, portal, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('suspense and recovery', () => {
@@ -721,7 +721,7 @@ describe('suspense and recovery', () => {
       extra = true;
 
       render() {
-        return <>{createPortal(<b>modal</b>, target)}{this.extra && createPortal(<u>extra</u>, target)}<Lazy /></>;
+        return <>{portal(<b>modal</b>, target)}{this.extra && portal(<u>extra</u>, target)}<Lazy /></>;
       }
     }
 

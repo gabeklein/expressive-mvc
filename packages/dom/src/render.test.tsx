@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, has, map } from '@expressive/mvc';
-import { createPortal, lazy, render } from './index';
+import { lazy, portal, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 import { vnode } from './vnode';
 
@@ -1103,15 +1103,15 @@ describe('render', () => {
   });
 
   it('will render and move portal children with logical context', async () => {
-    const portal = document.createElement('aside');
+    const aside = document.createElement('aside');
     const nextPortal = document.createElement('aside');
 
     class Modal extends Component {
       message = 'open';
-      target = portal;
+      target = aside;
 
       render() {
-        return createPortal(<button>{this.message}</button>, this.target);
+        return portal(<button>{this.message}</button>, this.target);
       }
     }
 
@@ -1120,15 +1120,15 @@ describe('render', () => {
     const release = render(<Modal is={(value) => (modal = value)} />, root);
 
     expect(root.querySelector('button')).toBeNull();
-    expect(portal.textContent).toBe('open');
+    expect(aside.textContent).toBe('open');
 
     modal.message = 'closed';
     await flushMicrotasks();
-    expect(portal.textContent).toBe('closed');
+    expect(aside.textContent).toBe('closed');
 
     modal.target = nextPortal;
     await flushMicrotasks();
-    expect(portal.textContent).toBe('');
+    expect(aside.textContent).toBe('');
     expect(nextPortal.textContent).toBe('closed');
 
     release();
