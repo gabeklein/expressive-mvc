@@ -6,3 +6,4 @@ export { css } from './css';
 export { macro, style } from './stylesheet';
 export { render } from './render';
 export { Fragment, Portal, createElement } from './vnode';
+export type { JSX } from './jsx-runtime';

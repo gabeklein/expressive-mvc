@@ -29,7 +29,7 @@ const unmount = render(<App />, document.getElementById('app')!);
 unmount();
 ```
 
-Classic JSX (`"jsx": "react"`, or a toolchain without an automatic runtime) uses `createElement(type, props, ...children)` and `Fragment` from the package root - set `jsxFactory: "createElement"` and `jsxFragmentFactory: "Fragment"`, or `import * as React from '@expressive/dom'` under tool defaults. Attribute typing matches the automatic runtime. `Fragment` also serves keyed fragments: `<Fragment key={id}>…</Fragment>`.
+Classic JSX (`"jsx": "react"`, or a toolchain without an automatic runtime) uses `createElement(type, props, ...children)` and `Fragment` from the package root - set `jsxFactory: "createElement"` and `jsxFragmentFactory: "Fragment"`, or `import * as React from '@expressive/dom'` under tool defaults (the root also exports the `JSX` namespace type). Attribute typing matches the automatic runtime. `Fragment` also serves keyed fragments: `<Fragment key={id}>…</Fragment>`.
 
 Supported output: intrinsic HTML/SVG elements, fragments, strings/numbers/bigints, FCs, `State` classes and instances with `render` (`Component` included), `State` classes without one, `has.List` / `has.Pool`, `map.Managed`, portals, arrays, and empty boolean/null/undefined values. Keys preserve DOM ranges across reorder.
 
