@@ -1102,6 +1102,62 @@ describe('render', () => {
     expect([...root.querySelectorAll('li')]).toEqual([b, a]);
   });
 
+  it('will resolve a selector target once and move when it changes', async () => {
+    const first = document.createElement('aside');
+    const second = document.createElement('aside');
+    const query = vi.spyOn(document, 'querySelectorAll');
+
+    first.id = 'first';
+    second.className = 'second';
+    document.body.append(first, second);
+
+    class Modal extends State {
+      message = 'open';
+      target = '#first';
+
+      render() {
+        return <Portal into={this.target}><b>{this.message}</b></Portal>;
+      }
+    }
+
+    let modal!: Modal;
+    const release = render(<Modal is={(value) => (modal = value)} />, document.createElement('main'));
+
+    expect(first.textContent).toBe('open');
+
+    modal.message = 'still';
+    await flushMicrotasks();
+    expect(first.textContent).toBe('still');
+    expect(query).toBeCalledTimes(1);
+
+    modal.target = '.second';
+    await flushMicrotasks();
+    expect(first.textContent).toBe('');
+    expect(second.textContent).toBe('still');
+    expect(query).toBeCalledTimes(2);
+
+    release();
+    query.mockRestore();
+    first.remove();
+    second.remove();
+  });
+
+  it('will throw if a selector target is missing or ambiguous', () => {
+    const one = document.createElement('i');
+    const two = document.createElement('i');
+
+    one.className = two.className = 'many';
+    document.body.append(one, two);
+
+    expect(() => render(<Portal into="#none">x</Portal>, document.createElement('main')))
+      .toThrow('Portal target "#none" was not found.');
+    expect(() => render(<Portal into=".many">x</Portal>, document.createElement('main')))
+      .toThrow('Portal target ".many" is ambiguous.');
+
+    one.remove();
+    two.remove();
+  });
+
   it('will render and move portal children with logical context', async () => {
     const aside = document.createElement('aside');
     const nextPortal = document.createElement('aside');

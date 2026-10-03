@@ -57,7 +57,7 @@ function childrenOf(value: unknown): Node[] {
   return output;
 }
 
-const Portal = PORTAL as unknown as (props: { into: Element | DocumentFragment; children?: Node }) => Node;
+const Portal = PORTAL as unknown as (props: { into: Element | DocumentFragment | string; children?: Node }) => Node;
 
 export {
   VNODE,

@@ -207,7 +207,7 @@ await pending(() => {
 
 ## Portals
 
-`<Portal into={element}>` renders its children into another `Element` or `DocumentFragment` while retaining logical MVC context, ownership and boundaries.
+`<Portal into={element}>` renders its children into another `Element` or `DocumentFragment` while retaining logical MVC context, ownership and boundaries. `into` also takes a selector (`"#modals"`, `".layer"`), resolved once at mount and again only when the string changes; it throws unless exactly one element matches. Resolve anything else to an element yourself.
 
 ```tsx
 return <Portal into={document.body}><Dialog /></Portal>;
