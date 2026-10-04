@@ -104,24 +104,24 @@ declare namespace State {
     type?(type: State.Extends<T>): void;
 
     /**
-     * Per-instance setup, run before own values are observed and before
-     * constructor args and `new()`. May return a cleanup, constructor args, or
-     * an assign overlay.
+     * Per-instance, once constructed - before own values are observed and
+     * before constructor args and `new()`. May return a cleanup, constructor
+     * args, or an assign overlay.
      */
-    pre?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
+    setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
 
     /**
-     * Per-instance setup, run with the instance's `new()` - after own values
-     * are observed and constructor args applied. May return a cleanup function.
+     * Per-instance, once ready - after own values are observed, constructor
+     * args applied and `new()` has run. May return a cleanup function.
      */
-    new?(this: T, self: T): void | (() => void);
+    ready?(this: T, self: T): void | (() => void);
 
     /**
      * Runs each time a method is bound to an instance - first access,
      * reassignment, and the rebind after a hot patch - with the key, the bound
      * function and the instance. Tooling and development use.
      */
-    bind?(this: T, key: string, fn: Function, self: T): void;
+    method?(this: T, key: string, fn: Function, self: T): void;
 
     /**
      * Receives what an effect, refreshing getter or async initializer of this State
@@ -500,19 +500,26 @@ abstract class State {
   /**
    * Register a lifecycle handler for this State and its subclasses.
    *
-   * Hooks by cadence - `type` (per-class, at bootstrap), `pre` (per-instance,
-   * before values are observed), `new` (per-instance, with `new()`), and `bind`
-   * (per method binding). A function returned from `pre` or `new` runs when the
-   * instance is destroyed.
+   * Hooks by cadence - `type` (per-class, at bootstrap), `setup` (per-instance,
+   * before values are observed), `ready` (per-instance, after `new()`), and
+   * `method` (per method binding). A function alone is a `setup` handler. A
+   * function returned from `setup` or `ready` runs when the instance is destroyed.
    *
    * @returns Function to remove the handler.
    */
   static on<T extends State>(
     this: State.Extends<T>,
+    setup: NonNullable<State.On<T>['setup']>
+  ): () => boolean;
+  static on<T extends State>(
+    this: State.Extends<T>,
     handler: State.On<T>
+  ): () => boolean;
+  static on<T extends State>(
+    this: State.Extends<T>,
+    handler: State.On<T> | NonNullable<State.On<T>['setup']>
   ) {
-    if (typeof handler == 'function')
-      throw new TypeError(`${this.name}.on takes handlers by stage - pass { pre: fn }.`);
+    if (typeof handler == 'function') handler = { setup: handler };
 
     let setup = SETUP.get(this);
 
@@ -674,8 +681,8 @@ function bootstrap(T: State.Extends) {
 
   for (const type of chain) {
     for (const handler of SETUP.get(type) || []) {
-      if (handler.pre) before.add(handler.pre);
-      if (handler.new) after.add(handler.new);
+      if (handler.setup) before.add(handler.setup);
+      if (handler.ready) after.add(handler.ready);
       if (handler.type) onType.add(handler.type);
     }
 
@@ -745,7 +752,7 @@ function classify(
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
 
-      for (const handler of stages(is.constructor as State.Extends, 'bind')) handler.call(is, key, bound, is);
+      for (const handler of stages(is.constructor as State.Extends, 'method')) handler.call(is, key, bound, is);
 
       return bound;
     }
@@ -758,7 +765,7 @@ function classify(
 }
 
 /** Handlers of one stage along the class chain - ancestor first, in registration order, each once. */
-function stages<K extends 'bind' | 'catch'>(T: State.Extends, key: K): Set<NonNullable<State.On[K]>> {
+function stages<K extends 'method' | 'catch'>(T: State.Extends, key: K): Set<NonNullable<State.On[K]>> {
   const found = T === State ? new Set<NonNullable<State.On[K]>>() : stages(Object.getPrototypeOf(T), key);
 
   for (const handler of SETUP.get(T) || []) if (handler[key]) found.add(handler[key]!);

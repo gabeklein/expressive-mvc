@@ -611,7 +611,7 @@ describe('for', () => {
     }
 
     const stop = Component.on({
-      pre(self) {
+      setup(self) {
         Object.defineProperty(self, 'mount', {
           configurable: true,
           value: () => {

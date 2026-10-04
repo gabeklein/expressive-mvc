@@ -57,7 +57,7 @@ class Timer extends State {
 - `array` - flattened and re-processed
 - `Promise` (returned by a callback) - a rejection is reported with kind `setup` ([Error Handling](#error-handling))
 
-> **Timing:** args (and assigned props, in adapters) apply during activation, *after* field initializers and `State.on` setup. A trailing arg callback - like `new()` and an `on({ new })` handler - sees applied values. The JS constructor body and `on({ pre })` setup run *before* the merge and see only field defaults; don't read an applied prop there.
+> **Timing:** args (and assigned props, in adapters) apply during activation, *after* field initializers and `State.on` setup. A trailing arg callback, `new()` and an `on({ ready })` handler see applied values. The JS constructor body and `on({ setup })` run *before* the merge and see only field defaults; don't read an applied prop there.
 
 ```ts
 const test = Test.new(

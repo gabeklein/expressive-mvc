@@ -267,7 +267,7 @@ Object.defineProperty(Component, 'use', {
 const OWNERS = new WeakMap<Function, { owner: State; key: string }>();
 
 State.on({
-  bind(key, fn, owner) {
+  method(key, fn, owner) {
     if (/^[A-Z]/.test(key)) OWNERS.set(fn, { owner, key });
   }
 });

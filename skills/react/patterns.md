@@ -309,7 +309,7 @@ export class Session extends State {
 export { Session } from '../domain/session';
 
 Session.on({
-  pre() {
+  setup() {
     const onMessage = (event: MessageEvent<HostToView>) => {
       if (event.data?.type === 'state')
         this.set(event.data.values as State.Assign<Session>);

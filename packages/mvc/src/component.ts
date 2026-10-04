@@ -194,7 +194,7 @@ Object.defineProperty(Component.prototype, 'key', {
 });
 
 Component.on({
-  pre(self) {
+  setup(self) {
     const key = Object.getOwnPropertyDescriptor(self, 'key');
 
     if (key?.configurable)
