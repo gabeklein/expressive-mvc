@@ -220,6 +220,16 @@ form = get(FormState, true, true);
 form = get(FormState, true, false); // T | undefined
 ```
 
+### `get(State)` - owner
+
+```ts
+owner = get(State); // the State which owns this one
+maybe = get(State, false); // undefined at the root
+owned = get(State, true); // every State this one owns
+```
+
+`State` reads ownership instead of context - see [`state.get(State)`](/docs/api/state). Downstream forms collect owned States rather than context descendants.
+
 ### Behavior notes
 
 - All `get()` properties are **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)`.

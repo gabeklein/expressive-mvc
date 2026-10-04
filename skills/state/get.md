@@ -116,6 +116,23 @@ get<T extends State>(type: State.Type<T>, callback: Context.Expect<T>, downstrea
 
 Fires `callback` when a State of that type becomes available - immediately if already present. Searches both directions by default; `downstream: true` watches only children, `false` only parents.
 
+### Owner
+
+```ts
+get(type: typeof State, required?: true): State
+get(type: typeof State, required: boolean): State | undefined
+get(type: typeof State, callback: (child: State) => void | (() => void), downstream: true): () => void
+```
+
+`State` is never in context - `get(State)` reads ownership instead. An instance's owner is the State that constructed it into a field, `has()` pool or `map()`; failing that, the State its nearest enclosing context was set up for - the Component rendering a host-mounted Component, `use()` instance or `<Provider>`. `<Component for={X}>` owns X. A root, or an instance already active when something held it, has none. Missing throws `"{state} has no owner."`; `false` returns `undefined`.
+
+With a callback and `true`, runs per owned State - current ones, then each as it activates. A returned function runs when that State is destroyed. Returns a stop function.
+
+```ts
+const owner = child.get(State);
+const stop = scene.get(State, (node) => attach(node), true);
+```
+
 ## Type Signatures
 
 ```ts
