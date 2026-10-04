@@ -56,25 +56,25 @@ const stop = Counter.on({
   type(T) {
     /* once per class, at bootstrap */
   },
-  pre() {
+  setup() {
     /* per instance, before own values are observed */
     return () => {
       /* per-instance cleanup */
     };
   },
-  new() {
-    /* per instance, with the instance's new() */
+  ready() {
+    /* per instance, after the instance's new() */
   }
 });
 ```
 
 Handlers run ancestor-first. The same handler registered on a parent and child only runs once.
 
-Activation is a queue: `pre` handlers, then own fields become managed, then constructor args and the `new()` hook, then `new` handlers, then context registration. So each phase means:
+Activation is a queue: `setup` handlers, then own fields become managed, then constructor args and the `new()` hook, then `ready` handlers, then context registration. A function passed alone is a `setup` handler. So each phase means:
 
 - `type` - runs once when the class first bootstraps, before its members are classified and bound. Receives the class itself, so a handler can inspect or reshape the prototype first. Registered on a base class, it runs for each subclass too.
-- `pre` - per-instance, before properties are observed and before `new()`. May return a cleanup, further constructor args, or an object of values to assign.
-- `new` - per-instance, with the instance's `new()` - own values are observed and constructor args applied by then. May return a cleanup.
+- `setup` - per-instance, before properties are observed and before `new()`. May return a cleanup, further constructor args, or an object of values to assign.
+- `ready` - per-instance, after the instance's `new()` - own values are observed and constructor args applied by then. May return a cleanup.
 
 ### `State.use(...args)` <small>(React)</small>
 

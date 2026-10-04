@@ -227,7 +227,7 @@ To run setup for *every* instance of a class (and its subclasses), register a ha
 
 ```ts
 const stop = Timer.on({
-  pre() {
+  setup() {
     // runs for each Timer on init
     return () => {
       /* cleanup on destroy */
@@ -236,7 +236,7 @@ const stop = Timer.on({
 });
 ```
 
-`pre` runs per-instance, before `new()`; `new` runs with it, and `type` once per class - see [API: State](/docs/api/state).
+`setup` runs per-instance, before `new()`; `ready` runs after it, and `type` once per class - see [API: State](/docs/api/state).
 
 ### The `use()` hook (React only)
 

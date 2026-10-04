@@ -299,8 +299,8 @@ describe('accept', () => {
         }
       }
 
-      Test.on({ pre: () => {} });
-      Test.on({ new() {} });
+      Test.on({ setup: () => {} });
+      Test.on({ ready() {} });
       Test.on({
         type(type) {
           if (Object.getOwnPropertyDescriptor(type.prototype, 'Sealed')!.configurable)
@@ -378,7 +378,7 @@ describe('accept', () => {
     const Test = version('before');
 
     Test.on({
-      pre(self) {
+      setup(self) {
         Object.defineProperty(self, 'label', {
           configurable: true,
           get: () => () => 'own',
@@ -402,14 +402,14 @@ describe('accept', () => {
 
     const version = (handler?: () => void) => {
       class Test extends State {}
-      if (handler) Test.on({ pre: handler });
+      if (handler) Test.on({ setup: handler });
       return Test;
     };
 
     const Test = version(before);
 
     accept(id, { Test });
-    Test.on({ pre: outside });
+    Test.on({ setup: outside });
     accept(id, { Test: version(after) });
     Test.new();
 
@@ -433,14 +433,14 @@ describe('accept', () => {
     it('will run again for a patched method', () => {
       const id = module();
       const handler = vi.fn();
-      const Test = version(1, { bind: handler });
+      const Test = version(1, { method: handler });
 
       accept(id, { Test });
 
       const test = Test.new();
 
       test.bump();
-      accept(id, { Test: version(10, { bind: handler }) });
+      accept(id, { Test: version(10, { method: handler }) });
       test.bump();
 
       expect(test.value).toBe(11);
@@ -451,7 +451,7 @@ describe('accept', () => {
     it('will keep an observed method assigned to an instance', () => {
       const id = module();
       const handler = vi.fn();
-      const Test = version(1, { bind: handler });
+      const Test = version(1, { method: handler });
 
       accept(id, { Test });
 
@@ -463,7 +463,7 @@ describe('accept', () => {
         }
       });
 
-      accept(id, { Test: version(10, { bind: handler }) });
+      accept(id, { Test: version(10, { method: handler }) });
       test.bump();
 
       expect(test.value).toBe(100);
@@ -477,7 +477,7 @@ describe('accept', () => {
 
     const version = (handler?: () => void) => {
       class Test extends State {}
-      if (handler) Test.on({ pre: handler });
+      if (handler) Test.on({ setup: handler });
       return Test;
     };
 
