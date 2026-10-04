@@ -28,6 +28,7 @@ jobs:
         run: bun .github/scripts/dist-check.ts
 
       - name: Bundle size
+        if: github.base_ref == 'main' || github.event.pull_request.stack != null
         continue-on-error: true
         run: bun .github/scripts/size-limit.ts
 
@@ -35,6 +36,7 @@ jobs:
         run: bun .github/scripts/docs-check.ts
 
       - name: Changeset reminder
+        if: github.base_ref == 'main' || github.event.pull_request.stack != null
         continue-on-error: true
         env:
           BASE: ${{ github.base_ref }}

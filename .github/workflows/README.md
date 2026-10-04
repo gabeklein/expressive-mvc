@@ -25,8 +25,9 @@ Beside `verify`, one run per push also holds:
 job needs the branch protection updated with it.
 
 `verify` runs for a PR into any branch, so a PR into a trunk (a long-lived
-feature branch, see AGENTS.md) is checked without naming the trunk here. The
-other jobs run only for PRs into `main` and the top layer of a stack.
+feature branch, see AGENTS.md) is checked without naming the trunk here. Its
+release-facing signals - bundle size and the changeset reminder - and the
+other jobs run only for PRs into `main` and stacks.
 
 A PR in a GitHub stack runs as if it targets the stack's base. `verify` runs on
 each layer; the others run only on the top one (`stack.position ==
