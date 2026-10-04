@@ -15,6 +15,7 @@ import {
   enterAppearance
 } from './appearance-protocol';
 import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
+import { attach, batched, fragment, inserted } from './commits';
 import { applyDeclarations } from './declarations';
 import { afterFlush, claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
@@ -75,7 +76,6 @@ interface Fiber {
   stash?: DocumentFragment;
   placeholder?: Fiber;
   staging?: DocumentFragment;
-  inserted?: (() => void)[];
   render?: () => RenderNode;
   appearance?: Appearance;
   consumed?: boolean;
@@ -120,7 +120,7 @@ const focusing: Element[] = [];
 const controlled = new WeakMap<Element, Fiber>();
 const restoring = new WeakSet<Document>();
 let passiveRender = false;
-let inserting: (() => void)[] | undefined;
+let holding: { thrown: unknown; fiber?: Fiber } | undefined;
 let depth = 0;
 let settling = false;
 let rendering: object | undefined;
@@ -187,11 +187,19 @@ function makeScope(kind: Scope['kind'], context: Context, update: (passive: bool
   };
 }
 
+function park(fiber: Fiber) {
+  move(fiber, fragment(), null);
+}
+
 function complete<T extends Fiber>(fiber: T, work: () => void): T {
   try {
     work();
   } catch (error) {
-    unmountFiber(fiber);
+    if (holding && error === holding.thrown) {
+      park(fiber);
+      holding.fiber = fiber;
+    } else unmountFiber(fiber);
+
     throw error;
   }
 
@@ -375,11 +383,14 @@ function mountComponent(
   }, undefined, transition);
 
   Object.defineProperty(fiber, 'value', { get: () => proxy });
-  complete(fiber, () => {
-    runComponent(fiber, passiveRender);
-  });
+  try {
+    complete(fiber, () => {
+      runComponent(fiber, passiveRender);
+    });
+  } finally {
+    if (owned && !fiber.dead) inserted(fiber, () => (fiber.cleanup = instance.mount?.()));
+  }
 
-  if (owned) inserted(fiber, () => (fiber.cleanup = instance.mount?.()));
   return fiber;
 }
 
@@ -515,47 +526,38 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
   const previous = passiveRender;
   const scope = fiber.scope!;
   const probed = scope.probed;
+  const empty = !fiber.children.length;
 
   scope.probed = undefined;
   passiveRender ||= passive;
 
-  if (passive && !depth && !fiber.children.length && !fiber.stash)
-    fiber.staging ||= document.createDocumentFragment();
+  if (passive && !depth && empty && !fiber.stash)
+    fiber.staging ||= fragment();
 
-  const outer = inserting;
-  if (fiber.staging) inserting = fiber.inserted ||= [];
+  const run = () => pass(() => {
+    try {
+      const output = probed ? probed.output as RenderNode : consume(fiber, render);
+      reconcile(fiber, output, scope.childContext, fiber.boundary, renderedAppearance(fiber));
+
+      if (fiber.staging) {
+        fiber.end.parentNode!.insertBefore(fiber.staging, fiber.end);
+        attach(fiber.staging);
+        fiber.staging = undefined;
+      }
+
+      if (!fiber.recovering) unwait(fiber);
+      fiber.retried = undefined;
+      return true;
+    } catch (thrown) {
+      return suspend(fiber, thrown, passive, empty);
+    }
+  });
 
   try {
-    return pass(() => {
-      try {
-        const output = probed ? probed.output as RenderNode : consume(fiber, render);
-        reconcile(fiber, output, scope.childContext, fiber.boundary, renderedAppearance(fiber));
-
-        if (fiber.staging) {
-          const queued = fiber.inserted!;
-
-          fiber.end.parentNode!.insertBefore(fiber.staging, fiber.end);
-          fiber.staging = fiber.inserted = undefined;
-          inserting = outer;
-          queued.forEach((run) => run());
-        }
-
-        if (!fiber.recovering) unwait(fiber);
-        fiber.retried = undefined;
-        return true;
-      } catch (thrown) {
-        return suspend(fiber, thrown, passive);
-      }
-    });
+    return passive ? batched(run) : run();
   } finally {
     passiveRender = previous;
-    inserting = outer;
   }
-}
-
-function inserted(fiber: Fiber, run: () => void) {
-  if (inserting) inserting.push(() => fiber.dead || run());
-  else run();
 }
 
 function observe(props: Record<string, any>) {
@@ -706,12 +708,17 @@ function moveRange(start: globalThis.Node, end: globalThis.Node, target: globalT
   }
 }
 
-function suspend(fiber: Fiber, thrown: unknown, passive: boolean) {
+function suspend(fiber: Fiber, thrown: unknown, passive: boolean, empty: boolean) {
   const boundary = fiber.boundary;
 
   if (isThenable(thrown)) {
     if (!boundary) throw thrown;
-    if (passive && !fiber.children.length && depth > 1) throw thrown;
+    if (passive && empty && depth > 1) {
+      if (holding?.thrown !== thrown) holding = { thrown };
+      throw thrown;
+    }
+
+    holding = undefined;
     if (!passive) wait(fiber, boundary);
 
     const scope = fiber.scope!;
@@ -811,9 +818,18 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
       if (child && used.has(child)) child = undefined;
       if (child) used.add(child);
 
-      next.push(patch(child, value, parent, before, context, boundary, appearance));
+      const fiber = patch(child, value, parent, before, context, boundary, appearance);
+
+      if (fiber !== child) used.delete(child!);
+      next.push(fiber);
     }
   } catch (error) {
+    if (holding && error === holding.thrown) {
+      for (const fiber of next) if (!old.includes(fiber)) park(fiber);
+      if (holding.fiber) next.push(holding.fiber);
+      holding.fiber = undefined;
+    }
+
     owner.children = [...next, ...old.filter((child) => !child.dead && !next.includes(child))];
     throw error;
   }
@@ -823,19 +839,19 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
 
   let anchor = before;
   for (let index = next.length - 1; index >= 0; index--) {
-    move(next[index], parent, anchor);
-    anchor = next[index].start;
+    const child = next[index];
+    const root = child.start.getRootNode();
+
+    move(child, parent, anchor);
+    anchor = child.start;
+    if (child.start.getRootNode() !== root) attach(root);
   }
 
   owner.children = next;
 }
 
 function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {
-  if (!old || !compatible(old, value)) {
-    const next = mount(value, parent, old?.start || before, context, boundary, appearance);
-    if (old) unmountFiber(old);
-    return next;
-  }
+  if (!old || !compatible(old, value)) return mount(value, parent, old?.start || before, context, boundary, appearance);
 
   if (old.ownBoundary) old.ownBoundary.parent = boundary;
   old.boundary = old.ownBoundary || boundary;
