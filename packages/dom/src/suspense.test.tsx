@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, State, pending } from '@expressive/mvc';
+import { Component, State, pending, set } from '@expressive/mvc';
 import { Portal, render } from './index';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
@@ -265,6 +265,213 @@ describe('suspense and recovery', () => {
     await flushMicrotasks();
     expect(root.textContent).toBe('staylazy');
     expect(settled).toBe(true);
+  });
+
+  describe('a transition revealing State that loads', () => {
+    let root: HTMLElement;
+
+    function setup() {
+      const loaded = mockPromise<string>();
+      const lives: string[] = [];
+
+      class Data extends State {
+        value = set(() => loaded);
+
+        protected new() {
+          lives.push('new');
+          return () => lives.push('gone');
+        }
+
+        mount() {
+          lives.push(`mount: ${root.textContent}`);
+        }
+      }
+
+      return { loaded, lives, Data };
+    }
+
+    async function reveal(Child: () => Component.Node, wrap = false) {
+      class App extends Component {
+        open = false;
+        fallback = <i>loading</i>;
+
+        render() {
+          if (!this.open) return <p>closed</p>;
+          return wrap ? <section><h2>title</h2><Child /></section> : <Child />;
+        }
+      }
+
+      let app!: App;
+      root = document.createElement('main');
+      render(<App is={(value) => (app = value)} />, root);
+      pending(() => (app.open = true));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      return root;
+    }
+
+    it('will keep a State.use() instance and commit once it loads', async () => {
+      const { loaded, lives, Data } = setup();
+      const root = await reveal(() => <b>{Data.use().value}</b>);
+
+      expect(root.textContent).toBe('closed');
+
+      loaded.resolve('ready');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(root.textContent).toBe('ready');
+      expect(lives).toEqual(['new', 'mount: ready']);
+    });
+
+    it('will keep a State element and commit once it loads', async () => {
+      const { loaded, lives, Data } = setup();
+
+      class Panel extends State {
+        data = new Data();
+
+        mount() {
+          lives.push(`panel mount: ${root.textContent}`);
+        }
+
+        render() {
+          return <b>{this.data.value}</b>;
+        }
+      }
+
+      const root = await reveal(() => <Panel />);
+
+      expect(root.textContent).toBe('closed');
+
+      loaded.resolve('ready');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(root.textContent).toBe('ready');
+      expect(lives).toEqual(['new', 'panel mount: ready']);
+    });
+
+    it('will hold new markup around it off the page until it loads', async () => {
+      const { loaded, lives, Data } = setup();
+      const root = await reveal(() => <b>{Data.use().value}</b>, true);
+
+      expect(root.textContent).toBe('closed');
+      expect(root.querySelector('section')).toBeNull();
+
+      loaded.resolve('ready');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<section><h2>title</h2><b>ready</b></section>');
+      expect(lives).toEqual(['new', 'mount: titleready']);
+    });
+  });
+
+  it('will hold the current content while new siblings wait on one that loads', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = () => loaded;
+    const mounted: string[] = [];
+
+    class Tab extends State {
+      mount() {
+        mounted.push(root.textContent!);
+      }
+
+      render() {
+        return <b>new</b>;
+      }
+    }
+
+    class App extends Component {
+      next = false;
+      fallback = <i>loading</i>;
+
+      render() {
+        return this.next ? <><Tab /><Lazy /><u>tail</u></> : <><p>current</p></>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => (app.next = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<p>current</p>');
+    expect(mounted).toEqual([]);
+
+    loaded.resolve(() => <s>lazy</s>);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<b>new</b><s>lazy</s><u>tail</u>');
+    expect(mounted).toEqual(['newlazytail']);
+  });
+
+  it('will show content a transition updates in place while new content it adds is held', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = () => loaded;
+
+    class App extends Component {
+      count = 1;
+      fallback = <i>loading</i>;
+
+      render() {
+        return <><b>count {this.count}</b>{this.count > 1 && <Lazy />}</>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => (app.count = 2));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('count 2');
+
+    loaded.resolve(() => <s>lazy</s>);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('count 2lazy');
+  });
+
+  it('will not mount new content a failing transition discards', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mounted = vi.fn();
+
+    class Tab extends State {
+      mount = mounted;
+
+      render() {
+        return <b>tab</b>;
+      }
+    }
+
+    const Boom = (): Component.Node => {
+      throw new Error('boom');
+    };
+
+    class Panel extends State {
+      render() {
+        return <><Tab /><Boom /></>;
+      }
+    }
+
+    class App extends Component {
+      open = false;
+
+      render() {
+        return this.open ? <Panel /> : <p>closed</p>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => (app.open = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(root.textContent).toBe('closed');
+    expect(mounted).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(new Error('boom'));
+    error.mockRestore();
   });
 
   it('will keep siblings consistent when a transition suspends mid-list', async () => {
