@@ -51,6 +51,6 @@ In order. Each item is one PR into the trunk.
 
 ## Release gates
 
-- 100% coverage like every package (dev's `test` script doesn't gate yet).
+- 100% coverage like every package - dev's `coverage` script runs vitest without `--coverage` until then.
 - `skills/` docs, changeset, `private: false`.
 - Router stopgap replaced by its upstream PR.

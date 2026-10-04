@@ -3281,17 +3281,48 @@ describe('is method (static)', () => {
 });
 
 describe('on method (static)', () => {
-  it('will throw if given a bare function', () => {
-    class Test extends State {}
+  it('will run a bare function at setup', () => {
+    const order: string[] = [];
 
-    expect(() => Test.on((() => {}) as any)).toThrow('Test.on takes handlers by stage - pass { pre: fn }.');
+    class Test extends State {
+      value = 1;
+      new() { order.push('new'); }
+    }
+
+    const stop = Test.on((self) => {
+      order.push(`setup ${self instanceof Test}`);
+    });
+
+    Test.new();
+    stop();
+    Test.new();
+
+    expect(order).toEqual(['setup true', 'new', 'new']);
+  });
+
+  it('will type a method handler beside the bare function overload', () => {
+    class Test extends State {
+      foo() {}
+    }
+
+    const keys: string[] = [];
+
+    Test.on({
+      method(key, fn, self) {
+        keys.push(key.toUpperCase(), typeof fn, String(self instanceof Test));
+      }
+    });
+
+    void Test.new().foo;
+
+    expect(keys).toEqual(['FOO', 'function', 'true']);
   });
 
   it('will run callback on create', () => {
     class Test extends State {}
 
     const cb = vi.fn();
-    const done = Test.on({ pre: cb });
+    const done = Test.on({ setup: cb });
     const test = Test.new();
 
     expect(cb).toBeCalledWith(test);
@@ -3303,7 +3334,7 @@ describe('on method (static)', () => {
     class Test extends State {}
 
     const cleanup = vi.fn();
-    const done = Test.on({ pre: () => cleanup });
+    const done = Test.on({ setup: () => cleanup });
     const test = Test.new();
 
     expect(cleanup).not.toBeCalled();
@@ -3321,8 +3352,8 @@ describe('on method (static)', () => {
     const createTest = vi.fn();
     const createTest2 = vi.fn();
 
-    Test.on({ pre: createTest });
-    Test2.on({ pre: createTest2 });
+    Test.on({ setup: createTest });
+    Test2.on({ setup: createTest2 });
 
     const test = Test2.new();
 
@@ -3339,9 +3370,9 @@ describe('on method (static)', () => {
 
     const order: string[] = [];
 
-    A.on({ pre: () => void order.push('A') });
-    B.on({ pre: () => void order.push('B') });
-    C.on({ pre: () => void order.push('C') });
+    A.on({ setup: () => void order.push('A') });
+    B.on({ setup: () => void order.push('B') });
+    C.on({ setup: () => void order.push('C') });
 
     C.new();
 
@@ -3353,16 +3384,16 @@ describe('on method (static)', () => {
 
     class A extends State {}
 
-    A.on({ pre: () => void order.push('A') });
+    A.on({ setup: () => void order.push('A') });
 
     const attach = <T extends typeof A>(type: T) => {
-      type.on({ pre: () => void order.push('anonymous') });
+      type.on({ setup: () => void order.push('anonymous') });
       return type;
     };
 
     class C extends attach(class extends A {}) {}
 
-    C.on({ pre: () => void order.push('C') });
+    C.on({ setup: () => void order.push('C') });
 
     expect(Object.getPrototypeOf(C).name).toBe('');
 
@@ -3377,8 +3408,8 @@ describe('on method (static)', () => {
 
     const didCreate = vi.fn();
 
-    Test.on({ pre: didCreate });
-    Test2.on({ pre: didCreate });
+    Test.on({ setup: didCreate });
+    Test2.on({ setup: didCreate });
 
     Test2.new();
 
@@ -3389,7 +3420,7 @@ describe('on method (static)', () => {
     class Test extends State {}
 
     const cb = vi.fn();
-    const done = Test.on({ pre: cb });
+    const done = Test.on({ setup: cb });
 
     Test.new();
     expect(cb).toBeCalled();
@@ -3407,9 +3438,9 @@ describe('on method (static)', () => {
     const cb2 = vi.fn();
 
     // First .on() creates the setup Set (line 455)
-    Fresh.on({ pre: cb1 });
+    Fresh.on({ setup: cb1 });
     // Second .on() reuses existing Set
-    Fresh.on({ pre: cb2 });
+    Fresh.on({ setup: cb2 });
 
     Fresh.new();
     expect(cb1).toBeCalledTimes(1);
@@ -3470,11 +3501,11 @@ describe('on combined stages (static)', () => {
     class Test extends Base {}
 
     const type = vi.fn();
-    const pre = vi.fn();
-    const bind = vi.fn();
+    const setup = vi.fn();
+    const method = vi.fn();
     const handle = vi.fn();
 
-    for (const T of [Base, Test, Test]) T.on({ type, pre, bind, catch: handle });
+    for (const T of [Base, Test, Test]) T.on({ type, setup, method, catch: handle });
 
     const test = Test.new();
 
@@ -3483,8 +3514,8 @@ describe('on combined stages (static)', () => {
     test.foo = 1;
 
     expect(type).toBeCalledTimes(2);
-    expect(pre).toBeCalledTimes(1);
-    expect(bind).toBeCalledTimes(1);
+    expect(setup).toBeCalledTimes(1);
+    expect(method).toBeCalledTimes(1);
     expect(handle).toBeCalledTimes(1);
   });
 
@@ -3495,13 +3526,13 @@ describe('on combined stages (static)', () => {
 
     Test.on({
       type: () => void order.push('type'),
-      pre: () => void order.push('pre'),
-      new: () => void order.push('new')
+      setup: () => void order.push('setup'),
+      ready: () => void order.push('ready')
     });
 
     Test.new();
 
-    expect(order).toEqual(['type', 'pre', 'new']);
+    expect(order).toEqual(['type', 'setup', 'ready']);
   });
 
   it('will run a shared handler once across base and subclass', () => {
@@ -3510,7 +3541,7 @@ describe('on combined stages (static)', () => {
     class Base extends State {}
     class Sub extends Base {}
 
-    const handler = { pre: fn };
+    const handler = { setup: fn };
 
     Base.on(handler);
     Sub.on(handler);
@@ -3591,8 +3622,8 @@ describe('enumerable prototype members', () => {
   });
 });
 
-describe('on pre / new stages (static)', () => {
-  it('will run pre before own values and new with the instance new()', () => {
+describe('on setup / ready stages (static)', () => {
+  it('will run setup before own values and ready after the instance new()', () => {
     const order: string[] = [];
 
     class Test extends State {
@@ -3600,20 +3631,20 @@ describe('on pre / new stages (static)', () => {
       new() { order.push('new'); }
     }
 
-    Test.on({ pre: () => void order.push('pre') });
-    Test.on({ new: () => void order.push('on new') });
+    Test.on({ setup: () => void order.push('setup') });
+    Test.on({ ready: () => void order.push('ready') });
 
     Test.new();
 
-    expect(order).toEqual(['pre', 'new', 'on new']);
+    expect(order).toEqual(['setup', 'new', 'ready']);
   });
 
-  it('will run new cleanup on destroy', () => {
+  it('will run ready cleanup on destroy', () => {
     const cleanup = vi.fn();
 
     class Test extends State {}
 
-    Test.on({ new: () => cleanup });
+    Test.on({ ready: () => cleanup });
 
     const test = Test.new();
     expect(cleanup).not.toBeCalled();
@@ -3623,7 +3654,7 @@ describe('on pre / new stages (static)', () => {
   });
 });
 
-describe('on bind stage (static)', () => {
+describe('on method stage (static)', () => {
   it('will run on first access with key and bound function', () => {
     class Test extends State {
       foo() {
@@ -3633,7 +3664,7 @@ describe('on bind stage (static)', () => {
 
     const handler = vi.fn();
 
-    Test.on({ bind: handler });
+    Test.on({ method: handler });
 
     const test = Test.new();
 
@@ -3658,7 +3689,7 @@ describe('on bind stage (static)', () => {
 
     const handler = vi.fn();
 
-    Test.on({ bind: handler });
+    Test.on({ method: handler });
 
     const test = Test.new();
 
@@ -3680,9 +3711,9 @@ describe('on bind stage (static)', () => {
       }
     }
 
-    const bind = vi.fn();
+    const method = vi.fn();
 
-    Test.on({ bind });
+    Test.on({ method });
 
     const test = Test.new();
 
@@ -3694,7 +3725,7 @@ describe('on bind stage (static)', () => {
     const { foo } = test;
 
     expect(foo()).toBe(test);
-    expect(bind).toBeCalledTimes(2);
+    expect(method).toBeCalledTimes(2);
   });
 
   it('will run base then subclass handlers, once each', () => {
@@ -3705,7 +3736,7 @@ describe('on bind stage (static)', () => {
     class Sub extends Base {}
 
     const order: string[] = [];
-    const tag = (name: string) => ({ bind: () => void order.push(name) });
+    const tag = (name: string) => ({ method: () => void order.push(name) });
     const shared = tag('shared');
 
     Base.on(tag('base'));
@@ -3729,7 +3760,7 @@ describe('on bind stage (static)', () => {
     Test.new().foo;
 
     const handler = vi.fn();
-    const stop = Test.on({ bind: handler });
+    const stop = Test.on({ method: handler });
 
     Test.new().foo;
     expect(handler).toBeCalledTimes(1);
@@ -3747,7 +3778,7 @@ describe('on bind stage (static)', () => {
     const read = vi.fn();
 
     Test.on({
-      bind(key) {
+      method(key) {
         read((this as any)[key]);
       }
     });

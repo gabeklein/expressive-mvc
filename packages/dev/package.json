@@ -53,7 +53,9 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && vitest run"
+    "typecheck": "tsc --noEmit --incremental",
+    "coverage": "vitest run",
+    "test": "bun run typecheck && bun run coverage"
   },
   "dependencies": {
     "@expressive/dom": "workspace:*",

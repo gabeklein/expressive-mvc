@@ -59,7 +59,7 @@ function track() {
       if (!children) SUBCLASSES.set(parent, (children = new Set()));
       children.add(type);
     },
-    pre(state) {
+    setup(state) {
       const ref = new WeakRef(state);
       LIVE!.add(ref);
       return () => LIVE!.delete(ref);

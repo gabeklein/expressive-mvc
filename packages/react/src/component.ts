@@ -78,7 +78,7 @@ Component.on({
 
     subcomponents(type.prototype);
   },
-  pre(self) {
+  setup(self) {
     subcomponents(self);
   }
 });

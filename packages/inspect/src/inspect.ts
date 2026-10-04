@@ -273,9 +273,9 @@ export function attach(Type: typeof State = State): () => void {
   if (!hooks.has(Type)) {
     const observed = new Map<typeof State, () => void>();
     const stopCatch = Type.on({ catch: unhandled });
-    const stopCall = Type.on({ type: trace, bind: retrace });
+    const stopCall = Type.on({ type: trace, method: retrace });
     const stopSetup = Type.on({
-      pre(this: State) {
+      setup(this: State) {
         const self = this.is;
         const T = self.constructor as typeof State;
         const id = String(self);
