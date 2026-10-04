@@ -16,6 +16,7 @@ packages/react  - React adapter (@expressive/react)
 packages/preact - Preact adapter (@expressive/preact)
 packages/router - Router built on Component (@expressive/router)
 packages/inspect - In-page inspector for agents and devtools (@expressive/inspect)
+packages/three  - Three.js scene graph (@expressive/three, unreleased - see FEATURE.md)
 skills/         - API reference docs (also published as skills.sh skill)
 examples/       - Playground of crawlable example pages (see examples/AGENTS.md)
 website/        - Docs site
@@ -108,6 +109,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 - When starting actual work, switch from any auto-generated scratch branch (`claude/*` or whatever your tooling names them) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
 - Always open PRs against `main` unless explicitly told otherwise. Never assume a PR should target another branch, even when the current work branch is stacked on one. If asked to break a fix out of a larger branch, the intent is to land it independently off `main` - carve out only the change in question and base its branch on `main`.
+- A long-running feature may live on a trunk branch (`feat/<name>`): its feature PRs target the trunk, which lands on `main` once release-ready. The trunk's root `FEATURE.md` holds agreed scope and shape - update it in the PR that changes either; it does not land on `main`.
 - For new features and non-trivial refactors, capture agreed scope, key decisions, and approach in the PR description before implementation - it is the canonical shared plan and review context. (Working notes may live in untracked local scratch; only the PR description is shared.)
 - Prefer more, logically-scoped commits within a branch over one squashed blob - the PR itself squashes on merge, so granular commits cost nothing and give better evolution tracking during review.
 - Dead links, typos and one-word corrections get fixed on the current branch - don't route trivia elsewhere.
