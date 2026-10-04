@@ -364,6 +364,116 @@ describe('suspense and recovery', () => {
     });
   });
 
+  it('will hold the current content while new siblings wait on one that loads', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = () => loaded;
+    const mounted: string[] = [];
+
+    class Tab extends State {
+      mount() {
+        mounted.push(root.textContent!);
+      }
+
+      render() {
+        return <b>new</b>;
+      }
+    }
+
+    class App extends Component {
+      next = false;
+      fallback = <i>loading</i>;
+
+      render() {
+        return this.next ? <><Tab /><Lazy /><u>tail</u></> : <><p>current</p></>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => (app.next = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<p>current</p>');
+    expect(mounted).toEqual([]);
+
+    loaded.resolve(() => <s>lazy</s>);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<b>new</b><s>lazy</s><u>tail</u>');
+    expect(mounted).toEqual(['newlazytail']);
+  });
+
+  it('will show content a transition updates in place while new content it adds is held', async () => {
+    const loaded = mockPromise<() => Component.Node>();
+    const Lazy = () => loaded;
+
+    class App extends Component {
+      count = 1;
+      fallback = <i>loading</i>;
+
+      render() {
+        return <><b>count {this.count}</b>{this.count > 1 && <Lazy />}</>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => (app.count = 2));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('count 2');
+
+    loaded.resolve(() => <s>lazy</s>);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(root.textContent).toBe('count 2lazy');
+  });
+
+  it('will not mount new content a failing transition discards', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mounted = vi.fn();
+
+    class Tab extends State {
+      mount = mounted;
+
+      render() {
+        return <b>tab</b>;
+      }
+    }
+
+    const Boom = (): Component.Node => {
+      throw new Error('boom');
+    };
+
+    class Panel extends State {
+      render() {
+        return <><Tab /><Boom /></>;
+      }
+    }
+
+    class App extends Component {
+      open = false;
+
+      render() {
+        return this.open ? <Panel /> : <p>closed</p>;
+      }
+    }
+
+    let app!: App;
+    const root = document.createElement('main');
+    render(<App is={(value) => (app = value)} />, root);
+
+    pending(() => (app.open = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(root.textContent).toBe('closed');
+    expect(mounted).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(new Error('boom'));
+    error.mockRestore();
+  });
+
   it('will keep siblings consistent when a transition suspends mid-list', async () => {
     const loaded = mockPromise<() => Component.Node>();
     const Lazy = () => loaded;
@@ -1450,7 +1560,7 @@ describe('suspense and recovery', () => {
 
     expect(root.textContent).toBe('');
   });
-  it.fails('will not render a child its parent removes in the same transition', async () => {
+  it('will not render a child its parent removes in the same transition', async () => {
     const seen: unknown[] = [];
 
     class Parent extends State {
