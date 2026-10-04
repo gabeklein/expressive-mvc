@@ -63,7 +63,7 @@ function objectOf(self: object) {
   return (self as unknown as { _object: THREE.Object3D })._object;
 }
 
-/** At `pre` a subclass default is still a plain own value - route it to the object. */
+/** At `setup` a subclass default is still a plain own value - route it to the object. */
 function contract<T extends Object3D>(...keys: string[]) {
   return (self: T) => {
     const object = objectOf(self) as unknown as Members;
@@ -129,8 +129,8 @@ function owner(self: Object3D) {
 }
 
 Object3D.on({
-  pre: contract('visible', 'position', 'rotation', 'scale'),
-  new(self) {
+  setup: contract('visible', 'position', 'rotation', 'scale'),
+  ready(self) {
     const above = owner(self);
 
     if (above) objectOf(above).add(objectOf(self));
@@ -141,6 +141,6 @@ Object3D.on({
   }
 });
 
-Mesh.on({ pre: contract('geometry', 'material') });
+Mesh.on({ setup: contract('geometry', 'material') });
 
 export { Group, Mesh, Object3D, objectOf, Scene, Vec3 };

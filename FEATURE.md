@@ -12,7 +12,7 @@ A three.js scene graph built as an addressable `State` tree. Nodes are classes, 
 - **Hierarchy is ownership.** A node attaches under the nearest owning `Object3D`, past owners which are not nodes. References (`get()`) and guests (already-active instances) do not attach.
 - **Existence is the ownership lifecycle** - field assignment, pool add/delete, destroy. Gating is state, not conditional rendering.
 - **Scenes are addressable.** Compose with fields (`turret = new Turret()`) and pools (`enemies = has((e: Mob | Boss) => e)`) on the owning class. A separate manager class only when the population has state of its own (an aggro table). Order is not significant - three sorts draws; `renderOrder` is explicit.
-- **Primitives install a fixed member contract at `pre`** through `state.set(key, { get, set })`; the three.js object is the storage. At `pre` a subclass default is still a plain value, so it reaches the object. Primitives declare no instruction fields - a subclass initializer silently replaces those. Instructions are a user tool.
+- **Primitives install a fixed member contract at `setup`** through `state.set(key, { get, set })`; the three.js object is the storage. At `setup` a subclass default is still a plain value, so it reaches the object. Primitives declare no instruction fields - a subclass initializer silently replaces those. Instructions are a user tool.
 - **Internals are protected** - `_object` (unmanaged; travels with the instance), `create()`.
 - **Per-frame work is imperative** - `Frame.each`, dispatching nothing. Reactive state describes what exists; the clock drives what it does.
 - **One host-facing root** owns canvas, renderer and camera; nothing else meets a host. Its frame hook is `draw()` - `render` is the host's content method on a rendered State.
@@ -38,7 +38,7 @@ Built: `Object3D`, `Group`, `Scene`, `Mesh`; member contract for `visible`, `pos
 
 - Precedence when a node is both owned and placed in `children` - placement while held, owner on removal.
 - `children` on every node, or containers only - a pool per node has a cost.
-- `children` validated at `pre` - a subclass redeclaring it throws.
+- `children` validated at `setup` - a subclass redeclaring it throws.
 - A subclass computed on a member throws today; it could be synced through an effect instead.
 
 ## Bullpen
