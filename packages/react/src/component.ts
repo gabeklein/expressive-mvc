@@ -27,7 +27,7 @@ declare module '@expressive/mvc' {
     /** @deprecated Only to satisfy host JSX. Use `this.get(State)` instead. */
     readonly context: Context;
     /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
-    readonly state: State.Values<this>;
+    readonly state: {};
     /** @deprecated Only to satisfy host JSX. Use `this.set({})` instead. */
     setState: (state: any, callback?: () => void) => void;
     /** @deprecated Only to satisfy host JSX. Use `this.set(key)` instead. */
