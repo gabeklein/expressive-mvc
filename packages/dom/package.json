@@ -50,7 +50,9 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && vitest run --coverage"
+    "typecheck": "tsc --noEmit",
+    "unit": "vitest run --coverage",
+    "test": "bun run typecheck && bun run unit"
   },
   "peerDependencies": {
     "@expressive/mvc": "^0.87.0",

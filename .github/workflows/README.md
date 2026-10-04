@@ -2,9 +2,10 @@
 
 ## pr.yml (pull requests)
 
-Blocking: `bun run test`, `bun run build` and `dist-check.ts` (static invariants
-on the emitted dist - relative specifiers resolve, side-effect imports are
-declared). Steps backed by a script under `.github/scripts` invoke it directly;
+Blocking: `bun run typecheck`, `bun run unit`, `bun run build` and
+`dist-check.ts` (static invariants on the emitted dist - relative specifiers
+resolve, side-effect imports are declared). Tests still run after a failed
+typecheck, so a type error doesn't hide test results. Steps backed by a script under `.github/scripts` invoke it directly;
 only workspace-wide commands are `package.json` entries. The frozen-lockfile
 install in the `setup` action doubles as the internal-dependency desync guard -
 a workspace version that falls outside a sibling's range cannot reach main.
