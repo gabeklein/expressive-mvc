@@ -1,0 +1,73 @@
+{
+  "name": "@expressive/dev",
+  "version": "0.0.0",
+  "description": "Vite host for Expressive apps: file-based routes on @expressive/dom and a server lane.",
+  "license": "MIT",
+  "private": true,
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@expressive.dev",
+    "url": "https://github.com/gabeklein"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./dist/jsx-runtime.js",
+    "./dist/jsx-dev-runtime.js"
+  ],
+  "bin": {
+    "expressive": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/browser.js",
+      "default": "./dist/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "default": "./dist/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-dev-runtime.d.ts",
+      "default": "./dist/jsx-dev-runtime.js"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "default": "./dist/vite/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "tsc --noEmit && vitest run"
+  },
+  "dependencies": {
+    "@expressive/dom": "workspace:*",
+    "@expressive/inspect": "workspace:*",
+    "@expressive/router": "workspace:*",
+    "es-module-lexer": "^1.6.0",
+    "vite": "^8.0.0"
+  },
+  "peerDependencies": {
+    "@expressive/mvc": "^0.87.0"
+  },
+  "devDependencies": {
+    "@expressive/mvc": "workspace:^",
+    "@types/node": "^25.2.0",
+    "tsdown": "^0.20.1"
+  }
+}
