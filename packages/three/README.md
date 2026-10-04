@@ -1,23 +1,24 @@
 # @expressive/three (spike)
 
-A three.js scene graph built from Expressive MVC classes, composed with **plain
-React JSX**. React mounts and unmounts the hierarchy; it never sees a value
-change. Built on `main` with **no changes to any existing package.**
+A three.js scene graph built from Expressive MVC `State` classes. Ownership is
+the hierarchy and the lifecycle is existence - there is no render pass, and a
+scene's values never touch one. Built on `main` with **no changes to any existing
+package**, but reaching one internal export (cost 2).
 
 Not a proposal to ship. It exists to find out what the shape costs.
 
 ## The idea
 
-React is the host, deliberately under-levered. It answers one question per node -
-*does this exist, and where* - and the scene's values never touch the render
-pipeline. Where r3f drills props through renders to reach scene memory, here a
-class holds the three.js object it represents and passes a fixed set of that
+A class holds the three.js object it represents and passes a fixed set of that
 object's members through as reactive fields: the object is the storage, a write
-forwards straight to it and dispatches through the update system.
+forwards straight to it and dispatches through the update system. Where r3f
+drills props through renders to reach scene memory, here a write *is* the update.
 
-Actors find each other through the context hierarchy rather than props.
+Actors find each other through context rather than props. Extending a primitive
+is the norm - that is where custom properties and methods for business logic
+live.
 
-```tsx
+```ts
 class Spinner extends Mesh {
   frame = get(Frame);
   speed = 2;
@@ -37,26 +38,41 @@ class Spinner extends Mesh {
   }
 }
 
-function View() {
-  const { ready } = Session.get();
+class World extends Scene {
+  frame = new Frame();
+  ground = new Mesh();
+  spinner?: Spinner = undefined;
 
-  return (
-    <Scene>
-      <Ground />
-      {ready && <Spinner position={[0, 1, 0]} />}
-    </Scene>
-  );
+  start() {
+    this.spinner = new Spinner({ position: [0, 1, 0] });
+  }
 }
 ```
 
 `spinner.position = [0, 2, 0]` reaches GPU memory and notifies reactive
-consumers with **zero renders at any level** - asserted in the tests. Same for
-`frame.each`, and for `boost()` called from anywhere holding the instance.
+consumers. `frame.each` moves it with no update dispatched - asserted in the
+tests. A subclass declares defaults as ordinary fields (`geometry = …` above);
+constructor arguments still override them. Internals - `_object`, `create` - are
+`protected`.
 
-Extending a primitive is the norm: that is where custom properties and methods
-for business logic live. A subclass declares defaults as ordinary fields
-(`geometry = …` above) and they reach the object; a JSX prop or constructor
-argument still overrides them. Internals - `_object`, `create` - are `protected`.
+## Hierarchy is ownership
+
+A node joins under the nearest `Object3D` that owns it and leaves when it is
+destroyed:
+
+- **Fields and pools** - `ground = new Mesh()`, `rocks = has(Mesh)` - are owned.
+  Owners in between that are not scene objects (a `Level extends State`) are
+  passed through.
+- **References are not children.** A `player = get(Player)` field points at a node
+  owned elsewhere; it stays where its owner put it.
+- **Existence is the ownership lifecycle.** Assigning `this.lamp = new Lamp()`
+  attaches it; `this.lamp = undefined` destroys and detaches it. `has()` add and
+  delete do the same. Gating is ordinary state, not conditional rendering.
+
+JSX is not needed to compose a scene. It could return as an optional layer -
+`@expressive/dom` renders any `State` as an element, React provides one through
+`<Component for>` - but a JSX placement is not ownership, so either would need its
+own attachment (the dropped React binding walked context for it).
 
 ## How a primitive passes members through
 
@@ -91,18 +107,16 @@ probed). `Frame` keeps its handlers the same way.
 
 ## What the core provides
 
-- **`Context` is host-independent**, so children resolve actors with `get(Type)`
-  instead of receiving drilled props. This carries the design.
+- **Ownership is tracked exactly** - fields, pools, late assignment, guest
+  exclusion - and destroys owned children with their owner. The scene graph is a
+  view of it.
 - **`state.set(key, { get, set })`** defines a managed property whose storage is
   somewhere else entirely. Public API; no instruction needed.
 - **`State.on({ pre })`** runs after every field initializer and before values
   are observed - the window a vendor contract needs.
 - **`_` fields are unmanaged** - the place for a handle like the three.js object.
-- **Render composition** lives in core, so a subclass `render` wrapping `super`'s
-  content works with no adapter involvement.
+- **`Context`** lets actors resolve each other with `get(Type)` instead of props.
 - **Destruction** (`set(null)`, `new()` cleanups) maps onto three's `dispose()`.
-- **The React binding is ~25 lines** - no `jsxImportSource`, no reconciler, no
-  `<Canvas>` owning a parallel tree.
 
 ## What it cost
 
@@ -118,51 +132,43 @@ passthrough was silently never installed, and the mesh kept three's default.
 The fix was not a better instruction. Instructions are a *user* tool, for mixing
 behavior onto an otherwise complete stack of State behavior. A vendor base's
 members are a fixed contract it already knows, so it installs them imperatively -
-see above. That removes the overwrite entirely, with no core change.
+see above.
 
 The overwrite itself is real and library-wide: a base-class instruction carrying
 behavior (`ref()`, `has()`, `get()`) is silently replaced by a subclass value.
-Closing a class layer with an empty `def()` would fix it in core - scoped
+Closing a class layer with an empty `def()` would fix it in core - written up
 separately; not needed here.
 
-### 2. "Nearest ancestor in the graph" has no reliable lookup
+### 2. Ownership is not public
 
-`get(Object3D)` looks like the way to find the node you attach under. It is not:
+Core records each State's owner exactly (`parent()` in `state.ts`) but exports
+neither it nor the owner's children. The spike imports it from the internal
+module, so the build emits `import { parent } from "@expressive/mvc/state"` - a
+subpath `@expressive/mvc`'s `exports` map does not allow. It works inside the
+monorepo and would fail for any outside consumer.
 
-- A State adopted by `has()` or `map()` is registered in its **owner's** context,
-  so a lookup from it can match a *sibling*.
-- Two such siblings in one context make it ambiguous and `Context.get` returns
-  `null`, so a parent silently attaches nothing. Re-verified on `main`.
+Context cannot stand in. An adopted child is registered in its owner's context,
+so an owner, its children and their siblings share one context, and a type lookup
+there can match a sibling - or return `null` once two siblings make it ambiguous.
 
-The binding instead walks the context chain for an `Object3D` registered
-**explicitly** - what a Component does for itself, and what separates "the node
-this context belongs to" from "nodes that merely live in it." That reads
-`Context.provide` directly; there is no public API for resolve-by-tree-position.
-It is the one place the spike reaches past the public surface.
+`@expressive/inspect` hits the same wall: it rebuilds ownership by scanning every
+State's fields, where a `get()` reference is indistinguishable from an owned
+child. A public owner accessor would serve both.
 
-### 3. `mount` is not called for a placed instance
+### 3. An instance the scene did not create cannot be placed
 
-`mount` is the natural commit hook for attachment, but it is skipped for an
-instance rendered as `{component}` - exactly how a `has()` or `map()` collection
-renders, so members would never join the graph.
-
-So attachment happens at the `new` stage, which covers every placement path:
-
-- A render attempt React later discards attaches first, and detaches when its
-  context is popped.
-- **Suspense does not gate existence.** A node whose `render` suspends is already
-  in the graph while React shows a fallback (asserted in the tests). Gate an
-  asset-dependent node at the call site instead.
+Ownership excludes guests by design - an already-active instance assigned to a
+field stays where its owner put it. So there is no way yet to show one node under
+two parents, or to place an externally constructed one. An imperative
+`add(node)` would be the next primitive.
 
 ### 4. A Component subclass is not assignable to its base
 
-`Component.BaseProps.is` is a function-typed property, so it is contravariant: a
-`Ball extends Mesh` is not assignable to `Mesh`, and any function taking a `Mesh`
-rejects every subclass. Reproduced on `main` with plain `Component` subclasses;
-`State` subclasses are unaffected. Declaring it method-style
-(`is?(instance: T): void`) would make it bivariant. Since extending primitives is
-the norm here, this bites constantly - the spike works around it with
-`object`-typed helpers.
+Moving to `State` sidesteps it here, but it is a core finding:
+`Component.BaseProps.is` is a function-typed property, so it is contravariant,
+and a `Ball extends Mesh` built on `Component` is not assignable to `Mesh`.
+Reproduced on `main`; `State` subclasses are unaffected. Declaring it method-style
+(`is?(instance: T): void`) would make it bivariant.
 
 ### 5. A computed field's first value is asynchronous
 
@@ -180,7 +186,7 @@ TS2611. `computed.md` documents the general rule.
 
 `class Rig extends THREE.Mesh` is impossible - `State` must be in the prototype
 chain. Classes *represent* a three object rather than being one, so `_object`
-appears in every imperative method. Close in feel; not the same thing.
+appears in every imperative method.
 
 ### 8. TypeScript cannot express asymmetric read/write on a property
 
@@ -191,13 +197,14 @@ so passed-through vectors read as a tuple both ways, and a subclass uses
 
 ## Dropped
 
-- **A self-registering mvc JSX host** (`059313e`, `75a8189`). It worked, but any
-  real app already renders a React entry point, and one host per build meant it
-  could not share a TypeScript program with `@expressive/react`.
+- **A self-registering mvc JSX host** (`059313e`, `75a8189`). Any real app already
+  renders a React entry point, and one host per build meant it could not share a
+  TypeScript program with `@expressive/react`.
 - **`pass()`** (`bb5e816`) - see cost 1.
-
-The primitives stay host-agnostic - `object.ts` imports no host - but React is
-the host in practice.
+- **The React binding** (`27e1783`) - JSX composition is not integral here. Its
+  findings stand for any React-hosted variant: `mount` is skipped for an instance
+  placed as `{instance}` (so `has()` members never get it), and a suspended node
+  is already in the graph while React shows a fallback.
 
 ## Deliberately out of scope
 
@@ -205,18 +212,19 @@ Not limitations found, just unbuilt: `WebGLRenderer` and a canvas host (so the
 spike stays WebGL-free and fully testable - wire a renderer against a `Scene` and
 drive `Frame` with `loop`), the rest of three's member surface beyond
 `visible`/`position`/`rotation`/`scale`/`geometry`/`material` and `lookAt`
-(mechanical), `Component.catch` boundaries, raycasting and pointer events, and
-hot reload, which `_object` is meant to survive but no probe exercises.
+(mechanical), JSX composition, raycasting and pointer events, and hot reload.
 
 ## Verified
 
-`bun run test` here: 29 tests, 100% statements/branches/functions/lines, clean
+`bun run test` here: 30 tests, 100% statements/branches/functions/lines, clean
 typecheck, against `main` @ `0863b57`. Tests assert on real `THREE.Scene`
-graphs: hierarchy, conditional existence, context resolution, owned collections,
-destruction and disposal, member reads/writes/dispatch, subclass defaults
-reaching the object and yielding to props, and both per-frame animation and value
-writes causing **no React render**.
+graphs: hierarchy from fields, pools and intermediate owners; references and
+guests left out; existence following field assignment and pool deletion;
+destruction and disposal; context resolution; member reads/writes/dispatch;
+subclass defaults reaching the object and yielding to constructor arguments; and
+per-frame animation dispatching nothing.
 
-**No pixels were rendered.** There is no `WebGLRenderer` here, so nothing
-verifies that a scene this builds draws correctly - only that the object graph
-and the values on it are what they should be.
+The build succeeds but its output is not consumable outside the monorepo - see
+cost 2. **No pixels were rendered**: there is no `WebGLRenderer` here, so nothing
+verifies that a scene draws correctly - only that the object graph and the values
+on it are what they should be.

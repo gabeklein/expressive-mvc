@@ -1,4 +1,5 @@
-import { Component, State } from '@expressive/mvc';
+import { State } from '@expressive/mvc';
+import { parent } from '@expressive/mvc/state';
 import * as THREE from 'three';
 
 type Vec3 = [number, number, number];
@@ -8,10 +9,13 @@ type Vec3 = [number, number, number];
  *
  * A subclass declares `create` to make its three.js object once, then owns it.
  * Each class passes a fixed set of its object's members through as reactive
- * fields - the object is the storage - and methods drive it imperatively. JSX
- * is left with hierarchy and existence, so a scene's values never re-render it.
+ * fields - the object is the storage - and methods drive it imperatively.
+ *
+ * The graph mirrors ownership: a node joins under the nearest Object3D that owns
+ * it - through a field or a `has()` pool, directly or via States in between - and
+ * leaves when destroyed. Existence is ownership; there is no render pass.
  */
-abstract class Object3D extends Component {
+abstract class Object3D extends State {
   /** The three.js object this class represents. */
   protected readonly _object: THREE.Object3D;
 
@@ -45,7 +49,7 @@ class Group extends Object3D {
   }
 }
 
-/** Root of a graph - what a React-hosted scene hangs from. */
+/** Root of a graph. */
 class Scene extends Object3D {
   declare protected readonly _object: THREE.Scene;
 
@@ -140,7 +144,25 @@ function write(object: Members, key: string, value: unknown) {
   return [x, y, z];
 }
 
-Object3D.on({ pre: contract('visible', 'position', 'rotation', 'scale') });
+/** Nearest Object3D owning `self`, through any non-Object3D owners between. */
+function owner(self: Object3D) {
+  for (let at = parent(self); at; at = parent(at))
+    if (at instanceof Object3D) return at;
+}
+
+Object3D.on({
+  pre: contract('visible', 'position', 'rotation', 'scale'),
+  new(self) {
+    const above = owner(self);
+
+    if (above) objectOf(above).add(objectOf(self));
+
+    return () => {
+      objectOf(self).removeFromParent();
+    };
+  }
+});
+
 Mesh.on({ pre: contract('geometry', 'material') });
 
 export { Group, Mesh, Object3D, objectOf, Scene, Vec3 };
