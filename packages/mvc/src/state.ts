@@ -1,4 +1,4 @@
-import { Context, join } from './context';
+import { Context, host, join } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -60,6 +60,8 @@ let ANNOUNCED = false;
 /** Adopters for managed properties which have held a child State. */
 const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
+const OWNS = new WeakMap<State, Set<State>>();
+const OWNED = new WeakMap<State, Set<(child: State) => void>>();
 
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
@@ -338,14 +340,34 @@ abstract class State {
     downstream?: boolean
   ): () => void;
 
+  /** Owner of this State. Throws if it has none. */
+  get(type: typeof State, required?: true): State;
+
+  /** Owner of this State. Undefined if it has none. */
+  get(type: typeof State, required: boolean): State | undefined;
+
+  /**
+   * Run a callback for each State this one owns - those owned now, then each
+   * one as it activates. Callback may return a function, called when that State
+   * is destroyed.
+   *
+   * @returns Function to stop watching.
+   */
   get(
-    arg1?: State.Effect<this> | State.Type | string | null,
+    type: typeof State,
+    callback: (child: State) => void | (() => void),
+    downstream: true
+  ): () => void;
+
+  get(
+    arg1?: State.Effect<this> | State.Type | typeof State | string | null,
     arg2?: boolean | Context.Expect | (() => void),
     arg3?: boolean
   ) {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
+    if (arg1 === State) return typeof arg2 == 'function' ? owned(self, arg2 as (child: State) => void) : owner(self, arg2 as boolean);
     if (State.is(arg1)) return Context.get(self).get(arg1, arg2, arg3, self);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
@@ -605,7 +627,12 @@ function init(state: State, ...args: State.Args) {
 
     if (key === null) return null;
 
-    parent(state, null);
+    parent(state, host(state) || null);
+
+    const above = PARENT.get(state);
+    const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
+
+    if (owns) listener(state, () => void owns.delete(state), null);
 
     const queue = [...before, observe, ...args, ...after, register];
 
@@ -623,6 +650,11 @@ function init(state: State, ...args: State.Args) {
         else if (typeof out == 'object') assign(state, out, true);
       }
     });
+
+    if (owns) {
+      owns.add(state);
+      OWNED.get(above)?.forEach((cb) => cb(state));
+    }
 
     let end = rest.length;
 
@@ -989,6 +1021,35 @@ function children(state: State, callback: (child: State) => void) {
   return () => set!.delete(callback);
 }
 
+function owner(state: State, required?: boolean) {
+  const found = PARENT.get(state);
+
+  if (found || required === false) return found || undefined;
+
+  throw new Error(`${state} has no owner.`);
+}
+
+/**
+ * Report States owned by this one - those active now, then each one as it
+ * activates. A function returned by `callback` runs when that State is destroyed.
+ */
+function owned(state: State, callback: (child: State) => void | (() => void)) {
+  function each(child: State) {
+    const done = callback(child);
+    if (typeof done == 'function') listener(child, () => void done(), null);
+  }
+
+  OWNS.get(state)?.forEach(each);
+
+  let set = OWNED.get(state);
+
+  if (!set) OWNED.set(state, (set = new Set()));
+
+  set.add(each);
+
+  return () => void set!.delete(each);
+}
+
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
 
@@ -1200,4 +1261,4 @@ function parent(child: object, value?: State | null) {
 }
 
 export type { Handler };
-export { adopt, event, unbind, State, parent, children, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
+export { adopt, event, unbind, State, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
