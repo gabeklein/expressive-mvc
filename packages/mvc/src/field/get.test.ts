@@ -947,6 +947,77 @@ describe('fetch mode', () => {
       });
     });
   });
+
+  describe('owner', () => {
+    it('will get owner', () => {
+      class Child extends State {
+        owner = get(State);
+      }
+      class Parent extends State {
+        child = new Child();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.child.owner).toBe(parent);
+    });
+
+    it('will get State a context was set up for', () => {
+      class Host extends State {}
+      class Child extends State {
+        owner = get(State);
+      }
+
+      const host = Host.new();
+      const child = new Child();
+
+      new Context(host).push(child);
+
+      expect(child.owner).toBe(host);
+    });
+
+    it('will be undefined if optional and none', () => {
+      class Child extends State {
+        owner = get(State, false);
+      }
+
+      expect(Child.new().owner).toBeUndefined();
+    });
+
+    it('will throw if none', () => {
+      class Child extends State {
+        owner = get(State);
+      }
+
+      expect(() => Child.new()).toThrow(/^Child-\w+ has no owner\.$/);
+    });
+
+    it('will collect owned States', async () => {
+      class Child extends State {}
+      class Parent extends State {
+        child = new Child();
+        guest?: Child = undefined;
+        pool = has(Child);
+        owned = get(State, true);
+      }
+
+      const parent = Parent.new();
+
+      parent.guest = Child.new();
+
+      expect(parent.owned).toEqual([parent.child]);
+
+      const member = parent.pool.add();
+
+      await expect(parent).toHaveUpdated('owned');
+      expect(parent.owned).toEqual([parent.child, member]);
+
+      parent.pool.delete(member);
+
+      await expect(parent).toHaveUpdated('owned');
+      expect(parent.owned).toEqual([parent.child]);
+    });
+  });
 });
 
 describe('lifecycle callbacks', () => {
