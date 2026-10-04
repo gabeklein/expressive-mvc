@@ -26,12 +26,12 @@ website/        - Docs site
 ```bash
 bun install              # Install deps
 bun run test             # Run package test scripts (typecheck + unit)
-bun run typecheck        # tsc --noEmit in every package
+bun run typecheck        # tsc --noEmit --incremental in every package
 bun run unit             # vitest with coverage in every package
 bun run build            # Build all packages (bun --filter, dependency order)
 ```
 
-Per-package: `test` runs `typecheck` (`tsc --noEmit`) then `unit` (`vitest run --coverage`). A root `vitest` run covers every package's suite at once (workspace projects).
+Per-package: `test` runs `typecheck` (`tsc --noEmit --incremental`) then `unit` (`vitest run --coverage`). A root `vitest` run covers every package's suite at once (workspace projects).
 
 ## Testing
 
