@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { get, has, set, State } from '@expressive/mvc';
 
 import { Frame, Group, Mesh, Scene } from './react';
-import { target } from './target';
+import { objectOf as target } from './object';
 
 /** Every object under `target` as a path of constructor names. */
 function graph(target: THREE.Object3D, path = ''): string[] {
@@ -207,7 +207,7 @@ describe('imperative behavior', () => {
 
       protected new() {
         return this.frame.each((delta) => {
-          this.object.rotation.y += this.speed * delta;
+          this._object.rotation.y += this.speed * delta;
         });
       }
 
@@ -272,5 +272,37 @@ describe('collections', () => {
       '/Group/Mesh',
       '/Group/Mesh'
     ]);
+  });
+});
+
+describe('render pipeline', () => {
+  it('will not re-render React when a value changes', async () => {
+    const rendered = vi.fn();
+
+    class Box extends Mesh {
+      render() {
+        rendered();
+        return null;
+      }
+    }
+
+    let box!: Box;
+
+    render(
+      <Scene>
+        <Box is={(self) => (box = self)} />
+      </Scene>
+    );
+
+    const before = rendered.mock.calls.length;
+
+    box.position = [0, 3, 0];
+    box.visible = false;
+
+    await act(async () => {});
+
+    expect(target(box).position.y).toBe(3);
+    expect(target(box).visible).toBe(false);
+    expect(rendered.mock.calls.length).toBe(before);
   });
 });

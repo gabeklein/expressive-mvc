@@ -2,14 +2,13 @@ import '@expressive/react';
 
 import { Context } from '@expressive/mvc';
 
-import { Object3D } from './object';
-import { target } from './target';
+import { Object3D, objectOf } from './object';
 
 /**
  * Compose scenes with plain React JSX - no `jsxImportSource` change and no
  * custom reconciler. React contributes only what it is good at here: hierarchy
  * and whether a node exists. Values reach three.js imperatively from each
- * class's own effects, so nothing rides the render pipeline per element.
+ * class's own fields and methods, so nothing rides the render pipeline per element.
  *
  * Attachment runs at activation rather than on commit. `mount` would be the
  * better hook, but it is not called for an instance placed as `{component}` -
@@ -18,13 +17,13 @@ import { target } from './target';
  * attaches first and detaches when its context is popped.
  */
 Object3D.on({
-  after(self) {
+  new(self) {
     const parent = enclosing(self);
 
-    if (parent) target(parent).add(target(self));
+    if (parent) objectOf(parent).add(objectOf(self));
 
     return () => {
-      target(self).removeFromParent();
+      objectOf(self).removeFromParent();
     };
   }
 });
@@ -49,7 +48,6 @@ function enclosing(self: Object3D) {
   }
 }
 
-export { pass } from './pass';
 export { Frame, loop } from './frame';
 export { Group, Mesh, Object3D, Scene } from './object';
-export type { Vec3 } from './pass';
+export type { Vec3 } from './object';

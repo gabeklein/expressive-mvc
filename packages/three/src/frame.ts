@@ -5,9 +5,6 @@ declare namespace Frame {
   type Schedule = (step: (time: number) => void) => void;
 }
 
-const HANDLERS = new WeakMap<Frame, Set<Frame.Handler>>();
-const ELAPSED = new WeakMap<Frame, number>();
-
 /**
  * The animation clock, provided to a scene and read with `get(Frame)`.
  *
@@ -19,29 +16,23 @@ const ELAPSED = new WeakMap<Frame, number>();
 class Frame extends State {
   static readonly global = false;
 
-  protected new() {
-    HANDLERS.set(this, new Set());
-    ELAPSED.set(this, 0);
-  }
+  protected _handlers = new Set<Frame.Handler>();
+  protected _elapsed = 0;
 
   /** Run `handler` every frame. Returns a function to stop. */
   each(handler: Frame.Handler) {
-    const handlers = HANDLERS.get(this)!;
-
-    handlers.add(handler);
+    this._handlers.add(handler);
 
     return () => {
-      handlers.delete(handler);
+      this._handlers.delete(handler);
     };
   }
 
   /** Advance the clock by `delta` seconds and run every handler. */
   tick(delta: number) {
-    const elapsed = ELAPSED.get(this)! + delta;
+    this._elapsed += delta;
 
-    ELAPSED.set(this, elapsed);
-
-    for (const handler of HANDLERS.get(this)!) handler(delta, elapsed);
+    for (const handler of this._handlers) handler(delta, this._elapsed);
   }
 }
 

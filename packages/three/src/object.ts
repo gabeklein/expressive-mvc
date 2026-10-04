@@ -1,85 +1,146 @@
-import { Component } from '@expressive/mvc';
+import { Component, State } from '@expressive/mvc';
 import * as THREE from 'three';
 
-import { pass, Vec3 } from './pass';
-import { target, TARGET } from './target';
+type Vec3 = [number, number, number];
 
 /**
  * Base for every class which represents an object in the scene graph.
  *
- * A subclass declares `create` to make its three.js object once, then owns it:
- * fields pass values straight through, and methods drive it imperatively. JSX
+ * A subclass declares `create` to make its three.js object once, then owns it.
+ * Each class passes a fixed set of its object's members through as reactive
+ * fields - the object is the storage - and methods drive it imperatively. JSX
  * is left with hierarchy and existence, so a scene's values never re-render it.
- *
- * Extending a primitive is the norm - that is where business logic external
- * actors call belongs. Everything internal to the contract is `protected`.
  */
 abstract class Object3D extends Component {
   /** The three.js object this class represents. */
-  declare protected readonly object: THREE.Object3D;
+  protected readonly _object: THREE.Object3D;
 
-  visible = pass<boolean>();
-  position = pass<Vec3>();
-  rotation = pass<Vec3>();
-  scale = pass<Vec3>();
+  declare visible: boolean;
+  declare position: Vec3;
+  declare rotation: Vec3;
+  declare scale: Vec3;
 
-  constructor(...args: any[]) {
+  constructor(...args: State.Args) {
     super(...args);
 
-    // Created here, not in a lifecycle handler: a member spawned by `has()` or
-    // `map()` activates during its owner's `new()`, before any later hook could
-    // have made the owner's object exist. Nothing has applied props yet either,
-    // so `create` cannot read them - fields pass them through afterward.
-    if (!TARGET.has(this)) {
-      const object = this.create();
-
-      object.name = String(this);
-      TARGET.set(this, object);
-    }
+    this._object = this.create();
+    this._object.name = String(this);
   }
 
   /** Turn to face a point in world space. */
   lookAt(...at: Vec3) {
-    this.object.lookAt(...at);
+    this._object.lookAt(...at);
     this.set('rotation');
   }
 
   protected abstract create(): THREE.Object3D;
 }
 
-Object.defineProperty(Object3D.prototype, 'object', {
-  get(this: Object3D) {
-    return target(this.is);
-  }
-});
-
-/** Root of a graph - what a React-hosted scene hangs from. */
-class Scene extends Object3D {
-  declare protected readonly object: THREE.Scene;
-
-  protected create() {
-    return new THREE.Scene();
-  }
-}
-
 /** A bare transform - the usual place to put shared position or rotation. */
 class Group extends Object3D {
-  declare protected readonly object: THREE.Group;
+  declare protected readonly _object: THREE.Group;
 
   protected create() {
     return new THREE.Group();
   }
 }
 
-class Mesh extends Object3D {
-  declare protected readonly object: THREE.Mesh;
+/** Root of a graph - what a React-hosted scene hangs from. */
+class Scene extends Object3D {
+  declare protected readonly _object: THREE.Scene;
 
-  geometry = pass<THREE.BufferGeometry>();
-  material = pass<THREE.Material | THREE.Material[]>();
+  protected create() {
+    return new THREE.Scene();
+  }
+}
+
+class Mesh extends Object3D {
+  declare protected readonly _object: THREE.Mesh;
+
+  declare geometry: THREE.BufferGeometry;
+  declare material: THREE.Material | THREE.Material[];
 
   protected create() {
     return new THREE.Mesh();
   }
 }
 
-export { Group, Mesh, Object3D, Scene, Vec3 };
+type Members = Record<string, unknown>;
+
+function objectOf(self: object) {
+  return (self as unknown as { _object: THREE.Object3D })._object;
+}
+
+/**
+ * Install `keys` as managed properties stored on the three.js object.
+ *
+ * Runs at `pre` - after every field initializer, before values are observed - so
+ * a subclass default (`geometry = new SphereGeometry()`) is still a plain value
+ * here and is routed to the object, where an instruction field would have been
+ * silently replaced by it.
+ */
+function contract<T extends Object3D>(...keys: string[]) {
+  return (self: T) => {
+    const object = objectOf(self) as unknown as Members;
+
+    for (const key of keys) {
+      const own = Object.getOwnPropertyDescriptor(self, key);
+
+      if (own && !('value' in own))
+        throw new Error(
+          `${self}.${key} is stored on its three.js object - assign a value, or derive one in an effect.`
+        );
+
+      if (own) {
+        delete (self as unknown as Members)[key];
+        place(object, key, own.value);
+      }
+
+      (self as State).set(key, {
+        get: () => read(object, key),
+        set: (value: unknown) => write(object, key, value)
+      });
+    }
+  };
+}
+
+/** Members three writes by copy rather than assignment. */
+function vector(object: Members, key: string) {
+  const value = object[key];
+  return value instanceof THREE.Vector3 || value instanceof THREE.Euler ? value : undefined;
+}
+
+function read(object: Members, key: string) {
+  const v = vector(object, key);
+  return v ? [v.x, v.y, v.z] : object[key];
+}
+
+function place(object: Members, key: string, value: unknown) {
+  const v = vector(object, key);
+
+  if (v) v.set(...(value as Vec3));
+  else object[key] = value;
+}
+
+/** Setter for a passed-through member; an unchanged vector dispatches nothing. */
+function write(object: Members, key: string, value: unknown) {
+  const v = vector(object, key);
+
+  if (!v) {
+    object[key] = value;
+    return;
+  }
+
+  const [x, y, z] = value as Vec3;
+
+  if (v.x === x && v.y === y && v.z === z) throw false;
+
+  v.set(x, y, z);
+
+  return [x, y, z];
+}
+
+Object3D.on({ pre: contract('visible', 'position', 'rotation', 'scale') });
+Mesh.on({ pre: contract('geometry', 'material') });
+
+export { Group, Mesh, Object3D, objectOf, Scene, Vec3 };
