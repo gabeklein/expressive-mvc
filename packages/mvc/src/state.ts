@@ -367,7 +367,10 @@ abstract class State {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (arg1 === State) return typeof arg2 == 'function' ? owned(self, arg2 as (child: State) => void) : owner(self, arg2 as boolean);
+    if (arg1 === State)
+      return typeof arg2 == 'function'
+        ? owned(self, arg2 as (child: State) => void)
+        : owner(self, arg2 as boolean);
     if (State.is(arg1)) return Context.get(self).get(arg1, arg2, arg3, self);
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
@@ -627,7 +630,7 @@ function init(state: State, ...args: State.Args) {
 
     if (key === null) return null;
 
-    parent(state, host(state) || null);
+    if (!PARENT.has(state)) parent(state, host(state) || null);
 
     const above = PARENT.get(state);
     const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
