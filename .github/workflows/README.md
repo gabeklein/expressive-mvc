@@ -5,13 +5,20 @@
 Blocking: `bun run typecheck`, `bun run coverage`, `bun run build` and
 `dist-check.ts` (static invariants on the emitted dist - relative specifiers
 resolve, side-effect imports are declared). Tests still run after a failed
-typecheck, so a type error doesn't hide test results. Steps backed by a script under `.github/scripts` invoke it directly;
-only workspace-wide commands are `package.json` entries. The frozen-lockfile
+typecheck, so a type error doesn't hide test results. Steps backed by a script
+under `.github/scripts` invoke it directly; only workspace-wide commands are
+`package.json` entries. The frozen-lockfile
 install in the `setup` action doubles as the internal-dependency desync guard -
 a workspace version that falls outside a sibling's range cannot reach main.
 
 Non-blocking signals: `changeset status` (a preview of which packages would
-bump) and bundle size.
+bump) and bundle size - the step summary and a warning annotation when a shape
+exceeds its budget. Budgets are re-set once per release, not per feature: on
+the Version Packages PR (`changeset-release/main`) the size step runs with
+`--gate` and fails `verify` while any shape is over. The fix is its own PR on
+`main` re-setting the budgets and the figures in `bundle-size.mdx`; the release
+PR picks it up when changesets refreshes the branch. `build:site` measures for
+the site's headline figure and never fails on budget.
 
 Beside `verify`, one run per push also holds:
 

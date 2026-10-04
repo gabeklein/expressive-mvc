@@ -41,8 +41,8 @@ jobs:
 
       - name: Bundle size
         if: github.base_ref == 'main' || github.event.pull_request.stack != null
-        continue-on-error: true
-        run: bun .github/scripts/size-limit.ts
+        continue-on-error: ${{ github.head_ref != 'changeset-release/main' }}
+        run: bun .github/scripts/size-limit.ts ${{ github.head_ref == 'changeset-release/main' && '--gate' || '' }}
 
       - name: Docs agree with code
         run: bun .github/scripts/docs-check.ts
