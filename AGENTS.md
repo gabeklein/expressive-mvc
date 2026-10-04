@@ -106,6 +106,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 ## Change flow
 
+- A large feature may run on a trunk branch that feature PRs target instead of `main` - currently `feat/dev-server`. The trunk's root `FEATURE.md` holds its agreed scope and shape: read it before working there, and update it in the same PR as a decision lands.
 - When starting actual work, switch from any auto-generated scratch branch (`claude/*` or whatever your tooling names them) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
 - Always open PRs against `main` unless explicitly told otherwise. Never assume a PR should target another branch, even when the current work branch is stacked on one. If asked to break a fix out of a larger branch, the intent is to land it independently off `main` - carve out only the change in question and base its branch on `main`.
 - For new features and non-trivial refactors, capture agreed scope, key decisions, and approach in the PR description before implementation - it is the canonical shared plan and review context. (Working notes may live in untracked local scratch; only the PR description is shared.)
