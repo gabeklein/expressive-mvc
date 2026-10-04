@@ -2,7 +2,7 @@
 
 ## pr.yml (pull requests)
 
-Blocking: `bun run typecheck`, `bun run unit`, `bun run build` and
+Blocking: `bun run typecheck`, `bun run coverage`, `bun run build` and
 `dist-check.ts` (static invariants on the emitted dist - relative specifiers
 resolve, side-effect imports are declared). Tests still run after a failed
 typecheck, so a type error doesn't hide test results. Steps backed by a script under `.github/scripts` invoke it directly;

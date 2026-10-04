@@ -59,8 +59,8 @@
   "scripts": {
     "build": "tsdown",
     "typecheck": "tsc --noEmit --incremental",
-    "unit": "vitest run --coverage",
-    "test": "bun run typecheck && bun run unit"
+    "coverage": "vitest run --coverage",
+    "test": "bun run typecheck && bun run coverage"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",

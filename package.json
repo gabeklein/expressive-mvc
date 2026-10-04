@@ -10,7 +10,7 @@
   "scripts": {
     "test": "bun run --filter='./packages/*' test",
     "typecheck": "bun run --filter='./packages/*' typecheck",
-    "unit": "bun run --filter='./packages/*' unit",
+    "coverage": "bun run --filter='./packages/*' coverage",
     "build": "bun run --filter=@expressive/mvc build && bun run --filter=@expressive/react --filter=@expressive/preact --filter=@expressive/dom --filter=@expressive/router --filter=@expressive/inspect build",
     "build:site": "bun run build && bun .github/scripts/size-limit.ts && bun run --filter website build",
     "changeset": "changeset",
