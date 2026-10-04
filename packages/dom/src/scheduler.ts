@@ -8,8 +8,6 @@ interface Schedulable {
   update(passive: boolean): PromiseLike<unknown> | void;
   probe?(): PromiseLike<unknown> | void;
   empty?(): boolean;
-  contains?(other: Schedulable): boolean;
-  leaf?(): boolean;
 }
 
 const urgent = new Set<Schedulable>();
@@ -58,17 +56,14 @@ function flushPassive() {
   passiveQueued = false;
 
   const batch = [...passive].filter((scope) => scope.queued === 'passive');
-  const above = new Map(batch.map((scope) => [scope, batch.filter((other) => other.contains?.(scope))]));
-
   passive.clear();
-  batch.sort((a, b) => above.get(a)!.length - above.get(b)!.length || Number(!!b.empty?.()) - Number(!!a.empty?.()));
 
   for (const scope of batch) {
-    if (above.get(scope)!.some((outer) => outer.leaf?.())) continue;
-
     const waiting = scope.probe?.();
     if (waiting) return defer(batch, waiting, scope);
   }
+
+  batch.sort((a, b) => Number(!!b.empty?.()) - Number(!!a.empty?.()));
 
   for (let index = 0; index < batch.length; index++) {
     const scope = batch[index];

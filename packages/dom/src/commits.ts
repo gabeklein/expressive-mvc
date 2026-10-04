@@ -14,8 +14,10 @@ function inserted(fiber: Placed, run: () => unknown) {
   enqueue([fiber, run]);
 }
 
-/** Hold commits made inside `root` until it attaches. */
-function detach<T extends Node>(root: T): T {
+/** A fragment whose commits wait until it attaches. */
+function fragment() {
+  const root = document.createDocumentFragment();
+
   DETACHED.set(root, []);
   return root;
 }
@@ -54,4 +56,4 @@ function deliver(entry: Entry) {
   else if (!fiber.dead) run();
 }
 
-export { attach, batched, detach, inserted };
+export { attach, batched, fragment, inserted };

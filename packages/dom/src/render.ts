@@ -15,7 +15,7 @@ import {
   enterAppearance
 } from './appearance-protocol';
 import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
-import { attach, batched, detach, inserted } from './commits';
+import { attach, batched, fragment, inserted } from './commits';
 import { applyDeclarations } from './declarations';
 import { afterFlush, claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
 import { PORTAL, childrenOf, isVNode } from './vnode';
@@ -120,7 +120,6 @@ const focusing: Element[] = [];
 const controlled = new WeakMap<Element, Fiber>();
 const restoring = new WeakSet<Document>();
 let passiveRender = false;
-const FIBERS = new WeakMap<object, Fiber>();
 let holding: { thrown: unknown; fiber?: Fiber } | undefined;
 let depth = 0;
 let settling = false;
@@ -189,7 +188,7 @@ function makeScope(kind: Scope['kind'], context: Context, update: (passive: bool
 }
 
 function park(fiber: Fiber) {
-  move(fiber, detach(document.createDocumentFragment()), null);
+  move(fiber, fragment(), null);
 }
 
 function complete<T extends Fiber>(fiber: T, work: () => void): T {
@@ -315,14 +314,6 @@ function probing(fiber: Fiber) {
   const scope = fiber.scope!;
 
   scope.empty = () => !fiber.children.length;
-  scope.contains = (other) => {
-    const inner = FIBERS.get(other)?.start;
-
-    return !!inner && !!(fiber.start.compareDocumentPosition(inner) & Node.DOCUMENT_POSITION_FOLLOWING)
-      && !!(fiber.end.compareDocumentPosition(inner) & Node.DOCUMENT_POSITION_PRECEDING);
-  };
-  scope.leaf = () => !!scope.probed && !components(scope.probed.output as RenderNode);
-  FIBERS.set(scope, fiber);
   scope.probe = () => {
     try {
       scope.probed = { output: consume(fiber, fiber.render!) };
@@ -541,7 +532,7 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
   passiveRender ||= passive;
 
   if (passive && !depth && empty && !fiber.stash)
-    fiber.staging ||= detach(document.createDocumentFragment());
+    fiber.staging ||= fragment();
 
   const run = () => pass(() => {
     try {
@@ -786,14 +777,6 @@ function recover(fiber: Fiber, thrown: unknown, boundary: Boundary | undefined) 
     (next) => {
       if (fiber.recovering === token && fiber.scope!.active) pass(() => recover(fiber, next, handler.parent));
     }
-  );
-}
-
-function components(value: RenderNode): boolean {
-  return childrenOf(value).some((node) =>
-    isVNode(node)
-      ? typeof node.type != 'string' && node.type !== Fragment || components(node.props.children as RenderNode)
-      : typeof node == 'object'
   );
 }
 
