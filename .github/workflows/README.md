@@ -1,6 +1,6 @@
 # CI/CD Workflow Overview
 
-## pr.yml (pull requests -> main)
+## pr.yml (pull requests)
 
 Blocking: `bun run test`, `bun run build` and `dist-check.ts` (static invariants
 on the emitted dist - relative specifiers resolve, side-effect imports are
@@ -24,12 +24,15 @@ Beside `verify`, one run per push also holds:
 `verify` and `e2e` are required checks, matched by job name - renaming either
 job needs the branch protection updated with it.
 
-A PR in a GitHub stack runs as if it targets the stack's base, so the `main`
-filter covers every layer. `verify` runs on each layer; the others run only
-on the top one (`stack.position == stack.size`), whose head is what lands when
-the stack merges - a skipped required check counts as passed. A PR merely based
-on another PR's branch, outside a stack, runs nothing: create stacks with
-`gh stack`.
+`verify` runs for a PR into any branch, so a PR into a trunk (a long-lived
+feature branch, see AGENTS.md) is checked without naming the trunk here. The
+other jobs run only for PRs into `main` and the top layer of a stack.
+
+A PR in a GitHub stack runs as if it targets the stack's base. `verify` runs on
+each layer; the others run only on the top one (`stack.position ==
+stack.size`), whose head is what lands when the stack merges - a skipped
+required check counts as passed. A PR merely based on another PR's branch,
+outside a stack, runs only `verify`: create stacks with `gh stack`.
 
 ## release.yml (push -> main)
 

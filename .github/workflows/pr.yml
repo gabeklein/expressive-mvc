@@ -2,7 +2,6 @@ name: PR
 
 on:
   pull_request:
-    branches: [main]
 
 concurrency:
   group: pr-${{ github.ref }}
@@ -37,11 +36,14 @@ jobs:
 
       - name: Changeset reminder
         continue-on-error: true
-        run: bunx changeset status --since origin/main
+        env:
+          BASE: ${{ github.base_ref }}
+        run: bunx changeset status --since "origin/$BASE"
 
   dist-smoke:
     if: >-
-      github.event.pull_request.stack == null ||
+      github.event.pull_request.stack == null && github.base_ref == 'main' ||
+      github.event.pull_request.stack != null &&
       github.event.pull_request.stack.position == github.event.pull_request.stack.size
     runs-on: ubuntu-latest
     steps:
@@ -67,7 +69,8 @@ jobs:
 
   e2e:
     if: >-
-      github.event.pull_request.stack == null ||
+      github.event.pull_request.stack == null && github.base_ref == 'main' ||
+      github.event.pull_request.stack != null &&
       github.event.pull_request.stack.position == github.event.pull_request.stack.size
     runs-on: ubuntu-latest
     steps:
@@ -110,7 +113,8 @@ jobs:
 
   hot:
     if: >-
-      github.event.pull_request.stack == null ||
+      github.event.pull_request.stack == null && github.base_ref == 'main' ||
+      github.event.pull_request.stack != null &&
       github.event.pull_request.stack.position == github.event.pull_request.stack.size
     runs-on: ubuntu-latest
     steps:
@@ -126,7 +130,8 @@ jobs:
   native:
     if: >-
       contains(github.event.pull_request.labels.*.name, 'react-native') && (
-        github.event.pull_request.stack == null ||
+        github.event.pull_request.stack == null && github.base_ref == 'main' ||
+        github.event.pull_request.stack != null &&
         github.event.pull_request.stack.position == github.event.pull_request.stack.size
       )
     uses: ./.github/workflows/native.yml
