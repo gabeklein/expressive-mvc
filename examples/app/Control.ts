@@ -141,7 +141,7 @@ export class Control extends Component {
 }
 
 Control.on({
-  pre(self) {
+  setup(self) {
     if (!self.parent) return;
     self.Handle = self.parent.Handle;
     if (self.row === undefined) self.row = !self.parent.row;

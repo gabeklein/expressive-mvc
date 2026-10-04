@@ -15,6 +15,10 @@ import { withWorkspaceLinks } from './workspace-links';
  * <=0.5% across 1.3.1 and 1.3.14. Real growth is structural and clears it;
  * toolchain drift does not.
  *
+ * Budgets are a release decision. Without `--gate` the script reports and
+ * never fails; CI passes `--gate` only on the Version Packages PR, where one
+ * deliberate pass re-sets budgets and the figures quoted in docs.
+ *
  * 10 kB is the line the maintainer cares about: `react: typical app`, the site's
  * headline figure, crossed it at 10.14 kB in 2026-09 (State.on({ catch }), the error-report classes,
  * the copies registry) - further growth there needs a deliberate decision.
@@ -152,8 +156,10 @@ await Bun.write(
   JSON.stringify(Object.fromEntries(results.map(({ name, bytes }) => [name, bytes])), null, 2)
 );
 
-// Advisory step (`continue-on-error`), so a breach cannot rely on a red check to
-// be seen - the annotation reaches the PR's Checks tab, the table the run page.
+const gate = process.argv.includes('--gate');
+
+// Outside the release gate a breach is not a red check, so the annotation
+// carries it to the PR's Checks tab and the table to the run page.
 if (over.length)
   console.log(
     `::warning title=Bundle size::` +
@@ -174,7 +180,7 @@ if (process.env.GITHUB_STEP_SUMMARY)
       ),
       '',
       over.length
-        ? `${over.length} shape(s) over budget. Advisory - raise budgets in \`.github/scripts/size-limit.ts\` if intended.`
+        ? `${over.length} shape(s) over budget. Budgets are re-set at release - leave them unless the growth is unintended.`
         : 'All shapes within budget.',
       ''
     ].join('\n')
@@ -186,13 +192,13 @@ if (stale.length)
     ` Tighten them so the gate keeps its teeth.`
   );
 
-if (over.length)
+if (over.length && gate)
   throw new Error(
-    `Bundle size regressed:\n` +
+    `Bundle size exceeds budget:\n` +
     over.map(({ name, bytes, limit }) =>
       `  ${name}: ${kb(bytes)} exceeds budget ${kb(limit)}`).join('\n') +
-    `\n\nIf the growth is intended, raise the budget in .github/scripts/size-limit.ts` +
-    ` and update the figures quoted in docs (see website/content/docs/guides/bundle-size.mdx).`
+    `\n\nBefore this release merges, land a PR on main that re-sets the budgets in` +
+    ` .github/scripts/size-limit.ts and the figures in website/content/docs/guides/bundle-size.mdx.`
   );
 
-console.log('\nAll import shapes within budget.');
+console.log(over.length ? `\n${over.length} shape(s) over budget.` : '\nAll import shapes within budget.');

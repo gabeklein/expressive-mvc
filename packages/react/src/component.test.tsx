@@ -1766,7 +1766,7 @@ describe('strict mode', () => {
       }
     }
 
-    Control.on({ pre: () => void order.push('init') });
+    Control.on({ setup: () => void order.push('init') });
 
     const element = render(
       <React.StrictMode>
