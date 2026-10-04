@@ -33,8 +33,6 @@ Object.assign(Runtime, {
   ]
 });
 
-export { Provider } from './adapter';
-
 /** @deprecated Import `State` from `@expressive/mvc`. This re-export will be removed. */
 export { State } from './adapter';
 

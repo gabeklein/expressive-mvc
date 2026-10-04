@@ -1,6 +1,5 @@
 import { State, Context, Component } from '@expressive/mvc';
-import type { UseState } from '@expressive/mvc';
-import { Runtime, useHook } from './runtime';
+import { Runtime } from './runtime';
 
 let shared: any;
 
@@ -37,94 +36,4 @@ Context.get = (state?: State) => {
   return _get(state);
 };
 
-declare namespace Provider {
-  /**
-   * Runs for each State registered by this Provider. Return value is ignored -
-   * to run teardown with a State, use `state.set(null, callback)`.
-   */
-  type ForEach<T> = (state: T) => void;
-
-  interface SharedProps {
-    /**
-     * Children to render within this Provider.
-     */
-    children?: Component.Node;
-
-    /** A fallback tree to show when suspended. */
-    fallback?: Component.Node;
-
-    /**
-     * A name for this Suspense boundary for instrumentation purposes.
-     * The name will help identify this boundary in React DevTools.
-     */
-    name?: string | undefined;
-  }
-
-  type ForSingleProps<T extends State> = SharedProps & {
-    for: T | State.Type<T>;
-    is: (instance: T) => void;
-  } & { [K in State.Property<T>]?: T[K] };
-
-  type ForMultipleProps<T extends State> = SharedProps & {
-    for: Context.Accept<T>;
-    is?: ForEach<T>;
-  };
-
-  type Props<T extends State = State> = ForSingleProps<T> | ForMultipleProps<T>;
-}
-
-type Digest<T extends State> = (props: Provider.Props<T>) => Context;
-
-/** @deprecated Use `<Component for={…}>`: one State per element, compose a parent State for several. */
-function Provider<T extends State>({
-  children,
-  fallback,
-  name,
-  ...props
-}: Provider.Props<T>) {
-  const ambient = useAmbient();
-  const digest: Digest<T> = useHook((returns) => {
-    const context = new Context(ambient);
-    const fresh: State[] = [];
-
-    let applied: Context.Accept<T> | undefined;
-    let solo: State | undefined;
-
-    returns(({ is, for: input, ...rest }) => {
-      if (input !== applied) {
-        const single = State.is(input) || input instanceof State;
-
-        applied = input;
-        solo = undefined;
-
-        context.set(input, (state, owned) => {
-          if (single) solo = state;
-          if (owned) fresh.push(state);
-          if (is) is(state);
-        });
-      }
-
-      if (solo && Object.keys(rest).length) solo.set(rest);
-
-      return context;
-    });
-
-    return () => {
-      const release = fresh.map((state) => (state as UseState).mount?.());
-
-      return () => {
-        for (const done of release) if (typeof done == 'function') done();
-        context.pop();
-      };
-    };
-  });
-
-  return createProvider(
-    digest(props),
-    fallback !== undefined
-      ? Runtime.createElement(Runtime.Suspense, { fallback, name }, children)
-      : children
-  );
-}
-
-export { Provider, Context, createProvider };
+export { Context, createProvider };
