@@ -3,7 +3,7 @@ title: Bundle Size
 description: What Expressive costs your bundle, measured per import shape and gated in CI
 ---
 
-Every figure on this page is produced by `.github/scripts/size-limit.ts`, which bundles the built packages and gzips the result. The same script runs on every pull request and fails the build if any shape exceeds its budget, so these numbers cannot drift away from reality — if they grow, CI says so before the docs go stale.
+Every figure on this page is produced by `.github/scripts/size-limit.ts`, which bundles the built packages and gzips the result. The same script reports on every pull request and blocks each release while any shape exceeds its budget, so these numbers cannot drift away from reality — growth is flagged where it happens and settled before it ships.
 
 ## What it costs
 
@@ -52,4 +52,4 @@ The practical consequence: Expressive rewards using more of what you have alread
 
 ## Raising a budget
 
-Budgets live in `.github/scripts/size-limit.ts`, one per import shape rather than a single aggregate — the point is to notice when the adapter floor grows, or when a formerly shakeable export stops shaking, neither of which a total would reveal. When a change legitimately grows the bundle, raise the budget in the same commit and update the table above; the script's failure message says so too.
+Budgets live in `.github/scripts/size-limit.ts`, one per import shape rather than a single aggregate — the point is to notice when the adapter floor grows, or when a formerly shakeable export stops shaking, neither of which a total would reveal. A pull request that grows a shape gets a warning and a table in its checks, and leaves the budgets alone. Budgets are re-set once per release: the Version Packages pull request runs the script as a gate, and while any shape is over, a separate pull request re-sets the budgets and updates the table above — one deliberate decision per release instead of a nudge per feature.

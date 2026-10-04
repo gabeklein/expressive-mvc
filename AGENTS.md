@@ -25,11 +25,13 @@ website/        - Docs site
 
 ```bash
 bun install              # Install deps
-bun run test             # Run package test scripts (type check + vitest)
+bun run test             # Run package test scripts (typecheck + coverage)
+bun run typecheck        # tsc --noEmit --incremental in every package
+bun run coverage         # vitest with coverage gates in every package
 bun run build            # Build all packages (bun --filter, dependency order)
 ```
 
-Per-package: `tsc --noEmit && vitest run --coverage`. A root `vitest` run covers every package's suite at once (workspace projects).
+Per-package: `test` runs `typecheck` (`tsc --noEmit --incremental`) then `coverage` (`vitest run --coverage`). A root `vitest` run covers every package's suite at once (workspace projects).
 
 ## Testing
 
@@ -108,9 +110,11 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 - When starting actual work, switch from any auto-generated scratch branch (`claude/*` or whatever your tooling names them) to a conventional named branch (`feat/...`, `fix/...`, `chore/...`) before the first real commit.
 - Always open PRs against `main` unless explicitly told otherwise. Never assume a PR should target another branch, even when the current work branch is stacked on one. If asked to break a fix out of a larger branch, the intent is to land it independently off `main` - carve out only the change in question and base its branch on `main`.
+- A long-running feature may live on a trunk branch (`feat/<name>`): its feature PRs target the trunk, which lands on `main` once release-ready. CI runs `verify` for PRs into any branch. The trunk's root `FEATURE.md` holds agreed scope and shape - update it in the PR that changes either; it does not land on `main`.
 - For new features and non-trivial refactors, capture agreed scope, key decisions, and approach in the PR description before implementation - it is the canonical shared plan and review context. (Working notes may live in untracked local scratch; only the PR description is shared.)
 - Prefer more, logically-scoped commits within a branch over one squashed blob - the PR itself squashes on merge, so granular commits cost nothing and give better evolution tracking during review.
 - Dead links, typos and one-word corrections get fixed on the current branch - don't route trivia elsewhere.
+- Weigh bundle size as one cost among others: prefer the smaller of equivalent implementations and mention notable growth in the PR, but don't trade clarity or behavior for bytes, and don't edit size budgets or the figures in `bundle-size.mdx` in a feature PR. Budgets are re-set once per release, when the Version Packages PR gates on them.
 - Write a changeset (`bun run changeset`) when a change is user-facing: new feature, behavior change, API addition, breaking change.
 - No changeset for internal refactors, test-only changes, or fixes with no observable effect. A zero-changeset PR is legitimate.
 - An open PR is not a stopping point that needs a "merged" announcement. When the task's remaining work is gated on the PR landing, watch its state quietly (e.g. poll `gh pr view <n> --json state` in the background; if background watching isn't available, check at the next opportunity) and continue when it resolves. On merge of a leaf branch - nothing stacked on it, task ends there - finish cleanup unprompted: remove its worktree (the untracked-file check below still applies) and delete the local branch; the remote branch auto-deletes on merge. A PR closed without merging, or review pushback, is a signal to surface to the user, never to clean up after silently.
