@@ -59,6 +59,21 @@ class Parent extends State {
 
 One downstream child; updates when a matching child appears or is removed.
 
+### Owner
+
+```ts
+class Child extends State {
+  owner = get(State);         // owning State; throws if none
+  maybe = get(State, false);  // State | undefined
+}
+
+class Parent extends State {
+  owned = get(State, true);   // every State this one owns
+}
+```
+
+`State` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect the States this one owns directly - not grandchildren, not context descendants; callbacks and the single forms work as for other types. The owner never changes after activation, so `get(State)` is a stable reference, not a subscription.
+
 ## Type Signatures
 
 ```ts
