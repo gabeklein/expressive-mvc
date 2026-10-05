@@ -11,6 +11,55 @@ describe('State.use', () => {
     value = 'foo';
   }
 
+  describe('outside a render', () => {
+    it('will create in ambient context from an event handler', async () => {
+      class Session extends State {}
+
+      let session: Session | undefined;
+      const screen = render(
+        <button
+          onClick={() => {
+            session = Session.use();
+          }}
+        />
+      );
+
+      await act(async () => screen.getByRole('button').click());
+
+      expect(session).toBeInstanceOf(Session);
+      expect(Session.get()).toBe(session);
+
+      session!.set(null);
+    });
+  });
+
+  describe('shadowing', () => {
+    it('will throw if already in context', () => {
+      class Shadow extends State {}
+
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        expect(() =>
+          render(
+            <Provider for={Shadow}>
+              <Use />
+            </Provider>
+          )
+        ).toThrow(
+          'Shadow is already in context - nest a <Component for={Shadow}> to scope another, or call Shadow.get() to read it.'
+        );
+      } finally {
+        error.mockRestore();
+      }
+
+      function Use() {
+        Shadow.use();
+        return null;
+      }
+    });
+  });
+
   describe('hook', () => {
     it('will create instance given a class', () => {
       const hook = renderHook(() => Test.use());

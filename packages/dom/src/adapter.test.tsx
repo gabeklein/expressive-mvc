@@ -234,11 +234,51 @@ describe('MVC adapter', () => {
     expect(() => Value.get()).toThrow(
       'Could not find Value in context. Outside a render, only globals are visible.'
     );
-    expect(() => Value.use()).toThrow('State.use() may only run while @expressive/dom is rendering');
     expect(() => (View as any).use()).toThrow('render it instead of calling use()');
     expect(() => render(<View />, document.createElement('main'))).toThrow(
       'only available at the top level of a function component'
     );
+  });
+
+  it('will use a State outside a render in the ambient context', () => {
+    class Value extends State {}
+
+    const value = Value.use();
+
+    expect(Value.get()).toBe(value);
+    expect(() => Value.use()).toThrow('Value is already in context');
+
+    value.set(null);
+  });
+
+  it('will throw if a used State is already upstream', () => {
+    class Value extends State {}
+
+    function Inner() {
+      Value.use();
+      return null;
+    }
+
+    function Outer() {
+      Value.use();
+      return <Inner />;
+    }
+
+    expect(() => render(<Outer />, document.createElement('main'))).toThrow(
+      'Value is already in context - nest a <Component for={Value}> to scope another, or call Value.get() to read it.'
+    );
+  });
+
+  it('will throw if a State is used twice in one render', () => {
+    class Value extends State {}
+
+    function View() {
+      Value.use();
+      Value.use();
+      return null;
+    }
+
+    expect(() => render(<View />, document.createElement('main'))).toThrow('Value is already in context');
   });
 
   it('will get an untracked State outside a render', () => {

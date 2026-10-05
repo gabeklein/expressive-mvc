@@ -1,14 +1,28 @@
 import { State } from '@expressive/mvc';
 import type { UseState } from '@expressive/mvc';
 import { useFactory, useWatch } from './runtime';
-import { useAmbient } from './context';
+import { Context, useAmbient } from './context';
+
+const create = State.use;
 
 State.use = function use<T extends State>(
   this: State.Type<T>,
   ...args: State.UseArgs<T>
 ) {
-  const outer = useAmbient();
+  let outer: Context;
+
+  try {
+    outer = useAmbient();
+  } catch {
+    return (create as Function).apply(this, args);
+  }
+
   const render = useFactory(() => {
+    if (outer.get(this, false) !== undefined)
+      throw new Error(
+        `${this} is already in context - nest a <Component for={${this}}> to scope another, or call ${this}.get() to read it.`
+      );
+
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as State.Assign<T>);
 

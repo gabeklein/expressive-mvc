@@ -90,15 +90,8 @@ function commit(scope: Scope) {
     }
 }
 
-function requireScope(): Scope {
-  if (!current)
-    throw new Error('State.use() may only run while @expressive/dom is rendering.');
-
-  return current;
-}
-
 function tracked<T extends object>(target: T, required?: boolean): T {
-  const scope = requireScope();
+  const scope = current!;
   let proxy = target;
   let first = true;
 
@@ -154,11 +147,15 @@ const resolve = State.get;
   return argument.call(proxy, proxy, refresh) ?? null;
 };
 
+const create = State.use;
+
 (State as any).use = function use<T extends UseState>(
   this: State.Type<T>,
   ...args: State.UseArgs<T>
 ) {
-  const scope = requireScope();
+  const scope = current;
+
+  if (!scope) return (create as Function).apply(this, args);
 
   if (scope.kind != 'function')
     throw new Error('State.use() is only available at the top level of a function component.');
@@ -175,6 +172,11 @@ const resolve = State.get;
   }
 
   if (!slot) {
+    if (scope.childContext.get(this, false) !== undefined)
+      throw new Error(
+        `${this} is already in context - nest a <Component for={${this}}> to scope another, or call ${this}.get() to read it.`
+      );
+
     let instance!: T;
     const assign = (value: unknown) =>
       typeof value == 'object' && value && instance.set(value as State.Assign<T>);
