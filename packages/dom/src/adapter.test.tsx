@@ -289,7 +289,7 @@ describe('MVC adapter', () => {
     const ambient = new Context({ Session });
     const root = document.createElement('main');
 
-    Context.get = (state) => (state ? base(state) : ambient);
+    Context.get = () => ambient;
 
     try {
       render(<View />, root);

@@ -897,7 +897,7 @@ describe('context', () => {
       }
     }
 
-    Context.get = (state) => (state ? base(state) : ambient);
+    Context.get = () => ambient;
 
     try {
       expect(renderToString(<View />).replace(/<!--[^>]*-->/g, '')).toBe('ambient');

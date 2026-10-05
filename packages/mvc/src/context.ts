@@ -28,12 +28,12 @@ class Context {
   }
 
   /**
-   * Get the context for a State - else the ambient context, root unless a host
-   * overrides it (e.g. per request). Runs from every State constructor, so an
-   * override must be cheap and must not use hooks.
+   * The ambient context - root, unless a host replaces this method (e.g. per
+   * request). Runs from every State constructor, so a replacement must be cheap
+   * and must not use hooks.
    */
-  static get(state?: State): Context {
-    return state ? home(state) : Context.root;
+  static get(): Context {
+    return Context.root;
   }
 
   public id = uid();

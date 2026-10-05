@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import { Context } from './context';
+import { Context, home } from './context';
 import { get } from './field/get';
 import { State } from './state';
 
@@ -87,12 +87,12 @@ it('will remove implicit children on pop', () => {
   const context = new Context(Parent);
   const { child } = context.get(Parent);
 
-  expect(Context.get(child)).toBe(context);
+  expect(home(child)).toBe(context);
 
   context.pop();
 
   // context assignment is permanent
-  expect(Context.get(child)).toBe(context);
+  expect(home(child)).toBe(context);
 });
 
 it('child pop is safe to call before parent pop', () => {
@@ -519,7 +519,7 @@ describe('with existing context', () => {
 
     new Context(foo);
 
-    expect(Context.get(foo)).toBe(original);
+    expect(home(foo)).toBe(original);
   });
 });
 
@@ -530,13 +530,13 @@ describe('context helper', () => {
     const test = new Test();
     const context = new Context(test);
 
-    expect(Context.get(test)).toBe(context);
+    expect(home(test)).toBe(context);
   });
 
   it('will fallback to root context if none assigned', () => {
     const test = new Test();
 
-    expect(Context.get(test)).toBe(Context.root);
+    expect(home(test)).toBe(Context.root);
   });
 
   it('will keep first context assigned', () => {
@@ -545,7 +545,7 @@ describe('context helper', () => {
 
     new Context(test);
 
-    expect(Context.get(test)).toBe(first);
+    expect(home(test)).toBe(first);
   });
 });
 
@@ -704,12 +704,12 @@ describe('set method', () => {
     const context = new Context({ Parent });
     const { child } = context.get(Parent);
 
-    expect(Context.get(child)).toBe(context);
+    expect(home(child)).toBe(context);
 
     context.set({});
 
     // context assignment is permanent
-    expect(Context.get(child)).toBe(context);
+    expect(home(child)).toBe(context);
     expect(context.get(Example, false)).toBeUndefined();
   });
 
@@ -1241,7 +1241,7 @@ describe('ambient context', () => {
   const base = Context.get;
 
   function within<T>(ambient: Context, run: () => T) {
-    Context.get = (state) => (state ? base(state) : ambient);
+    Context.get = () => ambient;
 
     try {
       return run();
@@ -1260,9 +1260,16 @@ describe('ambient context', () => {
     const ambient = new Context({ Session });
     const child = within(ambient, () => Child.new());
 
-    expect(Context.get(child)).toBe(ambient);
+    expect(home(child)).toBe(ambient);
     expect(child.session).toBe(ambient.get(Session));
     expect(child.get(Session)).toBe(ambient.get(Session));
+  });
+
+  it('will take no State', () => {
+    const state = Example.new();
+
+    // @ts-expect-error
+    expect(Context.get(state)).toBe(Context.root);
   });
 
   it('will resolve a State from its own context whatever the override returns', () => {
@@ -1289,11 +1296,11 @@ describe('ambient context', () => {
     const ambient = new Context();
     const state = within(ambient, () => new Example());
 
-    expect(Context.get(state)).toBe(ambient);
+    expect(home(state)).toBe(ambient);
 
     const context = new Context(state);
 
-    expect(Context.get(state)).toBe(context);
+    expect(home(state)).toBe(context);
   });
 
   it('will anchor a held child of an anchored parent', () => {
@@ -1306,7 +1313,7 @@ describe('ambient context', () => {
 
     parent.child = new Example();
 
-    expect(Context.get(parent.child)).toBe(ambient);
+    expect(home(parent.child)).toBe(ambient);
   });
 
   it('will register a global at ambient root', () => {
@@ -1585,12 +1592,12 @@ describe('root global', () => {
     const instance = Global.new();
 
     // Root claims LOOKUP at registration; ownership is fixed post-init.
-    expect(Context.get(instance)).toBe(root);
+    expect(home(instance)).toBe(root);
 
     const ctx = new Context(instance);
 
     expect(ctx.get(Global)).toBe(instance); // resolvable via provide
-    expect(Context.get(instance)).toBe(root); // ownership stays with root
+    expect(home(instance)).toBe(root); // ownership stays with root
 
     instance.set(null);
   });

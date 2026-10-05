@@ -3625,7 +3625,7 @@ describe('get method (static)', () => {
     const base = Context.get;
     const ambient = new Context(Parent);
 
-    Context.get = (state) => (state ? base(state) : ambient);
+    Context.get = () => ambient;
 
     try {
       expect(() => Foo.get()).toThrow(/^Could not find Foo in context\.$/);
@@ -3639,7 +3639,7 @@ describe('get method (static)', () => {
     const base = Context.get;
     const ambient = new Context({ Private });
 
-    Context.get = (state) => (state ? base(state) : ambient);
+    Context.get = () => ambient;
 
     try {
       expect(Private.get()).toBe(ambient.get(Private));

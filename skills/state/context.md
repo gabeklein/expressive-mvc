@@ -51,7 +51,7 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 ## Root Context
 
-`Context.root` is the process-global registry; `Context.get(state)` falls back to it when a state has no recorded home. A State *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
+`Context.root` is the process-global registry - a state with no recorded home resolves from it. A State *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
 
 ```ts
 class Flags extends State {
@@ -69,7 +69,7 @@ Flags.get(); // the instance - outside a render, static get() resolves from the 
 
 ### Ambient context
 
-`Context.get()` with no argument is the ambient context - root, unless a host overrides it (e.g. per request via `AsyncLocalStorage`). Client adapters do not override it; render position stays inside their `State.get()`. An override replaces only the no-argument form - core resolves a State's own context without consulting it. It runs from every State constructor - keep it cheap, no hooks.
+`Context.get()` is the ambient context - root, unless a host replaces it (e.g. per request via `AsyncLocalStorage`). Client adapters do not replace it; render position stays inside their `State.get()`. Core resolves a State's own context without it. A replacement runs from every State constructor - keep it cheap, no hooks.
 
 - A State constructed while the ambient context is not root records it as its home fallback: `get(Type)` fields and `state.get(Type)` resolve from it. Registering into a context still wins.
 - A global registers at the ambient root, under root's rules - a global created during a request is scoped to that request.
@@ -234,7 +234,7 @@ ctx.add(state, explicit?);             // register a state
 ctx.set(inputs, forEach?);             // register multiple
 ctx.push(inputs?);                     // create child context
 ctx.pop();                             // destroy this and descendants
-Context.get(state);                    // static: state's home context
+Context.get();                         // static: the ambient context
 Context.root;                          // global registry
 ```
 
