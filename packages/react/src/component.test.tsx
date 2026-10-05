@@ -560,6 +560,32 @@ describe('render method', () => {
     expect(screen).toHaveText('bar');
   });
 
+  it('will update when a State fetched via this.get changes', async () => {
+    class Auth extends State {
+      static readonly global = true;
+      name = 'foo';
+    }
+
+    class Control extends Component {
+      render() {
+        return <span>{this.get(Auth).name}</span>;
+      }
+    }
+
+    const auth = Auth.new();
+    const screen = render(<Control />);
+
+    expect(screen).toHaveText('foo');
+
+    await act(async () => {
+      auth.name = 'bar';
+      await auth.set();
+    });
+
+    expect(screen).toHaveText('bar');
+    auth.set(null);
+  });
+
   it('will accept function component', async () => {
     function FunctionComponent(
       this: ClassComponent,

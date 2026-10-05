@@ -340,11 +340,20 @@ abstract class State {
     downstream?: boolean
   ): () => void;
 
+  // Owner overloads take `State` itself only - a subclass would otherwise match
+  // them in TypeScript's subtype pass, before the `State.Type<T>` overloads.
+
   /** Owner of this State. Throws if it has none. */
-  get(type: typeof State, required?: true): State;
+  get<T extends typeof State>(
+    type: T & (typeof State extends T ? unknown : never),
+    required?: true
+  ): State;
 
   /** Owner of this State. Undefined if it has none. */
-  get(type: typeof State, required: boolean): State | undefined;
+  get<T extends typeof State>(
+    type: T & (typeof State extends T ? unknown : never),
+    required: boolean
+  ): State | undefined;
 
   /**
    * Run a callback for each State this one owns - those owned now, then each
@@ -353,8 +362,8 @@ abstract class State {
    *
    * @returns Function to stop watching.
    */
-  get(
-    type: typeof State,
+  get<T extends typeof State>(
+    type: T & (typeof State extends T ? unknown : never),
     callback: (child: State) => void | (() => void),
     downstream: true
   ): () => void;
@@ -370,8 +379,9 @@ abstract class State {
     if (arg1 === State)
       return typeof arg2 == 'function'
         ? owned(self, arg2 as (child: State) => void)
-        : owner(self, arg2 as boolean);
-    if (State.is(arg1)) return Context.get(self).get(arg1, arg2, arg3, self);
+        : observed(this, arg1, owner(self, arg2 as boolean));
+    if (State.is(arg1))
+      return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
@@ -567,6 +577,10 @@ define(State, 'toString', {
     return this.name;
   }
 });
+
+function observed<T>(from: State, key: unknown, value: T): T {
+  return value instanceof State ? touch(from, key, value) : value;
+}
 
 /** Register a user OnEvent callback, preserving `this` and `source`. */
 function callback<T extends State>(

@@ -56,6 +56,7 @@ const stop = state.get((current, update) => {
 
 - Only reads via the `current` proxy subscribe - not via `this` or method calls.
 - Nested child state properties track deeply (`current.child.value`); replacing a child re-subscribes to the new one.
+- `current.get(Type)` and `current.get(State)` track the same way - reads off the fetched State subscribe.
 - Simultaneous updates to several tracked properties produce one re-run.
 
 **Effect return value:**

@@ -89,7 +89,7 @@ type get.Callback<T> = (state: T, subject: State) => void | boolean | (() => voi
 ## Behavior
 
 - All `get()` properties are **non-enumerable** (hidden from `Object.keys()`, spread, and `ref(this)`).
-- Upstream checks the direct parent first, then siblings under each ancestor (nearest wins), then the context hierarchy.
+- Upstream walks ancestors by depth - each ancestor, then siblings under it, then the next ancestor up; the nearest match wins, an ancestor beats a sibling at its own level. The context hierarchy is the fallback.
 - Siblings under one parent resolve regardless of field order - a required lookup waits for the activating ancestor to finish before throwing.
 - Never resolves to itself.
 - The upstream callback is not reactive - the upstream's own value changes do not re-run it.

@@ -38,7 +38,7 @@ await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
 await composer.act(work, { until: { 'Composer.status': 'sent' }, timeout: 3000, record: { paths: [] } })
 ```
 
-Ownership: a State in a plain field, `has` pool, or `map` is that owner's child; a `get(Type)` reference is not. First owner wins. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
+Ownership is mvc's (`get(State)`): a State constructed into a field, `has` pool, or `map`, or mounted by a host, is that owner's child; a `get(Type)` reference or an already-active instance assigned in is not. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
 `act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s), with a warning that frames may be incomplete.
 
@@ -49,7 +49,7 @@ Ownership: a State in a plain field, `has` pool, or `map` is that owner's child;
 
 ## Orphans
 
-Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner, or by holding its `static global` slot in the root context. One settled but unclaimed - a render React threw away, a StrictMode twin, a `State.new()` nobody placed - is an orphan; so are its children. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`; label lookups resolve mainline first. `orphans()` lists them; `health()` counts them plus unclaimed instances the collector already reaped. Without a host every instance is mainline.
+Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner or holder, or by holding its `static global` slot in the root context. One settled but unclaimed - a render React threw away, a StrictMode twin, a `State.new()` nobody placed - is an orphan; so are its children. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`; label lookups resolve mainline first. `orphans()` lists them; `health()` counts them plus unclaimed instances the collector already reaped. Without a host every instance is mainline.
 
 ```ts
 inspect.health().orphans            // 54 - a suspended first render left a full tree behind
