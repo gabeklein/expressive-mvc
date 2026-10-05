@@ -17,7 +17,7 @@ class Spinner extends Mesh {
 
   protected new() {
     return this.frame.each((delta) => {
-      this._object.rotation.y += this.speed * delta;
+      this.rotation.y += this.speed * delta; // in place - no dispatch
     });
   }
 }
@@ -25,23 +25,25 @@ class Spinner extends Mesh {
 class Arena extends Scene {
   frame = new Frame();
   ground = new Mesh();
-  spinner = new Spinner({ position: [0, 1, 0] });
+  spinner = new Spinner({ position: new THREE.Vector3(0, 1, 0) });
 }
 
 const arena = Arena.new();
 
-arena.spinner.position = [0, 2, 0]; // written to the three.js object, dispatched
+arena.spinner.position = new THREE.Vector3(0, 2, 0); // copied into the object, dispatched
+arena.spinner.position.y += 1; // in place, silent - `set('position')` to announce
 arena.spinner.boost(1);
 ```
 
 - **Nodes** - `Object3D`, `Group`, `Scene`, `Mesh`. Each represents one three.js
   object, made once by `create()` and held as protected `_object`.
-- **Members** - `visible`, `position`, `rotation`, `scale`, plus `geometry` and
-  `material` on `Mesh`, are reactive fields stored on the three.js object.
-  Vectors read and write as `[x, y, z]`. A subclass sets defaults as plain
-  fields; constructor arguments override them.
+- **Members** - `visible`, plus `geometry` and `material` on `Mesh`, are
+  reactive fields stored on the three.js object. `position`, `rotation` and
+  `scale` read as the object's live vectors: assign one to place (copied in,
+  dispatched if changed), mutate in place to animate (silent). A subclass sets
+  defaults as plain fields; constructor arguments override them.
 - **Hierarchy** - a node attaches under the nearest `Object3D` owning it, through
   a field or a `has()` pool, past owners which are not nodes. A `get()` reference
   or an already-active instance does not attach. Destroying a node detaches it.
-- **`Frame`** - per-frame callbacks via `each()`, dispatching nothing. `loop()`
+- **`Frame`** - per-frame callbacks via `each()`, mutating vectors in place. `loop()`
   drives one from `requestAnimationFrame`.
