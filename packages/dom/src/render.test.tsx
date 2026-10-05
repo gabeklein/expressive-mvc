@@ -1418,6 +1418,30 @@ describe('render', () => {
 });
 
 describe('renderable State', () => {
+  it('will be owned by enclosing Component', () => {
+    let outer!: Outer;
+    let inner!: State;
+
+    class Panel extends State {
+      render() {
+        return null;
+      }
+    }
+
+    class Outer extends Component {
+      render() {
+        return <Panel is={(panel) => (inner = panel)} />;
+      }
+    }
+
+    const release = render(<Outer is={(value) => (outer = value)} />, document.createElement('main'));
+
+    expect(outer.get(State, false)).toBeUndefined();
+    expect(inner.get(State)).toBe(outer);
+
+    release();
+  });
+
   it('will render a State with a render method', async () => {
     const lifecycle: string[] = [];
     let panel!: Panel;

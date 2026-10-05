@@ -29,7 +29,7 @@ bun install              # Install deps
 bun run test             # Run package test scripts (typecheck + coverage)
 bun run typecheck        # tsc --noEmit --incremental in every package
 bun run coverage         # vitest with coverage gates in every package
-bun run build            # Build all packages (bun --filter, dependency order)
+bun run build            # Build all packages in workspace dependency order
 ```
 
 Per-package: `test` runs `typecheck` (`tsc --noEmit --incremental`) then `coverage` (`vitest run --coverage`). A root `vitest` run covers every package's suite at once (workspace projects).

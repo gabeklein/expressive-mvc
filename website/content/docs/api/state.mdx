@@ -152,6 +152,21 @@ state.get(ParentState, (parent, downstream) => {
 
 Fires immediately if available; otherwise fires when the type becomes available. Pass `downstream: true` to only watch children.
 
+### `get(State)` - owner
+
+```ts
+const owner = child.get(State); // throws if it has none
+const maybe = child.get(State, false); // undefined if it has none
+
+const stop = parent.get(State, (child) => {
+  return () => {
+    /* child destroyed */
+  };
+}, true); // each State this one owns, now and later
+```
+
+`State` itself is never in context, so passing it reads ownership instead. The owner is the State that constructed this one into a field, `has()` pool or `map()` - or, failing that, the State its nearest enclosing context was set up for, such as the Component rendering it. A root, or an instance which was already active when assigned, has no owner.
+
 <br />
 
 ### `set()` - await pending flush
