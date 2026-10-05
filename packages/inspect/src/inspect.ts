@@ -57,7 +57,7 @@ const spans = new WeakMap<State, Span>();
 const reaper = new Reaper<string>(collected);
 
 let version = 0;
-let cached: { version: number; parents: Map<State, State> } | undefined;
+let cached: { version: number; owners: Map<State, State>; holders: Map<State, State> } | undefined;
 let lost = 0;
 let tally = counts();
 let copies = 1;
@@ -119,7 +119,7 @@ function registered(): State[] {
 
 /** Instances on the mainline: claimed, or too young to judge, or every one when no host renders. */
 function* mainline(): Generator<State> {
-  const parents = ownership();
+  const parents = reach();
   for (const state of registered()) if (!orphaned(state, parents)) yield state;
 }
 
@@ -200,7 +200,7 @@ export class Instance {
 
   /** Reached by a host commit (`mount`), a claimed owner, or `static global`. Always true without a host. */
   get claimed() {
-    return !orphaned(this.state, ownership());
+    return !orphaned(this.state, reach());
   }
 
   /** Registration time (ms). */
@@ -371,7 +371,7 @@ export function orphans(): Instance[] {
 }
 
 function* abandoned(): Generator<State> {
-  const parents = ownership();
+  const parents = reach();
   for (const state of registered()) if (orphaned(state, parents)) yield state;
 }
 
@@ -533,27 +533,44 @@ function describe(state: State, parents: Map<State, State>): Model {
   return model;
 }
 
+/** Each instance's owner, from mvc. */
 function ownership(): Map<State, State> {
-  if (cached?.version !== version) {
-    const parents = new Map<State, State>();
-
-    for (const owner of registered())
-      for (const [key, value] of entries(owner)) {
-        const field = Object.getOwnPropertyDescriptor(owner, key)?.enumerable;
-        if (field || !(value instanceof State)) own(parents, owner, value);
-      }
-
-    cached = { version, parents };
-  }
-
-  return cached.parents;
+  return graph().owners;
 }
 
-function own(parents: Map<State, State>, owner: State, value: unknown) {
+/** Owner, else the first instance holding it - what keeps an instance from being abandoned. */
+function reach(): Map<State, State> {
+  return graph().holders;
+}
+
+function graph() {
+  if (cached?.version !== version) {
+    const owners = new Map<State, State>();
+    const holders = new Map<State, State>();
+
+    for (const state of registered()) {
+      const owner = state.get(State, false);
+      if (owner) owners.set(state, owner);
+
+      for (const [key, value] of entries(state)) {
+        const field = Object.getOwnPropertyDescriptor(state, key)?.enumerable;
+        if (field || !(value instanceof State)) hold(holders, state, value);
+      }
+    }
+
+    for (const [state, owner] of owners) holders.set(state, owner);
+
+    cached = { version, owners, holders };
+  }
+
+  return cached;
+}
+
+function hold(holders: Map<State, State>, holder: State, value: unknown) {
   if (value instanceof State) {
-    if (!parents.has(value) && value !== owner) parents.set(value, owner);
+    if (!holders.has(value) && value !== holder) holders.set(value, holder);
   } else if (value && typeof value === 'object' && Symbol.iterator in value) {
     const items = value instanceof Map ? value.values() : (value as Iterable<unknown>);
-    for (const item of items) if (item instanceof State) own(parents, owner, item);
+    for (const item of items) if (item instanceof State) hold(holders, holder, item);
   }
 }
