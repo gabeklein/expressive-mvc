@@ -76,7 +76,7 @@ Call `use()` deliberately - an entry point, a request boundary - never from a he
 
 ### Shadowing
 
-`use()` - in a render or out - throws if `get()` would already resolve the type where it runs: a second `use()`, an upstream provider or `use()`, a subclass instance, an explicit entry.
+`use()` - in a render or out - throws if `get()` would already resolve the type where it runs (a second `use()`, an upstream provider or `use()`, a subclass instance, an explicit entry), or if it would hide an instance of exactly one of its supertypes - `Sub.use()` beside a `Base` instance.
 
 ```ts
 Flags.use();

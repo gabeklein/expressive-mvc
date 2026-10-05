@@ -3709,6 +3709,31 @@ describe('use method (static)', () => {
     }
   });
 
+  it('will throw if it would hide an instance of a supertype', () => {
+    class Base extends State {}
+    class Sub extends Base {}
+
+    const base = Base.use();
+
+    expect(() => Sub.use()).toThrow(
+      'Base is already in context - nest a <Component for={Sub}> to scope another, or call Base.get() to read it.'
+    );
+    expect(Base.get()).toBe(base);
+  });
+
+  it('will allow sibling subtypes of a shared base', () => {
+    class Base extends State {}
+    class SubA extends Base {}
+    class SubB extends Base {}
+
+    const a = SubA.use();
+    const b = SubB.use();
+
+    expect(SubA.get()).toBe(a);
+    expect(SubB.get()).toBe(b);
+    expect(Base.get(false)).toBeUndefined();
+  });
+
   it('will be owned by ambient context', () => {
     class Test extends State {}
 

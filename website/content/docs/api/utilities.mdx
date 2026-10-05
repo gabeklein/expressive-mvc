@@ -403,7 +403,7 @@ A context-less `State.new()` stays private. Call `use()` deliberately - an entry
 
 ### Collision
 
-`use()` throws if `get()` would already resolve the type where it runs - a second `use()`, an upstream provider, a subclass instance, an explicit entry:
+`use()` throws if `get()` would already resolve the type where it runs - a second `use()`, an upstream provider, a subclass instance, an explicit entry - or if it would hide an instance of exactly one of its supertypes (`Sub.use()` beside a `Base` instance):
 
 ```ts
 const a = Sub.use();

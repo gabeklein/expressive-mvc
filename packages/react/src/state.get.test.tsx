@@ -1081,9 +1081,10 @@ describe('State.get', () => {
         parent = get(Parent);
       }
 
+      class Other extends Parent {}
       class Sub extends Parent {}
 
-      const { result } = renderWith(Parent, () => Sub.use().is);
+      const { result } = renderWith(Other, () => Sub.use().is);
 
       expect(result.current.child.parent).toBe(result.current);
     });

@@ -680,10 +680,14 @@ define(State, 'use', {
 function claim<T extends State>(type: State.Type<T>, create: () => T): T {
   const ctx = Context.get();
 
-  if (ctx.get(type, false) !== undefined)
-    throw new Error(
-      `${type} is already in context - nest a <Component for={${type}}> to scope another, or call ${type}.get() to read it.`
-    );
+  for (let T: State.Extends = type; T !== State; T = Object.getPrototypeOf(T)) {
+    const found = ctx.get(T, false);
+
+    if (T === type ? found !== undefined : found?.constructor === T)
+      throw new Error(
+        `${T} is already in context - nest a <Component for={${type}}> to scope another, or call ${T}.get() to read it.`
+      );
+  }
 
   const instance = create();
 

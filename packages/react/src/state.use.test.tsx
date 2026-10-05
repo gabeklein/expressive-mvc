@@ -33,7 +33,52 @@ describe('State.use', () => {
     });
   });
 
+  describe('stack frames', () => {
+    it('will not create an instance when React probes a component', () => {
+      class Thing extends State {}
+
+      function Bad(): null {
+        Thing.use();
+        throw new Error('boom');
+      }
+
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        expect(() => render(<Bad />)).toThrow('boom');
+      } finally {
+        error.mockRestore();
+      }
+
+      expect(Thing.get(false)).toBeUndefined();
+    });
+  });
+
   describe('shadowing', () => {
+    it('will throw if it would hide an instance of a supertype', () => {
+      class Base extends State {}
+      class Sub extends Base {}
+
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        expect(() =>
+          render(
+            <Provider for={Base}>
+              <Use />
+            </Provider>
+          )
+        ).toThrow('Base is already in context - nest a <Component for={Sub}> to scope another');
+      } finally {
+        error.mockRestore();
+      }
+
+      function Use() {
+        Sub.use();
+        return null;
+      }
+    });
+
     it('will throw if already in context', () => {
       class Shadow extends State {}
 

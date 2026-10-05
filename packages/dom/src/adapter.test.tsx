@@ -269,6 +269,25 @@ describe('MVC adapter', () => {
     );
   });
 
+  it('will throw if a used State would hide an instance of a supertype', () => {
+    class Base extends State {}
+    class Sub extends Base {}
+
+    function Inner() {
+      Sub.use();
+      return null;
+    }
+
+    function Outer() {
+      Base.use();
+      return <Inner />;
+    }
+
+    expect(() => render(<Outer />, document.createElement('main'))).toThrow(
+      'Base is already in context - nest a <Component for={Sub}> to scope another'
+    );
+  });
+
   it('will throw if a State is used twice in one render', () => {
     class Value extends State {}
 

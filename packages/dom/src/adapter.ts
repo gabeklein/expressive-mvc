@@ -175,10 +175,14 @@ const create = State.use;
   }
 
   if (!slot) {
-    if (scope.childContext.get(this, false) !== undefined)
-      throw new Error(
-        `${this} is already in context - nest a <Component for={${this}}> to scope another, or call ${this}.get() to read it.`
-      );
+    for (let T: State.Extends = this; T !== State; T = Object.getPrototypeOf(T)) {
+      const found = scope.childContext.get(T, false);
+
+      if (T === this ? found !== undefined : found?.constructor === T)
+        throw new Error(
+          `${T} is already in context - nest a <Component for={${this}}> to scope another, or call ${T}.get() to read it.`
+        );
+    }
 
     let instance!: T;
     const assign = (value: unknown) =>

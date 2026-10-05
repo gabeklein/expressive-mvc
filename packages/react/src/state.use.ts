@@ -5,25 +5,37 @@ import { Context, useAmbient } from './context';
 
 const create = State.use;
 
+function outside(type: State.Type, args: unknown[]) {
+  // React calls components outside a render to locate stack frames; it expects a throw, not an instance.
+  if (String(new Error().stack).includes('DetermineComponentFrameRoot'))
+    throw new Error(`${type}.use() outside a render.`);
+
+  return (create as Function).apply(type, args);
+}
+
 State.use = function use<T extends State>(
   this: State.Type<T>,
   ...args: State.UseArgs<T>
 ) {
   let outer: Context;
 
-  if (Runtime.idle()) return (create as Function).apply(this, args);
+  if (Runtime.idle()) return outside(this, args);
 
   try {
     outer = useAmbient();
   } catch {
-    return (create as Function).apply(this, args);
+    return outside(this, args);
   }
 
   const render = useFactory(() => {
-    if (outer.get(this, false) !== undefined)
-      throw new Error(
-        `${this} is already in context - nest a <Component for={${this}}> to scope another, or call ${this}.get() to read it.`
-      );
+    for (let T: State.Extends = this; T !== State; T = Object.getPrototypeOf(T)) {
+      const found = outer.get(T, false);
+
+      if (T === this ? found !== undefined : found?.constructor === T)
+        throw new Error(
+          `${T} is already in context - nest a <Component for={${this}}> to scope another, or call ${T}.get() to read it.`
+        );
+    }
 
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as State.Assign<T>);

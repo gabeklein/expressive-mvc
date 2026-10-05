@@ -51,6 +51,30 @@ describe('State.use', () => {
   });
 
   describe('shadowing', () => {
+    it('will throw if it would hide an instance of a supertype', () => {
+      class Base extends State {}
+      class Sub extends Base {}
+
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        expect(() =>
+          render(
+            <Provider for={Base}>
+              <Use />
+            </Provider>
+          )
+        ).toThrow('Base is already in context - nest a <Component for={Sub}> to scope another');
+      } finally {
+        error.mockRestore();
+      }
+
+      function Use() {
+        Sub.use();
+        return null;
+      }
+    });
+
     it('will throw if already in context', () => {
       class Shadow extends State {}
 
