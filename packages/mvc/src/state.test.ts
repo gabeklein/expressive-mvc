@@ -919,6 +919,20 @@ describe('get method', () => {
       expect(foo.get(Bar)).toBe(bar);
     });
 
+    it('will type fetched state by its class', () => {
+      class Baz extends State {
+        value = 1;
+      }
+
+      const foo = Foo.new();
+
+      new Context({ foo, Baz });
+
+      const baz: Baz = foo.get(Baz);
+
+      expect(baz.value).toBe(1);
+    });
+
     it('will return undefined if not found', () => {
       const foo = new Foo();
 

@@ -340,11 +340,20 @@ abstract class State {
     downstream?: boolean
   ): () => void;
 
+  // Owner overloads take `State` itself only - a subclass would otherwise match
+  // them in TypeScript's subtype pass, before the `State.Type<T>` overloads.
+
   /** Owner of this State. Throws if it has none. */
-  get(type: typeof State, required?: true): State;
+  get<T extends typeof State>(
+    type: T & (typeof State extends T ? unknown : never),
+    required?: true
+  ): State;
 
   /** Owner of this State. Undefined if it has none. */
-  get(type: typeof State, required: boolean): State | undefined;
+  get<T extends typeof State>(
+    type: T & (typeof State extends T ? unknown : never),
+    required: boolean
+  ): State | undefined;
 
   /**
    * Run a callback for each State this one owns - those owned now, then each
@@ -353,8 +362,8 @@ abstract class State {
    *
    * @returns Function to stop watching.
    */
-  get(
-    type: typeof State,
+  get<T extends typeof State>(
+    type: T & (typeof State extends T ? unknown : never),
     callback: (child: State) => void | (() => void),
     downstream: true
   ): () => void;
