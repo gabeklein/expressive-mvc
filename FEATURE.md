@@ -34,7 +34,7 @@ Built: `Object3D`, `Group`, `Scene`, `Mesh`; member contract for `visible`, `geo
 ## Prerequisites in mvc
 
 - **Public ownership** - done (#460). The owner walk uses `get(State, false)`; the build imports only `@expressive/mvc`.
-- **Field `get()` of a distant ancestor** - an upstream lookup checks the direct parent and siblings at each level, but not ancestors past the parent; those resolve only through context. A host-less scene (`World.new()`) cannot `get(World)` from a grandchild - `parent = get(World)` needs `World` provided. Not blocking; a core fix.
+- **Field `get()` of a distant ancestor** - done (#466). `parent = get(World)` resolves in a host-less scene.
 
 ## Open decisions
 

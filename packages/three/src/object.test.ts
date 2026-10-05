@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
-import { Context, get, has, set, State } from '@expressive/mvc';
+import { get, has, set, State } from '@expressive/mvc';
 
 import { Frame } from './frame';
 import { Group, Mesh, Object3D, objectOf, Scene } from './object';
@@ -391,7 +391,7 @@ describe('placement', () => {
       gun = new Gun();
     }
 
-    const world = new Context(World).get(World);
+    const world = World.new();
     const bullet = world.gun.bullets.add();
 
     expect(objectOf(bullet).parent).toBe(objectOf(world));
