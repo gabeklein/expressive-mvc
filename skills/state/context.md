@@ -51,75 +51,50 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 ## Root Context
 
-`Context.root` is the process-global registry; `Context.get(state)` falls back to it when a state has no recorded home. A State *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
+`Context.root` is the process-global registry; `Context.get(state)` falls back to it when a state has no recorded home. A State *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when created with `State.use()` outside a render.
 
 ```ts
-class Flags extends State {
-  static readonly global = true;
-}
-Flags.new();
-Context.root.get(Flags); // the instance
+class Flags extends State {}
+const flags = Flags.use(); // entry point - owned by root
+Flags.get();               // flags, from anywhere
 
 class Private extends State {}
 Private.new();
-Context.root.get(Private, false); // undefined - private, not a global
-
-Flags.get(); // the instance - outside a render, static get() resolves from the ambient context
+Context.root.get(Private, false); // undefined - private
 ```
+
+Call `use()` deliberately - an entry point, a request boundary - never from a helper that may also run in a render, where it creates a component-owned instance instead.
 
 ### Ambient context
 
-`Context.get()` with no argument is the ambient context - root, unless a host overrides it (e.g. per request via `AsyncLocalStorage`). Client adapters do not override it; render position stays inside their `State.get()`. An override runs from every State constructor - keep it cheap, no hooks.
+`Context.get()` with no argument is the ambient context - root, unless a host overrides it (e.g. per request via `AsyncLocalStorage`). Client adapters do not override it; render position stays inside their `State.get()` and `State.use()`. An override runs from every State constructor - keep it cheap, no hooks.
 
+- `State.use()` outside a render creates in the ambient context, owned by it - destroyed when it pops.
 - A State constructed while the ambient context is not root records it as its home fallback: `get(Type)` fields and `state.get(Type)` resolve from it. Registering into a context still wins.
-- A global registers at the ambient root, under root's rules - a global created during a request is scoped to that request.
 - A child held by an anchored, context-less parent inherits the parent's anchor.
 - Don't keep a static `get()` result on a longer-lived object - it stays tied to the context it came from.
 
-### Declaring a global
+### Shadowing
 
-`static global` is `readonly`, typed `State.Global` - a boolean, or a resolver `(self) => boolean` evaluated at activation (after props apply) to decide per instance or environment.
-
-| Declaration                                       | Meaning                                                        |
-| ------------------------------------------------- | -------------------------------------------------------------- |
-| *(none)*                                          | private - reads globals, isn't one                             |
-| `static readonly global = true`                   | global, **sealed** - subclasses inherit the type, can't opt out|
-| `static readonly global = false`                  | not global, a **lockout** - subclasses can't opt in            |
-| `static readonly global: State.Global = true`     | global, but subclasses may re-declare or opt out               |
-| `static readonly global: State.Global = self => …`| conditional - e.g. `() => typeof window !== 'undefined'`        |
-
-Two rules keep a global deliberate:
-
-- **Re-declare on extend (runtime).** A subclass that would be global purely by inheriting `true` throws on activation; it must re-declare (`true` to keep, `false` to opt out). Checked only where the instance would actually register at root - a `<Component for>`-scoped one never trips it.
-- **Lockout (compile-time).** A bare-literal `false` makes TypeScript reject a subclass `= true` (`TS2417`). Best-effort: a subclass escapes with a resolver (`static global = (() => true) as any`) or a wide cast - the sanctioned "I'm overriding the vendor" move. A plain `any`-cast boolean cannot.
-
-A context-claimed State never consults `global` - an instance provided by `<Component for>` (or any explicit context) is unaffected by it.
-
-> **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Component for>`. See [Server render](../react/react.md#server-render-ssr--rsc).
-
-### Global Collision
-
-A global is a singleton - a second global instance of the same type throws on activation:
+`use()` - in a render or out - throws if `get()` would already resolve the type where it runs: a second `use()`, an upstream provider or `use()`, a subclass instance, an explicit entry.
 
 ```ts
-const a = Sub.new(); // Sub declares `static global`
-Sub.new();           // throws - Sub already exists in root
-Context.root.get(Sub); // a - first instance unaffected
+Flags.use();
+Flags.use(); // throws - Flags is already in context
 ```
 
-Destroy the existing one first (`a.set(null)`) and a fresh `Sub.new()` registers cleanly. To hold several deliberately, register them explicitly ([Explicit Bypass](#explicit-bypass)).
+To hold another deliberately, scope it: nest `<Component for={Flags}>`, or register explicitly (`new Context(state)`, `ctx.add(state, true)`).
 
 ### Subtype Eviction
 
-Sibling subtypes are different types - they don't throw; they collide only at their shared supertype, where both evict. Subtype lookups stay unambiguous:
+Sibling subtypes are different types - they don't throw; in the context they are created in they collide only at their shared supertype, where both evict. Subtype lookups stay unambiguous:
 
 ```ts
-// Base is a widened global; each subtype re-declares (required on extend)
-class SubA extends Base { static readonly global = true; }
-class SubB extends Base { static readonly global = true; }
+class SubA extends Base {}
+class SubB extends Base {}
 
-const a = SubA.new();
-const b = SubB.new();
+const a = SubA.use();
+const b = SubB.use();
 
 Context.root.get(Base, false); // undefined - contested at Base
 Context.root.get(SubA);        // a
@@ -128,15 +103,13 @@ Context.root.get(SubB);        // b
 
 ### Explicit Bypass
 
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component for>`) bypasses collision handling - no throw, no eviction. Global and explicit entries coexist; explicit wins on lookup.
+Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component for>`) bypasses eviction and wins on lookup. A later `use()` of that type throws.
 
-```ts
-const a = Sub.new();          // global, in root
-const b = new Sub();
-Context.root.add(b, true);    // explicit, no eviction
+### `static global` (deprecated)
 
-Context.root.get(Sub); // b - explicit wins
-```
+`State.new()` on a class declaring `static readonly global = true` registers exactly like `use()` - arguments still go to the constructor. A resolver (`static global = self => …`) decides at activation. A subclass that would be global purely by inheriting `true` throws on activation; re-declare it. Prefer `use()` at the call site.
+
+> **Server render:** root is process-global, so an instance `use()`d into root is *shared across requests*. Keep per-request data in a `<Component for>`, or `use()` it under a host's per-request context. See [Server render](../react/react.md#server-render-ssr--rsc).
 
 ## Hierarchical Contexts
 

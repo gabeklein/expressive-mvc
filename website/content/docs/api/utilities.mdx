@@ -332,7 +332,7 @@ Context.root;                         // global registry
 - `ctx.set()` accepts a class, an instance, or a map of either. Classes are constructed and activated; when inputs change, removed entries run their cleanup and instances the context created are destroyed. Instances you passed in are left alone.
 - `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
-- `Context.get()` with no argument is the ambient context: root, unless a host overrides it - a server can return a per-request context, e.g. through `AsyncLocalStorage`. A State constructed under a non-root ambient context resolves its lookups there, and a global created under it registers there instead of root. The override runs from every State constructor, so keep it cheap and free of hooks. Client adapters don't override it.
+- `Context.get()` with no argument is the ambient context: root, unless a host overrides it - a server can return a per-request context, e.g. through `AsyncLocalStorage`. A State constructed under a non-root ambient context resolves its lookups there, and `State.use()` outside a render creates there instead of root. The override runs from every State constructor, so keep it cheap and free of hooks. Client adapters don't override it.
 
 ### Home context
 
@@ -347,7 +347,7 @@ A state's home is recorded once, at activation, and is permanent.
 
 > First-wins: once a state has a home, no later context can transfer ownership.
 
-> A bare `State.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when the class declares [`static global`](#root-context-and-globals).
+> A bare `State.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when created with [`State.use()`](#root-context-and-globals).
 
 ### Construct vs activate
 
@@ -383,52 +383,48 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 ### Root context and globals
 
-`Context.root` is a regular `Context` instance serving as the global registry. A state activated by `State.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no Provider - when the class declares `static global`:
+`Context.root` is a regular `Context` instance serving as the global registry. Outside a render, `State.use()` creates an instance in the ambient context - root, unless a host overrides `Context.get()` - owned by it and findable with no Provider:
 
 ```ts
-class Theme extends State {
-  static global = true;
-}
+class Theme extends State {}
 
-const theme = Theme.new();
-Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
+const theme = Theme.use(); // at an entry point
+Context.root.get(Theme);   // theme - and so does Theme.get(), anywhere
 ```
 
-Without the declaration, a context-less instance stays private. `static global` also takes a resolver (`self => boolean`) to decide at activation, and must be declared per class - a subclass that would be global purely by inheritance throws on activation.
+A context-less `State.new()` stays private. Call `use()` deliberately - an entry point, a request boundary - never from a helper that may also run in a render, where it creates a component-owned instance instead.
+
+`static global` is deprecated: `State.new()` on a class declaring `true` registers exactly like `use()` (arguments still go to the constructor). A resolver (`self => boolean`) still decides at activation, and a subclass that would be global purely by inheritance throws.
 
 [See globals in action](/examples/composition/globals).
 
 > **Good to know:** <br />
-> Module-scope globals persist across tests. `Context.root.pop()` between tests clears them - see the [testing guide](/docs/guides/testing).
+> Module-scope instances persist across tests. `Context.root.pop()` between tests destroys them - see the [testing guide](/docs/guides/testing).
 
-### Global collision
+### Collision
 
-Two **implicit** instances of the same global class in root mutually evict at the contested ancestor:
+`use()` throws if `get()` would already resolve the type where it runs - a second `use()`, an upstream provider, a subclass instance, an explicit entry:
 
 ```ts
-const a = Sub.new(); // Sub declares `static global`
-const b = Sub.new();
-Context.root.get(Sub, false); // undefined - both evicted
+const a = Sub.use();
+Sub.use(); // throws - Sub is already in context
 ```
 
-Read it as "implicit collision opts out of global lookup" - if you create two, neither is *the* global instance. A third `Sub.new()` reclaims the now-empty slot.
+To hold another deliberately, scope it: nest `<Component for={Sub}>`, or register explicitly (`new Context(state)`, `ctx.add(state, true)`).
 
-Eviction is per-ancestor, so sibling subtypes only collide at their shared supertype:
+Sibling subtypes are different types, so they don't throw - they collide only at their shared supertype, where both evict:
 
 ```ts
-// Base is a widened global; each subtype re-declares (required on extend)
-class SubA extends Base { static readonly global = true; }
-class SubB extends Base { static readonly global = true; }
+class SubA extends Base {}
+class SubB extends Base {}
 
-const a = SubA.new();
-const b = SubB.new();
+const a = SubA.use();
+const b = SubB.use();
 
 Context.root.get(Base, false); // undefined - contested at Base
 Context.root.get(SubA);        // a - unambiguous
 Context.root.get(SubB);        // b - unambiguous
 ```
-
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses eviction entirely; implicit and explicit entries coexist and explicit wins on lookup.
 
 ### Ambiguity at non-root
 

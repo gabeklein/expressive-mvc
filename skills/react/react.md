@@ -40,7 +40,7 @@ class Counter extends Component {
 
 ## State.use() - Local Component State
 
-Creates an instance scoped to the component's lifecycle and subscribes to it. Added to base State by the React adapter.
+Creates an instance scoped to the component's lifecycle and subscribes to it. Declared by core; the adapter makes it a hook while rendering.
 
 ```tsx
 class Counter extends State {
@@ -61,8 +61,17 @@ function App() {
 - Destroyed on unmount (context popped, `set(null)` called).
 - Not kept by a render React discards: if the component suspends before its first commit - reading the instance's own pending value included - React drops it, and each retry creates and loads a new one, so the render never resolves. Own loading state in an ancestor that has committed and let the reader suspend ([Suspense](component.md#suspense)).
 - Strict-mode safe.
+- Throws if `get()` would already resolve this type here - a provider, a global, a subclass instance. Nest `<Component for>` to scope another.
 - Open the component with a dependency snapshot: destructure the exact values it renders, nested ones included ([Dependency Snapshots](#dependency-snapshots)).
 - Writes pass through the proxy; `is` is only for retaining the root object alongside sibling destructuring ([Transparent Writes](#transparent-writes--is)).
+
+### Outside a render
+
+Outside a render `State.use()` creates the instance in the ambient context (`Context.get()`) - root on the client, findable everywhere with `State.get()` - owned until that context pops, and throws if one is already there. Call it deliberately at an entry point or request boundary, never from a helper that may also run in a render.
+
+```tsx
+const auth = Auth.use(); // entry module, before rendering
+```
 
 ### Constructor arguments
 
@@ -176,7 +185,7 @@ Setup accompanying the instance itself goes in `new()`; anything touching `windo
 Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Effects don't run, so `mount()` never fires; `new()` and `use()` do. Request-safety rules:
 
 - **Request state goes in a `<Component for>`.** Each render builds its own context, so provided instances are isolated per request.
-- **A `static global` is process-wide, *shared across requests* on the server** (globals are not sealed - a `global` is trusted to be mutable process state like config, flags or a warmed cache). Keep per-request data out; provide it with `<Component for>`.
+- **An instance `use()`d into root is process-wide, *shared across requests* on the server** - trusted to be mutable process state like config, flags or a warmed cache. Keep per-request data out; provide it with `<Component for>`, or `use()` it under a host's per-request context.
 - **Resources belong in `mount()` or the request handler, never `new()`.** `new()` runs on the server but its returned teardown does not (no unmount), so a socket or handle opened there leaks. `mount()` is client-only; server-side resources are the framework's request scope to open and close.
 
 To render a specific request's data (a path, a session), provide it per request: `<Component for={Session} …>`. For this reason `Router` is a client-only global - on the server it is per-render, so paths never bleed between requests; provide `<Component for={Router} path={…}>` to render a request's path.

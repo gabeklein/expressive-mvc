@@ -27,6 +27,10 @@ function CounterView() {
 - Methods are auto-bound; safe to destructure and pass as event handlers.
 - Strict mode safe (handles double-mount correctly).
 
+### Outside a render
+
+Outside a render - an entry point, a request handler - `State.use()` creates the instance in the ambient context (`Context.get()`, root on the client), owned by it until it pops, and returns it. Anything below resolves it with `State.get()`. In a render or out, `use()` throws if `get()` would already resolve that type there; nest a `<Component for>` to scope another.
+
 ### With initial values
 
 ```tsx
