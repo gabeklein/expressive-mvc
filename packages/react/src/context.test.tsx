@@ -11,7 +11,7 @@ import {
 } from 'vitest';
 
 import { act, render, screen } from '@testing-library/react';
-import { State, Context, get, Provider, set } from '.';
+import { Component, State, Context, get, Provider, set } from '.';
 import { flushMicrotasks } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
@@ -35,6 +35,21 @@ class Bar extends State {}
 class Baz extends Bar {}
 
 describe('Provider', () => {
+  it('will be owned by enclosing Component', () => {
+    let host!: State;
+    let provided!: State;
+
+    class Host extends Component {
+      render() {
+        return <Provider for={Foo} is={(foo) => (provided = foo)} />;
+      }
+    }
+
+    render(<Host is={(h) => (host = h)} />);
+
+    expect(provided.get(State)).toBe(host);
+  });
+
   it('will create instance of given model', () => {
     function Check() {
       expect(Foo.get()).toBeInstanceOf(Foo);

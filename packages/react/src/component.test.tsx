@@ -2019,3 +2019,72 @@ describe('for', () => {
     expect(screen).toHaveText('outer');
   });
 });
+
+describe('owner', () => {
+  it('will be owned by enclosing Component', () => {
+    let outer!: Outer;
+    let inner!: Inner;
+
+    class Inner extends Component {}
+    class Outer extends Component {
+      render() {
+        return <Inner is={(i) => (inner = i)} />;
+      }
+    }
+
+    render(<Outer is={(o) => (outer = o)} />);
+
+    expect(outer.get(State, false)).toBeUndefined();
+    expect(inner.get(State)).toBe(outer);
+    expect(inner.get(Component)).toBe(outer);
+  });
+
+  it('will report and drop hosted Components', async () => {
+    const owned = vi.fn();
+    const dropped = vi.fn();
+    let outer!: Outer;
+
+    class Inner extends Component {}
+    class Outer extends Component {
+      show = true;
+
+      render() {
+        return this.show && <Inner />;
+      }
+    }
+
+    render(<Outer is={(o) => (outer = o)} />);
+
+    outer.get(State, (child) => {
+      owned(child);
+      return dropped;
+    }, true);
+
+    expect(owned).toHaveBeenCalledWith(expect.any(Inner));
+
+    await act(async () => {
+      outer.show = false;
+    });
+
+    expect(dropped).toHaveBeenCalledTimes(1);
+  });
+
+  it('will be owned by Component providing it', () => {
+    let session!: State;
+    let host!: State;
+
+    class Session extends State {}
+    class Host extends Component {
+      render() {
+        return <Component for={Session} is={(s) => (session = s)} />;
+      }
+    }
+
+    render(<Host is={(h) => (host = h)} />);
+
+    const wrapper = session.get(State);
+
+    expect(wrapper).toBeInstanceOf(Component);
+    expect(wrapper.get(State)).toBe(host);
+  });
+});
