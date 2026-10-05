@@ -438,6 +438,23 @@ describe('context', () => {
     );
   });
 
+  it('will return root context inside a render', () => {
+    let ambient: Context | undefined;
+
+    function Check() {
+      ambient = Context.get();
+      return null;
+    }
+
+    render(
+      <Provider for={Foo}>
+        <Check />
+      </Provider>
+    );
+
+    expect(ambient).toBe(Context.root);
+  });
+
   it('will return root context if called outside render', () => {
     expect(Context.get()).toBe(Context.root);
   });

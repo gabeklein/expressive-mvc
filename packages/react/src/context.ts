@@ -10,12 +10,12 @@ let shared: any;
  * which an adapter's entry populates at load - after this module evaluates.
  */
 function Layers() {
-  return shared || (shared = Runtime.createContext(Context.root));
+  return shared || (shared = Runtime.createContext(null));
 }
 
 /** Read the ambient {@link Context} from the nearest Layers provider. */
-function useAmbient() {
-  return Runtime.useContext(Layers());
+function useAmbient(): Context {
+  return Runtime.useContext(Layers()) || Context.get();
 }
 
 /** Wrap `children` in a {@link Layers} provider carrying `context` down the tree. */

@@ -868,6 +868,45 @@ describe('context', () => {
     );
   });
 
+  it('will return root context inside a render', () => {
+    let ambient: Context | undefined;
+
+    function Check() {
+      ambient = Context.get();
+      return null;
+    }
+
+    render(
+      <Provider for={Foo}>
+        <Check />
+      </Provider>
+    );
+
+    expect(ambient).toBe(Context.root);
+  });
+
+  it('will render under the ambient context', () => {
+    const base = Context.get;
+    const ambient = new Context({ Foo: Foo.new({ value: 'ambient' }) });
+
+    class View extends Component {
+      foo = get(Foo);
+
+      render() {
+        return <>{this.foo.value}</>;
+      }
+    }
+
+    Context.get = (state) => (state ? base(state) : ambient);
+
+    try {
+      expect(renderToString(<View />).replace(/<!--[^>]*-->/g, '')).toBe('ambient');
+    } finally {
+      Context.get = base;
+      ambient.pop();
+    }
+  });
+
   it('will return root context if called outside render', () => {
     expect(Context.get()).toBe(Context.root);
   });

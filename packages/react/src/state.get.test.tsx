@@ -40,6 +40,27 @@ describe('State.get', () => {
     expect(calls).toEqual([]);
   });
 
+  it('will get instance from an event handler', async () => {
+    class Value extends State {
+      static readonly global = true;
+    }
+
+    const value = Value.new();
+    let got: Value | undefined;
+    const screen = render(
+      <button
+        onClick={() => {
+          got = Value.get();
+        }}
+      />
+    );
+
+    await act(async () => screen.getByRole('button').click());
+
+    expect(got).toBe(value);
+    value.set(null);
+  });
+
   it('will fetch model', () => {
     class Test extends State {}
 

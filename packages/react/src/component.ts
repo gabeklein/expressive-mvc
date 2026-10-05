@@ -1,5 +1,5 @@
 import { Component, unbind } from '@expressive/mvc';
-import { createProvider, type Context } from './context';
+import { createProvider, Context } from './context';
 import { Runtime, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
@@ -83,8 +83,8 @@ Component.on({
   }
 });
 
-function bootstrap(this: Component, context: Context){
-  context = context.push();
+function bootstrap(this: Component, context: Context | null){
+  context = (context || Context.get()).push();
   context.set(this, () => () => this.set(null));
 
   Object.defineProperties(this, {
