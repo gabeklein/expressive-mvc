@@ -438,6 +438,28 @@ export class Noted extends Component {
     return <p id="note">{PREFIX} {count}</p>;
   }
 }
+`,
+  'flags.ts': `import { State } from '@expressive/mvc';
+
+export class Flags extends State {
+  static readonly global = true;
+  mode = 'on';
+}
+`,
+  'session.ts': `import { Flags } from './flags';
+
+export const flags = Flags.new();
+export const NAME = 'flags';
+`,
+  'flagged.tsx': `import { Component } from '@expressive/mvc';
+import { Flags } from './flags';
+import { NAME } from './session';
+
+export class Flagged extends Component {
+  render() {
+    return <p id="flagged">{NAME} {Flags.get().mode}</p>;
+  }
+}
 `
 };
 
@@ -520,28 +542,6 @@ import { createRoot } from 'react-dom/client';
 import { App } from './app';
 
 createRoot(document.getElementById('root')!).render(<App />);
-`,
-  'flags.ts': `import { State } from '@expressive/mvc';
-
-export class Flags extends State {
-  static readonly global = true;
-  mode = 'on';
-}
-`,
-  'session.ts': `import { Flags } from './flags';
-
-export const flags = Flags.new();
-export const NAME = 'flags';
-`,
-  'flagged.tsx': `import { Component } from '@expressive/mvc';
-import { Flags } from './flags';
-import { NAME } from './session';
-
-export class Flagged extends Component {
-  render() {
-    return <p id="flagged">{NAME} {Flags.get().mode}</p>;
-  }
-}
 `,
   strict: `import '@expressive/react';
 import { StrictMode } from 'react';
