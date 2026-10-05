@@ -137,7 +137,7 @@ function render(node: RenderNode, container: Container): () => void {
   roots.get(container)?.();
   container.replaceChildren();
 
-  const context = new Context(Context.root);
+  const context = new Context(Context.get());
   const fiber = range('fragment', container, null, context);
 
   try {

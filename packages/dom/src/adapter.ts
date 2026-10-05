@@ -96,7 +96,7 @@ function commit(scope: Scope) {
 
 function requireScope(): Scope {
   if (!current)
-    throw new Error('State.get() and State.use() may only run while @expressive/dom is rendering.');
+    throw new Error('State.use() may only run while @expressive/dom is rendering.');
 
   return current;
 }
@@ -146,8 +146,6 @@ declare module '@expressive/mvc' {
       ? P
       : State.Args<T>;
 
-    function get<T extends State>(this: State.Extends<T>): T;
-    function get<T extends State>(this: State.Extends<T>, required: false): T | undefined;
     function get<T extends State>(this: State.Extends<T>, required: true): Required<T>;
     function get<T extends State, R>(
       this: State.Extends<T>,
@@ -168,11 +166,16 @@ declare module '@expressive/mvc' {
   }
 }
 
+const resolve = State.get;
+
 (State as any).get = function get<T extends State>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
-  const scope = requireScope();
+  const scope = current;
+
+  if (!scope) return (resolve as Function).call(this, argument);
+
   const instance = scope.childContext.get(this, argument === false ? false : true);
 
   if (!instance) return undefined;

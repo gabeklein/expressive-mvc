@@ -1,5 +1,5 @@
 import { Component } from '@expressive/mvc';
-import { Context } from './context';
+import { useAmbient } from './context';
 import { Runtime, useFactory, useWatch } from './runtime';
 import { createFrame } from './component';
 
@@ -55,7 +55,7 @@ Object.defineProperty(Component.prototype, '$$typeof', {
 });
 
 function Element(this: Component){
-  const outer = Context.get();
+  const outer = useAmbient();
   const render = useFactory(() => {
     let from = this;
     const context = outer.push(this);

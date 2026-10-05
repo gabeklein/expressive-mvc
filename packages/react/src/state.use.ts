@@ -1,6 +1,7 @@
-import { State, Context } from '@expressive/mvc';
+import { State } from '@expressive/mvc';
 import type { UseState } from '@expressive/mvc';
 import { useFactory, useWatch } from './runtime';
+import { useAmbient } from './context';
 
 declare module '@expressive/mvc' {
   interface UseState extends State {
@@ -52,7 +53,7 @@ State.use = function use<T extends State>(
   this: State.Type<T>,
   ...args: State.UseArgs<T>
 ) {
-  const outer = Context.get();
+  const outer = useAmbient();
   const render = useFactory(() => {
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as State.Assign<T>);

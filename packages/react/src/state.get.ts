@@ -1,6 +1,7 @@
 import { State, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
 import { Runtime, useFactory, useSettle, useSetup } from './runtime';
+import { useAmbient } from './context';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -44,15 +45,6 @@ declare module '@expressive/mvc' {
     ) => null;
 
     /** Fetch instance of this class from context. */
-    function get<T extends State>(this: State.Extends<T>): T;
-
-    /** Fetch instance of this class optionally. */
-    function get<T extends State>(
-      this: State.Extends<T>,
-      required: false
-    ): T | undefined;
-
-    /** Fetch instance of this class from context. */
     function get<T extends State>(
       this: State.Extends<T>,
       requireValues: true
@@ -70,14 +62,23 @@ declare module '@expressive/mvc' {
   }
 }
 
+const resolve = State.get;
+
 State.get = function get<T extends State>(
   this: State.Extends<T>,
   argument?: boolean | State.GetFactory<T, unknown>
 ) {
+  let local: Context;
+
+  try {
+    local = useAmbient();
+  } catch {
+    return (resolve as Function).call(this, argument);
+  }
+
   const Type = this;
   const [tick, next] = Runtime.useState(0);
   const claim = useSettle(tick);
-  const local = Context.get();
   const render = useFactory(() => {
     let unwatch: (() => void) | undefined;
     let mounted = false;

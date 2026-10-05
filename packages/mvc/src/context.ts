@@ -2,9 +2,11 @@ import { listener } from "./observable";
 import { event, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
+const ANCHOR = new WeakMap<State, Context>();
 const HELD = new WeakMap<State, Map<State, Set<() => void>>>();
 const HOST = new WeakMap<Context, State>();
 let ROOT: Context;
+let ROOTING = false;
 
 type Accept<T extends State = State> =
   | T
@@ -25,9 +27,13 @@ class Context {
     return ROOT ??= new Context();
   }
 
-  /** Get the context for a State. Adapters may override to provide framework context. */
+  /**
+   * Get the context for a State - else the ambient context, root unless a host
+   * overrides it (e.g. per request). Runs from every State constructor, so an
+   * override must be cheap and must not use hooks.
+   */
   static get(state?: State): Context {
-    return state && LOOKUP.get(state.is) || Context.root;
+    return state && (LOOKUP.get(state = state.is) || ANCHOR.get(state)) || Context.root;
   }
 
   public id = uid();
@@ -231,7 +237,7 @@ class Context {
 
   add(I: State, explicit = false) {
     const { cleanup, provide } = this;
-    const root = this === Context.root;
+    const root = ROOTING || this === Context.root;
     const TT: State.Extends[] = [];
 
     function conflict(T: State.Extends) {
@@ -360,6 +366,10 @@ function join(state: State, value: State): () => void {
 
   if (ctx) return ctx.add(value);
 
+  const anchored = ANCHOR.get(state.is);
+
+  if (anchored && !ANCHOR.has(value)) ANCHOR.set(value, anchored);
+
   const held = HELD.get(state) || new Map();
   const added = new Set<() => void>();
 
@@ -382,4 +392,21 @@ function host(state: State) {
   }
 }
 
-export { Context, host, join };
+function anchor(state: State) {
+  const ambient = Context.get();
+
+  if (ambient !== Context.root) ANCHOR.set(state, ambient);
+}
+
+/** Add a global to `ctx` under the rules root applies to globals. */
+function root(ctx: Context, state: State) {
+  ROOTING = true;
+
+  try {
+    return ctx.add(state);
+  } finally {
+    ROOTING = false;
+  }
+}
+
+export { anchor, Context, host, join, LOOKUP, root };

@@ -1,4 +1,4 @@
-import { Context, host, join } from './context';
+import { anchor, Context, host, join, LOOKUP, root } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -64,6 +64,12 @@ const OWNS = new WeakMap<State, Set<State>>();
 const OWNED = new WeakMap<State, Set<(child: State) => void>>();
 
 declare namespace State {
+  /** Fetch instance of this class from the ambient context. */
+  function get<T extends State>(this: State.Extends<T>): T;
+
+  /** Fetch instance of this class from the ambient context, if present. */
+  function get<T extends State>(this: State.Extends<T>, required: false): T | undefined;
+
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
     typeof State;
@@ -572,6 +578,24 @@ define(State.prototype, 'toString', {
   }
 });
 
+define(State, 'get', {
+  writable: true,
+  value(this: State.Extends, required?: unknown) {
+    if (typeof required == 'function' || required === true)
+      throw new Error(`${this}.get(${required === true || 'fn'}) may only run while rendering.`);
+
+    const ctx = Context.get();
+    const found = ctx.get(this, false);
+
+    if (found !== undefined || required === false) return found;
+
+    throw new Error(
+      `Could not find ${this} in context.` +
+        (ctx === Context.root ? ' Outside a render, only globals are visible.' : '')
+    );
+  }
+});
+
 define(State, 'toString', {
   value() {
     return this.name;
@@ -608,6 +632,7 @@ function init(state: State, ...args: State.Args) {
   const { before, after } = bootstrap(T);
 
   ID.set(state, `${T}-${uid()}`);
+  anchor(state);
   STORE.set(state, {});
 
   function observe() {
@@ -622,7 +647,9 @@ function init(state: State, ...args: State.Args) {
   }
 
   function register() {
-    if (Context.get(state) !== Context.root) return;
+    const ctx = Context.get(state);
+
+    if (LOOKUP.has(state)) return;
 
     const type = state.constructor as typeof State;
     const g = type.global;
@@ -634,7 +661,7 @@ function init(state: State, ...args: State.Args) {
         `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
       );
 
-    return Context.root.add(state);
+    return root(ctx, state);
   }
 
   listener(state, (key) => {

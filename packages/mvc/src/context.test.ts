@@ -1,5 +1,6 @@
 import { vi, describe, it, expect } from 'vitest';
 import { Context } from './context';
+import { get } from './field/get';
 import { State } from './state';
 
 class Example extends State {}
@@ -1234,6 +1235,88 @@ it('will skip consumer if filter does not match downstream', () => {
   grandchild.add(bar);
 
   expect(cb).toBeCalledWith(bar, true);
+});
+
+describe('ambient context', () => {
+  const base = Context.get;
+
+  function within<T>(ambient: Context, run: () => T) {
+    Context.get = (state) => (state ? base(state) : ambient);
+
+    try {
+      return run();
+    } finally {
+      Context.get = base;
+    }
+  }
+
+  class Session extends State {}
+
+  it('will anchor a State constructed under it', () => {
+    class Child extends State {
+      session = get(Session);
+    }
+
+    const ambient = new Context({ Session });
+    const child = within(ambient, () => Child.new());
+
+    expect(Context.get(child)).toBe(ambient);
+    expect(child.session).toBe(ambient.get(Session));
+    expect(child.get(Session)).toBe(ambient.get(Session));
+  });
+
+  it('will prefer a registered context over anchor', () => {
+    const ambient = new Context();
+    const state = within(ambient, () => new Example());
+
+    expect(Context.get(state)).toBe(ambient);
+
+    const context = new Context(state);
+
+    expect(Context.get(state)).toBe(context);
+  });
+
+  it('will anchor a held child of an anchored parent', () => {
+    class Parent extends State {
+      child?: Example = undefined;
+    }
+
+    const ambient = new Context();
+    const parent = within(ambient, () => Parent.new());
+
+    parent.child = new Example();
+
+    expect(Context.get(parent.child)).toBe(ambient);
+  });
+
+  it('will register a global at ambient root', () => {
+    class Global extends State {
+      static readonly global = true;
+    }
+
+    const ambient = new Context();
+    const global = within(ambient, () => Global.new());
+
+    expect(ambient.get(Global)).toBe(global);
+    expect(Context.root.get(Global, false)).toBeUndefined();
+  });
+
+  it('will apply root rules to a global at ambient root', () => {
+    class Global extends State {
+      static readonly global = true;
+    }
+
+    const a = new Context();
+    const b = new Context();
+    const one = within(a, () => Global.new());
+    const two = within(b, () => Global.new());
+
+    expect(a.get(Global)).toBe(one);
+    expect(b.get(Global)).toBe(two);
+    expect(() => within(a, () => Global.new())).toThrow(
+      /Cannot register Global-\w+ as a global/
+    );
+  });
 });
 
 describe('root global', () => {

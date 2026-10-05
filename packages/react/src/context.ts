@@ -26,17 +26,6 @@ function createProvider(context: Context, children: any) {
 // Class components consume the active Context through the host's `contextType`
 Object.defineProperty(Component, 'contextType', { configurable: true, get: Layers });
 
-const _get = Context.get;
-
-Context.get = (state?: State) => {
-  if (!state)
-    try {
-      return useAmbient();
-    } catch { }
-
-  return _get(state);
-};
-
 declare namespace Provider {
   /**
    * Runs for each State registered by this Provider. Return value is ignored -
@@ -127,4 +116,4 @@ function Provider<T extends State>({
   );
 }
 
-export { Provider, Context, createProvider };
+export { Provider, Context, createProvider, useAmbient };

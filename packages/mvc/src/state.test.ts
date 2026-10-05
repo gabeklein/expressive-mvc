@@ -3578,6 +3578,57 @@ describe('is method (static)', () => {
   });
 });
 
+describe('get method (static)', () => {
+  class Global extends State {
+    static readonly global = true;
+  }
+
+  class Private extends State {}
+
+  it('will get a global from root', () => {
+    const global = Global.new();
+
+    expect(Global.get()).toBe(global);
+  });
+
+  it('will return undefined if optional and not found', () => {
+    Private.new();
+
+    expect(Private.get(false)).toBeUndefined();
+  });
+
+  it('will throw if not found', () => {
+    expect(() => Private.get()).toThrow(
+      'Could not find Private in context. Outside a render, only globals are visible.'
+    );
+  });
+
+  it('will throw for render-only arguments', () => {
+    const get = Global.get as (arg: unknown) => unknown;
+
+    expect(() => get.call(Global, () => {})).toThrow(
+      'Global.get(fn) may only run while rendering.'
+    );
+    expect(() => get.call(Global, true)).toThrow(
+      'Global.get(true) may only run while rendering.'
+    );
+  });
+
+  it('will get from ambient context', () => {
+    const base = Context.get;
+    const ambient = new Context({ Private });
+
+    Context.get = (state) => (state ? base(state) : ambient);
+
+    try {
+      expect(Private.get()).toBe(ambient.get(Private));
+      expect(() => Global.get()).toThrow(/^Could not find Global in context\.$/);
+    } finally {
+      Context.get = base;
+    }
+  });
+});
+
 describe('on method (static)', () => {
   it('will run a bare function at setup', () => {
     const order: string[] = [];
