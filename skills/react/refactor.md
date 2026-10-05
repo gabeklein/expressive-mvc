@@ -362,7 +362,7 @@ Pure presentation components (a `Metric`, a `StatusCallout`) may still take plai
 
 ## 10. Destructure an exact dependency snapshot
 
-Every `.get()` / `.use()` opens the component with the exact reactive values it renders, nested levels included, optional objects defaulted in place. They are React hooks: top of component or `render()`, unconditionally - in a branch, handler, or loop they build green and crash at runtime.
+Every `.get()` / `.use()` opens the component with the exact reactive values it renders, nested levels included, optional objects defaulted in place. They are React hooks: top of component or `render()`, unconditionally - in a branch or loop they build green and crash at runtime. In a handler `.get()` is an unsubscribed snapshot.
 
 ```tsx
 // Wrong: deep reads scattered through JSX, one hidden in a branch

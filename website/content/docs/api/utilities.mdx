@@ -332,7 +332,7 @@ Context.root;                         // global registry
 - `ctx.set()` accepts a class, an instance, or a map of either. Classes are constructed and activated; when inputs change, removed entries run their cleanup and instances the context created are destroyed. Instances you passed in are left alone.
 - `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
-- Adapters may override `Context.get` - the React adapter returns the ambient React context when called with no argument.
+- `Context.get()` with no argument is the ambient context: root, unless a host overrides it - a server can return a per-request context, e.g. through `AsyncLocalStorage`. A State constructed under a non-root ambient context resolves its lookups there, and a global created under it registers there instead of root. The override runs from every State constructor, so keep it cheap and free of hooks. Client adapters don't override it.
 
 ### Home context
 

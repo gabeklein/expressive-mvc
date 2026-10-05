@@ -160,7 +160,7 @@ function Parent({ counter }: { counter: Counter }) {
 }
 ```
 
-Static `.use()` and `.get()` are React hooks - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. They build green when misused and crash at runtime. (Instance method get is not a hook.)
+Static `.use()` and `.get()` are hooks while rendering - call unconditionally at the top of a component or `render()`, never inside a branch or loop. They build green when misused and crash at runtime. Outside a render (event handlers, services) `.get()` returns an unsubscribed snapshot from the ambient context - root on the client, so only globals resolve - and `.use()` throws. One helper is reactive in a render and a snapshot elsewhere: read the snapshot at point of use, don't hold it. (Instance method get is not a hook.)
 
 Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 

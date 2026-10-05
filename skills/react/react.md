@@ -223,6 +223,14 @@ function Profile() {
 }
 ```
 
+### Outside a render
+
+Called outside a render - event handler, service, module scope - `State.get()` and `State.get(false)` return the instance unsubscribed, resolved from the ambient context (`Context.get()`): root on the client, so only globals resolve, and a not-found error says so. `get(true)` and `get(factory)` are render-only and throw. React logs "Invalid hook call" once per call made before its first render.
+
+```tsx
+<button onClick={() => Auth.get().logout()} />
+```
+
 ### Optional lookup
 
 ```tsx

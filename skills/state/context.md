@@ -63,7 +63,18 @@ Context.root.get(Flags); // the instance
 class Private extends State {}
 Private.new();
 Context.root.get(Private, false); // undefined - private, not a global
+
+Flags.get(); // the instance - outside a render, static get() resolves from the ambient context
 ```
+
+### Ambient context
+
+`Context.get()` with no argument is the ambient context - root, unless a host overrides it (e.g. per request via `AsyncLocalStorage`). Client adapters do not override it; render position stays inside their `State.get()`. An override runs from every State constructor - keep it cheap, no hooks.
+
+- A State constructed while the ambient context is not root records it as its home fallback: `get(Type)` fields and `state.get(Type)` resolve from it. Registering into a context still wins.
+- A global registers at the ambient root, under root's rules - a global created during a request is scoped to that request.
+- A child held by an anchored, context-less parent inherits the parent's anchor.
+- Don't keep a static `get()` result on a longer-lived object - it stays tied to the context it came from.
 
 ### Declaring a global
 
