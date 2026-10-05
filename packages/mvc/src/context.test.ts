@@ -1265,6 +1265,26 @@ describe('ambient context', () => {
     expect(child.get(Session)).toBe(ambient.get(Session));
   });
 
+  it('will resolve a State from its own context whatever the override returns', () => {
+    class Child extends State {
+      session = get(Session);
+    }
+
+    const home = new Context({ Session });
+    const child = new Child();
+
+    home.push(child);
+
+    Context.get = () => new Context();
+
+    try {
+      expect(child.get(Session)).toBe(home.get(Session));
+      expect(child.session).toBe(home.get(Session));
+    } finally {
+      Context.get = base;
+    }
+  });
+
   it('will prefer a registered context over anchor', () => {
     const ambient = new Context();
     const state = within(ambient, () => new Example());
