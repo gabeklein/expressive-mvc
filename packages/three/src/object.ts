@@ -1,10 +1,23 @@
 import { State } from '@expressive/mvc';
 import * as THREE from 'three';
 
+const OBJECT = new WeakMap<object, THREE.Object3D>();
+const NODE = new WeakMap<THREE.Object3D, Object3D>();
+const AT = new WeakMap<Object3D, Object3D | undefined>();
+const TOUCHED = new Set<Object3D>();
+const WARNED = new WeakSet<Object3D>();
+
 /** A scene graph node, representing the three.js object `create` returns. */
-abstract class Object3D extends State {
-  /** The three.js object this class represents. */
-  protected readonly _object: THREE.Object3D;
+abstract class Object3D<T extends THREE.Object3D = THREE.Object3D> extends State {
+  /**
+   * The three.js object this node represents. Read values and mutate them per frame through members;
+   * structure (`add`, `remove`, `parent`) and lifecycle (`dispose`) go through `parent` and destroying the node.
+   */
+  protected get _object(): T {
+    const self = this.is;
+    TOUCHED.add(self);
+    return OBJECT.get(self) as T;
+  }
 
   declare visible: boolean;
 
@@ -25,42 +38,41 @@ abstract class Object3D extends State {
   constructor(...args: State.Args) {
     super(...args);
 
-    this._object = this.create();
-    this._object.name = String(this);
+    const object = this.create();
+
+    object.name = String(this);
+    OBJECT.set(this, object);
+    NODE.set(object, this);
   }
 
   /** Turn to face a point in world space. */
   lookAt(target: THREE.Vector3): void;
   lookAt(x: number, y: number, z: number): void;
   lookAt(x: THREE.Vector3 | number, y?: number, z?: number) {
-    if (typeof x == 'number') this._object.lookAt(x, y!, z!);
-    else this._object.lookAt(x);
+    const object = objectOf(this);
+
+    if (typeof x == 'number') object.lookAt(x, y!, z!);
+    else object.lookAt(x);
 
     this.set('rotation');
   }
 
-  protected abstract create(): THREE.Object3D;
+  protected abstract create(): T;
 }
 
-class Group extends Object3D {
-  declare protected readonly _object: THREE.Group;
-
+class Group extends Object3D<THREE.Group> {
   protected create() {
     return new THREE.Group();
   }
 }
 
-class Scene extends Object3D {
-  declare protected readonly _object: THREE.Scene;
-
+class Scene extends Object3D<THREE.Scene> {
   protected create() {
     return new THREE.Scene();
   }
 }
 
-class Mesh extends Object3D {
-  declare protected readonly _object: THREE.Mesh;
-
+class Mesh extends Object3D<THREE.Mesh> {
   declare geometry: THREE.BufferGeometry;
   declare material: THREE.Material | THREE.Material[];
 
@@ -72,11 +84,14 @@ class Mesh extends Object3D {
 type Members = Record<string, unknown>;
 
 function objectOf(self: object) {
-  return (self as unknown as { _object: THREE.Object3D })._object;
+  return OBJECT.get(self)!;
 }
 
-/** At `setup` a subclass default is still a plain own value - route it to the object. */
-function contract<T extends Object3D>(...keys: string[]) {
+/**
+ * At `setup` a subclass default is still a plain own value - route it to the object.
+ * `changed` runs after defaults land and after each write.
+ */
+function contract<T extends Object3D>(keys: string[], changed?: (object: THREE.Object3D) => void) {
   return (self: T) => {
     const object = objectOf(self) as unknown as Members;
 
@@ -95,9 +110,17 @@ function contract<T extends Object3D>(...keys: string[]) {
 
       (self as State).set(key, {
         get: () => object[key],
-        set: (value: unknown) => write(self, object, key, value)
+        set(value: unknown) {
+          try {
+            return write(self, object, key, value);
+          } finally {
+            changed?.(object as unknown as THREE.Object3D);
+          }
+        }
       });
     }
+
+    changed?.(object as unknown as THREE.Object3D);
   };
 }
 
@@ -187,6 +210,7 @@ function mount(self: Object3D) {
     }
 
     at = target;
+    AT.set(self, target);
 
     if (target) {
       objectOf(target).add(object);
@@ -210,17 +234,45 @@ function mount(self: Object3D) {
   return () => {
     stop();
     move(undefined);
+    TOUCHED.delete(self);
   };
+}
+
+/**
+ * Check nodes reached through `_object` since the last call - one moved there instead of through
+ * `parent` warns once, and goes back where `parent` puts it unless it now sits under a foreign object.
+ */
+function verify() {
+  for (const node of TOUCHED) {
+    const object = objectOf(node);
+    const at = AT.get(node);
+    const expected = at ? objectOf(at) : null;
+    const actual = object.parent;
+
+    if (actual === expected) continue;
+
+    if (!WARNED.has(node)) {
+      WARNED.add(node);
+      console.warn(`${node} was moved through _object - place it with \`parent\` instead.`);
+    }
+
+    if (actual && !NODE.has(actual)) continue;
+
+    if (expected) expected.add(object);
+    else object.removeFromParent();
+  }
+
+  TOUCHED.clear();
 }
 
 Object3D.on({
   setup(self) {
-    contract('visible', 'position', 'rotation', 'scale')(self);
+    contract(['visible', 'position', 'rotation', 'scale'])(self);
     placement(self);
   },
   ready: mount
 });
 
-Mesh.on({ setup: contract('geometry', 'material') });
+Mesh.on({ setup: contract(['geometry', 'material']) });
 
-export { Group, Mesh, Object3D, objectOf, Scene };
+export { contract, Group, Mesh, Object3D, objectOf, Scene, verify };
