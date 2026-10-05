@@ -231,12 +231,51 @@ describe('MVC adapter', () => {
       }
     }
 
-    expect(() => Value.get()).toThrow('may only run while @expressive/dom is rendering');
-    expect(() => Value.use()).toThrow('may only run while @expressive/dom is rendering');
+    expect(() => Value.get()).toThrow(
+      'Could not find Value in context. Outside a render, only globals are visible.'
+    );
+    expect(() => Value.use()).toThrow('State.use() may only run while @expressive/dom is rendering');
     expect(() => (View as any).use()).toThrow('render it instead of calling use()');
     expect(() => render(<View />, document.createElement('main'))).toThrow(
       'only available at the top level of a function component'
     );
+  });
+
+  it('will get an untracked State outside a render', () => {
+    class Value extends State {
+      static readonly global = true;
+    }
+
+    const value = Value.new();
+
+    expect(Value.get()).toBe(value);
+
+    value.set(null);
+  });
+
+  it('will render under the ambient context', () => {
+    class Session extends State {
+      name = 'foo';
+    }
+
+    function View() {
+      return <span>{Session.get().name}</span>;
+    }
+
+    const base = Context.get;
+    const ambient = new Context({ Session });
+    const root = document.createElement('main');
+
+    Context.get = (state) => (state ? base(state) : ambient);
+
+    try {
+      render(<View />, root);
+    } finally {
+      Context.get = base;
+    }
+
+    expect(root.textContent).toBe('foo');
+    ambient.pop();
   });
 
   it('will support optional, required and selected context snapshots', async () => {
