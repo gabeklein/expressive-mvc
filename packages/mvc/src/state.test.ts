@@ -1015,6 +1015,34 @@ describe('get method', () => {
       unsub();
       sub.pop();
     });
+
+    it('will subscribe effect to fields read from fetched state', async () => {
+      class Auth extends State {
+        name = 'foo';
+        other = 0;
+      }
+
+      const ctx = new Context({ Auth, Foo });
+      const auth = ctx.get(Auth);
+      const effect = vi.fn();
+      const release = ctx.get(Foo).get((self) => {
+        effect(self.get(Auth).name);
+      });
+
+      auth.other = 1;
+      await expect(auth).toHaveUpdated();
+      expect(effect).toHaveBeenCalledTimes(1);
+
+      auth.name = 'bar';
+      await expect(auth).toHaveUpdated();
+      expect(effect).toHaveBeenCalledTimes(2);
+      expect(effect).toHaveBeenLastCalledWith('bar');
+
+      release();
+      auth.name = 'baz';
+      await expect(auth).toHaveUpdated();
+      expect(effect).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('owner', () => {
@@ -1250,6 +1278,25 @@ describe('get method', () => {
 
       expect(cleanup).toHaveBeenCalledTimes(2);
       expect(cleanup).toHaveBeenCalledWith(parent.child);
+    });
+
+    it('will subscribe effect to fields read from owner', async () => {
+      class Parent extends State {
+        value = 0;
+        child = new Child();
+      }
+
+      const parent = Parent.new();
+      const effect = vi.fn();
+
+      parent.child.get((self) => {
+        effect((self.get(State) as Parent).value);
+      });
+
+      parent.value = 1;
+      await expect(parent).toHaveUpdated();
+      expect(effect).toHaveBeenCalledTimes(2);
+      expect(effect).toHaveBeenLastCalledWith(1);
     });
   });
 

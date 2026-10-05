@@ -9,6 +9,34 @@ import * as hot from '@expressive/mvc/hot';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 
 describe('MVC adapter', () => {
+  it('will update when a State fetched via this.get changes', async () => {
+    class Auth extends State {
+      static readonly global = true;
+      name = 'foo';
+    }
+
+    class View extends Component {
+      render() {
+        return <span>{this.get(Auth).name}</span>;
+      }
+    }
+
+    const auth = Auth.new();
+    const root = document.createElement('main');
+    const release = render(<View />, root);
+
+    expect(root.textContent).toBe('foo');
+
+    auth.name = 'bar';
+    await expect(auth).toHaveUpdated();
+    await Promise.resolve();
+
+    expect(root.textContent).toBe('bar');
+
+    release();
+    auth.set(null);
+  });
+
   it('will render a Component and update only an accessed field', async () => {
     const renders = vi.fn();
     const cleanup = vi.fn();

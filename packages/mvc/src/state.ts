@@ -379,8 +379,9 @@ abstract class State {
     if (arg1 === State)
       return typeof arg2 == 'function'
         ? owned(self, arg2 as (child: State) => void)
-        : owner(self, arg2 as boolean);
-    if (State.is(arg1)) return Context.get(self).get(arg1, arg2, arg3, self);
+        : observed(this, arg1, owner(self, arg2 as boolean));
+    if (State.is(arg1))
+      return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
@@ -576,6 +577,10 @@ define(State, 'toString', {
     return this.name;
   }
 });
+
+function observed<T>(from: State, key: unknown, value: T): T {
+  return value instanceof State ? touch(from, key, value) : value;
+}
 
 /** Register a user OnEvent callback, preserving `this` and `source`. */
 function callback<T extends State>(
