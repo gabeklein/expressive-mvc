@@ -9,7 +9,7 @@ A three.js scene graph built as an addressable `State` tree. Nodes are classes, 
 ## Agreed shape
 
 - **Nodes are `State`**, not `Component`. JSX is at most sugar for props and children - not designed around.
-- **Placement defaults to ownership.** Ownership (`get(State)`) is lifetime; placement is where a node draws. Unplaced, a node attaches under the nearest owning `Object3D`, past owners which are not nodes. References (`get()`) and guests (already-active instances) do not attach. Explicit placement is planned - see MVP.
+- **Placement defaults to ownership.** Ownership (`get(State)`) is lifetime; placement is where a node draws. Unplaced, a node attaches under the nearest owning `Object3D`, past owners which are not nodes. References (`get()`) and guests (already-active instances) do not attach. `parent` places explicitly - a node, `null` for nowhere, or an instruction (`parent = get(World)`); it stays out of the store, so the node held there is not adopted. `children` is the read view, one parent at a time. Placement never touches lifetime - pools spawn by placing and despawn by unplacing; a destroyed parent returns its placed nodes to their owner. Only edges between our nodes are managed; three never writes back.
 - **Existence is the ownership lifecycle** - field assignment, pool add/delete, destroy. Gating is state, not conditional rendering.
 - **Scenes are addressable.** Compose with fields (`turret = new Turret()`) and pools (`enemies = has((e: Mob | Boss) => e)`) on the owning class. A separate manager class only when the population has state of its own (an aggro table). Order is not significant - three sorts draws; `renderOrder` is explicit.
 - **Primitives install a fixed member contract at `setup`** through `state.set(key, { get, set })`; the three.js object is the storage. Transforms (`position`, `rotation`, `scale`) read as the live three.js vector and follow expressive's in-place rule - assigning a vector copies it in and dispatches if changed, mutating in place is silent, `set('position')` announces. Assign to place, mutate to animate. Vectors only - no tuple form. At `setup` a subclass default is still a plain value, so it reaches the object. Primitives declare no instruction fields - a subclass initializer silently replaces those. Instructions are a user tool.
@@ -19,21 +19,22 @@ A three.js scene graph built as an addressable `State` tree. Nodes are classes, 
 
 ## Status
 
-Built: `Object3D`, `Group`, `Scene`, `Mesh`; member contract for `visible`, `geometry`, `material`, and live-vector transforms; `lookAt()`; ownership hierarchy and lifecycle; `Frame`, `loop()`. 100% coverage against real `THREE.Scene` graphs. No pixels rendered yet.
+Built: `Object3D`, `Group`, `Scene`, `Mesh`; member contract for `visible`, `geometry`, `material`, and live-vector transforms; `lookAt()`; placement (`parent`, `children`) defaulting to ownership; lifecycle; `Frame`, `loop()`. 100% coverage against real `THREE.Scene` graphs. No pixels rendered yet.
 
 ## MVP
 
-- [ ] Placement - `parent` a reactive field (unset follows ownership, or for a wrapped object wherever it already was; a node places; `null` unplaces; any instruction, e.g. `parent = get(World)`), pushed to three - which never writes back. Only edges between our nodes are managed. `children` on containers is the read view; one parent at a time. Placement never touches lifetime - pools spawn by placing, despawn by unplacing.
+- [x] Placement - `parent` and `children` (see Agreed shape).
 - [ ] `_object` a protected getter over a module-private store - access marks the node touched; `draw()` verifies touched nodes' structure (ours wins, dev warns) and marks the scene dirty. Guidance: values in frame handlers through members, never structure or lifecycle through `_object`. Base generic, `Object3D<T extends THREE.Object3D>`, in place of redeclared field types.
 - [ ] Viewport root - renderer, camera, resize, loop, `draw()`.
 - [ ] Camera and light nodes.
-- [ ] Asset node owning a loaded subtree, named parts as fields.
+- [ ] Asset node owning a loaded subtree, named parts as fields. A wrapped part's unset `parent` keeps wherever the loaded graph put it.
 - [ ] Real-browser verification of what draws, in the vein of `cascade-probe.ts`.
 - [ ] Decide whether pointer events (raycasting) are MVP.
 
 ## Prerequisites in mvc
 
-- **Public ownership - blocking.** `parent()` is internal; the build imports `@expressive/mvc/state`, outside mvc's `exports`, so the package is not consumable outside the monorepo. Context does not substitute: an owner and everything below it register in the one context the root owner was provided into, so "whose context is this" skips intermediate owners, and `get(State)` resolves nothing (`State` is never a registered key). `@expressive/inspect` rebuilds ownership heuristically for the same reason. Options: a read-only owner accessor; or a context per owner, so context mirrors ownership - which breaks owner-to-descendant lookups (`get(Bar)` from `Baz`) flat contexts allow today.
+- **Public ownership** - done (#460). The owner walk uses `get(State, false)`; the build imports only `@expressive/mvc`.
+- **Field `get()` of a distant ancestor** - done (#466). `parent = get(World)` resolves in a host-less scene.
 
 ## Open decisions
 
