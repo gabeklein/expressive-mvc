@@ -1,4 +1,4 @@
-import { State, has, map, set } from '@expressive/mvc';
+import { Context, State, has, map, set } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockUncaught, mockWarn } from '../test.setup';
@@ -79,8 +79,9 @@ describe('models', () => {
     attach();
     const parent = Parent.new();
     const kid = parent.kids.add();
-    const mapped = Child.new();
-    parent.lookup.set('m', mapped);
+    const guest = Child.new();
+    parent.lookup.set('m', new Child());
+    parent.lookup.set('g', guest);
 
     const byId = Object.fromEntries(models().map((m) => [m.id, m]));
     const root = byId[String(parent)];
@@ -93,12 +94,13 @@ describe('models', () => {
     expect(root.parent).toBeUndefined();
     expect(byId[String(parent.child)].parent).toBe(String(parent));
     expect(byId[String(kid)].parent).toBe(String(parent));
-    expect(byId[String(mapped)].parent).toBe(String(parent));
+    expect(byId[String(parent.lookup.get('m'))].parent).toBe(String(parent));
+    expect(byId[String(guest)].parent).toBeUndefined();
   });
 
-  it('will credit a shared child to its first owner', () => {
+  it('will credit a shared child to its owner, not a later holder', () => {
     class Twin extends State {
-      shared = Child.new();
+      shared = new Child();
       numbers = has([1, 2]);
       names = map<string, string>();
       list = [this.shared];
@@ -119,6 +121,23 @@ describe('models', () => {
     const nodes = tree();
     expect(nodes.map((n) => n.id)).toEqual([String(parent), String(loose)]);
     expect(nodes[0].children.map((n) => n.id)).toEqual([String(parent.child)]);
+  });
+
+  it('will nest a hosted instance under its host, not a guest under its holder', () => {
+    class Holder extends State {
+      held?: Child = undefined;
+    }
+    attach();
+    const holder = Holder.new();
+    const guest = Child.new();
+    const hosted = new Child();
+    holder.held = guest;
+    new Context(holder).push(hosted);
+    const nodes = tree();
+    expect(nodes.map((n) => n.id)).toEqual([String(holder), String(guest)]);
+    expect(nodes[0].children.map((n) => n.id)).toEqual([String(hosted)]);
+    expect(find(String(hosted))!.parent!.id).toBe(String(holder));
+    expect(find(String(holder))!.children.map((c) => c.id)).toEqual([String(hosted)]);
   });
 });
 
