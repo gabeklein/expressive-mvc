@@ -118,7 +118,7 @@ const stop = state.get((current, changed) => {
 });
 ```
 
-- `current` - tracking proxy. Reads create subscriptions.
+- `current` - tracking proxy. Reads create subscriptions, including reads off a State fetched with `current.get(Type)` or `current.get(State)`.
 - `changed` - readonly array of keys changed since last run (empty on first run, `undefined` if state wasn't ready).
 - Return a cleanup function, `null` (cancel), or `void`.
 - Cleanup receives `true` (about to re-run), `false` (cancelled), or `null` (state destroyed).
