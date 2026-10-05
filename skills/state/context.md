@@ -67,7 +67,7 @@ Call `use()` deliberately - an entry point, a request boundary - never from a he
 
 ### Ambient context
 
-`Context.get()` with no argument is the ambient context - root, unless a host overrides it (e.g. per request via `AsyncLocalStorage`). Client adapters do not override it; render position stays inside their `State.get()` and `State.use()`. An override runs from every State constructor - keep it cheap, no hooks.
+`Context.get()` with no argument is the ambient context - root, unless a host overrides it (e.g. per request via `AsyncLocalStorage`). Client adapters do not override it; render position stays inside their `State.get()` and `State.use()`. An override replaces only the no-argument form - core resolves a State's own context without consulting it. It runs from every State constructor - keep it cheap, no hooks.
 
 - `State.use()` outside a render creates in the ambient context, owned by it - destroyed when it pops.
 - A State constructed while the ambient context is not root records it as its home fallback: `get(Type)` fields and `state.get(Type)` resolve from it. Registering into a context still wins.

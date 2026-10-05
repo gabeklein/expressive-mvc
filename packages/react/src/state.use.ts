@@ -1,6 +1,6 @@
 import { State } from '@expressive/mvc';
 import type { UseState } from '@expressive/mvc';
-import { useFactory, useWatch } from './runtime';
+import { Runtime, useFactory, useWatch } from './runtime';
 import { Context, useAmbient } from './context';
 
 const create = State.use;
@@ -10,6 +10,8 @@ State.use = function use<T extends State>(
   ...args: State.UseArgs<T>
 ) {
   let outer: Context;
+
+  if (Runtime.idle()) return (create as Function).apply(this, args);
 
   try {
     outer = useAmbient();

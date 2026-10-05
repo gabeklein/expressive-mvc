@@ -1,5 +1,5 @@
 import { capture, listener, observer } from '../observable';
-import { Context } from '../context';
+import { home } from '../context';
 import { State, children, owned, parent, STORE, update } from '../state';
 import { def } from './def';
 
@@ -148,7 +148,7 @@ function above<T extends State>(
     }
 
     if (!found) {
-      const remove = Context.get(subject).get(Type, (state) => {
+      const remove = home(subject).get(Type, (state) => {
         if (depth !== Infinity) return;
         found = true;
         assign(state);
@@ -190,7 +190,7 @@ function below<T extends State>(
   arg: get.Callback<T> | boolean | undefined
 ) {
   return def<T[]>((key, subject) => {
-    const context = Context.get(subject);
+    const context = home(subject);
     const watch = (callback: (state: T) => (() => void) | void) =>
       Type === State
         ? owned(subject, callback as (state: State) => (() => void) | void)

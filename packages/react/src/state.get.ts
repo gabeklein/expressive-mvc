@@ -11,6 +11,8 @@ State.get = function get<T extends State>(
 ) {
   let local: Context;
 
+  if (Runtime.idle()) return (resolve as Function).call(this, argument);
+
   try {
     local = useAmbient();
   } catch {

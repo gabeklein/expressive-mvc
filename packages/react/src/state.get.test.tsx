@@ -40,6 +40,26 @@ describe('State.get', () => {
     expect(calls).toEqual([]);
   });
 
+  it('will get instance outside a render without logging', () => {
+    class Value extends State {
+      static readonly global = true;
+    }
+
+    const value = Value.new();
+    const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const dispatcher = internals.H;
+
+    internals.H = null;
+
+    try {
+      expect(Value.get()).toBe(value);
+    } finally {
+      internals.H = dispatcher;
+    }
+
+    value.set(null);
+  });
+
   it('will get instance from an event handler', async () => {
     class Value extends State {
       static readonly global = true;

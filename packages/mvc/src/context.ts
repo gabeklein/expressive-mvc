@@ -33,7 +33,7 @@ class Context {
    * override must be cheap and must not use hooks.
    */
   static get(state?: State): Context {
-    return state && (LOOKUP.get(state = state.is) || ANCHOR.get(state)) || Context.root;
+    return state ? home(state) : Context.root;
   }
 
   public id = uid();
@@ -422,4 +422,9 @@ function own(ctx: Context, state: State) {
   }, null);
 }
 
-export { anchor, Context, host, join, LOOKUP, own, root };
+/** The context a State resolves from - not overridable, unlike `Context.get`. */
+function home(state: State): Context {
+  return LOOKUP.get(state.is) || ANCHOR.get(state.is) || Context.root;
+}
+
+export { anchor, Context, home, host, join, LOOKUP, own, root };

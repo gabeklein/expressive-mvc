@@ -13,7 +13,10 @@ Object.defineProperty(Component.prototype, 'isReactComponent', {
   value: true
 });
 
+const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+
 Object.assign(Runtime, {
+  idle: () => internals?.H === null,
   dedupe,
   ErrorBoundary,
   createElement: React.createElement,

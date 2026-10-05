@@ -1,4 +1,4 @@
-import { Context } from '../context';
+import { home } from '../context';
 import { event, listener, touch } from '../observable';
 import { State, parent } from '../state';
 import { def } from './def';
@@ -311,7 +311,7 @@ function adopt(
   let detach: (() => void) | undefined;
 
   if (fresh && owner)
-    detach = Context.get(owner).add(value);
+    detach = home(owner).add(value);
 
   OWNED.get(target)!.set(key, () => {
     evict();

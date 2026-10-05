@@ -3614,6 +3614,27 @@ describe('get method (static)', () => {
     );
   });
 
+  it('will treat an ambiguous lookup as not found', () => {
+    class Foo extends State {}
+    class Bar extends Foo {}
+    class Parent extends State {
+      foo = new Foo();
+      bar = new Bar();
+    }
+
+    const base = Context.get;
+    const ambient = new Context(Parent);
+
+    Context.get = (state) => (state ? base(state) : ambient);
+
+    try {
+      expect(() => Foo.get()).toThrow(/^Could not find Foo in context\.$/);
+      expect(Foo.get(false)).toBeUndefined();
+    } finally {
+      Context.get = base;
+    }
+  });
+
   it('will get from ambient context', () => {
     const base = Context.get;
     const ambient = new Context({ Private });
