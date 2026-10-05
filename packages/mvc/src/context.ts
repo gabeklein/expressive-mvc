@@ -4,6 +4,8 @@ import { event, State, uid } from "./state";
 const LOOKUP = new WeakMap<State, Context>();
 const HELD = new WeakMap<State, Map<State, Set<() => void>>>();
 const HOST = new WeakMap<Context, State>();
+const WARNED = new WeakSet<Function>();
+let HOT = false;
 let ROOT: Context;
 
 type Accept<T extends State = State> =
@@ -242,10 +244,22 @@ class Context {
             const type = I.constructor as State.Extends;
             const g = type.global;
 
-            if (entry[0].constructor === type && (typeof g == 'function' ? g(I) : g))
-              throw new Error(
-                `Cannot register ${I} as a global - ${entry[0]} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
-              );
+            if (entry[0].constructor === type && (typeof g == 'function' ? g(I) : g)) {
+              if (!HOT)
+                throw new Error(
+                  `Cannot register ${I} as a global - ${entry[0]} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+                );
+
+              if (!WARNED.has(type)) {
+                WARNED.add(type);
+                console.warn(
+                  `${I} replaced ${entry[0]} as the global ${type} - expected after a hot update; otherwise ${type}.new() ran twice.`
+                );
+              }
+
+              entry[0].set(null);
+              return false;
+            }
 
             return entries.delete(entry);
           }
@@ -382,4 +396,9 @@ function host(state: State) {
   }
 }
 
-export { Context, host, join };
+/** Under hot patching, a re-created global replaces the one before it. */
+function hot() {
+  HOT = true;
+}
+
+export { Context, hot, host, join };

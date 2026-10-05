@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Component, State } from '.';
+import { mockWarn } from '../test.setup';
+import { Component, Context, State } from '.';
 import { accept, replaced } from './hot';
 
 const SYMBOL = Symbol('static');
@@ -1170,5 +1171,28 @@ describe('replaced', () => {
     release();
     also();
     error.mockRestore();
+  });
+});
+
+describe('global', () => {
+  it('will replace a global created again by a re-run module', () => {
+    const warn = mockWarn();
+
+    class Auth extends State {
+      static readonly global = true;
+    }
+
+    accept(module(), { Auth });
+
+    const before = Auth.new();
+    const after = Auth.new();
+
+    expect(Context.root.get(Auth)).toBe(after);
+    expect(before.get(null)).toBe(true);
+    expect(warn).toHaveBeenCalledOnce();
+
+    Auth.new();
+
+    expect(warn).toHaveBeenCalledOnce();
   });
 });

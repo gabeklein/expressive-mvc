@@ -1,4 +1,5 @@
 import { rechain } from './component';
+import { hot } from './context';
 import { event } from './observable';
 import {
   State,
@@ -51,6 +52,7 @@ function track() {
   if (LIVE) return;
 
   LIVE = new Set();
+  hot();
 
   State.on({
     type(type) {

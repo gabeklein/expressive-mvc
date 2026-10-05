@@ -478,6 +478,7 @@ import { Shell } from './shell';
 import { Kit } from './kit';
 import { Pill } from './pill';
 import { Noted } from './noted';
+import { Flagged } from './flagged';
 import { Vault } from './vault';
 import { Deck } from './deck';
 import { Guard } from './guard';
@@ -501,6 +502,7 @@ export const App = () => (
     <Pill tag="a" />
     <Pill tag="b" />
     <Noted />
+    <Flagged />
     <Vault />
     <Deck />
     <Guard />
@@ -518,6 +520,28 @@ import { createRoot } from 'react-dom/client';
 import { App } from './app';
 
 createRoot(document.getElementById('root')!).render(<App />);
+`,
+  'flags.ts': `import { State } from '@expressive/mvc';
+
+export class Flags extends State {
+  static readonly global = true;
+  mode = 'on';
+}
+`,
+  'session.ts': `import { Flags } from './flags';
+
+export const flags = Flags.new();
+export const NAME = 'flags';
+`,
+  'flagged.tsx': `import { Component } from '@expressive/mvc';
+import { Flags } from './flags';
+import { NAME } from './session';
+
+export class Flagged extends Component {
+  render() {
+    return <p id="flagged">{NAME} {Flags.get().mode}</p>;
+  }
+}
 `,
   strict: `import '@expressive/react';
 import { StrictMode } from 'react';
@@ -944,6 +968,15 @@ async function run(mode: Mode) {
       await see('#note', 'memo 3');
       await relay('set', 'Note.count', 4);
       await see('#note', 'memo 4');
+      check(await alive(), 'page reloaded');
+    });
+
+    await scenario('a module creating a global at module scope re-runs without a duplicate', async () => {
+      await see('#flagged', 'flags on');
+      await edit('session.ts', "NAME = 'flags'", "NAME = 'toggles'");
+      await see('#flagged', 'toggles on');
+      await relay('set', 'Flags.mode', 'off');
+      await see('#flagged', 'toggles off');
       check(await alive(), 'page reloaded');
     });
 
