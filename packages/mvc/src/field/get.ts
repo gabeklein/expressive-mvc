@@ -127,6 +127,15 @@ function above<T extends State>(
     for (let p: State | null | undefined = hasParent; p; p = parent(p), level++) {
       const at = level;
 
+      if (p instanceof Type) {
+        if (!found) {
+          found = true;
+          depth = at;
+          assign(p as T);
+        }
+        break;
+      }
+
       const remove = children(p, (child) => {
         if (child !== subject && child instanceof Type && at <= depth) {
           found = true;
