@@ -2,17 +2,17 @@ import { State } from '@expressive/mvc';
 import { parent } from '@expressive/mvc/state';
 import * as THREE from 'three';
 
-type Vec3 = [number, number, number];
-
 /** A scene graph node, representing the three.js object `create` returns. */
 abstract class Object3D extends State {
   /** The three.js object this class represents. */
   protected readonly _object: THREE.Object3D;
 
   declare visible: boolean;
-  declare position: Vec3;
-  declare rotation: Vec3;
-  declare scale: Vec3;
+
+  /** Live vector - mutate in place to animate without dispatch; assign one to place and dispatch. */
+  declare position: THREE.Vector3;
+  declare rotation: THREE.Euler;
+  declare scale: THREE.Vector3;
 
   constructor(...args: State.Args) {
     super(...args);
@@ -22,8 +22,12 @@ abstract class Object3D extends State {
   }
 
   /** Turn to face a point in world space. */
-  lookAt(...at: Vec3) {
-    this._object.lookAt(...at);
+  lookAt(target: THREE.Vector3): void;
+  lookAt(x: number, y: number, z: number): void;
+  lookAt(x: THREE.Vector3 | number, y?: number, z?: number) {
+    if (typeof x == 'number') this._object.lookAt(x, y!, z!);
+    else this._object.lookAt(x);
+
     this.set('rotation');
   }
 
@@ -82,8 +86,8 @@ function contract<T extends Object3D>(...keys: string[]) {
       }
 
       (self as State).set(key, {
-        get: () => read(object, key),
-        set: (value: unknown) => write(object, key, value)
+        get: () => object[key],
+        set: (value: unknown) => write(self, object, key, value)
       });
     }
   };
@@ -91,22 +95,17 @@ function contract<T extends Object3D>(...keys: string[]) {
 
 function vector(object: Members, key: string) {
   const value = object[key];
-  return value instanceof THREE.Vector3 || value instanceof THREE.Euler ? value : undefined;
-}
-
-function read(object: Members, key: string) {
-  const v = vector(object, key);
-  return v ? [v.x, v.y, v.z] : object[key];
+  return value instanceof THREE.Vector3 || value instanceof THREE.Euler ? (value as THREE.Vector3) : undefined;
 }
 
 function place(object: Members, key: string, value: unknown) {
   const v = vector(object, key);
 
-  if (v) v.set(...(value as Vec3));
+  if (v) v.copy(value as THREE.Vector3);
   else object[key] = value;
 }
 
-function write(object: Members, key: string, value: unknown) {
+function write(self: State, object: Members, key: string, value: unknown) {
   const v = vector(object, key);
 
   if (!v) {
@@ -114,13 +113,12 @@ function write(object: Members, key: string, value: unknown) {
     return;
   }
 
-  const [x, y, z] = value as Vec3;
+  if (!v.equals(value as THREE.Vector3)) {
+    v.copy(value as THREE.Vector3);
+    self.set(key);
+  }
 
-  if (v.x === x && v.y === y && v.z === z) throw false;
-
-  v.set(x, y, z);
-
-  return [x, y, z];
+  throw false;
 }
 
 function owner(self: Object3D) {
@@ -143,4 +141,4 @@ Object3D.on({
 
 Mesh.on({ setup: contract('geometry', 'material') });
 
-export { Group, Mesh, Object3D, objectOf, Scene, Vec3 };
+export { Group, Mesh, Object3D, objectOf, Scene };

@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { get, has, set, State } from '@expressive/mvc';
 
 import { Frame } from './frame';
-import { Group, Mesh, objectOf, Scene, Vec3 } from './object';
+import { Group, Mesh, objectOf, Scene } from './object';
 import { flushMicrotasks } from '../test.setup';
 
 const meshOf = (self: object) => objectOf(self) as THREE.Mesh;
@@ -17,7 +17,15 @@ describe('read', () => {
     meshOf(mesh).position.set(1, 2, 3);
 
     expect(mesh.visible).toBe(false);
-    expect(mesh.position).toEqual([1, 2, 3]);
+    expect(mesh.position.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it('will read the live vector', () => {
+    const mesh = Mesh.new();
+
+    expect(mesh.position).toBe(meshOf(mesh).position);
+    expect(mesh.rotation).toBe(meshOf(mesh).rotation);
+    expect(mesh.scale).toBe(meshOf(mesh).scale);
   });
 
   it('will hold no shadow copy of a value', () => {
@@ -50,7 +58,7 @@ describe('write', () => {
     const mesh = Mesh.new();
     const { position } = meshOf(mesh);
 
-    mesh.position = [4, 5, 6];
+    mesh.position = new THREE.Vector3(4, 5, 6);
 
     expect(meshOf(mesh).position).toBe(position);
     expect(position.toArray()).toEqual([4, 5, 6]);
@@ -59,7 +67,7 @@ describe('write', () => {
   it('will dispatch an update to consumers', async () => {
     const mesh = Mesh.new();
 
-    mesh.position = [1, 0, 0];
+    mesh.position = new THREE.Vector3(1, 0, 0);
 
     await expect(mesh).toHaveUpdated('position');
   });
@@ -67,17 +75,49 @@ describe('write', () => {
   it('will not dispatch when a vector is unchanged', async () => {
     const mesh = Mesh.new();
 
-    mesh.position = [1, 0, 0];
+    mesh.position = new THREE.Vector3(1, 0, 0);
     await expect(mesh).toHaveUpdated('position');
 
-    mesh.position = [1, 0, 0];
+    mesh.position = new THREE.Vector3(1, 0, 0);
     await expect(mesh).not.toHaveUpdated();
+  });
+
+  it('will dispatch every change, reusing one vector', async () => {
+    const mesh = Mesh.new({ position: new THREE.Vector3(0, 1, 0) });
+    const next = new THREE.Vector3();
+
+    mesh.position = next.set(0, 2, 0);
+    await expect(mesh).toHaveUpdated('position');
+
+    mesh.position = next.set(0, 3, 0);
+    await expect(mesh).toHaveUpdated('position');
+
+    expect(mesh.position.y).toBe(3);
+  });
+
+  it('will not dispatch a change made in place', async () => {
+    const mesh = Mesh.new();
+
+    mesh.position.y = 3;
+    mesh.position = mesh.position;
+
+    expect(meshOf(mesh).position.y).toBe(3);
+    await expect(mesh).not.toHaveUpdated();
+  });
+
+  it('will dispatch a change made in place once announced', async () => {
+    const mesh = Mesh.new();
+
+    mesh.position.y = 3;
+    mesh.set('position');
+
+    await expect(mesh).toHaveUpdated('position');
   });
 
   it('will drive a computed value', async () => {
     class Box extends Mesh {
       get height() {
-        return this.scale[1];
+        return this.scale.y;
       }
     }
 
@@ -86,7 +126,7 @@ describe('write', () => {
     await flushMicrotasks();
     expect(box.height).toBe(1);
 
-    box.scale = [1, 4, 1];
+    box.scale = new THREE.Vector3(1, 4, 1);
     await expect(box).toHaveUpdated('scale');
 
     expect(box.height).toBe(4);
@@ -98,7 +138,12 @@ describe('write', () => {
     mesh.lookAt(0, 0, 1);
 
     await expect(mesh).toHaveUpdated('rotation');
-    expect(mesh.rotation[1]).toBeCloseTo(0);
+    expect(mesh.rotation.y).toBeCloseTo(0);
+
+    mesh.lookAt(new THREE.Vector3(1, 0, 0));
+
+    await expect(mesh).toHaveUpdated('rotation');
+    expect(mesh.rotation.y).toBeCloseTo(Math.PI / 2);
   });
 });
 
@@ -118,31 +163,36 @@ describe('subclass defaults', () => {
 
   it('will copy a vector default into the object', () => {
     class Raised extends Mesh {
-      position: Vec3 = [0, 2, 0];
+      position = new THREE.Vector3(0, 2, 0);
     }
 
-    expect(meshOf(Raised.new()).position.y).toBe(2);
+    const raised = Raised.new();
+
+    expect(meshOf(raised).position.y).toBe(2);
+    expect(raised.position).toBe(meshOf(raised).position);
   });
 
   it('will accept a default equal to the current value', () => {
     class Grounded extends Mesh {
-      position: Vec3 = [0, 0, 0];
+      position = new THREE.Vector3(0, 0, 0);
     }
 
-    expect(Grounded.new().position).toEqual([0, 0, 0]);
+    expect(Grounded.new().position.toArray()).toEqual([0, 0, 0]);
   });
 
   it('will let a constructor argument override the default', () => {
     class Raised extends Mesh {
-      position: Vec3 = [0, 2, 0];
+      position = new THREE.Vector3(0, 2, 0);
     }
 
-    expect(Raised.new({ position: [0, 5, 0] }).position).toEqual([0, 5, 0]);
+    const raised = Raised.new({ position: new THREE.Vector3(0, 5, 0) });
+
+    expect(raised.position.y).toBe(5);
   });
 
   it('will throw if a subclass derives a member with an instruction', () => {
     class Derived extends Mesh {
-      geometry = set((self: Derived) => new THREE.BoxGeometry(self.scale[0]));
+      geometry = set((self: Derived) => new THREE.BoxGeometry(self.scale.x));
     }
 
     expect(() => Derived.new()).toThrowError(
@@ -335,7 +385,7 @@ describe('imperative behavior', () => {
 
       protected new() {
         return this.frame.each((delta) => {
-          this._object.rotation.y += this.speed * delta;
+          this.rotation.y += this.speed * delta;
         });
       }
     }
