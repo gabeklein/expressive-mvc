@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
-import { get, has, set, State } from '@expressive/mvc';
+import { Context, get, has, set, State } from '@expressive/mvc';
 
 import { Frame } from './frame';
-import { Group, Mesh, objectOf, Scene } from './object';
+import { Group, Mesh, Object3D, objectOf, Scene } from './object';
 import { flushMicrotasks } from '../test.setup';
 
 const meshOf = (self: object) => objectOf(self) as THREE.Mesh;
@@ -313,6 +313,197 @@ describe('hierarchy', () => {
     const material = meshOf(world.themed).material as THREE.MeshBasicMaterial;
 
     expect(material.color.getHexString()).toBe('ff0000');
+  });
+});
+
+describe('placement', () => {
+  it('will draw under an assigned parent without changing owner', async () => {
+    class World extends Scene {
+      hive = new Group();
+      bee = new Mesh();
+    }
+
+    const world = World.new();
+    const { hive, bee } = world;
+
+    bee.parent = hive;
+
+    expect(objectOf(bee).parent).toBe(objectOf(hive));
+    expect(hive.children).toEqual([bee]);
+    expect(world.children).toEqual([hive]);
+    expect(bee.get(State)).toBe(world);
+    await expect(bee).toHaveUpdated('parent');
+  });
+
+  it('will draw nowhere while unplaced and return to its owner when unset', () => {
+    class World extends Scene {
+      bee = new Mesh();
+    }
+
+    const world = World.new();
+    const { bee } = world;
+
+    bee.parent = null;
+
+    expect(objectOf(bee).parent).toBeNull();
+    expect(world.children).toEqual([]);
+    expect(bee.get(null)).toBe(false);
+
+    bee.parent = undefined;
+
+    expect(objectOf(bee).parent).toBe(objectOf(world));
+  });
+
+  it('will not dispatch an unchanged parent', async () => {
+    class World extends Scene {
+      bee = new Mesh();
+    }
+
+    const { bee } = World.new();
+
+    bee.parent = undefined;
+
+    await expect(bee).not.toHaveUpdated();
+  });
+
+  it('will start from a default', () => {
+    class Hidden extends Mesh {
+      parent: Object3D | null = null;
+    }
+
+    class World extends Scene {
+      hidden = new Hidden();
+    }
+
+    expect(graph(objectOf(World.new()))).toEqual([]);
+  });
+
+  it('will place by instruction', () => {
+    class Bullet extends Mesh {
+      parent = get(World);
+    }
+
+    class Gun extends Group {
+      bullets = has(Bullet);
+    }
+
+    class World extends Scene {
+      gun = new Gun();
+    }
+
+    const world = new Context(World).get(World);
+    const bullet = world.gun.bullets.add();
+
+    expect(objectOf(bullet).parent).toBe(objectOf(world));
+    expect(bullet.get(State)).toBe(world.gun);
+    expect(world.gun.children).toEqual([]);
+  });
+
+  it('will move between parents one at a time', () => {
+    class World extends Scene {
+      a = new Group();
+      b = new Group();
+      bee = new Mesh();
+    }
+
+    const { a, b, bee } = World.new();
+
+    bee.parent = a;
+    bee.parent = b;
+
+    expect(a.children).toEqual([]);
+    expect(b.children).toEqual([bee]);
+    expect(objectOf(a).children).toEqual([]);
+  });
+
+  it('will fall back to its owner when its parent is destroyed', () => {
+    class World extends Scene {
+      hive?: Group = new Group();
+      bee = new Mesh();
+    }
+
+    const world = World.new();
+    const { bee } = world;
+
+    bee.parent = world.hive!;
+    world.hive = undefined;
+
+    expect(objectOf(bee).parent).toBe(objectOf(world));
+    expect(bee.get(null)).toBe(false);
+  });
+
+  it('will leave a parent when destroyed', () => {
+    class World extends Scene {
+      hive = new Group();
+      pool = has(Mesh);
+    }
+
+    const { hive, pool } = World.new();
+    const bee = pool.add();
+
+    bee.parent = hive;
+    pool.delete(bee);
+
+    expect(hive.children).toEqual([]);
+    expect(objectOf(hive).children).toEqual([]);
+  });
+
+  it('will not detach from a parent it was moved off of', () => {
+    class World extends Scene {
+      hive = new Group();
+      bee = new Mesh();
+    }
+
+    const world = World.new();
+    const { hive, bee } = world;
+    const elsewhere = new THREE.Group();
+
+    bee.parent = hive;
+    elsewhere.add(objectOf(bee));
+    bee.parent = undefined;
+
+    expect(objectOf(bee).parent).toBe(objectOf(world));
+    expect(objectOf(hive).children).toEqual([]);
+  });
+
+  it('will spawn and despawn from a pool without destroying', () => {
+    class Mob extends Mesh {}
+
+    class Arena extends Scene {}
+
+    class Mobs extends State {
+      arena = get(Arena);
+      all = has(Mob);
+      idle: Mob[] = [];
+
+      spawn() {
+        const mob = this.idle.pop() || this.all.add();
+        mob.parent = this.arena;
+        return mob;
+      }
+
+      despawn(mob: Mob) {
+        mob.parent = null;
+        this.idle.push(mob);
+      }
+    }
+
+    class Game extends State {
+      arena = new Arena();
+      mobs = new Mobs();
+    }
+
+    const { arena, mobs } = Game.new();
+    const mob = mobs.spawn();
+
+    expect(arena.children).toEqual([mob]);
+
+    mobs.despawn(mob);
+
+    expect(arena.children).toEqual([]);
+    expect(mob.get(null)).toBe(false);
+    expect(mobs.spawn()).toBe(mob);
+    expect(graph(objectOf(arena))).toEqual(['/Mesh']);
   });
 });
 

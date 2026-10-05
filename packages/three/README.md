@@ -42,8 +42,11 @@ arena.spinner.boost(1);
   `scale` read as the object's live vectors: assign one to place (copied in,
   dispatched if changed), mutate in place to animate (silent). A subclass sets
   defaults as plain fields; constructor arguments override them.
-- **Hierarchy** - a node attaches under the nearest `Object3D` owning it, through
-  a field or a `has()` pool, past owners which are not nodes. A `get()` reference
-  or an already-active instance does not attach. Destroying a node detaches it.
+- **Placement** - unset, a node draws under the nearest `Object3D` owning it,
+  through a field or a `has()` pool, past owners which are not nodes. A `get()`
+  reference or an already-active instance does not attach. Assign `parent` to
+  draw elsewhere (`null` for nowhere, or `parent = get(World)`); `children` lists
+  what draws under a node. Placement never changes lifetime - destroying a node
+  detaches it, destroying its parent returns it to its owner.
 - **`Frame`** - per-frame callbacks via `each()`, mutating vectors in place. `loop()`
   drives one from `requestAnimationFrame`.

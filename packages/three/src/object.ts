@@ -1,5 +1,4 @@
 import { State } from '@expressive/mvc';
-import { parent } from '@expressive/mvc/state';
 import * as THREE from 'three';
 
 /** A scene graph node, representing the three.js object `create` returns. */
@@ -13,6 +12,15 @@ abstract class Object3D extends State {
   declare position: THREE.Vector3;
   declare rotation: THREE.Euler;
   declare scale: THREE.Vector3;
+
+  /**
+   * Node this one draws under. Unset follows ownership - the nearest owning node; `null` draws nowhere.
+   * Placement never changes lifetime.
+   */
+  declare parent: Object3D | null | undefined;
+
+  /** Nodes currently drawn under this one. */
+  declare readonly children: readonly Object3D[];
 
   constructor(...args: State.Args) {
     super(...args);
@@ -121,22 +129,96 @@ function write(self: State, object: Members, key: string, value: unknown) {
   throw false;
 }
 
-function owner(self: Object3D) {
-  for (let at = parent(self); at; at = parent(at))
+const PLACED = new WeakMap<Object3D, Set<Object3D>>();
+
+function placed(self: Object3D) {
+  let set = PLACED.get(self);
+  if (!set) PLACED.set(self, (set = new Set()));
+  return set;
+}
+
+function owner(self: State) {
+  for (let at = self.get(State, false); at; at = at.get(State, false))
     if (at instanceof Object3D) return at;
 }
 
-Object3D.on({
-  setup: contract('visible', 'position', 'rotation', 'scale'),
-  ready(self) {
-    const above = owner(self);
+function alive(node: Object3D | null | undefined) {
+  return node && !node.get(null) ? node.is : undefined;
+}
 
-    if (above) objectOf(above).add(objectOf(self));
+/** `parent` stays out of the store, so a node held there is not adopted; an instruction on it is left to resolve. */
+function placement(self: Object3D) {
+  const own = Object.getOwnPropertyDescriptor(self, 'parent');
 
-    return () => {
-      objectOf(self).removeFromParent();
-    };
+  if (!own || 'value' in own) {
+    let value = own?.value as Object3D | null | undefined;
+
+    delete (self as Partial<Object3D>).parent;
+
+    (self as State).set('parent', {
+      get: () => value,
+      set(next: unknown) {
+        if (next !== value) {
+          value = next as Object3D | null | undefined;
+          self.set('parent');
+        }
+
+        throw false;
+      }
+    });
   }
+
+  (self as State).set('children', { get: () => [...placed(self)], set: false });
+}
+
+function mount(self: Object3D) {
+  const object = objectOf(self);
+  let at: Object3D | undefined;
+  let release: (() => void) | undefined;
+
+  function move(target: Object3D | undefined) {
+    if (target === at) return;
+
+    if (at) {
+      release!();
+      if (object.parent === objectOf(at)) object.removeFromParent();
+      placed(at).delete(self);
+      at.set('children');
+    }
+
+    at = target;
+
+    if (target) {
+      objectOf(target).add(object);
+      placed(target).add(self);
+      target.set('children');
+      release = target.get(null, resolve);
+    }
+  }
+
+  function resolve() {
+    const chosen = self.parent;
+    move(chosen === null ? undefined : alive(chosen) || alive(owner(self)));
+  }
+
+  const stop = self.set((key) => {
+    if (key === 'parent') resolve();
+  });
+
+  resolve();
+
+  return () => {
+    stop();
+    move(undefined);
+  };
+}
+
+Object3D.on({
+  setup(self) {
+    contract('visible', 'position', 'rotation', 'scale')(self);
+    placement(self);
+  },
+  ready: mount
 });
 
 Mesh.on({ setup: contract('geometry', 'material') });
