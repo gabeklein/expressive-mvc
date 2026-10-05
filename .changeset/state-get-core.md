@@ -6,4 +6,4 @@
 
 A State constructed while the ambient context is not root anchors to it: its `get(Type)` fields and `state.get(Type)` resolve there, and a `static global` registers there under root's rules. With no host override nothing changes.
 
-`Context.get()` no longer takes a State - it is only the ambient context, so a host replaces one form. Resolve from a State's context with `state.get(Type)`.
+`Context.get()` no longer takes a State - it is only the ambient context, so a host replaces one form. `Context.for(state)` returns the context a State resolves from.

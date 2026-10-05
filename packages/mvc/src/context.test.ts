@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import { Context, home } from './context';
+import { Context } from './context';
 import { get } from './field/get';
 import { State } from './state';
 
@@ -87,12 +87,12 @@ it('will remove implicit children on pop', () => {
   const context = new Context(Parent);
   const { child } = context.get(Parent);
 
-  expect(home(child)).toBe(context);
+  expect(Context.for(child)).toBe(context);
 
   context.pop();
 
   // context assignment is permanent
-  expect(home(child)).toBe(context);
+  expect(Context.for(child)).toBe(context);
 });
 
 it('child pop is safe to call before parent pop', () => {
@@ -519,7 +519,7 @@ describe('with existing context', () => {
 
     new Context(foo);
 
-    expect(home(foo)).toBe(original);
+    expect(Context.for(foo)).toBe(original);
   });
 });
 
@@ -530,13 +530,13 @@ describe('context helper', () => {
     const test = new Test();
     const context = new Context(test);
 
-    expect(home(test)).toBe(context);
+    expect(Context.for(test)).toBe(context);
   });
 
   it('will fallback to root context if none assigned', () => {
     const test = new Test();
 
-    expect(home(test)).toBe(Context.root);
+    expect(Context.for(test)).toBe(Context.root);
   });
 
   it('will keep first context assigned', () => {
@@ -545,7 +545,7 @@ describe('context helper', () => {
 
     new Context(test);
 
-    expect(home(test)).toBe(first);
+    expect(Context.for(test)).toBe(first);
   });
 });
 
@@ -704,12 +704,12 @@ describe('set method', () => {
     const context = new Context({ Parent });
     const { child } = context.get(Parent);
 
-    expect(home(child)).toBe(context);
+    expect(Context.for(child)).toBe(context);
 
     context.set({});
 
     // context assignment is permanent
-    expect(home(child)).toBe(context);
+    expect(Context.for(child)).toBe(context);
     expect(context.get(Example, false)).toBeUndefined();
   });
 
@@ -1260,7 +1260,7 @@ describe('ambient context', () => {
     const ambient = new Context({ Session });
     const child = within(ambient, () => Child.new());
 
-    expect(home(child)).toBe(ambient);
+    expect(Context.for(child)).toBe(ambient);
     expect(child.session).toBe(ambient.get(Session));
     expect(child.get(Session)).toBe(ambient.get(Session));
   });
@@ -1296,11 +1296,11 @@ describe('ambient context', () => {
     const ambient = new Context();
     const state = within(ambient, () => new Example());
 
-    expect(home(state)).toBe(ambient);
+    expect(Context.for(state)).toBe(ambient);
 
     const context = new Context(state);
 
-    expect(home(state)).toBe(context);
+    expect(Context.for(state)).toBe(context);
   });
 
   it('will anchor a held child of an anchored parent', () => {
@@ -1313,7 +1313,7 @@ describe('ambient context', () => {
 
     parent.child = new Example();
 
-    expect(home(parent.child)).toBe(ambient);
+    expect(Context.for(parent.child)).toBe(ambient);
   });
 
   it('will register a global at ambient root', () => {
@@ -1592,12 +1592,12 @@ describe('root global', () => {
     const instance = Global.new();
 
     // Root claims LOOKUP at registration; ownership is fixed post-init.
-    expect(home(instance)).toBe(root);
+    expect(Context.for(instance)).toBe(root);
 
     const ctx = new Context(instance);
 
     expect(ctx.get(Global)).toBe(instance); // resolvable via provide
-    expect(home(instance)).toBe(root); // ownership stays with root
+    expect(Context.for(instance)).toBe(root); // ownership stays with root
 
     instance.set(null);
   });

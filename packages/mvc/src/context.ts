@@ -36,6 +36,11 @@ class Context {
     return Context.root;
   }
 
+  /** The context a State resolves from - where it was registered, else where it was created, else root. */
+  static for(state: State): Context {
+    return LOOKUP.get(state.is) || ANCHOR.get(state.is) || Context.root;
+  }
+
   public id = uid();
   public parent?: Context;
   public scope = new Set<Context>();
@@ -409,9 +414,4 @@ function root(ctx: Context, state: State) {
   }
 }
 
-/** The context a State resolves from - not overridable, unlike `Context.get`. */
-function home(state: State): Context {
-  return LOOKUP.get(state.is) || ANCHOR.get(state.is) || Context.root;
-}
-
-export { anchor, Context, home, host, join, LOOKUP, root };
+export { anchor, Context, host, join, LOOKUP, root };

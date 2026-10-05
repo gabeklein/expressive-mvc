@@ -166,7 +166,7 @@ declare module '@expressive/mvc' {
   }
 }
 
-const resolve = State.get;
+const resolve = State.get as Function;
 
 (State as any).get = function get<T extends State>(
   this: State.Extends<T>,
@@ -174,7 +174,7 @@ const resolve = State.get;
 ) {
   const scope = current;
 
-  if (!scope) return (resolve as Function).call(this, argument);
+  if (!scope) return resolve.call(this, argument);
 
   const instance = scope.childContext.get(this, argument === false ? false : true);
 

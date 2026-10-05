@@ -69,7 +69,7 @@ Flags.get(); // the instance - outside a render, static get() resolves from the 
 
 ### Ambient context
 
-`Context.get()` is the ambient context - root, unless a host replaces it (e.g. per request via `AsyncLocalStorage`). Client adapters do not replace it; render position stays inside their `State.get()`. Core resolves a State's own context without it. A replacement runs from every State constructor - keep it cheap, no hooks.
+`Context.get()` is the ambient context - root, unless a host replaces it (e.g. per request via `AsyncLocalStorage`). Client adapters do not replace it; render position stays inside their `State.get()`. A State's own context (`Context.for(state)`) never consults it. A replacement runs from every State constructor - keep it cheap, no hooks.
 
 - A State constructed while the ambient context is not root records it as its home fallback: `get(Type)` fields and `state.get(Type)` resolve from it. Registering into a context still wins.
 - A global registers at the ambient root, under root's rules - a global created during a request is scoped to that request.
@@ -235,6 +235,7 @@ ctx.set(inputs, forEach?);             // register multiple
 ctx.push(inputs?);                     // create child context
 ctx.pop();                             // destroy this and descendants
 Context.get();                         // static: the ambient context
+Context.for(state);                    // static: the context a state resolves from
 Context.root;                          // global registry
 ```
 

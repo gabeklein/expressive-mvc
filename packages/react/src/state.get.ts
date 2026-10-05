@@ -62,7 +62,7 @@ declare module '@expressive/mvc' {
   }
 }
 
-const resolve = State.get;
+const resolve = State.get as Function;
 
 State.get = function get<T extends State>(
   this: State.Extends<T>,
@@ -70,12 +70,12 @@ State.get = function get<T extends State>(
 ) {
   let local: Context;
 
-  if (Runtime.idle()) return (resolve as Function).call(this, argument);
+  if (Runtime.idle()) return resolve.call(this, argument);
 
   try {
     local = useAmbient();
   } catch {
-    return (resolve as Function).call(this, argument);
+    return resolve.call(this, argument);
   }
 
   const Type = this;

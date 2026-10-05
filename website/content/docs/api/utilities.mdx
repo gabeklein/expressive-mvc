@@ -325,6 +325,7 @@ ctx.set(inputs, forEach?);            // reconcile registered states with inputs
 ctx.push(inputs?);                    // create a child context
 ctx.pop();                            // tear down this context and descendants
 Context.get();                        // static - the ambient context
+Context.for(state);                   // static - the context a state resolves from
 Context.root;                         // global registry
 ```
 
@@ -332,7 +333,7 @@ Context.root;                         // global registry
 - `ctx.set()` accepts a class, an instance, or a map of either. Classes are constructed and activated; when inputs change, removed entries run their cleanup and instances the context created are destroyed. Instances you passed in are left alone.
 - `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
-- `Context.get()` is the ambient context: root, unless a host replaces it - a server can return a per-request context, e.g. through `AsyncLocalStorage`. A State constructed under a non-root ambient context resolves its lookups there, and a global created under it registers there instead of root. Core resolves a State's own context without it. The replacement runs from every State constructor, so keep it cheap and free of hooks. Client adapters don't replace it.
+- `Context.get()` is the ambient context: root, unless a host replaces it - a server can return a per-request context, e.g. through `AsyncLocalStorage`. A State constructed under a non-root ambient context resolves its lookups there, and a global created under it registers there instead of root. A State's own context, `Context.for(state)`, never consults it. The replacement runs from every State constructor, so keep it cheap and free of hooks. Client adapters don't replace it.
 
 ### Home context
 

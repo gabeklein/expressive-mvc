@@ -1,4 +1,4 @@
-import { anchor, Context, home, host, join, LOOKUP, root } from './context';
+import { anchor, Context, host, join, LOOKUP, root } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -387,7 +387,7 @@ abstract class State {
         ? owned(self, arg2 as (child: State) => void)
         : observed(this, arg1, owner(self, arg2 as boolean));
     if (State.is(arg1))
-      return observed(this, arg1, home(self).get(arg1, arg2, arg3, self));
+      return observed(this, arg1, Context.for(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
@@ -648,7 +648,7 @@ function init(state: State, ...args: State.Args) {
   }
 
   function register() {
-    const ctx = home(state);
+    const ctx = Context.for(state);
 
     if (LOOKUP.has(state)) return;
 
@@ -996,7 +996,7 @@ function provides(ctx: Context, value: State) {
 
 function child(state: State) {
   let cleanup: (() => void) | undefined;
-  const ctx = home(state);
+  const ctx = Context.for(state);
 
   function reset() {
     if (cleanup) cleanup();
