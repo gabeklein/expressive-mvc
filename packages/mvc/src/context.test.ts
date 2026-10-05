@@ -1314,7 +1314,7 @@ describe('ambient context', () => {
     expect(a.get(Global)).toBe(one);
     expect(b.get(Global)).toBe(two);
     expect(() => within(a, () => Global.new())).toThrow(
-      /Cannot register Global-\w+ as a global/
+      /Global is already in context/
     );
   });
 });
@@ -1585,7 +1585,7 @@ describe('root global', () => {
     expect(root.get(Multi)).toBe(first);
 
     expect(() => Multi.new()).toThrow(
-      /already exists in root/
+      /Multi is already in context/
     );
 
     expect(root.get(Multi)).toBe(first);

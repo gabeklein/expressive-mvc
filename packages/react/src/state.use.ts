@@ -3,52 +3,6 @@ import type { UseState } from '@expressive/mvc';
 import { useFactory, useWatch } from './runtime';
 import { useAmbient } from './context';
 
-declare module '@expressive/mvc' {
-  interface UseState extends State {
-    /**
-     * Optional hook called when State.use() is invoked within a React component.
-     *
-     * This is called *every render* of the component, and will intercept
-     * arguments which would otherwise be passed into the State constructor.
-     *
-     * @param props Arguments passed to State.use().
-     */
-    use?(...props: any[]): Promise<void> | void;
-
-    /**
-     * Optional hook called once the host component commits. Return a function
-     * to run when it unmounts.
-     *
-     * Not called during server render, nor for an instance merely observed or
-     * placed: `.get()` and `{instance}` reach one a component does not own, and
-     * `State.new()` has no component at all.
-     *
-     * Client-only effects belong here - setup which must accompany the instance
-     * itself belongs in `new()`.
-     */
-    mount?(): (() => void) | void;
-  }
-
-  namespace State {
-    type UseArgs<T extends State> = T extends {
-      use(...props: infer P): any;
-    }
-      ? P
-      : State.Args<T>;
-
-    /**
-     * Create and manage instance of this State within React component.
-     *
-     * @param args Arguments to pass to constructor or `use` method (if defined).
-     * @returns Managed instance of this State.
-     */
-    function use<T extends UseState>(
-      this: State.Type<T>,
-      ...args: UseArgs<T>
-    ): T;
-  }
-}
-
 State.use = function use<T extends State>(
   this: State.Type<T>,
   ...args: State.UseArgs<T>

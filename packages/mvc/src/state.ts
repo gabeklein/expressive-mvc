@@ -1,4 +1,4 @@
-import { anchor, Context, host, join, LOOKUP, root } from './context';
+import { anchor, Context, host, join, LOOKUP, own, root } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -63,12 +63,72 @@ const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
 const OWNS = new WeakMap<State, Set<State>>();
 const OWNED = new WeakMap<State, Set<(child: State) => void>>();
 
+/** Type may not be undefined - instead will be null. */
+type NoVoid<T> = T extends undefined | void ? null : T;
+
+/** Members a State may declare for `State.use()`. */
+interface UseState extends State {
+  /**
+   * Receives the arguments of every `State.use()` call for this instance -
+   * each render, or each call outside one - in place of the constructor.
+   */
+  use?(...props: any[]): Promise<void> | void;
+
+  /**
+   * Called once the owning component commits; return a function to run when it
+   * unmounts. Not called during server render, outside a render, or for an
+   * instance only fetched or placed.
+   */
+  mount?(): (() => void) | void;
+}
+
 declare namespace State {
-  /** Fetch instance of this class from the ambient context. */
+  type ForceRefresh = {
+    /** Request a refresh for the current component. */
+    (): void;
+
+    /** Request a refresh, and again once `waitFor` settles. */
+    <T = void>(waitFor: Promise<T>): Promise<T>;
+
+    /** Request a refresh before and after `invoke`. Work before its first `await` happens before the first refresh. */
+    <T = void>(invoke: () => Promise<T>): Promise<T>;
+  };
+
+  type GetFactory<T extends State, R> = (this: T, current: T, refresh: ForceRefresh) => R;
+
+  type GetEffect<T extends State> = (this: T, current: T, refresh: ForceRefresh) => null;
+
+  type UseArgs<T extends State> = T extends { use(...props: infer P): any } ? P : State.Args<T>;
+
+  /**
+   * Fetch instance of this class from context. While rendering, the adapter
+   * subscribes to what the render reads; elsewhere it resolves unsubscribed from
+   * the ambient context (`Context.get()`).
+   */
   function get<T extends State>(this: State.Extends<T>): T;
 
-  /** Fetch instance of this class from the ambient context, if present. */
+  /** Fetch instance of this class from context, if present. */
   function get<T extends State>(this: State.Extends<T>, required: false): T | undefined;
+
+  /** Fetch instance of this class while rendering, suspending until accessed values are defined. */
+  function get<T extends State>(this: State.Extends<T>, required: true): Required<T>;
+
+  /** Derive a value from instance of this class while rendering; re-renders only when it changes. */
+  function get<T extends State, R>(
+    this: State.Extends<T>,
+    factory: GetFactory<T, Promise<R> | R>
+  ): NoVoid<R>;
+
+  /** Run an effect against instance of this class while rendering. */
+  function get<T extends State>(this: State.Extends<T>, factory: GetEffect<T>): null;
+
+  /**
+   * Create an instance of this class owned by the current scope - the rendering
+   * component, else the ambient context (`Context.get()`), until it pops. Throws
+   * if `get()` would already resolve one there; nest a `<Component for>` to scope
+   * another.
+   */
+  function use<T extends UseState>(this: State.Type<T>, ...args: UseArgs<T>): T;
 
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
@@ -252,6 +312,10 @@ abstract class State {
    * that would inherit a global without its own declaration throws on
    * activation, so an accidental global (a forgotten `Provider`, an extended
    * global) cannot leak into the shared root.
+   *
+   * @deprecated Create the instance with `State.use()` where it should live -
+   * at an entry point for app-wide. `State.new()` on a class declaring `true`
+   * already does.
    */
   static readonly global: State.Global = false;
 
@@ -520,6 +584,9 @@ abstract class State {
    * @param args - arguments sent to constructor
    */
   static new<T extends State>(this: State.Type<T>, ...args: State.Args<T>): T {
+    if (this.global === true && Object.prototype.hasOwnProperty.call(this, 'global'))
+      return claim(this, () => new this(...args));
+
     const instance = new this(...args);
     event(instance);
     return instance;
@@ -595,6 +662,35 @@ define(State, 'get', {
     );
   }
 });
+
+define(State, 'use', {
+  writable: true,
+  value(this: State.Type, ...args: unknown[]) {
+    return claim(this, () =>
+      new this((self: UseState) => typeof self.use == 'function' ? self.use(...args) : args as State.Args)
+    );
+  }
+});
+
+/**
+ * Create a State owned by the ambient context, throwing if that context
+ * already resolves its type.
+ */
+function claim<T extends State>(type: State.Type<T>, create: () => T): T {
+  const ctx = Context.get();
+
+  if (ctx.get(type, false) !== undefined)
+    throw new Error(
+      `${type} is already in context - nest a <Component for={${type}}> to scope another, or call ${type}.get() to read it.`
+    );
+
+  const instance = create();
+
+  own(ctx, instance);
+  event(instance);
+
+  return instance;
+}
 
 define(State, 'toString', {
   value() {
@@ -1304,5 +1400,5 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export type { Handler };
+export type { Handler, UseState };
 export { adopt, event, unbind, State, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };

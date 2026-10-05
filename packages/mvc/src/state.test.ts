@@ -3629,6 +3629,131 @@ describe('get method (static)', () => {
   });
 });
 
+describe('use method (static)', () => {
+  it('will create an instance in root', () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    const test = Test.use();
+
+    expect(test.get(null)).toBe(false);
+    expect(Context.root.get(Test)).toBe(test);
+    expect(Test.get()).toBe(test);
+  });
+
+  it('will pass arguments to constructor', () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    expect(Test.use({ value: 2 }).value).toBe(2);
+  });
+
+  it('will pass arguments to use method instead', () => {
+    class Test extends State {
+      value = 1;
+
+      use(value: number) {
+        this.value = value;
+      }
+    }
+
+    expect(Test.use(3).value).toBe(3);
+  });
+
+  it('will throw if already in context', () => {
+    class Test extends State {}
+
+    Test.use();
+
+    expect(() => Test.use()).toThrow(
+      'Test is already in context - nest a <Component for={Test}> to scope another, or call Test.get() to read it.'
+    );
+  });
+
+  it('will throw if a subclass is upstream', () => {
+    class Test extends State {}
+    class Sub extends Test {}
+
+    const base = Context.get;
+    const ambient = Context.root.push(Sub);
+
+    Context.get = (state) => (state ? base(state) : ambient.push());
+
+    try {
+      expect(() => Test.use()).toThrow('Test is already in context');
+    } finally {
+      Context.get = base;
+    }
+  });
+
+  it('will be owned by ambient context', () => {
+    class Test extends State {}
+
+    const base = Context.get;
+    const ambient = Context.root.push();
+
+    Context.get = (state) => (state ? base(state) : ambient);
+
+    let test: Test;
+
+    try {
+      test = Test.use();
+    } finally {
+      Context.get = base;
+    }
+
+    expect(ambient.get(Test)).toBe(test);
+    expect(Context.root.get(Test, false)).toBeUndefined();
+
+    ambient.pop();
+
+    expect(test.get(null)).toBe(true);
+  });
+
+  it('will unregister when destroyed', () => {
+    class Test extends State {}
+
+    Test.use().set(null);
+
+    expect(Test.get(false)).toBeUndefined();
+    expect(Test.use()).toBeInstanceOf(Test);
+  });
+});
+
+describe('new method (static) of a global', () => {
+  it('will register like use, arguments still to constructor', () => {
+    const use = vi.fn();
+
+    class Test extends State {
+      static readonly global = true;
+      value = 1;
+
+      use(...args: unknown[]) {
+        use(...args);
+      }
+    }
+
+    const test = Test.new({ value: 2 });
+
+    expect(test.value).toBe(2);
+    expect(use).not.toHaveBeenCalled();
+    expect(Test.get()).toBe(test);
+    expect(() => Test.use()).toThrow('Test is already in context');
+  });
+
+  it('will throw beside an explicit instance', () => {
+    class Test extends State {
+      static readonly global = true;
+    }
+
+    Context.root.add(new Test(), true);
+
+    expect(() => Test.new()).toThrow('Test is already in context');
+  });
+});
+
 describe('on method (static)', () => {
   it('will run a bare function at setup', () => {
     const order: string[] = [];

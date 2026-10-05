@@ -409,4 +409,17 @@ function root(ctx: Context, state: State) {
   }
 }
 
-export { anchor, Context, host, join, LOOKUP, root };
+/** Register `state` in `ctx` under root's rules, owned by `ctx` - destroyed when it pops. */
+function own(ctx: Context, state: State) {
+  const { cleanup } = ctx as unknown as { cleanup: Map<Function, () => void> };
+  const remove = root(ctx, state);
+  const destroy = () => state.set(null);
+
+  cleanup.set(destroy, destroy);
+  listener(state, () => {
+    cleanup.delete(destroy);
+    remove();
+  }, null);
+}
+
+export { anchor, Context, host, join, LOOKUP, own, root };

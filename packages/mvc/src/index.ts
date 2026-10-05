@@ -8,6 +8,7 @@ export { ref } from './field/ref';
 import { State } from './state';
 
 export { State, unbind } from './state';
+export type { UseState } from './state';
 
 /** @deprecated Import `{ State }` as a named export. Adapter-augmented `State.*` types are not visible through the default alias. */
 export default State;
