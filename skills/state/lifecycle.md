@@ -79,7 +79,7 @@ const test = Test.new(
 4. **`new()` cleanup called**
 5. **Dispatch stops** - no further events or effects
 
-Children always go before parents; nested contexts destroy inner-to-outer.
+Children always go before parents; nested contexts destroy inner-to-outer. A cleanup returned from `get(State, callback, true)` runs for each owned child as it goes ([get.md](get.md#owner)).
 
 Afterward:
 

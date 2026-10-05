@@ -126,7 +126,9 @@ get(type: typeof State, callback: (child: State) => void | (() => void), downstr
 
 `State` is never in context - `get(State)` reads ownership instead. An instance's owner is the State that constructed it into a field, `has()` pool or `map()`; failing that, the State its nearest enclosing context was set up for - the Component rendering a host-mounted Component, `use()` instance or `<Provider>`. `<Component for={X}>` owns X. A root, or an instance already active when something held it, has none. Missing throws `"{state} has no owner."`; `false` returns `undefined`.
 
-With a callback and `true`, runs per owned State - current ones, then each as it activates. A returned function runs when that State is destroyed. Returns a stop function.
+Ownership is fixed at activation: later holders, context pushes and field moves do not change it, and the value is not reactive. Context is where a State registers to be found; ownership is who constructed it - see [context.md](context.md#ownership-vs-context).
+
+With a callback and `true`, runs per owned State - direct children only, not their descendants - current ones, then each as it activates. A returned function runs when that State is destroyed, including with its owner. Returns a stop function.
 
 ```ts
 const owner = child.get(State);

@@ -72,7 +72,7 @@ class Parent extends State {
 }
 ```
 
-`State` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect owned States, not context descendants; callbacks and the single forms work as for other types.
+`State` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect the States this one owns directly - not grandchildren, not context descendants; callbacks and the single forms work as for other types. The owner never changes after activation, so `get(State)` is a stable reference, not a subscription.
 
 ## Type Signatures
 
