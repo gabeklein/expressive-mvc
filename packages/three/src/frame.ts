@@ -30,7 +30,7 @@ class Frame extends State {
 }
 
 /** Drive `frame` from a scheduler, e.g. `requestAnimationFrame`. Returns a function to stop. */
-function loop(frame: Frame, schedule: Frame.Schedule) {
+function loop(frame: Pick<Frame, 'tick'>, schedule: Frame.Schedule) {
   let last: number | undefined;
   let active = true;
 
