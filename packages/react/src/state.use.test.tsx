@@ -691,6 +691,35 @@ describe('owner', () => {
     expect(used.get(State)).toBe(owner);
   });
 
+  it('will walk owners up to the root Component', () => {
+    let outer!: State;
+    let inner!: State;
+    let used!: State;
+
+    class Used extends State {}
+    class Inner extends Component {
+      render() {
+        return <Leaf />;
+      }
+    }
+    class Outer extends Component {
+      render() {
+        return <Inner is={(i) => (inner = i)} />;
+      }
+    }
+
+    function Leaf() {
+      used = Used.use().is;
+      return null;
+    }
+
+    render(<Outer is={(o) => (outer = o)} />);
+
+    expect(used.get(State)).toBe(inner);
+    expect(used.get(State).get(State)).toBe(outer);
+    expect(outer.get(State, false)).toBeUndefined();
+  });
+
   it('will not be owned by use() of a parent function', () => {
     let outer!: State;
     let inner!: State;

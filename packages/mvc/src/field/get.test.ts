@@ -1017,6 +1017,61 @@ describe('fetch mode', () => {
       await expect(parent).toHaveUpdated('owned');
       expect(parent.owned).toEqual([parent.child]);
     });
+
+    it('will run callback with owner', () => {
+      const callback = vi.fn();
+
+      class Child extends State {
+        owner = get(State, callback);
+      }
+      class Parent extends State {
+        child = new Child();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.child.owner).toBe(parent);
+      expect(callback).toHaveBeenCalledWith(parent, parent.child);
+    });
+
+    it('will get single owned State', async () => {
+      class Child extends State {}
+      class Parent extends State {
+        child?: Child = undefined;
+        owned = get(State, true, false);
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.owned).toBeUndefined();
+
+      parent.child = new Child();
+
+      await expect(parent).toHaveUpdated('owned');
+      expect(parent.owned).toBe(parent.child);
+
+      parent.child = undefined;
+
+      await expect(parent).toHaveUpdated('owned');
+      expect(parent.owned).toBeUndefined();
+    });
+
+    it('will suspend until an owned State exists', async () => {
+      class Child extends State {}
+      class Parent extends State {
+        child?: Child = undefined;
+        owned = get(State, true, true);
+      }
+
+      const parent = Parent.new();
+
+      expect(() => parent.owned).toThrow(expect.any(Promise));
+
+      parent.child = new Child();
+
+      await expect(parent).toHaveUpdated('owned');
+      expect(parent.owned).toBe(parent.child);
+    });
   });
 });
 

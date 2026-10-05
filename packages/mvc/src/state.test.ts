@@ -1162,6 +1162,81 @@ describe('get method', () => {
 
       expect(callback).not.toHaveBeenCalled();
     });
+
+    it('will report direct children only', () => {
+      class Middle extends State {
+        child = new Child();
+      }
+      class Root extends State {
+        middle = new Middle();
+      }
+
+      const root = Root.new();
+      const callback = vi.fn();
+
+      root.get(State, callback, true);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(root.middle);
+      expect(root.middle.child.get(State)).toBe(root.middle);
+      expect(root.middle.child.get(State).get(State)).toBe(root);
+    });
+
+    it('will keep owner once activated', () => {
+      class Parent extends State {
+        child?: Child = undefined;
+      }
+
+      const a = Parent.new();
+      const b = Parent.new();
+      const child = new Child();
+
+      a.child = child;
+      b.child = child;
+
+      new Context(b).push(child);
+
+      expect(child.get(State)).toBe(a);
+      expect(a.child).toBe(child);
+      expect(b.child).toBe(child);
+    });
+
+    it('will not get holder of a pool guest', () => {
+      class Parent extends State {
+        pool = has(Child);
+      }
+
+      const owner = Parent.new();
+      const holder = Parent.new();
+      const member = owner.pool.add();
+
+      const callback = vi.fn();
+
+      holder.pool.add(member);
+      holder.pool.add(Child.new());
+      holder.get(State, callback, true);
+
+      expect(member.get(State)).toBe(owner);
+      expect(holder.pool.size).toBe(2);
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('will run cleanup when owner is destroyed', () => {
+      class Parent extends State {
+        child = new Child();
+        pool = has(Child);
+      }
+
+      const parent = Parent.new();
+      const cleanup = vi.fn();
+
+      parent.pool.add();
+      parent.get(State, (child) => () => cleanup(child), true);
+      parent.set(null);
+
+      expect(cleanup).toHaveBeenCalledTimes(2);
+      expect(cleanup).toHaveBeenCalledWith(parent.child);
+    });
   });
 
   describe('null', () => {
