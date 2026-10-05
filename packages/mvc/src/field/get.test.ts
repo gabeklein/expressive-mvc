@@ -529,6 +529,145 @@ describe('fetch mode', () => {
     });
   });
 
+  describe('ancestors', () => {
+    it('will resolve grandparent without context', () => {
+      class Leaf extends State {
+        top = get(Top);
+        mid = get(Mid);
+      }
+      class Mid extends State {
+        leaf = new Leaf();
+      }
+      class Top extends State {
+        mid = new Mid();
+      }
+
+      const top = Top.new();
+
+      expect(top.mid.leaf.mid).toBe(top.mid);
+      expect(top.mid.leaf.top).toBe(top);
+    });
+
+    it('will resolve owner of owner for a pool member', () => {
+      class Item extends State {
+        app = get(App);
+      }
+      class Store extends State {
+        items = has(Item);
+      }
+      class App extends State {
+        store = new Store();
+      }
+
+      const app = App.new();
+      const item = app.store.items.add();
+
+      expect(item.app).toBe(app);
+    });
+
+    it('will prefer ancestor over context', () => {
+      class Leaf extends State {
+        top = get(Top);
+      }
+      class Mid extends State {
+        leaf = new Leaf();
+      }
+      class Top extends State {
+        mid = new Mid();
+      }
+
+      class Root extends State {
+        top = new Top();
+      }
+
+      const context = new Context({ Top, Root });
+      const provided = context.get(Top);
+      const { top } = context.get(Root);
+
+      expect(provided).not.toBe(top);
+      expect(provided.mid.leaf.top).toBe(provided);
+      expect(top.mid.leaf.top).toBe(top);
+    });
+
+    it('will prefer ancestor over its sibling', () => {
+      class Leaf extends State {
+        top = get(Top);
+      }
+      class Mid extends State {
+        leaf = new Leaf();
+      }
+      class Top extends State {
+        mid = new Mid();
+        peer?: Top = undefined;
+      }
+
+      const top = Top.new();
+      top.peer = new Top();
+
+      expect(top.mid.leaf.top).toBe(top);
+    });
+
+    it('will prefer nearer sibling over ancestor', () => {
+      class Leaf extends State {
+        top = get(Top);
+      }
+      class Mid extends State {
+        leaf = new Leaf();
+        top?: Top = undefined;
+      }
+      class Top extends State {
+        mid?: Mid = undefined;
+      }
+
+      const outer = Top.new();
+      const mid = new Mid();
+
+      outer.mid = mid;
+
+      expect(mid.leaf.top).toBe(outer);
+
+      mid.top = new Top();
+
+      expect(mid.leaf.top).toBe(mid.top);
+    });
+
+    it('will prefer existing sibling over ancestor', () => {
+      class Leaf extends State {
+        top = get(Top);
+      }
+      class Mid extends State {
+        top = new Top();
+        leaf = new Leaf();
+      }
+      class Top extends State {
+        mid?: Mid = undefined;
+      }
+
+      const outer = Top.new();
+
+      outer.mid = new Mid();
+
+      expect(outer.mid.leaf.top).toBe(outer.mid.top);
+    });
+
+    it('will throw if no ancestor matches', () => {
+      class Other extends State {}
+      class Leaf extends State {
+        other = get(Other);
+      }
+      class Mid extends State {
+        leaf = new Leaf();
+      }
+      class Top extends State {
+        mid = new Mid();
+      }
+
+      expect(() => Top.new()).toThrow(
+        /Required Other not found in context for Leaf-[\w-]+\./
+      );
+    });
+  });
+
   it('will not register upstream into own context', () => {
     class Parent extends State {
       child = new Child();
