@@ -62,6 +62,14 @@ describe('orphans under a host', () => {
     expect(health()).toMatchObject({ orphans: 1, collected: 0 });
   });
 
+  it('will claim an instance used into root', async () => {
+    attach();
+    const plain = Plain.use();
+    await flushMicrotasks();
+    expect(orphans()).toEqual([]);
+    expect(Instance.of(plain).claimed).toBe(true);
+  });
+
   it('will claim on host mount and forward the original', async () => {
     attach();
     const widget = Widget.new();

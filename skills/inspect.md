@@ -49,7 +49,7 @@ Ownership is mvc's (`get(State)`): a State constructed into a field, `has` pool,
 
 ## Orphans
 
-Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner or holder, or by holding its `static global` slot in the root context. One settled but unclaimed - a render React threw away, a StrictMode twin, a `State.new()` nobody placed - is an orphan; so are its children. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`; label lookups resolve mainline first. `orphans()` lists them; `health()` counts them plus unclaimed instances the collector already reaped. Without a host every instance is mainline.
+Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner or holder, or by holding a slot in the root context (`use()`d there, or a global). One settled but unclaimed - a render React threw away, a StrictMode twin, a `State.new()` nobody placed - is an orphan; so are its children. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`; label lookups resolve mainline first. `orphans()` lists them; `health()` counts them plus unclaimed instances the collector already reaped. Without a host every instance is mainline.
 
 ```ts
 inspect.health().orphans            // 54 - a suspended first render left a full tree behind

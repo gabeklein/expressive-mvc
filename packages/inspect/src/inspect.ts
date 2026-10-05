@@ -150,11 +150,8 @@ function claim(state: State) {
   version++;
 }
 
-/** A `static global` instance currently holding its slot in the root context. */
+/** An instance currently holding a slot in the root context - `use()`d there, or a global. */
 function provided(state: State): boolean {
-  const type = state.constructor as typeof State;
-  const global = typeof type.global === 'function' ? type.global(state) : type.global;
-  if (!global) return false;
   for (const set of Context.root.provide.values())
     if (set) for (const [member] of set) if (member === state) return true;
   return false;
