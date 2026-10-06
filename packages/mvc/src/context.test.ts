@@ -1651,3 +1651,138 @@ describe('root global', () => {
     b.set(null);
   });
 });
+
+describe('new(true)', () => {
+  const { root } = Context;
+
+  it('will register a class declaring no global', () => {
+    class Plain extends State {
+      value = 1;
+    }
+
+    const instance = Plain.new(true, { value: 2 });
+
+    expect(root.get(Plain)).toBe(instance);
+    expect(instance.value).toBe(2);
+
+    instance.set(null);
+
+    expect(root.get(Plain, false)).toBeUndefined();
+  });
+
+  it('will register a subclass inheriting global without re-declaring', () => {
+    class Base extends State {
+      static readonly global = true;
+    }
+    class Sub extends Base {}
+
+    const instance = Sub.new(true);
+
+    expect(root.get(Sub)).toBe(instance);
+
+    instance.set(null);
+  });
+
+  it('will register when a resolver allows', () => {
+    class Conditional extends State {
+      static readonly global: State.Global = () => true;
+    }
+
+    const instance = Conditional.new(true);
+
+    expect(root.get(Conditional)).toBe(instance);
+
+    instance.set(null);
+  });
+
+  it('will throw if global is declared false', () => {
+    class Local extends State {
+      static readonly global = false;
+    }
+
+    expect(() => Local.new(true)).toThrow(
+      'Local.new(true) is not allowed - `static global` opts Local out.'
+    );
+  });
+
+  it('will throw if a resolver declines', () => {
+    class Conditional extends State {
+      static readonly global: State.Global = () => false;
+    }
+
+    expect(() => Conditional.new(true)).toThrow(/is not allowed/);
+  });
+
+  it('will throw if global is inherited as false', () => {
+    class Floor extends State {
+      static readonly global = false;
+    }
+    class Sub extends Floor {}
+
+    expect(() => Sub.new(true)).toThrow(
+      'Sub.new(true) is not allowed - `static global` opts Sub out.'
+    );
+  });
+
+  it('will throw if root already resolves the type', () => {
+    class Base extends State {}
+    class Sub extends Base {}
+
+    const sub = Sub.new(true);
+
+    expect(() => Base.new(true)).toThrow(
+      `Cannot register Base-`
+    );
+    expect(() => Base.new(true)).toThrow(
+      `as a global - ${sub} already exists in root.`
+    );
+    expect(root.get(Base)).toBe(sub);
+
+    sub.set(null);
+  });
+
+  it('will throw if it would hide a supertype instance', () => {
+    class Base extends State {}
+    class Sub extends Base {}
+
+    const base = Base.new(true);
+
+    expect(() => Sub.new(true)).toThrow(
+      `as a global - ${base} already exists in root.`
+    );
+    expect(root.get(Base)).toBe(base);
+    expect(root.get(Sub, false)).toBeUndefined();
+
+    base.set(null);
+  });
+
+  it('will throw if a declared global would hide a supertype instance', () => {
+    class Base extends State {
+      static readonly global: State.Global = true;
+    }
+    class Sub extends Base {
+      static readonly global = true;
+    }
+
+    const base = Base.new();
+
+    expect(() => Sub.new()).toThrow(
+      `as a global - ${base} already exists in root.`
+    );
+
+    base.set(null);
+  });
+
+  it('will type a leading true', () => {
+    void function () {
+      class Plain extends State {
+        value = 1;
+      }
+
+      Plain.new(true, { value: 2 });
+
+      // @ts-expect-error - only true selects a global
+      Plain.new(false);
+    };
+  });
+});
