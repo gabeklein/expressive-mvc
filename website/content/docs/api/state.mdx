@@ -39,6 +39,10 @@ Callbacks can return:
 - `array` - flattened and re-processed.
 - `Promise` - caught and logged if rejected.
 
+### `State.new(true, ...args)`
+
+Create and activate an instance registered as a global in `Context.root`, whether or not the class declares `static global`. Throws if the class opts out with `static global`, or if root already holds a global it would shadow. See [Root context and globals](/docs/api/utilities#root-context-and-globals).
+
 ### `State.is(maybe)`
 
 Type guard. Returns true if `maybe` is an instance of this class or a subclass.
