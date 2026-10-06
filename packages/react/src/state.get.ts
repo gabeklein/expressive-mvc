@@ -3,65 +3,6 @@ import { observer, watch } from '@expressive/mvc/observable';
 import { Runtime, useFactory, useSettle, useSetup } from './runtime';
 import { useAmbient } from './context';
 
-/** Type may not be undefined - instead will be null.  */
-type NoVoid<T> = T extends undefined | void ? null : T;
-
-declare module '@expressive/mvc' {
-  namespace State {
-    type ForceRefresh = {
-      /** Request a refresh for current component. */
-      (): void;
-
-      /**
-       * Request a refresh and again after promise either resolves or rejects.
-       *
-       * @param waitFor Promise to wait for.
-       * @returns Promise which resolves, after refresh, to same value as `waitFor`.
-       */
-      <T = void>(waitFor: Promise<T>): Promise<T>;
-
-      /**
-       * Request refresh before and after async function.
-       * A refresh will occur both before and after the given function.
-       *
-       * **Note:** Any actions performed before first `await` will occur prior to refresh.
-       *
-       * @param invoke Async function to invoke.
-       * @returns Promise which resolves returned value after refresh.
-       */
-      <T = void>(invoke: () => Promise<T>): Promise<T>;
-    };
-
-    type GetFactory<T extends State, R> = (
-      this: T,
-      current: T,
-      refresh: ForceRefresh
-    ) => R;
-
-    type GetEffect<T extends State> = (
-      this: T,
-      current: T,
-      refresh: ForceRefresh
-    ) => null;
-
-    /** Fetch instance of this class from context. */
-    function get<T extends State>(
-      this: State.Extends<T>,
-      requireValues: true
-    ): Required<T>;
-
-    function get<T extends State, R>(
-      this: State.Extends<T>,
-      factory: GetFactory<T, Promise<R> | R>
-    ): NoVoid<R>;
-
-    function get<T extends State>(
-      this: State.Extends<T>,
-      factory: GetEffect<T>
-    ): null;
-  }
-}
-
 const resolve = State.get as Function;
 
 State.get = function get<T extends State>(

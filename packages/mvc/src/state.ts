@@ -63,12 +63,24 @@ const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
 const OWNS = new WeakMap<State, Set<State>>();
 const OWNED = new WeakMap<State, Set<(child: State) => void>>();
 
-declare namespace State {
-  /** Fetch instance of this class from the ambient context. */
-  function get<T extends State>(this: State.Extends<T>): T;
+/** Type may not be undefined - instead will be null. */
+type NoVoid<T> = T extends undefined | void ? null : T;
 
-  /** Fetch instance of this class from the ambient context, if present. */
-  function get<T extends State>(this: State.Extends<T>, required: false): T | undefined;
+declare namespace State {
+  type ForceRefresh = {
+    /** Request a refresh for the current component. */
+    (): void;
+
+    /** Request a refresh, and again once `waitFor` settles. */
+    <T = void>(waitFor: Promise<T>): Promise<T>;
+
+    /** Request a refresh before and after `invoke`. Work before its first `await` happens before the first refresh. */
+    <T = void>(invoke: () => Promise<T>): Promise<T>;
+  };
+
+  type GetFactory<T extends State, R> = (this: T, current: T, refresh: ForceRefresh) => R;
+
+  type GetEffect<T extends State> = (this: T, current: T, refresh: ForceRefresh) => null;
 
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
@@ -513,6 +525,41 @@ abstract class State {
   }
 
   /**
+   * Fetch instance of this class from context. While rendering, the host
+   * adapter subscribes to what the render reads; elsewhere it resolves
+   * unsubscribed from the ambient context (`Context.get()`).
+   */
+  static get<T extends State>(this: State.Extends<T>): T;
+
+  /** Fetch instance of this class from context, if present. */
+  static get<T extends State>(this: State.Extends<T>, required: false): T | undefined;
+
+  /** While rendering, fetch instance of this class and suspend until accessed values are defined. */
+  static get<T extends State>(this: State.Extends<T>, required: true): Required<T>;
+
+  /** While rendering, derive a value from instance of this class; re-renders only when it changes. */
+  static get<T extends State, R>(this: State.Extends<T>, factory: State.GetFactory<T, Promise<R> | R>): NoVoid<R>;
+
+  /** While rendering, run an effect against instance of this class. */
+  static get<T extends State>(this: State.Extends<T>, factory: State.GetEffect<T>): null;
+
+  static get(this: State.Extends, required?: unknown): any {
+    if (typeof required == 'function' || required === true)
+      throw new Error(`${this}.get(${required === true || 'fn'}) may only run while rendering.`);
+
+    const ctx = Context.get();
+    const found = ctx.get(this, false);
+
+    if (found) return found;
+    if (required === false) return undefined;
+
+    throw new Error(
+      `Could not find ${this} in context.` +
+        (ctx === Context.root ? ' Outside a render, only globals are visible.' : '')
+    );
+  }
+
+  /**
    * Create and activate a new instance of this state.
    *
    * **Important** - Unlike `new this(...)` - this method also activates state.
@@ -575,25 +622,6 @@ abstract class State {
 define(State.prototype, 'toString', {
   value() {
     return ID.get(this.is);
-  }
-});
-
-define(State, 'get', {
-  writable: true,
-  value(this: State.Extends, required?: unknown) {
-    if (typeof required == 'function' || required === true)
-      throw new Error(`${this}.get(${required === true || 'fn'}) may only run while rendering.`);
-
-    const ctx = Context.get();
-    const found = ctx.get(this, false);
-
-    if (found) return found;
-    if (required === false) return undefined;
-
-    throw new Error(
-      `Could not find ${this} in context.` +
-        (ctx === Context.root ? ' Outside a render, only globals are visible.' : '')
-    );
   }
 });
 

@@ -121,8 +121,6 @@ function tracked<T extends object>(target: T, required?: boolean): T {
   return proxy;
 }
 
-type NoVoid<T> = T extends undefined | void ? null : T;
-
 declare module '@expressive/mvc' {
   interface UseState extends State {
     use?(...props: any[]): Promise<void> | void;
@@ -130,27 +128,10 @@ declare module '@expressive/mvc' {
   }
 
   namespace State {
-    type ForceRefresh = {
-      (): void;
-      <T = void>(waitFor: Promise<T>): Promise<T>;
-      <T = void>(invoke: () => Promise<T>): Promise<T>;
-    };
-
-    type GetFactory<T extends State, R> = (
-      this: T,
-      current: T,
-      refresh: ForceRefresh
-    ) => R;
-
     type UseArgs<T extends State> = T extends { use(...props: infer P): any }
       ? P
       : State.Args<T>;
 
-    function get<T extends State>(this: State.Extends<T>, required: true): Required<T>;
-    function get<T extends State, R>(
-      this: State.Extends<T>,
-      factory: GetFactory<T, R>
-    ): NoVoid<R>;
     function use<T extends UseState>(
       this: State.Type<T>,
       ...args: UseArgs<T>
