@@ -868,6 +868,39 @@ describe('context', () => {
     );
   });
 
+  it('will not link a State created during render to its context', () => {
+    class Inner extends State {
+      foo = get(Foo, false);
+    }
+
+    class Shared extends State {
+      static readonly global = true;
+    }
+
+    let inner!: Inner;
+    let shared!: Shared;
+
+    function Check() {
+      inner = Inner.new();
+      shared = Shared.new();
+      return null;
+    }
+
+    render(
+      <Provider for={Foo}>
+        <Check />
+      </Provider>
+    );
+
+    expect(inner.foo).toBeUndefined();
+    expect(Context.for(inner)).toBe(Context.root);
+    expect(Context.for(shared)).toBe(Context.root);
+    expect(Context.root.get(Shared)).toBe(shared);
+
+    inner.set(null);
+    shared.set(null);
+  });
+
   it('will return root context inside a render', () => {
     let ambient: Context | undefined;
 

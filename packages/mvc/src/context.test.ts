@@ -1328,7 +1328,7 @@ describe('ambient context', () => {
     expect(Context.root.get(Global, false)).toBeUndefined();
   });
 
-  it('will apply root rules to a global at ambient root', () => {
+  it('will keep globals of separate ambient contexts apart', () => {
     class Global extends State {
       static readonly global = true;
     }
@@ -1340,9 +1340,7 @@ describe('ambient context', () => {
 
     expect(a.get(Global)).toBe(one);
     expect(b.get(Global)).toBe(two);
-    expect(() => within(a, () => Global.new())).toThrow(
-      /Cannot register Global-\w+ as a global/
-    );
+    expect(Context.root.get(Global, false)).toBeUndefined();
   });
 });
 

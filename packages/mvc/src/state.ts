@@ -1,4 +1,4 @@
-import { anchor, Context, host, join, LOOKUP, root } from './context';
+import { anchor, Context, host, join, LOOKUP } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -690,7 +690,7 @@ function init(state: State, ...args: State.Args) {
         `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
       );
 
-    return root(ctx, state);
+    return ctx.add(state);
   }
 
   listener(state, (key) => {

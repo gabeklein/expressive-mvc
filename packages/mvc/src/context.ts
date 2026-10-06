@@ -6,7 +6,6 @@ const ANCHOR = new WeakMap<State, Context>();
 const HELD = new WeakMap<State, Map<State, Set<() => void>>>();
 const HOST = new WeakMap<Context, State>();
 let ROOT: Context;
-let ROOTING = false;
 
 type Accept<T extends State = State> =
   | T
@@ -242,7 +241,7 @@ class Context {
 
   add(I: State, explicit = false) {
     const { cleanup, provide } = this;
-    const root = ROOTING || this === Context.root;
+    const root = this === Context.root;
     const TT: State.Extends[] = [];
 
     function conflict(T: State.Extends) {
@@ -403,15 +402,4 @@ function anchor(state: State) {
   if (ambient !== Context.root) ANCHOR.set(state, ambient);
 }
 
-/** Add a global to `ctx` under the rules root applies to globals. */
-function root(ctx: Context, state: State) {
-  ROOTING = true;
-
-  try {
-    return ctx.add(state);
-  } finally {
-    ROOTING = false;
-  }
-}
-
-export { anchor, Context, host, join, LOOKUP, root };
+export { anchor, Context, host, join, LOOKUP };

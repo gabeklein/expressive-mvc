@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { State, Component } from '@expressive/mvc';
+import { State, Component, get } from '@expressive/mvc';
 import { render } from './index';
 import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
@@ -274,6 +274,42 @@ describe('MVC adapter', () => {
     expect(Value.get()).toBe(value);
 
     value.set(null);
+  });
+
+  it('will not link a State created during render to its context', () => {
+    class Foo extends State {}
+    class Inner extends State {
+      foo = get(Foo, false);
+    }
+
+    let inner!: Inner;
+
+    function Check() {
+      inner = Inner.new();
+      return null;
+    }
+
+    const base = Context.get;
+    const ambient = new Context();
+
+    Context.get = () => ambient;
+
+    try {
+      render(
+        <Component for={Foo}>
+          <Check />
+        </Component>,
+        document.createElement('main')
+      );
+    } finally {
+      Context.get = base;
+    }
+
+    expect(inner.foo).toBeUndefined();
+    expect(Context.for(inner)).toBe(ambient);
+
+    inner.set(null);
+    ambient.pop();
   });
 
   it('will render under the ambient context', () => {
