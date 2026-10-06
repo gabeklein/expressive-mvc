@@ -550,8 +550,7 @@ abstract class State {
     const ctx = Context.get();
     const found = ctx.get(this, false);
 
-    if (found) return found;
-    if (required === false) return undefined;
+    if (found !== undefined || required === false) return found;
 
     throw new Error(
       `Could not find ${this} in context.` +

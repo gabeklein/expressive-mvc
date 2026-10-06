@@ -3614,7 +3614,7 @@ describe('get method (static)', () => {
     );
   });
 
-  it('will treat an ambiguous lookup as not found', () => {
+  it('will return null for an ambiguous lookup', () => {
     class Foo extends State {}
     class Bar extends Foo {}
     class Parent extends State {
@@ -3628,8 +3628,8 @@ describe('get method (static)', () => {
     Context.get = () => ambient;
 
     try {
-      expect(() => Foo.get()).toThrow(/^Could not find Foo in context\.$/);
-      expect(Foo.get(false)).toBeUndefined();
+      expect(Foo.get()).toBeNull();
+      expect(Foo.get(false)).toBeNull();
     } finally {
       Context.get = base;
     }

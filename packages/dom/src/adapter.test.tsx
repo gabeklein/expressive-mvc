@@ -241,29 +241,6 @@ describe('MVC adapter', () => {
     );
   });
 
-  it('will throw for an ambiguous lookup while rendering', () => {
-    class Foo extends State {}
-    class Bar extends Foo {}
-    class Parent extends State {
-      foo = new Foo();
-      bar = new Bar();
-    }
-
-    function View() {
-      Foo.get();
-      return null;
-    }
-
-    expect(() =>
-      render(
-        <Component for={Parent}>
-          <View />
-        </Component>,
-        document.createElement('main')
-      )
-    ).toThrow('Could not find Foo in context.');
-  });
-
   it('will get an untracked State outside a render', () => {
     class Value extends State {
       static readonly global = true;

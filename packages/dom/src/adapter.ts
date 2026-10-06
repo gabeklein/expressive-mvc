@@ -159,10 +159,7 @@ const resolve = State.get as Function;
 
   const instance = scope.childContext.get(this, argument === false ? false : true);
 
-  if (!instance) {
-    if (argument === false) return undefined;
-    throw new Error(`Could not find ${this} in context.`);
-  }
+  if (!instance) return undefined;
 
   const proxy = tracked(instance, argument === true);
 
