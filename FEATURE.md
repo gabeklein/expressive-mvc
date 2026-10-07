@@ -34,9 +34,10 @@ In order. Each item is one PR into the trunk.
 5. **Sidecars.** `api.ts` beside a page: exports at `POST <scope path>/<fn>`. Its `default` is the scope's middleware (see Middleware). Importable only from its own folder and below (build error otherwise).
 6. **Request scope.** One `Call` per request, held in `AsyncLocalStorage`. `Context.get()` (no argument) returns the call's context, else `Context.root`. `T.get()` resolves from the current chain; `T.use()` is get-or-create in the current context. Both throw outside a `Call`; results are snapshots, not reactive.
 7. **Sessions + auth.** The walk knows nothing of sessions: a session is what a provider writes into `call.context`. A default cookie provider ships (HttpOnly, `SameSite=Lax`, `Secure` in production; created lazily; id rotates on login); exporting a provider replaces it, bearer included. CSRF (JSON content-type on POST) only for cookie-identified requests. Without a session, same-URL requests share state - fine for localhost and curl. In memory: live State, not serialized - persistence is the app's own State loading its data.
-8. **REST routes.** `export default rest({ GET, POST, ... })` in `app/api/**` only; named exports in the same module stay RPC. Handlers `(input, params)`: input is the parsed query for GET/DELETE/HEAD, the parsed body otherwise. Reply pipeline shared by return and throw: string → `text/plain`, `undefined` → 204, other values → JSON, status helpers set status, data primitives (`file`, `stream`, ...) added as needed. Uncaught errors → 500, message only in dev.
+8. **REST routes.** An `app/api/**` module's `default` is `class X extends Route` (dev's) with `protected` verbs `GET`/`POST`/`PUT`/`PATCH`/`DELETE`, declared optional on dev's `Route` so subclasses autocomplete. Uppercase because Route resolves its router with `this.get(Router)`. Params and query come from `this.match`/`this.query` (dev provides a request `Router`); only the body is a parameter (POST/PUT/PATCH), and its type feeds the spec. The class's `use()` is middleware for its path and below; verbs run on the leaf only. Named exports stay RPC under the same middleware. The generator rejects verbs on page modules and sidecars. Reply pipeline shared by return and throw: string → `text/plain`, `undefined` → 204, other values → JSON, status helpers set status, data primitives (`file`, `stream`, ...) added as needed. Uncaught errors → 500, message only in dev.
 9. **HTML replies.** JSX → `text/html` via a server DOM shim; styles used by the render collected into one `<style>`. Email inlining later.
-10. Import-rewrite extras (named bodies, OpenAPI from handler types), twins (route layers that live as long as the client is inside the route), sockets.
+10. **Twins.** What a client does with a server module's `default`: pubsub to its user-defined reactive values. The browser stub's default is a twin - a client State mirroring the server instance in its matching context (session or route), public methods as RPC. A subscription keeps the server instance alive; its TTL resumes once the last one leaves. Needs a push transport (SSE or socket).
+11. Import-rewrite extras (named bodies, OpenAPI from handler types).
 
 ## Request model
 
@@ -47,7 +48,7 @@ Context.root            process globals (static global)
     └ request ctx       Call, ttl-0 instances
 ```
 
-- **`Call`.** One instance per request - the request's own State. `call.context` starts as the session provider's choice and is writable. At the leaf, dev pushes a request context holding the `Call`, so `Call.get()` works anywhere below. Name chosen over Request/Response (Fetch globals), Exchange, Reply, Visit.
+- **`Call`.** One instance per request - the request's own State. `call.context` starts as the session provider's choice and is writable. At the leaf, dev pushes a request context holding the `Call`, so `Call.get()` works anywhere below. Name chosen over Request/Response (Fetch globals), Exchange, Reply, Visit. `Fetch` still under consideration (Service Worker `FetchEvent` precedent) - against it, its natural instance name shadows global `fetch()`.
 - **Contexts are reachable only through the call**, never by key.
 - **TTL.** Optional `static ttl` (seconds) seeds a managed instance `ttl` (a deadline; reads as remaining life). A `use()` retrieval resets it. `ttl = 0`, the default, lives until the end of the current request; `set(null)` destroys now. Best effort - never before the deadline, possibly after; one sweeper per process; nothing is destroyed while a request using it is in flight.
 - **Cleanup.** A cached context counts its live States and in-flight calls; at zero it pops and leaves its parent, folding up from the leaves. Ending a session destroys its subtree. `Context.pop()` does not destroy instances, so dev tracks and destroys what it created.
@@ -65,11 +66,11 @@ A sidecar's `default` export is its route's middleware. On each visit dev walks 
 ## Open
 
 - Status helper naming - `NotFound` and `Redirect` collide with existing exports. Leaning `Status.NotFound(...)`.
-- A class form for REST (`extends Rest`, or a projection of `Route`) - deferred until the full union of route roles is known. Verbs would be uppercase: `get`/`set` are State's own.
 - Session provider details: cookie name, id minting, how a provider is exported; lifetime of the session context itself.
 - Hot reload retiring route scopes and their instances.
 - Whether a middleware's `use()` may return a cleanup (run leaf→root after the reply).
-- Middleware in `app/api/**`: `default` there is `rest({...})` (item 8), so its middleware needs another slot - or `rest()` takes one.
+- Twin boundary as a runtime rule - TS `protected` does not exist at runtime, so what replicates and what a client may call cannot rest on it. `_`-prefixed (unmanaged) and `#private` members stay server-only; whether public methods are callable by default or by opt-in is undecided (default-deny is the safer side).
+- What a twin of a `Route` subclass carries of Route's own members (`match`, `query`, render surface).
 
 ## Upstream (bullpen)
 
