@@ -43,7 +43,7 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
 
   const { imports, loaders } = collectImports(root, outDir);
   const wrappers: string[] = [];
-  const tree = emitNode(root, true, 2, wrappers).join("\n");
+  const tree = emitNode(root, true, 2, wrappers, "null").join("\n");
   const pageImports = root.exports.has("NotFound") ? "{ Route, Router }" : "{ NotFound, Route, Router }";
 
   return [
@@ -170,24 +170,25 @@ function collectImports(root: RouteNode, outDir: string) {
   return { imports, loaders };
 }
 
-function emitNode(node: RouteNode, isRoot: boolean, depth: number, wrappers: string[]): string[] {
+function emitNode(node: RouteNode, isRoot: boolean, depth: number, wrappers: string[], slot: string): string[] {
   const pad = "  ".repeat(depth);
   const { Page, Layout, Loading, Catch, NotFound, default: def } = node.alias;
   const enter = node.classDefault ? undefined : def;
   const scope = node.classDefault ? def : undefined;
 
-  const fallback = Loading && `<${Loading} />`;
+  const own = Loading ? `<${Loading} />` : undefined;
   const isScope = isRoot || node.children.length > 0 || !!Layout || !!NotFound || !!scope;
 
   if (!isScope)
-    return Page ? route(pad, { to: node.segment, as: Page, enter, fallback, Catch }) : [];
+    return Page ? route(pad, { to: node.segment, as: Page, enter, fallback: own ?? slot, Catch }) : [];
 
   const inner: string[] = [];
+  const below = own ?? (Layout ? "null" : slot);
 
-  if (Page) inner.push(...route(pad + "  ", { as: Page }));
+  if (Page) inner.push(...route(pad + "  ", { as: Page, fallback: below }));
 
   for (const child of node.children)
-    inner.push(...emitNode(child, false, depth + 1, wrappers));
+    inner.push(...emitNode(child, false, depth + 1, wrappers, below));
 
   if (!inner.length) return [];
 
@@ -202,7 +203,7 @@ function emitNode(node: RouteNode, isRoot: boolean, depth: number, wrappers: str
   const fallbackPage = NotFound ?? (isRoot ? "NotFound" : undefined);
   return route(
     pad,
-    { to: isRoot ? undefined : node.segment, as, NotFound: fallbackPage, enter, fallback, Catch },
+    { to: isRoot ? undefined : node.segment, as, NotFound: fallbackPage, enter, fallback: slot, Catch },
     inner,
   );
 }

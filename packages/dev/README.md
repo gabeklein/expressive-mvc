@@ -28,6 +28,14 @@ it renders, and a returned string redirects (`null` falls through to the 404). A
 Component - renders around the route's content and is provided to everything below it; with a
 `Layout`, it wraps the `Layout`.
 
+`Loading` is the placeholder for the content slot of the `Layout` beside it: any page rendered
+there that cannot show anything yet - its code, its entry hook or its data still pending - shows
+it in place, inside the layout. It reaches pages at any depth until a nested `Layout`, which starts
+its own slot. A page's own `Loading` covers that page first. Navigation inside the app never shows
+it - the current page holds until the next is ready (`Router.get().navigating` meanwhile); it is
+for arriving cold, by link or refresh. A Component or a State with its own `fallback` keeps its
+waits to itself.
+
 Each route module becomes its own chunk, loaded when the route is first entered, unless it exports
 `Loading`, `Catch` or a `default` - those are needed before the route renders - or is the root.
 

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // @vitest-environment-options { "url": "http://localhost/" }
 
+import { set } from "@expressive/mvc";
 import { Link, Redirect } from "@expressive/router";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -383,5 +384,59 @@ describe("loaders", () => {
     const root = await mount(Tree);
     await settle();
     expect(root.textContent).toBe("loaded");
+  });
+});
+
+describe("Loading in a route's slot", () => {
+  browserRouter();
+
+  it("shows while a page class waits on its data", async () => {
+    let resolve!: (value: string) => void;
+    const pending = new Promise<string>(done => (resolve = done));
+
+    class Page extends Route {
+      value = set(() => pending);
+
+      render() {
+        return <p>{this.value}</p>;
+      }
+    }
+
+    const Tree = () => (
+      <Route>
+        <Route to="x" as={Page} fallback={<span>loading</span>} />
+      </Route>
+    );
+
+    location("/x");
+    const root = await mount(Tree);
+    expect(root.textContent).toBe("loading");
+
+    resolve("ready");
+    await settle();
+    expect(root.textContent).toBe("ready");
+  });
+
+  it("shows inside the parent Layout while a child page loads", async () => {
+    let resolve!: () => void;
+    const pending = new Promise<void>(done => (resolve = done));
+    const Lazy = () => pending.then(() => () => <span>child</span>);
+    const Layout = (props: { children?: any }) => <div>layout:{props.children}</div>;
+
+    const Tree = () => (
+      <Route>
+        <Route to="sec" as={Layout} fallback={null}>
+          <Route to="leaf" as={Lazy} fallback={<span>loading</span>} />
+        </Route>
+      </Route>
+    );
+
+    location("/sec/leaf");
+    const root = await mount(Tree);
+    expect(root.textContent).toBe("layout:loading");
+
+    resolve();
+    await settle();
+    expect(root.textContent).toBe("layout:child");
   });
 });
