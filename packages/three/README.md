@@ -55,8 +55,8 @@ arena.spinner.boost(1);
   own (`fov`, `zoom`, `intensity`, ...); projection updates as they change. `position`, `rotation` and
   `scale` read as the object's live vectors: assign one to place (copied in,
   dispatched if changed), mutate in place to animate (silent). Light colors work
-  the same way. A subclass sets
-  defaults as plain fields; constructor arguments override them.
+  the same way. A subclass sets defaults as plain fields; constructor arguments
+  override them.
 - **Placement** - unset, a node draws under the nearest `Object3D` owning it,
   through a field or a `has()` pool, past owners which are not nodes. A `get()`
   reference or an already-active instance does not attach. Assign `parent` to
