@@ -4,6 +4,7 @@ import { vi, expect, it, describe } from 'vitest';
 import { ComponentChildren, createRef } from 'preact';
 import { StrictMode } from 'preact/compat';
 
+import { State } from '@expressive/mvc';
 import { Component, set } from '.';
 import { flushMicrotasks } from '../test.setup';
 
@@ -247,6 +248,22 @@ describe('element children', () => {
 });
 
 describe('props property', () => {
+  it('will accept a subclass where its parent is expected', () => {
+    class Mesh extends Component {
+      label = 'x';
+    }
+
+    class Ball extends Mesh {
+      radius = 1;
+    }
+
+    const take = (mesh: Mesh): Component => mesh;
+    const Type: typeof Mesh = Ball;
+
+    expect(take(Ball.new())).toBeInstanceOf(Mesh);
+    expect(Type).toBe(Ball);
+  });
+
   it('will update on rerender', () => {
     class Control extends Component {
       render(props = {} as { value: string }) {
@@ -351,6 +368,32 @@ describe('render method', () => {
 
     expect(screen).toHaveText('foo');
     expect(screen).toHaveText('bar');
+  });
+
+  it('will update when a State fetched via this.get changes', async () => {
+    class Auth extends State {
+      static readonly global = true;
+      name = 'foo';
+    }
+
+    class Control extends Component {
+      render() {
+        return <span>{this.get(Auth).name}</span>;
+      }
+    }
+
+    const auth = Auth.new();
+    const screen = render(<Control />);
+
+    expect(screen).toHaveText('foo');
+
+    await act(async () => {
+      auth.name = 'bar';
+      await auth.set();
+    });
+
+    expect(screen).toHaveText('bar');
+    auth.set(null);
   });
 
   it('will accept function component', async () => {

@@ -175,6 +175,36 @@ Bare `Component` (not a subclass) given `for` provides one State to its children
 - No suspense boundary unless `fallback` or `catch` is passed. Bare `<Component>` without `for` keeps `fallback = null`.
 - One item only - several belong to a parent State that owns them as fields (`class Root extends State { theme = new Theme(); router = new BrowserRouter() }`), where they resolve each other as siblings with `get()`. Nesting `<Component for>` elements works but is a smell: the inner State can `get` the outer, not the reverse.
 
+## Ownership vs Context
+
+Context is where a State registers to be found; ownership is who constructed it. The two agree for a field child, and diverge whenever registration skips a level:
+
+- A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every State a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
+- Two siblings of one type are ambiguous to context (`get(Foo)` is `null`) but each has exactly one owner.
+- A host-mounted Component, `use()` instance or `<Component for>` is owned by the Component rendering it, with no field between them.
+
+`state.get(State)` reads the owner and `get(State, true)` lists what a State owns directly; neither consults context. Use a type to find a collaborator; use `State` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
+
+```ts
+class Node extends State {
+  parent = get(State, false);   // whoever constructed this Node
+  nodes = has(Node);            // owned - die with this Node
+}
+
+class Scene extends State {
+  nodes = has(Node);
+}
+
+const scene = Scene.new();
+const a = scene.nodes.add();
+const b = a.nodes.add();
+
+b.parent === a;                   // ownership, no type needed
+a.parent === scene;
+a.get(Scene) === scene;           // a type resolves its direct owner too
+scene.get(State, (node) => attach(node), true); // direct members only - a, not b
+```
+
 ## API Surface
 
 ```ts

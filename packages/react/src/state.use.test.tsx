@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { State, Provider, get, set } from '.';
+import { Component, State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { flushMicrotasks, mockPromise } from '../test.setup';
 import { pending } from '@expressive/mvc';
@@ -666,5 +666,79 @@ describe('State.use', () => {
 
       expect(mounted.get(null)).toBe(true);
     });
+  });
+});
+
+describe('owner', () => {
+  it('will be owned by enclosing Component', () => {
+    let owner!: State;
+    let used!: State;
+
+    class Used extends State {}
+    class Host extends Component {
+      render() {
+        return <Inner />;
+      }
+    }
+
+    function Inner() {
+      used = Used.use().is;
+      return null;
+    }
+
+    render(<Host is={(h) => (owner = h)} />);
+
+    expect(used.get(State)).toBe(owner);
+  });
+
+  it('will walk owners up to the root Component', () => {
+    let outer!: State;
+    let inner!: State;
+    let used!: State;
+
+    class Used extends State {}
+    class Inner extends Component {
+      render() {
+        return <Leaf />;
+      }
+    }
+    class Outer extends Component {
+      render() {
+        return <Inner is={(i) => (inner = i)} />;
+      }
+    }
+
+    function Leaf() {
+      used = Used.use().is;
+      return null;
+    }
+
+    render(<Outer is={(o) => (outer = o)} />);
+
+    expect(used.get(State)).toBe(inner);
+    expect(used.get(State).get(State)).toBe(outer);
+    expect(outer.get(State, false)).toBeUndefined();
+  });
+
+  it('will not be owned by use() of a parent function', () => {
+    let outer!: State;
+    let inner!: State;
+
+    class Used extends State {}
+
+    function Outer() {
+      outer = Used.use().is;
+      return <Inner />;
+    }
+
+    function Inner() {
+      inner = Used.use().is;
+      return null;
+    }
+
+    render(<Outer />);
+
+    expect(outer).not.toBe(inner);
+    expect(inner.get(State, false)).toBeUndefined();
   });
 });

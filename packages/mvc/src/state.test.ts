@@ -9,6 +9,7 @@ import { event, listener, watch } from './observable';
 
 const DESTROYED = /but state is destroyed/;
 import { has } from './field/has';
+import { map } from './field/map';
 
 it('will extend custom class', () => {
   class Subject extends State {
@@ -918,6 +919,20 @@ describe('get method', () => {
       expect(foo.get(Bar)).toBe(bar);
     });
 
+    it('will type fetched state by its class', () => {
+      class Baz extends State {
+        value = 1;
+      }
+
+      const foo = Foo.new();
+
+      new Context({ foo, Baz });
+
+      const baz: Baz = foo.get(Baz);
+
+      expect(baz.value).toBe(1);
+    });
+
     it('will return undefined if not found', () => {
       const foo = new Foo();
 
@@ -999,6 +1014,289 @@ describe('get method', () => {
 
       unsub();
       sub.pop();
+    });
+
+    it('will subscribe effect to fields read from fetched state', async () => {
+      class Auth extends State {
+        name = 'foo';
+        other = 0;
+      }
+
+      const ctx = new Context({ Auth, Foo });
+      const auth = ctx.get(Auth);
+      const effect = vi.fn();
+      const release = ctx.get(Foo).get((self) => {
+        effect(self.get(Auth).name);
+      });
+
+      auth.other = 1;
+      await expect(auth).toHaveUpdated();
+      expect(effect).toHaveBeenCalledTimes(1);
+
+      auth.name = 'bar';
+      await expect(auth).toHaveUpdated();
+      expect(effect).toHaveBeenCalledTimes(2);
+      expect(effect).toHaveBeenLastCalledWith('bar');
+
+      release();
+      auth.name = 'baz';
+      await expect(auth).toHaveUpdated();
+      expect(effect).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('owner', () => {
+    class Child extends State {}
+
+    it('will get owner of a field', () => {
+      class Parent extends State {
+        child = new Child();
+      }
+
+      const parent = Parent.new();
+
+      expect(parent.child.get(State)).toBe(parent);
+    });
+
+    it('will get owner of a late assignment', () => {
+      class Parent extends State {
+        child?: Child = undefined;
+      }
+
+      const parent = Parent.new();
+
+      parent.child = new Child();
+
+      expect(parent.child.get(State)).toBe(parent);
+    });
+
+    it('will get owner of pool and map members', () => {
+      class Parent extends State {
+        pool = has(Child);
+        keyed = map<string, Child>();
+      }
+
+      const parent = Parent.new();
+      const member = parent.pool.add();
+
+      parent.keyed.set('a', new Child());
+
+      expect(member.get(State)).toBe(parent);
+      expect(parent.keyed.get('a')!.get(State)).toBe(parent);
+    });
+
+    it('will not get holder of an active State', () => {
+      class Parent extends State {
+        child?: Child = undefined;
+      }
+
+      const parent = Parent.new();
+      const child = Child.new();
+
+      parent.child = child;
+
+      expect(child.get(State, false)).toBeUndefined();
+    });
+
+    it('will get State a context was set up for', () => {
+      const host = Child.new();
+      const child = new Child();
+
+      new Context(host).push(child);
+
+      expect(child.get(State)).toBe(host);
+    });
+
+    it('will skip context set up for itself', () => {
+      const host = Child.new();
+      const child = new Child();
+
+      new Context(host).push().push(child);
+
+      expect(host.get(State, false)).toBeUndefined();
+      expect(child.get(State)).toBe(host);
+    });
+
+    it('will not get from context of several States', () => {
+      const a = Child.new();
+      const b = Child.new();
+      const child = new Child();
+
+      new Context({ a, b }).push(child);
+
+      expect(child.get(State, false)).toBeUndefined();
+    });
+
+    it('will throw if none', () => {
+      const child = Child.new();
+
+      expect(() => child.get(State)).toThrow(`${child} has no owner.`);
+      expect(child.get(State, false)).toBeUndefined();
+    });
+
+    it('will report owned States', () => {
+      class Parent extends State {
+        child = new Child();
+        guest?: Child = undefined;
+        pool = has(Child);
+        late?: Child = undefined;
+      }
+
+      const parent = Parent.new();
+      const callback = vi.fn();
+
+      parent.guest = Child.new();
+      parent.get(State, callback, true);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(parent.child);
+
+      const member = parent.pool.add();
+      parent.late = new Child();
+
+      expect(callback).toHaveBeenCalledTimes(3);
+      expect(callback).toHaveBeenNthCalledWith(2, member);
+      expect(callback).toHaveBeenNthCalledWith(3, parent.late);
+    });
+
+    it('will report States hosted by context', () => {
+      const host = Child.new();
+      const child = new Child();
+      const callback = vi.fn();
+
+      host.get(State, callback, true);
+      new Context(host).push(child);
+
+      expect(callback).toHaveBeenCalledWith(child);
+    });
+
+    it('will run cleanup when owned State is destroyed', () => {
+      class Parent extends State {
+        pool = has(Child);
+      }
+
+      const parent = Parent.new();
+      const member = parent.pool.add();
+      const cleanup = vi.fn();
+      const callback = vi.fn();
+
+      parent.get(State, () => cleanup, true);
+      parent.pool.delete(member);
+
+      expect(cleanup).toHaveBeenCalledTimes(1);
+
+      parent.get(State, callback, true);
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('will stop reporting when cancelled', () => {
+      class Parent extends State {
+        pool = has(Child);
+      }
+
+      const parent = Parent.new();
+      const callback = vi.fn();
+      const stop = parent.get(State, callback, true);
+
+      stop();
+      parent.pool.add();
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('will report direct children only', () => {
+      class Middle extends State {
+        child = new Child();
+      }
+      class Root extends State {
+        middle = new Middle();
+      }
+
+      const root = Root.new();
+      const callback = vi.fn();
+
+      root.get(State, callback, true);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(root.middle);
+      expect(root.middle.child.get(State)).toBe(root.middle);
+      expect(root.middle.child.get(State).get(State)).toBe(root);
+    });
+
+    it('will keep owner once activated', () => {
+      class Parent extends State {
+        child?: Child = undefined;
+      }
+
+      const a = Parent.new();
+      const b = Parent.new();
+      const child = new Child();
+
+      a.child = child;
+      b.child = child;
+
+      new Context(b).push(child);
+
+      expect(child.get(State)).toBe(a);
+      expect(a.child).toBe(child);
+      expect(b.child).toBe(child);
+    });
+
+    it('will not get holder of a pool guest', () => {
+      class Parent extends State {
+        pool = has(Child);
+      }
+
+      const owner = Parent.new();
+      const holder = Parent.new();
+      const member = owner.pool.add();
+
+      const callback = vi.fn();
+
+      holder.pool.add(member);
+      holder.pool.add(Child.new());
+      holder.get(State, callback, true);
+
+      expect(member.get(State)).toBe(owner);
+      expect(holder.pool.size).toBe(2);
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('will run cleanup when owner is destroyed', () => {
+      class Parent extends State {
+        child = new Child();
+        pool = has(Child);
+      }
+
+      const parent = Parent.new();
+      const cleanup = vi.fn();
+
+      parent.pool.add();
+      parent.get(State, (child) => () => cleanup(child), true);
+      parent.set(null);
+
+      expect(cleanup).toHaveBeenCalledTimes(2);
+      expect(cleanup).toHaveBeenCalledWith(parent.child);
+    });
+
+    it('will subscribe effect to fields read from owner', async () => {
+      class Parent extends State {
+        value = 0;
+        child = new Child();
+      }
+
+      const parent = Parent.new();
+      const effect = vi.fn();
+
+      parent.child.get((self) => {
+        effect((self.get(State) as Parent).value);
+      });
+
+      parent.value = 1;
+      await expect(parent).toHaveUpdated();
+      expect(effect).toHaveBeenCalledTimes(2);
+      expect(effect).toHaveBeenLastCalledWith(1);
     });
   });
 

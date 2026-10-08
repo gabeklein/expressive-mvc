@@ -179,7 +179,7 @@ const mine = basket.items.add();          // new Item() - owned
 basket.items.add(Item.new());             // already activated - guest
 ```
 
-The hosting state adopts every collection at activation. Fresh `State` members are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members.
+The hosting state adopts every collection at activation. Fresh `State` members are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members. `member.get(State)` is the owner without naming its type; `owner.get(State, true)` lists owned members and field children together ([get.md](get.md#owner)).
 
 A `State` member that dies evicts itself - owned or guest - so a pool never serves destroyed members; adding one already destroyed throws. `member.set(null)` is a complete removal on its own. Lists do not adopt, destroy, or evict on death - they store values by position; use a pool (`has(Item)`) when members are owned `State`s.
 

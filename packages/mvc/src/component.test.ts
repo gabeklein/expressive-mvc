@@ -359,6 +359,22 @@ describe('props (static types)', () => {
     method() {}
   }
 
+  it('will accept a subclass where its parent is expected', () => {
+    class Mesh extends Component {
+      label = 'x';
+    }
+
+    class Ball extends Mesh {
+      radius = 1;
+    }
+
+    const take = (mesh: Mesh): Component => mesh;
+    const Type: typeof Mesh = Ball;
+
+    expect(take(Ball.new())).toBeInstanceOf(Mesh);
+    expect(Type).toBe(Ball);
+  });
+
   it('will accept writable fields and callbacks', () => {
     const props: Component.StateProps<Test> = {
       value: 1,
