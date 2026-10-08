@@ -365,17 +365,26 @@ describe('health', () => {
     text = '';
   }
 
-  it('will count, journal, and summarize a caught report until the journal clears', async () => {
+  it('will count caught reports by case and pass them on', async () => {
     const warn = mockWarn();
+    const note = Note.new();
+
+    note.set(null);
+    note.text = 'late';
+    await flushMicrotasks();
+
+    expect(warn).not.toBeCalled();
+    expect(health().caught).toEqual({ dead: 1, unused: 0, getter: 0, setup: 0, effect: 0 });
+  });
+
+  it('will journal and summarize a caught report, and reset counts on clear', async () => {
     journal.record({ level: 'keys' });
     const note = Note.new();
 
     note.set(null);
     note.text = 'late';
-    expect(health().caught).toEqual({ dead: 1, unused: 0, getter: 0, setup: 0, effect: 0 });
     await flushMicrotasks();
 
-    expect(warn).not.toBeCalled();
     expect(journal.history({ key: 'text' }).map(({ event }) => event)).toContainEqual({
       id: String(note),
       type: 'Note',
