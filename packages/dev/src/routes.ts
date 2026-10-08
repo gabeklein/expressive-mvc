@@ -16,7 +16,7 @@ const ROLES = [
 
 type Role = (typeof ROLES)[number];
 
-const LAZY = new Set<Role>(["Page", "Layout", "NotFound"]);
+const LAZY = new Set<Role>(["Page", "Layout", "NotFound", "default"]);
 
 export interface Scan {
   exports: Iterable<string>;
@@ -157,7 +157,11 @@ function collectImports(root: RouteNode, outDir: string) {
 
     if (spec && node !== root && roles.every(role => LAZY.has(role)))
       for (const role of roles)
-        loaders.push(`const ${node.alias[role]} = () => import(${spec}).then(m => m.${role});`);
+        loaders.push(
+          role === "default" && !node.classDefault
+            ? `const ${node.alias[role]} = route => import(${spec}).then(m => m.default(route));`
+            : `const ${node.alias[role]} = () => import(${spec}).then(m => m.${role});`
+        );
     else if (spec && roles.length) {
       const named = roles.filter(role => role !== "default").map(role => `${role} as ${node.alias[role]}`);
       const clause = [node.alias.default, named.length && `{ ${named.join(", ")} }`].filter(Boolean).join(", ");
