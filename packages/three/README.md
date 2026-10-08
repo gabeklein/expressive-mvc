@@ -46,12 +46,16 @@ arena.spinner.position.y += 1; // in place, silent - `set('position')` to announ
 arena.spinner.boost(1);
 ```
 
-- **Nodes** - `Object3D`, `Group`, `Scene`, `Mesh`. Each represents one three.js
+- **Nodes** - `Object3D`, `Group`, `Scene`, `Mesh`, `PerspectiveCamera`,
+  `OrthographicCamera`, and `AmbientLight`, `HemisphereLight`,
+  `DirectionalLight`, `PointLight`, `SpotLight` (all `Light`). Each represents one three.js
   object, made once by `create()` and held as protected `_object`.
 - **Members** - `visible`, plus `geometry` and `material` on `Mesh`, are
-  reactive fields stored on the three.js object. `position`, `rotation` and
+  reactive fields stored on the three.js object. Cameras and lights add their
+  own (`fov`, `zoom`, `intensity`, ...); projection updates as they change. `position`, `rotation` and
   `scale` read as the object's live vectors: assign one to place (copied in,
-  dispatched if changed), mutate in place to animate (silent). A subclass sets
+  dispatched if changed), mutate in place to animate (silent). Light colors work
+  the same way. A subclass sets
   defaults as plain fields; constructor arguments override them.
 - **Placement** - unset, a node draws under the nearest `Object3D` owning it,
   through a field or a `has()` pool, past owners which are not nodes. A `get()`
