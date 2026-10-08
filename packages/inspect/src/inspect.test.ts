@@ -1,5 +1,5 @@
 import { Context, State, has, map, set } from '@expressive/mvc';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockUncaught, mockWarn } from '../test.setup';
 import { act, attach, call, detach, find, get, health, journal, models, set as assign, tree } from './index';
@@ -365,15 +365,16 @@ describe('health', () => {
     text = '';
   }
 
-  it('will count caught reports by case and pass them on', async () => {
-    const warn = mockWarn();
+  it('will count caught reports by case and pass them on', () => {
+    const app = vi.fn((error: unknown) => error);
+    const stop = State.on({ catch: app });
     const note = Note.new();
 
     note.set(null);
     note.text = 'late';
-    await flushMicrotasks();
+    stop();
 
-    expect(warn).not.toBeCalled();
+    expect(app).toBeCalledWith(expect.objectContaining({ message: `Tried to update ${note}.text but state is destroyed.` }), 'dead', 'text');
     expect(health().caught).toEqual({ dead: 1, unused: 0, getter: 0, setup: 0, effect: 0 });
   });
 
