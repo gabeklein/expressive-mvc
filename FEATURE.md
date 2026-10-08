@@ -7,6 +7,10 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - `feat/dev-server` is the trunk. Each feature lands as its own PR into it, small enough to hand-review; the trunk merges to `main` when release-ready.
 - Merge `main` into the trunk as it moves. Upstream fixes (mvc, dom, router) land on `main` as their own PRs, never only here.
 - `backup/dev-server-full` holds the pre-trunk prototype - source for the queued features below. Its POST dispatch and client stubs seed the MVP; its `app/api` lane comes later. Delete once nothing is left to carve.
+- Stack PRs: each targets the previous one's branch, the bottom one the trunk; merge a lower branch up into the ones above it as it moves.
+- Verify in a browser, not only unit tests: `bun run e2e` in `example/` (set `CHROME`). After rebuilding a package, a dev server can serve a stale `@expressive/*` from `example/node_modules/.vite` - delete it (the E2E dev project always does).
+- Specs live in `example/e2e/` for now; colocating them beside routes is allowed later - the dependency scan already skips `*.spec.*`/`*.test.*` under `app/`.
+- Trunk commits carry no trailers.
 
 ## Agreed shape
 
@@ -33,7 +37,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 
 Enough to write E2E tests and examples and feel the ergonomics. One PR each, in order. Everything under Later waits until the MVP has been used.
 
-1. **Sidecar calls.** Each export of `app/**/api.ts` becomes a browser stub that POSTs `{ location, name, args }` with the tab id. The server resolves session → tab → location (below) and runs the function there in `AsyncLocalStorage`, so `T.get()`/`T.use()` resolve in that context; both throw outside a call. JSON reply. Importable only from the sidecar's folder and below (build error otherwise).
+1. **Sidecar calls.** Each export of `app/**/api.ts` becomes a browser stub that POSTs `{ location, name, args }` with the tab id. Proposed wire: one endpoint `POST /.expressive/call`, an `x-expressive-tab` header, a JSON reply or `{ error }` with a 4xx/5xx status. Planned as two PRs - calls (scanner allowlist and build errors, stubs, dispatch, import rule), then call context (contexts, `AsyncLocalStorage`, server `get`/`use`, a server `Route` per location). The server resolves session → tab → location (below) and runs the function there in `AsyncLocalStorage`, so `T.get()`/`T.use()` resolve in that context; both throw outside a call. JSON reply. Importable only from the sidecar's folder and below (build error otherwise).
 2. **Twins (pull).** A sidecar's default class is demanded per location: created in the tab's location context, its twin provided in the client scope, so `Foo.get()` in that route's pages returns the twin. On route entry the twin POSTs `attach { location }`: the server gets-or-creates the instance, adds it to the tab's attached set, and replies with a snapshot and its version - suspending until then. Route exit POSTs `detach`. Methods are calls; a reply carries the call's patch and version, applied before the call resolves - an awaited call never sees a stale twin. Twins are read-only - an invariant, not an MVP shortcut: server values change through methods, and assigning a twin field throws.
 3. **Push (SSE).** One `EventSource` per tab - a mailbox, not a subscription list. What it carries is decided server-side by the tab's attached set, so attaching or detaching never touches the stream. `mount()` runs on attach, its cleanup on detach. Each flush of an attached instance's updates (mvc batches per microtask) becomes one frame: `{ target, values }` with the version as the event id - the browser's reconnect resumes with `Last-Event-ID`; a server that lost the tab sends `reset`, and the client re-attaches.
 4. **Identity.** Default cookie session (HttpOnly, `SameSite=Lax`, `Secure` in production, minted lazily); tab id in `sessionStorage`. No user layer, no login rotation yet.
@@ -124,6 +128,8 @@ Principles the MVP must not contradict; most land after it.
 - **User layer.** An optional provider hook maps a session to a user key, placing session contexts under that user's context; login's required id rotation mints the new session context there. Carrying anonymous state across login is app logic.
 - **`app/api/**` lane.** Calls from the bundled tab work as in the MVP (no location binding). For external clients: per-request identity (bearer), a `Call` State for HTTP concerns (headers, status, cookies; `Fetch` considered - its instance name shadows global `fetch()`), the reply pipeline (string → `text/plain`, `undefined` → 204, other values → JSON, status helpers, data primitives; uncaught → 500, message in dev only), REST as `protected` uppercase verbs on dev's `Route` (params from `this.match`, body as the one parameter), HTML replies via a server DOM shim, OpenAPI.
 - The Reliability items above beyond the MVP.
+- **Build notice.** `expressive build` prints one line per non-root route module kept in the main bundle and why - e.g. it exports `Catch`; a `Catch` on its section's `index` covers it.
+- **Repo placement.** dev incubates here as a trunk while it drives changes into mvc and dom; it is the likeliest package to move to `gabeklein/expressive-dev` at its first release, once its PRs stop touching core.
 
 ## Rejected
 
