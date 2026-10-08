@@ -80,41 +80,25 @@ describe('Link', () => {
     expect(Link.prototype.render.call(link)).toBeUndefined();
   });
 
-  it('will navigate on plain left-click', async () => {
-    expect(await click(link())).toBe(false);
+  it.each([
+    ['will navigate on plain left-click', {}],
+    ['will navigate with target=_self', { target: '_self' }],
+    ['will navigate with target=_SELF', { target: '_SELF' }],
+    ['will navigate with download={false}', { download: false }]
+  ])('%s', async (_, props) => {
+    expect(await click(link(props))).toBe(false);
     expect(router.current.path).toBe('/about');
   });
 
-  it('will navigate with target=_self', async () => {
-    expect(await click(link({ target: '_self' }))).toBe(false);
-    expect(router.current.path).toBe('/about');
-  });
-
-  it('will navigate with target=_SELF', async () => {
-    expect(await click(link({ target: '_SELF' }))).toBe(false);
-    expect(router.current.path).toBe('/about');
-  });
-
-  it('will navigate with download={false}', async () => {
-    expect(await click(link({ download: false }))).toBe(false);
-    expect(router.current.path).toBe('/about');
-  });
-
-  it('will ignore modifier-clicks (meta/ctrl/shift/alt)', async () => {
-    const a = link();
-    for (const mod of ['metaKey', 'ctrlKey', 'shiftKey', 'altKey'] as const) {
-      await click(a, { [mod]: true });
-      expect(router.current.path).toBe('/');
-    }
-  });
-
-  it('will ignore middle-click', async () => {
-    await click(link(), { button: 1 });
-    expect(router.current.path).toBe('/');
-  });
-
-  it('will not navigate if consumer onClick prevents default', async () => {
-    await click(link({ onClick: (e: any) => e.preventDefault() }));
+  it.each([
+    ['will ignore meta-click', {}, { metaKey: true }],
+    ['will ignore ctrl-click', {}, { ctrlKey: true }],
+    ['will ignore shift-click', {}, { shiftKey: true }],
+    ['will ignore alt-click', {}, { altKey: true }],
+    ['will ignore middle-click', {}, { button: 1 }],
+    ['will not navigate if consumer onClick prevents default', { onClick: (e: any) => e.preventDefault() }, {}]
+  ])('%s', async (_, props, init) => {
+    await click(link(props), init);
     expect(router.current.path).toBe('/');
   });
 
@@ -153,107 +137,33 @@ describe('Link', () => {
     expect(a.hasAttribute('replace')).toBe(false);
   });
 
-  it('will resolve relative `to` against nearest Route', async () => {
-    location('/posts/foo');
-    const a = link({ to: './edit' }, '/posts/:id');
-    expect(a.getAttribute('href')).toBe('/posts/foo/edit');
+  it.each([
+    ['will resolve relative `to` against nearest Route', '/posts/foo', '/posts/:id', './edit', '/posts/foo/edit'],
+    ['will preserve query and fragment in a relative `to`', '/posts/foo', '/posts/:id', './edit?tab=history#form', '/posts/foo/edit?tab=history#form'],
+    ['will resolve a fragment against the Route, keeping query', '/posts/foo?view=full#intro', '/posts/:id', '#details', '/posts/foo?view=full#details'],
+    ['will resolve a fragment against the root Route', '/?view=full', '/', '#details', '/?view=full#details']
+  ])('%s', async (_, at, route, to, href) => {
+    location(at);
+    const a = link({ to }, route);
+    expect(a.getAttribute('href')).toBe(href);
 
     await click(a);
-    expect(router.current.url).toBe('/posts/foo/edit');
+    expect(router.current.url).toBe(href);
   });
 
-  it('will preserve query and fragment in a relative `to`', async () => {
-    location('/posts/foo');
-    const a = link({ to: './edit?tab=history#form' }, '/posts/:id');
-    expect(a.getAttribute('href')).toBe('/posts/foo/edit?tab=history#form');
-
-    await click(a);
-    expect(router.current.url).toBe('/posts/foo/edit?tab=history#form');
-  });
-
-  it('will resolve a fragment against the Route, keeping query', async () => {
-    location('/posts/foo?view=full#intro');
-    const a = link({ to: '#details' }, '/posts/:id');
-    expect(a.getAttribute('href')).toBe('/posts/foo?view=full#details');
-
-    await click(a);
-    expect(router.current.url).toBe('/posts/foo?view=full#details');
-  });
-
-  it('will resolve a fragment against the root Route', async () => {
-    location('/?view=full');
-    const a = link({ to: '#details' }, '/');
-    expect(a.getAttribute('href')).toBe('/?view=full#details');
-
-    await click(a);
-    expect(router.current.url).toBe('/?view=full#details');
-  });
-
-  it('will leave scheme-bearing hrefs to the browser', () => {
+  it.each([
+    ['will leave scheme-bearing hrefs to the browser', { to: 'https://example.com/docs?q=1#intro' }],
+    ['will leave protocol-relative hrefs to the browser', { to: '//cdn.example.com/file.js' }],
+    ['will leave target=_blank clicks to the browser', { to: '/about', target: '_blank' }],
+    ['will leave named target clicks to the browser', { to: '/about', target: 'preview' }],
+    ['will leave download clicks to the browser', { to: '/report', download: true }],
+    ['will leave empty download clicks to the browser', { to: '/report', download: '' }],
+    ['will leave named download clicks to the browser', { to: '/report', download: 'report.pdf' }]
+  ])('%s', (_, props) => {
     const onClick = vi.fn();
-    const link = grab({ to: 'https://example.com/docs?q=1#intro', onClick });
+    const link = grab({ ...props, onClick });
 
-    expect(link.href).toBe('https://example.com/docs?q=1#intro');
-    expect(leftClick(link)).not.toHaveBeenCalled();
-    expect(onClick).toHaveBeenCalledTimes(1);
-    expect(router.current.path).toBe('/');
-  });
-
-  it('will leave protocol-relative hrefs to the browser', () => {
-    const onClick = vi.fn();
-    const link = grab({ to: '//cdn.example.com/file.js', onClick });
-
-    expect(link.href).toBe('//cdn.example.com/file.js');
-    expect(leftClick(link)).not.toHaveBeenCalled();
-    expect(onClick).toHaveBeenCalledTimes(1);
-    expect(router.current.path).toBe('/');
-  });
-
-  it('will leave target=_blank clicks to the browser', () => {
-    const onClick = vi.fn();
-    const link = grab({ to: '/about', target: '_blank', onClick });
-
-    expect(link.href).toBe('/about');
-    expect(leftClick(link)).not.toHaveBeenCalled();
-    expect(onClick).toHaveBeenCalledTimes(1);
-    expect(router.current.path).toBe('/');
-  });
-
-  it('will leave named target clicks to the browser', () => {
-    const onClick = vi.fn();
-    const link = grab({ to: '/about', target: 'preview', onClick });
-
-    expect(link.href).toBe('/about');
-    expect(leftClick(link)).not.toHaveBeenCalled();
-    expect(onClick).toHaveBeenCalledTimes(1);
-    expect(router.current.path).toBe('/');
-  });
-
-  it('will leave download clicks to the browser', () => {
-    const onClick = vi.fn();
-    const link = grab({ to: '/report', download: true, onClick });
-
-    expect(link.href).toBe('/report');
-    expect(leftClick(link)).not.toHaveBeenCalled();
-    expect(onClick).toHaveBeenCalledTimes(1);
-    expect(router.current.path).toBe('/');
-  });
-
-  it('will leave empty download clicks to the browser', () => {
-    const onClick = vi.fn();
-    const link = grab({ to: '/report', download: '', onClick });
-
-    expect(link.href).toBe('/report');
-    expect(leftClick(link)).not.toHaveBeenCalled();
-    expect(onClick).toHaveBeenCalledTimes(1);
-    expect(router.current.path).toBe('/');
-  });
-
-  it('will leave named download clicks to the browser', () => {
-    const onClick = vi.fn();
-    const link = grab({ to: '/report', download: 'report.pdf', onClick });
-
-    expect(link.href).toBe('/report');
+    expect(link.href).toBe(props.to);
     expect(leftClick(link)).not.toHaveBeenCalled();
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(router.current.path).toBe('/');
@@ -289,32 +199,16 @@ describe('Link.match / Link.active', () => {
       </Route>
     ).container.querySelector('a')!;
 
-  it('will match exactly on the same path', () => {
-    location('/about');
-    const a = nav('/about');
-    expect(a.getAttribute('data-match')).toBe('true');
-    expect(a.getAttribute('class')).toBe('active');
-  });
-
-  it('will match by prefix on a child path', () => {
-    location('/blog/post-1');
-    const a = nav('/blog');
-    expect(a.getAttribute('data-match')).toBe('false');
-    expect(a.getAttribute('class')).toBe('active');
-  });
-
-  it('will not match a sibling sharing a string prefix', () => {
-    location('/blogging');
-    const a = nav('/blog');
-    expect(a.getAttribute('data-match')).toBe('undefined');
-    expect(a.getAttribute('class')).toBe(null);
-  });
-
-  it('will match a root link by prefix everywhere', () => {
-    location('/about');
-    const a = nav('/');
-    expect(a.getAttribute('data-match')).toBe('false');
-    expect(a.getAttribute('class')).toBe('active');
+  it.each([
+    ['will match exactly on the same path', '/about', '/about', 'true', 'active'],
+    ['will match by prefix on a child path', '/blog/post-1', '/blog', 'false', 'active'],
+    ['will not match a sibling sharing a string prefix', '/blogging', '/blog', 'undefined', null],
+    ['will match a root link by prefix everywhere', '/about', '/', 'false', 'active']
+  ])('%s', (_, at, to, match, className) => {
+    location(at);
+    const a = nav(to);
+    expect(a.getAttribute('data-match')).toBe(match);
+    expect(a.getAttribute('class')).toBe(className);
   });
 
   it('will toggle across navigation and re-render only because render reads active', async () => {

@@ -56,49 +56,30 @@ const nestedNone = (
 );
 
 describe('scopeResolves', () => {
-  it('will match a leaf at the root', () => {
-    expect(scopeResolves(leaves, '', '/a')).toBe(true);
-    expect(scopeResolves(leaves, '', '/b')).toBe(true);
-    expect(scopeResolves(leaves, '', '/c')).toBe(false);
-  });
-
-  it('will see through a group only when a descendant leaf matches', () => {
-    expect(scopeResolves(group, '', '/intro/basics')).toBe(true);
-    expect(scopeResolves(group, '', '/intro/bogus')).toBe(false);
-    expect(scopeResolves(group, '', '/intro')).toBe(false);
-  });
-
-  it('will resolve the group base exactly by an index leaf', () => {
-    expect(scopeResolves(indexed, '', '/intro')).toBe(true);
-    expect(scopeResolves(indexed, '', '/intro/basics')).toBe(true);
-    expect(scopeResolves(indexed, '', '/intro/bogus')).toBe(false);
-  });
-
-  it('will treat an anonymous wrapper as transparent', () => {
-    expect(scopeResolves(wrapped, '', '/intro/basics')).toBe(true);
-    expect(scopeResolves(wrapped, '', '/nope')).toBe(false);
-  });
-
-  it('will match a param leaf', () => {
-    expect(scopeResolves(param, '', '/posts/42')).toBe(true);
-    expect(scopeResolves(param, '', '/posts')).toBe(false);
-  });
-
-  it('will not treat a redirect child as a candidate', () => {
-    expect(scopeResolves(redirecting, '', '/a')).toBe(true);
-    expect(scopeResolves(redirecting, '', '/anything')).toBe(false);
-  });
-
-  it('will claim anything within the scope base with none', () => {
-    expect(scopeResolves(none, '', '/docs')).toBe(true);
-    expect(scopeResolves(none, '', '/docs/intro')).toBe(true);
-    expect(scopeResolves(none, '', '/docs/a/b')).toBe(true);
-    expect(scopeResolves(none, '', '/elsewhere')).toBe(false);
-  });
-
-  it('will resolve ancestors for a nested scope none', () => {
-    expect(scopeResolves(nestedNone, '', '/a/b')).toBe(true);
-    expect(scopeResolves(nestedNone, '', '/a/b/x/y')).toBe(true);
-    expect(scopeResolves(nestedNone, '', '/a/c')).toBe(false);
+  it.each([
+    ['will match first root leaf', leaves, '/a', true],
+    ['will match second root leaf', leaves, '/b', true],
+    ['will not match unknown root leaf', leaves, '/c', false],
+    ['will see through a group to a matching leaf', group, '/intro/basics', true],
+    ['will not greedily match a group prefix', group, '/intro/bogus', false],
+    ['will not match a group base without index', group, '/intro', false],
+    ['will match group base by index leaf', indexed, '/intro', true],
+    ['will match sibling of index leaf', indexed, '/intro/basics', true],
+    ['will not match unknown beside index leaf', indexed, '/intro/bogus', false],
+    ['will treat anonymous wrapper as transparent', wrapped, '/intro/basics', true],
+    ['will not match outside anonymous wrapper', wrapped, '/nope', false],
+    ['will match a param leaf', param, '/posts/42', true],
+    ['will not match param leaf without param', param, '/posts', false],
+    ['will match leaf beside a redirect', redirecting, '/a', true],
+    ['will not treat redirect as a candidate', redirecting, '/anything', false],
+    ['will claim scope base with none', none, '/docs', true],
+    ['will claim scope child with none', none, '/docs/intro', true],
+    ['will claim deep scope path with none', none, '/docs/a/b', true],
+    ['will not claim outside scope with none', none, '/elsewhere', false],
+    ['will resolve ancestors for nested none at base', nestedNone, '/a/b', true],
+    ['will resolve ancestors for nested none deep', nestedNone, '/a/b/x/y', true],
+    ['will not resolve sibling of nested none scope', nestedNone, '/a/c', false]
+  ])('%s', (_, tree, path, expected) => {
+    expect(scopeResolves(tree, '', path)).toBe(expected);
   });
 });

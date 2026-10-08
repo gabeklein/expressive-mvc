@@ -49,53 +49,22 @@ const settled = <T,>(module: ReturnType<typeof mockPromise<T>>, value: T) =>
   });
 
 describe('Route', () => {
-  it('will mount the page when its pattern matches', async () => {
-    expect(await at('/', <><Route to="/" as={Home} /><Route to="/posts/:id" as={Post} /></>)).toBe('Home');
-  });
-
-  it('will mount nothing when nothing matches', async () => {
-    expect(await at('/unknown', <Route to="/" as={Home} />)).toBe('');
-  });
-
-  it('will expose params from the matched pattern', async () => {
-    expect(await at('/posts/foo', <Route to="/posts/:id" as={Post} />)).toBe('id: foo');
-  });
-
-  it('will render alongside non-Route siblings', async () => {
-    expect(await at('/', <><div>chrome</div><Route to="/" as={Home} /></>)).toBe('chromeHome');
-  });
-
-  it('will keep non-Route children inside a passthrough Route', async () => {
-    expect(await at('/', <Route to="/*"><div>chrome</div>{' text node '}<Route to="" as={Home} /></Route>)).toBe('chrome text node Home');
-  });
-
-  it('will default `as` to a children passthrough', async () => {
-    expect(await at('/anything', <Route to="/anything"><span>inline</span></Route>)).toBe('inline');
-  });
-
-  it('will render nothing by default `as` without children', async () => {
-    expect(await at('/blank', <Route to="/blank" />)).toBe('');
-  });
-
-  it('will treat a bare Route as an always-on root', async () => {
-    expect(await at('/anything/deep', <Route as={Home} />)).toBe('Home');
-  });
-
-  it('will treat root to="" as an index, matching only root', async () => {
-    expect(await at('/anything', <Route to="" as={Home} />)).toBe('');
-    expect(await at('/', <Route to="" as={Home} />)).toBe('Home');
-  });
-
-  it('will prefer a specific sibling declared before a bare Route', async () => {
-    expect(await at('/about', <Route><Route to="/about" as={text('About')} /><Route as={text('Fallback')} /></Route>)).toBe('About');
-  });
-
-  it('will render a none Route when no earlier sibling matches', async () => {
-    expect(await at('/nope', <Route><Route to="/about" as={text('About')} /><Route none as={text('Fallback')} /></Route>)).toBe('Fallback');
-  });
-
-  it('will resolve Routes in a Fragment', async () => {
-    expect(await at('/about', <Route><><Route to="/about" as={text('About')} /><Route to="/contact" as={text('Contact')} /></></Route>)).toBe('About');
+  it.each([
+    ['will mount the page when its pattern matches', '/', <><Route to="/" as={Home} /><Route to="/posts/:id" as={Post} /></>, 'Home'],
+    ['will mount nothing when nothing matches', '/unknown', <Route to="/" as={Home} />, ''],
+    ['will expose params from the matched pattern', '/posts/foo', <Route to="/posts/:id" as={Post} />, 'id: foo'],
+    ['will render alongside non-Route siblings', '/', <><div>chrome</div><Route to="/" as={Home} /></>, 'chromeHome'],
+    ['will keep non-Route children inside a passthrough Route', '/', <Route to="/*"><div>chrome</div>{' text node '}<Route to="" as={Home} /></Route>, 'chrome text node Home'],
+    ['will default `as` to a children passthrough', '/anything', <Route to="/anything"><span>inline</span></Route>, 'inline'],
+    ['will render nothing by default `as` without children', '/blank', <Route to="/blank" />, ''],
+    ['will treat a bare Route as an always-on root', '/anything/deep', <Route as={Home} />, 'Home'],
+    ['will treat root to="" as an index on root', '/', <Route to="" as={Home} />, 'Home'],
+    ['will not match root to="" off root', '/anything', <Route to="" as={Home} />, ''],
+    ['will prefer a specific sibling declared before a bare Route', '/about', <Route><Route to="/about" as={text('About')} /><Route as={text('Fallback')} /></Route>, 'About'],
+    ['will render a none Route when no earlier sibling matches', '/nope', <Route><Route to="/about" as={text('About')} /><Route none as={text('Fallback')} /></Route>, 'Fallback'],
+    ['will resolve Routes in a Fragment', '/about', <Route><><Route to="/about" as={text('About')} /><Route to="/contact" as={text('Contact')} /></></Route>, 'About']
+  ])('%s', async (_, path, ui, expected) => {
+    expect(await at(path, ui)).toBe(expected);
   });
 
   it('will resolve Routes rendered through an intermediate component', async () => {
@@ -156,117 +125,36 @@ describe('Route', () => {
   });
 
   describe('Route.goto', () => {
-    it('will resolve relative paths via anchor', async () => {
-      const leaf = leafAt('/posts/foo', '/posts/:id');
-      await act(async () => leaf.goto('./edit'));
-      expect(router.current.url).toBe('/posts/foo/edit');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/posts/foo/edit');
+    it.each([
+      ['will resolve relative paths via anchor', '/posts/foo', '/posts/:id', './edit', '/posts/foo/edit'],
+      ['will preserve query in relative paths', '/posts/foo', '/posts/:id', './edit?tab=history', '/posts/foo/edit?tab=history'],
+      ['will resolve a fragment against the Route, keeping query', '/posts/foo?view=full#intro', '/posts/:id', '#details', '/posts/foo?view=full#details'],
+      ['will navigate to the Route itself with no argument', '/posts/foo', '/posts/:id', undefined, '/posts/foo'],
+      ['will pass absolute paths through to Router', '/posts/foo', '/posts/:id', '/about', '/about'],
+      ['will pop to a param ancestor from below', '/posts/foo/edit', (is: Capture) => <Route to="/posts/:id" is={is}><Route to="edit" as={text('edit')} /></Route>, undefined, '/posts/foo'],
+      ['will resolve relative paths from a nested Route against its full base', '/posts/foo/edit', (is: Capture) => <Route to="/posts/:id"><Route to="edit" is={is} as={text('edit')} /></Route>, '../tags', '/posts/foo/tags'],
+      ['will swap a single param', '/document/123', '/document/:id', { id: '456' }, '/document/456'],
+      ['will swap a later param, keeping the rest', '/a/1/2', '/a/:b/:c', { c: '9' }, '/a/1/9'],
+      ['will swap an earlier param, keeping the rest', '/a/1/2', '/a/:b/:c', { b: '8' }, '/a/8/2'],
+      ['will swap a param on a nested leaf', '/document/123', (is: Capture) => <Route to="/document"><Route to=":id" is={is} as={text('doc')} /></Route>, { id: '456' }, '/document/456'],
+      ['will fill purely from overrides when unmatched', '/elsewhere', '/document/:id', { id: '7' }, '/document/7'],
+      ['will let a flat leaf own every param in its pattern', '/org/1/user/2', '/org/:orgId/user/:userId', { orgId: '9' }, '/org/9/user/2']
+    ])('%s', async (_, path, ui, to, url) => {
+      const leaf = leafAt(path, ui);
+      await act(async () => leaf.goto(to as any));
+      expect(router.current.url).toBe(url);
+      expect(window.location.pathname + window.location.search + window.location.hash).toBe(url);
     });
 
-    it('will preserve query in relative paths', async () => {
-      const leaf = leafAt('/posts/foo', '/posts/:id');
-      await act(async () => leaf.goto('./edit?tab=history'));
-      expect(router.current.url).toBe('/posts/foo/edit?tab=history');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/posts/foo/edit?tab=history');
-    });
-
-    it('will resolve a fragment against the Route, keeping query', async () => {
-      const leaf = leafAt('/posts/foo?view=full#intro', '/posts/:id');
-      await act(async () => leaf.goto('#details'));
-      expect(router.current.url).toBe('/posts/foo?view=full#details');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/posts/foo?view=full#details');
-    });
-
-    it('will navigate to the Route itself with no argument', async () => {
-      const leaf = leafAt('/posts/foo', '/posts/:id');
-      await act(async () => leaf.goto());
-      expect(router.current.url).toBe('/posts/foo');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/posts/foo');
-    });
-
-    it('will pass absolute paths through to Router', async () => {
-      const leaf = leafAt('/posts/foo', '/posts/:id');
-      await act(async () => leaf.goto('/about'));
-      expect(router.current.url).toBe('/about');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/about');
-    });
-
-    it('will pop to a param ancestor from below', async () => {
-      const leaf = leafAt('/posts/foo/edit', (is: Capture) => <Route to="/posts/:id" is={is}><Route to="edit" as={text('edit')} /></Route>);
-      await act(async () => leaf.goto());
-      expect(router.current.url).toBe('/posts/foo');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/posts/foo');
-    });
-
-    it('will resolve relative paths from a nested Route against its full base', async () => {
-      const leaf = leafAt('/posts/foo/edit', (is: Capture) => <Route to="/posts/:id"><Route to="edit" is={is} as={text('edit')} /></Route>);
-      await act(async () => leaf.goto('../tags'));
-      expect(router.current.url).toBe('/posts/foo/tags');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/posts/foo/tags');
-    });
-
-    it('will swap a single param', async () => {
-      const leaf = leafAt('/document/123', '/document/:id');
-      await act(async () => leaf.goto({ id: '456' }));
-      expect(router.current.url).toBe('/document/456');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/document/456');
-    });
-
-    it('will swap any param in a multi-param pattern, keeping the rest', async () => {
-      const leaf = leafAt('/a/1/2', '/a/:b/:c');
-      await act(async () => leaf.goto({ c: '9' }));
-      expect(router.current.url).toBe('/a/1/9');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/a/1/9');
-
-      await act(async () => leaf.goto({ b: '8' }));
-      expect(router.current.url).toBe('/a/8/9');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/a/8/9');
-    });
-
-    it('will swap a param on a nested leaf', async () => {
-      const leaf = leafAt('/document/123', (is: Capture) => <Route to="/document"><Route to=":id" is={is} as={text('doc')} /></Route>);
-      await act(async () => leaf.goto({ id: '456' }));
-      expect(router.current.url).toBe('/document/456');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/document/456');
-    });
-
-    it('will fill purely from overrides when unmatched', async () => {
-      const leaf = leafAt('/elsewhere', '/document/:id');
-      await act(async () => leaf.goto({ id: '7' }));
-      expect(router.current.url).toBe('/document/7');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/document/7');
-    });
-
-    it('will let a flat leaf own every param in its pattern', async () => {
-      const leaf = leafAt('/org/1/user/2', '/org/:orgId/user/:userId');
-      await act(async () => leaf.goto({ orgId: '9' }));
-      expect(router.current.url).toBe('/org/9/user/2');
-      expect(window.location.pathname + window.location.search + window.location.hash).toBe('/org/9/user/2');
-    });
-
-    it('will throw resolving from an unmatched Route', () => {
-      const leaf = leafAt('/elsewhere', '/posts/:id');
-      expect(() => leaf.goto()).toThrow(/unresolved parameters/);
-    });
-
-    it('will throw when a swap leaves a param unresolved', () => {
-      const leaf = leafAt('/elsewhere', '/document/:id');
-      expect(() => leaf.goto({})).toThrow(/unresolved parameters/);
-    });
-
-    it('will throw swapping on a Route with no params', () => {
-      const leaf = leafAt('/about', '/about');
-      expect(() => leaf.goto({ id: '1' })).toThrow(/owns only \[none\]/);
-    });
-
-    it('will throw on a param the Route does not declare', () => {
-      const leaf = leafAt('/document/123', '/document/:id');
-      expect(() => leaf.goto({ nope: 'x' })).toThrow(/cannot set param "nope"/);
-    });
-
-    it('will throw swapping a param inherited by a nested leaf', () => {
-      const leaf = leafAt('/org/1/user/2', (is: Capture) => <Route to="org/:orgId"><Route to="user/:userId" is={is} as={() => null} /></Route>);
-      expect(() => leaf.goto({ orgId: '9' })).toThrow(/cannot set param "orgId"/);
+    it.each([
+      ['will throw resolving from an unmatched Route', '/elsewhere', '/posts/:id', undefined, /unresolved parameters/],
+      ['will throw when a swap leaves a param unresolved', '/elsewhere', '/document/:id', {}, /unresolved parameters/],
+      ['will throw swapping on a Route with no params', '/about', '/about', { id: '1' }, /owns only \[none\]/],
+      ['will throw on a param the Route does not declare', '/document/123', '/document/:id', { nope: 'x' }, /cannot set param "nope"/],
+      ['will throw swapping a param inherited by a nested leaf', '/org/1/user/2', (is: Capture) => <Route to="org/:orgId"><Route to="user/:userId" is={is} as={() => null} /></Route>, { orgId: '9' }, /cannot set param "orgId"/]
+    ])('%s', (_, path, ui, to, error) => {
+      const leaf = leafAt(path, ui);
+      expect(() => leaf.goto(to as any)).toThrow(error);
     });
 
     it('will replace history on a param swap with replace', async () => {
@@ -298,24 +186,14 @@ describe('Route', () => {
     const dynamic = <Route to="/posts/:id" as={text('dynamic')} />;
     const literal = <Route to="/posts/new" as={text('literal')} />;
 
-    it('will let a first-declared :param shadow a later literal', async () => {
-      expect(await at('/posts/new', <Route>{dynamic}{literal}</Route>)).toBe('dynamic');
-    });
-
-    it('will let a first-declared literal win', async () => {
-      expect(await at('/posts/new', <Route>{literal}{dynamic}</Route>)).toBe('literal');
-    });
-
-    it('will let a first-declared :param shadow a later catch-all', async () => {
-      expect(await at('/posts/foo', <Route>{dynamic}<Route to="*" as={text('catch-all')} /></Route>)).toBe('dynamic');
-    });
-
-    it('will let a last catch-all catch what earlier siblings miss', async () => {
-      expect(await at('/anything/at/all', <Route><Route to="/" as={text('home')} /><Route to="*" as={text('not-found')} /></Route>)).toBe('not-found');
-    });
-
-    it('will let the first of equal matches win', async () => {
-      expect(await at('/posts/foo', <Route><Route to="/posts/:a" as={text('a')} /><Route to="/posts/:b" as={text('b')} /></Route>)).toBe('a');
+    it.each([
+      ['will let a first-declared :param shadow a later literal', '/posts/new', <Route>{dynamic}{literal}</Route>, 'dynamic'],
+      ['will let a first-declared literal win', '/posts/new', <Route>{literal}{dynamic}</Route>, 'literal'],
+      ['will let a first-declared :param shadow a later catch-all', '/posts/foo', <Route>{dynamic}<Route to="*" as={text('catch-all')} /></Route>, 'dynamic'],
+      ['will let a last catch-all catch what earlier siblings miss', '/anything/at/all', <Route><Route to="/" as={text('home')} /><Route to="*" as={text('not-found')} /></Route>, 'not-found'],
+      ['will let the first of equal matches win', '/posts/foo', <Route><Route to="/posts/:a" as={text('a')} /><Route to="/posts/:b" as={text('b')} /></Route>, 'a']
+    ])('%s', async (_, path, ui, expected) => {
+      expect(await at(path, ui)).toBe(expected);
     });
 
     it('will re-resolve the winner on navigation', async () => {
@@ -339,32 +217,16 @@ describe('Route', () => {
       </Route>
     );
 
-    it('will mount the index child of a layout', async () => {
-      expect(await at('/blog', blog)).toBe('chrome/blog-index');
-    });
-
-    it('will resolve a :param child of a layout', async () => {
-      expect(await at('/blog/hello', blog)).toBe('chrome/post hello');
-    });
-
-    it('will not mount a layout out of prefix', async () => {
-      expect(await at('/elsewhere', blog)).toBe('');
-    });
-
-    it('will not let a passthrough group block sibling selection', async () => {
-      expect(await at('/about', <Route><Route><Route to="/about" as={text('Grouped')} /></Route><Route to="/about" as={text('Sibling')} /></Route>)).toBe('GroupedSibling');
-    });
-
-    it('will resolve nested Routes inside a layout via context', async () => {
-      expect(await at('/blog/hello', <Route to="/blog/*" as={Chrome}><Route to=":id" as={Post} /></Route>)).toBe('chrome/id: hello');
-    });
-
-    it('will compose bases across three levels', async () => {
-      expect(await at('/admin/users/42', <Route to="/admin/*" as={(p: { children?: ReactNode }) => <main>admin/{p.children}</main>}><Route to="users/*" as={(p: { children?: ReactNode }) => <>users/{p.children}</>}><Route to=":id" as={Post} /></Route></Route>)).toBe('admin/users/id: 42');
-    });
-
-    it('will nest children of a catch-all layout at root base', async () => {
-      expect(await at('/about', <Route to="*" as={Layout}><Route to="/about" as={text('about')} /></Route>)).toBe('about');
+    it.each([
+      ['will mount the index child of a layout', '/blog', blog, 'chrome/blog-index'],
+      ['will resolve a :param child of a layout', '/blog/hello', blog, 'chrome/post hello'],
+      ['will not mount a layout out of prefix', '/elsewhere', blog, ''],
+      ['will not let a passthrough group block sibling selection', '/about', <Route><Route><Route to="/about" as={text('Grouped')} /></Route><Route to="/about" as={text('Sibling')} /></Route>, 'GroupedSibling'],
+      ['will resolve nested Routes inside a layout via context', '/blog/hello', <Route to="/blog/*" as={Chrome}><Route to=":id" as={Post} /></Route>, 'chrome/id: hello'],
+      ['will compose bases across three levels', '/admin/users/42', <Route to="/admin/*" as={(p: { children?: ReactNode }) => <main>admin/{p.children}</main>}><Route to="users/*" as={(p: { children?: ReactNode }) => <>users/{p.children}</>}><Route to=":id" as={Post} /></Route></Route>, 'admin/users/id: 42'],
+      ['will nest children of a catch-all layout at root base', '/about', <Route to="*" as={Layout}><Route to="/about" as={text('about')} /></Route>, 'about']
+    ])('%s', async (_, path, ui, expected) => {
+      expect(await at(path, ui)).toBe(expected);
     });
 
     it('will unregister a child destroyed after its scope', async () => {
@@ -420,26 +282,16 @@ describe('Route', () => {
       </Route>
     );
 
-    it('will catch a nested-form miss with the section none Route, in chrome', async () => {
-      expect(await at('/users', nested)).toBe('chrome/section-404');
-    });
-
-    it('will drop a flat-form miss to the app none Route, without chrome', async () => {
-      expect(await at('/users', flat)).toBe('app-404');
-    });
-
-    it('will match the resolved path identically in both forms', async () => {
-      expect(await at('/users/42', nested)).toBe('chrome/detail');
-      expect(await at('/users/42', flat)).toBe('detail');
-    });
-
-    it('will let a literal beat the param in both forms', async () => {
-      expect(await at('/users/new', nested)).toBe('chrome/new');
-      expect(await at('/users/new', flat)).toBe('new');
-    });
-
-    it('will treat mixed children as a content route, not a scope', async () => {
-      expect(await at('/posts', <Route to="posts/*" as={Chrome}>hello<Route to="recent" as={Detail} /></Route>)).toBe('chrome/hello');
+    it.each([
+      ['will catch a nested-form miss with the section none Route, in chrome', '/users', nested, 'chrome/section-404'],
+      ['will drop a flat-form miss to the app none Route, without chrome', '/users', flat, 'app-404'],
+      ['will match the nested form like the flat form', '/users/42', nested, 'chrome/detail'],
+      ['will match the flat form like the nested form', '/users/42', flat, 'detail'],
+      ['will let a literal beat the param in the nested form', '/users/new', nested, 'chrome/new'],
+      ['will let a literal beat the param in the flat form', '/users/new', flat, 'new'],
+      ['will treat mixed children as a content route, not a scope', '/posts', <Route to="posts/*" as={Chrome}>hello<Route to="recent" as={Detail} /></Route>, 'chrome/hello']
+    ])('%s', async (_, path, ui, expected) => {
+      expect(await at(path, ui)).toBe(expected);
     });
 
     it('will interpose a section Route only in the nested form', () => {
@@ -491,62 +343,29 @@ describe('Route', () => {
     const wrapped = <Route>{docs}</Route>;
     const indexed = <Route><Route as={Index} />{docs}</Route>;
 
-    it('will catch a miss when the section is the root route', async () => {
-      expect(await at('/docs', docs)).toBe('chrome/section-404');
+    it.each([
+      ['will catch a miss when the section is the root route', '/docs', docs, 'chrome/section-404'],
+      ['will catch a deep miss when the section is the root route', '/docs/a/b', docs, 'chrome/section-404'],
+      ['will catch a miss under a plain wrapper', '/docs', wrapped, 'chrome/section-404'],
+      ['will catch a deep miss under a plain wrapper', '/docs/a/b', wrapped, 'chrome/section-404'],
+      ['will catch a miss with an index sibling present', '/docs', indexed, 'chrome/section-404'],
+      ['will catch a deep miss with an index sibling present', '/docs/a/b', indexed, 'chrome/section-404'],
+      ['will resolve a real child with an index sibling present', '/docs/intro', indexed, 'chrome/detail'],
+      ['will not let the section claim the index path', '/', indexed, 'index'],
+      ['will keep outer chrome when an inner section catches', '/site/docs', <Route to="site" as={(p: { children?: ReactNode }) => <div>outer/{p.children}</div>}>{docs}</Route>, 'outer/chrome/section-404'],
+      ['will not throw for a later sibling above the section', '/docs', <Route><Route to="docs/team" as={Chrome}><Route none as={SectionMissing} /></Route><Route to="docs" as={Index} /></Route>, 'index'],
+      ['will yield to an earlier flat sibling under the section path', '/docs/team/roster', <Route><Route to="docs/team/roster" as={text('roster')} />{docs}</Route>, 'roster'],
+      ['will not claim a sibling path outside the section', '/about', <Route>{docs}<Route to="about" as={text('about')} /></Route>, 'about']
+    ])('%s', async (_, path, ui, expected) => {
+      expect(await at(path, ui)).toBe(expected);
     });
 
-    it('will catch a deep miss when the section is the root route', async () => {
-      expect(await at('/docs/a/b', docs)).toBe('chrome/section-404');
-    });
-
-    it('will catch a miss under a plain wrapper', async () => {
-      expect(await at('/docs', wrapped)).toBe('chrome/section-404');
-    });
-
-    it('will catch a deep miss under a plain wrapper', async () => {
-      expect(await at('/docs/a/b', wrapped)).toBe('chrome/section-404');
-    });
-
-    it('will catch a miss with an index sibling present', async () => {
-      expect(await at('/docs', indexed)).toBe('chrome/section-404');
-    });
-
-    it('will catch a deep miss with an index sibling present', async () => {
-      expect(await at('/docs/a/b', indexed)).toBe('chrome/section-404');
-    });
-
-    it('will resolve a real child with an index sibling present', async () => {
-      expect(await at('/docs/intro', indexed)).toBe('chrome/detail');
-    });
-
-    it('will not let the section claim the index path', async () => {
-      expect(await at('/', indexed)).toBe('index');
-    });
-
-    it('will keep outer chrome when an inner section catches', async () => {
-      expect(await at('/site/docs', <Route to="site" as={(p: { children?: ReactNode }) => <div>outer/{p.children}</div>}>{docs}</Route>)).toBe('outer/chrome/section-404');
-    });
-
-    it('will not throw for a later sibling above the section', async () => {
-      expect(await at('/docs', <Route><Route to="docs/team" as={Chrome}><Route none as={SectionMissing} /></Route><Route to="docs" as={Index} /></Route>)).toBe('index');
-    });
-
-    it('will yield to an earlier flat sibling under the section path', async () => {
-      expect(await at('/docs/team/roster', <Route><Route to="docs/team/roster" as={text('roster')} />{docs}</Route>)).toBe('roster');
-    });
-
-    it('will not claim a sibling path outside the section', async () => {
-      expect(await at('/about', <Route>{docs}<Route to="about" as={text('about')} /></Route>)).toBe('about');
-    });
-
-    it('will throw if a later sibling is shadowed by a section none Route', () => {
-      location('/docs/team/roster');
-      expect(() => render(<Route>{docs}<Route to="docs/team/roster" as={text('roster')} /></Route>)).toThrow(/Route "\/docs\/team\/roster" is unreachable/);
-    });
-
-    it('will throw if a param section none Route shadows a later sibling', () => {
-      location('/');
-      expect(() => render(<Route><Route to=":section" as={Chrome}><Route none as={SectionMissing} /></Route><Route to="docs/intro" as={Detail} /></Route>)).toThrow(/unreachable/);
+    it.each([
+      ['will throw if a later sibling is shadowed by a section none Route', '/docs/team/roster', <Route>{docs}<Route to="docs/team/roster" as={text('roster')} /></Route>, /Route "\/docs\/team\/roster" is unreachable/],
+      ['will throw if a param section none Route shadows a later sibling', '/', <Route><Route to=":section" as={Chrome}><Route none as={SectionMissing} /></Route><Route to="docs/intro" as={Detail} /></Route>, /unreachable/]
+    ])('%s', (_, path, ui, error) => {
+      location(path);
+      expect(() => render(ui)).toThrow(error);
     });
   });
 
@@ -593,16 +412,12 @@ describe('Route', () => {
         expect(screen.getByText('login')).toBeDefined();
       });
 
-      it('will render normally when a sync guard returns undefined', async () => {
+      it.each([
+        ['will render normally when a sync guard returns undefined', undefined],
+        ['will treat an empty-string verdict as allow', '']
+      ])('%s', async (_, verdict) => {
         location('/admin');
-        await renderAct(<Route to="/admin" redirect={() => undefined} as={() => <h1>secret</h1>} />);
-        expect(window.location.pathname).toBe('/admin');
-        expect(screen.getByText('secret')).toBeDefined();
-      });
-
-      it('will treat an empty-string verdict as allow', async () => {
-        location('/admin');
-        await renderAct(<Route to="/admin" redirect={() => ''} as={() => <h1>secret</h1>} />);
+        await renderAct(<Route to="/admin" redirect={() => verdict} as={() => <h1>secret</h1>} />);
         expect(window.location.pathname).toBe('/admin');
         expect(screen.getByText('secret')).toBeDefined();
       });
@@ -823,7 +638,10 @@ describe('Route', () => {
         const Document = () => <article>doc</article>;
         const NotFound = () => <h1>not found</h1>;
 
-        it('will cede the path to the scope none Route on a null verdict', async () => {
+        it.each([
+          ['will cede the path to the scope none Route on a null verdict', null, 'not found'],
+          ['will render the document on a non-null verdict', undefined, 'doc']
+        ])('%s', async (_, verdict, expected) => {
           location('/document/123');
           const gate = mockPromise<string | void | null>();
           const view = await renderAct(
@@ -834,24 +652,8 @@ describe('Route', () => {
           );
           expect(view.container.textContent).toBe('loading');
 
-          await act(async () => gate.resolve(null));
-          expect(view.container.textContent).toBe('not found');
-          expect(window.location.pathname).toBe('/document/123');
-        });
-
-        it('will render the document on a non-null verdict', async () => {
-          location('/document/123');
-          const gate = mockPromise<string | void | null>();
-          const view = await renderAct(
-            <Route to="document" as={Layout}>
-              <Route to=":id" fallback={<h1>loading</h1>} redirect={() => gate} as={Document} />
-              <Route none as={NotFound} />
-            </Route>
-          );
-          expect(view.container.textContent).toBe('loading');
-
-          await act(async () => gate.resolve(undefined));
-          expect(view.container.textContent).toBe('doc');
+          await act(async () => gate.resolve(verdict));
+          expect(view.container.textContent).toBe(expected);
           expect(window.location.pathname).toBe('/document/123');
         });
 
@@ -1005,17 +807,13 @@ describe('extends', () => {
     </Route>
   );
 
-  it('will show see-through chrome only when a subclass descendant matches', async () => {
-    expect(await at('/section/info', section)).toBe('chrome:info');
-    expect(await at('/elsewhere', section)).toBe('');
-  });
-
-  it('will resolve a see-through scope via a subclass none child', async () => {
-    expect(await at('/section/anything', <Route><Route to="section/*"><Page none as={text('fallback')} /></Route></Route>)).toBe('fallback');
-  });
-
-  it('will arbitrate subclass siblings by declaration order', async () => {
-    expect(await at('/about', <Route><Page to="/about" as={text('About')} /><Page to="/:slug" as={text('Slug')} /></Route>)).toBe('About');
+  it.each([
+    ['will show see-through chrome when a subclass descendant matches', '/section/info', section, 'chrome:info'],
+    ['will hide see-through chrome when no subclass descendant matches', '/elsewhere', section, ''],
+    ['will resolve a see-through scope via a subclass none child', '/section/anything', <Route><Route to="section/*"><Page none as={text('fallback')} /></Route></Route>, 'fallback'],
+    ['will arbitrate subclass siblings by declaration order', '/about', <Route><Page to="/about" as={text('About')} /><Page to="/:slug" as={text('Slug')} /></Route>, 'About']
+  ])('%s', async (_, path, ui, expected) => {
+    expect(await at(path, ui)).toBe(expected);
   });
 
   describe('children seam', () => {
@@ -1038,20 +836,13 @@ describe('extends', () => {
       </Page>
     );
 
-    it('will convert a subclass None into a child none Route', async () => {
-      expect(await at('/section/missing', <Route>{info}</Route>)).toBe('fallback');
-    });
-
-    it('will let a real sibling match win over the injected none Route', async () => {
-      expect(await at('/section/info', <Route>{info}</Route>)).toBe('info');
-    });
-
-    it('will make a leaf see-through when only a none Route is contributed', async () => {
-      expect(await at('/section/anything', <Route><Page to="section/*" /></Route>)).toBe('fallback');
-    });
-
-    it('will let a contributed none Route suppress an ancestor none Route', async () => {
-      expect(await at('/section/missing', <Route>{info}<Route none as={text('app-404')} /></Route>)).toBe('fallback');
+    it.each([
+      ['will convert a subclass None into a child none Route', '/section/missing', <Route>{info}</Route>, 'fallback'],
+      ['will let a real sibling match win over the injected none Route', '/section/info', <Route>{info}</Route>, 'info'],
+      ['will make a leaf see-through when only a none Route is contributed', '/section/anything', <Route><Page to="section/*" /></Route>, 'fallback'],
+      ['will let a contributed none Route suppress an ancestor none Route', '/section/missing', <Route>{info}<Route none as={text('app-404')} /></Route>, 'fallback']
+    ])('%s', async (_, path, ui, expected) => {
+      expect(await at(path, ui)).toBe(expected);
     });
 
     it('will not run subclass content when unmatched', () => {
@@ -1127,46 +918,18 @@ const aa = (
 );
 
 describe('active and matches', () => {
-  it('will report nothing when no child matches', async () => {
-    router.current.goto('/');
-    const { root } = await mount(ab);
-    expect(root.active?.to ?? root.active).toBe(undefined);
-    expect(root.matches).toEqual([]);
-  });
-
-  it('will report the single matched child', async () => {
-    router.current.goto('/a');
-    const { root } = await mount(ab);
-    expect(root.active?.to ?? root.active).toBe('a');
-    expect(root.matches).toEqual(['/a']);
-  });
-
-  it('will report null active and every match when several apply', async () => {
-    router.current.goto('/a');
-    const { root } = await mount(aa);
-    expect(root.active?.to ?? root.active).toBe(null);
-    expect(root.matches).toEqual(['/a', '/a']);
-  });
-
-  it('will report null active when a scope yields competing matches', async () => {
-    router.current.goto('/posts/recent');
-    const { root } = await mount(<Route to="posts/*"><Route to=":id" /><Route to="recent" /></Route>);
-    expect(root.active?.to ?? root.active).toBe(null);
-    expect(root.matches).toEqual(['/posts/:id', '/posts/recent']);
-  });
-
-  it('will exclude redirect routes', async () => {
-    router.current.goto('/a');
-    const { root } = await mount(<><Route to="a" redirect="/a" /><Route to="a" /></>);
-    expect(root.active?.to ?? root.active).toBe('a');
-    expect(root.matches).toEqual(['/a']);
-  });
-
-  it('will exclude none routes', async () => {
-    router.current.goto('/missing');
-    const { root } = await mount(<><Route to="a" /><Route none as={text('404')} /></>);
-    expect(root.active?.to ?? root.active).toBe(undefined);
-    expect(root.matches).toEqual([]);
+  it.each([
+    ['will report nothing when no child matches', '/', ab, undefined, []],
+    ['will report the single matched child', '/a', ab, 'a', ['/a']],
+    ['will report null active and every match when several apply', '/a', aa, null, ['/a', '/a']],
+    ['will report null active when a scope yields competing matches', '/posts/recent', <Route to="posts/*"><Route to=":id" /><Route to="recent" /></Route>, null, ['/posts/:id', '/posts/recent']],
+    ['will exclude redirect routes', '/a', <><Route to="a" redirect="/a" /><Route to="a" /></>, 'a', ['/a']],
+    ['will exclude none routes', '/missing', <><Route to="a" /><Route none as={text('404')} /></>, undefined, []]
+  ])('%s', async (_, path, tree, active, matches) => {
+    router.current.goto(path);
+    const { root } = await mount(tree);
+    expect(root.active?.to ?? root.active).toBe(active);
+    expect(root.matches).toEqual(matches);
   });
 
   it('will update active and matches on navigation', async () => {
@@ -1250,7 +1013,10 @@ describe('none', () => {
     expect(view.container.textContent).toBe('app404');
   });
 
-  it('will reach a section 404 entering from outside the section', async () => {
+  it.each([
+    ['will reach a section 404 entering from outside the section', '/posts/a/b', 'posts404'],
+    ['will reach a section route entering from outside the section', '/posts/a', 'post']
+  ])('%s', async (_, path, expected) => {
     router.current.goto('/');
     const { view } = await mount(
       <>
@@ -1264,26 +1030,8 @@ describe('none', () => {
     );
     expect(view.container.textContent).toBe('home');
 
-    await visit('/posts/a/b');
-    expect(view.container.textContent).toBe('posts404');
-  });
-
-  it('will reach a section route entering from outside the section', async () => {
-    router.current.goto('/');
-    const { view } = await mount(
-      <>
-        <Route as={text('home')} />
-        <Route to="posts" as={(props: { children?: ReactNode }) => <>{props.children}</>}>
-          <Route to=":id" as={text('post')} />
-          <Route none as={text('posts404')} />
-        </Route>
-        <Route none as={text('app404')} />
-      </>
-    );
-    expect(view.container.textContent).toBe('home');
-
-    await visit('/posts/a');
-    expect(view.container.textContent).toBe('post');
+    await visit(path);
+    expect(view.container.textContent).toBe(expected);
   });
 
   it('will see through an anonymous group - nested match suppresses sibling none Route', async () => {
