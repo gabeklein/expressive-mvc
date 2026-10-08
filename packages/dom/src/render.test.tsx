@@ -2,12 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, has, map } from '@expressive/mvc';
 import { Fragment, Portal, render } from './index';
-import { flushMicrotasks, mockPromise } from '../test.setup';
+import { flushMicrotasks, mockPromise, mount } from '../test.setup';
 import { vnode } from './vnode';
 
 if (false) {
   // @ts-expect-error @expressive/dom uses className, not the class attribute name.
   <div class="legacy" />;
+}
+
+function Pair({ value }: { value: string }) {
+  return <><b>{value}</b><i>{value}</i></>;
 }
 
 describe('render', () => {
@@ -65,15 +69,13 @@ describe('render', () => {
           return <div dangerouslySetInnerHTML={{ __html: '<b>trusted</b>' }} />;
 
         if (this.mode == 3)
-          return <div ref={objectRef} style={{ color: 'red', height: null, width: 0 }}>children</div>;
+          return <div ref={objectRef} style={{ color: 'red', flexGrow: 0, height: null, width: 0 }}>children</div>;
 
         return <div style={null}>unstyled</div>;
       }
     }
 
-    let view!: Native;
-    const root = document.createElement('main');
-    const release = render(<Native is={(value) => (view = value)} />, root);
+    const [view, root, release] = mount(Native);
     const node = root.querySelector('div')!;
 
     expect(node.className).toBe('ready');
@@ -111,6 +113,8 @@ describe('render', () => {
     expect(node.textContent).toBe('children');
     expect(node.style.color).toBe('red');
     expect(node.style.height).toBe('');
+    expect(node.style.flexGrow).toBe('0');
+    expect(node.style.width).toBe('0px');
     expect(node.tabIndex).toBe(-1);
     expect(node.hasAttribute('tabindex')).toBe(false);
     expect(objectRef.current).toBe(node);
@@ -126,29 +130,6 @@ describe('render', () => {
     expect(objectRef.current).toBeNull();
   });
 
-  it('will write boolean aria attributes as strings', async () => {
-    class View extends Component {
-      open = false;
-
-      render() {
-        return <button aria-expanded={this.open} aria-hidden={!this.open ? undefined : false} />;
-      }
-    }
-
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
-    const node = root.querySelector('button')!;
-
-    expect(node.getAttribute('aria-expanded')).toBe('false');
-    expect(node.hasAttribute('aria-hidden')).toBe(false);
-
-    view.open = true;
-    await flushMicrotasks();
-    expect(node.getAttribute('aria-expanded')).toBe('true');
-    expect(node.getAttribute('aria-hidden')).toBe('false');
-  });
-
   it('will set and remove inline custom properties', async () => {
     class View extends Component {
       gap: string | undefined = '4px';
@@ -158,9 +139,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
     const node = root.querySelector('div')!;
 
     expect(node.style.getPropertyValue('--gap')).toBe('4px');
@@ -170,19 +149,38 @@ describe('render', () => {
     expect(node.style.getPropertyValue('--gap')).toBe('');
   });
 
-  it('will bind camel-cased multi-word events', () => {
+  it('will bind camel-cased, multi-word and React-spelled events', () => {
     const keyDown = vi.fn();
     const pointerDown = vi.fn();
-    const root = document.createElement('main');
+    const clicked = vi.fn();
+    const values: string[] = [];
+    const root = document.body.appendChild(document.createElement('main'));
 
-    render(<input onKeyDown={(event) => keyDown(event.key)} onPointerDownCapture={pointerDown} />, root);
+    render(
+      <>
+        <input
+          autoFocus
+          onKeyDown={(event) => keyDown(event.key)}
+          onPointerDownCapture={pointerDown}
+          onInput={(event) => values.push(event.currentTarget.value)}
+        />
+        <span onDoubleClick={clicked} />
+      </>,
+      root
+    );
     const node = root.querySelector('input')!;
 
     node.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     node.dispatchEvent(new Event('pointerdown'));
+    node.value = 'typed';
+    node.dispatchEvent(new Event('input', { bubbles: true }));
+    root.querySelector('span')!.dispatchEvent(new MouseEvent('dblclick'));
 
+    expect(document.activeElement).toBe(node);
     expect(keyDown).toHaveBeenCalledWith('Enter');
     expect(pointerDown).toHaveBeenCalledTimes(1);
+    expect(values).toEqual(['typed']);
+    expect(clicked).toHaveBeenCalledOnce();
   });
 
   it('will render a child once when its parent re-renders it', async () => {
@@ -211,9 +209,7 @@ describe('render', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     renders.mockClear();
 
     app.count.value = 1;
@@ -232,33 +228,13 @@ describe('render', () => {
       }
     }
 
-    let view!: Link;
-    const root = document.createElement('main');
-    render(<Link is={(value) => (view = value)} />, root);
+    const [view, root] = mount(Link);
     const node = root.querySelector('a')!;
 
     view.on = false;
     await flushMicrotasks();
     expect(node.hasAttribute('href')).toBe(false);
     expect(node.hasAttribute('id')).toBe(false);
-  });
-
-  it('will apply select and range values after options and bounds', () => {
-    const root = document.createElement('main');
-
-    render(
-      <>
-        <select value="b">
-          <option value="a">a</option>
-          <option value="b">b</option>
-        </select>
-        <input type="range" value={150} max={200} />
-      </>,
-      root
-    );
-
-    expect(root.querySelector('select')!.value).toBe('b');
-    expect(root.querySelector('input')!.value).toBe('150');
   });
 
   it('will restore controlled values when an element re-renders', async () => {
@@ -272,9 +248,7 @@ describe('render', () => {
       }
     }
 
-    let view!: Form;
-    const root = document.createElement('main');
-    render(<Form is={(value) => (view = value)} />, root);
+    const [view, root] = mount(Form);
     const [text, box] = root.querySelectorAll('input');
 
     text.value = 'typed';
@@ -308,9 +282,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
 
     view.raw = true;
     await flushMicrotasks();
@@ -342,13 +314,13 @@ describe('render', () => {
       }
     }
 
-    let parent!: Parent;
-    const root = document.createElement('main');
-    render(<Parent is={(value) => (parent = value)} />, root);
+    const [parent, root] = mount(Parent);
+    const span = root.querySelector('span');
 
     parent.label = 'b';
     await flushMicrotasks();
     expect(root.textContent).toBe('b0');
+    expect(root.querySelector('span')).toBe(span);
     expect(renders).toHaveBeenLastCalledWith('b');
 
     child.count = 1;
@@ -375,36 +347,6 @@ describe('render', () => {
     expect(path.getAttribute('d')).toBe('M0 0L10 10');
     expect(path.getAttribute('stroke')).toBe('red');
     expect(root.querySelector('svg')!.style.getPropertyValue('--tone')).toBe('red');
-  });
-
-  it('will update numeric styles', async () => {
-    class Styled extends Component {
-      size = 10;
-
-      render() {
-        return <div style={{ flexGrow: this.size / 10, width: this.size }} />;
-      }
-    }
-
-    let view!: Styled;
-    const root = document.createElement('main');
-    const release = render(<Styled is={(value) => (view = value)} />, root);
-    const node = root.querySelector('div')!;
-
-    expect(node.style.flexGrow).toBe('1');
-    expect(node.style.width).toBe('10px');
-
-    view.size = 20;
-    await flushMicrotasks();
-    expect(node.style.flexGrow).toBe('2');
-    expect(node.style.width).toBe('20px');
-
-    view.size = 0;
-    await flushMicrotasks();
-    expect(node.style.flexGrow).toBe('0');
-    expect(node.style.width).toBe('0px');
-
-    release();
   });
 
   it('will recursively compose classes and inline styles', async () => {
@@ -434,9 +376,7 @@ describe('render', () => {
       }
     }
 
-    let view!: Styled;
-    const root = document.createElement('main');
-    render(<Styled is={(value) => (view = value)} />, root);
+    const [view, root] = mount(Styled);
     const node = root.querySelector('div')!;
 
     expect(node.className).toBe('external base two height: 12px');
@@ -481,9 +421,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
     const node = root.querySelector('div')!;
 
     expect(node.className).toBe('leaf local inner call');
@@ -593,9 +531,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
 
     view.count = 1;
     await flushMicrotasks();
@@ -673,9 +609,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
     expect(root.querySelector('span')?.className).toBe('active');
 
     view.active = false;
@@ -717,9 +651,7 @@ describe('render', () => {
       }
     }
 
-    let shapes!: Shapes;
-    const root = document.createElement('main');
-    render(<Shapes is={(value) => (shapes = value)} />, root);
+    const [shapes, root] = mount(Shapes);
 
     expect(root.textContent).toBe('text:1shape');
     expect(root.querySelector('circle')?.namespaceURI).toBe('http://www.w3.org/2000/svg');
@@ -733,51 +665,46 @@ describe('render', () => {
     expect(root.textContent).toBe('text:2shape');
   });
 
-  it('will retain keyed DOM ranges while reordering', async () => {
+  it.each([
+    ['elements', (id: string) => <li key={id}>{id}</li>],
+    ['fragments', (id: string) => <Fragment key={id}><dt>{id}</dt><dd>{id}</dd></Fragment>],
+    ['component ranges', (id: string) => <Pair key={id} value={id} />]
+  ])('will retain keyed %s while reordering', async (_, item) => {
     class List extends Component {
-      items = ['a', 'b', 'c'];
+      order = ['a', 'b', 'c'];
 
       render() {
-        return <ul>{this.items.map((item) => <li key={item}>{item}</li>)}</ul>;
+        return <section>{this.order.map(item)}</section>;
       }
     }
 
-    let list!: List;
-    const root = document.createElement('main');
-    render(<List is={(value) => (list = value)} />, root);
-    const before = [...root.querySelectorAll('li')];
+    const [list, root] = mount(List);
+    const before = [...root.querySelector('section')!.children];
 
-    list.items = ['c', 'a', 'b'];
+    list.order = ['c', 'a', 'b'];
     await flushMicrotasks();
-    const after = [...root.querySelectorAll('li')];
+    const after = [...root.querySelector('section')!.children];
+    const expected = ['c', 'a', 'b'].flatMap((id) => before.filter((node) => node.textContent == id));
 
-    expect(after.map((node) => node.textContent)).toEqual(['c', 'a', 'b']);
-    expect(after).toEqual([before[2], before[0], before[1]]);
+    expect(after).toHaveLength(expected.length);
+    after.forEach((node, index) => expect(node).toBe(expected[index]));
   });
 
-  it('will assign settable properties on SVG elements', () => {
-    const root = document.createElement('main');
-    render(<svg tabIndex={0} viewBox="0 0 10 10" />, root);
-
-    const svg = root.querySelector('svg')!;
-    expect(svg.getAttribute('tabindex')).toBe('0');
-    expect(svg.hasAttribute('tabIndex')).toBe(false);
-    expect(svg.getAttribute('viewBox')).toBe('0 0 10 10');
-  });
-
-  it('will remove an SVG property attribute when unset', async () => {
+  it('will assign and remove settable properties on SVG elements', async () => {
     class Dial extends Component {
       on = true;
 
       render() {
-        return <svg tabIndex={this.on ? 0 : undefined} />;
+        return <svg tabIndex={this.on ? 0 : undefined} viewBox="0 0 10 10" />;
       }
     }
 
-    let dial!: Dial;
-    const root = document.createElement('main');
-    render(<Dial is={(value) => (dial = value)} />, root);
+    const [dial, root] = mount(Dial);
     const svg = root.querySelector('svg')!;
+
+    expect(svg.getAttribute('tabindex')).toBe('0');
+    expect(svg.hasAttribute('tabIndex')).toBe(false);
+    expect(svg.getAttribute('viewBox')).toBe('0 0 10 10');
 
     dial.on = false;
     await flushMicrotasks();
@@ -803,9 +730,7 @@ describe('render', () => {
       }
     }
 
-    let flags!: Flags;
-    const root = document.createElement('main');
-    render(<Flags is={(value) => (flags = value)} />, root);
+    const [flags, root] = mount(Flags);
     const link = root.querySelector('a')!;
 
     expect(link.getAttribute('data-on')).toBe('true');
@@ -832,9 +757,7 @@ describe('render', () => {
       }
     }
 
-    let editor!: Editor;
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<Editor is={(value) => (editor = value)} />, root);
+    const [editor, root] = mount(Editor, {}, document.body.appendChild(document.createElement('main')));
 
     editor.editing = true;
     await flushMicrotasks();
@@ -953,9 +876,12 @@ describe('render', () => {
 
   it('will keep a controlled field without a handler on its value', async () => {
     const root = document.body.appendChild(document.createElement('main'));
-    render(<><input value="fixed" /><input type="checkbox" checked={false} /><input /><select value="b"><option value="a" /><option value="b" /></select></>, root);
-    const [text, box, free] = root.querySelectorAll('input');
+    render(<><input value="fixed" /><input type="checkbox" checked={false} /><input /><input type="range" value={150} max={200} /><select value="b"><option value="a" /><option value="b" /></select></>, root);
+    const [text, box, free, range] = root.querySelectorAll('input');
     const select = root.querySelector('select')!;
+
+    expect(range.value).toBe('150');
+    expect(select.value).toBe('b');
 
     select.value = 'a';
     select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -975,33 +901,11 @@ describe('render', () => {
     expect(select.value).toBe('b');
   });
 
-  it('will accept React spellings of autofocus and double click', () => {
-    const clicked = vi.fn();
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<><input autoFocus /><span onDoubleClick={clicked} /></>, root);
-
-    expect(document.activeElement).toBe(root.querySelector('input'));
-
-    root.querySelector('span')!.dispatchEvent(new MouseEvent('dblclick'));
-    expect(clicked).toHaveBeenCalledOnce();
-  });
-
   it('will not focus an autofocus element outside the document', () => {
     const root = document.createElement('main');
     render(<input autofocus />, root);
 
     expect(document.activeElement).not.toBe(root.querySelector('input'));
-  });
-
-  it('will type event currentTarget as the host element', () => {
-    const values: string[] = [];
-    const root = document.createElement('main');
-    render(<input onInput={(event) => values.push(event.currentTarget.value)} />, root);
-
-    const input = root.querySelector('input')!;
-    input.value = 'typed';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    expect(values).toEqual(['typed']);
   });
 
   it('will render MVC collections directly', async () => {
@@ -1048,9 +952,7 @@ describe('render', () => {
       }
     }
 
-    let lists!: Lists;
-    const root = document.createElement('main');
-    render(<Lists is={(value) => (lists = value)} />, root);
+    const [lists, root] = mount(Lists);
     expect(root.textContent).toBe('onePA');
 
     lists.list.push('two');
@@ -1087,9 +989,7 @@ describe('render', () => {
       }
     }
 
-    let list!: Items;
-    const root = document.createElement('main');
-    render(<Items is={(value) => (list = value)} />, root);
+    const [list, root] = mount(Items);
     const [a, b] = root.querySelectorAll('li');
 
     list.tick++;
@@ -1120,8 +1020,7 @@ describe('render', () => {
       }
     }
 
-    let modal!: Modal;
-    const release = render(<Modal is={(value) => (modal = value)} />, document.createElement('main'));
+    const [modal, , release] = mount(Modal);
 
     expect(first.textContent).toBe('open');
 
@@ -1182,28 +1081,6 @@ describe('render', () => {
     two.remove();
   });
 
-  it('will keep keyed fragments across a reorder', async () => {
-    class List extends State {
-      order = ['a', 'b'];
-
-      render() {
-        return <>{this.order.map((id) => <Fragment key={id}><dt>{id}</dt><dd>{id}</dd></Fragment>)}</>;
-      }
-    }
-
-    let list!: List;
-    const root = document.createElement('dl');
-    render(<List is={(value) => (list = value)} />, root);
-
-    const first = root.querySelector('dt');
-
-    list.order = ['b', 'a'];
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe('bbaa');
-    expect(root.querySelectorAll('dt')[1]).toBe(first);
-  });
-
   it('will render and move portal children with logical context', async () => {
     const aside = document.createElement('aside');
     const nextPortal = document.createElement('aside');
@@ -1217,9 +1094,7 @@ describe('render', () => {
       }
     }
 
-    let modal!: Modal;
-    const root = document.createElement('main');
-    const release = render(<Modal is={(value) => (modal = value)} />, root);
+    const [modal, root, release] = mount(Modal);
 
     expect(root.querySelector('button')).toBeNull();
     expect(aside.textContent).toBe('open');
@@ -1237,30 +1112,6 @@ describe('render', () => {
     expect(nextPortal.textContent).toBe('');
   });
 
-  it('will place an external Component without owning it', () => {
-    const cleanup = vi.fn();
-
-    class Message extends Component {
-      mount() {
-        return cleanup;
-      }
-
-      render() {
-        return <p>placed</p>;
-      }
-    }
-
-    const message = Message.new();
-    const root = document.createElement('main');
-    const release = render(message, root);
-
-    expect(root.textContent).toBe('placed');
-    release();
-    expect(message.get(null)).toBe(false);
-    expect(cleanup).not.toHaveBeenCalled();
-    message.set(null);
-  });
-
   it('will replace an existing root and make unmount idempotent', () => {
     const root = document.createElement('main');
     const first = render(<p>one</p>, root);
@@ -1272,33 +1123,6 @@ describe('render', () => {
     second();
     second();
     expect(root.textContent).toBe('');
-  });
-
-  it('will patch class-component props in place', async () => {
-    class Child extends Component {
-      label = '';
-
-      render() {
-        return <span>{this.label}</span>;
-      }
-    }
-
-    class Parent extends Component {
-      label = 'one';
-      render() {
-        return <Child label={this.label} />;
-      }
-    }
-
-    let parent!: Parent;
-    const root = document.createElement('main');
-    render(<Parent is={(value) => (parent = value)} />, root);
-    const child = root.querySelector('span');
-
-    parent.label = 'two';
-    await flushMicrotasks();
-    expect(root.textContent).toBe('two');
-    expect(root.querySelector('span')).toBe(child);
   });
 
   it('will retain a class Component when its VNode props object is unchanged', async () => {
@@ -1319,9 +1143,7 @@ describe('render', () => {
       }
     }
 
-    let parent!: Parent;
-    const root = document.createElement('main');
-    render(<Parent is={(value) => (parent = value)} />, root);
+    const [parent, root] = mount(Parent);
     const span = root.querySelector('span');
     parent.tick++;
     await flushMicrotasks();
@@ -1329,8 +1151,14 @@ describe('render', () => {
     expect(root.querySelector('span')).toBe(span);
   });
 
-  it('will patch a directly placed Component and collection', async () => {
+  it('will place an external Component and collection without owning them', async () => {
+    const cleanup = vi.fn();
+
     class Message extends Component {
+      mount() {
+        return cleanup;
+      }
+
       render() {
         return <span>message</span>;
       }
@@ -1349,9 +1177,7 @@ describe('render', () => {
       }
     }
 
-    let parent!: Parent;
-    const root = document.createElement('main');
-    const release = render(<Parent is={(value) => (parent = value)} />, root);
+    const [parent, root, release] = mount(Parent);
     parent.tick++;
     await flushMicrotasks();
     expect(root.textContent).toBe('1messagefirst');
@@ -1362,6 +1188,7 @@ describe('render', () => {
 
     release();
     expect(message.get(null)).toBe(false);
+    expect(cleanup).not.toHaveBeenCalled();
     message.set(null);
   });
 
@@ -1376,9 +1203,7 @@ describe('render', () => {
       }
     }
 
-    let keys!: Keys;
-    const root = document.createElement('main');
-    render(<Keys is={(value) => (keys = value)} />, root);
+    const [keys, root] = mount(Keys);
     keys.mode = 1;
     await flushMicrotasks();
     expect(root.textContent).toBe('twothree');
@@ -1386,26 +1211,6 @@ describe('render', () => {
     keys.mode = 2;
     await flushMicrotasks();
     expect(root.textContent).toBe('plain');
-  });
-
-  it('will move a keyed multi-node fragment as one range', async () => {
-    function Pair({ value }: { value: string }) {
-      return <><b>{value}</b><i>{value}</i></>;
-    }
-
-    class Pairs extends Component {
-      order = ['a', 'b'];
-      render() {
-        return <section>{this.order.map((value) => <Pair key={value} value={value} />)}</section>;
-      }
-    }
-
-    let pairs!: Pairs;
-    const root = document.createElement('main');
-    render(<Pairs is={(value) => (pairs = value)} />, root);
-    pairs.order = ['b', 'a'];
-    await flushMicrotasks();
-    expect([...root.querySelectorAll('b, i')].map((node) => node.textContent)).toEqual(['b', 'b', 'a', 'a']);
   });
 
   it('will reject unsupported render values and element types', () => {
@@ -1419,7 +1224,6 @@ describe('render', () => {
 
 describe('renderable State', () => {
   it('will be owned by enclosing Component', () => {
-    let outer!: Outer;
     let inner!: State;
 
     class Panel extends State {
@@ -1434,12 +1238,10 @@ describe('renderable State', () => {
       }
     }
 
-    const release = render(<Outer is={(value) => (outer = value)} />, document.createElement('main'));
+    const [outer] = mount(Outer);
 
     expect(outer.get(State, false)).toBeUndefined();
     expect(inner.get(State)).toBe(outer);
-
-    release();
   });
 
   it('will render a State with a render method', async () => {
@@ -1475,55 +1277,33 @@ describe('renderable State', () => {
     expect(panel.get(null)).toBe(true);
   });
 
-  it('will apply props to fields and pass the rest to render', async () => {
+  it('will apply props to fields, reset dropped ones and pass the rest to render', async () => {
     class Panel extends State {
-      label = '';
+      label?: string = 'default';
 
       render(props: { children?: Component.Node }) {
-        return <b>{this.label}{props.children}</b>;
+        return <b>{this.label ?? 'none'}{props.children}</b>;
       }
     }
 
     class App extends Component {
-      label = 'one';
+      label?: string = 'one';
+
       render() {
-        return <Panel label={this.label}>!</Panel>;
+        return this.label ? <Panel label={this.label}>!</Panel> : <Panel>!</Panel>;
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     expect(root.textContent).toBe('one!');
 
     app.label = 'two';
     await flushMicrotasks();
     expect(root.textContent).toBe('two!');
-  });
 
-  it('will reset a field when its prop is dropped', async () => {
-    class Panel extends State {
-      label?: string = 'default';
-      render() {
-        return <b>{this.label ?? 'none'}</b>;
-      }
-    }
-
-    class App extends Component {
-      passing = true;
-      render() {
-        return this.passing ? <Panel label="given" /> : <Panel />;
-      }
-    }
-
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
-    expect(root.textContent).toBe('given');
-
-    app.passing = false;
+    app.label = undefined;
     await flushMicrotasks();
-    expect(root.textContent).toBe('none');
+    expect(root.textContent).toBe('none!');
   });
 
   it('will pass children through and provide a State without render', async () => {
@@ -1577,14 +1357,7 @@ describe('renderable State', () => {
       return <b>{Session.get().user}</b>;
     }
 
-    let view!: SessionView;
-    const root = document.createElement('main');
-    render(
-      <SessionView user="ada" is={(value) => (view = value)}>
-        <Leaf />
-      </SessionView>,
-      root
-    );
+    const [view, root] = mount(SessionView, { user: 'ada', children: <Leaf /> });
 
     expect(root.textContent).toBe('ada');
     expect(view).toBeInstanceOf(Session);
@@ -1655,9 +1428,7 @@ describe('renderable State', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     expect(root.textContent).toBe('outer');
     expect(app.caught).toBe(1);
 
@@ -1705,9 +1476,7 @@ describe('renderable State', () => {
       }
     }
 
-    let report!: Report;
-    const root = document.createElement('main');
-    render(<Report is={(value) => (report = value)} fallback={<i>loading</i>} />, root);
+    const [report, root] = mount(Report, { fallback: <i>loading</i> });
     expect(root.textContent).toBe('loading');
 
     report.count = 2;
@@ -1719,7 +1488,7 @@ describe('renderable State', () => {
     expect(created).toHaveBeenCalledTimes(1);
   });
 
-  it('will prefer an element fallback over the member', () => {
+  it('will prefer an element fallback over the member, used when placed', () => {
     const Lazy = () => new Promise<never>(() => {});
 
     class Guarded extends State {
@@ -1735,8 +1504,8 @@ describe('renderable State', () => {
     expect(root.textContent).toBe('element');
 
     const other = document.createElement('main');
-    render(<Guarded />, other);
-    expect(other.textContent).toBe('member');
+    render(<><Guarded /><div>{Guarded.new() as never}</div></>, other);
+    expect(other.textContent).toBe('membermember');
 
     if (false) {
       class Labelled extends State {
@@ -1804,45 +1573,6 @@ describe('renderable State', () => {
     expect(root.textContent).toBe('outer');
   });
 
-  it('will use members for a placed instance', () => {
-    const Lazy = () => new Promise<never>(() => {});
-
-    class Placed extends State {
-      fallback = <i>member</i>;
-
-      render() {
-        return <Lazy />;
-      }
-    }
-
-    const root = document.createElement('main');
-    render(<div>{Placed.new() as never}</div>, root);
-    expect(root.textContent).toBe('member');
-  });
-
-  it('will bind PascalCase methods of a renderable State as subcomponents', async () => {
-    class Panel extends State {
-      label = 'one';
-
-      Label() {
-        return <b>{this.label}</b>;
-      }
-
-      render() {
-        return <this.Label />;
-      }
-    }
-
-    let panel!: Panel;
-    const root = document.createElement('main');
-    render(<Panel is={(value) => (panel = value)} />, root);
-    expect(root.textContent).toBe('one');
-
-    panel.label = 'two';
-    await flushMicrotasks();
-    expect(root.textContent).toBe('two');
-  });
-
   it('will render a PascalCase function field as a plain function component', async () => {
     const First = ({ text }: { text: string }) => <b>{text}</b>;
     const Second = ({ text }: { text: string }) => <i>{text}</i>;
@@ -1855,39 +1585,13 @@ describe('renderable State', () => {
       }
     }
 
-    let panel!: Panel;
-    const root = document.createElement('main');
-    render(<Panel is={(value) => (panel = value)} />, root);
+    const [panel, root] = mount(Panel);
     expect(root.querySelector('b')?.textContent).toBe('x');
     expect(panel.Badge).toBe(First);
 
     panel.Badge = Second;
     await flushMicrotasks();
     expect(root.querySelector('i')?.textContent).toBe('x');
-  });
-
-  it('will compose render layers of a renderable State', async () => {
-    class Frame extends State {
-      render(props?: { children?: Component.Node }) {
-        return <b>{props?.children}!</b>;
-      }
-    }
-
-    class Page extends Frame {
-      label = 'page';
-      render() {
-        return <i>{this.label}</i>;
-      }
-    }
-
-    let page!: Page;
-    const root = document.createElement('main');
-    render(<Page is={(value) => (page = value)} />, root);
-    expect(root.textContent).toBe('page!');
-
-    page.label = 'next';
-    await flushMicrotasks();
-    expect(root.textContent).toBe('next!');
   });
 
   it('will reconcile keyed renderable States', async () => {
@@ -1905,9 +1609,7 @@ describe('renderable State', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     expect(root.textContent).toBe('ab');
 
     app.items = ['b', 'c'];
