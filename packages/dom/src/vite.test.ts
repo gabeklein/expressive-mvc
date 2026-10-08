@@ -50,32 +50,19 @@ it('will apply during serve only, after other transforms', () => {
 });
 
 describe('skip', () => {
-  it('will skip a non-script module', async () => {
-    expect(await transform('class A {}', '/src/app.css')).toBeUndefined();
-  });
-
-  it('will skip the mvc runtime itself', async () => {
-    expect(await transform('class A {}', '/mvc/src/state.js')).toBeUndefined();
-  });
-
-  it('will skip the dom runtime itself', async () => {
-    expect(await transform('export const App = () => null;', '/dom/src/lazy.js')).toBeUndefined();
+  it.each([
+    ['a non-script module', 'class A {}', '/src/app.css'],
+    ['the mvc runtime itself', 'class A {}', '/mvc/src/state.js'],
+    ['the dom runtime itself', 'export const App = () => null;', '/dom/src/lazy.js'],
+    ['a dependency', 'class A {}', '/node_modules/lib/index.js'],
+    ['a module without classes or components', 'export const title = "no class";', undefined],
+    ['a module mentioning class without declaring one', 'export const className = "a";', undefined]
+  ])('will skip %s', async (_, code, id) => {
+    expect(await transform(code, id)).toBeUndefined();
   });
 
   it('will transform without a resolved runtime', async () => {
     expect(await transform('class A {}', '/src/app.js', null)).toBeDefined();
-  });
-
-  it('will skip a dependency', async () => {
-    expect(await transform('class A {}', '/node_modules/lib/index.js')).toBeUndefined();
-  });
-
-  it('will skip a module without classes or components', async () => {
-    expect(await transform('export const title = "no class";')).toBeUndefined();
-  });
-
-  it('will skip a module mentioning class without declaring one', async () => {
-    expect(await transform('export const className = "a";')).toBeUndefined();
   });
 });
 
@@ -170,31 +157,16 @@ describe('exports', () => {
   const exports = async (code: string) =>
     (await inject(`class Store {}\n${code}`)).match(/const __exports = \{ (.*) \};/)![1];
 
-  it('will record declarations', async () => {
-    expect(await exports('export function helper() {}\nexport let a = 1, [b] = [2];'))
-      .toBe('"helper": helper, "a": a');
-  });
-
-  it('will record specifiers by local name', async () => {
-    expect(await exports('export { Store as Model, Store as "with-dash" };'))
-      .toBe('"Model": Store, "with-dash": Store');
-  });
-
-  it('will ignore re-exports', async () => {
-    expect(await exports("export { other } from './other';\nexport { Store };")).toBe('"Store": Store');
-  });
-
-  it('will record a default binding', async () => {
-    expect(await exports('export default function App() {}')).toBe('"default": App');
-    expect(await exports('export { Store as default };')).toBe('"default": Store');
-  });
-
-  it('will not record a default snapshot', async () => {
-    expect(await exports('export default Store;')).toBe('');
-  });
-
-  it('will not record an anonymous default', async () => {
-    expect(await exports('export default function () {}')).toBe('');
+  it.each([
+    ['declarations', 'export function helper() {}\nexport let a = 1, [b] = [2];', '"helper": helper, "a": a'],
+    ['specifiers by local name', 'export { Store as Model, Store as "with-dash" };', '"Model": Store, "with-dash": Store'],
+    ['local exports, not re-exports', "export { other } from './other';\nexport { Store };", '"Store": Store'],
+    ['a default declaration', 'export default function App() {}', '"default": App'],
+    ['a default specifier', 'export { Store as default };', '"default": Store'],
+    ['no default snapshot', 'export default Store;', ''],
+    ['no anonymous default', 'export default function () {}', '']
+  ])('will record %s', async (_, code, expected) => {
+    expect(await exports(code)).toBe(expected);
   });
 });
 
@@ -258,8 +230,8 @@ describe('update', () => {
     expect(announce).not.toHaveBeenCalled();
   });
 
-  it('will invalidate importers of a changed plain export on the server', async () => {
-    const { hot } = await update({ next: { Store, App, value: 2 }, ssr: true });
+  it.each([false, true])('will invalidate importers of a changed plain export (ssr: %s)', async (ssr) => {
+    const { hot } = await update({ next: { Store, App, value: 2 }, ssr });
 
     expect(hot.invalidate).toHaveBeenCalledWith('"value" export cannot be hot-patched.');
   });
@@ -276,28 +248,14 @@ describe('update', () => {
     expect(location.reload).not.toHaveBeenCalled();
   });
 
-  it('will pass without next exports', async () => {
-    const { hot } = await update({ next: undefined });
+  it.each([
+    ['no next exports', undefined],
+    ['a changed State class, left to the reload', { Store: class Store extends State {}, App, value: 1 }],
+    ['a changed component', { Store, App: () => null, value: 1 }]
+  ])('will not invalidate for %s', async (_, next) => {
+    const { hot } = await update({ next });
 
     expect(hot.invalidate).not.toHaveBeenCalled();
-  });
-
-  it('will leave a changed State class to the reload', async () => {
-    const { hot } = await update({ next: { Store: class Store extends State {}, App, value: 1 } });
-
-    expect(hot.invalidate).not.toHaveBeenCalled();
-  });
-
-  it('will pass a changed component', async () => {
-    const { hot } = await update({ next: { Store, App: () => null, value: 1 } });
-
-    expect(hot.invalidate).not.toHaveBeenCalled();
-  });
-
-  it('will invalidate another changed export', async () => {
-    const { hot } = await update({ next: { Store, App, value: 2 } });
-
-    expect(hot.invalidate).toHaveBeenCalledWith('"value" export cannot be hot-patched.');
   });
 });
 

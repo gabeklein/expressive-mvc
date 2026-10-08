@@ -89,7 +89,10 @@ describe('hot', () => {
     expect(root.textContent).toBe('after');
   });
 
-  it('will replace State.use() slots whose order changed', async () => {
+  it.each([
+    ['whose order changed', () => <b>{Other.use().label}</b>, 'other'],
+    ['no longer called', () => <b>after</b>, 'after']
+  ])('will replace State.use() slots %s', async (_, After, text) => {
     const id = module();
     const destroyed = vi.fn();
 
@@ -104,11 +107,6 @@ describe('hot', () => {
       return <b>before</b>;
     };
 
-    const After = () => {
-      const { label } = Other.use();
-      return <b>{label}</b>;
-    };
-
     hot(id, { View: Before });
 
     const root = mount(<Before />);
@@ -116,35 +114,7 @@ describe('hot', () => {
     hot(id, { View: After });
     await flushMicrotasks();
 
-    expect(root.textContent).toBe('other');
-    expect(destroyed).toHaveBeenCalled();
-  });
-
-  it('will drop State.use() slots no longer called', async () => {
-    const id = module();
-    const destroyed = vi.fn();
-
-    class Tracked extends State {
-      new() {
-        return destroyed;
-      }
-    }
-
-    const Before = () => {
-      Tracked.use();
-      return <b>before</b>;
-    };
-
-    const After = () => <b>after</b>;
-
-    hot(id, { View: Before });
-
-    const root = mount(<Before />);
-
-    hot(id, { View: After });
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe('after');
+    expect(root.textContent).toBe(text);
     expect(destroyed).toHaveBeenCalled();
   });
 

@@ -348,11 +348,12 @@ describe('appearance', () => {
     expect(root.querySelector('var')!.className).toBe('Gate_on');
   });
 
-  it('will throw if a rule is not an object', () => {
-    expect(() => createStyleScope(undefined, { _bad: (() => null) as any }))
-      .toThrow('Rule "_bad" must be an object. Macros are defined by macro().');
-    expect(() => createStyleScope(undefined, { _also: 'token' as any }))
-      .toThrow('Rule "_also" must be an object.');
+  it.each([
+    ['a rule is a function', { _bad: () => null }, 'Rule "_bad" must be an object. Macros are defined by macro().'],
+    ['a rule is a token', { _also: 'token' }, 'Rule "_also" must be an object.'],
+    ['a map uses a reserved key', { $hover: { color: 'red' } }, 'Reserved key "$hover" in style map.']
+  ])('will throw if %s', (_, map, message) => {
+    expect(() => createStyleScope(undefined, map as any)).toThrow(message);
   });
 
   it('will ignore a non-object descendant scope', () => {
@@ -363,11 +364,6 @@ describe('appearance', () => {
 
     expect(resolved?.context).toBeUndefined();
     expect(resolved?.blocks?.[0].declarations).toEqual({ color: 'red' });
-  });
-
-  it('will throw if a map uses a reserved key', () => {
-    expect(() => createStyleScope(undefined, { $hover: { color: 'red' } }))
-      .toThrow('Reserved key "$hover" in style map.');
   });
 
   it('will compose repeated and inherited registrations', () => {

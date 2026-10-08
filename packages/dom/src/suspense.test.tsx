@@ -73,14 +73,12 @@ describe('suspense and recovery', () => {
     error.mockRestore();
   });
 
-  it('will let Component for own a loader fallback', async () => {
-    class Session extends State {}
+  it.each([
+    ['Component for', { for: class Session extends State {} }],
+    ['bare Component', {}]
+  ])('will let %s own a loader fallback', async (_, props) => {
     const [Lazy, loaded] = lazy();
-    const root = place(
-      <Component for={Session} fallback={<i>waiting</i>}>
-        <Lazy />
-      </Component>
-    );
+    const root = place(<Component {...(props as {})} fallback={<i>waiting</i>}><Lazy /></Component>);
     expect(root.textContent).toBe('waiting');
 
     loaded.resolve(() => <span>done</span>);
@@ -1022,19 +1020,34 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('recovered');
   });
 
-  it('will clean an unmounted suspended scope before resolution', async () => {
-    const [Lazy, loaded] = lazy();
+  it.each([
+    ['a load resolving', false, true],
+    ['a suspension rejecting', false, false],
+    ['a recovery resolving', true, true],
+    ['a recovery rejecting', true, false]
+  ])('will ignore %s after unmount', async (_, recover, resolve) => {
+    const [Lazy, gate] = lazy();
 
     class App extends Component {
       fallback = <i>loading</i>;
+
+      catch() {
+        if (recover) return gate as Promise<any>;
+        throw new Error('should not recover');
+      }
+
       render() {
-        return <Lazy />;
+        if (recover) throw new Error('broken');
+        if (resolve) return <Lazy />;
+        throw gate;
       }
     }
 
     const [, root, release] = mount(App);
     release();
-    loaded.resolve(() => <p>late</p>);
+
+    if (resolve) gate.resolve(() => <p>late</p>);
+    else gate.reject(new Error('late'));
     await flushMicrotasks();
 
     expect(root.textContent).toBe('');
@@ -1068,31 +1081,6 @@ describe('suspense and recovery', () => {
     await flushMicrotasks();
 
     expect(settled()).toBe(true);
-    expect(root.textContent).toBe('');
-  });
-
-  it('will ignore a suspension rejected after unmount', async () => {
-    const pending = mockPromise<void>();
-
-    function Wait(): Component.Node {
-      throw pending;
-    }
-
-    class App extends Component {
-      fallback = <i>loading</i>;
-      catch() {
-        throw new Error('should not recover');
-      }
-      render() {
-        return <Wait />;
-      }
-    }
-
-    const [, root, release] = mount(App);
-    release();
-    pending.reject(new Error('late'));
-    await flushMicrotasks();
-
     expect(root.textContent).toBe('');
   });
 
@@ -1166,20 +1154,6 @@ describe('suspense and recovery', () => {
 
     expect(caught).toHaveBeenCalledWith('child');
     expect(root.textContent).toBe('restored');
-  });
-
-  it('will let a bare Component own a fallback', async () => {
-    const [Lazy, loaded] = lazy();
-    const root = place(
-      <Component fallback={<i>waiting</i>}>
-        <Lazy />
-      </Component>
-    );
-    expect(root.textContent).toBe('waiting');
-
-    loaded.resolve(() => <span>done</span>);
-    await flushMicrotasks();
-    expect(root.textContent).toBe('done');
   });
 
   it('will hold an escalated boundary until its catch completes', async () => {
@@ -1331,50 +1305,6 @@ describe('suspense and recovery', () => {
 
     expect(outer).toHaveBeenCalledWith('escalated');
     expect(root.textContent).toBe('restored');
-  });
-
-  it('will not retry a recovered Component after it unmounts', async () => {
-    const recovery = mockPromise<void>();
-
-    class App extends Component {
-      fallback = <i>recovering</i>;
-
-      catch() {
-        return recovery;
-      }
-
-      render(): Component.Node {
-        throw new Error('broken');
-      }
-    }
-
-    const [, root, release] = mount(App);
-    release();
-    recovery.resolve();
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe('');
-  });
-
-  it('will ignore a failed recovery after unmount', async () => {
-    const recovery = mockPromise<void>();
-
-    class App extends Component {
-      fallback = <i>recovering</i>;
-      catch() {
-        return recovery;
-      }
-      render(): Component.Node {
-        throw new Error('broken');
-      }
-    }
-
-    const [, root, release] = mount(App);
-    release();
-    recovery.reject(new Error('late'));
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe('');
   });
 
   it.fails('will not render a child its parent removes in the same transition', async () => {

@@ -640,24 +640,29 @@ describe('render', () => {
     expect(root.textContent).toBe('text:2shape');
   });
 
-  it('will retain keyed DOM ranges while reordering', async () => {
+  it.each([
+    ['elements', (id: string) => <li key={id}>{id}</li>],
+    ['fragments', (id: string) => <Fragment key={id}><dt>{id}</dt><dd>{id}</dd></Fragment>],
+    ['component ranges', (id: string) => <Pair key={id} value={id} />]
+  ])('will retain keyed %s while reordering', async (_, item) => {
     class List extends Component {
-      items = ['a', 'b', 'c'];
+      order = ['a', 'b', 'c'];
 
       render() {
-        return <ul>{this.items.map((item) => <li key={item}>{item}</li>)}</ul>;
+        return <section>{this.order.map(item)}</section>;
       }
     }
 
     const [list, root] = mount(List);
-    const before = [...root.querySelectorAll('li')];
+    const before = [...root.querySelector('section')!.children];
 
-    list.items = ['c', 'a', 'b'];
+    list.order = ['c', 'a', 'b'];
     await flushMicrotasks();
-    const after = [...root.querySelectorAll('li')];
+    const after = [...root.querySelector('section')!.children];
+    const expected = ['c', 'a', 'b'].flatMap((id) => before.filter((node) => node.textContent == id));
 
-    expect(after.map((node) => node.textContent)).toEqual(['c', 'a', 'b']);
-    expect(after).toEqual([before[2], before[0], before[1]]);
+    expect(after).toHaveLength(expected.length);
+    after.forEach((node, index) => expect(node).toBe(expected[index]));
   });
 
   it('will assign and remove settable properties on SVG elements', async () => {
@@ -1041,26 +1046,6 @@ describe('render', () => {
     two.remove();
   });
 
-  it('will keep keyed fragments across a reorder', async () => {
-    class List extends State {
-      order = ['a', 'b'];
-
-      render() {
-        return <>{this.order.map((id) => <Fragment key={id}><dt>{id}</dt><dd>{id}</dd></Fragment>)}</>;
-      }
-    }
-
-    const [list, root] = mount(List, {}, document.createElement('dl'));
-
-    const first = root.querySelector('dt');
-
-    list.order = ['b', 'a'];
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe('bbaa');
-    expect(root.querySelectorAll('dt')[1]).toBe(first);
-  });
-
   it('will render and move portal children with logical context', async () => {
     const aside = document.createElement('aside');
     const nextPortal = document.createElement('aside');
@@ -1191,20 +1176,6 @@ describe('render', () => {
     keys.mode = 2;
     await flushMicrotasks();
     expect(root.textContent).toBe('plain');
-  });
-
-  it('will move a keyed multi-node fragment as one range', async () => {
-    class Pairs extends Component {
-      order = ['a', 'b'];
-      render() {
-        return <section>{this.order.map((value) => <Pair key={value} value={value} />)}</section>;
-      }
-    }
-
-    const [pairs, root] = mount(Pairs);
-    pairs.order = ['b', 'a'];
-    await flushMicrotasks();
-    expect([...root.querySelectorAll('b, i')].map((node) => node.textContent)).toEqual(['b', 'b', 'a', 'a']);
   });
 
   it('will reject unsupported render values and element types', () => {
