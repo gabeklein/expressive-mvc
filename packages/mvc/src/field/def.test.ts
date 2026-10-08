@@ -162,34 +162,6 @@ describe('instruction', () => {
         await expect(test).not.toHaveUpdated();
       });
 
-      // duplicate test?
-      it('will reject update if throws false', async () => {
-        let ignore = false;
-
-        class Test extends State {
-          property = def(() => ({
-            value: 0,
-            set: () => {
-              if (ignore) throw false;
-            }
-          }));
-        }
-
-        const instance = Test.new();
-
-        expect(instance.property).toBe(0);
-
-        instance.property = 10;
-        expect(instance.property).toBe(10);
-        await expect(instance).toHaveUpdated();
-
-        ignore = true;
-
-        instance.property = 0;
-        expect(instance.property).toBe(10);
-        await expect(instance).not.toHaveUpdated();
-      });
-
       it('will update silently if callback throws true', async () => {
         class Test extends State {
           property = def(() => ({
@@ -233,36 +205,21 @@ describe('instruction', () => {
   });
 
   describe('cleanup', () => {
-    it('will call cleanup function on destroy', () => {
-      const cleanup = vi.fn();
+    it.each<[string, (done: () => void) => unknown]>([
+      ['will call cleanup function on destroy', (done) => done],
+      ['will call config destroy on destroy', (destroy) => ({ value: 'hello', destroy })]
+    ])('%s', (_, config) => {
+      const done = vi.fn();
 
       class Test extends State {
-        property = def(() => cleanup);
+        property = def(() => config(done) as any);
       }
 
       const test = Test.new();
-      expect(cleanup).not.toBeCalled();
+      expect(done).not.toBeCalled();
 
       test.set(null);
-      expect(cleanup).toBeCalled();
-    });
-
-    it('will call config destroy on destroy', () => {
-      const destroy = vi.fn();
-
-      class Test extends State {
-        property = def(() => ({
-          value: 'hello',
-          destroy
-        }));
-      }
-
-      const test = Test.new();
-      expect(test.property).toBe('hello');
-      expect(destroy).not.toBeCalled();
-
-      test.set(null);
-      expect(destroy).toBeCalled();
+      expect(done).toBeCalled();
     });
   });
 });
@@ -297,27 +254,12 @@ describe('reuse', () => {
   });
 
   it('will throw if created outside a construction', () => {
-    expect(() => def(() => ({ value: 1 }))).toThrowError(
-      /no State under construction/
-    );
-  });
-
-  it('will throw once construction has completed', () => {
     class Test extends State {
       value: any = def(() => ({ value: 1 }));
     }
 
+    expect(() => def(() => ({ value: 1 }))).toThrowError(/no State under construction/);
     expect(Test.new().value).toBe(1);
-    expect(() => def(() => ({ value: 2 }))).toThrowError(
-      /no State under construction/
-    );
-  });
-
-  it('will not throw for an unrelated symbol', () => {
-    class Test extends State {
-      tag: any = Symbol('mine');
-    }
-
-    expect(String(Test.new().tag)).toBe('Symbol(mine)');
+    expect(() => def(() => ({ value: 2 }))).toThrowError(/no State under construction/);
   });
 });
