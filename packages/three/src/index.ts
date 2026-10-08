@@ -1,5 +1,6 @@
 export { Frame, loop } from './frame';
-export { PerspectiveCamera } from './camera';
+export { OrthographicCamera, PerspectiveCamera } from './camera';
+export { AmbientLight, DirectionalLight, HemisphereLight, Light, PointLight, SpotLight } from './light';
 export { Group, Mesh, Object3D, Scene } from './object';
 export { Viewport } from './viewport';
 

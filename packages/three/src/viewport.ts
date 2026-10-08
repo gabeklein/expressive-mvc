@@ -1,7 +1,7 @@
 import { ref, State } from '@expressive/mvc';
 import * as THREE from 'three';
 
-import { PerspectiveCamera } from './camera';
+import { fit } from './camera';
 import { Frame, loop } from './frame';
 import { Object3D, objectOf, Scene, verify } from './object';
 
@@ -45,7 +45,7 @@ class Viewport extends State {
       renderer.setPixelRatio(globalThis.devicePixelRatio || 1);
       renderer.setSize(width, height, false);
 
-      if (this.camera instanceof PerspectiveCamera && height) this.camera.aspect = width / height;
+      fit(this.camera, width, height);
     };
 
     let observer: ResizeObserver | undefined;

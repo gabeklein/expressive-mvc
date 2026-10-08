@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 
-import { PerspectiveCamera } from './camera';
+import { OrthographicCamera, PerspectiveCamera } from './camera';
 import { Frame } from './frame';
 import { Mesh, objectOf, Scene } from './object';
 import { Viewport } from './viewport';
@@ -137,6 +137,25 @@ describe('Viewport', () => {
 
     expect(game._fake.setSize).toHaveBeenCalledWith(640, 0, false);
     expect(game.camera.aspect).toBe(1);
+  });
+
+  it('will fit an orthographic camera to the surface', () => {
+    class Flat extends Viewport {
+      scene = new Scene();
+      camera = new OrthographicCamera();
+
+      protected createRenderer() {
+        return renderer();
+      }
+
+      protected schedule() {}
+    }
+
+    const game = Flat.new();
+
+    game.attach(canvas(800, 400));
+
+    expect(game.camera.right).toBe(2);
   });
 
   it('will not set aspect on a camera without one', () => {
