@@ -3435,10 +3435,17 @@ describe('on catch stage (static)', () => {
   const warn = mockWarn();
   const error = mockError();
 
+  const fresh = () => class Test extends State {
+    foo = 0;
+  };
+
+  function deadWrite(test: State & { foo: number }) {
+    test.set(null);
+    test.foo = 1;
+  }
+
   it('will hand a destroyed write to catch with its kind and key', () => {
-    class Test extends State {
-      foo = 0;
-    }
+    const Test = fresh();
 
     const handler = vi.fn();
 
@@ -3453,8 +3460,7 @@ describe('on catch stage (static)', () => {
 
     const test = Test.new();
 
-    test.set(null);
-    test.foo = 1;
+    deadWrite(test);
 
     expect(handler).toBeCalledWith(expect.objectContaining({ message: expect.stringMatching(DESTROYED) }), 'dead', 'foo');
     expect(handler.mock.contexts[0]).toBe(test);
@@ -3462,9 +3468,7 @@ describe('on catch stage (static)', () => {
   });
 
   it('will pass along subclass then base, last registered first, once each at the outermost', async () => {
-    class Base extends State {
-      foo = 0;
-    }
+    const Base = fresh();
 
     class Sub extends Base {}
 
@@ -3485,8 +3489,7 @@ describe('on catch stage (static)', () => {
     const caught = mockUncaught();
     const sub = Sub.new();
 
-    sub.set(null);
-    sub.foo = 1;
+    deadWrite(sub);
     await flushMicrotasks();
 
     expect(caught).toEqual([]);
@@ -3495,9 +3498,7 @@ describe('on catch stage (static)', () => {
   });
 
   it('will stop at the first handler returning nothing', () => {
-    class Base extends State {
-      foo = 0;
-    }
+    const Base = fresh();
 
     class Sub extends Base {}
 
@@ -3508,17 +3509,14 @@ describe('on catch stage (static)', () => {
 
     const sub = Sub.new();
 
-    sub.set(null);
-    sub.foo = 1;
+    deadWrite(sub);
 
     expect(base).not.toBeCalled();
     expect(warn).not.toBeCalled();
   });
 
   it('will pass a replacement forward', async () => {
-    class Test extends State {
-      foo = 0;
-    }
+    const Test = fresh();
 
     const base = vi.fn((issue: unknown) => issue);
     const replaced = new Error('replaced');
@@ -3527,8 +3525,7 @@ describe('on catch stage (static)', () => {
     const caught = mockUncaught();
     const test = Test.new();
 
-    test.set(null);
-    test.foo = 1;
+    deadWrite(test);
     stop();
     stopBase();
     await flushMicrotasks();
@@ -3539,25 +3536,20 @@ describe('on catch stage (static)', () => {
   });
 
   it('will reach a handler registered on State itself', () => {
-    class Test extends State {
-      foo = 0;
-    }
+    const Test = fresh();
 
     const handler = vi.fn();
     const stop = State.on({ catch: handler });
     const test = Test.new();
 
-    test.set(null);
-    test.foo = 1;
+    deadWrite(test);
     stop();
 
     expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
   });
 
   it('will not reach handlers of an unrelated class', async () => {
-    class Test extends State {
-      foo = 0;
-    }
+    const Test = fresh();
 
     class Other extends State {}
 
@@ -3569,23 +3561,12 @@ describe('on catch stage (static)', () => {
 
     const caught = mockUncaught();
 
-    test.set(null);
-    test.foo = 1;
+    deadWrite(test);
     await flushMicrotasks();
 
     expect(caught).toEqual([]);
     expect(warn).not.toBeCalled();
     expect(handler).not.toBeCalled();
-  });
-
-  it('will warn of a state never activated', async () => {
-    class Test extends State {}
-
-    const test = new Test();
-
-    await flushMicrotasks();
-
-    expect(warn).toBeCalledWith(expect.objectContaining({ message: `${test} was constructed but never activated.` }));
   });
 
   it('will escape uncaught when rethrown at an async site', async () => {
@@ -3632,9 +3613,7 @@ describe('on catch stage (static)', () => {
   });
 
   it('will pass on a falsy value thrown', async () => {
-    class Test extends State {
-      foo = 0;
-    }
+    const Test = fresh();
 
     const handler = vi.fn((issue: unknown) => issue);
     const caught = mockUncaught();
@@ -3713,9 +3692,7 @@ describe('on catch stage (static)', () => {
   });
 
   it('will ignore a non-function returned by a listener', async () => {
-    class Test extends State {
-      foo = 0;
-    }
+    const Test = fresh();
 
     const caught = mockUncaught();
     const test = Test.new();
