@@ -1,11 +1,31 @@
 import { act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { browserRouter, location, mockPromise, renderAct } from '../test.setup';
+import { browserRouter, location, mockPromise, renderAct, withWindow } from '../test.setup';
 import { Context } from '@expressive/mvc';
 import { Provider } from '@expressive/react';
 import { BrowserRouter } from './browser';
 import { Route } from './route';
+
+function gate() {
+  const promise = Object.assign(mockPromise<void>(), { ready: false });
+  promise.then(() => (promise.ready = true));
+  return promise;
+}
+
+const release = (gate: Promise<void> & { resolve(): void }) =>
+  act(async () => {
+    gate.resolve();
+    await gate;
+  });
+
+const step = (fn: () => void) =>
+  act(async () => {
+    fn();
+    await Promise.resolve();
+  });
+
+const Status = () => <b>{BrowserRouter.get().navigating ? 'busy' : 'idle'}</b>;
 
 describe('BrowserRouter', () => {
   const router = browserRouter();
@@ -17,21 +37,23 @@ describe('BrowserRouter', () => {
     expect(router.current.url).toBe('/foo?from=start#intro');
   });
 
-  it('goto pushes history and updates path', async () => {
+  it('will push history on goto', async () => {
+    const before = window.history.length;
     await act(async () => router.current.goto('/bar'));
     expect(router.current.path).toBe('/bar');
     expect(window.location.pathname).toBe('/bar');
+    expect(window.history.length).toBe(before + 1);
   });
 
-  it('goto with replace uses replaceState', async () => {
+  it('will replace history on goto with replace', async () => {
     const before = window.history.length;
-    await act(async () => router.current.goto('/replaced', true));
-    expect(router.current.path).toBe('/replaced');
-    expect(window.location.pathname).toBe('/replaced');
+    await act(async () => router.current.goto('/bar', true));
+    expect(router.current.path).toBe('/bar');
+    expect(window.location.pathname).toBe('/bar');
     expect(window.history.length).toBe(before);
   });
 
-  it('updates path on popstate', () => {
+  it('will update path on popstate', () => {
     act(() => {
       window.history.pushState(null, '', '/elsewhere');
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -39,13 +61,19 @@ describe('BrowserRouter', () => {
     expect(router.current.path).toBe('/elsewhere');
   });
 
-  it('notices external history.pushState', () => {
+  it('will notice external history.pushState', () => {
     act(() => window.history.pushState(null, '', '/external#section'));
     expect(router.current.path).toBe('/external');
     expect(router.current.hash).toBe('#section');
   });
 
-  it('goto with query updates location and url', async () => {
+  it('will notice external history.replaceState', () => {
+    act(() => window.history.replaceState(null, '', '/external#section'));
+    expect(router.current.path).toBe('/external');
+    expect(router.current.hash).toBe('#section');
+  });
+
+  it('will write query and fragment to location on goto', async () => {
     await act(async () => router.current.goto('/results?q=hello#answer'));
     expect(window.location.pathname).toBe('/results');
     expect(window.location.search).toBe('?q=hello');
@@ -57,22 +85,16 @@ describe('BrowserRouter', () => {
     expect(router.current.url).toBe('/results');
   });
 
-  it('notices external history.replaceState', () => {
-    act(() => window.history.replaceState(null, '', '/replaced-external'));
-    expect(router.current.path).toBe('/replaced-external');
-  });
-
-  it('does not re-push when external navigation uses non-canonical encoding', async () => {
+  it('will not re-push when external navigation uses non-canonical encoding', async () => {
     const len = window.history.length;
     act(() => window.history.pushState(null, '', '/enc?q=a%20b'));
     await router.current.set();
 
     expect(router.current.query.get('q')).toBe('a b');
-    // The query listener must treat %20 and + as equal, not push a corrected dup.
     expect(window.history.length).toBe(len + 1);
   });
 
-  it('writing a query param pushes to window.history', async () => {
+  it('will push to window.history when writing a query param', async () => {
     act(() => router.current.goto('/page?x=1#results'));
     router.current.query.set('x', '9');
     await router.current.set();
@@ -82,7 +104,7 @@ describe('BrowserRouter', () => {
     expect(window.location.hash).toBe('#results');
   });
 
-  it('writing hash pushes to window.history', async () => {
+  it('will push to window.history when writing hash', async () => {
     act(() => router.current.goto('/page?x=1#intro'));
     await router.current.set();
     const before = window.history.length;
@@ -106,7 +128,7 @@ describe('BrowserRouter', () => {
     expect(router.current.url).toBe('/#native');
   });
 
-  it('back and go delegate normalized deltas to window.history', () => {
+  it('will delegate normalized back and go deltas to window.history', () => {
     const go = vi.spyOn(window.history, 'go').mockImplementation(() => {});
 
     router.current.back();
@@ -121,7 +143,7 @@ describe('BrowserRouter', () => {
     go.mockRestore();
   });
 
-  it('removes popstate listener on destroy', () => {
+  it('will remove history listeners on destroy', () => {
     const remove = vi.spyOn(window, 'removeEventListener');
     router.current.set(null);
     expect(remove).toHaveBeenCalledWith('popstate', expect.any(Function));
@@ -132,40 +154,24 @@ describe('BrowserRouter', () => {
   it('will be global on the client but not without a window', () => {
     expect(Context.root.get(BrowserRouter)).toBe(router.current);
 
-    const saved = (globalThis as any).window;
-
-    try {
-      delete (globalThis as any).window;
-
+    withWindow(undefined, () => {
       const server = BrowserRouter.new();
-
       expect(server.path).toBe('/');
-      // did not register a global - else it would throw on collision with the
-      // live client instance
       expect(Context.root.get(BrowserRouter)).toBe(router.current);
-
       server.set(null);
-    } finally {
-      (globalThis as any).window = saved;
-    }
+    });
   });
 
   it('will throw where window has no location (React Native)', () => {
-    const saved = (globalThis as any).window;
-
-    try {
-      (globalThis as any).window = Object.create(null);
-
+    withWindow(Object.create(null), () => {
       expect(typeof window).not.toBe('undefined');
       expect(() => BrowserRouter.new()).toThrow(/pathname/);
-    } finally {
-      (globalThis as any).window = saved;
-    }
+    });
   });
 });
 
-describe('navigation settlement', () => {
-  it('does not report the initial browser synchronization as navigation', () => {
+describe('BrowserRouter navigation settlement', () => {
+  it('will not report the initial browser synchronization as navigation', () => {
     location('/initial?x=1#intro');
     const router = BrowserRouter.new();
 
@@ -175,23 +181,19 @@ describe('navigation settlement', () => {
     router.set(null);
   });
 
-  it('keeps the latest page and address when navigations settle out of order', async () => {
+  it('will keep the latest page and address when navigations settle out of order', async () => {
     location('/');
 
-    const a = mockPromise<void>();
-    const b = mockPromise<void>();
-    let readyA = false;
-    let readyB = false;
+    const a = gate();
+    const b = gate();
     let router!: BrowserRouter;
-    a.then(() => (readyA = true));
-    b.then(() => (readyB = true));
 
     const A = () => {
-      if (!readyA) throw a;
+      if (!a.ready) throw a;
       return <h1>a</h1>;
     };
     const B = () => {
-      if (!readyB) throw b;
+      if (!b.ready) throw b;
       return <h1>b</h1>;
     };
 
@@ -205,49 +207,31 @@ describe('navigation settlement', () => {
       </BrowserRouter>
     );
 
-    await act(async () => {
-      router.goto('/a');
-      await Promise.resolve();
-    });
-    await act(async () => {
-      router.goto('/b');
-      await Promise.resolve();
-    });
-
+    await step(() => router.goto('/a'));
+    await step(() => router.goto('/b'));
     expect(view.container.textContent).toBe('home');
     expect(window.location.pathname).toBe('/');
 
-    await act(async () => {
-      b.resolve();
-      await b;
-    });
-
+    await release(b);
     expect(view.container.textContent).toBe('b');
     expect(window.location.pathname).toBe('/b');
 
-    await act(async () => {
-      a.resolve();
-      await a;
-    });
-
+    await release(a);
     expect(view.container.textContent).toBe('b');
     expect(window.location.pathname).toBe('/b');
   });
 
-  it('routes direct query writes through navigation settlement', async () => {
+  it('will route direct query writes through navigation settlement', async () => {
     location('/page');
 
-    const gate = mockPromise<void>();
-    let ready = false;
+    const pending = gate();
     let router!: BrowserRouter;
-    gate.then(() => (ready = true));
 
     const Page = () => {
       const value = BrowserRouter.get().query.get('x');
-      if (value && !ready) throw gate;
+      if (value && !pending.ready) throw pending;
       return <h1>{value || 'empty'}</h1>;
     };
-    const Status = () => <b>{BrowserRouter.get().navigating ? 'busy' : 'idle'}</b>;
 
     const view = await renderAct(
       <BrowserRouter is={(value) => (router = value)}>
@@ -255,39 +239,27 @@ describe('navigation settlement', () => {
         <Route to="page" as={Page} />
       </BrowserRouter>
     );
-
     expect(view.container.textContent).toBe('idleempty');
 
-    await act(async () => {
-      router.query.set('x', '1');
-      await Promise.resolve();
-    });
-
+    await step(() => router.query.set('x', '1'));
     expect(view.container.textContent).toBe('busyempty');
     expect(window.location.search).toBe('');
 
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
-
+    await release(pending);
     expect(view.container.textContent).toBe('idle1');
     expect(window.location.search).toBe('?x=1');
   });
 
-  it('reports navigation for a provided router', async () => {
+  it('will report navigation for a provided router', async () => {
     location('/');
 
-    const gate = mockPromise<void>();
-    let ready = false;
-    gate.then(() => (ready = true));
+    const pending = gate();
     const router = BrowserRouter.new();
 
     const Slow = () => {
-      if (!ready) throw gate;
+      if (!pending.ready) throw pending;
       return <h1>slow</h1>;
     };
-    const Status = () => <b>{BrowserRouter.get().navigating ? 'busy' : 'idle'}</b>;
 
     const view = await renderAct(
       <Provider for={router}>
@@ -299,23 +271,15 @@ describe('navigation settlement', () => {
       </Provider>
     );
 
-    await act(async () => {
-      router.goto('/slow');
-      await Promise.resolve();
-    });
-
+    await step(() => router.goto('/slow'));
     expect(view.container.textContent).toBe('busyhome');
 
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
-
+    await release(pending);
     expect(view.container.textContent).toBe('idleslow');
     router.set(null);
   });
 
-  it('does not let an older goto undo browser-driven navigation', async () => {
+  it('will not let an older goto undo browser-driven navigation', async () => {
     location('/');
 
     const goto = mockPromise<void>();

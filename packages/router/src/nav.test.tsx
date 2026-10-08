@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
-import { renderAct, browserRouter } from '../test.setup';
+import { browserRouter, mockPromise, renderAct } from '../test.setup';
 import { NavLinks } from './nav';
 import { Route } from './route';
 
@@ -13,12 +13,15 @@ const current = (view: any) =>
 const links = (view: any) =>
   Array.from(view.container.querySelectorAll('a')).map((a: any) => a.getAttribute('href'));
 
-const Page = ({ children }: { children?: React.ReactNode }) => (
+const page = (Nav: typeof NavLinks = NavLinks) => ({ children }: { children?: React.ReactNode }) => (
   <div>
-    <NavLinks />
+    <span data-page />
+    <Nav />
     {children}
   </div>
-)
+);
+
+const Page = page();
 
 it('will mirror the route tree, labelling by label then path', async () => {
   const view = await renderAct(
@@ -28,11 +31,10 @@ it('will mirror the route tree, labelling by label then path', async () => {
     </Route>
   );
   expect(links(view)).toEqual(['/a', '/b']);
-  expect(view.container.textContent).toContain('Alpha');
-  expect(view.container.textContent).toContain('/b');
+  expect(view.container.textContent).toBe('Alpha/b');
 });
 
-it('skips redirect and none rows', async () => {
+it('will skip redirect and none rows', async () => {
   const view = await renderAct(
     <Route as={Page}>
       <Route to="a" />
@@ -43,10 +45,7 @@ it('skips redirect and none rows', async () => {
   expect(links(view)).toEqual(['/a']);
 });
 
-it('treats a headless scope as a section, not a link', async () => {
-  // `posts/*` has no `as` (no page), so the default Item renders no link for
-  // it - it routes through the Group slot, which by default flattens. Its
-  // child still links. (Override Group to surface a heading; see below.)
+it('will treat a headless scope as a section, not a link', async () => {
   const view = await renderAct(
     <Route as={Page}>
       <Route to="posts/*">
@@ -57,7 +56,7 @@ it('treats a headless scope as a section, not a link', async () => {
   expect(links(view)).toEqual(['/posts/recent']);
 });
 
-it('marks the active link and updates on navigation', async () => {
+it('will mark the active link and update on navigation', async () => {
   router.current.goto('/a');
 
   const view = await renderAct(
@@ -78,26 +77,19 @@ it('will pass route and meta to an overridden Item', async () => {
       return <a href={route.path} data-custom>{meta?.label ?? route.path}</a>;
     }
   }
-  const Page = ({ children }: { children?: React.ReactNode }) => (
-    <div>
-      <MyNav />
-      {children}
-    </div>
-  );
 
   const view = await renderAct(
-    <Route as={Page}>
+    <Route as={page(MyNav)}>
       <Route to="a" meta={{ label: 'Alpha' }} />
       <Route to="b" />
     </Route>
   );
   expect(links(view)).toEqual(['/a', '/b']);
   expect(view.container.querySelectorAll('a[data-custom]').length).toBe(2);
-  expect(view.container.textContent).toContain('Alpha');
-  expect(view.container.textContent).toContain('/b');
+  expect(view.container.textContent).toBe('Alpha/b');
 });
 
-it('renders an anonymous group transparently (no stray link)', async () => {
+it('will render an anonymous group transparently', async () => {
   const view = await renderAct(
     <Route as={Page}>
       <Route>
@@ -109,38 +101,28 @@ it('renders an anonymous group transparently (no stray link)', async () => {
   expect(links(view)).toEqual(['/a', '/b']);
 });
 
-it('Group slot can wrap a group as a section (opt-in)', async () => {
+it('will wrap a group via an overridden Group slot', async () => {
   class Sectioned extends NavLinks {
     Group({ route, children }: { route: Route; children?: React.ReactNode }) {
       return <section data-group>{route.label}{children}</section>;
     }
   }
-  const Page = ({ children }: { children?: React.ReactNode }) => (
-    <div>
-      <Sectioned />
-      {children}
-    </div>
-  );
 
   const view = await renderAct(
-    <Route as={Page}>
+    <Route as={page(Sectioned)}>
       <Route label="Docs">
         <Route to="a" />
       </Route>
     </Route>
   );
-  const section = view.container.querySelector('section[data-group]');
-  expect(section).toBeTruthy();
-  expect(section!.textContent).toContain('Docs');
+  expect(view.container.querySelector('section[data-group]')!.textContent).toBe('Docs/a');
   expect(links(view)).toEqual(['/a']);
 });
 
-it('suspending Item takes the whole nav, not one row', async () => {
-  let resolve!: () => void;
+it('will suspend the whole nav, not one row, when an Item suspends', async () => {
+  const pending = mockPromise();
   let ready = false;
-  const pending = new Promise<void>((r) => (resolve = r)).then(() => {
-    ready = true;
-  });
+  pending.then(() => (ready = true));
 
   class MyNav extends NavLinks {
     Item({ route }: { route: Route }) {
@@ -149,40 +131,23 @@ it('suspending Item takes the whole nav, not one row', async () => {
     }
   }
 
-  const Page = ({ children }: { children?: React.ReactNode }) => (
-    <div>
-      <span data-page />
-      <MyNav />
-      {children}
-    </div>
-  );
-
   const view = await renderAct(
-    <Route as={Page}>
+    <Route as={page(MyNav)}>
       <Route to="a" />
       <Route to="b" />
     </Route>
   );
-
-  // Entry declares no boundary (fallback = false), so one suspending Item
-  // suspends the nav as a unit - sibling rows don't render around a hole,
-  // and the rest of the page is untouched.
   expect(links(view)).toEqual([]);
   expect(view.container.querySelector('[data-page]')).toBeTruthy();
 
-  await act(async () => {
-    resolve();
-    await pending;
-  });
+  await act(async () => pending.resolve());
   expect(links(view)).toEqual(['/a', '/b']);
 });
 
-it('NavLinks fallback shows while an Item suspends', async () => {
-  let resolve!: () => void;
+it('will show NavLinks fallback while an Item suspends', async () => {
+  const pending = mockPromise();
   let ready = false;
-  const pending = new Promise<void>((r) => (resolve = r)).then(() => {
-    ready = true;
-  });
+  pending.then(() => (ready = true));
 
   class MyNav extends NavLinks {
     fallback = (<span data-pending />);
@@ -193,25 +158,14 @@ it('NavLinks fallback shows while an Item suspends', async () => {
     }
   }
 
-  const Page = ({ children }: { children?: React.ReactNode }) => (
-    <div>
-      <MyNav />
-      {children}
-    </div>
-  );
-
   const view = await renderAct(
-    <Route as={Page}>
+    <Route as={page(MyNav)}>
       <Route to="a" />
     </Route>
   );
-
   expect(view.container.querySelector('[data-pending]')).toBeTruthy();
 
-  await act(async () => {
-    resolve();
-    await pending;
-  });
+  await act(async () => pending.resolve());
   expect(view.container.querySelector('[data-pending]')).toBeNull();
   expect(links(view)).toEqual(['/a']);
 });
