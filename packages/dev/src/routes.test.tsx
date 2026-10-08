@@ -20,8 +20,12 @@ describe("app/ routing (codegen)", () => {
     while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true });
   });
 
-  /** Build a temp `app/` tree from a path→source map and generate its router module. */
-  function generate(files: Record<string, string>): Promise<string> {
+  /** Build a temp `app/` tree, generate its router module, and drop the empty boundaries most tests don't assert. */
+  async function generate(files: Record<string, string>): Promise<string> {
+    return (await generateRaw(files)).replaceAll(" fallback={null}", "");
+  }
+
+  function generateRaw(files: Record<string, string>): Promise<string> {
     const root = mkdtempSync(join(tmpdir(), "routes-"));
     dirs.push(root);
 
@@ -63,10 +67,47 @@ describe("app/ routing (codegen)", () => {
     expect(out).toMatch(/<Route as={RootLayout} NotFound={RootNotFound}>\s*<Route as={Root} \/>/);
   });
 
-  it("Loading → fallback prop, Catch → Catch prop on the (root) scope", async () => {
+  it("Loading fills its scope's slot; Catch rides on the scope", async () => {
     const out = await generate({ "index.tsx": `${PAGE}\n${LOADING}\n${CATCH}` });
     expect(out).toContain("{ Page as Root, Loading as RootLoading, Catch as RootCatch }");
-    expect(out).toMatch(/<Route NotFound={NotFound} fallback={<RootLoading \/>} Catch={RootCatch}>\s*<Route as={Root} \/>/);
+    expect(out).toMatch(/<Route NotFound={NotFound} Catch={RootCatch}>\s*<Route as={Root} fallback={<RootLoading \/>} \/>/);
+  });
+
+  it("every route owns a boundary - empty where no Loading applies", async () => {
+    const out = await generateRaw({ "index.tsx": PAGE, "(about).tsx": PAGE });
+    expect(out).toContain("<Route NotFound={NotFound} fallback={null}>");
+    expect(out).toContain("<Route as={Root} fallback={null} />");
+    expect(out).toContain('<Route to="about" as={About} fallback={null} />');
+  });
+
+  it("Loading covers each route in its Layout's slot, at any depth, but not the Layout", async () => {
+    const out = await generateRaw({
+      "index.tsx": PAGE,
+      "projects/index.tsx": `${PAGE}\n${LAYOUT}\n${LOADING}`,
+      "projects/[id].tsx": PAGE,
+      "projects/archive/index.tsx": PAGE,
+      "projects/archive/[year].tsx": PAGE,
+    });
+    expect(out).toContain('<Route to="projects" as={ProjectsLayout} fallback={null}>');
+    expect(out).toContain("<Route as={Projects} fallback={<ProjectsLoading />} />");
+    expect(out).toContain('<Route to=":id" as={ProjectsId} fallback={<ProjectsLoading />} />');
+    expect(out).toContain('<Route to="archive" fallback={<ProjectsLoading />}>');
+    expect(out).toContain('<Route to=":year" as={ProjectsArchiveYear} fallback={<ProjectsLoading />} />');
+  });
+
+  it("a nested Layout starts a fresh slot", async () => {
+    const out = await generateRaw({
+      "index.tsx": `${PAGE}\n${LOADING}`,
+      "settings/index.tsx": `${PAGE}\n${LAYOUT}`,
+      "settings/[tab].tsx": PAGE,
+    });
+    expect(out).toContain('<Route to="settings" as={SettingsLayout} fallback={<RootLoading />}>');
+    expect(out).toContain('<Route to=":tab" as={SettingsTab} fallback={null} />');
+  });
+
+  it("a page's own Loading covers it before its slot's", async () => {
+    const out = await generateRaw({ "index.tsx": `${PAGE}\n${LOADING}`, "(about).tsx": `${PAGE}\n${LOADING}` });
+    expect(out).toContain('<Route to="about" as={About} fallback={<AboutLoading />} />');
   });
 
   it("(about) is a static leaf → to=\"about\", loaded on demand", async () => {
