@@ -51,9 +51,7 @@ it('will call is callback once with instance', () => {
   const foo = Component.new({ is });
 
   expect(is).toBeCalledWith(foo);
-  expect(is).toBeCalled();
 
-  // ressigning props from another render.
   (foo as any).props = { is };
 
   expect(is).toHaveBeenCalledTimes(1);
@@ -92,9 +90,6 @@ it('will accept _ keys as props', async () => {
   expect(foo._config).toBe('baz');
 });
 
-// Seam: React may instantiate the class twice with the same props object
-// (StrictMode) and keeps either the first (16-17) or the second (18+). Each
-// construction is a full instance; whichever activates releases the other.
 describe('twin construction', () => {
   class Child extends State {}
 
@@ -116,8 +111,6 @@ describe('twin construction', () => {
       const b = new Foo(props);
       const [kept, other] = keep == 'first' ? [a, b] : [b, a];
       const released = vi.fn();
-
-      expect(b).not.toBe(a);
 
       other.get(null, released);
       event(kept);
@@ -142,8 +135,6 @@ describe('twin construction', () => {
   });
 });
 
-// Seam: React passes context as a constructor argument alongside props.
-// Context instances must be filtered so they never apply as state overlays.
 it('will ignore Context passed as constructor argument', () => {
   class Foo extends Component {
     value?: number = 10;
@@ -175,7 +166,6 @@ describe('render chain', () => {
       }
     }
 
-    // A (outermost) wraps B wraps C (innermost content).
     expect(C.new({}).render()).toEqual({ a: { b: 'leaf' } });
   });
 
@@ -200,15 +190,12 @@ describe('render chain', () => {
 
     expect(page.render()).toEqual(['Base', 'Hello']);
 
-    // Both layers read `this` off the same instance - render reflects updates.
     page.title = 'Updated';
     page.body = 'World';
 
     expect(page.render()).toEqual(['Updated', 'World']);
   });
 
-  // Documented footgun: a wrapper that never reads `props.children` drops the
-  // derived content. The children getter is lazy, so inner never even runs.
   it('will drop derived content if wrapper omits children', () => {
     const inner = vi.fn(() => 'never seen');
 
@@ -235,13 +222,9 @@ describe('render chain', () => {
       }
     }
 
-    // One override composes with the pass-through default to exactly itself.
     expect(Solo.new({}).render()).toBe('just me');
   });
 
-  // Intentional inverse of the footgun: a base may opt out of wrapping by
-  // detecting that a subclass supplied content. Composition synthesizes a fresh
-  // `children`, so it is not identical to the original `this.props.children`.
   it('lets a base defer to a subclass render via children identity', () => {
     class Base extends Component {
       render(props = {} as { children?: unknown }): Component.Node {
@@ -260,12 +243,8 @@ describe('render chain', () => {
 
     class Passthrough extends Base {}
 
-    // Subclass authored a render -> base defers, no wrapping.
     expect(Override.new({}).render()).toBe('replaced');
 
-    // Plain base and render-less subclass keep the base output (no composition
-    // layer, so `children` is the original props.children). The framework
-    // invokes render with the instance's own props - mirror that here.
     const base = Base.new({ children: 'x' });
     const pass = Passthrough.new({ children: 'y' });
     expect(base.render(base.props)).toEqual(['base', 'x']);
@@ -350,9 +329,7 @@ describe('composed', () => {
       }
     }
 
-    const page = Page.new();
-
-    expect(compose.call(page, {})).toBe('[page]');
+    expect(compose.call(Page.new(), {})).toBe('[page]');
   });
 
   it('will compose a render sealed by the host', () => {
@@ -375,17 +352,13 @@ describe('composed', () => {
       }
     }
 
-    const page = Page.new();
-
-    expect(compose.call(page, {})).toBe('[page]');
+    expect(compose.call(Page.new(), {})).toBe('[page]');
   });
 
   it('will pass children through for a State without render', () => {
     class Bare extends State {}
 
-    const bare = Bare.new();
-
-    expect(compose.call(bare, { children: 'c' })).toBe('c');
+    expect(compose.call(Bare.new(), { children: 'c' })).toBe('c');
   });
 });
 

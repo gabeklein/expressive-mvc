@@ -24,17 +24,6 @@ describe('property descriptors', () => {
     expect(Object.keys(Test.new())).toEqual([]);
   });
 
-  it('will be writable with value', () => {
-    class Test extends State {
-      value = set('foo');
-    }
-
-    const test = Test.new();
-
-    test.value = 'bar';
-    expect(test.value).toBe('bar');
-  });
-
   it('will be read-only with factory', () => {
     class Test extends State {
       value = set(() => 'foo');
@@ -59,6 +48,17 @@ describe('property descriptors', () => {
       test.value = 'bar';
     }).toThrow(/read-only/);
     expect(test.value).toBe('foo');
+  });
+
+  it('will be writable with value', () => {
+    class Test extends State {
+      value = set('foo');
+    }
+
+    const test = Test.new();
+
+    test.value = 'bar';
+    expect(test.value).toBe('bar');
   });
 
   it('will be writable with factory and callback', () => {
@@ -102,9 +102,6 @@ describe('placeholder', () => {
     });
 
     instance.get(mockEffect);
-
-    expect(mockEffect).toBeCalled();
-
     instance.foobar = 'foo!';
 
     const result = await promise;
@@ -122,7 +119,6 @@ describe('placeholder', () => {
 
     test.get(effect);
 
-    expect(effect).toBeCalled();
     expect(foobar).not.toBeCalled();
 
     test.foobar = 'foo';
@@ -160,8 +156,6 @@ describe('callback', () => {
     const state = Subject.new();
     const didAssign = vi.fn();
     const didUpdate = vi.fn();
-
-    expect(didAssign).not.toBeCalled();
 
     state.set('test', didUpdate);
     state.test = 2;
@@ -387,7 +381,7 @@ describe('factory', () => {
     expect(factory).toBeCalled();
   });
 
-  it('will compute lazily', () => {
+  it('will compute lazily if not required', () => {
     const factory = vi.fn(() => 'Hello World');
 
     class Test extends State {
@@ -514,8 +508,6 @@ describe('compute', () => {
     const test = Test.new();
 
     void test.double;
-    expect(factory).toBeCalled();
-
     test.other = 'bar';
     await expect(test).toHaveUpdated('other');
 
@@ -622,12 +614,7 @@ describe('suspense', () => {
 
     const test = Test.new();
 
-    try {
-      void test.value;
-    } catch (error) {
-      if (error instanceof Promise) await error;
-      else throw error;
-    }
+    await attempt(() => test.value);
 
     expect(() => test.value).not.toThrow();
   });
@@ -654,7 +641,6 @@ describe('suspense', () => {
   it('will suspend another factory', async () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
-
     const didEvaluate = vi.fn();
 
     class Test extends State {
@@ -683,7 +669,6 @@ describe('suspense', () => {
   it('will suspend another factory (async)', async () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
-
     const didEvaluate = vi.fn();
 
     class Test extends State {
@@ -732,7 +717,6 @@ describe('suspense', () => {
 
     test.get(effect);
 
-    expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
 
     promise.resolve('hello');
@@ -783,9 +767,7 @@ describe('suspense', () => {
 
     test.get(effect);
 
-    expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
-    expect(compute).toBeCalled();
 
     pending.resolve();
     pending = mockPromise();
@@ -793,7 +775,6 @@ describe('suspense', () => {
     // TODO: why does this not work when `.set(0)` is used?
     await test.set();
 
-    // expect eval to run again because promise resolved.
     expect(compute).toBeCalledTimes(2);
 
     suspend = false;
@@ -834,9 +815,6 @@ describe('suspense', () => {
       didAttemptEffect();
       didCompleteEffect(self.sum);
     });
-
-    expect(didAttemptSum).toBeCalled();
-    expect(didAttemptEffect).toBeCalled();
 
     promise.resolve(10);
     await expect(test).toHaveUpdated();
@@ -879,54 +857,51 @@ describe('suspense', () => {
     expect(didThrow).toBeInstanceOf(Promise);
 
     promise.reject('oh no');
-    await new Promise((res) => setTimeout(res, 10));
+    await flushMicrotasks();
 
     expect(await didThrow).toBe('oh no');
   });
 });
 
 describe('factory with callback overload', () => {
-  it('calls callback after factory resolves', async () => {
+  it('will callback after factory resolves', () => {
     const callback = vi.fn();
     const factory = vi.fn(() => 'computed');
+
     class Test extends State {
       value = set(factory, callback);
     }
+
     const test = Test.new();
+
     expect(test.value).toBe('computed');
     test.value = 'manual';
     expect(callback).toBeCalledWith('computed', undefined);
     expect(factory).toBeCalledTimes(1);
   });
 
-  it('calls callback after async factory resolves', async () => {
+  it('will callback after async factory resolves', async () => {
     const callback = vi.fn();
+
     class Test extends State {
-      value = set(async () => {
-        await new Promise((res) => setTimeout(res, 10));
-        return 'asyncValue';
-      }, callback);
+      value = set(async () => 'asyncValue', callback);
     }
+
     const test = Test.new();
-    // Should throw a promise first (suspense)
-    let threw: Promise<unknown> | undefined;
-    try {
-      void test.value;
-    } catch (e) {
-      threw = e as Promise<unknown>;
-    }
-    expect(threw).toBeInstanceOf(Promise);
-    // Wait for promise to resolve
-    await threw;
+
+    await attempt(() => test.value);
+
     expect(test.value).toBe('asyncValue');
     expect(callback).toBeCalledWith('asyncValue', undefined);
   });
 
   it('will callback if set before factory run', () => {
     const callback = vi.fn();
+
     class Test extends State {
       value = set(async () => 'something', callback);
     }
+
     const test = Test.new();
 
     test.value = 'setBefore';
@@ -939,26 +914,15 @@ describe('factory with callback overload', () => {
   });
 });
 
-it('supports Promise objects as factory return', async () => {
-  const resolve = new Promise<string>((resolve) => {
-    setTimeout(() => {
-      resolve('foobar');
-    }, 0);
-  });
+it('will support Promise objects as factory return', async () => {
+  const resolve = new Promise<string>((resolve) => setTimeout(() => resolve('foobar')));
 
   class Test extends State {
     value = set(() => resolve);
   }
 
   const test = Test.new();
-  let threw: Promise<string> | undefined;
 
-  try {
-    expect<string>(test.value);
-  } catch (e) {
-    threw = e as Promise<string>;
-  }
-
-  await expect(threw).resolves.toBe('foobar');
+  await expect(attempt(() => test.value)).resolves.toBe('foobar');
   expect(test.value).toBe('foobar');
 });

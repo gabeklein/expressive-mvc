@@ -23,18 +23,12 @@ it('will lazily initialize root and UID contexts', () => {
 });
 
 it("will throw if context doesn't exist", () => {
-  const context = new Context();
-
-  const attempt = () => context.get(Example);
-
-  expect(attempt).toThrow('Could not find Example in context.');
+  expect(() => new Context().get(Example)).toThrow('Could not find Example in context.');
 });
 
 it('will not create base State', () => {
   // @ts-expect-error
-  const attempt = () => new Context(State);
-
-  expect(attempt).toThrow('Cannot create base State.');
+  expect(() => new Context(State)).toThrow('Cannot create base State.');
 });
 
 it('will access upstream controller', () => {
@@ -53,10 +47,7 @@ it('will register all subtypes', () => {
 });
 
 it('will return undefined if not required', () => {
-  const context = new Context();
-  const got = context.get(Example, false);
-
-  expect(got).toBeUndefined();
+  expect(new Context().get(Example, false)).toBeUndefined();
 });
 
 it('will remove implicit children on pop', () => {
@@ -71,11 +62,10 @@ it('will remove implicit children on pop', () => {
 
   context.pop();
 
-  // context assignment is permanent
   expect(Context.get(child)).toBe(context);
 });
 
-it('child pop is safe to call before parent pop', () => {
+it('will not double-destroy when child pops before parent', () => {
   const destroyed = vi.fn();
 
   class Test extends State {
@@ -91,7 +81,6 @@ it('child pop is safe to call before parent pop', () => {
 
   expect(destroyed).toBeCalled();
 
-  // parent.pop() cascades into already-popped child — must not double-destroy
   parent.pop();
 
   expect(destroyed).toBeCalledTimes(1);
@@ -169,13 +158,10 @@ it('will notify downstream subscriber when implicit child is replaced', () => {
 
   context.get(Foo, cb);
 
-  // called immediately with existing instance
-  expect(cb).toBeCalled();
   expect(cb).toBeCalledWith(foo1, false);
 
   parent.child = foo2;
 
-  // should be called again with replacement
   expect(cb).toBeCalledTimes(2);
   expect(cb).toBeCalledWith(foo2, false);
 });
@@ -190,15 +176,12 @@ it('will not add stale implicit if property changes before context attaches', ()
     child: Foo = foo1;
   }
 
-  // State.new initializes the state (runs manage) but doesn't attach a context yet
   const parent = new Parent();
 
-  // overwrite child before context attaches - queues second context callback
   parent.child = foo2;
 
   const context = new Context(parent);
 
-  // only foo2 should be in context; stale foo1 callback was skipped
   expect(context.get(Foo)).toBe(foo2);
 });
 
@@ -242,8 +225,6 @@ it('will clear consume and provide on pop', () => {
   const parent = new Context();
   const child = parent.push();
 
-  // register() seeds null placeholders up the parent chain — these survive
-  // child cleanup callbacks and accumulate on long-lived roots without this.
   child.get(Foo, vi.fn());
   child.add(Foo.new());
 
@@ -299,14 +280,10 @@ describe('has method', () => {
 
     const cancel = context.get(DownstreamState, cb, true);
     context.push(DownstreamState);
-
-    expect(cb).toBeCalled();
-
     cancel();
     context.push(DownstreamState);
 
     expect(cb).toBeCalledTimes(1);
-    context.pop();
   });
 
   it('will call cleanup when state is removed', () => {
@@ -317,8 +294,6 @@ describe('has method', () => {
     context.get(DownstreamState, cb, true);
 
     const child = context.push(DownstreamState);
-
-    expect(cb).toBeCalled();
 
     child.pop();
 
@@ -350,7 +325,6 @@ describe('has method', () => {
 
     const state = DownstreamState.new();
 
-    // adding to context should notify parent's has-subscriber
     child.set(state);
 
     expect(cb).toBeCalledTimes(1);
@@ -427,7 +401,6 @@ describe('get callback (upstream subscription)', () => {
     child.get(Upstream, cb);
 
     expect(cb).toBeCalledTimes(1);
-
     expect(cb).toBeCalledWith(expect.any(Upstream), false);
   });
 });
@@ -478,9 +451,7 @@ describe('set method', () => {
       e2: Example
     });
 
-    const fetch = () => context.get(Example);
-
-    expect(fetch).toThrow(
+    expect(() => context.get(Example)).toThrow(
       `Did find Example in context, but multiple were defined.`
     );
   });
@@ -492,9 +463,7 @@ describe('set method', () => {
       e2: example
     });
 
-    const got = context.get(Example);
-
-    expect(got).toBe(example);
+    expect(context.get(Example)).toBe(example);
   });
 
   it('will prefer explicit over implicit', () => {
@@ -577,20 +546,18 @@ describe('set method', () => {
 
   it('will throw on bad include property', () => {
     const Thing = { toString: () => 'Foobar' };
-    const context = new Context();
 
     // @ts-ignore
-    expect(() => context.set({ Thing })).toThrow(
+    expect(() => new Context().set({ Thing })).toThrow(
       "Context can only include an instance or class of State but got Foobar (as 'Thing')."
     );
   });
 
   it('will throw on bad include property (no alias)', () => {
     const Thing = { toString: () => 'Thing' };
-    const context = new Context();
 
     // @ts-ignore
-    expect(() => context.set({ [0]: Thing })).toThrow(
+    expect(() => new Context().set({ [0]: Thing })).toThrow(
       'Context can only include an instance or class of State but got Thing.'
     );
   });
@@ -607,7 +574,6 @@ describe('set method', () => {
 
     context.set({});
 
-    // context assignment is permanent
     expect(Context.get(child)).toBe(context);
     expect(context.get(Example, false)).toBeUndefined();
   });
@@ -619,8 +585,7 @@ describe('set method', () => {
     }
 
     const context = new Context({ Parent });
-    // Example2 extends Example, so both a and b register under Example key
-    // This creates an implicit collision on Example — returns null
+
     expect(context.get(Example)).toBeNull();
     expect(context.get(Example2)).toBeInstanceOf(Example2);
 
@@ -668,7 +633,6 @@ describe('set method', () => {
     context.set(Foo, cb);
 
     expect(context.get(Foo)).toBeInstanceOf(Foo);
-
     expect(cb).toBeCalledTimes(1);
   });
 
@@ -722,8 +686,7 @@ describe('set method', () => {
     context.set({});
 
     expect(context.get(Bar, false)).toBeUndefined();
-    // bar should still be alive (not owned by context)
-    expect(bar.is).not.toBeNull();
+    expect(bar.get(null)).toBe(false);
   });
 
   it('will set multiple types and cleanup all', () => {
@@ -765,7 +728,6 @@ describe('set method', () => {
 
     const context = new Context();
 
-    // an `is`-style callback written with a concise arrow body returns the state
     context.set(Foo, (state) => (state as any));
 
     expect(() => context.set({})).not.toThrow();
@@ -830,17 +792,14 @@ describe('ambiguous implicit entries', () => {
     const parent = new Context();
     const ctx = parent.push();
 
-    // Add two implicit children of same base type
     ctx.add(ChildA.new());
     ctx.add(ChildB.new());
 
     const cb = vi.fn();
 
-    // Subscribe on a child context looking upstream
     const child = ctx.push();
     child.get(Base, cb);
 
-    // Should not fire because two implicit entries are ambiguous
     expect(cb).not.toBeCalled();
   });
 
@@ -851,7 +810,6 @@ describe('ambiguous implicit entries', () => {
     const a = Base.new();
     const b = Base.new();
 
-    // Add two explicit entries of the same type
     ctx.add(a, true);
     ctx.add(b, true);
 
@@ -869,14 +827,12 @@ describe('ambiguous implicit entries', () => {
     const explicit = Base.new();
     const implicit = Base.new();
 
-    // Add one explicit, one implicit
     ctx.add(explicit, true);
     ctx.add(implicit);
 
     const cb = vi.fn();
     ctx.get(Base, cb);
 
-    // Should only get the explicit one
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(explicit, false);
   });
@@ -887,7 +843,6 @@ describe('ambiguous implicit entries', () => {
     const ctx = new Context();
     const a = Base.new();
 
-    // Add the same instance twice (e.g. via inheritance)
     ctx.add(a, true);
     ctx.add(a, true);
 
@@ -907,13 +862,10 @@ describe('add method listener lookup', () => {
     const parent = new Context();
     const cb = vi.fn();
 
-    // Subscribe for both Foo and Bar — but cb is same ref
     parent.get(Foo, cb, true);
 
-    // Push child with Bar — parent listener for Foo should match
     parent.push(Bar);
 
-    // cb should only be called once even though Bar matches Foo too
     expect(cb).toBeCalledTimes(1);
   });
 
@@ -925,14 +877,11 @@ describe('add method listener lookup', () => {
     const child = parent.push();
     const cb = vi.fn();
 
-    // Register same cb on both grandparent and parent
     grandparent.get(Foo, cb, true);
     parent.get(Foo, cb, true);
 
-    // Add to child — both grandparent and parent have cb
     child.set(Foo);
 
-    // Should only call cb once due to dedup
     expect(cb).toBeCalledTimes(1);
   });
 
@@ -943,13 +892,10 @@ describe('add method listener lookup', () => {
     const parent = new Context();
     const child = parent.push();
 
-    // Subscribe child for Bar only
     child.get(Bar, vi.fn());
 
-    // Add Foo to parent — below path visits child but finds no Foo listener
     parent.set(Foo);
 
-    // No error, just works
     expect(parent.get(Foo)).toBeInstanceOf(Foo);
   });
 
@@ -961,14 +907,11 @@ describe('add method listener lookup', () => {
     const child = middle.push();
     const cb = vi.fn();
 
-    // Register the same callback on both parent and child
     parent.get(Foo, cb);
     child.get(Foo, cb);
 
-    // Set on middle — above has parent listener, below has child listener (same cb)
     middle.set(Foo);
 
-    // Should only call cb once due to dedup
     expect(cb).toBeCalledTimes(1);
   });
 });
@@ -1031,18 +974,14 @@ it('will skip consumer if filter does not match downstream', () => {
   const child = parent.push();
   const grandchild = child.push();
 
-  // Register consumer that only wants downstream (filter=true)
   const cb = vi.fn();
   child.get(Example, cb, true);
 
-  // Add a provider to parent - traverse reaches child with downstream=false
-  // but filter is true, so callback should not fire via traverse
   const foo = Example.new();
   parent.add(foo);
 
   expect(cb).not.toBeCalled();
 
-  // Add to grandchild - now child's consumer sees downstream=true matching filter
   const bar = Example.new();
   grandchild.add(bar);
 
@@ -1257,7 +1196,6 @@ describe('root global', () => {
         static readonly global = true;
       }
 
-      // widening permits an override
       class Open extends State {
         static readonly global: State.Global = true;
       }
@@ -1272,13 +1210,12 @@ describe('root global', () => {
   it('will lock state ownership to root after init', () => {
     const instance = Global.new();
 
-    // Root claims LOOKUP at registration; ownership is fixed post-init.
     expect(Context.get(instance)).toBe(root);
 
     const ctx = new Context(instance);
 
-    expect(ctx.get(Global)).toBe(instance); // resolvable via provide
-    expect(Context.get(instance)).toBe(root); // ownership stays with root
+    expect(ctx.get(Global)).toBe(instance);
+    expect(Context.get(instance)).toBe(root);
 
     instance.set(null);
   });
@@ -1290,12 +1227,7 @@ describe('root global', () => {
 
     const first = Multi.new();
 
-    expect(root.get(Multi)).toBe(first);
-
-    expect(() => Multi.new()).toThrow(
-      /already exists in root/
-    );
-
+    expect(() => Multi.new()).toThrow(/already exists in root/);
     expect(root.get(Multi)).toBe(first);
 
     first.set(null);
@@ -1308,9 +1240,7 @@ describe('root global', () => {
 
     const first = Multi.new();
 
-    expect(() => Multi.new()).toThrow(
-      /already exists in root/
-    );
+    expect(() => Multi.new()).toThrow(/already exists in root/);
 
     first.set(null);
   });
@@ -1331,7 +1261,6 @@ describe('root global', () => {
 
     const b = SubB.new();
 
-    // Collision is only at Base - subtype lookups remain unambiguous
     expect(root.get(Base, false)).toBeUndefined();
     expect(root.get(SubA)).toBe(a);
     expect(root.get(SubB)).toBe(b);
@@ -1355,12 +1284,10 @@ describe('root global', () => {
     const a = SubA.new();
     const b = SubB.new();
 
-    // Base set is now empty (both evicted) but still present in provide map
     expect(root.get(Base, false)).toBeUndefined();
 
     const c = SubC.new();
 
-    // Empty Base set should not block fresh registration
     expect(root.get(Base)).toBe(c);
     expect(root.get(SubA)).toBe(a);
     expect(root.get(SubB)).toBe(b);
@@ -1393,17 +1320,15 @@ describe('root global', () => {
 
     expect(root.get(Base)).toBe(a);
 
-    // Explicit add bypasses the implicit opt-out - "I know what I'm doing".
     const b = new SubB();
     const removeB = root.add(b, true);
 
-    expect(root.get(SubA)).toBe(a); // implicit preserved at subtype
-    expect(root.get(SubB)).toBe(b); // explicit registered at subtype
-    expect(root.get(Base)).toBe(b); // explicit wins priority at shared ancestor
+    expect(root.get(SubA)).toBe(a);
+    expect(root.get(SubB)).toBe(b);
+    expect(root.get(Base)).toBe(b);
 
     removeB();
 
-    // With explicit gone, implicit a is unambiguously at Base again
     expect(root.get(Base)).toBe(a);
 
     a.set(null);
@@ -1416,10 +1341,9 @@ describe('root global', () => {
     const a = new Sub();
     const removeA = root.add(a, true);
 
-    // Implicit add of sibling triggers squash; explicit a must not be evicted
     const b = Sub.new();
 
-    expect(root.get(Sub)).toBe(a); // explicit still wins priority
+    expect(root.get(Sub)).toBe(a);
     expect(root.get(Base)).toBe(a);
 
     removeA();

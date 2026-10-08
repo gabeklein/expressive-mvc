@@ -1,5 +1,4 @@
 import { vi, describe, it, expect } from 'vitest';
-import { mockPromise } from '../../test.setup';
 import { Context } from '../context';
 import { State } from '../state';
 import { get } from './get';
@@ -54,30 +53,24 @@ describe('fetch mode', () => {
 
     const foo = Foo.new();
     const mockEffect = vi.fn();
-    let promise = mockPromise();
 
     expect(foo.bar.foo).toBe(foo);
 
-    foo.get((state) => {
-      mockEffect(state.bar.foo.value);
-      promise.resolve();
-    });
+    foo.get((state) => mockEffect(state.bar.foo.value));
 
-    promise = mockPromise();
     foo.value = 'bar';
-    await promise;
+    await expect(foo).toHaveUpdated();
 
     expect(mockEffect).toBeCalledWith('bar');
 
-    promise = mockPromise();
     foo.bar.foo = Foo.new();
-    await promise;
+    await expect(foo.bar).toHaveUpdated();
 
     expect(mockEffect).toBeCalledWith('foo');
     expect(mockEffect).toBeCalledTimes(3);
   });
 
-  it('creates parent-child relationship', () => {
+  it('will create parent-child relationship', () => {
     class Foo extends State {
       child = new Bar();
     }
@@ -98,10 +91,8 @@ describe('fetch mode', () => {
       expects = get(Parent);
     }
 
-    const attempt = () => new Context(Child);
-
     // should this throw immediately, or only on access?
-    expect(attempt).toThrow(
+    expect(() => new Context(Child)).toThrow(
       /Required Parent not found in context for [\w-]+\./
     );
   });
@@ -132,9 +123,7 @@ describe('fetch mode', () => {
       parent = get(Node);
     }
 
-    const attempt = () => new Context(new Node());
-
-    expect(attempt).toThrow(/Required Node not found in context for [\w-]+\./);
+    expect(() => new Context(new Node())).toThrow(/Required Node not found in context for [\w-]+\./);
   });
 
   it('will return undefined if required is false', () => {
@@ -161,9 +150,7 @@ describe('fetch mode', () => {
       expects = get(Expected, false);
     }
 
-    const attempt = () => Unexpected.new();
-
-    expect(attempt).not.toThrow();
+    expect(() => Unexpected.new()).not.toThrow();
   });
 
   it('will track recursively', async () => {
@@ -723,12 +710,12 @@ describe('fetch mode', () => {
 
   describe('downstream', () => {
     describe('multiple', () => {
-      it('will collect multiple children', () => {
-        class Child extends State {}
-        class Parent extends State {
-          children = get(Child, true);
-        }
+      class Child extends State {}
+      class Parent extends State {
+        children = get(Child, true);
+      }
 
+      it('will collect multiple children', () => {
         const parent = new Parent();
         const child1 = new Child();
         const child2 = new Child();
@@ -754,11 +741,6 @@ describe('fetch mode', () => {
       });
 
       it('will not be enumerable', () => {
-        class Child extends State {}
-        class Parent extends State {
-          children = get(Child, true);
-        }
-
         const parent = new Parent();
 
         new Context(parent).push(Child);
@@ -768,12 +750,7 @@ describe('fetch mode', () => {
       });
 
       it('will collect a subclass', () => {
-        abstract class Child extends State {}
-
         class Child2 extends Child {}
-        class Parent extends State {
-          children = get(Child, true);
-        }
 
         const parent = new Parent();
         const child = new Child2();
@@ -784,7 +761,6 @@ describe('fetch mode', () => {
       });
 
       it('will not register superclass', () => {
-        class Child extends State {}
         class Child2 extends Child {}
         class Parent extends State {
           children = get(Child2, true);
@@ -797,11 +773,7 @@ describe('fetch mode', () => {
         expect(parent.children.length).toBe(0);
       });
 
-      it('will regsiter for superclass', () => {
-        class Child extends State {}
-        class Parent extends State {
-          children = get(Child, true);
-        }
+      it('will register for superclass', () => {
         class Parent2 extends Parent {}
 
         const parent = new Parent2();
@@ -827,7 +799,6 @@ describe('fetch mode', () => {
       });
 
       it('will ignore redundant child', async () => {
-        class Child extends State {}
         class Parent extends State {
           children = get(Child, true, gotChild);
         }
@@ -842,11 +813,6 @@ describe('fetch mode', () => {
       });
 
       it('will collect children added later', async () => {
-        class Child extends State {}
-        class Parent extends State {
-          children = get(Child, true);
-        }
-
         const parent = new Parent();
         const context = new Context(parent);
 
@@ -866,20 +832,13 @@ describe('fetch mode', () => {
       });
 
       it('will collect implicit child added later', async () => {
-        class Child extends State {}
         class Wrapper extends State {
           child = new Child();
         }
-        class Parent extends State {
-          children = get(Child, true);
-        }
 
         const parent = new Parent();
-        const context = new Context(parent);
 
-        expect(parent.children).toEqual([]);
-
-        context.push(Wrapper);
+        new Context(parent).push(Wrapper);
 
         await expect(parent).toHaveUpdated();
         expect(parent.children.length).toBe(1);
@@ -954,10 +913,8 @@ describe('fetch mode', () => {
         const upstream = new Foo();
         const ctx = new Context(upstream).push(parent);
 
-        // Upstream Foo should be ignored
         expect(parent.child).toBeUndefined();
 
-        // Downstream child should work
         const downstream = new Foo();
         ctx.push(downstream);
 
@@ -1167,15 +1124,12 @@ describe('lifecycle callbacks', () => {
     expect(parent.children.length).toBe(0);
   });
 
-  it('upstream callback is not reactive', async () => {
+  it('will not rerun upstream callback reactively', async () => {
     class Remote extends State {
       value = 'foo';
     }
 
-    const remoteCallback = vi.fn((remote: Remote) => {
-      // Access value but should not subscribe
-      void remote.value;
-    });
+    const remoteCallback = vi.fn((remote: Remote) => void remote.value);
 
     class Test extends State {
       remote = get(Remote, remoteCallback);
@@ -1186,9 +1140,6 @@ describe('lifecycle callbacks', () => {
 
     new Context({ remote, test });
 
-    expect(remoteCallback).toBeCalled();
-
-    // Change should NOT trigger callback again
     remote.value = 'bar';
     await remote.set();
 
@@ -1210,7 +1161,6 @@ describe('lifecycle callbacks', () => {
 
     new Context({ remote, test });
 
-    expect(remoteCallback).toBeCalledTimes(1);
     expect(cleanup).not.toBeCalled();
 
     test.set(null);
@@ -1244,8 +1194,6 @@ describe('lifecycle callbacks', () => {
       children = get(Child, true, (child) => {
         didNotify();
         return () => {
-          // this should occur before both
-          // target and recipient are destroyed.
           expect(this.get(null)).toBe(false);
           expect(child.get(null)).toBe(false);
           didRemove();

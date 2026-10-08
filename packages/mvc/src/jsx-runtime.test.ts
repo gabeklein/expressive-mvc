@@ -100,7 +100,6 @@ describe('runtime', () => {
   });
 
   it('will delegate jsxDEV when host provides it', () => {
-    // same-runtime re-registration is how a host extends its seams
     runtime.jsxDEV = vi.fn((type, props, key, isStatic) => ({
       kind: 'jsxDEV', type, props, key, isStatic
     }) as any);
