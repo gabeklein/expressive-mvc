@@ -113,16 +113,11 @@ describe('inspect(page)', () => {
     expect(frames.flatMap((frame) => frame.events.map((event) => event.value))).toEqual(['sending', 'sent']);
   });
 
-  it('will throw naming a target that never saw a frame, with the bridge caveat', async () => {
-    await expect(api.act(() => {}, { until: ['Composer.draft'], timeout: 20 })).rejects.toThrow(
-      /^Not reached within 20ms: Composer\.draft\. On the bridge, activity counts once the step resolves/
-    );
-  });
-
-  it('will throw for an unmet value without the caveat', async () => {
-    await expect(api.act(() => {}, { until: { 'Composer.draft': 'x' }, timeout: 20 })).rejects.toThrow(
-      /^Not reached within 20ms: Composer\.draft\.$/
-    );
+  it.each([
+    ['naming a target that never saw a frame, with the bridge caveat', ['Composer.draft'], /^Not reached within 20ms: Composer\.draft\. On the bridge, activity counts once the step resolves/],
+    ['for an unmet value without the caveat', { 'Composer.draft': 'x' }, /^Not reached within 20ms: Composer\.draft\.$/]
+  ])('will throw %s', async (_, until, error) => {
+    await expect(api.act(() => {}, { until, timeout: 20 })).rejects.toThrow(error);
   });
 
   it('will warn when act outlasts its timeout', async () => {

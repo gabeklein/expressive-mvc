@@ -208,13 +208,11 @@ describe('journal', () => {
     expect(journal.history({ key: 'submit' }).length).toBe(1);
   });
 
-  it('will not record calls unless asked', () => {
-    start({ level: 'keys' }).submit('x');
-    expect(journal.history({ key: 'submit' })).toEqual([]);
-  });
-
-  it('will not record calls for excluded types', () => {
-    start({ level: 'keys', calls: true, types: ['Other'] }).submit('x');
+  it.each([
+    ['unless asked', { level: 'keys' }],
+    ['for excluded types', { level: 'keys', calls: true, types: ['Other'] }]
+  ] as [string, Options][])('will not record calls %s', (_, options) => {
+    start(options).submit('x');
     expect(journal.history({ key: 'submit' })).toEqual([]);
   });
 
@@ -336,14 +334,17 @@ describe('journal', () => {
     expect(composer.draft).toBe('late');
   });
 
-  it('will act past a write the step makes itself', async () => {
+  it.each([
+    ['past a write the step makes itself', 'Composer.draft'],
+    ['until an address holds a value', { 'Composer.draft': 'sent' }]
+  ])('will act %s', async (_, until) => {
     const composer = start();
     const frames = await act(
       () => {
         composer.draft = 'sending';
         setTimeout(() => (composer.draft = 'sent'), 20);
       },
-      { until: 'Composer.draft' }
+      { until }
     );
     expect(frames.flatMap((frame) => frame.events.map((event) => event.value))).toEqual(['sending', 'sent']);
   });
@@ -359,18 +360,6 @@ describe('journal', () => {
       { until: 'Composer.draft', timeout: 200 }
     );
     expect(warn).not.toHaveBeenCalled();
-  });
-
-  it('will act until an address holds a value', async () => {
-    const composer = start();
-    const frames = await act(
-      () => {
-        composer.draft = 'sending';
-        setTimeout(() => (composer.draft = 'sent'), 20);
-      },
-      { until: { 'Composer.draft': 'sent' } }
-    );
-    expect(frames.at(-1)!.events[0].value).toBe('sent');
   });
 
   it('will act until an unmanaged _ key holds a value', async () => {
@@ -391,18 +380,12 @@ describe('journal', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it('will throw when a value never holds', async () => {
+  it.each([
+    ['when a value never holds', { 'Composer.draft': 'never' }, 'Composer.draft.'],
+    ['naming a value with no instance', { 'Missing.draft': 'x' }, 'Missing.draft (names no instance).']
+  ])('will throw %s', async (_, until, message) => {
     start();
-    await expect(act(() => {}, { until: { 'Composer.draft': 'never' }, timeout: 20 })).rejects.toThrow(
-      'Not reached within 20ms: Composer.draft.'
-    );
-  });
-
-  it('will throw naming a value with no instance', async () => {
-    attach();
-    await expect(act(() => {}, { until: { 'Missing.draft': 'x' }, timeout: 20 })).rejects.toThrow(
-      'Not reached within 20ms: Missing.draft (names no instance).'
-    );
+    await expect(act(() => {}, { until, timeout: 20 })).rejects.toThrow(`Not reached within 20ms: ${message}`);
   });
 
   it('will act until an instance address sees a frame', async () => {
