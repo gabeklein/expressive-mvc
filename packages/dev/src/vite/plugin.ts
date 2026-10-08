@@ -64,7 +64,7 @@ export function expressive(): Plugin<Host> {
       project = resolveProject(root);
 
       const entries = project.appDir
-        ? ["app/**/*.{ts,tsx,js,jsx}"]
+        ? ["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*"]
         : [relImport(root, project.appPath!)];
 
       return {

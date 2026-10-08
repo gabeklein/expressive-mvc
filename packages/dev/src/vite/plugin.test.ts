@@ -76,6 +76,11 @@ describe("vite host", () => {
     expect(routes?.code).toMatch(/dev\/src\/jsx-dev-runtime/);
   });
 
+  it("will not scan spec or test files beside routes for dependencies", async () => {
+    const server = await serve(project({ "app/index.tsx": PAGE, "app/index.spec.ts": "import '@playwright/test';" }));
+    expect(server.config.optimizeDeps.entries).toEqual(["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*"]);
+  });
+
   it("single-file project: entry mounts app.tsx directly", async () => {
     const server = await serve(project({ "app.tsx": "export default () => <h1>hi</h1>" }));
 
