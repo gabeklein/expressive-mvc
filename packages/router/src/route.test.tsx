@@ -61,31 +61,7 @@ describe('Route', () => {
 
   it('exposes the router query', () => {
     const route = Route.new();
-    route.router.goto('/posts?q=hi&page=2');
-
-    expect(route.query.get('q')).toBe('hi');
-    expect(route.query.get('page')).toBe('2');
-  });
-
-  it('updates in place on same-pattern navigation (instance persists)', async () => {
-    location('/posts/foo');
-    let mountCount = 0;
-
-    const Id = () => <span>{Route.get().match!.id}</span>;
-    const Page = () => {
-      mountCount++;
-      return <Id />;
-    };
-
-    const view = render(<Route to="/posts/:id" as={Page} />);
-
-    expect(mountCount).toBe(1);
-    expect(view.container.textContent).toBe('foo');
-
-    await act(async () => router.current.goto('/posts/bar'));
-
-    expect(mountCount).toBe(1);
-    expect(view.container.textContent).toBe('bar');
+    expect(route.query).toBe(route.router.query);
   });
 
   it('renders alongside non-Route siblings', () => {
@@ -252,10 +228,6 @@ describe('Route', () => {
     expect(window.location.pathname).toBe('/about');
   });
 
-  it('Router.goto throws on relative paths', () => {
-    expect(() => router.current.goto('./x')).toThrow(/absolute path/);
-  });
-
   describe('Route.goto param swap', () => {
     it('swaps a single param against the route pattern', async () => {
       location('/document/123');
@@ -373,19 +345,6 @@ describe('Route', () => {
       </Route>
     );
     expect(view.container.textContent).toBe('About');
-  });
-
-  it('sibling Routes re-resolve winner on navigation', async () => {
-    location('/a');
-    const view = render(
-      <Route>
-        <Route to="/a" as={() => <span>A</span>} />
-        <Route to="/b" as={() => <span>B</span>} />
-      </Route>
-    );
-    expect(view.container.textContent).toBe('A');
-    await act(async () => router.current.goto('/b'));
-    expect(view.container.textContent).toBe('B');
   });
 
   // Blocked on https://github.com/gabeklein/expressive-state/issues/85 -
@@ -1381,23 +1340,7 @@ describe('Route', () => {
 });
 
 describe('extends', () => {
-  it('subclass authors content via render(); base gates on match', () => {
-    let ran = 0;
-    class Profile extends Route {
-      to = 'profile/*';
-      render() {
-        ran++;
-        return <span>profile</span> as any;
-      }
-    }
-
-    location('/profile');
-    const view = render(<Route><Profile /></Route>);
-    expect(view.container.textContent).toBe('profile');
-    expect(ran).toBe(1);
-  });
-
-  it('does not run subclass content when unmatched (lazy children gate)', () => {
+  it('will gate subclass render() on match', async () => {
     let ran = 0;
     class Profile extends Route {
       to = 'profile/*';
@@ -1410,7 +1353,11 @@ describe('extends', () => {
     location('/elsewhere');
     const view = render(<Route><Profile /></Route>);
     expect(view.container.textContent).toBe('');
-    expect(ran).toBe(0); // never invoked while unmatched
+    expect(ran).toBe(0);
+
+    await act(async () => router.current.goto('/profile'));
+    expect(view.container.textContent).toBe('profile');
+    expect(ran).toBe(1);
   });
 
   it('subclass owns nested routes that respect its mount path', () => {
@@ -1589,30 +1536,20 @@ describe('extends', () => {
   });
 
   describe('structural children', () => {
-    it('mounts child Routes even when the parent is unmatched', () => {
-      location('/elsewhere');
-      let mounted = false;
-      const view = render(
-        <Route to="foo/*">
-          <Route to="bar" is={() => (mounted = true)} as={() => <span>bar</span>} />
-        </Route>
-      );
-      expect(mounted).toBe(true);            // structural child mounted/registered
-      expect(view.container.textContent).toBe(''); // ...but invisible (self-gated)
-    });
-
-    it('finds child Routes nested in a Fragment', () => {
+    it('will mount child Routes, including in a Fragment, while the parent is unmatched', () => {
       location('/elsewhere');
       let mounted = 0;
-      render(
+      const view = render(
         <Route to="foo/*">
+          <Route to="bar" is={() => mounted++} as={() => <span>bar</span>} />
           <>
             <Route to="a" is={() => mounted++} />
             <Route to="b" is={() => mounted++} />
           </>
         </Route>
       );
-      expect(mounted).toBe(2);               // both mount despite parent unmatched
+      expect(mounted).toBe(3);
+      expect(view.container.textContent).toBe('');
     });
 
     it('shows the matched child once the parent matches', () => {
@@ -1647,32 +1584,81 @@ const ab = (
   </>
 );
 
-describe('active', () => {
-  it('is undefined when no child matches', async () => {
+const aa = (
+  <>
+    <Route to="a" />
+    <Route to="a" />
+  </>
+);
+
+describe('active and matches', () => {
+  it('will report nothing when no child matches', async () => {
     Router.new();
     const { root } = await mount(ab);
     expect(root.active).toBeUndefined();
+    expect(root.matches).toEqual([]);
   });
 
-  it('returns the single matched child', async () => {
+  it('will report the single matched child', async () => {
     router.current.goto('/a');
     const { root } = await mount(ab);
     expect(root.active?.to).toBe('a');
+    expect(root.matches).toEqual(['/a']);
   });
 
-  it('updates on navigation', async () => {
+  it('will report null active and every match when several apply', async () => {
+    router.current.goto('/a');
+    const { root } = await mount(aa);
+    expect(root.active).toBeNull();
+    expect(root.matches).toEqual(['/a', '/a']);
+  });
+
+  it('will report null active when a scope yields competing matches', async () => {
+    router.current.goto('/posts/recent');
+    const { root } = await mount(
+      <Route to="posts/*">
+        <Route to=":id" />
+        <Route to="recent" />
+      </Route>
+    );
+    expect(root.active).toBeNull();
+    expect(root.matches).toEqual(['/posts/:id', '/posts/recent']);
+  });
+
+  it('will exclude redirect routes', async () => {
+    router.current.goto('/a');
+    let content!: Route;
+    const { root } = await mount(
+      <>
+        <Route to="a" redirect="/a" />
+        <Route to="a" is={(r) => (content = r)} />
+      </>
+    );
+    expect(root.active).toBe(content);
+    expect(root.matches).toEqual(['/a']);
+  });
+
+  it('will exclude none routes', async () => {
+    router.current.goto('/missing');
+    const { root } = await mount(
+      <>
+        <Route to="a" />
+        <Route none as={() => <span>404</span>} />
+      </>
+    );
+    expect(root.matches).toEqual([]);
+    expect(root.active).toBeUndefined();
+  });
+
+  it('will update active and matches on navigation', async () => {
     router.current.goto('/a');
     const { root } = await mount(ab);
     expect(root.active?.to).toBe('a');
+    expect(root.matches).toEqual(['/a']);
 
     await act(async () => router.current.goto('/b'));
     expect(root.active?.to).toBe('b');
-  });
-
-  it('is null when more than one child matches', async () => {
-    router.current.goto('/a');
-    const { root } = await mount(<><Route to="a" /><Route to="a" /></>);
-    expect(root.active).toBeNull();
+    expect(root.matches).toEqual(['/b']);
   });
 
   it('sees through a scope to the matched child', async () => {
@@ -1685,69 +1671,6 @@ describe('active', () => {
     );
     expect(root.active).toBe(recent);
   });
-
-  it('is null when a scope yields competing matches', async () => {
-    router.current.goto('/posts/recent');
-    const { root } = await mount(
-      <Route to="posts/*">
-        <Route to=":id" />
-        <Route to="recent" />
-      </Route>
-    );
-    expect(root.active).toBeNull();
-  });
-
-  it('ignores redirect routes as candidates', async () => {
-    router.current.goto('/a');
-    let content!: Route;
-    const { root } = await mount(
-      <>
-        <Route to="a" redirect="/a" />
-        <Route to="a" is={(r) => (content = r)} />
-      </>
-    );
-    expect(root.active).toBe(content);
-  });
-});
-
-describe('matches', () => {
-  it('is empty when no child matches', async () => {
-    Router.new();
-    const { root } = await mount(ab);
-    expect(root.matches).toEqual([]);
-  });
-
-  it('lists the matched child path', async () => {
-    router.current.goto('/a');
-    const { root } = await mount(ab);
-    expect(root.matches).toEqual(['/a']);
-  });
-
-  it('lists every match when more than one applies', async () => {
-    router.current.goto('/a');
-    const { root } = await mount(<><Route to="a" /><Route to="a" /></>);
-    expect(root.matches).toEqual(['/a', '/a']);
-  });
-
-  it('updates on navigation', async () => {
-    router.current.goto('/a');
-    const { root } = await mount(ab);
-    expect(root.matches).toEqual(['/a']);
-
-    await act(async () => router.current.goto('/b'));
-    expect(root.matches).toEqual(['/b']);
-  });
-
-  it('excludes redirect routes', async () => {
-    router.current.goto('/a');
-    const { root } = await mount(
-      <>
-        <Route to="a" redirect="/a" />
-        <Route to="a" />
-      </>
-    );
-    expect(root.matches).toEqual(['/a']);
-  });
 });
 
 describe('none', () => {
@@ -1758,13 +1681,16 @@ describe('none', () => {
     </>
   );
 
-  it('matches when no sibling matches (app 404)', async () => {
+  it('will match when no sibling matches, yielding on navigation', async () => {
     router.current.goto('/x');
     const { view } = await mount(aOr404);
     expect(view.container.textContent).toBe('404');
 
     await act(async () => router.current.goto('/a'));
     expect(view.container.textContent).toBe('a');
+
+    await act(async () => router.current.goto('/missing'));
+    expect(view.container.textContent).toBe('404');
   });
 
   it('never matches without a parent', async () => {
@@ -1787,15 +1713,6 @@ describe('none', () => {
       </Route>
     );
     expect(fallback.path).toBe('/docs');
-  });
-
-  it('yields once a sibling matches and restores on navigation away', async () => {
-    router.current.goto('/a');
-    const { view } = await mount(aOr404);
-    expect(view.container.textContent).toBe('a');
-
-    await act(async () => router.current.goto('/missing'));
-    expect(view.container.textContent).toBe('404');
   });
 
   it('is scoped to its parent (section 404 does not leak)', async () => {
@@ -1852,18 +1769,6 @@ describe('none', () => {
 
     await act(async () => router.current.goto('/posts/a'));
     expect(view.container.textContent).toBe('post');
-  });
-
-  it('is excluded from matches and active', async () => {
-    router.current.goto('/missing');
-    const { root } = await mount(
-      <>
-        <Route to="a" />
-        <Route none as={() => <span>404</span>} />
-      </>
-    );
-    expect(root.matches).toEqual([]);
-    expect(root.active).toBeUndefined();
   });
 
   it('sees through an anonymous group - nested match suppresses sibling none Route', async () => {

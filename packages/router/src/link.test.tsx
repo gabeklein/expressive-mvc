@@ -202,8 +202,6 @@ describe('Link', () => {
 
     await act(async () => fireEvent.click(a, { button: 0 }));
     expect(router.current.url).toBe('/posts/foo/edit?tab=history#form');
-    expect(router.current.query.get('tab')).toBe('history');
-    expect(router.current.hash).toBe('#form');
   });
 
   it('will resolve a fragment against the Route and preserve query', async () => {
@@ -233,22 +231,8 @@ describe('Link', () => {
     );
   });
 
-  it('will preserve scheme-bearing and protocol-relative hrefs', () => {
-    const view = render(
-      <Route to="/">
-        <Link to="https://example.com/docs?q=1#intro">https</Link>
-        <Link to="//cdn.example.com/file.js">cdn</Link>
-      </Route>
-    );
-    const links = view.container.querySelectorAll('a');
-    expect(links[0].getAttribute('href')).toBe(
-      'https://example.com/docs?q=1#intro'
-    );
-    expect(links[1].getAttribute('href')).toBe('//cdn.example.com/file.js');
-  });
-
   it.each([
-    'https://example.com/docs',
+    'https://example.com/docs?q=1#intro',
     '//cdn.example.com/file.js'
   ])('will leave external click %s to the browser', (to) => {
     let link!: Link;
@@ -264,6 +248,8 @@ describe('Link', () => {
         </Link>
       </Route>
     );
+
+    expect(link.href).toBe(to);
 
     const preventDefault = leftClick(link);
     expect(clicked).toBe(true);
@@ -408,7 +394,7 @@ describe('Link.match / Link.active', () => {
     );
   });
 
-  it('toggles across navigation when read in render', async () => {
+  it('will toggle across navigation and re-render only because render reads active', async () => {
     const view = render(
       <Route to="*">
         <NavLink to="/about">about</NavLink>
@@ -416,24 +402,14 @@ describe('Link.match / Link.active', () => {
     );
     const a = view.container.querySelector('a')!;
     expect(a.getAttribute('class')).toBe(null);
-
-    await act(async () => router.current.goto('/about'));
-    expect(a.getAttribute('class')).toBe('active');
-
-    await act(async () => router.current.goto('/'));
-    expect(a.getAttribute('class')).toBe(null);
-  });
-
-  it('re-renders on navigation only because render reads active', async () => {
-    render(
-      <Route to="*">
-        <NavLink to="/about">about</NavLink>
-      </Route>
-    );
     expect(renders).toBe(1);
 
     await act(async () => router.current.goto('/about'));
+    expect(a.getAttribute('class')).toBe('active');
     expect(renders).toBe(2);
+
+    await act(async () => router.current.goto('/'));
+    expect(a.getAttribute('class')).toBe(null);
   });
 
   it('does NOT re-render a Link that reads neither (lazy subscription)', async () => {

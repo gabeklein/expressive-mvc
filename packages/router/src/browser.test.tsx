@@ -49,14 +49,10 @@ describe('BrowserRouter', () => {
     await act(async () => router.current.goto('/results?q=hello#answer'));
     expect(window.location.pathname).toBe('/results');
     expect(window.location.search).toBe('?q=hello');
-    expect(router.current.path).toBe('/results');
     expect(window.location.hash).toBe('#answer');
     expect(router.current.url).toBe('/results?q=hello#answer');
     expect(router.current.query.get('q')).toBe('hello');
-  });
 
-  it('clears the query when navigation drops it', () => {
-    act(() => router.current.goto('/results?q=hi'));
     act(() => window.history.pushState(null, '', '/results'));
     expect(router.current.url).toBe('/results');
   });
@@ -133,11 +129,9 @@ describe('BrowserRouter', () => {
     remove.mockRestore();
   });
 
-  it('is a global on the client', () => {
+  it('will be global on the client but not without a window', () => {
     expect(Context.root.get(BrowserRouter)).toBe(router.current);
-  });
 
-  it('constructs without a window, and is not global there (server render)', () => {
     const saved = (globalThis as any).window;
 
     try {

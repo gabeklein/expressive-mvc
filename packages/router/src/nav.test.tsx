@@ -20,17 +20,7 @@ const Page = ({ children }: { children?: React.ReactNode }) => (
   </div>
 )
 
-it('mirrors the registered route tree', async () => {
-  const view = await renderAct(
-    <Route as={Page}>
-      <Route to="a" />
-      <Route to="b" />
-    </Route>
-  );
-  expect(links(view)).toEqual(['/a', '/b']);
-});
-
-it('default Item renders label, falling back to path', async () => {
+it('will mirror the route tree, labelling by label then path', async () => {
   const view = await renderAct(
     <Route as={Page}>
       <Route to="a" label="Alpha" />
@@ -82,31 +72,10 @@ it('marks the active link and updates on navigation', async () => {
   expect(current(view)).toBe('/b');
 });
 
-it('Item is overridable via subclassing', async () => {
-  class MyNav extends NavLinks {
-    Item({ route }: { route: Route }) {
-      return <a href={route.path} data-custom>{route.path}</a>;
-    }
-  }
-  const Page = ({ children }: { children?: React.ReactNode }) => (
-    <div>
-      <MyNav />
-      {children}
-    </div>
-  );
-
-  const view = await renderAct(
-    <Route as={Page}>
-      <Route to="a" />
-    </Route>
-  );
-  expect(view.container.querySelector('a[data-custom]')?.getAttribute('href')).toBe('/a');
-});
-
-it('exposes route.meta to a custom Item', async () => {
+it('will pass route and meta to an overridden Item', async () => {
   class MyNav extends NavLinks {
     Item({ route, meta }: { route: Route; meta: Route['meta'] }) {
-      return <a href={route.path}>{meta?.label ?? route.path}</a>;
+      return <a href={route.path} data-custom>{meta?.label ?? route.path}</a>;
     }
   }
   const Page = ({ children }: { children?: React.ReactNode }) => (
@@ -123,6 +92,7 @@ it('exposes route.meta to a custom Item', async () => {
     </Route>
   );
   expect(links(view)).toEqual(['/a', '/b']);
+  expect(view.container.querySelectorAll('a[data-custom]').length).toBe(2);
   expect(view.container.textContent).toContain('Alpha');
   expect(view.container.textContent).toContain('/b');
 });

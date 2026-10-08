@@ -20,43 +20,27 @@ function onServer<T>(fn: () => T): T {
 const Home = () => <h1>Home</h1>;
 
 describe('router SSR probe (no window)', () => {
-  it('renders a Route tree without crashing', () => {
-    const html = onServer(() =>
-      renderToString(
-        <Route to="*">
-          <Home />
-        </Route>
-      )
-    );
-    expect(html).toContain('Home');
-  });
+  it('will render requests independently without registering a root Router', () => {
+    const [a, b] = onServer(() => {
+      const html = [
+        renderToString(
+          <Route to="*">
+            <Home />
+          </Route>
+        ),
+        renderToString(
+          <Route to="*">
+            <Home />
+          </Route>
+        )
+      ];
 
-  it('does not leave a shared Router in root after a server render', () => {
-    onServer(() => {
-      renderToString(
-        <Route to="*">
-          <Home />
-        </Route>
-      );
       // client-only global -> nothing registered at root on the server
       expect(Context.root.get(Router, false)).toBeUndefined();
       expect(Context.root.get(BrowserRouter, false)).toBeUndefined();
-    });
-  });
 
-  it('renders two requests independently', () => {
-    const [a, b] = onServer(() => [
-      renderToString(
-        <Route to="*">
-          <Home />
-        </Route>
-      ),
-      renderToString(
-        <Route to="*">
-          <Home />
-        </Route>
-      )
-    ]);
+      return html;
+    });
     expect(a).toContain('Home');
     expect(b).toContain('Home');
   });

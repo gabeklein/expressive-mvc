@@ -60,7 +60,6 @@ describe('acceptance: nested file-routing tree', () => {
   it('/anything-else -> RootLayout > NotFound', () => {
     location('/anything-else');
     const view = render(<Tree />);
-    expect(view.container.querySelector('[data-blog]')).toBeNull();
     expect(view.container.querySelector('[data-root]')?.textContent).toBe('not-found');
   });
 

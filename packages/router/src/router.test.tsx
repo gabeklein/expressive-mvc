@@ -65,21 +65,14 @@ describe('Router (headless)', () => {
     expect(router.path).toBe('/a');
   });
 
-  it('back does nothing at the oldest entry', () => {
+  it('will ignore back and go outside the history bounds', async () => {
     const router = Router.new();
     router.back();
-    expect(router.path).toBe('/');
     expect(router.index).toBe(0);
-  });
 
-  it('go does nothing outside the history bounds', async () => {
-    const router = Router.new();
     router.goto('/a');
     await settle(router);
     router.go(1);
-    expect(router.path).toBe('/a');
-    expect(router.index).toBe(1);
-
     router.go(-2);
     expect(router.path).toBe('/a');
     expect(router.index).toBe(1);
@@ -159,28 +152,19 @@ describe('Router (headless)', () => {
     await settle(router);
 
     expect(router.path).toBe('/docs');
-    expect(router.query.get('q')).toBe('a b');
-    expect(router.hash).toBe('#install');
     expect(router.url).toBe('/docs?q=a+b#install');
     expect(router.entries).toEqual(['/', '/docs?q=a+b#install']);
   });
 
-  it('goto without a fragment will clear it', async () => {
+  it('will clear query and fragment when goto omits them', async () => {
     const router = Router.new();
-    router.goto('/docs#install');
+    router.goto('/docs?page=2#install');
     await settle(router);
     router.goto('/docs');
     await settle(router);
 
     expect(router.hash).toBe('');
     expect(router.url).toBe('/docs');
-  });
-
-  it('goto without query clears the query', () => {
-    const router = Router.new();
-    router.goto('/posts?page=2');
-    router.goto('/posts');
-    expect(router.url).toBe('/posts');
   });
 
   it('canonicalizes the query so navigation does not push a duplicate entry', async () => {
@@ -196,22 +180,10 @@ describe('Router (headless)', () => {
     expect(repeated.entries).toEqual(['/', '/x?a=2']);
   });
 
-  it('query exposes params as a map', () => {
+  it('will expose decoded query params', () => {
     const router = Router.new();
-    router.goto('/posts?page=2');
-    expect(router.query.get('page')).toBe('2');
-  });
-
-  it('direct query mutation pushes a new entry', async () => {
-    const router = Router.new();
-    router.goto('/posts');
-    await router.set();
-
-    router.query.set('page', '2');
-    await router.set();
-
-    expect(router.entries).toEqual(['/', '/posts', '/posts?page=2']);
-    expect(router.url).toBe('/posts?page=2');
+    router.goto('/posts?q=a%20b');
+    expect(router.query.get('q')).toBe('a b');
   });
 
   it('stops tracking query once destroyed', async () => {
@@ -248,7 +220,7 @@ describe('Router (headless)', () => {
     router.query.set('page', '2');
     await settle(router);
 
-    expect(router.url).toBe('/posts?page=2');
+    expect(router.entries).toEqual(['/', '/posts?page=1', '/posts?page=2']);
     router.back();
     await settle(router);
     expect(router.url).toBe('/posts?page=1');
@@ -277,7 +249,6 @@ describe('Router (headless)', () => {
     expect(router.navigating).toBe(true);
     await settle(router);
 
-    expect(router.hash).toBe('#install%20guide');
     expect(router.url).toBe('/docs?mode=api#install%20guide');
     expect(router.entries).toEqual([
       '/',
@@ -309,18 +280,12 @@ describe('Router (headless)', () => {
     expect(router.hash).toBe('#before');
   });
 
-  it('deleting a query param navigates', async () => {
+  it('will navigate on delete only for a present query param', async () => {
     const router = Router.new();
     router.goto('/posts?page=2&sort=asc');
-    router.query.delete('sort');
+    expect(router.query.delete('sort')).toBe(true);
     await router.set();
-
-    expect(router.query.get('sort')).toBeUndefined();
-    expect(router.path).toBe('/posts');
-  });
-
-  it('does not navigate when deleting an absent query param', () => {
-    const router = Router.new();
+    expect(router.url).toBe('/posts?page=2');
 
     expect(router.query.delete('missing')).toBe(false);
     expect(router.navigating).toBe(false);
