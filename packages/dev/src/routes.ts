@@ -16,8 +16,6 @@ const ROLES = [
 
 type Role = (typeof ROLES)[number];
 
-const LAZY = new Set<Role>(["Page", "Layout", "NotFound", "default"]);
-
 export interface Scan {
   exports: Iterable<string>;
   classDefault?: boolean;
@@ -155,7 +153,7 @@ function collectImports(root: RouteNode, outDir: string) {
     const roles = ROLES.filter(role => node.alias[role]);
     const spec = node.file && JSON.stringify(relImport(outDir, node.file));
 
-    if (spec && node !== root && roles.every(role => LAZY.has(role)))
+    if (spec && node !== root && !node.alias.Loading && !node.alias.Catch)
       for (const role of roles)
         loaders.push(
           role === "default" && !node.classDefault
