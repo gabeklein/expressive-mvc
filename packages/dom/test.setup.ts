@@ -35,3 +35,8 @@ export function track(promise: PromiseLike<unknown>) {
 }
 
 export const html = (root: Element) => root.innerHTML.replace(/<!--[^>]*-->/g, '');
+
+export function place(node: Component.Node, root: HTMLElement = document.createElement('main')) {
+  render(node, root);
+  return root;
+}

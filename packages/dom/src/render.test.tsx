@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, has, map } from '@expressive/mvc';
 import { Fragment, Portal, render } from './index';
-import { flushMicrotasks, mockPromise, mount } from '../test.setup';
+import { flushMicrotasks, mockPromise, mount, place } from '../test.setup';
 import { vnode } from './vnode';
 
 if (false) {
@@ -262,9 +262,7 @@ describe('render', () => {
 
   it('will attach refs after children mount', () => {
     let count = -1;
-    const root = document.createElement('main');
-
-    render(<ul ref={(node) => { if (node) count = node.children.length; }}><li /><li /></ul>, root);
+    place(<ul ref={(node) => { if (node) count = node.children.length; }}><li /><li /></ul>);
 
     expect(count).toBe(2);
   });
@@ -334,13 +332,10 @@ describe('render', () => {
   });
 
   it('will type SVG attributes and custom properties', () => {
-    const root = document.createElement('main');
-
-    render(
+    const root = place(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" style={{ '--tone': 'red' }}>
         <path d="M0 0L10 10" fill="none" stroke="red" transform="scale(1)" />
-      </svg>,
-      root
+      </svg>
     );
 
     const path = root.querySelector('path')!;
@@ -437,9 +432,7 @@ describe('render', () => {
 
   it('will not forward class through components', () => {
     const Leaf = (_props: any) => <div className="leaf" />;
-    const root = document.createElement('main');
-
-    render(<Leaf {...({ class: 'outer' } as any)} />, root);
+    const root = place(<Leaf {...({ class: 'outer' } as any)} />);
 
     expect(root.querySelector('div')?.className).toBe('leaf');
   });
@@ -450,9 +443,7 @@ describe('render', () => {
         <input style={{ ...style, outlineStyle: 'none' }} />
       </label>
     );
-    const root = document.createElement('main');
-
-    render(<Field style={['invalid', { color: 'red' }]} />, root);
+    const root = place(<Field style={['invalid', { color: 'red' }]} />);
 
     const input = root.querySelector('input')!;
     expect(root.querySelector('label')?.hasAttribute('class')).toBe(false);
@@ -467,9 +458,7 @@ describe('render', () => {
       received.push(style);
       return <i />;
     };
-    const root = document.createElement('main');
-
-    render(<><Read style={[{ color: 'red' }, false, ['tag', { color: 'blue', width: 2 }]]} /><Read style={[false, null]} /></>, root);
+    place(<><Read style={[{ color: 'red' }, false, ['tag', { color: 'blue', width: 2 }]]} /><Read style={[false, null]} /></>);
 
     const [style, empty] = received;
     expect({ ...style }).toMatchObject({ color: 'blue', width: 2 });
@@ -484,9 +473,7 @@ describe('render', () => {
       handles.push(style);
       return null;
     };
-    const root = document.createElement('main');
-
-    render(<><Capture style={['a', { color: 'red', width: 1 }]} /><Capture style={['b', { height: 2 }]} /></>, root);
+    place(<><Capture style={['a', { color: 'red', width: 1 }]} /><Capture style={['b', { height: 2 }]} /></>);
 
     const [a, b] = handles;
     const { color, ...rest } = a;
@@ -556,9 +543,7 @@ describe('render', () => {
       }
     }
 
-    const root = document.createElement('main');
-
-    render(<><Field style="read" /><Declared style="owned" /></>, root);
+    const root = place(<><Field style="read" /><Declared style="owned" /></>);
 
     expect(root.querySelector('label')?.hasAttribute('class')).toBe(false);
     expect(root.querySelector('input')?.className).toBe('read');
@@ -566,35 +551,27 @@ describe('render', () => {
     expect(root.querySelector('b')?.className).toBe('owned');
   });
 
-  it('will honor explicit appearance placement', () => {
-    const Placed = ({ style }: any) => (
-      <section>
-        <span style={style} />
-      </section>
-    );
-    const root = document.createElement('main');
-
-    render(<Placed style={['selected', { color: 'red' }]} />, root);
-
-    expect(root.querySelector('section')?.hasAttribute('class')).toBe(false);
-    expect(root.querySelector('section')?.getAttribute('style')).toBeNull();
-    expect(root.querySelector('span')?.className).toBe('selected');
-    expect(root.querySelector('span')?.style.color).toBe('red');
-  });
-
-  it('will honor explicit appearance placement through component instances', () => {
-    class Placed extends Component {
+  it('will honor explicit appearance placement, also through component instances', () => {
+    class Inner extends Component {
       render() {
         return <span />;
       }
     }
 
-    const Place = ({ style }: any) => new Placed({ style });
-    const root = document.createElement('main');
+    const Placed = ({ style }: any) => (
+      <section>
+        <span style={style} />
+      </section>
+    );
+    const Instance = ({ style }: any) => new Inner({ style });
+    const root = place(<><Placed style={['selected', { color: 'red' }]} /><Instance {...({ style: 'placed' } as any)} /></>);
+    const [selected, placed] = root.querySelectorAll('span');
 
-    render(<Place {...({ style: 'placed' } as any)} />, root);
-
-    expect(root.querySelector('span')?.className).toBe('placed');
+    expect(root.querySelector('section')?.hasAttribute('class')).toBe(false);
+    expect(root.querySelector('section')?.getAttribute('style')).toBeNull();
+    expect(selected.className).toBe('selected');
+    expect(selected.style.color).toBe('red');
+    expect(placed.className).toBe('placed');
   });
 
   it('will update forwarded appearance on collection roots', async () => {
@@ -619,9 +596,7 @@ describe('render', () => {
 
   it('will forward appearance to fragment roots', () => {
     const Pair = () => <><i /><b /></>;
-    const root = document.createElement('main');
-
-    render(<Pair style="shared" />, root);
+    const root = place(<Pair style="shared" />);
 
     expect([...root.children].map((node) => node.className)).toEqual(['shared', 'shared']);
   });
@@ -712,8 +687,7 @@ describe('render', () => {
   });
 
   it('will write contentEditable as an enumerated attribute', () => {
-    const root = document.createElement('main');
-    render(<><div contentEditable={false} /><div contentEditable={true} /></>, root);
+    const root = place(<><div contentEditable={false} /><div contentEditable={true} /></>);
     const [off, on] = root.querySelectorAll('div');
 
     expect(off.getAttribute('contenteditable')).toBe('false');
@@ -746,7 +720,7 @@ describe('render', () => {
     expect(link.getAttribute('aria-hidden')).toBe('false');
   });
 
-  it('will focus an autofocus element once it is inserted', async () => {
+  it('will focus an autofocus element only once it is inserted', async () => {
     class Editor extends Component {
       editing = false;
       tick = 0;
@@ -757,7 +731,10 @@ describe('render', () => {
       }
     }
 
+    const detached = place(<input autofocus />);
     const [editor, root] = mount(Editor, {}, document.body.appendChild(document.createElement('main')));
+
+    expect(document.activeElement).not.toBe(detached.querySelector('input'));
 
     editor.editing = true;
     await flushMicrotasks();
@@ -787,8 +764,7 @@ describe('render', () => {
       }
     }
 
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<Name />, root);
+    const root = place(<Name />, document.body.appendChild(document.createElement('main')));
     const input = root.querySelector('input')!;
 
     input.value = 'abcd';
@@ -813,8 +789,7 @@ describe('render', () => {
       }
     }
 
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<Name />, root);
+    const root = place(<Name />, document.body.appendChild(document.createElement('main')));
     const input = root.querySelector('input')!;
     const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value')!;
 
@@ -853,8 +828,7 @@ describe('render', () => {
       }
     }
 
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<Form />, root);
+    const root = place(<Form />, document.body.appendChild(document.createElement('main')));
     const [box, field] = root.querySelectorAll('input');
 
     box.checked = true;
@@ -875,8 +849,7 @@ describe('render', () => {
   });
 
   it('will keep a controlled field without a handler on its value', async () => {
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<><input value="fixed" /><input type="checkbox" checked={false} /><input /><input type="range" value={150} max={200} /><select value="b"><option value="a" /><option value="b" /></select></>, root);
+    const root = place(<><input value="fixed" /><input type="checkbox" checked={false} /><input /><input type="range" value={150} max={200} /><select value="b"><option value="a" /><option value="b" /></select></>, document.body.appendChild(document.createElement('main')));
     const [text, box, free, range] = root.querySelectorAll('input');
     const select = root.querySelector('select')!;
 
@@ -901,13 +874,6 @@ describe('render', () => {
     expect(select.value).toBe('b');
   });
 
-  it('will not focus an autofocus element outside the document', () => {
-    const root = document.createElement('main');
-    render(<input autofocus />, root);
-
-    expect(document.activeElement).not.toBe(root.querySelector('input'));
-  });
-
   it('will render MVC collections directly', async () => {
     const list = new has.List(['one']);
     const pool = new has.Pool((value: string) => value);
@@ -918,8 +884,7 @@ describe('render', () => {
       return <>{list}{pool}{values}</>;
     }
 
-    const root = document.createElement('main');
-    render(<Collections />, root);
+    const root = place(<Collections />);
     expect(root.textContent).toBe('onePA');
 
     list.push('two');
@@ -1214,10 +1179,12 @@ describe('render', () => {
   });
 
   it('will reject unsupported render values and element types', () => {
+    class Bare extends State {}
     const root = document.createElement('main');
 
     expect(() => render({} as never, root)).toThrow('Cannot render');
     expect(() => render(vnode(Symbol('unknown'), {}), root)).toThrow('Cannot render');
+    expect(() => render(<div>{Bare.new() as never}</div>, root)).toThrow('Cannot render');
     expect(root.textContent).toBe('');
   });
 });
@@ -1376,20 +1343,13 @@ describe('renderable State', () => {
     }
 
     const panel = Panel.new();
-    const root = document.createElement('main');
-    render(<div>{panel}</div>, root);
+    const root = place(<div>{panel}</div>);
     expect(root.textContent).toBe('inline');
 
     panel.label = 'changed';
     await flushMicrotasks();
     expect(root.textContent).toBe('changed');
     expect(panel.get(null)).toBe(false);
-  });
-
-  it('will not render a State instance without a render method', () => {
-    class Bare extends State {}
-    const root = document.createElement('main');
-    expect(() => render(<div>{Bare.new() as never}</div>, root)).toThrow('Cannot render');
   });
 
   it('will own a boundary only when a State declares fallback or catch', async () => {
@@ -1432,8 +1392,7 @@ describe('renderable State', () => {
     expect(root.textContent).toBe('outer');
     expect(app.caught).toBe(1);
 
-    const other = document.createElement('main');
-    render(<Guarded />, other);
+    const other = place(<Guarded />);
     expect(other.textContent).toBe('guarded');
     await flushMicrotasks();
     expect(other.textContent).toBe('guarded');
@@ -1449,8 +1408,7 @@ describe('renderable State', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Plain fallback={<i>loading</i>} />, root);
+    const root = place(<Plain fallback={<i>loading</i>} />);
     expect(root.textContent).toBe('loading');
 
     loaded.resolve(() => <b>ready</b>);
@@ -1499,12 +1457,10 @@ describe('renderable State', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Guarded fallback={<i>element</i>} />, root);
+    const root = place(<Guarded fallback={<i>element</i>} />);
     expect(root.textContent).toBe('element');
 
-    const other = document.createElement('main');
-    render(<><Guarded /><div>{Guarded.new() as never}</div></>, other);
+    const other = place(<><Guarded /><div>{Guarded.new() as never}</div></>);
     expect(other.textContent).toBe('membermember');
 
     if (false) {
@@ -1530,8 +1486,7 @@ describe('renderable State', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(
+    const root = place(
       <Plain
         is={(value) => (plain = value)}
         fallback={<i>recovering</i>}
@@ -1539,8 +1494,7 @@ describe('renderable State', () => {
           caught(error.message, instance);
           instance.broken = false;
         }}
-      />,
-      root
+      />
     );
 
     expect(caught).toHaveBeenCalledWith('broken', plain);
@@ -1567,8 +1521,7 @@ describe('renderable State', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Outer />, root);
+    const root = place(<Outer />);
     expect(received).toHaveBeenCalledWith('inner');
     expect(root.textContent).toBe('outer');
   });
