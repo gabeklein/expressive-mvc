@@ -15,6 +15,8 @@ const ROLES = [
 
 type Role = (typeof ROLES)[number];
 
+const LAZY = new Set<Role>(["Page", "Layout", "NotFound"]);
+
 export type ExportScanner = (source: string, path: string) => Iterable<string> | Promise<Iterable<string>>;
 
 interface RouteNode {
@@ -32,7 +34,7 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
 
   assignAliases(root, new Set());
 
-  const imports = collectImports(root, outDir);
+  const { imports, loaders } = collectImports(root, outDir);
   const tree = emitNode(root, true, 2).join("\n");
   const pageImports = root.exports.has("NotFound") ? "{ Route, Router }" : "{ NotFound, Route, Router }";
 
@@ -40,6 +42,7 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
     `import ${pageImports} from "@expressive/dev";`,
     "",
     ...imports,
+    ...(loaders.length ? ["", ...loaders] : []),
     "",
     "const App = () => (\n  <Router>", tree, "  </Router>\n);\n",
     "export default App;\n",
@@ -131,19 +134,24 @@ function assignAliases(node: RouteNode, used: Set<string>): void {
   for (const child of node.children) assignAliases(child, used);
 }
 
-function collectImports(root: RouteNode, outDir: string): string[] {
+function collectImports(root: RouteNode, outDir: string) {
   const imports: string[] = [];
+  const loaders: string[] = [];
 
   (function walk(node: RouteNode) {
-    const named = ROLES.filter(role => node.alias[role]).map(role => `${role} as ${node.alias[role]}`);
+    const roles = ROLES.filter(role => node.alias[role]);
+    const spec = node.file && JSON.stringify(relImport(outDir, node.file));
 
-    if (node.file && named.length)
-      imports.push(`import { ${named.join(", ")} } from ${JSON.stringify(relImport(outDir, node.file))};`);
+    if (spec && node !== root && roles.every(role => LAZY.has(role)))
+      for (const role of roles)
+        loaders.push(`const ${node.alias[role]} = () => import(${spec}).then(m => m.${role});`);
+    else if (spec && roles.length)
+      imports.push(`import { ${roles.map(role => `${role} as ${node.alias[role]}`).join(", ")} } from ${spec};`);
 
     node.children.forEach(walk);
   })(root);
 
-  return imports;
+  return { imports, loaders };
 }
 
 function emitNode(node: RouteNode, isRoot: boolean, depth: number): string[] {

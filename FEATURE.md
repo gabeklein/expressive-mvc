@@ -23,7 +23,8 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 
 ## Landed
 
-1. Basics - `app/` route tree (`Page`, `Layout`, `Loading`, `Catch`, `NotFound`), single-file `app.tsx` mode, virtual shell/entry/router module, dev server with inspect, client + node service build, static `serve` with `index.html` fallback, example workspace.
+- Basics - `app/` route tree (`Page`, `Layout`, `Loading`, `Catch`, `NotFound`), single-file `app.tsx` mode, virtual shell/entry/router module, dev server with inspect, client + node service build, static `serve` with `index.html` fallback, example workspace.
+- Route chunks - a module exporting only `Page`/`Layout`/`NotFound` (not the root) loads on first entry; `Loading` and `Catch` keep a module static.
 
 ## MVP
 
@@ -34,7 +35,6 @@ Enough to write E2E tests and examples and feel the ergonomics. One PR each, in 
 4. **Push (SSE).** One `EventSource` per tab - a mailbox, not a subscription list. What it carries is decided server-side by the tab's attached set, so attaching or detaching never touches the stream. `mount()` runs on attach, its cleanup on detach. Each flush of an attached instance's updates (mvc batches per microtask) becomes one frame: `{ target, values }` with the version as the event id - the browser's reconnect resumes with `Last-Event-ID`; a server that lost the tab sends `reset`, and the client re-attaches.
 5. **Identity.** Default cookie session (HttpOnly, `SameSite=Lax`, `Secure` in production, minted lazily); tab id in `sessionStorage`. No user layer, no login rotation yet.
 6. **Route defaults (client).** A page module's `default` function is the entry hook (runs with the Route before it renders, may be async; a returned string redirects, `null` forfeits to the 404). A `default` class - State or Component alike, since any State renders as an element in dom - renders around the route's content: `<X><Layout>{children}</Layout></X>`, or `<X>{children}</X>` without a `Layout`. Without `render` it passes children through as the scope's provider; with `render` it is the layout. Optional sugar: a `Layout` returning `undefined` renders `children`.
-7. **Route chunks.** Modules exporting only `Page`/`Layout`/`NotFound` (not root) load on first entry.
 
 MVP limits, on purpose: twins live until their tab context goes (no TTL sweeper); calls made while disconnected fail; one process; the default cookie provider only.
 

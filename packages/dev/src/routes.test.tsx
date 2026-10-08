@@ -65,10 +65,24 @@ describe("app/ routing (codegen)", () => {
     expect(out).toMatch(/<Route NotFound={NotFound} fallback={<RootLoading \/>} Catch={RootCatch}>\s*<Route as={Root} \/>/);
   });
 
-  it("(about) is a static leaf → to=\"about\"", async () => {
+  it("(about) is a static leaf → to=\"about\", loaded on demand", async () => {
     const out = await generate({ "index.tsx": PAGE, "(about).tsx": PAGE });
-    expect(out).toContain('import { Page as About } from "../app/(about).tsx";');
+    expect(out).toContain('const About = () => import("../app/(about).tsx").then(m => m.Page);');
     expect(out).toContain('<Route to="about" as={About} />');
+    expect(out).toContain('import { Page as Root } from "../app/index.tsx";');
+  });
+
+  it("a module exporting Loading or Catch is imported statically", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(about).tsx": `${PAGE}\n${LOADING}`, "(help).tsx": `${PAGE}\n${CATCH}` });
+    expect(out).toContain('import { Page as About, Loading as AboutLoading } from "../app/(about).tsx";');
+    expect(out).toContain('import { Page as Help, Catch as HelpCatch } from "../app/(help).tsx";');
+    expect(out).not.toContain("import(");
+  });
+
+  it("a nested Layout and NotFound load with their page", async () => {
+    const out = await generate({ "index.tsx": PAGE, "blog/index.tsx": `${PAGE}\n${LAYOUT}\n${NOTFOUND}`, "blog/[slug].tsx": PAGE });
+    expect(out).toContain('const BlogLayout = () => import("../app/blog/index.tsx").then(m => m.Layout);');
+    expect(out).toContain('const BlogNotFound = () => import("../app/blog/index.tsx").then(m => m.NotFound);');
   });
 
   it("[slug] is a dynamic segment → to=\":slug\"", async () => {

@@ -319,3 +319,23 @@ describe("nav cycle: async guard <-> class Page", () => {
     expect(root.querySelector("h1")?.textContent).toBe("post hello");
   });
 });
+
+describe("loaders", () => {
+  browserRouter();
+
+  it("renders a page whose module loads on demand", async () => {
+    const Page = () => <span>loaded</span>;
+    const Lazy = () => Promise.resolve({ Page }).then(m => m.Page);
+
+    const Tree = () => (
+      <Route>
+        <Route to="lazy" as={Lazy} fallback={<span>waiting</span>} />
+      </Route>
+    );
+
+    location("/lazy");
+    const root = await mount(Tree);
+    await settle();
+    expect(root.textContent).toBe("loaded");
+  });
+});
