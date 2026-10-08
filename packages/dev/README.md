@@ -19,9 +19,11 @@ index.html            optional custom shell (#root and the entry script are inje
 vite.config.ts        optional, merged under the host's config
 ```
 
-Bare-named files under `app/` are support modules, not routes. `Page` may be a function or
-`class Page extends Route` (from `@expressive/dev`), which owns its scope: read `this.match`,
-override `children`, set `Catch` / `NotFound`.
+Bare-named files under `app/` are support modules, not routes. `Page` may be a function, reading
+its params through `Route.get().match`, or `class Page extends Route` (from `@expressive/dev`) with
+`this.match`, its own fields and `render()`. That is the one intended use of `Route` - folders
+express nesting. dev's `Route` owns no suspense boundary unless given a `fallback` or `Catch`, so a
+page's waits show its slot's `Loading`.
 
 The `default` export is read by kind. A function is the entry hook: it runs with the Route before
 it renders, and a returned string redirects (`null` falls through to the 404). A class - State or
