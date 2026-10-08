@@ -581,10 +581,17 @@ describe('suspense and recovery', () => {
     const root = document.createElement('main');
     render(<App is={(value) => (app = value)} />, root);
 
+    const shown: string[] = [];
+
+    new MutationObserver((records) => {
+      for (const { addedNodes } of records) addedNodes.forEach((node) => shown.push(node.nodeName));
+    }).observe(root, { childList: true, subtree: true });
+
     pending(() => {
       app.nav.page = 'b';
     });
     await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(shown).toEqual([]);
     expect(root.textContent).toBe('A');
     expect(root.querySelector('h2')).toBeNull();
 
