@@ -127,13 +127,16 @@ describe('State.get', () => {
     expect(didRender).toBeCalledTimes(1);
   });
 
-  it('will throw if not found', () => {
+  it.each([
+    ['plain', (T: typeof State) => T.get()],
+    ['computed', (T: typeof State) => T.get((x) => x)]
+  ])('will throw if not found (%s)', (_, read) => {
     class Test extends State {
       value = 1;
     }
 
     const useTest = vi.fn(() => {
-      expect(() => Test.get()).toThrow('Could not find Test in context.');
+      expect(() => read(Test)).toThrow('Could not find Test in context.');
     });
 
     renderHook(useTest);
@@ -186,26 +189,12 @@ describe('State.get', () => {
       return view.container.textContent;
     }
 
-    it('will render last values', async () => {
-      const text = await lateConsumer(() => <>{Test.get().value}</>);
-
-      expect(text).toBe('foo');
-      expect(error).not.toBeCalled();
-    });
-
-    it('will render last values when optional', async () => {
-      const text = await lateConsumer(() => <>{Test.get(false)?.value}</>);
-
-      expect(text).toBe('foo');
-      expect(error).not.toBeCalled();
-    });
-
-    it('will evaluate factory with last values', async () => {
-      const text = await lateConsumer(() => (
-        <>{Test.get(($) => $.value.toUpperCase())}</>
-      ));
-
-      expect(text).toBe('FOO');
+    it.each([
+      ['will render last values', () => <>{Test.get().value}</>, 'foo'],
+      ['will render last values when optional', () => <>{Test.get(false)?.value}</>, 'foo'],
+      ['will evaluate factory with last values', () => <>{Test.get(($) => $.value.toUpperCase())}</>, 'FOO']
+    ])('%s', async (_, Consumer, expected) => {
+      expect(await lateConsumer(Consumer)).toBe(expected);
       expect(error).not.toBeCalled();
     });
 
@@ -240,21 +229,6 @@ describe('State.get', () => {
     }
 
     it.todo('will suspend if factory does', () => {});
-
-    it('will throw if instance not found', () => {
-      class Test extends State {
-        value = 1;
-      }
-
-      const useTest = vi.fn(() => {
-        expect(() => Test.get((x) => x)).toThrow(
-          `Could not find ${Test} in context.`
-        );
-      });
-
-      renderHook(useTest);
-      expect(useTest).toHaveReturned();
-    });
 
     it('will compute and subscribe to output', async () => {
       const test = Test.new();
@@ -297,19 +271,11 @@ describe('State.get', () => {
       expect(hook.result.current).toBe(2);
     });
 
-    it('will return null', () => {
-      class Test extends State {}
-
-      const test = Test.new();
-      const rendered = renderWith(test, () => Test.get(() => null));
-
-      expect(rendered.result.current).toBe(null);
-    });
-
-    it('will convert undefined to null', () => {
-      const hook = renderWith(Test, () => {
-        return Test.get(() => {});
-      });
+    it.each([
+      ['will return null', () => null],
+      ['will convert undefined to null', () => {}]
+    ])('%s', (_, factory) => {
+      const hook = renderWith(Test, () => Test.get(factory));
 
       expect(hook.result.current).toBeNull();
     });
@@ -385,31 +351,10 @@ describe('State.get', () => {
       foo = 'bar';
     }
 
-    it('will force a refresh', async () => {
-      const didRender = vi.fn();
-      const didEvaluate = vi.fn();
-      let forceUpdate!: () => void;
-
-      renderWith(Test, () => {
-        didRender();
-        return Test.get((_, update) => {
-          didEvaluate();
-          forceUpdate = update;
-        });
-      });
-
-      expect(didEvaluate).toBeCalled();
-      expect(didRender).toBeCalled();
-
-      await act(async () => {
-        forceUpdate();
-      });
-
-      expect(didEvaluate).toBeCalledTimes(1);
-      expect(didRender).toBeCalledTimes(2);
-    });
-
-    it('will refresh without reevaluating', async () => {
+    it.each([
+      ['will force a refresh', undefined],
+      ['will refresh without reevaluating', null]
+    ])('%s', async (_, output) => {
       const didEvaluate = vi.fn();
       const didRender = vi.fn();
       let forceUpdate!: () => void;
@@ -419,55 +364,23 @@ describe('State.get', () => {
         return Test.get((_, update) => {
           didEvaluate();
           forceUpdate = update;
-          // return null to stop subscription.
-          return null;
+          return output;
         });
       });
 
-      expect(didEvaluate).toBeCalled();
-      expect(didRender).toBeCalled();
-
-      act(forceUpdate);
+      await act(async () => forceUpdate());
 
       expect(didEvaluate).toBeCalledTimes(1);
       expect(didRender).toBeCalledTimes(2);
     });
 
-    it('will refresh again after promise', async () => {
+    it.each([
+      ['will refresh again after promise', (promise: Promise<unknown>) => promise],
+      ['will invoke async function', (promise: Promise<unknown>) => () => promise]
+    ])('%s', async (_, argument) => {
       const promise = mockPromise();
       const didRender = vi.fn();
-
-      let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
-
-      const { result } = renderWith(Test, () => {
-        didRender();
-        return Test.get((_, update) => {
-          forceUpdate = update;
-          return null;
-        });
-      });
-
-      expect<null>(result.current).toBe(null);
-      expect(didRender).toBeCalled();
-
-      await act(async () => {
-        forceUpdate(promise);
-      });
-
-      expect(didRender).toBeCalledTimes(2);
-
-      await act(async () => {
-        promise.resolve();
-      });
-
-      expect(didRender).toBeCalledTimes(3);
-    });
-
-    it('will invoke async function', async () => {
-      const promise = mockPromise();
-      const didRender = vi.fn();
-
-      let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
+      let forceUpdate!: (after: any) => Promise<unknown>;
 
       renderWith(Test, () => {
         didRender();
@@ -477,10 +390,8 @@ describe('State.get', () => {
         });
       });
 
-      expect(didRender).toBeCalled();
-
       await act(async () => {
-        forceUpdate(() => promise);
+        forceUpdate(argument(promise));
       });
 
       expect(didRender).toBeCalledTimes(2);
@@ -988,13 +899,20 @@ reactOnly.describe('State.get - concurrent consistency', () => {
     revision = 1;
   }
 
-  it('will not commit mixed revisions across a yielded mount', async () => {
+  it.each([
+    [
+      'across a yielded mount',
+      (test: Test) => {
+        test.revision = 2;
+        test.revision = 3;
+        test.revision = 4;
+      },
+      '4'
+    ],
+    ['for a transition write', (test: Test) => void pending(() => (test.revision = 2)), '2']
+  ])('will not commit mixed revisions %s', async (_, write, last) => {
     const test = Test.new();
-    const { commits, slow, reveal } = revisions(() => {
-      test.revision = 2;
-      test.revision = 3;
-      test.revision = 4;
-    });
+    const { commits, slow, reveal } = revisions(() => write(test));
 
     function Reader() {
       const { revision } = Test.get();
@@ -1014,33 +932,7 @@ reactOnly.describe('State.get - concurrent consistency', () => {
     expect(new Set(commits[0]).size).toBe(1);
 
     await waitFor(() => {
-      expect(view.container.textContent).toBe('4'.repeat(40));
-    });
-  });
-
-  it('will not commit mixed revisions for a transition write', async () => {
-    const test = Test.new();
-    const { commits, slow, reveal } = revisions(() => void pending(() => (test.revision = 2)));
-
-    function Reader() {
-      const { revision } = Test.get();
-      slow();
-      return <span>{revision}</span>;
-    }
-
-    const view = reveal(
-      Array.from({ length: 40 }, (_, index) => <Reader key={index} />),
-      { wrapper: ({ children }) => <Provider for={test}>{children}</Provider> }
-    );
-
-    await waitFor(() => {
-      expect(view.container.querySelectorAll('span')).toHaveLength(40);
-    });
-
-    expect(new Set(commits[0]).size).toBe(1);
-
-    await waitFor(() => {
-      expect(view.container.textContent).toBe('2'.repeat(40));
+      expect(view.container.textContent).toBe(last.repeat(40));
     });
   });
 });

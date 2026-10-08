@@ -163,7 +163,7 @@ describe('State.use', () => {
   });
 
   describe('mount method', () => {
-    it('will call once on commit and cleanup on unmount', () => {
+    it.each([false, true])('will call once on commit and cleanup on unmount (strict: %s)', (reactStrictMode) => {
       const didMount = vi.fn();
       const didUnmount = vi.fn();
 
@@ -174,32 +174,12 @@ describe('State.use', () => {
         }
       }
 
-      const element = renderHook(() => Test.use());
+      const element = renderHook(() => Test.use(), { reactStrictMode });
 
       element.rerender();
 
       expect(didMount).toBeCalledTimes(1);
       expect(didUnmount).not.toBeCalled();
-
-      element.unmount();
-
-      expect(didUnmount).toBeCalledTimes(1);
-    });
-
-    it('will not repeat under strict mode', () => {
-      const didMount = vi.fn();
-      const didUnmount = vi.fn();
-
-      class Test extends State {
-        mount() {
-          didMount();
-          return didUnmount;
-        }
-      }
-
-      const element = renderHook(() => Test.use(), { reactStrictMode: true });
-
-      expect(didMount).toBeCalledTimes(1);
 
       element.unmount();
 

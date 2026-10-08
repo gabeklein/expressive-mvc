@@ -160,7 +160,7 @@ describe('new method', () => {
 });
 
 describe('mount method', () => {
-  it('will call once on commit and cleanup on unmount', () => {
+  it.each([false, true])('will call once on commit and cleanup on unmount (strict: %s)', (reactStrictMode) => {
     const didMount = vi.fn();
     const didUnmount = vi.fn();
 
@@ -171,32 +171,12 @@ describe('mount method', () => {
       }
     }
 
-    const element = render(<Test />);
+    const element = render(<Test />, { reactStrictMode });
 
     element.rerender(<Test />);
 
     expect(didMount).toBeCalledTimes(1);
     expect(didUnmount).not.toBeCalled();
-
-    element.unmount();
-
-    expect(didUnmount).toBeCalledTimes(1);
-  });
-
-  it('will not repeat under strict mode', () => {
-    const didMount = vi.fn();
-    const didUnmount = vi.fn();
-
-    class Test extends Component {
-      mount() {
-        didMount();
-        return didUnmount;
-      }
-    }
-
-    const element = render(<Test />, { reactStrictMode: true });
-
-    expect(didMount).toBeCalledTimes(1);
 
     element.unmount();
 
@@ -637,74 +617,58 @@ describe('suspense', () => {
     expect(element).toHaveText('Hello World');
   });
 
-  it('fallback === false opts out of the boundary, bubbling to an ancestor', async () => {
+  it.each([
+    ['will bubble to an ancestor if fallback is false', false as const, 'OUTER'],
+    ['will catch its own subtree by default', <span>INNER</span>, 'INNER']
+  ])('%s', async (_, fallback, expected) => {
     const ready = mockPromise<void>();
     let done = false;
-    ready.then(() => { done = true; });
+
+    ready.then(() => (done = true));
+
     const Slow = () => {
       if (!done) throw ready;
       return <span>Hello World</span>;
     };
 
-    class Transparent extends Component {
-      fallback = false as const; // Suspense-transparent: no own boundary
+    class Boundary extends Component {
+      fallback = fallback;
     }
 
     const element = render(
       <React.Suspense fallback={<span>OUTER</span>}>
-        <Transparent>
+        <Boundary>
           <Slow />
-        </Transparent>
+        </Boundary>
       </React.Suspense>
     );
 
-    // own boundary opted out -> child suspension bubbles to the ancestor
-    expect(element).toHaveText('OUTER');
+    expect(element).toHaveText(expected);
 
-    await act(async () => { ready.resolve(); });
+    await act(async () => ready.resolve());
 
     expect(element).toHaveText('Hello World');
-  });
-
-  it('default boundary catches its own subtree (control for opt-out)', () => {
-    const Slow = () => { throw new Promise<void>(() => {}); }; // never resolves
-
-    class Own extends Component {
-      fallback = (<span>INNER</span>);
-    }
-
-    const element = render(
-      <React.Suspense fallback={<span>OUTER</span>}>
-        <Own>
-          <Slow />
-        </Own>
-      </React.Suspense>
-    );
-
-    // own boundary catches - never reaches OUTER
-    expect(element).toHaveText('INNER');
   });
 });
 
 describe('unmount', () => {
-  for (const reactStrictMode of [false, true])
-    it('will dispose instance' + (reactStrictMode ? ' (strict)' : ''), () => {
-      const didDispose = vi.fn();
+  it.each([false, true])('will dispose instance (strict: %s)', (reactStrictMode) => {
+    const didDispose = vi.fn();
 
-      class Control extends Component {
-        protected new() {
-          return didDispose;
-        }
+    class Control extends Component {
+      protected new() {
+        return didDispose;
       }
+    }
 
-      const element = render(<Control />, { reactStrictMode });
+    const element = render(<Control />, { reactStrictMode });
 
-      expect(didDispose).not.toBeCalled();
+    expect(didDispose).not.toBeCalled();
 
-      element.unmount();
+    element.unmount();
 
-      expect(didDispose).toBeCalled();
-    });
+    expect(didDispose).toBeCalled();
+  });
 });
 
 describe('state props on rerender', () => {
@@ -751,7 +715,10 @@ describe('state props on rerender', () => {
     expect(screen).toHaveText('bar');
   });
 
-  it('will own a fresh state passed as prop', () => {
+  it.each([
+    ['will own a fresh state passed as prop', false, true],
+    ['will not own an active state passed as prop', true, false]
+  ])('%s', (_, active, destroyed) => {
     class Thing extends State {
       value = 'foo';
     }
@@ -764,37 +731,14 @@ describe('state props on rerender', () => {
       }
     }
 
-    const thing = new Thing();
+    const thing = active ? Thing.new() : new Thing();
     const view = render(<Control thing={thing} />);
 
     expect(screen).toHaveText('foo');
 
     view.unmount();
 
-    expect(thing.get(null)).toBe(true);
-  });
-
-  it('will not own an active state passed as prop', () => {
-    class Thing extends State {
-      value = 'foo';
-    }
-
-    class Control extends Component {
-      thing?: Thing = undefined;
-
-      render() {
-        return <span>{this.thing!.value}</span>;
-      }
-    }
-
-    const thing = Thing.new();
-    const view = render(<Control thing={thing} />);
-
-    expect(screen).toHaveText('foo');
-
-    view.unmount();
-
-    expect(thing.get(null)).toBe(false);
+    expect(thing.get(null)).toBe(destroyed);
   });
 });
 
@@ -883,7 +827,7 @@ describe('subcomponents', () => {
     expect(screen).toHaveText('foo');
   });
 
-  it('will wrap PascalCase method as reactive component', async () => {
+  it.each([false, true])('will wrap PascalCase method as reactive component (strict: %s)', async (reactStrictMode) => {
     class Dashboard extends Component {
       label = 'Hello';
 
@@ -897,36 +841,7 @@ describe('subcomponents', () => {
     }
 
     let instance!: Dashboard;
-    render(<Dashboard is={(x) => (instance = x)} />);
-
-    expect(screen).toHaveText('Hello');
-
-    await act(async () => {
-      instance.label = 'Updated';
-    });
-
-    expect(screen).toHaveText('Updated');
-  });
-
-  it('will work in strict mode', async () => {
-    class Dashboard extends Component {
-      label = 'Hello';
-
-      Sidebar() {
-        return <span>{this.label}</span>;
-      }
-
-      render() {
-        return <this.Sidebar />;
-      }
-    }
-
-    let instance!: Dashboard;
-    const element = render(
-      <React.StrictMode>
-        <Dashboard is={(x) => (instance = x)} />
-      </React.StrictMode>
-    );
+    render(<Dashboard is={(x) => (instance = x)} />, { reactStrictMode });
 
     await flushMicrotasks();
 
@@ -937,8 +852,6 @@ describe('subcomponents', () => {
     });
 
     expect(screen).toHaveText('Updated');
-
-    element.unmount();
   });
 
   it('will be accessible via context get', () => {
@@ -966,8 +879,10 @@ describe('subcomponents', () => {
     expect(screen).toHaveText('Sidebar Content');
   });
 
-  it('will work with assigned function', async () => {
+  describe('assigned function', () => {
     class Dashboard extends Component {
+      content = 'value';
+
       Sidebar(): React.ReactNode {
         return null;
       }
@@ -980,102 +895,38 @@ describe('subcomponents', () => {
       }
     }
 
-    class MyDashboard extends Dashboard {
-      content = 'value';
+    function Sidebar(this: Dashboard) {
+      return <span>Sidebar {this.content}</span>;
+    }
+
+    class Field extends Dashboard {
       Sidebar = Sidebar;
-
-      new() {
-        dashboard = this;
-      }
-    }
-
-    function Sidebar(this: MyDashboard) {
-      return <span>Sidebar {this.content}</span>;
-    }
-
-    let dashboard!: MyDashboard;
-
-    render(<MyDashboard />);
-
-    expect(screen).toHaveText('Sidebar value');
-
-    await act(async () => {
-      dashboard.content = 'updated';
-    });
-
-    expect(screen).toHaveText('Sidebar updated');
-  });
-
-  it('will work with function assigned in constructor', async () => {
-    class Dashboard extends Component {
-      Sidebar(): React.ReactNode {
-        return null;
-      }
-
-      render() {
-        return <this.Sidebar />;
-      }
-    }
-
-    function Sidebar(this: Assigned) {
-      return <span>Sidebar {this.content}</span>;
     }
 
     class Assigned extends Dashboard {
-      content = 'value';
-
       constructor(props: {}) {
         super(props);
         this.Sidebar = Sidebar as any;
       }
     }
 
-    let instance!: Assigned;
+    it.each([
+      ['a class field', Field, undefined],
+      ['the constructor', Assigned, undefined],
+      ['activation', Dashboard, (x: Dashboard) => (x.Sidebar = Sidebar as any)]
+    ])('will wrap a function assigned in %s', async (_, Type, assign) => {
+      let instance!: Dashboard;
 
-    render(<Assigned is={(x) => (instance = x)} />);
+      render(<Type is={(x: any) => ((instance = x), assign?.(x))} />);
 
-    expect(screen).toHaveText('Sidebar value');
+      expect(screen).toHaveText('Sidebar value');
 
-    await act(async () => {
-      instance.content = 'updated';
+      await act(async () => {
+        instance.content = 'updated';
+      });
+
+      expect(screen).toHaveText('Sidebar updated');
     });
-
-    expect(screen).toHaveText('Sidebar updated');
-  });
-
-  it('will work with function assigned after activation', async () => {
-    class Dashboard extends Component {
-      content = 'value';
-
-      Sidebar(): React.ReactNode {
-        return null;
-      }
-
-      render() {
-        return <this.Sidebar />;
-      }
-    }
-
-    let instance!: Dashboard;
-
-    render(
-      <Dashboard
-        is={(x) => {
-          instance = x;
-          x.Sidebar = function (this: Dashboard) {
-            return <span>Sidebar {this.content}</span>;
-          };
-        }}
-      />
-    );
-
-    expect(screen).toHaveText('Sidebar value');
-
-    await act(async () => {
-      instance.content = 'updated';
-    });
-
-    expect(screen).toHaveText('Sidebar updated');
   });
 
   it('will allow override via setter', async () => {

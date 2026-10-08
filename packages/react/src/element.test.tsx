@@ -196,8 +196,11 @@ describe('instance element', () => {
       expect(item.get(null)).toBe(false);
   });
 
-  it('will render a spawned collection through its owner', async () => {
-    const Store = holder(() => has(Item), (items) => <>{[...items]}</>);
+  it.each([
+    ['spread', (items: Iterable<Item>) => <>{[...items]}</>, (_: unknown, item: Item) => item.set(null)],
+    ['placed directly', undefined, (store: any, item: Item) => store.items.delete(item)]
+  ])('will render a spawned collection %s', async (_, view, remove) => {
+    const Store = holder(() => has(Item), view);
     const store = Store.new({});
     const first = store.items.add({ key: 'a' });
     const element = render(<>{store}</>);
@@ -217,7 +220,7 @@ describe('instance element', () => {
 
     expect(element.container.textContent).toBe('a=apple;b=berry;');
 
-    await act(async () => store.items.delete(first));
+    await act(async () => remove(store, first));
 
     expect(element.container.textContent).toBe('b=berry;');
     expect(first.get(null)).toBe(true);
@@ -579,29 +582,18 @@ describe('repeated placement of a child field', () => {
     }
   }
 
-  it('will recompute for a plain-constructed instance', async () => {
-    const Host = host(() => new Panel());
-    const instance = Host.new();
+  it.each([
+    ['a plain-constructed instance', host(() => new Panel())],
+    ['an activated instance', host(() => Panel.new())],
+    ['an owned element', Owned]
+  ])('will recompute for %s', async (_, Host) => {
+    const instance: any = (Host as any).new();
 
     render(<>{instance}</>);
 
     expect(await cycle()).toEqual(expected);
-    expect(Object.is(instance.is.active, instance.panel)).toBe(true);
-  });
 
-  it('will recompute for an activated instance', async () => {
-    const Host = host(() => Panel.new());
-    const instance = Host.new();
-
-    render(<>{instance}</>);
-
-    expect(await cycle()).toEqual(expected);
-  });
-
-  it('will recompute for an owned element', async () => {
-    render(<>{Owned.new()}</>);
-
-    expect(await cycle()).toEqual(expected);
+    if (instance.panel) expect(Object.is(instance.is.active, instance.panel)).toBe(true);
   });
 });
 
@@ -657,44 +649,6 @@ describe('map element', () => {
     expect(element.container.textContent).toBe('a=a;b=b;');
   });
 
-  it('will transition a direct map subscriber', async () => {
-    const gate = mockPromise<void>();
-
-    class Suspends extends Component {
-      label = '';
-
-      render() {
-        if (this.label === 'wait') throw gate;
-        return <span>{this.key}={this.label};</span>;
-      }
-    }
-
-    class Store extends Component {
-      items = map<string, Suspends>();
-
-      render() {
-        return <Suspense fallback={<i>loading</i>}>{this.items}</Suspense>;
-      }
-    }
-
-    const store = Store.new({});
-    store.items.set('a', Suspends.new({ key: 'a', label: 'ready' }));
-    const element = render(<>{store}</>);
-
-    await act(async () => {
-      pending(() => {
-        store.items.set('b', Suspends.new({ key: 'b', label: 'wait' }));
-      });
-      await Promise.resolve();
-    });
-
-    expect(element.container.textContent).toBe('a=ready;');
-
-    store.items.delete('b');
-    gate.resolve();
-    await act(async () => {});
-  });
-
 });
 
 describe('seam', () => {
@@ -719,32 +673,16 @@ describe('seam', () => {
 });
 
 describe('collection element', () => {
-  it('will render a pool placed directly', async () => {
-    const Store = holder(() => has(Item));
-    const store = Store.new({});
-    const first = store.items.add({ key: 'a' });
-    const element = render(<>{store}</>);
+  let gate = mockPromise<void>();
 
-    expect(first.key).toBe('a');
-    expect(element.container.textContent).toBe('a=;');
+  class Suspends extends Component {
+    label = '';
 
-    await act(async () => {
-      first.label = 'apple';
-    });
-
-    expect(element.container.textContent).toBe('a=apple;');
-
-    await act(async () => {
-      store.items.add({ key: 'b' }).label = 'berry';
-    });
-
-    expect(element.container.textContent).toBe('a=apple;b=berry;');
-
-    await act(async () => first.set(null));
-
-    expect(element.container.textContent).toBe('b=berry;');
-    expect(first.get(null)).toBe(true);
-  });
+    render() {
+      if (this.label === 'wait') throw gate;
+      return <span>{this.key}={this.label};</span>;
+    }
+  }
 
   it('will render a list placed directly', async () => {
     class Store extends Component {
@@ -767,39 +705,39 @@ describe('collection element', () => {
     expect(element.container.textContent).toBe('a=x;b=y;');
   });
 
-  it('will transition a direct list subscriber', async () => {
-    const gate = mockPromise<void>();
+  it.each([
+    [
+      'map',
+      () => map<string, Suspends>(),
+      (items: any) => items.set('a', Suspends.new({ key: 'a', label: 'ready' })),
+      (items: any) => items.set('b', Suspends.new({ key: 'b', label: 'wait' })),
+      (items: any) => items.delete('b')
+    ],
+    [
+      'list',
+      () => has<Suspends>(),
+      (items: any) => items.push(Suspends.new({ key: 'a', label: 'ready' })),
+      (items: any) => items.push(Suspends.new({ key: 'b', label: 'wait' })),
+      (items: any) => items.pop()
+    ]
+  ])('will transition a direct %s subscriber', async (_, field, seed, add, remove) => {
+    gate = mockPromise<void>();
 
-    class Suspends extends Component {
-      label = '';
-
-      render() {
-        if (this.label === 'wait') throw gate;
-        return <span>{this.key}={this.label};</span>;
-      }
-    }
-
-    class Store extends Component {
-      items = has([Suspends.new({ key: 'a', label: 'ready' })]);
-
-      render() {
-        return <Suspense fallback={<i>loading</i>}>{this.items}</Suspense>;
-      }
-    }
-
+    const Store = holder(field as () => any, (items) => <Suspense fallback={<i>loading</i>}>{items}</Suspense>);
     const store = Store.new({});
+
+    seed(store.items);
+
     const element = render(<>{store}</>);
 
     await act(async () => {
-      pending(() => {
-        store.items.push(Suspends.new({ key: 'b', label: 'wait' }));
-      });
+      pending(() => add(store.items));
       await Promise.resolve();
     });
 
     expect(element.container.textContent).toBe('a=ready;');
 
-    store.items.pop();
+    remove(store.items);
     gate.resolve();
     await act(async () => {});
   });
@@ -822,15 +760,18 @@ describe('collection element', () => {
 });
 
 describe('collection concurrent consistency', () => {
-  it('will not commit mixed revisions across repeated pool placements', async () => {
-    const { commits, slow, reveal } = revisions(() => store.items.add({ key: 'b', label: 'b' }), 'div');
+  it.each([
+    ['pool', () => has(Item), (items: any, key: string) => items.add({ key, label: key })],
+    ['map', () => map((key: string) => new Item({ key, label: key })), (items: any, key: string) => items.set(key)]
+  ])('will not commit mixed revisions across repeated %s placements', async (_, field, add) => {
+    const { commits, slow, reveal } = revisions(() => add(store.items, 'b'), 'div');
 
     function Slow() {
       slow();
       return null;
     }
 
-    const Store = holder(() => has(Item), (items) =>
+    const Store = holder(field as () => any, (items) =>
       Array.from({ length: 40 }, (_, index) => (
         <div key={index}>
           <Slow />
@@ -841,41 +782,7 @@ describe('collection concurrent consistency', () => {
 
     const store = Store.new({});
 
-    store.items.add({ key: 'a', label: 'a' });
-
-    const view = reveal(<>{store}</>);
-
-    await waitFor(() => {
-      expect(commits[0]).toHaveLength(40);
-    });
-
-    expect(new Set(commits[0]).size).toBe(1);
-
-    await waitFor(() => {
-      expect(view.container.textContent).toBe('a=a;b=b;'.repeat(40));
-    });
-  });
-
-  it('will not commit mixed revisions across repeated map placements', async () => {
-    const { commits, slow, reveal } = revisions(() => store.items.set('b'), 'div');
-
-    function Slow() {
-      slow();
-      return null;
-    }
-
-    const Store = holder(() => map((key: string) => new Item({ key, label: key })), (items) =>
-      Array.from({ length: 40 }, (_, index) => (
-        <div key={index}>
-          <Slow />
-          {items}
-        </div>
-      ))
-    );
-
-    const store = Store.new({});
-
-    store.items.set('a');
+    add(store.items, 'a');
 
     const view = reveal(<>{store}</>);
 

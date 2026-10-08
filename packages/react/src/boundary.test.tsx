@@ -50,7 +50,7 @@ function flaky() {
 describe('error boundary', () => {
   mockError();
 
-  it('will recover when catch resolves', async () => {
+  it.each(['member', 'attribute'])('will recover through a %s catch', async (via) => {
     const child = flaky();
     const gate = mockPromise();
     const received = vi.fn();
@@ -63,41 +63,11 @@ describe('error boundary', () => {
     }
 
     const Boundary = boundary({
-      catch: onCatch,
+      catch: via === 'member' ? onCatch : undefined,
       render: () => <child.Child />
     });
 
-    render(<Boundary is={(i) => (instance = i)} catch={undefined} />);
-    await act(async () => {});
-
-    expect(screen).toHaveText('Oops');
-    expect(received).toHaveBeenCalledTimes(1);
-    expect(received.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(received).toHaveBeenCalledWith(expect.objectContaining({ message: 'boom' }), instance);
-
-    await act(async () => gate.resolve());
-
-    expect(screen).toHaveText('Recovered');
-  });
-
-  it('will recover through a catch attribute', async () => {
-    const child = flaky();
-    const gate = mockPromise();
-    const received = vi.fn();
-    let instance!: Component;
-
-    async function onCatch(error: Error, self: Component) {
-      received(error, self);
-      await gate;
-      child.fixed = true;
-    }
-
-    const Boundary = boundary({
-      catch: undefined,
-      render: () => <child.Child />
-    });
-
-    render(<Boundary is={(i) => (instance = i)} catch={onCatch} />);
+    render(<Boundary is={(i) => (instance = i)} catch={via === 'attribute' ? onCatch : undefined} />);
     await act(async () => {});
 
     expect(screen).toHaveText('Oops');
@@ -122,7 +92,7 @@ describe('error boundary', () => {
     expect(member).not.toHaveBeenCalled();
   });
 
-  it('will restore fallback after catch resolves', async () => {
+  it.each(['async', 'sync'])('will restore fallback after %s catch', async (mode) => {
     const gate = mockPromise();
     let throwing: any = new Error('boom');
     let instance!: Boundary;
@@ -130,7 +100,9 @@ describe('error boundary', () => {
     const Boundary = boundary({
       catch() {
         this.fallback = <span>Error Fallback</span>;
-        return gate.then(() => (throwing = null));
+
+        if (mode === 'sync') throwing = null;
+        else return gate.then(() => (throwing = null));
       },
       render() {
         if (throwing) throw throwing;
@@ -141,8 +113,10 @@ describe('error boundary', () => {
     render(<Boundary is={(i) => (instance = i)} />);
     await act(async () => {});
 
-    expect(screen).toHaveText('Error Fallback');
-    await act(async () => gate.resolve());
+    if (mode === 'async') {
+      expect(screen).toHaveText('Error Fallback');
+      await act(async () => gate.resolve());
+    }
 
     expect(screen).toHaveText('initial');
 
@@ -154,39 +128,14 @@ describe('error boundary', () => {
     expect(screen).toHaveText('Oops');
   });
 
-  it('will restore fallback after sync catch', async () => {
-    let throwing: any = new Error('boom');
-    let instance!: Boundary;
-
-    const Boundary = boundary({
-      catch() {
-        this.fallback = <span>Error Fallback</span>;
-        throwing = null;
-      },
-      render() {
-        if (throwing) throw throwing;
-        return <span>{this.value}</span>;
-      }
-    });
-
-    render(<Boundary is={(i) => (instance = i)} />);
-    await act(async () => {});
-
-    expect(screen).toHaveText('initial');
-
-    await act(async () => {
-      throwing = new Promise(() => {});
-      instance.value = 'trigger';
-    });
-
-    expect(screen).toHaveText('Oops');
-  });
-
-  it('will propagate if render throws after recovery', async () => {
+  it.each([
+    ['render throws after recovery', 'boom', () => mockPromise()],
+    ['catch rejects', 'recovery failed', () => Promise.reject(new Error('recovery failed'))]
+  ])('will propagate to parent boundary if %s', async (_, message, recover) => {
     const parentCatch = vi.fn();
-    const gate = mockPromise();
+    let pending!: Promise<unknown> & { resolve?: () => void };
 
-    const Inner = boundary({ catch: () => gate });
+    const Inner = boundary({ catch: () => (pending = recover()) });
     const Parent = boundary({
       fallback: 'Parent Caught',
       catch(error) {
@@ -197,33 +146,10 @@ describe('error boundary', () => {
     });
 
     render(<Parent />);
-
-    expect(screen).toHaveText('Oops');
-
-    await act(async () => gate.resolve());
+    await act(async () => pending.resolve?.());
 
     expect(screen).toHaveText('Parent Caught');
-    expect(parentCatch).toBeCalledWith('boom');
-  });
-
-  it('will propagate catch rejection to parent boundary', async () => {
-    const parentCatch = vi.fn();
-
-    const Inner = boundary({ catch: () => Promise.reject(new Error('recovery failed')) });
-    const Parent = boundary({
-      fallback: 'Parent Caught',
-      catch(error) {
-        parentCatch(error.message);
-        return new Promise<void>(() => {});
-      },
-      render: () => <Inner />
-    });
-
-    render(<Parent />);
-    await act(async () => {});
-
-    expect(screen).toHaveText('Parent Caught');
-    expect(parentCatch).toBeCalledWith('recovery failed');
+    expect(parentCatch).toBeCalledWith(message);
   });
 
   it('will escape the root if render throws after recovery', async () => {
@@ -296,31 +222,30 @@ describe('error boundary', () => {
     await act(async () => gate.resolve());
   });
 
-  for (const reactStrictMode of [false, true])
-    it('will dispose instance if unmounted in error state' + (reactStrictMode ? ' (strict)' : ''), async () => {
-      // React discards and retries the render pass on error, constructing a
-      // fresh instance; stale attempts are superseded (disposed) right away.
-      const disposed = new Set<Component>();
-      const made: Component[] = [];
+  it.each([false, true])('will dispose instance if unmounted in error state (strict: %s)', async (reactStrictMode) => {
+    // React discards and retries the render pass on error, constructing a
+    // fresh instance; stale attempts are superseded (disposed) right away.
+    const disposed = new Set<Component>();
+    const made: Component[] = [];
 
-      class Control extends boundary({ catch: () => new Promise(() => {}) }) {
-        new() {
-          made.push(this);
-          return () => disposed.add(this);
-        }
+    class Control extends boundary({ catch: () => new Promise(() => {}) }) {
+      new() {
+        made.push(this);
+        return () => disposed.add(this);
       }
+    }
 
-      const element = render(<Control />, { reactStrictMode });
+    const element = render(<Control />, { reactStrictMode });
 
-      expect(screen).toHaveText('Oops');
+    expect(screen).toHaveText('Oops');
 
-      const live = made.filter((c) => !disposed.has(c));
-      expect(live).toHaveLength(1);
+    const live = made.filter((c) => !disposed.has(c));
+    expect(live).toHaveLength(1);
 
-      element.unmount();
+    element.unmount();
 
-      expect(disposed.has(live[0])).toBe(true);
-    });
+    expect(disposed.has(live[0])).toBe(true);
+  });
 });
 
 describe('discarded render (issue #118)', () => {
