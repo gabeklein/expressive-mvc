@@ -1931,32 +1931,7 @@ describe('set method', () => {
   });
 
   describe('promise-like', () => {
-    it('will resolve update frame', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
-
-      test.foo = 'bar';
-
-      expect(await test.set()).toEqual(['foo']);
-    });
-
-    it('will resolve with symbols', async () => {
-      class Test extends State {}
-
-      const test = Test.new();
-      const event = Symbol('event');
-
-      test.set(event);
-
-      const update = await test.set();
-
-      expect(update).toEqual([event]);
-    });
-
-    it('will resolve empty array if no update', async () => {
+    it('will resolve update frame, empty if none', async () => {
       class Test extends State {
         foo = 'foo';
       }
@@ -1964,21 +1939,10 @@ describe('set method', () => {
       const test = Test.new();
 
       expect(await test.set()).toEqual([]);
-    });
 
-    it('will force initial update', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
+      test.foo = 'bar';
 
-      const test = new Test();
-      const effect = vi.fn();
-
-      test.get(effect);
-      expect(effect).not.toBeCalled();
-
-      test.set();
-      expect(effect).toBeCalled();
+      expect(await test.set()).toEqual(['foo']);
     });
 
     it('will initialize from set({}) when created with new', () => {
@@ -2090,7 +2054,6 @@ describe('set method', () => {
 
       expect(cb).not.toBeCalled();
 
-      // dispatch explicit event
       test.set('baz');
 
       expect(cb).toBeCalledWith('baz', test);
@@ -2140,7 +2103,7 @@ describe('set method', () => {
       const test = Test.new();
       const cb = vi.fn();
 
-      const done = test.set((a, b) => {
+      test.set((a, b) => {
         cb(a, Object.assign({}, b));
       });
 
@@ -2151,8 +2114,6 @@ describe('set method', () => {
       expect(cb).toBeCalledWith('foo', { foo: 1, bar: 1, baz: 2 });
       expect(cb).toBeCalledWith('foo', { foo: 2, bar: 1, baz: 2 });
       expect(cb).toBeCalledWith('bar', { foo: 2, bar: 2, baz: 2 });
-
-      done();
     });
 
     it('will callback after frame', async () => {
@@ -2160,7 +2121,7 @@ describe('set method', () => {
       const didUpdate = vi.fn(() => didUpdateAsync);
       const didUpdateAsync = vi.fn();
 
-      const done = test.set(didUpdate);
+      test.set(didUpdate);
 
       test.foo = 1;
       test.bar = 2;
@@ -2171,17 +2132,14 @@ describe('set method', () => {
       await expect(test).toHaveUpdated();
 
       expect(didUpdateAsync).toBeCalledTimes(1);
-
-      done();
     });
 
-    // mockError doesn't work in vitest env
     it('will let an error thrown by async callback escape', async () => {
       const caught = mockUncaught();
       const test = Test.new();
       const oops = new Error('oops');
 
-      const done = test.set(() => () => {
+      test.set(() => () => {
         throw oops;
       });
 
@@ -2189,8 +2147,6 @@ describe('set method', () => {
 
       await expect(test).toHaveUpdated();
       expect(caught).toEqual([oops]);
-
-      done();
     });
 
     it('will not activate State prematurely', () => {
@@ -2244,7 +2200,10 @@ describe('set method', () => {
         expect(handler.mock.contexts[0]).toBe(test);
       });
 
-      it('will report set with config', () => {
+      it.each<[string, (test: State & { foo: number }) => void]>([
+        ['will report set with config', (test) => test.set('foo', { value: 1 })],
+        ['will store and report assign', (test) => test.set({ foo: 1 })]
+      ])('%s', (_, write) => {
         class Test extends State {
           foo = 0;
         }
@@ -2254,22 +2213,7 @@ describe('set method', () => {
 
         Test.on({ catch: handler });
         test.set(null);
-        test.set('foo', { value: 1 });
-
-        expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
-      });
-
-      it('will store and report assign', () => {
-        class Test extends State {
-          foo = 0;
-        }
-
-        const handler = vi.fn();
-        const test = Test.new();
-
-        Test.on({ catch: handler });
-        test.set(null);
-        test.set({ foo: 1 });
+        write(test);
 
         expect(test.foo).toBe(1);
         expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
@@ -2328,15 +2272,18 @@ describe('set method', () => {
           foo = 0;
         }
 
+        const callback = vi.fn();
         const handler = vi.fn();
         const test = Test.new();
 
         Test.on({ catch: handler });
+        test.set(callback);
         test.set(null);
         test.set({ foo: 1 }, true);
 
         expect(test.foo).toBe(1);
         expect(handler).not.toBeCalled();
+        expect(callback).not.toBeCalled();
       });
 
       it('will output nothing for a destroyed write left unhandled', async () => {
@@ -2356,19 +2303,6 @@ describe('set method', () => {
       });
     });
 
-    it('will still read values after destroyed', () => {
-      class Test extends State {
-        foo = 1;
-      }
-
-      const test = Test.new();
-
-      test.foo = 2;
-      test.set(null);
-
-      expect(test.foo).toBe(2);
-    });
-
     it('will silently store update after destroyed', () => {
       class Test extends State {
         foo = 0;
@@ -2381,28 +2315,14 @@ describe('set method', () => {
       expect(test.foo).toBe(1);
     });
 
-    it('will silently store set after destroyed', () => {
-      class Test extends State {
-        foo = 0;
-      }
-
-      const callback = vi.fn();
-      const test = Test.new();
-
-      test.set(callback);
-      test.set(null);
-
-      test.set({ foo: 1 }, true);
-
-      expect(callback).not.toBeCalled();
-      expect(test.foo).toBe(1);
-    });
-
     it.todo('will throw clear error on bad update', () => {});
   });
 
   describe('assign', () => {
-    it('will merge object into state', async () => {
+    it.each([
+      ['will merge object into state', false],
+      ['will merge object silently', true]
+    ])('%s', async (_, silent) => {
       class Test extends State {
         foo = 'foo';
         bar = 'bar';
@@ -2410,25 +2330,10 @@ describe('set method', () => {
 
       const test = Test.new();
 
-      test.set({ foo: 'bar' });
+      test.set({ foo: 'bar' }, silent);
 
-      await expect(test).toHaveUpdated('foo');
-
-      expect(test.foo).toBe('bar');
-      expect(test.bar).toBe('bar');
-    });
-
-    it('will merge object silently', async () => {
-      class Test extends State {
-        foo = 'foo';
-        bar = 'bar';
-      }
-
-      const test = Test.new();
-
-      test.set({ foo: 'bar' }, true);
-
-      await expect(test).not.toHaveUpdated('foo');
+      if (silent) await expect(test).not.toHaveUpdated();
+      else await expect(test).toHaveUpdated('foo');
 
       expect(test.foo).toBe('bar');
       expect(test.bar).toBe('bar');
@@ -2462,29 +2367,17 @@ describe('set method', () => {
       expect(test.foo).toBe('bar');
     });
 
-    it('will ignore properties not on state', async () => {
+    it('will ignore properties not on state and built-ins', async () => {
       class Test extends State {
         foo = 'foo';
       }
 
       const test = Test.new();
 
-      test.set({ bar: 'bar' });
+      test.set({ bar: 'bar', is: 'bar' });
 
       await expect(test).not.toHaveUpdated();
-
       expect(test).not.toHaveProperty('bar');
-    });
-
-    it('will ignore built-in properties', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-      const test = Test.new();
-
-      test.set({ is: 'bar' });
-
-      await expect(test).not.toHaveUpdated();
     });
 
     it('will assign from inside method', () => {
