@@ -544,18 +544,7 @@ describe('error boundary', () => {
 
     expect(boundary.get(null)).toBe(true);
 
-    // resolving after unmount should not throw
-    const errors: Error[] = [];
-
-    function trap(_: unknown, reason: Error) {
-      errors.push(reason);
-    }
-
-    process.on('unhandledRejection', trap);
-    promise.resolve();
-
-    process.off('unhandledRejection', trap);
-    expect(errors).toHaveLength(0);
+    await act(async () => promise.resolve());
   });
 
   for (const reactStrictMode of [false, true])

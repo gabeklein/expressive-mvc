@@ -240,7 +240,9 @@ describe('update', () => {
   });
 
   it('will pass without next exports', async () => {
-    const { hot } = await run(source, { locals: { Store, Local: Store, Plain, App, value: 1 }, next: undefined });
+    const { hot } = await run(source, { locals: { Store, Local: Store, Plain, App, value: 1 } });
+
+    hot.accept.mock.calls[0][0](undefined);
 
     expect(hot.invalidate).not.toHaveBeenCalled();
   });
