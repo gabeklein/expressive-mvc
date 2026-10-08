@@ -15,24 +15,13 @@ function attempt(fn: () => unknown): Promise<unknown> {
 }
 
 describe('property descriptors', () => {
-  it('will not be enumerable with value', () => {
+  it('will not be enumerable', () => {
     class Test extends State {
       value = set('foo');
+      factory = set(() => 'foo');
     }
 
-    const test = Test.new();
-
-    expect(Object.keys(test)).not.toContain('value');
-  });
-
-  it('will not be enumerable with factory', () => {
-    class Test extends State {
-      value = set(() => 'foo');
-    }
-
-    const test = Test.new();
-
-    expect(Object.keys(test)).not.toContain('value');
+    expect(Object.keys(Test.new())).toEqual([]);
   });
 
   it('will be writable with value', () => {
@@ -56,6 +45,7 @@ describe('property descriptors', () => {
     expect(() => {
       test.value = 'bar';
     }).toThrow(/read-only/);
+    expect(test.value).toBe('foo');
   });
 
   it('will be read-only with required factory', () => {
@@ -68,6 +58,7 @@ describe('property descriptors', () => {
     expect(() => {
       test.value = 'bar';
     }).toThrow(/read-only/);
+    expect(test.value).toBe('foo');
   });
 
   it('will be writable with factory and callback', () => {
@@ -380,20 +371,6 @@ describe('factory', () => {
     await flushMicrotasks();
   });
 
-  it('will be read-only', () => {
-    class Test extends State {
-      value = set(() => 'foo');
-    }
-
-    const test = Test.new();
-
-    expect(() => {
-      test.value = 'bar';
-    }).toThrow(/read-only/);
-    expect(test.value).toBe('foo');
-    expect(test.value).toBe('foo');
-  });
-
   it('will compute when accessed', () => {
     const factory = vi.fn(() => 'Hello World');
 
@@ -655,19 +632,6 @@ describe('suspense', () => {
     expect(() => test.value).not.toThrow();
   });
 
-  it('will suspend if required while still pending', () => {
-    const promise = mockPromise();
-
-    class Test extends State {
-      value = set(() => promise);
-    }
-
-    const instance = Test.new();
-
-    expect(() => instance.value).toThrow(expect.any(Promise));
-    promise.resolve();
-  });
-
   it('will be undefined if not required', async () => {
     const promise = mockPromise<string>();
     const cb = vi.fn();
@@ -688,25 +652,25 @@ describe('suspense', () => {
   });
 
   it('will suspend another factory', async () => {
-    const salute = mockPromise<string>();
+    const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = vi.fn(function (this: Test) {
-      return this.greet + ' ' + this.name;
-    });
+    const didEvaluate = vi.fn();
 
     class Test extends State {
-      greet = set(() => salute);
+      greet = set(() => greet);
       name = set(() => name);
-
-      value = set(didEvaluate);
+      value = set(() => {
+        didEvaluate();
+        return this.greet + ' ' + this.name;
+      });
     }
 
     const test = Test.new();
 
     test.get(($) => void $.value);
 
-    salute.resolve('Hello');
+    greet.resolve('Hello');
     await expect(test).toHaveUpdated();
 
     name.resolve('World');

@@ -14,48 +14,26 @@ describe('property', () => {
     expect(Object.keys(test)).not.toContain('value');
   });
 
-  it('will contain value from ref-object', async () => {
+  it('will set and get value via current, call or get()', async () => {
     class Subject extends State {
       ref = ref<string>();
     }
 
     const state = Subject.new();
+
+    expect(state.ref.get()).toBeNull();
 
     state.ref.current = 'foobar';
+    expect(state.ref.get()).toBe('foobar');
+    await expect(state).toHaveUpdated('ref');
 
-    await expect(state).toHaveUpdated();
-    expect(state.ref.current).toBe('foobar');
-  });
-
-  it('will be callable to set value', async () => {
-    class Subject extends State {
-      ref = ref<string>();
-    }
-
-    const state = Subject.new();
-
-    state.ref('foobar');
-
-    await expect(state).toHaveUpdated();
-    expect(state.ref.current).toBe('foobar');
+    state.ref('baz');
+    await expect(state).toHaveUpdated('ref');
+    expect(state.ref.current).toBe('baz');
 
     state.ref(null);
-
-    await expect(state).toHaveUpdated();
+    await expect(state).toHaveUpdated('ref');
     expect(state.ref.current).toBeNull();
-  });
-
-  it('will invoke callback when called as function', async () => {
-    const didTrigger = vi.fn();
-
-    class Subject extends State {
-      ref = ref<string>(didTrigger);
-    }
-
-    const state = Subject.new();
-
-    state.ref('foobar');
-    expect(didTrigger).toBeCalledWith('foobar');
   });
 
   it('will reference parent', () => {
@@ -67,20 +45,6 @@ describe('property', () => {
 
     expect(state.ref.is).toBe(state);
     expect(state.ref.key).toBe('ref');
-  });
-
-  it('will get value from ref-object', async () => {
-    class Subject extends State {
-      ref = ref<string>();
-    }
-
-    const state = Subject.new();
-
-    expect(state.ref.get()).toBeNull();
-
-    state.ref.current = 'foobar';
-
-    expect(state.ref.get()).toBe('foobar');
   });
 
   it('will subscribe from ref-object', async () => {
@@ -101,27 +65,8 @@ describe('property', () => {
     expect(callback).toBeCalledWith('foobar');
   });
 
-  it('will watch "current" of property', async () => {
-    class Subject extends State {
-      ref = ref<string>();
-    }
-
-    const state = Subject.new();
-    const didCallback = vi.fn();
-
-    state.set((key) => {
-      if (key == 'ref') didCallback();
-    });
-
-    state.ref.current = 'foobar';
-
-    await expect(state).toHaveUpdated();
-    expect(didCallback).toBeCalledWith();
-  });
-
-  it('will invoke callback', async () => {
+  it('will invoke callback on assignment or call', async () => {
     const didTrigger = vi.fn();
-    const didUpdate = vi.fn();
 
     class Subject extends State {
       ref = ref<string>(didTrigger);
@@ -131,15 +76,12 @@ describe('property', () => {
 
     expect(didTrigger).not.toBeCalled();
 
-    state.set((key) => {
-      if (key == 'ref') didUpdate();
-    });
-
     state.ref.current = 'foobar';
     expect(didTrigger).toBeCalledWith('foobar');
+    await expect(state).toHaveUpdated('ref');
 
-    await expect(state).toHaveUpdated();
-    expect(didUpdate).toBeCalledWith();
+    state.ref('baz');
+    expect(didTrigger).toBeCalledWith('baz');
   });
 
   it('will invoke return-callback on overwrite', async () => {
@@ -223,29 +165,17 @@ describe('property', () => {
     expect(effect).not.toBeCalledWith('Hola Earth!');
   });
 
-  it('will export value of ref-properties', () => {
-    class Subject extends State {
-      ref = ref<string>();
-    }
-
-    const test = Subject.new();
-    const values = { ref: 'foobar' };
-
-    test.ref.current = values.ref;
-
-    expect(test.get()).toMatchObject(values);
-  });
-
-  it('will be accessible from a proxy', () => {
+  it('will export value and be accessible from a proxy', () => {
     class Subject extends State {
       ref = ref<string>();
     }
 
     const test = Subject.new();
 
-    test.get((state) => {
-      expect(state.ref).not.toBeUndefined();
-    });
+    test.ref.current = 'foobar';
+
+    expect(test.get()).toMatchObject({ ref: 'foobar' });
+    test.get((state) => expect(state.ref).not.toBeUndefined());
   });
 
   it.skip('will subscribe if current accessed', async () => {
@@ -277,47 +207,18 @@ describe('proxy', () => {
     refs = ref(this);
   }
 
-  it('will match properties', () => {
-    const test = Subject.new();
-
-    for (const key in test) expect(test.refs).toHaveProperty(key);
-  });
-
-  it('will not be enumerable', () => {
-    class Test extends State {
-      foo = 'foo';
-      refs = ref(this);
-    }
-
-    const test = Test.new();
-
-    expect(Object.keys(test)).not.toContain('refs');
-    expect(Object.keys(test)).toContain('foo');
-  });
-
-  it('will not contain other refs', () => {
-    class Test extends State {
-      foo = 'foo';
-      refs = ref(this);
+  it('will match properties and values, excluding refs', () => {
+    class Test extends Subject {
       other = ref(this);
     }
 
     const test = Test.new();
 
+    expect(Object.keys(test)).toEqual(['foo', 'bar']);
     expect(test.refs).not.toHaveProperty('refs');
     expect(test.refs).not.toHaveProperty('other');
-  });
 
-  it('will match values via current', () => {
-    const test = Subject.new();
-    const { refs } = test;
-
-    for (const key in test) {
-      const value = (test as any)[key];
-      const { current } = (refs as any)[key];
-
-      expect(current).toBe(value);
-    }
+    for (const key in test) expect((test.refs as any)[key].current).toBe((test as any)[key]);
   });
 
   it('will update values', async () => {
@@ -429,25 +330,16 @@ describe('mapped', () => {
     generateRef.mockClear();
   });
 
-  it('will run function for accessed keys', () => {
-    const test = Test.new();
-    const { fields } = test;
-
-    expect(fields.foo).toBe('foo');
-    expect(fields.bar).toBe('bar');
-
-    expect(generateRef).toBeCalledWith('foo', test);
-    expect(generateRef).toBeCalledWith('bar', test);
-  });
-
   it('will run function only for accessed property', () => {
     const test = Test.new();
     const { fields } = test;
 
     expect(fields.foo).toBe('foo');
-
     expect(generateRef).toBeCalledWith('foo', test);
     expect(generateRef).not.toBeCalledWith('bar', test);
+
+    expect(fields.bar).toBe('bar');
+    expect(generateRef).toBeCalledWith('bar', test);
   });
 
   it('will run function only once per property', () => {
@@ -484,9 +376,9 @@ describe('mapped', () => {
     expect(fields.foo).toBeDefined();
   });
 
-  it('will bind this to target state', () => {
-    const spy = vi.fn(function (this: any) {
-      return this;
+  it('will bind this to target state and pass it as second argument', () => {
+    const spy = vi.fn(function (this: any, _key: any, state: any) {
+      return [this, state];
     });
 
     class Test extends State {
@@ -496,21 +388,7 @@ describe('mapped', () => {
 
     const test = Test.new();
 
-    test.fields.foo;
-    expect(spy.mock.results[0].value).toBe(test);
-  });
-
-  it('will pass state as second argument', () => {
-    const spy = vi.fn((_key: any, state: any) => state);
-
-    class Test extends State {
-      foo = 'foo';
-      fields = ref(this, spy);
-    }
-
-    const test = Test.new();
-
-    expect(test.fields.foo).toBe(test);
+    expect(test.fields.foo).toEqual([test, test]);
     expect(spy).toBeCalledWith('foo', test);
   });
 

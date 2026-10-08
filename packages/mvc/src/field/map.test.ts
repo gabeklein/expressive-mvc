@@ -18,17 +18,13 @@ function managed(...args: any[]): any {
 }
 
 describe('factory', () => {
-  it('will create empty map', () => {
+  it('will create empty map of class identity', () => {
     const items = managed<string, number>();
 
     expect(items).toBeInstanceOf(Map);
-    expect(items.size).toBe(0);
-  });
-
-  it('will construct mode as class identity', () => {
-    expect(managed<string, number>()).toBeInstanceOf(map.Managed);
+    expect(items).toBeInstanceOf(map.Managed);
     expect(managed((key: string) => key)).toBeInstanceOf(map.Managed);
-    expect(managed<string, number>()).toBeInstanceOf(Map);
+    expect(items.size).toBe(0);
   });
 
   it('will accept entries', () => {
@@ -53,51 +49,39 @@ describe('factory', () => {
   });
 
   it('will treat falsy initial as empty', () => {
+    class Test extends State {
+      items = map<string, number>(null);
+    }
+
     expect(managed<string, number>(null).size).toBe(0);
     expect(managed<string, number>(false).size).toBe(0);
+    expect(Test.new().items.size).toBe(0);
   });
 });
 
 describe('map', () => {
-  it('will get and set values', () => {
+  it('will get, set, delete and clear values', () => {
     const items = managed<string, number>();
 
     expect(items.set('a', 1)).toBe(items);
     expect(items.get('a')).toBe(1);
-  });
-
-  it('will delete values', () => {
-    const items = managed([['a', 1]]);
-
     expect(items.delete('a')).toBe(true);
     expect(items.delete('a')).toBe(false);
     expect(items.has('a')).toBe(false);
-  });
 
-  it('will clear values', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
-    items.clear();
+    items.set('a', 1).set('b', 2).clear();
 
     expect(items.size).toBe(0);
   });
 
-  it('will support object keys', () => {
+  it('will support object and undefined keys', () => {
     const key = {};
-    const items = managed([[key, 'value']]);
+    const items = managed<object | undefined, string>([[key, 'value']]);
+
+    items.set(undefined, 'other');
 
     expect(items.get(key)).toBe('value');
-  });
-
-  it('will support undefined keys', () => {
-    const items = managed<undefined, string>();
-
-    items.set(undefined, 'value');
-
-    expect(items.get(undefined)).toBe('value');
+    expect(items.get(undefined)).toBe('other');
   });
 
   it('will return snapshot from get with no args', () => {
@@ -121,18 +105,10 @@ describe('map', () => {
 
     expect(() => (items as any).add(1)).toThrow(TypeError);
   });
-
-  it('will resolve falsy initial as empty field', () => {
-    class Test extends State {
-      items = map<string, number>(null);
-    }
-
-    expect(Test.new().items.size).toBe(0);
-  });
 });
 
 describe('iteration', () => {
-  it('will iterate entries', () => {
+  it('will iterate entries, keys and values', () => {
     const items = managed([
       ['a', 1],
       ['b', 2]
@@ -146,23 +122,7 @@ describe('iteration', () => {
       ['a', 1],
       ['b', 2]
     ]);
-  });
-
-  it('will iterate keys', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
     expect(Array.from(items.keys())).toEqual(['a', 'b']);
-  });
-
-  it('will iterate values', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
     expect(Array.from(items.values())).toEqual([1, 2]);
   });
 
@@ -216,32 +176,19 @@ describe('create', () => {
     expect(items.size).toBe(1);
   });
 
-  it('will destroy owned state on delete', () => {
+  it('will destroy owned state on delete and clear', () => {
     const items = managed((key: string) => new Item());
-
-    items.set('a');
-    const item = items.get('a')!;
-
-    expect(item.get(null)).toBe(false);
+    const [a, b, c] = ['a', 'b', 'c'].map((key) => items.set(key).get(key)!);
 
     items.delete('a');
 
-    expect(item.get(null)).toBe(true);
-  });
-
-  it('will destroy owned state on clear', () => {
-    const items = managed((key: string) => new Item());
-
-    items.set('a');
-    items.set('b');
-
-    const a = items.get('a')!;
-    const b = items.get('b')!;
+    expect(a.get(null)).toBe(true);
+    expect(b.get(null)).toBe(false);
 
     items.clear();
 
-    expect(a.get(null)).toBe(true);
     expect(b.get(null)).toBe(true);
+    expect(c.get(null)).toBe(true);
   });
 
   it('will pass guest through factory unowned', () => {
@@ -279,36 +226,15 @@ describe('create', () => {
 });
 
 describe('transforms', () => {
-  it('will map values through callback', () => {
+  it('will map values, keys and entries through callback', () => {
     const items = managed([
       ['a', 1],
       ['b', 2]
     ]);
 
-    const doubled = items.values((value, key) => `${key}:${value * 2}`);
-
-    expect(Array.from(doubled)).toEqual(['a:2', 'b:4']);
-  });
-
-  it('will map keys and entries through callback', () => {
-    const items = managed([['a', 1]]);
-
-    expect(Array.from(items.keys((key) => key.toUpperCase()))).toEqual(['A']);
-    expect(Array.from(items.entries(([key, value]) => key + value))).toEqual([
-      'a1'
-    ]);
-  });
-
-  it('will iterate transform more than once', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
-    const values = items.values((value) => value);
-
-    expect(Array.from(values)).toEqual([1, 2]);
-    expect(Array.from(values)).toEqual([1, 2]);
+    expect(Array.from(items.values((value, key) => `${key}:${value * 2}`))).toEqual(['a:2', 'b:4']);
+    expect(Array.from(items.keys((key) => key.toUpperCase()))).toEqual(['A', 'B']);
+    expect(Array.from(items.entries(([key, value]) => key + value))).toEqual(['a1', 'b2']);
   });
 
   it('will reflect current state on each iteration', () => {
@@ -419,33 +345,24 @@ describe('adoption', () => {
     expect(second.members.set('a').get('a')!.owner).toBe(second);
   });
 
-  it('will destroy owned members with owner', () => {
-    class Owner extends State {
-      items = map((key: string) => new Item());
-    }
-
-    const owner = Owner.new();
-    const a = owner.items.set('a').get('a')!;
-    const b = owner.items.set('b').get('b')!;
-
-    owner.set(null);
-
-    expect(a.get(null)).toBe(true);
-    expect(b.get(null)).toBe(true);
-  });
-
-  it('will not destroy guests with owner', () => {
+  it('will destroy owned members but not guests with owner', () => {
     class Owner extends State {
       items = map<string, Item>();
+      spawn = map((key: string) => new Item());
     }
 
     const owner = Owner.new();
+    const a = owner.spawn.set('a').get('a')!;
+    const b = owner.spawn.set('b').get('b')!;
     const guest = Item.new();
 
     owner.items.set('g', guest);
     owner.set(null);
 
+    expect(a.get(null)).toBe(true);
+    expect(b.get(null)).toBe(true);
     expect(guest.get(null)).toBe(false);
+    expect(owner.spawn.size).toBe(0);
   });
 
   it('will evict guest when it dies', () => {
@@ -519,19 +436,6 @@ describe('adoption', () => {
 
     expect(() => ((owner as any).items = null)).toThrow('is read-only');
     expect(owner.items).toBeInstanceOf(Map);
-  });
-
-  it('will clear map when owner dies', () => {
-    class Owner extends State {
-      items = map((key: string) => new Item());
-    }
-
-    const owner = Owner.new();
-
-    owner.items.set('a');
-    owner.set(null);
-
-    expect(owner.items.size).toBe(0);
   });
 
   it('will adopt fresh value stored via set', () => {

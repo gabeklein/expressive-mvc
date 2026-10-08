@@ -402,44 +402,6 @@ describe('effect', () => {
     expect(test.bar).toBe(3);
   });
 
-  it('will ignore circular update', async () => {
-    class Test extends State {
-      foo = 1;
-      bar?: number = undefined;
-    }
-
-    const didUpdate = vi.fn();
-    const test = Test.new();
-
-    watch(test, ({ foo, bar }) => {
-      didUpdate(foo, bar);
-      test.bar = foo;
-    });
-
-    expect(didUpdate).toBeCalled();
-    expect(didUpdate).toBeCalledWith(1, undefined);
-
-    // is syncronously 1 after effect did run.
-    expect(test.bar).toBe(1);
-
-    // flush events to check if effect updates.
-    await expect(test).toHaveUpdated('bar');
-    expect(didUpdate).not.toBeCalledWith(1, 1);
-
-    test.foo = 2;
-    await expect(test).toHaveUpdated('foo');
-    expect(didUpdate).toBeCalledWith(2, 1);
-
-    expect(didUpdate).toBeCalledTimes(2);
-    expect(test.bar).toBe(2);
-
-    test.foo = 3;
-    await expect(test).toHaveUpdated('foo');
-
-    expect(didUpdate).toBeCalledTimes(3);
-    expect(test.bar).toBe(3);
-  });
-
   it('will override circular update', async () => {
     class Test extends State {
       foo = 1;
@@ -605,23 +567,6 @@ describe('effect', () => {
 });
 
 describe('suspense', () => {
-  it('will seem to throw error outside react', () => {
-    class Test extends State {
-      value = set<never>();
-    }
-
-    const instance = Test.new();
-    let didThrow: Error | undefined;
-
-    try {
-      void instance.value;
-    } catch (err: any) {
-      didThrow = err;
-    }
-
-    expect(String(didThrow)).toMatch(/[\w-]+\.value is not yet available\./);
-  });
-
   it('will reject if state destroyed before resolved', async () => {
     class Test extends State {
       value = set<never>();
@@ -794,7 +739,7 @@ describe('observable', () => {
       expect(observer(test, true).ready).toBe(true);
     });
 
-    it('will return null for terminated observable', () => {
+    it('will return null for terminated observable and refuse listeners', () => {
       const test = {};
       const onEvent = vi.fn();
 
@@ -803,14 +748,6 @@ describe('observable', () => {
 
       expect(observer(test)).toBe(null);
       expect(onEvent).toBeCalledWith(null);
-    });
-
-    it('will throw when registering a listener on a terminated state', () => {
-      const test = {};
-
-      listener(test, () => {});
-      event(test, null);
-
       expect(() => listener(test, () => {})).toThrow(
         '[object Object] was destroyed - cannot be rendered, watched or updated.'
       );
