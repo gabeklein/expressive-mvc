@@ -63,3 +63,22 @@ test("loads a route module on first entry", async ({ page, open }) => {
   await expect(page.getByRole("heading")).toHaveText("About");
   expect(loaded.some(path => path.includes("(about)"))).toBe(true);
 });
+
+test("shows the layout's Loading while a page's code arrives on a cold load", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>(done => (release = done));
+  const chunk = (url: URL) => decodeURIComponent(url.pathname).includes("(about)") && !url.pathname.endsWith("/about");
+
+  await page.route(chunk, async route => {
+    await held;
+    await route.continue();
+  });
+
+  await page.goto("/about");
+  await expect(page.getByRole("navigation")).toBeVisible();
+  await expect(page.getByText("Loading…")).toBeVisible();
+
+  release();
+  await expect(page.getByRole("heading")).toHaveText("About");
+  await expect(page.getByText("Loading…")).toHaveCount(0);
+});
