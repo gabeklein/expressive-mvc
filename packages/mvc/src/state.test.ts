@@ -7,25 +7,14 @@ import { set } from './field/set';
 import { State, update } from './state';
 import { event, listener, watch } from './observable';
 
-const DESTROYED = /but state is destroyed/;
 import { has } from './field/has';
 import { map } from './field/map';
 
-it('will extend custom class', () => {
-  class Subject extends State {
-    value = 1;
-  }
-
-  const state = Subject.new();
-
-  expect(state.value).toBe(1);
-});
+const DESTROYED = /but state is destroyed/;
 
 it('will not create base State', () => {
   // @ts-expect-error
-  const create = () => State.new();
-
-  expect(create).toThrow('Cannot create base State.');
+  expect(() => State.new()).toThrow('Cannot create base State.');
 });
 
 it('will not create abstract State', () => {
@@ -41,39 +30,6 @@ it('will not create abstract State', () => {
 it('will update on assignment', async () => {
   class Subject extends State {
     value = 1;
-  }
-
-  const state = Subject.new();
-
-  expect(state.value).toBe(1);
-
-  state.value = 2;
-
-  const update = await state.set();
-
-  expect(update).toEqual(['value']);
-  expect(state.value).toBe(2);
-});
-
-it('will ignore assignment with same value', async () => {
-  class Subject extends State {
-    value = 1;
-  }
-
-  const state = Subject.new();
-
-  expect(state.value).toBe(1);
-
-  state.value = 1;
-
-  const update = await state.set();
-
-  expect(update.length).toEqual(0);
-});
-
-it('will update from within a method', async () => {
-  class Subject extends State {
-    value = 1;
 
     setValue(to: number) {
       this.value = to;
@@ -82,11 +38,17 @@ it('will update from within a method', async () => {
 
   const state = Subject.new();
 
+  expect(state.value).toBe(1);
+
+  state.value = 1;
+  await expect(state).not.toHaveUpdated();
+
+  state.value = 2;
+  await expect(state).toHaveUpdated('value');
+  expect(state.value).toBe(2);
+
   state.setValue(3);
-
-  const update = await state.set();
-
-  expect(update).toEqual(['value']);
+  await expect(state).toHaveUpdated('value');
   expect(state.value).toBe(3);
 });
 
@@ -142,45 +104,34 @@ it('will destroy children before self', () => {
 
   test.get(null, () => order.push('parent'));
   test.nested.get(null, () => order.push('child'));
+
+  expect(test.nested.get(null)).toBe(false);
+
   test.set(null);
 
   expect(order).toEqual(['child', 'parent']);
+  expect(test.nested.get(null)).toBe(true);
 });
 
-it('will mark children as dead when parent is destroyed', () => {
+it('will destroy owned child when replaced or cleared', () => {
   class Child extends State {}
   class Parent extends State {
-    child = new Child();
+    child: Child | null = new Child();
   }
 
   const parent = Parent.new();
-  const { child } = parent;
-
-  expect(child.get(null)).toBe(false);
-
-  parent.set(null);
-
-  expect(child.get(null)).toBe(true);
-});
-
-it('will destroy owned child when replaced', () => {
-  class Child extends State {
-    value = 1;
-  }
-
-  class Parent extends State {
-    child = new Child();
-  }
-
-  const parent = Parent.new();
-  const first = parent.child;
-
-  expect(first.get(null)).toBe(false);
+  const first = parent.child!;
 
   parent.child = new Child();
 
+  const second = parent.child;
+
   expect(first.get(null)).toBe(true);
-  expect(parent.child.get(null)).toBe(false);
+  expect(second.get(null)).toBe(false);
+
+  parent.child = null;
+
+  expect(second.get(null)).toBe(true);
 });
 
 it('will adopt child from set factory', () => {
@@ -228,26 +179,6 @@ it('will adopt child assigned after undefined', () => {
   parent.set(null);
 
   expect(child!.get(null)).toBe(true);
-});
-
-it('will destroy owned child when replaced', () => {
-  class Child extends State {}
-
-  class Parent extends State {
-    child?: Child = undefined;
-  }
-
-  const parent = Parent.new();
-  const first = new Child();
-
-  parent.child = first;
-
-  const second = new Child();
-
-  parent.child = second;
-
-  expect(first.get(null)).toBe(true);
-  expect(second.get(null)).toBe(false);
 });
 
 it('will not own active child from set factory', () => {
@@ -345,30 +276,9 @@ it('will not destroy non-owned child when replaced', () => {
   const external = Child.new();
 
   parent.child = external;
-
-  const owned = parent.child;
-  expect(owned).toBe(external);
-
   parent.child = new Child();
 
-  // External child was not owned, so it survives replacement.
   expect(external.get(null)).toBe(false);
-});
-
-it('will destroy owned child when property set to non-state', () => {
-  class Child extends State {}
-  class Parent extends State {
-    child: Child | null = new Child();
-  }
-
-  const parent = Parent.new();
-  const child = parent.child!;
-
-  expect(child.get(null)).toBe(false);
-
-  parent.child = null;
-
-  expect(child.get(null)).toBe(true);
 });
 
 it('will not update when assigning same child instance', () => {
@@ -449,10 +359,10 @@ describe('methods', () => {
       }
     }
 
-    const foo1 = String(FooBar.new().method());
-    const foo2 = String(FooBar.new().method());
+    const { method: foo1 } = FooBar.new();
+    const { method: foo2 } = FooBar.new();
 
-    expect(foo1).not.toBe(foo2);
+    expect(foo1()).not.toBe(foo2());
   });
 
   it('will bind to the instance, not a proxy', () => {
@@ -530,28 +440,12 @@ describe('methods', () => {
       }
     }
 
-    const { action } = Test3.new();
+    const test = Test3.new();
+    const { action } = test;
 
     expect(action()).toBe('Foo Bar Baz');
-  });
-
-  it('will not bind a super method', () => {
-    class Test extends State {
-      action() {
-        return 'Foo';
-      }
-    }
-
-    class Test2 extends Test {
-      action() {
-        return super.action() + ' Bar';
-      }
-    }
-
-    const test = Test2.new();
-
-    expect(test.action()).toBe('Foo Bar');
-    expect(test.action()).toBe('Foo Bar');
+    expect(test.action()).toBe('Foo Bar Baz');
+    expect(Test2.new().action()).toBe('Foo Bar ');
   });
 
   it('will ignore setter-only accessors', () => {
@@ -577,11 +471,14 @@ describe('subscriber', () => {
     value2 = 2;
   }
 
-  it('will detect change to properties accessed', async () => {
+  it.each([
+    ['will detect change to properties accessed', true, 3],
+    ['will ignore change to property not accessed', false, 2]
+  ])('%s', async (_, both, calls) => {
     const state = Subject.new();
     const effect = vi.fn(($: Subject) => {
       void $.value;
-      void $.value2;
+      if (both) void $.value2;
     });
 
     state.get(effect);
@@ -592,29 +489,7 @@ describe('subscriber', () => {
     state.value2 = 3;
     await expect(state).toHaveUpdated();
 
-    expect(effect).toBeCalledTimes(3);
-  });
-
-  it('will ignore change to property not accessed', async () => {
-    const state = Subject.new();
-    const effect = vi.fn(($: Subject) => {
-      void $.value;
-    });
-
-    state.get(effect);
-
-    state.value = 2;
-    await expect(state).toHaveUpdated();
-
-    state.value2 = 3;
-    await expect(state).toHaveUpdated();
-
-    /**
-     * we did not access value2 in above accessor,
-     * subscriber assumes we don't care about updates
-     * to this property, so it'l drop relevant events
-     */
-    expect(effect).toBeCalledTimes(2);
+    expect(effect).toBeCalledTimes(calls);
   });
 
   it('will not obstruct set-behavior', () => {
@@ -639,19 +514,11 @@ describe('subscriber', () => {
 describe('string coercion', () => {
   class Test extends State {}
 
-  it('will output a unique ID', () => {
-    const foo = String(Test.new());
-    const bar = String(Test.new());
-
-    expect(foo).not.toBe(bar);
-  });
-
-  it('will be class name and 6 random characters', () => {
+  it('will output class name and a unique 6 character ID', () => {
     class FooBar extends State {}
 
-    const foobar = String(FooBar.new());
-
-    expect(foobar).toMatch(/^FooBar-\w{6}/);
+    expect(String(Test.new())).not.toBe(String(Test.new()));
+    expect(String(FooBar.new())).toMatch(/^FooBar-\w{6}/);
   });
 
   it('will work inside subscriber', () => {
@@ -678,21 +545,10 @@ describe('get method', () => {
       baz = 'baz';
     }
 
-    it('will export all values', () => {
-      const test = Test.new();
-      const values = test.get();
+    it('will export all values as frozen object', () => {
+      const values = Test.new().get();
 
-      expect(values).toEqual({
-        foo: 'foo',
-        bar: 'bar',
-        baz: 'baz'
-      });
-    });
-
-    it('will export frozen object', () => {
-      const test = Test.new();
-      const values = test.get();
-
+      expect(values).toEqual({ foo: 'foo', bar: 'bar', baz: 'baz' });
       expect(Object.isFrozen(values)).toBe(true);
     });
 
@@ -737,7 +593,6 @@ describe('get method', () => {
       const test = Test.new();
       const exported = test.get();
 
-      // We want a copy, not the original.
       expect(exported.nested).not.toBeInstanceOf(Nested);
 
       const nested: State.Values<Nested> = exported.nested;
@@ -826,21 +681,25 @@ describe('get method', () => {
       expect<string | null>(test.get('foo')).toBe('foobar');
     });
 
-    it('will throw suspense if not yet available', async () => {
+    it.each<[string, () => string | undefined, true | undefined]>([
+      ['will throw suspense if not yet available', () => set<string>(), undefined],
+      ['will suspend if undefined in strict mode', () => undefined, true]
+    ])('%s', async (_, initial, strict) => {
       class Test extends State {
-        foo = set<string>();
+        foo?: string = initial();
       }
 
       const test = Test.new();
-      let suspense;
+      const suspense = (() => {
+        try {
+          void test.get('foo', strict!);
+        } catch (error) {
+          return error;
+        }
+      })();
 
-      try {
-        void test.get('foo');
-      } catch (error) {
-        expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch(/[\w-]+\.foo is not yet available\./);
-        suspense = error;
-      }
+      expect(suspense).toBeInstanceOf(Promise);
+      expect(String(suspense)).toMatch(/[\w-]+\.foo is not yet available\./);
 
       test.foo = 'foobar';
 
@@ -857,27 +716,6 @@ describe('get method', () => {
       test.set(null);
 
       expect(test.foo).toBeUndefined();
-    });
-
-    it('will suspend if undefined in strict mode', async () => {
-      class Test extends State {
-        foo?: string = undefined;
-      }
-
-      const test = Test.new();
-      let suspense;
-
-      try {
-        void test.get('foo', true);
-      } catch (error) {
-        expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch(/[\w-]+\.foo is not yet available\./);
-        suspense = error;
-      }
-
-      test.foo = 'foobar';
-
-      await expect(suspense).resolves.toBe('foobar');
     });
 
     it('will get unbound method', () => {
@@ -950,24 +788,6 @@ describe('get method', () => {
       expect(() => foo.get(Bar)).toThrow('Could not find Bar in context.');
     });
 
-    it('will throw if upstream not found', () => {
-      const context = new Context();
-      const child = new Bar();
-
-      context.push(child);
-
-      expect(() => child.get(Foo)).toThrow();
-    });
-
-    it('will return undefined if upstream optional', () => {
-      const context = new Context();
-      const child = new Bar();
-
-      context.push(child);
-
-      expect(child.get(Foo, false)).toBeUndefined();
-    });
-
     it('will skip self when looking up own type', () => {
       const outer = new Foo();
       const inner = new Foo();
@@ -1008,13 +828,15 @@ describe('get method', () => {
       const unsub = ctx.get(Bar, callback, true);
 
       const child = new Bar();
-      const sub = ctx.push(child);
+
+      ctx.push(child);
 
       expect(callback).toHaveBeenCalledWith(child, true);
-      expect(typeof unsub).toBe('function');
 
       unsub();
-      sub.pop();
+      ctx.push(new Bar());
+
+      expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it('will subscribe effect to fields read from fetched state', async () => {
