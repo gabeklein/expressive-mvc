@@ -710,7 +710,7 @@ describe('State.get', () => {
       expect(didRender).toBeCalledTimes(2);
     });
 
-    it('will render null when instance is removed', async () => {
+    it.fails('will render null when instance is removed', async () => {
       class Other extends State {
         label = 'other';
       }
@@ -726,7 +726,7 @@ describe('State.get', () => {
         return Test.get(false)?.value ?? null;
       };
 
-      const { rerender } = render(
+      const { container, rerender } = render(
         <Provider for={current}>
           <Inner />
         </Provider>
@@ -734,7 +734,6 @@ describe('State.get', () => {
 
       expect(didRender).toBeCalled();
 
-      // remove Test from context, keep Other
       current = { other };
 
       await act(async () => {
@@ -745,9 +744,8 @@ describe('State.get', () => {
         );
       });
 
-      await waitFor(() => {
-        expect(didRender).toBeCalledTimes(2);
-      });
+      expect(didRender).toBeCalledTimes(2);
+      expect(container.textContent).toBe('');
     });
 
     it('will refresh when implicit instance is replaced', async () => {

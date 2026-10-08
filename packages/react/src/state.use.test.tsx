@@ -484,6 +484,24 @@ describe('State.use', () => {
       expect(foobar).toBe(mockExternal.foobar);
     });
 
+    it('will apply props over methods', () => {
+      class Test extends State {
+        foobar() {
+          return 'Hello world!';
+        }
+      }
+
+      const { result, rerender } = renderHook((props) => Test.use(props), {
+        initialProps: { foobar: () => 'Goodbye cruel world!' }
+      });
+
+      expect(result.current.foobar()).toBe('Goodbye cruel world!');
+
+      rerender({ foobar: () => 'Again' });
+
+      expect(result.current.foobar()).toBe('Again');
+    });
+
     it('will not trigger updates it caused', async () => {
       const didRender = vi.fn();
       const hook = renderHook(
