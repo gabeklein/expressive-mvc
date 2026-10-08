@@ -482,67 +482,52 @@ describe('accept', () => {
     expect(test.bump).toBe(bump);
   });
 
-  it('will not patch a class which changed shape', () => {
-    const Before = class Test extends State {
-      value = 1;
-    };
-
-    const After = class Test extends State {
-      value = 1;
-      other = 2;
-    };
-
-    expect(hmr(Before)(After)).toBe(After);
-  });
-
-  it('will not patch a class with private members', () => {
-    const Before = class Test extends State {
-      #hidden = 'x';
-      show() {
-        return 'a' + this.#hidden;
-      }
-    };
-
-    const After = class Test extends State {
-      #hidden = 'x';
-      show() {
-        return 'b' + this.#hidden;
-      }
-    };
-
-    expect(hmr(Before)(After)).toBe(After);
-  });
-
-  it('will not patch a member which changed kind', () => {
-    const Before = class Test extends State {
-      get value() {
-        return 1;
-      }
-    };
-
-    const After = class Test extends State {
-      value() {
-        return 1;
-      }
-    };
-
-    expect(hmr(Before)(After)).toBe(After);
-  });
-
-  it('will not patch a getter which gained a setter', () => {
-    const Before = class Test extends State {
-      get value() {
-        return 1;
-      }
-    };
-
-    const After = class Test extends State {
-      get value() {
-        return 1;
-      }
-      set value(_: number) {}
-    };
-
+  it.each([
+    ['will not patch a class which changed shape',
+      class Test extends State {
+        value = 1;
+      },
+      class Test extends State {
+        value = 1;
+        other = 2;
+      }],
+    ['will not patch a class with private members',
+      class Test extends State {
+        #hidden = 'x';
+        show() {
+          return 'a' + this.#hidden;
+        }
+      },
+      class Test extends State {
+        #hidden = 'x';
+        show() {
+          return 'b' + this.#hidden;
+        }
+      }],
+    ['will not patch a member which changed kind',
+      class Test extends State {
+        get value() {
+          return 1;
+        }
+      },
+      class Test extends State {
+        value() {
+          return 1;
+        }
+      }],
+    ['will not patch a getter which gained a setter',
+      class Test extends State {
+        get value() {
+          return 1;
+        }
+      },
+      class Test extends State {
+        get value() {
+          return 1;
+        }
+        set value(_: number) {}
+      }]
+  ])('%s', (_, Before, After) => {
     expect(hmr(Before)(After)).toBe(After);
   });
 

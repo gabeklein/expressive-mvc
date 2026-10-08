@@ -88,11 +88,14 @@ describe('property', () => {
     expect(didTrigger).toBeCalled();
   });
 
-  it('will not callback when set to null', () => {
+  it.each([
+    ['will not callback when set to null', true, false],
+    ['will callback on null if ignore false', false, true]
+  ])('%s', (_, ignore, called) => {
     const callback = vi.fn();
 
     class Subject extends State {
-      ref = ref<string | null>(callback);
+      ref = ref<string | null>(callback, ignore);
     }
 
     const state = Subject.new();
@@ -101,23 +104,7 @@ describe('property', () => {
     expect(callback).toBeCalledWith('hello');
 
     state.ref.current = null;
-    expect(callback).not.toBeCalledWith(null);
-  });
-
-  it('will callback on null if ignore false', () => {
-    const callback = vi.fn();
-
-    class Subject extends State {
-      ref = ref<string | null>(callback, false);
-    }
-
-    const state = Subject.new();
-
-    state.ref.current = 'hello';
-    expect(callback).toBeCalledWith('hello');
-
-    state.ref.current = null;
-    expect(callback).toBeCalledWith(null);
+    expect(callback.mock.calls.some(([v]) => v === null)).toBe(called);
   });
 
   it('will reset nested effects', async () => {

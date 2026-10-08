@@ -221,43 +221,22 @@ describe('fetch mode', () => {
       peer = get(Peer, false);
     }
 
-    it('will resolve optional sibling declared earlier within own parent', () => {
-      class Parent extends State {
+    it.each([
+      ['will resolve optional sibling declared earlier', Optional, true],
+      ['will resolve optional sibling declared later', Optional, false],
+      ['will resolve required sibling declared earlier', Required, true],
+      ['will resolve required sibling declared later', Required, false]
+    ])('%s within own parent', (_, Child, earlier) => {
+      class Earlier extends State {
         peer = new Peer();
-        child = new Optional();
+        child = new Child();
       }
-
-      for (const parent of [1, 2, 3].map(() => Parent.new()))
-        expect(parent.child.peer).toBe(parent.peer);
-    });
-
-    it('will resolve optional sibling declared later within own parent', () => {
-      class Parent extends State {
-        child = new Optional();
-        peer = new Peer();
-      }
-
-      for (const parent of [1, 2, 3].map(() => Parent.new()))
-        expect(parent.child.peer).toBe(parent.peer);
-    });
-
-    it('will resolve required sibling declared earlier within own parent', () => {
-      class Parent extends State {
-        peer = new Peer();
-        child = new Required();
-      }
-
-      for (const parent of [1, 2, 3].map(() => Parent.new()))
-        expect(parent.child.peer).toBe(parent.peer);
-    });
-
-    it('will resolve required sibling declared later within own parent', () => {
-      class Parent extends State {
-        child = new Required();
+      class Later extends State {
+        child = new Child();
         peer = new Peer();
       }
 
-      for (const parent of [1, 2, 3].map(() => Parent.new()))
+      for (const parent of [1, 2, 3].map(() => (earlier ? Earlier : Later).new()))
         expect(parent.child.peer).toBe(parent.peer);
     });
 

@@ -24,9 +24,12 @@ describe('property descriptors', () => {
     expect(Object.keys(Test.new())).toEqual([]);
   });
 
-  it('will be read-only with factory', () => {
+  it.each([
+    ['will be read-only with factory', () => set(() => 'foo')],
+    ['will be read-only with required factory', () => set(() => 'foo', true)]
+  ])('%s', (_, field) => {
     class Test extends State {
-      value = set(() => 'foo');
+      value = field();
     }
 
     const test = Test.new();
@@ -37,55 +40,23 @@ describe('property descriptors', () => {
     expect(test.value).toBe('foo');
   });
 
-  it('will be read-only with required factory', () => {
+  it.each<[string, (callback: () => void) => string, unknown[] | undefined]>([
+    ['will be writable with value', () => set('foo'), undefined],
+    ['will be writable with factory and callback', (cb) => set(() => 'foo', cb), ['bar', 'foo']],
+    ['will be writable with placeholder and callback', (cb) => set<string>(undefined, cb), ['bar', undefined]]
+  ])('%s', (_, field, called) => {
+    const callback = vi.fn();
+
     class Test extends State {
-      value = set(() => 'foo', true);
-    }
-
-    const test = Test.new();
-
-    expect(() => {
-      test.value = 'bar';
-    }).toThrow(/read-only/);
-    expect(test.value).toBe('foo');
-  });
-
-  it('will be writable with value', () => {
-    class Test extends State {
-      value = set('foo');
+      value = field(callback);
     }
 
     const test = Test.new();
 
     test.value = 'bar';
     expect(test.value).toBe('bar');
-  });
 
-  it('will be writable with factory and callback', () => {
-    const callback = vi.fn();
-
-    class Test extends State {
-      value = set(() => 'foo', callback);
-    }
-
-    const test = Test.new();
-
-    test.value = 'bar';
-    expect(test.value).toBe('bar');
-    expect(callback).toBeCalledWith('bar', 'foo');
-  });
-
-  it('will be writable with placeholder and callback', () => {
-    const callback = vi.fn();
-
-    class Test extends State {
-      value = set<string>(undefined, callback);
-    }
-
-    const test = Test.new();
-
-    test.value = 'hello';
-    expect(callback).toBeCalledWith('hello', undefined);
+    if (called) expect(callback).toBeCalledWith(...called);
   });
 });
 
@@ -327,7 +298,10 @@ describe('factory', () => {
     );
   });
 
-  it('will drop a promise resolved after destroy', async () => {
+  it.each<[string, (pending: ReturnType<typeof mockPromise<string>>) => void]>([
+    ['will drop a promise resolved after destroy', (pending) => pending.resolve('late')],
+    ['will drop a promise rejected after destroy', (pending) => pending.reject(new Error('late'))]
+  ])('%s', async (_, settle) => {
     const pending = mockPromise<string>();
 
     class Test extends State {
@@ -341,51 +315,19 @@ describe('factory', () => {
     suspense.catch(() => {});
 
     test.set(null);
-    pending.resolve('late');
+    settle(pending);
 
     await flushMicrotasks();
   });
 
-  it('will drop a promise rejected after destroy', async () => {
-    const pending = mockPromise<string>();
-
-    class Test extends State {
-      value = set(() => pending);
-    }
-
-    const test = Test.new();
-    const suspense = attempt(() => test.value);
-
-    expect(suspense).toBeInstanceOf(Promise);
-    suspense.catch(() => {});
-
-    test.set(null);
-    pending.reject(new Error('late'));
-
-    await flushMicrotasks();
-  });
-
-  it('will compute when accessed', () => {
+  it.each([
+    ['will compute when accessed', undefined],
+    ['will compute lazily if not required', false as const]
+  ])('%s', (_, required) => {
     const factory = vi.fn(() => 'Hello World');
 
     class Test extends State {
-      value = set(factory);
-    }
-
-    const test = Test.new();
-
-    expect(factory).not.toBeCalled();
-
-    void test.value;
-
-    expect(factory).toBeCalled();
-  });
-
-  it('will compute lazily if not required', () => {
-    const factory = vi.fn(() => 'Hello World');
-
-    class Test extends State {
-      value = set(factory, false);
+      value = set(factory, required as boolean);
     }
 
     const test = Test.new();
@@ -638,41 +580,16 @@ describe('suspense', () => {
     expect(cb).toBeCalledWith('foobar');
   });
 
-  it('will suspend another factory', async () => {
+  it.each([
+    ['will suspend another factory', false],
+    ['will suspend another factory (async)', true]
+  ])('%s', async (_, async) => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
     const didEvaluate = vi.fn();
 
     class Test extends State {
-      greet = set(() => greet);
-      name = set(() => name);
-      value = set(() => {
-        didEvaluate();
-        return this.greet + ' ' + this.name;
-      });
-    }
-
-    const test = Test.new();
-
-    test.get(($) => void $.value);
-
-    greet.resolve('Hello');
-    await expect(test).toHaveUpdated();
-
-    name.resolve('World');
-    await expect(test).toHaveUpdated();
-
-    expect(didEvaluate).toBeCalledTimes(3);
-    expect(test.value).toBe('Hello World');
-  });
-
-  it('will suspend another factory (async)', async () => {
-    const greet = mockPromise<string>();
-    const name = mockPromise<string>();
-    const didEvaluate = vi.fn();
-
-    class Test extends State {
-      greet = set(async () => greet);
+      greet = set(async ? async () => greet : () => greet);
       name = set(() => name);
       value = set(() => {
         didEvaluate();

@@ -479,11 +479,14 @@ describe('subscriber', () => {
     value2 = 2;
   }
 
-  it('will detect change to properties accessed', async () => {
+  it.each([
+    ['will detect change to properties accessed', true, 3],
+    ['will ignore change to property not accessed', false, 2]
+  ])('%s', async (_, both, calls) => {
     const state = Subject.new();
     const effect = vi.fn(($: Subject) => {
       void $.value;
-      void $.value2;
+      if (both) void $.value2;
     });
 
     state.get(effect);
@@ -494,24 +497,7 @@ describe('subscriber', () => {
     state.value2 = 3;
     await expect(state).toHaveUpdated();
 
-    expect(effect).toBeCalledTimes(3);
-  });
-
-  it('will ignore change to property not accessed', async () => {
-    const state = Subject.new();
-    const effect = vi.fn(($: Subject) => {
-      void $.value;
-    });
-
-    state.get(effect);
-
-    state.value = 2;
-    await expect(state).toHaveUpdated();
-
-    state.value2 = 3;
-    await expect(state).toHaveUpdated();
-
-    expect(effect).toBeCalledTimes(2);
+    expect(effect).toBeCalledTimes(calls);
   });
 
   it('will not obstruct set-behavior', () => {
@@ -695,37 +681,18 @@ describe('get method', () => {
       expect<string | null>(test.get('foo')).toBe('foobar');
     });
 
-    it('will throw suspense if not yet available', async () => {
+    it.each<[string, () => string | undefined, true | undefined]>([
+      ['will throw suspense if not yet available', () => set<string>(), undefined],
+      ['will suspend if undefined in strict mode', () => undefined, true]
+    ])('%s', async (_, initial, strict) => {
       class Test extends State {
-        foo = set<string>();
+        foo?: string = initial();
       }
 
       const test = Test.new();
       const suspense = (() => {
         try {
-          void test.get('foo');
-        } catch (error) {
-          return error;
-        }
-      })();
-
-      expect(suspense).toBeInstanceOf(Promise);
-      expect(String(suspense)).toMatch(/[\w-]+\.foo is not yet available\./);
-
-      test.foo = 'foobar';
-
-      await expect(suspense).resolves.toBe('foobar');
-    });
-
-    it('will suspend if undefined in strict mode', async () => {
-      class Test extends State {
-        foo?: string = undefined;
-      }
-
-      const test = Test.new();
-      const suspense = (() => {
-        try {
-          void test.get('foo', true);
+          void test.get('foo', strict!);
         } catch (error) {
           return error;
         }
@@ -1221,34 +1188,24 @@ describe('get method', () => {
       expect(didUpdate).toBeCalledWith('foo');
     });
 
-    it('will squash simultaneous updates', async () => {
+    it.each<[string, (state: Test) => void, (test: Test) => void]>([
+      ['will squash simultaneous updates', (state) => void (state.value1 + state.value2), (test) => {
+        test.value1 = 2;
+        test.value2 = 3;
+      }],
+      ['will squash computed updates', (state) => void (state.value3 + state.value4), (test) => {
+        test.value3 = 4;
+      }]
+    ])('%s', async (_, read, act) => {
       const test = Test.new();
       const cb = vi.fn();
 
       test.get((state) => {
-        void state.value1;
-        void state.value2;
+        read(state);
         cb();
       });
 
-      test.value1 = 2;
-      test.value2 = 3;
-      await expect(test).toHaveUpdated();
-
-      expect(cb).toBeCalledTimes(2);
-    });
-
-    it('will squash computed updates', async () => {
-      const test = Test.new();
-      const cb = vi.fn();
-
-      test.get((state) => {
-        void state.value3;
-        void state.value4;
-        cb();
-      });
-
-      test.value3 = 4;
+      act(test);
       await expect(test).toHaveUpdated();
 
       expect(cb).toBeCalledTimes(2);
@@ -1743,38 +1700,18 @@ describe('set method', () => {
       foo = 'foo';
     }
 
-    it('will force update', async () => {
+    it.each<[string, string | symbol | number]>([
+      ['will force update', 'foo'],
+      ['will update for untracked key', 'bar'],
+      ['will update for symbol', Symbol('event')],
+      ['will update for number', 42]
+    ])('%s', async (_, key) => {
       const test = Test.new();
 
-      test.set('foo');
+      test.set(key);
 
-      await expect(test).toHaveUpdated('foo');
+      await expect(test).toHaveUpdated(key);
       expect(test.foo).toBe('foo');
-    });
-
-    it('will update for untracked key', async () => {
-      const test = Test.new();
-
-      test.set('bar');
-
-      await expect(test).toHaveUpdated('bar');
-    });
-
-    it('will update for symbol', async () => {
-      const test = Test.new();
-      const event = Symbol('event');
-
-      test.set(event);
-
-      await expect(test).toHaveUpdated(event);
-    });
-
-    it('will update for number', async () => {
-      const test = Test.new();
-
-      test.set(42);
-
-      await expect(test).toHaveUpdated(42);
     });
   });
 
@@ -1826,7 +1763,16 @@ describe('set method', () => {
       }).toThrow('already defined');
     });
 
-    it('will define a read-only property', () => {
+    it.each<[string, object, (test: { bar: string }) => void]>([
+      ['will define a read-only property', { set: false }, (test) => {
+        expect(() => {
+          test.bar = 'nope';
+        }).toThrow('read-only');
+      }],
+      ['will define a non-enumerable property', { enumerable: false }, (test) => {
+        expect(Object.keys(test)).not.toContain('bar');
+      }]
+    ])('%s', (_, config, check) => {
       class Test extends State {
         foo = 'foo';
       }
@@ -1837,29 +1783,10 @@ describe('set method', () => {
 
       const test = Test.new();
 
-      test.set('bar', { value: 'hello', set: false });
+      test.set('bar', { value: 'hello', ...config });
 
       expect(test.bar).toBe('hello');
-      expect(() => {
-        test.bar = 'nope';
-      }).toThrow('read-only');
-    });
-
-    it('will define a non-enumerable property', () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      interface Test {
-        bar: string;
-      }
-
-      const test = Test.new();
-
-      test.set('bar', { value: 'hidden', enumerable: false });
-
-      expect(test.bar).toBe('hidden');
-      expect(Object.keys(test)).not.toContain('bar');
+      check(test);
     });
 
     it('will register child state via descriptor', async () => {
@@ -2227,7 +2154,10 @@ describe('set method', () => {
         expect(handler.mock.contexts[0]).toBe(test);
       });
 
-      it('will report set with config', () => {
+      it.each<[string, (test: State & { foo: number }) => void]>([
+        ['will report set with config', (test) => test.set('foo', { value: 1 })],
+        ['will store and report assign', (test) => test.set({ foo: 1 })]
+      ])('%s', (_, write) => {
         class Test extends State {
           foo = 0;
         }
@@ -2237,22 +2167,7 @@ describe('set method', () => {
 
         Test.on({ catch: handler });
         test.set(null);
-        test.set('foo', { value: 1 });
-
-        expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
-      });
-
-      it('will store and report assign', () => {
-        class Test extends State {
-          foo = 0;
-        }
-
-        const handler = vi.fn();
-        const test = Test.new();
-
-        Test.on({ catch: handler });
-        test.set(null);
-        test.set({ foo: 1 });
+        write(test);
 
         expect(test.foo).toBe(1);
         expect(handler).toBeCalledWith(expect.any(Error), 'dead', 'foo');
@@ -2350,7 +2265,10 @@ describe('set method', () => {
   });
 
   describe('assign', () => {
-    it('will merge object into state', async () => {
+    it.each([
+      ['will merge object into state', false],
+      ['will merge object silently', true]
+    ])('%s', async (_, silent) => {
       class Test extends State {
         foo = 'foo';
         bar = 'bar';
@@ -2358,25 +2276,10 @@ describe('set method', () => {
 
       const test = Test.new();
 
-      test.set({ foo: 'bar' });
+      test.set({ foo: 'bar' }, silent);
 
-      await expect(test).toHaveUpdated('foo');
-
-      expect(test.foo).toBe('bar');
-      expect(test.bar).toBe('bar');
-    });
-
-    it('will merge object silently', async () => {
-      class Test extends State {
-        foo = 'foo';
-        bar = 'bar';
-      }
-
-      const test = Test.new();
-
-      test.set({ foo: 'bar' }, true);
-
-      await expect(test).not.toHaveUpdated('foo');
+      if (silent) await expect(test).not.toHaveUpdated();
+      else await expect(test).toHaveUpdated('foo');
 
       expect(test.foo).toBe('bar');
       expect(test.bar).toBe('bar');
@@ -2770,68 +2673,20 @@ describe('new method (static)', () => {
     expect(didDestroy).toBeCalledTimes(1);
   });
 
-  it('will apply object returned by callback', () => {
-    class Test extends State {
-      foo = 'foo';
-    }
-
-    const willCreate = vi.fn(() => ({
-      foo: 'bar'
-    }));
-
-    const state = Test.new(willCreate);
-
-    expect(state.foo).toBe('bar');
-  });
-
-  it('will apply arguments returned by callback', () => {
-    class Test extends State {
-      foo = 0;
-      bar = 1;
-    }
-
-    const willCreate = vi.fn(() => [{ foo: 2 }, { bar: 3 }]);
-
-    const test = Test.new(willCreate);
-
-    expect(test.foo).toBe(2);
-    expect(test.bar).toBe(3);
-  });
-
-  it('will flatten deeply nested arguments', () => {
+  it.each<[string, any[], object]>([
+    ['will apply object returned by callback', [() => ({ foo: 1 })], { foo: 1, bar: 0, baz: 0 }],
+    ['will apply arguments returned by callback', [() => [{ foo: 1 }, { bar: 2 }]], { foo: 1, bar: 2, baz: 0 }],
+    ['will flatten deeply nested arguments', [[{ foo: 1 }], [[{ bar: 2 }, [{ baz: 3 }]]]], { foo: 1, bar: 2, baz: 3 }],
+    ['will process nested arrays from init before later args', [() => [{ foo: 1 }], { foo: 2 }], { foo: 2, bar: 0, baz: 0 }],
+    ['will prefer later assignments', [{ foo: 3 }, { foo: 4, bar: 5 }, () => ({ bar: 6 })], { foo: 4, bar: 6, baz: 0 }]
+  ])('%s', (_, args, expected) => {
     class Test extends State {
       foo = 0;
       bar = 0;
       baz = 0;
     }
 
-    const test = Test.new([{ foo: 1 }], [[{ bar: 2 }, [{ baz: 3 }]]]);
-
-    expect(test.foo).toBe(1);
-    expect(test.bar).toBe(2);
-    expect(test.baz).toBe(3);
-  });
-
-  it('will process nested arrays from init before later args', () => {
-    class Test extends State {
-      foo = 0;
-    }
-
-    const test = Test.new(() => [{ foo: 1 }], { foo: 2 });
-
-    expect(test.foo).toBe(2);
-  });
-
-  it('will prefer later assignments', () => {
-    class Test extends State {
-      foo = 1;
-      bar = 2;
-    }
-
-    const test = Test.new({ foo: 3 }, { foo: 4, bar: 5 }, () => ({ bar: 6 }));
-
-    expect(test.foo).toBe(4);
-    expect(test.bar).toBe(6);
+    expect(Test.new(...args).get()).toEqual(expected);
   });
 
   it('will apply all arguments', () => {
@@ -3140,111 +2995,76 @@ describe('activation', () => {
       value = 1;
     }
 
-    it('will not warn if activated', async () => {
-      Child.new();
-      await flushMicrotasks();
+    it.each<[string, () => void]>([
+      ['will not warn if activated', () => Child.new()],
+      ['will not warn if placed in a context', () => new Context(new Child())],
+      ['will not warn if released', () => new Child().set(null)],
+      ['will not warn if adopted by an owner', () => {
+        class Parent extends State {
+          child = new Child();
+        }
 
-      expect(warn).not.toBeCalled();
-    });
+        Parent.new();
+      }],
+      ['will not warn for base child a subclass overwrote', () => {
+        class Base extends State {
+          child = new Child();
+        }
 
-    it('will not warn if placed in a context', async () => {
-      new Context(new Child());
-      await flushMicrotasks();
+        class Sub extends Base {
+          child = new Child();
+        }
 
-      expect(warn).not.toBeCalled();
-    });
+        expect(Sub.new().child).toBeInstanceOf(Child);
+      }],
+      ['will not warn for a child a subclass instruction replaced', () => {
+        class Base extends State {
+          child = new Child();
+        }
 
-    it('will not warn if released', async () => {
-      new Child().set(null);
-      await flushMicrotasks();
+        class Sub extends Base {
+          child = get(Child) as any;
+        }
 
-      expect(warn).not.toBeCalled();
-    });
+        class Root extends State {
+          child = new Child();
+          sub = new Sub();
+        }
 
-    it('will not warn if adopted by an owner', async () => {
-      class Parent extends State {
-        child = new Child();
-      }
+        const root = Root.new();
 
-      Parent.new();
+        expect(root.sub.child).toBe(root.child);
+      }],
+      ['will not warn for a child replaced by ref or set', () => {
+        class Base extends State {
+          a = new Child();
+          b = new Child();
+        }
 
-      await flushMicrotasks();
+        class Sub extends Base {
+          a = ref<Child>() as any;
+          b = set(() => new Child());
+        }
 
-      expect(warn).not.toBeCalled();
-    });
+        expect(Sub.new().b).toBeInstanceOf(Child);
+      }],
+      ['will not warn for overwritten child of an adopted child', () => {
+        class Base extends State {
+          leaf = new Child();
+        }
 
-    it('will not warn for base child a subclass overwrote', async () => {
-      class Base extends State {
-        child = new Child();
-      }
+        class Sub extends Base {
+          leaf = new Child();
+        }
 
-      class Sub extends Base {
-        child = new Child();
-      }
+        class Parent extends State {
+          child = new Sub();
+        }
 
-      expect(Sub.new().child).toBeInstanceOf(Child);
-
-      await flushMicrotasks();
-
-      expect(warn).not.toBeCalled();
-    });
-
-    it('will not warn for a child a subclass instruction replaced', async () => {
-      class Base extends State {
-        child = new Child();
-      }
-
-      class Sub extends Base {
-        child = get(Child) as any;
-      }
-
-      class Root extends State {
-        child = new Child();
-        sub = new Sub();
-      }
-
-      const root = Root.new();
-
-      expect(root.sub.child).toBe(root.child);
-
-      await flushMicrotasks();
-
-      expect(warn).not.toBeCalled();
-    });
-
-    it('will not warn for a child replaced by ref or set', async () => {
-      class Base extends State {
-        a = new Child();
-        b = new Child();
-      }
-
-      class Sub extends Base {
-        a = ref<Child>() as any;
-        b = set(() => new Child());
-      }
-
-      expect(Sub.new().b).toBeInstanceOf(Child);
-
-      await flushMicrotasks();
-
-      expect(warn).not.toBeCalled();
-    });
-
-    it('will not warn for overwritten child of an adopted child', async () => {
-      class Base extends State {
-        leaf = new Child();
-      }
-
-      class Sub extends Base {
-        leaf = new Child();
-      }
-
-      class Parent extends State {
-        child = new Sub();
-      }
-
-      Parent.new();
-
+        Parent.new();
+      }]
+    ])('%s', async (_, setup) => {
+      setup();
       await flushMicrotasks();
 
       expect(warn).not.toBeCalled();
@@ -3301,28 +3121,15 @@ describe('on method (static)', () => {
     expect(keys).toEqual(['FOO', 'function', 'true']);
   });
 
-  it('will run setup cleanup on destroy', () => {
+  it.each<[string, (cleanup: () => void) => State.On]>([
+    ['will run setup cleanup on destroy', (cleanup) => ({ setup: () => cleanup })],
+    ['will run ready cleanup on destroy', (cleanup) => ({ ready: () => cleanup })]
+  ])('%s', (_, handler) => {
     class Test extends State {}
 
     const cleanup = vi.fn();
 
-    Test.on({ setup: () => cleanup });
-
-    const test = Test.new();
-
-    expect(cleanup).not.toBeCalled();
-
-    test.set(null);
-
-    expect(cleanup).toBeCalled();
-  });
-
-  it('will run ready cleanup on destroy', () => {
-    class Test extends State {}
-
-    const cleanup = vi.fn();
-
-    Test.on({ ready: () => cleanup });
+    Test.on(handler(cleanup));
 
     const test = Test.new();
 
@@ -3997,7 +3804,10 @@ describe('on catch stage (static)', () => {
 });
 
 describe('computed (getters)', () => {
-  it('will read last value after destroy', () => {
+  it.each([
+    ['will read last value after destroy', true, 4],
+    ['will read undefined if never evaluated before destroy', false, undefined]
+  ])('%s', (_, evaluate, expected) => {
     class Test extends State {
       source = 2;
       get value() {
@@ -4007,24 +3817,10 @@ describe('computed (getters)', () => {
 
     const test = Test.new();
 
-    expect(test.value).toBe(4);
+    if (evaluate) void test.value;
+
     expect(() => test.set(null)).not.toThrow();
-    expect(test.value).toBe(4);
-  });
-
-  it('will read undefined if never evaluated before destroy', () => {
-    class Test extends State {
-      source = 2;
-      get value() {
-        return this.source * 2;
-      }
-    }
-
-    const test = Test.new();
-
-    test.set(null);
-
-    expect(test.value).toBeUndefined();
+    expect(test.value).toBe(expected);
   });
 
   it('will be enumerable and read-only', () => {
