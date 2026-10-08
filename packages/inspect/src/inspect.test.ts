@@ -390,21 +390,52 @@ describe('health', () => {
     expect(health().caught).toEqual({ dead: 1, unused: 0, getter: 0, setup: 0, effect: 0 });
   });
 
-  it('will see a report before an app handler takes it', () => {
+  it('will journal and summarize a caught report, and reset counts on clear', async () => {
+    attach();
+    journal.record({ level: 'keys' });
+    const note = Note.new();
+
+    note.set(null);
+    note.text = 'late';
+    await flushMicrotasks();
+
+    expect(journal.history({ key: 'text' }).map(({ event }) => event)).toContainEqual({
+      id: String(note),
+      type: 'Note',
+      key: 'text',
+      kind: 'caught',
+      value: {
+        case: 'dead',
+        message: `Tried to update ${note}.text but state is destroyed.`,
+        stack: expect.stringContaining('Tried to update'),
+        handled: false
+      }
+    });
+    expect(journal.summary({ id: String(note) })[0]).toMatchObject({ caught: 1, destroyed: true });
+
+    journal.clear();
+    expect(health().caught.dead).toBe(0);
+  });
+
+  it('will see a report before an app handler takes it, marked handled', () => {
     attach();
 
-    class Late extends State {
+    class Dropped extends State {
       text = '';
     }
 
+    journal.record({ level: 'keys' });
     const stop = State.on({ catch: (error, kind) => (kind == 'dead' ? undefined : error) });
-    const late = Late.new();
+    const dropped = Dropped.new();
 
-    late.set(null);
-    late.text = 'late';
+    dropped.set(null);
+    dropped.text = 'late';
     stop();
 
+    const [event] = journal.history({ type: 'Dropped' }).map(({ event }) => event).filter((e) => e.kind === 'caught');
+
     expect(health().caught.dead).toBe(1);
+    expect(event.value).toMatchObject({ case: 'dead', handled: true });
   });
 
   it('will stop observing a class when detached', async () => {
@@ -427,50 +458,6 @@ describe('health', () => {
     expect(health().caught.dead).toBe(0);
   });
 
-  it('will record a caught report in the journal', async () => {
-    mockUncaught();
-    attach();
-    journal.record({ level: 'keys' });
-    const note = Note.new();
-
-    note.set(null);
-    note.text = 'late';
-    await flushMicrotasks();
-
-    expect(journal.history({ key: 'text' }).map(({ event }) => event)).toContainEqual({
-      id: String(note),
-      type: 'Note',
-      key: 'text',
-      kind: 'caught',
-      value: {
-        case: 'dead',
-        message: `Tried to update ${note}.text but state is destroyed.`,
-        stack: expect.stringContaining('Tried to update'),
-        handled: false
-      }
-    });
-  });
-
-  it('will mark a report an app handler took as handled', async () => {
-    attach();
-    journal.record({ level: 'keys' });
-
-    class Dropped extends State {
-      text = '';
-    }
-
-    const stop = State.on({ catch: (error, kind) => (kind == 'dead' ? undefined : error) });
-    const dropped = Dropped.new();
-
-    dropped.set(null);
-    dropped.text = 'late';
-    stop();
-
-    const [event] = journal.history({ type: 'Dropped' }).map(({ event }) => event).filter((e) => e.kind === 'caught');
-
-    expect(event.value).toMatchObject({ case: 'dead', handled: true });
-  });
-
   it('will count a report from a class it never saw activate', async () => {
     mockWarn();
     attach();
@@ -483,19 +470,6 @@ describe('health', () => {
 
     expect(health().caught.unused).toBe(1);
     expect(journal.history({ type: 'Idle' })[0].event.value).toMatchObject({ case: 'unused', handled: false });
-  });
-
-  it('will reset caught counts when the journal clears', () => {
-    mockUncaught();
-    attach();
-    const note = Note.new();
-
-    note.set(null);
-    note.text = 'late';
-    expect(health().caught.dead).toBe(1);
-
-    journal.clear();
-    expect(health().caught.dead).toBe(0);
   });
 
   it('will record a thrown value that is not an Error', async () => {
@@ -520,19 +494,6 @@ describe('health', () => {
     expect(journal.history({ type: 'Thrower' }).map(({ event }) => event.value)).toContainEqual(
       expect.objectContaining({ case: 'effect', message: 'bad', stack: undefined, handled: false })
     );
-  });
-
-  it('will count caught reports in the summary', async () => {
-    mockUncaught();
-    attach();
-    journal.record({ level: 'keys' });
-    const note = Note.new();
-
-    note.set(null);
-    note.text = 'late';
-    await flushMicrotasks();
-
-    expect(journal.summary({ id: String(note) })[0]).toMatchObject({ caught: 1, destroyed: true });
   });
 
   it('will record a replacement under the kind it replaced', async () => {

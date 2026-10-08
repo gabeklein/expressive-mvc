@@ -246,7 +246,7 @@ describe('journal', () => {
     journal.record({ level: 'keys', calls: true, types: ['Other'] });
     const composer = Composer.new();
     composer.submit('x');
-    expect(journal.frames()).toEqual([]);
+    expect(journal.history({ key: 'submit' })).toEqual([]);
   });
 
   it('will clear frames and reset sequence', () => {
