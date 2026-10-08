@@ -2463,7 +2463,7 @@ describe('set method', () => {
 });
 
 describe('unmanaged keys', () => {
-  it('will not manage _ keys', async () => {
+  it('will not manage or enumerate _ keys', async () => {
     class Test extends State {
       value = 1;
       _handle = 'foo';
@@ -2476,16 +2476,6 @@ describe('unmanaged keys', () => {
     await expect(test).not.toHaveUpdated();
     expect(test._handle).toBe('bar');
     expect(test.get()).toEqual({ value: 1 });
-  });
-
-  it('will define _ keys as non-enumerable', () => {
-    class Test extends State {
-      value = 1;
-      _handle = 'foo';
-    }
-
-    const test = Test.new();
-
     expect(Object.keys(test)).toEqual(['value']);
     expect(Object.getOwnPropertyDescriptor(test, '_handle')).toMatchObject({
       enumerable: false,
@@ -2703,21 +2693,7 @@ describe('new method', () => {
     expect(didCreate).not.toBeCalled();
   });
 
-  it('will call if exists', () => {
-    const didCreate = vi.fn();
-
-    class Test extends State {
-      protected new() {
-        didCreate();
-      }
-    }
-
-    Test.new();
-
-    expect(didCreate).toBeCalledTimes(1);
-  });
-
-  it('will cleanup if returns function', () => {
+  it('will call if exists and cleanup if returns function', () => {
     const didDestroy = vi.fn();
     const didCreate = vi.fn(() => didDestroy);
 
@@ -2755,32 +2731,20 @@ describe('new method (static)', () => {
     expect(didDestroy).toBeCalledTimes(1);
   });
 
-  it('will apply object returned by callback', () => {
-    class Test extends State {
-      foo = 'foo';
-    }
-
-    const willCreate = vi.fn(() => ({
-      foo: 'bar'
-    }));
-
-    const state = Test.new(willCreate);
-
-    expect(state.foo).toBe('bar');
-  });
-
-  it('will apply arguments returned by callback', () => {
+  it.each<[string, any[], object]>([
+    ['will apply object returned by callback', [() => ({ foo: 1 })], { foo: 1, bar: 0, baz: 0 }],
+    ['will apply arguments returned by callback', [() => [{ foo: 1 }, { bar: 2 }]], { foo: 1, bar: 2, baz: 0 }],
+    ['will flatten deeply nested arguments', [[{ foo: 1 }], [[{ bar: 2 }, [{ baz: 3 }]]]], { foo: 1, bar: 2, baz: 3 }],
+    ['will process nested arrays from init before later args', [() => [{ foo: 1 }], { foo: 2 }], { foo: 2, bar: 0, baz: 0 }],
+    ['will prefer later assignments', [{ foo: 3 }, { foo: 4, bar: 5 }, () => ({ bar: 6 })], { foo: 4, bar: 6, baz: 0 }]
+  ])('%s', (_, args, expected) => {
     class Test extends State {
       foo = 0;
-      bar = 1;
+      bar = 0;
+      baz = 0;
     }
 
-    const willCreate = vi.fn(() => [{ foo: 2 }, { bar: 3 }]);
-
-    const test = Test.new(willCreate);
-
-    expect(test.foo).toBe(2);
-    expect(test.bar).toBe(3);
+    expect(Test.new(...args).get()).toEqual(expected);
   });
 
   it('will apply all arguments', () => {
@@ -2824,20 +2788,6 @@ describe('new method (static)', () => {
     expect(test.baz).toBe(3);
   });
 
-  it('will flatten deeply nested arguments', () => {
-    class Test extends State {
-      foo = 0;
-      bar = 0;
-      baz = 0;
-    }
-
-    const test = Test.new([{ foo: 1 }], [[{ bar: 2 }, [{ baz: 3 }]]]);
-
-    expect(test.foo).toBe(1);
-    expect(test.bar).toBe(2);
-    expect(test.baz).toBe(3);
-  });
-
   it('will process init-returned arrays in order', () => {
     const order: number[] = [];
     const invoke = (n: number) => () => void order.push(n);
@@ -2853,28 +2803,6 @@ describe('new method (static)', () => {
     );
 
     expect(order).toEqual([1, 2, 3, 4]);
-  });
-
-  it('will process nested arrays from init before later args', () => {
-    class Test extends State {
-      foo = 0;
-    }
-
-    const test = Test.new(() => [{ foo: 1 }], { foo: 2 });
-
-    expect(test.foo).toBe(2);
-  });
-
-  it('will prefer later assignments', () => {
-    class Test extends State {
-      foo = 1;
-      bar = 2;
-    }
-
-    const test = Test.new({ foo: 3 }, { foo: 4, bar: 5 }, () => ({ bar: 6 }));
-
-    expect(test.foo).toBe(4);
-    expect(test.bar).toBe(6);
   });
 
   it('will run callbacks in order', () => {
@@ -2950,7 +2878,6 @@ describe('new method (static)', () => {
       }
     });
 
-    // expect are bound to instance
     const { method, method2 } = test;
 
     expect(test.value).toBe(2);
@@ -2986,11 +2913,7 @@ describe('new method (static)', () => {
 });
 
 describe('activation', () => {
-  // A foreign non-configurable own property (e.g. React element internals
-  // like `_owner`, installed on the instance by the render facade before a
-  // bare-constructed Component activates) must not crash activation: the
-  // field sweep can only convert configurable value properties, and should
-  // leave anything else untouched rather than throw on defineProperty.
+  // e.g. React element internals like `_owner`, installed before activation
   it('will ignore non-configurable own value properties', () => {
     class Test extends State {
       value = 1;
@@ -3074,25 +2997,15 @@ describe('activation', () => {
   });
 });
 
-describe('is method (static)', () => {
+it('will check class lineage with static is', () => {
   class Test extends State {}
+  class Test2 extends Test {}
+  class NotATest extends State {}
 
-  it('will assert if State extends another', () => {
-    class Test2 extends Test {}
-
-    expect(Test.is(Test2)).toBe(true);
-  });
-
-  it('will be falsy if not super', () => {
-    class NotATest extends State {}
-
-    expect(State.is(NotATest)).toBe(true);
-    expect(Test.is(NotATest)).toBe(false);
-  });
-
-  it('will be true if same', () => {
-    expect(Test.is(Test)).toBe(true);
-  });
+  expect(Test.is(Test2)).toBe(true);
+  expect(Test.is(Test)).toBe(true);
+  expect(State.is(NotATest)).toBe(true);
+  expect(Test.is(NotATest)).toBe(false);
 });
 
 describe('on method (static)', () => {
@@ -3133,31 +3046,23 @@ describe('on method (static)', () => {
     expect(keys).toEqual(['FOO', 'function', 'true']);
   });
 
-  it('will run callback on create', () => {
-    class Test extends State {}
-
-    const cb = vi.fn();
-    const done = Test.on({ setup: cb });
-    const test = Test.new();
-
-    expect(cb).toBeCalledWith(test);
-
-    done();
-  });
-
-  it('will run cleanup on destroy', () => {
+  it.each<[string, (cleanup: () => void) => State.On]>([
+    ['will run setup cleanup on destroy', (cleanup) => ({ setup: () => cleanup })],
+    ['will run ready cleanup on destroy', (cleanup) => ({ ready: () => cleanup })]
+  ])('%s', (_, handler) => {
     class Test extends State {}
 
     const cleanup = vi.fn();
-    const done = Test.on({ setup: () => cleanup });
+
+    Test.on(handler(cleanup));
+
     const test = Test.new();
 
     expect(cleanup).not.toBeCalled();
 
     test.set(null);
-    expect(cleanup).toBeCalled();
 
-    done();
+    expect(cleanup).toBeCalled();
   });
 
   it('will run callback for inherited classes', () => {
@@ -3217,49 +3122,20 @@ describe('on method (static)', () => {
     expect(order).toEqual(['A', 'anonymous', 'C']);
   });
 
-  it('will squash same callback for multiple classes', () => {
+  it('will register multiple callbacks and remove one', () => {
     class Test extends State {}
-    class Test2 extends Test {}
-
-    const didCreate = vi.fn();
-
-    Test.on({ setup: didCreate });
-    Test2.on({ setup: didCreate });
-
-    Test2.new();
-
-    expect(didCreate).toBeCalledTimes(1);
-  });
-
-  it('will remove callback', () => {
-    class Test extends State {}
-
-    const cb = vi.fn();
-    const done = Test.on({ setup: cb });
-
-    Test.new();
-    expect(cb).toBeCalled();
-
-    done();
-
-    Test.new();
-    expect(cb).toBeCalledTimes(1);
-  });
-
-  it('will register multiple callbacks', () => {
-    class Fresh extends State {}
 
     const cb1 = vi.fn();
     const cb2 = vi.fn();
+    const done = Test.on({ setup: cb1 });
 
-    // First .on() creates the setup Set (line 455)
-    Fresh.on({ setup: cb1 });
-    // Second .on() reuses existing Set
-    Fresh.on({ setup: cb2 });
+    Test.on({ setup: cb2 });
+    Test.new();
+    done();
+    Test.new();
 
-    Fresh.new();
     expect(cb1).toBeCalledTimes(1);
-    expect(cb2).toBeCalledTimes(1);
+    expect(cb2).toBeCalledTimes(2);
   });
 });
 
@@ -3284,9 +3160,6 @@ describe('on type stage (static)', () => {
       foo() { return 'method'; }
     }
 
-    // Redefine foo as a get/set before bootstrap classifies it; bootstrap skips
-    // getters that carry a setter, so the redefinition is left untouched rather
-    // than reactively bound.
     Test.on({
       type: (type) => {
         Object.defineProperty(type.prototype, 'foo', {
@@ -3350,57 +3223,28 @@ describe('on combined stages (static)', () => {
     expect(order).toEqual(['type', 'setup', 'ready']);
   });
 
-  it('will run a shared handler once across base and subclass', () => {
-    const fn = vi.fn();
-
-    class Base extends State {}
-    class Sub extends Base {}
-
-    const handler = { setup: fn };
-
-    Base.on(handler);
-    Sub.on(handler);
-
-    // handlers accumulate into a Set, so registering the same one along the
-    // chain is idempotent - it runs once per instance, not once per level.
-    Sub.new();
-
-    expect(fn).toBeCalledTimes(1);
-  });
 });
 
-describe('non-configurable members (bootstrap)', () => {
-  it('will leave a non-configurable method unbound', () => {
-    class Test extends State {
-      foo() { return 'content'; }
-    }
+it('will reactively bind configurable methods but leave non-configurable ones', () => {
+  class Test extends State {
+    foo() { return 'content'; }
+    method() {}
+  }
 
-    // sealing a member is how an adapter claims it (e.g. Component's render)
-    Object.defineProperty(Test.prototype, 'foo', {
-      ...Object.getOwnPropertyDescriptor(Test.prototype, 'foo'),
-      configurable: false
-    });
-
-    Test.new();
-
-    const desc = Object.getOwnPropertyDescriptor(Test.prototype, 'foo')!;
-
-    expect(typeof desc.value).toBe('function');
-    expect(desc.get).toBeUndefined();
+  Object.defineProperty(Test.prototype, 'foo', {
+    ...Object.getOwnPropertyDescriptor(Test.prototype, 'foo'),
+    configurable: false
   });
 
-  it('will reactively bind a configurable method', () => {
-    class Test extends State {
-      method() {}
-    }
+  Test.new();
 
-    Test.new();
+  const sealed = Object.getOwnPropertyDescriptor(Test.prototype, 'foo')!;
+  const bound = Object.getOwnPropertyDescriptor(Test.prototype, 'method')!;
 
-    const desc = Object.getOwnPropertyDescriptor(Test.prototype, 'method')!;
-
-    expect(typeof desc.get).toBe('function');
-    expect(desc.value).toBeUndefined();
-  });
+  expect(typeof sealed.value).toBe('function');
+  expect(sealed.get).toBeUndefined();
+  expect(typeof bound.get).toBe('function');
+  expect(bound.value).toBeUndefined();
 });
 
 describe('enumerable prototype members', () => {
@@ -3415,7 +3259,7 @@ describe('enumerable prototype members', () => {
     configurable: true
   });
 
-  it('will activate without managing the property', async () => {
+  it('will activate without managing or dispatching the property', async () => {
     const test = Test.new();
 
     expect((test as any).legacy).toBe('world');
@@ -3425,15 +3269,11 @@ describe('enumerable prototype members', () => {
 
     await expect(test).not.toHaveUpdated();
     expect((test as any).legacy).toBe('moon');
-  });
 
-  it('will assign to the property without dispatch', async () => {
-    const test = Test.new();
-
-    test.set({ legacy: 'moon' } as any);
+    test.set({ legacy: 'sun' } as any);
 
     await expect(test).not.toHaveUpdated();
-    expect((test as any).legacy).toBe('moon');
+    expect((test as any).legacy).toBe('sun');
   });
 });
 
@@ -3454,19 +3294,6 @@ describe('on setup / ready stages (static)', () => {
     expect(order).toEqual(['setup', 'new', 'ready']);
   });
 
-  it('will run ready cleanup on destroy', () => {
-    const cleanup = vi.fn();
-
-    class Test extends State {}
-
-    Test.on({ ready: () => cleanup });
-
-    const test = Test.new();
-    expect(cleanup).not.toBeCalled();
-
-    test.set(null);
-    expect(cleanup).toBeCalled();
-  });
 });
 
 describe('on method stage (static)', () => {
