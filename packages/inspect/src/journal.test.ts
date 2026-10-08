@@ -1,9 +1,9 @@
 import { State, unbind } from '@expressive/mvc';
 import * as hot from '@expressive/mvc/hot';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockWarn } from '../test.setup';
-import { act, attach, journal, models } from './index';
+import { act, attach, journal, models, type Options } from './index';
 
 class Composer extends State {
   draft = '';
@@ -19,19 +19,21 @@ class Other extends State {
   value = 0;
 }
 
+const start = (options?: Options) => {
+  attach();
+  if (options) journal.record(options);
+  return Composer.new();
+};
+
 describe('journal', () => {
   it('will record nothing until enabled', async () => {
-    attach();
-    const composer = Composer.new();
-    composer.draft = 'a';
+    start().draft = 'a';
     await flushMicrotasks();
     expect(journal.frames()).toEqual([]);
   });
 
   it('will group synchronous writes into one frame', async () => {
-    attach();
-    journal.record({ level: 'keys' });
-    const composer = Composer.new();
+    const composer = start({ level: 'keys' });
     composer.draft = 'a';
     composer.rows = 2;
     await flushMicrotasks();
@@ -47,17 +49,12 @@ describe('journal', () => {
   });
 
   it('will include values when asked', async () => {
-    attach();
-    journal.record({ level: 'values' });
-    const composer = Composer.new();
-    composer.draft = 'hello';
+    start({ level: 'values' }).draft = 'hello';
     expect(journal.history({ key: 'draft' }).map((h) => h.event.value)).toEqual(['hello']);
   });
 
   it('will filter by type, id, key, and since', async () => {
-    attach();
-    journal.record({ level: 'keys' });
-    const composer = Composer.new();
+    const composer = start({ level: 'keys' });
     const other = Other.new();
     composer.draft = 'a';
     other.value = 1;
@@ -72,9 +69,7 @@ describe('journal', () => {
   });
 
   it('will restrict to named types', () => {
-    attach();
-    journal.record({ level: 'keys', types: ['Other'] });
-    const composer = Composer.new();
+    const composer = start({ level: 'keys', types: ['Other'] });
     const other = Other.new();
     composer.draft = 'a';
     other.value = 1;
@@ -82,8 +77,7 @@ describe('journal', () => {
   });
 
   it('will filter by path - label, typeId, or id on the left', async () => {
-    attach();
-    const composer = Composer.new();
+    const composer = start();
     const other = Other.new();
     const typeId = models().find((m) => m.id === String(other))!.typeId;
     journal.record({ level: 'keys', paths: ['Composer.draft', `${typeId}.value`] });
@@ -101,29 +95,22 @@ describe('journal', () => {
   });
 
   it('will filter by key on any type, and OR the filters together', () => {
-    attach();
-    const composer = Composer.new();
-    const other = Other.new();
-    journal.record({ level: 'keys', keys: ['value'], types: ['Composer'] });
+    const composer = start({ level: 'keys', keys: ['value'], types: ['Composer'] });
     composer.rows = 2;
-    other.value = 1;
+    Other.new().value = 1;
     expect(journal.record().keys).toEqual(['value']);
     expect(journal.history({}).map((h) => `${h.event.type}.${h.event.key}`)).toEqual(['Composer.rows', 'Other.value']);
   });
 
   it('will record calls and destroy for a path-filtered type', () => {
-    attach();
-    journal.record({ level: 'keys', calls: true, paths: ['Composer.submit'] });
-    const composer = Composer.new();
+    const composer = start({ level: 'keys', calls: true, paths: ['Composer.submit'] });
     composer.submit('x');
     composer.set(null);
     expect(journal.history({}).map((h) => h.event.kind)).toEqual(['call', 'destroy']);
   });
 
   it('will record custom events, calls, and destroy', () => {
-    attach();
-    journal.record({ level: 'values', calls: true });
-    const composer = Composer.new();
+    const composer = start({ level: 'values', calls: true });
     expect(composer.submit('hey')).toBe(3);
     composer.set('custom');
     composer.set(null);
@@ -139,8 +126,7 @@ describe('journal', () => {
   });
 
   it('will record calls of live instances once calls turn on', () => {
-    attach();
-    const composer = Composer.new();
+    const composer = start();
     journal.record({ calls: true });
     journal.record({ calls: true });
     composer.submit('x');
@@ -150,9 +136,7 @@ describe('journal', () => {
   });
 
   it('will record a method replaced through set', () => {
-    attach();
-    journal.record({ level: 'values', calls: true });
-    const composer = Composer.new();
+    const composer = start({ level: 'values', calls: true });
     composer.submit('a');
     composer.set({ submit: (text: string) => text.length * 2 });
     expect(composer.submit('bb')).toBe(4);
@@ -166,8 +150,7 @@ describe('journal', () => {
       }
     }
 
-    attach();
-    journal.record({ level: 'keys', calls: true });
+    start({ level: 'keys', calls: true });
     const test = Test.new();
     const other = {};
     test.set({ self() { return this; } });
@@ -180,14 +163,10 @@ describe('journal', () => {
     }
 
     Early.new();
-    attach();
-    journal.record({ level: 'keys', calls: true });
-
+    start({ level: 'keys', calls: true });
     const early = Early.new();
-
     early.go();
     early.go();
-
     expect(journal.history({ key: 'go' })).toEqual([]);
   });
 
@@ -204,8 +183,7 @@ describe('journal', () => {
       }
     }
 
-    attach();
-    journal.record({ level: 'keys', calls: true });
+    start({ level: 'keys', calls: true });
     expect(Sub.new().go()).toBe(2);
     expect(journal.history({ key: 'go' }).length).toBe(1);
   });
@@ -217,16 +195,13 @@ describe('journal', () => {
       }
     }
 
-    attach();
-    journal.record({ level: 'keys', calls: true });
+    start({ level: 'keys', calls: true });
     View.new().render();
     expect(journal.history({ key: 'render' })).toEqual([]);
   });
 
   it('will stop recording calls once turned off', () => {
-    attach();
-    journal.record({ level: 'keys', calls: true });
-    const composer = Composer.new();
+    const composer = start({ level: 'keys', calls: true });
     composer.submit('a');
     journal.record({ calls: false });
     composer.submit('b');
@@ -234,25 +209,17 @@ describe('journal', () => {
   });
 
   it('will not record calls unless asked', () => {
-    attach();
-    journal.record({ level: 'keys' });
-    const composer = Composer.new();
-    composer.submit('x');
+    start({ level: 'keys' }).submit('x');
     expect(journal.history({ key: 'submit' })).toEqual([]);
   });
 
   it('will not record calls for excluded types', () => {
-    attach();
-    journal.record({ level: 'keys', calls: true, types: ['Other'] });
-    const composer = Composer.new();
-    composer.submit('x');
+    start({ level: 'keys', calls: true, types: ['Other'] }).submit('x');
     expect(journal.history({ key: 'submit' })).toEqual([]);
   });
 
   it('will clear frames and reset sequence', () => {
-    attach();
-    journal.record({ level: 'keys' });
-    const composer = Composer.new();
+    const composer = start({ level: 'keys' });
     composer.draft = 'a';
     journal.clear();
     expect(journal.frames()).toEqual([]);
@@ -275,8 +242,7 @@ describe('journal', () => {
         });
       }
     }
-    attach();
-    journal.record({ level: 'keys' });
+    start({ level: 'keys' });
     const reactor = Reactor.new();
     await flushMicrotasks();
     journal.clear();
@@ -304,19 +270,15 @@ describe('journal', () => {
   });
 
   it('will act without leaving recording on', async () => {
-    attach();
-    const composer = Composer.new();
-    const frames = await act(() => {
-      composer.draft = 'x';
-    });
+    const composer = start();
+    const frames = await act(() => void (composer.draft = 'x'));
     expect(frames[0].events[0].value).toBe('x');
     composer.draft = 'y';
     expect(journal.frames().length).toBe(1);
   });
 
   it('will act until work deferred across macrotasks settles', async () => {
-    attach();
-    const composer = Composer.new();
+    const composer = start();
     const frames = await act(() => {
       setTimeout(() => {
         composer.draft = 'a';
@@ -330,12 +292,8 @@ describe('journal', () => {
   });
 
   it('will act with values while keys are on, then keep recording keys', async () => {
-    attach();
-    journal.record({ level: 'keys' });
-    const composer = Composer.new();
-    const frames = await act(() => {
-      composer.draft = 'x';
-    });
+    const composer = start({ level: 'keys' });
+    const frames = await act(() => void (composer.draft = 'x'));
     expect(frames[0].events[0].value).toBe('x');
     composer.draft = 'y';
     await flushMicrotasks();
@@ -344,20 +302,15 @@ describe('journal', () => {
   });
 
   it('will act at values without changing the level', async () => {
-    attach();
-    journal.record({ level: 'values' });
-    const composer = Composer.new();
-    const frames = await act(() => {
-      composer.draft = 'x';
-    });
+    const composer = start({ level: 'values' });
+    const frames = await act(() => void (composer.draft = 'x'));
     expect(frames[0].events[0].value).toBe('x');
     expect(journal.record().level).toBe('values');
   });
 
   it('will warn when act outlasts its timeout', async () => {
     const warn = mockWarn();
-    attach();
-    const composer = Composer.new();
+    const composer = start();
     const loop = setInterval(() => composer.rows++, 0);
     try {
       const frames = await act(() => (composer.draft = 'x'), { timeout: 20 });
@@ -369,9 +322,7 @@ describe('journal', () => {
   });
 
   it('will record an until address the app filter excludes, then restore the filter', async () => {
-    attach();
-    journal.record({ level: 'keys', paths: ['Other.value'] });
-    const composer = Composer.new();
+    const composer = start({ level: 'keys', paths: ['Other.value'] });
 
     const frames = await act(() => void setTimeout(() => (composer.draft = 'late'), 5), { until: 'Composer.draft' });
 
@@ -380,18 +331,13 @@ describe('journal', () => {
   });
 
   it('will read a value target whatever the app records', async () => {
-    attach();
-    journal.record({ level: 'keys', paths: ['Other.value'] });
-    const composer = Composer.new();
-
+    const composer = start({ level: 'keys', paths: ['Other.value'] });
     await act(() => void setTimeout(() => (composer.draft = 'late'), 5), { until: { 'Composer.draft': 'late' } });
-
     expect(composer.draft).toBe('late');
   });
 
   it('will act past a write the step makes itself', async () => {
-    attach();
-    const composer = Composer.new();
+    const composer = start();
     const frames = await act(
       () => {
         composer.draft = 'sending';
@@ -404,8 +350,7 @@ describe('journal', () => {
 
   it('will count a write an async step awaited', async () => {
     const warn = mockWarn();
-    attach();
-    const composer = Composer.new();
+    const composer = start();
     await act(
       async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -417,8 +362,7 @@ describe('journal', () => {
   });
 
   it('will act until an address holds a value', async () => {
-    attach();
-    const composer = Composer.new();
+    const composer = start();
     const frames = await act(
       () => {
         composer.draft = 'sending';
@@ -436,29 +380,25 @@ describe('journal', () => {
 
     attach();
     const job = Job.new();
-
     await act(() => void setTimeout(() => (job._handle = null), 5), { until: { 'Job._handle': null } });
-
     expect(job._handle).toBeNull();
   });
 
   it('will not wait for a value already held', async () => {
     const warn = mockWarn();
-    attach();
-    Composer.new();
+    start();
     expect(await act(() => {}, { until: { 'Composer.draft': '' } })).toEqual([]);
     expect(warn).not.toHaveBeenCalled();
   });
 
   it('will throw when a value never holds', async () => {
-    attach();
-    Composer.new();
+    start();
     await expect(act(() => {}, { until: { 'Composer.draft': 'never' }, timeout: 20 })).rejects.toThrow(
       'Not reached within 20ms: Composer.draft.'
     );
   });
 
-  it('will say when a value names no instance', async () => {
+  it('will throw naming a value with no instance', async () => {
     attach();
     await expect(act(() => {}, { until: { 'Missing.draft': 'x' }, timeout: 20 })).rejects.toThrow(
       'Not reached within 20ms: Missing.draft (names no instance).'
@@ -466,8 +406,7 @@ describe('journal', () => {
   });
 
   it('will act until an instance address sees a frame', async () => {
-    attach();
-    const composer = Composer.new();
+    const composer = start();
     const frames = await act(
       () => {
         setTimeout(() => {
@@ -481,9 +420,7 @@ describe('journal', () => {
   });
 
   it('will summarize frames per instance, latest first', async () => {
-    attach();
-    journal.record({ level: 'values', calls: true });
-    const composer = Composer.new();
+    const composer = start({ level: 'values', calls: true });
     const other = Other.new();
 
     composer.submit('a');
@@ -508,20 +445,13 @@ describe('journal', () => {
   });
 
   it('will summarize keys without values below values level', async () => {
-    attach();
-    journal.record({ level: 'keys' });
-    const composer = Composer.new();
-
-    composer.draft = 'x';
+    start({ level: 'keys' }).draft = 'x';
     await flushMicrotasks();
-
     expect(journal.summary()[0].keys).toEqual({ draft: { count: 1 } });
   });
 
   it('will cap retained frames', async () => {
-    attach();
-    journal.record({ level: 'keys' });
-    const composer = Composer.new();
+    const composer = start({ level: 'keys' });
     for (let i = 0; i < 505; i++) {
       composer.rows = i;
       await null;
@@ -534,6 +464,12 @@ describe('journal', () => {
 
 describe('hot', () => {
   let count = 0;
+  let id: string;
+
+  beforeEach(() => {
+    id = `journal-${count++}`;
+    attach();
+  });
 
   const version = (step: number, extra?: boolean) => {
     class Counter extends State {
@@ -556,9 +492,6 @@ describe('hot', () => {
   };
 
   it('will follow a hot patch while recording calls', async () => {
-    const id = `journal-${count++}`;
-
-    attach();
     journal.record({ level: 'keys', calls: true });
 
     const Counter = version(1);
@@ -582,9 +515,6 @@ describe('hot', () => {
   });
 
   it('will follow an inherited method while recording calls', async () => {
-    const id = `journal-${count++}`;
-
-    attach();
     journal.record({ level: 'keys', calls: true });
 
     const Counter = version(1);
@@ -604,22 +534,12 @@ describe('hot', () => {
   });
 
   it('will drop a recorded method a patch removed', async () => {
-    const id = `journal-${count++}`;
-
-    attach();
     journal.record({ level: 'keys', calls: true });
 
-    const Before = (() => {
-      class Counter extends State {
-        gone() {}
-      }
-      return Counter;
-    })();
-
-    const After = (() => {
-      class Counter extends State {}
-      return Counter;
-    })();
+    const Before = class Counter extends State {
+      gone() {}
+    };
+    const After = class Counter extends State {};
 
     hot.accept(id, { Counter: Before });
 
@@ -633,9 +553,6 @@ describe('hot', () => {
   });
 
   it('will record a patch as hot', async () => {
-    const id = `journal-${count++}`;
-
-    attach();
     journal.record({ level: 'keys' });
 
     const Counter = version(1);
@@ -654,9 +571,6 @@ describe('hot', () => {
   });
 
   it('will not record a patch filtered out', async () => {
-    const id = `journal-${count++}`;
-
-    attach();
     journal.record({ level: 'keys', types: ['Other'] });
 
     const Counter = version(1);
