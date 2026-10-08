@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, pending, set } from '@expressive/mvc';
 import { Portal, render } from './index';
-import { flushMicrotasks, lazy, mockPromise, mount, track, html, until } from '../test.setup';
+import { flushMicrotasks, html, lazy, mockPromise, mount, place, track, until } from '../test.setup';
 
 describe('suspense and recovery', () => {
   it('will show a Component fallback until a loaded view resolves', async () => {
@@ -16,8 +16,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     expect(root.textContent).toBe('loading');
 
     loaded.resolve({ default: () => <strong>ready</strong> });
@@ -47,8 +46,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Page />, root);
+    const root = place(<Page />);
 
     await flushMicrotasks();
     expect(caught).toEqual(['chunk']);
@@ -66,9 +64,7 @@ describe('suspense and recovery', () => {
   it('will report a failed load without a catch, not reject unhandled', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const Lazy = () => Promise.reject(new Error('chunk'));
-    const root = document.createElement('main');
-
-    render(<Component fallback={<i>wait</i>}><Lazy /></Component>, root);
+    place(<Component fallback={<i>wait</i>}><Lazy /></Component>);
 
     await flushMicrotasks();
     await flushMicrotasks();
@@ -82,9 +78,7 @@ describe('suspense and recovery', () => {
     ['bare Component', {}]
   ])('will let %s own a loader fallback', async (_, props) => {
     const [Lazy, loaded] = lazy();
-    const root = document.createElement('main');
-
-    render(<Component {...(props as {})} fallback={<i>waiting</i>}><Lazy /></Component>, root);
+    const root = place(<Component {...(props as {})} fallback={<i>waiting</i>}><Lazy /></Component>);
     expect(root.textContent).toBe('waiting');
 
     loaded.resolve(() => <span>done</span>);
@@ -112,8 +106,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     expect(root.textContent).toBe('loading');
 
     first.resolve(() => <span>first</span>);
@@ -886,8 +879,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<svg><Chart /><foreignObject><div /></foreignObject></svg>, root);
+    const root = place(<svg><Chart /><foreignObject><div /></foreignObject></svg>);
 
     loaded.resolve(() => <circle r="1" />);
     await flushMicrotasks();
@@ -920,8 +912,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     expect(root.textContent).toBe('loading');
 
     resolve();
@@ -1015,8 +1006,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     expect(root.textContent).toBe('recovering');
 
     await flushMicrotasks();
@@ -1122,8 +1112,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     pending.reject(new Error('offline'));
     await flushMicrotasks();
 
@@ -1154,8 +1143,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Parent />, root);
+    const root = place(<Parent />);
     await flushMicrotasks();
 
     expect(caught).toHaveBeenCalledWith('child');
@@ -1191,8 +1179,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Outer />, root);
+    const root = place(<Outer />);
     await until(() => expect(root.textContent).toBe('outer'));
 
     handled.resolve();
@@ -1224,8 +1211,7 @@ describe('suspense and recovery', () => {
     process.on('unhandledRejection', rejected);
 
     try {
-      const root = document.createElement('main');
-      render(<Inner />, root);
+      const root = place(<Inner />);
       await until(() => expect(rejected).toHaveBeenCalled());
 
       expect(caught).toHaveBeenCalledOnce();
@@ -1263,8 +1249,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Outer />, root);
+    const root = place(<Outer />);
     await flushMicrotasks();
 
     inner.step = 1;
@@ -1309,8 +1294,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Outer />, root);
+    const root = place(<Outer />);
     await flushMicrotasks();
 
     expect(outer).toHaveBeenCalledWith('escalated');
@@ -1335,9 +1319,7 @@ describe('suspense and recovery', () => {
     };
 
     let parent!: Parent;
-    const root = document.createElement('main');
-
-    render(<Parent is={(p) => (parent = p)} fallback={null} />, root);
+    const root = place(<Parent is={(p) => (parent = p)} fallback={null} />);
     pending(() => (parent.value = undefined));
     await flushMicrotasks();
     await flushMicrotasks();
@@ -1351,9 +1333,7 @@ describe('suspense and recovery', () => {
       const loaded = mockPromise<{ default: (props: { name: string }) => Component.Node }>();
       const load = vi.fn(() => loaded);
       const Greeting = () => load();
-      const root = document.createElement('main');
-
-      render(<Component fallback={<i>loading</i>}><Greeting name="Ada" /><Greeting name="Bob" /></Component>, root);
+      const root = place(<Component fallback={<i>loading</i>}><Greeting name="Ada" /><Greeting name="Bob" /></Component>);
       expect(root.textContent).toBe('loading');
 
       loaded.resolve({ default: ({ name }) => <b>{name}</b> });
@@ -1376,9 +1356,7 @@ describe('suspense and recovery', () => {
       }
 
       const Lazy = () => Promise.resolve(Counter);
-      const root = document.createElement('main');
-
-      render(<Component fallback={<i>loading</i>}><Lazy count={3} /></Component>, root);
+      const root = place(<Component fallback={<i>loading</i>}><Lazy count={3} /></Component>);
 
       await flushMicrotasks();
       await flushMicrotasks();
