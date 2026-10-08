@@ -29,6 +29,10 @@ class Probe extends Viewport {
   scene = new Arena();
   camera = new Eye();
 
+  protected schedule(step: (time: number) => void) {
+    setTimeout(() => step(performance.now()));
+  }
+
   _frames: { center: Pixel; corner: Pixel }[] = [];
   _steps: (() => void)[] = [];
   _done!: () => void;
