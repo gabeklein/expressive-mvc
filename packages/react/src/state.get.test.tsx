@@ -12,7 +12,7 @@ import {
   type MockInstance
 } from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { mockPromise, flushMicrotasks } from '../test.setup';
+import { mockPromise, flushMicrotasks, preactDiffers, reactOnly } from '../test.setup';
 import { Runtime } from './runtime';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
@@ -69,7 +69,7 @@ describe('State.get', () => {
     expect(didRender).toBeCalledTimes(2);
   });
 
-  it('will transition model subscriber dispatch', async () => {
+  reactOnly.it('will transition model subscriber dispatch', async () => {
     class Test extends State {
       value = 'a';
       urgent = 0;
@@ -510,7 +510,7 @@ describe('State.get', () => {
       expect(hook.result.current).toBe(null);
     });
 
-    it('will not subscribe to values', async () => {
+    preactDiffers('will not subscribe to values', async () => {
       const promise = mockPromise<string>();
 
       const test = Test.new();
@@ -539,7 +539,7 @@ describe('State.get', () => {
       expect(didRender).toBeCalledTimes(2);
     });
 
-    it('will refresh and throw if async rejects', async () => {
+    preactDiffers('will refresh and throw if async rejects', async () => {
       class Test extends State {}
 
       const promise = mockPromise();
@@ -894,7 +894,7 @@ describe('State.get', () => {
 
   describe('set instruction', () => {
     describe('factory', () => {
-      it('will suspend if function is async', async () => {
+      preactDiffers('will suspend if function is async', async () => {
         const promise = mockPromise<string>();
 
         class Test extends State {
@@ -914,7 +914,7 @@ describe('State.get', () => {
         expect(hook.result.current).toBe('hello');
       });
 
-      it('will refresh and throw if async rejects', async () => {
+      preactDiffers('will refresh and throw if async rejects', async () => {
         const promise = mockPromise();
 
         class Test extends State {
@@ -1033,7 +1033,7 @@ describe('State.get - nested dependency', () => {
   });
 });
 
-describe('State.get - concurrent consistency', () => {
+reactOnly.describe('State.get - concurrent consistency', () => {
   class Test extends State {
     revision = 1;
   }
@@ -1224,7 +1224,7 @@ describe('State.get - pre-commit dispatch', () => {
   });
 });
 
-describe('State.get - fast refresh', () => {
+reactOnly.describe('State.get - fast refresh', () => {
   it('will keep subscription when effects re-run', async () => {
     class Test extends State {
       value = 1;

@@ -1,9 +1,9 @@
 import { act, render } from '@testing-library/react';
 import { Activity, ReactNode, Suspense, useState } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { Component, pending, Provider, State } from '.';
-import { mockPromise } from '../test.setup';
+import { mockPromise, reactOnly } from '../test.setup';
 import { Runtime, useHook } from './runtime';
 
 // Stub Runtime with a hand-driven lifecycle so a subscription update can fire
@@ -144,7 +144,7 @@ it('will advance revision on reset', () => {
 
 
 
-describe('pending', () => {
+reactOnly.describe('pending', () => {
   class Data extends State {
     value = 'a';
   }
@@ -465,7 +465,7 @@ describe('pending', () => {
   });
 });
 
-describe('pending teardown', () => {
+reactOnly.describe('pending teardown', () => {
   it('will settle work left pending by an unmount', async () => {
     class Data extends State {
       value = 'a';

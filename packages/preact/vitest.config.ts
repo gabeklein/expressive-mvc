@@ -8,7 +8,8 @@ const react = fileURLToPath(new URL('../react/src/', import.meta.url));
 
 // The react suite runs against this adapter: react imports resolve to
 // preact/compat, and its `.` and `../test.setup` imports to this package.
-// What follows is the React-only remainder.
+// React-only tests are marked in place (`reactOnly`, `preactDiffers`);
+// whole files that don't apply are excluded here.
 
 const skipFiles = [
   // react's own JSX host registration and vite plugin
@@ -18,26 +19,6 @@ const skipFiles = [
   'element.test.tsx',
   // react's ErrorBoundary; preact's has its own suite beside boundary.ts
   'boundary.test.tsx'
-];
-
-const skipTests = [
-  // concurrent rendering: startTransition, useSyncExternalStore, Activity
-  'will transition',
-  'mixed revisions',
-  '^pending ',
-  // StrictMode double invocation - preact/compat StrictMode is a passthrough
-  'strict mode will (construct twice|survive define-semantics)',
-  // react-refresh
-  'fast refresh',
-  // preact keeps a class-instance ref populated after unmount
-  'ref prop will populate ref object',
-  // preact flushes the subscription refresh before the assertion
-  'props property will not cause redundant render',
-  // preact lands an async refresh a tick later
-  'State.get async ',
-  'State.get set instruction factory ',
-  // compat Suspense cannot hand a suspension to a boundary added later
-  'Provider suspense will ignore suspense if undefined'
 ];
 
 export default mergeConfig(suite(true), {
@@ -63,7 +44,6 @@ export default mergeConfig(suite(true), {
   },
   test: {
     include: [`${react}*.test.*`],
-    exclude: [...configDefaults.exclude, ...skipFiles.map((file) => react + file)],
-    testNamePattern: new RegExp(`^(?!.*(${skipTests.join('|')}))`)
+    exclude: [...configDefaults.exclude, ...skipFiles.map((file) => react + file)]
   }
 });

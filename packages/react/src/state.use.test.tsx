@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Component, State, Provider, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { flushMicrotasks, mockPromise } from '../test.setup';
+import { flushMicrotasks, mockPromise, reactOnly } from '../test.setup';
 import { pending } from '@expressive/mvc';
 import * as Refresh from 'react-refresh/runtime';
 
@@ -43,7 +43,7 @@ describe('State.use', () => {
       expect(result.current.value).toBe('baz');
     });
 
-    it('will transition owned model dispatch', async () => {
+    reactOnly.it('will transition owned model dispatch', async () => {
       let instance!: Test;
       const gate = mockPromise<void>();
       const App = () => {
@@ -512,7 +512,7 @@ describe('State.use', () => {
     });
   });
 
-  describe('fast refresh', () => {
+  reactOnly.describe('fast refresh', () => {
     it('will keep instance when effects re-run', async () => {
       class Test extends State {
         value = 1;

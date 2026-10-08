@@ -1,4 +1,4 @@
-import { afterEach } from 'vitest';
+import { afterEach, describe, it } from 'vitest';
 import { injectIntoGlobalHook } from 'react-refresh/runtime';
 
 import '../mvc/test.setup';
@@ -13,3 +13,9 @@ afterEach(() => {
 });
 
 export { mockError, mockPromise, mockWarn, flushMicrotasks } from '../mvc/test.setup';
+
+/** React behavior preact lacks - skipped when packages/preact runs this suite. */
+export const reactOnly = { describe, it };
+
+/** React behavior preact handles differently - runs as `it.fails` under packages/preact. */
+export const preactDiffers = it;

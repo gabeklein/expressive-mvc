@@ -12,7 +12,7 @@ import {
 
 import { act, render, screen } from '@testing-library/react';
 import { Component, State, Context, get, Provider, set } from '.';
-import { flushMicrotasks } from '../test.setup';
+import { flushMicrotasks, preactDiffers } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
 
@@ -491,7 +491,7 @@ describe('Provider', () => {
       expect(element).not.toHaveText('Loading...');
     });
 
-    it('will ignore suspense if undefined', () => {
+    preactDiffers('will ignore suspense if undefined', () => {
       class Foo extends State {
         value = set<string>();
       }

@@ -3,7 +3,7 @@ import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
+import { mockError, mockPromise, mockWarn, flushMicrotasks, preactDiffers, reactOnly } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
 import { Component, State, pending, set } from '.';
 
@@ -35,7 +35,7 @@ it('will not enumerate react internals on instance', () => {
   expect(Object.keys(instance).sort()).toEqual(['baz', 'foo']);
 });
 
-it('will transition Component dispatch', async () => {
+reactOnly.it('will transition Component dispatch', async () => {
   const gate = mockPromise<void>();
 
   class Control extends Component {
@@ -83,7 +83,7 @@ it('will transition Component dispatch', async () => {
   expect(view.container.textContent).toBe('bc');
 });
 
-it('will not commit mixed revisions across repeated placement', async () => {
+reactOnly.it('will not commit mixed revisions across repeated placement', async () => {
   let scheduled = false;
 
   class Control extends Component {
@@ -147,7 +147,7 @@ it('will not commit mixed revisions across repeated placement', async () => {
 });
 
 describe('ref prop', () => {
-  it('will populate ref object with instance', () => {
+  preactDiffers('will populate ref object with instance', () => {
     class Control extends Component {
       foo = 'bar';
     }
@@ -438,7 +438,7 @@ describe('props property', () => {
     expect(didUpdate).toBeCalledTimes(2);
   });
 
-  it('will not cause redundant render', async () => {
+  preactDiffers('will not cause redundant render', async () => {
     const didRender = vi.fn();
     let control: Control;
 
@@ -1423,7 +1423,7 @@ describe('strict mode', () => {
     expect(didRender).toBeCalledWith('qux');
   });
 
-  it('will survive define-semantics field clobber', async () => {
+  reactOnly.it('will survive define-semantics field clobber', async () => {
     const didAttemptConstruct = vi.fn();
 
     class Control extends Component {
@@ -1459,7 +1459,7 @@ describe('strict mode', () => {
     element.unmount();
   });
 
-  it('will construct twice then init once', async () => {
+  reactOnly.it('will construct twice then init once', async () => {
     const order: string[] = [];
 
     class Control extends Component {
