@@ -290,11 +290,6 @@ describe('State.use', () => {
   });
 
   describe('callback argument', () => {
-    class Test extends State {
-      foo?: string = undefined;
-      bar?: string = undefined;
-    }
-
     it('will run callback once', async () => {
       const callback = vi.fn();
       const hook = renderHook(() => Test.use(callback));

@@ -12,7 +12,7 @@ import {
   type MockInstance
 } from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { mockPromise, flushMicrotasks, preactDiffers, reactOnly } from '../test.setup';
+import { mockPromise, flushMicrotasks, revisions, preactDiffers, reactOnly } from '../test.setup';
 import { Runtime } from './runtime';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
@@ -256,7 +256,7 @@ describe('State.get', () => {
       expect(useTest).toHaveReturned();
     });
 
-    it('will compute output', async () => {
+    it('will compute and subscribe to output', async () => {
       const test = Test.new();
       const hook = renderWith(test, () => {
         return Test.get((x) => x.foo + x.bar);
@@ -569,93 +569,81 @@ describe('State.get', () => {
       value = 'foo';
     }
 
-    it('will track the replacement of an upstream instance', async () => {
-      const test1 = Test.new();
-      const test2 = Test.new();
-
-      test1.value = 'first';
-      test2.value = 'second';
-
-      let current: any = test1;
-      const didRender = vi.fn();
-
-      const Inner = () => {
-        didRender();
-        return Test.get().value;
-      };
-
-      const element = render(
-        <Provider for={current}>
+    /** Renders `Inner` under a Provider for `value`; `swap` re-renders with another. */
+    function mount(value: State | Record<string, State>, Inner: React.FC) {
+      const view = render(
+        <Provider for={value}>
           <Inner />
         </Provider>
       );
 
-      expect(element.container.textContent).toBe('first');
+      const swap = (next: State | Record<string, State>) =>
+        act(async () => {
+          view.rerender(
+            <Provider for={next}>
+              <Inner />
+            </Provider>
+          );
+        });
 
-      current = test2;
+      return { container: view.container, swap };
+    }
 
-      await act(async () => {
-        element.rerender(
-          <Provider for={current}>
-            <Inner />
-          </Provider>
-        );
+    it('will track the replacement of an upstream instance', async () => {
+      const test1 = Test.new({ value: 'first' });
+      const test2 = Test.new({ value: 'second' });
+      const didRender = vi.fn();
+
+      const { container, swap } = mount(test1, () => {
+        didRender();
+        return Test.get().value;
       });
 
-      expect(element.container.textContent).toBe('second');
+      expect(container.textContent).toBe('first');
+
+      await swap(test2);
+
+      expect(container.textContent).toBe('second');
       expect(didRender).toBeCalledTimes(2);
 
-      // update old instance - should NOT trigger render
       test1.value = 'stale';
       await expect(test1).toHaveUpdated();
 
       expect(didRender).toBeCalledTimes(2);
 
-      // update new instance - should trigger render
       await act(async () => {
         test2.value = 'updated';
       });
 
-      expect(element.container.textContent).toBe('updated');
+      expect(container.textContent).toBe('updated');
       expect(didRender).toBeCalledTimes(3);
     });
 
     it.fails('will render null when instance is removed', async () => {
-      class Other extends State {
-        label = 'other';
-      }
+      class Other extends State {}
 
       const test = Test.new();
       const other = Other.new();
+      const { container, swap } = mount({ test, other }, () => Test.get(false)?.value ?? null);
 
-      let current: any = { test, other };
-      const didRender = vi.fn();
+      await swap({ other });
 
-      const Inner = () => {
-        didRender();
-        return Test.get(false)?.value ?? null;
-      };
+      expect(container.textContent).toBe('');
+    });
 
-      const { container, rerender } = render(
-        <Provider for={current}>
-          <Inner />
-        </Provider>
+    it('will use factory with replaced instance', async () => {
+      const didCompute = vi.fn();
+      const { container, swap } = mount(Test.new({ value: 'first' }), () =>
+        Test.get(($) => {
+          didCompute();
+          return $.value;
+        })
       );
 
-      expect(didRender).toBeCalled();
+      await swap(Test.new({ value: 'second' }));
 
-      current = { other };
-
-      await act(async () => {
-        rerender(
-          <Provider for={current}>
-            <Inner />
-          </Provider>
-        );
-      });
-
-      expect(didRender).toBeCalledTimes(2);
-      expect(container.textContent).toBe('');
+      expect(didCompute).toBeCalledTimes(2);
+      expect(container.textContent).toBe('second');
     });
 
     it('will track implicit replacement instance', async () => {
@@ -700,44 +688,6 @@ describe('State.get', () => {
 
       expect(element.container.textContent).toBe('updated');
       expect(didRender).toBeCalledTimes(3);
-    });
-
-    it('will use factory with replaced instance', async () => {
-      const test1 = Test.new();
-      const test2 = Test.new();
-
-      test1.value = 'first';
-      test2.value = 'second';
-
-      let current: any = test1;
-      const didCompute = vi.fn();
-
-      const Inner = () => {
-        return Test.get(($) => {
-          didCompute();
-          return $.value;
-        });
-      };
-
-      const { rerender } = render(
-        <Provider for={current}>
-          <Inner />
-        </Provider>
-      );
-
-      expect(didCompute).toBeCalled();
-
-      current = test2;
-
-      await act(async () => {
-        rerender(
-          <Provider for={current}>
-            <Inner />
-          </Provider>
-        );
-      });
-
-      expect(didCompute).toBeCalledTimes(2);
     });
 
     it('keeps a computed subscription alive after a mount-time redirect', async () => {
@@ -1038,73 +988,24 @@ reactOnly.describe('State.get - concurrent consistency', () => {
     revision = 1;
   }
 
-  function fixture(test: Test, mutate: (test: Test) => void) {
-    const commits: number[][] = [];
-    let reveal!: () => void;
-    let scheduled = false;
-
-    function Reader({ index }: { index: number }) {
-      const { revision } = Test.get();
-      const started = performance.now();
-
-      while (performance.now() - started < 1) {}
-
-      if (!index && !scheduled) {
-        scheduled = true;
-        setTimeout(() => mutate(test));
-      }
-
-      return <span>{revision}</span>;
-    }
-
-    function Readers() {
-      const root = React.useRef<HTMLDivElement>(null);
-
-      React.useLayoutEffect(() => {
-        commits.push(
-          [...root.current!.querySelectorAll('span')].map((node) =>
-            Number(node.textContent)
-          )
-        );
-      });
-
-      return (
-        <div ref={root}>
-          {Array.from({ length: 40 }, (_, index) => (
-            <Reader key={index} index={index} />
-          ))}
-        </div>
-      );
-    }
-
-    function App() {
-      const [shown, setShown] = React.useState(false);
-      reveal = () => React.startTransition(() => setShown(true));
-      return shown && <Readers />;
-    }
-
-    const view = render(
-      <Provider for={test}>
-        <App />
-      </Provider>
-    );
-
-    return {
-      commits,
-      view,
-      reveal: () => reveal()
-    };
-  }
-
   it('will not commit mixed revisions across a yielded mount', async () => {
     const test = Test.new();
-    const { commits, view, reveal } = fixture(test, (test) => {
+    const { commits, slow, reveal } = revisions(() => {
       test.revision = 2;
       test.revision = 3;
       test.revision = 4;
     });
 
-    reveal();
+    function Reader() {
+      const { revision } = Test.get();
+      slow();
+      return <span>{revision}</span>;
+    }
+
+    const view = reveal(
+      Array.from({ length: 40 }, (_, index) => <Reader key={index} />),
+      { wrapper: ({ children }) => <Provider for={test}>{children}</Provider> }
+    );
 
     await waitFor(() => {
       expect(view.container.querySelectorAll('span')).toHaveLength(40);
@@ -1119,13 +1020,18 @@ reactOnly.describe('State.get - concurrent consistency', () => {
 
   it('will not commit mixed revisions for a transition write', async () => {
     const test = Test.new();
-    const { commits, view, reveal } = fixture(test, (test) => {
-      pending(() => {
-        test.revision = 2;
-      });
-    });
+    const { commits, slow, reveal } = revisions(() => void pending(() => (test.revision = 2)));
 
-    reveal();
+    function Reader() {
+      const { revision } = Test.get();
+      slow();
+      return <span>{revision}</span>;
+    }
+
+    const view = reveal(
+      Array.from({ length: 40 }, (_, index) => <Reader key={index} />),
+      { wrapper: ({ children }) => <Provider for={test}>{children}</Provider> }
+    );
 
     await waitFor(() => {
       expect(view.container.querySelectorAll('span')).toHaveLength(40);

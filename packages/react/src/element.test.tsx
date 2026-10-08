@@ -1,10 +1,43 @@
 import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
-import { expect, it, describe, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, describe, vi, type MockInstance } from 'vitest';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise } from '../test.setup';
+import { mockPromise, revisions } from '../test.setup';
 import { Component, Provider, State, get, has, map } from '.';
 import { pending } from '@expressive/mvc';
+
+let error: MockInstance<Console['error']>;
+
+beforeEach(() => {
+  error = vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  const { calls } = error.mock;
+
+  error.mockRestore();
+
+  expect(calls).toEqual([]);
+});
+
+class Item extends Component {
+  label = '';
+
+  render() {
+    return <span>{this.key}={this.label};</span>;
+  }
+}
+
+/** Component holding `field()` as `items`, rendering them through `render`. */
+function holder<T>(field: () => T, render: (items: T) => React.ReactNode = (items) => <>{items}</>) {
+  return class Store extends Component {
+    items = field();
+
+    render() {
+      return render(this.items);
+    }
+  };
+}
 
 describe('instance element', () => {
   class Control extends Component {
@@ -63,14 +96,12 @@ describe('instance element', () => {
   });
 
   it('will render an array', async () => {
-    const error = mockError();
     const first = Control.new({ value: 'foo' });
     const second = Control.new({ value: 'bar' });
     const collection = [first, second];
     const element = render(<>{collection}</>);
 
     expect(element.container.textContent).toBe('foobar');
-    expect(error).not.toBeCalled();
     expect((first as any)._store).not.toBe((second as any)._store);
 
     await act(async () => {
@@ -87,7 +118,6 @@ describe('instance element', () => {
   });
 
   it('will render one instance in multiple places', async () => {
-    const error = mockError();
     const instance = Control.new({ value: 'first' });
     const element = render(
       <>
@@ -97,7 +127,6 @@ describe('instance element', () => {
     );
 
     expect(screen.getAllByText('first')).toHaveLength(2);
-    expect(error).not.toBeCalled();
 
     await act(async () => {
       instance.value = 'second';
@@ -121,8 +150,6 @@ describe('instance element', () => {
   });
 
   it('will render an owned collection through its owner', async () => {
-    const error = mockError();
-
     class Item extends Component {
       value = '';
 
@@ -162,7 +189,6 @@ describe('instance element', () => {
 
     expect(element.container.textContent).toBe('bc');
     expect(first.get(null)).toBe(true);
-    expect(error).not.toBeCalled();
 
     element.unmount();
 
@@ -171,24 +197,7 @@ describe('instance element', () => {
   });
 
   it('will render a spawned collection through its owner', async () => {
-    const error = mockError();
-
-    class Item extends Component {
-      label = '';
-
-      render() {
-        return <span>{this.key}={this.label};</span>;
-      }
-    }
-
-    class Store extends Component {
-      items = has(Item);
-
-      render() {
-        return <>{[...this.items]}</>;
-      }
-    }
-
+    const Store = holder(() => has(Item), (items) => <>{[...items]}</>);
     const store = Store.new({});
     const first = store.items.add({ key: 'a' });
     const element = render(<>{store}</>);
@@ -208,20 +217,13 @@ describe('instance element', () => {
 
     expect(element.container.textContent).toBe('a=apple;b=berry;');
 
-    await act(async () => {
-      store.items.delete(first);
-    });
+    await act(async () => store.items.delete(first));
 
     expect(element.container.textContent).toBe('b=berry;');
     expect(first.get(null)).toBe(true);
-    expect(error).not.toBeCalled();
-
-    element.unmount();
   });
 
   it('will resolve provided context from spawned member', async () => {
-    const error = mockError();
-
     class Theme extends State {
       color = '';
     }
@@ -257,7 +259,6 @@ describe('instance element', () => {
 
     expect(item.theme.color).toBe('red');
     expect(screen.getByText('red')).toBeDefined();
-    expect(error).not.toBeCalled();
 
     element.unmount();
 
@@ -265,8 +266,6 @@ describe('instance element', () => {
   });
 
   it('will render a parent-owned instance', async () => {
-    const error = mockError();
-
     class Item extends Component {
       owner = get(Owner);
       value = '';
@@ -300,14 +299,9 @@ describe('instance element', () => {
     });
 
     expect(item.get(null)).toBe(true);
-    expect(error).not.toBeCalled();
-
-    element.unmount();
   });
 
   it('will keep a child placement across owner renders', async () => {
-    const error = mockError();
-
     class Child extends Component {
       value = 'a';
 
@@ -347,19 +341,16 @@ describe('instance element', () => {
     });
 
     expect(element.container.textContent).toBe('!b');
-    expect(error).not.toBeCalled();
-
-    element.unmount();
   });
 
   it('will warn when rendering one instance twice as siblings', () => {
-    const error = mockError();
     const instance = Control.new({ value: 'first' });
-    const element = render(<>{[instance, instance]}</>);
+
+    render(<>{[instance, instance]}</>);
 
     expect(error.mock.calls.flat().join(' ')).toContain('same key');
 
-    element.unmount();
+    error.mockClear();
   });
 
   it('will render again after unmount', async () => {
@@ -416,8 +407,6 @@ describe('instance element', () => {
   });
 
   it('will resolve ancestor provided at placement', async () => {
-    const error = mockError();
-
     class Theme extends State {
       color = '';
     }
@@ -450,7 +439,6 @@ describe('instance element', () => {
 
     expect(screen.getByText('red')).toBeDefined();
     expect(screen.getByText('blue')).toBeDefined();
-    expect(error).not.toBeCalled();
 
     element.unmount();
 
@@ -458,8 +446,6 @@ describe('instance element', () => {
   });
 
   it('will resolve its own context per placement', async () => {
-    const error = mockError();
-
     function Value() {
       return <span>{Item.get().value}</span>;
     }
@@ -494,7 +480,6 @@ describe('instance element', () => {
     });
 
     expect(screen.getAllByText('b')).toHaveLength(1);
-    expect(error).not.toBeCalled();
 
     element.unmount();
 
@@ -562,9 +547,10 @@ describe('repeated placement of a child field', () => {
 
   const expected = ['2/1', '5/2', '8/3', '11/4', '14/5'];
 
-  it('will recompute for a plain-constructed instance', async () => {
-    class Host extends Component {
-      panel = new Panel();
+  /** Host which toggles `panel` in and out of its render. */
+  function host(panel: () => Panel) {
+    return class Host extends Component {
+      panel = panel();
       active?: Panel = this.panel;
 
       render() {
@@ -576,70 +562,51 @@ describe('repeated placement of a child field', () => {
           </>
         );
       }
+    };
+  }
+
+  class Owned extends Component {
+    shown = true;
+
+    render() {
+      return (
+        <>
+          <button onClick={() => (this.shown = true)}>on</button>
+          <button onClick={() => (this.shown = false)}>off</button>
+          <span>{this.shown ? <Panel /> : null}</span>
+        </>
+      );
     }
+  }
 
-    const host = Host.new();
+  it('will recompute for a plain-constructed instance', async () => {
+    const Host = host(() => new Panel());
+    const instance = Host.new();
 
-    render(<>{host}</>);
+    render(<>{instance}</>);
 
     expect(await cycle()).toEqual(expected);
-    expect(Object.is(host.is.active, host.panel)).toBe(true);
+    expect(Object.is(instance.is.active, instance.panel)).toBe(true);
   });
 
   it('will recompute for an activated instance', async () => {
-    class Host extends Component {
-      panel = Panel.new();
-      active?: Panel = this.panel;
+    const Host = host(() => Panel.new());
+    const instance = Host.new();
 
-      render() {
-        return (
-          <>
-            <button onClick={() => (this.active = this.panel)}>on</button>
-            <button onClick={() => (this.active = undefined)}>off</button>
-            <span>{this.active}</span>
-          </>
-        );
-      }
-    }
-
-    render(<>{Host.new()}</>);
+    render(<>{instance}</>);
 
     expect(await cycle()).toEqual(expected);
   });
 
   it('will recompute for an owned element', async () => {
-    class Host extends Component {
-      shown = true;
-
-      render() {
-        return (
-          <>
-            <button onClick={() => (this.shown = true)}>on</button>
-            <button onClick={() => (this.shown = false)}>off</button>
-            <span>{this.shown ? <Panel /> : null}</span>
-          </>
-        );
-      }
-    }
-
-    render(<>{Host.new()}</>);
+    render(<>{Owned.new()}</>);
 
     expect(await cycle()).toEqual(expected);
   });
 });
 
 describe('map element', () => {
-  class Item extends Component {
-    label = '';
-
-    render() {
-      return <span>{this.key}={this.label};</span>;
-    }
-  }
-
   it('will render a keyed map placed directly', async () => {
-    const error = mockError();
-
     class Store extends Component {
       items = map<string, Item>();
 
@@ -666,9 +633,6 @@ describe('map element', () => {
     });
 
     expect(element.container.textContent).toBe('b=berry;');
-    expect(error).not.toBeCalled();
-
-    element.unmount();
   });
 
   it('will render a spawning map placed directly', async () => {
@@ -691,8 +655,6 @@ describe('map element', () => {
     });
 
     expect(element.container.textContent).toBe('a=a;b=b;');
-
-    element.unmount();
   });
 
   it('will transition a direct map subscriber', async () => {
@@ -732,6 +694,7 @@ describe('map element', () => {
     gate.resolve();
     await act(async () => {});
   });
+
 });
 
 describe('seam', () => {
@@ -756,29 +719,13 @@ describe('seam', () => {
 });
 
 describe('collection element', () => {
-  class Item extends Component {
-    label = '';
-
-    render() {
-      return <span>{this.key}={this.label};</span>;
-    }
-  }
-
   it('will render a pool placed directly', async () => {
-    const error = mockError();
-
-    class Store extends Component {
-      items = has(Item);
-
-      render() {
-        return <>{this.items}</>;
-      }
-    }
-
+    const Store = holder(() => has(Item));
     const store = Store.new({});
     const first = store.items.add({ key: 'a' });
     const element = render(<>{store}</>);
 
+    expect(first.key).toBe('a');
     expect(element.container.textContent).toBe('a=;');
 
     await act(async () => {
@@ -793,14 +740,10 @@ describe('collection element', () => {
 
     expect(element.container.textContent).toBe('a=apple;b=berry;');
 
-    await act(async () => {
-      first.set(null);
-    });
+    await act(async () => first.set(null));
 
     expect(element.container.textContent).toBe('b=berry;');
-    expect(error).not.toBeCalled();
-
-    element.unmount();
+    expect(first.get(null)).toBe(true);
   });
 
   it('will render a list placed directly', async () => {
@@ -822,8 +765,6 @@ describe('collection element', () => {
     });
 
     expect(element.container.textContent).toBe('a=x;b=y;');
-
-    element.unmount();
   });
 
   it('will transition a direct list subscriber', async () => {
@@ -877,88 +818,32 @@ describe('collection element', () => {
     const element = render(<>{store}</>);
 
     expect(element.container.textContent).toBe('a=z;a=z;');
-
-    element.unmount();
   });
 });
 
 describe('collection concurrent consistency', () => {
-  class Item extends Component {
-    label = '';
+  it('will not commit mixed revisions across repeated pool placements', async () => {
+    const { commits, slow, reveal } = revisions(() => store.items.add({ key: 'b', label: 'b' }), 'div');
 
-    render() {
-      return <span>{this.key}={this.label};</span>;
-    }
-  }
-
-  function harness(content: React.ReactNode, write: () => void) {
-    const commits: (string | null)[][] = [];
-    let reveal!: () => void;
-    let scheduled = false;
-
-    function Slow({ index }: { index: number }) {
-      const started = performance.now();
-
-      while (performance.now() - started < 1) {}
-
-      if (!index && !scheduled) {
-        scheduled = true;
-        setTimeout(write);
-      }
-
+    function Slow() {
+      slow();
       return null;
     }
 
-    function Recorder() {
-      const root = React.useRef<HTMLDivElement>(null);
-
-      React.useLayoutEffect(() => {
-        commits.push(
-          [...root.current!.querySelectorAll('div')].map((node) => node.textContent)
-        );
-      });
-
-      return <div ref={root}>{content}</div>;
-    }
-
-    function App() {
-      const [shown, setShown] = React.useState(false);
-      reveal = () => React.startTransition(() => setShown(true));
-      return shown && <Recorder />;
-    }
-
-    const view = render(<App />);
-
-    return { commits, view, reveal: () => reveal(), Slow };
-  }
-
-  it('will not commit mixed revisions across repeated pool placements', async () => {
-    class Store extends Component {
-      items = has(Item);
-
-      render() {
-        const { items } = this;
-        return (
-          <>
-            {Array.from({ length: 40 }, (_, index) => (
-              <div key={index}>
-                <Slow index={index} />
-                {items}
-              </div>
-            ))}
-          </>
-        );
-      }
-    }
+    const Store = holder(() => has(Item), (items) =>
+      Array.from({ length: 40 }, (_, index) => (
+        <div key={index}>
+          <Slow />
+          {items}
+        </div>
+      ))
+    );
 
     const store = Store.new({});
+
     store.items.add({ key: 'a', label: 'a' });
 
-    const { commits, view, reveal, Slow } = harness(<>{store}</>, () => {
-      store.items.add({ key: 'b', label: 'b' });
-    });
-
-    reveal();
+    const view = reveal(<>{store}</>);
 
     await waitFor(() => {
       expect(commits[0]).toHaveLength(40);
@@ -972,32 +857,27 @@ describe('collection concurrent consistency', () => {
   });
 
   it('will not commit mixed revisions across repeated map placements', async () => {
-    class Store extends Component {
-      items = map((key: string) => new Item({ key, label: key }));
+    const { commits, slow, reveal } = revisions(() => store.items.set('b'), 'div');
 
-      render() {
-        const { items } = this;
-        return (
-          <>
-            {Array.from({ length: 40 }, (_, index) => (
-              <div key={index}>
-                <Slow index={index} />
-                {items}
-              </div>
-            ))}
-          </>
-        );
-      }
+    function Slow() {
+      slow();
+      return null;
     }
 
+    const Store = holder(() => map((key: string) => new Item({ key, label: key })), (items) =>
+      Array.from({ length: 40 }, (_, index) => (
+        <div key={index}>
+          <Slow />
+          {items}
+        </div>
+      ))
+    );
+
     const store = Store.new({});
+
     store.items.set('a');
 
-    const { commits, view, reveal, Slow } = harness(<>{store}</>, () => {
-      store.items.set('b');
-    });
-
-    reveal();
+    const view = reveal(<>{store}</>);
 
     await waitFor(() => {
       expect(commits[0]).toHaveLength(40);

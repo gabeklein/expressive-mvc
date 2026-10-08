@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { State, Provider } from '.';
 
-// Simulate a server render: no DOM.
 function onServer<T>(fn: () => T): T {
   const saved = (globalThis as any).window;
   try {
@@ -14,24 +13,23 @@ function onServer<T>(fn: () => T): T {
   }
 }
 
-describe('SSR probe (no window)', () => {
-  it('renders a State component and runs new() as pure init', () => {
+describe('server render', () => {
+  it('will run new() and render state', () => {
     let ran = false;
     class Store extends State {
       value = 5;
       protected new() {
-        ran = true; // pure init - runs on the server
+        ran = true;
         return () => {};
       }
     }
     const View = () => <span>{Store.use().value}</span>;
 
-    const html = onServer(() => renderToString(<View />));
-    expect(html).toContain('>5<');
+    expect(onServer(() => renderToString(<View />))).toContain('>5<');
     expect(ran).toBe(true);
   });
 
-  it('isolates Provider-scoped state across two requests (no bleed)', () => {
+  it('will isolate provided state per request', () => {
     class Session extends State {
       user = 'anon';
     }
@@ -52,10 +50,10 @@ describe('SSR probe (no window)', () => {
 
     expect(r1).toContain('alice');
     expect(r2).toContain('bob');
-    expect(r2).not.toContain('alice'); // request 2 never sees request 1
+    expect(r2).not.toContain('alice');
   });
 
-  it('CONFIRMS a declared global is shared across requests (docs caveat)', () => {
+  it('will share a declared global across requests', () => {
     class Flags extends State {
       static global = true;
       enabled = false;
@@ -63,14 +61,13 @@ describe('SSR probe (no window)', () => {
     const Show = () => <i>{String(Flags.get().enabled)}</i>;
 
     onServer(() => {
-      const flags = Flags.new(); // registers to shared root - even on server
-
+      const flags = Flags.new();
       const a = renderToString(<Show />);
-      flags.enabled = true; // mutate between "requests"
-      const b = renderToString(<Show />);
+
+      flags.enabled = true;
 
       expect(a).toContain('false');
-      expect(b).toContain('true'); // BLED - proves globals are process-shared
+      expect(renderToString(<Show />)).toContain('true');
 
       flags.set(null);
     });

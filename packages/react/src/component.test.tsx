@@ -3,7 +3,7 @@ import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise, mockWarn, flushMicrotasks, preactDiffers, reactOnly } from '../test.setup';
+import { mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
 import { Component, State, pending, set } from '.';
 
@@ -84,60 +84,22 @@ reactOnly.it('will transition Component dispatch', async () => {
 });
 
 reactOnly.it('will not commit mixed revisions across repeated placement', async () => {
-  let scheduled = false;
+  const { commits, slow, reveal } = revisions(() => (instance.revision = 2));
 
   class Control extends Component {
     revision = 1;
 
     render() {
       const { revision } = this;
-      const started = performance.now();
 
-      while (performance.now() - started < 1) {}
-
-      if (!scheduled) {
-        scheduled = true;
-        setTimeout(() => {
-          this.revision = 2;
-        });
-      }
+      slow();
 
       return <span>{revision}</span>;
     }
   }
 
   const instance = Control.new();
-  const commits: number[][] = [];
-  let reveal!: () => void;
-
-  function Placements() {
-    const root = React.useRef<HTMLDivElement>(null);
-
-    React.useLayoutEffect(() => {
-      commits.push(
-        [...root.current!.querySelectorAll('span')].map((node) =>
-          Number(node.textContent)
-        )
-      );
-    });
-
-    return (
-      <div ref={root}>
-        {Array.from({ length: 40 }, (_, index) => (
-          <div key={index}>{instance}</div>
-        ))}
-      </div>
-    );
-  }
-
-  function App() {
-    const [shown, setShown] = React.useState(false);
-    reveal = () => React.startTransition(() => setShown(true));
-    return shown && <Placements />;
-  }
-
-  const view = render(<App />);
-  reveal();
+  const view = reveal(Array.from({ length: 40 }, (_, index) => <div key={index}>{instance}</div>));
 
   await waitFor(() => {
     expect(view.container.querySelectorAll('span')).toHaveLength(40);
@@ -946,6 +908,39 @@ describe('subcomponents', () => {
     expect(screen).toHaveText('Updated');
   });
 
+  it('will work in strict mode', async () => {
+    class Dashboard extends Component {
+      label = 'Hello';
+
+      Sidebar() {
+        return <span>{this.label}</span>;
+      }
+
+      render() {
+        return <this.Sidebar />;
+      }
+    }
+
+    let instance!: Dashboard;
+    const element = render(
+      <React.StrictMode>
+        <Dashboard is={(x) => (instance = x)} />
+      </React.StrictMode>
+    );
+
+    await flushMicrotasks();
+
+    expect(screen).toHaveText('Hello');
+
+    await act(async () => {
+      instance.label = 'Updated';
+    });
+
+    expect(screen).toHaveText('Updated');
+
+    element.unmount();
+  });
+
   it('will be accessible via context get', () => {
     class Dashboard extends Component {
       Sidebar() {
@@ -1183,39 +1178,6 @@ describe('subcomponents', () => {
     expect(screen).toHaveText('Dynamic Label');
   });
 
-  it('will work in strict mode', async () => {
-    class Dashboard extends Component {
-      label = 'Hello';
-
-      Sidebar() {
-        return <span>{this.label}</span>;
-      }
-
-      render() {
-        return <this.Sidebar />;
-      }
-    }
-
-    let instance!: Dashboard;
-    const element = render(
-      <React.StrictMode>
-        <Dashboard is={(x) => (instance = x)} />
-      </React.StrictMode>
-    );
-
-    await flushMicrotasks();
-
-    expect(screen).toHaveText('Hello');
-
-    await act(async () => {
-      instance.label = 'Updated';
-    });
-
-    expect(screen).toHaveText('Updated');
-
-    element.unmount();
-  });
-
   it('will render usages independently', async () => {
     const renders = { a: 0, b: 0 };
 
@@ -1436,7 +1398,7 @@ describe('strict mode', () => {
     }
 
     let instance!: Control;
-    const element = render(
+    render(
       <React.StrictMode>
         <Control is={(is) => (instance = is)} />
       </React.StrictMode>
@@ -1455,8 +1417,6 @@ describe('strict mode', () => {
     await instance.set();
 
     expect(effect).toBeCalledWith('bar');
-
-    element.unmount();
   });
 
   reactOnly.it('will construct twice then init once', async () => {
@@ -1471,7 +1431,7 @@ describe('strict mode', () => {
 
     Control.on({ setup: () => void order.push('init') });
 
-    const element = render(
+    render(
       <React.StrictMode>
         <Control />
       </React.StrictMode>
@@ -1480,8 +1440,6 @@ describe('strict mode', () => {
     await flushMicrotasks();
 
     expect(order).toEqual(['construct', 'construct', 'init']);
-
-    element.unmount();
   });
 });
 
