@@ -1,5 +1,4 @@
 import { vi, describe, it, expect } from 'vitest';
-import { mockPromise } from '../../test.setup';
 import { Context } from '../context';
 import { State } from '../state';
 import { get } from './get';
@@ -54,24 +53,18 @@ describe('fetch mode', () => {
 
     const foo = Foo.new();
     const mockEffect = vi.fn();
-    let promise = mockPromise();
 
     expect(foo.bar.foo).toBe(foo);
 
-    foo.get((state) => {
-      mockEffect(state.bar.foo.value);
-      promise.resolve();
-    });
+    foo.get((state) => mockEffect(state.bar.foo.value));
 
-    promise = mockPromise();
     foo.value = 'bar';
-    await promise;
+    await expect(foo).toHaveUpdated();
 
     expect(mockEffect).toBeCalledWith('bar');
 
-    promise = mockPromise();
     foo.bar.foo = Foo.new();
-    await promise;
+    await expect(foo.bar).toHaveUpdated();
 
     expect(mockEffect).toBeCalledWith('foo');
     expect(mockEffect).toBeCalledTimes(3);
