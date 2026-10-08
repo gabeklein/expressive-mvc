@@ -499,11 +499,17 @@ describe('suspense and recovery', () => {
     }
 
     const [app, root] = mount(App);
+    const shown: string[] = [];
+
+    new MutationObserver((records) => {
+      for (const { addedNodes } of records) addedNodes.forEach((node) => shown.push(node.nodeName));
+    }).observe(root, { childList: true, subtree: true });
 
     pending(() => (app.nav.page = 'b'));
     await until(() => expect(Lazy).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(shown).toEqual([]);
     expect(root.textContent).toBe('A');
-    expect(root.querySelector('h2')).toBeNull();
 
     loaded.resolve(() => <b>lazy</b>);
     await until(() => expect(root.textContent).toBe('Blazy'));
