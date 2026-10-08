@@ -126,7 +126,9 @@ function contract<T extends Object3D>(keys: string[], changed?: (object: THREE.O
 
 function vector(object: Members, key: string) {
   const value = object[key];
-  return value instanceof THREE.Vector3 || value instanceof THREE.Euler ? (value as THREE.Vector3) : undefined;
+  return value instanceof THREE.Vector3 || value instanceof THREE.Euler || value instanceof THREE.Color
+    ? (value as THREE.Vector3)
+    : undefined;
 }
 
 function place(object: Members, key: string, value: unknown) {
