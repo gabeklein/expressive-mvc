@@ -5,10 +5,14 @@
   "scripts": {
     "dev": "expressive dev",
     "build": "expressive build",
-    "start": "node dist/server/index.js"
+    "start": "node dist/server/index.js",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@expressive/dev": "workspace:*",
     "@expressive/mvc": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

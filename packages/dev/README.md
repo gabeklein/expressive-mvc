@@ -62,3 +62,7 @@ adds it and `@expressive/inspect/vite`. The generated server entry imports `serv
 `example/` is a routed app, a workspace package of its own. Its tsconfig maps
 `@expressive/*` to the package sources, so the editor needs no build. Running it does: after
 `bun run build` at the repo root, `bun run dev`, `bun run build` or `bun run start` inside `example/`.
+
+`bun run e2e` inside `example/` runs its Playwright specs (`example/e2e/`) against both the dev
+server and the built service, after `bun run build` at the root. Set `CHROME` to use a local
+Chromium binary.

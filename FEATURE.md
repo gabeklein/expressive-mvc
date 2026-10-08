@@ -26,6 +26,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - Basics - `app/` route tree (`Page`, `Layout`, `Loading`, `Catch`, `NotFound`), single-file `app.tsx` mode, virtual shell/entry/router module, dev server with inspect, client + node service build, static `serve` with `index.html` fallback, example workspace.
 - Route chunks - a module exporting only `Page`/`Layout`/`NotFound` (not the root) loads on first entry; `Loading` and `Catch` keep a module static.
 - Route defaults - a page module's `default` function is its entry hook (runs with the Route before it renders, may be async; a returned string redirects, `null` forfeits to the 404). A `default` class - State or Component alike - renders around the route's content (`<X>{children}</X>`, or `<X><Layout /></X>` with a `Layout`) and is provided to everything below it. A module with a `default` stays a static import.
+- E2E harness - `example/e2e/` Playwright specs run against the dev server and the built service (`bun run e2e` in `example/`). Each feature adds its page and spec. Not in CI yet: trunk PRs run `verify` only.
 
 ## MVP
 
@@ -153,3 +154,4 @@ Principles the MVP must not contradict; most land after it.
 - 100% coverage like every package - dev's `coverage` script runs vitest without `--coverage` until then.
 - `skills/` docs, changeset, `private: false`.
 - Router stopgap replaced by its upstream PR.
+- The example's E2E specs run in CI.

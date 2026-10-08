@@ -71,6 +71,9 @@
         "@expressive/dev": "workspace:*",
         "@expressive/mvc": "workspace:*",
       },
+      "devDependencies": {
+        "@playwright/test": "^1.63.0",
+      },
     },
     "packages/dom": {
       "name": "@expressive/dom",
