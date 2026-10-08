@@ -524,7 +524,7 @@ describe('journal', () => {
     const composer = Composer.new();
     for (let i = 0; i < 505; i++) {
       composer.rows = i;
-      await flushMicrotasks();
+      await null;
     }
     const frames = journal.frames();
     expect(frames.length).toBe(500);
