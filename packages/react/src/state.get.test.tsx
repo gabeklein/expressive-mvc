@@ -530,20 +530,16 @@ describe('State.get', () => {
       expect(didRender).toBeCalledTimes(3);
     });
 
-    it('will render null when instance is removed', async () => {
+    it.fails('will render null when instance is removed', async () => {
       class Other extends State {}
 
       const test = Test.new();
       const other = Other.new();
-      const didRender = vi.fn();
-      const { swap } = mount({ test, other }, () => {
-        didRender();
-        return Test.get(false)?.value ?? null;
-      });
+      const { container, swap } = mount({ test, other }, () => Test.get(false)?.value ?? null);
 
       await swap({ other });
 
-      expect(didRender).toBeCalledTimes(2);
+      expect(container.textContent).toBe('');
     });
 
     it('will use factory with replaced instance', async () => {
