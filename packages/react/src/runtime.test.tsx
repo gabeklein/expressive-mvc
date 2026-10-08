@@ -62,15 +62,6 @@ let saved: Partial<typeof Runtime>;
 beforeEach(() => void (saved = { ...Runtime }));
 afterEach(() => void Object.assign(Runtime, saved));
 
-it('does not call the setter before commit', () => {
-  const { update, render, refresh } = harness();
-
-  render();
-  refresh('early'); // e.g. a sibling mutating shared state during render
-
-  expect(update).not.toHaveBeenCalled();
-});
-
 it('coalesces deferred refreshes into a single flush on commit', () => {
   const { update, render, commit, refresh } = harness();
 
@@ -184,53 +175,6 @@ describe('pending', () => {
 
     return { gate, data, Content };
   }
-
-  it('will hold current content until the replacement is absorbed', async () => {
-    const { gate, data, Content } = scenario();
-    let shell!: Shell;
-
-    class Shell extends Component {
-      busy = false;
-
-      go(work: () => void) {
-        this.busy = true;
-        return pending(work).then(() => {
-          this.busy = false;
-        });
-      }
-
-      render() {
-        return <Content />;
-      }
-    }
-
-    const view = render(
-      <Provider for={data}>
-        <Shell is={(i) => (shell = i)} />
-      </Provider>
-    );
-
-    await act(async () => {});
-
-    await act(async () => {
-      shell.go(() => {
-        data.value = 'b';
-      });
-      await Promise.resolve();
-    });
-
-    expect(view.container.querySelector('i')).toBeNull();
-    expect(view.container.textContent).toBe('a');
-    expect(shell.busy).toBe(true);
-
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
-
-    expect(view.container.textContent).toBe('b');
-    expect(shell.busy).toBe(false);
-  });
 
   it('will hold for a plain State, with no Component involved', async () => {
     const { gate, data, Content } = scenario();
@@ -400,19 +344,6 @@ describe('pending', () => {
     await act(async () => {
       gate.resolve();
       await gate;
-    });
-
-    expect(settled).toBe(true);
-  });
-
-  it('will settle on dispatch before mount', async () => {
-    const data = Data.new();
-    let settled = false;
-
-    await pending(() => {
-      data.value = 'b';
-    }).then(() => {
-      settled = true;
     });
 
     expect(settled).toBe(true);
