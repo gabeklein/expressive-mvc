@@ -358,7 +358,7 @@ describe('effect', () => {
     await test.set({ value: 2 });
 
     expect(effect).toBeCalledWith(2);
-    expect(effect).toBeCalledWith(2);
+    expect(effect).toBeCalledTimes(2);
 
     expect(cleanup).toBeCalledTimes(1);
     expect(cleanup).toBeCalledWith(true);
