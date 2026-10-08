@@ -236,7 +236,7 @@ describe('suspense and recovery', () => {
     const [app, root] = mount(App);
 
     const settled = track(pending(() => (app.flag.on = true)));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(Lazy).toHaveBeenCalled());
     expect(root.textContent).toBe('stay');
     expect(settled()).toBe(false);
 
@@ -249,10 +249,11 @@ describe('suspense and recovery', () => {
 
   describe('a transition revealing State that loads', () => {
     let root: HTMLElement;
+    let lives: string[];
 
     function setup() {
       const loaded = mockPromise<string>();
-      const lives: string[] = [];
+      lives = [];
 
       class Data extends State {
         value = set(() => loaded);
@@ -284,7 +285,7 @@ describe('suspense and recovery', () => {
       const [app, main] = mount(App);
       root = main;
       pending(() => (app.open = true));
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(lives).toContain('new'));
 
       return root;
     }
@@ -296,9 +297,8 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('closed');
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(root.textContent).toBe('ready'));
 
-      expect(root.textContent).toBe('ready');
       expect(lives).toEqual(['new', 'mount: ready']);
     });
 
@@ -322,9 +322,8 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('closed');
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(root.textContent).toBe('ready'));
 
-      expect(root.textContent).toBe('ready');
       expect(lives).toEqual(['new', 'panel mount: ready']);
     });
 
@@ -336,9 +335,8 @@ describe('suspense and recovery', () => {
       expect(root.querySelector('section')).toBeNull();
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(html(root)).toBe('<section><h2>title</h2><b>ready</b></section>'));
 
-      expect(html(root)).toBe('<section><h2>title</h2><b>ready</b></section>');
       expect(lives).toEqual(['new', 'mount: titleready']);
     });
   });
@@ -369,15 +367,14 @@ describe('suspense and recovery', () => {
     const [app, root] = mount(App);
 
     pending(() => (app.next = true));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(Lazy).toHaveBeenCalled());
 
     expect(html(root)).toBe('<p>current</p>');
     expect(mounted).toEqual([]);
 
     loaded.resolve(() => <s>lazy</s>);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(html(root)).toBe('<b>new</b><s>lazy</s><u>tail</u>'));
 
-    expect(html(root)).toBe('<b>new</b><s>lazy</s><u>tail</u>');
     expect(mounted).toEqual(['newlazytail']);
   });
 
@@ -396,12 +393,10 @@ describe('suspense and recovery', () => {
     const [app, root] = mount(App);
 
     pending(() => (app.count = 2));
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('count 2');
+    await until(() => expect(root.textContent).toBe('count 2'));
 
     loaded.resolve(() => <s>lazy</s>);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('count 2lazy');
+    await until(() => expect(root.textContent).toBe('count 2lazy'));
   });
 
   it('will not mount new content a failing transition discards', async () => {
@@ -437,11 +432,10 @@ describe('suspense and recovery', () => {
     const [app, root] = mount(App);
 
     pending(() => (app.open = true));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(error).toHaveBeenCalledWith(new Error('boom')));
 
     expect(root.textContent).toBe('closed');
     expect(mounted).not.toHaveBeenCalled();
-    expect(error).toHaveBeenCalledWith(new Error('boom'));
     error.mockRestore();
   });
 
@@ -458,11 +452,11 @@ describe('suspense and recovery', () => {
       return Nav.get().page == 'a' ? <p>A</p> : null;
     }
 
-    function B() {
+    const B = vi.fn((): Component.Node => {
       if (Nav.get().page != 'b') return null;
       if (!open) throw gate;
       return <p>B</p>;
-    }
+    });
 
     class App extends Component {
       nav = new Nav();
@@ -476,7 +470,7 @@ describe('suspense and recovery', () => {
     const [app, root] = mount(App);
 
     const settled = track(pending(() => (app.nav.page = 'b')));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(B).toHaveBeenCalledTimes(2));
     expect(root.textContent).toBe('A');
     expect(settled()).toBe(false);
 
@@ -514,7 +508,7 @@ describe('suspense and recovery', () => {
     const [app, root] = mount(App);
 
     pending(() => (app.nav.page = 'b'));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(Lazy).toHaveBeenCalled());
     expect(root.textContent).toBe('A');
     expect(root.querySelector('h2')).toBeNull();
 
@@ -588,9 +582,9 @@ describe('suspense and recovery', () => {
       }
     }
 
-    function Wait(): Component.Node {
+    const Wait = vi.fn((): Component.Node => {
       throw gate;
-    }
+    });
 
     function Swap() {
       const { page } = Nav.get();
@@ -609,7 +603,7 @@ describe('suspense and recovery', () => {
     const [app] = mount(App, {}, document.body.appendChild(document.createElement('main')));
 
     pending(() => (app.nav.page = 'b'));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(Wait).toHaveBeenCalled());
 
     app.shown = false;
     await flushMicrotasks();
@@ -626,8 +620,6 @@ describe('suspense and recovery', () => {
       show = true;
     }
 
-    const tick = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
-
     function setup() {
       const gate = mockPromise<void>();
 
@@ -635,11 +627,11 @@ describe('suspense and recovery', () => {
         return <h1>{Nav.get().page}</h1>;
       }
 
-      function Page() {
+      const Page = vi.fn((): Component.Node => {
         const { page } = Nav.get();
         if (page == 'b') throw gate;
         return <p>{page}</p>;
-      }
+      });
 
       function Body() {
         return Nav.get().show ? <Page /> : null;
@@ -656,14 +648,15 @@ describe('suspense and recovery', () => {
 
       const [app, root] = mount(App);
       const go = (page: string) => track(pending(() => (app.nav.page = page)));
-      return { root, go, nav: app.nav };
+      const held = () => until(() => expect(Page.mock.results.at(-1)?.type).toBe('throw'));
+      return { root, go, held, nav: app.nav };
     }
 
     it('will render a newer transition without waiting on a held one', async () => {
-      const { root, go } = setup();
+      const { root, go, held } = setup();
 
       go('b');
-      await tick();
+      await held();
       expect(root.textContent).toBe('aa');
 
       const settled = go('c');
@@ -674,10 +667,10 @@ describe('suspense and recovery', () => {
     });
 
     it('will settle a transition back to the current page', async () => {
-      const { root, go } = setup();
+      const { root, go, held } = setup();
 
       go('b');
-      await tick();
+      await held();
 
       const settled = go('a');
       await until(() => {
@@ -687,10 +680,10 @@ describe('suspense and recovery', () => {
     });
 
     it('will release a held batch when the scope holding it unmounts', async () => {
-      const { root, go, nav } = setup();
+      const { root, go, held, nav } = setup();
 
       const settled = go('b');
-      await tick();
+      await held();
       expect(root.textContent).toBe('aa');
 
       nav.show = false;
@@ -701,12 +694,12 @@ describe('suspense and recovery', () => {
     });
 
     it('will take a later transition after the holding scope unmounts', async () => {
-      const { root, go, nav } = setup();
+      const { root, go, held, nav } = setup();
 
       go('b');
-      await tick();
+      await held();
       nav.show = false;
-      await tick();
+      await until(() => expect(root.textContent).toBe('b'));
 
       const settled = go('c');
       await until(() => {
@@ -729,10 +722,10 @@ describe('suspense and recovery', () => {
       return <p>{Nav.get().page}</p>;
     }
 
-    function Guard() {
+    const Guard = vi.fn((): Component.Node => {
       if (Nav.get().page == 'b' && !open) throw gate;
       return <Child />;
-    }
+    });
 
     class App extends Component {
       nav = new Nav();
@@ -746,7 +739,7 @@ describe('suspense and recovery', () => {
     const [app, root] = mount(App);
 
     pending(() => (app.nav.page = 'b'));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(Guard.mock.results.at(-1)?.type).toBe('throw'));
     expect(root.textContent).toBe('a');
 
     gate.resolve();
@@ -1079,7 +1072,7 @@ describe('suspense and recovery', () => {
     const [app, root, release] = mount(App);
 
     const settled = track(pending(() => (app.next = true)));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(Lazy).toHaveBeenCalled());
     expect(settled()).toBe(false);
 
     release();

@@ -25,7 +25,7 @@ export function mount<T extends State>(
 
 export function lazy<T = () => Component.Node>() {
   const loaded = mockPromise<T>();
-  return [() => loaded, loaded] as const;
+  return [vi.fn(() => loaded) as () => typeof loaded, loaded] as const;
 }
 
 export function track(promise: PromiseLike<unknown>) {
