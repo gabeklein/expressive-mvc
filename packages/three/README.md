@@ -23,12 +23,23 @@ class Spinner extends Mesh {
 }
 
 class Arena extends Scene {
-  frame = new Frame();
   ground = new Mesh();
   spinner = new Spinner({ position: new THREE.Vector3(0, 1, 0) });
 }
 
-const arena = Arena.new();
+class Eye extends PerspectiveCamera {
+  position = new THREE.Vector3(0, 2, 6);
+}
+
+class Game extends Viewport {
+  scene = new Arena();
+  camera = new Eye();
+}
+
+const game = Game.new();
+const arena = game.scene;
+
+// any host: <canvas ref={game.canvas} /> - or game.attach(canvas | gl)
 
 arena.spinner.position = new THREE.Vector3(0, 2, 0); // copied into the object, dispatched
 arena.spinner.position.y += 1; // in place, silent - `set('position')` to announce
@@ -48,5 +59,9 @@ arena.spinner.boost(1);
   draw elsewhere (`null` for nowhere, or `parent = get(World)`); `children` lists
   what draws under a node. Placement never changes lifetime - destroying a node
   detaches it, destroying its parent returns it to its owner.
+- **`Viewport`** - the one host-facing root. Owns the renderer and a `Frame`; a
+  subclass supplies `scene` and `camera`. Draws every frame while attached to a
+  canvas or WebGL context, sizing renderer and camera to it. `draw()` is
+  protected - override to wrap it.
 - **`Frame`** - per-frame callbacks via `each()`, mutating vectors in place. `loop()`
   drives one from `requestAnimationFrame`.

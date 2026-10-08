@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { get, has, set, State } from '@expressive/mvc';
 
 import { Frame } from './frame';
-import { Group, Mesh, Object3D, objectOf, Scene } from './object';
+import { Group, Mesh, Object3D, objectOf, Scene, verify } from './object';
 import { flushMicrotasks } from '../test.setup';
 
 const meshOf = (self: object) => objectOf(self) as THREE.Mesh;
@@ -595,5 +595,81 @@ describe('imperative behavior', () => {
 
     expect(meshOf(world.spinner).rotation.y).toBe(2);
     await expect(world.spinner).not.toHaveUpdated();
+  });
+});
+
+describe('_object', () => {
+  class Stray extends Mesh {
+    wander(to: THREE.Object3D) {
+      to.add(this._object);
+    }
+
+    drop() {
+      this._object.removeFromParent();
+    }
+  }
+
+  class World extends Scene {
+    a = new Group();
+    stray = new Stray();
+  }
+
+  it('will put a node back where parent places it, warning once', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const world = World.new();
+
+    world.stray.wander(objectOf(world.a));
+    verify();
+
+    expect(objectOf(world.stray).parent).toBe(objectOf(world));
+
+    world.stray.drop();
+    verify();
+
+    expect(objectOf(world.stray).parent).toBe(objectOf(world));
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/Stray-\w+ was moved through _object/);
+
+    warn.mockRestore();
+  });
+
+  it('will take an unplaced node back out of our graph', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const world = World.new();
+
+    world.stray.parent = null;
+    world.stray.wander(objectOf(world.a));
+    verify();
+
+    expect(objectOf(world.stray).parent).toBeNull();
+
+    warn.mockRestore();
+  });
+
+  it('will leave a node under a foreign object, warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const world = World.new();
+    const bone = new THREE.Bone();
+
+    world.stray.wander(bone);
+    verify();
+
+    expect(objectOf(world.stray).parent).toBe(bone);
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    warn.mockRestore();
+  });
+
+  it('will ignore a node read but not moved, or destroyed since', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const world = World.new();
+
+    world.stray.wander(objectOf(world));
+    world.a.set(null);
+    verify();
+
+    expect(warn).not.toHaveBeenCalled();
+
+    warn.mockRestore();
   });
 });
