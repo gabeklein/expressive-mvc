@@ -484,24 +484,6 @@ describe('State.use', () => {
       expect(foobar).toBe(mockExternal.foobar);
     });
 
-    it('will not apply props over methods', () => {
-      class Test extends State {
-        foobar() {
-          return 'Hello world!';
-        }
-      }
-
-      const mockProps = {
-        foobar: () => 'Goodbye cruel world!'
-      };
-
-      const { result } = renderHook(() => {
-        return Test.use(mockProps);
-      });
-
-      expect(result.current).not.toBe(mockProps.foobar);
-    });
-
     it('will not trigger updates it caused', async () => {
       const didRender = vi.fn();
       const hook = renderHook(

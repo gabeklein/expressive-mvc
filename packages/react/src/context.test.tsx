@@ -725,7 +725,7 @@ describe('Provider', () => {
         </Suspense>
       );
 
-      element.queryByText('Foo');
+      expect(element.queryByText('Foo')).not.toBeNull();
 
       element.rerender(
         <Suspense fallback={<span>Foo</span>}>
