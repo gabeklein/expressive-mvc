@@ -1,5 +1,5 @@
 import { vi, expect, it, describe } from 'vitest';
-import { flushMicrotasks, mockError, mockPromise, mockUncaught, mockWarn } from '../test.setup';
+import { flushMicrotasks, mockError, mockUncaught, mockWarn } from '../test.setup';
 import { Context } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
@@ -11,6 +11,14 @@ import { has } from './field/has';
 import { map } from './field/map';
 
 const DESTROYED = /but state is destroyed/;
+
+class Basic extends State {
+  foo = 'foo';
+}
+
+class Counter extends State {
+  foo = 0;
+}
 
 it('will not create base State', () => {
   // @ts-expect-error
@@ -522,11 +530,7 @@ describe('string coercion', () => {
   });
 
   it('will work inside subscriber', () => {
-    class Test extends State {
-      foo = 'foo';
-    }
-
-    const test = Test.new();
+    const test = Basic.new();
     const cb = vi.fn();
 
     test.get((state) => {
@@ -658,11 +662,7 @@ describe('get method', () => {
 
   describe('fetch', () => {
     it('will get value', () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
 
       expect(test.get('foo')).toBe('foo');
     });
@@ -1290,46 +1290,36 @@ describe('get method', () => {
 
       const parent = Parent.new();
       const effect = vi.fn();
-      let promise = mockPromise();
 
       parent.get((state) => {
         const { child } = state;
         const { grandchild } = child;
 
         effect(child.value, grandchild.value);
-        promise.resolve();
       });
 
-      expect(effect).toBeCalledWith('foo', 'bar');
-      effect.mockClear();
+      expect(effect).toHaveBeenLastCalledWith('foo', 'bar');
 
-      promise = mockPromise();
       parent.child.value = 'bar';
-      await promise;
+      await expect(parent.child).toHaveUpdated();
 
-      expect(effect).toBeCalledWith('bar', 'bar');
-      effect.mockClear();
+      expect(effect).toHaveBeenLastCalledWith('bar', 'bar');
 
-      promise = mockPromise();
       parent.child = new Child();
-      await promise;
+      await expect(parent).toHaveUpdated();
 
-      expect(effect).toBeCalledWith('foo', 'bar');
-      effect.mockClear();
+      expect(effect).toHaveBeenLastCalledWith('foo', 'bar');
 
-      promise = mockPromise();
       parent.child.value = 'bar';
-      await promise;
+      await expect(parent.child).toHaveUpdated();
 
-      expect(effect).toBeCalledWith('bar', 'bar');
-      effect.mockClear();
+      expect(effect).toHaveBeenLastCalledWith('bar', 'bar');
 
-      promise = mockPromise();
       parent.child.grandchild.value = 'foo';
-      await promise;
+      await expect(parent.child.grandchild).toHaveUpdated();
 
-      expect(effect).toBeCalledWith('bar', 'foo');
-      effect.mockClear();
+      expect(effect).toHaveBeenLastCalledWith('bar', 'foo');
+      expect(effect).toBeCalledTimes(5);
     });
 
     it('will subscribe if value starts undefined', async () => {
@@ -1727,11 +1717,7 @@ describe('set method', () => {
 
   describe('config', () => {
     it('will assign a value', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
 
       test.set('foo', { value: 'bar' });
 
@@ -1770,11 +1756,7 @@ describe('set method', () => {
     });
 
     it('will throw if redefining managed property', () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
 
       expect(() => {
         test.set('foo', { value: 'bar', set: false });
@@ -1932,11 +1914,7 @@ describe('set method', () => {
 
   describe('promise-like', () => {
     it('will resolve update frame, empty if none', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
 
       expect(await test.set()).toEqual([]);
 
@@ -1963,11 +1941,7 @@ describe('set method', () => {
 
   describe('callback', () => {
     it('will call callback on update', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
       const cb = vi.fn();
 
       test.set(cb);
@@ -1980,11 +1954,7 @@ describe('set method', () => {
     });
 
     it('will not self-update', () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
       const cb = vi.fn(() => {
         test.foo = 'baz';
       });
@@ -2019,11 +1989,7 @@ describe('set method', () => {
     });
 
     it('will run returned function once on settle', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
       const done = vi.fn();
       const cb = vi.fn(() => done);
 
@@ -2043,11 +2009,7 @@ describe('set method', () => {
     });
 
     it('will call on explicit event', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
       const cb = vi.fn();
 
       test.set('baz', cb);
@@ -2060,11 +2022,7 @@ describe('set method', () => {
     });
 
     it('will unsubscribe if returns null', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
       const didUpdateFoo = vi.fn(() => null);
 
       test.set('foo', didUpdateFoo);
@@ -2076,11 +2034,7 @@ describe('set method', () => {
     });
 
     it('will call synconously on destroy', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
       const didDestroy = vi.fn();
 
       test.set(null, didDestroy);
@@ -2287,12 +2241,8 @@ describe('set method', () => {
       });
 
       it('will output nothing for a destroyed write left unhandled', async () => {
-        class Test extends State {
-          foo = 0;
-        }
-
         const caught = mockUncaught();
-        const test = Test.new();
+        const test = Counter.new();
 
         test.set(null);
         test.foo = 1;
@@ -2304,11 +2254,7 @@ describe('set method', () => {
     });
 
     it('will silently store update after destroyed', () => {
-      class Test extends State {
-        foo = 0;
-      }
-
-      const test = Test.new();
+      const test = Counter.new();
       test.set(null);
 
       expect(update(test, 'foo', 1, true)).toBe(false);
@@ -2368,11 +2314,7 @@ describe('set method', () => {
     });
 
     it('will ignore properties not on state and built-ins', async () => {
-      class Test extends State {
-        foo = 'foo';
-      }
-
-      const test = Test.new();
+      const test = Basic.new();
 
       test.set({ bar: 'bar', is: 'bar' });
 
