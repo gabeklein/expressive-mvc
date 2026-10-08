@@ -283,6 +283,52 @@ describe("redirect guard prop", () => {
   });
 });
 
+describe("default entry hook via `enter`", () => {
+  browserRouter();
+
+  const Secret = () => <p>secret</p>;
+  const Login = () => <p>login</p>;
+
+  it("hook receives its Route, reads params, allows on falsy", async () => {
+    const seen: { id?: string } = {};
+    const hook = (route: Route) => {
+      seen.id = route.match?.id;
+    };
+    const Tree = () => (
+      <Route>
+        <Route to=":id" as={Secret} enter={hook} />
+      </Route>
+    );
+
+    location("/ok");
+    const root = await mount(Tree);
+
+    expect(seen.id).toBe("ok");
+    expect(root.textContent).toBe("secret");
+  });
+
+  it("verdict derived from params redirects", async () => {
+    const hook = (route: Route) => (route.match?.id === "block" ? "/login" : undefined);
+    const Tree = () => (
+      <Route>
+        <Route to="login" as={Login} />
+        <Route to=":id" as={Secret} enter={hook} />
+      </Route>
+    );
+
+    location("/block");
+    expect((await mount(Tree)).textContent).toBe("login");
+  });
+
+  it("clearing the hook clears the guard", async () => {
+    const route = Route.new({ enter: () => "/login" });
+    expect(route.redirect).toBeTypeOf("function");
+    route.enter = undefined;
+    expect(route.redirect).toBeUndefined();
+    route.set(null);
+  });
+});
+
 describe("nav cycle: async guard <-> class Page", () => {
   browserRouter();
 

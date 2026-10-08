@@ -1,9 +1,15 @@
 /** @jsxImportSource @expressive/mvc */
 
-import type { Component } from "@expressive/mvc";
+import { set, type Component } from "@expressive/mvc";
 import { Route as Base } from "@expressive/router";
 
+type EntryHook = (route: Route) => string | void | null | Promise<string | void | null>;
+
 export class Route extends Base {
+  enter = set<EntryHook | undefined>(undefined, hook => {
+    this.redirect = hook ? () => hook(this) : undefined;
+  });
+
   Catch?: (props: { error: Error; retry: () => void }) => Component.Node = undefined;
 
   NotFound?: (props: { children?: Component.Node }) => Component.Node = undefined;

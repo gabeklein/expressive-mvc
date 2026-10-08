@@ -6,7 +6,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { browserRouter, location, mount } from "../test.setup";
+import { Component, State } from "@expressive/mvc";
+
+import { browserRouter, location, mount, settle } from "../test.setup";
 import { Route } from "./client";
 import { generateRoutes } from "./routes";
 import { scanExports } from "./vite/scan";
@@ -38,6 +40,8 @@ describe("app/ routing (codegen)", () => {
   const LOADING = "export function Loading(){ return null }";
   const CATCH = "export function Catch(){ return null }";
   const NOTFOUND = "export function NotFound(){ return null }";
+  const ENTER = "export default () => '/login'";
+  const SCOPE = "export default class Session extends State {}";
 
   it("root is always a scope; lone index becomes the \"/\" page + implicit 404", async () => {
     const out = await generate({ "index.tsx": PAGE });
@@ -85,6 +89,42 @@ describe("app/ routing (codegen)", () => {
     expect(out).toContain('const BlogNotFound = () => import("../app/blog/index.tsx").then(m => m.NotFound);');
   });
 
+  it("default entry hook rides as the `enter` prop on a leaf", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(admin).tsx": `${PAGE}\n${ENTER}` });
+    expect(out).toContain('import AdminEnter, { Page as Admin } from "../app/(admin).tsx";');
+    expect(out).toContain('<Route to="admin" as={Admin} enter={AdminEnter} />');
+  });
+
+  it("default entry hook gates a section (rides on the scope)", async () => {
+    const out = await generate({ "admin/index.tsx": `${PAGE}\n${LAYOUT}\n${ENTER}`, "admin/[id].tsx": PAGE });
+    expect(out).toContain("import AdminEnter, { Page as Admin, Layout as AdminLayout }");
+    expect(out).toMatch(/<Route to="admin" as={AdminLayout} enter={AdminEnter}>/);
+  });
+
+  it("a module with a default is imported statically", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(admin).tsx": `${PAGE}\n${ENTER}`, "(account).tsx": `${PAGE}\n${SCOPE}` });
+    expect(out).toContain('import AdminEnter, { Page as Admin } from "../app/(admin).tsx";');
+    expect(out).toContain('import AccountScope, { Page as Account } from "../app/(account).tsx";');
+    expect(out).not.toContain("import(");
+  });
+
+  it("a default class renders around the route's content", async () => {
+    const out = await generate({ "index.tsx": PAGE, "account/index.tsx": `${PAGE}\n${SCOPE}`, "account/[id].tsx": PAGE });
+    expect(out).toMatch(/<Route to="account" as={AccountScope}>\s*<Route as={Account} \/>/);
+    expect(out).not.toContain("enter={AccountScope}");
+  });
+
+  it("a default class wraps the Layout", async () => {
+    const out = await generate({ "index.tsx": PAGE, "account/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}` });
+    expect(out).toContain("const AccountScoped = props => <AccountScope><AccountLayout {...props} /></AccountScope>;");
+    expect(out).toMatch(/<Route to="account" as={AccountScoped}>/);
+  });
+
+  it("a default class makes a lone page a scope", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(settings).tsx": `${PAGE}\nclass Panel extends State {}\nexport { Panel as default }` });
+    expect(out).toMatch(/<Route to="settings" as={SettingsScope}>\s*<Route as={Settings} \/>/);
+  });
+
   it("[slug] is a dynamic segment → to=\":slug\"", async () => {
     const out = await generate({ "blog/index.tsx": PAGE, "blog/[slug].tsx": PAGE });
     expect(out).toContain('<Route to="blog">');
@@ -124,9 +164,10 @@ describe("app/ routing (codegen)", () => {
       "index.tsx": `import { Route, Router } from "@expressive/dev";
         type Props = { n: number };
         export class Page extends Route { render() { return <h1>{this.match?.x satisfies string | undefined}</h1>; } }
-        export const Layout = (p: Props) => <div>{p.n}</div>;`,
+        export const Layout = (p: Props) => <div>{p.n}</div>;
+        export default async function (route: Route): Promise<string | void> {}`,
     });
-    expect(out).toContain("import { Page as Root, Layout as RootLayout }");
+    expect(out).toContain("import RootEnter, { Page as Root, Layout as RootLayout }");
   });
 
   it("module always exports a default App component, host-neutral", async () => {
@@ -182,5 +223,68 @@ describe("app/ routing (runtime)", () => {
   it("/nope → NotFound", async () => {
     location("/nope");
     expect(await rootText()).toBe("not-found");
+  });
+});
+
+describe("app/ routing (scope)", () => {
+  browserRouter();
+
+  it("provides a default State to the layout and pages while the route is matched", async () => {
+    const lives: string[] = [];
+
+    class Session extends State {
+      user = "ada";
+      protected new() {
+        lives.push("new");
+        return () => lives.push("gone");
+      }
+    }
+
+    const Shell = (props: { children?: any }) => <div data-shell>{Session.get().user}:{props.children}</div>;
+    const Scoped = (props: { children?: any }) => <Session><Shell {...props} /></Session>;
+    const Account = () => <span>{Session.get().user}</span>;
+    const Home = () => <span>home</span>;
+
+    const Tree = () => (
+      <Route>
+        <Route as={Home} />
+        <Route to="account" as={Scoped}>
+          <Route as={Account} />
+        </Route>
+      </Route>
+    );
+
+    location("/account");
+    const root = await mount(Tree);
+
+    expect(root.querySelector("[data-shell]")?.textContent).toBe("ada:ada");
+    expect(lives).toEqual(["new"]);
+
+    window.history.pushState(null, "", "/");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await settle();
+
+    expect(root.textContent).toBe("home");
+    expect(lives).toEqual(["new", "gone"]);
+  });
+
+  it("renders a Component default as the layout", async () => {
+    class Frame extends Component {
+      render(props: { children?: any }) {
+        return <section data-frame>{props.children}</section>;
+      }
+    }
+
+    const Tree = () => (
+      <Route>
+        <Route to="x" as={Frame}>
+          <Route as={() => <span>inside</span>} />
+        </Route>
+      </Route>
+    );
+
+    location("/x");
+    const root = await mount(Tree);
+    expect(root.querySelector("[data-frame]")?.textContent).toBe("inside");
   });
 });

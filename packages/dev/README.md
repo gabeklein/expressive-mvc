@@ -8,7 +8,7 @@ on the dev server.
 
 ```
 app/                  file-based routes
-  index.tsx           /            exports: Page, Layout, Loading, Catch, NotFound
+  index.tsx           /            exports: Page, Layout, Loading, Catch, NotFound, default
   (about).tsx         /about       static leaf
   blog/index.tsx      /blog        folder = scope; its index is the "/blog" page
   blog/[slug].tsx     /blog/:slug  param leaf
@@ -22,6 +22,14 @@ vite.config.ts        optional, merged under the host's config
 Bare-named files under `app/` are support modules, not routes. `Page` may be a function or
 `class Page extends Route` (from `@expressive/dev`), which owns its scope: read `this.match`,
 override `children`, set `Catch` / `NotFound`.
+
+The `default` export is read by kind. A function is the entry hook: it runs with the Route before
+it renders, and a returned string redirects (`null` falls through to the 404). A class - State or
+Component - renders around the route's content and is provided to everything below it; with a
+`Layout`, it wraps the `Layout`.
+
+Each route module becomes its own chunk, loaded when the route is first entered, unless it exports
+`Loading`, `Catch` or a `default` - those are needed before the route renders - or is the root.
 
 JSX compiles against `@expressive/dev`'s runtime, which is `@expressive/dom`'s. Set
 `"jsxImportSource": "@expressive/dev"` in the app's tsconfig; the types carry dom's `State`
