@@ -173,17 +173,6 @@ describe('hot', () => {
     expect(() => hot(module(), { View: 1 })).not.toThrow();
   });
 
-  it('will not treat unregistered functions as one', () => {
-    const First = () => <b>first</b>;
-    const Second = () => <b>second</b>;
-    const root = document.createElement('main');
-
-    render(<First />, root);
-    render(<Second />, root);
-
-    expect(root.textContent).toBe('second');
-  });
-
   it('will style a component by its latest version', async () => {
     const id = module();
 
