@@ -36,8 +36,9 @@ it - the current page holds until the next is ready (`Router.get().navigating` m
 for arriving cold, by link or refresh. A Component or a State with its own `fallback` keeps its
 waits to itself.
 
-Each route module becomes its own chunk, loaded when the route is first entered, unless it exports
-`Loading`, `Catch` or a `default` - those are needed before the route renders - or is the root.
+Each route module becomes its own chunk, loaded when the route is first entered - `default`
+included - unless it is the root or exports `Loading` or `Catch`, which must be on hand before
+anything below them can wait or fail.
 
 JSX compiles against `@expressive/dev`'s runtime, which is `@expressive/dom`'s. Set
 `"jsxImportSource": "@expressive/dev"` in the app's tsconfig; the types carry dom's `State`

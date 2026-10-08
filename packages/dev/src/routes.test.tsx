@@ -132,21 +132,25 @@ describe("app/ routing (codegen)", () => {
 
   it("default entry hook rides as the `enter` prop on a leaf", async () => {
     const out = await generate({ "index.tsx": PAGE, "(admin).tsx": `${PAGE}\n${ENTER}` });
-    expect(out).toContain('import AdminEnter, { Page as Admin } from "../app/(admin).tsx";');
+    expect(out).toContain('const AdminEnter = route => import("../app/(admin).tsx").then(m => m.default(route));');
     expect(out).toContain('<Route to="admin" as={Admin} enter={AdminEnter} />');
   });
 
   it("default entry hook gates a section (rides on the scope)", async () => {
     const out = await generate({ "admin/index.tsx": `${PAGE}\n${LAYOUT}\n${ENTER}`, "admin/[id].tsx": PAGE });
-    expect(out).toContain("import AdminEnter, { Page as Admin, Layout as AdminLayout }");
+    expect(out).toContain('const AdminEnter = route => import("../app/admin/index.tsx").then(m => m.default(route));');
     expect(out).toMatch(/<Route to="admin" as={AdminLayout} enter={AdminEnter}>/);
   });
 
-  it("a module with a default is imported statically", async () => {
-    const out = await generate({ "index.tsx": PAGE, "(admin).tsx": `${PAGE}\n${ENTER}`, "(account).tsx": `${PAGE}\n${SCOPE}` });
-    expect(out).toContain('import AdminEnter, { Page as Admin } from "../app/(admin).tsx";');
-    expect(out).toContain('import AccountScope, { Page as Account } from "../app/(account).tsx";');
-    expect(out).not.toContain("import(");
+  it("a module with a default loads on first entry", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(account).tsx": `${PAGE}\n${SCOPE}` });
+    expect(out).toContain('const AccountScope = () => import("../app/(account).tsx").then(m => m.default);');
+    expect(out).toContain('const Account = () => import("../app/(account).tsx").then(m => m.Page);');
+  });
+
+  it("the root's default stays a static import", async () => {
+    const out = await generate({ "index.tsx": `${PAGE}\n${ENTER}` });
+    expect(out).toContain('import RootEnter, { Page as Root } from "../app/index.tsx";');
   });
 
   it("a default class renders around the route's content", async () => {
@@ -307,6 +311,28 @@ describe("app/ routing (scope)", () => {
 
     expect(root.textContent).toBe("home");
     expect(lives).toEqual(["new", "gone"]);
+  });
+
+  it("provides a default class loaded on demand", async () => {
+    class Session extends State {
+      user = "ada";
+    }
+
+    const Scope = () => Promise.resolve({ default: Session }).then(m => m.default);
+    const Account = () => <span>{Session.get().user}</span>;
+
+    const Tree = () => (
+      <Route>
+        <Route to="account" as={Scope} fallback={null}>
+          <Route as={Account} fallback={null} />
+        </Route>
+      </Route>
+    );
+
+    location("/account");
+    const root = await mount(Tree);
+    await settle();
+    expect(root.textContent).toBe("ada");
   });
 
   it("renders a Component default as the layout", async () => {

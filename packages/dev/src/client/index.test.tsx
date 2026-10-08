@@ -321,6 +321,21 @@ describe("default entry hook via `enter`", () => {
     expect((await mount(Tree)).textContent).toBe("login");
   });
 
+  it("a hook loaded on demand redirects once its module arrives", async () => {
+    const hook = (route: Route) => Promise.resolve({ default: () => "/login" }).then(m => m.default());
+    const Tree = () => (
+      <Route>
+        <Route to="login" as={Login} />
+        <Route to="secret" as={Secret} enter={hook} fallback={null} />
+      </Route>
+    );
+
+    location("/secret");
+    const root = await mount(Tree);
+    await settle();
+    expect(root.textContent).toBe("login");
+  });
+
   it("clearing the hook clears the guard", async () => {
     const route = Route.new({ enter: () => "/login" });
     expect(route.redirect).toBeTypeOf("function");
