@@ -17,7 +17,7 @@ export default defineConfig({
     { name: "prod", use: { baseURL: `http://localhost:${prod}/` } },
   ],
   webServer: [
-    { command: `rm -rf node_modules/.vite && PORT=${dev} bun ../dist/cli.js dev`, port: dev, reuseExistingServer: false },
-    { command: `bun ../dist/cli.js build && PORT=${prod} node dist/server/index.js`, port: prod, reuseExistingServer: false },
+    { command: `rm -rf node_modules/.vite && PORT=${dev} node ../dist/cli.js dev`, port: dev, reuseExistingServer: false },
+    { command: `node ../dist/cli.js build && PORT=${prod} node dist/server/index.js`, port: prod, reuseExistingServer: false },
   ],
 });
