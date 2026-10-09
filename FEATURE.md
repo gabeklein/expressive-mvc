@@ -40,6 +40,7 @@ Enough to write E2E tests and examples and feel the ergonomics. One PR each, in 
 
 1. **Sidecar calls.** Each export of `app/**/api.ts` becomes a browser stub; a call is a POST answered with JSON, or `{ error }` with a 4xx/5xx status. Scanner allowlist and build errors, stubs, dispatch, import rule (importable only from the sidecar's folder and below). Wire shape: see Open.
 2. **Call context.** The route walk resolving each layer's cached `Context` by key, `Current` over `AsyncLocalStorage`, keyed `X.use()`, eviction on destroy; server `T.get()`/`T.use()` throw outside a call.
+3. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. Until something holds a reference between calls, a class that should keep state sets a TTL.
 
 MVP limits, on purpose: calls made while disconnected fail; one process.
 
@@ -47,7 +48,9 @@ MVP limits, on purpose: calls made while disconnected fail; one process.
 
 Not built yet, but the MVP must not cut against them.
 
-- **Twins (pull).** Client `X.use()` of a server class - a route's `default` or any component - attaches a twin for that mount and detaches on unmount. The server resolves the instance through the class's key; the reply carries a snapshot and version, and the twin suspends until then. Methods are calls; a reply carries the call's patch and version, applied before the call resolves - an awaited call never sees a stale twin. Twins are read-only - an invariant, not a shortcut: server values change through methods, and assigning a twin field throws.
+- **Twin values (pull) - TBD.** Values reach the client only in replies to its own requests: a snapshot on attach, then each call's reply carries what that call changed. Correct after your own actions; stale about anyone else's until the next request. Not wanted without push so far.
+- **Values invariant.** What TypeScript shows as public is readable on the twin with no separate mechanism: every public value is present before the first read (snapshot on attach). Demand may narrow what is re-sent, never what is available.
+- **Twins via client `X.use()`.** Client `X.use()` of a server class - a route's `default` or any component - attaches a twin for that mount and detaches on unmount. The server resolves the instance through the class's key; the reply carries a snapshot and version, and the twin suspends until then. Methods are calls; a reply carries the call's patch and version, applied before the call resolves - an awaited call never sees a stale twin. Twins are read-only - an invariant, not a shortcut: server values change through methods, and assigning a twin field throws.
 - **Push (SSE).** One `EventSource` per client connection - a mailbox, not a subscription list. What it carries is decided server-side by what that connection has attached. `mount()` runs on attach, its cleanup on detach. Each flush of an attached instance's updates (mvc batches per microtask) becomes one frame: `{ target, values }` with the version as the event id - the browser's reconnect resumes with `Last-Event-ID`; a server that lost the connection sends `reset`, and the client re-attaches. An evicted context sends its attached twins a terminal event before their stream drops them.
 - **OAuth** - not built, anticipated: an `app/api` slice (GET, `Set-Cookie`, redirect) for the callback, forwarding to a process-global client.
 
@@ -101,10 +104,10 @@ Per-request data sits behind one process-global `Current`, in context everywhere
 What the server pushes should follow what the client looks at. Three grains, coarse to fine:
 
 1. **Mount.** A twin attaches when its `X.use()` mounts and detaches on unmount.
-2. **Demand.** A twin attaches when something first pulls it (`get()`, `use()`, a rendered read) and detaches when nothing does - route entry only makes it available. Per key, the client knows which fields some mounted observer reads: mvc's observer already holds each listener's key set (`@expressive/mvc/observable`). Sent upstream as `focus { target, keys }`, it lets the server stream only demanded keys and skip computing undemanded getters - the lazy-getter idea, server and client alike.
+2. **Demand.** A twin attaches when something first pulls it (`get()`, `use()`, a rendered read) and detaches when nothing does - route entry only makes it available. Per key, the client knows which fields some mounted observer reads: mvc's observer already holds each listener's key set (`@expressive/mvc/observable`). Sent upstream as `focus { target, keys }`, it lets the server stream only demanded keys. Under the values invariant every public value is still in the snapshot, so a getter is computed for it; demand only spares re-sending.
 3. **Visibility.** A hidden tab (`visibilitychange`) pauses its stream; showing it resumes from the last version.
 
-Demand wants an mvc seam - notice when a key gains its first observer or loses its last - rather than dev reading observer internals. That primitive also gives core lazy getters. Upstream, after the MVP.
+Demand wants an mvc seam - notice when a key gains its first observer or loses its last - rather than dev reading observer internals. The current key set is already derivable (each observer's `listeners` map holds every listener's key set); only the notification is missing, and push needs it to send demand changes as they happen. That primitive also gives core lazy getters. Upstream, after the MVP.
 
 ## Server lifecycle
 
@@ -162,6 +165,7 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - **`static provider = github({...})`** on an account class: an OAuth client is its own process global.
 - **An integration self-handling its callback** by inspecting every request: the route forwards to it.
 - **`.expressive` endpoint prefix**: not needed for calls.
+- **Lazy key pulling** (a twin starts empty; a first read suspends and fetches the key): public values must be readable without a separate mechanism.
 - **`super.use()` to cascade**: mvc has no `use` on `State.prototype` (adapters check `typeof x.use == 'function'`), so it would need a default injected; automatic cascade instead.
 - **`per(Type)`, a class-level `get` override, or a `Context` seam for request-scoped fields**: `Current` makes them unnecessary. A `State.on()` hook intercepting `get` for request classes may still be explored.
 - **Requiring `default` classes to extend `Route`**: what is special is position (constructed per layer, given the prefix, `use()` per pass), not class; `key` applies to any State. Revisit if a feature needs Route's members.
