@@ -5,7 +5,7 @@ import { createServerModuleRunner, type Plugin, type ViteDevServer } from "vite"
 import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../config";
-import { GENERATED, SHELL, bootstrap, ensureBootstrap, relImport, resolveProject, serverEntry, type Project, type SidecarEntry } from "../project";
+import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project, type SidecarEntry } from "../project";
 import { call } from "../client/call";
 import { generateRoutes, sidecarPattern, sidecars, type Sidecar } from "../routes";
 import { dispatch, type Endpoint } from "../server/call";
@@ -71,7 +71,7 @@ export function expressive(): Plugin<Host> {
 
       const entries = project.appDir
         ? ["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*", "!app/**/api.*"]
-        : [relImport(root, project.appPath!)];
+        : [importRel(root, project.appPath!)];
 
       return {
         appType: "custom",
@@ -126,7 +126,7 @@ export function expressive(): Plugin<Host> {
       }
       if (id === callId) return `export ${call}`;
       if (id === mainId) {
-        const app = project.appDir ? `./${ROUTES}` : relImport(generatedDir, project.appPath!);
+        const app = project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!);
         return bootstrap(app);
       }
       if (id === routesId) return generateRoutes(project.appDir!, generatedDir, scanExports);

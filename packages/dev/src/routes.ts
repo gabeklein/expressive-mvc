@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, join, relative, sep } from "node:path";
 
-import { relImport } from "./project";
+import { importRel } from "./project";
 
 const ROUTE_EXT = new Set([".tsx", ".jsx", ".ts", ".js"]);
 
@@ -151,7 +151,7 @@ function collectImports(root: RouteNode, outDir: string) {
 
   (function walk(node: RouteNode) {
     const roles = ROLES.filter(role => node.alias[role]);
-    const spec = node.file && JSON.stringify(relImport(outDir, node.file));
+    const spec = node.file && JSON.stringify(importRel(outDir, node.file));
 
     if (spec && node !== root && !node.alias.Loading && !node.alias.Catch)
       for (const role of roles)
