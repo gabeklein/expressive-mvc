@@ -55,7 +55,11 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit --incremental",
     "coverage": "vitest run",
-    "test": "bun run typecheck && bun run coverage"
+    "test": "bun run typecheck && bun run coverage",
+    "example": "cd example && bun ../dist/cli.js dev",
+    "example:build": "cd example && bun ../dist/cli.js build",
+    "example:start": "cd example && node dist/server/index.js",
+    "example:e2e": "cd example && playwright test"
   },
   "dependencies": {
     "@expressive/dom": "workspace:*",
@@ -69,6 +73,7 @@
   },
   "devDependencies": {
     "@expressive/mvc": "workspace:^",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^25.2.0",
     "tsdown": "^0.20.1"
   }
