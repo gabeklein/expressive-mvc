@@ -10,11 +10,11 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 
 ## Agreed shape
 
-- **One surface.** The root export has `browser` and `default` (server) builds with identical names. `serve` is real on the server, throws in the browser.
+- **Two entries.** The root export holds what client and server share. Server-only API (`config`, `serve`) is `@expressive/dev/server`, so a client import fails at build rather than at call.
 - **Turnkey.** dom, router, inspect are dependencies; `@expressive/mvc` is the only peer.
 - **JSX.** `jsxImportSource: "@expressive/dev"` - dev's runtime re-exports dom's.
 - **Router.** dev exports its own `Router` (extends `BrowserRouter`) and `Route`, plus `Link`, `NavLinks`, `Redirect`. No `BrowserRouter` export.
-- **Config.** `index.ts` default-exports `config({...})`, read on the server.
+- **Config.** `index.ts` default-exports `config({...})` from `@expressive/dev/server`, read on the server.
 - **Server modules, one model.** Sidecars (`app/**/api.ts`) and `app/api/**` share one invocation path from the bundled client and one ambient model. They differ in location binding (a sidecar runs in its folder's location context) and twins (a sidecar's default is demanded per location). What the caller is - a bundled tab or an external client - decides ambient context, not which folder the module sits in.
 - **dom on the server.** Needed for JSX rendered to HTML (responses, emails), not SSR.
 - **Monkey-patch first.** Where mvc or an adapter lacks a seam, dev patches it in one file, replaced when upstream catches up. Stress-tests the concept before committing upstream.

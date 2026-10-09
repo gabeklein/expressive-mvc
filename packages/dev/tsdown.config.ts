@@ -8,7 +8,7 @@ export default defineConfig({
   outExtensions: () => ({ js: '.js' }),
   entry: {
     index: 'src/index.ts',
-    browser: 'src/browser.ts',
+    'server/index': 'src/server/index.ts',
     cli: 'src/cli.ts',
     'jsx-runtime': 'src/jsx-runtime.ts',
     'jsx-dev-runtime': 'src/jsx-dev-runtime.ts',
