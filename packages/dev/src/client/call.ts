@@ -2,8 +2,10 @@ export async function call(pattern: string[], name: string, args: unknown[]): Pr
   const at = location.pathname.split("/").filter(Boolean);
   const path = pattern.map((part, i) => {
     if (part === "*") return at.slice(i).join("/");
-    if (at[i] === undefined || part[0] !== ":" && part !== at[i])
+
+    if (at[i] === undefined || !part.startsWith(":") && part !== at[i])
       throw new Error(`${name}() belongs to /${pattern.join("/")} and cannot be called from ${location.pathname}.`);
+
     return at[i];
   });
 
