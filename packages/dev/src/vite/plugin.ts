@@ -58,6 +58,8 @@ export function expressive(): Plugin<Host> {
     return id;
   };
 
+  const appSidecars = () => (project.appDir ? sidecars(project.appDir) : []);
+
   const readShell = () =>
     project.htmlPath ? ensureBootstrap(readFileSync(project.htmlPath, "utf8")) : SHELL;
 
@@ -146,7 +148,7 @@ export function expressive(): Plugin<Host> {
         case routesId:
           return generateRoutes(project.appDir!, generatedDir, scanExports);
         case serverId:
-          return serverEntry(project, generatedDir, project.appDir ? sidecars(project.appDir).map(scanned) : []);
+          return serverEntry(project, generatedDir, appSidecars().map(scanned));
         case htmlId:
           return SHELL;
       }
@@ -162,18 +164,7 @@ export function expressive(): Plugin<Host> {
       install();
       watchRoutes(server, project, routesId);
 
-      const endpoints = () => (project.appDir ? sidecars(project.appDir) : []).map(({ pattern, file }): Endpoint => ({
-        pattern,
-        exports: async () => {
-          const mod = await host.import(file);
-          const { calls, classes } = scanSidecar(readFileSync(file, "utf8"), file);
-          const pick = (names: string[]) => Object.fromEntries(names.map(name => [name, mod[name]]));
-          const exports = { calls: pick(calls), classes: pick(classes) };
-
-          verify(relative(root, file), exports);
-          return exports;
-        },
-      }));
+      const endpoints = () => appSidecars().map(sidecar => endpointOf(host, root, sidecar));
 
       server.middlewares.use((req, res, next) => {
         if (!isCall(req)) return next();
@@ -230,6 +221,21 @@ function hosted() {
 function scanned(sidecar: Sidecar): SidecarEntry {
   const { calls, classes } = scanSidecar(readFileSync(sidecar.file, "utf8"), sidecar.file);
   return { ...sidecar, calls, classes };
+}
+
+function endpointOf(host: ModuleRunner, root: string, sidecar: Sidecar): Endpoint {
+  return {
+    pattern: sidecar.pattern,
+    async exports() {
+      const mod = await host.import(sidecar.file);
+      const { calls, classes } = scanned(sidecar);
+      const pick = (names: string[]) => Object.fromEntries(names.map(name => [name, mod[name]]));
+      const exports = { calls: pick(calls), classes: pick(classes) };
+
+      verify(relative(root, sidecar.file), exports);
+      return exports;
+    },
+  };
 }
 
 function stub(pattern: string[], calls: string[], classes: string[]): string {
