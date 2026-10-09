@@ -165,6 +165,18 @@ describe("app/ routing (codegen)", () => {
     expect(out).toMatch(/<Route to="account" as={AccountScoped}>/);
   });
 
+  it("will declare nested wrappers innermost first, and none for a scope with nothing to render", async () => {
+    const out = await generate({
+      "index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}`,
+      "account/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}`,
+      "account/settings/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}`,
+      "void/index.tsx": `${LAYOUT}\n${SCOPE}`,
+    });
+    const wrappers = out.split("\n").filter(line => line.includes("props =>")).map(line => line.split(" ")[1]);
+
+    expect(wrappers).toEqual(["AccountSettingsScoped", "AccountScoped", "RootScoped"]);
+  });
+
   it("a default class makes a lone page a scope", async () => {
     const out = await generate({ "index.tsx": PAGE, "(settings).tsx": `${PAGE}\nclass Panel extends State {}\nexport { Panel as default }` });
     expect(out).toMatch(/<Route to="settings" as={SettingsScope}>\s*<Route as={Settings} \/>/);
