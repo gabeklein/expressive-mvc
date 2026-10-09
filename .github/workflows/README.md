@@ -43,16 +43,8 @@ stack.size`), whose head is what lands when the stack merges - a skipped
 required check counts as passed. A PR merely based on another PR's branch,
 outside a stack, runs only `verify`: create stacks with `gh stack`.
 
-`verify` restores tsc's incremental build info (`packages/*/tsconfig.tsbuildinfo`)
-before typechecking, so a package the PR leaves untouched checks in about a
-second. tsc re-checks any file whose content changed and discards build info
-from another tsc version.
-
-## typecheck-cache.yml (push -> main)
-
-Typechecks `main` and saves the build info. A PR can restore caches from its own
-branch and from the default branch, so this warms each PR's first run; later
-pushes restore their own.
+`verify` typechecks from scratch. Restored incremental build info re-checks
+only changed files, in an order that can surface type cycles a clean run does not.
 
 ## release.yml (push -> main)
 
