@@ -17,12 +17,15 @@ export function endpoint(endpoints: Endpoint[], pathname: string): Endpoint | un
     .sort((a, b) => b.pattern.map(rank).join("").localeCompare(a.pattern.map(rank).join("")))[0];
 }
 
-export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoints: () => Endpoint[], dev: boolean): Promise<boolean> {
+export function isDispatch(req: IncomingMessage): boolean {
   const name = req.headers["x-expressive-call"];
   const json = req.headers["content-type"]?.startsWith("application/json");
 
-  if (req.method !== "POST" || typeof name !== "string" || !json) return false;
+  return req.method === "POST" && typeof name === "string" && !!json;
+}
 
+export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoints: () => Endpoint[], dev: boolean): Promise<void> {
+  const name = req.headers["x-expressive-call"] as string;
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const calls = await endpoint(endpoints(), pathname)?.calls();
   const fn = calls && Object.hasOwn(calls, name) ? calls[name] : undefined;
@@ -52,12 +55,10 @@ async function text(req: IncomingMessage): Promise<string> {
   return out;
 }
 
-function reply(res: ServerResponse, status: number, value?: unknown): true {
+function reply(res: ServerResponse, status: number, value?: unknown): void {
   const body = value === undefined ? undefined : JSON.stringify(value);
 
   res.statusCode = status;
   if (body !== undefined) res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(body);
-
-  return true;
 }
