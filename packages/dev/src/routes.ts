@@ -135,7 +135,9 @@ function assignAliases(node: RouteNode, used: Set<string>): void {
   for (const role of ROLES) {
     if (!node.exports.has(role)) continue;
 
-    let alias = role === "Page" ? base : base + (role === "default" ? (node.classDefault ? "Scope" : "Enter") : role);
+    const defaultSuffix = node.classDefault ? "Scope" : "Enter";
+    const suffix = role === "default" ? defaultSuffix : role;
+    let alias = role === "Page" ? base : base + suffix;
     while (used.has(alias)) alias += "_";
 
     used.add(alias);
@@ -152,17 +154,21 @@ function collectImports(root: RouteNode, outDir: string) {
   (function walk(node: RouteNode) {
     const roles = ROLES.filter(role => node.alias[role]);
     const spec = node.file && JSON.stringify(relImport(outDir, node.file));
+    const lazy = node !== root && !node.alias.Loading && !node.alias.Catch;
 
-    if (spec && node !== root && !node.alias.Loading && !node.alias.Catch)
-      for (const role of roles)
-        loaders.push(
-          role === "default" && !node.classDefault
-            ? `const ${node.alias[role]} = route => import(${spec}).then(m => m.default(route));`
-            : `const ${node.alias[role]} = () => import(${spec}).then(m => m.${role});`
-        );
+    if (spec && lazy)
+      for (const role of roles) {
+        const load = role === "default" && !node.classDefault
+          ? `route => import(${spec}).then(m => m.default(route))`
+          : `() => import(${spec}).then(m => m.${role})`;
+
+        loaders.push(`const ${node.alias[role]} = ${load};`);
+      }
     else if (spec && roles.length) {
       const named = roles.filter(role => role !== "default").map(role => `${role} as ${node.alias[role]}`);
-      const clause = [node.alias.default, named.length && `{ ${named.join(", ")} }`].filter(Boolean).join(", ");
+      const namedClause = named.length ? `{ ${named.join(", ")} }` : undefined;
+      const clause = [node.alias.default, namedClause].filter(Boolean).join(", ");
+
       imports.push(`import ${clause} from ${spec};`);
     }
 
@@ -185,23 +191,21 @@ function emitNode(node: RouteNode, isRoot: boolean, depth: number, wrappers: str
     return Page ? route(pad, { to: node.segment, as: Page, enter, fallback: own ?? slot, Catch }) : [];
 
   const inner: string[] = [];
-  const below = own ?? (Layout ? "null" : slot);
+  const childSlot = own ?? (Layout ? "null" : slot);
 
-  if (Page) inner.push(...route(pad + "  ", { as: Page, fallback: below }));
+  if (Page) inner.push(...route(pad + "  ", { as: Page, fallback: childSlot }));
 
   for (const child of node.children)
-    inner.push(...emitNode(child, false, depth + 1, wrappers, below));
+    inner.push(...emitNode(child, false, depth + 1, wrappers, childSlot));
 
   if (!inner.length) return [];
 
-  let as = Layout;
+  const wrapped = scope && Layout ? scope + "d" : undefined;
 
-  if (scope && Layout) {
-    as = scope + "d";
-    wrappers.push(`const ${as} = props => <${scope}><${Layout} {...props} /></${scope}>;`);
-  }
-  else if (scope) as = scope;
+  if (wrapped)
+    wrappers.push(`const ${wrapped} = props => <${scope}><${Layout} {...props} /></${scope}>;`);
 
+  const as = wrapped ?? scope ?? Layout;
   const fallbackPage = NotFound ?? (isRoot ? "NotFound" : undefined);
   return route(
     pad,
