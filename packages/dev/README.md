@@ -8,7 +8,7 @@ on the dev server.
 
 ```
 app/                  file-based routes
-  index.tsx           /            exports: Page, Layout, Loading, Catch, NotFound
+  index.tsx           /            exports: Page, Layout, Loading, Catch, NotFound, default
   (about).tsx         /about       static leaf
   blog/index.tsx      /blog        folder = scope; its index is the "/blog" page
   blog/[slug].tsx     /blog/:slug  param leaf
@@ -19,9 +19,28 @@ index.html            optional custom shell (#root and the entry script are inje
 vite.config.ts        optional, merged under the host's config
 ```
 
-Bare-named files under `app/` are support modules, not routes. `Page` may be a function or
-`class Page extends Route` (from `@expressive/dev`), which owns its scope: read `this.match`,
-override `children`, set `Catch` / `NotFound`.
+Bare-named files under `app/` are support modules, not routes. `Page` may be a function, reading
+its params through `Route.get().match`, or `class Page extends Route` (from `@expressive/dev`) with
+`this.match`, its own fields and `render()`. That is the one intended use of `Route` - folders
+express nesting. dev's `Route` owns no suspense boundary unless given a `fallback` or `Catch`, so a
+page's waits show its slot's `Loading`.
+
+The `default` export is read by kind. A function is the entry hook: it runs with the Route before
+it renders, and a returned string redirects (`null` falls through to the 404). A class - State or
+Component - renders around the route's content and is provided to everything below it; with a
+`Layout`, it wraps the `Layout`.
+
+`Loading` is the placeholder for the content slot of the `Layout` beside it: any page rendered
+there that cannot show anything yet - its code, its entry hook or its data still pending - shows
+it in place, inside the layout. It reaches pages at any depth until a nested `Layout`, which starts
+its own slot. A page's own `Loading` covers that page first. Navigation inside the app never shows
+it - the current page holds until the next is ready (`Router.get().navigating` meanwhile); it is
+for arriving cold, by link or refresh. A Component or a State with its own `fallback` keeps its
+waits to itself.
+
+Each route module becomes its own chunk, loaded when the route is first entered - `default`
+included - unless it is the root or exports `Loading` or `Catch`, which must be on hand before
+anything below them can wait or fail.
 
 JSX compiles against `@expressive/dev`'s runtime, which is `@expressive/dom`'s. Set
 `"jsxImportSource": "@expressive/dev"` in the app's tsconfig; the types carry dom's `State`

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // @vitest-environment-options { "url": "http://localhost/" }
 
+import { set } from "@expressive/mvc";
 import { Link, Redirect } from "@expressive/router";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -283,6 +284,67 @@ describe("redirect guard prop", () => {
   });
 });
 
+describe("default entry hook via `enter`", () => {
+  browserRouter();
+
+  const Secret = () => <p>secret</p>;
+  const Login = () => <p>login</p>;
+
+  it("hook receives its Route, reads params, allows on falsy", async () => {
+    const seen: { id?: string } = {};
+    const hook = (route: Route) => {
+      seen.id = route.match?.id;
+    };
+    const Tree = () => (
+      <Route>
+        <Route to=":id" as={Secret} enter={hook} />
+      </Route>
+    );
+
+    location("/ok");
+    const root = await mount(Tree);
+
+    expect(seen.id).toBe("ok");
+    expect(root.textContent).toBe("secret");
+  });
+
+  it("verdict derived from params redirects", async () => {
+    const hook = (route: Route) => (route.match?.id === "block" ? "/login" : undefined);
+    const Tree = () => (
+      <Route>
+        <Route to="login" as={Login} />
+        <Route to=":id" as={Secret} enter={hook} />
+      </Route>
+    );
+
+    location("/block");
+    expect((await mount(Tree)).textContent).toBe("login");
+  });
+
+  it("a hook loaded on demand redirects once its module arrives", async () => {
+    const hook = (route: Route) => Promise.resolve({ default: () => "/login" }).then(m => m.default());
+    const Tree = () => (
+      <Route>
+        <Route to="login" as={Login} />
+        <Route to="secret" as={Secret} enter={hook} fallback={null} />
+      </Route>
+    );
+
+    location("/secret");
+    const root = await mount(Tree);
+    await settle();
+    expect(root.textContent).toBe("login");
+  });
+
+  it("clearing the hook clears the guard", async () => {
+    const route = Route.new({ enter: () => "/login" });
+    expect(route.redirect).toBeTypeOf("function");
+    route.enter = undefined;
+    expect(route.redirect).toBeUndefined();
+    route.set(null);
+  });
+});
+
 describe("nav cycle: async guard <-> class Page", () => {
   browserRouter();
 
@@ -317,5 +379,79 @@ describe("nav cycle: async guard <-> class Page", () => {
 
     expect(caught).toBe("");
     expect(root.querySelector("h1")?.textContent).toBe("post hello");
+  });
+});
+
+describe("loaders", () => {
+  browserRouter();
+
+  it("renders a page whose module loads on demand", async () => {
+    const Page = () => <span>loaded</span>;
+    const Lazy = () => Promise.resolve({ Page }).then(m => m.Page);
+
+    const Tree = () => (
+      <Route>
+        <Route to="lazy" as={Lazy} fallback={<span>waiting</span>} />
+      </Route>
+    );
+
+    location("/lazy");
+    const root = await mount(Tree);
+    await settle();
+    expect(root.textContent).toBe("loaded");
+  });
+});
+
+describe("Loading in a route's slot", () => {
+  browserRouter();
+
+  it("shows while a page class waits on its data", async () => {
+    let resolve!: (value: string) => void;
+    const pending = new Promise<string>(done => (resolve = done));
+
+    class Page extends Route {
+      value = set(() => pending);
+
+      render() {
+        return <p>{this.value}</p>;
+      }
+    }
+
+    const Tree = () => (
+      <Route>
+        <Route to="x" as={Page} fallback={<span>loading</span>} />
+      </Route>
+    );
+
+    location("/x");
+    const root = await mount(Tree);
+    expect(root.textContent).toBe("loading");
+
+    resolve("ready");
+    await settle();
+    expect(root.textContent).toBe("ready");
+  });
+
+  it("shows inside the parent Layout while a child page loads", async () => {
+    let resolve!: () => void;
+    const pending = new Promise<void>(done => (resolve = done));
+    const Lazy = () => pending.then(() => () => <span>child</span>);
+    const Layout = (props: { children?: any }) => <div>layout:{props.children}</div>;
+
+    const Tree = () => (
+      <Route>
+        <Route to="sec" as={Layout} fallback={null}>
+          <Route to="leaf" as={Lazy} fallback={<span>loading</span>} />
+        </Route>
+      </Route>
+    );
+
+    location("/sec/leaf");
+    const root = await mount(Tree);
+    expect(root.textContent).toBe("layout:loading");
+
+    resolve();
+    await settle();
+    expect(root.textContent).toBe("layout:child");
   });
 });

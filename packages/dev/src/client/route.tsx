@@ -1,10 +1,20 @@
 /** @jsxImportSource @expressive/mvc */
 
-import type { Component } from "@expressive/mvc";
+import { set, type Component } from "@expressive/mvc";
 import { Route as Base } from "@expressive/router";
 
+type CatchUI = (props: { error: Error; retry: () => void }) => Component.Node;
+
+type EntryHook = (route: Route) => string | void | null | Promise<string | void | null>;
+
 export class Route extends Base {
-  Catch?: (props: { error: Error; retry: () => void }) => Component.Node = undefined;
+  fallback: Component.Node = false;
+
+  enter = set<EntryHook | undefined>(undefined, hook => {
+    this.redirect = hook ? () => hook(this) : undefined;
+  });
+
+  Catch?: CatchUI = undefined;
 
   NotFound?: (props: { children?: Component.Node }) => Component.Node = undefined;
 
@@ -15,17 +25,20 @@ export class Route extends Base {
     return (
       <>
         {children}
-        <Route none as={this.NotFound} />
+        <Route none as={this.NotFound} fallback={null} />
       </>
     );
   }
+}
 
-  async catch(error: Error) {
+Object.defineProperty(Route.prototype, "catch", {
+  get(this: Route) {
     const Boundary = this.Catch;
-    if (!Boundary) throw error;
 
-    await new Promise<void>((retry) => {
+    if (!Boundary) return undefined;
+
+    return (error: Error) => new Promise<void>(retry => {
       this.fallback = <Boundary error={error} retry={retry} />;
     });
   }
-}
+});

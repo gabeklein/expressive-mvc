@@ -6,7 +6,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { browserRouter, location, mount } from "../../test.setup";
+import { Component, State } from "@expressive/mvc";
+
+import { browserRouter, location, mount, settle } from "../../test.setup";
 import { Route } from "../client";
 import { generateRoutes } from "./routes";
 import { scanExports } from "./scan";
@@ -18,8 +20,12 @@ describe("app/ routing (codegen)", () => {
     while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true });
   });
 
-  /** Build a temp `app/` tree from a path→source map and generate its router module. */
-  function generate(files: Record<string, string>): Promise<string> {
+  /** Build a temp `app/` tree, generate its router module, and drop the empty boundaries most tests don't assert. */
+  async function generate(files: Record<string, string>): Promise<string> {
+    return (await generateRaw(files)).replaceAll(" fallback={null}", "");
+  }
+
+  function generateRaw(files: Record<string, string>): Promise<string> {
     const root = mkdtempSync(join(tmpdir(), "routes-"));
     dirs.push(root);
 
@@ -38,6 +44,8 @@ describe("app/ routing (codegen)", () => {
   const LOADING = "export function Loading(){ return null }";
   const CATCH = "export function Catch(){ return null }";
   const NOTFOUND = "export function NotFound(){ return null }";
+  const ENTER = "export default () => '/login'";
+  const SCOPE = "export default class Session extends State {}";
 
   it("root is always a scope; lone index becomes the \"/\" page + implicit 404", async () => {
     const out = await generate({ "index.tsx": PAGE });
@@ -59,16 +67,107 @@ describe("app/ routing (codegen)", () => {
     expect(out).toMatch(/<Route as={RootLayout} NotFound={RootNotFound}>\s*<Route as={Root} \/>/);
   });
 
-  it("Loading → fallback prop, Catch → Catch prop on the (root) scope", async () => {
+  it("Loading fills its scope's slot; Catch rides on the scope", async () => {
     const out = await generate({ "index.tsx": `${PAGE}\n${LOADING}\n${CATCH}` });
     expect(out).toContain("{ Page as Root, Loading as RootLoading, Catch as RootCatch }");
-    expect(out).toMatch(/<Route NotFound={NotFound} fallback={<RootLoading \/>} Catch={RootCatch}>\s*<Route as={Root} \/>/);
+    expect(out).toMatch(/<Route NotFound={NotFound} Catch={RootCatch}>\s*<Route as={Root} fallback={<RootLoading \/>} \/>/);
   });
 
-  it("(about) is a static leaf → to=\"about\"", async () => {
+  it("every route owns a boundary - empty where no Loading applies", async () => {
+    const out = await generateRaw({ "index.tsx": PAGE, "(about).tsx": PAGE });
+    expect(out).toContain("<Route NotFound={NotFound} fallback={null}>");
+    expect(out).toContain("<Route as={Root} fallback={null} />");
+    expect(out).toContain('<Route to="about" as={About} fallback={null} />');
+  });
+
+  it("Loading covers each route in its Layout's slot, at any depth, but not the Layout", async () => {
+    const out = await generateRaw({
+      "index.tsx": PAGE,
+      "projects/index.tsx": `${PAGE}\n${LAYOUT}\n${LOADING}`,
+      "projects/[id].tsx": PAGE,
+      "projects/archive/index.tsx": PAGE,
+      "projects/archive/[year].tsx": PAGE,
+    });
+    expect(out).toContain('<Route to="projects" as={ProjectsLayout} fallback={null}>');
+    expect(out).toContain("<Route as={Projects} fallback={<ProjectsLoading />} />");
+    expect(out).toContain('<Route to=":id" as={ProjectsId} fallback={<ProjectsLoading />} />');
+    expect(out).toContain('<Route to="archive" fallback={<ProjectsLoading />}>');
+    expect(out).toContain('<Route to=":year" as={ProjectsArchiveYear} fallback={<ProjectsLoading />} />');
+  });
+
+  it("a nested Layout starts a fresh slot", async () => {
+    const out = await generateRaw({
+      "index.tsx": `${PAGE}\n${LOADING}`,
+      "settings/index.tsx": `${PAGE}\n${LAYOUT}`,
+      "settings/[tab].tsx": PAGE,
+    });
+    expect(out).toContain('<Route to="settings" as={SettingsLayout} fallback={<RootLoading />}>');
+    expect(out).toContain('<Route to=":tab" as={SettingsTab} fallback={null} />');
+  });
+
+  it("a page's own Loading covers it before its slot's", async () => {
+    const out = await generateRaw({ "index.tsx": `${PAGE}\n${LOADING}`, "(about).tsx": `${PAGE}\n${LOADING}` });
+    expect(out).toContain('<Route to="about" as={About} fallback={<AboutLoading />} />');
+  });
+
+  it("(about) is a static leaf → to=\"about\", loaded on demand", async () => {
     const out = await generate({ "index.tsx": PAGE, "(about).tsx": PAGE });
-    expect(out).toContain('import { Page as About } from "../app/(about).tsx";');
+    expect(out).toContain('const About = () => import("../app/(about).tsx").then(m => m.Page);');
     expect(out).toContain('<Route to="about" as={About} />');
+    expect(out).toContain('import { Page as Root } from "../app/index.tsx";');
+  });
+
+  it("a module exporting Loading or Catch is imported statically", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(about).tsx": `${PAGE}\n${LOADING}`, "(help).tsx": `${PAGE}\n${CATCH}` });
+    expect(out).toContain('import { Page as About, Loading as AboutLoading } from "../app/(about).tsx";');
+    expect(out).toContain('import { Page as Help, Catch as HelpCatch } from "../app/(help).tsx";');
+    expect(out).not.toContain("import(");
+  });
+
+  it("a nested Layout and NotFound load with their page", async () => {
+    const out = await generate({ "index.tsx": PAGE, "blog/index.tsx": `${PAGE}\n${LAYOUT}\n${NOTFOUND}`, "blog/[slug].tsx": PAGE });
+    expect(out).toContain('const BlogLayout = () => import("../app/blog/index.tsx").then(m => m.Layout);');
+    expect(out).toContain('const BlogNotFound = () => import("../app/blog/index.tsx").then(m => m.NotFound);');
+  });
+
+  it("default entry hook rides as the `enter` prop on a leaf", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(admin).tsx": `${PAGE}\n${ENTER}` });
+    expect(out).toContain('const AdminEnter = route => import("../app/(admin).tsx").then(m => m.default(route));');
+    expect(out).toContain('<Route to="admin" as={Admin} enter={AdminEnter} />');
+  });
+
+  it("default entry hook gates a section (rides on the scope)", async () => {
+    const out = await generate({ "admin/index.tsx": `${PAGE}\n${LAYOUT}\n${ENTER}`, "admin/[id].tsx": PAGE });
+    expect(out).toContain('const AdminEnter = route => import("../app/admin/index.tsx").then(m => m.default(route));');
+    expect(out).toMatch(/<Route to="admin" as={AdminLayout} enter={AdminEnter}>/);
+  });
+
+  it("a module with a default loads on first entry", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(account).tsx": `${PAGE}\n${SCOPE}` });
+    expect(out).toContain('const AccountScope = () => import("../app/(account).tsx").then(m => m.default);');
+    expect(out).toContain('const Account = () => import("../app/(account).tsx").then(m => m.Page);');
+  });
+
+  it("the root's default stays a static import", async () => {
+    const out = await generate({ "index.tsx": `${PAGE}\n${ENTER}` });
+    expect(out).toContain('import RootEnter, { Page as Root } from "../app/index.tsx";');
+  });
+
+  it("a default class renders around the route's content", async () => {
+    const out = await generate({ "index.tsx": PAGE, "account/index.tsx": `${PAGE}\n${SCOPE}`, "account/[id].tsx": PAGE });
+    expect(out).toMatch(/<Route to="account" as={AccountScope}>\s*<Route as={Account} \/>/);
+    expect(out).not.toContain("enter={AccountScope}");
+  });
+
+  it("a default class wraps the Layout", async () => {
+    const out = await generate({ "index.tsx": PAGE, "account/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}` });
+    expect(out).toContain("const AccountScoped = props => <AccountScope><AccountLayout {...props} /></AccountScope>;");
+    expect(out).toMatch(/<Route to="account" as={AccountScoped}>/);
+  });
+
+  it("a default class makes a lone page a scope", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(settings).tsx": `${PAGE}\nclass Panel extends State {}\nexport { Panel as default }` });
+    expect(out).toMatch(/<Route to="settings" as={SettingsScope}>\s*<Route as={Settings} \/>/);
   });
 
   it("[slug] is a dynamic segment → to=\":slug\"", async () => {
@@ -110,9 +209,10 @@ describe("app/ routing (codegen)", () => {
       "index.tsx": `import { Route, Router } from "@expressive/dev";
         type Props = { n: number };
         export class Page extends Route { render() { return <h1>{this.match?.x satisfies string | undefined}</h1>; } }
-        export const Layout = (p: Props) => <div>{p.n}</div>;`,
+        export const Layout = (p: Props) => <div>{p.n}</div>;
+        export default async function (route: Route): Promise<string | void> {}`,
     });
-    expect(out).toContain("import { Page as Root, Layout as RootLayout }");
+    expect(out).toContain("import RootEnter, { Page as Root, Layout as RootLayout }");
   });
 
   it("module always exports a default App component, host-neutral", async () => {
@@ -168,5 +268,90 @@ describe("app/ routing (runtime)", () => {
   it("/nope → NotFound", async () => {
     location("/nope");
     expect(await rootText()).toBe("not-found");
+  });
+});
+
+describe("app/ routing (scope)", () => {
+  browserRouter();
+
+  it("provides a default State to the layout and pages while the route is matched", async () => {
+    const lives: string[] = [];
+
+    class Session extends State {
+      user = "ada";
+      protected new() {
+        lives.push("new");
+        return () => lives.push("gone");
+      }
+    }
+
+    const Shell = (props: { children?: any }) => <div data-shell>{Session.get().user}:{props.children}</div>;
+    const Scoped = (props: { children?: any }) => <Session><Shell {...props} /></Session>;
+    const Account = () => <span>{Session.get().user}</span>;
+    const Home = () => <span>home</span>;
+
+    const Tree = () => (
+      <Route>
+        <Route as={Home} />
+        <Route to="account" as={Scoped}>
+          <Route as={Account} />
+        </Route>
+      </Route>
+    );
+
+    location("/account");
+    const root = await mount(Tree);
+
+    expect(root.querySelector("[data-shell]")?.textContent).toBe("ada:ada");
+    expect(lives).toEqual(["new"]);
+
+    window.history.pushState(null, "", "/");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await settle();
+
+    expect(root.textContent).toBe("home");
+    expect(lives).toEqual(["new", "gone"]);
+  });
+
+  it("provides a default class loaded on demand", async () => {
+    class Session extends State {
+      user = "ada";
+    }
+
+    const Scope = () => Promise.resolve({ default: Session }).then(m => m.default);
+    const Account = () => <span>{Session.get().user}</span>;
+
+    const Tree = () => (
+      <Route>
+        <Route to="account" as={Scope} fallback={null}>
+          <Route as={Account} fallback={null} />
+        </Route>
+      </Route>
+    );
+
+    location("/account");
+    const root = await mount(Tree);
+    await settle();
+    expect(root.textContent).toBe("ada");
+  });
+
+  it("renders a Component default as the layout", async () => {
+    class Frame extends Component {
+      render(props: { children?: any }) {
+        return <section data-frame>{props.children}</section>;
+      }
+    }
+
+    const Tree = () => (
+      <Route>
+        <Route to="x" as={Frame}>
+          <Route as={() => <span>inside</span>} />
+        </Route>
+      </Route>
+    );
+
+    location("/x");
+    const root = await mount(Tree);
+    expect(root.querySelector("[data-frame]")?.textContent).toBe("inside");
   });
 });
