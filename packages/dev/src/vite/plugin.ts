@@ -149,7 +149,9 @@ export function expressive(): Plugin<Host> {
         pattern,
         calls: async () => {
           const mod = await host.import(file);
-          return Object.fromEntries(scanSidecar(readFileSync(file, "utf8"), file).calls.map(name => [name, mod[name]]));
+          const { calls } = scanSidecar(readFileSync(file, "utf8"), file);
+
+          return Object.fromEntries(calls.map(name => [name, mod[name]]));
         },
       }));
 
