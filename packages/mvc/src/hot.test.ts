@@ -696,6 +696,33 @@ describe('accept', () => {
     expect(accept(id, { Test: make('b') }).Test).toBe(Before);
   });
 
+  it('will patch a class whose import binding was renumbered', () => {
+    const id = module();
+    const make = (binding: string) =>
+      new Function('State', binding, `return class Test extends State { value = ${binding}.A; }`)(State, { A: 1 });
+
+    const Before = make('__vite_ssr_import_0__');
+
+    accept(id, { Test: Before });
+
+    expect(accept(id, { Test: make('__vite_ssr_import_1__') }).Test).toBe(Before);
+  });
+
+  it('will replace a class whose imported member changed', () => {
+    const id = module();
+    const make = (key: string) =>
+      new Function('State', '__vite_ssr_import_0__', `return class Test extends State { value = __vite_ssr_import_0__.${key}; }`)(
+        State,
+        { A: 1, B: 2 }
+      );
+
+    accept(id, { Test: make('A') });
+
+    const After = make('B');
+
+    expect(accept(id, { Test: After }).Test).toBe(After);
+  });
+
   it('will replace a subclass whose parent was replaced', () => {
     const base = module();
     const sub = module();
