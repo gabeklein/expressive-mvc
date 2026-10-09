@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Readable } from "node:stream";
 
-import { dispatch, endpoint, verify, type Endpoint } from "./call";
+import { dispatch, endpoint, isCall, verify, type Endpoint } from "./call";
 
 const at = (...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
 
@@ -13,8 +13,8 @@ function request(url: string, name: string | undefined, body: string, type = "ap
 
 async function send(endpoints: Endpoint[], req: ReturnType<typeof request>, dev = false) {
   const res = { statusCode: 0, body: undefined as string | undefined, setHeader() {}, end(body?: string) { this.body = body; } };
-  const handled = await dispatch(req as any, res as any, () => endpoints, dev);
-  return { handled, status: res.statusCode, body: res.body && JSON.parse(res.body) };
+  await dispatch(req as any, res as any, () => endpoints, dev);
+  return { status: res.statusCode, body: res.body && JSON.parse(res.body) };
 }
 
 describe("call endpoints", () => {
@@ -56,21 +56,22 @@ describe("call dispatch", () => {
   ];
 
   it("will reply with a call's value as JSON", async () => {
-    expect(await send(endpoints, request("/tally?x=1", "add", "[1, 2]"))).toEqual({ handled: true, status: 200, body: 3 });
+    expect(await send(endpoints, request("/tally?x=1", "add", "[1, 2]"))).toEqual({ status: 200, body: 3 });
   });
 
   it("will reply 204 to undefined", async () => {
-    expect(await send(endpoints, request("/tally", "none", "[]"))).toEqual({ handled: true, status: 204, body: undefined });
+    expect(await send(endpoints, request("/tally", "none", "[]"))).toEqual({ status: 204, body: undefined });
   });
 
-  it("will pass on a request that is not a call", async () => {
-    expect((await send(endpoints, request("/tally", undefined, "[]"))).handled).toBe(false);
-    expect((await send(endpoints, request("/tally", "add", "[]", "text/plain"))).handled).toBe(false);
-    expect((await send(endpoints, Object.assign(request("/tally", "add", "[]"), { method: "GET" }))).handled).toBe(false);
+  it("will identify a call by method, name header and JSON body", () => {
+    expect(isCall(request("/tally", "add", "[]") as any)).toBe(true);
+    expect(isCall(request("/tally", undefined, "[]") as any)).toBe(false);
+    expect(isCall(request("/tally", "add", "[]", "text/plain") as any)).toBe(false);
+    expect(isCall(Object.assign(request("/tally", "add", "[]"), { method: "GET" }) as any)).toBe(false);
   });
 
   it("will reply 404 alike to an unknown path, an unknown name and a non-function", async () => {
-    const missing = { handled: true, status: 404, body: { message: "Not found." } };
+    const missing = { status: 404, body: { message: "Not found." } };
 
     expect(await send(endpoints, request("/nope", "add", "[]"))).toEqual(missing);
     expect(await send(endpoints, request("/tally", "subtract", "[]"))).toEqual(missing);
@@ -79,14 +80,14 @@ describe("call dispatch", () => {
   });
 
   it("will reply 400 to a body that is not an array of arguments", async () => {
-    const bad = { handled: true, status: 400, body: { message: "Expected a JSON array of arguments." } };
+    const bad = { status: 400, body: { message: "Expected a JSON array of arguments." } };
 
     expect(await send(endpoints, request("/tally", "add", "{"))).toEqual(bad);
     expect(await send(endpoints, request("/tally", "add", "{}"))).toEqual(bad);
   });
 
   it("will hide a thrown error's message outside development", async () => {
-    expect(await send(endpoints, request("/tally", "fail", "[]"))).toEqual({ handled: true, status: 500, body: { message: "Internal error." } });
+    expect(await send(endpoints, request("/tally", "fail", "[]"))).toEqual({ status: 500, body: { message: "Internal error." } });
 
     const { body } = await send(endpoints, request("/tally", "fail", "[]"), true);
     expect(body.message).toBe("Nope");
@@ -95,7 +96,6 @@ describe("call dispatch", () => {
 
   it("will send an exported error class's id, status and fields, even from a subclass", async () => {
     expect(await send(endpoints, request("/tally", "limit", "[]"))).toEqual({
-      handled: true,
       status: 409,
       body: { error: "/shared#Limit", message: "Over 3", status: 409, limit: 3 },
     });
