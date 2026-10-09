@@ -153,29 +153,35 @@ function collectImports(root: RouteNode, outDir: string) {
 
   (function walk(node: RouteNode) {
     const roles = ROLES.filter(role => node.alias[role]);
-    const spec = node.file && JSON.stringify(importRel(outDir, node.file));
-    const lazy = node !== root && !node.alias.Loading && !node.alias.Catch;
 
-    if (spec && lazy)
-      for (const role of roles) {
-        const load = role === "default" && !node.classDefault
-          ? `route => import(${spec}).then(m => m.default(route))`
-          : `() => import(${spec}).then(m => m.${role})`;
+    if (node.file && roles.length) {
+      const spec = JSON.stringify(importRel(outDir, node.file));
+      const lazy = node !== root && !node.alias.Loading && !node.alias.Catch;
 
-        loaders.push(`const ${node.alias[role]} = ${load};`);
-      }
-    else if (spec && roles.length) {
-      const named = roles.filter(role => role !== "default").map(role => `${role} as ${node.alias[role]}`);
-      const namedClause = named.length ? `{ ${named.join(", ")} }` : undefined;
-      const clause = [node.alias.default, namedClause].filter(Boolean).join(", ");
-
-      imports.push(`import ${clause} from ${spec};`);
+      if (lazy) loaders.push(...roles.map(role => loaderFor(node, role, spec)));
+      else imports.push(importFor(node, roles, spec));
     }
 
     node.children.forEach(walk);
   })(root);
 
   return { imports, loaders };
+}
+
+function loaderFor(node: RouteNode, role: Role, spec: string): string {
+  const load = role === "default" && !node.classDefault
+    ? `route => import(${spec}).then(m => m.default(route))`
+    : `() => import(${spec}).then(m => m.${role})`;
+
+  return `const ${node.alias[role]} = ${load};`;
+}
+
+function importFor(node: RouteNode, roles: Role[], spec: string): string {
+  const named = roles.filter(role => role !== "default").map(role => `${role} as ${node.alias[role]}`);
+  const namedClause = named.length ? `{ ${named.join(", ")} }` : undefined;
+  const clause = [node.alias.default, namedClause].filter(Boolean).join(", ");
+
+  return `import ${clause} from ${spec};`;
 }
 
 function emitNode(node: RouteNode, isRoot: boolean, depth: number, wrappers: string[], slot: string): string[] {
