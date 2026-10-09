@@ -38,9 +38,10 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 
 Enough to write E2E tests and examples and feel the ergonomics. One PR each, in order. Everything under Later waits until the MVP has been used.
 
-1. **Sidecar calls.** Each export of `app/**/api.ts` becomes a browser stub; a call is a POST answered with JSON, or `{ error }` with a 4xx/5xx status. Scanner allowlist and build errors, stubs, dispatch, import rule (importable only from the sidecar's folder and below). Wire shape: see Open.
-2. **Call context.** The route walk resolving each layer's cached `Context` by key, `Current` over `AsyncLocalStorage`, keyed `X.use()`, eviction on destroy; server `T.get()`/`T.use()` throw outside a call.
-3. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. Until something holds a reference between calls, a class that should keep state sets a TTL.
+1. **Sidecar calls.** Each exported `async` function of `app/**/api.ts` becomes a browser stub (Wire below). Scanner allowlist and build errors, stubs, dispatch, import rule (importable only from the sidecar's folder and below).
+2. **Errors.** An exported `Error` subclass is a third kind of sidecar export: the client gets a stub class, and a thrown instance is rebuilt as it on the client, so `instanceof` works across the wire. Status helpers (`Status.NotFound(...)`, naming open) set the status. From `expressive-rpc`'s error reconstruction, minus its production leak of stacks and fields.
+3. **Call context.** The route walk resolving each layer's cached `Context` by key, `Current` over `AsyncLocalStorage`, keyed `X.use()`, eviction on destroy; server `T.get()`/`T.use()` throw outside a call.
+4. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. Until something holds a reference between calls, a class that should keep state sets a TTL.
 
 MVP limits, on purpose: calls made while disconnected fail; one process.
 
@@ -59,6 +60,31 @@ Not built yet, but the MVP must not cut against them.
 - **Calls are HTTP POST in both lanes** - one invocation path, so where an app puts its server logic is a matter of style. Request/response gives timeouts, retries, logs and proxies for free.
 - **Push is SSE** - a one-way server stream over plain HTTP: native reconnect with `Last-Event-ID`, no dependency, the same code in Vite's middleware and the built server. Not a weaker WebSocket so much as the half a UI needs when calls already have a channel. Limits: text only; `EventSource` sends no custom headers (a connection id goes in the query); HTTP/1.1 caps ~6 connections per origin across tabs - HTTP/2 lifts it.
 - **WebSocket later, if wanted** - versioned patches and call ids keep the protocol transport-agnostic, so a socket (one ordered duplex channel) can replace both without a change in meaning.
+
+## Wire
+
+```
+POST /blog/a                      the sidecar folder's path, current params filled in
+x-expressive-call: default.flip   an exported function's name, or default.<method>
+content-type: application/json
+
+["arg1", 2]                       the argument array
+```
+
+- **Path.** `app/blog/[slug]/api.ts` → `/blog/a`; the root sidecar is `POST /`. The stub knows its folder's pattern from the generator and fills it from the current route match - the import rule guarantees the params exist. The folder, not the caller's deeper location: the walk runs `key()` down to the module's own layer, so calls from any page below land in the same context. The query string is ignored.
+- **A call is a POST with `x-expressive-call` and `content-type: application/json`.** Anything else falls through (GET still serves the app). Same-origin calls cost no preflight; a cross-site form cannot send either, and a cross-site script sending them triggers a preflight the server does not approve - so a forged call never arrives, whatever cookies the app uses.
+- **Reply.**
+
+  | Outcome | Status | Body |
+  |---|---|---|
+  | value | 200 | the value as JSON |
+  | `undefined` | 204 | none |
+  | name not in the allowlist, or no such module | 404 | the same for both |
+  | malformed body | 400 | `{ message }` |
+  | an exported `Error` subclass or a status error | its status, else 500 | `{ error: <type id>, message, ...own fields }` |
+  | anything else | 500 | production: a generic `message` only; development: `message` and the stack |
+
+- **Values are plain JSON** in the MVP. Not on the wire yet: a connection id (push and detach), versions and patches (twin values), call ids (Reliability).
 
 ## Context model
 
@@ -172,8 +198,9 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 
 ## Open
 
-- Status helper naming - `NotFound` and `Redirect` collide with existing exports. Leaning `Status.NotFound(...)`.
-- Wire shape. Leaning: calls POST to the route path (the location part of the prefix) with a header naming the call (a function or `default.method`), args as the JSON body. A per-page-load connection id is transport only: push routing and detach, never part of a key. Also: patch frames; ids for nested twins (owner key + property path proposed); what counts as serializable (Date, Map, class instances).
+- Status helper naming - `NotFound` and `Redirect` collide with existing exports. Leaning `Status.NotFound(...)`; `expressive-rpc` had `Forbidden`, `NotFound`, `Internal`, `BadInput`.
+- Detecting exported `Error` subclasses - leaning on the plugin loading the module (catches indirect subclasses) over static `extends Error`.
+- Wire beyond the MVP: a per-page-load connection id is transport only (push routing and detach, never part of a key); patch frames; ids for nested twins (owner key + property path proposed); what counts as serializable (Date, Map, class instances).
 - How params reach server code - the walk already matches the path against dev's route table (not the router, which stays client-side); `Route.get().match` or something plainer, decided when step 2 needs it.
 - Optimistic writes - a follow-up decision. If ever: local writes rebased on incoming versions until acknowledged, rolled back on rejection.
 - Demand as an mvc primitive - see Focus.
