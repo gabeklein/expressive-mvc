@@ -12,22 +12,25 @@ export interface Endpoint {
   exports(): Promise<Exports>;
 }
 
-const rank = (part: string) => (part === "*" ? 0 : part[0] === ":" ? 1 : 2);
+const rank = (part: string) => (part === "*" ? 0 : part.startsWith(":") ? 1 : 2);
 
 export function endpoint(endpoints: Endpoint[], at: string[]): Endpoint | undefined {
   return endpoints
     .filter(({ pattern }) =>
       (pattern.at(-1) === "*" || pattern.length === at.length) &&
-      pattern.every((part, i) => part === "*" || at[i] !== undefined && (part[0] === ":" || part === at[i])))
+      pattern.every((part, i) => part === "*" || at[i] !== undefined && (part.startsWith(":") || part === at[i])))
     .sort((a, b) => b.pattern.map(rank).join("").localeCompare(a.pattern.map(rank).join("")))[0];
 }
 
-export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoints: () => Endpoint[], dev: boolean): Promise<boolean> {
+export function isCall(req: IncomingMessage): boolean {
   const name = req.headers["x-expressive-call"];
   const json = req.headers["content-type"]?.startsWith("application/json");
 
-  if (req.method !== "POST" || typeof name !== "string" || !json) return false;
+  return req.method === "POST" && typeof name === "string" && !!json;
+}
 
+export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoints: () => Endpoint[], dev: boolean): Promise<void> {
+  const name = req.headers["x-expressive-call"] as string;
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const list = endpoints();
   const at = pathname.split("/").filter(Boolean);
@@ -102,12 +105,10 @@ async function text(req: IncomingMessage): Promise<string> {
   return out;
 }
 
-function reply(res: ServerResponse, status: number, value?: unknown): true {
+function reply(res: ServerResponse, status: number, value?: unknown): void {
   const body = value === undefined ? undefined : JSON.stringify(value);
 
   res.statusCode = status;
   if (body !== undefined) res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(body);
-
-  return true;
 }

@@ -8,7 +8,7 @@ import type { AppConfig } from "../server/config";
 import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project, type SidecarEntry } from "./project";
 import { runtime } from "../client/call";
 import { generateRoutes, sidecarPattern, sidecars, type Sidecar } from "./routes";
-import { dispatch, verify, type Endpoint } from "../server/call";
+import { dispatch, isCall, verify, type Endpoint } from "../server/call";
 import { install } from "../server/context";
 import { scanExports, scanSidecar } from "./scan";
 
@@ -161,7 +161,9 @@ export function expressive(): Plugin<Host> {
       }));
 
       server.middlewares.use((req, res, next) => {
-        dispatch(req, res, endpoints, true).then(done => done || next(), next);
+        if (!isCall(req)) return next();
+
+        dispatch(req, res, endpoints, true).catch(next);
       });
 
       return () => {

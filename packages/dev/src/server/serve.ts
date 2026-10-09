@@ -3,7 +3,7 @@ import { createServer, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize } from "node:path";
 
 import type { AppConfig } from "./config";
-import { dispatch, verify, type Endpoint } from "./call";
+import { dispatch, isCall, verify, type Endpoint } from "./call";
 import { install } from "./context";
 
 const MIME: Record<string, string> = {
@@ -49,7 +49,7 @@ export function serve({ config, client, sidecars = [] }: ServeOptions): Server {
   install();
 
   const server = createServer(async (req, res) => {
-    if (await dispatch(req, res, () => sidecars, false)) return;
+    if (isCall(req)) return dispatch(req, res, () => sidecars, false);
 
     const { pathname } = new URL(req.url ?? "/", "http://localhost");
 

@@ -17,7 +17,7 @@ export function runtime() {
     const path = pattern.map((part, i) => {
       if (part === "*") return at.slice(i).join("/");
 
-      const matches = at[i] !== undefined && (part[0] === ":" || part === at[i]);
+      const matches = at[i] !== undefined && (part.startsWith(":") || part === at[i]);
 
       if (!matches)
         throw new Error(`${name}() belongs to /${pattern.join("/")} and cannot be called from ${location.pathname}.`);
