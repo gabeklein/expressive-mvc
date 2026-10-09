@@ -9,6 +9,7 @@ import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject
 import { runtime } from "../client/call";
 import { generateRoutes, sidecarPattern, sidecars, type Sidecar } from "./routes";
 import { dispatch, isCall, verify, type Endpoint } from "../server/call";
+import { install } from "../server/context";
 import { scanExports, scanSidecar } from "./scan";
 
 const MAIN = "main.tsx";
@@ -154,6 +155,7 @@ export function expressive(): Plugin<Host> {
 
     configureServer(server) {
       const host = (runner = createServerModuleRunner(server.environments.ssr));
+      install();
       watchRoutes(server, project, routesId);
 
       const endpoints = () => (project.appDir ? sidecars(project.appDir) : []).map(({ pattern, file }): Endpoint => ({

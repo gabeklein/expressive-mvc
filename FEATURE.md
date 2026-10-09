@@ -14,7 +14,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 
 ## Agreed shape
 
-- **Two entries.** The root export holds what client and server share. Server-only API (`config`, `serve`) is `@expressive/dev/server`, so a client import fails at build rather than at call.
+- **Two entries.** The root export holds what client and server share. Server-only API (`config`, `serve`, `Current`) is `@expressive/dev/server`, so a client import fails at build rather than at call.
 - **Turnkey.** dom, router, inspect are dependencies; `@expressive/mvc` is the only peer.
 - **JSX.** `jsxImportSource: "@expressive/dev"` - dev's runtime re-exports dom's.
 - **Router.** dev exports its own `Router` (extends `BrowserRouter`) and `Route`, plus `Link`, `NavLinks`, `Redirect`. No `BrowserRouter` export.
@@ -23,7 +23,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - **Session is the app's concern.** dev does not detect or mint sessions or tabs; an app expresses identity through keys (Context model). Recipes may come later.
 - **dom on the server.** Needed for JSX rendered to HTML (responses, emails), not SSR.
 - **Monkey-patch first.** Where mvc or an adapter lacks a seam, dev patches it in one file, replaced when upstream catches up. Stress-tests the concept before committing upstream.
-- **Server `get`/`use` are dev's, permanently.** Request-scoped resolution is a host concern - no core or dom change. The server build replaces `State.get`/`State.use` (installed after dom evaluates, asserted at boot) and overrides only the no-argument `Context.get()`; the client keeps dom's behavior.
+- **Server `get`/`use` are dev's, permanently.** Request-scoped resolution is a host concern - no core or dom change. mvc core has no static `get`/`use` - adapters install them; the server installs its own over dom's (after dom evaluates) in the dev host and the built service; the client keeps dom's.
 - **Process globals stay core's.** `static global` with a module-scope `X.new()` registers in the real root, untouched by requests. Opt-in sugar for this (#473) is the maintainer's call and blocks nothing here.
 
 ## Landed
@@ -35,13 +35,13 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - E2E harness - `example/e2e/` Playwright specs run against the dev server and the built service (`bun run example:e2e` in `packages/dev`). Each feature adds its page and spec. Not in CI yet: trunk PRs run `verify` only.
 - Sidecar calls - each `async` export of a route folder's `api.ts` is a browser stub POSTing to the folder's path (Wire below); dispatched on Vite's module runner in dev and baked into `dist/server` at build. The build refuses any other export; only the folder and below may import it. A thrown error's message reaches the client in dev only.
 - Errors - an exported class with `extends` is an error class: the client stub is a class of the same name, and a thrown instance (or subclass) is rebuilt as it - `instanceof`, message and own fields - with a `status` field in 400-599 as the reply status. Verified as an `Error` at the first dev call and at service boot.
+- Call context - each call walks its sidecar's concrete path, each segment a cached layer `Context` keyed `hash(parent prefix + segment)`, and runs in `AsyncLocalStorage`. `X.use()` resolves by `static key(prefix)` (default the prefix): a key starting with a layer's prefix lives under that layer, any other under the root; the instance is built in a child context of its layer, so its `get()` fields resolve upward. It lives while a call holds it, then `static ttl` seconds (default 0); its destroy (`set(null)`) drops it. Empty layers are pruned. `Current` (root layer) reads the call's request live. Not yet: route defaults as layer occupants - the layer key that narrows everything below comes with them.
 
 ## MVP
 
 Enough to write E2E tests and examples and feel the ergonomics. One PR each, in order. Everything under Later waits until the MVP has been used.
 
-1. **Call context.** The route walk resolving each layer's cached `Context` by key, `Current` over `AsyncLocalStorage`, keyed `X.use()`, eviction on destroy; server `T.get()`/`T.use()` throw outside a call.
-2. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. Until something holds a reference between calls, a class that should keep state sets a TTL.
+1. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. The default class occupies its layer: its `static key` becomes the prefix below it, and its destroy pops the layer. Until something holds a reference between calls, a class that should keep state sets a TTL.
 
 MVP limits, on purpose: calls made while disconnected fail; one process.
 

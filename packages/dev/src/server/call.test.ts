@@ -21,15 +21,15 @@ describe("call endpoints", () => {
   const endpoints = [at("blog", ":slug"), at("blog", "new"), at("docs", "*"), at()];
 
   it("will match a path to the most specific sidecar", () => {
-    expect(endpoint(endpoints, "/blog/new")?.pattern).toEqual(["blog", "new"]);
-    expect(endpoint(endpoints, "/blog/hello")?.pattern).toEqual(["blog", ":slug"]);
-    expect(endpoint(endpoints, "/docs/a/b")?.pattern).toEqual(["docs", "*"]);
-    expect(endpoint(endpoints, "/")?.pattern).toEqual([]);
+    expect(endpoint(endpoints, ["blog", "new"])?.pattern).toEqual(["blog", "new"]);
+    expect(endpoint(endpoints, ["blog", "hello"])?.pattern).toEqual(["blog", ":slug"]);
+    expect(endpoint(endpoints, ["docs", "a", "b"])?.pattern).toEqual(["docs", "*"]);
+    expect(endpoint(endpoints, [])?.pattern).toEqual([]);
   });
 
   it("will not match a path no sidecar owns", () => {
-    expect(endpoint(endpoints, "/blog")).toBeUndefined();
-    expect(endpoint(endpoints, "/blog/a/b")).toBeUndefined();
+    expect(endpoint(endpoints, ["blog"])).toBeUndefined();
+    expect(endpoint(endpoints, ["blog", "a", "b"])).toBeUndefined();
   });
 });
 

@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+import { within } from "./context";
+
 export interface Exports {
   calls: Record<string, unknown>;
   classes: Record<string, unknown>;
@@ -12,9 +14,7 @@ export interface Endpoint {
 
 const rank = (part: string) => (part === "*" ? 0 : part.startsWith(":") ? 1 : 2);
 
-export function endpoint(endpoints: Endpoint[], pathname: string): Endpoint | undefined {
-  const at = pathname.split("/").filter(Boolean);
-
+export function endpoint(endpoints: Endpoint[], at: string[]): Endpoint | undefined {
   return endpoints
     .filter(({ pattern }) =>
       (pattern.at(-1) === "*" || pattern.length === at.length) &&
@@ -33,7 +33,9 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   const name = req.headers["x-expressive-call"] as string;
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const list = endpoints();
-  const calls = (await endpoint(list, pathname)?.exports())?.calls;
+  const at = pathname.split("/").filter(Boolean);
+  const found = endpoint(list, at);
+  const calls = (await found?.exports())?.calls;
   const fn = calls && Object.hasOwn(calls, name) ? calls[name] : undefined;
 
   if (typeof fn !== "function") return reply(res, 404, { message: "Not found." });
@@ -46,8 +48,12 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
 
   if (!Array.isArray(args)) return reply(res, 400, { message: "Expected a JSON array of arguments." });
 
+  const params: unknown[] = args;
+  const rest = (i: number) => at.slice(i).join("/");
+  const segments = found!.pattern.map((part, i) => (part === "*" ? rest(i) : at[i]));
+
   try {
-    const value = await fn(...args);
+    const value = await within(req, segments, () => fn(...params));
     return value === undefined ? reply(res, 204) : reply(res, 200, value);
   } catch (error) {
     const id = error instanceof Error && await classId(list, error);
