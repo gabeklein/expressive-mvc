@@ -27,34 +27,30 @@ export const SHELL = `\
 `;
 
 export function resolveProject(root: string): Project {
-  const appDir = join(root, "app");
-  const routed = existsSync(appDir);
-
-  const rootApp = join(root, "app.tsx");
-  const srcApp = join(root, "src", "app.tsx");
-  const rootHas = existsSync(rootApp);
-  const srcHas = existsSync(srcApp);
-
-  if (routed && (rootHas || srcHas))
-    throw new Error("Found both an app/ directory and app.tsx - pick routed mode or single-file.");
-
-  if (!routed) {
-    if (rootHas && srcHas)
-      throw new Error("Found both ./app.tsx and ./src/app.tsx - pick one.");
-    if (!rootHas && !srcHas)
-      throw new Error("Missing app.tsx at project root or under src/ (or an app/ directory).");
-  }
-
   const indexTs = join(root, "index.ts");
   const indexHtml = join(root, "index.html");
 
   return {
     root,
-    appPath: routed ? undefined : rootHas ? rootApp : srcApp,
-    appDir: routed ? appDir : undefined,
+    ...appEntry(root),
     configPath: existsSync(indexTs) ? indexTs : undefined,
     htmlPath: existsSync(indexHtml) ? indexHtml : undefined,
   };
+}
+
+function appEntry(root: string): Pick<Project, "appDir" | "appPath"> {
+  const appDir = join(root, "app");
+  const files = [join(root, "app.tsx"), join(root, "src", "app.tsx")].filter(file => existsSync(file));
+
+  if (existsSync(appDir)) {
+    if (files.length) throw new Error("Found both an app/ directory and app.tsx - pick routed mode or single-file.");
+    return { appDir };
+  }
+
+  if (files.length > 1) throw new Error("Found both ./app.tsx and ./src/app.tsx - pick one.");
+  if (!files.length) throw new Error("Missing app.tsx at project root or under src/ (or an app/ directory).");
+
+  return { appPath: files[0] };
 }
 
 export function bootstrap(appImport: string): string {
