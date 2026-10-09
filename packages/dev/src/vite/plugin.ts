@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServerModuleRunner, type Plugin, type ViteDevServer } from "vite";
@@ -66,7 +66,7 @@ export function expressive(): Plugin<Host> {
     },
 
     config(user, env) {
-      root = resolve(user.root ?? process.cwd());
+      root = realpathSync(resolve(user.root ?? process.cwd()));
       project = resolveProject(root);
 
       const entries = project.appDir
@@ -74,6 +74,7 @@ export function expressive(): Plugin<Host> {
         : [importRel(root, project.appPath!)];
 
       return {
+        root,
         appType: "custom",
         oxc: { jsx: { runtime: "automatic", importSource: "@expressive/dev" } },
         optimizeDeps: { entries, include: DEPS },
