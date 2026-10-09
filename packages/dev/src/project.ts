@@ -85,13 +85,27 @@ function injectBeforeBody(html: string, tag: string): string {
     : html + "\n" + tag + "\n";
 }
 
-export function serverEntry(project: Project, from: string): string {
+export interface SidecarEntry {
+  pattern: string[];
+  file: string;
+  calls: string[];
+}
+
+export function serverEntry(project: Project, from: string, sidecars: SidecarEntry[] = []): string {
   return [
     `import { fileURLToPath } from "node:url";`,
     `import { serve } from "@expressive/dev";`,
     project.configPath ? `import config from ${JSON.stringify(relImport(from, project.configPath))};` : `const config = {};`,
+    ...sidecars.map(({ file }, i) => `import * as s${i} from ${JSON.stringify(relImport(from, file))};`),
     "",
-    `serve({ config, client: fileURLToPath(new URL("../client/", import.meta.url)) });`,
+    "serve({",
+    "  config,",
+    `  client: fileURLToPath(new URL("../client/", import.meta.url)),`,
+    "  sidecars: [",
+    ...sidecars.map(({ pattern, calls }, i) =>
+      `    { pattern: ${JSON.stringify(pattern)}, calls: async () => ({ ${calls.map(name => `${name}: s${i}.${name}`).join(", ")} }) },`),
+    "  ],",
+    "});",
     "",
   ].join("\n");
 }
