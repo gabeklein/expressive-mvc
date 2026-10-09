@@ -5,8 +5,8 @@ import { createServerModuleRunner, type Plugin, type ViteDevServer } from "vite"
 import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../config";
-import { GENERATED, SHELL, bootstrap, ensureBootstrap, relImport, resolveProject, serverEntry, type Project } from "../project";
-import { generateRoutes } from "../routes";
+import { GENERATED, SHELL, bootstrap, ensureBootstrap, relImport, resolveProject, serverEntry, type Project } from "./project";
+import { generateRoutes } from "./routes";
 import { scanExports } from "./scan";
 
 const MAIN = "main.tsx";

@@ -6,10 +6,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { browserRouter, location, mount } from "../test.setup";
-import { Route } from "./client";
+import { browserRouter, location, mount } from "../../test.setup";
+import { Route } from "../client";
 import { generateRoutes } from "./routes";
-import { scanExports } from "./vite/scan";
+import { scanExports } from "./scan";
 
 describe("app/ routing (codegen)", () => {
   const dirs: string[] = [];
