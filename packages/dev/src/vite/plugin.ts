@@ -51,6 +51,13 @@ export function expressive(): Plugin<Host> {
   let htmlId: string;
   let runner: ModuleRunner | undefined;
 
+  const generatedPath = (id: string, importer?: string) => {
+    if (id.startsWith(`/${GENERATED}/`)) return join(root, id);
+    if (importer?.startsWith(generatedDir) && id.startsWith(".")) return resolve(dirname(importer), id);
+
+    return id;
+  };
+
   const readShell = () =>
     project.htmlPath ? ensureBootstrap(readFileSync(project.htmlPath, "utf8")) : SHELL;
 
@@ -96,10 +103,7 @@ export function expressive(): Plugin<Host> {
     },
 
     async resolveId(id, importer, options) {
-      const generated =
-        id.startsWith(`/${GENERATED}/`) ? join(root, id)
-        : importer?.startsWith(generatedDir) && id.startsWith(".") ? resolve(dirname(importer), id)
-        : id;
+      const generated = generatedPath(id, importer);
 
       switch (generated) {
         case mainId:
