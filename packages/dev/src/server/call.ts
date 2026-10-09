@@ -52,7 +52,12 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   } catch (error) {
     const id = error instanceof Error && await classId(list, error);
 
-    if (id) return reply(res, status(error), { ...error, error: id, message: (error as Error).message });
+    if (id) {
+      const thrown = error as Error;
+      const body = { ...thrown, error: id, message: thrown.message };
+
+      return reply(res, status(thrown), body);
+    }
 
     const detail = dev && error instanceof Error && { message: error.message, stack: error.stack };
     return reply(res, 500, detail || { message: "Internal error." });
@@ -62,9 +67,12 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
 async function classId(endpoints: Endpoint[], error: Error): Promise<string | undefined> {
   const ids = new Map<unknown, string>();
 
-  for (const { pattern, exports } of endpoints)
-    for (const [name, Type] of Object.entries((await exports()).classes))
-      ids.set(Type, `/${pattern.join("/")}#${name}`);
+  for (const { pattern, exports } of endpoints) {
+    const { classes } = await exports();
+    const path = `/${pattern.join("/")}`;
+
+    for (const [name, Type] of Object.entries(classes)) ids.set(Type, `${path}#${name}`);
+  }
 
   for (let proto = Object.getPrototypeOf(error); proto; proto = Object.getPrototypeOf(proto))
     if (ids.has(proto.constructor)) return ids.get(proto.constructor);
@@ -72,13 +80,17 @@ async function classId(endpoints: Endpoint[], error: Error): Promise<string | un
 
 function status(error: Error): number {
   const { status } = error as { status?: unknown };
-  return typeof status == "number" && status >= 400 && status < 600 ? status : 500;
+  const valid = typeof status == "number" && status >= 400 && status < 600;
+
+  return valid ? status : 500;
 }
 
 export function verify(path: string, { classes }: Exports): void {
-  for (const [name, Type] of Object.entries(classes))
-    if (!(typeof Type == "function" && Type.prototype instanceof Error))
-      throw new Error(`${path} exports ${name}, which is neither an async function nor an Error subclass.`);
+  for (const [name, Type] of Object.entries(classes)) {
+    const isError = typeof Type == "function" && Type.prototype instanceof Error;
+
+    if (!isError) throw new Error(`${path} exports ${name}, which is neither an async function nor an Error subclass.`);
+  }
 }
 
 async function text(req: IncomingMessage): Promise<string> {

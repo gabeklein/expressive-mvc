@@ -2,9 +2,13 @@ export function runtime() {
   const classes = new Map<string, ErrorConstructor>();
 
   function define(id: string, name: string): ErrorConstructor {
-    const Type = { [name]: class extends Error {} }[name] as ErrorConstructor;
+    // a computed key gives the anonymous class its name
+    const named = { [name]: class extends Error {} };
+    const Type = named[name] as ErrorConstructor;
+
     Type.prototype.name = name;
     classes.set(id, Type);
+
     return Type;
   }
 
@@ -12,8 +16,12 @@ export function runtime() {
     const at = location.pathname.split("/").filter(Boolean);
     const path = pattern.map((part, i) => {
       if (part === "*") return at.slice(i).join("/");
-      if (at[i] === undefined || part[0] !== ":" && part !== at[i])
+
+      const matches = at[i] !== undefined && (part[0] === ":" || part === at[i]);
+
+      if (!matches)
         throw new Error(`${name}() belongs to /${pattern.join("/")} and cannot be called from ${location.pathname}.`);
+
       return at[i];
     });
 
@@ -30,8 +38,9 @@ export function runtime() {
     if (res.ok) return body;
 
     const { error, message, stack, ...fields } = body;
+    const Type = classes.get(error) ?? Error;
 
-    throw Object.assign(new (classes.get(error) ?? Error)(message), fields);
+    throw Object.assign(new Type(message), fields);
   }
 
   return { call, define };

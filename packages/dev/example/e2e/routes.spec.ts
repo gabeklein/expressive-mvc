@@ -54,22 +54,32 @@ test("falls through to the 404 page", async ({ page, open }) => {
 
 test("loads a route module on first entry", async ({ page, open }) => {
   const loaded: string[] = [];
-  page.on("request", request => loaded.push(decodeURIComponent(new URL(request.url()).pathname)));
+  const aboutLoaded = () => loaded.some(path => path.includes("(about)"));
+
+  page.on("request", request => {
+    const { pathname } = new URL(request.url());
+    loaded.push(decodeURIComponent(pathname));
+  });
 
   await open("/");
-  expect(loaded.some(path => path.includes("(about)"))).toBe(false);
+  expect(aboutLoaded()).toBe(false);
 
   await page.getByRole("link", { name: "About" }).click();
   await expect(page.getByRole("heading")).toHaveText("About");
-  expect(loaded.some(path => path.includes("(about)"))).toBe(true);
+  expect(aboutLoaded()).toBe(true);
 });
 
 test("shows the layout's Loading while a page's code arrives on a cold load", async ({ page }) => {
   let release!: () => void;
   const held = new Promise<void>(done => (release = done));
-  const chunk = (url: URL) => decodeURIComponent(url.pathname).includes("(about)") && !url.pathname.endsWith("/about");
+  const aboutChunk = (url: URL) => {
+    const path = decodeURIComponent(url.pathname);
+    const isPage = path.endsWith("/about");
 
-  await page.route(chunk, async route => {
+    return path.includes("(about)") && !isPage;
+  };
+
+  await page.route(aboutChunk, async route => {
     await held;
     await route.continue();
   });
