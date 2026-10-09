@@ -6,8 +6,10 @@ export const test = base.extend<{ open: (path: string) => Promise<void> }>({
 
     page.on("pageerror", error => errors.push(error.message));
     page.on("console", message => {
-      if (message.type() == "error" && !message.text().startsWith("Failed to load resource"))
-        errors.push(message.text());
+      const text = message.text();
+      const network = text.startsWith("Failed to load resource");
+
+      if (message.type() == "error" && !network) errors.push(text);
     });
 
     await use(async path => {
