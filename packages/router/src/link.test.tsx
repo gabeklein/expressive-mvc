@@ -456,3 +456,15 @@ describe('Link.match / Link.active', () => {
     expect(renders).toBe(1);
   });
 });
+
+it('will accept spread Link.Props', () => {
+  location('/');
+  const props: Link.Props = { to: '/about', children: 'About' };
+  const { getByText } = render(
+    <Route>
+      <Link {...props} />
+    </Route>
+  );
+
+  expect(getByText('About').getAttribute('href')).toBe('/about');
+});

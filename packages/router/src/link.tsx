@@ -1,5 +1,3 @@
-/** @jsxImportSource @expressive/mvc */
-
 import { Component, get } from '@expressive/mvc';
 import type { JSX } from '@expressive/mvc/jsx-runtime';
 
@@ -7,7 +5,7 @@ import { Route } from './route';
 import { isExternal } from './url';
 
 /** Host anchor attributes when the adapter declares intrinsics; `{}` agnostically. */
-type AnchorProps = JSX.IntrinsicElements extends { a: infer T } ? T : {};
+type AnchorProps = JSX.IntrinsicElements extends { a: infer T } ? Omit<T, 'is' | 'key'> : {};
 
 /** What `go` reads off a click - structural, no host event type needed. */
 interface ClickEvent {
