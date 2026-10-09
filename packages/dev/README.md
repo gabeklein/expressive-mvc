@@ -89,6 +89,31 @@ The build refuses any other export - a sync function, a value, a class without `
 re-export or a default - since the client could not use it. A class whose base is not an `Error`
 fails its first call in dev and the built service at startup.
 
+### Server State
+
+Inside a call, `X.use()` gets or creates an instance of `X` and `X.get()` finds one in context.
+Both throw outside a call. An instance is found again by its key - by default the location it was
+used at, so `/blog/a` and `/blog/b` hold separate ones and every visitor to a location shares one.
+`static key(prefix)` changes that: return `prefix` plus more to narrow, or something without it to
+share across locations. An instance lives while a call uses it, then `static ttl` seconds (0 by
+default); `set(null)` ends it at once.
+
+```ts
+class Tally extends State {
+  static ttl = 3600;
+  total = 0;
+}
+
+export async function add(by: number) {
+  return (Tally.use().total += by);
+}
+```
+
+`Current` is the request in progress, readable from any server State or function in a call:
+`Current.get().url`, `.cookies`, `.request`. Its accessors read the call live, so a reused
+instance may hold it in a field (`current = get(Current)`) but should not copy its values into
+its own.
+
 ## Commands
 
 ```
