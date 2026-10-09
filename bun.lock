@@ -58,21 +58,12 @@
       },
       "devDependencies": {
         "@expressive/mvc": "workspace:^",
+        "@playwright/test": "^1.63.0",
         "@types/node": "^25.2.0",
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
         "@expressive/mvc": "^0.87.0",
-      },
-    },
-    "packages/dev/example": {
-      "name": "@expressive/dev-example",
-      "dependencies": {
-        "@expressive/dev": "workspace:*",
-        "@expressive/mvc": "workspace:*",
-      },
-      "devDependencies": {
-        "@playwright/test": "^1.63.0",
       },
     },
     "packages/dom": {
@@ -404,8 +395,6 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.1", "", { "os": "win32", "cpu": "x64" }, "sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A=="],
 
     "@expressive/dev": ["@expressive/dev@workspace:packages/dev"],
-
-    "@expressive/dev-example": ["@expressive/dev-example@workspace:packages/dev/example"],
 
     "@expressive/dom": ["@expressive/dom@workspace:packages/dom"],
 
