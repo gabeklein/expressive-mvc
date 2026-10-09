@@ -17,6 +17,9 @@ test("calls a sidecar's functions on the server", async ({ page, open }, { proje
   await page.getByRole("button", { name: "Add 10" }).click();
   await expect(output).toHaveText("Overflow at 9");
 
+  await page.getByRole("button", { name: "Where" }).click();
+  await expect(output).toHaveText("/tally");
+
   await page.getByRole("button", { name: "Fail" }).click();
   await expect(output).toHaveText(project.name == "dev" ? "Nope" : "Internal error.");
 });

@@ -1,6 +1,6 @@
 import { State } from "@expressive/mvc";
 
-import { Overflow, add, fail, reset } from "./api";
+import { Overflow, add, fail, reset, where } from "./api";
 
 class Tally extends State {
   shown = "";
@@ -24,6 +24,7 @@ export function Page() {
       <button onClick={() => run(() => add(10))}>Add 10</button>
       <button onClick={() => run(reset)}>Reset</button>
       <button onClick={() => run(fail)}>Fail</button>
+      <button onClick={() => run(where)}>Where</button>
       <output>{shown}</output>
     </>
   );
