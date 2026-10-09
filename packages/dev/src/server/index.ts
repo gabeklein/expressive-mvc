@@ -57,9 +57,13 @@ export function serve({ config, client, sidecars = [] }: ServeOptions): Server {
   });
 
   const port = config.port ?? 3000;
-  const checked = sidecars.map(async ({ pattern, exports }) => verify(`/${pattern.join("/")}`, await exports()));
+  const announce = () => console.log(`Expressive running at http://localhost:${port}/`);
+  const checked = sidecars.map(async ({ pattern, exports }) => {
+    const path = `/${pattern.join("/")}`;
+    verify(path, await exports());
+  });
 
-  Promise.all(checked).then(() => server.listen(port, () => console.log(`Expressive running at http://localhost:${port}/`)));
+  Promise.all(checked).then(() => server.listen(port, announce));
 
   return server;
 }

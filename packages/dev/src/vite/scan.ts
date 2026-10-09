@@ -23,46 +23,82 @@ export interface SidecarScan {
   problems: string[];
 }
 
+type Value = ESTree.Node | null | undefined;
+
+const isFunction = (value: Value): value is ESTree.Function | ESTree.ArrowFunctionExpression =>
+  value?.type === "FunctionDeclaration" || value?.type === "FunctionExpression" || value?.type === "ArrowFunctionExpression";
+
+const isClass = (value: Value): value is ESTree.Class =>
+  value?.type === "ClassDeclaration" || value?.type === "ClassExpression";
+
+const isType = (value: Value) =>
+  value?.type === "TSInterfaceDeclaration" || value?.type === "TSTypeAliasDeclaration";
+
+const nameOf = (node: ESTree.ModuleExportName) =>
+  node.type === "Identifier" ? node.name : String(node.value);
+
 export function scanSidecar(source: string, path: string): SidecarScan {
   const { program, errors } = parseSync(path, source);
-  const calls: string[] = [];
-  const classes: string[] = [];
-  const problems = errors.map(error => error.message);
-  const local = new Map<string, ESTree.Node | null | undefined>();
+  const scan: SidecarScan = { calls: [], classes: [], problems: errors.map(error => error.message) };
+  const locals = localBindings(program.body);
 
-  for (const node of program.body) {
-    const decl = node.type === "ExportNamedDeclaration" ? node.declaration : node;
+  const check = (name: string, value: Value) => {
+    const isAsyncFunction = isFunction(value) && value.async;
+    const isSubclass = isClass(value) && !!value.superClass;
 
-    if ((decl?.type === "FunctionDeclaration" || decl?.type === "ClassDeclaration") && decl.id) local.set(decl.id.name, decl);
-    if (decl?.type === "VariableDeclaration")
-      for (const { id, init } of decl.declarations) if (id.type === "Identifier") local.set(id.name, init);
-  }
-
-  const check = (name: string, value: ESTree.Node | null | undefined) => {
-    const fn = value?.type === "FunctionDeclaration" || value?.type === "FunctionExpression" || value?.type === "ArrowFunctionExpression";
-
-    if (fn && value.async) calls.push(name);
-    else if ((value?.type === "ClassDeclaration" || value?.type === "ClassExpression") && value.superClass) classes.push(name);
-    else problems.push(`${name} is neither an async function nor an Error subclass - the client could not use it.`);
+    if (isAsyncFunction) scan.calls.push(name);
+    else if (isSubclass) scan.classes.push(name);
+    else scan.problems.push(`${name} is neither an async function nor an Error subclass - the client could not use it.`);
   };
 
   for (const node of program.body) {
-    if (node.type === "ExportAllDeclaration" || node.type === "ExportNamedDeclaration" && node.source)
-      problems.push("A sidecar cannot re-export from another module.");
-    else if (node.type === "ExportDefaultDeclaration")
-      problems.push("A sidecar's default export is not supported yet.");
-    else if (node.type !== "ExportNamedDeclaration" || node.exportKind === "type") continue;
-    else if (node.declaration?.type === "FunctionDeclaration" || node.declaration?.type === "ClassDeclaration")
-      check(node.declaration.id!.name, node.declaration);
-    else if (node.declaration?.type === "VariableDeclaration")
-      for (const { id, init } of node.declaration.declarations) check(id.type === "Identifier" ? id.name : "A destructured export", init);
-    else if (node.declaration && node.declaration.type !== "TSInterfaceDeclaration" && node.declaration.type !== "TSTypeAliasDeclaration")
-      problems.push("A sidecar exports async functions and Error subclasses only.");
-    else
-      for (const spec of node.specifiers)
-        if (spec.exportKind !== "type")
-          check(spec.exported.type === "Identifier" ? spec.exported.name : String(spec.exported.value), local.get(spec.local.type === "Identifier" ? spec.local.name : String(spec.local.value)));
+    const reExport = node.type === "ExportAllDeclaration" || node.type === "ExportNamedDeclaration" && !!node.source;
+
+    if (reExport) {
+      scan.problems.push("A sidecar cannot re-export from another module.");
+      continue;
+    }
+
+    if (node.type === "ExportDefaultDeclaration") {
+      scan.problems.push("A sidecar's default export is not supported yet.");
+      continue;
+    }
+
+    if (node.type !== "ExportNamedDeclaration" || node.exportKind === "type") continue;
+
+    const { declaration } = node;
+
+    if (!declaration)
+      for (const spec of node.specifiers) {
+        if (spec.exportKind !== "type") check(nameOf(spec.exported), locals.get(nameOf(spec.local)));
+      }
+    else if (declaration.type === "FunctionDeclaration" || declaration.type === "ClassDeclaration")
+      check(declaration.id!.name, declaration);
+    else if (declaration.type === "VariableDeclaration")
+      for (const { id, init } of declaration.declarations) {
+        const name = id.type === "Identifier" ? id.name : "A destructured export";
+        check(name, init);
+      }
+    else if (!isType(declaration))
+      scan.problems.push("A sidecar exports async functions and Error subclasses only.");
   }
 
-  return { calls, classes, problems };
+  return scan;
+}
+
+function localBindings(body: ESTree.Program["body"]): Map<string, Value> {
+  const locals = new Map<string, Value>();
+
+  for (const node of body) {
+    const decl = node.type === "ExportNamedDeclaration" ? node.declaration : node;
+    const named = (decl?.type === "FunctionDeclaration" || decl?.type === "ClassDeclaration") && decl.id;
+
+    if (named) locals.set(named.name, decl);
+
+    if (decl?.type === "VariableDeclaration")
+      for (const { id, init } of decl.declarations)
+        if (id.type === "Identifier") locals.set(id.name, init);
+  }
+
+  return locals;
 }

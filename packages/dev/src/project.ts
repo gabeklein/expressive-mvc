@@ -98,8 +98,9 @@ export function serverEntry(project: Project, from: string, sidecars: SidecarEnt
   const entries = sidecars.map((mod, i) => {
     const pattern = JSON.stringify(mod.pattern);
     const pick = (names: string[]) => `{ ${names.map(name => `${name}: s${i}.${name}`).join(", ")} }`;
+    const exports = `{ calls: ${pick(mod.calls)}, classes: ${pick(mod.classes)} }`;
 
-    return `    { pattern: ${pattern}, async exports() { return { calls: ${pick(mod.calls)}, classes: ${pick(mod.classes)} }; } },`;
+    return `    { pattern: ${pattern}, async exports() { return ${exports}; } },`;
   });
 
   return [
