@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+import { within } from "./context";
+
 export interface Exports {
   calls: Record<string, unknown>;
   classes: Record<string, unknown>;
@@ -12,9 +14,7 @@ export interface Endpoint {
 
 const rank = (part: string) => (part === "*" ? 0 : part[0] === ":" ? 1 : 2);
 
-export function endpoint(endpoints: Endpoint[], pathname: string): Endpoint | undefined {
-  const at = pathname.split("/").filter(Boolean);
-
+export function endpoint(endpoints: Endpoint[], at: string[]): Endpoint | undefined {
   return endpoints
     .filter(({ pattern }) =>
       (pattern.at(-1) === "*" || pattern.length === at.length) &&
@@ -29,7 +29,9 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
     return false;
 
   const list = endpoints();
-  const calls = (await endpoint(list, new URL(req.url ?? "/", "http://localhost").pathname)?.exports())?.calls;
+  const at = new URL(req.url ?? "/", "http://localhost").pathname.split("/").filter(Boolean);
+  const found = endpoint(list, at);
+  const calls = (await found?.exports())?.calls;
   const fn = calls && Object.hasOwn(calls, name) ? calls[name] : undefined;
 
   if (typeof fn !== "function") return reply(res, 404, { message: "Not found." });
@@ -43,7 +45,8 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   if (!Array.isArray(args)) return reply(res, 400, { message: "Expected a JSON array of arguments." });
 
   try {
-    const value = await fn(...args);
+    const segments = found!.pattern.map((part, i) => (part === "*" ? at.slice(i).join("/") : at[i]));
+    const value = await within(req, segments, () => fn(...(args as unknown[])));
     return value === undefined ? reply(res, 204) : reply(res, 200, value);
   } catch (error) {
     const id = error instanceof Error && await classId(list, error);

@@ -11,4 +11,8 @@ describe("one surface", () => {
   it("will throw if serve is called in the browser", () => {
     expect(() => client.serve()).toThrow("server only");
   });
+
+  it("will throw if Current is made in the browser", () => {
+    expect(() => new client.Current()).toThrow("Current is server-only.");
+  });
 });
