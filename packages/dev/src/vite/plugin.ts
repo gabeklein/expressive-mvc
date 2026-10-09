@@ -92,18 +92,27 @@ export function expressive(): Plugin<Host> {
         : importer?.startsWith(generatedDir) && id.startsWith(".") ? resolve(dirname(importer), id)
         : id;
 
-      if (generated === mainId || generated === routesId || generated === serverId) return generated;
+      switch (generated) {
+        case mainId:
+        case routesId:
+        case serverId:
+          return generated;
+      }
+
       if (id === htmlId && !existsSync(htmlId)) return htmlId;
     },
 
     load(id) {
-      if (id === mainId) {
-        const app = project.appDir ? `./${ROUTES}` : relImport(generatedDir, project.appPath!);
-        return bootstrap(app);
+      switch (id) {
+        case mainId:
+          return bootstrap(project.appDir ? `./${ROUTES}` : relImport(generatedDir, project.appPath!));
+        case routesId:
+          return generateRoutes(project.appDir!, generatedDir, scanExports);
+        case serverId:
+          return serverEntry(project, generatedDir);
+        case htmlId:
+          return SHELL;
       }
-      if (id === routesId) return generateRoutes(project.appDir!, generatedDir, scanExports);
-      if (id === serverId) return serverEntry(project, generatedDir);
-      if (id === htmlId) return SHELL;
     },
 
     transformIndexHtml: {
