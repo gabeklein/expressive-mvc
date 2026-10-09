@@ -42,23 +42,34 @@ function frame(): Frame {
   return frame;
 }
 
+function newLayer(prefix: string, parent?: Layer): Layer {
+  const context = parent ? parent.context.push() : Context.root.push();
+  return { prefix, context, parent, children: new Map(), entries: 0, calls: 0 };
+}
+
 function root(): Layer {
   if (!top) {
-    top = { prefix: "", context: Context.root.push(), children: new Map(), entries: 0, calls: 0 };
+    top = newLayer("");
     top.context.set({ 0: Current });
   }
+
   return top;
+}
+
+function childPrefix(parent: string, segment: string): string {
+  const hash = createHash("sha256").update(`${parent}/${segment}`);
+  return hash.digest("base64url").slice(0, 22);
 }
 
 function walk(segments: string[]): Layer {
   let layer = root();
 
   for (const segment of segments) {
-    const prefix = createHash("sha256").update(`${layer.prefix}/${segment}`).digest("base64url").slice(0, 22);
+    const prefix = childPrefix(layer.prefix, segment);
     let next = layer.children.get(prefix);
 
     if (!next) {
-      next = { prefix, context: layer.context.push(), parent: layer, children: new Map(), entries: 0, calls: 0 };
+      next = newLayer(prefix, layer);
       layer.children.set(prefix, next);
     }
 
@@ -68,10 +79,15 @@ function walk(segments: string[]): Layer {
   return layer;
 }
 
+const isEmpty = (layer: Layer) => !layer.calls && !layer.entries && !layer.children.size;
+
 function prune(layer: Layer) {
-  for (let at: Layer | undefined = layer; at?.parent && !at.calls && !at.entries && !at.children.size; at = at.parent) {
+  let at = layer;
+
+  while (at.parent && isEmpty(at)) {
     at.context.pop();
     at.parent.children.delete(at.prefix);
+    at = at.parent;
   }
 }
 
@@ -91,8 +107,10 @@ function release(entry: Entry) {
 
   const ttl = entry.Type.ttl ?? 0;
 
-  if (ttl > 0) (entry.timer = setTimeout(() => drop(entry), ttl * 1000)).unref();
-  else drop(entry);
+  if (ttl <= 0) return drop(entry);
+
+  entry.timer = setTimeout(() => drop(entry), ttl * 1000);
+  entry.timer.unref();
 }
 
 export async function within<T>(request: IncomingMessage, segments: string[], run: () => T): Promise<Awaited<T>> {
@@ -110,37 +128,60 @@ export async function within<T>(request: IncomingMessage, segments: string[], ru
   }
 }
 
-function use(this: Keyed) {
-  const { layer, held } = frame();
-  const key = this.key ? this.key(layer.prefix) : layer.prefix;
+function keyOf(Type: Keyed, prefix: string): string {
+  const key = Type.key ? Type.key(prefix) : prefix;
 
   if (typeof key != "string" && typeof key != "number")
-    throw new Error(`${this.name}.key() returned ${key} - a key is a string or a number.`);
+    throw new Error(`${Type.name}.key() returned ${key} - a key is a string or a number.`);
 
-  const entries = registry.get(this) ?? registry.set(this, new Map()).get(this)!;
-  let entry = entries.get(String(key));
+  return String(key);
+}
 
-  if (!entry) {
-    let home = layer;
-    while (home.parent && !String(key).startsWith(home.prefix)) home = home.parent;
+function homeOf(layer: Layer, key: string): Layer {
+  let home = layer;
 
-    const context = home.context.push();
-    let instance!: State;
+  while (home.parent && !key.startsWith(home.prefix)) home = home.parent;
 
-    context.set({ 0: this }, state => { instance = state; });
-    entry = { Type: this, key: String(key), layer: home, context, instance, refs: 0 };
-    entries.set(entry.key, entry);
-    home.entries++;
+  return home;
+}
 
-    const created = entry;
-    instance.set(null, () => drop(created));
-  }
+function entriesOf(Type: Keyed): Map<string, Entry> {
+  let entries = registry.get(Type);
 
-  if (!held.has(entry)) {
-    held.add(entry);
-    entry.refs++;
-    clearTimeout(entry.timer);
-  }
+  if (!entries) registry.set(Type, entries = new Map());
+
+  return entries;
+}
+
+function create(Type: Keyed, key: string, home: Layer): Entry {
+  const context = home.context.push();
+  let instance!: State;
+
+  context.set({ 0: Type }, state => { instance = state; });
+
+  const entry: Entry = { Type, key, layer: home, context, instance, refs: 0 };
+
+  entriesOf(Type).set(key, entry);
+  home.entries++;
+  instance.set(null, () => drop(entry));
+
+  return entry;
+}
+
+function hold(held: Set<Entry>, entry: Entry) {
+  if (held.has(entry)) return;
+
+  held.add(entry);
+  entry.refs++;
+  clearTimeout(entry.timer);
+}
+
+function use(this: Keyed) {
+  const { layer, held } = frame();
+  const key = keyOf(this, layer.prefix);
+  const entry = entriesOf(this).get(key) ?? create(this, key, homeOf(layer, key));
+
+  hold(held, entry);
 
   return entry.instance;
 }
@@ -153,29 +194,41 @@ export function install() {
   Object.assign(State, { use, get });
 }
 
+function parseCookies(header = ""): Record<string, string> {
+  const pairs = header.split(";").filter(Boolean).map(pair => {
+    const at = pair.indexOf("=");
+    const name = pair.slice(0, at).trim();
+    const value = decodeURIComponent(pair.slice(at + 1).trim());
+
+    return [name, value];
+  });
+
+  return Object.fromEntries(pairs);
+}
+
+const readOnly = () => {
+  throw new Error("Current is read-only.");
+};
+
 export class Current extends State {
   get request(): IncomingMessage {
     return frame().request;
   }
   set request(_: IncomingMessage) {
-    throw new Error("Current is read-only.");
+    readOnly();
   }
 
   get url(): URL {
     return new URL(this.request.url ?? "/", "http://localhost");
   }
   set url(_: URL) {
-    throw new Error("Current is read-only.");
+    readOnly();
   }
 
   get cookies(): Record<string, string> {
-    const header = this.request.headers.cookie ?? "";
-    return Object.fromEntries(header.split(";").filter(Boolean).map(pair => {
-      const at = pair.indexOf("=");
-      return [pair.slice(0, at).trim(), decodeURIComponent(pair.slice(at + 1).trim())];
-    }));
+    return parseCookies(this.request.headers.cookie);
   }
   set cookies(_: Record<string, string>) {
-    throw new Error("Current is read-only.");
+    readOnly();
   }
 }

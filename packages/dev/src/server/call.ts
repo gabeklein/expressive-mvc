@@ -45,9 +45,12 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
 
   if (!Array.isArray(args)) return reply(res, 400, { message: "Expected a JSON array of arguments." });
 
+  const params: unknown[] = args;
+  const rest = (i: number) => at.slice(i).join("/");
+  const segments = found!.pattern.map((part, i) => (part === "*" ? rest(i) : at[i]));
+
   try {
-    const segments = found!.pattern.map((part, i) => (part === "*" ? at.slice(i).join("/") : at[i]));
-    const value = await within(req, segments, () => fn(...(args as unknown[])));
+    const value = await within(req, segments, () => fn(...params));
     return value === undefined ? reply(res, 204) : reply(res, 200, value);
   } catch (error) {
     const id = error instanceof Error && await classId(list, error);
