@@ -14,7 +14,6 @@ const PACKAGES = fileURLToPath(new URL("../../../", import.meta.url));
 
 const SOURCES: InlineConfig["resolve"] = {
   alias: [
-    { find: /^@expressive\/dev$/, replacement: `${PACKAGES}dev/src/browser.ts` },
     { find: /^@expressive\/([^/]+)$/, replacement: `${PACKAGES}$1/src` },
     { find: /^@expressive\/([^/]+)\/(.+)$/, replacement: `${PACKAGES}$1/src/$2` },
   ],
@@ -67,7 +66,7 @@ describe("vite host", () => {
     const server = await serve(project({ "app/index.tsx": PAGE, "app/blog/[slug].tsx": PAGE }));
 
     const main = await server.transformRequest("/.expressive/main.tsx");
-    expect(main?.code).toContain("dev/src/browser");
+    expect(main?.code).toContain("dev/src/index");
     expect(main?.code).toContain("/.expressive/routes.tsx");
 
     const routes = await server.transformRequest("/.expressive/routes.tsx");
@@ -199,13 +198,13 @@ describe("vite host", () => {
     config.configFile = false;
     config.logLevel = "silent";
     config.resolve = SOURCES;
-    config.build!.rollupOptions = { ...config.build!.rollupOptions, external: ["@expressive/dev"] };
+    config.build!.rollupOptions = { ...config.build!.rollupOptions, external: ["@expressive/dev", "@expressive/dev/server"] };
 
     const out = await build(config);
     const { output } = Array.isArray(out) ? out[0] : (out as { output: any[] });
     const entry = output.find((o: any) => o.fileName === "index.js")?.code as string;
 
-    expect(entry).toContain('from "@expressive/dev"');
+    expect(entry).toContain('from "@expressive/dev/server"');
     expect(entry).toMatch(/port: 4(000|e3)/);
   });
 
