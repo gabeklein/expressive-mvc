@@ -19,7 +19,8 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - **JSX.** `jsxImportSource: "@expressive/dev"` - dev's runtime re-exports dom's.
 - **Router.** dev exports its own `Router` (extends `BrowserRouter`) and `Route`, plus `Link`, `NavLinks`, `Redirect`. No `BrowserRouter` export.
 - **Config.** `index.ts` default-exports `config({...})`, read on the server.
-- **Server modules, one model.** Sidecars (`app/**/api.ts`) and `app/api/**` share one invocation path from the bundled client and one ambient model. They differ in location binding (a sidecar runs in its folder's location context) and twins (a sidecar's default is demanded per location). What the caller is - a bundled tab or an external client - decides ambient context, not which folder the module sits in.
+- **Server modules, one model.** Sidecars (`app/**/api.ts`) and `app/api/**` share one invocation path from the bundled client and one instance model (below). `app/api` has its own root; a sidecar call never passes through `app/api/index.ts`. Process globals are the only layer both lanes share.
+- **Session is the app's concern.** dev does not detect or mint sessions or tabs; an app expresses identity through keys (below). Recipes may come later.
 - **dom on the server.** Needed for JSX rendered to HTML (responses, emails), not SSR.
 - **Monkey-patch first.** Where mvc or an adapter lacks a seam, dev patches it in one file, replaced when upstream catches up. Stress-tests the concept before committing upstream.
 - **Server `get`/`use` are dev's, permanently.** Request-scoped resolution is a host concern - no core or dom change. The server build replaces `State.get`/`State.use` (installed after dom evaluates, asserted at boot) and overrides only the no-argument `Context.get()`; the client keeps dom's behavior.
@@ -37,43 +38,37 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 
 Enough to write E2E tests and examples and feel the ergonomics. One PR each, in order. Everything under Later waits until the MVP has been used.
 
-1. **Sidecar calls.** Each export of `app/**/api.ts` becomes a browser stub that POSTs `{ location, name, args }` with the tab id. Proposed wire: one endpoint `POST /.expressive/call`, an `x-expressive-tab` header, a JSON reply or `{ error }` with a 4xx/5xx status. Planned as two PRs - calls (scanner allowlist and build errors, stubs, dispatch, import rule), then call context (contexts, `AsyncLocalStorage`, server `get`/`use`, a server `Route` per location). The server resolves session → tab → location (below) and runs the function there in `AsyncLocalStorage`, so `T.get()`/`T.use()` resolve in that context; both throw outside a call. JSON reply. Importable only from the sidecar's folder and below (build error otherwise).
-2. **Twins (pull).** A sidecar's default class is demanded per location: created in the tab's location context, its twin provided in the client scope, so `Foo.get()` in that route's pages returns the twin. On route entry the twin POSTs `attach { location }`: the server gets-or-creates the instance, adds it to the tab's attached set, and replies with a snapshot and its version - suspending until then. Route exit POSTs `detach`. Methods are calls; a reply carries the call's patch and version, applied before the call resolves - an awaited call never sees a stale twin. Twins are read-only - an invariant, not an MVP shortcut: server values change through methods, and assigning a twin field throws.
-3. **Push (SSE).** One `EventSource` per tab - a mailbox, not a subscription list. What it carries is decided server-side by the tab's attached set, so attaching or detaching never touches the stream. `mount()` runs on attach, its cleanup on detach. Each flush of an attached instance's updates (mvc batches per microtask) becomes one frame: `{ target, values }` with the version as the event id - the browser's reconnect resumes with `Last-Event-ID`; a server that lost the tab sends `reset`, and the client re-attaches.
-4. **Identity.** Default cookie session (HttpOnly, `SameSite=Lax`, `Secure` in production, minted lazily); tab id in `sessionStorage`. No user layer, no login rotation yet.
+1. **Sidecar calls.** Each export of `app/**/api.ts` becomes a browser stub; a call is a POST answered with JSON, or `{ error }` with a 4xx/5xx status. Scanner allowlist and build errors, stubs, dispatch, import rule (importable only from the sidecar's folder and below). Wire shape: see Open.
+2. **Call context.** The request in `AsyncLocalStorage`; the route walk computing each layer's prefix; static `key`/`use` caching; server `T.get()`/`T.use()` - both throw outside a call.
+3. **Twins (pull).** Client `X.use()` of a server class - a route's `default` or any component - attaches a twin for that mount and detaches on unmount. The server resolves the instance through the class's key; the reply carries a snapshot and version, and the twin suspends until then. Methods are calls; a reply carries the call's patch and version, applied before the call resolves - an awaited call never sees a stale twin. Twins are read-only - an invariant, not an MVP shortcut: server values change through methods, and assigning a twin field throws.
+4. **Push (SSE).** One `EventSource` per client connection - a mailbox, not a subscription list. What it carries is decided server-side by what that connection has attached. `mount()` runs on attach, its cleanup on detach. Each flush of an attached instance's updates (mvc batches per microtask) becomes one frame: `{ target, values }` with the version as the event id - the browser's reconnect resumes with `Last-Event-ID`; a server that lost the connection sends `reset`, and the client re-attaches.
 
-MVP limits, on purpose: twins live until their tab context goes (no TTL sweeper); calls made while disconnected fail; one process; the default cookie provider only.
+MVP limits, on purpose: calls made while disconnected fail; one process.
 
 ## Transport
 
 - **Calls are HTTP POST in both lanes** - one invocation path, so where an app puts its server logic is a matter of style. Request/response gives timeouts, retries, logs and proxies for free.
-- **Push is SSE** - a one-way server stream over plain HTTP: native reconnect with `Last-Event-ID`, no dependency, the same code in Vite's middleware and the built server. Not a weaker WebSocket so much as the half a UI needs when calls already have a channel. Limits: text only; `EventSource` sends no custom headers (tab id goes in the query); HTTP/1.1 caps ~6 connections per origin across tabs - HTTP/2 lifts it.
+- **Push is SSE** - a one-way server stream over plain HTTP: native reconnect with `Last-Event-ID`, no dependency, the same code in Vite's middleware and the built server. Not a weaker WebSocket so much as the half a UI needs when calls already have a channel. Limits: text only; `EventSource` sends no custom headers (a connection id goes in the query); HTTP/1.1 caps ~6 connections per origin across tabs - HTTP/2 lifts it.
 - **WebSocket later, if wanted** - versioned patches and call ids keep the protocol transport-agnostic, so a socket (one ordered duplex channel) can replace both without a change in meaning.
 
-## Ambient model
+## Instance model
 
-The axis is the caller, not the folder.
+Reuse is decided per class by a key - no cached context tree. Direction agreed; details marked where still open.
 
-| | Bundled tab (sidecar or `app/api`) | External client (`app/api` only - later) |
-|---|---|---|
-| Identity | session cookie + tab id | cookie or bearer, per request |
-| Context | session → tab → location (sidecar) or tab (`app/api`) | per request only |
-| Twins, `mount()` | yes - attach and detach via SSE | none |
-| `new()` | once, on creation in its context | once, per request |
-| `ttl = 0` instances | end with the call | end with the request |
-| Instance `use()` | never on the server | never on the server |
-
-```
-Context.root          process globals (static global)
-└ session ctx         cookie - one browser
-  └ tab ctx           tab id - X.use() defaults land at or below here
-    └ location ctxs   one per concrete path segment the tab has entered
-      └ call ctx      ttl-0 instances
-```
-
-- **Keyed by location, not pattern.** `/blog/a/settings` and `/blog/b/settings` are different pages with different state (which post is loaded), so each concrete segment gets its own context, and its `Route` keeps a fixed `match`.
-- **Contexts are reachable only through the caller's identity**, never by key.
-- **Tab identity.** Minted client-side (`crypto.randomUUID()`), kept in `sessionStorage` - per tab, survives reload. Looked up as (session, tab id), so not a credential. "Duplicate tab" copies `sessionStorage`: a second live stream presenting a connected id gets a fresh id. Without a session, tab contexts hang under root.
+- **Per call, not per tree.** A call's context is built per request: the request sits in `AsyncLocalStorage`, and `X.get()`/`X.use()` resolve within that call. Instances outlive calls only through keys, twins or process globals.
+- **`static key(prefix)`** runs on every `X.use()` and returns a string or number, unique within the class. On a miss the new instance is stored under that key; the next `use()` producing it reuses the instance. A key is never sent by the client - `key()` runs on the server and reads only what the server trusts.
+- **Prefix accumulates down the route walk** (explored, current direction). Each layer's prefix is `hash(parent key + concrete segment)`; the default key returns the prefix unchanged, and a route default's key becomes its children's prefix. One rule, three behaviours by what `key()` returns:
+  - *inherit* - no key: one instance per concrete route location (params differ, the query string does not);
+  - *narrow* - append to the prefix (an identity, a grant): everything below differs by it;
+  - *reset* - drop the prefix (`static key() { return "docs" }`): everything below is shared regardless of what is upstream; upstream keys still run, so their gates still apply.
+- **Ownership by prefix.** A key starting with its prefix is owned by the upstream entry and evicted with it - the cascade follows route nesting. Any other key is unowned: shared, with a TTL.
+- **Reachable only by walking.** A layer's prefix exists only after the layer above ran its `key()` in this request, so no code can address a subtree it is not standing in. Hashing adds fixed length, no separator ambiguity and opacity in logs - not secrecy; keys never leave the server.
+- **The un-nudged default is shared.** With no identity layer, a location's State is common to every visitor. An app's root key decides identity once for everything below; the starter should carry one.
+- **TTL** defaults to 0: the grace period after the last reference (in-flight calls, attached twins). Caching across calls is opt-in per class.
+- **`static use`** - the full-control override when reuse needs spelling out; `key` is the common case dev's default `use` consults.
+- **Process globals** are not keys: `static global`, created at module scope (e.g. an OAuth client). Reached from either lane.
+- **Owned members** (`cart = new Cart()`) never run `key()` - their lifetime is their owner's. Most server State should be owned members rather than free keyed instances.
+- **Request data** is read in methods, `key()` and `use()` (`Cookies.get()`), never in a getter or field of a reused instance: mvc caches prototype getters as computed values, and a field on a recycled instance would hold the request that created it.
 
 ## Boundaries
 
@@ -87,7 +82,7 @@ Context.root          process globals (static global)
 
 What the server pushes should follow what the client looks at. Three grains, coarse to fine:
 
-1. **Location (MVP).** Route entry attaches a sidecar's twin; exit detaches it.
+1. **Mount (MVP).** A twin attaches when its `X.use()` mounts and detaches on unmount.
 2. **Demand.** A twin attaches when something first pulls it (`get()`, `use()`, a rendered read) and detaches when nothing does - route entry only makes it available. Per key, the client knows which fields some mounted observer reads: mvc's observer already holds each listener's key set (`@expressive/mvc/observable`). Sent upstream as `focus { target, keys }`, it lets the server stream only demanded keys and skip computing undemanded getters - the lazy-getter idea, server and client alike.
 3. **Visibility.** A hidden tab (`visibilitychange`) pauses its stream; showing it resumes from the last version.
 
@@ -97,16 +92,16 @@ Demand wants an mvc seam - notice when a key gains its first observer or loses i
 
 | Hook | Runs | Throwing |
 |---|---|---|
-| `new()` | once, on creation in its context | creation fails; the triggering call gets the reply |
-| `mount()` | each time a twin attaches, then on every instance it owns, parent first; returns a cleanup, run in reverse when that twin detaches (route exit, tab close) | the attach is refused; the client Route can catch or redirect |
-| `use()` (instance) | never - client-only, as the per-render argument hook | - |
+| `static key(prefix)` | every resolution - each request on the walk, each `X.use()` | denies the request; nothing is created |
+| `new()` | once, on creation (a key miss) | creation fails; the triggering call gets the reply |
+| `use()` (instance) | every pass of a server-resolved instance: attach and each call - per request, as the client's runs per render | denies that request |
+| `mount()` | each time a twin attaches, then on every instance it owns, parent first; returns a cleanup, run in reverse when that twin detaches | the attach is refused; the client Route can catch or redirect |
 
-- Static `X.use()` stays: dev's get-or-create in the current context.
-- No per-route middleware hook - gating is identity upstream plus a State's own `new()`/`mount()`.
+- Server and client `use()` do not collide: `api.ts` bodies never ship to the client, whose twin runs mvc's own per-render hook.
+- `use()` returns nothing; the instance learns it was reached.
+- No middleware hook - gating is `key()`, `new()` and `use()` throwing. An integration (OAuth) is a service the route forwards to, not a hook that inspects every request.
 - References are not owned: `route = get(Route)` gets no `mount()` of its own.
-- Each location context holds a server-side `Route` with that location's `match`, so `get(Route)` resolves in sidecar States and their helpers.
 - **Never callable:** lifecycle names (`new`, `use`, `mount`), State's own (`get`, `set`), `_`-prefixed and `#private` members.
-- Methods run in their instance's context without re-gating per call; ending a session destroys its subtree, which drops its twins, so the client re-enters.
 
 ## Reliability
 
@@ -116,17 +111,16 @@ Principles the MVP must not contradict; most land after it.
 - **Versioned patches, call ids.** Each patch carries a version; each reply names the version it produced; each call an id the server dedupes. Ordering then holds across channels and retries.
 - **Stale, not frozen.** A client `Connection` State reports `connecting`/`open`/`reconnecting`/`offline`/`closed` (with reason). Disconnected twins keep last-known values and flag themselves stale; they suspend only before their first snapshot.
 - **Calls fail loudly.** Offline calls queue up to a timeout, then reject with a typed `ConnectionError`; per method or per call, an app chooses fail-fast or wait. Strict routes may opt in to a disconnect reaching their `Catch`.
-- **Resumed or reset.** Reconnecting within the tab's TTL on the same process replays what was missed; otherwise twins are rebuilt through `new()` and `Connection` reports `reset` so the app can reconcile local edits.
+- **Resumed or reset.** Reconnecting within the instances' TTL on the same process replays what was missed; otherwise twins are rebuilt through `new()` and `Connection` reports `reset` so the app can reconcile local edits.
 - **Server-initiated close.** Logout, expiry or revocation closes with a reason (`closed: unauthorized`); long-lived streams re-check their session periodically.
 - **Network.** Heartbeats inside load-balancer idle timeouts; reconnect with exponential backoff and jitter; reconnect on visibility change.
-- **Scale.** One process first. More need sticky routing by session or tab; cross-instance state is the app's store.
+- **Scale.** One process first. More need sticky routing by connection or key; cross-instance state is the app's store.
 
 ## Later
 
-- **TTL.** Optional `static ttl` (seconds) seeds a managed instance `ttl` (a deadline; reads as remaining life). A `use()` retrieval resets it; `ttl = 0`, the default, lives until the current call ends; an attached twin keeps its instance alive. One sweeper per process; best effort.
-- **Cleanup.** A cached context counts its live States, attached twins and in-flight calls; at zero it pops and leaves its parent. Ending a session destroys its subtree. `Context.pop()` does not destroy instances, so dev tracks and destroys what it created.
-- **User layer.** An optional provider hook maps a session to a user key, placing session contexts under that user's context; login's required id rotation mints the new session context there. Carrying anonymous state across login is app logic.
-- **`app/api/**` lane.** Calls from the bundled tab work as in the MVP (no location binding). For external clients: per-request identity (bearer), a `Call` State for HTTP concerns (headers, status, cookies; `Fetch` considered - its instance name shadows global `fetch()`), the reply pipeline (string → `text/plain`, `undefined` → 204, other values → JSON, status helpers, data primitives; uncaught → 500, message in dev only), REST as `protected` uppercase verbs on dev's `Route` (params from `this.match`, body as the one parameter), HTML replies via a server DOM shim, OpenAPI.
+- **TTL sweeper.** One per process; best effort. Evicting an entry evicts the keys it owns.
+- **Warm rehydration.** A State that packs its managed values into a token (JWT) or store and restores from it on a key miss - the same serialise/restore twins need for snapshots. Hot = in memory; warm = rebuilt without the source of truth; cold = the source of truth or the user. Stateless tokens cannot be revoked before expiry.
+- **`app/api/**` lane.** Calls from the bundled client work as in the MVP, walked from `app/api`'s own root. For external clients: per-request identity (bearer), a `Call` State for HTTP concerns (headers, status, cookies; `Fetch` considered - its instance name shadows global `fetch()`), the reply pipeline (string → `text/plain`, `undefined` → 204, other values → JSON, status helpers, data primitives; uncaught → 500, message in dev only), REST as `protected` uppercase verbs on dev's `Route` (params from `this.match`, body as the one parameter), HTML replies via a server DOM shim, OpenAPI.
 - The Reliability items above beyond the MVP.
 - **Build notice.** `expressive build` prints one line per non-root route module kept in the main bundle and why - e.g. it exports `Catch`; a `Catch` on its section's `index` covers it.
 - **Repo placement.** dev incubates here as a trunk while it drives changes into mvc and dom; it is the likeliest package to move to `gabeklein/expressive-dev` at its first release, once its PRs stop touching core.
@@ -135,17 +129,39 @@ Principles the MVP must not contradict; most land after it.
 
 - **Scoped `X.use()` in a `Layout`**, with `undefined` rendering `children`. A route's State belongs in its `default` class - the one place a route declares what it provides.
 
+## Explored on the way
+
+Ideas the instance model replaced, kept so they are not re-proposed blind.
+
+- **Cached context tree** (session → tab → location contexts, forked per key, each a cache): high upkeep for little saving - real savings are database and API reads, which a class key gets directly.
+- **Identity provider as dev's seam** (a `Session` class, or an `App.use()` returning a session key, as middleware): session is the app's concern.
+- **`use()` returning an instance handed down to the next layer** (memo-like): superseded by `static key`.
+- **Key as a tuple scoped by an instance**: keys stay plain and unique per class; `key()` salts them itself.
+- **Scope as an object** (`{ session, tab, path }`): dev asserting a shape; the prefix is one opaque string with one purpose.
+- **`key = false` for process globals**: globals are `static global` at module scope instead (Agreed shape).
+- **TTL defaulting to Infinity**: 0 - lifetime capped by whatever references the instance.
+- **`static provider = github({...})`** on an account class: an OAuth client is its own process global.
+- **An integration self-handling its callback** by inspecting every request: the route forwards to it.
+- **`.expressive` endpoint prefix**: not needed for calls.
+- **`per(Type)` for request-scoped fields**: open to it, but a class-level override telling `get` where an instance comes from is preferred - parked (Open).
+- **Requiring `default` classes to extend `Route`**: what is special is position (constructed per layer, given the prefix, `use()` per pass), not class; `key` applies to any State. Revisit if a feature needs Route's members.
+
 ## Open
 
 - Status helper naming - `NotFound` and `Redirect` collide with existing exports. Leaning `Status.NotFound(...)`.
-- Wire shapes: call and attach endpoints, `{ location, name, args }`, patch frames; ids for nested twins; what counts as serializable (Date, Map, class instances).
+- Wire shape. Leaning: calls POST to the route path (the location part of the prefix) with a header naming the call (a function or `default.method`), args as the JSON body. A per-page-load connection id for push and detach is proposed - transport, not identity - and not yet agreed. Also: patch frames; ids for nested twins (owner key + property path proposed); what counts as serializable (Date, Map, class instances).
+- `key()` returning nothing - proposed to throw rather than fall back.
+- Instance `use()` cascading to owned members - by default, or opted into with `super.use()`.
+- Request-scoped fields on reused instances - a class-level `get` override, a `Context` seam, or `per()`.
+- How a server `Route`'s `match` is provided by the walk.
+- Auth needs an `app/api` slice (GET, `Set-Cookie`, redirect) for an OAuth callback - whether it joins the MVP.
 - Optimistic writes - a follow-up decision. If ever: local writes rebased on incoming versions until acknowledged, rolled back on rejection.
 - Demand as an mvc primitive - see Focus.
-- Session and tab details: cookie name, minting, provider export form; tab context lifetime after its stream closes; whether a duplicated tab forks state or starts fresh.
 - Reliability defaults: timeouts, the per-call wait-or-fail option, the strict-route flag, replay buffer size.
-- Hot reload retiring location contexts and their instances.
+- Hot reload retiring keyed instances.
 - Client parity for the `mount()` cascade: the server needs it (owned helpers have no other attach signal), so the maintainer cascades on the client too, upstream.
 - Whether an `app/api/**` default (a REST `Route`) is twinned when the bundled client imports it, and what a twin of a `Route` subclass carries.
+- On the client only the layout chain stays mounted - sibling pages remount (per the generated route tree). Twins inherit that lifetime.
 
 ## Upstream (bullpen)
 
