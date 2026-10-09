@@ -56,8 +56,8 @@
     "typecheck": "tsc --noEmit --incremental",
     "coverage": "vitest run",
     "test": "bun run typecheck && bun run coverage",
-    "example": "cd example && bun ../dist/cli.js dev",
-    "example:build": "cd example && bun ../dist/cli.js build",
+    "example": "cd example && node ../dist/cli.js dev",
+    "example:build": "cd example && node ../dist/cli.js build",
     "example:start": "cd example && node dist/server/index.js",
     "example:e2e": "cd example && playwright test"
   },
