@@ -230,10 +230,10 @@ interface RouteProps {
 }
 
 function route(pad: string, attrs: RouteProps, children?: string[]): string[] {
-  const props = Object.entries(attrs).map(([k, v]) => {
-    if (!v) return "";
-    return k === "to" ? ` ${k}="${v}"` : ` ${k}={${v}}`;
-  }).join("");
+  const props = Object.entries(attrs)
+    .filter(([, v]) => v)
+    .map(([k, v]) => (k === "to" ? ` ${k}="${v}"` : ` ${k}={${v}}`))
+    .join("");
 
   const head = `${pad}<Route${props}`;
 
