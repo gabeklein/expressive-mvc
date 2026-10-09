@@ -24,12 +24,13 @@ export function endpoint(endpoints: Endpoint[], at: string[]): Endpoint | undefi
 
 export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoints: () => Endpoint[], dev: boolean): Promise<boolean> {
   const name = req.headers["x-expressive-call"];
+  const json = req.headers["content-type"]?.startsWith("application/json");
 
-  if (req.method !== "POST" || typeof name !== "string" || !req.headers["content-type"]?.startsWith("application/json"))
-    return false;
+  if (req.method !== "POST" || typeof name !== "string" || !json) return false;
 
+  const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const list = endpoints();
-  const at = new URL(req.url ?? "/", "http://localhost").pathname.split("/").filter(Boolean);
+  const at = pathname.split("/").filter(Boolean);
   const found = endpoint(list, at);
   const calls = (await found?.exports())?.calls;
   const fn = calls && Object.hasOwn(calls, name) ? calls[name] : undefined;
@@ -53,7 +54,8 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
 
     if (id) return reply(res, status(error), { ...error, error: id, message: (error as Error).message });
 
-    return reply(res, 500, dev && error instanceof Error ? { message: error.message, stack: error.stack } : { message: "Internal error." });
+    const detail = dev && error instanceof Error && { message: error.message, stack: error.stack };
+    return reply(res, 500, detail || { message: "Internal error." });
   }
 }
 

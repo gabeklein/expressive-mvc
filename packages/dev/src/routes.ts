@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, join, relative, sep } from "node:path";
 
-import { relImport } from "./project";
+import { importRel } from "./project";
 
 const ROUTE_EXT = new Set([".tsx", ".jsx", ".ts", ".js"]);
 
@@ -151,15 +151,16 @@ function collectImports(root: RouteNode, outDir: string) {
 
   (function walk(node: RouteNode) {
     const roles = ROLES.filter(role => node.alias[role]);
-    const spec = node.file && JSON.stringify(relImport(outDir, node.file));
+    const spec = node.file && JSON.stringify(importRel(outDir, node.file));
 
     if (spec && node !== root && !node.alias.Loading && !node.alias.Catch)
-      for (const role of roles)
-        loaders.push(
-          role === "default" && !node.classDefault
-            ? `const ${node.alias[role]} = route => import(${spec}).then(m => m.default(route));`
-            : `const ${node.alias[role]} = () => import(${spec}).then(m => m.${role});`
-        );
+      for (const role of roles) {
+        const load = role === "default" && !node.classDefault
+          ? `route => import(${spec}).then(m => m.default(route))`
+          : `() => import(${spec}).then(m => m.${role})`;
+
+        loaders.push(`const ${node.alias[role]} = ${load};`);
+      }
     else if (spec && roles.length) {
       const named = roles.filter(role => role !== "default").map(role => `${role} as ${node.alias[role]}`);
       const clause = [node.alias.default, named.length && `{ ${named.join(", ")} }`].filter(Boolean).join(", ");
