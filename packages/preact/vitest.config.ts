@@ -8,6 +8,8 @@ const react = fileURLToPath(new URL('../react/src/', import.meta.url));
 
 // The react suite runs against this adapter: react imports resolve to
 // preact/compat, and its `.` and `../test.setup` imports to this package.
+// Bare imports resolve from this package, whose dependencies hold preact
+// and its testing library under an isolated install.
 // React-only tests are marked in place (`reactOnly`, `preactDiffers`);
 // whole files that don't apply are excluded here.
 
@@ -30,6 +32,9 @@ export default mergeConfig(suite(true), {
         if (!importer?.startsWith(react)) return;
         if (id === '.') return `${preact}src/index.ts`;
         if (id === '../test.setup') return `${preact}test.setup.ts`;
+        if (id.startsWith('.') || id.startsWith('/')) return;
+
+        return this.resolve(id, `${preact}src/index.ts`, { skipSelf: true });
       }
     }
   ],

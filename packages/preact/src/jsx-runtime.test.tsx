@@ -1,8 +1,10 @@
 import './jsx-runtime';
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { createElement, Fragment as PreactFragment } from 'preact';
 import { childrenOf, Fragment, isElement, jsx, propsOf, typeOf } from '@expressive/mvc/jsx-runtime';
+import type { JSX as PreactJSX } from 'preact';
+import type { JSX } from '@expressive/mvc/jsx-runtime';
 import { pending } from '@expressive/mvc';
 
 const element = createElement('div', { id: 'foo' });
@@ -52,5 +54,11 @@ describe('introspection', () => {
   it('will read element props', () => {
     expect(propsOf(element)).toEqual({ id: 'foo' });
     expect(propsOf('text')).toEqual({});
+  });
+});
+
+describe('types', () => {
+  it('will accept agnostic element types', () => {
+    expectTypeOf<JSX.ElementType>().toExtend<PreactJSX.ElementType>();
   });
 });

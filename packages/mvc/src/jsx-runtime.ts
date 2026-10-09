@@ -6,7 +6,8 @@ export { compose } from './component';
  * Per-adapter interpretation manifest. Each adapter augments this interface to
  * declare how it renders; the first member is `node` - the element type produced
  * by `Component.render` (surfaced as `Component.Node`) - alongside `intrinsics`,
- * the host's tag map (surfaced as `JSX.IntrinsicElements`), and optionally
+ * the host's tag map (surfaced as `JSX.IntrinsicElements`), `elementClass`,
+ * the instance a class must construct to render as an element, and optionally
  * `element`, further element types the host renders (joined into
  * `JSX.ElementType`).
  *
@@ -15,6 +16,7 @@ export { compose } from './component';
  *   interface Host {
  *     node: React.ReactNode;
  *     intrinsics: React.JSX.IntrinsicElements;
+ *     elementClass: React.Component<any, any>;
  *   }
  * }
  * ```
@@ -147,10 +149,11 @@ export declare namespace JSX {
   type ElementType =
     | keyof IntrinsicElements
     | ((props: any) => Component.Node)
-    | (abstract new (...args: any[]) => ElementClass)
+    | (new (...args: any[]) => Host extends { elementClass: infer I } ? I : ElementClass)
     | (Host extends { element: infer T } ? T : never);
   /**
-   * Gates class element types on the `render` contract alone - requiring full
+   * Class instance contract when no host declares `elementClass`. Gates on the
+   * `render` contract alone - requiring full
    * `Component` assignability trips contravariance on `props` members (e.g.
    * the `is` callback narrows per subclass), rejecting every subclass.
    */
