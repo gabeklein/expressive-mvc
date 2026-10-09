@@ -14,11 +14,11 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 
 ## Agreed shape
 
-- **One surface.** The root export has `browser` and `default` (server) builds with identical names. `serve` is real on the server, throws in the browser.
+- **Two entries.** The root export holds what client and server share. Server-only API (`config`, `serve`) is `@expressive/dev/server`, so a client import fails at build rather than at call.
 - **Turnkey.** dom, router, inspect are dependencies; `@expressive/mvc` is the only peer.
 - **JSX.** `jsxImportSource: "@expressive/dev"` - dev's runtime re-exports dom's.
 - **Router.** dev exports its own `Router` (extends `BrowserRouter`) and `Route`, plus `Link`, `NavLinks`, `Redirect`. No `BrowserRouter` export.
-- **Config.** `index.ts` default-exports `config({...})`, read on the server.
+- **Config.** `index.ts` default-exports `config({...})` from `@expressive/dev/server`, read on the server.
 - **Server modules, one model.** Sidecars (`app/**/api.ts`) and `app/api/**` share one invocation path from the bundled client and one context model (below). `app/api` has its own root; a sidecar call never passes through `app/api/index.ts`. Process globals are the only layer both lanes share.
 - **Session is the app's concern.** dev does not detect or mint sessions or tabs; an app expresses identity through keys (Context model). Recipes may come later.
 - **dom on the server.** Needed for JSX rendered to HTML (responses, emails), not SSR.
