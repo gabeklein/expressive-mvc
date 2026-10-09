@@ -88,7 +88,7 @@ function injectBeforeBody(html: string, tag: string): string {
 export function serverEntry(project: Project, from: string): string {
   return [
     `import { fileURLToPath } from "node:url";`,
-    `import { serve } from "@expressive/dev";`,
+    `import { serve } from "@expressive/dev/server";`,
     project.configPath ? `import config from ${JSON.stringify(relImport(from, project.configPath))};` : `const config = {};`,
     "",
     `serve({ config, client: fileURLToPath(new URL("../client/", import.meta.url)) });`,

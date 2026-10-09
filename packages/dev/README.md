@@ -29,8 +29,9 @@ augmentation (`State.use()` and friends), so nothing else is needed.
 
 ## Server
 
-`index.ts` runs on the server: in dev on Vite's module runner, in production inside
+`index.ts` runs on the server - in dev on Vite's module runner, in production inside
 `dist/server/index.js`, which serves `dist/client` and falls back to `index.html` for client routes.
+It imports `config` from `@expressive/dev/server`.
 
 ## Commands
 
@@ -46,8 +47,8 @@ are virtual, addressed under `/.expressive/`. The router module regenerates when
 vanish under `app/`.
 
 `@expressive/dev/vite` exports the `expressive()` plugin for a hand-written Vite config; the CLI
-adds it and `@expressive/inspect/vite`. The generated server entry imports `serve` from
-`@expressive/dev`, whose server build carries it.
+adds it and `@expressive/inspect/vite`. Server-only API - `config`, `serve` - is
+`@expressive/dev/server`; the generated server entry imports `serve` from there.
 
 ## Example
 
