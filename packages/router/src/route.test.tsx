@@ -1649,7 +1649,6 @@ const ab = (
 
 describe('active', () => {
   it('is undefined when no child matches', async () => {
-    Router.new();
     const { root } = await mount(ab);
     expect(root.active).toBeUndefined();
   });
@@ -1712,7 +1711,6 @@ describe('active', () => {
 
 describe('matches', () => {
   it('is empty when no child matches', async () => {
-    Router.new();
     const { root } = await mount(ab);
     expect(root.matches).toEqual([]);
   });
@@ -1768,7 +1766,6 @@ describe('none', () => {
   });
 
   it('never matches without a parent', async () => {
-    Router.new();
     let lone!: Route;
     const view = render(
       <Route none as={() => <span>lone</span>} is={(r) => (lone = r)} />

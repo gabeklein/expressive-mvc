@@ -396,6 +396,15 @@ Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
 
 Without the declaration, a context-less instance stays private. `static global` also takes a resolver (`self => boolean`) to decide at activation, and must be declared per class - a subclass that would be global purely by inheritance throws on activation.
 
+`State.new(true, ...args)` registers an instance as a global from the call site, with no declaration. It throws if the class declares (or inherits) `static global = false`, or its resolver returns false.
+
+```ts
+class Session extends State {}
+
+const session = Session.new(true);
+Session.get(); // session
+```
+
 [See globals in action](/examples/composition/globals).
 
 > **Good to know:** <br />
@@ -403,17 +412,17 @@ Without the declaration, a context-less instance stays private. `static global` 
 
 ### Global collision
 
-Two **implicit** instances of the same global class in root mutually evict at the contested ancestor:
+A global may not shadow another. Activation throws if root already resolves the type - the same class, or an instance of a subclass - or if the new instance would hide an instance of exactly one of its supertypes:
 
 ```ts
 const a = Sub.new(); // Sub declares `static global`
-const b = Sub.new();
-Context.root.get(Sub, false); // undefined - both evicted
+Sub.new();           // throws - a already exists in root
+Base.new(true);      // throws - a resolves Base
 ```
 
-Read it as "implicit collision opts out of global lookup" - if you create two, neither is *the* global instance. A third `Sub.new()` reclaims the now-empty slot.
+Destroy the existing instance first (`a.set(null)`) to register another.
 
-Eviction is per-ancestor, so sibling subtypes only collide at their shared supertype:
+Sibling subtypes don't shadow each other - they collide only at their shared supertype, where both evict:
 
 ```ts
 // Base is a widened global; each subtype re-declares (required on extend)
