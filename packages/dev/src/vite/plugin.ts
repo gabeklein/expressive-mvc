@@ -100,7 +100,14 @@ export function expressive(): Plugin<Host> {
         : importer?.startsWith(generatedDir) && id.startsWith(".") ? resolve(dirname(importer), id)
         : id;
 
-      if (generated === mainId || generated === routesId || generated === serverId || generated === callId) return generated;
+      switch (generated) {
+        case mainId:
+        case routesId:
+        case serverId:
+        case callId:
+          return generated;
+      }
+
       if (id === htmlId && !existsSync(htmlId)) return htmlId;
       if (options.ssr || !importer || !project.appDir || !SIDECAR_IMPORT.test(id) || !SCRIPT.test(importer.split("?")[0])) return;
 
@@ -125,15 +132,19 @@ export function expressive(): Plugin<Host> {
         if (problems.length) this.error(`${relative(root, file)}: ${problems.join(" ")}`);
         return stub(pattern, calls, classes);
       }
-      if (id === callId) return `export const { call, define } = (${runtime})();`;
-      if (id === mainId) {
-        const app = project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!);
-        return bootstrap(app);
+
+      switch (id) {
+        case callId:
+          return `export const { call, define } = (${runtime})();`;
+        case mainId:
+          return bootstrap(project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!));
+        case routesId:
+          return generateRoutes(project.appDir!, generatedDir, scanExports);
+        case serverId:
+          return serverEntry(project, generatedDir, project.appDir ? sidecars(project.appDir).map(scanned) : []);
+        case htmlId:
+          return SHELL;
       }
-      if (id === routesId) return generateRoutes(project.appDir!, generatedDir, scanExports);
-      if (id === serverId)
-        return serverEntry(project, generatedDir, project.appDir ? sidecars(project.appDir).map(scanned) : []);
-      if (id === htmlId) return SHELL;
     },
 
     transformIndexHtml: {
