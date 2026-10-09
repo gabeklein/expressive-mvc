@@ -4,10 +4,10 @@ import { fileURLToPath } from "node:url";
 import { createServerModuleRunner, type Plugin, type ViteDevServer } from "vite";
 import type { ModuleRunner } from "vite/module-runner";
 
-import type { AppConfig } from "../config";
-import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project, type SidecarEntry } from "../project";
+import type { AppConfig } from "../server/config";
+import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project, type SidecarEntry } from "./project";
 import { runtime } from "../client/call";
-import { generateRoutes, sidecarPattern, sidecars, type Sidecar } from "../routes";
+import { generateRoutes, sidecarPattern, sidecars, type Sidecar } from "./routes";
 import { dispatch, verify, type Endpoint } from "../server/call";
 import { scanExports, scanSidecar } from "./scan";
 
