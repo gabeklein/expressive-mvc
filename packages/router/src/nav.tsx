@@ -1,5 +1,3 @@
-/** @jsxImportSource @expressive/mvc */
-
 import { Component, get } from '@expressive/mvc';
 
 import { Link } from './link';

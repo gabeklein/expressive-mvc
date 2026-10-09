@@ -1,5 +1,3 @@
-/** @jsxImportSource @expressive/mvc */
-
 import { Component, get } from '@expressive/mvc';
 import type { JSX } from '@expressive/mvc/jsx-runtime';
 
