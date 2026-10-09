@@ -1,6 +1,6 @@
 import { Component } from "@expressive/mvc";
 
-import { add, fail, reset } from "./api";
+import { Overflow, add, fail, reset } from "./api";
 
 export class Page extends Component {
   shown = "";
@@ -9,7 +9,7 @@ export class Page extends Component {
     try {
       this.shown = String(await task());
     } catch (error) {
-      this.shown = (error as Error).message;
+      this.shown = error instanceof Overflow ? `Overflow at ${error.limit}` : (error as Error).message;
     }
   }
 
@@ -20,6 +20,7 @@ export class Page extends Component {
       <>
         <h1>Tally</h1>
         <button onClick={() => run(() => add(1))}>Add</button>
+        <button onClick={() => run(() => add(10))}>Add 10</button>
         <button onClick={() => run(reset)}>Reset</button>
         <button onClick={() => run(fail)}>Fail</button>
         <output>{shown}</output>

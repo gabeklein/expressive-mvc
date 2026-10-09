@@ -71,10 +71,24 @@ import { add } from "./api";
 
 A call is `POST` to the folder's path with its params filled from the current location (`/blog/a`
 for `app/blog/[slug]/api.ts`), an `x-expressive-call` header naming the function, and the
-arguments as a JSON array. The reply is the value as JSON, or 204 for `undefined`. A thrown error
-rejects the call; its message reaches the client in dev only. Only the folder and those below it
-may import its sidecar. The build refuses any other export - a sync function, a value, a class, a
-re-export or a default - since the client could not use it.
+arguments as a JSON array. The reply is the value as JSON, or 204 for `undefined`. Only the folder
+and those below it may import its sidecar.
+
+A sidecar may also export `Error` subclasses. Thrown on the server, one rejects the call on the
+client as the same class - `instanceof` works - with its message and own fields; a numeric
+`status` field in 400-599 sets the reply's status (409 below, else 500). Any other thrown error
+rejects with its message in dev and a generic one in production.
+
+```ts
+export class Overflow extends Error {
+  status = 409;
+  constructor(public limit: number) { super(`The tally stops at ${limit}.`); }
+}
+```
+
+The build refuses any other export - a sync function, a value, a class without `extends`, a
+re-export or a default - since the client could not use it. A class whose base is not an `Error`
+fails its first call in dev and the built service at startup.
 
 ## Commands
 

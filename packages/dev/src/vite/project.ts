@@ -89,6 +89,7 @@ export interface SidecarEntry {
   pattern: string[];
   file: string;
   calls: string[];
+  classes: string[];
 }
 
 export function serverEntry(project: Project, from: string, sidecars: SidecarEntry[] = []): string {
@@ -96,9 +97,10 @@ export function serverEntry(project: Project, from: string, sidecars: SidecarEnt
   const modules = sidecars.map((mod) => JSON.stringify(importRel(from, mod.file)));
   const entries = sidecars.map((mod, i) => {
     const pattern = JSON.stringify(mod.pattern);
-    const calls = `{ ${mod.calls.map(name => `${name}: s${i}.${name}`).join(", ")} }`;
+    const pick = (names: string[]) => `{ ${names.map(name => `${name}: s${i}.${name}`).join(", ")} }`;
+    const exports = `{ calls: ${pick(mod.calls)}, classes: ${pick(mod.classes)} }`;
 
-    return `    { pattern: ${pattern}, async calls() { return ${calls}; } },`;
+    return `    { pattern: ${pattern}, async exports() { return ${exports}; } },`;
   });
 
   return [

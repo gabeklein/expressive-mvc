@@ -3,7 +3,9 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { call } from "./call";
+import { runtime } from "./call";
+
+const { call, define } = runtime();
 
 function reply(status: number, body?: unknown) {
   const fetch = vi.fn(async () => new Response(body === undefined ? null : JSON.stringify(body), { status }));
@@ -49,5 +51,25 @@ describe("call", () => {
     await expect(call(["blog", ":slug"], "add", [])).rejects.toThrow("add() belongs to /blog/:slug and cannot be called from /about.");
     await expect(call(["blog"], "add", [])).rejects.toThrow("belongs to /blog");
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("will rebuild an exported error class with its fields", async () => {
+    const Limit = define("/tally#Limit", "Limit");
+    reply(409, { error: "/tally#Limit", message: "Over 3", status: 409, limit: 3 });
+
+    const error = (await call([], "add", []).catch((e: Error) => e)) as Error;
+
+    expect(error).toBeInstanceOf(Limit);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({ name: "Limit", message: "Over 3", status: 409, limit: 3 });
+  });
+
+  it("will throw a plain Error for a class this client never imported", async () => {
+    reply(409, { error: "/other#Nope", message: "No", status: 409 });
+
+    const error = (await call([], "add", []).catch((e: Error) => e)) as Error;
+
+    expect(error.constructor).toBe(Error);
+    expect(error).toMatchObject({ message: "No", status: 409 });
   });
 });

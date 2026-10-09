@@ -3,7 +3,7 @@ import { createServer, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize } from "node:path";
 
 import type { AppConfig } from "./config";
-import { dispatch, isCall, type Endpoint } from "./call";
+import { dispatch, isCall, verify, type Endpoint } from "./call";
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -57,7 +57,13 @@ export function serve({ config, client, sidecars = [] }: ServeOptions): Server {
   });
 
   const port = config.port ?? 3000;
-  server.listen(port, () => console.log(`Expressive running at http://localhost:${port}/`));
+  const announce = () => console.log(`Expressive running at http://localhost:${port}/`);
+  const checked = sidecars.map(async ({ pattern, exports }) => {
+    const path = `/${pattern.join("/")}`;
+    verify(path, await exports());
+  });
+
+  Promise.all(checked).then(() => server.listen(port, announce));
 
   return server;
 }

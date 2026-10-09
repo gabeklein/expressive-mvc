@@ -33,15 +33,15 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - Route defaults - a page module's `default` function is its entry hook (runs with the Route before it renders, may be async; a returned string redirects, `null` forfeits to the 404). A `default` class - State or Component alike - renders around the route's content (`<X>{children}</X>`, or `<X><Layout /></X>` with a `Layout`) and is provided to everything below it.
 - Loading - a module's `Loading` fills its `Layout`'s content slot: every route rendered there gets it as its `fallback`, at any depth until a nested `Layout` starts a fresh slot; a page's own `Loading` covers that page first. It shows when a page cannot show anything yet - chunk, entry hook or data - which in practice means a cold arrival, since in-app navigation holds the current page. dev's `Route` owns no boundary by default (`fallback = false`, `catch` only with a `Catch`), so a page class's waits reach the slot; generated routes always declare theirs, `null` where no `Loading` applies.
 - E2E harness - `example/e2e/` Playwright specs run against the dev server and the built service (`bun run example:e2e` in `packages/dev`). Each feature adds its page and spec. Not in CI yet: trunk PRs run `verify` only.
-- Sidecar calls - each `async` export of a route folder's `api.ts` is a browser stub POSTing to the folder's path (Wire below); dispatched on Vite's module runner in dev and baked into `dist/server` at build. The build refuses any other export; only the folder and below may import it. A thrown error's message reaches the client in dev only, until Errors lands.
+- Sidecar calls - each `async` export of a route folder's `api.ts` is a browser stub POSTing to the folder's path (Wire below); dispatched on Vite's module runner in dev and baked into `dist/server` at build. The build refuses any other export; only the folder and below may import it. A thrown error's message reaches the client in dev only.
+- Errors - an exported class with `extends` is an error class: the client stub is a class of the same name, and a thrown instance (or subclass) is rebuilt as it - `instanceof`, message and own fields - with a `status` field in 400-599 as the reply status. Verified as an `Error` at the first dev call and at service boot.
 
 ## MVP
 
 Enough to write E2E tests and examples and feel the ergonomics. One PR each, in order. Everything under Later waits until the MVP has been used.
 
-1. **Errors.** An exported `Error` subclass is a third kind of sidecar export: the client gets a stub class, and a thrown instance is rebuilt as it on the client, so `instanceof` works across the wire. Status helpers (`Status.NotFound(...)`, naming open) set the status. From `expressive-rpc`'s error reconstruction, minus its production leak of stacks and fields.
-2. **Call context.** The route walk resolving each layer's cached `Context` by key, `Current` over `AsyncLocalStorage`, keyed `X.use()`, eviction on destroy; server `T.get()`/`T.use()` throw outside a call.
-3. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. Until something holds a reference between calls, a class that should keep state sets a TTL.
+1. **Call context.** The route walk resolving each layer's cached `Context` by key, `Current` over `AsyncLocalStorage`, keyed `X.use()`, eviction on destroy; server `T.get()`/`T.use()` throw outside a call.
+2. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. Until something holds a reference between calls, a class that should keep state sets a TTL.
 
 MVP limits, on purpose: calls made while disconnected fail; one process.
 
@@ -81,7 +81,7 @@ content-type: application/json
   | `undefined` | 204 | none |
   | name not in the allowlist, or no such module | 404 | the same for both |
   | malformed body | 400 | `{ message }` |
-  | an exported `Error` subclass or a status error | its status, else 500 | `{ error: <type id>, message, ...own fields }` |
+  | an instance of an exported `Error` subclass | its `status` field in 400-599, else 500 | `{ error: "/<folder>#<Class>", message, ...own fields }` |
   | anything else | 500 | production: a generic `message` only; development: `message` and the stack |
 
 - **Values are plain JSON** in the MVP. Not on the wire yet: a connection id (push and detach), versions and patches (twin values), call ids (Reliability).
@@ -198,8 +198,7 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 
 ## Open
 
-- Status helper naming - `NotFound` and `Redirect` collide with existing exports. Leaning `Status.NotFound(...)`; `expressive-rpc` had `Forbidden`, `NotFound`, `Internal`, `BadInput`.
-- Detecting exported `Error` subclasses - leaning on the plugin loading the module (catches indirect subclasses) over static `extends Error`.
+- Status helpers - an exported error class's `status` field covers it for now. If wanted: naming (`NotFound` and `Redirect` collide with existing exports; leaning `Status.NotFound(...)`; `expressive-rpc` had `Forbidden`, `NotFound`, `Internal`, `BadInput`).
 - Wire beyond the MVP: a per-page-load connection id is transport only (push routing and detach, never part of a key); patch frames; ids for nested twins (owner key + property path proposed); what counts as serializable (Date, Map, class instances).
 - How params reach server code - the walk already matches the path against dev's route table (not the router, which stays client-side); `Route.get().match` or something plainer, decided when step 2 needs it.
 - Optimistic writes - a follow-up decision. If ever: local writes rebased on incoming versions until acknowledged, rolled back on rejection.
