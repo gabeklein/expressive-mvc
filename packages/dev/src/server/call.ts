@@ -5,7 +5,7 @@ export interface Endpoint {
   calls(): Promise<Record<string, unknown>>;
 }
 
-const rank = (part: string) => (part === "*" ? 0 : part[0] === ":" ? 1 : 2);
+const rank = (part: string) => (part === "*" ? 0 : part.startsWith(":") ? 1 : 2);
 
 export function endpoint(endpoints: Endpoint[], pathname: string): Endpoint | undefined {
   const at = pathname.split("/").filter(Boolean);
@@ -13,7 +13,7 @@ export function endpoint(endpoints: Endpoint[], pathname: string): Endpoint | un
   return endpoints
     .filter(({ pattern }) =>
       (pattern.at(-1) === "*" || pattern.length === at.length) &&
-      pattern.every((part, i) => part === "*" || at[i] !== undefined && (part[0] === ":" || part === at[i])))
+      pattern.every((part, i) => part === "*" || at[i] !== undefined && (part.startsWith(":") || part === at[i])))
     .sort((a, b) => b.pattern.map(rank).join("").localeCompare(a.pattern.map(rank).join("")))[0];
 }
 
