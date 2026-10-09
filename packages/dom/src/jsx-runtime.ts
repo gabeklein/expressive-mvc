@@ -79,6 +79,7 @@ declare module '@expressive/mvc/jsx-runtime' {
     node: Node;
     intrinsics: Intrinsics;
     element: () => PromiseLike<Module>;
+    elementClass: State;
   }
 }
 
