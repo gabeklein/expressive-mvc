@@ -58,42 +58,54 @@ export function isCall(req: IncomingMessage): boolean {
   return req.method === "POST" && typeof name === "string" && !!json;
 }
 
+type Call = (...args: unknown[]) => unknown;
+
 export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoints: () => Endpoint[], dev: boolean): Promise<void> {
-  const name = req.headers["x-expressive-call"] as string;
-  const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const list = endpoints();
+  const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const found = resolve(list, pathname.split("/").filter(Boolean));
-  const calls = (await found?.endpoint.exports())?.calls;
-  const fn = calls && Object.hasOwn(calls, name) ? calls[name] : undefined;
+  const fn = found && await lookup(found.endpoint, req.headers["x-expressive-call"] as string);
 
-  if (typeof fn !== "function") return reply(res, 404, { message: "Not found." });
+  if (!found || !fn) return reply(res, 404, { message: "Not found." });
 
-  let args: unknown;
+  const args = await readArgs(req);
 
-  try {
-    args = JSON.parse(await text(req));
-  } catch {}
-
-  if (!Array.isArray(args)) return reply(res, 400, { message: "Expected a JSON array of arguments." });
-
-  const params: unknown[] = args;
+  if (!args) return reply(res, 400, { message: "Expected a JSON array of arguments." });
 
   try {
-    const value = await within(req, found!.segments, () => fn(...params));
+    const value = await within(req, found.segments, () => fn(...args));
     return value === undefined ? reply(res, 204) : reply(res, 200, value);
   } catch (error) {
-    const id = error instanceof Error && await classId(list, error);
-
-    if (id) {
-      const thrown = error as Error;
-      const body = { ...thrown, error: id, message: thrown.message };
-
-      return reply(res, status(thrown), body);
-    }
-
-    const detail = dev && error instanceof Error && { message: error.message, stack: error.stack };
-    return reply(res, 500, detail || { message: "Internal error." });
+    const { status, body } = await failure(error, list, dev);
+    return reply(res, status, body);
   }
+}
+
+async function lookup(endpoint: Endpoint, name: string): Promise<Call | undefined> {
+  const { calls } = await endpoint.exports();
+  const fn = Object.hasOwn(calls, name) ? calls[name] : undefined;
+
+  return typeof fn === "function" ? (fn as Call) : undefined;
+}
+
+async function readArgs(req: IncomingMessage): Promise<unknown[] | undefined> {
+  try {
+    const args: unknown = JSON.parse(await text(req));
+    return Array.isArray(args) ? args : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function failure(error: unknown, endpoints: Endpoint[], dev: boolean): Promise<{ status: number; body: unknown }> {
+  if (!(error instanceof Error)) return { status: 500, body: { message: "Internal error." } };
+
+  const id = await classId(endpoints, error);
+
+  if (id) return { status: statusOf(error), body: { ...error, error: id, message: error.message } };
+  if (dev) return { status: 500, body: { message: error.message, stack: error.stack } };
+
+  return { status: 500, body: { message: "Internal error." } };
 }
 
 async function classId(endpoints: Endpoint[], error: Error): Promise<string | undefined> {
@@ -110,7 +122,7 @@ async function classId(endpoints: Endpoint[], error: Error): Promise<string | un
     if (ids.has(proto.constructor)) return ids.get(proto.constructor);
 }
 
-function status(error: Error): number {
+function statusOf(error: Error): number {
   const { status } = error as { status?: unknown };
   const valid = typeof status == "number" && status >= 400 && status < 600;
 
