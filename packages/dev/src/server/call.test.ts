@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Readable } from "node:stream";
 
-import { dispatch, endpoint, isDispatch, type Endpoint } from "./call";
+import { dispatch, endpoint, isCall, type Endpoint } from "./call";
 
 const at = (...pattern: string[]): Endpoint => ({ pattern, calls: async () => ({ where: async () => pattern.join("/") }) });
 
@@ -51,10 +51,10 @@ describe("call dispatch", () => {
   });
 
   it("will identify a call by method, name header and JSON body", () => {
-    expect(isDispatch(request("/tally", "add", "[]") as any)).toBe(true);
-    expect(isDispatch(request("/tally", undefined, "[]") as any)).toBe(false);
-    expect(isDispatch(request("/tally", "add", "[]", "text/plain") as any)).toBe(false);
-    expect(isDispatch(Object.assign(request("/tally", "add", "[]"), { method: "GET" }) as any)).toBe(false);
+    expect(isCall(request("/tally", "add", "[]") as any)).toBe(true);
+    expect(isCall(request("/tally", undefined, "[]") as any)).toBe(false);
+    expect(isCall(request("/tally", "add", "[]", "text/plain") as any)).toBe(false);
+    expect(isCall(Object.assign(request("/tally", "add", "[]"), { method: "GET" }) as any)).toBe(false);
   });
 
   it("will reply 404 alike to an unknown path, an unknown name and a non-function", async () => {

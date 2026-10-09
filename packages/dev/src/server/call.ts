@@ -17,7 +17,7 @@ export function endpoint(endpoints: Endpoint[], pathname: string): Endpoint | un
     .sort((a, b) => b.pattern.map(rank).join("").localeCompare(a.pattern.map(rank).join("")))[0];
 }
 
-export function isDispatch(req: IncomingMessage): boolean {
+export function isCall(req: IncomingMessage): boolean {
   const name = req.headers["x-expressive-call"];
   const json = req.headers["content-type"]?.startsWith("application/json");
 
