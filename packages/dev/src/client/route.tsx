@@ -35,8 +35,10 @@ Object.defineProperty(Route.prototype, "catch", {
   get(this: Route) {
     const Boundary = this.Catch;
 
-    return Boundary && ((error: Error) => new Promise<void>(retry => {
+    if (!Boundary) return undefined;
+
+    return (error: Error) => new Promise<void>(retry => {
       this.fallback = <Boundary error={error} retry={retry} />;
-    }));
+    });
   }
 });
