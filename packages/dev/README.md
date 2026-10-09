@@ -74,3 +74,7 @@ adds it and `@expressive/inspect/vite`. Server-only API - `config`, `serve` - is
 `example/` is a routed app, typechecked with the package. Running it needs a build: after
 `bun run build` at the repo root, `bun run example`, `bun run example:build` or
 `bun run example:start` here.
+
+`bun run example:e2e` here runs its Playwright specs (`example/e2e/`) against both the dev server
+and the built service, after `bun run build` at the root. Set `CHROME` to use a local Chromium
+binary.
