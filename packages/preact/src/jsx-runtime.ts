@@ -3,12 +3,13 @@ import { Children } from 'preact/compat';
 import { Fragment, jsx, jsxs } from 'preact/jsx-runtime';
 import { host } from '@expressive/mvc/jsx-runtime';
 
-import type { ComponentChildren, JSX as PreactJSX, RefObject } from 'preact';
+import type { Component as PreactComponent, ComponentChildren, JSX as PreactJSX, RefObject } from 'preact';
 
 declare module '@expressive/mvc/jsx-runtime' {
   interface Host {
     node: ComponentChildren;
     intrinsics: PreactJSX.IntrinsicElements;
+    elementClass: PreactComponent<any, any>;
   }
 }
 

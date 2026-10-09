@@ -1138,6 +1138,22 @@ export class Base extends State {
   }
 }
 `,
+    'limit.ts': `export const limit = 3;
+`,
+    'label.ts': `export const label = 'store';
+`,
+    'store.ts': `import { State } from '@expressive/mvc';
+import { limit } from './limit';
+
+export class Store extends State {
+  max = limit * 2;
+  count = 0;
+
+  name() {
+    return 'none';
+  }
+}
+`,
     'session.ts': `import { Base } from './base';
 
 export class Session extends Base {
@@ -1206,6 +1222,22 @@ export class Session extends Base {
       await until(async () => (await session('u1')).greet() == 'hi new');
       check((await session('u1')) === first, 'session was rebuilt');
       check(first.a == 5, `state lost: a = ${first.a}`);
+      check(!replaced.length, `reported replaced: ${replaced}`);
+    });
+
+    await scenario('import added above a class patches it in place', async () => {
+      const store = (await runner.import('/store.ts')).Store.new();
+      store.count = 7;
+
+      await Bun.write(
+        join(dir, 'store.ts'),
+        (await Bun.file(join(dir, 'store.ts')).text())
+          .replace("import { limit }", "import { label } from './label';\nimport { limit }")
+          .replace("return 'none';", 'return label;')
+      );
+      await until(async () => store.name() == 'store');
+      check((await runner.import('/store.ts')).Store === store.constructor, 'class was replaced');
+      check(store.count == 7 && store.max == 6, `state lost: count = ${store.count}, max = ${store.max}`);
       check(!replaced.length, `reported replaced: ${replaced}`);
     });
 
