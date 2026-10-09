@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, extname, join } from "node:path";
+import { basename, dirname, extname, join, relative, sep } from "node:path";
 
 import { relImport } from "./project";
 
@@ -238,4 +238,25 @@ function pascal(s: string): string {
     .filter(Boolean)
     .map(w => w[0].toUpperCase() + w.slice(1))
     .join("");
+}
+
+const SIDECAR = /^api\.[cm]?[jt]s$/;
+
+export interface Sidecar {
+  pattern: string[];
+  file: string;
+}
+
+export function sidecarPattern(appDir: string, file: string): string[] | undefined {
+  if (!SIDECAR.test(basename(file)) || !file.startsWith(appDir + sep)) return;
+
+  return relative(appDir, dirname(file)).split(sep).filter(Boolean).map(dir => classify(dir, true)!.segment);
+}
+
+export function sidecars(appDir: string): Sidecar[] {
+  return readdirSync(appDir, { recursive: true, encoding: "utf8" }).flatMap(rel => {
+    const file = join(appDir, rel);
+    const pattern = sidecarPattern(appDir, file);
+    return pattern ? [{ pattern, file }] : [];
+  });
 }
