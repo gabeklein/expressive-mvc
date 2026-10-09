@@ -122,7 +122,10 @@ describe("vite host", () => {
     expect(State).toBe(createRequire(join(root, "index.js"))("@expressive/mvc").State);
   });
 
-  const SIDECAR = "export async function add(a: number, b: number) { return a + b }";
+  const SIDECAR = `
+    export class Over extends Error { status = 409 }
+    export async function add(a: number, b: number) { if (a > 9) throw new Over("Too big"); return a + b }
+  `;
 
   it("will serve a sidecar to the browser as a stub of its calls", async () => {
     const root = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './api'; export const Page = () => add", "app/tally/api.ts": SIDECAR });
@@ -133,6 +136,7 @@ describe("vite host", () => {
 
     expect(stub).toContain('const at = ["tally"]');
     expect(stub).toContain('call(at, "add", args)');
+    expect(stub).toContain('define("/tally#Over", "Over")');
     expect(stub).not.toContain("a + b");
   });
 
@@ -147,7 +151,20 @@ describe("vite host", () => {
     const root = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './api'; export const Page = () => add", "app/tally/api.ts": "export const add = 1" });
     const server = await serve(root);
 
-    await expect(server.transformRequest("/app/tally/api.ts")).rejects.toThrow("add is not an async function");
+    await expect(server.transformRequest("/app/tally/api.ts")).rejects.toThrow("add is neither an async function nor an Error subclass");
+  });
+
+  it("will refuse in dev a sidecar class that is not an Error", async () => {
+    const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/api.ts": "class Base {} export class Odd extends Base {} export async function a() {}" }));
+    await server.listen(0);
+
+    const res = await fetch(new URL("/tally", server.resolvedUrls!.local[0]), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-expressive-call": "a" },
+      body: "[]",
+    });
+
+    expect(res.status).toBe(500);
   });
 
   it("will dispatch a call on the module runner", async () => {
@@ -155,8 +172,13 @@ describe("vite host", () => {
     await server.listen(0);
     const url = new URL("/tally", server.resolvedUrls!.local[0]);
 
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-expressive-call": "add" }, body: "[2, 3]" });
-    expect(await res.json()).toBe(5);
+    const post = (body: string) => fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-expressive-call": "add" }, body });
+
+    expect(await (await post("[2, 3]")).json()).toBe(5);
+
+    const over = await post("[10, 0]");
+    expect(over.status).toBe(409);
+    expect(await over.json()).toEqual({ error: "/tally#Over", message: "Too big", status: 409 });
 
     const page = await fetch(url, { headers: { accept: "text/html" } });
     expect(await page.text()).toContain('<div id="root"></div>');
@@ -176,6 +198,7 @@ describe("vite host", () => {
 
     expect(entry).toMatch(/pattern: \["blog", ":slug"\]/);
     expect(entry).toContain("a + b");
+    expect(entry).toMatch(/classes: \{ Over \}/);
   });
 
   it("builds the node service with index.ts as its config", async () => {

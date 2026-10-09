@@ -6,9 +6,9 @@ import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../config";
 import { GENERATED, SHELL, bootstrap, ensureBootstrap, relImport, resolveProject, serverEntry, type Project, type SidecarEntry } from "../project";
-import { call } from "../client/call";
+import { runtime } from "../client/call";
 import { generateRoutes, sidecarPattern, sidecars, type Sidecar } from "../routes";
-import { dispatch, type Endpoint } from "../server/call";
+import { dispatch, verify, type Endpoint } from "../server/call";
 import { scanExports, scanSidecar } from "./scan";
 
 const MAIN = "main.tsx";
@@ -120,11 +120,11 @@ export function expressive(): Plugin<Host> {
       const pattern = !options?.ssr && project.appDir && sidecarPattern(project.appDir, file);
 
       if (pattern) {
-        const { calls, errors } = scanSidecar(readFileSync(file, "utf8"), file);
-        if (errors.length) this.error(`${relative(root, file)}: ${errors.join(" ")}`);
-        return stub(pattern, calls);
+        const { calls, classes, problems } = scanSidecar(readFileSync(file, "utf8"), file);
+        if (problems.length) this.error(`${relative(root, file)}: ${problems.join(" ")}`);
+        return stub(pattern, calls, classes);
       }
-      if (id === callId) return `export ${call}`;
+      if (id === callId) return `export const { call, define } = (${runtime})();`;
       if (id === mainId) {
         const app = project.appDir ? `./${ROUTES}` : relImport(generatedDir, project.appPath!);
         return bootstrap(app);
@@ -146,9 +146,14 @@ export function expressive(): Plugin<Host> {
 
       const endpoints = () => (project.appDir ? sidecars(project.appDir) : []).map(({ pattern, file }): Endpoint => ({
         pattern,
-        calls: async () => {
+        exports: async () => {
           const mod = await host.import(file);
-          return Object.fromEntries(scanSidecar(readFileSync(file, "utf8"), file).calls.map(name => [name, mod[name]]));
+          const { calls, classes } = scanSidecar(readFileSync(file, "utf8"), file);
+          const pick = (names: string[]) => Object.fromEntries(names.map(name => [name, mod[name]]));
+          const exports = { calls: pick(calls), classes: pick(classes) };
+
+          verify(relative(root, file), exports);
+          return exports;
         },
       }));
 
@@ -203,14 +208,18 @@ function hosted() {
 }
 
 function scanned(sidecar: Sidecar): SidecarEntry {
-  return { ...sidecar, calls: scanSidecar(readFileSync(sidecar.file, "utf8"), sidecar.file).calls };
+  const { calls, classes } = scanSidecar(readFileSync(sidecar.file, "utf8"), sidecar.file);
+  return { ...sidecar, calls, classes };
 }
 
-function stub(pattern: string[], calls: string[]): string {
+function stub(pattern: string[], calls: string[], classes: string[]): string {
+  const id = (name: string) => JSON.stringify(`/${pattern.join("/")}#${name}`);
+
   return [
-    `import { call } from "/${GENERATED}/${CALL}";`,
+    `import { call, define } from "/${GENERATED}/${CALL}";`,
     `const at = ${JSON.stringify(pattern)};`,
     ...calls.map(name => `export const ${name} = (...args) => call(at, ${JSON.stringify(name)}, args);`),
+    ...classes.map(name => `export const ${name} = define(${id(name)}, ${JSON.stringify(name)});`),
     "",
   ].join("\n");
 }
