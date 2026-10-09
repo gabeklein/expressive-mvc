@@ -41,13 +41,13 @@ describe("vite host", () => {
     return root;
   }
 
-  async function serve(root: string, host = expressive()) {
+  async function serve(root: string, host = expressive(), resolve = SOURCES) {
     const server = await createServer({
       root,
       configFile: false,
       logLevel: "silent",
       plugins: [host],
-      resolve: SOURCES,
+      resolve,
       optimizeDeps: { noDiscovery: true, include: [] },
     });
     servers.push(server);
@@ -156,6 +156,13 @@ describe("vite host", () => {
     const server = await serve(root);
 
     await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow("only modules in app/tally/ and below may call it");
+  });
+
+  it("will throw if a browser module imports the server entry", async () => {
+    const root = project({ "app/index.tsx": "import { Current } from '@expressive/dev/server'; export const Page = () => Current" });
+    const server = await serve(root, expressive(), {});
+
+    await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow("app/index.tsx imports @expressive/dev/server - it runs on the server only.");
   });
 
   it("will throw if a sidecar exports what the client cannot call", async () => {

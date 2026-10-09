@@ -18,6 +18,7 @@ const SERVER = "server.ts";
 const CALL = "call.ts";
 const SCRIPT = /\.[cm]?[jt]sx?$/;
 const SIDECAR_IMPORT = /(^|\/)api(\.[cm]?[jt]s)?$/;
+const SERVER_ENTRY = "@expressive/dev/server";
 
 export interface Host {
   config(): Promise<AppConfig>;
@@ -116,6 +117,10 @@ export function expressive(): Plugin<Host> {
       }
 
       if (id === htmlId && !existsSync(htmlId)) return htmlId;
+
+      if (id === SERVER_ENTRY && !options.ssr && importer)
+        this.error(`${relative(root, importer)} imports ${SERVER_ENTRY} - it runs on the server only.`);
+
       if (options.ssr || !importer || !project.appDir || !SIDECAR_IMPORT.test(id) || !SCRIPT.test(importer.split("?")[0])) return;
 
       const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
