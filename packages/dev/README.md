@@ -70,6 +70,6 @@ adds it and `@expressive/inspect/vite`. The generated server entry imports `serv
 
 ## Example
 
-`example/` is a routed app, a workspace package of its own. Its tsconfig maps
-`@expressive/*` to the package sources, so the editor needs no build. Running it does: after
-`bun run build` at the repo root, `bun run dev`, `bun run build` or `bun run start` inside `example/`.
+`example/` is a routed app, typechecked with the package. Running it needs a build: after
+`bun run build` at the repo root, `bun run example`, `bun run example:build` or
+`bun run example:start` here.
