@@ -89,6 +89,7 @@ export interface SidecarEntry {
   pattern: string[];
   file: string;
   calls: string[];
+  classes: string[];
 }
 
 export function serverEntry(project: Project, from: string, sidecars: SidecarEntry[] = []): string {
@@ -102,8 +103,10 @@ export function serverEntry(project: Project, from: string, sidecars: SidecarEnt
     "  config,",
     `  client: fileURLToPath(new URL("../client/", import.meta.url)),`,
     "  sidecars: [",
-    ...sidecars.map(({ pattern, calls }, i) =>
-      `    { pattern: ${JSON.stringify(pattern)}, calls: async () => ({ ${calls.map(name => `${name}: s${i}.${name}`).join(", ")} }) },`),
+    ...sidecars.map(({ pattern, calls, classes }, i) => {
+      const pick = (names: string[]) => `{ ${names.map(name => `${name}: s${i}.${name}`).join(", ")} }`;
+      return `    { pattern: ${JSON.stringify(pattern)}, exports: async () => ({ calls: ${pick(calls)}, classes: ${pick(classes)} }) },`;
+    }),
     "  ],",
     "});",
     "",

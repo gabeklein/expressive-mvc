@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Readable } from "node:stream";
 
-import { dispatch, endpoint, type Endpoint } from "./call";
+import { dispatch, endpoint, verify, type Endpoint } from "./call";
 
-const at = (...pattern: string[]): Endpoint => ({ pattern, calls: async () => ({ where: async () => pattern.join("/") }) });
+const at = (...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
 
 function request(url: string, name: string | undefined, body: string, type = "application/json") {
   const headers: Record<string, string> = { "content-type": type };
@@ -40,7 +40,20 @@ describe("call dispatch", () => {
     fail: async () => { throw new Error("Nope"); },
     value: 1,
   };
-  const endpoints: Endpoint[] = [{ pattern: ["tally"], calls: async () => calls }];
+  class Limit extends Error {
+    status = 409;
+    constructor(public limit: number) { super(`Over ${limit}`); }
+  }
+  class Hard extends Limit {}
+  class Strange extends Error { status = 200; }
+
+  calls.limit = async () => { throw new Hard(3); };
+  calls.strange = async () => { throw new Strange("Odd"); };
+
+  const endpoints: Endpoint[] = [
+    { pattern: ["tally"], exports: async () => ({ calls, classes: {} }) },
+    { pattern: ["shared"], exports: async () => ({ calls: {}, classes: { Limit, Strange } }) },
+  ];
 
   it("will reply with a call's value as JSON", async () => {
     expect(await send(endpoints, request("/tally?x=1", "add", "[1, 2]"))).toEqual({ handled: true, status: 200, body: 3 });
@@ -78,5 +91,25 @@ describe("call dispatch", () => {
     const { body } = await send(endpoints, request("/tally", "fail", "[]"), true);
     expect(body.message).toBe("Nope");
     expect(body.stack).toContain("Error: Nope");
+  });
+
+  it("will send an exported error class's id, status and fields, even from a subclass", async () => {
+    expect(await send(endpoints, request("/tally", "limit", "[]"))).toEqual({
+      handled: true,
+      status: 409,
+      body: { error: "/shared#Limit", message: "Over 3", status: 409, limit: 3 },
+    });
+  });
+
+  it("will keep a status outside 4xx and 5xx to 500", async () => {
+    expect((await send(endpoints, request("/tally", "strange", "[]"))).status).toBe(500);
+  });
+});
+
+describe("verify", () => {
+  it("will throw if an exported class is not an Error subclass", () => {
+    expect(() => verify("/tally", { calls: {}, classes: { Ok: class extends Error {} } })).not.toThrow();
+    expect(() => verify("/tally", { calls: {}, classes: { Bad: class {} } })).toThrow("/tally exports Bad, which is neither an async function nor an Error subclass.");
+    expect(() => verify("/tally", { calls: {}, classes: { Odd: 1 } })).toThrow("exports Odd");
   });
 });
