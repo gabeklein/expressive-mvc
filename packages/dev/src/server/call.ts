@@ -12,14 +12,43 @@ export interface Endpoint {
   exports(): Promise<Exports>;
 }
 
-const rank = (part: string) => (part === "*" ? 0 : part.startsWith(":") ? 1 : 2);
+export interface Match {
+  endpoint: Endpoint;
+  segments: string[];
+}
 
-export function endpoint(endpoints: Endpoint[], at: string[]): Endpoint | undefined {
-  return endpoints
-    .filter(({ pattern }) =>
-      (pattern.at(-1) === "*" || pattern.length === at.length) &&
-      pattern.every((part, i) => part === "*" || at[i] !== undefined && (part.startsWith(":") || part === at[i])))
-    .sort((a, b) => b.pattern.map(rank).join("").localeCompare(a.pattern.map(rank).join("")))[0];
+function match(pattern: string[], at: string[]): string[] | undefined {
+  if (pattern.at(-1) !== "*" && pattern.length !== at.length) return;
+
+  const segments: string[] = [];
+
+  for (const [i, part] of pattern.entries()) {
+    if (part === "*") {
+      segments.push(at.slice(i).join("/"));
+      continue;
+    }
+
+    if (at[i] === undefined) return;
+    if (!part.startsWith(":") && part !== at[i]) return;
+
+    segments.push(at[i]);
+  }
+
+  return segments;
+}
+
+const rank = (part: string) => (part === "*" ? 0 : part.startsWith(":") ? 1 : 2);
+const specificity = (pattern: string[]) => pattern.map(rank).join("");
+
+export function resolve(endpoints: Endpoint[], at: string[]): Match | undefined {
+  const matches: Match[] = [];
+
+  for (const endpoint of endpoints) {
+    const segments = match(endpoint.pattern, at);
+    if (segments) matches.push({ endpoint, segments });
+  }
+
+  return matches.sort((a, b) => specificity(b.endpoint.pattern).localeCompare(specificity(a.endpoint.pattern)))[0];
 }
 
 export function isCall(req: IncomingMessage): boolean {
@@ -33,9 +62,8 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   const name = req.headers["x-expressive-call"] as string;
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const list = endpoints();
-  const at = pathname.split("/").filter(Boolean);
-  const found = endpoint(list, at);
-  const calls = (await found?.exports())?.calls;
+  const found = resolve(list, pathname.split("/").filter(Boolean));
+  const calls = (await found?.endpoint.exports())?.calls;
   const fn = calls && Object.hasOwn(calls, name) ? calls[name] : undefined;
 
   if (typeof fn !== "function") return reply(res, 404, { message: "Not found." });
@@ -49,11 +77,9 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   if (!Array.isArray(args)) return reply(res, 400, { message: "Expected a JSON array of arguments." });
 
   const params: unknown[] = args;
-  const rest = (i: number) => at.slice(i).join("/");
-  const segments = found!.pattern.map((part, i) => (part === "*" ? rest(i) : at[i]));
 
   try {
-    const value = await within(req, segments, () => fn(...params));
+    const value = await within(req, found!.segments, () => fn(...params));
     return value === undefined ? reply(res, 204) : reply(res, 200, value);
   } catch (error) {
     const id = error instanceof Error && await classId(list, error);

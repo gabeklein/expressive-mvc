@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Readable } from "node:stream";
 
-import { dispatch, endpoint, isCall, verify, type Endpoint } from "./call";
+import { dispatch, isCall, resolve, verify, type Endpoint } from "./call";
 
 const at = (...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
 
@@ -21,15 +21,20 @@ describe("call endpoints", () => {
   const endpoints = [at("blog", ":slug"), at("blog", "new"), at("docs", "*"), at()];
 
   it("will match a path to the most specific sidecar", () => {
-    expect(endpoint(endpoints, ["blog", "new"])?.pattern).toEqual(["blog", "new"]);
-    expect(endpoint(endpoints, ["blog", "hello"])?.pattern).toEqual(["blog", ":slug"]);
-    expect(endpoint(endpoints, ["docs", "a", "b"])?.pattern).toEqual(["docs", "*"]);
-    expect(endpoint(endpoints, [])?.pattern).toEqual([]);
+    expect(resolve(endpoints, ["blog", "new"])?.endpoint.pattern).toEqual(["blog", "new"]);
+    expect(resolve(endpoints, ["blog", "hello"])?.endpoint.pattern).toEqual(["blog", ":slug"]);
+    expect(resolve(endpoints, ["docs", "a", "b"])?.endpoint.pattern).toEqual(["docs", "*"]);
+    expect(resolve(endpoints, [])?.endpoint.pattern).toEqual([]);
+  });
+
+  it("will bind a path's segments to the sidecar's pattern", () => {
+    expect(resolve(endpoints, ["blog", "hello"])?.segments).toEqual(["blog", "hello"]);
+    expect(resolve(endpoints, ["docs", "a", "b"])?.segments).toEqual(["docs", "a/b"]);
   });
 
   it("will not match a path no sidecar owns", () => {
-    expect(endpoint(endpoints, ["blog"])).toBeUndefined();
-    expect(endpoint(endpoints, ["blog", "a", "b"])).toBeUndefined();
+    expect(resolve(endpoints, ["blog"])).toBeUndefined();
+    expect(resolve(endpoints, ["blog", "a", "b"])).toBeUndefined();
   });
 });
 
