@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { sendFile } from ".";
+import { sendFile } from "./serve";
 
 describe("static files", () => {
   const dir = mkdtempSync(join(tmpdir(), "client-"));

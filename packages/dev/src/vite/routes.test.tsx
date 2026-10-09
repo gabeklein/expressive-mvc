@@ -8,10 +8,10 @@ import { dirname, join } from "node:path";
 
 import { Component, State } from "@expressive/mvc";
 
-import { browserRouter, location, mount, settle } from "../test.setup";
-import { Route } from "./client";
+import { browserRouter, location, mount, settle } from "../../test.setup";
+import { Route } from "../client";
 import { generateRoutes, sidecarPattern, sidecars } from "./routes";
-import { scanExports } from "./vite/scan";
+import { scanExports } from "./scan";
 
 describe("app/ routing (codegen)", () => {
   const dirs: string[] = [];

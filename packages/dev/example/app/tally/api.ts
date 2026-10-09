@@ -1,5 +1,5 @@
 import { State } from "@expressive/mvc";
-import { Current } from "@expressive/dev";
+import { Current } from "@expressive/dev/server";
 
 export class Overflow extends Error {
   status = 409;

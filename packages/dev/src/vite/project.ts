@@ -105,7 +105,7 @@ export function serverEntry(project: Project, from: string, sidecars: SidecarEnt
 
   return [
     `import { fileURLToPath } from "node:url";`,
-    `import { serve } from "@expressive/dev";`,
+    `import { serve } from "@expressive/dev/server";`,
     configSpec ? `import config from ${configSpec};` : `const config = {};`,
     ...modules.map((m, i) => `import * as s${i} from ${m};`),
     "",
