@@ -93,27 +93,31 @@ export interface SidecarEntry {
 }
 
 export function serverEntry(project: Project, from: string, sidecars: SidecarEntry[] = []): string {
+  const configSpec = project.configPath && JSON.stringify(importRel(from, project.configPath));
+  const modules = sidecars.map((mod) => JSON.stringify(importRel(from, mod.file)));
+  const entries = sidecars.map((mod, i) => {
+    const pattern = JSON.stringify(mod.pattern);
+    const pick = (names: string[]) => `{ ${names.map(name => `${name}: s${i}.${name}`).join(", ")} }`;
+
+    return `    { pattern: ${pattern}, async exports() { return { calls: ${pick(mod.calls)}, classes: ${pick(mod.classes)} }; } },`;
+  });
+
   return [
     `import { fileURLToPath } from "node:url";`,
     `import { serve } from "@expressive/dev";`,
-    project.configPath ? `import config from ${JSON.stringify(relImport(from, project.configPath))};` : `const config = {};`,
-    ...sidecars.map(({ file }, i) => `import * as s${i} from ${JSON.stringify(relImport(from, file))};`),
+    configSpec ? `import config from ${configSpec};` : `const config = {};`,
+    ...modules.map((m, i) => `import * as s${i} from ${m};`),
     "",
     "serve({",
     "  config,",
     `  client: fileURLToPath(new URL("../client/", import.meta.url)),`,
-    "  sidecars: [",
-    ...sidecars.map(({ pattern, calls, classes }, i) => {
-      const pick = (names: string[]) => `{ ${names.map(name => `${name}: s${i}.${name}`).join(", ")} }`;
-      return `    { pattern: ${JSON.stringify(pattern)}, exports: async () => ({ calls: ${pick(calls)}, classes: ${pick(classes)} }) },`;
-    }),
-    "  ],",
+    "  sidecars: [", ...entries, "  ],",
     "});",
     "",
   ].join("\n");
 }
 
-export function relImport(from: string, file: string): string {
+export function importRel(from: string, file: string): string {
   const rel = relative(from, file).replaceAll("\\", "/");
   return rel.startsWith(".") ? rel : "./" + rel;
 }

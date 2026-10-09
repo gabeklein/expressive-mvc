@@ -1,11 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServerModuleRunner, type Plugin, type ViteDevServer } from "vite";
 import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../config";
-import { GENERATED, SHELL, bootstrap, ensureBootstrap, relImport, resolveProject, serverEntry, type Project, type SidecarEntry } from "../project";
+import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project, type SidecarEntry } from "../project";
 import { runtime } from "../client/call";
 import { generateRoutes, sidecarPattern, sidecars, type Sidecar } from "../routes";
 import { dispatch, verify, type Endpoint } from "../server/call";
@@ -66,14 +66,15 @@ export function expressive(): Plugin<Host> {
     },
 
     config(user, env) {
-      root = resolve(user.root ?? process.cwd());
+      root = realpathSync(resolve(user.root ?? process.cwd()));
       project = resolveProject(root);
 
       const entries = project.appDir
         ? ["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*", "!app/**/api.*"]
-        : [relImport(root, project.appPath!)];
+        : [importRel(root, project.appPath!)];
 
       return {
+        root,
         appType: "custom",
         oxc: { jsx: { runtime: "automatic", importSource: "@expressive/dev" } },
         optimizeDeps: { entries, include: DEPS },
@@ -126,7 +127,7 @@ export function expressive(): Plugin<Host> {
       }
       if (id === callId) return `export const { call, define } = (${runtime})();`;
       if (id === mainId) {
-        const app = project.appDir ? `./${ROUTES}` : relImport(generatedDir, project.appPath!);
+        const app = project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!);
         return bootstrap(app);
       }
       if (id === routesId) return generateRoutes(project.appDir!, generatedDir, scanExports);

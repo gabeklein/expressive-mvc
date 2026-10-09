@@ -24,12 +24,13 @@ export function endpoint(endpoints: Endpoint[], pathname: string): Endpoint | un
 
 export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoints: () => Endpoint[], dev: boolean): Promise<boolean> {
   const name = req.headers["x-expressive-call"];
+  const json = req.headers["content-type"]?.startsWith("application/json");
 
-  if (req.method !== "POST" || typeof name !== "string" || !req.headers["content-type"]?.startsWith("application/json"))
-    return false;
+  if (req.method !== "POST" || typeof name !== "string" || !json) return false;
 
+  const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const list = endpoints();
-  const calls = (await endpoint(list, new URL(req.url ?? "/", "http://localhost").pathname)?.exports())?.calls;
+  const calls = (await endpoint(list, pathname)?.exports())?.calls;
   const fn = calls && Object.hasOwn(calls, name) ? calls[name] : undefined;
 
   if (typeof fn !== "function") return reply(res, 404, { message: "Not found." });
@@ -50,7 +51,8 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
 
     if (id) return reply(res, status(error), { ...error, error: id, message: (error as Error).message });
 
-    return reply(res, 500, dev && error instanceof Error ? { message: error.message, stack: error.stack } : { message: "Internal error." });
+    const detail = dev && error instanceof Error && { message: error.message, stack: error.stack };
+    return reply(res, 500, detail || { message: "Internal error." });
   }
 }
 

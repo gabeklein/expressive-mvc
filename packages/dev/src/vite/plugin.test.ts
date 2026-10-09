@@ -140,6 +140,18 @@ describe("vite host", () => {
     expect(stub).not.toContain("a + b");
   });
 
+  it("will stub a sidecar in a project reached through a symlink", async () => {
+    const real = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './api'; export const Page = () => add", "app/tally/api.ts": SIDECAR });
+    const link = join(mkdtempSync(join(tmpdir(), "link-")), "app");
+    dirs.push(dirname(link));
+    symlinkSync(real, link, "dir");
+
+    const server = await serve(link);
+    await server.transformRequest("/app/tally/index.tsx");
+
+    expect((await server.transformRequest("/app/tally/api.ts"))?.code).not.toContain("a + b");
+  });
+
   it("will throw if a module outside its folder imports a sidecar", async () => {
     const root = project({ "app/index.tsx": "import { add } from './tally/api'; export const Page = () => add", "app/tally/api.ts": SIDECAR });
     const server = await serve(root);
