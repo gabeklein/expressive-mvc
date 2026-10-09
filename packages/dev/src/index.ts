@@ -1,2 +1,2 @@
-export * from "./surface";
+export * from "./browser";
 export { serve } from "./server";
