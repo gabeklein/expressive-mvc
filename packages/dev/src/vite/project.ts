@@ -85,18 +85,38 @@ function injectBeforeBody(html: string, tag: string): string {
     : html + "\n" + tag + "\n";
 }
 
-export function serverEntry(project: Project, from: string): string {
+export interface SidecarEntry {
+  pattern: string[];
+  file: string;
+  calls: string[];
+}
+
+export function serverEntry(project: Project, from: string, sidecars: SidecarEntry[] = []): string {
+  const configSpec = project.configPath && JSON.stringify(importRel(from, project.configPath));
+  const modules = sidecars.map((mod) => JSON.stringify(importRel(from, mod.file)));
+  const entries = sidecars.map((mod, i) => {
+    const pattern = JSON.stringify(mod.pattern);
+    const calls = `{ ${mod.calls.map(name => `${name}: s${i}.${name}`).join(", ")} }`;
+
+    return `    { pattern: ${pattern}, async calls() { return ${calls}; } },`;
+  });
+
   return [
     `import { fileURLToPath } from "node:url";`,
     `import { serve } from "@expressive/dev/server";`,
-    project.configPath ? `import config from ${JSON.stringify(relImport(from, project.configPath))};` : `const config = {};`,
+    configSpec ? `import config from ${configSpec};` : `const config = {};`,
+    ...modules.map((m, i) => `import * as s${i} from ${m};`),
     "",
-    `serve({ config, client: fileURLToPath(new URL("../client/", import.meta.url)) });`,
+    "serve({",
+    "  config,",
+    `  client: fileURLToPath(new URL("../client/", import.meta.url)),`,
+    "  sidecars: [", ...entries, "  ],",
+    "});",
     "",
   ].join("\n");
 }
 
-export function relImport(from: string, file: string): string {
+export function importRel(from: string, file: string): string {
   const rel = relative(from, file).replaceAll("\\", "/");
   return rel.startsWith(".") ? rel : "./" + rel;
 }

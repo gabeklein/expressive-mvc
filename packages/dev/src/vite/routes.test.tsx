@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // @vitest-environment-options { "url": "http://localhost/" }
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -10,7 +10,7 @@ import { Component, State } from "@expressive/mvc";
 
 import { browserRouter, location, mount, settle } from "../../test.setup";
 import { Route } from "../client";
-import { generateRoutes } from "./routes";
+import { generateRoutes, sidecarPattern, sidecars } from "./routes";
 import { scanExports } from "./scan";
 
 describe("app/ routing (codegen)", () => {
@@ -353,5 +353,34 @@ describe("app/ routing (scope)", () => {
     location("/x");
     const root = await mount(Tree);
     expect(root.querySelector("[data-frame]")?.textContent).toBe("inside");
+  });
+});
+
+describe("sidecars", () => {
+  const root = mkdtempSync(join(tmpdir(), "sidecars-"));
+  const appDir = join(root, "app");
+
+  for (const path of ["api.ts", "blog/[slug]/api.ts", "(about)/api.mts", "blog/index.tsx", "blog/api.spec.ts", "docs/[...]/api.js"]) {
+    mkdirSync(dirname(join(appDir, path)), { recursive: true });
+    writeFileSync(join(appDir, path), "");
+  }
+
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+  it("will find each folder's api module with its route pattern", () => {
+    const found = sidecars(appDir).map(({ pattern, file }) => [file.slice(appDir.length), pattern]);
+
+    expect(found.sort()).toEqual([
+      ["/(about)/api.mts", ["about"]],
+      ["/api.ts", []],
+      ["/blog/[slug]/api.ts", ["blog", ":slug"]],
+      ["/docs/[...]/api.js", ["docs", "*"]],
+    ]);
+  });
+
+  it("will not take other modules, or files outside app/, as sidecars", () => {
+    expect(sidecarPattern(appDir, join(appDir, "blog/index.tsx"))).toBeUndefined();
+    expect(sidecarPattern(appDir, join(appDir, "blog/api.spec.ts"))).toBeUndefined();
+    expect(sidecarPattern(appDir, join(root, "api.ts"))).toBeUndefined();
   });
 });

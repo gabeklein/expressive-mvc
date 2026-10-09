@@ -75,9 +75,9 @@ describe("vite host", () => {
     expect(routes?.code).toMatch(/dev\/src\/jsx-dev-runtime/);
   });
 
-  it("will not scan spec or test files beside routes for dependencies", async () => {
+  it("will not scan specs, tests or sidecars beside routes for dependencies", async () => {
     const server = await serve(project({ "app/index.tsx": PAGE, "app/index.spec.ts": "import '@playwright/test';" }));
-    expect(server.config.optimizeDeps.entries).toEqual(["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*"]);
+    expect(server.config.optimizeDeps.entries).toEqual(["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*", "!app/**/api.*"]);
   });
 
   it("single-file project: entry mounts app.tsx directly", async () => {
@@ -119,6 +119,74 @@ describe("vite host", () => {
     await runner.close();
 
     expect(State).toBe(createRequire(join(root, "index.js"))("@expressive/mvc").State);
+  });
+
+  const SIDECAR = "export async function add(a: number, b: number) { return a + b }";
+
+  it("will serve a sidecar to the browser as a stub of its calls", async () => {
+    const root = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './api'; export const Page = () => add", "app/tally/api.ts": SIDECAR });
+    const server = await serve(root);
+
+    await server.transformRequest("/app/tally/index.tsx");
+    const stub = (await server.transformRequest("/app/tally/api.ts"))?.code;
+
+    expect(stub).toContain('const at = ["tally"]');
+    expect(stub).toContain('call(at, "add", args)');
+    expect(stub).not.toContain("a + b");
+  });
+
+  it("will stub a sidecar in a project reached through a symlink", async () => {
+    const real = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './api'; export const Page = () => add", "app/tally/api.ts": SIDECAR });
+    const link = join(mkdtempSync(join(tmpdir(), "link-")), "app");
+    dirs.push(dirname(link));
+    symlinkSync(real, link, "dir");
+
+    const server = await serve(link);
+    await server.transformRequest("/app/tally/index.tsx");
+
+    expect((await server.transformRequest("/app/tally/api.ts"))?.code).not.toContain("a + b");
+  });
+
+  it("will throw if a module outside its folder imports a sidecar", async () => {
+    const root = project({ "app/index.tsx": "import { add } from './tally/api'; export const Page = () => add", "app/tally/api.ts": SIDECAR });
+    const server = await serve(root);
+
+    await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow("only modules in app/tally/ and below may call it");
+  });
+
+  it("will throw if a sidecar exports what the client cannot call", async () => {
+    const root = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './api'; export const Page = () => add", "app/tally/api.ts": "export const add = 1" });
+    const server = await serve(root);
+
+    await expect(server.transformRequest("/app/tally/api.ts")).rejects.toThrow("add is not an async function");
+  });
+
+  it("will dispatch a call on the module runner", async () => {
+    const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/api.ts": SIDECAR }));
+    await server.listen(0);
+    const url = new URL("/tally", server.resolvedUrls!.local[0]);
+
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-expressive-call": "add" }, body: "[2, 3]" });
+    expect(await res.json()).toBe(5);
+
+    const page = await fetch(url, { headers: { accept: "text/html" } });
+    expect(await page.text()).toContain('<div id="root"></div>');
+  });
+
+  it("builds the node service with each sidecar's calls", async () => {
+    const root = project({ "app/index.tsx": PAGE, "app/blog/[slug]/api.ts": SIDECAR });
+    const config = serverBuild(root, { write: false });
+    config.configFile = false;
+    config.logLevel = "silent";
+    config.resolve = SOURCES;
+    config.build!.rollupOptions = { ...config.build!.rollupOptions, external: ["@expressive/dev"] };
+
+    const out = await build(config);
+    const { output } = Array.isArray(out) ? out[0] : (out as { output: any[] });
+    const entry = output.find((o: any) => o.fileName === "index.js")?.code as string;
+
+    expect(entry).toMatch(/pattern: \["blog", ":slug"\]/);
+    expect(entry).toContain("a + b");
   });
 
   it("builds the node service with index.ts as its config", async () => {

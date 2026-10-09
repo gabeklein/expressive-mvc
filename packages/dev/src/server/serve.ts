@@ -3,6 +3,7 @@ import { createServer, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize } from "node:path";
 
 import type { AppConfig } from "./config";
+import { dispatch, isCall, type Endpoint } from "./call";
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -40,10 +41,13 @@ export function sendFile(res: ServerResponse, dir: string, pathname: string): bo
 export interface ServeOptions {
   config: AppConfig;
   client: string;
+  sidecars?: Endpoint[];
 }
 
-export function serve({ config, client }: ServeOptions): Server {
-  const server = createServer((req, res) => {
+export function serve({ config, client, sidecars = [] }: ServeOptions): Server {
+  const server = createServer(async (req, res) => {
+    if (isCall(req)) return dispatch(req, res, () => sidecars, false);
+
     const { pathname } = new URL(req.url ?? "/", "http://localhost");
 
     if (sendFile(res, client, pathname) || sendFile(res, client, "/index.html")) return;
