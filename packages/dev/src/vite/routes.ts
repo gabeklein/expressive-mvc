@@ -40,8 +40,8 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
   assignAliases(root, new Set());
 
   const { imports, loaders } = collectImports(root, outDir);
-  const wrappers: string[] = [];
-  const tree = emitNode(root, true, 2, wrappers, "null").join("\n");
+  const wrappers = collectWrappers(root);
+  const tree = emitNode(root, true, 2, "null").join("\n");
   const pageImports = root.exports.has("NotFound") ? "{ Route, Router }" : "{ NotFound, Route, Router }";
 
   return [
@@ -184,7 +184,30 @@ function importFor(node: RouteNode, roles: Role[], spec: string): string {
   return `import ${clause} from ${spec};`;
 }
 
-function emitNode(node: RouteNode, isRoot: boolean, depth: number, wrappers: string[], slot: string): string[] {
+const renders = (node: RouteNode): boolean => !!node.alias.Page || node.children.some(renders);
+
+function wrapperOf(node: RouteNode): string | undefined {
+  const { Layout, default: def } = node.alias;
+
+  if (node.classDefault && def && Layout && renders(node)) return def + "d";
+}
+
+function collectWrappers(root: RouteNode): string[] {
+  const wrappers: string[] = [];
+
+  (function walk(node: RouteNode) {
+    node.children.forEach(walk);
+
+    const name = wrapperOf(node);
+    const { Layout, default: scope } = node.alias;
+
+    if (name) wrappers.push(`const ${name} = props => <${scope}><${Layout} {...props} /></${scope}>;`);
+  })(root);
+
+  return wrappers;
+}
+
+function emitNode(node: RouteNode, isRoot: boolean, depth: number, slot: string): string[] {
   const pad = "  ".repeat(depth);
   const { Page, Layout, Loading, Catch, NotFound, default: def } = node.alias;
   const enter = node.classDefault ? undefined : def;
@@ -202,17 +225,13 @@ function emitNode(node: RouteNode, isRoot: boolean, depth: number, wrappers: str
   if (Page) inner.push(...route(pad + "  ", { as: Page, fallback: childSlot }));
 
   for (const child of node.children)
-    inner.push(...emitNode(child, false, depth + 1, wrappers, childSlot));
+    inner.push(...emitNode(child, false, depth + 1, childSlot));
 
   if (!inner.length) return [];
 
-  const wrapped = scope && Layout ? scope + "d" : undefined;
-
-  if (wrapped)
-    wrappers.push(`const ${wrapped} = props => <${scope}><${Layout} {...props} /></${scope}>;`);
-
-  const as = wrapped ?? scope ?? Layout;
+  const as = wrapperOf(node) ?? scope ?? Layout;
   const fallbackPage = NotFound ?? (isRoot ? "NotFound" : undefined);
+
   return route(
     pad,
     { to: isRoot ? undefined : node.segment, as, NotFound: fallbackPage, enter, fallback: slot, Catch },
