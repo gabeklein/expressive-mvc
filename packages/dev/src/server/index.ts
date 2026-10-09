@@ -2,7 +2,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize } from "node:path";
 
-import type { AppConfig } from "../config";
+import type { AppConfig } from "./config";
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",

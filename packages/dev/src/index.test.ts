@@ -8,11 +8,13 @@ describe("one surface", () => {
     expect(Object.keys(client).sort()).toEqual(Object.keys(server).sort());
   });
 
-  it("will export the server's serve over the browser stub", () => {
+  it("will export server implementations over the browser stubs", () => {
     expect(server.serve).not.toBe(client.serve);
+    expect(server.config).not.toBe(client.config);
   });
 
-  it("will throw if serve is called in the browser", () => {
+  it("will throw if server-only exports are called in the browser", () => {
     expect(() => client.serve()).toThrow("server only");
+    expect(() => client.config({})).toThrow("server only");
   });
 });
