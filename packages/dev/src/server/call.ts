@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { within } from "./context";
+import { within, type Seat } from "./context";
 
 export interface Exports {
   calls: Record<string, unknown>;
@@ -60,7 +60,11 @@ export function isCall(req: IncomingMessage): boolean {
 
 type Call = (...args: unknown[]) => unknown;
 
-export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoints: () => Endpoint[], dev: boolean): Promise<void> {
+export type Seats = (pattern: string[]) => Promise<Seat | undefined>;
+
+const unseated: Seats = async () => undefined;
+
+export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoints: () => Endpoint[], dev: boolean, seats = unseated): Promise<void> {
   const list = endpoints();
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const found = resolve(list, pathname.split("/").filter(Boolean));
@@ -73,12 +77,17 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   if (!args) return reply(res, 400, { message: "Expected a JSON array of arguments." });
 
   try {
-    const value = await within(req, found.segments, () => fn(...args));
+    const seated = await seatsAlong(seats, found.endpoint.pattern);
+    const value = await within(req, found.segments, () => fn(...args), seated);
     return value === undefined ? reply(res, 204) : reply(res, 200, value);
   } catch (error) {
     const { status, body } = await failure(error, list, dev);
     return reply(res, status, body);
   }
+}
+
+function seatsAlong(seats: Seats, pattern: string[]): Promise<(Seat | undefined)[]> {
+  return Promise.all(Array.from({ length: pattern.length + 1 }, (_, i) => seats(pattern.slice(0, i))));
 }
 
 async function lookup(endpoint: Endpoint, name: string): Promise<Call | undefined> {

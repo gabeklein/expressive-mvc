@@ -117,6 +117,27 @@ describe("app/ routing (codegen)", () => {
     expect(out).toContain('import { Page as Root } from "../app/index.tsx";');
   });
 
+  it("will provide a folder's remote default around its routes", async () => {
+    const out = await generate({ "index.tsx": PAGE, "tally/index.tsx": PAGE, "tally/remote.ts": SCOPE });
+
+    expect(out).toContain('import TallyRemote from "../app/tally/remote.ts";');
+    expect(out).toContain("const TallyRemoted = props => <TallyRemote>{props.children}</TallyRemote>;");
+    expect(out).toMatch(/<Route to="tally" as=\{TallyRemoted\}>\s*<Route as=\{Tally\} \/>/);
+  });
+
+  it("will provide a remote default outside the folder's own layout and scope", async () => {
+    const out = await generate({ "index.tsx": PAGE, "tally/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}`, "tally/remote/index.ts": SCOPE });
+
+    expect(out).toContain('import TallyRemote from "../app/tally/remote/index.ts";');
+    expect(out).toContain("const TallyRemoted = props => <TallyRemote><TallyScoped {...props} /></TallyRemote>;");
+    expect(out).toContain('<Route to="tally" as={TallyRemoted}>');
+  });
+
+  it("will not provide a remote module without a default class", async () => {
+    const out = await generate({ "index.tsx": PAGE, "tally/index.tsx": PAGE, "tally/remote.ts": "export async function add() {}" });
+    expect(out).not.toContain("Remote");
+  });
+
   it("will not route a remote/ folder", async () => {
     const out = await generate({ "index.tsx": PAGE, "remote/index.ts": PAGE, "remote/bar.ts": PAGE });
     expect(out).not.toContain("remote");
