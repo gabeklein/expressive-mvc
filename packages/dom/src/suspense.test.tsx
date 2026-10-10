@@ -317,9 +317,8 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('closed');
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(root.textContent).toBe('ready'));
 
-      expect(root.textContent).toBe('ready');
       expect(lives).toEqual(['new', 'mount: ready']);
     });
 
@@ -343,9 +342,8 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('closed');
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(root.textContent).toBe('ready'));
 
-      expect(root.textContent).toBe('ready');
       expect(lives).toEqual(['new', 'panel mount: ready']);
     });
 
@@ -357,9 +355,10 @@ describe('suspense and recovery', () => {
       expect(root.querySelector('section')).toBeNull();
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() =>
+        expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<section><h2>title</h2><b>ready</b></section>')
+      );
 
-      expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<section><h2>title</h2><b>ready</b></section>');
       expect(lives).toEqual(['new', 'mount: titleready']);
     });
   });
