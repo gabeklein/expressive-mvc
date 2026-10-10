@@ -251,32 +251,7 @@ describe('Provider', () => {
   });
 
   describe('mount method', () => {
-    it('will call for an instance it creates', () => {
-      const didMount = vi.fn();
-      const didUnmount = vi.fn();
-
-      class Test extends State {
-        mount() {
-          didMount();
-          return didUnmount;
-        }
-      }
-
-      const element = render(
-        <Provider for={Test}>
-          <span />
-        </Provider>
-      );
-
-      expect(didMount).toBeCalledTimes(1);
-      expect(didUnmount).not.toBeCalled();
-
-      element.unmount();
-
-      expect(didUnmount).toBeCalledTimes(1);
-    });
-
-    it('will not repeat under strict mode', () => {
+    it.each([false, true])('will call for an instance it creates (strict: %s)', (reactStrictMode) => {
       const didMount = vi.fn();
       const didUnmount = vi.fn();
 
@@ -291,10 +266,11 @@ describe('Provider', () => {
         <Provider for={Test}>
           <span />
         </Provider>,
-        { reactStrictMode: true }
+        { reactStrictMode }
       );
 
       expect(didMount).toBeCalledTimes(1);
+      expect(didUnmount).not.toBeCalled();
 
       element.unmount();
 
@@ -330,41 +306,13 @@ describe('Provider', () => {
       expect(guest.get(null)).toBe(false);
     });
 
-    it('will not mount a state swapped in by a later render', () => {
-      const didMount = vi.fn();
-
-      class First extends State {
-        mount() {
-          didMount('first');
-        }
-      }
-
-      class Second extends State {
-        mount() {
-          didMount('second');
-        }
-      }
-
-      const element = render(
-        <Provider for={First}>
-          <span />
-        </Provider>
-      );
-
-      expect(didMount.mock.calls).toEqual([['first']]);
-
+    it.each([
       // mount belongs to the Provider's own commit, so a `for` replaced
       // mid-life provides Second without ever mounting it
-      element.rerender(
-        <Provider for={Second}>
-          <span />
-        </Provider>
-      );
-
-      expect(didMount.mock.calls).toEqual([['first']]);
-    });
-
-    it('will mount a swapped state when the Provider is keyed', () => {
+      ['will not mount a state swapped in by a later render', undefined, undefined, [['first']]],
+      // a new key is a new Provider, so the swap mounts as any first commit does
+      ['will mount a swapped state when the Provider is keyed', 'first', 'second', [['first'], ['second']]]
+    ])('%s', (_, firstKey, secondKey, calls) => {
       const didMount = vi.fn();
 
       class First extends State {
@@ -380,21 +328,18 @@ describe('Provider', () => {
       }
 
       const element = render(
-        <Provider key="first" for={First}>
+        <Provider key={firstKey} for={First}>
           <span />
         </Provider>
       );
 
-      expect(didMount.mock.calls).toEqual([['first']]);
-
-      // a new key is a new Provider, so the swap mounts as any first commit does
       element.rerender(
-        <Provider key="second" for={Second}>
+        <Provider key={secondKey} for={Second}>
           <span />
         </Provider>
       );
 
-      expect(didMount.mock.calls).toEqual([['first'], ['second']]);
+      expect(didMount.mock.calls).toEqual(calls);
     });
 
     it('will mount after descendants, as any parent does', () => {

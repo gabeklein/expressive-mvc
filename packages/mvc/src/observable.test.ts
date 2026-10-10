@@ -437,43 +437,22 @@ describe('effect', () => {
       expect(effect).not.toBeCalled();
     });
 
-    it('will run cleanup when effect terminates own subject', async () => {
-      const test = Test.new({ done: false });
+    it.each<[string, boolean, (test: Test, effect: (state: Test) => () => void) => unknown]>([
+      ['will run cleanup when effect terminates own subject', false, async (test, effect) => {
+        test.get(effect);
+        test.done = true;
+        await expect(test).toHaveUpdated();
+      }],
+      ['will run cleanup when first run terminates subject', true, (test, effect) => test.get(effect)],
+      ['will run cleanup when uncaptured effect terminates subject', true, (test, effect) => watch(test, effect, false)]
+    ])('%s', async (_, done, run) => {
+      const test = Test.new({ done });
       const didCleanup = vi.fn();
 
-      test.get(($) => {
+      await run(test, ($) => {
         if ($.done) $.set(null);
         return didCleanup;
       });
-
-      test.done = true;
-      await expect(test).toHaveUpdated();
-
-      expect(test.get(null)).toBe(true);
-      expect(didCleanup).toBeCalledWith(null);
-    });
-
-    it('will run cleanup when first run terminates subject', () => {
-      const test = Test.new({ done: true });
-      const didCleanup = vi.fn();
-
-      test.get(($) => {
-        if ($.done) $.set(null);
-        return didCleanup;
-      });
-
-      expect(test.get(null)).toBe(true);
-      expect(didCleanup).toBeCalledWith(null);
-    });
-
-    it('will run cleanup when uncaptured effect terminates subject', () => {
-      const test = Test.new({ done: true });
-      const didCleanup = vi.fn();
-
-      watch(test, ($) => {
-        if ($.done) $.set(null);
-        return didCleanup;
-      }, false);
 
       expect(test.get(null)).toBe(true);
       expect(didCleanup).toBeCalledWith(null);

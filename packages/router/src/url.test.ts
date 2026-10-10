@@ -9,163 +9,76 @@ import {
   patternSegment
 } from './url';
 
-const match = (pattern: string, path: string) => matchPattern(pattern, path)?.params;
-
 describe('matchPattern', () => {
-  it('will match root', () => {
-    expect(match('/', '/')).toEqual({});
-  });
-
-  it('will match literal segments', () => {
-    expect(match('/foo/bar', '/foo/bar')).toEqual({});
-  });
-
-  it('will not match differing literal', () => {
-    expect(match('/foo/bar', '/foo/baz')).toBeUndefined();
-  });
-
-  it('will not match differing segment counts', () => {
-    expect(match('/foo', '/foo/bar')).toBeUndefined();
-    expect(match('/foo/bar', '/foo')).toBeUndefined();
-  });
-
-  it('will capture :param', () => {
-    expect(match('/posts/:id', '/posts/foo')).toEqual({ id: 'foo' });
-  });
-
-  it('will capture multiple :params', () => {
-    expect(match('/users/:userId/posts/:postId', '/users/u1/posts/p1')).toEqual({
-      userId: 'u1',
-      postId: 'p1'
-    });
-  });
-
-  it('will ignore trailing slashes', () => {
-    expect(match('/foo', '/foo/')).toEqual({});
-    expect(match('/foo/', '/foo')).toEqual({});
-    expect(match('/posts/:id/', '/posts/foo')).toEqual({ id: 'foo' });
-  });
-
-  it('will match literals case-insensitively', () => {
-    expect(match('/Foo/Bar', '/foo/bar')).toEqual({});
-  });
-
-  it('will preserve case in params', () => {
-    expect(match('/posts/:id', '/posts/FOO')).toEqual({ id: 'FOO' });
-  });
-
-  it('will match empty path against root', () => {
-    expect(match('/', '')).toEqual({});
-  });
-
-  it('will not match missing segment after param', () => {
-    expect(match('/posts/:id/edit', '/posts/foo')).toBeUndefined();
-  });
-
-  describe('catch-all *', () => {
-    it('will capture empty * at root', () => {
-      expect(match('*', '/')).toEqual({ '*': '' });
-    });
-
-    it('will capture single-segment *', () => {
-      expect(match('*', '/foo')).toEqual({ '*': 'foo' });
-    });
-
-    it('will capture multi-segment *', () => {
-      expect(match('*', '/foo/bar/baz')).toEqual({ '*': 'foo/bar/baz' });
-    });
-
-    it('will capture empty * at exact prefix', () => {
-      expect(match('/blog/*', '/blog')).toEqual({ '*': '' });
-    });
-
-    it('will capture * after prefix', () => {
-      expect(match('/blog/*', '/blog/hello-world')).toEqual({
-        '*': 'hello-world'
-      });
-      expect(match('/blog/*', '/blog/a/b/c')).toEqual({ '*': 'a/b/c' });
-    });
-
-    it('will not match * with wrong prefix', () => {
-      expect(match('/blog/*', '/posts/foo')).toBeUndefined();
-    });
-
-    it('will capture * beside :param', () => {
-      expect(match('/users/:id/*', '/users/alice/posts/42')).toEqual({
-        id: 'alice',
-        '*': 'posts/42'
-      });
-    });
+  it.each([
+    ['will match root', '/', '/', {}],
+    ['will match empty path against root', '/', '', {}],
+    ['will match literal segments', '/foo/bar', '/foo/bar', {}],
+    ['will not match differing literal', '/foo/bar', '/foo/baz', undefined],
+    ['will not match longer path', '/foo', '/foo/bar', undefined],
+    ['will not match shorter path', '/foo/bar', '/foo', undefined],
+    ['will not match missing segment after param', '/posts/:id/edit', '/posts/foo', undefined],
+    ['will capture :param', '/posts/:id', '/posts/foo', { id: 'foo' }],
+    ['will capture multiple :params', '/users/:userId/posts/:postId', '/users/u1/posts/p1', { userId: 'u1', postId: 'p1' }],
+    ['will ignore trailing slash on path', '/foo', '/foo/', {}],
+    ['will ignore trailing slash on pattern', '/foo/', '/foo', {}],
+    ['will ignore trailing slash after param', '/posts/:id/', '/posts/foo', { id: 'foo' }],
+    ['will match literals case-insensitively', '/Foo/Bar', '/foo/bar', {}],
+    ['will preserve case in params', '/posts/:id', '/posts/FOO', { id: 'FOO' }],
+    ['will capture empty * at root', '*', '/', { '*': '' }],
+    ['will capture single-segment *', '*', '/foo', { '*': 'foo' }],
+    ['will capture multi-segment *', '*', '/foo/bar/baz', { '*': 'foo/bar/baz' }],
+    ['will capture empty * at exact prefix', '/blog/*', '/blog', { '*': '' }],
+    ['will capture * after prefix', '/blog/*', '/blog/hello-world', { '*': 'hello-world' }],
+    ['will capture deep * after prefix', '/blog/*', '/blog/a/b/c', { '*': 'a/b/c' }],
+    ['will not match * with wrong prefix', '/blog/*', '/posts/foo', undefined],
+    ['will capture * beside :param', '/users/:id/*', '/users/alice/posts/42', { id: 'alice', '*': 'posts/42' }]
+  ])('%s', (_, pattern, path, params) => {
+    expect(matchPattern(pattern, path)?.params).toEqual(params);
   });
 });
 
 describe('fullPattern', () => {
-  it('will keep absolute `to`', () => {
-    expect(fullPattern('/blog', '/posts/:id')).toBe('/posts/:id');
-  });
-
-  it('will return base for empty `to`', () => {
-    expect(fullPattern('/blog', '')).toBe('/blog');
-  });
-
-  it('will join base and relative `to`', () => {
-    expect(fullPattern('/blog', ':slug')).toBe('/blog/:slug');
-    expect(fullPattern('', 'foo')).toBe('/foo');
-  });
-
-  it('will return empty for empty base and `to`', () => {
-    expect(fullPattern('', '')).toBe('');
+  it.each([
+    ['will keep absolute `to`', '/blog', '/posts/:id', '/posts/:id'],
+    ['will return base for empty `to`', '/blog', '', '/blog'],
+    ['will join base and relative `to`', '/blog', ':slug', '/blog/:slug'],
+    ['will root relative `to` on empty base', '', 'foo', '/foo'],
+    ['will return empty for empty base and `to`', '', '', '']
+  ])('%s', (_, base, to, out) => {
+    expect(fullPattern(base, to)).toBe(out);
   });
 });
 
 describe('patternSegment', () => {
-  it('will return empty for empty `to`', () => {
-    expect(patternSegment('')).toBe('');
-  });
-
-  it('will return empty for bare catch-all', () => {
-    expect(patternSegment('*')).toBe('');
-  });
-
-  it('will strip trailing `/*`', () => {
-    expect(patternSegment('/blog/*')).toBe('/blog');
-  });
-
-  it('will strip trailing `*` without slash', () => {
-    expect(patternSegment('/blog*')).toBe('/blog');
-  });
-
-  it('will prefix `/` on relative input', () => {
-    expect(patternSegment(':slug')).toBe('/:slug');
-    expect(patternSegment('blog/*')).toBe('/blog');
-  });
-
-  it('will keep literal pattern', () => {
-    expect(patternSegment('/posts/:id')).toBe('/posts/:id');
+  it.each([
+    ['will return empty for empty `to`', '', ''],
+    ['will return empty for bare catch-all', '*', ''],
+    ['will strip trailing `/*`', '/blog/*', '/blog'],
+    ['will strip trailing `*` without slash', '/blog*', '/blog'],
+    ['will prefix `/` on relative param', ':slug', '/:slug'],
+    ['will prefix `/` on relative catch-all', 'blog/*', '/blog'],
+    ['will keep literal pattern', '/posts/:id', '/posts/:id']
+  ])('%s', (_, to, out) => {
+    expect(patternSegment(to)).toBe(out);
   });
 });
 
 describe('fillPath', () => {
-  it('will claim prefix with params filled', () => {
-    expect(fillPath('/users/:id', '/users/42/posts')).toBe('/users/42');
-  });
-
-  it('will return null on disagreeing literal', () => {
-    expect(fillPath('/users/:id', '/posts/42')).toBe(null);
+  it.each([
+    ['will claim prefix with params filled', '/users/:id', '/users/42/posts', '/users/42'],
+    ['will return null on disagreeing literal', '/users/:id', '/posts/42', null]
+  ])('%s', (_, pattern, path, out) => {
+    expect(fillPath(pattern, path)).toBe(out);
   });
 });
 
 describe('URL normalization', () => {
-  it('will canonicalize search without consuming the fragment', () => {
-    expect(canonicalize('/docs?q=a%20b&q=last#install')).toBe(
-      '/docs?q=last#install'
-    );
-    expect(canonicalize('/docs#install')).toBe('/docs#install');
-  });
-
-  it('will normalize path, search, and fragment together', () => {
-    expect(normalize('/guides/../docs?q=a%20b#hello world')).toBe(
-      '/docs?q=a+b#hello%20world'
-    );
+  it.each([
+    ['will canonicalize search, keeping fragment', canonicalize, '/docs?q=a%20b&q=last#install', '/docs?q=last#install'],
+    ['will canonicalize fragment-only url', canonicalize, '/docs#install', '/docs#install'],
+    ['will normalize path, search, and fragment', normalize, '/guides/../docs?q=a%20b#hello world', '/docs?q=a+b#hello%20world']
+  ])('%s', (_, fn, url, out) => {
+    expect(fn(url)).toBe(out);
   });
 });

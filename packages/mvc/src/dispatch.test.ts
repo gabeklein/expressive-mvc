@@ -62,19 +62,13 @@ describe('dispatch', () => {
     ]);
   });
 
-  it('will not bracket a subscriber with no scheduler', async () => {
+  it.each<[string, (log: string[]) => void]>([
+    ['will not bracket a subscriber with no scheduler', (log) => pending(() => enqueue(() => log.push('dispatch')))],
+    ['will not bracket work queued on its own', (log) => enqueue(() => log.push('dispatch'), scheduler(log))]
+  ])('%s', async (_, act) => {
     const log: string[] = [];
 
-    pending(() => enqueue(() => log.push('dispatch')));
-    await flushMicrotasks();
-
-    expect(log).toEqual(['dispatch']);
-  });
-
-  it('will not bracket work queued on its own', async () => {
-    const log: string[] = [];
-
-    enqueue(() => log.push('dispatch'), scheduler(log));
+    act(log);
     await flushMicrotasks();
 
     expect(log).toEqual(['dispatch']);
@@ -580,30 +574,15 @@ describe('dispatch', () => {
     expect(transition).toHaveBeenCalledOnce();
   });
 
-  it('will release a suspended effect claim if it is destroyed', async () => {
-    const test = Test.new();
-    const gate = mockPromise();
-    const effect = vi.fn(({ value }: Test) => {
-      if (value === 2) throw gate;
-    });
-
-    watch(test, effect);
-
-    const settled = settles(() => test.value = 2);
-    await flushMicrotasks();
-    expect(settled()).toBe(false);
-
-    test.set(null);
-    await flushMicrotasks();
-    expect(settled()).toBe(true);
-    expect(effect).toHaveBeenCalledTimes(2);
-
-    gate.resolve();
-    await flushMicrotasks();
-    expect(effect).toHaveBeenCalledTimes(2);
-  });
-
-  it('will release a suspended effect claim if it is cancelled', async () => {
+  it.each<[string, (test: Test, done: () => void, gate: Promise<void> & { resolve(): void }) => unknown]>([
+    ['will release a suspended effect claim if it is destroyed', (test) => test.set(null)],
+    ['will release a suspended effect claim if it is cancelled', (_, done) => done()],
+    ['will cancel a suspended retry already queued for replay', async (_, done, gate) => {
+      gate.resolve();
+      await gate;
+      done();
+    }]
+  ])('%s', async (_, release) => {
     const test = Test.new();
     const gate = mockPromise();
     const effect = vi.fn(({ value }: Test) => {
@@ -615,30 +594,13 @@ describe('dispatch', () => {
     await flushMicrotasks();
     expect(settled()).toBe(false);
 
-    done();
-    gate.resolve();
+    await release(test, done, gate);
     await flushMicrotasks();
     expect(settled()).toBe(true);
-    expect(effect).toHaveBeenCalledTimes(2);
-  });
-
-  it('will cancel a suspended retry already queued for replay', async () => {
-    const test = Test.new();
-    const gate = mockPromise();
-    const effect = vi.fn(({ value }: Test) => {
-      if (value === 2) throw gate;
-    });
-    const done = watch(test, effect);
-
-    const settled = settles(() => test.value = 2);
-    await flushMicrotasks();
 
     gate.resolve();
-    await gate;
-    done();
     await flushMicrotasks();
     expect(effect).toHaveBeenCalledTimes(2);
-    expect(settled()).toBe(true);
   });
 
   it('will carry every claim through a replay urgency strips', async () => {

@@ -205,35 +205,21 @@ describe('instruction', () => {
   });
 
   describe('cleanup', () => {
-    it('will call cleanup function on destroy', () => {
-      const cleanup = vi.fn();
+    it.each<[string, (done: () => void) => unknown]>([
+      ['will call cleanup function on destroy', (done) => done],
+      ['will call config destroy on destroy', (destroy) => ({ value: 'hello', destroy })]
+    ])('%s', (_, config) => {
+      const done = vi.fn();
 
       class Test extends State {
-        property = def(() => cleanup);
+        property = def(() => config(done) as any);
       }
 
       const test = Test.new();
-      expect(cleanup).not.toBeCalled();
+      expect(done).not.toBeCalled();
 
       test.set(null);
-      expect(cleanup).toBeCalled();
-    });
-
-    it('will call config destroy on destroy', () => {
-      const destroy = vi.fn();
-
-      class Test extends State {
-        property = def(() => ({
-          value: 'hello',
-          destroy
-        }));
-      }
-
-      const test = Test.new();
-      expect(destroy).not.toBeCalled();
-
-      test.set(null);
-      expect(destroy).toBeCalled();
+      expect(done).toBeCalled();
     });
   });
 });

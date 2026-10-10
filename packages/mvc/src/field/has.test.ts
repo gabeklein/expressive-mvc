@@ -97,148 +97,42 @@ describe('get', () => {
     expect(list.get()).toEqual(['unwrapped']);
   });
 
-  it('will read by positive index', () => {
-    expect(reactive([10, 20, 30, 40]).get(1)).toEqual(20);
-  });
-
-  it('will normalize negative index', () => {
-    const list = reactive([10, 20, 30, 40]);
-
-    expect(list.get(-1)).toEqual(40);
-    expect(list.get(-4)).toEqual(10);
-  });
-
-  it('will return undefined for out-of-range index', () => {
-    const list = reactive([10, 20, 30, 40]);
-
-    expect(list.get(5)).toEqual(undefined);
-    expect(list.get(-5)).toEqual(undefined);
-  });
-
-  it('will read range with start, end', () => {
-    expect(reactive([10, 20, 30, 40]).get(1, 3)).toEqual([20, 30]);
-  });
-
-  it('will normalize negative start in range', () => {
-    expect(reactive([10, 20, 30, 40]).get(-2, 4)).toEqual([30, 40]);
-  });
-
-  it('will clamp end to length in range', () => {
-    expect(reactive([10, 20, 30, 40]).get(0, 99)).toEqual([10, 20, 30, 40]);
+  it.each<[string, (list: has.List<number>) => unknown, unknown]>([
+    ['will read by positive index', (list) => list.get(1), 20],
+    ['will normalize negative index', (list) => list.get(-1), 40],
+    ['will normalize negative index to start', (list) => list.get(-4), 10],
+    ['will return undefined for out-of-range index', (list) => list.get(5), undefined],
+    ['will return undefined for out-of-range negative index', (list) => list.get(-5), undefined],
+    ['will read range with start, end', (list) => list.get(1, 3), [20, 30]],
+    ['will normalize negative start in range', (list) => list.get(-2, 4), [30, 40]],
+    ['will clamp end to length in range', (list) => list.get(0, 99), [10, 20, 30, 40]]
+  ])('%s', (_, read, expected) => {
+    expect(read(reactive([10, 20, 30, 40]))).toEqual(expected);
   });
 });
 
 describe('write', () => {
-  it('will set value at index', () => {
+  it.each<[string, (list: has.List<number>) => unknown, number[]]>([
+    ['will set value at index', (list) => list.set(1, 9), [1, 9, 4]],
+    ['will set at negative index', (list) => list.set(-1, 9), [1, 2, 9]],
+    ['will not set out-of-range positive', (list) => list.set(5, 9), [1, 2, 4]],
+    ['will not set out-of-range negative', (list) => list.set(-5, 9), [1, 2, 4]],
+    ['will put at index, shifting subsequent', (list) => list.put(2, 3), [1, 2, 3, 4]],
+    ['will put multiple', (list) => list.put(1, 7, 8), [1, 7, 8, 2, 4]],
+    ['will put at negative index', (list) => list.put(-1, 3), [1, 2, 3, 4]],
+    ['will put appending when index equals length', (list) => list.put(3, 5), [1, 2, 4, 5]],
+    ['will push and return new length', (list) => expect(list.push(5, 6)).toBe(5), [1, 2, 4, 5, 6]],
+    ['will pop from tail by default', (list) => expect(list.pop()).toBe(4), [1, 2]],
+    ['will pop at index', (list) => expect(list.pop(0)).toBe(1), [2, 4]],
+    ['will pop a count and return array', (list) => expect(list.pop(0, 2)).toEqual([1, 2]), [4]],
+    ['will pop at negative index', (list) => expect(list.pop(-2)).toBe(2), [1, 4]],
+    ['will clear all items', (list) => list.clear(), []]
+  ])('%s', (_, act, expected) => {
     const list = reactive([1, 2, 4]);
 
-    list.set(1, 9);
+    act(list);
 
-    expect(list.get()).toEqual([1, 9, 4]);
-  });
-
-  it('will set at negative index', () => {
-    const list = reactive([1, 2, 4]);
-
-    list.set(-1, 9);
-
-    expect(list.get()).toEqual([1, 2, 9]);
-  });
-
-  it('will not set out-of-range positive', () => {
-    const list = reactive([1, 2, 4]);
-
-    list.set(5, 9);
-
-    expect(list.get()).toEqual([1, 2, 4]);
-  });
-
-  it('will not set out-of-range negative', () => {
-    const list = reactive([1, 2, 4]);
-
-    list.set(-5, 9);
-
-    expect(list.get()).toEqual([1, 2, 4]);
-  });
-
-  it('will put at index, shifting subsequent', () => {
-    const list = reactive([1, 2, 4]);
-
-    list.put(2, 3);
-
-    expect(list.get()).toEqual([1, 2, 3, 4]);
-  });
-
-  it('will put multiple', () => {
-    const list = reactive([1, 2, 4]);
-
-    list.put(1, 7, 8);
-
-    expect(list.get()).toEqual([1, 7, 8, 2, 4]);
-  });
-
-  it('will put at negative index', () => {
-    const list = reactive([1, 2, 4]);
-
-    list.put(-1, 3);
-
-    expect(list.get()).toEqual([1, 2, 3, 4]);
-  });
-
-  it('will put appending when index equals length', () => {
-    const list = reactive([1, 2, 4]);
-
-    list.put(3, 5);
-
-    expect(list.get()).toEqual([1, 2, 4, 5]);
-  });
-
-  it('will push and return new length', () => {
-    const list = reactive([1, 2, 4]);
-
-    expect(list.push(5, 6)).toBe(5);
-
-    expect(list.get()).toEqual([1, 2, 4, 5, 6]);
-  });
-
-  it('will pop from tail by default', () => {
-    const list = reactive([1, 2, 4]);
-
-    expect(list.pop()).toBe(4);
-
-    expect(list.get()).toEqual([1, 2]);
-  });
-
-  it('will pop at index', () => {
-    const list = reactive([1, 2, 4]);
-
-    expect(list.pop(0)).toBe(1);
-
-    expect(list.get()).toEqual([2, 4]);
-  });
-
-  it('will pop a count and return array', () => {
-    const list = reactive([1, 2, 4]);
-
-    expect(list.pop(0, 2)).toEqual([1, 2]);
-
-    expect(list.get()).toEqual([4]);
-  });
-
-  it('will pop at negative index', () => {
-    const list = reactive([1, 2, 4]);
-
-    expect(list.pop(-2)).toBe(2);
-
-    expect(list.get()).toEqual([1, 4]);
-  });
-
-  it('will clear all items', () => {
-    const list = reactive([1, 2, 4]);
-
-    list.clear();
-
-    expect(list.get()).toEqual([]);
+    expect(list.get()).toEqual(expected);
   });
 
   it('will pop undefined on empty list', () => {
@@ -267,46 +161,16 @@ describe('reads', () => {
   });
 });
 
-describe('List reads', () => {
-  const make = (...n: number[]) => reactive(n.map((n) => ({ n })));
+type N = { n: number };
 
-  it('will return first match for predicate', () => {
-    const list = make(1, 2, 3, 4);
-
-    expect(list.get((v) => v.n > 2)).toBe([...list][2]);
-    expect(list.get((v) => v.n > 99)).toBeUndefined();
-  });
-
-  it('will map, skipping results matching ignore value', () => {
-    const list = make(1, 2, 3, 4);
-
-    expect(list.map((v) => v.n * 2)).toEqual([2, 4, 6, 8]);
-    expect(list.map((v) => (v.n % 2 ? v.n : null), null)).toEqual([1, 3]);
-  });
-
-  it('will filter members', () => {
-    expect(make(1, 2, 3, 4).filter((v) => v.n > 2)).toEqual([{ n: 3 }, { n: 4 }]);
-  });
-
-  it('will support any and all', () => {
-    const list = make(2, 0, 4);
-
-    expect(list.any((v) => v.n > 3)).toBe(true);
-    expect(list.any((v) => v.n > 9)).toBe(false);
-    expect(list.any((v) => v.n === 0)).toBe(true);
-    expect(list.all((v) => v.n % 2 === 0)).toBe(true);
-    expect(list.all((v) => v.n > 2)).toBe(false);
-    expect(make().all((v) => v.n > 0)).toBe(true);
-  });
-});
-
-describe('Pool reads', () => {
-  const make = (...n: number[]) => {
+describe.each<[string, (...n: number[]) => has.Pool<N>]>([
+  ['List', (...n) => reactive(n.map((n) => ({ n }))) as unknown as has.Pool<N>],
+  ['Pool', (...n) => {
     const pool = reactive((n: number) => ({ n }));
     n.forEach((n) => pool.add(n));
     return pool;
-  };
-
+  }]
+])('%s reads', (_, make) => {
   it('will return first match for predicate', () => {
     const list = make(1, 2, 3, 4);
 
@@ -342,58 +206,25 @@ describe('Pool reads', () => {
 });
 
 describe('subscriptions', () => {
-  it('will update on size when length changes', async () => {
-    expect(await fires(reactive([1, 2]), ($) => $.size, (list) => list.push(3))).toBe(1);
-  });
+  type List = has.List<number>;
 
-  it('will update on get(i) only when that index changes', async () => {
-    const list = reactive([1, 2, 3]);
-
-    expect(await fires(list, ($) => $.get(1), () => list.set(0, 9))).toBe(0);
-    expect(await fires(list, ($) => $.get(1), () => list.set(1, 9))).toBe(1);
-  });
-
-  it('will update on iteration when any index changes', async () => {
-    expect(await fires(reactive([1, 2, 3]), ($) => [...$], (list) => list.set(1, 99))).toBe(1);
-  });
-
-  it('will update on iteration when length grows', async () => {
-    expect(await fires(reactive([1, 2]), ($) => [...$], (list) => list.push(3))).toBe(1);
-  });
-
-  it('will update any() with no match on append', async () => {
-    expect(await fires(reactive([1, 2, 3]), ($) => $.any((v) => v > 99), (list) => list.push(100))).toBe(1);
-  });
-
-  it('will update all() when appended item violates predicate', async () => {
-    expect(await fires(reactive([2, 4]), ($) => $.all((v) => v % 2 === 0), (list) => list.push(3))).toBe(1);
-  });
-
-  it('will update get(predicate) when earlier item becomes candidate', async () => {
-    expect(await fires(reactive([1, 2, 3]), ($) => $.get((v) => v > 2), (list) => list.set(0, 99))).toBe(1);
-  });
-
-  it('will subscribe get(start, end) to indices in range only', async () => {
-    const list = reactive([1, 2, 3, 4, 5]);
-
-    expect(await fires(list, ($) => $.get(1, 3), () => list.set(4, 99))).toBe(0);
-    expect(await fires(list, ($) => $.get(1, 3), () => list.set(2, 99))).toBe(1);
-  });
-
-  it('will update out-of-range get on growth', async () => {
-    expect(await fires(reactive([1]), ($) => $.get(5), (list) => list.push(2))).toBe(1);
-  });
-
-  it('will not notify set of unchanged value', async () => {
-    expect(await fires(reactive([1]), ($) => [...$], (list) => list.set(0, 1))).toBe(0);
-  });
-
-  it('will not notify put of no items', async () => {
-    expect(await fires(reactive([1, 2]), ($) => [...$], (list) => list.put(0))).toBe(0);
-  });
-
-  it('will not notify clear of empty list', async () => {
-    expect(await fires(reactive<number>([]), ($) => $.size, (list) => list.clear())).toBe(0);
+  it.each<[string, number[], ($: List) => unknown, (list: List) => unknown, number]>([
+    ['will update on size when length changes', [1, 2], ($) => $.size, (list) => list.push(3), 1],
+    ['will not update get(i) when another index changes', [1, 2, 3], ($) => $.get(1), (list) => list.set(0, 9), 0],
+    ['will update get(i) when that index changes', [1, 2, 3], ($) => $.get(1), (list) => list.set(1, 9), 1],
+    ['will update on iteration when any index changes', [1, 2, 3], ($) => [...$], (list) => list.set(1, 99), 1],
+    ['will update on iteration when length grows', [1, 2], ($) => [...$], (list) => list.push(3), 1],
+    ['will update any() with no match on append', [1, 2, 3], ($) => $.any((v) => v > 99), (list) => list.push(100), 1],
+    ['will update all() when appended item violates predicate', [2, 4], ($) => $.all((v) => v % 2 === 0), (list) => list.push(3), 1],
+    ['will update get(predicate) when earlier item becomes candidate', [1, 2, 3], ($) => $.get((v) => v > 2), (list) => list.set(0, 99), 1],
+    ['will not update get(start, end) outside range', [1, 2, 3, 4, 5], ($) => $.get(1, 3), (list) => list.set(4, 99), 0],
+    ['will update get(start, end) inside range', [1, 2, 3, 4, 5], ($) => $.get(1, 3), (list) => list.set(2, 99), 1],
+    ['will update out-of-range get on growth', [1], ($) => $.get(5), (list) => list.push(2), 1],
+    ['will not notify set of unchanged value', [1], ($) => [...$], (list) => list.set(0, 1), 0],
+    ['will not notify put of no items', [1, 2], ($) => [...$], (list) => list.put(0), 0],
+    ['will not notify clear of empty list', [], ($) => $.size, (list) => list.clear(), 0]
+  ])('%s', async (_, initial, read, act, runs) => {
+    expect(await fires(reactive(initial), read, act)).toBe(runs);
   });
 });
 
@@ -420,12 +251,11 @@ describe('pool', () => {
     expect(pool.size).toBe(1);
   });
 
-  it('will not define add on list', () => {
-    expect(() => (reactive<number>() as any).add()).toThrow(TypeError);
-  });
-
-  it('will not define push on pool', () => {
-    expect(() => (reactive(Item) as any).push(new Item())).toThrow(TypeError);
+  it.each([
+    ['will not define add on list', () => (reactive<number>() as any).add()],
+    ['will not define push on pool', () => (reactive(Item) as any).push(new Item())]
+  ])('%s', (_, call) => {
+    expect(call).toThrow(TypeError);
   });
 
   it('will return spawned value from add', () => {
@@ -457,22 +287,16 @@ describe('pool', () => {
     expect(pool.has(guest)).toBe(true);
   });
 
-  it('will admit instance of class instead of constructing', () => {
+  it.each([
+    ['will admit instance of class instead of constructing', () => Item.new()],
+    ['will admit subclass instance', () => (class Special extends Item {}).new()]
+  ])('%s', (_, create) => {
     const pool = reactive(Item);
-    const guest = Item.new();
+    const guest = create();
 
     expect(pool.add(guest)).toBe(guest);
+    expect(pool.has(guest)).toBe(true);
     expect(pool.size).toBe(1);
-  });
-
-  it('will admit subclass instance', () => {
-    class Special extends Item {}
-
-    const pool = reactive(Item);
-    const special = Special.new();
-
-    expect(pool.add(special)).toBe(special);
-    expect(pool.has(special)).toBe(true);
   });
 
   it('will construct from props objects', () => {
@@ -595,17 +419,13 @@ describe('pool lookup', () => {
     expect(pool.size).toBe(1);
   });
 
-  it('will not add if factory declines', async () => {
-    const pool = reactive((id: string) => known.get(id));
+  it.each([
+    ['will not add if factory declines', undefined],
+    ['will not add if factory returns null', null]
+  ])('%s', async (_, none) => {
+    const pool = reactive((id: string) => known.get(id) || none);
 
-    expect(await fires(pool, ($) => $.size, () => expect(pool.add('nope')).toBeUndefined())).toBe(0);
-    expect(pool.size).toBe(0);
-  });
-
-  it('will not add if factory returns null', async () => {
-    const pool = reactive((id: string) => known.get(id) || null);
-
-    expect(await fires(pool, ($) => $.size, () => expect(pool.add('nope')).toBeNull())).toBe(0);
+    expect(await fires(pool, ($) => $.size, () => expect(pool.add('nope')).toBe(none))).toBe(0);
     expect(pool.size).toBe(0);
   });
 

@@ -37,20 +37,15 @@ describe('BrowserRouter', () => {
     expect(router.current.url).toBe('/foo?from=start#intro');
   });
 
-  it('will push history on goto', async () => {
+  it.each([
+    ['will push history on goto', false, 1],
+    ['will replace history on goto with replace', true, 0]
+  ])('%s', async (_, replace, added) => {
     const before = window.history.length;
-    await act(async () => router.current.goto('/bar'));
+    await act(async () => router.current.goto('/bar', replace));
     expect(router.current.path).toBe('/bar');
     expect(window.location.pathname).toBe('/bar');
-    expect(window.history.length).toBe(before + 1);
-  });
-
-  it('will replace history on goto with replace', async () => {
-    const before = window.history.length;
-    await act(async () => router.current.goto('/bar', true));
-    expect(router.current.path).toBe('/bar');
-    expect(window.location.pathname).toBe('/bar');
-    expect(window.history.length).toBe(before);
+    expect(window.history.length).toBe(before + added);
   });
 
   it('will update path on popstate', () => {
@@ -61,14 +56,11 @@ describe('BrowserRouter', () => {
     expect(router.current.path).toBe('/elsewhere');
   });
 
-  it('will notice external history.pushState', () => {
-    act(() => window.history.pushState(null, '', '/external#section'));
-    expect(router.current.path).toBe('/external');
-    expect(router.current.hash).toBe('#section');
-  });
-
-  it('will notice external history.replaceState', () => {
-    act(() => window.history.replaceState(null, '', '/external#section'));
+  it.each([
+    ['will notice external history.pushState', 'pushState'],
+    ['will notice external history.replaceState', 'replaceState']
+  ] as const)('%s', (_, method) => {
+    act(() => window.history[method](null, '', '/external#section'));
     expect(router.current.path).toBe('/external');
     expect(router.current.hash).toBe('#section');
   });

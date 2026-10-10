@@ -548,22 +548,12 @@ describe('set method', () => {
     expect(() => context.set({ State })).toThrow('Cannot create base State.');
   });
 
-  it('will throw on bad include property', () => {
-    const Thing = { toString: () => 'Foobar' };
-
+  it.each([
+    ["will throw on bad include property", { Thing: { toString: () => 'Foobar' } }, " but got Foobar (as 'Thing')."],
+    ['will throw on bad include property (no alias)', { [0]: { toString: () => 'Thing' } }, ' but got Thing.']
+  ])('%s', (_, include, message) => {
     // @ts-ignore
-    expect(() => new Context().set({ Thing })).toThrow(
-      "Context can only include an instance or class of State but got Foobar (as 'Thing')."
-    );
-  });
-
-  it('will throw on bad include property (no alias)', () => {
-    const Thing = { toString: () => 'Thing' };
-
-    // @ts-ignore
-    expect(() => new Context().set({ [0]: Thing })).toThrow(
-      'Context can only include an instance or class of State but got Thing.'
-    );
+    expect(() => new Context().set(include)).toThrow('Context can only include an instance or class of State' + message);
   });
 
   it('will remove implicit children when parent removed via set', () => {
@@ -1126,26 +1116,17 @@ describe('root global', () => {
     );
   });
 
-  it('will register when a subclass re-declares global', () => {
+  it.each([
+    ['will register when a subclass re-declares global', true],
+    ['will allow a subclass to opt out of a global', false]
+  ])('%s', (_, global) => {
     class Sub extends Global {
-      static readonly global = true;
+      static readonly global = global;
     }
 
     const instance = Sub.new();
 
-    expect(root.get(Sub)).toBe(instance);
-
-    instance.set(null);
-  });
-
-  it('will allow a subclass to opt out of a global', () => {
-    class Sub extends Global {
-      static readonly global = false;
-    }
-
-    const instance = Sub.new();
-
-    expect(root.get(Sub, false)).toBeUndefined();
+    expect(root.get(Sub, false)).toBe(global ? instance : undefined);
 
     instance.set(null);
   });
@@ -1224,27 +1205,18 @@ describe('root global', () => {
     instance.set(null);
   });
 
-  it('will throw on duplicate global of same type', () => {
+  it.each<[string, State.Global]>([
+    ['will throw on duplicate global of same type', true],
+    ['will throw on duplicate global from a resolver', () => true]
+  ])('%s', (_, global) => {
     class Multi extends State {
-      static global = true;
+      static global = global;
     }
 
     const first = Multi.new();
 
     expect(() => Multi.new()).toThrow(/already exists in root/);
     expect(root.get(Multi)).toBe(first);
-
-    first.set(null);
-  });
-
-  it('will throw on duplicate global from a resolver', () => {
-    class Multi extends State {
-      static global: State.Global = () => true;
-    }
-
-    const first = Multi.new();
-
-    expect(() => Multi.new()).toThrow(/already exists in root/);
 
     first.set(null);
   });

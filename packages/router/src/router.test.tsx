@@ -55,59 +55,20 @@ describe('Router (headless)', () => {
     expect(router.url).toBe('/');
   });
 
-  it('goto will update path in memory', async () => {
+  it.each([
+    ['will update path in memory', '/bar', '/bar', '/bar'],
+    ['will normalize . and ..', '/posts/foo/../bar', '/posts/bar', '/posts/bar'],
+    ['will split query from path', '/posts?page=2&sort=asc', '/posts', '/posts?page=2&sort=asc'],
+    ['will drop an empty query', '/a?&', '/a', '/a'],
+    ['will canonicalize query encoding', '/x?q=a%20b', '/x', '/x?q=a+b'],
+    ['will keep the last repeated query param', '/x?a=1&a=2', '/x', '/x?a=2'],
+    ['will preserve an opaque fragment after canonical query', '/docs?q=a%20b#install', '/docs', '/docs?q=a+b#install']
+  ])('goto %s', async (_, to, path, url) => {
     const router = Router.new();
-    await walk(router, '/bar');
-    expect(router.path).toBe('/bar');
-    expect(router.url).toBe('/bar');
-    expect(router.entries).toEqual(['/', '/bar']);
-  });
-
-  it('goto will normalize . and ..', async () => {
-    const router = Router.new();
-    await walk(router, '/posts/foo/../bar');
-    expect(router.path).toBe('/posts/bar');
-    expect(router.url).toBe('/posts/bar');
-    expect(router.entries).toEqual(['/', '/posts/bar']);
-  });
-
-  it('goto will split query from path', async () => {
-    const router = Router.new();
-    await walk(router, '/posts?page=2&sort=asc');
-    expect(router.path).toBe('/posts');
-    expect(router.url).toBe('/posts?page=2&sort=asc');
-    expect(router.entries).toEqual(['/', '/posts?page=2&sort=asc']);
-  });
-
-  it('goto will drop an empty query', async () => {
-    const router = Router.new();
-    await walk(router, '/a?&');
-    expect(router.path).toBe('/a');
-    expect(router.url).toBe('/a');
-    expect(router.entries).toEqual(['/', '/a']);
-  });
-
-  it('goto will canonicalize the query so navigation does not push a duplicate entry', async () => {
-    const encoded = Router.new();
-    await walk(encoded, '/x?q=a%20b');
-    expect(encoded.path).toBe('/x');
-    expect(encoded.url).toBe('/x?q=a+b');
-    expect(encoded.entries).toEqual(['/', '/x?q=a+b']);
-    encoded.set(null);
-
-    const repeated = Router.new();
-    await walk(repeated, '/x?a=1&a=2');
-    expect(repeated.path).toBe('/x');
-    expect(repeated.url).toBe('/x?a=2');
-    expect(repeated.entries).toEqual(['/', '/x?a=2']);
-  });
-
-  it('goto will preserve an opaque fragment after canonical query', async () => {
-    const router = Router.new();
-    await walk(router, '/docs?q=a%20b#install');
-    expect(router.path).toBe('/docs');
-    expect(router.url).toBe('/docs?q=a+b#install');
-    expect(router.entries).toEqual(['/', '/docs?q=a+b#install']);
+    await walk(router, to);
+    expect(router.path).toBe(path);
+    expect(router.url).toBe(url);
+    expect(router.entries).toEqual(['/', url]);
   });
 
   it('will throw on relative goto', () => {

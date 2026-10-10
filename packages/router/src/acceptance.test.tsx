@@ -37,30 +37,15 @@ function Tree() {
 }
 
 describe('acceptance: nested file-routing tree', () => {
-  it('/ -> RootLayout > HomePage', () => {
-    location('/');
+  it.each([
+    ['/ -> RootLayout > HomePage', '/', '[data-root]', 'home'],
+    ['/blog -> RootLayout > BlogLayout > BlogIndex', '/blog', '[data-root] > [data-blog]', 'blog-index'],
+    ['/blog/hello-world -> RootLayout > BlogLayout > BlogPost(slug)', '/blog/hello-world', '[data-root] > [data-blog]', 'post:hello-world'],
+    ['/anything-else -> RootLayout > NotFound', '/anything-else', '[data-root]', 'not-found']
+  ])('%s', (_, path, selector, text) => {
+    location(path);
     const view = render(<Tree />);
-    expect(view.container.querySelector('[data-root]')?.textContent).toBe('home');
-  });
-
-  it('/blog -> RootLayout > BlogLayout > BlogIndex', () => {
-    location('/blog');
-    const view = render(<Tree />);
-    const blog = view.container.querySelector('[data-root] [data-blog]');
-    expect(blog?.textContent).toBe('blog-index');
-  });
-
-  it('/blog/hello-world -> RootLayout > BlogLayout > BlogPost(slug)', () => {
-    location('/blog/hello-world');
-    const view = render(<Tree />);
-    const blog = view.container.querySelector('[data-root] [data-blog]');
-    expect(blog?.textContent).toBe('post:hello-world');
-  });
-
-  it('/anything-else -> RootLayout > NotFound', () => {
-    location('/anything-else');
-    const view = render(<Tree />);
-    expect(view.container.querySelector('[data-root]')?.textContent).toBe('not-found');
+    expect(view.container.querySelector(selector)?.textContent).toBe(text);
   });
 
   it('navigating /blog/a -> /blog/b preserves the BlogPost instance', async () => {

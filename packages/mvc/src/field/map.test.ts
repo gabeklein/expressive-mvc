@@ -93,12 +93,11 @@ describe('map', () => {
     expect(items.get().get('a')).toBe('unwrapped');
   });
 
-  it('will not define add in insert mode', () => {
-    expect(() => (managed<string, number>() as any).add(1)).toThrow(TypeError);
-  });
-
-  it('will not define add in create mode', () => {
-    expect(() => (managed((key: string) => ({ key })) as any).add(1)).toThrow(TypeError);
+  it.each([
+    ['insert', () => managed<string, number>()],
+    ['create', () => managed((key: string) => ({ key }))]
+  ])('will not define add in %s mode', (_, create) => {
+    expect(() => (create() as any).add(1)).toThrow(TypeError);
   });
 });
 
@@ -252,20 +251,6 @@ describe('transforms', () => {
 
     expect(() => Array.from(boom)).toThrow('boom');
   });
-
-  it('will track shape and values in effect', async () => {
-    const items = managed(ab());
-
-    expect(await fires(items, ($) => Array.from($.values((v) => v)), () => items.set('a', 2))).toBe(1);
-    expect(await fires(items, ($) => Array.from($.values((v) => v)), () => items.set('c', 3))).toBe(1);
-  });
-
-  it('will track shape only through keys transform', async () => {
-    const items = managed(ab());
-
-    expect(await fires(items, ($) => Array.from($.keys((k) => k)), () => items.set('a', 2))).toBe(0);
-    expect(await fires(items, ($) => Array.from($.keys((k) => k)), () => items.set('c', 3))).toBe(1);
-  });
 });
 
 describe('adoption', () => {
@@ -411,50 +396,26 @@ describe('adoption', () => {
 });
 
 describe('subscriptions', () => {
-  it('will fire on get(key) only when that key changes', async () => {
-    const items = managed(ab());
+  type Items = map.Insert<string, number>;
 
-    expect(await fires(items, ($) => $.get('a'), () => items.set('b', 3))).toBe(0);
-    expect(await fires(items, ($) => $.get('a'), () => items.set('a', 2))).toBe(1);
-  });
-
-  it('will fire on has(key) when that key changes', async () => {
-    const items = managed(ab());
-
-    expect(await fires(items, ($) => $.has('c'), () => items.set('d', 1))).toBe(0);
-    expect(await fires(items, ($) => $.has('c'), () => items.set('c', 1))).toBe(1);
-  });
-
-  it('will fire on size when shape changes', async () => {
-    const items = managed(ab());
-
-    expect(await fires(items, ($) => $.size, () => items.set('a', 2))).toBe(0);
-    expect(await fires(items, ($) => $.size, () => items.set('c', 2))).toBe(1);
-  });
-
-  it('will fire on iteration when values change', async () => {
-    const items = managed(ab());
-
-    expect(await fires(items, ($) => Array.from($.values()), () => items.set('b', 3))).toBe(1);
-  });
-
-  it('will fire on keys when shape changes only', async () => {
-    const items = managed(ab());
-
-    expect(await fires(items, ($) => Array.from($.keys()), () => items.set('a', 2))).toBe(0);
-    expect(await fires(items, ($) => Array.from($.keys()), () => items.set('c', 2))).toBe(1);
-  });
-
-  it('will fire on deleted key subscribers', async () => {
-    const items = managed(ab());
-
-    expect(await fires(items, ($) => $.get('a'), () => items.delete('a'))).toBe(1);
-  });
-
-  it('will not fire when setting unchanged value', async () => {
-    const items = managed(ab());
-
-    expect(await fires(items, ($) => $.get('a'), () => items.set('a', 1))).toBe(0);
+  it.each<[string, ($: Items) => unknown, (items: Items) => unknown, number]>([
+    ['will not fire get(key) when another key changes', ($) => $.get('a'), (items) => items.set('b', 3), 0],
+    ['will fire get(key) when that key changes', ($) => $.get('a'), (items) => items.set('a', 2), 1],
+    ['will fire get(key) when that key is deleted', ($) => $.get('a'), (items) => items.delete('a'), 1],
+    ['will not fire get(key) when setting unchanged value', ($) => $.get('a'), (items) => items.set('a', 1), 0],
+    ['will not fire has(key) when another key is added', ($) => $.has('c'), (items) => items.set('d', 1), 0],
+    ['will fire has(key) when that key is added', ($) => $.has('c'), (items) => items.set('c', 1), 1],
+    ['will not fire size when a value changes', ($) => $.size, (items) => items.set('a', 2), 0],
+    ['will fire size when shape changes', ($) => $.size, (items) => items.set('c', 2), 1],
+    ['will fire iteration when values change', ($) => Array.from($.values()), (items) => items.set('b', 3), 1],
+    ['will not fire keys when values change', ($) => Array.from($.keys()), (items) => items.set('a', 2), 0],
+    ['will fire keys when shape changes', ($) => Array.from($.keys()), (items) => items.set('c', 2), 1],
+    ['will fire values transform when values change', ($) => Array.from($.values((v) => v)), (items) => items.set('a', 2), 1],
+    ['will fire values transform when shape changes', ($) => Array.from($.values((v) => v)), (items) => items.set('c', 3), 1],
+    ['will not fire keys transform when values change', ($) => Array.from($.keys((k) => k)), (items) => items.set('a', 2), 0],
+    ['will fire keys transform when shape changes', ($) => Array.from($.keys((k) => k)), (items) => items.set('c', 3), 1]
+  ])('%s', async (_, read, act, runs) => {
+    expect(await fires(managed(ab()), read, act)).toBe(runs);
   });
 
   it('will track nested observable values', async () => {

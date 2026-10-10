@@ -167,24 +167,15 @@ describe('relay', () => {
     expect(res.body).toEqual({ error: expect.stringMatching(/Several pages/), pages: [{ id: 'a' }, { id: 'b' }] });
   });
 
-  it('will 404 with no pages connected', async () => {
-    const res = await request('POST', '/', '["get"]');
-    expect(res.statusCode).toBe(404);
-    expect(res.body).toEqual({ error: 'No pages connected.', pages: [] });
-  });
-
-  it('will 404 an unknown id', async () => {
-    page('a', () => ({ value: { id: 'a' } }));
-    const res = await request('POST', '/zz', '["get"]');
-    expect(res.statusCode).toBe(404);
-    expect(res.body).toEqual({ error: 'No page zz.', pages: [{ id: 'a' }] });
-  });
-
-  it('will 500 with the page error', async () => {
-    page('a', () => ({ error: 'No method at X.y.' }));
-    const res = await request('POST', '/a', '["call", "X.y"]');
-    expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ error: 'No method at X.y.' });
+  it.each([
+    ['404 with no pages connected', undefined, '/', 404, { error: 'No pages connected.', pages: [] }],
+    ['404 an unknown id', () => ({ value: { id: 'a' } }), '/zz', 404, { error: 'No page zz.', pages: [{ id: 'a' }] }],
+    ['500 with the page error', () => ({ error: 'No method at X.y.' }), '/a', 500, { error: 'No method at X.y.' }]
+  ])('will %s', async (_, respond, path, status, body) => {
+    if (respond) page('a', respond);
+    const res = await request('POST', path, '["get"]');
+    expect(res.statusCode).toBe(status);
+    expect(res.body).toEqual(body);
   });
 
   it('will 504 when the page does not answer', async () => {
@@ -209,20 +200,17 @@ describe('relay', () => {
     expect((await request('PUT')).statusCode).toBe(405);
   });
 
-  it('will refuse browser requests', async () => {
-    expect((await request('GET', '/', '', { origin: 'http://evil.test' })).statusCode).toBe(403);
-    expect((await request('GET', '/', '', { 'sec-fetch-site': 'same-origin' })).statusCode).toBe(403);
-  });
-
-  it('will refuse requests relayed by a proxy or tunnel', async () => {
-    for (const header of ['forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'])
-      expect((await request('GET', '/', '', { [header]: '203.0.113.9' })).statusCode).toBe(403);
-  });
-
-  it('will refuse non-loopback callers', async () => {
-    expect((await request('GET', '/', '', {}, '192.168.1.4')).statusCode).toBe(403);
-    expect((await request('GET', '/', '', {}, null)).statusCode).toBe(403);
-    expect((await request('GET', '/', '', {}, '::1')).statusCode).toBe(200);
-    expect((await request('GET', '/', '', {}, '::ffff:127.0.0.1')).statusCode).toBe(200);
+  it.each([
+    ['a browser origin', { origin: 'http://evil.test' }, '127.0.0.1', 403],
+    ['a browser fetch', { 'sec-fetch-site': 'same-origin' }, '127.0.0.1', 403],
+    ...['forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'].map(
+      (header) => [`a request relayed with ${header}`, { [header]: '203.0.113.9' }, '127.0.0.1', 403]
+    ),
+    ['a non-loopback caller', {}, '192.168.1.4', 403],
+    ['a caller without an address', {}, null, 403],
+    ['IPv6 loopback', {}, '::1', 200],
+    ['IPv4-mapped loopback', {}, '::ffff:127.0.0.1', 200]
+  ] as [string, Record<string, string>, string | null, number][])('will answer %s with %i', async (_, headers, remote, status) => {
+    expect((await request('GET', '/', '', headers, remote)).statusCode).toBe(status);
   });
 });

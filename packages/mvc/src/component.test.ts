@@ -316,35 +316,23 @@ describe('props (static types)', () => {
 });
 
 describe('composed', () => {
-  it('will compose render layers of a State', () => {
+  it.each([
+    ['will compose render layers of a State', false],
+    ['will compose a render sealed by the host', true]
+  ])('%s', (_, sealed) => {
     class Frame extends State {
       render(props?: { children?: unknown }) {
         return `[${props?.children}]`;
       }
     }
 
-    class Page extends Frame {
-      render() {
-        return 'page';
-      }
-    }
-
-    expect(compose.call(Page.new(), {})).toBe('[page]');
-  });
-
-  it('will compose a render sealed by the host', () => {
-    class Frame extends State {
-      render(props?: { children?: unknown }) {
-        return `[${props?.children}]`;
-      }
-    }
-
-    Frame.on({
-      type({ prototype }) {
-        const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
-        Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
-      }
-    });
+    if (sealed)
+      Frame.on({
+        type({ prototype }) {
+          const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
+          Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
+        }
+      });
 
     class Page extends Frame {
       render() {
