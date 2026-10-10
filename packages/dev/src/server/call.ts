@@ -111,12 +111,8 @@ async function failure(error: unknown, endpoints: Endpoint[], dev: boolean): Pro
 async function classId(endpoints: Endpoint[], error: Error): Promise<string | undefined> {
   const ids = new Map<unknown, string>();
 
-  for (const { pattern, exports } of endpoints) {
-    const { classes } = await exports();
-    const path = `/${pattern.join("/")}`;
-
-    for (const [name, Type] of Object.entries(classes)) ids.set(Type, `${path}#${name}`);
-  }
+  for (const { exports } of endpoints)
+    for (const [id, Type] of Object.entries((await exports()).classes)) ids.set(Type, id);
 
   for (let proto = Object.getPrototypeOf(error); proto; proto = Object.getPrototypeOf(proto))
     if (ids.has(proto.constructor)) return ids.get(proto.constructor);
@@ -130,8 +126,9 @@ function statusOf(error: Error): number {
 }
 
 export function verify(path: string, { classes }: Exports): void {
-  for (const [name, Type] of Object.entries(classes)) {
+  for (const [id, Type] of Object.entries(classes)) {
     const isError = typeof Type == "function" && Type.prototype instanceof Error;
+    const name = typeof Type == "function" ? Type.name : id;
 
     if (!isError) throw new Error(`${path} exports ${name}, which is neither an async function nor an Error subclass.`);
   }

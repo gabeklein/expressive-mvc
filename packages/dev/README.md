@@ -14,6 +14,7 @@ app/                  file-based routes
   blog/[slug].tsx     /blog/:slug  param leaf
   docs/[...].tsx      /docs/*      catch-all
   blog/remote.ts      sidecar      server module for /blog and below
+  blog/remote/        sidecar      or a folder of them, any depth, index optional
 app.tsx | src/app.tsx single root component instead of app/ (default export)
 index.ts              optional service entry, run on the server: export default config({ port })
 index.html            optional custom shell (#root and the entry script are injected if missing)
@@ -51,12 +52,14 @@ augmentation (`State.use()` and friends), so nothing else is needed.
 
 `index.ts` runs on the server - in dev on Vite's module runner, in production inside
 `dist/server/index.js`, which serves `dist/client` and falls back to `index.html` for client routes.
-It imports `config` from `@expressive/dev/server`.
+It imports `config` from `@expressive/dev/server`: `port`, and `hashCalls` (below).
 
 ### Sidecars
 
 A `remote.ts` in a route folder runs on the server. Each export is an `async` function; the browser
-imports a stub that calls it.
+imports a stub that calls it. For more than one module, use a `remote/` folder instead: every module
+in it, at any depth, belongs to the parent folder - `app/blog/remote/feed/latest.ts` runs for `/blog`,
+and `remote/` is never a route.
 
 ```ts
 // app/tally/remote.ts
@@ -70,9 +73,15 @@ import { add } from "./remote";
 ```
 
 A call is `POST` to the folder's path with its params filled from the current location (`/blog/a`
-for `app/blog/[slug]/remote.ts`), an `x-expressive-call` header naming the function, and the
-arguments as a JSON array. The reply is the value as JSON, or 204 for `undefined`. Only the folder
-and those below it may import its sidecar.
+for `app/blog/[slug]/remote.ts`), an `x-expressive-call` header naming the function (`add`, or
+`feed/latest:add` inside `remote/`), and the arguments as a JSON array. The reply is the value as
+JSON, or 204 for `undefined`. Only the folder and those below it may import its sidecar.
+
+Only what the client imports is callable: the server accepts calls to the stubs the browser loaded in
+dev, and to those the client build generated in production - a helper module in `remote/` is never
+an endpoint. Remote calls are not a public API. The production build names each call by a hash
+unique to the build, so a stale tab fails rather than calling changed code; `hashCalls: false` in
+`index.ts` keeps readable names, for clients that must outlive a deploy.
 
 A sidecar may also export `Error` subclasses. Thrown on the server, one rejects the call on the
 client as the same class - `instanceof` works - with its message and own fields; a numeric

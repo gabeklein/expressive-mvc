@@ -57,7 +57,7 @@ describe("call dispatch", () => {
 
   const endpoints: Endpoint[] = [
     { pattern: ["tally"], exports: async () => ({ calls, classes: {} }) },
-    { pattern: ["shared"], exports: async () => ({ calls: {}, classes: { Limit, Strange } }) },
+    { pattern: ["shared"], exports: async () => ({ calls: {}, classes: { "/shared#Limit": Limit, "/shared#Strange": Strange } }) },
   ];
 
   it("will reply with a call's value as JSON", async () => {
