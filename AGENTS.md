@@ -126,7 +126,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 - Pushing publishes. Don't push a branch or open a PR beyond what the task at hand calls for.
 - Never use `git stash` as a scratch mechanism. The stash may already hold long-lived work that isn't yours, a bad pathspec makes `stash push` a silent no-op, and the following `stash pop` then applies an unrelated pre-existing stash into the working tree. To check something clean, copy files to scratch and `git checkout HEAD -- <file>`, or use a worktree. If stash is truly unavoidable: `git stash list` first, named push with verified paths, confirm the entry exists, pop by that explicit ref.
 - Before removing a worktree or running `git clean`, check untracked files (`git status --porcelain` plus `git ls-files --others --exclude-standard`), not just merge status - branches here that look disposable by every automated signal (fully merged, zero commits ahead) have carried their entire value as untracked files.
-- Commit messages carry no AI attribution - no `Co-authored-by` bot trailers, no "Generated with" footers.
+- Commit messages and PR descriptions carry no AI attribution - no `Co-authored-by` bot trailers, no "Generated with" footers, no session links.
 
 ### Releasing
 
