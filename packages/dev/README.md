@@ -146,7 +146,8 @@ import Remote from "./remote";
 export class Page extends Component {
   remote = get(Remote);
   render() {
-    return <button onClick={() => this.remote.increment()}>+</button>;
+    const { remote } = this;
+    return <button onClick={() => remote.increment()}>{remote.count}</button>;
   }
 }
 ```
@@ -159,8 +160,12 @@ its last call; when it ends, its context and everything below go with it.
 
 Methods a seat inherits cross too: the build follows its bases by import - source, or a package's
 `.d.ts` - up to `@expressive`'s classes, and the nearest declaration's `private`/`protected` wins. A
-base it cannot follow, such as `extends mixin(State)`, fails the build. Twins carry methods only -
-values and twins made by client `use()` come later.
+base it cannot follow, such as `extends mixin(State)`, fails the build.
+
+A twin holds the seat's public values too. It attaches on construction and suspends until the
+snapshot arrives; each method's reply carries what the call changed, so an awaited call never reads
+stale. Values change on the server only - assigning a twin field throws. Twins made by client
+`use()`, and refresh of changes the server makes on its own, come later.
 
 ## Commands
 
