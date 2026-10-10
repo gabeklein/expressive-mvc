@@ -34,6 +34,15 @@ class Foo extends State {
 class Bar extends State {}
 class Baz extends Bar {}
 
+/** Renders a checker into `wrap`, running `assert` there and proving the checker rendered. */
+function within(assert: () => void, wrap: (check: React.ReactNode) => React.ReactNode) {
+  const Check = vi.fn(() => (assert(), null));
+
+  render(<>{wrap(<Check />)}</>);
+
+  expect(Check).toHaveBeenCalled();
+}
+
 describe('Provider', () => {
   it('will be owned by enclosing Component', () => {
     let host!: State;
@@ -53,16 +62,12 @@ describe('Provider', () => {
   it('will provide a mix of state and models', () => {
     const foo = Foo.new();
 
-    function Check() {
-      expect(Foo.get().is).toBe(foo);
-      expect(Bar.get()).toBeInstanceOf(Bar);
-      return null;
-    }
-
-    render(
-      <Provider for={{ foo, Bar }}>
-        <Check />
-      </Provider>
+    within(
+      () => {
+        expect(Foo.get().is).toBe(foo);
+        expect(Bar.get()).toBeInstanceOf(Bar);
+      },
+      (check) => <Provider for={{ foo, Bar }}>{check}</Provider>
     );
   });
 
@@ -74,18 +79,13 @@ describe('Provider', () => {
 
     const is = vi.fn();
 
-    function Check() {
-      const { foo, bar } = Test.get();
-
-      expect(foo).toBe('hello');
-      expect(bar).toBe(42);
-      return null;
-    }
-
-    render(
-      <Provider for={Test} is={is} foo="hello" bar={42}>
-        <Check />
-      </Provider>
+    within(
+      () => expect(Test.get()).toMatchObject({ foo: 'hello', bar: 42 }),
+      (check) => (
+        <Provider for={Test} is={is} foo="hello" bar={42}>
+          {check}
+        </Provider>
+      )
     );
 
     expect(is).toBeCalledTimes(1);
@@ -160,10 +160,7 @@ describe('Provider', () => {
       value = 'initial';
     }
 
-    const Child = vi.fn(() => {
-      const { value } = Test.get();
-      return <span>{value}</span>;
-    });
+    const Child = () => <span>{Test.get().value}</span>;
 
     const element = render(
       <Provider for={Test} value="first">
@@ -187,18 +184,18 @@ describe('Provider', () => {
   it('will pass props to instance', () => {
     const test = Foo.new();
 
-    function Check() {
-      const { is } = Foo.get();
+    within(
+      () => {
+        const { is } = Foo.get();
 
-      expect(is).toBe(test);
-      expect(is.value).toBe('hello');
-      return null;
-    }
-
-    render(
-      <Provider for={test} value="hello">
-        <Check />
-      </Provider>
+        expect(is).toBe(test);
+        expect(is.value).toBe('hello');
+      },
+      (check) => (
+        <Provider for={test} value="hello">
+          {check}
+        </Provider>
+      )
     );
   });
 
@@ -242,13 +239,11 @@ describe('Provider', () => {
     class Parent extends Test {}
     class Child extends Test {}
 
-    const Example = () => (
+    const element = render(
       <Provider for={Parent}>
         <Provider for={Child} />
       </Provider>
     );
-
-    const element = render(<Example />);
 
     element.unmount();
 
@@ -275,6 +270,31 @@ describe('Provider', () => {
 
       expect(didMount).toBeCalledTimes(1);
       expect(didUnmount).not.toBeCalled();
+
+      element.unmount();
+
+      expect(didUnmount).toBeCalledTimes(1);
+    });
+
+    it('will not repeat under strict mode', () => {
+      const didMount = vi.fn();
+      const didUnmount = vi.fn();
+
+      class Test extends State {
+        mount() {
+          didMount();
+          return didUnmount;
+        }
+      }
+
+      const element = render(
+        <Provider for={Test}>
+          <span />
+        </Provider>,
+        { reactStrictMode: true }
+      );
+
+      expect(didMount).toBeCalledTimes(1);
 
       element.unmount();
 
@@ -308,31 +328,6 @@ describe('Provider', () => {
       element.unmount();
 
       expect(guest.get(null)).toBe(false);
-    });
-
-    it('will not repeat under strict mode', () => {
-      const didMount = vi.fn();
-      const didUnmount = vi.fn();
-
-      class Test extends State {
-        mount() {
-          didMount();
-          return didUnmount;
-        }
-      }
-
-      const element = render(
-        <Provider for={Test}>
-          <span />
-        </Provider>,
-        { reactStrictMode: true }
-      );
-
-      expect(didMount).toBeCalledTimes(1);
-
-      element.unmount();
-
-      expect(didUnmount).toBeCalledTimes(1);
     });
 
     it('will not mount a state swapped in by a later render', () => {
@@ -433,6 +428,20 @@ describe('Provider', () => {
   });
 
   describe('forEach prop', () => {
+    it('will ignore a returned value', () => {
+      let captured!: Foo | Bar;
+      // a concise arrow body returns the state, which must not be mistaken
+      // for a teardown - hence no dispose seam here at all
+      const forEach = vi.fn((state: Foo | Bar) => (captured = state));
+
+      const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
+
+      expect(forEach).toBeCalledTimes(2);
+      expect(captured).toBeInstanceOf(State);
+
+      expect(() => rendered.unmount()).not.toThrow();
+    });
+
     it('will call for each model and cleanup through the state', () => {
       const cleanup = vi.fn();
       const forEach = vi.fn((state: State) => {
@@ -449,20 +458,6 @@ describe('Provider', () => {
       rendered.unmount();
 
       expect(cleanup).toBeCalledTimes(2);
-    });
-
-    it('will ignore a returned value', () => {
-      let captured!: Foo | Bar;
-      // a concise arrow body returns the state, which must not be mistaken
-      // for a teardown - hence no dispose seam here at all
-      const forEach = vi.fn((state: Foo | Bar) => (captured = state));
-
-      const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
-
-      expect(forEach).toBeCalledTimes(2);
-      expect(captured).toBeInstanceOf(State);
-
-      expect(() => rendered.unmount()).not.toThrow();
     });
   });
 
@@ -548,69 +543,61 @@ describe('Provider', () => {
     });
   });
 
-  describe('strict mode', () => {
-    it('will create once, provide and destroy on unmount', async () => {
-      const didCreate = vi.fn();
-      const didDestroy = vi.fn();
+  it('will create once, provide and destroy on unmount under strict mode', async () => {
+    const didCreate = vi.fn();
+    const didDestroy = vi.fn();
 
-      class Test extends State {
-        value = 'hello';
+    class Test extends State {
+      value = 'hello';
 
-        protected new() {
-          didCreate();
-          return didDestroy;
-        }
+      protected new() {
+        didCreate();
+        return didDestroy;
       }
+    }
 
-      const Child = () => Test.get().value;
+    const Child = () => Test.get().value;
 
-      const element = render(
-        <React.StrictMode>
-          <Provider for={Test}>
-            <Child />
-          </Provider>
-        </React.StrictMode>
-      );
+    const element = render(
+      <React.StrictMode>
+        <Provider for={Test}>
+          <Child />
+        </Provider>
+      </React.StrictMode>
+    );
 
-      await flushMicrotasks();
+    await flushMicrotasks();
 
-      expect(element.container.textContent).toBe('hello');
-      expect(didCreate).toBeCalledTimes(1);
-      expect(didDestroy).not.toBeCalled();
+    expect(element.container.textContent).toBe('hello');
+    expect(didCreate).toBeCalledTimes(1);
+    expect(didDestroy).not.toBeCalled();
 
-      element.unmount();
+    element.unmount();
 
-      expect(didDestroy).toBeCalledTimes(1);
-    });
+    expect(didDestroy).toBeCalledTimes(1);
   });
 });
 
 describe('context', () => {
   it('will select closest instance and closest match', () => {
-    function Check() {
-      expect(Foo.get().value).toBe('inner');
-      return null;
-    }
-
-    function CheckMatch() {
-      expect(Bar.get()).toBeInstanceOf(Baz);
-      return null;
-    }
-
-    render(
-      <Provider for={Foo} value="outer">
-        <Provider for={Foo} value="inner">
-          <Check />
+    within(
+      () => expect(Foo.get().value).toBe('inner'),
+      (check) => (
+        <Provider for={Foo} value="outer">
+          <Provider for={Foo} value="inner">
+            {check}
+          </Provider>
         </Provider>
-      </Provider>
+      )
     );
 
-    render(
-      <Provider for={Bar}>
-        <Provider for={Baz}>
-          <CheckMatch />
+    within(
+      () => expect(Bar.get()).toBeInstanceOf(Baz),
+      (check) => (
+        <Provider for={Bar}>
+          <Provider for={Baz}>{check}</Provider>
         </Provider>
-      </Provider>
+      )
     );
   });
 
@@ -653,21 +640,19 @@ describe('context', () => {
   it('will handle complex arrangement', () => {
     const instance = Foo.new();
 
-    function Check() {
-      expect(Foo.get().is).toBe(instance);
-      expect(Bar.get()).toBeInstanceOf(Bar);
-      expect(Baz.get()).toBeInstanceOf(Baz);
-      return null;
-    }
-
-    render(
-      <Provider for={instance}>
-        <Provider for={Baz}>
-          <Provider for={{ Bar }}>
-            <Check />
+    within(
+      () => {
+        expect(Foo.get().is).toBe(instance);
+        expect(Bar.get()).toBeInstanceOf(Bar);
+        expect(Baz.get()).toBeInstanceOf(Baz);
+      },
+      (check) => (
+        <Provider for={instance}>
+          <Provider for={Baz}>
+            <Provider for={{ Bar }}>{check}</Provider>
           </Provider>
         </Provider>
-      </Provider>
+      )
     );
   });
 });
@@ -682,17 +667,13 @@ describe('get instruction', () => {
   }
 
   it('will attach where created by provider', () => {
-    function Check() {
-      expect(Foo.get().bar).toBeInstanceOf(Bar);
-      return null;
-    }
-
-    render(
-      <Provider for={Bar}>
-        <Provider for={Foo}>
-          <Check />
+    within(
+      () => expect(Foo.get().bar).toBeInstanceOf(Bar),
+      (check) => (
+        <Provider for={Bar}>
+          <Provider for={Foo}>{check}</Provider>
         </Provider>
-      </Provider>
+      )
     );
   });
 
@@ -730,11 +711,15 @@ describe('get instruction', () => {
       }
     }
 
+    const is = vi.fn();
+
     render(
       <Provider for={Parent}>
-        <Provider for={Child} />
+        <Provider for={Child} is={is} />
       </Provider>
     );
+
+    expect(is).toBeCalled();
   });
 
   it('will compute immediately in context', () => {
@@ -745,9 +730,7 @@ describe('get instruction', () => {
       foo = get(Foo);
     }
 
-    const FooBar = () => {
-      return <>{Bar.use().foo.value}</>;
-    };
+    const FooBar = () => <>{Bar.use().foo.value}</>;
 
     render(
       <Provider for={Foo}>
@@ -855,10 +838,7 @@ describe('HMR', () => {
       value = 'bar';
     };
 
-    const Child = () => {
-      const { value } = Test.get();
-      return <div>{value}</div>;
-    };
+    const Child = () => <div>{Test.get().value}</div>;
 
     const element = render(
       <Provider for={Control}>
@@ -879,8 +859,6 @@ describe('HMR', () => {
     );
 
     expect(screen).toHaveText('baz');
-
-    element.unmount();
   });
 
   it.todo("will updated consumer if context's instance is replaced", () => {});
@@ -895,25 +873,16 @@ describe('root global', () => {
   it('will get from root unless provided', () => {
     const instance = Global.new();
 
-    function Check() {
-      expect(Global.get().is).toBe(instance);
-      return null;
-    }
+    within(() => expect(Global.get().is).toBe(instance), (check) => check);
 
-    function CheckProvided() {
-      const global = Global.get();
+    within(
+      () => {
+        const global = Global.get();
 
-      expect(global.is).not.toBe(instance);
-      expect(global).toBeInstanceOf(Global);
-      return null;
-    }
-
-    render(<Check />);
-
-    render(
-      <Provider for={Global}>
-        <CheckProvided />
-      </Provider>
+        expect(global.is).not.toBe(instance);
+        expect(global).toBeInstanceOf(Global);
+      },
+      (check) => <Provider for={Global}>{check}</Provider>
     );
 
     instance.set(null);

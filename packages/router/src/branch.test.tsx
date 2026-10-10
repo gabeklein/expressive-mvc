@@ -2,99 +2,103 @@ import { describe, expect, it } from 'vitest';
 
 import { Route, scopeResolves } from './route';
 
-// Pure/lexical opt-out gate: no mounting, no router. Walks JSX props vs a path.
+const leaves = (
+  <>
+    <Route to="a" />
+    <Route to="b" />
+  </>
+);
+
+const group = (
+  <Route to="intro">
+    <Route to="basics" />
+  </Route>
+);
+
+const indexed = (
+  <Route to="intro">
+    <Route />
+    <Route to="basics" />
+  </Route>
+);
+
+const wrapped = (
+  <Route>
+    <Route to="intro">
+      <Route to="basics" />
+    </Route>
+  </Route>
+);
+
+const param = <Route to="posts/:id" />;
+
+const redirecting = (
+  <>
+    <Route to="" redirect="/home" />
+    <Route to="a" />
+  </>
+);
+
+const none = (
+  <Route to="docs">
+    <Route to=":id" />
+    <Route none />
+  </Route>
+);
+
+const nestedNone = (
+  <Route to="a">
+    <Route to="b">
+      <Route to=":id" />
+      <Route none />
+    </Route>
+  </Route>
+);
 
 describe('scopeResolves', () => {
-  it('matches a leaf at the root', () => {
-    const tree = (
-      <>
-        <Route to="a" />
-        <Route to="b" />
-      </>
-    );
-    expect(scopeResolves(tree, '', '/a')).toBe(true);
-    expect(scopeResolves(tree, '', '/b')).toBe(true);
-    expect(scopeResolves(tree, '', '/c')).toBe(false);
+  it('will match a leaf at the root', () => {
+    expect(scopeResolves(leaves, '', '/a')).toBe(true);
+    expect(scopeResolves(leaves, '', '/b')).toBe(true);
+    expect(scopeResolves(leaves, '', '/c')).toBe(false);
   });
 
-  it('see-through: a group counts iff a descendant leaf matches', () => {
-    const tree = (
-      <Route to="intro">
-        <Route to="basics" />
-      </Route>
-    );
-    expect(scopeResolves(tree, '', '/intro/basics')).toBe(true);
-    // strict: no matching descendant -> false (bubbles), NOT a greedy prefix
-    expect(scopeResolves(tree, '', '/intro/bogus')).toBe(false);
-    // bare prefix with no index leaf also misses
-    expect(scopeResolves(tree, '', '/intro')).toBe(false);
+  it('will see through a group only when a descendant leaf matches', () => {
+    expect(scopeResolves(group, '', '/intro/basics')).toBe(true);
+    expect(scopeResolves(group, '', '/intro/bogus')).toBe(false);
+    expect(scopeResolves(group, '', '/intro')).toBe(false);
   });
 
-  it('an index leaf (no `to`) resolves the group base exactly', () => {
-    const tree = (
-      <Route to="intro">
-        <Route />
-        <Route to="basics" />
-      </Route>
-    );
-    expect(scopeResolves(tree, '', '/intro')).toBe(true);
-    expect(scopeResolves(tree, '', '/intro/basics')).toBe(true);
-    expect(scopeResolves(tree, '', '/intro/bogus')).toBe(false);
+  it('will resolve the group base exactly by an index leaf', () => {
+    expect(scopeResolves(indexed, '', '/intro')).toBe(true);
+    expect(scopeResolves(indexed, '', '/intro/basics')).toBe(true);
+    expect(scopeResolves(indexed, '', '/intro/bogus')).toBe(false);
   });
 
-  it('an anonymous (no-`to`) wrapper is transparent, adding no segment', () => {
-    const tree = (
-      <Route>
-        <Route to="intro">
-          <Route to="basics" />
-        </Route>
-      </Route>
-    );
-    expect(scopeResolves(tree, '', '/intro/basics')).toBe(true);
-    expect(scopeResolves(tree, '', '/nope')).toBe(false);
+  it('will treat an anonymous wrapper as transparent', () => {
+    expect(scopeResolves(wrapped, '', '/intro/basics')).toBe(true);
+    expect(scopeResolves(wrapped, '', '/nope')).toBe(false);
   });
 
-  it('captures-bearing leaf still matches', () => {
-    const tree = <Route to="posts/:id" />;
-    expect(scopeResolves(tree, '', '/posts/42')).toBe(true);
-    expect(scopeResolves(tree, '', '/posts')).toBe(false);
+  it('will match a param leaf', () => {
+    expect(scopeResolves(param, '', '/posts/42')).toBe(true);
+    expect(scopeResolves(param, '', '/posts')).toBe(false);
   });
 
-  it('skips a redirect child as a match candidate', () => {
-    const tree = (
-      <>
-        <Route to="" redirect="/home" />
-        <Route to="a" />
-      </>
-    );
-    expect(scopeResolves(tree, '', '/a')).toBe(true);
-    expect(scopeResolves(tree, '', '/anything')).toBe(false);
+  it('will not treat a redirect child as a candidate', () => {
+    expect(scopeResolves(redirecting, '', '/a')).toBe(true);
+    expect(scopeResolves(redirecting, '', '/anything')).toBe(false);
   });
 
-  it('a none Route claims anything within the scope base', () => {
-    const tree = (
-      <Route to="docs">
-        <Route to=":id" />
-        <Route none />
-      </Route>
-    );
-    expect(scopeResolves(tree, '', '/docs')).toBe(true);
-    expect(scopeResolves(tree, '', '/docs/intro')).toBe(true);
-    expect(scopeResolves(tree, '', '/docs/a/b')).toBe(true);
-    expect(scopeResolves(tree, '', '/elsewhere')).toBe(false);
+  it('will claim anything within the scope base with none', () => {
+    expect(scopeResolves(none, '', '/docs')).toBe(true);
+    expect(scopeResolves(none, '', '/docs/intro')).toBe(true);
+    expect(scopeResolves(none, '', '/docs/a/b')).toBe(true);
+    expect(scopeResolves(none, '', '/elsewhere')).toBe(false);
   });
 
-  it('a nested scope none Route resolves its ancestors too', () => {
-    const tree = (
-      <Route to="a">
-        <Route to="b">
-          <Route to=":id" />
-          <Route none />
-        </Route>
-      </Route>
-    );
-    expect(scopeResolves(tree, '', '/a/b')).toBe(true);
-    expect(scopeResolves(tree, '', '/a/b/x/y')).toBe(true);
-    expect(scopeResolves(tree, '', '/a/c')).toBe(false);
+  it('will resolve ancestors for a nested scope none', () => {
+    expect(scopeResolves(nestedNone, '', '/a/b')).toBe(true);
+    expect(scopeResolves(nestedNone, '', '/a/b/x/y')).toBe(true);
+    expect(scopeResolves(nestedNone, '', '/a/c')).toBe(false);
   });
 });

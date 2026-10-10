@@ -19,6 +19,10 @@ class Counter extends State {
   value = 1;
 }
 
+class Other extends State {
+  label = 'other';
+}
+
 describe('hot', () => {
   it('will refresh a component in place', async () => {
     const id = module();
@@ -88,10 +92,6 @@ describe('hot', () => {
   it('will replace State.use() slots whose order changed', async () => {
     const id = module();
     const destroyed = vi.fn();
-
-    class Other extends State {
-      label = 'other';
-    }
 
     class Tracked extends State {
       new() {

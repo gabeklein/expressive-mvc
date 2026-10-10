@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
 import type { ResolvedConfig, ViteDevServer, WebSocketClient } from 'vite';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CALL_TIMEOUT, LIST_TIMEOUT, plugin, relay } from './plugin';
 
@@ -105,8 +105,11 @@ afterEach(() => {
 });
 
 describe('relay', () => {
+  let { page, clients, answer, request } = setup();
+
+  beforeEach(() => void ({ page, clients, answer, request } = setup()));
+
   it('will list live pages', async () => {
-    const { page, request } = setup();
     page('a', () => ({ value: { id: 'a' } }));
     page('b', () => ({ value: { id: 'b' } }));
     const res = await request('GET');
@@ -116,14 +119,12 @@ describe('relay', () => {
   });
 
   it('will drop a page whose socket closed', async () => {
-    const { page, clients, request } = setup();
     clients.delete(page('a', () => ({ value: { id: 'a' } })));
     expect((await request('GET')).body).toEqual([]);
   });
 
   it('will omit a page that errors or does not answer', async () => {
     vi.useFakeTimers();
-    const { page, request } = setup();
     page('a', () => ({ error: 'broken' }));
     page('b', () => undefined);
     const res = request('GET');
@@ -132,7 +133,6 @@ describe('relay', () => {
   });
 
   it('will call a page by id', async () => {
-    const { page, request } = setup();
     const respond = vi.fn(() => ({ value: 'typed' }));
     page('a', respond);
     page('b');
@@ -143,7 +143,6 @@ describe('relay', () => {
   });
 
   it('will split a dotted method into a path', async () => {
-    const { page, request } = setup();
     const respond = vi.fn(() => ({ value: [] }));
     page('a', respond);
     await request('POST', '/a?x', '["journal.frames", { "since": 3 }]');
@@ -151,19 +150,16 @@ describe('relay', () => {
   });
 
   it('will call the only page without an id', async () => {
-    const { page, request } = setup();
     page('a', () => ({ value: 1 }));
     expect((await request('POST', '/', '["get"]')).body).toBe(1);
   });
 
   it('will answer null when the page sends no value', async () => {
-    const { page, request } = setup();
     page('a', () => ({}));
     expect((await request('POST', '/a', '["set", "x", 1]')).body).toBeNull();
   });
 
   it('will refuse to guess between several pages', async () => {
-    const { page, request } = setup();
     page('a', (call) => (call === 'info' ? { value: { id: 'a' } } : {}));
     page('b', (call) => (call === 'info' ? { value: { id: 'b' } } : {}));
     const res = await request('POST', '/', '["get"]');
@@ -172,14 +168,12 @@ describe('relay', () => {
   });
 
   it('will 404 with no pages connected', async () => {
-    const { request } = setup();
     const res = await request('POST', '/', '["get"]');
     expect(res.statusCode).toBe(404);
     expect(res.body).toEqual({ error: 'No pages connected.', pages: [] });
   });
 
   it('will 404 an unknown id', async () => {
-    const { page, request } = setup();
     page('a', () => ({ value: { id: 'a' } }));
     const res = await request('POST', '/zz', '["get"]');
     expect(res.statusCode).toBe(404);
@@ -187,7 +181,6 @@ describe('relay', () => {
   });
 
   it('will 500 with the page error', async () => {
-    const { page, request } = setup();
     page('a', () => ({ error: 'No method at X.y.' }));
     const res = await request('POST', '/a', '["call", "X.y"]');
     expect(res.statusCode).toBe(500);
@@ -196,7 +189,6 @@ describe('relay', () => {
 
   it('will 504 when the page does not answer', async () => {
     vi.useFakeTimers();
-    const { page, request } = setup();
     page('a', () => undefined);
     const res = request('POST', '/a', '["get"]');
     await vi.advanceTimersByTimeAsync(CALL_TIMEOUT);
@@ -204,36 +196,30 @@ describe('relay', () => {
   });
 
   it('will ignore an answer nobody waits for', async () => {
-    const { answer } = setup();
     expect(() => answer({ rid: 99, value: 1 })).not.toThrow();
   });
 
   it('will 400 a body that is not [method, ...args]', async () => {
-    const { request } = setup();
     for (const body of ['', 'nope', '"get"', '{}', '[1]'])
       expect((await request('POST', '/', body)).statusCode).toBe(400);
   });
 
   it('will 405 other methods', async () => {
-    const { request } = setup();
     expect((await request('GET', '/a')).statusCode).toBe(405);
     expect((await request('PUT')).statusCode).toBe(405);
   });
 
   it('will refuse browser requests', async () => {
-    const { request } = setup();
     expect((await request('GET', '/', '', { origin: 'http://evil.test' })).statusCode).toBe(403);
     expect((await request('GET', '/', '', { 'sec-fetch-site': 'same-origin' })).statusCode).toBe(403);
   });
 
   it('will refuse requests relayed by a proxy or tunnel', async () => {
-    const { request } = setup();
     for (const header of ['forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'])
       expect((await request('GET', '/', '', { [header]: '203.0.113.9' })).statusCode).toBe(403);
   });
 
   it('will refuse non-loopback callers', async () => {
-    const { request } = setup();
     expect((await request('GET', '/', '', {}, '192.168.1.4')).statusCode).toBe(403);
     expect((await request('GET', '/', '', {}, null)).statusCode).toBe(403);
     expect((await request('GET', '/', '', {}, '::1')).statusCode).toBe(200);

@@ -28,7 +28,8 @@ interface Run {
   data?: Record<string, unknown>;
 }
 
-async function run(code: string, { locals, replace = {}, before, next, ssr = false, data = {} }: Run) {
+async function run(code: string, options: Run) {
+  const { locals, replace = {}, before, next, ssr = false, data = {} } = options;
   const output = await inject(code, ssr);
   const body = output.replace(/^import .*$/gm, '').replaceAll('import.meta.hot', 'hot');
   const hot = { data: Object.assign(data, before && { expressive: before }), accept: vi.fn(), invalidate: vi.fn() };
@@ -39,7 +40,7 @@ async function run(code: string, { locals, replace = {}, before, next, ssr = fal
     hot, location, accept, State, vi.fn(), ...Object.values(locals)
   );
 
-  if (next) hot.accept.mock.calls[0][0](next);
+  if ('next' in options) hot.accept.mock.calls[0][0](next);
 
   return { hot, location: location! };
 }
@@ -202,17 +203,19 @@ describe('update', () => {
   class Plain {}
   const App = () => null;
   const source = 'export class Store {}\nclass Local {}\nclass Plain {}\nexport const App = () => null;\nexport let value = 1;';
+  const locals = { Store, Local: Store, Plain, App, value: 1 };
+  const update = (options: Partial<Run>) => run(source, { locals, ...options });
 
   it('will remember classes on first run', async () => {
-    const { hot, location } = await run(source, { locals: { Store, Local: Store, Plain, App, value: 1 } });
+    const { hot, location } = await update({});
 
     expect(hot.data.expressive).toEqual({ Store, Local: Store, Plain });
     expect(location.reload).not.toHaveBeenCalled();
   });
 
   it('will keep patched classes', async () => {
-    const { hot, location } = await run(source, {
-      locals: { Store: class Store extends State {}, Local: Store, Plain, App, value: 1 },
+    const { hot, location } = await update({
+      locals: { ...locals, Store: class Store extends State {} },
       replace: { Store },
       before: { Store, Local: Store, Plain: class Plain {} }
     });
@@ -227,8 +230,8 @@ describe('update', () => {
 
     addEventListener('expressive:reload', announce);
 
-    const { location } = await run(source, {
-      locals: { Store, Local, Plain, App, value: 1 },
+    const { location } = await update({
+      locals: { ...locals, Local },
       before: { Store, Local: class Local extends State {}, Plain }
     });
 
@@ -243,8 +246,8 @@ describe('update', () => {
 
     addEventListener('expressive:reload', announce);
 
-    const { hot } = await run(source, {
-      locals: { Store, Local: class Local extends State {}, Plain, App, value: 1 },
+    const { hot } = await update({
+      locals: { ...locals, Local: class Local extends State {} },
       before: { Store, Local: Store, Plain },
       ssr: true
     });
@@ -256,11 +259,7 @@ describe('update', () => {
   });
 
   it('will invalidate importers of a changed plain export on the server', async () => {
-    const { hot } = await run(source, {
-      locals: { Store, Local: Store, Plain, App, value: 1 },
-      next: { Store, App, value: 2 },
-      ssr: true
-    });
+    const { hot } = await update({ next: { Store, App, value: 2 }, ssr: true });
 
     expect(hot.invalidate).toHaveBeenCalledWith('"value" export cannot be hot-patched.');
   });
@@ -278,36 +277,25 @@ describe('update', () => {
   });
 
   it('will pass without next exports', async () => {
-    const { hot } = await run(source, { locals: { Store, Local: Store, Plain, App, value: 1 } });
-
-    hot.accept.mock.calls[0][0](undefined);
+    const { hot } = await update({ next: undefined });
 
     expect(hot.invalidate).not.toHaveBeenCalled();
   });
 
   it('will leave a changed State class to the reload', async () => {
-    const { hot } = await run(source, {
-      locals: { Store, Local: Store, Plain, App, value: 1 },
-      next: { Store: class Store extends State {}, App, value: 1 }
-    });
+    const { hot } = await update({ next: { Store: class Store extends State {}, App, value: 1 } });
 
     expect(hot.invalidate).not.toHaveBeenCalled();
   });
 
   it('will pass a changed component', async () => {
-    const { hot } = await run(source, {
-      locals: { Store, Local: Store, Plain, App, value: 1 },
-      next: { Store, App: () => null, value: 1 }
-    });
+    const { hot } = await update({ next: { Store, App: () => null, value: 1 } });
 
     expect(hot.invalidate).not.toHaveBeenCalled();
   });
 
   it('will invalidate another changed export', async () => {
-    const { hot } = await run(source, {
-      locals: { Store, Local: Store, Plain, App, value: 1 },
-      next: { Store, App, value: 2 }
-    });
+    const { hot } = await update({ next: { Store, App, value: 2 } });
 
     expect(hot.invalidate).toHaveBeenCalledWith('"value" export cannot be hot-patched.');
   });

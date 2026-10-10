@@ -6,7 +6,7 @@ import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
 import * as hot from '@expressive/mvc/hot';
-import { flushMicrotasks, mockPromise } from '../test.setup';
+import { flushMicrotasks, mockPromise, mount, place } from '../test.setup';
 
 describe('MVC adapter', () => {
   it('will update when a State fetched via this.get changes', async () => {
@@ -22,8 +22,7 @@ describe('MVC adapter', () => {
     }
 
     const auth = Auth.new();
-    const root = document.createElement('main');
-    const release = render(<View />, root);
+    const [, root, release] = mount(View);
 
     expect(root.textContent).toBe('foo');
 
@@ -60,9 +59,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    const root = document.createElement('main');
-    let counter!: Counter;
-    const release = render(<Counter is={(value) => (counter = value)} />, root);
+    const [counter, root, release] = mount(Counter);
 
     expect(root.textContent).toBe('0');
     expect(renders).toHaveBeenCalledOnce();
@@ -113,9 +110,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let owner!: Owner;
-    const root = document.createElement('main');
-    const release = render(<Owner is={(value) => (owner = value)} />, root);
+    const [owner, root, release] = mount(Owner);
 
     expect(root.textContent).toBe('1:0');
     expect(lifecycle).toEqual(['new', 'mount']);
@@ -153,8 +148,7 @@ describe('MVC adapter', () => {
       return <Leaf />;
     }
 
-    const root = document.createElement('main');
-    render(<><Host /><Sibling /></>, root);
+    const root = place(<><Host /><Sibling /></>);
     expect(root.textContent).toBe('Adanone');
 
     session.name = 'Grace';
@@ -185,9 +179,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let owner!: Owner;
-    const root = document.createElement('main');
-    render(<Owner is={(value) => (owner = value)} />, root);
+    const [owner, root] = mount(Owner);
     owner.value = 2;
     await flushMicrotasks();
 
@@ -341,9 +333,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let panel!: Panel;
-    const root = document.createElement('main');
-    render(<Panel is={(value) => (panel = value)} />, root);
+    const [panel, root] = mount(Panel);
     expect(root.textContent).toBe('one?one');
 
     panel.value = 'two';
@@ -392,9 +382,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let table!: Table;
-    const root = document.createElement('main');
-    render(<Table is={(value) => (table = value)} />, root);
+    const [table, root] = mount(Table);
     expect(root.textContent).toBe('aa');
 
     table.row.label = 'b';
@@ -430,9 +418,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let table!: Table;
-    const root = document.createElement('main');
-    render(<Table is={(value) => (table = value)} />, root);
+    const [table, root] = mount(Table);
     expect(root.textContent).toBe('a');
 
     table.pick = 1;
@@ -555,9 +541,7 @@ describe('Component for', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    const release = render(<App is={(a) => (app = a)} />, root);
+    const [app, root, release] = mount(App);
     expect(root.textContent).toBe('Ada');
 
     app.value = 'Grace';

@@ -2,12 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, has, map } from '@expressive/mvc';
 import { Fragment, Portal, render } from './index';
-import { flushMicrotasks, mockPromise } from '../test.setup';
+import { flushMicrotasks, mockPromise, mount, place } from '../test.setup';
 import { vnode } from './vnode';
 
 if (false) {
   // @ts-expect-error @expressive/dom uses className, not the class attribute name.
   <div class="legacy" />;
+}
+
+function Pair({ value }: { value: string }) {
+  return <><b>{value}</b><i>{value}</i></>;
 }
 
 describe('render', () => {
@@ -71,9 +75,7 @@ describe('render', () => {
       }
     }
 
-    let view!: Native;
-    const root = document.createElement('main');
-    const release = render(<Native is={(value) => (view = value)} />, root);
+    const [view, root, release] = mount(Native);
     const node = root.querySelector('div')!;
 
     expect(node.className).toBe('ready');
@@ -137,9 +139,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
     const node = root.querySelector('div')!;
 
     expect(node.style.getPropertyValue('--gap')).toBe('4px');
@@ -209,9 +209,7 @@ describe('render', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     renders.mockClear();
 
     app.count.value = 1;
@@ -230,9 +228,7 @@ describe('render', () => {
       }
     }
 
-    let view!: Link;
-    const root = document.createElement('main');
-    render(<Link is={(value) => (view = value)} />, root);
+    const [view, root] = mount(Link);
     const node = root.querySelector('a')!;
 
     view.on = false;
@@ -252,9 +248,7 @@ describe('render', () => {
       }
     }
 
-    let view!: Form;
-    const root = document.createElement('main');
-    render(<Form is={(value) => (view = value)} />, root);
+    const [view, root] = mount(Form);
     const [text, box] = root.querySelectorAll('input');
 
     text.value = 'typed';
@@ -268,9 +262,7 @@ describe('render', () => {
 
   it('will attach refs after children mount', () => {
     let count = -1;
-    const root = document.createElement('main');
-
-    render(<ul ref={(node) => { if (node) count = node.children.length; }}><li /><li /></ul>, root);
+    place(<ul ref={(node) => { if (node) count = node.children.length; }}><li /><li /></ul>);
 
     expect(count).toBe(2);
   });
@@ -288,9 +280,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
 
     view.raw = true;
     await flushMicrotasks();
@@ -322,9 +312,7 @@ describe('render', () => {
       }
     }
 
-    let parent!: Parent;
-    const root = document.createElement('main');
-    render(<Parent is={(value) => (parent = value)} />, root);
+    const [parent, root] = mount(Parent);
     const span = root.querySelector('span');
 
     parent.label = 'b';
@@ -344,13 +332,10 @@ describe('render', () => {
   });
 
   it('will type SVG attributes and custom properties', () => {
-    const root = document.createElement('main');
-
-    render(
+    const root = place(
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" style={{ '--tone': 'red' }}>
         <path d="M0 0L10 10" fill="none" stroke="red" transform="scale(1)" />
-      </svg>,
-      root
+      </svg>
     );
 
     const path = root.querySelector('path')!;
@@ -386,9 +371,7 @@ describe('render', () => {
       }
     }
 
-    let view!: Styled;
-    const root = document.createElement('main');
-    render(<Styled is={(value) => (view = value)} />, root);
+    const [view, root] = mount(Styled);
     const node = root.querySelector('div')!;
 
     expect(node.className).toBe('external base two height: 12px');
@@ -433,9 +416,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
     const node = root.querySelector('div')!;
 
     expect(node.className).toBe('leaf local inner call');
@@ -451,9 +432,7 @@ describe('render', () => {
 
   it('will not forward class through components', () => {
     const Leaf = (_props: any) => <div className="leaf" />;
-    const root = document.createElement('main');
-
-    render(<Leaf {...({ class: 'outer' } as any)} />, root);
+    const root = place(<Leaf {...({ class: 'outer' } as any)} />);
 
     expect(root.querySelector('div')?.className).toBe('leaf');
   });
@@ -464,9 +443,7 @@ describe('render', () => {
         <input style={{ ...style, outlineStyle: 'none' }} />
       </label>
     );
-    const root = document.createElement('main');
-
-    render(<Field style={['invalid', { color: 'red' }]} />, root);
+    const root = place(<Field style={['invalid', { color: 'red' }]} />);
 
     const input = root.querySelector('input')!;
     expect(root.querySelector('label')?.hasAttribute('class')).toBe(false);
@@ -481,9 +458,7 @@ describe('render', () => {
       received.push(style);
       return <i />;
     };
-    const root = document.createElement('main');
-
-    render(<><Read style={[{ color: 'red' }, false, ['tag', { color: 'blue', width: 2 }]]} /><Read style={[false, null]} /></>, root);
+    place(<><Read style={[{ color: 'red' }, false, ['tag', { color: 'blue', width: 2 }]]} /><Read style={[false, null]} /></>);
 
     const [style, empty] = received;
     expect({ ...style }).toMatchObject({ color: 'blue', width: 2 });
@@ -498,9 +473,7 @@ describe('render', () => {
       handles.push(style);
       return null;
     };
-    const root = document.createElement('main');
-
-    render(<><Capture style={['a', { color: 'red', width: 1 }]} /><Capture style={['b', { height: 2 }]} /></>, root);
+    place(<><Capture style={['a', { color: 'red', width: 1 }]} /><Capture style={['b', { height: 2 }]} /></>);
 
     const [a, b] = handles;
     const { color, ...rest } = a;
@@ -545,9 +518,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
 
     view.count = 1;
     await flushMicrotasks();
@@ -572,9 +543,7 @@ describe('render', () => {
       }
     }
 
-    const root = document.createElement('main');
-
-    render(<><Field style="read" /><Declared style="owned" /></>, root);
+    const root = place(<><Field style="read" /><Declared style="owned" /></>);
 
     expect(root.querySelector('label')?.hasAttribute('class')).toBe(false);
     expect(root.querySelector('input')?.className).toBe('read');
@@ -595,9 +564,7 @@ describe('render', () => {
       </section>
     );
     const Instance = ({ style }: any) => new Inner({ style });
-    const root = document.createElement('main');
-
-    render(<><Placed style={['selected', { color: 'red' }]} /><Instance {...({ style: 'placed' } as any)} /></>, root);
+    const root = place(<><Placed style={['selected', { color: 'red' }]} /><Instance {...({ style: 'placed' } as any)} /></>);
     const [selected, placed] = root.querySelectorAll('span');
 
     expect(root.querySelector('section')?.hasAttribute('class')).toBe(false);
@@ -619,9 +586,7 @@ describe('render', () => {
       }
     }
 
-    let view!: View;
-    const root = document.createElement('main');
-    render(<View is={(value) => (view = value)} />, root);
+    const [view, root] = mount(View);
     expect(root.querySelector('span')?.className).toBe('active');
 
     view.active = false;
@@ -631,9 +596,7 @@ describe('render', () => {
 
   it('will forward appearance to fragment roots', () => {
     const Pair = () => <><i /><b /></>;
-    const root = document.createElement('main');
-
-    render(<Pair style="shared" />, root);
+    const root = place(<Pair style="shared" />);
 
     expect([...root.children].map((node) => node.className)).toEqual(['shared', 'shared']);
   });
@@ -663,9 +626,7 @@ describe('render', () => {
       }
     }
 
-    let shapes!: Shapes;
-    const root = document.createElement('main');
-    render(<Shapes is={(value) => (shapes = value)} />, root);
+    const [shapes, root] = mount(Shapes);
 
     expect(root.textContent).toBe('text:1shape');
     expect(root.querySelector('circle')?.namespaceURI).toBe('http://www.w3.org/2000/svg');
@@ -688,9 +649,7 @@ describe('render', () => {
       }
     }
 
-    let list!: List;
-    const root = document.createElement('main');
-    render(<List is={(value) => (list = value)} />, root);
+    const [list, root] = mount(List);
     const before = [...root.querySelectorAll('li')];
 
     list.items = ['c', 'a', 'b'];
@@ -710,9 +669,7 @@ describe('render', () => {
       }
     }
 
-    let dial!: Dial;
-    const root = document.createElement('main');
-    render(<Dial is={(value) => (dial = value)} />, root);
+    const [dial, root] = mount(Dial);
     const svg = root.querySelector('svg')!;
 
     expect(svg.getAttribute('tabindex')).toBe('0');
@@ -725,8 +682,7 @@ describe('render', () => {
   });
 
   it('will write contentEditable as an enumerated attribute', () => {
-    const root = document.createElement('main');
-    render(<><div contentEditable={false} /><div contentEditable={true} /></>, root);
+    const root = place(<><div contentEditable={false} /><div contentEditable={true} /></>);
     const [off, on] = root.querySelectorAll('div');
 
     expect(off.getAttribute('contenteditable')).toBe('false');
@@ -743,9 +699,7 @@ describe('render', () => {
       }
     }
 
-    let flags!: Flags;
-    const root = document.createElement('main');
-    render(<Flags is={(value) => (flags = value)} />, root);
+    const [flags, root] = mount(Flags);
     const link = root.querySelector('a')!;
 
     expect(link.getAttribute('data-on')).toBe('true');
@@ -772,11 +726,8 @@ describe('render', () => {
       }
     }
 
-    let editor!: Editor;
-    const detached = document.createElement('main');
-    render(<input autofocus />, detached);
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<Editor is={(value) => (editor = value)} />, root);
+    const detached = place(<input autofocus />);
+    const [editor, root] = mount(Editor, {}, document.body.appendChild(document.createElement('main')));
 
     expect(document.activeElement).not.toBe(detached.querySelector('input'));
 
@@ -808,8 +759,7 @@ describe('render', () => {
       }
     }
 
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<Name />, root);
+    const root = place(<Name />, document.body.appendChild(document.createElement('main')));
     const input = root.querySelector('input')!;
 
     input.value = 'abcd';
@@ -834,8 +784,7 @@ describe('render', () => {
       }
     }
 
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<Name />, root);
+    const root = place(<Name />, document.body.appendChild(document.createElement('main')));
     const input = root.querySelector('input')!;
     const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value')!;
 
@@ -874,8 +823,7 @@ describe('render', () => {
       }
     }
 
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<Form />, root);
+    const root = place(<Form />, document.body.appendChild(document.createElement('main')));
     const [box, field] = root.querySelectorAll('input');
 
     box.checked = true;
@@ -896,8 +844,7 @@ describe('render', () => {
   });
 
   it('will keep a controlled field without a handler on its value', async () => {
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<><input value="fixed" /><input type="checkbox" checked={false} /><input /><input type="range" value={150} max={200} /><select value="b"><option value="a" /><option value="b" /></select></>, root);
+    const root = place(<><input value="fixed" /><input type="checkbox" checked={false} /><input /><input type="range" value={150} max={200} /><select value="b"><option value="a" /><option value="b" /></select></>, document.body.appendChild(document.createElement('main')));
     const [text, box, free, range] = root.querySelectorAll('input');
     const select = root.querySelector('select')!;
 
@@ -932,8 +879,7 @@ describe('render', () => {
       return <>{list}{pool}{values}</>;
     }
 
-    const root = document.createElement('main');
-    render(<Collections />, root);
+    const root = place(<Collections />);
     expect(root.textContent).toBe('onePA');
 
     list.push('two');
@@ -966,9 +912,7 @@ describe('render', () => {
       }
     }
 
-    let lists!: Lists;
-    const root = document.createElement('main');
-    render(<Lists is={(value) => (lists = value)} />, root);
+    const [lists, root] = mount(Lists);
     expect(root.textContent).toBe('onePA');
 
     lists.list.push('two');
@@ -1005,9 +949,7 @@ describe('render', () => {
       }
     }
 
-    let list!: Items;
-    const root = document.createElement('main');
-    render(<Items is={(value) => (list = value)} />, root);
+    const [list, root] = mount(Items);
     const [a, b] = root.querySelectorAll('li');
 
     list.tick++;
@@ -1038,8 +980,7 @@ describe('render', () => {
       }
     }
 
-    let modal!: Modal;
-    const release = render(<Modal is={(value) => (modal = value)} />, document.createElement('main'));
+    const [modal, , release] = mount(Modal);
 
     expect(first.textContent).toBe('open');
 
@@ -1109,9 +1050,7 @@ describe('render', () => {
       }
     }
 
-    let list!: List;
-    const root = document.createElement('dl');
-    render(<List is={(value) => (list = value)} />, root);
+    const [list, root] = mount(List, {}, document.createElement('dl'));
 
     const first = root.querySelector('dt');
 
@@ -1135,9 +1074,7 @@ describe('render', () => {
       }
     }
 
-    let modal!: Modal;
-    const root = document.createElement('main');
-    const release = render(<Modal is={(value) => (modal = value)} />, root);
+    const [modal, root, release] = mount(Modal);
 
     expect(root.querySelector('button')).toBeNull();
     expect(aside.textContent).toBe('open');
@@ -1186,9 +1123,7 @@ describe('render', () => {
       }
     }
 
-    let parent!: Parent;
-    const root = document.createElement('main');
-    render(<Parent is={(value) => (parent = value)} />, root);
+    const [parent, root] = mount(Parent);
     const span = root.querySelector('span');
     parent.tick++;
     await flushMicrotasks();
@@ -1222,9 +1157,7 @@ describe('render', () => {
       }
     }
 
-    let parent!: Parent;
-    const root = document.createElement('main');
-    const release = render(<Parent is={(value) => (parent = value)} />, root);
+    const [parent, root, release] = mount(Parent);
     parent.tick++;
     await flushMicrotasks();
     expect(root.textContent).toBe('1messagefirst');
@@ -1250,9 +1183,7 @@ describe('render', () => {
       }
     }
 
-    let keys!: Keys;
-    const root = document.createElement('main');
-    render(<Keys is={(value) => (keys = value)} />, root);
+    const [keys, root] = mount(Keys);
     keys.mode = 1;
     await flushMicrotasks();
     expect(root.textContent).toBe('twothree');
@@ -1263,10 +1194,6 @@ describe('render', () => {
   });
 
   it('will move a keyed multi-node fragment as one range', async () => {
-    function Pair({ value }: { value: string }) {
-      return <><b>{value}</b><i>{value}</i></>;
-    }
-
     class Pairs extends Component {
       order = ['a', 'b'];
       render() {
@@ -1274,9 +1201,7 @@ describe('render', () => {
       }
     }
 
-    let pairs!: Pairs;
-    const root = document.createElement('main');
-    render(<Pairs is={(value) => (pairs = value)} />, root);
+    const [pairs, root] = mount(Pairs);
     pairs.order = ['b', 'a'];
     await flushMicrotasks();
     expect([...root.querySelectorAll('b, i')].map((node) => node.textContent)).toEqual(['b', 'b', 'a', 'a']);
@@ -1295,7 +1220,6 @@ describe('render', () => {
 
 describe('renderable State', () => {
   it('will be owned by enclosing Component', () => {
-    let outer!: Outer;
     let inner!: State;
 
     class Panel extends State {
@@ -1310,12 +1234,10 @@ describe('renderable State', () => {
       }
     }
 
-    const release = render(<Outer is={(value) => (outer = value)} />, document.createElement('main'));
+    const [outer] = mount(Outer);
 
     expect(outer.get(State, false)).toBeUndefined();
     expect(inner.get(State)).toBe(outer);
-
-    release();
   });
 
   it('will render a State with a render method', async () => {
@@ -1368,9 +1290,7 @@ describe('renderable State', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     expect(root.textContent).toBe('one!');
 
     app.label = 'two';
@@ -1433,14 +1353,7 @@ describe('renderable State', () => {
       return <b>{Session.get().user}</b>;
     }
 
-    let view!: SessionView;
-    const root = document.createElement('main');
-    render(
-      <SessionView user="ada" is={(value) => (view = value)}>
-        <Leaf />
-      </SessionView>,
-      root
-    );
+    const [view, root] = mount(SessionView, { user: 'ada', children: <Leaf /> });
 
     expect(root.textContent).toBe('ada');
     expect(view).toBeInstanceOf(Session);
@@ -1459,8 +1372,7 @@ describe('renderable State', () => {
     }
 
     const panel = Panel.new();
-    const root = document.createElement('main');
-    render(<div>{panel}</div>, root);
+    const root = place(<div>{panel}</div>);
     expect(root.textContent).toBe('inline');
 
     panel.label = 'changed';
@@ -1505,14 +1417,11 @@ describe('renderable State', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     expect(root.textContent).toBe('outer');
     expect(app.caught).toBe(1);
 
-    const other = document.createElement('main');
-    render(<Guarded />, other);
+    const other = place(<Guarded />);
     expect(other.textContent).toBe('guarded');
     await flushMicrotasks();
     expect(other.textContent).toBe('guarded');
@@ -1528,8 +1437,7 @@ describe('renderable State', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Plain fallback={<i>loading</i>} />, root);
+    const root = place(<Plain fallback={<i>loading</i>} />);
     expect(root.textContent).toBe('loading');
 
     loaded.resolve(() => <b>ready</b>);
@@ -1555,9 +1463,7 @@ describe('renderable State', () => {
       }
     }
 
-    let report!: Report;
-    const root = document.createElement('main');
-    render(<Report is={(value) => (report = value)} fallback={<i>loading</i>} />, root);
+    const [report, root] = mount(Report, { fallback: <i>loading</i> });
     expect(root.textContent).toBe('loading');
 
     report.count = 2;
@@ -1580,12 +1486,10 @@ describe('renderable State', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Guarded fallback={<i>element</i>} />, root);
+    const root = place(<Guarded fallback={<i>element</i>} />);
     expect(root.textContent).toBe('element');
 
-    const other = document.createElement('main');
-    render(<><Guarded /><div>{Guarded.new() as never}</div></>, other);
+    const other = place(<><Guarded /><div>{Guarded.new() as never}</div></>);
     expect(other.textContent).toBe('membermember');
 
     if (false) {
@@ -1611,8 +1515,7 @@ describe('renderable State', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(
+    const root = place(
       <Plain
         is={(value) => (plain = value)}
         fallback={<i>recovering</i>}
@@ -1620,8 +1523,7 @@ describe('renderable State', () => {
           caught(error.message, instance);
           instance.broken = false;
         }}
-      />,
-      root
+      />
     );
 
     expect(caught).toHaveBeenCalledWith('broken', plain);
@@ -1648,8 +1550,7 @@ describe('renderable State', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Outer />, root);
+    const root = place(<Outer />);
     expect(received).toHaveBeenCalledWith('inner');
     expect(root.textContent).toBe('outer');
   });
@@ -1666,9 +1567,7 @@ describe('renderable State', () => {
       }
     }
 
-    let panel!: Panel;
-    const root = document.createElement('main');
-    render(<Panel is={(value) => (panel = value)} />, root);
+    const [panel, root] = mount(Panel);
     expect(root.querySelector('b')?.textContent).toBe('x');
     expect(panel.Badge).toBe(First);
 
@@ -1692,9 +1591,7 @@ describe('renderable State', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     expect(root.textContent).toBe('ab');
 
     app.items = ['b', 'c'];

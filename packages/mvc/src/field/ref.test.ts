@@ -4,21 +4,15 @@ import { ref } from './ref';
 import { set } from './set';
 
 describe('property', () => {
+  class Subject extends State {
+    ref = ref<string>();
+  }
+
   it('will not be enumerable', () => {
-    class Test extends State {
-      value = ref<string>();
-    }
-
-    const test = Test.new();
-
-    expect(Object.keys(test)).not.toContain('value');
+    expect(Object.keys(Subject.new())).not.toContain('ref');
   });
 
   it('will set and get value via current, call or get()', async () => {
-    class Subject extends State {
-      ref = ref<string>();
-    }
-
     const state = Subject.new();
 
     expect(state.ref.get()).toBeNull();
@@ -37,10 +31,6 @@ describe('property', () => {
   });
 
   it('will reference parent', () => {
-    class Subject extends State {
-      ref = ref<string>();
-    }
-
     const state = Subject.new();
 
     expect(state.ref.is).toBe(state);
@@ -48,10 +38,6 @@ describe('property', () => {
   });
 
   it('will subscribe from ref-object', async () => {
-    class Subject extends State {
-      ref = ref<string>();
-    }
-
     const state = Subject.new();
     const callback = vi.fn();
 
@@ -102,7 +88,7 @@ describe('property', () => {
     expect(didTrigger).toBeCalled();
   });
 
-  it('will not callback when set to null', async () => {
+  it('will not callback when set to null', () => {
     const callback = vi.fn();
 
     class Subject extends State {
@@ -118,7 +104,7 @@ describe('property', () => {
     expect(callback).not.toBeCalledWith(null);
   });
 
-  it('will callback when on null if ignore false', async () => {
+  it('will callback on null if ignore false', () => {
     const callback = vi.fn();
 
     class Subject extends State {
@@ -166,10 +152,6 @@ describe('property', () => {
   });
 
   it('will export value and be accessible from a proxy', () => {
-    class Subject extends State {
-      ref = ref<string>();
-    }
-
     const test = Subject.new();
 
     test.ref.current = 'foobar';
@@ -179,10 +161,6 @@ describe('property', () => {
   });
 
   it.skip('will subscribe if current accessed', async () => {
-    class Subject extends State {
-      ref = ref<string>();
-    }
-
     const test = Subject.new();
     const effect = vi.fn(($: Subject) => {
       void $.ref.current;
@@ -224,9 +202,6 @@ describe('proxy', () => {
   it('will update values', async () => {
     const test = Subject.new();
 
-    expect(test.foo).toBe('foo');
-    expect(test.bar).toBe('bar');
-
     test.refs.foo.current = 'bar';
     test.refs.bar.current = 'foo';
 
@@ -256,12 +231,6 @@ describe('proxy', () => {
   });
 
   it('will reference parent', () => {
-    class Subject extends State {
-      refs = ref(this);
-      foo = 'foo';
-      bar = 'bar';
-    }
-
     const { is: subject, refs } = Subject.new();
 
     expect(refs.foo.is).toBe(subject);
