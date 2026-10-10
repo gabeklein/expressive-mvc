@@ -1,3 +1,4 @@
+import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { configDefaults, mergeConfig } from 'vitest/config';
 
@@ -23,6 +24,16 @@ const skipFiles = [
   'boundary.test.tsx'
 ];
 
+for (const file of skipFiles)
+  if (!existsSync(react + file))
+    throw new Error(`react-suite: ${file} is not in packages/react/src`);
+
+const tests = readdirSync(react, { recursive: true, encoding: 'utf8' })
+  .filter((file) => /\.test\./.test(file) && !skipFiles.includes(file));
+
+if (!tests.length)
+  throw new Error('react-suite: no react tests to run');
+
 export default mergeConfig(suite(true), {
   plugins: [
     {
@@ -30,7 +41,7 @@ export default mergeConfig(suite(true), {
       enforce: 'pre',
       resolveId(id: string, importer?: string) {
         if (!importer?.startsWith(react)) return;
-        if (id === '.') return `${preact}src/index.ts`;
+        if (/^\.\/?(index(\.tsx?)?)?$/.test(id)) return `${preact}src/index.ts`;
         if (id === '../test.setup') return `${preact}test.setup.ts`;
         if (id.startsWith('.') || id.startsWith('/')) return;
 
@@ -48,7 +59,7 @@ export default mergeConfig(suite(true), {
     ]
   },
   test: {
-    include: [`${react}*.test.*`],
+    include: [`${react}**/*.test.*`],
     exclude: [...configDefaults.exclude, ...skipFiles.map((file) => react + file)]
   }
 });

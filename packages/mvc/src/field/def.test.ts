@@ -63,13 +63,13 @@ describe('instruction', () => {
     });
 
     it('will ignore normal symbol', () => {
+      const symbol = Symbol('hello');
+
       class Test extends State {
-        value = Symbol('hello');
+        value = symbol;
       }
 
-      const test = Test.new();
-
-      expect(typeof test.value).toBe('symbol');
+      expect(Test.new().value).toBe(symbol);
     });
   });
 
@@ -253,7 +253,7 @@ describe('reuse', () => {
     );
   });
 
-  it('will throw if created outside a construction', () => {
+  it('will throw outside or after a construction', () => {
     class Test extends State {
       value: any = def(() => ({ value: 1 }));
     }
