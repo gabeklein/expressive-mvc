@@ -4,4 +4,3 @@ import './component';
 
 export { State } from '@expressive/mvc';
 export { Runtime } from './runtime';
-export { Provider } from './context';

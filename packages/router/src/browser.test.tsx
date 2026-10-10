@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { browserRouter, location, mockPromise, renderAct, withWindow } from '../test.setup';
 import { Context } from '@expressive/mvc';
-import { Provider } from '@expressive/react';
+import { Component } from '@expressive/react';
 import { BrowserRouter } from './browser';
 import { Route } from './route';
 
@@ -254,13 +254,13 @@ describe('BrowserRouter navigation settlement', () => {
     };
 
     const view = await renderAct(
-      <Provider for={router}>
+      <Component for={router}>
         <Status />
         <Route>
           <Route to="" as={() => <h1>home</h1>} />
           <Route to="slow" as={Slow} />
         </Route>
-      </Provider>
+      </Component>
     );
 
     await step(() => router.goto('/slow'));

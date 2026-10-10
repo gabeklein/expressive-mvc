@@ -13,7 +13,6 @@ export { State, State as default }; // deprecated - import { State } from @expre
 export { Context, def, get, ref, set, pending }; // deprecated re-exports of @expressive/mvc
 export { has, map }; // deprecated - import from @expressive/mvc
 export { Component }; // deprecated re-export of @expressive/mvc
-export { Provider }; // deprecated - use <Component for>
 ```
 
 ## Quick Start
@@ -373,7 +372,7 @@ Do not alias `is` merely because something will be written - writes never need t
 
 `<Component for={AppState}>` provides one State to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); `mount()` timing in [mount() method](#mount-method). For a render-prop read, write an FC calling `AppState.get()`.
 
-`Provider` still works but is deprecated - replace `<Provider for={X}>` with `<Component for={X}>`.
+`Provider` was removed - replace `<Provider for={X}>` with `<Component for={X}>`.
 
 ---
 

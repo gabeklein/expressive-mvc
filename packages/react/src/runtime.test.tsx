@@ -2,7 +2,7 @@ import { act, render } from '@testing-library/react';
 import { Activity, ReactNode, Suspense, useState } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import { Component, pending, Provider, State } from '.';
+import { Component, pending, State } from '.';
 import { mockPromise, reactOnly } from '../test.setup';
 import { Runtime, useHook } from './runtime';
 
@@ -185,7 +185,7 @@ reactOnly.describe('pending', () => {
       Shell,
       settled: () => settled,
       async mount(children: ReactNode) {
-        const view = render(<Provider for={data}>{children}</Provider>);
+        const view = render(<Component for={data}>{children}</Component>);
         await act(async () => {});
         return view;
       },

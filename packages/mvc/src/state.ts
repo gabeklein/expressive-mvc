@@ -244,8 +244,8 @@ abstract class State {
    * with `static readonly global = true`; a resolver (see {@link State.Global})
    * makes the choice conditional. It must be declared per class - a subclass
    * that would inherit a global without its own declaration throws on
-   * activation, so an accidental global (a forgotten `Provider`, an extended
-   * global) cannot leak into the shared root.
+   * activation, so an accidental global (a forgotten `<Component for>`, an
+   * extended global) cannot leak into the shared root.
    */
   static readonly global: State.Global = false;
 

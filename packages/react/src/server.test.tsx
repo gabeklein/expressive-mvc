@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
-import { State, Provider } from '.';
+import { Component, State } from '.';
 
 function onServer<T>(fn: () => T): T {
   const saved = (globalThis as any).window;
@@ -37,14 +37,14 @@ describe('server render', () => {
 
     const [r1, r2] = onServer(() => [
       renderToString(
-        <Provider for={Session} user="alice">
+        <Component for={Session} user="alice">
           <Show />
-        </Provider>
+        </Component>
       ),
       renderToString(
-        <Provider for={Session} user="bob">
+        <Component for={Session} user="bob">
           <Show />
-        </Provider>
+        </Component>
       )
     ]);
 
