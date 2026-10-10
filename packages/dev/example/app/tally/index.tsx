@@ -1,6 +1,6 @@
 import { Component } from "@expressive/mvc";
 
-import { Overflow, add, fail, reset, where } from "./api";
+import { Overflow, add, fail, reset, where } from "./remote";
 
 export class Page extends Component {
   shown = "";

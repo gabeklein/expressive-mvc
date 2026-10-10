@@ -269,7 +269,7 @@ function pascal(s: string): string {
     .join("");
 }
 
-const SIDECAR = /^api\.[cm]?[jt]s$/;
+const SIDECAR = /^remote\.[cm]?[jt]s$/;
 
 export interface Sidecar {
   pattern: string[];

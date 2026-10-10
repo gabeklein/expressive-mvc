@@ -13,7 +13,7 @@ app/                  file-based routes
   blog/index.tsx      /blog        folder = scope; its index is the "/blog" page
   blog/[slug].tsx     /blog/:slug  param leaf
   docs/[...].tsx      /docs/*      catch-all
-  blog/api.ts         sidecar      server module for /blog and below
+  blog/remote.ts      sidecar      server module for /blog and below
 app.tsx | src/app.tsx single root component instead of app/ (default export)
 index.ts              optional service entry, run on the server: export default config({ port })
 index.html            optional custom shell (#root and the entry script are injected if missing)
@@ -55,22 +55,22 @@ It imports `config` from `@expressive/dev/server`.
 
 ### Sidecars
 
-An `api.ts` in a route folder runs on the server. Each export is an `async` function; the browser
+A `remote.ts` in a route folder runs on the server. Each export is an `async` function; the browser
 imports a stub that calls it.
 
 ```ts
-// app/tally/api.ts
+// app/tally/remote.ts
 let total = 0;
 export async function add(by: number) { return (total += by); }
 ```
 
 ```tsx
 // app/tally/index.tsx
-import { add } from "./api";
+import { add } from "./remote";
 ```
 
 A call is `POST` to the folder's path with its params filled from the current location (`/blog/a`
-for `app/blog/[slug]/api.ts`), an `x-expressive-call` header naming the function, and the
+for `app/blog/[slug]/remote.ts`), an `x-expressive-call` header naming the function, and the
 arguments as a JSON array. The reply is the value as JSON, or 204 for `undefined`. Only the folder
 and those below it may import its sidecar.
 
