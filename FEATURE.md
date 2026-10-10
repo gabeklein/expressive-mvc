@@ -38,6 +38,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - Call context - each call walks its sidecar's concrete path, each segment a cached layer `Context` keyed `hash(parent prefix + segment)`, and runs in `AsyncLocalStorage`. `X.use()` makes or finds the one `X` at the call's layer - built in a child context, so its `get()` fields resolve upward, and provided to the layer: `X.get()` finds the nearest at the call's layer or above, and a deeper `use()` shadows. It lives while a call holds it, then `static ttl` seconds (default 300); its destroy (`set(null)`) drops it. A layer lives while a call, an instance or a child layer does. `Current` (root layer) reads the call's request live. Route defaults as layer occupants come with the twin (below).
 - Remote folders and the allowlist - `remote.ts`, or a `remote/` folder (any depth, `index` optional), belongs to its parent folder's context; `remote/` is never routed, and both in one folder fail the build. A call names its module (`feed/latest:add`; plain `add` for the entry). Only what the client imports is callable - the stubs the browser loaded in dev, those the client build generated in production; the server build reuses that list. Production ids are hashes salted per build, `remote: { opaque: false }` in `index.ts` to opt out.
 - RPC twin - a remote entry's `default` State class is its folder's seat: each call's walk seats it in the folder's layer, `key()` (no prefix; `undefined` passes through; throwing denies) narrows that layer and everything below, and its end evicts them. Its public `async` methods are `default.<method>` calls on the seated instance; the client stub's default is a twin class of them, and the route tree provides it around the folder's routes. A default in a nested `remote/` module, or a public sync method, fails the build. Methods only - no values yet.
+- Twin members through `extends` - the scan follows a seat's bases by import, reading source or a package's `.d.ts`, up to `@expressive`'s classes; the nearest declaration's modifiers win. Inherited public `async` methods are calls; public fields and getters are recorded for twin values. A base it cannot follow (an expression, an unresolved import, a non-class export) fails the build.
 
 ## MVP
 
@@ -49,10 +50,8 @@ MVP limits, on purpose: calls made while disconnected fail; one process.
 
 Not built yet, but the MVP must not cut against them.
 
-- **Inherited twin methods - high priority.** Methods a seat inherits from a class in another module are not scanned, so they do not cross yet.
-
-- **Twin values (pull) - TBD.** Values reach the client only in replies to its own requests: a snapshot on attach, then each call's reply carries what that call changed. Correct after your own actions; stale about anyone else's until the next request. Not wanted without push so far.
-- **Values invariant.** What TypeScript shows as public is readable on the twin with no separate mechanism: every public value is present before the first read (snapshot on attach). Demand may narrow what is re-sent, never what is available.
+- **Twin values - eager, with push.** A plain read off a twin is synchronous and announces nothing, so values cannot wait on demand. A twin attaches when created (the route provides it), receives a snapshot of every public value its class's scan lists, and suspends until then; every flush of an attached instance is pushed (below), and each call's reply carries what that call changed, so an awaited call never sees a stale twin. Attachment follows the twin instance, not its readers - `property = get(Remote)`, `Remote.get()` and `get(cb)` subscribers all read the one instance the route provides.
+- **Values invariant.** What TypeScript shows as public is readable on the twin with no separate mechanism, and stays fresh: every public value is present before the first read and re-sent on change. The scan's fields are the allowlist - TS `private` is erased at runtime, so a snapshot of the live instance would leak it.
 - **Twins via client `X.use()`.** Client `X.use()` of a server class - a route's `default` or any component - attaches a twin for that mount and detaches on unmount. The server resolves the instance through the class's key; the reply carries a snapshot and version, and the twin suspends until then. Methods are calls; a reply carries the call's patch and version, applied before the call resolves - an awaited call never sees a stale twin. Twins are read-only - an invariant, not a shortcut: server values change through methods, and assigning a twin field throws.
 - **Push (SSE).** One `EventSource` per client connection - a mailbox, not a subscription list. What it carries is decided server-side by what that connection has attached. `mount()` runs on attach, its cleanup on detach. Each flush of an attached instance's updates (mvc batches per microtask) becomes one frame: `{ target, values }` with the version as the event id - the browser's reconnect resumes with `Last-Event-ID`; a server that lost the connection sends `reset`, and the client re-attaches. An evicted context sends its attached twins a terminal event before their stream drops them.
 - **OAuth** - not built, anticipated: an `api/` slice (GET, `Set-Cookie`, redirect) for the callback, forwarding to a process-global client.
@@ -133,10 +132,10 @@ Per-request data sits behind one process-global `Current`, in context everywhere
 What the server pushes should follow what the client looks at. Three grains, coarse to fine:
 
 1. **Mount.** A twin attaches when its `X.use()` mounts and detaches on unmount.
-2. **Demand.** A twin attaches when something first pulls it (`get()`, `use()`, a rendered read) and detaches when nothing does - route entry only makes it available. Per key, the client knows which fields some mounted observer reads: mvc's observer already holds each listener's key set (`@expressive/mvc/observable`). Sent upstream as `focus { target, keys }`, it lets the server stream only demanded keys. Under the values invariant every public value is still in the snapshot, so a getter is computed for it; demand only spares re-sending.
+2. **Demand - opt-in only.** Not the default: a plain read has no observer, so streaming only observed keys would serve it stale values. A class may opt out a heavy field from pushes explicitly; demand is never inferred. Per key, mvc's observer already holds each listener's key set (`@expressive/mvc/observable`), should an opt-in want it.
 3. **Visibility.** A hidden tab (`visibilitychange`) pauses its stream; showing it resumes from the last version.
 
-Demand wants an mvc seam - notice when a key gains its first observer or loses its last - rather than dev reading observer internals. The current key set is already derivable (each observer's `listeners` map holds every listener's key set); only the notification is missing, and push needs it to send demand changes as they happen. That primitive also gives core lazy getters. Upstream, after the MVP.
+An mvc seam - notice when a key gains its first observer or loses its last - would serve that opt-in and gives core lazy getters. Push does not need it. Upstream, optional.
 
 ## Server lifecycle
 
@@ -185,6 +184,9 @@ Principles the MVP must not contradict; most land after it.
 ## Explored on the way
 
 Ideas the context model replaced, kept so they are not re-proposed blind.
+
+- **The TypeScript checker (or ts-morph) for twin members**: it resolves inherited members and modifiers directly, but adds `typescript` as a runtime dependency, type-checks the project per scan, and TypeScript 7.0 ships without a programmatic API (planned for 7.1). The scan follows `extends` through imports itself instead.
+- **Lazy push driven by demand**: a plain synchronous read has no observer to announce it, so values must be eager; demand narrowing survives only as an explicit opt-in.
 
 - **A fixed context tree** (session → tab → location contexts built in by dev): replaced by contexts keyed by the app's own keys. Dropped once as high upkeep while request objects had to live in the chain; `Current` removed that obstacle and cached contexts came back keyed.
 - **A key register without cached contexts** (instances found by key, contexts rebuilt per request): every request would re-register each layer's instance and owned members into a fresh chain for `get()` to work.
