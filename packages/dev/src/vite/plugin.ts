@@ -10,7 +10,7 @@ import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject
 import { runtime } from "../client/call";
 import { Exposure, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
-import { dispatch, isCall, verify, type Endpoint, type Seats } from "../server/call";
+import { dispatch, isCall, verify, type Endpoint, type Exports, type Seats } from "../server/call";
 import { install } from "../server/context";
 import { scanExports, scanSidecar, scanTwin, type Sources } from "./scan";
 
@@ -176,7 +176,7 @@ export function expressive(): Plugin<Host> {
 
       switch (id) {
         case callId:
-          return `import { State } from "@expressive/mvc";\nexport const { call, define, twin } = (${runtime})(State);`;
+          return `import { State, set } from "@expressive/mvc";\nexport const { call, define, twin } = (${runtime})(State, set);`;
         case mainId:
           return bootstrap(project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!));
         case routesId:
@@ -258,20 +258,21 @@ function endpointOf(host: ModuleRunner, root: string, exposure: Exposure, group:
     async exports() {
       const calls: Record<string, unknown> = {};
       const classes: Record<string, unknown> = {};
+      let seat: Exports["seat"];
 
       for (const remote of group) {
         const mod = await host.import(remote.file);
         const own: Record<string, unknown> = {};
 
         for (const name of remote.calls) calls[exposure.callId(remote, name)] = mod[name];
-        for (const name of remote.seat?.methods ?? []) calls[exposure.callId(remote, `default.${name}`)] = (...args: unknown[]) => mod.default.use()[name](...args);
         for (const name of remote.classes) own[exposure.classId(remote, name)] = mod[name];
+        if (remote.seat) seat = { fields: remote.seat.fields, methods: Object.fromEntries(remote.seat.methods.map(name => [exposure.callId(remote, `default.${name}`), name])) };
 
         verify(relative(root, remote.file), { calls, classes: own });
         Object.assign(classes, own);
       }
 
-      return { calls, classes };
+      return { calls, classes, seat };
     },
   };
 }
@@ -301,7 +302,7 @@ function stub(exposure: Exposure, remote: Exposed): string {
     `const at = ${json(remote.pattern)};`,
     ...remote.calls.map(name => `export const ${name} = (...args) => call(at, ${json(exposure.callId(remote, name))}, args);`),
     ...remote.classes.map(name => `export const ${name} = define(${json(exposure.classId(remote, name))}, ${json(name)});`),
-    ...(remote.seat ? [`export default twin(at, ${json(methodIds(exposure, remote))}, ${json(remote.seat.name)});`] : []),
+    ...(remote.seat ? [`export default twin(at, ${json(methodIds(exposure, remote))}, ${json(remote.seat.fields)}, ${json(remote.seat.name)});`] : []),
     "",
   ].join("\n");
 }

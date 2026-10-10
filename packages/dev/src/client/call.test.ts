@@ -3,11 +3,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { State } from "@expressive/mvc";
+import { set, State } from "@expressive/mvc";
 
 import { runtime } from "./call";
 
-const { call, define, twin } = runtime(State);
+const { call, define, twin } = runtime(State, set);
 
 function reply(status: number, body?: unknown) {
   const fetch = vi.fn(async () => new Response(body === undefined ? null : JSON.stringify(body), { status }));
@@ -82,18 +82,54 @@ describe("twin", () => {
     history.replaceState(null, "", "/");
   });
 
-  it("will make a named State whose methods call the server", async () => {
+  function replies(...bodies: unknown[]) {
+    const fetch = vi.fn(async () => new Response(JSON.stringify(bodies.shift()), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    return fetch;
+  }
+
+  it("will make a named State that attaches on creation and holds the snapshot", async () => {
     history.replaceState(null, "", "/tally");
-    const fetch = reply(200, 5);
-    const Tally = twin(["tally"], { add: "default.add" }, "Tally");
+    const fetch = replies({ values: { total: 4 }, version: "g:1" });
+    const Tally = twin(["tally"], {}, ["total"], "Tally");
     const tally = Tally.new() as any;
 
     expect(Tally.name).toBe("Tally");
     expect(tally).toBeInstanceOf(State);
-    expect(await tally.add(2, 3)).toBe(5);
     expect(fetch).toHaveBeenCalledWith("/tally", expect.objectContaining({
+      headers: expect.objectContaining({ "x-expressive-get": "default" }),
+      body: "[]",
+    }));
+
+    await vi.waitFor(() => expect(tally.total).toBe(4));
+  });
+
+  it("will call the server through a method and apply the reply's patch before resolving", async () => {
+    history.replaceState(null, "", "/tally");
+    const fetch = replies({ values: { total: 0 }, version: "g:1" }, { value: 5, patch: { total: 5 }, version: "g:2" });
+    const Tally = twin(["tally"], { add: "default.add" }, ["total"], "Tally");
+    const tally = Tally.new() as any;
+
+    await vi.waitFor(() => expect(tally.total).toBe(0));
+    expect(await tally.add(2, 3)).toBe(5);
+    expect(tally.total).toBe(5);
+    expect(fetch).toHaveBeenLastCalledWith("/tally", expect.objectContaining({
       headers: expect.objectContaining({ "x-expressive-call": "default.add" }),
       body: "[2,3]",
     }));
+  });
+
+  it("will suspend a required read until the snapshot arrives", async () => {
+    history.replaceState(null, "", "/tally");
+    replies({ values: { total: 7 }, version: "g:1" });
+    const Tally = twin(["tally"], {}, ["total"], "Tally");
+    const tally = Tally.new() as any;
+
+    let thrown: unknown;
+    try { tally.total; } catch (error) { thrown = error; }
+
+    expect(thrown).toBeInstanceOf(Promise);
+    await thrown;
+    expect(tally.total).toBe(7);
   });
 });
