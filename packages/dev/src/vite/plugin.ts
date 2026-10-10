@@ -17,7 +17,7 @@ const ROUTES = "routes.tsx";
 const SERVER = "server.ts";
 const CALL = "call.ts";
 const SCRIPT = /\.[cm]?[jt]sx?$/;
-const SIDECAR_IMPORT = /(^|\/)api(\.[cm]?[jt]s)?$/;
+const SIDECAR_IMPORT = /(^|\/)remote(\.[cm]?[jt]s)?$/;
 
 export interface Host {
   config(): Promise<AppConfig>;
@@ -80,7 +80,7 @@ export function expressive(): Plugin<Host> {
       project = resolveProject(root);
 
       const entries = project.appDir
-        ? ["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*", "!app/**/api.*"]
+        ? ["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*", "!app/**/remote.*"]
         : [importRel(root, project.appPath!)];
 
       return {

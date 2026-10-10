@@ -19,7 +19,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - **JSX.** `jsxImportSource: "@expressive/dev"` - dev's runtime re-exports dom's.
 - **Router.** dev exports its own `Router` (extends `BrowserRouter`) and `Route`, plus `Link`, `NavLinks`, `Redirect`. No `BrowserRouter` export.
 - **Config.** `index.ts` default-exports `config({...})` from `@expressive/dev/server`, read on the server.
-- **Server modules, one model.** Sidecars (`app/**/api.ts`) and `app/api/**` share one invocation path from the bundled client and one context model (below). `app/api` has its own root; a sidecar call never passes through `app/api/index.ts`. Process globals are the only layer both lanes share.
+- **Server modules, one model.** Sidecars (`app/**/remote.ts`) and `app/api/**` share one invocation path from the bundled client and one context model (below). `app/api` has its own root; a sidecar call never passes through `app/api/index.ts`. Process globals are the only layer both lanes share.
 - **Session is the app's concern.** dev does not detect or mint sessions or tabs; an app expresses identity through keys (Context model). Recipes may come later.
 - **dom on the server.** Needed for JSX rendered to HTML (responses, emails), not SSR.
 - **Monkey-patch first.** Where mvc or an adapter lacks a seam, dev patches it in one file, replaced when upstream catches up. Stress-tests the concept before committing upstream.
@@ -33,7 +33,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - Route defaults - a page module's `default` function is its entry hook (runs with the Route before it renders, may be async; a returned string redirects, `null` forfeits to the 404). A `default` class - State or Component alike - renders around the route's content (`<X>{children}</X>`, or `<X><Layout /></X>` with a `Layout`) and is provided to everything below it.
 - Loading - a module's `Loading` fills its `Layout`'s content slot: every route rendered there gets it as its `fallback`, at any depth until a nested `Layout` starts a fresh slot; a page's own `Loading` covers that page first. It shows when a page cannot show anything yet - chunk, entry hook or data - which in practice means a cold arrival, since in-app navigation holds the current page. dev's `Route` owns no boundary by default (`fallback = false`, `catch` only with a `Catch`), so a page class's waits reach the slot; generated routes always declare theirs, `null` where no `Loading` applies.
 - E2E harness - `example/e2e/` Playwright specs run against the dev server and the built service (`bun run example:e2e` in `packages/dev`). Each feature adds its page and spec. Not in CI yet: trunk PRs run `verify` only.
-- Sidecar calls - each `async` export of a route folder's `api.ts` is a browser stub POSTing to the folder's path (Wire below); dispatched on Vite's module runner in dev and baked into `dist/server` at build. The build refuses any other export; only the folder and below may import it. A thrown error's message reaches the client in dev only.
+- Sidecar calls - each `async` export of a route folder's `remote.ts` is a browser stub POSTing to the folder's path (Wire below); dispatched on Vite's module runner in dev and baked into `dist/server` at build. The build refuses any other export; only the folder and below may import it. A thrown error's message reaches the client in dev only.
 - Errors - an exported class with `extends` is an error class: the client stub is a class of the same name, and a thrown instance (or subclass) is rebuilt as it - `instanceof`, message and own fields - with a `status` field in 400-599 as the reply status. Verified as an `Error` at the first dev call and at service boot.
 - Call context - each call walks its sidecar's concrete path, each segment a cached layer `Context` keyed `hash(parent prefix + segment)`, and runs in `AsyncLocalStorage`. `X.use()` resolves by `static key(prefix)` (default the prefix): a key starting with a layer's prefix lives under that layer, any other under the root; the instance is built in a child context of its layer, so its `get()` fields resolve upward. It lives while a call holds it, then `static ttl` seconds (default 0); its destroy (`set(null)`) drops it. Empty layers are pruned. `Current` (root layer) reads the call's request live. Not yet: route defaults as layer occupants - the layer key that narrows everything below comes with them.
 
@@ -71,7 +71,7 @@ content-type: application/json
 ["arg1", 2]                       the argument array
 ```
 
-- **Path.** `app/blog/[slug]/api.ts` → `/blog/a`; the root sidecar is `POST /`. The stub knows its folder's pattern from the generator and fills it from the current route match - the import rule guarantees the params exist. The folder, not the caller's deeper location: the walk runs `key()` down to the module's own layer, so calls from any page below land in the same context. The query string is ignored.
+- **Path.** `app/blog/[slug]/remote.ts` → `/blog/a`; the root sidecar is `POST /`. The stub knows its folder's pattern from the generator and fills it from the current route match - the import rule guarantees the params exist. The folder, not the caller's deeper location: the walk runs `key()` down to the module's own layer, so calls from any page below land in the same context. The query string is ignored.
 - **A call is a POST with `x-expressive-call` and `content-type: application/json`.** Anything else falls through (GET still serves the app). Same-origin calls cost no preflight; a cross-site form cannot send either, and a cross-site script sending them triggers a preflight the server does not approve - so a forged call never arrives, whatever cookies the app uses.
 - **Reply.**
 
@@ -119,7 +119,7 @@ Per-request data sits behind one process-global `Current`, in context everywhere
 
 ## Boundaries
 
-- **Where:** a server module is `api.ts` (or under `app/api/`); everything else is client. An import from one is a stub or a twin - visible at the import site.
+- **Where:** a server module is `remote.ts` (or under `app/api/`); everything else is client. An import from one is a stub or a twin - visible at the import site.
 - **What crosses, decided at build:** the scanner reads the source, TS modifiers included, and emits the allowlist both sides use. Callable: public `async` methods and exported `async` functions. Server-only: TS `protected`/`private`, `_`-prefixed and `#private` members, lifecycle and State's own names. The call dispatcher accepts nothing outside the allowlist, so the boundary never rests on runtime visibility.
 - **Refuse to build what the client cannot have.** A public sync method (every call is async over the wire) and a public `_`-prefixed member (unmanaged, so never replicated) are build errors. `protected`, `private` and `#private` members are free - they never cross. Linters can warn earlier, later.
 - **No ceremony.** No wrapper, no client-view types. Read-only values and no-extension are runtime rules, not editor ones: assigning a twin field throws; a client `new` or `extends` of a twin class throws and is a documented anti-pattern. Writes go through server methods.
@@ -144,7 +144,7 @@ Demand wants an mvc seam - notice when a key gains its first observer or loses i
 | `use()` (instance) | every pass of a server-resolved instance: attach and each call - per request, as the client's runs per render; cascades to owned members that define one, parent first (leaning), unless it returns `false` | denies that request |
 | `mount()` | each time a twin attaches, then on every instance it owns, parent first; returns a cleanup, run in reverse when that twin detaches | the attach is refused; the client Route can catch or redirect |
 
-- Server and client `use()` do not collide: `api.ts` bodies never ship to the client, whose twin runs mvc's own per-render hook.
+- Server and client `use()` do not collide: `remote.ts` bodies never ship to the client, whose twin runs mvc's own per-render hook.
 - `use()` returns nothing; the instance learns it was reached.
 - No middleware hook - gating is `key()`, `new()` and `use()` throwing. An integration (OAuth) is a service the route forwards to, not a hook that inspects every request.
 - References are not owned: `route = get(Route)` gets no `mount()` of its own.

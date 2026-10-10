@@ -77,7 +77,7 @@ describe("vite host", () => {
 
   it("will not scan specs, tests or sidecars beside routes for dependencies", async () => {
     const server = await serve(project({ "app/index.tsx": PAGE, "app/index.spec.ts": "import '@playwright/test';" }));
-    expect(server.config.optimizeDeps.entries).toEqual(["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*", "!app/**/api.*"]);
+    expect(server.config.optimizeDeps.entries).toEqual(["app/**/*.{ts,tsx,js,jsx}", "!app/**/*.{spec,test}.*", "!app/**/remote.*"]);
   });
 
   it("single-file project: entry mounts app.tsx directly", async () => {
@@ -127,11 +127,11 @@ describe("vite host", () => {
   `;
 
   it("will serve a sidecar to the browser as a stub of its calls", async () => {
-    const root = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './api'; export const Page = () => add", "app/tally/api.ts": SIDECAR });
+    const root = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './remote'; export const Page = () => add", "app/tally/remote.ts": SIDECAR });
     const server = await serve(root);
 
     await server.transformRequest("/app/tally/index.tsx");
-    const stub = (await server.transformRequest("/app/tally/api.ts"))?.code;
+    const stub = (await server.transformRequest("/app/tally/remote.ts"))?.code;
 
     expect(stub).toContain('const at = ["tally"]');
     expect(stub).toContain('call(at, "add", args)');
@@ -140,7 +140,7 @@ describe("vite host", () => {
   });
 
   it("will stub a sidecar in a project reached through a symlink", async () => {
-    const real = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './api'; export const Page = () => add", "app/tally/api.ts": SIDECAR });
+    const real = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './remote'; export const Page = () => add", "app/tally/remote.ts": SIDECAR });
     const link = join(mkdtempSync(join(tmpdir(), "link-")), "app");
     dirs.push(dirname(link));
     symlinkSync(real, link, "dir");
@@ -148,25 +148,25 @@ describe("vite host", () => {
     const server = await serve(link);
     await server.transformRequest("/app/tally/index.tsx");
 
-    expect((await server.transformRequest("/app/tally/api.ts"))?.code).not.toContain("a + b");
+    expect((await server.transformRequest("/app/tally/remote.ts"))?.code).not.toContain("a + b");
   });
 
   it("will throw if a module outside its folder imports a sidecar", async () => {
-    const root = project({ "app/index.tsx": "import { add } from './tally/api'; export const Page = () => add", "app/tally/api.ts": SIDECAR });
+    const root = project({ "app/index.tsx": "import { add } from './tally/remote'; export const Page = () => add", "app/tally/remote.ts": SIDECAR });
     const server = await serve(root);
 
     await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow("only modules in app/tally/ and below may call it");
   });
 
   it("will throw if a sidecar exports what the client cannot call", async () => {
-    const root = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './api'; export const Page = () => add", "app/tally/api.ts": "export const add = 1" });
+    const root = project({ "app/index.tsx": PAGE, "app/tally/index.tsx": "import { add } from './remote'; export const Page = () => add", "app/tally/remote.ts": "export const add = 1" });
     const server = await serve(root);
 
-    await expect(server.transformRequest("/app/tally/api.ts")).rejects.toThrow("add is neither an async function nor an Error subclass");
+    await expect(server.transformRequest("/app/tally/remote.ts")).rejects.toThrow("add is neither an async function nor an Error subclass");
   });
 
   it("will refuse in dev a sidecar class that is not an Error", async () => {
-    const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/api.ts": "class Base {} export class Odd extends Base {} export async function a() {}" }));
+    const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/remote.ts": "class Base {} export class Odd extends Base {} export async function a() {}" }));
     await server.listen(0);
 
     const res = await fetch(new URL("/tally", server.resolvedUrls!.local[0]), {
@@ -179,7 +179,7 @@ describe("vite host", () => {
   });
 
   it("will dispatch a call on the module runner", async () => {
-    const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/api.ts": SIDECAR }));
+    const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/remote.ts": SIDECAR }));
     await server.listen(0);
     const url = new URL("/tally", server.resolvedUrls!.local[0]);
 
@@ -196,7 +196,7 @@ describe("vite host", () => {
   });
 
   it("builds the node service with each sidecar's calls", async () => {
-    const root = project({ "app/index.tsx": PAGE, "app/blog/[slug]/api.ts": SIDECAR });
+    const root = project({ "app/index.tsx": PAGE, "app/blog/[slug]/remote.ts": SIDECAR });
     const config = serverBuild(root, { write: false });
     config.configFile = false;
     config.logLevel = "silent";

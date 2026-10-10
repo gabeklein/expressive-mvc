@@ -372,27 +372,27 @@ describe("sidecars", () => {
   const root = mkdtempSync(join(tmpdir(), "sidecars-"));
   const appDir = join(root, "app");
 
-  for (const path of ["api.ts", "blog/[slug]/api.ts", "(about)/api.mts", "blog/index.tsx", "blog/api.spec.ts", "docs/[...]/api.js"]) {
+  for (const path of ["remote.ts", "blog/[slug]/remote.ts", "(about)/remote.mts", "blog/index.tsx", "blog/remote.spec.ts", "docs/[...]/remote.js"]) {
     mkdirSync(dirname(join(appDir, path)), { recursive: true });
     writeFileSync(join(appDir, path), "");
   }
 
   afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-  it("will find each folder's api module with its route pattern", () => {
+  it("will find each folder's remote module with its route pattern", () => {
     const found = sidecars(appDir).map(({ pattern, file }) => [file.slice(appDir.length), pattern]);
 
     expect(found.sort()).toEqual([
-      ["/(about)/api.mts", ["about"]],
-      ["/api.ts", []],
-      ["/blog/[slug]/api.ts", ["blog", ":slug"]],
-      ["/docs/[...]/api.js", ["docs", "*"]],
+      ["/(about)/remote.mts", ["about"]],
+      ["/blog/[slug]/remote.ts", ["blog", ":slug"]],
+      ["/docs/[...]/remote.js", ["docs", "*"]],
+      ["/remote.ts", []],
     ]);
   });
 
   it("will not take other modules, or files outside app/, as sidecars", () => {
     expect(sidecarPattern(appDir, join(appDir, "blog/index.tsx"))).toBeUndefined();
-    expect(sidecarPattern(appDir, join(appDir, "blog/api.spec.ts"))).toBeUndefined();
-    expect(sidecarPattern(appDir, join(root, "api.ts"))).toBeUndefined();
+    expect(sidecarPattern(appDir, join(appDir, "blog/remote.spec.ts"))).toBeUndefined();
+    expect(sidecarPattern(appDir, join(root, "remote.ts"))).toBeUndefined();
   });
 });
