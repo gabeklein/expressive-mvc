@@ -2,7 +2,7 @@ import { render, screen, act, fireEvent, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, describe, vi, type MockInstance } from 'vitest';
 import React, { Suspense } from 'react';
 
-import { mockPromise, revisions } from '../test.setup';
+import { mockError, mockPromise, revisions } from '../test.setup';
 import { Component, Provider, State, get, has, map } from '.';
 import { pending } from '@expressive/mvc';
 
@@ -118,6 +118,7 @@ describe('instance element', () => {
   });
 
   it('will render one instance in multiple places', async () => {
+    const error = mockError();
     const instance = Control.new({ value: 'first' });
     const element = render(
       <>
@@ -143,6 +144,7 @@ describe('instance element', () => {
     });
 
     expect(screen.getAllByText('third')).toHaveLength(1);
+    expect(error).not.toBeCalled();
 
     element.unmount();
 

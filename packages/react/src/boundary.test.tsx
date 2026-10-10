@@ -68,12 +68,14 @@ describe('error boundary', () => {
     });
 
     render(<Boundary is={(i) => (instance = i)} catch={via === 'attribute' ? onCatch : undefined} />);
-    await act(async () => {});
 
-    expect(screen).toHaveText('Oops');
     expect(received).toHaveBeenCalledTimes(1);
     expect(received.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(received).toHaveBeenCalledWith(expect.objectContaining({ message: 'boom' }), instance);
+
+    await act(async () => {});
+
+    expect(screen).toHaveText('Oops');
 
     await act(async () => gate.resolve());
 
