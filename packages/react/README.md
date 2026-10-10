@@ -17,7 +17,7 @@ The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-m
 npm install @expressive/mvc @expressive/react
 ```
 
-`@expressive/mvc` is a peer dependency: import `State`, `Component` and instructions from it, and import `@expressive/react` once from your entry so the host registers. `Provider` and `Consumer` come from the adapter. Its re-exports of the core are deprecated.
+`@expressive/mvc` is a peer dependency: import `State`, `Component` and instructions from it, and import `@expressive/react` once from your entry so the host registers. Provide a State to a subtree with `<Component for={State}>` - `Provider` is deprecated and `Consumer` was removed. The adapter's re-exports of the core are deprecated.
 
 Works on React DOM, and on React Native and Expo - the adapter imports only `react` and `react/jsx-runtime`, so there is nothing renderer-specific to port. Exercised on an iOS simulator and an Android emulator in both Debug and Release builds, and gated per release on Metro resolution and a Hermes build (Expo SDK 57, React Native 0.86). Under Jest, add `@expressive` to `transformIgnorePatterns`.
 
@@ -48,7 +48,7 @@ function CounterWidget() {
 `Component` is a `State` that owns its own rendering - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form controls, layout shells, route controllers, media players.
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Counter extends Component {
   count = 0;
@@ -124,7 +124,7 @@ The base owns behavior and structure; subclasses author only the rendering. Over
 
 ### Self-providing context
 
-A `Component` provides *itself* to context automatically - no `Provider` needed. Both its own render output and any `children` passed in can read it with `get()`.
+A `Component` provides *itself* to context automatically - no provider element needed. Both its own render output and any `children` passed in can read it with `get()`.
 
 ```tsx
 class Tabs extends Component {
@@ -180,7 +180,7 @@ Every Component also accepts three special props:
 A value that isn't ready yet suspends the render; `fallback` shows in the meantime.
 
 ```tsx
-import { Component, set } from '@expressive/react';
+import { Component, set } from '@expressive/mvc';
 
 class Profile extends Component {
   user = set<User>();              // undefined until set - suspends render
@@ -197,7 +197,7 @@ class Profile extends Component {
 Provide a model once; descendants read it with `State.get()` - no props, no selectors.
 
 ```tsx
-import { Provider } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Session extends State {
   user = 'guest';
@@ -205,9 +205,9 @@ class Session extends State {
 
 function App() {
   return (
-    <Provider for={Session}>
+    <Component for={Session}>
       <Profile />
-    </Provider>
+    </Component>
   );
 }
 
@@ -221,7 +221,7 @@ function Profile() {
 
 - **`State.use()`** - create an instance bound to a component's lifecycle.
 - **`State.get()`** - read shared state from context, no prop drilling.
-- **`Provider` / `Consumer`** - explicit hierarchical dependency injection.
+- **`<Component for={State}>`** - explicit hierarchical dependency injection.
 - **`Component`** - smart controls and shells whose behavior lives in the tree.
 - **Suspense & error boundaries** - async values suspend; `catch()` handles child errors.
 

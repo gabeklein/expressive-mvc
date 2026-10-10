@@ -26,7 +26,7 @@ This is also the sparsely populated side of the field. The selector/atom/reducer
 - **Zustand** - state is a modest shared store and the team wants minimal API surface with no classes. Its ceiling arrives as selector sprawl and cross-store coordination; below that ceiling it is hard to beat.
 - **Jotai** - state decomposes naturally into small independent values with sparse dependencies. Atom graphs excel there; consolidated domain models are where they get noisy.
 - **MobX** - you want tracked reactivity but need a huge ecosystem and battle-tested edge cases more than built-in structure.
-- **Redux Toolkit** - you rely on time-travel devtools, event-sourced audit trails, or serialized action logs daily. Those are real, unique value; Expressive has instance introspection but nothing equivalent.
+- **Redux Toolkit** - you rely on time-travel devtools, event-sourced audit trails, or serialized action logs daily. Those are real, unique value; Expressive answers with `@expressive/inspect` - a live registry, ownership tree, path queries, and a frame journal for tests and drivers - but not time travel or a serialized action log.
 - **Plain Context / hooks** - the state is simple and local. Expressive's own [audit guide](examples/audit.md) treats that as a low-value migration target.
 
 ## What choosing Expressive buys
