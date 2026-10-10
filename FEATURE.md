@@ -35,13 +35,13 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - E2E harness - `example/e2e/` Playwright specs run against the dev server and the built service (`bun run example:e2e` in `packages/dev`). Each feature adds its page and spec. Not in CI yet: trunk PRs run `verify` only.
 - Sidecar calls - each `async` export of a route folder's `remote.ts` is a browser stub POSTing to the folder's path (Wire below); dispatched on Vite's module runner in dev and baked into `dist/server` at build. The build refuses any other export; only the folder and below may import it. A thrown error's message reaches the client in dev only.
 - Errors - an exported class with `extends` is an error class: the client stub is a class of the same name, and a thrown instance (or subclass) is rebuilt as it - `instanceof`, message and own fields - with a `status` field in 400-599 as the reply status. Verified as an `Error` at the first dev call and at service boot.
-- Call context - each call walks its sidecar's concrete path, each segment a cached layer `Context` keyed `hash(parent prefix + segment)`, and runs in `AsyncLocalStorage`. `X.use()` resolves by `static key(prefix)` (default the prefix): a key starting with a layer's prefix lives under that layer, any other under the root; the instance is built in a child context of its layer, so its `get()` fields resolve upward. It lives while a call holds it, then `static ttl` seconds (default 0); its destroy (`set(null)`) drops it. Empty layers are pruned. `Current` (root layer) reads the call's request live. Not yet: route defaults as layer occupants - the layer key that narrows everything below comes with them.
+- Call context - each call walks its sidecar's concrete path, each segment a cached layer `Context` keyed `hash(parent prefix + segment)`, and runs in `AsyncLocalStorage`. `X.use()` makes or finds the one `X` at the call's layer - built in a child context, so its `get()` fields resolve upward, and provided to the layer: `X.get()` finds the nearest at the call's layer or above, and a deeper `use()` shadows. It lives while a call holds it, then `static ttl` seconds (default 300); its destroy (`set(null)`) drops it. A layer lives while a call, an instance or a child layer does. `Current` (root layer) reads the call's request live. Not yet: route defaults as layer occupants, and the `key()` that narrows everything below them.
 
 ## MVP
 
 Enough to write E2E tests and examples and feel the ergonomics. One PR each, in order. Everything under Later waits until the MVP has been used.
 
-1. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. The default class occupies its layer: its `static key` becomes the prefix below it, and its destroy pops the layer. Until something holds a reference between calls, a class that should keep state sets a TTL.
+1. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. The default class occupies its layer: its `key()` narrows the prefix below it, and its destroy pops the layer.
 
 MVP limits, on purpose: calls made while disconnected fail; one process.
 
@@ -91,18 +91,17 @@ content-type: application/json
 Cached contexts, keyed. Each route layer resolves a cached `Context`; per-request data never enters one. Direction agreed; details marked where still open.
 
 - **One cached `Context` per layer, keyed by that layer's key.** It holds what is built once: the layer's `default` instance (its only top-level occupant), the members it owns (mvc's `join` registers them into their owner's context), and any `X.use()` made at that layer. A later request is a map lookup per layer - nothing re-registers.
-- **`static key(prefix)`** runs on every resolution and returns a string or number, or is absent; returning nothing is an error. A key is never sent by the client - `key()` runs on the server and reads only what the server trusts.
-- **Prefix accumulates down the route walk.** Each layer's prefix is `hash(parent key + concrete segment)`; an absent key returns the prefix unchanged, and a layer's key becomes its children's prefix. One rule, three behaviours by what `key()` returns:
+- **`static key()`** belongs to a layer's seat and runs on every walk through it. It returns a string, a number or `undefined`; `undefined`, or no `key`, passes the location through. It takes no prefix - dev composes. A key is never sent by the client: it reads verified data only - the request through `Current` (a signed cookie, a session lookup) or State seated above through `get()`. A key built from raw client data lets the client pick its context. Declare it `protected` so a twin's type does not show it; it never crosses at runtime.
+- **Prefix accumulates down the route walk.** Each layer's prefix is `hash(parent prefix + concrete segment)`, then `hash(prefix + key)` if its seat keys. Two behaviours:
   - *inherit* - no key: one context per concrete route location (params differ, the query string does not);
-  - *narrow* - append to the prefix (an identity, a grant): everything below differs by it;
-  - *reset* - drop the prefix (`static key() { return "docs" }`): everything below is shared regardless of what is upstream; upstream keys still run, so their gates still apply.
-- **Ownership is parentage.** A narrowed context sits under its parent and sees upstream State through `get()`. A reset context hangs under the nearest ancestor whose key it still includes - possibly the root - so it cannot see identity-scoped State above it; it reaches identity through that class's own key (`Account.use()`).
+  - *narrow* - a key (an identity, a grant): everything below differs by it.
+- **Ownership is parentage.** Every context sits under its walk parent and sees upstream State through `get()`.
 - **Reachable only by walking.** A layer's prefix exists only after the layer above ran its `key()` in this request, so no code can address a subtree it is not standing in. Hashing adds fixed length, no separator ambiguity and opacity in logs - not secrecy; keys never leave the server.
 - **The un-nudged default is shared.** With no identity layer, a location's context is common to every visitor. An app's root key decides identity once for everything below; the starter should carry one.
 - **Eviction is the root instance's end.** When dev seats a layer's instance it subscribes to its destroy (`set(null)`) and caches the context under the key. Destroying that instance - from a method, a poll, a disconnect - pops the context at once: owned State goes with it (`pop()` destroys State the context constructed from a class), the next request misses and rebuilds, and attached twins get a terminal event. dev seats defaults as classes so `pop()` destroys them.
-- **Lifetime.** A context lives while referenced - in-flight calls, attached twins at or below it, live child contexts - then for its TTL, which defaults to 0. Caching across calls is opt-in per class.
-- **Keyed classes off the route chain.** `X.use()` in a function resolves through `X`'s own key: one starting with the layer's prefix lives in that layer's context; any other sits under the nearest ancestor it includes (or the root), shared, with its TTL.
-- **`static use`** - the full-control override when reuse needs spelling out; `key` is the common case dev's default `use` consults.
+- **Lifetime.** A context lives while anything in it does - in-flight calls, instances within their TTL (default 300 seconds, `0` to opt out), attached twins, child contexts. Its seat's end pops it and everything below; a `use()` instance never outlives its context.
+- **`X.use()` is positional.** One instance per class per layer, made at the call's layer wherever `X` is defined; `key` plays no part. Provided to that layer, so `get()` finds it there and below; a deeper `use()` shadows. `get()` before any `use()` throws. Functions calling `use()` on one class share it - keep creation to one.
+- **`static use`** - the full-control override when reuse needs spelling out.
 - **Process globals** are not keys: `static global`, created at module scope (e.g. an OAuth client). Reached from either lane.
 - **Owned members** (`cart = new Cart()`) never run `key()` - their lifetime is their owner's. Most server State should be owned members rather than free instances.
 
@@ -120,7 +119,7 @@ Per-request data sits behind one process-global `Current`, in context everywhere
 ## Boundaries
 
 - **Where:** a server module is `remote.ts` (or under `api/`); everything else is client. An import from one is a stub or a twin - visible at the import site.
-- **What crosses, decided at build:** the scanner reads the source, TS modifiers included, and emits the allowlist both sides use. Callable: public `async` methods and exported `async` functions. Server-only: TS `protected`/`private`, `_`-prefixed and `#private` members, lifecycle and State's own names. The call dispatcher accepts nothing outside the allowlist, so the boundary never rests on runtime visibility.
+- **What crosses, decided at build:** the scanner reads the source, TS modifiers included, and emits the allowlist both sides use. Callable: public `async` methods and exported `async` functions. Server-only: TS `protected`/`private`, `_`-prefixed and `#private` members, statics (`key`, `ttl`), lifecycle and State's own names. The call dispatcher accepts nothing outside the allowlist, so the boundary never rests on runtime visibility.
 - **Refuse to build what the client cannot have.** A public sync method (every call is async over the wire) and a public `_`-prefixed member (unmanaged, so never replicated) are build errors. `protected`, `private` and `#private` members are free - they never cross. Linters can warn earlier, later.
 - **No ceremony.** No wrapper, no client-view types. Read-only values and no-extension are runtime rules, not editor ones: assigning a twin field throws; a client `new` or `extends` of a twin class throws and is a documented anti-pattern. Writes go through server methods.
 - **Guidance - server for truth, client for touch.** Server State: what is authoritative, shared, secret, or near the data (domain entities, permissions, live and collaborative data, views over large data) - it replaces client fetch-and-cache. Client State: what is ephemeral interaction (open menus, focus, drag, unsaved drafts, animation). Never hold one value in both - derive on the client from the twin. Lean server-heavy for internal tools and collaborative apps; lean client-heavy for latency-critical or offline-tolerant editors and for anonymous high-traffic pages, where per-visitor server memory costs most.
@@ -139,7 +138,7 @@ Demand wants an mvc seam - notice when a key gains its first observer or loses i
 
 | Hook | Runs | Throwing |
 |---|---|---|
-| `static key(prefix)` | every resolution - each request on the walk, each `X.use()` | denies the request; nothing is created |
+| `static key()` | every walk through its seat's layer | denies the request; nothing is created |
 | `new()` | once, on creation (a key miss) | creation fails; the triggering call gets the reply |
 | `use()` (instance) | every pass of a server-resolved instance: attach and each call - per request, as the client's runs per render; cascades to owned members that define one, parent first (leaning), unless it returns `false` | denies that request |
 | `mount()` | each time a twin attaches, then on every instance it owns, parent first; returns a cleanup, run in reverse when that twin detaches | the attach is refused; the client Route can catch or redirect |
@@ -175,6 +174,7 @@ Principles the MVP must not contradict; most land after it.
 ## Rejected
 
 - **Scoped `X.use()` in a `Layout`**, with `undefined` rendering `children`. A route's State belongs in its `default` class - the one place a route declares what it provides.
+- **Reset keys** (a `key()` dropping the prefix to share a subtree across visitors): no protection a module-level global lacks, at the cost of a second placement rule (contexts hanging under an ancestor) and shared subtrees cut off from identity. Shared State is a process global.
 
 ## Explored on the way
 
@@ -187,14 +187,16 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - **Key as a tuple scoped by an instance**: keys stay plain and unique per class; `key()` salts them itself.
 - **Scope as an object** (`{ session, tab, path }`): dev asserting a shape; the prefix is one opaque string with one purpose.
 - **`key = false` for process globals**: globals are `static global` at module scope instead (Agreed shape).
-- **TTL defaulting to Infinity**: 0 - lifetime capped by whatever references the instance.
+- **TTL defaulting to Infinity or 0**: Infinity never frees; 0 rebuilds State between calls, so a twin looks broken until its class sets a TTL. Five minutes instead.
+- **Keyed `X.use()` off the route chain** (`Account.use()` resolving through the class's own key): `key` is for seats; `use()` is positional.
+- **`{fn}.{idx}` slots** for `use()` in free functions, hook-style: peer calls and branches shift slots silently. One instance per class per layer instead.
 - **`static provider = github({...})`** on an account class: an OAuth client is its own process global.
 - **An integration self-handling its callback** by inspecting every request: the route forwards to it.
 - **`.expressive` endpoint prefix**: not needed for calls.
 - **Lazy key pulling** (a twin starts empty; a first read suspends and fetches the key): public values must be readable without a separate mechanism.
 - **`super.use()` to cascade**: mvc has no `use` on `State.prototype` (adapters check `typeof x.use == 'function'`), so it would need a default injected; automatic cascade instead.
 - **`per(Type)`, a class-level `get` override, or a `Context` seam for request-scoped fields**: `Current` makes them unnecessary. A `State.on()` hook intercepting `get` for request classes may still be explored.
-- **Requiring `default` classes to extend `Route`**: what is special is position (constructed per layer, given the prefix, `use()` per pass), not class; `key` applies to any State. Revisit if a feature needs Route's members.
+- **Requiring `default` classes to extend `Route`**: what is special is position (constructed per layer, keyed, `use()` per pass), not class; `key` applies to any State. Revisit if a feature needs Route's members.
 
 ## Open
 
