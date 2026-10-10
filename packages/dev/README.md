@@ -155,8 +155,12 @@ export class Page extends Component {
 identity from `Current.get().cookies`, or a value from a seat above through `get()`. Undefined passes
 the location through; throwing denies the call. Build the key from verified data only - a raw cookie
 lets the client pick its context - and declare it `protected`. The seat lives for `static ttl` after
-its last call; when it ends, its context and everything below go with it. Twins carry methods only -
-values, inherited methods and twins made by client `use()` come later.
+its last call; when it ends, its context and everything below go with it.
+
+Methods a seat inherits cross too: the build follows its bases by import - source, or a package's
+`.d.ts` - up to `@expressive`'s classes, and the nearest declaration's `private`/`protected` wins. A
+base it cannot follow, such as `extends mixin(State)`, fails the build. Twins carry methods only -
+values and twins made by client `use()` come later.
 
 ## Commands
 
