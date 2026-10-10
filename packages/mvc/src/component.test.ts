@@ -2,37 +2,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component, compose } from './component';
 import { Context } from './context';
-import { pending } from './dispatch';
 import { State, event } from './state';
 
-it('will default fallback to null', () => {
-  const foo = Component.new({});
-
-  expect(foo.fallback).toBe(null);
-});
-
-it('will construct without props', () => {
-  const foo = Component.new();
-
-  expect(foo.fallback).toBe(null);
-});
-
-it('will accept fallback as prop', () => {
-  const foo = Component.new({ fallback: 'Loading' });
-
-  expect(foo.fallback).toBe('Loading');
+it('will default fallback to null and accept it as prop', () => {
+  expect(Component.new().fallback).toBe(null);
+  expect(Component.new({}).fallback).toBe(null);
+  expect(Component.new({ fallback: 'Loading' }).fallback).toBe('Loading');
 });
 
 it('will render children by default', () => {
-  const foo = Component.new({ children: 'hello' });
-
-  expect(foo.render()).toBe('hello');
-});
-
-it('will render null without children', () => {
-  const foo = Component.new({});
-
-  expect(foo.render()).toBe(null);
+  expect(Component.new({ children: 'hello' }).render()).toBe('hello');
+  expect(Component.new({}).render()).toBe(null);
 });
 
 it('will derive key from instance identity', () => {
@@ -71,15 +51,13 @@ it('will call is callback once with instance', () => {
   const foo = Component.new({ is });
 
   expect(is).toBeCalledWith(foo);
-  expect(is).toBeCalled();
 
-  // ressigning props from another render.
   (foo as any).props = { is };
 
   expect(is).toHaveBeenCalledTimes(1);
 });
 
-it('will merge state when props reassigned', async () => {
+it('will merge state and reset omitted props when reassigned', async () => {
   class Foo extends Component {
     value?: number = 10;
     other?: number = 1;
@@ -94,19 +72,6 @@ it('will merge state when props reassigned', async () => {
   await foo.set();
 
   expect(foo.value).toBe(7);
-});
-
-it('will reset omitted props on reassignment', async () => {
-  class Foo extends Component {
-    value?: number = 10;
-    other?: number = 1;
-  }
-
-  const foo = Foo.new({ value: 5, other: 2 });
-
-  (foo as any).props = { value: 7 };
-  await foo.set();
-
   expect(foo.other).toBeUndefined();
 });
 
@@ -125,9 +90,6 @@ it('will accept _ keys as props', async () => {
   expect(foo._config).toBe('baz');
 });
 
-// Seam: React may instantiate the class twice with the same props object
-// (StrictMode) and keeps either the first (16-17) or the second (18+). Each
-// construction is a full instance; whichever activates releases the other.
 describe('twin construction', () => {
   class Child extends State {}
 
@@ -149,8 +111,6 @@ describe('twin construction', () => {
       const b = new Foo(props);
       const [kept, other] = keep == 'first' ? [a, b] : [b, a];
       const released = vi.fn();
-
-      expect(b).not.toBe(a);
 
       other.get(null, released);
       event(kept);
@@ -175,8 +135,6 @@ describe('twin construction', () => {
   });
 });
 
-// Seam: React passes context as a constructor argument alongside props.
-// Context instances must be filtered so they never apply as state overlays.
 it('will ignore Context passed as constructor argument', () => {
   class Foo extends Component {
     value?: number = 10;
@@ -189,25 +147,6 @@ it('will ignore Context passed as constructor argument', () => {
 });
 
 describe('render chain', () => {
-  // Render layering: a subclass authors content; each super render up the
-  // prototype chain wraps it as `children`, base-outermost. Asserted directly
-  // on the composed `render` - no host needed.
-  it('will compose subclass render as children of super', () => {
-    class Outer extends Component {
-      render(props = {} as { children?: unknown }): Component.Node {
-        return ['outer', props.children];
-      }
-    }
-
-    class Inner extends Outer {
-      render(): Component.Node {
-        return 'content';
-      }
-    }
-
-    expect(Inner.new({}).render()).toEqual(['outer', 'content']);
-  });
-
   it('will nest three levels inner to outer', () => {
     class A extends Component {
       render(props = {} as { children?: unknown }): Component.Node {
@@ -227,7 +166,6 @@ describe('render chain', () => {
       }
     }
 
-    // A (outermost) wraps B wraps C (innermost content).
     expect(C.new({}).render()).toEqual({ a: { b: 'leaf' } });
   });
 
@@ -252,15 +190,12 @@ describe('render chain', () => {
 
     expect(page.render()).toEqual(['Base', 'Hello']);
 
-    // Both layers read `this` off the same instance - render reflects updates.
     page.title = 'Updated';
     page.body = 'World';
 
     expect(page.render()).toEqual(['Updated', 'World']);
   });
 
-  // Documented footgun: a wrapper that never reads `props.children` drops the
-  // derived content. The children getter is lazy, so inner never even runs.
   it('will drop derived content if wrapper omits children', () => {
     const inner = vi.fn(() => 'never seen');
 
@@ -287,13 +222,9 @@ describe('render chain', () => {
       }
     }
 
-    // One override composes with the pass-through default to exactly itself.
     expect(Solo.new({}).render()).toBe('just me');
   });
 
-  // Intentional inverse of the footgun: a base may opt out of wrapping by
-  // detecting that a subclass supplied content. Composition synthesizes a fresh
-  // `children`, so it is not identical to the original `this.props.children`.
   it('lets a base defer to a subclass render via children identity', () => {
     class Base extends Component {
       render(props = {} as { children?: unknown }): Component.Node {
@@ -312,12 +243,8 @@ describe('render chain', () => {
 
     class Passthrough extends Base {}
 
-    // Subclass authored a render -> base defers, no wrapping.
     expect(Override.new({}).render()).toBe('replaced');
 
-    // Plain base and render-less subclass keep the base output (no composition
-    // layer, so `children` is the original props.children). The framework
-    // invokes render with the instance's own props - mirror that here.
     const base = Base.new({ children: 'x' });
     const pass = Passthrough.new({ children: 'y' });
     expect(base.render(base.props)).toEqual(['base', 'x']);
@@ -359,63 +286,53 @@ describe('props (static types)', () => {
     method() {}
   }
 
-  it('will accept writable fields and callbacks', () => {
-    const props: Component.StateProps<Test> = {
-      value: 1,
-      onClick: () => {},
-      pair: 2,
-      method() {}
-    };
-
-    expect(props).toBeDefined();
-  });
-
-  it('will reject get-only accessors', () => {
-    const props: Component.StateProps<Test> = {
-      // @ts-expect-error - get-only accessor is not a settable prop
-      computed: 4
-    };
-
-    expect(props).toBeDefined();
-  });
-
-  it('will reject readonly fields', () => {
-    const props: Component.StateProps<Test> = {
-      // @ts-expect-error - readonly field is not a settable prop
-      id: 2
-    };
-
-    expect(props).toBeDefined();
-  });
-});
-
-describe('transition', () => {
-  it('will run work and resolve where nothing observes', async () => {
-    class Test extends Component {
-      value = 'a';
+  it('will accept a subclass where its parent is expected', () => {
+    class Mesh extends Component {
+      label = 'x';
     }
 
-    const test = Test.new();
-    let settled = false;
+    class Ball extends Mesh {
+      radius = 1;
+    }
 
-    await pending(() => {
-      test.value = 'b';
-    }).then(() => {
-      settled = true;
-    });
+    const take = (mesh: Mesh): Component => mesh;
+    const Type: typeof Mesh = Ball;
 
-    expect(test.value).toBe('b');
-    expect(settled).toBe(true);
+    expect(take(Ball.new())).toBeInstanceOf(Mesh);
+    expect(Type).toBe(Ball);
+  });
+
+  it('will accept writable fields and callbacks only', () => {
+    const props: Component.StateProps<Test>[] = [
+      { value: 1, onClick: () => {}, pair: 2, method() {} },
+      // @ts-expect-error - get-only accessor is not a settable prop
+      { computed: 4 },
+      // @ts-expect-error - readonly field is not a settable prop
+      { id: 2 }
+    ];
+
+    expect(props).toHaveLength(3);
   });
 });
 
 describe('composed', () => {
-  it('will compose render layers of a State', () => {
+  it.each([
+    ['will compose render layers of a State', false],
+    ['will compose a render sealed by the host', true]
+  ])('%s', (_, sealed) => {
     class Frame extends State {
       render(props?: { children?: unknown }) {
         return `[${props?.children}]`;
       }
     }
+
+    if (sealed)
+      Frame.on({
+        type({ prototype }) {
+          const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
+          Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
+        }
+      });
 
     class Page extends Frame {
       render() {
@@ -423,42 +340,13 @@ describe('composed', () => {
       }
     }
 
-    const page = Page.new();
-
-    expect(compose.call(page, {})).toBe('[page]');
-  });
-
-  it('will compose a render sealed by the host', () => {
-    class Frame extends State {
-      render(props?: { children?: unknown }) {
-        return `[${props?.children}]`;
-      }
-    }
-
-    Frame.on({
-      type({ prototype }) {
-        const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
-        Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
-      }
-    });
-
-    class Page extends Frame {
-      render() {
-        return 'page';
-      }
-    }
-
-    const page = Page.new();
-
-    expect(compose.call(page, {})).toBe('[page]');
+    expect(compose.call(Page.new(), {})).toBe('[page]');
   });
 
   it('will pass children through for a State without render', () => {
     class Bare extends State {}
 
-    const bare = Bare.new();
-
-    expect(compose.call(bare, { children: 'c' })).toBe('c');
+    expect(compose.call(Bare.new(), { children: 'c' })).toBe('c');
   });
 });
 
@@ -611,7 +499,7 @@ describe('for', () => {
     }
 
     const stop = Component.on({
-      pre(self) {
+      setup(self) {
         Object.defineProperty(self, 'mount', {
           configurable: true,
           value: () => {

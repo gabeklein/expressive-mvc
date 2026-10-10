@@ -37,7 +37,7 @@ function def<T>(arg1: def.Factory<T>) {
 }
 
 State.on({
-  pre(self) {
+  setup(self) {
     const store = STORE.get(self)!;
 
     for (const key in self) {

@@ -59,6 +59,7 @@ function App() {
 - Instance is created once and reused across renders.
 - Re-renders when any accessed property changes; nested observable reads are proxied and tracked.
 - Destroyed on unmount (context popped, `set(null)` called).
+- Not kept by a render React discards: if the component suspends before its first commit - reading the instance's own pending value included - React drops it, and each retry creates and loads a new one, so the render never resolves. Own loading state in an ancestor that has committed and let the reader suspend ([Suspense](component.md#suspense)).
 - Strict-mode safe.
 - Open the component with a dependency snapshot: destructure the exact values it renders, nested ones included ([Dependency Snapshots](#dependency-snapshots)).
 - Writes pass through the proxy; `is` is only for retaining the root object alongside sibling destructuring ([Transparent Writes](#transparent-writes--is)).

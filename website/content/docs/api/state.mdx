@@ -56,14 +56,14 @@ const stop = Counter.on({
   type(T) {
     /* once per class, at bootstrap */
   },
-  pre() {
+  setup() {
     /* per instance, before own values are observed */
     return () => {
       /* per-instance cleanup */
     };
   },
-  new() {
-    /* per instance, with the instance's new() */
+  ready() {
+    /* per instance, after the instance's new() */
   },
   catch(error, kind, key) {
     /* an instance failed out of turn */
@@ -74,12 +74,12 @@ const stop = Counter.on({
 
 Handlers run ancestor-first. A function runs once per stage, however often or on however many classes it is registered.
 
-Activation is a queue: `pre` handlers, then own fields become managed, then constructor args, then the `new()` hook, then `new` handlers, then context registration. So each stage means:
+Activation is a queue: `setup` handlers, then own fields become managed, then constructor args and the `new()` hook, then `ready` handlers, then context registration. A function passed alone is a `setup` handler. So each phase means:
 
 - `type` - runs once when the class first bootstraps, before its members are classified and bound. Receives the class itself, so a handler can inspect or reshape the prototype first. Registered on a base class, it runs for each subclass too.
-- `pre` - per-instance, before properties are observed and before `new()`. May return a cleanup, further constructor args, or an object of values to assign.
-- `new` - per-instance, with the instance's `new()` - own values are observed and constructor args applied by then. May return a cleanup.
-- `bind(key, fn, self)` - each time a method is bound to an instance: first read, an assigned replacement, the rebind after a hot patch. `fn` is the bound function. A handler registered later misses existing bindings. Meant for tooling.
+- `setup` - per-instance, before properties are observed and before `new()`. May return a cleanup, further constructor args, or an object of values to assign.
+- `ready` - per-instance, after the instance's `new()` - own values are observed and constructor args applied by then. May return a cleanup.
+- `method(key, fn, self)` - each time a method is bound to an instance: first read, an assigned replacement, the rebind after a hot patch. `fn` is the bound function. A handler registered later misses existing bindings. Meant for tooling.
 - `catch(error, kind, key?)` - see [Error handling](#error-handling).
 
 ### Error handling
@@ -91,7 +91,7 @@ When an instance fails _out of turn_ - somewhere no caller could have caught it 
 | `dead`   | a write to a destroyed state - stored without dispatch                                     |
 | `unused` | an instance constructed with `new` but never activated in that tick                        |
 | `getter` | a computed getter threw while refreshing - its value becomes `undefined`; `key` is the getter |
-| `setup`  | an async constructor callback, `pre` handler or `new()` rejected - the state is still created |
+| `setup`  | an async constructor callback, `setup` handler or `new()` rejected - the state is still created |
 | `effect` | an effect, or a function returned by a `set()` listener, threw during a flush             |
 
 They behave like nested `catch` blocks: most-derived class first, last registered first, and a handler registered on several classes runs once, at the outermost. Return the error (or another value) to pass it on; return nothing to handle it; throw to let it escape immediately.
@@ -151,7 +151,7 @@ const stop = state.get((current, changed) => {
 });
 ```
 
-- `current` - tracking proxy. Reads create subscriptions.
+- `current` - tracking proxy. Reads create subscriptions, including reads off a State fetched with `current.get(Type)` or `current.get(State)`.
 - `changed` - readonly array of keys changed since last run (empty on first run, `undefined` if state wasn't ready).
 - Return a cleanup function, `null` (cancel), or `void`.
 - Cleanup receives `true` (about to re-run), `false` (cancelled), or `null` (state destroyed).
@@ -184,6 +184,21 @@ state.get(ParentState, (parent, downstream) => {
 ```
 
 Fires immediately if available; otherwise fires when the type becomes available. Searches both directions by default - pass `downstream: true` to only watch children, `false` to only watch parents.
+
+### `get(State)` - owner
+
+```ts
+const owner = child.get(State); // throws if it has none
+const maybe = child.get(State, false); // undefined if it has none
+
+const stop = parent.get(State, (child) => {
+  return () => {
+    /* child destroyed */
+  };
+}, true); // each State this one owns, now and later
+```
+
+`State` itself is never in context, so passing it reads ownership instead. The owner is the State that constructed this one into a field, `has()` pool or `map()` - or, failing that, the State its nearest enclosing context was set up for, such as the Component rendering it. A root, or an instance which was already active when assigned, has no owner.
 
 <br />
 

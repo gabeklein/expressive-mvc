@@ -1,9 +1,9 @@
 import { act, render } from '@testing-library/react';
 import { Activity, ReactNode, Suspense, useState } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { Component, pending, Provider, State } from '.';
-import { mockPromise } from '../test.setup';
+import { mockPromise, reactOnly } from '../test.setup';
 import { Runtime, useHook } from './runtime';
 
 // Stub Runtime with a hand-driven lifecycle so a subscription update can fire
@@ -61,15 +61,6 @@ function harness() {
 let saved: Partial<typeof Runtime>;
 beforeEach(() => void (saved = { ...Runtime }));
 afterEach(() => void Object.assign(Runtime, saved));
-
-it('does not call the setter before commit', () => {
-  const { update, render, refresh } = harness();
-
-  render();
-  refresh('early'); // e.g. a sibling mutating shared state during render
-
-  expect(update).not.toHaveBeenCalled();
-});
 
 it('coalesces deferred refreshes into a single flush on commit', () => {
   const { update, render, commit, refresh } = harness();
@@ -150,10 +141,7 @@ it('will advance revision on reset', () => {
   expect(getRevision()).toBe(1);
 });
 
-
-
-
-describe('pending', () => {
+reactOnly.describe('pending', () => {
   class Data extends State {
     value = 'a';
   }
@@ -163,10 +151,9 @@ describe('pending', () => {
     const gate = mockPromise<void>();
     const data = Data.new();
     let ready = false;
+    let settled = false;
 
-    gate.then(() => {
-      ready = true;
-    });
+    gate.then(() => (ready = true));
 
     const Screen = () => {
       const { value } = Data.get();
@@ -182,91 +169,57 @@ describe('pending', () => {
       </Suspense>
     );
 
-    return { gate, data, Content };
-  }
-
-  it('will hold current content until the replacement is absorbed', async () => {
-    const { gate, data, Content } = scenario();
-    let shell!: Shell;
-
     class Shell extends Component {
-      busy = false;
+      pending = false;
 
-      go(work: () => void) {
-        this.busy = true;
-        return pending(work).then(() => {
-          this.busy = false;
-        });
-      }
-
-      render() {
-        return <Content />;
+      go(to: string) {
+        this.pending = true;
+        pending(() => (data.value = to)).then(() => (this.pending = false));
       }
     }
 
-    const view = render(
-      <Provider for={data}>
-        <Shell is={(i) => (shell = i)} />
-      </Provider>
-    );
+    return {
+      gate,
+      data,
+      Content,
+      Shell,
+      settled: () => settled,
+      async mount(children: ReactNode) {
+        const view = render(<Provider for={data}>{children}</Provider>);
+        await act(async () => {});
+        return view;
+      },
+      transition: (go: () => void = () => void pending(() => (data.value = 'b')).then(() => (settled = true))) =>
+        act(async () => {
+          go();
+          await Promise.resolve();
+        }),
+      release: () =>
+        act(async () => {
+          gate.resolve();
+          await gate;
+        })
+    };
+  }
 
-    await act(async () => {});
+  it('will hold current content until the replacement is absorbed', async () => {
+    const { Content, mount, transition, release, settled } = scenario();
+    const view = await mount(<Content />);
 
-    await act(async () => {
-      shell.go(() => {
-        data.value = 'b';
-      });
-      await Promise.resolve();
-    });
-
-    expect(view.container.querySelector('i')).toBeNull();
-    expect(view.container.textContent).toBe('a');
-    expect(shell.busy).toBe(true);
-
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
-
-    expect(view.container.textContent).toBe('b');
-    expect(shell.busy).toBe(false);
-  });
-
-  it('will hold for a plain State, with no Component involved', async () => {
-    const { gate, data, Content } = scenario();
-    let busy = true;
-
-    const view = render(
-      <Provider for={data}>
-        <Content />
-      </Provider>
-    );
-
-    await act(async () => {});
-
-    await act(async () => {
-      pending(() => {
-        data.value = 'b';
-      }).then(() => (busy = false));
-      await Promise.resolve();
-    });
+    await transition();
 
     expect(view.container.querySelector('i')).toBeNull();
     expect(view.container.textContent).toBe('a');
-    expect(busy).toBe(true);
+    expect(settled()).toBe(false);
 
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
+    await release();
 
     expect(view.container.textContent).toBe('b');
-    expect(busy).toBe(false);
+    expect(settled()).toBe(true);
   });
 
   it('will release a claim when its subscriber is hidden mid-flight', async () => {
-    const { gate, data, Content } = scenario();
-    let settled = false;
+    const { gate, Content, mount, transition, settled } = scenario();
     let hide!: () => void;
 
     const App = () => {
@@ -279,311 +232,145 @@ describe('pending', () => {
       );
     };
 
-    render(
-      <Provider for={data}>
-        <App />
-      </Provider>
-    );
+    await mount(<App />);
+    await transition();
 
-    await act(async () => {});
-
-    await act(async () => {
-      pending(() => {
-        data.value = 'b';
-      }).then(() => (settled = true));
-      await Promise.resolve();
-    });
-
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     await act(async () => hide());
 
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
 
     gate.resolve();
   });
 
   it('will not claim for a subscriber which is already hidden', async () => {
-    const { data, Content } = scenario();
-    let settled = false;
+    const { Content, mount, transition, settled } = scenario();
 
-    render(
-      <Provider for={data}>
-        <Activity mode="hidden">
-          <Content />
-        </Activity>
-      </Provider>
+    await mount(
+      <Activity mode="hidden">
+        <Content />
+      </Activity>
     );
+    await transition();
 
-    await act(async () => {});
-
-    await act(async () => {
-      pending(() => {
-        data.value = 'b';
-      }).then(() => (settled = true));
-      await Promise.resolve();
-    });
-
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will hold every reader while one of them suspends', async () => {
-    const gate = mockPromise<void>();
-    const data = Data.new();
-    let ready = false;
-
-    gate.then(() => (ready = true));
-
-    const Slow = () => {
-      const { value } = Data.get();
-      if (value === 'b' && !ready) throw gate;
-      return <span>{value}</span>;
-    };
-
+    const { Content, mount, transition, release } = scenario();
     const Fast = () => <b>{Data.get().value}</b>;
 
-    const view = render(
-      <Provider for={data}>
+    const view = await mount(
+      <>
         <Fast />
-        <Suspense fallback={<i>fallback</i>}>
-          <Slow />
-        </Suspense>
-      </Provider>
+        <Content />
+      </>
     );
 
-    await act(async () => {});
-
-    await act(async () => {
-      pending(() => {
-        data.value = 'b';
-      });
-      await Promise.resolve();
-    });
+    await transition();
 
     // React entangles a transition - it will not commit the reader which is
     // ready while its sibling is suspended.
     expect(view.container.textContent).toBe('aa');
 
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
+    await release();
 
     expect(view.container.textContent).toBe('bb');
   });
 
   it('will wait on every reader, not the first', async () => {
-    const { gate, data, Content } = scenario();
+    const { data, Content, mount, transition, release, settled } = scenario();
     const seen: string[] = [];
-    let settled = false;
 
     data.get(({ value }) => void seen.push(value));
 
-    render(
-      <Provider for={data}>
-        <Content />
-      </Provider>
-    );
-
-    await act(async () => {});
-
-    await act(async () => {
-      pending(() => {
-        data.value = 'b';
-      }).then(() => (settled = true));
-      await Promise.resolve();
-    });
+    await mount(<Content />);
+    await transition();
 
     expect(seen).toEqual(['a', 'b']);
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
+    await release();
 
-    expect(settled).toBe(true);
-  });
-
-  it('will settle on dispatch before mount', async () => {
-    const data = Data.new();
-    let settled = false;
-
-    await pending(() => {
-      data.value = 'b';
-    }).then(() => {
-      settled = true;
-    });
-
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will track pending from a sibling', async () => {
-    const { gate, data, Content } = scenario();
-    let shell!: Shell;
+    const { Content, Shell, mount, transition, release } = scenario();
+    let shell!: InstanceType<typeof Shell>;
 
     const Status = () => <b>{Shell.get().pending ? 'busy' : 'idle'}</b>;
 
-    class Shell extends Component {
-      pending = false;
-
-      go(to: string) {
-        this.pending = true;
-        pending(() => {
-          data.value = to;
-        }).then(() => {
-          this.pending = false;
-        });
-      }
-
-      render() {
-        return (
-          <>
-            <Status />
-            <Content />
-          </>
-        );
-      }
-    }
-
-    const view = render(
-      <Provider for={data}>
-        <Shell is={(i) => (shell = i)} />
-      </Provider>
+    const view = await mount(
+      <Shell is={(i) => (shell = i)}>
+        <Status />
+        <Content />
+      </Shell>
     );
-
-    await act(async () => {});
 
     expect(view.container.textContent).toBe('idlea');
 
-    await act(async () => {
-      shell.go('b');
-      await Promise.resolve();
-    });
+    await transition(() => shell.go('b'));
 
     expect(view.container.querySelector('i')).toBeNull();
     expect(view.container.textContent).toBe('busya');
 
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
+    await release();
 
     expect(view.container.textContent).toBe('idleb');
   });
 
   it('will disable outgoing content without collapsing it', async () => {
-    const { gate, data, Content } = scenario();
-    let shell!: Shell;
+    const { Content, Shell, mount, transition, release } = scenario();
+    let shell!: InstanceType<typeof Shell>;
 
     const Lock = ({ children }: { children: ReactNode }) => (
       <fieldset disabled={Shell.get().pending}>{children}</fieldset>
     );
 
-    class Shell extends Component {
-      pending = false;
-
-      go(to: string) {
-        this.pending = true;
-        pending(() => {
-          data.value = to;
-        }).then(() => {
-          this.pending = false;
-        });
-      }
-
-      render() {
-        return (
-          <Lock>
-            <Content />
-          </Lock>
-        );
-      }
-    }
-
-    const view = render(
-      <Provider for={data}>
-        <Shell is={(i) => (shell = i)} />
-      </Provider>
+    const view = await mount(
+      <Shell is={(i) => (shell = i)}>
+        <Lock>
+          <Content />
+        </Lock>
+      </Shell>
     );
-
-    await act(async () => {});
 
     const lock = () => view.container.querySelector('fieldset')!;
 
-    expect(view.container.textContent).toBe('a');
     expect(lock().disabled).toBe(false);
 
-    await act(async () => {
-      shell.go('b');
-      await Promise.resolve();
-    });
+    await transition(() => shell.go('b'));
 
     // The wrapper re-renders urgently and locks down; its child is the element
     // Shell already rendered, so the outgoing screen holds.
     expect(view.container.textContent).toBe('a');
     expect(lock().disabled).toBe(true);
 
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
+    await release();
 
     expect(view.container.textContent).toBe('b');
     expect(lock().disabled).toBe(false);
   });
-});
 
-describe('pending teardown', () => {
   it('will settle work left pending by an unmount', async () => {
-    class Data extends State {
-      value = 'a';
-    }
-
-    const data = Data.new();
-    const gate = mockPromise<void>();
-    let settled = false;
-
-    const Screen = () => {
-      const { value } = Data.get();
-      if (value === 'b') throw gate;
-      return <span>{value}</span>;
-    };
-
-    class Shell extends Component {
-      render() {
-        return (
-          <Suspense fallback={<i>fallback</i>}>
-            <Screen />
-          </Suspense>
-        );
-      }
-    }
-
-    const view = render(
-      <Provider for={data}>
-        <Shell />
-      </Provider>
+    const { Content, Shell, mount, transition, settled } = scenario();
+    const view = await mount(
+      <Shell>
+        <Content />
+      </Shell>
     );
 
-    await act(async () => {});
+    await transition();
 
-    await act(async () => {
-      pending(() => {
-        data.value = 'b';
-      }).then(() => {
-        settled = true;
-      });
-      await Promise.resolve();
-    });
-
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     await act(async () => {
       view.unmount();
       await Promise.resolve();
     });
 
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 });

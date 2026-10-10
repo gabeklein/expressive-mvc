@@ -1,16 +1,24 @@
 # CI/CD Workflow Overview
 
-## pr.yml (pull requests -> main)
+## pr.yml (pull requests)
 
-Blocking: `bun run test`, `bun run build` and `dist-check.ts` (static invariants
-on the emitted dist - relative specifiers resolve, side-effect imports are
-declared). Steps backed by a script under `.github/scripts` invoke it directly;
-only workspace-wide commands are `package.json` entries. The frozen-lockfile
+Blocking: `bun run typecheck`, `bun run coverage`, `bun run build` and
+`dist-check.ts` (static invariants on the emitted dist - relative specifiers
+resolve, side-effect imports are declared). Tests still run after a failed
+typecheck, so a type error doesn't hide test results. Steps backed by a script
+under `.github/scripts` invoke it directly; only workspace-wide commands are
+`package.json` entries. The frozen-lockfile
 install in the `setup` action doubles as the internal-dependency desync guard -
 a workspace version that falls outside a sibling's range cannot reach main.
 
 Non-blocking signals: `changeset status` (a preview of which packages would
-bump) and bundle size.
+bump) and bundle size - the step summary and a warning annotation when a shape
+exceeds its budget. Budgets are re-set once per release, not per feature: on
+the Version Packages PR (`changeset-release/main`) the size step runs with
+`--gate` and fails `verify` while any shape is over. The fix is its own PR on
+`main` re-setting the budgets and the figures in `bundle-size.mdx`; the release
+PR picks it up when changesets refreshes the branch. `build:site` measures for
+the site's headline figure and never fails on budget.
 
 Beside `verify`, one run per push also holds:
 
@@ -24,12 +32,19 @@ Beside `verify`, one run per push also holds:
 `verify` and `e2e` are required checks, matched by job name - renaming either
 job needs the branch protection updated with it.
 
-A PR in a GitHub stack runs as if it targets the stack's base, so the `main`
-filter covers every layer. `verify` runs on each layer; the others run only
-on the top one (`stack.position == stack.size`), whose head is what lands when
-the stack merges - a skipped required check counts as passed. A PR merely based
-on another PR's branch, outside a stack, runs nothing: create stacks with
-`gh stack`.
+`verify` runs for a PR into any branch, so a PR into a trunk (a long-lived
+feature branch, see AGENTS.md) is checked without naming the trunk here. Its
+release-facing signals - bundle size and the changeset reminder - and the
+other jobs run only for PRs into `main` and stacks.
+
+A PR in a GitHub stack runs as if it targets the stack's base. `verify` runs on
+each layer; the others run only on the top one (`stack.position ==
+stack.size`), whose head is what lands when the stack merges - a skipped
+required check counts as passed. A PR merely based on another PR's branch,
+outside a stack, runs only `verify`: create stacks with `gh stack`.
+
+`verify` typechecks from scratch. Restored incremental build info re-checks
+only changed files, in an order that can surface type cycles a clean run does not.
 
 ## release.yml (push -> main)
 

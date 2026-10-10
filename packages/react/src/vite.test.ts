@@ -22,12 +22,11 @@ interface Run {
   locals: Record<string, unknown>;
   replace?: Record<string, unknown>;
   before?: Record<string, unknown>;
-  next?: Record<string, unknown>;
   ssr?: boolean;
   data?: Record<string, unknown>;
 }
 
-async function run(code: string, { locals, replace = {}, before, next, ssr = false, data = {} }: Run) {
+async function run(code: string, { locals, replace = {}, before, ssr = false, data = {} }: Run) {
   const output = await inject(code, ssr);
   const body = output.replace(/^import .*$/gm, '').replaceAll('import.meta.hot', 'hot');
   const hot = { data: Object.assign(data, before && { expressive: before }), accept: vi.fn(), invalidate: vi.fn() };
@@ -38,8 +37,6 @@ async function run(code: string, { locals, replace = {}, before, next, ssr = fal
     hot, location, accept, State, ...Object.values(locals)
   );
 
-  if (next) hot.accept.mock.calls[0][0](next);
-
   return { hot, location: location! };
 }
 
@@ -47,30 +44,18 @@ it('will apply during serve only, after other transforms', () => {
   expect(expressive()).toMatchObject({ apply: 'serve', enforce: 'post' });
 });
 
-describe('skip', () => {
-  it('will skip a non-script module', async () => {
-    expect(await transform('class A {}', '/src/app.css')).toBeUndefined();
-  });
+it.each([
+  ['will skip a non-script module', 'class A {}', '/src/app.css'],
+  ['will skip the mvc runtime itself', 'class A {}', '/mvc/src/state.js'],
+  ['will skip a dependency', 'class A {}', '/node_modules/lib/index.js'],
+  ['will skip a module without classes', 'export const title = "no class";', undefined],
+  ['will skip a module mentioning class without declaring one', 'export const className = "a";', undefined]
+])('%s', async (_, code, id) => {
+  expect(await transform(code, id)).toBeUndefined();
+});
 
-  it('will skip the mvc runtime itself', async () => {
-    expect(await transform('class A {}', '/mvc/src/state.js')).toBeUndefined();
-  });
-
-  it('will transform without a resolved runtime', async () => {
-    expect(await transform('class A {}', '/src/app.js', null)).toBeDefined();
-  });
-
-  it('will skip a dependency', async () => {
-    expect(await transform('class A {}', '/node_modules/lib/index.js')).toBeUndefined();
-  });
-
-  it('will skip a module without classes', async () => {
-    expect(await transform('export const title = "no class";')).toBeUndefined();
-  });
-
-  it('will skip a module mentioning class without declaring one', async () => {
-    expect(await transform('export const className = "a";')).toBeUndefined();
-  });
+it('will transform without a resolved runtime', async () => {
+  expect(await transform('class A {}', '/src/app.js', null)).toBeDefined();
 });
 
 it('will resolve the runtime once', async () => {
@@ -131,31 +116,16 @@ describe('exports', () => {
   const exports = async (code: string) =>
     (await inject(`class Store {}\n${code}`)).match(/const __exports = \{ (.*) \};/)![1];
 
-  it('will record declarations', async () => {
-    expect(await exports('export function helper() {}\nexport let a = 1, [b] = [2];'))
-      .toBe('"helper": helper, "a": a');
-  });
-
-  it('will record specifiers by local name', async () => {
-    expect(await exports('export { Store as Model, Store as "with-dash" };'))
-      .toBe('"Model": Store, "with-dash": Store');
-  });
-
-  it('will ignore re-exports', async () => {
-    expect(await exports("export { other } from './other';\nexport { Store };")).toBe('"Store": Store');
-  });
-
-  it('will record a default binding', async () => {
-    expect(await exports('export default function App() {}')).toBe('"default": App');
-    expect(await exports('export { Store as default };')).toBe('"default": Store');
-  });
-
-  it('will not record a default snapshot', async () => {
-    expect(await exports('export default Store;')).toBe('');
-  });
-
-  it('will not record an anonymous default', async () => {
-    expect(await exports('export default function () {}')).toBe('');
+  it.each([
+    ['will record declarations', 'export function helper() {}\nexport let a = 1, [b] = [2];', '"helper": helper, "a": a'],
+    ['will record specifiers by local name', 'export { Store as Model, Store as "with-dash" };', '"Model": Store, "with-dash": Store'],
+    ['will ignore re-exports', "export { other } from './other';\nexport { Store };", '"Store": Store'],
+    ['will record a default function', 'export default function App() {}', '"default": App'],
+    ['will record a default specifier', 'export { Store as default };', '"default": Store'],
+    ['will not record a default snapshot', 'export default Store;', ''],
+    ['will not record an anonymous default', 'export default function () {}', '']
+  ])('%s', async (_, code, expected) => {
+    expect(await exports(code)).toBe(expected);
   });
 });
 
@@ -164,9 +134,10 @@ describe('update', () => {
   class Plain {}
   const App = () => null;
   const source = 'export class Store {}\nclass Local {}\nclass Plain {}\nexport const App = () => null;\nexport let value = 1;';
+  const locals = { Store, Local: Store, Plain, App, value: 1 };
 
   it('will remember classes on first run', async () => {
-    const { hot, location } = await run(source, { locals: { Store, Local: Store, Plain, App, value: 1 } });
+    const { hot, location } = await run(source, { locals });
 
     expect(hot.data.expressive).toEqual({ Store, Local: Store, Plain });
     expect(location.reload).not.toHaveBeenCalled();
@@ -217,16 +188,6 @@ describe('update', () => {
     expect(announce).not.toHaveBeenCalled();
   });
 
-  it('will invalidate importers of a changed plain export on the server', async () => {
-    const { hot } = await run(source, {
-      locals: { Store, Local: Store, Plain, App, value: 1 },
-      next: { Store, App, value: 2 },
-      ssr: true
-    });
-
-    expect(hot.invalidate).toHaveBeenCalledWith('"value" export cannot be hot-patched.');
-  });
-
   it('will keep browser-only code out of the server', async () => {
     const code = await inject('export class Vault { #key = 1; }', true);
 
@@ -239,35 +200,22 @@ describe('update', () => {
     expect(location.reload).not.toHaveBeenCalled();
   });
 
-  it('will pass without next exports', async () => {
-    const { hot } = await run(source, { locals: { Store, Local: Store, Plain, App, value: 1 }, next: undefined });
+  it.each([
+    ['will pass without next exports', undefined],
+    ['will leave a changed State class to the reload', { Store: class Store extends State {}, App, value: 1 }],
+    ['will pass a changed component', { Store, App: () => null, value: 1 }]
+  ])('%s', async (_, next) => {
+    const { hot } = await run(source, { locals });
+
+    hot.accept.mock.calls[0][0](next);
 
     expect(hot.invalidate).not.toHaveBeenCalled();
   });
 
-  it('will leave a changed State class to the reload', async () => {
-    const { hot } = await run(source, {
-      locals: { Store, Local: Store, Plain, App, value: 1 },
-      next: { Store: class Store extends State {}, App, value: 1 }
-    });
+  it.each([false, true])('will invalidate importers of another changed export (ssr: %s)', async (ssr) => {
+    const { hot } = await run(source, { locals, ssr });
 
-    expect(hot.invalidate).not.toHaveBeenCalled();
-  });
-
-  it('will pass a changed component', async () => {
-    const { hot } = await run(source, {
-      locals: { Store, Local: Store, Plain, App, value: 1 },
-      next: { Store, App: () => null, value: 1 }
-    });
-
-    expect(hot.invalidate).not.toHaveBeenCalled();
-  });
-
-  it('will invalidate another changed export', async () => {
-    const { hot } = await run(source, {
-      locals: { Store, Local: Store, Plain, App, value: 1 },
-      next: { Store, App, value: 2 }
-    });
+    hot.accept.mock.calls[0][0]({ Store, App, value: 2 });
 
     expect(hot.invalidate).toHaveBeenCalledWith('"value" export cannot be hot-patched.');
   });

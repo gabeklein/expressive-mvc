@@ -227,7 +227,7 @@ To run setup for *every* instance of a class (and its subclasses), register a ha
 
 ```ts
 const stop = Timer.on({
-  pre() {
+  setup() {
     // runs for each Timer on init
     return () => {
       /* cleanup on destroy */
@@ -236,7 +236,7 @@ const stop = Timer.on({
 });
 ```
 
-`pre` runs per-instance, before `new()`; `new` runs with it, and `type` once per class - see [API: State](/docs/api/state#stateonhandler).
+`setup` runs per-instance, before `new()`; `ready` runs after it, and `type` once per class - see [API: State](/docs/api/state).
 
 A `catch` handler hears failures no caller was positioned to catch - a rejected async initializer (kind `setup`), a getter or effect throwing during an update (`getter`, `effect`), a write after destruction (`dead`), an instance constructed but never activated (`unused`). It receives the raw error, the `kind` string and, where one applies, the key. Return nothing to handle it, or return the error to pass it on. Passed off the end, a `dead` write outputs nothing, `unused` warns, and the rest escape uncaught.
 

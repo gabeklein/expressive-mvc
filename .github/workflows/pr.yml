@@ -2,7 +2,6 @@ name: PR
 
 on:
   pull_request:
-    branches: [main]
 
 concurrency:
   group: pr-${{ github.ref }}
@@ -21,7 +20,13 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - run: bun run test
+      - name: Typecheck
+        id: typecheck
+        run: bun run typecheck
+
+      - name: Tests
+        if: success() || steps.typecheck.outcome == 'failure'
+        run: bun run coverage
 
       - run: bun run build
 
@@ -29,19 +34,24 @@ jobs:
         run: bun .github/scripts/dist-check.ts
 
       - name: Bundle size
-        continue-on-error: true
-        run: bun .github/scripts/size-limit.ts
+        if: github.base_ref == 'main' || github.event.pull_request.stack != null
+        continue-on-error: ${{ github.head_ref != 'changeset-release/main' }}
+        run: bun .github/scripts/size-limit.ts ${{ github.head_ref == 'changeset-release/main' && '--gate' || '' }}
 
       - name: Docs agree with code
         run: bun .github/scripts/docs-check.ts
 
       - name: Changeset reminder
+        if: github.base_ref == 'main' || github.event.pull_request.stack != null
         continue-on-error: true
-        run: bunx changeset status --since origin/main
+        env:
+          BASE: ${{ github.base_ref }}
+        run: bunx changeset status --since "origin/$BASE"
 
   dist-smoke:
     if: >-
-      github.event.pull_request.stack == null ||
+      github.event.pull_request.stack == null && github.base_ref == 'main' ||
+      github.event.pull_request.stack != null &&
       github.event.pull_request.stack.position == github.event.pull_request.stack.size
     runs-on: ubuntu-latest
     steps:
@@ -67,7 +77,8 @@ jobs:
 
   e2e:
     if: >-
-      github.event.pull_request.stack == null ||
+      github.event.pull_request.stack == null && github.base_ref == 'main' ||
+      github.event.pull_request.stack != null &&
       github.event.pull_request.stack.position == github.event.pull_request.stack.size
     runs-on: ubuntu-latest
     steps:
@@ -110,7 +121,8 @@ jobs:
 
   hot:
     if: >-
-      github.event.pull_request.stack == null ||
+      github.event.pull_request.stack == null && github.base_ref == 'main' ||
+      github.event.pull_request.stack != null &&
       github.event.pull_request.stack.position == github.event.pull_request.stack.size
     runs-on: ubuntu-latest
     steps:
@@ -126,7 +138,8 @@ jobs:
   native:
     if: >-
       contains(github.event.pull_request.labels.*.name, 'react-native') && (
-        github.event.pull_request.stack == null ||
+        github.event.pull_request.stack == null && github.base_ref == 'main' ||
+        github.event.pull_request.stack != null &&
         github.event.pull_request.stack.position == github.event.pull_request.stack.size
       )
     uses: ./.github/workflows/native.yml

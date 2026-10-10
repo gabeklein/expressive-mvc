@@ -103,7 +103,7 @@ basket.items.set('b', Item.new());   // already activated - guest
 
 Ownership follows freshness, in both modes and however a value arrives. A fresh (never-activated) `State` - a `new Item()` handed to `set`, constructed by a factory, or in initial entries - is adopted and owned; the map destroys it when its entry is deleted, cleared, or replaced. An already-activated value (`Item.new()`) is a guest - its parent is settled, so it is held but never destroyed. Non-State values are never owned.
 
-The hosting state adopts every map at activation, so a usable map always has an owner. The field is read-only - assigning over it throws. Fresh `State` values are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members. Owned members die with the owner.
+The hosting state adopts every map at activation, so a usable map always has an owner. The field is read-only - assigning over it throws. Fresh `State` values are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members. Owned members die with the owner. `value.get(State)` is the owner without naming its type ([get.md](get.md#owner)).
 
 Destruction is an eviction concern, separate from context: `delete` destroys the owned entry it removes, `clear` does so for every entry, and the owner dying is a `clear`. So `map.Managed` can be constructed without an owner (`new map.Managed()`, chiefly for testing) - no context to parent fresh values into, but it still owns and destroys them on eviction; guests behave as usual.
 

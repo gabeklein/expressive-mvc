@@ -59,7 +59,7 @@ function track() {
       if (!children) SUBCLASSES.set(parent, (children = new Set()));
       children.add(type);
     },
-    pre(state) {
+    setup(state) {
       const ref = new WeakRef(state);
       LIVE!.add(ref);
       return () => LIVE!.delete(ref);
@@ -212,7 +212,9 @@ function describe(type: Function): Entry {
           if (target !== type) kinds[key] = desc.set ? 'accessor' : desc.get ? 'get' : 'fn';
         }
 
-  return { type, shape: shape.replace(/\s+/g, ' '), kinds, own: handlers(type as State.Extends) };
+  shape = shape.replace(/\s+/g, ' ').replace(/__vite_ssr_import_\d+__/g, '__vite_ssr_import__');
+
+  return { type, shape, kinds, own: handlers(type as State.Extends) };
 }
 
 function compatible(prev: Entry, next: Entry) {

@@ -220,10 +220,20 @@ form = get(FormState, true, true);
 form = get(FormState, true, false); // T | undefined
 ```
 
+### `get(State)` - owner
+
+```ts
+owner = get(State); // the State which owns this one
+maybe = get(State, false); // undefined at the root
+owned = get(State, true); // every State this one owns
+```
+
+`State` reads ownership instead of context - see [`state.get(State)`](/docs/api/state). Downstream forms collect owned States rather than context descendants.
+
 ### Behavior notes
 
 - All `get()` properties are **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)`.
-- Upstream lookups check the direct parent first, then siblings under each ancestor (nearest wins), then walk the context hierarchy.
+- Upstream lookups walk ancestors by depth: each ancestor, then siblings under it, then the next ancestor up. The nearest match wins, and an ancestor beats a sibling at its own level. If nothing in the ownership chain matches, the lookup walks the context hierarchy.
 - Siblings under one parent resolve each other regardless of field order - a required lookup waits for the parent to finish activating before throwing.
 - A state does not resolve itself.
 - Upstream callbacks are not reactive - the upstream's own value changes do not re-run them.

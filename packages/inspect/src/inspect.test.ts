@@ -1,5 +1,5 @@
-import { State, has, map, set } from '@expressive/mvc';
-import { describe, expect, it } from 'vitest';
+import { Context, State, has, map, set } from '@expressive/mvc';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockUncaught, mockWarn } from '../test.setup';
 import { act, attach, call, detach, find, get, health, journal, models, set as assign, tree } from './index';
@@ -38,11 +38,10 @@ describe('attach', () => {
   });
 
   it('will not see instances created before attach', () => {
-    const before = Child.new();
+    Child.new();
     attach();
     const after = Child.new();
     expect(models().map((m) => m.id)).toEqual([String(after)]);
-    expect(before).toBeDefined();
   });
 
   it('will attach once per class and detach', () => {
@@ -75,12 +74,14 @@ describe('attach', () => {
 });
 
 describe('models', () => {
+  beforeEach(() => void attach());
+
   it('will report keys, absent keys, and parent', () => {
-    attach();
     const parent = Parent.new();
     const kid = parent.kids.add();
-    const mapped = Child.new();
-    parent.lookup.set('m', mapped);
+    const guest = Child.new();
+    parent.lookup.set('m', new Child());
+    parent.lookup.set('g', guest);
 
     const byId = Object.fromEntries(models().map((m) => [m.id, m]));
     const root = byId[String(parent)];
@@ -93,17 +94,17 @@ describe('models', () => {
     expect(root.parent).toBeUndefined();
     expect(byId[String(parent.child)].parent).toBe(String(parent));
     expect(byId[String(kid)].parent).toBe(String(parent));
-    expect(byId[String(mapped)].parent).toBe(String(parent));
+    expect(byId[String(parent.lookup.get('m'))].parent).toBe(String(parent));
+    expect(byId[String(guest)].parent).toBeUndefined();
   });
 
-  it('will credit a shared child to its first owner', () => {
+  it('will credit a shared child to its owner, not a later holder', () => {
     class Twin extends State {
-      shared = Child.new();
+      shared = new Child();
       numbers = has([1, 2]);
       names = map<string, string>();
       list = [this.shared];
     }
-    attach();
     const a = Twin.new();
     const b = Twin.new();
     b.shared = a.shared;
@@ -113,24 +114,39 @@ describe('models', () => {
   });
 
   it('will nest a tree by ownership', () => {
-    attach();
     const parent = Parent.new();
     const loose = Child.new();
     const nodes = tree();
     expect(nodes.map((n) => n.id)).toEqual([String(parent), String(loose)]);
     expect(nodes[0].children.map((n) => n.id)).toEqual([String(parent.child)]);
   });
+
+  it('will nest a hosted instance under its host, not a guest under its holder', () => {
+    class Holder extends State {
+      held?: Child = undefined;
+    }
+    const holder = Holder.new();
+    const guest = Child.new();
+    const hosted = new Child();
+    holder.held = guest;
+    new Context(holder).push(hosted);
+    const nodes = tree();
+    expect(nodes.map((n) => n.id)).toEqual([String(holder), String(guest)]);
+    expect(nodes[0].children.map((n) => n.id)).toEqual([String(hosted)]);
+    expect(find(String(hosted))!.parent!.id).toBe(String(holder));
+    expect(find(String(holder))!.children.map((c) => c.id)).toEqual([String(hosted)]);
+  });
 });
 
 describe('get', () => {
+  beforeEach(() => void attach());
+
   it('will list models without an address', () => {
-    attach();
     Child.new();
     expect(get()).toEqual(models());
   });
 
   it('will resolve by type name or id', () => {
-    attach();
     const first = Child.new();
     const second = Child.new();
     second.name = 'two';
@@ -140,12 +156,10 @@ describe('get', () => {
   });
 
   it('will return undefined for unknown targets', () => {
-    attach();
     expect(get('Nope.x')).toBeUndefined();
   });
 
   it('will not trigger lazy values', () => {
-    attach();
     Parent.new();
     expect(get('Parent.lazy')).toBeUndefined();
     expect(get('Parent.child.name')).toBe('kid');
@@ -153,8 +167,9 @@ describe('get', () => {
 });
 
 describe('get with a selection', () => {
+  beforeEach(() => void attach());
+
   it('will pick keys and follow a child State, keeping refs', () => {
-    attach();
     const parent = Parent.new();
 
     expect(get('Parent', { title: true, child: { name: true } })).toEqual({
@@ -166,7 +181,6 @@ describe('get with a selection', () => {
   });
 
   it('will start from a path', () => {
-    attach();
     Parent.new();
     expect(get('Parent.child', { name: true })).toMatchObject({ $type: 'Child', name: 'kid' });
   });
@@ -177,7 +191,6 @@ describe('get with a selection', () => {
       few = [{ id: 1, title: 'one' }];
     }
 
-    attach();
     Table.new();
     const rows = (get('Table', { rows: { id: true } }) as { rows: unknown[] }).rows;
 
@@ -188,7 +201,6 @@ describe('get with a selection', () => {
   });
 
   it('will pick from a Map', () => {
-    attach();
     const parent = Parent.new();
     parent.lookup.set('a', new Child());
 
@@ -196,7 +208,6 @@ describe('get with a selection', () => {
   });
 
   it('will take a selected value whole, as get does', () => {
-    attach();
     Parent.new();
 
     expect(get('Parent', { child: true })).toMatchObject({ child: get('Parent.child') });
@@ -204,7 +215,6 @@ describe('get with a selection', () => {
   });
 
   it('will not trigger lazy values or read missing keys', () => {
-    attach();
     Parent.new();
 
     const out = get('Parent', { lazy: true, missing: { deep: true } }) as Record<string, unknown>;
@@ -215,13 +225,14 @@ describe('get with a selection', () => {
 });
 
 describe('labels shared by several classes', () => {
+  beforeEach(() => void attach());
+
   const declare = () =>
     class Control extends State {
       value = 0;
     };
 
   it('will throw rather than pick one', () => {
-    attach();
     declare().new();
     declare().new();
 
@@ -230,7 +241,6 @@ describe('labels shared by several classes', () => {
   });
 
   it('will reach each by instance id', () => {
-    attach();
     const first = declare().new();
     declare().new();
 
@@ -238,7 +248,6 @@ describe('labels shared by several classes', () => {
   });
 
   it('will reject an act waiting on one', async () => {
-    attach();
     declare().new();
     declare().new();
 
@@ -247,6 +256,8 @@ describe('labels shared by several classes', () => {
 });
 
 describe('act until an address', () => {
+  beforeEach(() => void attach());
+
   class Part extends State {
     value = 0;
   }
@@ -256,7 +267,6 @@ describe('act until an address', () => {
   }
 
   it('will follow an owner path to the instance it names', async () => {
-    attach();
     const holder = Holder.new();
     const stray = Part.new();
 
@@ -274,7 +284,6 @@ describe('act until an address', () => {
   });
 
   it('will record an owner path the app filter excludes', async () => {
-    attach();
     journal.record({ level: 'keys', types: ['Nope'] });
     const holder = Holder.new();
 
@@ -285,7 +294,6 @@ describe('act until an address', () => {
   });
 
   it('will follow a label to its first instance only', async () => {
-    attach();
     Part.new();
     const second = Part.new();
 
@@ -296,7 +304,6 @@ describe('act until an address', () => {
   });
 
   it('will throw for an address that names no State', async () => {
-    attach();
     Holder.new();
 
     await expect(act(() => {}, { until: 'Missing.value' })).rejects.toThrow('until Missing.value: Missing names no State.');
@@ -304,7 +311,6 @@ describe('act until an address', () => {
   });
 
   it('will throw for an unmanaged _ key', async () => {
-    attach();
     Holder.new();
 
     await expect(act(() => {}, { until: 'Holder._handle' })).rejects.toThrow('until Holder._handle: _ keys are unmanaged');
@@ -312,8 +318,9 @@ describe('act until an address', () => {
 });
 
 describe('set', () => {
+  beforeEach(() => void attach());
+
   it('will assign top-level and nested values', () => {
-    attach();
     const parent = Parent.new();
     assign('Parent.title', 'renamed');
     assign('Parent.child.name', 'named');
@@ -324,7 +331,6 @@ describe('set', () => {
   });
 
   it('will throw for unknown targets', () => {
-    attach();
     Parent.new();
     expect(() => assign('Nope.title', 1)).toThrow('No model at Nope.title.');
     expect(() => assign('Parent', 1)).toThrow('No model at Parent.');
@@ -333,8 +339,9 @@ describe('set', () => {
 });
 
 describe('call', () => {
+  beforeEach(() => void attach());
+
   it('will invoke methods and await results', async () => {
-    attach();
     const parent = Parent.new();
     expect(await call('Parent.rename', 'called')).toBe('called');
     expect(parent.title).toBe('called');
@@ -342,7 +349,6 @@ describe('call', () => {
   });
 
   it('will throw for non-methods', async () => {
-    attach();
     Parent.new();
     await expect(call('Parent.title')).rejects.toThrow('No method at Parent.title.');
     await expect(call('Nope.x')).rejects.toThrow('No method at Nope.x.');
@@ -350,6 +356,8 @@ describe('call', () => {
 });
 
 describe('health', () => {
+  beforeEach(() => void attach());
+
   const COPIES = Symbol.for('@expressive/mvc');
   const list = () => (globalThis as unknown as Record<symbol, unknown[]>)[COPIES];
 
@@ -357,34 +365,63 @@ describe('health', () => {
     text = '';
   }
 
-  it('will count caught reports by case and pass them on', async () => {
-    const warn = mockWarn();
-    attach();
+  it('will count caught reports by case and pass them on', () => {
+    const app = vi.fn((error: unknown) => error);
+    const stop = State.on({ catch: app });
+    const note = Note.new();
+
+    note.set(null);
+    note.text = 'late';
+    stop();
+
+    expect(app).toBeCalledWith(expect.objectContaining({ message: `Tried to update ${note}.text but state is destroyed.` }), 'dead', 'text');
+    expect(health().caught).toEqual({ dead: 1, unused: 0, getter: 0, setup: 0, effect: 0 });
+  });
+
+  it('will journal and summarize a caught report, and reset counts on clear', async () => {
+    journal.record({ level: 'keys' });
     const note = Note.new();
 
     note.set(null);
     note.text = 'late';
     await flushMicrotasks();
 
-    expect(warn).not.toBeCalled();
-    expect(health().caught).toEqual({ dead: 1, unused: 0, getter: 0, setup: 0, effect: 0 });
+    expect(journal.history({ key: 'text' }).map(({ event }) => event)).toContainEqual({
+      id: String(note),
+      type: 'Note',
+      key: 'text',
+      kind: 'caught',
+      value: {
+        case: 'dead',
+        message: `Tried to update ${note}.text but state is destroyed.`,
+        stack: expect.stringContaining('Tried to update'),
+        handled: false
+      }
+    });
+    expect(journal.summary({ id: String(note) })[0]).toMatchObject({ caught: 1, destroyed: true });
+    expect(health().caught.dead).toBe(1);
+
+    journal.clear();
+    expect(health().caught.dead).toBe(0);
   });
 
-  it('will see a report before an app handler takes it', () => {
-    attach();
-
-    class Late extends State {
+  it('will see a report before an app handler takes it, marked handled', () => {
+    class Dropped extends State {
       text = '';
     }
 
+    journal.record({ level: 'keys' });
     const stop = State.on({ catch: (error, kind) => (kind == 'dead' ? undefined : error) });
-    const late = Late.new();
+    const dropped = Dropped.new();
 
-    late.set(null);
-    late.text = 'late';
+    dropped.set(null);
+    dropped.text = 'late';
     stop();
 
+    const [event] = journal.history({ type: 'Dropped' }).map(({ event }) => event).filter((e) => e.kind === 'caught');
+
     expect(health().caught.dead).toBe(1);
+    expect(event.value).toMatchObject({ case: 'dead', handled: true });
   });
 
   it('will stop observing a class when detached', async () => {
@@ -407,53 +444,8 @@ describe('health', () => {
     expect(health().caught.dead).toBe(0);
   });
 
-  it('will record a caught report in the journal', async () => {
-    mockUncaught();
-    attach();
-    journal.record({ level: 'keys' });
-    const note = Note.new();
-
-    note.set(null);
-    note.text = 'late';
-    await flushMicrotasks();
-
-    expect(journal.history({ key: 'text' }).map(({ event }) => event)).toContainEqual({
-      id: String(note),
-      type: 'Note',
-      key: 'text',
-      kind: 'caught',
-      value: {
-        case: 'dead',
-        message: `Tried to update ${note}.text but state is destroyed.`,
-        stack: expect.stringContaining('Tried to update'),
-        handled: false
-      }
-    });
-  });
-
-  it('will mark a report an app handler took as handled', async () => {
-    attach();
-    journal.record({ level: 'keys' });
-
-    class Dropped extends State {
-      text = '';
-    }
-
-    const stop = State.on({ catch: (error, kind) => (kind == 'dead' ? undefined : error) });
-    const dropped = Dropped.new();
-
-    dropped.set(null);
-    dropped.text = 'late';
-    stop();
-
-    const [event] = journal.history({ type: 'Dropped' }).map(({ event }) => event).filter((e) => e.kind === 'caught');
-
-    expect(event.value).toMatchObject({ case: 'dead', handled: true });
-  });
-
   it('will count a report from a class it never saw activate', async () => {
     mockWarn();
-    attach();
     journal.record({ level: 'keys' });
 
     class Idle extends State {}
@@ -465,22 +457,8 @@ describe('health', () => {
     expect(journal.history({ type: 'Idle' })[0].event.value).toMatchObject({ case: 'unused', handled: false });
   });
 
-  it('will reset caught counts when the journal clears', () => {
-    mockUncaught();
-    attach();
-    const note = Note.new();
-
-    note.set(null);
-    note.text = 'late';
-    expect(health().caught.dead).toBe(1);
-
-    journal.clear();
-    expect(health().caught.dead).toBe(0);
-  });
-
   it('will record a thrown value that is not an Error', async () => {
     const caught = mockUncaught();
-    attach();
     journal.record({ level: 'keys' });
 
     class Thrower extends State {
@@ -502,22 +480,8 @@ describe('health', () => {
     );
   });
 
-  it('will count caught reports in the summary', async () => {
-    mockUncaught();
-    attach();
-    journal.record({ level: 'keys' });
-    const note = Note.new();
-
-    note.set(null);
-    note.text = 'late';
-    await flushMicrotasks();
-
-    expect(journal.summary({ id: String(note) })[0]).toMatchObject({ caught: 1, destroyed: true });
-  });
-
   it('will record a replacement under the kind it replaced', async () => {
     const caught = mockUncaught();
-    attach();
     journal.record({ level: 'keys' });
 
     class Replaced extends State {
@@ -541,7 +505,6 @@ describe('health', () => {
 
   it('will count loaded copies of mvc and warn once', () => {
     const warn = mockWarn();
-    attach();
     const start = list().length;
 
     try {

@@ -1,10 +1,16 @@
-import { expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';
-import { mockError } from '../test.setup';
+import { mockError, mockPromise } from '../test.setup';
 
 const error = mockError();
+
+beforeEach(() => void vi.useFakeTimers());
+afterEach(async () => {
+  await vi.runAllTimersAsync();
+  vi.useRealTimers();
+});
 
 function target(update = vi.fn()): Schedulable {
   return { update };
@@ -24,7 +30,6 @@ it('will batch urgent work in a microtask', async () => {
 });
 
 it('will defer transition work to a task', async () => {
-  vi.useFakeTimers();
   const scope = target();
   const second = target();
 
@@ -40,11 +45,9 @@ it('will defer transition work to a task', async () => {
   await vi.runAllTimersAsync();
   expect(scope.update).toHaveBeenCalledWith(true);
   expect(second.update).toHaveBeenCalledWith(true);
-  vi.useRealTimers();
 });
 
 it('will promote passive work when an urgent update arrives', async () => {
-  vi.useFakeTimers();
   const scope = target();
 
   transition(() => schedule(scope));
@@ -54,11 +57,9 @@ it('will promote passive work when an urgent update arrives', async () => {
   expect(scope.update).toHaveBeenCalledWith(false);
   await vi.runAllTimersAsync();
   expect(scope.update).toHaveBeenCalledOnce();
-  vi.useRealTimers();
 });
 
 it('will ignore stale passive queue entries', async () => {
-  vi.useFakeTimers();
   const scope = target();
 
   transition(() => schedule(scope));
@@ -66,11 +67,9 @@ it('will ignore stale passive queue entries', async () => {
   await vi.runAllTimersAsync();
 
   expect(scope.update).not.toHaveBeenCalled();
-  vi.useRealTimers();
 });
 
 it('will unschedule work and restore priority after an error', async () => {
-  vi.useFakeTimers();
   const scope = target();
   transition(() => schedule(scope));
   unschedule(scope);
@@ -82,12 +81,9 @@ it('will unschedule work and restore priority after an error', async () => {
   schedule(scope);
   await Promise.resolve();
   expect(scope.update).toHaveBeenCalledWith(false);
-  await vi.runAllTimersAsync();
-  vi.useRealTimers();
 });
 
 it('will settle failed work and continue the queue', async () => {
-  vi.useFakeTimers();
   const expected = new Error('failed');
   const held = vi.fn();
   const failed = target(vi.fn(() => {
@@ -105,11 +101,9 @@ it('will settle failed work and continue the queue', async () => {
   expect(error).toHaveBeenCalledWith(expected);
   expect(held).toHaveBeenCalledOnce();
   expect(after.update).toHaveBeenCalledWith(true);
-  vi.useRealTimers();
 });
 
 it('will release holds once the scope updates', async () => {
-  vi.useFakeTimers();
   const scope = target();
   const held = vi.fn();
 
@@ -120,7 +114,6 @@ it('will release holds once the scope updates', async () => {
   expect(scope.update).toHaveBeenCalledWith(true);
   expect(held).toHaveBeenCalledOnce();
   expect(scope.holds).toBeUndefined();
-  vi.useRealTimers();
 });
 
 it('will release holds when promoted to urgent', async () => {
@@ -161,9 +154,7 @@ it('will report an urgent update error and continue', async () => {
 });
 
 it('will hold a transition batch while any scope probes as suspended', async () => {
-  vi.useFakeTimers();
-  let resolve!: () => void;
-  const waiting = new Promise<void>((done) => (resolve = done));
+  const waiting = mockPromise<void>();
   const ready = { ...target(), probe: vi.fn() };
   const blocked = { ...target(), probe: vi.fn((): Promise<void> | undefined => waiting) };
 
@@ -178,17 +169,14 @@ it('will hold a transition batch while any scope probes as suspended', async () 
   expect(ready.queued).toBe('deferred');
 
   blocked.probe.mockReturnValue(undefined);
-  resolve();
+  waiting.resolve();
   await vi.runAllTimersAsync();
   expect(ready.update).toHaveBeenCalledWith(true);
   expect(blocked.update).toHaveBeenCalledWith(true);
-  vi.useRealTimers();
 });
 
 it('will run empty scopes first and defer the batch when one suspends', async () => {
-  vi.useFakeTimers();
-  let resolve!: () => void;
-  const waiting = new Promise<void>((done) => (resolve = done));
+  const waiting = mockPromise<void>();
   const order: string[] = [];
   const leaving = { ...target(vi.fn(() => void order.push('leaving'))), empty: () => false };
   const arriving = {
@@ -207,16 +195,13 @@ it('will run empty scopes first and defer the batch when one suspends', async ()
   await vi.runAllTimersAsync();
   expect(order).toEqual(['arriving']);
 
-  resolve();
+  waiting.resolve();
   await vi.runAllTimersAsync();
   expect(order).toEqual(['arriving', 'leaving']);
-  vi.useRealTimers();
 });
 
 it('will let urgent work overtake a deferred scope', async () => {
-  vi.useFakeTimers();
-  let resolve!: () => void;
-  const waiting = new Promise<void>((done) => (resolve = done));
+  const waiting = mockPromise<void>();
   const deferred = target();
   const blocked = { ...target(), probe: vi.fn((): Promise<void> | undefined => waiting) };
 
@@ -233,16 +218,13 @@ it('will let urgent work overtake a deferred scope', async () => {
   expect(deferred.update).toHaveBeenCalledWith(false);
 
   blocked.probe.mockReturnValue(undefined);
-  resolve();
+  waiting.resolve();
   await vi.runAllTimersAsync();
   expect(deferred.update).toHaveBeenCalledOnce();
-  vi.useRealTimers();
 });
 
 it('will drop a deferred scope unscheduled before resume', async () => {
-  vi.useFakeTimers();
-  let resolve!: () => void;
-  const waiting = new Promise<void>((done) => (resolve = done));
+  const waiting = mockPromise<void>();
   const deferred = target();
   const blocked = { ...target(), probe: vi.fn((): Promise<void> | undefined => waiting) };
 
@@ -254,15 +236,13 @@ it('will drop a deferred scope unscheduled before resume', async () => {
 
   unschedule(deferred);
   blocked.probe.mockReturnValue(undefined);
-  resolve();
+  waiting.resolve();
   await vi.runAllTimersAsync();
   expect(deferred.update).not.toHaveBeenCalled();
   expect(blocked.update).toHaveBeenCalledOnce();
-  vi.useRealTimers();
 });
 
 it('will skip a batched scope claimed by an earlier update', async () => {
-  vi.useFakeTimers();
   const child = target();
   const parent = target(vi.fn(() => {
     child.queued = undefined;
@@ -276,5 +256,4 @@ it('will skip a batched scope claimed by an earlier update', async () => {
   await vi.runAllTimersAsync();
   expect(parent.update).toHaveBeenCalledOnce();
   expect(child.update).not.toHaveBeenCalled();
-  vi.useRealTimers();
 });

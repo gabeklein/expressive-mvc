@@ -31,6 +31,12 @@ function channel() {
   return { hot, sent, ask, emit };
 }
 
+function connected() {
+  const page = channel();
+  connect(page.hot);
+  return page;
+}
+
 beforeEach(() => {
   const window = { self: {}, top: {} };
   window.top = window.self;
@@ -48,40 +54,36 @@ afterEach(() => {
 
 describe('connect', () => {
   it('will announce itself with an id', () => {
-    const { hot, sent } = channel();
-    connect(hot);
+    const { sent } = connected();
     expect(sent).toEqual([['expressive-inspect:hello', { id: expect.any(String) }]]);
   });
 
   it('will describe the page when asked without a call', async () => {
-    const { hot, sent, ask } = channel();
-    connect(hot);
+    const { sent, ask } = connected();
     const { id } = sent[0][1];
     expect(await ask(1)).toEqual({ rid: 1, value: { id, url: 'http://localhost/page', title: 'Page', top: true } });
   });
 
   it('will report a nested frame', async () => {
     vi.stubGlobal('window', { self: {}, top: {} });
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     expect((await ask(1)).value.top).toBe(false);
   });
 
   it('will record keys once connected', () => {
-    connect(channel().hot);
+    connected();
     expect(journal.record().level).toBe('keys');
   });
 
   it('will keep a recording level already set', () => {
     journal.record({ level: 'values' });
-    connect(channel().hot);
+    connected();
     expect(journal.record().level).toBe('values');
   });
 
   it('will act on a call and answer its value and frames', async () => {
     Composer.new();
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     const { value } = await ask(1, [['act'], [['call', 'Composer.submit', 'hi']]]);
     expect(value.value).toBe(2);
     expect(value.frames[0].events[0]).toMatchObject({ key: 'draft', value: 'hi' });
@@ -93,8 +95,7 @@ describe('connect', () => {
 
   it('will answer settled false when work outlasts the timeout', async () => {
     const composer = Composer.new();
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     const loop = setInterval(() => composer.draft += '.', 0);
     try {
       const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { timeout: 20 }]]);
@@ -106,31 +107,27 @@ describe('connect', () => {
 
   it('will answer the targets that never saw a frame', async () => {
     Composer.new();
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { until: 'Composer.draft', timeout: 20 }]]);
     expect(value).toMatchObject({ settled: false, pending: ['Composer.draft'] });
   });
 
   it('will answer value targets that name no instance', async () => {
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { until: { 'Missing.draft': 'x' }, timeout: 20 }]]);
     expect(value).toMatchObject({ settled: false, pending: ['Missing.draft'], missing: ['Missing.draft'] });
   });
 
   it('will act until an address holds a value', async () => {
     const composer = Composer.new();
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     setTimeout(() => (composer.draft = 'ready'), 10);
     const { value } = await ask(1, [['act'], [['get', 'Composer.draft'], { until: { 'Composer.draft': 'ready' } }]]);
     expect(value).toMatchObject({ settled: true, pending: [] });
   });
 
   it('will answer an error for act without a call', async () => {
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     expect(await ask(1, [['act'], ['Composer.submit']])).toEqual({
       rid: 1,
       error: 'act takes one call: ["act", [method, ...args], options?].'
@@ -139,8 +136,7 @@ describe('connect', () => {
 
   it('will answer a call through the dispatcher', async () => {
     const composer = Composer.new();
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     expect(await ask(1, [['get'], ['Composer.draft']])).toEqual({ rid: 1, value: '' });
     expect(await ask(2, [['call'], ['Composer.submit', 'hi']])).toEqual({ rid: 2, value: 2 });
     expect(composer.draft).toBe('hi');
@@ -148,27 +144,23 @@ describe('connect', () => {
 
   it('will answer null for an undefined result', async () => {
     Composer.new();
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     expect(await ask(1, [['set'], ['Composer.draft', 'x']])).toEqual({ rid: 1, value: null });
   });
 
   it('will answer an error when the call throws', async () => {
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     expect(await ask(1, [['call'], ['Missing.method']])).toEqual({ rid: 1, error: 'No method at Missing.method.' });
   });
 
   it('will answer an error when the result does not serialize', async () => {
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     globalThis.__EXPRESSIVE_INSPECT__ = { big: () => 1n } as never;
     expect((await ask(1, [['big'], []])).error).toMatch(/BigInt/);
   });
 
   it('will answer an error for a non-Error throw', async () => {
-    const { hot, ask } = channel();
-    connect(hot);
+    const { ask } = connected();
     globalThis.__EXPRESSIVE_INSPECT__ = {
       fail() {
         throw 'plain';
@@ -194,10 +186,7 @@ describe('hot', () => {
   beforeEach(() => journal.reset());
 
   it('will record a hot update', () => {
-    const { hot, emit } = channel();
-
-    connect(hot);
-    emit('vite:beforeUpdate', { updates: [{ path: '/src/app.ts' }] });
+    connected().emit('vite:beforeUpdate', { updates: [{ path: '/src/app.ts' }] });
 
     expect(journal.frames().at(-1)!.events.at(-1)).toEqual({
       id: '', type: 'vite', key: 'update', kind: 'hot', value: ['/src/app.ts']
@@ -207,20 +196,17 @@ describe('hot', () => {
   it('will carry a full reload into the next page', () => {
     vi.stubGlobal('sessionStorage', storage());
 
-    const first = channel();
-
-    connect(first.hot);
-    first.emit('vite:beforeFullReload', { path: '/src/model.ts', triggeredBy: '/src/model.ts' });
+    connected().emit('vite:beforeFullReload', { path: '/src/model.ts', triggeredBy: '/src/model.ts' });
 
     journal.reset();
-    connect(channel().hot);
+    connected();
 
     expect(reloads()).toEqual([
       { id: '', type: 'vite', key: 'reload', kind: 'hot', value: { path: '/src/model.ts', triggeredBy: '/src/model.ts' } }
     ]);
 
     journal.reset();
-    connect(channel().hot);
+    connected();
 
     expect(reloads()).toEqual([]);
   });
@@ -231,11 +217,11 @@ describe('hot', () => {
     vi.stubGlobal('sessionStorage', storage());
     vi.stubGlobal('addEventListener', (name: string, listener: (event: unknown) => void) => listeners.set(name, listener));
 
-    connect(channel().hot);
+    connected();
     listeners.get('expressive:reload')!({ detail: { module: '/src/model.ts', class: 'Store', reason: 'class changed shape' } });
 
     journal.reset();
-    connect(channel().hot);
+    connected();
 
     expect(reloads()[0].value).toEqual({ module: '/src/model.ts', class: 'Store', reason: 'class changed shape' });
   });
@@ -243,22 +229,15 @@ describe('hot', () => {
   it('will remember a reload without detail', () => {
     vi.stubGlobal('sessionStorage', storage());
 
-    const first = channel();
-
-    connect(first.hot);
-    first.emit('vite:beforeFullReload');
+    connected().emit('vite:beforeFullReload');
 
     journal.reset();
-    connect(channel().hot);
+    connected();
 
     expect(reloads()[0].value).toEqual({});
   });
 
   it('will do without session storage', () => {
-    const first = channel();
-
-    connect(first.hot);
-
-    expect(() => first.emit('vite:beforeFullReload', {})).not.toThrow();
+    expect(() => connected().emit('vite:beforeFullReload', {})).not.toThrow();
   });
 });
