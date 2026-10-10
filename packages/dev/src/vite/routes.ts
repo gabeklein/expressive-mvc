@@ -7,6 +7,7 @@ const ROUTE_EXT = new Set([".tsx", ".jsx", ".ts", ".js"]);
 const REMOTE = "remote";
 const REMOTE_FILE = /^remote\.[cm]?[jt]s$/;
 const REMOTE_MODULE = /\.[cm]?[jt]s$/;
+const REMOTE_INDEX = /^index\.[cm]?[jt]s$/;
 
 const ROLES = [
   "Page",
@@ -35,6 +36,8 @@ interface RouteNode {
   children: RouteNode[];
   isLeaf: boolean;
   alias: Partial<Record<Role, string>>;
+  remote?: string;
+  twin?: string;
 }
 
 export async function generateRoutes(appDir: string, outDir: string, scan: ExportScanner): Promise<string> {
@@ -69,6 +72,8 @@ async function scanDir(dir: string, segment: string, name: string, scan: ExportS
 
   if (entries.includes(REMOTE) && entries.some(entry => REMOTE_FILE.test(entry)))
     throw new Error(`${dir} has both a remote module and a remote/ folder - pick one.`);
+
+  node.remote = await twinIn(dir, entries, scan);
 
   for (const entry of entries) {
     const full = join(dir, entry);
@@ -109,6 +114,19 @@ async function scanDir(dir: string, segment: string, name: string, scan: ExportS
   }
 
   return node;
+}
+
+async function twinIn(dir: string, entries: string[], scan: ExportScanner): Promise<string | undefined> {
+  const file = entries.find(entry => REMOTE_FILE.test(entry));
+  const folder = join(dir, REMOTE);
+  const index = !file && entries.includes(REMOTE) && readdirSync(folder).find(entry => REMOTE_INDEX.test(entry));
+  const entry = file ? join(dir, file) : index ? join(folder, index) : undefined;
+
+  if (!entry) return;
+
+  const { exports, classDefault } = await scan(readFileSync(entry, "utf8"), entry);
+
+  if (classDefault && [...exports].includes("default")) return entry;
 }
 
 interface Tag {
@@ -153,6 +171,14 @@ function assignAliases(node: RouteNode, used: Set<string>): void {
     node.alias[role] = alias;
   }
 
+  if (node.remote) {
+    let alias = base + "Remote";
+    while (used.has(alias)) alias += "_";
+
+    used.add(alias);
+    node.twin = alias;
+  }
+
   for (const child of node.children) assignAliases(child, used);
 }
 
@@ -170,6 +196,8 @@ function collectImports(root: RouteNode, outDir: string) {
       if (lazy) loaders.push(...roles.map(role => loaderFor(node, role, spec)));
       else imports.push(importFor(node, roles, spec));
     }
+
+    if (node.twin) imports.push(`import ${node.twin} from ${JSON.stringify(importRel(outDir, node.remote!))};`);
 
     node.children.forEach(walk);
   })(root);
@@ -195,10 +223,16 @@ function importFor(node: RouteNode, roles: Role[], spec: string): string {
 
 const renders = (node: RouteNode): boolean => !!node.alias.Page || node.children.some(renders);
 
-function wrapperOf(node: RouteNode): string | undefined {
+function scopedOf(node: RouteNode): string | undefined {
   const { Layout, default: def } = node.alias;
 
-  if (node.classDefault && def && Layout && renders(node)) return def + "d";
+  if (node.classDefault && def && Layout) return def + "d";
+}
+
+function wrapperOf(node: RouteNode): string | undefined {
+  if (!renders(node)) return;
+
+  return node.twin ? node.twin + "d" : scopedOf(node);
 }
 
 function collectWrappers(root: RouteNode): string[] {
@@ -207,10 +241,20 @@ function collectWrappers(root: RouteNode): string[] {
   (function walk(node: RouteNode) {
     node.children.forEach(walk);
 
-    const name = wrapperOf(node);
-    const { Layout, default: scope } = node.alias;
+    if (!renders(node)) return;
 
-    if (name) wrappers.push(`const ${name} = props => <${scope}><${Layout} {...props} /></${scope}>;`);
+    const { Layout, default: def } = node.alias;
+    const scope = node.classDefault ? def : undefined;
+    const scoped = scopedOf(node);
+
+    if (scoped) wrappers.push(`const ${scoped} = props => <${scope}><${Layout} {...props} /></${scope}>;`);
+
+    if (node.twin) {
+      const inner = scoped ?? scope ?? Layout;
+      const content = inner ? `<${inner} {...props} />` : "{props.children}";
+
+      wrappers.push(`const ${node.twin}d = props => <${node.twin}>${content}</${node.twin}>;`);
+    }
   })(root);
 
   return wrappers;
@@ -223,7 +267,7 @@ function emitNode(node: RouteNode, isRoot: boolean, depth: number, slot: string)
   const scope = node.classDefault ? def : undefined;
 
   const own = Loading ? `<${Loading} />` : undefined;
-  const isScope = isRoot || node.children.length > 0 || !!Layout || !!NotFound || !!scope;
+  const isScope = isRoot || node.children.length > 0 || !!Layout || !!NotFound || !!scope || !!node.twin;
 
   if (!isScope)
     return Page ? route(pad, { to: node.segment, as: Page, enter, fallback: own ?? slot, Catch }) : [];

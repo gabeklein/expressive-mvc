@@ -182,6 +182,16 @@ describe("vite host", () => {
     expect(stub).not.toContain("this.total");
   });
 
+  it("will let the route tree provide a folder's twin", async () => {
+    const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/index.tsx": PAGE, "app/tally/remote.ts": SEAT }));
+
+    const routes = await server.transformRequest("/.expressive/routes.tsx");
+    expect(routes?.code).toContain("app/tally/remote.ts");
+
+    const stub = await server.transformRequest("/app/tally/remote.ts");
+    expect(stub?.code).toContain("export default twin(");
+  });
+
   it("will call a seat's methods on the instance its folder holds", async () => {
     const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/remote.ts": SEAT }));
     await server.transformRequest("/app/tally/remote.ts");

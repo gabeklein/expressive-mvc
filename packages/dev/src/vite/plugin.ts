@@ -143,7 +143,9 @@ export function expressive(): Plugin<Host> {
 
       if (!remote) return resolved;
 
-      if (!importer.split("?")[0].startsWith(remote.folder + sep))
+      const from = importer.split("?")[0];
+
+      if (!from.startsWith(remote.folder + sep) && !from.startsWith(generatedDir + sep))
         this.error(`${relative(root, importer)} imports ${relative(root, resolved.id)} - only modules in ${relative(root, remote.folder)}/ and below may call it.`);
 
       return "scan" in options && options.scan ? { id: resolved.id, external: true } : resolved;
