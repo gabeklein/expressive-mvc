@@ -265,9 +265,9 @@ describe("vite host", () => {
     expect(client).not.toContain("blog/:slug#Over");
   });
 
-  it("builds readable ids when index.ts turns hashCalls off", async () => {
+  it("builds readable ids when index.ts sets remote.opaque off", async () => {
     const { client, server } = await buildBoth({
-      "index.ts": "export default { hashCalls: false };",
+      "index.ts": "export default { remote: { opaque: false } };",
       "app/index.tsx": PAGE,
       "app/blog/[slug]/index.tsx": CALLER,
       "app/blog/[slug]/remote.ts": SIDECAR,

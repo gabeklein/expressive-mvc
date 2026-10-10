@@ -1,6 +1,6 @@
 export interface AppConfig {
   port?: number;
-  hashCalls?: boolean;
+  remote?: { opaque?: boolean };
 }
 
 export function config<T extends AppConfig>(config: T): T {

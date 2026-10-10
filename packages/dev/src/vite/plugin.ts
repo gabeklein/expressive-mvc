@@ -113,7 +113,7 @@ export function expressive(): Plugin<Host> {
 
     async buildStart() {
       if (build === "client") {
-        const salt = (await buildConfig(project)).hashCalls === false ? undefined : randomBytes(16).toString("base64url");
+        const salt = (await buildConfig(project)).remote?.opaque === false ? undefined : randomBytes(16).toString("base64url");
         builds.set(root, (exposure = new Exposure(salt)));
       }
 

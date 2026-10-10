@@ -52,7 +52,7 @@ augmentation (`State.use()` and friends), so nothing else is needed.
 
 `index.ts` runs on the server - in dev on Vite's module runner, in production inside
 `dist/server/index.js`, which serves `dist/client` and falls back to `index.html` for client routes.
-It imports `config` from `@expressive/dev/server`: `port`, and `hashCalls` (below).
+It imports `config` from `@expressive/dev/server`: `port`, and `remote.opaque` (below).
 
 ### Sidecars
 
@@ -80,8 +80,8 @@ JSON, or 204 for `undefined`. Only the folder and those below it may import its 
 Only what the client imports is callable: the server accepts calls to the stubs the browser loaded in
 dev, and to those the client build generated in production - a helper module in `remote/` is never
 an endpoint. Remote calls are not a public API. The production build names each call by a hash
-unique to the build, so a stale tab fails rather than calling changed code; `hashCalls: false` in
-`index.ts` keeps readable names, for clients that must outlive a deploy.
+unique to the build, so a stale tab fails rather than calling changed code; `remote: { opaque: false }`
+in `index.ts` keeps readable names, for clients that must outlive a deploy.
 
 A sidecar may also export `Error` subclasses. Thrown on the server, one rejects the call on the
 client as the same class - `instanceof` works - with its message and own fields; a numeric
