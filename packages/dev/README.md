@@ -141,12 +141,12 @@ export default class Counter extends State {
 
 ```tsx
 // app/counter/index.tsx
-import Counter from "./remote";
+import Remote from "./remote";
 
 export class Page extends Component {
-  counter = get(Counter);
+  remote = get(Remote);
   render() {
-    return <button onClick={() => this.counter.increment()}>+</button>;
+    return <button onClick={() => this.remote.increment()}>+</button>;
   }
 }
 ```

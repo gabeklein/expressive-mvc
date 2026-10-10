@@ -1,29 +1,29 @@
 import { Component, get } from "@expressive/mvc";
 
-import Counter from "./remote";
+import Remote from "./remote";
 
 export class Page extends Component {
-  counter = get(Counter);
-  shown = "";
+  remote = get(Remote);
+  current = 0;
 
   async increment() {
-    this.shown = String(await this.counter.increment());
+    this.current = await this.remote.increment();
   }
 
   async reset() {
-    await this.counter.reset();
-    this.shown = "0";
+    await this.remote.reset();
+    this.current = 0;
   }
 
   render() {
-    const { shown, increment, reset } = this;
+    const { current, increment, reset } = this;
 
     return (
       <>
         <h1>Counter</h1>
         <button onClick={increment}>Increment</button>
         <button onClick={reset}>Reset</button>
-        <output>{shown}</output>
+        <output>{current}</output>
       </>
     );
   }
