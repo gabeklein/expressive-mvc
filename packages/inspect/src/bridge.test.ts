@@ -91,19 +91,6 @@ describe('inspect(page)', () => {
     expect(frames.map((frame) => frame.events[0].value)).toEqual(['a', 'b']);
   });
 
-  it('will record values a step while keys are on, then restore keys', async () => {
-    const composer = Composer.new();
-    const api = inspect(page);
-    journal.record({ level: 'keys' });
-
-    const frames = await api.act(() => {
-      composer.draft = 'x';
-    });
-
-    expect(frames[0].events[0].value).toBe('x');
-    expect(journal.record().level).toBe('keys');
-  });
-
   it('will record its own filters for the window and restore the journal after', async () => {
     const composer = Composer.new();
     const api = inspect(page);

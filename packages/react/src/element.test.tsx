@@ -362,38 +362,6 @@ describe('instance element', () => {
     element.unmount();
   });
 
-  it('will keep a sibling placement when one unmounts', async () => {
-    const error = mockError();
-    const instance = Control.new({ value: 'first' });
-
-    const View = ({ both }: { both: boolean }) => (
-      <>
-        {both && <section>{instance}</section>}
-        <aside>{instance}</aside>
-      </>
-    );
-
-    const element = render(<View both />);
-
-    expect(screen.getAllByText('first')).toHaveLength(2);
-
-    element.rerender(<View both={false} />);
-
-    expect(screen.getAllByText('first')).toHaveLength(1);
-
-    await act(async () => {
-      instance.value = 'second';
-    });
-
-    expect(screen.getAllByText('second')).toHaveLength(1);
-    expect(instance.get(null)).toBe(false);
-    expect(error).not.toBeCalled();
-
-    element.unmount();
-
-    expect(instance.get(null)).toBe(false);
-  });
-
   it('will render again after unmount', async () => {
     const instance = Control.new({ value: 'first' });
     const first = render(<>{instance}</>);
@@ -610,9 +578,12 @@ describe('repeated placement of a child field', () => {
       }
     }
 
-    render(<>{Host.new()}</>);
+    const host = Host.new();
+
+    render(<>{host}</>);
 
     expect(await cycle()).toEqual(expected);
+    expect(Object.is(host.is.active, host.panel)).toBe(true);
   });
 
   it('will recompute for an activated instance', async () => {
@@ -654,37 +625,6 @@ describe('repeated placement of a child field', () => {
     render(<>{Host.new()}</>);
 
     expect(await cycle()).toEqual(expected);
-  });
-
-  it('will keep a child assigned through a render proxy', async () => {
-    class Host extends Component {
-      panel = new Panel();
-      active?: Panel = this.panel;
-
-      render() {
-        return (
-          <>
-            <button onClick={() => (this.active = this.panel)}>on</button>
-            <button onClick={() => (this.active = undefined)}>off</button>
-            <span>{this.active}</span>
-          </>
-        );
-      }
-    }
-
-    const host = Host.new();
-
-    render(<>{host}</>);
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('off'));
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('on'));
-    });
-
-    expect(Object.is(host.is.active, host.panel)).toBe(true);
   });
 });
 

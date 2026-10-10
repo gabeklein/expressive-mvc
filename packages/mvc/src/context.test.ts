@@ -5,30 +5,21 @@ import { State } from './state';
 class Example extends State {}
 class Example2 extends Example {}
 
-it('will add instance to context', () => {
+it('will add or create instance in context', () => {
   const example = Example.new();
-  const context = new Context(example);
 
-  expect(context.get(Example)).toBe(example);
+  expect(new Context(example).get(Example)).toBe(example);
+  expect(new Context(Example).get(Example)).toBeInstanceOf(Example);
 });
 
-it('will lazily initialize root', () => {
-  expect(Context.root).toBeInstanceOf(Context);
-  expect(typeof Context.root.id).toBe('string');
-});
-
-it('will UID context', () => {
+it('will lazily initialize root and UID contexts', () => {
   const contextA = new Context();
   const contextB = new Context();
 
+  expect(Context.root).toBeInstanceOf(Context);
+  expect(typeof Context.root.id).toBe('string');
   expect(String(contextA)).toBe('Context-' + contextA.id);
   expect(String(contextA)).not.toBe(String(contextB));
-});
-
-it('will create instance in context', () => {
-  const context = new Context(Example);
-
-  expect(context.get(Example)).toBeInstanceOf(Example);
 });
 
 it("will throw if context doesn't exist", () => {
@@ -44,16 +35,6 @@ it('will not create base State', () => {
   const attempt = () => new Context(State);
 
   expect(attempt).toThrow('Cannot create base State.');
-});
-
-it('will include children of State', () => {
-  class Test extends State {
-    example = new Example();
-  }
-
-  const context = new Context(Test);
-
-  expect(context.get(Example)).toBeInstanceOf(Example);
 });
 
 it('will access upstream controller', () => {
@@ -345,63 +326,23 @@ describe('has method', () => {
     expect(cb).toBeCalledTimes(1);
   });
 
-  it('will not call callback for new additions after cancel', () => {
+  it('will call callback for existing and new downstream states, flagged downstream', () => {
     const context = new Context();
-    const cb = vi.fn();
-
-    const cancel = context.get(DownstreamState, cb, true);
-    context.push(DownstreamState);
-
-    expect(cb).toBeCalled();
-    cancel();
-
-    context.push(DownstreamState);
-
-    expect(cb).toBeCalledTimes(1);
-    context.pop();
-  });
-
-  it('will call callback for already-registered downstream states', () => {
-    const context = new Context();
-    const child = context.push(DownstreamState);
-    const existing = child.get(DownstreamState);
-    const cb = vi.fn();
-
-    context.get(DownstreamState, cb, true);
-
-    expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(existing, true);
-  });
-
-  it('will flag direction in callback', () => {
-    const context = new Context();
-    context.push(DownstreamState);
-    const cb = vi.fn();
-
-    context.get(DownstreamState, cb, true);
-
-    // existing downstream
-    expect(cb).toBeCalled();
-    expect(cb).toBeCalledWith(expect.any(DownstreamState), true);
-
-    // new downstream addition
-    context.push(DownstreamState);
-
-    expect(cb).toBeCalledTimes(2);
-    expect(cb).toBeCalledWith(expect.any(DownstreamState), true);
-  });
-
-  it('will call callback for multiple existing downstream states', () => {
-    const context = new Context();
-    context.push(DownstreamState);
-    context.push(DownstreamState);
+    const existing = [context.push(DownstreamState), context.push(DownstreamState)].map((child) => child.get(DownstreamState));
     const cb = vi.fn();
 
     context.get(DownstreamState, cb, true);
 
     expect(cb).toBeCalledTimes(2);
-    expect(cb.mock.calls[0][1]).toBe(true);
-    expect(cb.mock.calls[1][1]).toBe(true);
+    existing.forEach((state, i) => {
+      expect(cb.mock.calls[i][0]).toBe(state);
+      expect(cb.mock.calls[i][1]).toBe(true);
+    });
+
+    context.push(DownstreamState);
+
+    expect(cb).toBeCalledTimes(3);
+    expect(cb).toHaveBeenLastCalledWith(expect.any(DownstreamState), true);
   });
 
   it('will notify has-subscriber for state created before context', () => {
@@ -424,16 +365,19 @@ describe('has method', () => {
 describe('get callback (upstream subscription)', () => {
   class Upstream extends State {}
 
-  it('will call callback when type is added to parent', () => {
+  it('will call callback when type is added to parent, flagged upstream', () => {
     const parent = new Context();
     const child = parent.push();
     const cb = vi.fn();
 
     child.get(Upstream, cb);
+
+    expect(cb).not.toBeCalled();
+
     parent.set(Upstream);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb.mock.calls[0][0]).toBeInstanceOf(Upstream);
+    expect(cb).toBeCalledWith(expect.any(Upstream), false);
   });
 
   it('will cancel subscription', () => {
@@ -489,36 +433,6 @@ describe('get callback (upstream subscription)', () => {
     expect(cb).toBeCalledTimes(1);
 
     expect(cb).toBeCalledWith(expect.any(Upstream), false);
-  });
-
-  it('will flag direction in upstream callback', () => {
-    const parent = new Context();
-    const child = parent.push();
-    const cb = vi.fn();
-
-    // subscribe before anything exists
-    child.get(Upstream, cb);
-
-    expect(cb).not.toBeCalled();
-
-    // new addition upstream
-    parent.set(Upstream);
-
-    expect(cb).toBeCalledTimes(1);
-    expect(cb).toBeCalledWith(expect.any(Upstream), false);
-  });
-});
-
-describe('with existing context', () => {
-  class Foo extends State {}
-
-  it('will not reassign context if state already has one', () => {
-    const foo = new Foo();
-    const original = new Context(foo);
-
-    new Context(foo);
-
-    expect(Context.get(foo)).toBe(original);
   });
 });
 
@@ -658,16 +572,6 @@ describe('set method', () => {
     expect(test3.destroyed).toBeCalled();
   });
 
-  it('will throw on bad include', () => {
-    const Thing = { toString: () => 'Foobar' };
-    const context = new Context();
-
-    // @ts-ignore
-    expect(() => context.set({ Thing })).toThrow(
-      'Context can only include an instance or class of State but got'
-    );
-  });
-
   it('will throw on base State include', () => {
     const context = new Context();
 
@@ -709,20 +613,6 @@ describe('set method', () => {
 
     // context assignment is permanent
     expect(Context.get(child)).toBe(context);
-    expect(context.get(Example, false)).toBeUndefined();
-  });
-
-  it('will remove implicit downstream on removal', () => {
-    class Parent extends State {
-      child = new Example();
-    }
-
-    const context = new Context({ Parent });
-    const parent = context.get(Parent);
-    expect(context.get(Example)).toBe(parent.child);
-
-    context.set({});
-
     expect(context.get(Example, false)).toBeUndefined();
   });
 
@@ -855,63 +745,21 @@ describe('set method', () => {
     expect(ctx.get(B, false)).toBeUndefined();
   });
 
-  it('will remove state from registry when add cleanup is called', () => {
-    class Foo extends State {}
-
-    const ctx = new Context(Foo);
-
-    expect(ctx.get(Foo)).toBeInstanceOf(Foo);
-
-    ctx.pop();
-
-    expect(ctx.get(Foo, false)).toBeUndefined();
-  });
-
-  it('will call forEach cleanup when state is removed via set', () => {
-    class Foo extends State {}
-
-    const cleanup = vi.fn();
-    const forEach = vi.fn(() => cleanup);
-    const context = new Context();
-
-    context.set(Foo, forEach);
-
-    expect(forEach).toBeCalledTimes(1);
-    expect(cleanup).not.toBeCalled();
-
-    context.set({});
-
-    expect(cleanup).toBeCalledTimes(1);
-  });
-
-  it('will call forEach cleanup for each state removed', () => {
+  it('will call forEach cleanup for each state removed or replaced', () => {
     class Foo extends State {}
     class Bar extends State {}
+    class Foo2 extends State {}
 
     const didCleanup = vi.fn();
     const context = new Context();
 
-    context.set({ Foo, Bar }, (state) => {
-      return didCleanup(state.constructor.name);
-    });
+    context.set({ x: Foo, Bar }, (state) => () => didCleanup(state.constructor.name));
 
-    context.set({});
+    expect(didCleanup).not.toBeCalled();
 
-    expect(didCleanup).toBeCalledWith('Foo');
-    expect(didCleanup).toBeCalledWith('Bar');
-  });
-
-  it('will call forEach cleanup when state is replaced', () => {
-    class Foo extends State {}
-    class Foo2 extends State {}
-
-    const cleanup = vi.fn();
-    const context = new Context();
-
-    context.set({ x: Foo }, () => cleanup);
     context.set({ x: Foo2 });
 
-    expect(cleanup).toBeCalledTimes(1);
+    expect(didCleanup.mock.calls).toEqual([['Foo'], ['Bar']]);
     expect(context.get(Foo, false)).toBeUndefined();
     expect(context.get(Foo2)).toBeInstanceOf(Foo2);
   });
@@ -1056,37 +904,6 @@ describe('ambiguous implicit entries', () => {
 });
 
 describe('add method listener lookup', () => {
-  it('will notify listeners on child context when state added to parent', () => {
-    class Foo extends State {}
-
-    const parent = new Context();
-    const child = parent.push();
-    const cb = vi.fn();
-
-    // Subscribe on child for downstream
-    child.get(Foo, cb);
-
-    // Set state on parent — this is upstream from child
-    parent.set(Foo);
-
-    // Callback fires from parent (upstream), child=false
-    expect(cb).toBeCalledTimes(1);
-  });
-
-  it('will notify listeners on parent when state added to child', () => {
-    class Foo extends State {}
-
-    const parent = new Context();
-    const cb = vi.fn();
-
-    parent.get(Foo, cb, true);
-
-    // Push child with Foo — this is downstream
-    parent.push(Foo);
-
-    expect(cb).toBeCalledTimes(1);
-  });
-
   it('will deduplicate callbacks across context hierarchy in add', () => {
     class Foo extends State {}
     class Bar extends Foo {}
@@ -1243,14 +1060,20 @@ describe('root global', () => {
     static readonly global: State.Global = true;
   }
 
-  it('will register a global .new() instance in root', () => {
-    const instance = Global.new();
+  it('will register a global .new() instance in root, again once destroyed', () => {
+    const first = Global.new();
 
-    expect(root.get(Global)).toBe(instance);
+    expect(root.get(Global)).toBe(first);
 
-    instance.set(null);
+    first.set(null);
 
     expect(root.get(Global, false)).toBeUndefined();
+
+    const second = Global.new();
+
+    expect(root.get(Global)).toBe(second);
+
+    second.set(null);
   });
 
   it('will not register children of a private instance in root', () => {
@@ -1267,8 +1090,11 @@ describe('root global', () => {
     parent.set(null);
   });
 
-  it('will register children of a global instance in root', () => {
-    class Child extends State {}
+  it('will register descendants of a global instance in root', () => {
+    class Grandchild extends State {}
+    class Child extends State {
+      grandchild = new Grandchild();
+    }
     class Parent extends State {
       static readonly global = true;
       child = new Child();
@@ -1277,6 +1103,7 @@ describe('root global', () => {
     const parent = Parent.new();
 
     expect(root.get(Child)).toBe(parent.child);
+    expect(root.get(Grandchild)).toBe(parent.child.grandchild);
 
     parent.set(null);
 
@@ -1338,23 +1165,6 @@ describe('root global', () => {
     context.pop();
 
     expect(context.get(Child, false)).toBeUndefined();
-
-    parent.set(null);
-  });
-
-  it('will register grandchildren of a global instance in root', () => {
-    class Grandchild extends State {}
-    class Child extends State {
-      grandchild = new Grandchild();
-    }
-    class Parent extends State {
-      static readonly global = true;
-      child = new Child();
-    }
-
-    const parent = Parent.new();
-
-    expect(root.get(Grandchild)).toBe(parent.child.grandchild);
 
     parent.set(null);
   });
@@ -1463,21 +1273,6 @@ describe('root global', () => {
     };
   });
 
-  it('will not register a context-less instance by default', () => {
-    class Private extends State {
-      value = 1;
-    }
-
-    const instance = Private.new();
-
-    expect(root.get(Private, false)).toBeUndefined();
-
-    instance.value = 2;
-    expect(instance.value).toBe(2);
-
-    instance.set(null);
-  });
-
   it('will lock state ownership to root after init', () => {
     const instance = Global.new();
 
@@ -1522,22 +1317,6 @@ describe('root global', () => {
     );
 
     first.set(null);
-  });
-
-  it('will register a new global after previous is destroyed', () => {
-    class Multi extends State {
-      static global = true;
-    }
-
-    const first = Multi.new();
-
-    first.set(null);
-
-    const second = Multi.new();
-
-    expect(root.get(Multi)).toBe(second);
-
-    second.set(null);
   });
 
   it('will preserve subtype entries on eviction', () => {

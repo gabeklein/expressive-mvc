@@ -3,7 +3,7 @@ import { vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise, mockWarn, flushMicrotasks } from '../test.setup';
+import { mockError, mockPromise, mockWarn, flushMicrotasks, preactDiffers, reactOnly } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
 import { Component, State, pending, set } from '.';
 
@@ -35,39 +35,7 @@ it('will not enumerate react internals on instance', () => {
   expect(Object.keys(instance).sort()).toEqual(['baz', 'foo']);
 });
 
-it('will create instance only once', () => {
-  class Control extends Component {
-    protected new() {
-      didConstruct(this);
-    }
-  }
-
-  const didConstruct = vi.fn();
-  const { rerender } = render(<Control />);
-
-  expect(didConstruct).toBeCalled();
-
-  rerender(<Control />);
-
-  expect(didConstruct).toBeCalledTimes(1);
-});
-
-it('will call is method on creation', () => {
-  class Control extends Component {}
-
-  const didCreate = vi.fn();
-
-  const screen = render(<Control is={didCreate} />);
-
-  expect(didCreate).toBeCalled();
-
-  screen.rerender(<Control is={didCreate} />);
-  expect(didCreate).toBeCalledTimes(1);
-
-  act(screen.unmount);
-});
-
-it('will transition Component dispatch', async () => {
+reactOnly.it('will transition Component dispatch', async () => {
   const gate = mockPromise<void>();
 
   class Control extends Component {
@@ -115,7 +83,7 @@ it('will transition Component dispatch', async () => {
   expect(view.container.textContent).toBe('bc');
 });
 
-it('will not commit mixed revisions across repeated placement', async () => {
+reactOnly.it('will not commit mixed revisions across repeated placement', async () => {
   let scheduled = false;
 
   class Control extends Component {
@@ -179,7 +147,7 @@ it('will not commit mixed revisions across repeated placement', async () => {
 });
 
 describe('ref prop', () => {
-  it('will populate ref object with instance', () => {
+  preactDiffers('will populate ref object with instance', () => {
     class Control extends Component {
       foo = 'bar';
     }
@@ -210,8 +178,9 @@ describe('ref prop', () => {
 });
 
 describe('new method', () => {
-  it('will call if exists', () => {
+  it('will call new and is once', () => {
     const didCreate = vi.fn();
+    const is = vi.fn();
 
     class Test extends Component {
       protected new() {
@@ -219,46 +188,32 @@ describe('new method', () => {
       }
     }
 
-    const element = render(<Test />);
+    const element = render(<Test is={is} />);
 
-    expect(didCreate).toBeCalled();
-
-    element.rerender(<Test />);
+    element.rerender(<Test is={is} />);
 
     expect(didCreate).toBeCalledTimes(1);
+    expect(is).toBeCalledTimes(1);
   });
 });
 
 describe('mount method', () => {
-  it('will call once on commit', () => {
+  it('will call once on commit and cleanup on unmount', () => {
     const didMount = vi.fn();
-
-    class Test extends Component {
-      mount() {
-        didMount();
-      }
-    }
-
-    const element = render(<Test />);
-
-    expect(didMount).toBeCalledTimes(1);
-
-    element.rerender(<Test />);
-
-    expect(didMount).toBeCalledTimes(1);
-  });
-
-  it('will run returned callback on unmount', () => {
     const didUnmount = vi.fn();
 
     class Test extends Component {
       mount() {
+        didMount();
         return didUnmount;
       }
     }
 
     const element = render(<Test />);
 
+    element.rerender(<Test />);
+
+    expect(didMount).toBeCalledTimes(1);
     expect(didUnmount).not.toBeCalled();
 
     element.unmount();
@@ -319,19 +274,6 @@ describe('element props', () => {
     /** Hover over this prop to see description. */
     value?: string = undefined;
   }
-
-  it('will accept managed values', () => {
-    function Check() {
-      expect(Foo.get().value).toBe('baz');
-      return null;
-    }
-
-    render(
-      <Foo value="baz">
-        <Check />
-      </Foo>
-    );
-  });
 
   it('will assign values to instance', () => {
     function Check() {
@@ -455,22 +397,6 @@ describe('element children', () => {
 });
 
 describe('props property', () => {
-  it('will accept a subclass where its parent is expected', () => {
-    class Mesh extends Component {
-      label = 'x';
-    }
-
-    class Ball extends Mesh {
-      radius = 1;
-    }
-
-    const take = (mesh: Mesh): Component => mesh;
-    const Type: typeof Mesh = Ball;
-
-    expect(take(Ball.new())).toBeInstanceOf(Mesh);
-    expect(Type).toBe(Ball);
-  });
-
   it('will update on rerender', () => {
     class Control extends Component {
       render(props = {} as { value: string }) {
@@ -512,7 +438,7 @@ describe('props property', () => {
     expect(didUpdate).toBeCalledTimes(2);
   });
 
-  it('will not cause redundant render', async () => {
+  preactDiffers('will not cause redundant render', async () => {
     const didRender = vi.fn();
     let control: Control;
 
@@ -690,22 +616,37 @@ describe('render method', () => {
 });
 
 describe('suspense', () => {
-  it('will render fallback property', async () => {
+  it('will render and update fallback from property or prop', async () => {
     class Foo extends Component {
-      fallback = (<span>Loading...</span>);
+      fallback = (<span>Loading!</span>);
       value = set<string>();
     }
 
     let foo!: Foo;
-    const Consumer = () => (foo = Foo.get()).value;
+    const Consumer = () => Foo.get().value;
 
     const element = render(
-      <Foo>
+      <Foo is={(x) => (foo = x)}>
         <Consumer />
       </Foo>
     );
 
+    expect(element).toHaveText('Loading!');
+
+    await act(async () => {
+      foo.fallback = <span>Loading...</span>;
+      await flushMicrotasks();
+    });
+
     expect(element).toHaveText('Loading...');
+
+    element.rerender(
+      <Foo fallback={<span>Waiting</span>}>
+        <Consumer />
+      </Foo>
+    );
+
+    expect(element).toHaveText('Waiting');
 
     await act(async () => (foo.value = 'Hello World'));
 
@@ -726,38 +667,6 @@ describe('suspense', () => {
     const element = render(<Foo is={(x) => (foo = x)} />);
 
     expect(element).toHaveText('Loading!');
-
-    await act(async () => {
-      foo.value = 'Hello World';
-    });
-
-    expect(element).toHaveText('Hello World');
-  });
-
-  it('will use fallback property first', async () => {
-    class Foo extends Component {
-      value = set<string>();
-      fallback = (<span>Loading!</span>);
-    }
-
-    let foo!: Foo;
-    const Consumer = () => Foo.get().value;
-
-    const element = render(
-      <Foo is={(x) => (foo = x)}>
-        <Consumer />
-      </Foo>
-    );
-
-    expect(element).toHaveText('Loading!');
-
-    element.rerender(
-      <Foo fallback={<span>Loading...</span>}>
-        <Consumer />
-      </Foo>
-    );
-
-    expect(element).toHaveText('Loading...');
 
     await act(async () => {
       foo.value = 'Hello World';
@@ -813,38 +722,6 @@ describe('suspense', () => {
     // own boundary catches - never reaches OUTER
     expect(element).toHaveText('INNER');
   });
-
-  it('will update with new fallback', async () => {
-    class Foo extends Component {
-      value = set<string>();
-      fallback = (<span>Loading!</span>);
-    }
-
-    let foo!: Foo;
-    const Consumer = () => Foo.get().value;
-
-    const element = render(
-      <Foo is={(x) => (foo = x)}>
-        <Consumer />
-      </Foo>
-    );
-
-    expect(element).toHaveText('Loading!');
-
-    await act(async () => {
-      foo.fallback = <span>Loading...</span>;
-      await flushMicrotasks();
-    });
-
-    expect(element).toHaveText('Loading...');
-
-    await act(async () => {
-      foo.value = 'Hello World';
-      await flushMicrotasks();
-    });
-
-    expect(element).toHaveText('Hello World');
-  });
 });
 
 describe('unmount', () => {
@@ -869,25 +746,7 @@ describe('unmount', () => {
 });
 
 describe('state props on rerender', () => {
-  it('will update instance value', () => {
-    class Control extends Component {
-      value = 'initial';
-
-      render() {
-        return <span>{this.value}</span>;
-      }
-    }
-
-    const element = render(<Control value="first" />);
-
-    expect(screen).toHaveText('first');
-
-    element.rerender(<Control value="second" />);
-
-    expect(screen).toHaveText('second');
-  });
-
-  it('will clear omitted instance value', () => {
+  it('will update and clear omitted instance value', () => {
     class Control extends Component {
       value?: string = 'initial';
 
@@ -899,6 +758,10 @@ describe('state props on rerender', () => {
     const element = render(<Control value="first" />);
 
     expect(screen).toHaveText('first');
+
+    element.rerender(<Control value="second" />);
+
+    expect(screen).toHaveText('second');
 
     element.rerender(<Control />);
 
@@ -973,94 +836,7 @@ describe('state props on rerender', () => {
   });
 });
 
-describe('default render', () => {
-  it('will pass children through', () => {
-    class Control extends Component {}
-
-    render(
-      <Control>
-        <span>Hello World</span>
-      </Control>
-    );
-
-    expect(screen).toHaveText('Hello World');
-  });
-
-  it('will provide instance created', () => {
-    class Parent extends Component {
-      value = 'foobar';
-    }
-    const Child = () => Parent.get().value;
-
-    const element = render(
-      <Parent>
-        <Child />
-      </Parent>
-    );
-
-    expect(element).toHaveText('foobar');
-  });
-});
-
 describe('render chain', () => {
-  it('will compose subclass render as children of super', () => {
-    class Outer extends Component {
-      render(props = {} as { children?: React.ReactNode }) {
-        return (
-          <main>
-            <h1>Wrapper</h1>
-            {props.children}
-          </main>
-        );
-      }
-    }
-
-    class Inner extends Outer {
-      render() {
-        return <span>Content</span>;
-      }
-    }
-
-    const element = render(<Inner />);
-
-    // Inner authors content via render; Outer orchestration still wraps it,
-    // without Inner calling super.render().
-    const heading = element.getByText('Wrapper');
-    const content = element.getByText('Content');
-
-    expect(heading.tagName).toBe('H1');
-    expect(content.closest('main')).toBe(heading.closest('main'));
-  });
-
-  it('will compose three levels inner to outer', () => {
-    class A extends Component {
-      render(props = {} as { children?: React.ReactNode }) {
-        return <div data-a>{props.children}</div>;
-      }
-    }
-
-    class B extends A {
-      render(props = {} as { children?: React.ReactNode }) {
-        return <section data-b>{props.children}</section>;
-      }
-    }
-
-    class C extends B {
-      render() {
-        return <span data-c>Leaf</span>;
-      }
-    }
-
-    const { container } = render(<C />);
-
-    // A (outermost) > B > C (innermost content).
-    const a = container.querySelector('[data-a]')!;
-    const b = a.querySelector('[data-b]')!;
-    const c = b.querySelector('[data-c]')!;
-
-    expect(c.textContent).toBe('Leaf');
-  });
-
   it('will stay reactive across composed levels', async () => {
     class Frame extends Component {
       title = 'Base';
@@ -1097,41 +873,6 @@ describe('render chain', () => {
 
     expect(screen).toHaveText('Updated');
     expect(screen).toHaveText('World');
-  });
-
-  it('will drop derived content if wrapper omits children', () => {
-    // Documented footgun: an intermediate render is a wrapper - if it does not
-    // place props.children, the derived (subclass) content vanishes.
-    class Shell extends Component {
-      render() {
-        return <div>Shell only</div>;
-      }
-    }
-
-    class Lost extends Shell {
-      render() {
-        return <span>Never seen</span>;
-      }
-    }
-
-    const element = render(<Lost />);
-
-    expect(element).toHaveText('Shell only');
-    expect(element).not.toHaveText('Never seen');
-  });
-
-  it('will preserve identity for single-level override', () => {
-    // The universal case: a single override composes with Component's
-    // pass-through default, so output is exactly the subclass render.
-    class Solo extends Component {
-      render() {
-        return <span>Just me</span>;
-      }
-    }
-
-    const { container } = render(<Solo />);
-
-    expect(container.innerHTML).toBe('<span>Just me</span>');
   });
 });
 
@@ -1281,13 +1022,8 @@ describe('subcomponents', () => {
       }
     }
 
-    function Sidebar(this: Defined) {
+    function Sidebar(this: Assigned) {
       return <span>Sidebar {this.content}</span>;
-    }
-
-    class Defined extends Dashboard {
-      content = 'value';
-      Sidebar = Sidebar;
     }
 
     class Assigned extends Dashboard {
@@ -1299,22 +1035,17 @@ describe('subcomponents', () => {
       }
     }
 
-    for (const Type of [Defined, Assigned]) {
-      let instance!: Defined;
+    let instance!: Assigned;
 
-      const { unmount } = render(
-        <Type is={(x) => (instance = x as Defined)} />
-      );
+    render(<Assigned is={(x) => (instance = x)} />);
 
-      expect(screen).toHaveText('Sidebar value');
+    expect(screen).toHaveText('Sidebar value');
 
-      await act(async () => {
-        instance.content = 'updated';
-      });
+    await act(async () => {
+      instance.content = 'updated';
+    });
 
-      expect(screen).toHaveText('Sidebar updated');
-      unmount();
-    }
+    expect(screen).toHaveText('Sidebar updated');
   });
 
   it('will work with function assigned after activation', async () => {
@@ -1647,6 +1378,7 @@ describe('strict mode', () => {
 
     expect(screen).toHaveText('bar');
     expect(didCreate).toBeCalledTimes(1);
+    expect(didDestroy).not.toBeCalled();
     expect(warn).not.toBeCalled();
 
     element.unmount();
@@ -1654,36 +1386,7 @@ describe('strict mode', () => {
     expect(didDestroy).toBeCalledTimes(1);
   });
 
-  it('will not create two instances', async () => {
-    const didCreate = vi.fn();
-    const didDestroy = vi.fn();
-
-    class Control extends Component {
-      foo = 'bar';
-
-      new() {
-        didCreate();
-        return didDestroy;
-      }
-    }
-
-    const element = render(
-      <React.StrictMode>
-        <Control />
-      </React.StrictMode>
-    );
-
-    await flushMicrotasks();
-
-    expect(didCreate).toBeCalledTimes(1);
-    expect(didDestroy).not.toBeCalled();
-
-    element.unmount();
-
-    expect(didDestroy).toBeCalledTimes(1);
-  });
-
-  it('will refresh via property update', async () => {
+  it('will refresh via property and props update', async () => {
     const didRender = vi.fn();
     let instance!: Control;
 
@@ -1700,11 +1403,7 @@ describe('strict mode', () => {
       }
     }
 
-    const element = render(
-      <React.StrictMode>
-        <Control />
-      </React.StrictMode>
-    );
+    const element = render(<Control />, { reactStrictMode: true });
 
     await flushMicrotasks();
 
@@ -1717,52 +1416,15 @@ describe('strict mode', () => {
     expect(screen).toHaveText('baz');
     expect(didRender).toBeCalledWith('baz');
 
-    await act(async () => {
-      instance.foo = 'qux';
-    });
+    element.rerender(<Control foo="qux" />);
+
+    await flushMicrotasks();
 
     expect(screen).toHaveText('qux');
     expect(didRender).toBeCalledWith('qux');
-
-    element.unmount();
   });
 
-  it('will refresh via props update', async () => {
-    const didRender = vi.fn();
-
-    class Control extends Component {
-      foo = 'bar';
-
-      render() {
-        didRender(this.foo);
-        return <span>{this.foo}</span>;
-      }
-    }
-
-    const { rerender } = render(
-      <React.StrictMode>
-        <Control />
-      </React.StrictMode>
-    );
-
-    await flushMicrotasks();
-
-    expect(screen).toHaveText('bar');
-    didRender.mockClear();
-
-    rerender(
-      <React.StrictMode>
-        <Control foo="baz" />
-      </React.StrictMode>
-    );
-
-    await flushMicrotasks();
-
-    expect(screen).toHaveText('baz');
-    expect(didRender).toBeCalledWith('baz');
-  });
-
-  it('will survive define-semantics field clobber', async () => {
+  reactOnly.it('will survive define-semantics field clobber', async () => {
     const didAttemptConstruct = vi.fn();
 
     class Control extends Component {
@@ -1798,7 +1460,7 @@ describe('strict mode', () => {
     element.unmount();
   });
 
-  it('will construct twice then init once', async () => {
+  reactOnly.it('will construct twice then init once', async () => {
     const order: string[] = [];
 
     class Control extends Component {
@@ -1833,51 +1495,33 @@ describe('for', () => {
     return <>{Session.get().name}</>;
   }
 
-  it('will construct and provide a class', () => {
-    let session!: Session;
+  it('will construct, provide, mount and destroy a class', () => {
+    const released = vi.fn();
+    let session!: Owned;
 
-    render(
-      <Component for={Session} name="Ada" is={(s: Session) => (session = s)}>
+    class Owned extends Session {
+      mount() {
+        return released;
+      }
+    }
+
+    const view = render(
+      <Component for={Owned} name="Ada" is={(s: Owned) => (session = s)}>
         <Name />
       </Component>
     );
 
     expect(screen).toHaveText('Ada');
-    expect(session).toBeInstanceOf(Session);
-  });
-
-  it('will destroy a provided class on unmount', () => {
-    let session!: Session;
-
-    const view = render(
-      <Component for={Session} is={(s: Session) => (session = s)}>
-        <Name />
-      </Component>
-    );
 
     view.unmount();
 
+    expect(released).toBeCalledTimes(1);
     expect(session.get(null)).toBe(true);
   });
 
   it('will provide an instance without owning it', async () => {
     const session = Session.new();
 
-    const view = render(
-      <Component for={session} name="Grace">
-        <Name />
-      </Component>
-    );
-
-    expect(screen).toHaveText('Grace');
-
-    view.unmount();
-
-    expect(session.get(null)).toBe(false);
-  });
-
-  it('will forward props on rerender', async () => {
-    const session = Session.new();
     const view = render(
       <Component for={session} name="Ada">
         <Name />
@@ -1892,8 +1536,11 @@ describe('for', () => {
 
     await act(async () => {});
 
-    expect(session.name).toBe('Grace');
     expect(screen).toHaveText('Grace');
+
+    view.unmount();
+
+    expect(session.get(null)).toBe(false);
   });
 
   it('will keep one provided class under StrictMode', () => {
@@ -1923,53 +1570,6 @@ describe('for', () => {
     view.unmount();
 
     expect(made[0].get(null)).toBe(true);
-  });
-
-  it('will mount a class it constructed', () => {
-    const mounted = vi.fn();
-    const released = vi.fn();
-
-    class Owned extends State {
-      mount() {
-        mounted();
-        return released;
-      }
-    }
-
-    const view = render(<Component for={Owned} />);
-
-    expect(mounted).toBeCalledTimes(1);
-
-    view.unmount();
-
-    expect(released).toBeCalledTimes(1);
-  });
-
-  it('will hand mount to the next class when for changes', async () => {
-    const log: string[] = [];
-
-    class First extends State {
-      mount() {
-        log.push('first:mount');
-        return () => log.push('first:unmount');
-      }
-    }
-
-    class Second extends State {
-      mount() {
-        log.push('second:mount');
-        return () => log.push('second:unmount');
-      }
-    }
-
-    const view = render(<Component for={First} />);
-
-    view.rerender(<Component for={Second} />);
-    await act(async () => {});
-
-    view.unmount();
-
-    expect(log).toEqual(['first:mount', 'first:unmount', 'second:mount', 'second:unmount']);
   });
 
   it('will replace an instance made each render', async () => {

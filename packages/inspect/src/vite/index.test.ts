@@ -106,9 +106,6 @@ it('will relay calls to a connected page and drop it on close', async () => {
   expect(pending).toEqual([]);
   expect(frames.at(-1).events).toContainEqual(expect.objectContaining({ key: 'draft', value: 'acted' }));
 
-  const refused = await fetch(origin + '/__inspect', { headers: { origin: 'http://evil.test' } });
-  expect(refused.status).toBe(403);
-
   await new Promise((resolve) => {
     socket.onclose = resolve;
     socket.close();

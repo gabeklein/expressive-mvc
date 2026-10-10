@@ -106,34 +106,7 @@ describe('fetch mode', () => {
     );
   });
 
-  it('will skip self when looking up own type', () => {
-    class Node extends State {
-      parent = get(Node, false);
-    }
-
-    const outer = new Node();
-    const inner = new Node();
-
-    new Context(outer).push(inner);
-
-    expect(inner.parent).toBe(outer);
-    expect(outer.parent).toBeUndefined();
-  });
-
-  it('will not assign self to ancestor of same type', () => {
-    class Node extends State {
-      parent = get(Node, false);
-    }
-
-    const outer = new Node();
-    const inner = new Node();
-
-    new Context(outer).push(inner);
-
-    expect(outer.parent).toBeUndefined();
-  });
-
-  it('will not assign descendant of own type to parent field', () => {
+  it('will skip self and descendants when looking up own type', () => {
     class Node extends State {
       parent = get(Node, false);
     }
@@ -168,6 +141,7 @@ describe('fetch mode', () => {
     class MaybeParent extends State {}
     class StandAlone extends State {
       maybe = get(MaybeParent, false);
+      self = get(StandAlone, false);
     }
 
     const instance = new StandAlone();
@@ -175,6 +149,7 @@ describe('fetch mode', () => {
     new Context(instance);
 
     expect(instance.maybe).toBeUndefined();
+    expect(instance.self).toBeUndefined();
   });
 
   it('will not throw if has parent but not type-required', () => {
@@ -235,18 +210,6 @@ describe('fetch mode', () => {
     expect(bar.baz.foo).toBeInstanceOf(Foo);
   });
 
-  it('will not resolve as own instance', () => {
-    class MaybeSelf extends State {
-      parent = get(MaybeSelf, false);
-    }
-
-    const instance = new MaybeSelf();
-
-    new Context(instance);
-
-    expect(instance.parent).toBeUndefined();
-  });
-
   it('will not be enumerable', () => {
     class Ambient extends State {}
     class Test extends State {
@@ -271,15 +234,44 @@ describe('fetch mode', () => {
       peer = get(Peer, false);
     }
 
-    it('will resolve optional sibling declared earlier', () => {
+    it('will resolve optional sibling declared earlier within own parent', () => {
       class Parent extends State {
         peer = new Peer();
         child = new Optional();
       }
 
-      const parent = Parent.new();
+      for (const parent of [1, 2, 3].map(() => Parent.new()))
+        expect(parent.child.peer).toBe(parent.peer);
+    });
 
-      expect(parent.child.peer).toBe(parent.peer);
+    it('will resolve optional sibling declared later within own parent', () => {
+      class Parent extends State {
+        child = new Optional();
+        peer = new Peer();
+      }
+
+      for (const parent of [1, 2, 3].map(() => Parent.new()))
+        expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will resolve required sibling declared earlier within own parent', () => {
+      class Parent extends State {
+        peer = new Peer();
+        child = new Required();
+      }
+
+      for (const parent of [1, 2, 3].map(() => Parent.new()))
+        expect(parent.child.peer).toBe(parent.peer);
+    });
+
+    it('will resolve required sibling declared later within own parent', () => {
+      class Parent extends State {
+        child = new Required();
+        peer = new Peer();
+      }
+
+      for (const parent of [1, 2, 3].map(() => Parent.new()))
+        expect(parent.child.peer).toBe(parent.peer);
     });
 
     it('will keep own sibling when another arrives in context', () => {
@@ -298,28 +290,6 @@ describe('fetch mode', () => {
       expect(b.child.peer).toBe(b.peer);
 
       context.pop();
-    });
-
-    it('will resolve optional sibling declared later', () => {
-      class Parent extends State {
-        child = new Optional();
-        peer = new Peer();
-      }
-
-      const parent = Parent.new();
-
-      expect(parent.child.peer).toBe(parent.peer);
-    });
-
-    it('will resolve required sibling declared later', () => {
-      class Parent extends State {
-        child = new Required();
-        peer = new Peer();
-      }
-
-      const parent = Parent.new();
-
-      expect(parent.child.peer).toBe(parent.peer);
     });
 
     it('will run callback for sibling declared later', () => {
@@ -376,34 +346,6 @@ describe('fetch mode', () => {
       expect(() => Parent.new()).toThrow(
         /Required Peer not found in context for Required-[\w-]+\./
       );
-    });
-
-    it('will resolve within own parent when several exist', () => {
-      class Parent extends State {
-        child = new Required();
-        peer = new Peer();
-      }
-
-      const p1 = Parent.new();
-      const p2 = Parent.new();
-      const p3 = Parent.new();
-
-      expect(p1.child.peer).toBe(p1.peer);
-      expect(p2.child.peer).toBe(p2.peer);
-      expect(p3.child.peer).toBe(p3.peer);
-    });
-
-    it('will resolve own sibling declared earlier when another parent exists', () => {
-      class Parent extends State {
-        peer = new Peer();
-        child = new Required();
-      }
-
-      const p1 = Parent.new();
-      const p2 = Parent.new();
-
-      expect(p1.child.peer).toBe(p1.peer);
-      expect(p2.child.peer).toBe(p2.peer);
     });
 
     it('will not notify a destroyed child when a later parent activates', () => {
@@ -781,20 +723,6 @@ describe('fetch mode', () => {
 
   describe('downstream', () => {
     describe('multiple', () => {
-      it('will collect children', () => {
-        class Child extends State {}
-        class Parent extends State {
-          children = get(Child, true);
-        }
-
-        const parent = new Parent();
-        const child = new Child();
-
-        new Context(parent).push(child);
-
-        expect(parent.children).toEqual([child]);
-      });
-
       it('will collect multiple children', () => {
         class Child extends State {}
         class Parent extends State {
@@ -881,29 +809,6 @@ describe('fetch mode', () => {
         new Context(parent).push(Child);
 
         expect(parent.children.length).toBe(1);
-      });
-
-      it('will remove children which unmount', async () => {
-        class Child extends State {
-          value = 0;
-        }
-        class Parent extends State {
-          children = get(Child, true);
-        }
-
-        const parent = new Parent();
-        const child1 = new Child();
-        const child2 = new Child();
-
-        const context = new Context(parent);
-        const context2 = context.push({ child1, child2 });
-
-        expect(parent.children).toEqual([child1, child2]);
-
-        context2.pop();
-
-        await expect(parent).toHaveUpdated();
-        expect(parent.children.length).toBe(0);
       });
 
       it('will collect own type', async () => {
@@ -1018,7 +923,7 @@ describe('fetch mode', () => {
     });
 
     describe('single', () => {
-      it('will get single downstream child', async () => {
+      it('will get single downstream child until destroyed', () => {
         class Child extends State {}
         class Parent extends State {
           child = get(Child, true, false);
@@ -1031,20 +936,6 @@ describe('fetch mode', () => {
         expect(parent.child).toBeUndefined();
 
         ctx.push(child);
-
-        expect(parent.child).toBe(child);
-      });
-
-      it('will clear when downstream child is destroyed', () => {
-        class Child extends State {}
-        class Parent extends State {
-          child = get(Child, true, false);
-        }
-
-        const parent = new Parent();
-        const child = new Child();
-
-        new Context(parent).push(child);
 
         expect(parent.child).toBe(child);
 
@@ -1073,24 +964,15 @@ describe('fetch mode', () => {
         expect(parent.child).toBe(downstream);
       });
 
-      it('will return undefined when not required and not found', () => {
-        class Child extends State {}
-        class Parent extends State {
-          child = get(Child, true, false);
-        }
-
-        const parent = Parent.new();
-        new Context(parent);
-
-        expect(parent.child).toBeUndefined();
-      });
     });
   });
 
   describe('owner', () => {
-    it('will get owner', () => {
+    it('will get owner and run callback with it', () => {
+      const callback = vi.fn();
+
       class Child extends State {
-        owner = get(State);
+        owner = get(State, callback);
       }
       class Parent extends State {
         child = new Child();
@@ -1099,6 +981,7 @@ describe('fetch mode', () => {
       const parent = Parent.new();
 
       expect(parent.child.owner).toBe(parent);
+      expect(callback).toHaveBeenCalledWith(parent, parent.child);
     });
 
     it('will get State a context was set up for', () => {
@@ -1155,22 +1038,6 @@ describe('fetch mode', () => {
 
       await expect(parent).toHaveUpdated('owned');
       expect(parent.owned).toEqual([parent.child]);
-    });
-
-    it('will run callback with owner', () => {
-      const callback = vi.fn();
-
-      class Child extends State {
-        owner = get(State, callback);
-      }
-      class Parent extends State {
-        child = new Child();
-      }
-
-      const parent = Parent.new();
-
-      expect(parent.child.owner).toBe(parent);
-      expect(callback).toHaveBeenCalledWith(parent, parent.child);
     });
 
     it('will get single owned State', async () => {

@@ -15,30 +15,20 @@ function onServer<T>(fn: () => T): T {
 }
 
 describe('SSR probe (no window)', () => {
-  it('renders a State component without crashing', () => {
-    class Counter extends State {
-      value = 5;
-    }
-    const View = () => <span>{Counter.use().value}</span>;
-
-    const html = onServer(() => renderToString(<View />));
-    expect(html).toContain('>5<');
-  });
-
-  it('runs new() on the server as pure init', () => {
+  it('renders a State component and runs new() as pure init', () => {
     let ran = false;
     class Store extends State {
-      ready = 'ok';
+      value = 5;
       protected new() {
         ran = true; // pure init - runs on the server
         return () => {};
       }
     }
-    const View = () => <span>{Store.use().ready}</span>;
+    const View = () => <span>{Store.use().value}</span>;
 
     const html = onServer(() => renderToString(<View />));
+    expect(html).toContain('>5<');
     expect(ran).toBe(true);
-    expect(html).toContain('ok');
   });
 
   it('isolates Provider-scoped state across two requests (no bleed)', () => {

@@ -29,26 +29,17 @@ function reactive(...args: any[]): any {
 }
 
 describe('factory', () => {
-  it('will create empty', () => {
-    const list = reactive<number>();
-
-    expect(list).toBeInstanceOf(has.List);
-    expect(list.size).toBe(0);
-    expect(list.get()).toEqual([]);
-  });
-
-  it('will accept array', () => {
-    const list = reactive([1, 2, 3]);
-
-    expect(list.get()).toEqual([1, 2, 3]);
-  });
-
-  it('will accept any iterable', () => {
+  it('will accept any iterable or falsy initial', () => {
     function* gen() {
       yield 'a';
       yield 'b';
     }
 
+    expect(reactive<number>()).toBeInstanceOf(has.List);
+    expect(reactive<number>().get()).toEqual([]);
+    expect(reactive<number>(null).size).toBe(0);
+    expect(reactive<number>(false).size).toBe(0);
+    expect(reactive([1, 2, 3]).get()).toEqual([1, 2, 3]);
     expect(reactive(gen()).get()).toEqual(['a', 'b']);
   });
 
@@ -59,11 +50,6 @@ describe('factory', () => {
     source.push(4);
 
     expect(list.get()).toEqual([1, 2, 3]);
-  });
-
-  it('will treat falsy initial as empty', () => {
-    expect(reactive<number>(null).size).toBe(0);
-    expect(reactive<number>(false).size).toBe(0);
   });
 
   it('will throw if assigned', () => {
@@ -154,11 +140,6 @@ describe('get', () => {
     const list = reactive([1, 2, 3, 4]);
 
     expect(list.get((v) => v > 2)).toBe(3);
-  });
-
-  it('will return undefined when predicate matches nothing', () => {
-    const list = reactive([1, 2, 3]);
-
     expect(list.get((v) => v > 99)).toBeUndefined();
   });
 });
@@ -326,26 +307,25 @@ describe('clear', () => {
 });
 
 describe('iteration', () => {
-  it('will iterate via for-of', () => {
+  it('will iterate and spread', () => {
     const out: number[] = [];
 
     for (const v of reactive([1, 2, 3])) out.push(v);
 
     expect(out).toEqual([1, 2, 3]);
-  });
-
-  it('will spread', () => {
     expect([...reactive(['a', 'b'])]).toEqual(['a', 'b']);
   });
 });
 
 describe('map', () => {
-  it('will produce a plain array', () => {
-    const list = reactive([1, 2, 3]);
-    const out = list.map((v) => v * 2);
+  it('will map with index and list into a plain array', () => {
+    const list = reactive(['a', 'b']);
+    const fn = vi.fn((v: string, i: number, _l: unknown) => v + i);
+    const out = list.map(fn);
 
-    expect(out).toEqual([2, 4, 6]);
+    expect(out).toEqual(['a0', 'b1']);
     expect(Array.isArray(out)).toBe(true);
+    expect(fn).toHaveBeenCalledWith('a', 0, list);
   });
 
   it('will skip results matching ignore value', () => {
@@ -353,15 +333,6 @@ describe('map', () => {
     const out = list.map((v) => (v % 2 ? v : null), null);
 
     expect(out).toEqual([1, 3]);
-  });
-
-  it('will receive index and list', () => {
-    const list = reactive(['a']);
-    const fn = vi.fn((_v: string, _i: number, _l: unknown) => 0);
-
-    list.map(fn);
-
-    expect(fn).toHaveBeenCalledWith('a', 0, list);
   });
 });
 
@@ -374,29 +345,14 @@ describe('filter', () => {
 });
 
 describe('any / all', () => {
-  it('will return true when match exists', () => {
-    expect(reactive([1, 2, 3]).any((v) => v > 2)).toBe(true);
-  });
+  it('will support any and all', () => {
+    const list = reactive([2, 0, 4]);
 
-  it('will return false when no match', () => {
-    expect(reactive([1, 2, 3]).any((v) => v > 99)).toBe(false);
-  });
-
-  it('will return boolean independent of value truthiness', () => {
-    const list = reactive([1, 0, 2]);
-
+    expect(list.any((v) => v > 3)).toBe(true);
+    expect(list.any((v) => v > 9)).toBe(false);
     expect(list.any((v) => v === 0)).toBe(true);
-  });
-
-  it('will return true when predicate true for every item', () => {
-    expect(reactive([2, 4, 6]).all((v) => v % 2 === 0)).toBe(true);
-  });
-
-  it('will return false on first failure', () => {
-    expect(reactive([2, 3, 4]).all((v) => v % 2 === 0)).toBe(false);
-  });
-
-  it('will return true on empty list', () => {
+    expect(list.all((v) => v % 2 === 0)).toBe(true);
+    expect(list.all((v) => v > 2)).toBe(false);
     expect(reactive<number>().all((v) => v > 0)).toBe(true);
   });
 });
@@ -562,10 +518,13 @@ describe('pool', () => {
     value = 0;
   }
 
-  it('will create pool for class', () => {
+  it('will create pool for class or factory', () => {
     const pool = reactive(Item);
 
     expect(pool).toBeInstanceOf(has.Pool);
+    expect(pool).not.toBeInstanceOf(has.List);
+    expect(reactive<number>()).not.toBeInstanceOf(has.Pool);
+    expect(reactive(() => ({ value: 0 }))).toBeInstanceOf(has.Pool);
     expect(pool.size).toBe(0);
   });
 
@@ -575,21 +534,6 @@ describe('pool', () => {
 
     expect(item.value).toBe(3);
     expect(pool.size).toBe(1);
-  });
-
-  it('will create pool for factory', () => {
-    const pool = reactive(() => ({ value: 0 }));
-
-    expect(pool).toBeInstanceOf(has.Pool);
-  });
-
-  it('will construct mode as class identity', () => {
-    const list = reactive<number>();
-    const pool = reactive(Item);
-
-    expect(list).toBeInstanceOf(has.List);
-    expect(list).not.toBeInstanceOf(has.Pool);
-    expect(pool).not.toBeInstanceOf(has.List);
   });
 
   it('will not define add on list', () => {
@@ -611,13 +555,6 @@ describe('pool', () => {
     expect(item).toBeInstanceOf(Item);
     expect(pool.has(item)).toBe(true);
     expect(pool.size).toBe(1);
-  });
-
-  it('will forward add arguments to class constructor', () => {
-    const pool = reactive(Item);
-    const item = pool.add({ value: 5 });
-
-    expect(item.value).toBe(5);
   });
 
   it('will forward add arguments to factory', () => {
@@ -661,40 +598,27 @@ describe('pool', () => {
     expect(pool.has(special)).toBe(true);
   });
 
-  it('will still construct from props object', () => {
+  it('will construct from props objects', () => {
     const pool = reactive(Item);
-    const item = pool.add({ value: 7 });
+    const item = pool.add({ value: 5 });
 
     expect(item).toBeInstanceOf(Item);
-    expect(item.value).toBe(7);
+    expect(item.value).toBe(5);
+    expect(pool.add({ value: 1 }, { value: 2 }).value).toBe(2);
   });
 
-  it('will construct when args are not a lone instance', () => {
+  it('will own admitted instance which is fresh but not one active', () => {
     const pool = reactive(Item);
-    const item = pool.add({ value: 1 }, { value: 2 });
+    const fresh = new Item();
+    const active = Item.new();
 
-    expect(item).toBeInstanceOf(Item);
-    expect(item.value).toBe(2);
-  });
+    pool.add(fresh);
+    pool.add(active);
+    pool.delete(fresh);
 
-  it('will own admitted instance which is fresh', () => {
-    const pool = reactive(Item);
-    const item = new Item();
-
-    pool.add(item);
-    pool.delete(item);
-
-    expect(item.get(null)).toBe(true);
-  });
-
-  it('will not destroy admitted instance which is active', () => {
-    const pool = reactive(Item);
-    const guest = Item.new();
-
-    pool.add(guest);
-
-    expect(pool.delete(guest)).toBe(true);
-    expect(guest.get(null)).toBe(false);
+    expect(pool.delete(active)).toBe(true);
+    expect(fresh.get(null)).toBe(true);
+    expect(active.get(null)).toBe(false);
   });
 
   it('will not admit instance in factory mode', () => {
@@ -735,45 +659,32 @@ describe('pool', () => {
     expect(pool.size).toBe(0);
   });
 
-  it('will destroy member on delete', () => {
+  it('will destroy members on delete and clear', () => {
     const pool = reactive(Item);
-    const item = pool.add();
+    const [a, b, c] = [pool.add(), pool.add(), pool.add()];
 
-    expect(item.get(null)).toBe(false);
+    pool.delete(a);
 
-    pool.delete(item);
-
-    expect(item.get(null)).toBe(true);
-  });
-
-  it('will destroy members on clear', () => {
-    const pool = reactive(Item);
-    const a = pool.add();
-    const b = pool.add();
+    expect(a.get(null)).toBe(true);
+    expect(b.get(null)).toBe(false);
 
     pool.clear();
 
-    expect(a.get(null)).toBe(true);
     expect(b.get(null)).toBe(true);
+    expect(c.get(null)).toBe(true);
   });
 
-  it('will not destroy guest on delete', () => {
-    const pool = reactive((value?: Item) => value || Item.new());
+  it('will own fresh value made by factory but not a guest', () => {
+    const pool = reactive((value?: Item) => value || new Item());
     const guest = Item.new();
+    const made = pool.add();
 
     pool.add(guest);
     pool.delete(guest);
+    pool.delete(made);
 
     expect(guest.get(null)).toBe(false);
-  });
-
-  it('will own fresh value made by factory', () => {
-    const pool = reactive(() => new Item());
-    const item = pool.add();
-
-    pool.delete(item);
-
-    expect(item.get(null)).toBe(true);
+    expect(made.get(null)).toBe(true);
   });
 
   it('will evict member when it dies', () => {
@@ -902,7 +813,7 @@ describe('pool key', () => {
     expect(pool.size).toBe(1);
   });
 
-  it('will own member spawned through key', () => {
+  it('will own member spawned through key, typed as has.From', () => {
     class Member extends State {
       id = '';
       owner = get(Owner);
@@ -913,23 +824,11 @@ describe('pool key', () => {
     }
 
     const owner = Owner.new();
-    const member = owner.members.add('abc');
+    const members: has.From<Member, 'id'> = owner.members;
+    const member = members.add('abc');
 
     expect(member.owner).toBe(owner);
     expect(member.id).toBe('abc');
-  });
-  it('will type keyed pool as has.From', () => {
-    class Member extends State {
-      id = '';
-    }
-
-    class Owner extends State {
-      members = has(Member, 'id');
-    }
-
-    const members: has.From<Member, 'id'> = Owner.new().members;
-
-    expect(members.add('abc').id).toBe('abc');
   });
 });
 
@@ -1041,13 +940,6 @@ describe('pool reads', () => {
     const two = pool.add({ value: 2 });
 
     expect(pool.get((item) => item.value > 1)).toBe(two);
-  });
-
-  it('will return undefined when predicate matches nothing', () => {
-    const pool = reactive(Item);
-
-    pool.add();
-
     expect(pool.get((item) => item.value > 99)).toBeUndefined();
   });
 
@@ -1059,22 +951,14 @@ describe('pool reads', () => {
     expect([...pool]).toEqual([a, b]);
   });
 
-  it('will map to plain array', () => {
-    const pool = reactive((n: number) => ({ n }));
-
-    pool.add(1);
-    pool.add(2);
-
-    expect(pool.map((v) => v.n * 2)).toEqual([2, 4]);
-  });
-
-  it('will skip map results matching ignore value', () => {
+  it('will map, skipping results matching ignore value', () => {
     const pool = reactive((n: number) => ({ n }));
 
     pool.add(1);
     pool.add(2);
     pool.add(3);
 
+    expect(pool.map((v) => v.n * 2)).toEqual([2, 4, 6]);
     expect(pool.map((v) => (v.n % 2 ? v.n : null), null)).toEqual([1, 3]);
   });
 

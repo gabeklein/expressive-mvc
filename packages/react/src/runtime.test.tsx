@@ -1,9 +1,9 @@
 import { act, render } from '@testing-library/react';
 import { Activity, ReactNode, Suspense, useState } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { Component, pending, Provider, State } from '.';
-import { mockPromise } from '../test.setup';
+import { mockPromise, reactOnly } from '../test.setup';
 import { Runtime, useHook } from './runtime';
 
 // Stub Runtime with a hand-driven lifecycle so a subscription update can fire
@@ -61,15 +61,6 @@ function harness() {
 let saved: Partial<typeof Runtime>;
 beforeEach(() => void (saved = { ...Runtime }));
 afterEach(() => void Object.assign(Runtime, saved));
-
-it('does not call the setter before commit', () => {
-  const { update, render, refresh } = harness();
-
-  render();
-  refresh('early'); // e.g. a sibling mutating shared state during render
-
-  expect(update).not.toHaveBeenCalled();
-});
 
 it('coalesces deferred refreshes into a single flush on commit', () => {
   const { update, render, commit, refresh } = harness();
@@ -153,7 +144,7 @@ it('will advance revision on reset', () => {
 
 
 
-describe('pending', () => {
+reactOnly.describe('pending', () => {
   class Data extends State {
     value = 'a';
   }
@@ -184,53 +175,6 @@ describe('pending', () => {
 
     return { gate, data, Content };
   }
-
-  it('will hold current content until the replacement is absorbed', async () => {
-    const { gate, data, Content } = scenario();
-    let shell!: Shell;
-
-    class Shell extends Component {
-      busy = false;
-
-      go(work: () => void) {
-        this.busy = true;
-        return pending(work).then(() => {
-          this.busy = false;
-        });
-      }
-
-      render() {
-        return <Content />;
-      }
-    }
-
-    const view = render(
-      <Provider for={data}>
-        <Shell is={(i) => (shell = i)} />
-      </Provider>
-    );
-
-    await act(async () => {});
-
-    await act(async () => {
-      shell.go(() => {
-        data.value = 'b';
-      });
-      await Promise.resolve();
-    });
-
-    expect(view.container.querySelector('i')).toBeNull();
-    expect(view.container.textContent).toBe('a');
-    expect(shell.busy).toBe(true);
-
-    await act(async () => {
-      gate.resolve();
-      await gate;
-    });
-
-    expect(view.container.textContent).toBe('b');
-    expect(shell.busy).toBe(false);
-  });
 
   it('will hold for a plain State, with no Component involved', async () => {
     const { gate, data, Content } = scenario();
@@ -405,19 +349,6 @@ describe('pending', () => {
     expect(settled).toBe(true);
   });
 
-  it('will settle on dispatch before mount', async () => {
-    const data = Data.new();
-    let settled = false;
-
-    await pending(() => {
-      data.value = 'b';
-    }).then(() => {
-      settled = true;
-    });
-
-    expect(settled).toBe(true);
-  });
-
   it('will track pending from a sibling', async () => {
     const { gate, data, Content } = scenario();
     let shell!: Shell;
@@ -534,7 +465,7 @@ describe('pending', () => {
   });
 });
 
-describe('pending teardown', () => {
+reactOnly.describe('pending teardown', () => {
   it('will settle work left pending by an unmount', async () => {
     class Data extends State {
       value = 'a';

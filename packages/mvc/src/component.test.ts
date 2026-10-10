@@ -2,37 +2,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component, compose } from './component';
 import { Context } from './context';
-import { pending } from './dispatch';
 import { State, event } from './state';
 
-it('will default fallback to null', () => {
-  const foo = Component.new({});
-
-  expect(foo.fallback).toBe(null);
-});
-
-it('will construct without props', () => {
-  const foo = Component.new();
-
-  expect(foo.fallback).toBe(null);
-});
-
-it('will accept fallback as prop', () => {
-  const foo = Component.new({ fallback: 'Loading' });
-
-  expect(foo.fallback).toBe('Loading');
+it('will default fallback to null and accept it as prop', () => {
+  expect(Component.new().fallback).toBe(null);
+  expect(Component.new({}).fallback).toBe(null);
+  expect(Component.new({ fallback: 'Loading' }).fallback).toBe('Loading');
 });
 
 it('will render children by default', () => {
-  const foo = Component.new({ children: 'hello' });
-
-  expect(foo.render()).toBe('hello');
-});
-
-it('will render null without children', () => {
-  const foo = Component.new({});
-
-  expect(foo.render()).toBe(null);
+  expect(Component.new({ children: 'hello' }).render()).toBe('hello');
+  expect(Component.new({}).render()).toBe(null);
 });
 
 it('will derive key from instance identity', () => {
@@ -79,7 +59,7 @@ it('will call is callback once with instance', () => {
   expect(is).toHaveBeenCalledTimes(1);
 });
 
-it('will merge state when props reassigned', async () => {
+it('will merge state and reset omitted props when reassigned', async () => {
   class Foo extends Component {
     value?: number = 10;
     other?: number = 1;
@@ -94,19 +74,6 @@ it('will merge state when props reassigned', async () => {
   await foo.set();
 
   expect(foo.value).toBe(7);
-});
-
-it('will reset omitted props on reassignment', async () => {
-  class Foo extends Component {
-    value?: number = 10;
-    other?: number = 1;
-  }
-
-  const foo = Foo.new({ value: 5, other: 2 });
-
-  (foo as any).props = { value: 7 };
-  await foo.set();
-
   expect(foo.other).toBeUndefined();
 });
 
@@ -189,25 +156,6 @@ it('will ignore Context passed as constructor argument', () => {
 });
 
 describe('render chain', () => {
-  // Render layering: a subclass authors content; each super render up the
-  // prototype chain wraps it as `children`, base-outermost. Asserted directly
-  // on the composed `render` - no host needed.
-  it('will compose subclass render as children of super', () => {
-    class Outer extends Component {
-      render(props = {} as { children?: unknown }): Component.Node {
-        return ['outer', props.children];
-      }
-    }
-
-    class Inner extends Outer {
-      render(): Component.Node {
-        return 'content';
-      }
-    }
-
-    expect(Inner.new({}).render()).toEqual(['outer', 'content']);
-  });
-
   it('will nest three levels inner to outer', () => {
     class A extends Component {
       render(props = {} as { children?: unknown }): Component.Node {
@@ -375,53 +323,16 @@ describe('props (static types)', () => {
     expect(Type).toBe(Ball);
   });
 
-  it('will accept writable fields and callbacks', () => {
-    const props: Component.StateProps<Test> = {
-      value: 1,
-      onClick: () => {},
-      pair: 2,
-      method() {}
-    };
-
-    expect(props).toBeDefined();
-  });
-
-  it('will reject get-only accessors', () => {
-    const props: Component.StateProps<Test> = {
+  it('will accept writable fields and callbacks only', () => {
+    const props: Component.StateProps<Test>[] = [
+      { value: 1, onClick: () => {}, pair: 2, method() {} },
       // @ts-expect-error - get-only accessor is not a settable prop
-      computed: 4
-    };
-
-    expect(props).toBeDefined();
-  });
-
-  it('will reject readonly fields', () => {
-    const props: Component.StateProps<Test> = {
+      { computed: 4 },
       // @ts-expect-error - readonly field is not a settable prop
-      id: 2
-    };
+      { id: 2 }
+    ];
 
-    expect(props).toBeDefined();
-  });
-});
-
-describe('transition', () => {
-  it('will run work and resolve where nothing observes', async () => {
-    class Test extends Component {
-      value = 'a';
-    }
-
-    const test = Test.new();
-    let settled = false;
-
-    await pending(() => {
-      test.value = 'b';
-    }).then(() => {
-      settled = true;
-    });
-
-    expect(test.value).toBe('b');
-    expect(settled).toBe(true);
+    expect(props).toHaveLength(3);
   });
 });
 

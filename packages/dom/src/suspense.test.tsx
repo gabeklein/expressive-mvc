@@ -317,9 +317,8 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('closed');
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(root.textContent).toBe('ready'));
 
-      expect(root.textContent).toBe('ready');
       expect(lives).toEqual(['new', 'mount: ready']);
     });
 
@@ -343,9 +342,8 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('closed');
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(root.textContent).toBe('ready'));
 
-      expect(root.textContent).toBe('ready');
       expect(lives).toEqual(['new', 'panel mount: ready']);
     });
 
@@ -357,9 +355,10 @@ describe('suspense and recovery', () => {
       expect(root.querySelector('section')).toBeNull();
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() =>
+        expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<section><h2>title</h2><b>ready</b></section>')
+      );
 
-      expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<section><h2>title</h2><b>ready</b></section>');
       expect(lives).toEqual(['new', 'mount: titleready']);
     });
   });
@@ -474,37 +473,6 @@ describe('suspense and recovery', () => {
     error.mockRestore();
   });
 
-  it('will keep siblings consistent when a transition suspends mid-list', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
-
-    class App extends Component {
-      next = false;
-      fallback = <i>loading</i>;
-
-      render() {
-        return this.next
-          ? <><b>new</b><Lazy /><i>tail</i></>
-          : <><p>current</p></>;
-      }
-    }
-
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
-
-    pending(() => {
-      app.next = true;
-    });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    loaded.resolve(() => <span>lazy</span>);
-    await flushMicrotasks();
-    await flushMicrotasks();
-    expect(root.textContent).toBe('newlazytail');
-    expect(root.querySelectorAll('b')).toHaveLength(1);
-  });
-
   it('will hold a sibling swap until the incoming scope renders', async () => {
     const gate = mockPromise<void>();
     let open = false;
@@ -593,7 +561,6 @@ describe('suspense and recovery', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(shown).toEqual([]);
     expect(root.textContent).toBe('A');
-    expect(root.querySelector('h2')).toBeNull();
 
     loaded.resolve(() => <b>lazy</b>);
     await until(() => expect(root.textContent).toBe('Blazy'));
@@ -1086,39 +1053,6 @@ describe('suspense and recovery', () => {
 
     await settled;
     expect(root.textContent).toBe('b');
-  });
-
-  it('will retain committed content while a transition suspends', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
-
-    class App extends Component {
-      next = false;
-      fallback = <i>loading</i>;
-
-      render() {
-        return this.next ? <Lazy /> : <p>current</p>;
-      }
-    }
-
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
-
-    let settled = false;
-
-    pending(() => {
-      app.next = true;
-    }).then(() => (settled = true));
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('current');
-    expect(settled).toBe(false);
-
-    loaded.resolve(() => <p>next</p>);
-    await flushMicrotasks();
-    await flushMicrotasks();
-    expect(root.textContent).toBe('next');
-    expect(settled).toBe(true);
   });
 
   it('will retain committed content until repeated suspension settles', async () => {

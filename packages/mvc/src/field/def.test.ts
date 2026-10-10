@@ -63,13 +63,13 @@ describe('instruction', () => {
     });
 
     it('will ignore normal symbol', () => {
+      const symbol = Symbol('hello');
+
       class Test extends State {
-        value = Symbol('hello');
+        value = symbol;
       }
 
-      const test = Test.new();
-
-      expect(typeof test.value).toBe('symbol');
+      expect(Test.new().value).toBe(symbol);
     });
   });
 
@@ -162,34 +162,6 @@ describe('instruction', () => {
         await expect(test).not.toHaveUpdated();
       });
 
-      // duplicate test?
-      it('will reject update if throws false', async () => {
-        let ignore = false;
-
-        class Test extends State {
-          property = def(() => ({
-            value: 0,
-            set: () => {
-              if (ignore) throw false;
-            }
-          }));
-        }
-
-        const instance = Test.new();
-
-        expect(instance.property).toBe(0);
-
-        instance.property = 10;
-        expect(instance.property).toBe(10);
-        await expect(instance).toHaveUpdated();
-
-        ignore = true;
-
-        instance.property = 0;
-        expect(instance.property).toBe(10);
-        await expect(instance).not.toHaveUpdated();
-      });
-
       it('will update silently if callback throws true', async () => {
         class Test extends State {
           property = def(() => ({
@@ -258,7 +230,6 @@ describe('instruction', () => {
       }
 
       const test = Test.new();
-      expect(test.property).toBe('hello');
       expect(destroy).not.toBeCalled();
 
       test.set(null);
@@ -296,28 +267,13 @@ describe('reuse', () => {
     );
   });
 
-  it('will throw if created outside a construction', () => {
-    expect(() => def(() => ({ value: 1 }))).toThrowError(
-      /no State under construction/
-    );
-  });
-
-  it('will throw once construction has completed', () => {
+  it('will throw outside or after a construction', () => {
     class Test extends State {
       value: any = def(() => ({ value: 1 }));
     }
 
+    expect(() => def(() => ({ value: 1 }))).toThrowError(/no State under construction/);
     expect(Test.new().value).toBe(1);
-    expect(() => def(() => ({ value: 2 }))).toThrowError(
-      /no State under construction/
-    );
-  });
-
-  it('will not throw for an unrelated symbol', () => {
-    class Test extends State {
-      tag: any = Symbol('mine');
-    }
-
-    expect(String(Test.new().tag)).toBe('Symbol(mine)');
+    expect(() => def(() => ({ value: 2 }))).toThrowError(/no State under construction/);
   });
 });
