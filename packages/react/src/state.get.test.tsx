@@ -15,13 +15,15 @@ import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { mockPromise, flushMicrotasks, revisions, reactOnly } from '../test.setup';
 import { Runtime } from './runtime';
 
-function renderWith<T>(Type: State.Type | State, hook: () => T) {
+function renderWith<T>(target: State.Type | State, hook: () => T) {
   return renderHook(hook, {
-    wrapper: (props) => (
-      <Component for={Type}>
-        <Suspense fallback={null}>{props.children}</Suspense>
-      </Component>
-    )
+    wrapper: (props) => {
+      const content = <Suspense fallback={null}>{props.children}</Suspense>;
+
+      return target instanceof State
+        ? <Component for={target}>{content}</Component>
+        : <Component for={target}>{content}</Component>;
+    }
   });
 }
 
@@ -475,15 +477,15 @@ describe('State.get', () => {
       value = 'foo';
     }
 
-    /** Renders `Inner` under a Provider for `value`; `swap` re-renders with another. */
-    function mount(value: State | Record<string, State>, Inner: React.FC) {
+    /** Renders `Inner` under a `Component` providing `value`; `swap` re-renders with another. */
+    function mount(value: State, Inner: React.FC) {
       const view = render(
         <Component for={value}>
           <Inner />
         </Component>
       );
 
-      const swap = (next: State | Record<string, State>) =>
+      const swap = (next: State) =>
         act(async () => {
           view.rerender(
             <Component for={next}>
@@ -528,11 +530,11 @@ describe('State.get', () => {
     it.fails('will render null when instance is removed', async () => {
       class Other extends State {}
 
-      const test = Test.new();
-      const other = Other.new();
-      const { container, swap } = mount({ test, other }, () => Test.get(false)?.value ?? null);
+      const { container, swap } = mount(Test.new(), () => Test.get(false)?.value ?? null);
 
-      await swap({ other });
+      expect(container.textContent).toBe('foo');
+
+      await swap(Other.new());
 
       expect(container.textContent).toBe('');
     });

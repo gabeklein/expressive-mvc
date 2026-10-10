@@ -69,7 +69,7 @@ describe('Component', () => {
   });
 });
 
-describe('Provider', () => {
+describe('Component for', () => {
   it('will mount an instance it creates', () => {
     const didMount = vi.fn();
     const didUnmount = vi.fn();
