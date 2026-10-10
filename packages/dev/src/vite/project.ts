@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 
+import type { Exposed, Exposure } from "./remote";
+
 export interface Project {
   root: string;
   appPath?: string;
@@ -81,22 +83,20 @@ function injectBeforeBody(html: string, tag: string): string {
     : html + "\n" + tag + "\n";
 }
 
-export interface SidecarEntry {
-  pattern: string[];
-  file: string;
-  calls: string[];
-  classes: string[];
-}
-
-export function serverEntry(project: Project, from: string, sidecars: SidecarEntry[] = []): string {
+export function serverEntry(project: Project, from: string, exposure: Exposure): string {
   const configSpec = project.configPath && JSON.stringify(importRel(from, project.configPath));
-  const modules = sidecars.map((mod) => JSON.stringify(importRel(from, mod.file)));
-  const entries = sidecars.map((mod, i) => {
-    const pattern = JSON.stringify(mod.pattern);
-    const pick = (names: string[]) => `{ ${names.map(name => `${name}: s${i}.${name}`).join(", ")} }`;
-    const exports = `{ calls: ${pick(mod.calls)}, classes: ${pick(mod.classes)} }`;
+  const remotes = [...exposure.remotes.values()];
+  const modules = remotes.map(remote => JSON.stringify(importRel(from, remote.file)));
+  const alias = (remote: Exposed) => `s${remotes.indexOf(remote)}`;
 
-    return `    { pattern: ${pattern}, async exports() { return ${exports}; } },`;
+  const entries = exposure.byPattern().map(group => {
+    const pick = (names: (remote: Exposed) => string[], id: (remote: Exposed, name: string) => string) =>
+      group.flatMap(remote => names(remote).map(name => `${JSON.stringify(id(remote, name))}: ${alias(remote)}.${name}`)).join(", ");
+
+    const calls = pick(remote => remote.calls, (remote, name) => exposure.callId(remote, name));
+    const classes = pick(remote => remote.classes, (remote, name) => exposure.classId(remote, name));
+
+    return `    { pattern: ${JSON.stringify(group[0].pattern)}, async exports() { return { calls: { ${calls} }, classes: { ${classes} } }; } },`;
   });
 
   return [
