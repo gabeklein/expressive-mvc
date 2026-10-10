@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, describe, vi, type MockInstance } fr
 import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, revisions } from '../test.setup';
-import { Component, Provider, State, get, has, map } from '.';
+import { Component, State, get, has, map } from '.';
 import { pending } from '@expressive/mvc';
 
 let error: MockInstance<Console['error']>;
@@ -253,9 +253,9 @@ describe('instance element', () => {
     let item!: Item;
 
     const element = render(
-      <Provider for={Theme} color="red">
+      <Component for={Theme} color="red">
         <Store is={(x) => (store = x)} />
-      </Provider>
+      </Component>
     );
 
     await act(async () => {
@@ -433,12 +433,12 @@ describe('instance element', () => {
     const instance = Slot.new({});
     const element = render(
       <>
-        <Provider for={Theme} color="red">
+        <Component for={Theme} color="red">
           <section>{instance}</section>
-        </Provider>
-        <Provider for={Theme} color="blue">
+        </Component>
+        <Component for={Theme} color="blue">
           <aside>{instance}</aside>
-        </Provider>
+        </Component>
       </>
     );
 

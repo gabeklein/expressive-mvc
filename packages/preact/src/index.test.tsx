@@ -4,7 +4,7 @@ import { StrictMode, Suspense } from 'preact/compat';
 import { expect, it, describe, vi } from 'vitest';
 
 import { flushMicrotasks, mockPromise } from '../test.setup';
-import { Component, pending, Provider, State } from '.';
+import { Component, pending, State } from '.';
 
 describe('Component', () => {
   it('will expose a base render for class detection', () => {
@@ -82,9 +82,9 @@ describe('Provider', () => {
     }
 
     const rendered = render(
-      <Provider for={Test}>
+      <Component for={Test}>
         <span />
-      </Provider>
+      </Component>
     );
 
     expect(didMount).toBeCalledTimes(1);
@@ -115,11 +115,11 @@ describe('Provider', () => {
     };
 
     render(
-      <Provider for={test}>
+      <Component for={test}>
         <Suspense fallback={<i>loading</i>}>
           <Content />
         </Suspense>
-      </Provider>
+      </Component>
     );
 
     pending(() => void (test.value = 'b')).then(() => (settled = true));

@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Component, Context, get, State, Provider, set } from '.';
+import { Component, Context, get, State, set } from '.';
 import { pending } from '@expressive/mvc';
 import * as Refresh from 'react-refresh/runtime';
 import {
@@ -18,9 +18,9 @@ import { Runtime } from './runtime';
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
   return renderHook(hook, {
     wrapper: (props) => (
-      <Provider for={Type}>
+      <Component for={Type}>
         <Suspense fallback={null}>{props.children}</Suspense>
-      </Provider>
+      </Component>
     )
   });
 }
@@ -84,12 +84,12 @@ describe('State.get', () => {
     };
     const Status = () => <strong>{Test.get().urgent}</strong>;
     const view = render(
-      <Provider for={test}>
+      <Component for={test}>
         <Suspense fallback={<i>loading</i>}>
           <Content />
         </Suspense>
         <Status />
-      </Provider>
+      </Component>
     );
 
     await act(async () => {
@@ -176,14 +176,14 @@ describe('State.get', () => {
 
     async function lateConsumer(Consumer: React.FC) {
       const test = Test.new();
-      const view = render(<Provider for={test}><></></Provider>);
+      const view = render(<Component for={test}><></></Component>);
 
       await act(async () => test.set(null));
 
       view.rerender(
-        <Provider for={test}>
+        <Component for={test}>
           <Consumer />
-        </Provider>
+        </Component>
       );
 
       return view.container.textContent;
@@ -202,9 +202,9 @@ describe('State.get', () => {
       const test = Test.new();
       const Consumer = () => <>{Test.get().value}</>;
       const view = render(
-        <Provider for={test}>
+        <Component for={test}>
           <Consumer />
-        </Provider>
+        </Component>
       );
 
       expect(view.container.textContent).toBe('foo');
@@ -212,9 +212,9 @@ describe('State.get', () => {
       await act(async () => test.set(null));
 
       view.rerender(
-        <Provider for={test}>
+        <Component for={test}>
           <Consumer />
-        </Provider>
+        </Component>
       );
 
       expect(view.container.textContent).toBe('foo');
@@ -329,11 +329,11 @@ describe('State.get', () => {
       });
 
       render(
-        <Provider for={parent}>
+        <Component for={parent}>
           <Child value="foo" />
           <Child value="bar" />
           <Child value="baz" />
-        </Provider>
+        </Component>
       );
 
       expect(didPushToValues).toBeCalledTimes(3);
@@ -478,17 +478,17 @@ describe('State.get', () => {
     /** Renders `Inner` under a Provider for `value`; `swap` re-renders with another. */
     function mount(value: State | Record<string, State>, Inner: React.FC) {
       const view = render(
-        <Provider for={value}>
+        <Component for={value}>
           <Inner />
-        </Provider>
+        </Component>
       );
 
       const swap = (next: State | Record<string, State>) =>
         act(async () => {
           view.rerender(
-            <Provider for={next}>
+            <Component for={next}>
               <Inner />
-            </Provider>
+            </Component>
           );
         });
 
@@ -570,9 +570,9 @@ describe('State.get', () => {
       };
 
       const element = render(
-        <Provider for={parent}>
+        <Component for={parent}>
           <Inner />
-        </Provider>
+        </Component>
       );
 
       expect(element.container.textContent).toBe('original');
@@ -639,13 +639,13 @@ describe('State.get', () => {
 
       let nav!: Nav;
       const view = render(
-        <Provider for={Nav} is={(n: Nav) => void (nav = n)}>
+        <Component for={Nav} is={(n: Nav) => void (nav = n)}>
           <Wrap>
             <Redirect />
             <Page to="/a" />
             <Page to="/b" />
           </Wrap>
-        </Provider>
+        </Component>
       );
 
       await act(async () => {});
@@ -730,9 +730,9 @@ describe('State.get', () => {
 
       const element = render(
         <React.StrictMode>
-          <Provider for={test}>
+          <Component for={test}>
             <Inner />
-          </Provider>
+          </Component>
         </React.StrictMode>
       );
 
@@ -911,7 +911,7 @@ reactOnly.describe('State.get - concurrent consistency', () => {
 
     const view = reveal(
       Array.from({ length: 40 }, (_, index) => <Reader key={index} />),
-      { wrapper: ({ children }) => <Provider for={test}>{children}</Provider> }
+      { wrapper: ({ children }) => <Component for={test}>{children}</Component> }
     );
 
     await waitFor(() => {
@@ -1025,9 +1025,9 @@ reactOnly.describe('State.get - fast refresh', () => {
     Refresh.register(Before, 'Reader');
 
     const element = render(
-      <Provider for={test}>
+      <Component for={test}>
         <Before />
-      </Provider>
+      </Component>
     );
 
     Refresh.register(After, 'Reader');

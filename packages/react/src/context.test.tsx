@@ -11,7 +11,7 @@ import {
 } from 'vitest';
 
 import { act, render, screen } from '@testing-library/react';
-import { Component, State, Context, get, Provider, set } from '.';
+import { Component, State, Context, get, set } from '.';
 import { flushMicrotasks, preactDiffers } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
@@ -50,7 +50,7 @@ describe('Provider', () => {
 
     class Host extends Component {
       render() {
-        return <Provider for={Foo} is={(foo) => (provided = foo)} />;
+        return <Component for={Foo} is={(foo) => (provided = foo)} />;
       }
     }
 
@@ -67,7 +67,7 @@ describe('Provider', () => {
         expect(Foo.get().is).toBe(foo);
         expect(Bar.get()).toBeInstanceOf(Bar);
       },
-      (check) => <Provider for={{ foo, Bar }}>{check}</Provider>
+      (check) => <Component for={{ foo, Bar }}>{check}</Component>
     );
   });
 
@@ -82,9 +82,9 @@ describe('Provider', () => {
     within(
       () => expect(Test.get()).toMatchObject({ foo: 'hello', bar: 42 }),
       (check) => (
-        <Provider for={Test} is={is} foo="hello" bar={42}>
+        <Component for={Test} is={is} foo="hello" bar={42}>
           {check}
-        </Provider>
+        </Component>
       )
     );
 
@@ -99,7 +99,7 @@ describe('Provider', () => {
 
     const is = vi.fn<(instance: Config) => void>();
 
-    render(<Provider for={Config} is={is} _mode="dark" />);
+    render(<Component for={Config} is={is} _mode="dark" />);
 
     expect(is.mock.calls[0][0]._mode).toBe('dark');
   });
@@ -111,15 +111,15 @@ describe('Provider', () => {
     const seen: string[] = [];
 
     const element = render(
-      <Provider for={First} is={() => seen.push('first')}>
+      <Component for={First} is={() => seen.push('first')}>
         <span />
-      </Provider>
+      </Component>
     );
 
     element.rerender(
-      <Provider for={Second} is={() => seen.push('second')}>
+      <Component for={Second} is={() => seen.push('second')}>
         <span />
-      </Provider>
+      </Component>
     );
 
     expect(seen).toEqual(['first', 'second']);
@@ -136,9 +136,9 @@ describe('Provider', () => {
     };
 
     const element = render(
-      <Provider for={Test} is={capture} foo="hello">
+      <Component for={Test} is={capture} foo="hello">
         <span />
-      </Provider>
+      </Component>
     );
 
     expect(seen[0].foo).toBe('hello');
@@ -146,9 +146,9 @@ describe('Provider', () => {
     // the single instance is replaced by a map-registered one, which rest props
     // never apply to - the departed instance must not keep receiving them
     element.rerender(
-      <Provider for={{ Test }} is={capture} foo="ignored">
+      <Component for={{ Test }} is={capture} foo="ignored">
         <span />
-      </Provider>
+      </Component>
     );
 
     expect(seen).toHaveLength(2);
@@ -163,18 +163,18 @@ describe('Provider', () => {
     const Child = () => <span>{Test.get().value}</span>;
 
     const element = render(
-      <Provider for={Test} value="first">
+      <Component for={Test} value="first">
         <Child />
-      </Provider>
+      </Component>
     );
 
     expect(screen).toHaveText('first');
 
     act(() => {
       element.rerender(
-        <Provider for={Test} value="second">
+        <Component for={Test} value="second">
           <Child />
-        </Provider>
+        </Component>
       );
     });
 
@@ -192,9 +192,9 @@ describe('Provider', () => {
         expect(is.value).toBe('hello');
       },
       (check) => (
-        <Provider for={test} value="hello">
+        <Component for={test} value="hello">
           {check}
-        </Provider>
+        </Component>
       )
     );
   });
@@ -216,9 +216,9 @@ describe('Provider', () => {
     }
 
     const element = render(
-      <Provider for={{ Foo, Bar, instance }}>
+      <Component for={{ Foo, Bar, instance }}>
         <Check />
-      </Provider>
+      </Component>
     );
 
     element.unmount();
@@ -240,9 +240,9 @@ describe('Provider', () => {
     class Child extends Test {}
 
     const element = render(
-      <Provider for={Parent}>
-        <Provider for={Child} />
-      </Provider>
+      <Component for={Parent}>
+        <Component for={Child} />
+      </Component>
     );
 
     element.unmount();
@@ -263,9 +263,9 @@ describe('Provider', () => {
       }
 
       const element = render(
-        <Provider for={Test}>
+        <Component for={Test}>
           <span />
-        </Provider>,
+        </Component>,
         { reactStrictMode }
       );
 
@@ -294,9 +294,9 @@ describe('Provider', () => {
 
       const guest = Guest.new();
       const element = render(
-        <Provider for={{ Owned, guest }}>
+        <Component for={{ Owned, guest }}>
           <span />
-        </Provider>
+        </Component>
       );
 
       expect(didMount.mock.calls).toEqual([['owned']]);
@@ -328,15 +328,15 @@ describe('Provider', () => {
       }
 
       const element = render(
-        <Provider key={firstKey} for={First}>
+        <Component key={firstKey} for={First}>
           <span />
-        </Provider>
+        </Component>
       );
 
       element.rerender(
-        <Provider key={secondKey} for={Second}>
+        <Component key={secondKey} for={Second}>
           <span />
-        </Provider>
+        </Component>
       );
 
       expect(didMount.mock.calls).toEqual(calls);
@@ -363,9 +363,9 @@ describe('Provider', () => {
       };
 
       render(
-        <Provider for={Outer}>
+        <Component for={Outer}>
           <Child />
-        </Provider>
+        </Component>
       );
 
       expect(order).toEqual(['child', 'provided']);
@@ -379,7 +379,7 @@ describe('Provider', () => {
       // for a teardown - hence no dispose seam here at all
       const forEach = vi.fn((state: Foo | Bar) => (captured = state));
 
-      const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
+      const rendered = render(<Component for={{ Foo, Bar }} is={forEach} />);
 
       expect(forEach).toBeCalledTimes(2);
       expect(captured).toBeInstanceOf(State);
@@ -393,7 +393,7 @@ describe('Provider', () => {
         state.set(null, cleanup);
       });
 
-      const rendered = render(<Provider for={{ Foo, Bar }} is={forEach} />);
+      const rendered = render(<Component for={{ Foo, Bar }} is={forEach} />);
 
       expect(forEach).toBeCalledTimes(2);
       expect(forEach).toBeCalledWith(expect.any(Foo));
@@ -416,9 +416,9 @@ describe('Provider', () => {
       const Consumer = () => Foo.get().value;
 
       const element = render(
-        <Provider for={foo} fallback={<span>Loading...</span>}>
+        <Component for={foo} fallback={<span>Loading...</span>}>
           <Consumer />
-        </Provider>
+        </Component>
       );
 
       expect(element).toHaveText('Loading...');
@@ -441,9 +441,9 @@ describe('Provider', () => {
 
       const element = render(
         <Suspense fallback={<span>Foo</span>}>
-          <Provider for={foo} fallback={undefined}>
+          <Component for={foo} fallback={undefined}>
             <Consumer />
-          </Provider>
+          </Component>
         </Suspense>
       );
 
@@ -467,9 +467,9 @@ describe('Provider', () => {
 
       const element = render(
         <Suspense fallback={<span>Foo</span>}>
-          <Provider for={foo} fallback={undefined}>
+          <Component for={foo} fallback={undefined}>
             <Consumer />
-          </Provider>
+          </Component>
         </Suspense>
       );
 
@@ -477,9 +477,9 @@ describe('Provider', () => {
 
       element.rerender(
         <Suspense fallback={<span>Foo</span>}>
-          <Provider for={foo} fallback={<span>Bar</span>}>
+          <Component for={foo} fallback={<span>Bar</span>}>
             <Consumer />
-          </Provider>
+          </Component>
         </Suspense>
       );
 
@@ -505,9 +505,9 @@ describe('Provider', () => {
 
     const element = render(
       <React.StrictMode>
-        <Provider for={Test}>
+        <Component for={Test}>
           <Child />
-        </Provider>
+        </Component>
       </React.StrictMode>
     );
 
@@ -528,20 +528,20 @@ describe('context', () => {
     within(
       () => expect(Foo.get().value).toBe('inner'),
       (check) => (
-        <Provider for={Foo} value="outer">
-          <Provider for={Foo} value="inner">
+        <Component for={Foo} value="outer">
+          <Component for={Foo} value="inner">
             {check}
-          </Provider>
-        </Provider>
+          </Component>
+        </Component>
       )
     );
 
     within(
       () => expect(Bar.get()).toBeInstanceOf(Baz),
       (check) => (
-        <Provider for={Bar}>
-          <Provider for={Baz}>{check}</Provider>
-        </Provider>
+        <Component for={Bar}>
+          <Component for={Baz}>{check}</Component>
+        </Component>
       )
     );
   });
@@ -550,13 +550,13 @@ describe('context', () => {
     const Value = () => Foo.get().value;
 
     const element = render(
-      <Provider for={Foo} value="outer">
+      <Component for={Foo} value="outer">
         <Value />
-        <Provider for={Foo} value="inner">
+        <Component for={Foo} value="inner">
           <Value />
-        </Provider>
+        </Component>
         <Value />
-      </Provider>
+      </Component>
     );
 
     expect(element.container.textContent).toBe('outerinnerouter');
@@ -566,13 +566,13 @@ describe('context', () => {
     const Value = () => Foo.get(({ value }) => value);
 
     const html = renderToString(
-      <Provider for={Foo} value="outer">
+      <Component for={Foo} value="outer">
         <Value />
-        <Provider for={Foo} value="inner">
+        <Component for={Foo} value="inner">
           <Value />
-        </Provider>
+        </Component>
         <Value />
-      </Provider>
+      </Component>
     );
 
     expect(html.replace(/<!--[^>]*-->/g, '')).toBe('outerinnerouter');
@@ -592,11 +592,11 @@ describe('context', () => {
         expect(Baz.get()).toBeInstanceOf(Baz);
       },
       (check) => (
-        <Provider for={instance}>
-          <Provider for={Baz}>
-            <Provider for={{ Bar }}>{check}</Provider>
-          </Provider>
-        </Provider>
+        <Component for={instance}>
+          <Component for={Baz}>
+            <Component for={{ Bar }}>{check}</Component>
+          </Component>
+        </Component>
       )
     );
   });
@@ -615,9 +615,9 @@ describe('get instruction', () => {
     within(
       () => expect(Foo.get().bar).toBeInstanceOf(Bar),
       (check) => (
-        <Provider for={Bar}>
-          <Provider for={Foo}>{check}</Provider>
-        </Provider>
+        <Component for={Bar}>
+          <Component for={Foo}>{check}</Component>
+        </Component>
       )
     );
   });
@@ -629,15 +629,15 @@ describe('get instruction', () => {
     });
 
     const x = render(
-      <Provider for={Bar}>
+      <Component for={Bar}>
         <Inner />
-      </Provider>
+      </Component>
     );
 
     x.rerender(
-      <Provider for={Bar}>
+      <Component for={Bar}>
         <Inner />
-      </Provider>
+      </Component>
     );
 
     expect(Inner).toBeCalledTimes(2);
@@ -659,9 +659,9 @@ describe('get instruction', () => {
     const is = vi.fn();
 
     render(
-      <Provider for={Parent}>
-        <Provider for={Child} is={is} />
-      </Provider>
+      <Component for={Parent}>
+        <Component for={Child} is={is} />
+      </Component>
     );
 
     expect(is).toBeCalled();
@@ -678,9 +678,9 @@ describe('get instruction', () => {
     const FooBar = () => <>{Bar.use().foo.value}</>;
 
     render(
-      <Provider for={Foo}>
+      <Component for={Foo}>
         <FooBar />
-      </Provider>
+      </Component>
     );
 
     expect(screen).toHaveText('foobar');
@@ -702,10 +702,10 @@ describe('has instruction', () => {
     const foo = new Foo();
 
     render(
-      <Provider for={foo}>
+      <Component for={foo}>
         <FooBar />
         <FooBar />
-      </Provider>
+      </Component>
     );
 
     expect(didGetBar).toBeCalledTimes(2);
@@ -729,9 +729,9 @@ describe('has instruction', () => {
       const foo = Foo.use();
 
       return (
-        <Provider for={foo}>
+        <Component for={foo}>
           <FooBar />
-        </Provider>
+        </Component>
       );
     };
 
@@ -754,11 +754,11 @@ describe('suspense', () => {
     };
 
     const TestComponent = () => (
-      <Provider for={Test}>
+      <Component for={Test}>
         <Suspense fallback={<span>Loading...</span>}>
           <GetValue />
         </Suspense>
-      </Provider>
+      </Component>
     );
 
     render(<TestComponent />);
@@ -786,9 +786,9 @@ describe('HMR', () => {
     const Child = () => <div>{Test.get().value}</div>;
 
     const element = render(
-      <Provider for={Control}>
+      <Component for={Control}>
         <Child />
-      </Provider>
+      </Component>
     );
 
     expect(screen).toHaveText('bar');
@@ -798,9 +798,9 @@ describe('HMR', () => {
     };
 
     element.rerender(
-      <Provider for={Control}>
+      <Component for={Control}>
         <Child />
-      </Provider>
+      </Component>
     );
 
     expect(screen).toHaveText('baz');
@@ -827,7 +827,7 @@ describe('root global', () => {
         expect(global.is).not.toBe(instance);
         expect(global).toBeInstanceOf(Global);
       },
-      (check) => <Provider for={Global}>{check}</Provider>
+      (check) => <Component for={Global}>{check}</Component>
     );
 
     instance.set(null);
