@@ -17,7 +17,7 @@ export const scanExports: ExportScanner = async (source, path) => {
   return { exports: entries.map(entry => entry.n), classDefault };
 };
 
-export interface Seat {
+export interface Twin {
   name: string;
   methods: string[];
 }
@@ -25,7 +25,7 @@ export interface Seat {
 export interface SidecarScan {
   calls: string[];
   classes: string[];
-  seat?: Seat;
+  seat?: Twin;
   problems: string[];
 }
 

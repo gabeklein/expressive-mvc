@@ -299,3 +299,10 @@ export function remoteOf(appDir: string, file: string): Remote | undefined {
 
   return { pattern: folders.map(dir => classify(dir, true)!.segment), module, folder: join(appDir, ...folders), file };
 }
+
+export function remoteEntries(appDir: string): Remote[] {
+  return readdirSync(appDir, { recursive: true, encoding: "utf8" }).flatMap(rel => {
+    const remote = remoteOf(appDir, join(appDir, rel));
+    return remote && !remote.module ? [remote] : [];
+  });
+}

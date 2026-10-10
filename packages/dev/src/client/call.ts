@@ -1,4 +1,6 @@
-export function runtime() {
+import type { State } from "@expressive/mvc";
+
+export function runtime(Base: typeof State) {
   const classes = new Map<string, ErrorConstructor>();
 
   function define(id: string, name: string): ErrorConstructor {
@@ -43,5 +45,19 @@ export function runtime() {
     throw Object.assign(new Type(message), fields);
   }
 
-  return { call, define };
+  function twin(pattern: string[], methods: Record<string, string>, name: string): State.Type {
+    const named = { [name]: class extends Base {} };
+    const Twin = named[name];
+
+    for (const [method, id] of Object.entries(methods))
+      Object.defineProperty(Twin.prototype, method, {
+        configurable: true,
+        writable: true,
+        value: (...args: unknown[]) => call(pattern, id, args),
+      });
+
+    return Twin;
+  }
+
+  return { call, define, twin };
 }

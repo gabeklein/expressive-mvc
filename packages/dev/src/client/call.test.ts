@@ -3,9 +3,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { State } from "@expressive/mvc";
+
 import { runtime } from "./call";
 
-const { call, define } = runtime();
+const { call, define, twin } = runtime(State);
 
 function reply(status: number, body?: unknown) {
   const fetch = vi.fn(async () => new Response(body === undefined ? null : JSON.stringify(body), { status }));
@@ -71,5 +73,27 @@ describe("call", () => {
 
     expect(error.constructor).toBe(Error);
     expect(error).toMatchObject({ message: "No", status: 409 });
+  });
+});
+
+describe("twin", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    history.replaceState(null, "", "/");
+  });
+
+  it("will make a named State whose methods call the server", async () => {
+    history.replaceState(null, "", "/tally");
+    const fetch = reply(200, 5);
+    const Tally = twin(["tally"], { add: "default.add" }, "Tally");
+    const tally = Tally.new() as any;
+
+    expect(Tally.name).toBe("Tally");
+    expect(tally).toBeInstanceOf(State);
+    expect(await tally.add(2, 3)).toBe(5);
+    expect(fetch).toHaveBeenCalledWith("/tally", expect.objectContaining({
+      headers: expect.objectContaining({ "x-expressive-call": "default.add" }),
+      body: "[2,3]",
+    }));
   });
 });
