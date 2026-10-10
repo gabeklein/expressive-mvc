@@ -6,7 +6,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 
 - `feat/dev-server` is the trunk. Each feature lands as its own PR into it, small enough to hand-review; the trunk merges to `main` when release-ready.
 - Merge `main` into the trunk as it moves. Upstream fixes (mvc, dom, router) land on `main` as their own PRs, never only here.
-- `backup/dev-server-full` holds the pre-trunk prototype - source for the queued features below. Its POST dispatch and client stubs seed the MVP; its `app/api` lane comes later. Delete once nothing is left to carve.
+- `backup/dev-server-full` holds the pre-trunk prototype - source for the queued features below. Its POST dispatch and client stubs seed the MVP; its `app/api` lane comes later, moved to `api/` beside `app/`. Delete once nothing is left to carve.
 - Stack PRs: each targets the previous one's branch, the bottom one the trunk; merge a lower branch up into the ones above it as it moves.
 - Verify in a browser, not only unit tests: `bun run example:e2e` in `packages/dev` (set `CHROME`). After rebuilding a package, a dev server can serve a stale `@expressive/*` from `example/node_modules/.vite` - delete it (the E2E dev project always does).
 - Specs live in `example/e2e/` for now; colocating them beside routes is allowed later - the dependency scan already skips `*.spec.*`/`*.test.*` under `app/`.
@@ -19,7 +19,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - **JSX.** `jsxImportSource: "@expressive/dev"` - dev's runtime re-exports dom's.
 - **Router.** dev exports its own `Router` (extends `BrowserRouter`) and `Route`, plus `Link`, `NavLinks`, `Redirect`. No `BrowserRouter` export.
 - **Config.** `index.ts` default-exports `config({...})` from `@expressive/dev/server`, read on the server.
-- **Server modules, one model.** Sidecars (`app/**/remote.ts`) and `app/api/**` share one invocation path from the bundled client and one context model (below). `app/api` has its own root; a sidecar call never passes through `app/api/index.ts`. Process globals are the only layer both lanes share.
+- **Server modules, one model.** Sidecars (`app/**/remote.ts`) and `api/**` (a peer of `app/`) share one invocation path from the bundled client and one context model (below). `api/` has its own root; a sidecar call never passes through `api/index.ts`. Process globals are the only layer both lanes share.
 - **Session is the app's concern.** dev does not detect or mint sessions or tabs; an app expresses identity through keys (Context model). Recipes may come later.
 - **dom on the server.** Needed for JSX rendered to HTML (responses, emails), not SSR.
 - **Monkey-patch first.** Where mvc or an adapter lacks a seam, dev patches it in one file, replaced when upstream catches up. Stress-tests the concept before committing upstream.
@@ -53,7 +53,7 @@ Not built yet, but the MVP must not cut against them.
 - **Values invariant.** What TypeScript shows as public is readable on the twin with no separate mechanism: every public value is present before the first read (snapshot on attach). Demand may narrow what is re-sent, never what is available.
 - **Twins via client `X.use()`.** Client `X.use()` of a server class - a route's `default` or any component - attaches a twin for that mount and detaches on unmount. The server resolves the instance through the class's key; the reply carries a snapshot and version, and the twin suspends until then. Methods are calls; a reply carries the call's patch and version, applied before the call resolves - an awaited call never sees a stale twin. Twins are read-only - an invariant, not a shortcut: server values change through methods, and assigning a twin field throws.
 - **Push (SSE).** One `EventSource` per client connection - a mailbox, not a subscription list. What it carries is decided server-side by what that connection has attached. `mount()` runs on attach, its cleanup on detach. Each flush of an attached instance's updates (mvc batches per microtask) becomes one frame: `{ target, values }` with the version as the event id - the browser's reconnect resumes with `Last-Event-ID`; a server that lost the connection sends `reset`, and the client re-attaches. An evicted context sends its attached twins a terminal event before their stream drops them.
-- **OAuth** - not built, anticipated: an `app/api` slice (GET, `Set-Cookie`, redirect) for the callback, forwarding to a process-global client.
+- **OAuth** - not built, anticipated: an `api/` slice (GET, `Set-Cookie`, redirect) for the callback, forwarding to a process-global client.
 
 ## Transport
 
@@ -119,7 +119,7 @@ Per-request data sits behind one process-global `Current`, in context everywhere
 
 ## Boundaries
 
-- **Where:** a server module is `remote.ts` (or under `app/api/`); everything else is client. An import from one is a stub or a twin - visible at the import site.
+- **Where:** a server module is `remote.ts` (or under `api/`); everything else is client. An import from one is a stub or a twin - visible at the import site.
 - **What crosses, decided at build:** the scanner reads the source, TS modifiers included, and emits the allowlist both sides use. Callable: public `async` methods and exported `async` functions. Server-only: TS `protected`/`private`, `_`-prefixed and `#private` members, lifecycle and State's own names. The call dispatcher accepts nothing outside the allowlist, so the boundary never rests on runtime visibility.
 - **Refuse to build what the client cannot have.** A public sync method (every call is async over the wire) and a public `_`-prefixed member (unmanaged, so never replicated) are build errors. `protected`, `private` and `#private` members are free - they never cross. Linters can warn earlier, later.
 - **No ceremony.** No wrapper, no client-view types. Read-only values and no-extension are runtime rules, not editor ones: assigning a twin field throws; a client `new` or `extends` of a twin class throws and is a documented anti-pattern. Writes go through server methods.
@@ -167,7 +167,7 @@ Principles the MVP must not contradict; most land after it.
 
 - **TTL sweeper.** One per process; best effort. Evicting an entry evicts the keys it owns.
 - **Warm rehydration.** A State that packs its managed values into a token (JWT) or store and restores from it on a key miss - the same serialise/restore twins need for snapshots. Hot = in memory; warm = rebuilt without the source of truth; cold = the source of truth or the user. Stateless tokens cannot be revoked before expiry.
-- **`app/api/**` lane.** Calls from the bundled client work as in the MVP, walked from `app/api`'s own root. For external clients: per-request identity (bearer), a `Call` State for HTTP concerns (headers, status, cookies; `Fetch` considered - its instance name shadows global `fetch()`), the reply pipeline (string → `text/plain`, `undefined` → 204, other values → JSON, status helpers, data primitives; uncaught → 500, message in dev only), REST as `protected` uppercase verbs on dev's `Route` (params from `this.match`, body as the one parameter), HTML replies via a server DOM shim, OpenAPI.
+- **`api/**` lane.** Calls from the bundled client work as in the MVP, walked from `api/`'s own root. For external clients: per-request identity (bearer), a `Call` State for HTTP concerns (headers, status, cookies; `Fetch` considered - its instance name shadows global `fetch()`), the reply pipeline (string → `text/plain`, `undefined` → 204, other values → JSON, status helpers, data primitives; uncaught → 500, message in dev only), REST as `protected` uppercase verbs on dev's `Route` (params from `this.match`, body as the one parameter), HTML replies via a server DOM shim, OpenAPI.
 - The Reliability items above beyond the MVP.
 - **Build notice.** `expressive build` prints one line per non-root route module kept in the main bundle and why - e.g. it exports `Catch`; a `Catch` on its section's `index` covers it.
 - **Repo placement.** dev incubates here as a trunk while it drives changes into mvc and dom; it is the likeliest package to move to `gabeklein/expressive-dev` at its first release, once its PRs stop touching core.
@@ -206,7 +206,7 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - Reliability defaults: timeouts, the per-call wait-or-fail option, the strict-route flag, replay buffer size.
 - Hot reload retiring cached contexts.
 - Client parity for the `mount()` cascade: the server needs it (owned helpers have no other attach signal), so the maintainer cascades on the client too, upstream.
-- Whether an `app/api/**` default (a REST `Route`) is twinned when the bundled client imports it, and what a twin of a `Route` subclass carries.
+- `api/**` is importable by the bundled client; whether its default (a REST `Route`) is twinned, and what a twin of a `Route` subclass carries, is assessed when the lane is built.
 - On the client only the layout chain stays mounted - sibling pages remount (per the generated route tree). Twins inherit that lifetime.
 
 ## Upstream (bullpen)
