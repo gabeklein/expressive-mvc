@@ -1,5 +1,30 @@
 # @expressive/react
 
+## 0.89.0
+
+### Minor Changes
+
+- [#431](https://github.com/gabeklein/expressive-mvc/pull/431) [`d816f89`](https://github.com/gabeklein/expressive-mvc/commit/d816f896d9a89060aca394ec1d41f6bcf11010a2) A State element owns a boundary from `fallback` or `catch` attributes as well as members: `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence and still passes through to a field of that name. `State.Props` types both, narrowed to a declared member's type. Function components and placed instances are unchanged. `@expressive/react` honors a `catch` attribute on a Component the same way, ahead of the member, and `Component.Props` types it. Every `catch`, member or attribute, now receives `(error, instance)`.
+
+- [#450](https://github.com/gabeklein/expressive-mvc/pull/450) [`2413220`](https://github.com/gabeklein/expressive-mvc/commit/24132202b13fc05c518af7e7e62b4383e0cef3f8) `Provider` is deprecated in `@expressive/react` and removed from `@expressive/dom`. Use `<Component for={…}>` from `@expressive/mvc`, which provides one State per element; compose a parent State in place of `for={{ … }}`. `Consumer` is removed from both: read with `X.get()` in a function component.
+
+### Patch Changes
+
+- [#457](https://github.com/gabeklein/expressive-mvc/pull/457) [`606bd37`](https://github.com/gabeklein/expressive-mvc/commit/606bd3701546e99719628815e88c34ceb2d94978) A subclass of a Component subclass is assignable to its parent type, so a function taking a `Mesh` accepts a `Ball extends Mesh`, and `typeof Mesh` accepts `Ball`. The `is` and `catch` attributes no longer make `props` contravariant in the instance type. In React, the deprecated `state` member, which exists only to satisfy React's JSX, is typed `{}`.
+
+- [#493](https://github.com/gabeklein/expressive-mvc/pull/493) [`b4ca589`](https://github.com/gabeklein/expressive-mvc/commit/b4ca589a276bcd37bdbdcf6405efe0bd42179105) `Host` takes `elementClass`, the instance a class must construct to render on that host; `JSX.ElementType`'s class arm reads it, so a type written against `@expressive/mvc/jsx-runtime` (like router's `as`) renders under the host's own JSX. React and Preact declare their `Component`, dom declares `State`. The class arm is no longer `abstract`.
+
+- [#441](https://github.com/gabeklein/expressive-mvc/pull/441) [`397c212`](https://github.com/gabeklein/expressive-mvc/commit/397c212d7df9b23b9fe153ce76fb5ad7ce9543bc) **Breaking:** `@expressive/mvc/runtime` is removed. Host seams (`host`, `HostRuntime`, `Host`, `childrenOf`, `isElement`, `typeOf`, `propsOf`) move to `@expressive/mvc/jsx-runtime` beside the transform contract (`jsx`, `jsxs`, `jsxDEV`, `Fragment`, `JSX`); class HMR moves to its own subpath, `@expressive/mvc/hot`, exporting `accept` and `replaced`.
+
+  - Host seam imports from `@expressive/mvc/runtime` → `@expressive/mvc/jsx-runtime`.
+  - `import { hot } from '@expressive/mvc/runtime'` → `import * as hot from '@expressive/mvc/hot'`.
+  - `declare module '@expressive/mvc/runtime'` augmentations of `Host` → `declare module '@expressive/mvc/jsx-runtime'`.
+
+  Adapters, router, inspect, and the Vite plugins import the new path.
+
+- Updated dependencies [[`f6d9d81`](https://github.com/gabeklein/expressive-mvc/commit/f6d9d81951916e216c5ded575a93eb8c11389a5e), [`606bd37`](https://github.com/gabeklein/expressive-mvc/commit/606bd3701546e99719628815e88c34ceb2d94978), [`29d1a48`](https://github.com/gabeklein/expressive-mvc/commit/29d1a481d4d58a85c46bf67ac2656f61bef95061), [`d816f89`](https://github.com/gabeklein/expressive-mvc/commit/d816f896d9a89060aca394ec1d41f6bcf11010a2), [`13b9fd5`](https://github.com/gabeklein/expressive-mvc/commit/13b9fd55b57fb701957ef1085598b7f5f6db627d), [`d804a68`](https://github.com/gabeklein/expressive-mvc/commit/d804a68e987b5e8914e99aaebc7dcae3cc858df1), [`f6d9d81`](https://github.com/gabeklein/expressive-mvc/commit/f6d9d81951916e216c5ded575a93eb8c11389a5e), [`b4ca589`](https://github.com/gabeklein/expressive-mvc/commit/b4ca589a276bcd37bdbdcf6405efe0bd42179105), [`0863b57`](https://github.com/gabeklein/expressive-mvc/commit/0863b572541950346ec90e439d25c6bb3a402f35), [`5735f12`](https://github.com/gabeklein/expressive-mvc/commit/5735f124bea800a3e87835e41dd99f10c468da03), [`5fa6a0e`](https://github.com/gabeklein/expressive-mvc/commit/5fa6a0e6fa69a7afde9c02caa3f8bcf3367d5dbe), [`397c212`](https://github.com/gabeklein/expressive-mvc/commit/397c212d7df9b23b9fe153ce76fb5ad7ce9543bc), [`6993e16`](https://github.com/gabeklein/expressive-mvc/commit/6993e166a5b355790c6fbdae9d3b2674dcf86dd2), [`6b6498c`](https://github.com/gabeklein/expressive-mvc/commit/6b6498c334402e17a89951f4b82a8a689e361dc4), [`3390c35`](https://github.com/gabeklein/expressive-mvc/commit/3390c35059ee5290fb4c1a050b2bfd1fd0305065)]:
+  - @expressive/mvc@0.88.0
+
 ## 0.88.0
 
 ### Minor Changes
