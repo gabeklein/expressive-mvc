@@ -308,7 +308,11 @@ describe('has method', () => {
 
     context.get(DownstreamState, cb, true);
 
-    expect(cb.mock.calls).toEqual(existing.map((state) => [state, true]));
+    expect(cb).toBeCalledTimes(2);
+    existing.forEach((state, i) => {
+      expect(cb.mock.calls[i][0]).toBe(state);
+      expect(cb.mock.calls[i][1]).toBe(true);
+    });
 
     context.push(DownstreamState);
 

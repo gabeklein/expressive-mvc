@@ -1340,6 +1340,7 @@ describe('strict mode', () => {
 
     expect(screen).toHaveText('bar');
     expect(didCreate).toBeCalledTimes(1);
+    expect(didDestroy).not.toBeCalled();
     expect(warn).not.toBeCalled();
 
     element.unmount();

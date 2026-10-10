@@ -12,7 +12,7 @@ import {
   type MockInstance
 } from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { mockPromise, flushMicrotasks, revisions, preactDiffers, reactOnly } from '../test.setup';
+import { mockPromise, flushMicrotasks, revisions, reactOnly } from '../test.setup';
 import { Runtime } from './runtime';
 
 function renderWith<T>(Type: State.Type | State, hook: () => T) {
@@ -510,7 +510,7 @@ describe('State.get', () => {
       expect(hook.result.current).toBe(null);
     });
 
-    preactDiffers('will not subscribe to values', async () => {
+    it('will not subscribe to values', async () => {
       const promise = mockPromise<string>();
 
       const test = Test.new();
@@ -526,11 +526,9 @@ describe('State.get', () => {
       expect(didRender).toBeCalled();
       expect(hook.result.current).toBeNull();
 
-      await act(async () => {
-        promise.resolve('foobar');
-      });
+      promise.resolve('foobar');
+      await waitFor(() => expect(didRender).toBeCalledTimes(2));
 
-      expect(didRender).toBeCalledTimes(2);
       expect(hook.result.current).toBe('foobar');
 
       test.foo = 'foo';
@@ -539,7 +537,7 @@ describe('State.get', () => {
       expect(didRender).toBeCalledTimes(2);
     });
 
-    preactDiffers('will refresh and throw if async rejects', async () => {
+    it('will refresh and throw if async rejects', async () => {
       class Test extends State {}
 
       const promise = mockPromise();
@@ -556,11 +554,8 @@ describe('State.get', () => {
 
       expect(hook.result.current).toBeUndefined();
 
-      await act(async () => {
-        promise.resolve();
-      });
-
-      expect(hook.result.current).toBe('oh no');
+      promise.resolve();
+      await waitFor(() => expect(hook.result.current).toBe('oh no'));
     });
   });
 
@@ -844,7 +839,7 @@ describe('State.get', () => {
 
   describe('set instruction', () => {
     describe('factory', () => {
-      preactDiffers('will suspend if function is async', async () => {
+      it('will suspend if function is async', async () => {
         const promise = mockPromise<string>();
 
         class Test extends State {
@@ -857,14 +852,11 @@ describe('State.get', () => {
 
         expect(hook.result.current).toBeNull();
 
-        await act(async () => {
-          promise.resolve('hello');
-        });
-
-        expect(hook.result.current).toBe('hello');
+        promise.resolve('hello');
+        await waitFor(() => expect(hook.result.current).toBe('hello'));
       });
 
-      preactDiffers('will refresh and throw if async rejects', async () => {
+      it('will refresh and throw if async rejects', async () => {
         const promise = mockPromise();
 
         class Test extends State {
@@ -882,11 +874,8 @@ describe('State.get', () => {
 
         expect(hook.result.current).toBeNull();
 
-        await act(async () => {
-          promise.reject('oh no');
-        });
-
-        expect(hook.result.current).toBe('oh no');
+        promise.reject('oh no');
+        await waitFor(() => expect(hook.result.current).toBe('oh no'));
       });
     });
 

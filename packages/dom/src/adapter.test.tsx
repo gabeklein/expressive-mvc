@@ -552,6 +552,32 @@ describe('Component for', () => {
     expect(session.get(null)).toBe(true);
   });
 
+  it('will not add a suspense boundary', () => {
+    const gate = mockPromise<void>();
+
+    class Wait extends State {
+      ready = false;
+
+      render() {
+        if (!this.ready) throw gate;
+        return <i>ready</i>;
+      }
+    }
+
+    const root = document.createElement('main');
+
+    render(
+      <Component fallback={<i>outer</i>}>
+        <Component for={Session}>
+          <Wait />
+        </Component>
+      </Component>,
+      root
+    );
+
+    expect(root.textContent).toBe('outer');
+  });
+
   it('will type attributes from for', () => {
     class Typed extends State {
       name = '';
