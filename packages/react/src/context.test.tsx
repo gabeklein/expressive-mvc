@@ -43,55 +43,7 @@ function within(assert: () => void, wrap: (check: React.ReactNode) => React.Reac
   expect(Check).toHaveBeenCalled();
 }
 
-describe('Provider', () => {
-  it('will be owned by enclosing Component', () => {
-    let host!: State;
-    let provided!: State;
-
-    class Host extends Component {
-      render() {
-        return <Component for={Foo} is={(foo) => (provided = foo)} />;
-      }
-    }
-
-    render(<Host is={(h) => (host = h)} />);
-
-    expect(provided.get(State)).toBe(host);
-  });
-
-  it('will provide a mix of state and models', () => {
-    const foo = Foo.new();
-
-    within(
-      () => {
-        expect(Foo.get().is).toBe(foo);
-        expect(Bar.get()).toBeInstanceOf(Bar);
-      },
-      (check) => <Component for={{ foo, Bar }}>{check}</Component>
-    );
-  });
-
-  it('will pass props and is callback to created instance', () => {
-    class Test extends State {
-      foo = 'default';
-      bar = 0;
-    }
-
-    const is = vi.fn();
-
-    within(
-      () => expect(Test.get()).toMatchObject({ foo: 'hello', bar: 42 }),
-      (check) => (
-        <Component for={Test} is={is} foo="hello" bar={42}>
-          {check}
-        </Component>
-      )
-    );
-
-    expect(is).toBeCalledTimes(1);
-    expect(is).toBeCalledWith(expect.any(Test));
-  });
-
+describe('Component for', () => {
   it('will apply unmanaged _ props alongside is', () => {
     class Config extends State {
       _mode = 'light';
@@ -104,127 +56,27 @@ describe('Provider', () => {
     expect(is.mock.calls[0][0]._mode).toBe('dark');
   });
 
-  it('will use the current is for a later registration', () => {
+  it('will release the previous class and pass the next to the current is', () => {
     class First extends State {}
     class Second extends State {}
 
-    const seen: string[] = [];
+    const seen: State[] = [];
 
     const element = render(
-      <Component for={First} is={() => seen.push('first')}>
+      <Component for={First} is={(first) => seen.push(first)}>
         <span />
       </Component>
     );
 
     element.rerender(
-      <Component for={Second} is={() => seen.push('second')}>
+      <Component for={Second} is={(second) => seen.push(second)}>
         <span />
       </Component>
     );
 
-    expect(seen).toEqual(['first', 'second']);
-  });
-
-  it('will stop applying rest props when for becomes multi-form', () => {
-    class Test extends State {
-      foo = 'default';
-    }
-
-    const seen: Test[] = [];
-    const capture = (state: Test) => {
-      seen.push(state);
-    };
-
-    const element = render(
-      <Component for={Test} is={capture} foo="hello">
-        <span />
-      </Component>
-    );
-
-    expect(seen[0].foo).toBe('hello');
-
-    // the single instance is replaced by a map-registered one, which rest props
-    // never apply to - the departed instance must not keep receiving them
-    element.rerender(
-      <Component for={{ Test }} is={capture} foo="ignored">
-        <span />
-      </Component>
-    );
-
-    expect(seen).toHaveLength(2);
-    expect(seen[1].foo).toBe('default');
-  });
-
-  it('will update instance when props change', async () => {
-    class Test extends State {
-      value = 'initial';
-    }
-
-    const Child = () => <span>{Test.get().value}</span>;
-
-    const element = render(
-      <Component for={Test} value="first">
-        <Child />
-      </Component>
-    );
-
-    expect(screen).toHaveText('first');
-
-    act(() => {
-      element.rerender(
-        <Component for={Test} value="second">
-          <Child />
-        </Component>
-      );
-    });
-
-    expect(screen).toHaveText('second');
-  });
-
-  it('will pass props to instance', () => {
-    const test = Foo.new();
-
-    within(
-      () => {
-        const { is } = Foo.get();
-
-        expect(is).toBe(test);
-        expect(is.value).toBe('hello');
-      },
-      (check) => (
-        <Component for={test} value="hello">
-          {check}
-        </Component>
-      )
-    );
-  });
-
-  it('will destroy only created models on unmount', async () => {
-    const willDestroy = vi.fn();
-
-    class Foo extends State {}
-    class Bar extends State {}
-    class Given extends State {}
-
-    const instance = Given.new();
-
-    function Check() {
-      Foo.get().get(() => willDestroy);
-      Bar.get().get(() => willDestroy);
-      Given.get().get(() => willDestroy);
-      return null;
-    }
-
-    const element = render(
-      <Component for={{ Foo, Bar, instance }}>
-        <Check />
-      </Component>
-    );
-
-    element.unmount();
-
-    expect(willDestroy).toBeCalledTimes(2);
-    expect(instance.get(null)).toBe(false);
+    expect(seen).toEqual([expect.any(First), expect.any(Second)]);
+    expect(seen[0].get(null)).toBe(true);
+    expect(seen[1].get(null)).toBe(false);
   });
 
   it('will destroy from bottom-up', async () => {
@@ -280,66 +132,65 @@ describe('Provider', () => {
     it('will not call for an instance it is given', () => {
       const didMount = vi.fn();
 
-      class Owned extends State {
-        mount() {
-          didMount('owned');
-        }
-      }
-
       class Guest extends State {
         mount() {
-          didMount('guest');
+          didMount();
         }
       }
 
       const guest = Guest.new();
       const element = render(
-        <Component for={{ Owned, guest }}>
+        <Component for={guest}>
           <span />
         </Component>
       );
 
-      expect(didMount.mock.calls).toEqual([['owned']]);
+      expect(didMount).not.toBeCalled();
 
       element.unmount();
 
       expect(guest.get(null)).toBe(false);
     });
 
-    it.each([
-      // mount belongs to the Provider's own commit, so a `for` replaced
-      // mid-life provides Second without ever mounting it
-      ['will not mount a state swapped in by a later render', undefined, undefined, [['first']]],
-      // a new key is a new Provider, so the swap mounts as any first commit does
-      ['will mount a swapped state when the Provider is keyed', 'first', 'second', [['first'], ['second']]]
-    ])('%s', (_, firstKey, secondKey, calls) => {
-      const didMount = vi.fn();
+    it('will hand the mount to a replacement class', () => {
+      const events: string[] = [];
 
       class First extends State {
         mount() {
-          didMount('first');
+          events.push('mount first');
+          return () => events.push('release first');
         }
       }
 
       class Second extends State {
         mount() {
-          didMount('second');
+          events.push('mount second');
+          return () => events.push('release second');
         }
       }
 
       const element = render(
-        <Component key={firstKey} for={First}>
+        <Component for={First}>
           <span />
         </Component>
       );
 
       element.rerender(
-        <Component key={secondKey} for={Second}>
+        <Component for={Second}>
           <span />
         </Component>
       );
 
-      expect(didMount.mock.calls).toEqual(calls);
+      expect(events).toEqual(['mount first', 'release first', 'mount second']);
+
+      element.unmount();
+
+      expect(events).toEqual([
+        'mount first',
+        'release first',
+        'mount second',
+        'release second'
+      ]);
     });
 
     it('will mount after descendants, as any parent does', () => {
@@ -372,40 +223,6 @@ describe('Provider', () => {
     });
   });
 
-  describe('forEach prop', () => {
-    it('will ignore a returned value', () => {
-      let captured!: Foo | Bar;
-      // a concise arrow body returns the state, which must not be mistaken
-      // for a teardown - hence no dispose seam here at all
-      const forEach = vi.fn((state: Foo | Bar) => (captured = state));
-
-      const rendered = render(<Component for={{ Foo, Bar }} is={forEach} />);
-
-      expect(forEach).toBeCalledTimes(2);
-      expect(captured).toBeInstanceOf(State);
-
-      expect(() => rendered.unmount()).not.toThrow();
-    });
-
-    it('will call for each model and cleanup through the state', () => {
-      const cleanup = vi.fn();
-      const forEach = vi.fn((state: State) => {
-        state.set(null, cleanup);
-      });
-
-      const rendered = render(<Component for={{ Foo, Bar }} is={forEach} />);
-
-      expect(forEach).toBeCalledTimes(2);
-      expect(forEach).toBeCalledWith(expect.any(Foo));
-      expect(forEach).toBeCalledWith(expect.any(Bar));
-      expect(cleanup).not.toBeCalled();
-
-      rendered.unmount();
-
-      expect(cleanup).toBeCalledTimes(2);
-    });
-  });
-
   describe('suspense', () => {
     it('will render fallback prop', async () => {
       class Foo extends State {
@@ -431,32 +248,6 @@ describe('Provider', () => {
       expect(element).not.toHaveText('Loading...');
     });
 
-    it('will ignore suspense if undefined', async () => {
-      class Foo extends State {
-        value = set<string>();
-      }
-
-      const foo = Foo.new();
-      const Consumer = () => Foo.get().value;
-
-      const element = render(
-        <Suspense fallback={<span>Foo</span>}>
-          <Component for={foo} fallback={undefined}>
-            <Consumer />
-          </Component>
-        </Suspense>
-      );
-
-      expect(element).toHaveText('Foo');
-
-      await act(async () => {
-        foo.value = 'Hello World';
-      });
-
-      expect(element).toHaveText('Hello World');
-      expect(element).not.toHaveText('Foo');
-    });
-
     preactDiffers('will take over from outer suspense when fallback is set', () => {
       class Foo extends State {
         value = set<string>();
@@ -467,7 +258,7 @@ describe('Provider', () => {
 
       const element = render(
         <Suspense fallback={<span>Foo</span>}>
-          <Component for={foo} fallback={undefined}>
+          <Component for={foo}>
             <Consumer />
           </Component>
         </Suspense>
@@ -594,7 +385,7 @@ describe('context', () => {
       (check) => (
         <Component for={instance}>
           <Component for={Baz}>
-            <Component for={{ Bar }}>{check}</Component>
+            <Component for={Bar}>{check}</Component>
           </Component>
         </Component>
       )
@@ -611,7 +402,7 @@ describe('get instruction', () => {
     value = 'bar';
   }
 
-  it('will attach where created by provider', () => {
+  it('will attach where provided by Component', () => {
     within(
       () => expect(Foo.get().bar).toBeInstanceOf(Bar),
       (check) => (
@@ -725,7 +516,7 @@ describe('has instruction', () => {
     const didGetBar = vi.fn();
     const FooBar = () => void Bar.use();
 
-    const Component = () => {
+    const Parent = () => {
       const foo = Foo.use();
 
       return (
@@ -735,7 +526,7 @@ describe('has instruction', () => {
       );
     };
 
-    render(<Component />);
+    render(<Parent />);
     expect(didGetBar).toBeCalled();
   });
 });
