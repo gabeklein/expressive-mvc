@@ -491,7 +491,33 @@ describe('Provider', () => {
       expect(element).not.toHaveText('Loading...');
     });
 
-    preactDiffers('will ignore suspense if undefined', () => {
+    it('will ignore suspense if undefined', async () => {
+      class Foo extends State {
+        value = set<string>();
+      }
+
+      const foo = Foo.new();
+      const Consumer = () => Foo.get().value;
+
+      const element = render(
+        <Suspense fallback={<span>Foo</span>}>
+          <Provider for={foo} fallback={undefined}>
+            <Consumer />
+          </Provider>
+        </Suspense>
+      );
+
+      expect(element).toHaveText('Foo');
+
+      await act(async () => {
+        foo.value = 'Hello World';
+      });
+
+      expect(element).toHaveText('Hello World');
+      expect(element).not.toHaveText('Foo');
+    });
+
+    preactDiffers('will take over from outer suspense when fallback is set', () => {
       class Foo extends State {
         value = set<string>();
       }
