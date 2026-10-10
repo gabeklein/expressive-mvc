@@ -7,8 +7,6 @@ import { State, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 ```
 
-> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
-
 A reactive `Map`. Reads subscribe in active `watch()` / `State.get()` effects; writes notify only the changed key, plus collection shape when entries are added or removed.
 
 A field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves during activation of the hosting state, which adopts the map in the same step. Not usable standalone.

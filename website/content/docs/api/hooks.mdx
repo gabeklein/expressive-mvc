@@ -1,12 +1,13 @@
 ---
 title: React Hooks
-description: State.use, State.get, and Provider
+description: State.use, State.get, and providing context
 ---
 
-The React adapter augments the `State` class with two static methods (`use` and `get`), and provides `Provider`, which is deprecated in favor of `<Component for={…}>`. These are the React-specific entry points to Expressive.
+The React adapter augments the `State` class with two static hooks, `use` and `get`. Import the adapter once, for its side effect, in your app's entry; everything else imports from `@expressive/mvc`.
 
 ```tsx
-import State, { Provider } from '@expressive/react';
+import '@expressive/react';
+import { State, Component } from '@expressive/mvc';
 ```
 
 <br />
@@ -119,11 +120,11 @@ The factory receives:
 
 ### Effect mode
 
-Return `null` from the factory to run a side effect without subscribing:
+Return `null` from the factory to run a side effect once, on first render, without subscribing - the factory doesn't run again:
 
 ```tsx
 AppState.get((app) => {
-  console.log('user changed:', app.user);
+  analytics.track('page', app.page);
   return null;
 });
 ```
@@ -151,73 +152,23 @@ Given a promise (or async function), it refreshes now and again when the promise
 
 <br />
 
-## `Provider`
+## Providing context
 
-Puts a state instance (or several) into React context for its descendants.
+Hooks read what an ancestor provides. Provide a State with the bare `Component` class:
 
 ```tsx
-<Provider for={Theme}>
+<Component for={Theme} color="dark">
   <App />
-</Provider>
+</Component>
 ```
 
-### Props
+- A class is constructed and owned by the element, destroyed on unmount; `is` receives it.
+- An instance - say one from `State.use()` - is provided as-is and never destroyed by the element.
+- Other attributes are typed from the State and assigned to it on every render.
+- `fallback` adds a Suspense boundary and `catch` an error boundary; without them it adds none.
+- One State per element - several belong to a parent State owning them as fields.
 
-| Prop       | Type                                                | Description                                          |
-| ---------- | --------------------------------------------------- | ---------------------------------------------------- |
-| `for`      | `State \| State.Type \| Record<string, State.Type>` | State instance, class, or map of classes to provide  |
-| `is`       | `(instance) => void \| (() => void)`                | Called per created instance; optional cleanup        |
-| `fallback` | `ReactNode`                                         | Wraps children in a Suspense boundary                |
-| `name`     | `string`                                            | Debug label for the boundary                         |
-| `children` | `ReactNode`                                         | Content rendered within the provider                 |
-| `[field]`  | varies                                              | State fields passed as JSX props, merged to instance |
-
-### Providing a class
-
-```tsx
-<Provider for={Theme} color="dark">
-  <App />
-</Provider>
-```
-
-The provider creates an instance on mount and destroys it on unmount.
-
-### Providing an instance
-
-```tsx
-const theme = Theme.new();
-<Provider for={theme}>
-  <App />
-</Provider>;
-```
-
-Externally-owned instances are not destroyed when the provider unmounts.
-
-### Providing multiple
-
-```tsx
-<Provider for={{ theme: Theme, auth: AuthService }}>
-  <App />
-</Provider>
-```
-
-### With a creation callback
-
-```tsx
-<Provider for={Theme} is={(theme) => theme.load()}>
-  <App />
-</Provider>
-```
-
-For multi-state providers, the `is` callback runs once per created instance and can return a cleanup function.
-
-### With Suspense
-
-```tsx
-<Provider for={UserProfile} fallback={<Spinner />}>
-  <ProfileView />
-</Provider>
-```
+`Provider` is deprecated in favor of `<Component for>`. Its record form (`for={{ theme: Theme, auth: Auth }}`) has no equivalent - compose a parent State instead. Details in the [Context guide](/docs/guides/context#providing-with-component-for).
 
 <br />
 
@@ -236,7 +187,7 @@ const Themed = () => {
 
 ## See also
 
-- [Context guide](/docs/guides/context) - `Provider` patterns and the `get` instruction.
-- [Components](/docs/api/component) - the `Component` class as an alternative to `Provider` + `State.use()`.
+- [Context guide](/docs/guides/context) - `<Component for>` patterns and the `get` instruction.
+- [Components](/docs/api/component) - the `Component` class as an alternative to `State.use()`, and rendering an instance as `{instance}`.
 - [State](/docs/api/state) - the base class and its methods.
 - [Utilities](/docs/api/utilities) - `watch` and `listener` for observing state changes.

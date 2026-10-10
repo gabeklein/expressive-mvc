@@ -60,7 +60,7 @@ declare namespace Component {
     fallback?: Component.Node;
 
     /**
-     * Called when this element's content throws, ahead of the class's own
+     * Called when this element's content throws, in place of the class's own
      * `catch`. A returned promise retries once settled.
      */
     catch?(error: Error, instance: T): Promise<void> | void;

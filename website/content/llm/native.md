@@ -4,7 +4,7 @@ Positioning for the adoption question - whether Expressive MVC is a safe choice 
 
 ## React is React
 
-The adapter imports `react` and `react/jsx-runtime` - nothing else. No renderer coupling to port, no platform fork, no second package: `npm install @expressive/react` is the whole install on either target, and Metro resolves it as published.
+Beside `@expressive/mvc`, the adapter imports `react` and `react/jsx-runtime` - nothing else. No renderer coupling to port, no platform fork, no native package: `npm install @expressive/mvc @expressive/react` is the whole install on either target, and Metro resolves it as published.
 
 State, instructions, context, suspense, and error boundaries are renderer-independent by construction. The question was never whether React Native *could* work, and treating it as unproven inverts the burden.
 
@@ -24,6 +24,6 @@ The remaining coupling is routing, and it is scoped work rather than an open que
 
 ## Boundaries
 
-State management on React Native is supported. Routing is not yet: the headless `Router` constructs and tracks navigation state, but `Link` and `NavLinks` need #128 before they render on a native host. `BrowserRouter` is the browser binding - it reads `window.location` and throws elsewhere, by design.
+State management on React Native is supported. Routing is not yet: the headless `Router` constructs and tracks navigation state, but `Link` and `NavLinks` need #128 before they render on a native host. `BrowserRouter` is the browser binding - it reads `window.location`, which React Native does not define; use `Router`.
 
 Under Jest, add `@expressive` to `transformIgnorePatterns`; the build is ESM-only.

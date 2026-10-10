@@ -84,7 +84,7 @@ The list owns membership (copy-on-write for add/remove); each item owns its fiel
 For reactivity *inside* the collection - this index changed, that member joined - declare the collection with `has()`:
 
 ```ts
-import State, { has } from '@expressive/react';
+import { State, has } from '@expressive/mvc';
 
 class Game extends State {
   board = has<string>(Array(9).fill(''));
@@ -139,7 +139,42 @@ class TodoList extends State {
 
 `add` forwards its arguments exactly as `Item.new()` accepts them. Pools have no initial argument - they spawn - so seed them from the `new()` hook, which runs once the field has resolved.
 
-Ownership follows freshness: a member the pool instantiates or a factory constructs fresh (`new Item()`) is owned, and is destroyed when deleted, cleared, or when the owner dies. An already-activated value (`Item.new()`) passed through a factory is a guest - held, never destroyed. Either way, a member that dies evicts itself, so a pool never serves a destroyed State.
+When members are keyed by one field, name it after the class and `add` takes just that value:
+
+```ts
+class Roster extends State {
+  players = has(Player, 'id');
+
+  join(id: string) {
+    return this.players.add(id); // new Player({ id })
+  }
+}
+```
+
+A class pool also takes a ready-made member: `add(item)` with a lone instance of the class holds it instead of constructing. That's how a second pool tracks members of a first - say, a selection:
+
+```ts
+class TodoList extends State {
+  todos = has(Item);
+  selected = has(Item);
+
+  select(item: Item) {
+    this.selected.add(item);
+  }
+}
+```
+
+A factory gets the final say on what joins. Returning `undefined` or `null` adds nothing (and `add` hands that back), while returning an instance that already exists makes `add` a lookup-or-create:
+
+```ts
+class Inbox extends State {
+  messages = has((dto: MessageDto) =>
+    dto.deleted ? undefined : new Message({ info: dto, id: dto.id })
+  );
+}
+```
+
+Ownership follows freshness: a member the pool instantiates, a factory constructs (`new Item()`), or one admitted before activation is owned, and is destroyed when deleted, cleared, or when the owner dies. An already-activated value (`Item.new()`, or a member of another pool) is a guest - held, never destroyed. Either way, a member that dies evicts itself, so a pool never serves a destroyed State.
 
 Both modes share a read surface built over iteration - `map(fn)`, `filter(fn)`, `any(fn)`, `all(fn)`, `get(predicate)`:
 
@@ -162,7 +197,7 @@ class TodoList extends State {
 When entries are addressed by name rather than position, use `map()`:
 
 ```ts
-import State, { map } from '@expressive/react';
+import { State, map } from '@expressive/mvc';
 
 class Form extends State {
   values = map<string, string>();

@@ -5,9 +5,13 @@ description: Version alignment, building libraries on Expressive, and the one-co
 
 ## One core per app
 
-`@expressive/mvc` holds module state: the context registry, prototype brands, and the JSX host registration all live in the loaded module. Two copies of the core in one application are two disconnected worlds - a `<Provider>` in one and a `State.get()` resolving through the other do not see each other. The classic symptom is `Could not find X in context` from a component that visibly sits under the right Provider.
+`@expressive/mvc` holds module state: the context registry, prototype brands, and the JSX host registration all live in the loaded module. Two copies of the core in one application are two disconnected worlds - a `<Component for>` in one and a `State.get()` resolving through the other do not see each other. The classic symptom is `Could not find X in context.` from a component that visibly sits under the right provider.
 
-The packages are shaped to make one copy the default outcome: `@expressive/react` and `@expressive/router` declare `@expressive/mvc` as a regular dependency with a caret range, so installing the adapter brings a core your package manager can dedupe. You install `@expressive/react`; the core is its concern.
+The packages are shaped to make one copy the default outcome: `@expressive/react`, `@expressive/router`, `@expressive/dom` and `@expressive/inspect` declare `@expressive/mvc` as a **peer dependency**, so the core is installed once, by the app, and every adapter resolves that copy. A React app installs both, and imports `State`, `Component` and the instructions from the core:
+
+```bash
+npm install @expressive/mvc @expressive/react
+```
 
 When the symptom above appears anyway, check for duplicates first:
 
@@ -15,7 +19,7 @@ When the symptom above appears anyway, check for duplicates first:
 npm ls @expressive/mvc   # or: pnpm why @expressive/mvc / bun pm ls
 ```
 
-More than one version listed means something pinned or bounded the core apart from the adapter's range. Align the ranges (or remove the direct `@expressive/mvc` entry and let the adapter carry it) and reinstall.
+More than one version listed means something pinned or bounded the core apart from the app's own entry - typically a library that bundled or depended on its own copy. Align the ranges and reinstall.
 
 <br />
 
@@ -23,27 +27,29 @@ More than one version listed means something pinned or bounded the core apart fr
 
 A component library or shared package built on Expressive should **not** bundle it:
 
-- Declare `@expressive/react` as a **peerDependency** (with a devDependency copy for local development), the same way you already treat `react`.
+- Declare `@expressive/mvc` as a **peerDependency** (with a devDependency copy for local development), the same way you already treat `react`. Add `@expressive/react` as a peer too only when your package relies on the React host - State and Component classes themselves need only the core.
 - Mark `@expressive/*` external in your build, so your dist imports it rather than inlining a private copy - an inlined copy is the two-worlds problem above, shipped on purpose.
 - Keep the peer range wide (`^` on the minor you develop against, pre-1.0) and move it deliberately: pre-1.0 minors are the breaking channel.
 
-Consumers of your library install `@expressive/react` themselves - the same contract as `react` itself. What that costs them: the adapter has an irreducible floor of about 9.6 kB gzip (measured, budgeted in CI - see [Bundle size](/docs/guides/bundle-size)), paid once per application regardless of how many libraries share it.
+Consumers of your library install `@expressive/mvc` and their host adapter themselves - the same contract as `react` itself. What that costs them: the React adapter has an irreducible floor of about 9.7 kB gzip (measured, budgeted in CI - see [Bundle size](/docs/guides/bundle-size)), paid once per application regardless of how many libraries share it.
 
-State classes your library exports are ordinary exports. Subclassing, `Provider`-ing, and `get()`-ing them works across package boundaries because everyone resolves the same core - which is the point of the rules above.
+State classes your library exports are ordinary exports. Subclassing, providing, and `get()`-ing them works across package boundaries because everyone resolves the same core - which is the point of the rules above.
 
 <br />
 
 ## Monorepos
 
-Workspace tooling makes duplicate cores easier to produce: two apps pinning different adapter versions, a hoisting boundary, or a stale lockfile after a version bump. The diagnosis is the same `npm ls @expressive/mvc`, and the fix is the same alignment - in a workspace, prefer a single version of `@expressive/react` declared once and shared.
+Workspace tooling makes duplicate cores easier to produce: two apps pinning different adapter versions, a hoisting boundary, or a stale lockfile after a version bump. The diagnosis is the same `npm ls @expressive/mvc`, and the fix is the same alignment - in a workspace, prefer a single version of `@expressive/mvc` and of each adapter, declared once and shared.
 
-Version skew between the adapter and core does not need managing by hand: the adapter's caret dependency states the compatible window, and within a single resolved copy the pair is always one your package manager accepted.
+Each adapter's peer range on the core states the compatible window - a caret on the minor it was released against, which pre-1.0 spans that minor only. Upgrade the core and adapters together; a package manager that reports an unmet peer range is pointing at exactly that skew.
 
 <br />
 
 ## Module format
 
-All packages ship ESM only (`"type": "module"`) - no `require()` entry. Bundlers (vite, esbuild, webpack, rollup) and Metro consume this directly. Jest is the notable exception: its default `transformIgnorePatterns` skips `node_modules`, so add an allowance for `@expressive` if your tests import it. Vitest needs nothing.
+All packages ship ESM only (`"type": "module"`) - no `require()` entry. Bundlers (vite, esbuild, webpack, rollup) and Metro consume this directly. Jest is the notable exception: its default `transformIgnorePatterns` skips `node_modules`, so add an allowance for `@expressive` if your tests import it (`jest-expo` included). Vitest needs nothing.
+
+Beyond its main entry, `@expressive/mvc` publishes a few subpaths: `@expressive/mvc/observable` (the low-level observable helpers - see [API: Utilities](/docs/api/utilities)), `@expressive/mvc/hot` (the class hot-reload registry that build integrations such as `@expressive/react/vite` call into), and `@expressive/mvc/jsx-runtime` (the host registry an adapter registers into). Apps rarely import the last two directly.
 
 <br />
 

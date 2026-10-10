@@ -3,17 +3,18 @@ title: Utilities
 description: Framework-agnostic helpers - pending, Context, unbind, and the observable protocol
 ---
 
-Everything on this page comes from `@expressive/mvc` - the core package under every adapter. Some of it re-exports through `@expressive/react` and some deliberately does not, so the import paths matter here.
+Everything on this page comes from `@expressive/mvc` - the core package under every adapter. Import it from there, by name; the import paths matter here.
 
 <br />
 
 ## Where things live
 
-The core package has two entry points:
+The core package has a main entry and a few subpaths:
 
 ```ts
 // main entry - State and friends
-import State, {
+import {
+  State,
   Component,
   Context,
   def,
@@ -35,26 +36,14 @@ import {
   touch,
   watch
 } from '@expressive/mvc/observable';
+
+// class hot reload - for build integrations
+import { accept, replaced } from '@expressive/mvc/hot';
 ```
 
-`@expressive/react` re-exports the everyday surface and nothing else:
+`@expressive/mvc/jsx-runtime` and `/jsx-dev-runtime` also exist, for the JSX transform - you don't import them by hand.
 
-```ts
-import State, {
-  Component,
-  Context,
-  def,
-  get,
-  has,
-  map,
-  pending,
-  Provider,
-  ref,
-  set
-} from '@expressive/react';
-```
-
-Note what's absent: `unbind` and all of the observable helpers. A React project that wants `watch` or `listener` imports them from `@expressive/mvc/observable` directly - the core package is a dependency of the adapter, so it's already in your node_modules.
+An adapter such as `@expressive/react` is imported once, for its side effect, in your app's entry (`import '@expressive/react'`). Its re-exports of `State`, `Component`, the instructions and friends - and its default export - are deprecated; import those from `@expressive/mvc`. The core package is a peer dependency of the adapter, so install both.
 
 > There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `queued` and `capture` - plumbing State itself uses; you'll probably never need them.)
 
@@ -231,7 +220,7 @@ function observer(state: object, create?: boolean): Observer | undefined | null;
 Run `work` now, marking the subscriber updates it queues non-urgent. The callback is synchronous and its writes land immediately - only the notifications become pending.
 
 ```tsx
-import { pending } from '@expressive/react';
+import { pending } from '@expressive/mvc';
 
 pending(() => {
   router.path = '/settings';
@@ -268,7 +257,7 @@ watch(state, () => {
 
 Only meaningful inside a replay carrying pending work; elsewhere it returns `undefined`.
 
-The writer's promise never rejects. An exception thrown by `work` itself propagates synchronously from the call; a reader that throws while replaying is logged and does not reach the writer.
+The writer's promise never rejects. An exception thrown by `work` itself propagates synchronously from the call; a reader that throws while replaying is reported to [`catch` handlers](/docs/api/state#error-handling) with kind `effect` and does not reach the writer.
 
 <br />
 
@@ -285,13 +274,12 @@ const raw = unbind(state.someMethod);
 State auto-binds methods on first access, so you can destructure and pass them around freely. `unbind` reverses that - handy when you need identity comparison against the prototype, or want to re-wrap the raw function.
 
 - `state.get('someMethod')` already returns the unbound original, so often you don't need `unbind` at all.
-- Not exported by `@expressive/react` - import from `@expressive/mvc`.
 
 <br />
 
 ## `Context`
 
-The hierarchical registry behind `Provider` and the `get` instruction. Every active State has a **home context**, assigned at activation, which decides where its `state.get(Type)` lookups originate.
+The hierarchical registry behind `<Component for>` and the `get` instruction. Every active State has a **home context**, assigned at activation, which decides where its `state.get(Type)` lookups originate.
 
 ```ts
 import { Context } from '@expressive/mvc';
@@ -343,7 +331,7 @@ A state's home is recorded once, at activation, and is permanent.
 | `State.new()`                              | `Context.root`   |
 | `new Context(StateClass)`                  | that context     |
 | `new State()` then `new Context(instance)` | that context     |
-| `<Provider for={StateClass}>` (React)      | Provider context |
+| `<Component for={StateClass}>`             | its context      |
 
 > First-wins: once a state has a home, no later context can transfer ownership.
 
@@ -383,7 +371,7 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 ### Root context and globals
 
-`Context.root` is a regular `Context` instance serving as the global registry. A state activated by `State.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no Provider - when the class declares `static global`:
+`Context.root` is a regular `Context` instance serving as the global registry. A state activated by `State.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no provider - when the class declares `static global`:
 
 ```ts
 class Theme extends State {
@@ -428,7 +416,7 @@ Context.root.get(SubA);        // a - unambiguous
 Context.root.get(SubB);        // b - unambiguous
 ```
 
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses eviction entirely; implicit and explicit entries coexist and explicit wins on lookup.
+Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component for>`) bypasses eviction entirely; implicit and explicit entries coexist and explicit wins on lookup.
 
 ### Ambiguity at non-root
 
@@ -450,8 +438,31 @@ Root models "the global instance"; scoped contexts model "candidates available h
 
 <br />
 
+## `@expressive/mvc/hot`
+
+Class hot reload. You normally get it through a dev-server plugin (`@expressive/react/vite`, `@expressive/dom/vite`) rather than calling it yourself: an edited class is patched onto the one already loaded, so context, imports and `instanceof` keep working and live instances keep their values. Methods, getters, `render`, subcomponents and statics take the new definition; `new()`, constructor args and field initializers do not rerun. A change a patch can't carry - a field, the constructor or `new()`, a member switching between method and getter, a replaced parent class, or any class declaring `#private` members - replaces the class instead, and the module reloads.
+
+```ts
+function accept<T extends Record<string, unknown>>(id: string, classes: T): T;
+function replaced(listener: (event: Replaced) => void): () => void;
+
+interface Replaced {
+  id: string;
+  name: string;
+  prev: State.Extends;
+  next: State.Extends;
+}
+```
+
+- `accept(id, classes)` runs at the end of each module run. `id` is stable per module (the Vite plugins use the root-relative path), `classes` maps each top-level class by its local declaration name. It returns the class to use for each - the one first loaded, now patched, or the new one when the change is incompatible - and the module reassigns its bindings.
+- `replaced(listener)` reports each class `accept` replaced rather than patched, synchronously while the module re-runs, so a server host can retire instances of `prev` first. Returns an unsubscribe.
+
+The registry is keyed by `id`, so it works wherever edited modules re-run while mvc stays loaded - the browser, and Vite's server module runner.
+
+<br />
+
 ## See also
 
-- [Context guide](/docs/guides/context) - the React-facing surface: `Provider`, `get` instruction, patterns.
+- [Context guide](/docs/guides/context) - the JSX-facing surface: `<Component for>`, `get` instruction, patterns.
 - [State](/docs/api/state) - `set(callback)` and `get(effect)`, the instance-method forms of these helpers.
 - [Hooks](/docs/api/hooks) - `State.use` and `State.get`, the React subscription paths.
