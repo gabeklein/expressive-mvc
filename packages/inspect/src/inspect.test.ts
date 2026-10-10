@@ -399,6 +399,7 @@ describe('health', () => {
       }
     });
     expect(journal.summary({ id: String(note) })[0]).toMatchObject({ caught: 1, destroyed: true });
+    expect(health().caught.dead).toBe(1);
 
     journal.clear();
     expect(health().caught.dead).toBe(0);
