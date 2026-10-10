@@ -10,16 +10,16 @@ interface Layer {
   context: Context;
   parent?: Layer;
   children: Map<string, Layer>;
-  entries: number;
+  states: Map<Owned, Entry>;
   calls: number;
 }
 
 interface Entry {
-  Type: Keyed;
-  key: string;
+  Type: Owned;
   layer: Layer;
   context: Context;
   instance: State;
+  remove(): void;
   refs: number;
   timer?: ReturnType<typeof setTimeout>;
 }
@@ -30,10 +30,11 @@ interface Frame {
   held: Set<Entry>;
 }
 
-type Keyed = State.Type & { key?(prefix: string): string | number; ttl?: number };
+type Owned = State.Type & { ttl?: number };
+
+const TTL = 300;
 
 const store = new AsyncLocalStorage<Frame>();
-const registry = new Map<Keyed, Map<string, Entry>>();
 let top: Layer | undefined;
 
 function frame(): Frame {
@@ -44,7 +45,7 @@ function frame(): Frame {
 
 function newLayer(prefix: string, parent?: Layer): Layer {
   const context = parent ? parent.context.push() : Context.root.push();
-  return { prefix, context, parent, children: new Map(), entries: 0, calls: 0 };
+  return { prefix, context, parent, children: new Map(), states: new Map(), calls: 0 };
 }
 
 function root(): Layer {
@@ -79,7 +80,7 @@ function walk(segments: string[]): Layer {
   return layer;
 }
 
-const isEmpty = (layer: Layer) => !layer.calls && !layer.entries && !layer.children.size;
+const isEmpty = (layer: Layer) => !layer.calls && !layer.states.size && !layer.children.size;
 
 function prune(layer: Layer) {
   let at = layer;
@@ -92,20 +93,20 @@ function prune(layer: Layer) {
 }
 
 function drop(entry: Entry) {
-  const entries = registry.get(entry.Type);
-  if (entries?.get(entry.key) !== entry) return;
+  const { layer } = entry;
+  if (layer.states.get(entry.Type) !== entry) return;
 
-  entries.delete(entry.key);
+  layer.states.delete(entry.Type);
   clearTimeout(entry.timer);
+  entry.remove();
   entry.context.pop();
-  entry.layer.entries--;
-  prune(entry.layer);
+  prune(layer);
 }
 
 function release(entry: Entry) {
   if (--entry.refs) return;
 
-  const ttl = entry.Type.ttl ?? 0;
+  const ttl = entry.Type.ttl ?? TTL;
 
   if (ttl <= 0) return drop(entry);
 
@@ -128,41 +129,16 @@ export async function within<T>(request: IncomingMessage, segments: string[], ru
   }
 }
 
-function keyOf(Type: Keyed, prefix: string): string {
-  const key = Type.key ? Type.key(prefix) : prefix;
-
-  if (typeof key != "string" && typeof key != "number")
-    throw new Error(`${Type.name}.key() returned ${key} - a key is a string or a number.`);
-
-  return String(key);
-}
-
-function homeOf(layer: Layer, key: string): Layer {
-  let home = layer;
-
-  while (home.parent && !key.startsWith(home.prefix)) home = home.parent;
-
-  return home;
-}
-
-function entriesOf(Type: Keyed): Map<string, Entry> {
-  let entries = registry.get(Type);
-
-  if (!entries) registry.set(Type, entries = new Map());
-
-  return entries;
-}
-
-function create(Type: Keyed, key: string, home: Layer): Entry {
-  const context = home.context.push();
+function create(Type: Owned, layer: Layer): Entry {
+  const context = layer.context.push();
   let instance!: State;
 
   context.set({ 0: Type }, state => { instance = state; });
 
-  const entry: Entry = { Type, key, layer: home, context, instance, refs: 0 };
+  const remove = layer.context.add(instance, true);
+  const entry: Entry = { Type, layer, context, instance, remove, refs: 0 };
 
-  entriesOf(Type).set(key, entry);
-  home.entries++;
+  layer.states.set(Type, entry);
   instance.set(null, () => drop(entry));
 
   return entry;
@@ -176,10 +152,9 @@ function hold(held: Set<Entry>, entry: Entry) {
   clearTimeout(entry.timer);
 }
 
-function use(this: Keyed) {
+function use(this: Owned) {
   const { layer, held } = frame();
-  const key = keyOf(this, layer.prefix);
-  const entry = entriesOf(this).get(key) ?? create(this, key, homeOf(layer, key));
+  const entry = layer.states.get(this) ?? create(this, layer);
 
   hold(held, entry);
 
