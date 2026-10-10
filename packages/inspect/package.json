@@ -1,6 +1,6 @@
 {
   "name": "@expressive/inspect",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "In-process inspector for Expressive MVC - registry, ownership tree, path queries, and a frame journal for agents, tests, and devtools.",
   "keywords": [
     "expressive",
@@ -64,7 +64,7 @@
     "test": "bun run typecheck && bun run coverage"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.87.0",
+    "@expressive/mvc": "^0.88.0",
     "vite": ">=5"
   },
   "peerDependenciesMeta": {
