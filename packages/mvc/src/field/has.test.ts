@@ -200,7 +200,7 @@ describe('set', () => {
     const list = reactive(['a']);
     const fn = vi.fn();
 
-    watch(list, fn);
+    watch(list, ($) => void fn([...$]));
     fn.mockClear();
 
     list.set(0, 'a');
@@ -247,7 +247,7 @@ describe('put', () => {
     const list = reactive([1, 2]);
     const fn = vi.fn();
 
-    watch(list, fn);
+    watch(list, ($) => void fn([...$]));
     fn.mockClear();
 
     list.put(0);
@@ -315,7 +315,7 @@ describe('clear', () => {
     const list = reactive<number>();
     const fn = vi.fn();
 
-    watch(list, fn);
+    watch(list, ($) => void fn($.size));
     fn.mockClear();
 
     list.clear();
@@ -790,7 +790,7 @@ describe('pool', () => {
     const pool = reactive(Item);
     const fn = vi.fn();
 
-    watch(pool, fn);
+    watch(pool, ($) => void fn($.size));
     fn.mockClear();
 
     pool.clear();

@@ -138,12 +138,13 @@ it('will destroy children before self', () => {
   }
 
   const test = Test.new();
-  const destroyed = vi.fn();
+  const order: string[] = [];
 
-  test.nested.get(null, destroyed);
+  test.get(null, () => order.push('parent'));
+  test.nested.get(null, () => order.push('child'));
   test.set(null);
 
-  expect(destroyed).toBeCalled();
+  expect(order).toEqual(['child', 'parent']);
 });
 
 it('will mark children as dead when parent is destroyed', () => {
@@ -1303,7 +1304,7 @@ describe('get method', () => {
   describe('null', () => {
     class Test extends State {}
 
-    it('will return true if state is not destroyed', () => {
+    it('will return whether state is destroyed', () => {
       const test = Test.new();
 
       expect(test.get(null)).toBe(false);
@@ -2259,7 +2260,7 @@ describe('set method', () => {
 
       // bar is redefined
       expect(test.bar).toBe('baz');
-      expect(test).toHaveUpdated('bar');
+      await expect(test).toHaveUpdated('bar');
 
       // The effect isn't observing bar yet
       expect(cb).not.toBeCalledWith('bar', 'baz');

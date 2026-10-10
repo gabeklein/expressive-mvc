@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, pending, set } from '@expressive/mvc';
 import { Portal, render } from './index';
-import { flushMicrotasks, mockPromise } from '../test.setup';
+import { flushMicrotasks, mockPromise, until } from '../test.setup';
 
 describe('suspense and recovery', () => {
   it('will show a Component fallback until a loaded view resolves', async () => {
@@ -546,7 +546,7 @@ describe('suspense and recovery', () => {
     expect(settled).toBe(false);
 
     gate.resolve();
-    await vi.waitFor(() => {
+    await until(() => {
       expect(root.textContent).toBe('B');
       expect(settled).toBe(true);
     });
@@ -581,15 +581,22 @@ describe('suspense and recovery', () => {
     const root = document.createElement('main');
     render(<App is={(value) => (app = value)} />, root);
 
+    const shown: string[] = [];
+
+    new MutationObserver((records) => {
+      for (const { addedNodes } of records) addedNodes.forEach((node) => shown.push(node.nodeName));
+    }).observe(root, { childList: true, subtree: true });
+
     pending(() => {
       app.nav.page = 'b';
     });
     await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(shown).toEqual([]);
     expect(root.textContent).toBe('A');
     expect(root.querySelector('h2')).toBeNull();
 
     loaded.resolve(() => <b>lazy</b>);
-    await vi.waitFor(() => expect(root.textContent).toBe('Blazy'));
+    await until(() => expect(root.textContent).toBe('Blazy'));
   });
 
   it('will mount staged transition content once it is in the document', async () => {
@@ -640,7 +647,7 @@ describe('suspense and recovery', () => {
     pending(() => {
       app.nav.page = 'b';
     });
-    await vi.waitFor(() => expect(seen).toEqual(['ref true', 'mount true', 'use true']));
+    await until(() => expect(seen).toEqual(['ref true', 'mount true', 'use true']));
   });
 
   it('will not mount staged content dropped before it is inserted', async () => {
@@ -750,7 +757,7 @@ describe('suspense and recovery', () => {
       pending(() => {
         nav().page = 'c';
       }).then(() => (settled = true));
-      await vi.waitFor(() => {
+      await until(() => {
         expect(root.textContent).toBe('cc');
         expect(settled).toBe(true);
       });
@@ -769,7 +776,7 @@ describe('suspense and recovery', () => {
       pending(() => {
         nav().page = 'a';
       }).then(() => (settled = true));
-      await vi.waitFor(() => {
+      await until(() => {
         expect(root.textContent).toBe('aa');
         expect(settled).toBe(true);
       });
@@ -787,7 +794,7 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('aa');
 
       nav().show = false;
-      await vi.waitFor(() => {
+      await until(() => {
         expect(root.textContent).toBe('b');
         expect(settled).toBe(true);
       });
@@ -808,7 +815,7 @@ describe('suspense and recovery', () => {
       pending(() => {
         nav().page = 'c';
       }).then(() => (settled = true));
-      await vi.waitFor(() => {
+      await until(() => {
         expect(root.textContent).toBe('c');
         expect(settled).toBe(true);
       });
@@ -853,7 +860,7 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('a');
 
     gate.resolve();
-    await vi.waitFor(() => expect(root.textContent).toBe('b'));
+    await until(() => expect(root.textContent).toBe('b'));
   });
 
   it('will recover an error thrown while probing a transition', async () => {
@@ -888,7 +895,7 @@ describe('suspense and recovery', () => {
     pending(() => {
       app.flag.on = true;
     });
-    await vi.waitFor(() => expect(caught).toHaveBeenCalledWith('broken'));
+    await until(() => expect(caught).toHaveBeenCalledWith('broken'));
   });
 
   it('will retry a caught error once, then wait for an update', async () => {
@@ -1072,10 +1079,13 @@ describe('suspense and recovery', () => {
     const root = document.createElement('main');
     render(<Parent is={(value) => (parent = value)} />, root);
 
-    await pending(() => {
+    const settled = pending(() => {
       parent.label = 'b';
     });
-    await vi.waitFor(() => expect(root.textContent).toBe('b'));
+    expect(root.textContent).toBe('a');
+
+    await settled;
+    expect(root.textContent).toBe('b');
   });
 
   it('will retain committed content while a transition suspends', async () => {
@@ -1391,10 +1401,10 @@ describe('suspense and recovery', () => {
 
     const root = document.createElement('main');
     render(<Outer />, root);
-    await vi.waitFor(() => expect(root.textContent).toBe('outer'));
+    await until(() => expect(root.textContent).toBe('outer'));
 
     handled.resolve();
-    await vi.waitFor(() => expect(root.textContent).toBe('content'));
+    await until(() => expect(root.textContent).toBe('content'));
   });
 
   it('will stop at the last boundary when a catch rethrows', async () => {
@@ -1424,7 +1434,7 @@ describe('suspense and recovery', () => {
     try {
       const root = document.createElement('main');
       render(<Inner />, root);
-      await vi.waitFor(() => expect(rejected).toHaveBeenCalled());
+      await until(() => expect(rejected).toHaveBeenCalled());
 
       expect(caught).toHaveBeenCalledOnce();
       expect(root.textContent).toBe('inner');
@@ -1471,13 +1481,13 @@ describe('suspense and recovery', () => {
     await flushMicrotasks();
 
     calls[0].resolve();
-    await vi.waitFor(() => {
+    await until(() => {
       expect(count).toBe(2);
       expect(root.textContent).toBe('outer');
     });
 
     calls[1].resolve();
-    await vi.waitFor(() => expect(root.textContent).toBe('content'));
+    await until(() => expect(root.textContent).toBe('content'));
   });
 
   it('will pass a rejected recovery to the next boundary', async () => {

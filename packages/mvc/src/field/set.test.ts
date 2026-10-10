@@ -424,17 +424,22 @@ describe('factory', () => {
     expect(factory).toBeCalledTimes(1);
   });
 
-  it('will bind factory function to self', async () => {
+  it('will bind factory function to self', () => {
+    const seen = vi.fn();
+
     class Test extends State {
-      // methods lose implicit this
       value = set(this.method);
 
-      async method() {
-        expect(this as Test).toBe(instance);
+      method() {
+        seen(this);
+        return 1;
       }
     }
 
     const instance = Test.new();
+
+    expect(instance.value).toBe(1);
+    expect(seen).toBeCalledWith(instance);
   });
 
   it('will warn and rethrow error from factory', () => {

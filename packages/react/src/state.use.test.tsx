@@ -484,22 +484,22 @@ describe('State.use', () => {
       expect(foobar).toBe(mockExternal.foobar);
     });
 
-    it('will not apply props over methods', () => {
+    it('will apply props over methods', () => {
       class Test extends State {
         foobar() {
           return 'Hello world!';
         }
       }
 
-      const mockProps = {
-        foobar: () => 'Goodbye cruel world!'
-      };
-
-      const { result } = renderHook(() => {
-        return Test.use(mockProps);
+      const { result, rerender } = renderHook((props) => Test.use(props), {
+        initialProps: { foobar: () => 'Goodbye cruel world!' }
       });
 
-      expect(result.current).not.toBe(mockProps.foobar);
+      expect(result.current.foobar()).toBe('Goodbye cruel world!');
+
+      rerender({ foobar: () => 'Again' });
+
+      expect(result.current.foobar()).toBe('Again');
     });
 
     it('will not trigger updates it caused', async () => {

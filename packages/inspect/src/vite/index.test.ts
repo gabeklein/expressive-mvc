@@ -101,8 +101,9 @@ it('will relay calls to a connected page and drop it on close', async () => {
   await post('/__inspect', ['set', 'Composer.draft', 'typed']);
   expect(composer.draft).toBe('typed');
 
-  const { value, frames } = await post('/__inspect', ['act', ['set', 'Composer.draft', 'acted'], { until: 'Composer.draft' }]);
+  const { value, frames, pending } = await post('/__inspect', ['act', ['set', 'Composer.draft', 'acted'], { until: { 'Composer.draft': 'acted' } }]);
   expect(value).toBeNull();
+  expect(pending).toEqual([]);
   expect(frames.at(-1).events).toContainEqual(expect.objectContaining({ key: 'draft', value: 'acted' }));
 
   const refused = await fetch(origin + '/__inspect', { headers: { origin: 'http://evil.test' } });
