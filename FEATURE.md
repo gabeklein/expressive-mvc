@@ -35,20 +35,21 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - E2E harness - `example/e2e/` Playwright specs run against the dev server and the built service (`bun run example:e2e` in `packages/dev`). Each feature adds its page and spec. Not in CI yet: trunk PRs run `verify` only.
 - Sidecar calls - each `async` export of a route folder's `remote.ts` is a browser stub POSTing to the folder's path (Wire below); dispatched on Vite's module runner in dev and baked into `dist/server` at build. The build refuses any other export; only the folder and below may import it. A thrown error's message reaches the client in dev only.
 - Errors - an exported class with `extends` is an error class: the client stub is a class of the same name, and a thrown instance (or subclass) is rebuilt as it - `instanceof`, message and own fields - with a `status` field in 400-599 as the reply status. Verified as an `Error` at the first dev call and at service boot.
-- Call context - each call walks its sidecar's concrete path, each segment a cached layer `Context` keyed `hash(parent prefix + segment)`, and runs in `AsyncLocalStorage`. `X.use()` makes or finds the one `X` at the call's layer - built in a child context, so its `get()` fields resolve upward, and provided to the layer: `X.get()` finds the nearest at the call's layer or above, and a deeper `use()` shadows. It lives while a call holds it, then `static ttl` seconds (default 300); its destroy (`set(null)`) drops it. A layer lives while a call, an instance or a child layer does. `Current` (root layer) reads the call's request live. Not yet: route defaults as layer occupants, and the `key()` that narrows everything below them.
+- Call context - each call walks its sidecar's concrete path, each segment a cached layer `Context` keyed `hash(parent prefix + segment)`, and runs in `AsyncLocalStorage`. `X.use()` makes or finds the one `X` at the call's layer - built in a child context, so its `get()` fields resolve upward, and provided to the layer: `X.get()` finds the nearest at the call's layer or above, and a deeper `use()` shadows. It lives while a call holds it, then `static ttl` seconds (default 300); its destroy (`set(null)`) drops it. A layer lives while a call, an instance or a child layer does. `Current` (root layer) reads the call's request live. Route defaults as layer occupants come with the twin (below).
 - Remote folders and the allowlist - `remote.ts`, or a `remote/` folder (any depth, `index` optional), belongs to its parent folder's context; `remote/` is never routed, and both in one folder fail the build. A call names its module (`feed/latest:add`; plain `add` for the entry). Only what the client imports is callable - the stubs the browser loaded in dev, those the client build generated in production; the server build reuses that list. Production ids are hashes salted per build, `remote: { opaque: false }` in `index.ts` to opt out.
+- RPC twin - a remote entry's `default` State class is its folder's seat: each call's walk seats it in the folder's layer, `key()` (no prefix; `undefined` passes through; throwing denies) narrows that layer and everything below, and its end evicts them. Its public `async` methods are `default.<method>` calls on the seated instance; the client stub's default is a twin class of them, and the route tree provides it around the folder's routes. A default in a nested `remote/` module, or a public sync method, fails the build. Methods only - no values yet.
 
 ## MVP
 
-Enough to write E2E tests and examples and feel the ergonomics. One PR each, in order. Everything under Later waits until the MVP has been used.
-
-1. **RPC twin.** A route `default`'s twin is provided in the client scope; its public `async` methods POST to that route's path, where the server resolves the instance by the walk and keys and invokes the method. Methods only - no values on the twin yet. The default class occupies its layer: its `key()` narrows the prefix below it, and its destroy pops the layer.
+Enough to write E2E tests and examples and feel the ergonomics. Complete with the twin (Landed); everything under Later waits until the MVP has been used.
 
 MVP limits, on purpose: calls made while disconnected fail; one process.
 
 ## Planned after the MVP
 
 Not built yet, but the MVP must not cut against them.
+
+- **Inherited twin methods - high priority.** Methods a seat inherits from a class in another module are not scanned, so they do not cross yet.
 
 - **Twin values (pull) - TBD.** Values reach the client only in replies to its own requests: a snapshot on attach, then each call's reply carries what that call changed. Correct after your own actions; stale about anyone else's until the next request. Not wanted without push so far.
 - **Values invariant.** What TypeScript shows as public is readable on the twin with no separate mechanism: every public value is present before the first read (snapshot on attach). Demand may narrow what is re-sent, never what is available.

@@ -95,8 +95,8 @@ export class Overflow extends Error {
 }
 ```
 
-The build refuses any other export - a sync function, a value, a class without `extends`, a
-re-export or a default - since the client could not use it. A class whose base is not an `Error`
+The build refuses any other export - a sync function, a value, a class without `extends` or a
+re-export - since the client could not use it; a default is the folder's twin (below). A class whose base is not an `Error`
 fails its first call in dev and the built service at startup.
 
 ### Server State
@@ -123,6 +123,40 @@ export async function add(by: number) {
 State or function in a call: `Current.get().url`, `.cookies`, `.request`. Its accessors read the
 call live, so a reused instance may hold it in a field (`current = get(Current)`) but should not
 copy its values into its own.
+
+### Twins
+
+A folder's remote entry (`remote.ts` or `remote/index.ts`) may default-export a State class. Every
+call walking through the folder seats one instance in its context - `get()` finds it there and below
+- and the route tree provides its twin around the folder's routes on the client. The twin's methods
+are the class's public `async` methods, each a call to that instance.
+
+```ts
+// app/counter/remote.ts
+export default class Counter extends State {
+  count = 0;
+  async increment() { return ++this.count; }
+}
+```
+
+```tsx
+// app/counter/index.tsx
+import Counter from "./remote";
+
+export class Page extends Component {
+  counter = get(Counter);
+  render() {
+    return <button onClick={() => this.counter.increment()}>+</button>;
+  }
+}
+```
+
+`static key()` narrows the folder's context, and everything below it, by what it returns - an
+identity from `Current.get().cookies`, or a value from a seat above through `get()`. Undefined passes
+the location through; throwing denies the call. Build the key from verified data only - a raw cookie
+lets the client pick its context - and declare it `protected`. The seat lives for `static ttl` after
+its last call; when it ends, its context and everything below go with it. Twins carry methods only -
+values, inherited methods and twins made by client `use()` come later.
 
 ## Commands
 
