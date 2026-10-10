@@ -45,3 +45,19 @@ export async function renderAct(ui: Parameters<typeof render>[0]) {
   await act(async () => { view = render(ui); });
   return view;
 }
+
+/** Run `fn` with `window` swapped for `win` (absent when undefined), then restore it. */
+export function withWindow<T>(win: object | undefined, fn: () => T): T {
+  const saved = (globalThis as any).window;
+
+  try {
+    if (win)
+      (globalThis as any).window = win;
+    else
+      delete (globalThis as any).window;
+
+    return fn();
+  } finally {
+    (globalThis as any).window = saved;
+  }
+}

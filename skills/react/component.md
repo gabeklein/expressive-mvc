@@ -56,7 +56,7 @@ For one-shot feature builds and hook refactors, don't create `FooState` plus `Fo
 ## Basic Usage
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Counter extends Component {
   count = 0;
@@ -310,6 +310,7 @@ Non-optional render props become required JSX attributes. All props (state + ren
 - `is` - callback receiving the instance on creation: `<Counter is={c => ref = c} />`
 - `ref` - standard React ref (object or callback), attached after mount, cleared on unmount
 - `fallback` - ReactNode for suspense/error UI, overrides the instance property; `false` opts out of the component's own boundary so suspension bubbles to an ancestor
+- `catch` - `(error, instance)` handler for this placement, replacing the member `catch`; a returned promise retries once settled
 
 ## Children and Context
 
@@ -353,7 +354,7 @@ class DataView extends Component {
 `pending()` marks work non-urgent - React keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary; the designation rides with the subscriber updates they queue, including for state this component does not own.
 
 ```tsx
-import { Component, pending } from '@expressive/react';
+import { Component, pending } from '@expressive/mvc';
 
 class Shell extends Component {
   busy = false;
@@ -414,7 +415,7 @@ class SafeView extends Component {
 - Rejected `catch()` propagates to the parent boundary.
 - Sync `catch()` retries immediately.
 - A repeated throw after recovery propagates out.
-- `<SafeView catch={(error, view) => …} />` handles errors for that placement, ahead of the member. Both receive `(error, instance)`.
+- `<SafeView catch={(error, view) => …} />` handles errors for that placement in place of the member. Both receive `(error, instance)`.
 
 ## Subcomponents
 

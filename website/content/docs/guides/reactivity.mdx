@@ -105,8 +105,8 @@ The paired-setter case is also the opt-out: use get/set pairs for native accesso
 
 A computed that throws gets complained about, loudly:
 
-- On the **first** compute, the error is logged as a warning and rethrown to whoever read it.
-- On a **recompute** (a dependency changed), it's logged to the console - and the previous cached value is kept. Readers don't throw.
+- On the **first** compute, a warning names the property, and the error is rethrown to whoever read it.
+- On a **recompute** (a dependency changed), the error goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-stateon) with kind `getter` and the property's key - unhandled, it escapes uncaught. The value becomes `undefined`; readers don't throw. A pending value read during a recompute isn't reported, but leaves the value `undefined` the same way.
 
 <br />
 

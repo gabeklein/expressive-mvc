@@ -9,7 +9,7 @@ Runnable source: the [`router`](https://expressive.dev/examples/router/overview)
 Routes are nested JSX, matched lexically from the tree (no config); navigation state is a reactive `Router` State any component can read or drive.
 
 ```bash
-npm install @expressive/router @expressive/react react
+npm install @expressive/router @expressive/mvc @expressive/react react
 ```
 
 ```tsx

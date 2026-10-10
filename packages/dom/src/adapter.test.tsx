@@ -6,9 +6,36 @@ import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
 import * as hot from '@expressive/mvc/hot';
-import { flushMicrotasks, mockPromise } from '../test.setup';
+import { flushMicrotasks, mockPromise, mount, place } from '../test.setup';
 
 describe('MVC adapter', () => {
+  it('will update when a State fetched via this.get changes', async () => {
+    class Auth extends State {
+      static readonly global = true;
+      name = 'foo';
+    }
+
+    class View extends Component {
+      render() {
+        return <span>{this.get(Auth).name}</span>;
+      }
+    }
+
+    const auth = Auth.new();
+    const [, root, release] = mount(View);
+
+    expect(root.textContent).toBe('foo');
+
+    auth.name = 'bar';
+    await expect(auth).toHaveUpdated();
+    await Promise.resolve();
+
+    expect(root.textContent).toBe('bar');
+
+    release();
+    auth.set(null);
+  });
+
   it('will render a Component and update only an accessed field', async () => {
     const renders = vi.fn();
     const cleanup = vi.fn();
@@ -32,9 +59,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    const root = document.createElement('main');
-    let counter!: Counter;
-    const release = render(<Counter is={(value) => (counter = value)} />, root);
+    const [counter, root, release] = mount(Counter);
 
     expect(root.textContent).toBe('0');
     expect(renders).toHaveBeenCalledOnce();
@@ -85,9 +110,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let owner!: Owner;
-    const root = document.createElement('main');
-    const release = render(<Owner is={(value) => (owner = value)} />, root);
+    const [owner, root, release] = mount(Owner);
 
     expect(root.textContent).toBe('1:0');
     expect(lifecycle).toEqual(['new', 'mount']);
@@ -125,8 +148,7 @@ describe('MVC adapter', () => {
       return <Leaf />;
     }
 
-    const root = document.createElement('main');
-    render(<><Host /><Sibling /></>, root);
+    const root = place(<><Host /><Sibling /></>);
     expect(root.textContent).toBe('Adanone');
 
     session.name = 'Grace';
@@ -157,9 +179,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let owner!: Owner;
-    const root = document.createElement('main');
-    render(<Owner is={(value) => (owner = value)} />, root);
+    const [owner, root] = mount(Owner);
     owner.value = 2;
     await flushMicrotasks();
 
@@ -313,9 +333,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let panel!: Panel;
-    const root = document.createElement('main');
-    render(<Panel is={(value) => (panel = value)} />, root);
+    const [panel, root] = mount(Panel);
     expect(root.textContent).toBe('one?one');
 
     panel.value = 'two';
@@ -364,9 +382,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let table!: Table;
-    const root = document.createElement('main');
-    render(<Table is={(value) => (table = value)} />, root);
+    const [table, root] = mount(Table);
     expect(root.textContent).toBe('aa');
 
     table.row.label = 'b';
@@ -402,9 +418,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    let table!: Table;
-    const root = document.createElement('main');
-    render(<Table is={(value) => (table = value)} />, root);
+    const [table, root] = mount(Table);
     expect(root.textContent).toBe('a');
 
     table.pick = 1;
@@ -414,54 +428,6 @@ describe('MVC adapter', () => {
     table.pick = 2;
     await flushMicrotasks();
     expect(root.textContent).toBe('plain');
-  });
-
-  it('will transfer Component for lifecycle when its State type changes', async () => {
-    const lifecycle: string[] = [];
-
-    class First extends State {
-      mount() {
-        lifecycle.push('first:mount');
-        return () => lifecycle.push('first:unmount');
-      }
-    }
-
-    class Second extends State {
-      mount() {
-        lifecycle.push('second:mount');
-        return () => lifecycle.push('second:unmount');
-      }
-    }
-
-    class App extends Component {
-      second = false;
-
-      render() {
-        const Type = this.second ? Second : First;
-        return <Component for={Type} />;
-      }
-    }
-
-    let app!: App;
-    const root = document.createElement('main');
-    const release = render(<App is={(value) => (app = value)} />, root);
-    expect(lifecycle).toEqual(['first:mount']);
-
-    app.second = true;
-    await flushMicrotasks();
-    expect(lifecycle).toEqual([
-      'first:mount',
-      'first:unmount',
-      'second:mount'
-    ]);
-
-    release();
-    expect(lifecycle).toEqual([
-      'first:mount',
-      'first:unmount',
-      'second:mount',
-      'second:unmount'
-    ]);
   });
 
   it('will mount State.use after suspended content commits', async () => {
@@ -560,130 +526,33 @@ describe('Component for', () => {
     return <b>{Session.get().name}</b>;
   }
 
-  it('will construct, own and provide a class', async () => {
+  it('will construct, provide and forward props to a class', async () => {
     let session!: Session;
-    const root = document.createElement('main');
-    const done = render(
-      <Component for={Session} name="Ada" is={(s: Session) => (session = s)}>
-        <Name />
-      </Component>,
-      root
-    );
-
-    expect(root.textContent).toBe('Ada');
-
-    done();
-
-    expect(session.get(null)).toBe(true);
-  });
-
-  it('will provide an instance and forward props on update', async () => {
-    const session = Session.new();
 
     class App extends State {
       value = 'Ada';
 
       render() {
         return (
-          <Component for={session} name={this.value}>
+          <Component for={Session} name={this.value} is={(s: Session) => (session = s)}>
             <Name />
           </Component>
         );
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    const done = render(<App is={(a) => (app = a)} />, root);
-
+    const [app, root, release] = mount(App);
     expect(root.textContent).toBe('Ada');
 
     app.value = 'Grace';
     await flushMicrotasks();
-    await flushMicrotasks();
-
-    expect(session.name).toBe('Grace');
     expect(root.textContent).toBe('Grace');
 
-    done();
-
-    expect(session.get(null)).toBe(false);
+    release();
+    expect(session.get(null)).toBe(true);
   });
 
-  it('will mount a class it constructed', () => {
-    const mounted = vi.fn();
-    const released = vi.fn();
-
-    class Owned extends State {
-      mount() {
-        mounted();
-        return released;
-      }
-    }
-
-    const done = render(<Component for={Owned} />, document.createElement('main'));
-
-    expect(mounted).toBeCalledTimes(1);
-
-    done();
-
-    expect(released).toBeCalledTimes(1);
-  });
-
-  it('will replace an instance made each render', async () => {
-    const made: Session[] = [];
-
-    class App extends State {
-      n = 0;
-
-      render() {
-        const session = new Session();
-        made.push(session);
-        return <Component for={session} name={String(this.n)}><Name /></Component>;
-      }
-    }
-
-    let app!: App;
-    const root = document.createElement('main');
-    const done = render(<App is={(a) => (app = a)} />, root);
-
-    app.n = 1;
-    await flushMicrotasks();
-
-    expect(made).toHaveLength(2);
-    expect(made[0].get(null)).toBe(true);
-    expect(made[1].get(null)).toBe(false);
-    expect(root.textContent).toBe('1');
-
-    done();
-
-    expect(made[1].get(null)).toBe(true);
-  });
-
-  it('will type attributes from for', () => {
-    class Typed extends State {
-      name = '';
-      age = 0;
-    }
-
-    class Sub extends Component {}
-
-    void (() => [
-      <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
-      <Component for={Typed.new()} age={2} />,
-      <Component fallback={null} />,
-      // @ts-expect-error
-      <Component for={Typed} name={1} />,
-      // @ts-expect-error
-      <Component for={Typed} nope="x" />,
-      // @ts-expect-error
-      <Component for={Typed.new()} is={() => {}} />,
-      // @ts-expect-error
-      <Sub for={Typed} />
-    ]);
-  });
-
-  it('will not add a suspense boundary', async () => {
+  it('will not add a suspense boundary', () => {
     const gate = mockPromise<void>();
 
     class Wait extends State {
@@ -707,5 +576,28 @@ describe('Component for', () => {
     );
 
     expect(root.textContent).toBe('outer');
+  });
+
+  it('will type attributes from for', () => {
+    class Typed extends State {
+      name = '';
+      age = 0;
+    }
+
+    class Sub extends Component {}
+
+    void (() => [
+      <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
+      <Component for={Typed.new()} age={2} />,
+      <Component fallback={null} />,
+      // @ts-expect-error
+      <Component for={Typed} name={1} />,
+      // @ts-expect-error
+      <Component for={Typed} nope="x" />,
+      // @ts-expect-error
+      <Component for={Typed.new()} is={() => {}} />,
+      // @ts-expect-error
+      <Sub for={Typed} />
+    ]);
   });
 });

@@ -1,6 +1,6 @@
 import { capture, listener, observer } from '../observable';
 import { Context } from '../context';
-import { State, children, parent, STORE, update } from '../state';
+import { State, children, owned, parent, STORE, update } from '../state';
 import { def } from './def';
 
 declare namespace get {
@@ -115,12 +115,26 @@ function above<T extends State>(
       return {};
     }
 
+    if (Type === State) {
+      if (argument === false) return { get: false, enumerable: false };
+      throw new Error(`${subject} has no owner.`);
+    }
+
     let found = false;
     let depth = Infinity;
     let level = 0;
 
     for (let p: State | null | undefined = hasParent; p; p = parent(p), level++) {
       const at = level;
+
+      if (p instanceof Type) {
+        if (!found) {
+          found = true;
+          depth = at;
+          assign(p as T);
+        }
+        break;
+      }
 
       const remove = children(p, (child) => {
         if (child !== subject && child instanceof Type && at <= depth) {
@@ -177,17 +191,19 @@ function below<T extends State>(
 ) {
   return def<T[]>((key, subject) => {
     const context = Context.get(subject);
+    const watch = (callback: (state: T) => (() => void) | void) =>
+      Type === State
+        ? owned(subject, callback as (state: State) => (() => void) | void)
+        : context.get(Type, callback, true);
 
     if (typeof arg == 'boolean') {
-      context.get(
-        Type,
+      watch(
         (state) => {
           update(subject, key, state);
           return state.set(null, () => {
             update(subject, key, undefined);
           });
-        },
-        true
+        }
       );
 
       return {
@@ -199,8 +215,7 @@ function below<T extends State>(
 
     const applied = new Set<State>();
 
-    context.get(
-      Type,
+    watch(
       (state) => {
         let remove: (() => void) | undefined;
         let release: (() => void) | undefined;
@@ -238,8 +253,7 @@ function below<T extends State>(
         const ignore = state.set(null, done);
 
         return done;
-      },
-      true
+      }
     );
 
     return {

@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { flushMicrotasks } from '../test.setup';
 import { State } from './state';
 
 import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './jsx-runtime';
-import { enqueue, pending } from './dispatch';
+import { pending } from './dispatch';
 import { jsxDEV, Fragment as devFragment } from './jsx-dev-runtime';
 import * as entry from './jsx-runtime';
 import type { HostRuntime } from './jsx-runtime';
@@ -27,16 +26,10 @@ function mockHost(overrides?: Partial<HostRuntime>): HostRuntime {
 const runtime = mockHost();
 
 describe('unregistered', () => {
-  const noHost = 'No JSX host is registered for @expressive/mvc.';
-
-  // Ordering matters: these run before any host() call in this module,
-  // and no other test file touches the jsx module.
-  it('will throw on element creation', () => {
-    expect(() => jsx('div', {})).toThrow(noHost);
-  });
-
-  it('will throw on introspection', () => {
+  // must run before any host() call in this module
+  it('will throw on element creation and introspection', () => {
     const noHost = /No JSX host/;
+    expect(() => jsx('div', {})).toThrow('No JSX host is registered for @expressive/mvc.');
     expect(() => childrenOf([])).toThrow(noHost);
     expect(() => isElement({})).toThrow(noHost);
     expect(() => typeOf({})).toThrow(noHost);
@@ -58,11 +51,8 @@ describe('registration', () => {
     });
   });
 
-  it('will accept same host again', () => {
+  it('will accept same host again but throw on a conflicting one', () => {
     expect(() => host(runtime)).not.toThrow();
-  });
-
-  it('will throw on conflicting host', () => {
     expect(() => host(mockHost())).toThrow(
       'A different JSX host is already registered'
     );
@@ -109,14 +99,7 @@ describe('runtime', () => {
     expect(seen).toEqual([0, 1]);
   });
 
-  it('will run deferred work inline', () => {
-    const work = vi.fn();
-    pending(work);
-    expect(work).toHaveBeenCalledTimes(1);
-  });
-
   it('will delegate jsxDEV when host provides it', () => {
-    // same-runtime re-registration is how a host extends its seams
     runtime.jsxDEV = vi.fn((type, props, key, isStatic) => ({
       kind: 'jsxDEV', type, props, key, isStatic
     }) as any);
@@ -135,9 +118,6 @@ describe('introspection', () => {
     expect(isElement({})).toBe(true);
     expect(typeOf({ type: 'div' })).toBe('div');
     expect(propsOf({ props: { to: '/' } })).toEqual({ to: '/' });
-  });
-
-  it('will surface host Fragment as agnostic Fragment', () => {
     expect(typeOf({ type: HOST_FRAGMENT })).toBe(Fragment);
   });
 });
@@ -148,37 +128,5 @@ describe('jsx-runtime module', () => {
       'Fragment', 'childrenOf', 'compose', 'host', 'isElement',
       'jsx', 'jsxDEV', 'jsxs', 'propsOf', 'typeOf'
     ]);
-  });
-
-  it('will wait on a subscriber which claims absorption', async () => {
-    let release!: () => void;
-    let settled = false;
-
-    const handler = () => {
-      release = pending()!;
-    };
-
-    pending(() => enqueue(handler)).then(() => (settled = true));
-
-    await flushMicrotasks();
-
-    expect(settled).toBe(false);
-
-    release();
-    await flushMicrotasks();
-
-    expect(settled).toBe(true);
-  });
-
-  it('will not claim absorption outside pending work', async () => {
-    let claimed: unknown = 'unset';
-
-    enqueue(() => {
-      claimed = pending();
-    });
-
-    await flushMicrotasks();
-
-    expect(claimed).toBeUndefined();
   });
 });

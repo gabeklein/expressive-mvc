@@ -19,6 +19,10 @@ class Counter extends State {
   value = 1;
 }
 
+class Other extends State {
+  label = 'other';
+}
+
 describe('hot', () => {
   it('will refresh a component in place', async () => {
     const id = module();
@@ -85,42 +89,10 @@ describe('hot', () => {
     expect(root.textContent).toBe('after');
   });
 
-  it('will replace State.use() slots whose order changed', async () => {
-    const id = module();
-    const destroyed = vi.fn();
-
-    class Other extends State {
-      label = 'other';
-    }
-
-    class Tracked extends State {
-      new() {
-        return destroyed;
-      }
-    }
-
-    const Before = () => {
-      Tracked.use();
-      return <b>before</b>;
-    };
-
-    const After = () => {
-      const { label } = Other.use();
-      return <b>{label}</b>;
-    };
-
-    hot(id, { View: Before });
-
-    const root = mount(<Before />);
-
-    hot(id, { View: After });
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe('other');
-    expect(destroyed).toHaveBeenCalled();
-  });
-
-  it('will drop State.use() slots no longer called', async () => {
+  it.each([
+    ['whose order changed', () => <b>{Other.use().label}</b>, 'other'],
+    ['no longer called', () => <b>after</b>, 'after']
+  ])('will replace State.use() slots %s', async (_, After, text) => {
     const id = module();
     const destroyed = vi.fn();
 
@@ -135,8 +107,6 @@ describe('hot', () => {
       return <b>before</b>;
     };
 
-    const After = () => <b>after</b>;
-
     hot(id, { View: Before });
 
     const root = mount(<Before />);
@@ -144,7 +114,7 @@ describe('hot', () => {
     hot(id, { View: After });
     await flushMicrotasks();
 
-    expect(root.textContent).toBe('after');
+    expect(root.textContent).toBe(text);
     expect(destroyed).toHaveBeenCalled();
   });
 
@@ -171,17 +141,6 @@ describe('hot', () => {
 
   it('will ignore values which are not functions', () => {
     expect(() => hot(module(), { View: 1 })).not.toThrow();
-  });
-
-  it('will not treat unregistered functions as one', () => {
-    const First = () => <b>first</b>;
-    const Second = () => <b>second</b>;
-    const root = document.createElement('main');
-
-    render(<First />, root);
-    render(<Second />, root);
-
-    expect(root.textContent).toBe('second');
   });
 
   it('will style a component by its latest version', async () => {

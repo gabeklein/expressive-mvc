@@ -1,8 +1,10 @@
 import './jsx-runtime';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { createElement, Fragment as ReactFragment } from 'react';
 import { childrenOf, Fragment, isElement, jsx, propsOf, typeOf } from '@expressive/mvc/jsx-runtime';
+import type { JSX as ReactJSX } from 'react';
+import type { JSX } from '@expressive/mvc/jsx-runtime';
 
 const element = createElement('div', { id: 'foo' });
 
@@ -30,18 +32,18 @@ describe('introspection', () => {
     expect(items[0]).toBe('a' as never);
   });
 
-  it('will identify elements', () => {
+  it('will read elements', () => {
     expect(isElement(element)).toBe(true);
     expect(isElement({ type: 'div' })).toBe(false);
-  });
-
-  it('will read element type', () => {
     expect(typeOf(element)).toBe('div');
     expect(typeOf('text')).toBeUndefined();
-  });
-
-  it('will read element props', () => {
     expect(propsOf(element)).toEqual({ id: 'foo' });
     expect(propsOf('text')).toEqual({});
+  });
+});
+
+describe('types', () => {
+  it('will accept agnostic element types', () => {
+    expectTypeOf<JSX.ElementType>().toExtend<ReactJSX.ElementType>();
   });
 });

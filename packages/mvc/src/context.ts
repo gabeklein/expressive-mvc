@@ -3,6 +3,7 @@ import { event, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
 const HELD = new WeakMap<State, Map<State, Set<() => void>>>();
+const HOST = new WeakMap<Context, State>();
 let ROOT: Context;
 
 type Accept<T extends State = State> =
@@ -176,6 +177,8 @@ class Context {
     const init = new Set<() => void>();
     const { cleanup } = this;
 
+    const single = typeof inputs == "function" || inputs instanceof State;
+
     if (typeof inputs == "function" || inputs instanceof State)
       inputs = { [0]: inputs };
 
@@ -205,6 +208,8 @@ class Context {
 
       const state = owned ? new (V as State.Type)() : V.is;
       const remove = this.add(state, true);
+
+      if (single && this !== ROOT) HOST.set(this, state);
 
       init.add(() => {
         event(state);
@@ -369,4 +374,12 @@ function join(state: State, value: State): () => void {
   };
 }
 
-export { Context, join };
+/** The State a host mounted `state` under - the one its nearest enclosing context was set up for. */
+function host(state: State) {
+  for (let ctx = LOOKUP.get(state); ctx; ctx = ctx.parent) {
+    const found = HOST.get(ctx);
+    if (found && found !== state) return found;
+  }
+}
+
+export { Context, host, join };

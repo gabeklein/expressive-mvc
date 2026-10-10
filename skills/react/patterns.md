@@ -3,7 +3,7 @@
 ## Counter
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Counter extends Component {
   count = 0;
@@ -29,7 +29,7 @@ class Counter extends Component {
 ## Form with Validation
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class LoginForm extends Component {
   email = '';
@@ -71,7 +71,7 @@ class LoginForm extends Component {
 ## Async Data Fetching
 
 ```tsx
-import { Component, set } from '@expressive/react';
+import { Component, set } from '@expressive/mvc';
 
 class Profile extends Component {
   fallback = (<p>Loading...</p>);
@@ -423,7 +423,7 @@ Default for a self-contained widget: the parent mounts `<UndoBar />` uncondition
 ## Computed Values
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Cart extends Component {
   items: { name: string; price: number; qty: number }[] = [];
@@ -503,6 +503,36 @@ class TabGroup extends Component {
   }
 }
 ```
+
+## Owned Collection
+
+Register what a Component constructs - rendered children, `use()` instances, pool members - without a type, and release each when it is destroyed:
+
+```tsx
+import { State, Component } from '@expressive/mvc';
+
+class Layer extends Component {}
+
+class Canvas extends Component {
+  new() {
+    return this.get(State, (layer) => {
+      const id = register(layer);
+      return () => unregister(id);
+    }, true);
+  }
+
+  render() {
+    return (
+      <section>
+        <Layer />
+        <Layer />
+      </section>
+    );
+  }
+}
+```
+
+Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(State)` - see [context.md](../state/context.md#ownership-vs-context).
 
 ## Refactoring Hooks Into State
 

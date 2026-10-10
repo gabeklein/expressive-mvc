@@ -54,7 +54,7 @@ export function Hero() {
             </Link>
           </div>
           <div className="mx-auto flex max-w-md flex-col gap-2 lg:mx-0">
-            <CopyPill label="Add to your app" command="npm install @expressive/react" />
+            <CopyPill label="Add to your app" command="npm install @expressive/mvc @expressive/react" />
             <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive-mvc" />
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0">
@@ -318,7 +318,7 @@ class TypedComment extends State {
 
 function CounterExample({ compact, count, comment }: CounterExampleProps) {
   const imports =
-    "import React from 'react';\n    import State from '@expressive/react';\n\n    ";
+    "import React from 'react';\n    import { State } from '@expressive/mvc';\n\n    ";
   const increment = compact
     ? 'increment() { this.count++; }'
     : 'increment() {\n        this.count++;\n      }';

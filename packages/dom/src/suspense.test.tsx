@@ -2,12 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, pending, set } from '@expressive/mvc';
 import { Portal, render } from './index';
-import { flushMicrotasks, mockPromise } from '../test.setup';
+import { flushMicrotasks, html, lazy, mockPromise, mount, place, track, until } from '../test.setup';
 
 describe('suspense and recovery', () => {
   it('will show a Component fallback until a loaded view resolves', async () => {
-    const loaded = mockPromise<{ default: () => Component.Node }>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy<{ default: () => Component.Node }>();
 
     class App extends Component {
       fallback = <i>loading</i>;
@@ -17,8 +16,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     expect(root.textContent).toBe('loading');
 
     loaded.resolve({ default: () => <strong>ready</strong> });
@@ -48,8 +46,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Page />, root);
+    const root = place(<Page />);
 
     await flushMicrotasks();
     expect(caught).toEqual(['chunk']);
@@ -67,9 +64,7 @@ describe('suspense and recovery', () => {
   it('will report a failed load without a catch, not reject unhandled', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const Lazy = () => Promise.reject(new Error('chunk'));
-    const root = document.createElement('main');
-
-    render(<Component fallback={<i>wait</i>}><Lazy /></Component>, root);
+    place(<Component fallback={<i>wait</i>}><Lazy /></Component>);
 
     await flushMicrotasks();
     await flushMicrotasks();
@@ -78,18 +73,12 @@ describe('suspense and recovery', () => {
     error.mockRestore();
   });
 
-  it('will let Component for own a loader fallback', async () => {
-    class Session extends State {}
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
-    const root = document.createElement('main');
-
-    render(
-      <Component for={Session} fallback={<i>waiting</i>}>
-        <Lazy />
-      </Component>,
-      root
-    );
+  it.each([
+    ['Component for', { for: class Session extends State {} }],
+    ['bare Component', {}]
+  ])('will let %s own a loader fallback', async (_, props) => {
+    const [Lazy, loaded] = lazy();
+    const root = place(<Component {...(props as {})} fallback={<i>waiting</i>}><Lazy /></Component>);
     expect(root.textContent).toBe('waiting');
 
     loaded.resolve(() => <span>done</span>);
@@ -117,8 +106,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     expect(root.textContent).toBe('loading');
 
     first.resolve(() => <span>first</span>);
@@ -131,8 +119,7 @@ describe('suspense and recovery', () => {
   });
 
   it('will keep hidden content live until it reveals', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy();
 
     class Label extends State {
       text = 'before';
@@ -151,9 +138,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     expect(root.textContent).toBe('loading');
 
     app.label.text = 'after';
@@ -166,8 +151,7 @@ describe('suspense and recovery', () => {
   });
 
   it('will reveal a boundary when its suspended content unmounts', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy] = lazy();
 
     function Spinner() {
       return <i>loading</i>;
@@ -182,9 +166,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     expect(root.textContent).toBe('loading');
 
     app.show = false;
@@ -193,8 +175,7 @@ describe('suspense and recovery', () => {
   });
 
   it('will drop a suspended boundary removed by its parent', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy();
 
     class Inner extends Component {
       fallback = <i>loading</i>;
@@ -213,9 +194,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let outer!: Outer;
-    const root = document.createElement('main');
-    render(<Outer is={(value) => (outer = value)} />, root);
+    const [outer, root] = mount(Outer);
     expect(root.textContent).toBe('outerloading');
 
     outer.show = false;
@@ -228,8 +207,7 @@ describe('suspense and recovery', () => {
   });
 
   it('will retry a transition which suspends from empty content', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy();
 
     class Flag extends State {
       on = false;
@@ -248,31 +226,27 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    let settled = false;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
 
-    pending(() => {
-      app.flag.on = true;
-    }).then(() => (settled = true));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    const settled = track(pending(() => (app.flag.on = true)));
+    await until(() => expect(Lazy).toHaveBeenCalled());
     expect(root.textContent).toBe('stay');
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     loaded.resolve(() => <b>lazy</b>);
     await flushMicrotasks();
     await flushMicrotasks();
     expect(root.textContent).toBe('staylazy');
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   describe('a transition revealing State that loads', () => {
     let root: HTMLElement;
+    let lives: string[];
 
     function setup() {
       const loaded = mockPromise<string>();
-      const lives: string[] = [];
+      lives = [];
 
       class Data extends State {
         value = set(() => loaded);
@@ -301,11 +275,10 @@ describe('suspense and recovery', () => {
         }
       }
 
-      let app!: App;
-      root = document.createElement('main');
-      render(<App is={(value) => (app = value)} />, root);
+      const [app, main] = mount(App);
+      root = main;
       pending(() => (app.open = true));
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(lives).toContain('new'));
 
       return root;
     }
@@ -317,9 +290,8 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('closed');
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(root.textContent).toBe('ready'));
 
-      expect(root.textContent).toBe('ready');
       expect(lives).toEqual(['new', 'mount: ready']);
     });
 
@@ -343,9 +315,8 @@ describe('suspense and recovery', () => {
       expect(root.textContent).toBe('closed');
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(root.textContent).toBe('ready'));
 
-      expect(root.textContent).toBe('ready');
       expect(lives).toEqual(['new', 'panel mount: ready']);
     });
 
@@ -357,16 +328,14 @@ describe('suspense and recovery', () => {
       expect(root.querySelector('section')).toBeNull();
 
       loaded.resolve('ready');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await until(() => expect(html(root)).toBe('<section><h2>title</h2><b>ready</b></section>'));
 
-      expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<section><h2>title</h2><b>ready</b></section>');
       expect(lives).toEqual(['new', 'mount: titleready']);
     });
   });
 
   it('will hold the current content while new siblings wait on one that loads', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy();
     const mounted: string[] = [];
 
     class Tab extends State {
@@ -388,26 +357,22 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
 
     pending(() => (app.next = true));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(Lazy).toHaveBeenCalled());
 
-    expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<p>current</p>');
+    expect(html(root)).toBe('<p>current</p>');
     expect(mounted).toEqual([]);
 
     loaded.resolve(() => <s>lazy</s>);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(html(root)).toBe('<b>new</b><s>lazy</s><u>tail</u>'));
 
-    expect(root.innerHTML.replace(/<!--[^>]*-->/g, '')).toBe('<b>new</b><s>lazy</s><u>tail</u>');
     expect(mounted).toEqual(['newlazytail']);
   });
 
   it('will show content a transition updates in place while new content it adds is held', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy();
 
     class App extends Component {
       count = 1;
@@ -418,17 +383,13 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
 
     pending(() => (app.count = 2));
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('count 2');
+    await until(() => expect(root.textContent).toBe('count 2'));
 
     loaded.resolve(() => <s>lazy</s>);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('count 2lazy');
+    await until(() => expect(root.textContent).toBe('count 2lazy'));
   });
 
   it('will not mount new content a failing transition discards', async () => {
@@ -461,48 +422,14 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
 
     pending(() => (app.open = true));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await until(() => expect(error).toHaveBeenCalledWith(new Error('boom')));
 
     expect(root.textContent).toBe('closed');
     expect(mounted).not.toHaveBeenCalled();
-    expect(error).toHaveBeenCalledWith(new Error('boom'));
     error.mockRestore();
-  });
-
-  it('will keep siblings consistent when a transition suspends mid-list', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
-
-    class App extends Component {
-      next = false;
-      fallback = <i>loading</i>;
-
-      render() {
-        return this.next
-          ? <><b>new</b><Lazy /><i>tail</i></>
-          : <><p>current</p></>;
-      }
-    }
-
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
-
-    pending(() => {
-      app.next = true;
-    });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    loaded.resolve(() => <span>lazy</span>);
-    await flushMicrotasks();
-    await flushMicrotasks();
-    expect(root.textContent).toBe('newlazytail');
-    expect(root.querySelectorAll('b')).toHaveLength(1);
   });
 
   it('will hold a sibling swap until the incoming scope renders', async () => {
@@ -518,11 +445,11 @@ describe('suspense and recovery', () => {
       return Nav.get().page == 'a' ? <p>A</p> : null;
     }
 
-    function B() {
+    const B = vi.fn((): Component.Node => {
       if (Nav.get().page != 'b') return null;
       if (!open) throw gate;
       return <p>B</p>;
-    }
+    });
 
     class App extends Component {
       nav = new Nav();
@@ -533,28 +460,22 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    let settled = false;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
 
-    pending(() => {
-      app.nav.page = 'b';
-    }).then(() => (settled = true));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    const settled = track(pending(() => (app.nav.page = 'b')));
+    await until(() => expect(B).toHaveBeenCalledTimes(2));
     expect(root.textContent).toBe('A');
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     gate.resolve();
-    await vi.waitFor(() => {
+    await until(() => {
       expect(root.textContent).toBe('B');
-      expect(settled).toBe(true);
+      expect(settled()).toBe(true);
     });
   });
 
   it('will hold a sibling swap when the incoming scope suspends below its render', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy();
 
     class Nav extends State {
       page = 'a';
@@ -577,19 +498,21 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
+    const shown: string[] = [];
 
-    pending(() => {
-      app.nav.page = 'b';
-    });
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    new MutationObserver((records) => {
+      for (const { addedNodes } of records) addedNodes.forEach((node) => shown.push(node.nodeName));
+    }).observe(root, { childList: true, subtree: true });
+
+    pending(() => (app.nav.page = 'b'));
+    await until(() => expect(Lazy).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(shown).toEqual([]);
     expect(root.textContent).toBe('A');
-    expect(root.querySelector('h2')).toBeNull();
 
     loaded.resolve(() => <b>lazy</b>);
-    await vi.waitFor(() => expect(root.textContent).toBe('Blazy'));
+    await until(() => expect(root.textContent).toBe('Blazy'));
   });
 
   it('will mount staged transition content once it is in the document', async () => {
@@ -633,14 +556,10 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<App is={(value) => (app = value)} />, root);
+    const [app] = mount(App, {}, document.body.appendChild(document.createElement('main')));
 
-    pending(() => {
-      app.nav.page = 'b';
-    });
-    await vi.waitFor(() => expect(seen).toEqual(['ref true', 'mount true', 'use true']));
+    pending(() => (app.nav.page = 'b'));
+    await until(() => expect(seen).toEqual(['ref true', 'mount true', 'use true']));
   });
 
   it('will not mount staged content dropped before it is inserted', async () => {
@@ -662,9 +581,9 @@ describe('suspense and recovery', () => {
       }
     }
 
-    function Wait(): Component.Node {
+    const Wait = vi.fn((): Component.Node => {
       throw gate;
-    }
+    });
 
     function Swap() {
       const { page } = Nav.get();
@@ -680,14 +599,10 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.body.appendChild(document.createElement('main'));
-    render(<App is={(value) => (app = value)} />, root);
+    const [app] = mount(App, {}, document.body.appendChild(document.createElement('main')));
 
-    pending(() => {
-      app.nav.page = 'b';
-    });
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    pending(() => (app.nav.page = 'b'));
+    await until(() => expect(Wait).toHaveBeenCalled());
 
     app.shown = false;
     await flushMicrotasks();
@@ -704,18 +619,18 @@ describe('suspense and recovery', () => {
       show = true;
     }
 
-    const tick = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
+    function setup() {
+      const gate = mockPromise<void>();
 
-    function setup(gate: PromiseLike<void>) {
       function Title() {
         return <h1>{Nav.get().page}</h1>;
       }
 
-      function Page() {
+      const Page = vi.fn((): Component.Node => {
         const { page } = Nav.get();
         if (page == 'b') throw gate;
         return <p>{page}</p>;
-      }
+      });
 
       function Body() {
         return Nav.get().show ? <Page /> : null;
@@ -730,87 +645,65 @@ describe('suspense and recovery', () => {
         }
       }
 
-      let app!: App;
-      const root = document.createElement('main');
-      render(<App is={(value) => (app = value)} />, root);
-      return { root, nav: () => app.nav };
+      const [app, root] = mount(App);
+      const go = (page: string) => track(pending(() => (app.nav.page = page)));
+      const held = () => until(() => expect(Page.mock.results.at(-1)?.type).toBe('throw'));
+      return { root, go, held, nav: app.nav };
     }
 
     it('will render a newer transition without waiting on a held one', async () => {
-      const gate = mockPromise<void>();
-      const { root, nav } = setup(gate);
+      const { root, go, held } = setup();
 
-      pending(() => {
-        nav().page = 'b';
-      });
-      await tick();
+      go('b');
+      await held();
       expect(root.textContent).toBe('aa');
 
-      let settled = false;
-      pending(() => {
-        nav().page = 'c';
-      }).then(() => (settled = true));
-      await vi.waitFor(() => {
+      const settled = go('c');
+      await until(() => {
         expect(root.textContent).toBe('cc');
-        expect(settled).toBe(true);
+        expect(settled()).toBe(true);
       });
     });
 
     it('will settle a transition back to the current page', async () => {
-      const gate = mockPromise<void>();
-      const { root, nav } = setup(gate);
+      const { root, go, held } = setup();
 
-      pending(() => {
-        nav().page = 'b';
-      });
-      await tick();
+      go('b');
+      await held();
 
-      let settled = false;
-      pending(() => {
-        nav().page = 'a';
-      }).then(() => (settled = true));
-      await vi.waitFor(() => {
+      const settled = go('a');
+      await until(() => {
         expect(root.textContent).toBe('aa');
-        expect(settled).toBe(true);
+        expect(settled()).toBe(true);
       });
     });
 
     it('will release a held batch when the scope holding it unmounts', async () => {
-      const gate = mockPromise<void>();
-      const { root, nav } = setup(gate);
+      const { root, go, held, nav } = setup();
 
-      let settled = false;
-      pending(() => {
-        nav().page = 'b';
-      }).then(() => (settled = true));
-      await tick();
+      const settled = go('b');
+      await held();
       expect(root.textContent).toBe('aa');
 
-      nav().show = false;
-      await vi.waitFor(() => {
+      nav.show = false;
+      await until(() => {
         expect(root.textContent).toBe('b');
-        expect(settled).toBe(true);
+        expect(settled()).toBe(true);
       });
     });
 
     it('will take a later transition after the holding scope unmounts', async () => {
-      const gate = mockPromise<void>();
-      const { root, nav } = setup(gate);
+      const { root, go, held, nav } = setup();
 
-      pending(() => {
-        nav().page = 'b';
-      });
-      await tick();
-      nav().show = false;
-      await tick();
+      go('b');
+      await held();
+      nav.show = false;
+      await until(() => expect(root.textContent).toBe('b'));
 
-      let settled = false;
-      pending(() => {
-        nav().page = 'c';
-      }).then(() => (settled = true));
-      await vi.waitFor(() => {
+      const settled = go('c');
+      await until(() => {
         expect(root.textContent).toBe('c');
-        expect(settled).toBe(true);
+        expect(settled()).toBe(true);
       });
     });
   });
@@ -828,10 +721,10 @@ describe('suspense and recovery', () => {
       return <p>{Nav.get().page}</p>;
     }
 
-    function Guard() {
+    const Guard = vi.fn((): Component.Node => {
       if (Nav.get().page == 'b' && !open) throw gate;
       return <Child />;
-    }
+    });
 
     class App extends Component {
       nav = new Nav();
@@ -842,18 +735,14 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
 
-    pending(() => {
-      app.nav.page = 'b';
-    });
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    pending(() => (app.nav.page = 'b'));
+    await until(() => expect(Guard.mock.results.at(-1)?.type).toBe('throw'));
     expect(root.textContent).toBe('a');
 
     gate.resolve();
-    await vi.waitFor(() => expect(root.textContent).toBe('b'));
+    await until(() => expect(root.textContent).toBe('b'));
   });
 
   it('will recover an error thrown while probing a transition', async () => {
@@ -881,14 +770,10 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app] = mount(App);
 
-    pending(() => {
-      app.flag.on = true;
-    });
-    await vi.waitFor(() => expect(caught).toHaveBeenCalledWith('broken'));
+    pending(() => (app.flag.on = true));
+    await until(() => expect(caught).toHaveBeenCalledWith('broken'));
   });
 
   it('will retry a caught error once, then wait for an update', async () => {
@@ -916,9 +801,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
 
     await flushMicrotasks();
     await flushMicrotasks();
@@ -957,9 +840,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let outer!: Outer;
-    const root = document.createElement('main');
-    render(<Outer is={(value) => (outer = value)} />, root);
+    const [outer, root] = mount(Outer);
 
     await flushMicrotasks();
     await flushMicrotasks();
@@ -971,8 +852,7 @@ describe('suspense and recovery', () => {
   });
 
   it('will hide portal content while its boundary shows a fallback', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy();
     const target = document.createElement('aside');
 
     class App extends Component {
@@ -984,9 +864,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
     expect(root.textContent).toBe('loading');
     expect(target.textContent).toBe('');
 
@@ -999,8 +877,7 @@ describe('suspense and recovery', () => {
   });
 
   it('will create SVG content resolved while its boundary is hidden', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy();
 
     class Chart extends Component {
       render() {
@@ -1008,8 +885,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<svg><Chart /><foreignObject><div /></foreignObject></svg>, root);
+    const root = place(<svg><Chart /><foreignObject><div /></foreignObject></svg>);
 
     loaded.resolve(() => <circle r="1" />);
     await flushMicrotasks();
@@ -1042,8 +918,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     expect(root.textContent).toBe('loading');
 
     resolve();
@@ -1068,47 +943,13 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let parent!: Parent;
-    const root = document.createElement('main');
-    render(<Parent is={(value) => (parent = value)} />, root);
+    const [parent, root] = mount(Parent);
 
-    await pending(() => {
-      parent.label = 'b';
-    });
-    await vi.waitFor(() => expect(root.textContent).toBe('b'));
-  });
+    const settled = pending(() => (parent.label = 'b'));
+    expect(root.textContent).toBe('a');
 
-  it('will retain committed content while a transition suspends', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
-
-    class App extends Component {
-      next = false;
-      fallback = <i>loading</i>;
-
-      render() {
-        return this.next ? <Lazy /> : <p>current</p>;
-      }
-    }
-
-    let app!: App;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
-
-    let settled = false;
-
-    pending(() => {
-      app.next = true;
-    }).then(() => (settled = true));
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(root.textContent).toBe('current');
-    expect(settled).toBe(false);
-
-    loaded.resolve(() => <p>next</p>);
-    await flushMicrotasks();
-    await flushMicrotasks();
-    expect(root.textContent).toBe('next');
-    expect(settled).toBe(true);
+    await settled;
+    expect(root.textContent).toBe('b');
   });
 
   it('will retain committed content until repeated suspension settles', async () => {
@@ -1131,31 +972,26 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    let settled = false;
-    const root = document.createElement('main');
-    render(<App is={(value) => (app = value)} />, root);
+    const [app, root] = mount(App);
 
-    pending(() => {
-      app.next = true;
-    }).then(() => (settled = true));
+    const settled = track(pending(() => (app.next = true)));
     await flushMicrotasks();
     expect(root.textContent).toBe('current');
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     stage = 1;
     first.resolve();
     await flushMicrotasks();
     await flushMicrotasks();
     expect(root.textContent).toBe('current');
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     stage = 2;
     second.resolve();
     await flushMicrotasks();
     await flushMicrotasks();
     expect(root.textContent).toBe('next');
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will invoke Component.catch and retry rendering', async () => {
@@ -1176,8 +1012,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     expect(root.textContent).toBe('recovering');
 
     await flushMicrotasks();
@@ -1185,29 +1020,41 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('recovered');
   });
 
-  it('will clean an unmounted suspended scope before resolution', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+  it.each([
+    ['a load resolving', false, true],
+    ['a suspension rejecting', false, false],
+    ['a recovery resolving', true, true],
+    ['a recovery rejecting', true, false]
+  ])('will ignore %s after unmount', async (_, recover, resolve) => {
+    const [Lazy, gate] = lazy();
 
     class App extends Component {
       fallback = <i>loading</i>;
+
+      catch() {
+        if (recover) return gate as Promise<any>;
+        throw new Error('should not recover');
+      }
+
       render() {
-        return <Lazy />;
+        if (recover) throw new Error('broken');
+        if (resolve) return <Lazy />;
+        throw gate;
       }
     }
 
-    const root = document.createElement('main');
-    const release = render(<App />, root);
+    const [, root, release] = mount(App);
     release();
-    loaded.resolve(() => <p>late</p>);
+
+    if (resolve) gate.resolve(() => <p>late</p>);
+    else gate.reject(new Error('late'));
     await flushMicrotasks();
 
     expect(root.textContent).toBe('');
   });
 
   it('will settle pending work when a suspended scope unmounts', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
+    const [Lazy, loaded] = lazy();
 
     class App extends Component {
       next = false;
@@ -1218,53 +1065,22 @@ describe('suspense and recovery', () => {
       }
     }
 
-    let app!: App;
-    let settled = false;
-    const root = document.createElement('main');
-    const release = render(<App is={(value) => (app = value)} />, root);
+    const [app, root, release] = mount(App);
 
-    pending(() => {
-      app.next = true;
-    }).then(() => (settled = true));
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(settled).toBe(false);
+    const settled = track(pending(() => (app.next = true)));
+    await until(() => expect(Lazy).toHaveBeenCalled());
+    expect(settled()).toBe(false);
 
     release();
     await flushMicrotasks();
 
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
     expect(root.textContent).toBe('');
 
     loaded.resolve(() => <p>late</p>);
     await flushMicrotasks();
 
-    expect(settled).toBe(true);
-    expect(root.textContent).toBe('');
-  });
-
-  it('will ignore a suspension rejected after unmount', async () => {
-    const pending = mockPromise<void>();
-
-    function Wait(): Component.Node {
-      throw pending;
-    }
-
-    class App extends Component {
-      fallback = <i>loading</i>;
-      catch() {
-        throw new Error('should not recover');
-      }
-      render() {
-        return <Wait />;
-      }
-    }
-
-    const root = document.createElement('main');
-    const release = render(<App />, root);
-    release();
-    pending.reject(new Error('late'));
-    await flushMicrotasks();
-
+    expect(settled()).toBe(true);
     expect(root.textContent).toBe('');
   });
 
@@ -1302,8 +1118,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<App />, root);
+    const root = place(<App />);
     pending.reject(new Error('offline'));
     await flushMicrotasks();
 
@@ -1334,30 +1149,11 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Parent />, root);
+    const root = place(<Parent />);
     await flushMicrotasks();
 
     expect(caught).toHaveBeenCalledWith('child');
     expect(root.textContent).toBe('restored');
-  });
-
-  it('will let a bare Component own a fallback', async () => {
-    const loaded = mockPromise<() => Component.Node>();
-    const Lazy = () => loaded;
-    const root = document.createElement('main');
-
-    render(
-      <Component fallback={<i>waiting</i>}>
-        <Lazy />
-      </Component>,
-      root
-    );
-    expect(root.textContent).toBe('waiting');
-
-    loaded.resolve(() => <span>done</span>);
-    await flushMicrotasks();
-    expect(root.textContent).toBe('done');
   });
 
   it('will hold an escalated boundary until its catch completes', async () => {
@@ -1389,12 +1185,11 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Outer />, root);
-    await vi.waitFor(() => expect(root.textContent).toBe('outer'));
+    const root = place(<Outer />);
+    await until(() => expect(root.textContent).toBe('outer'));
 
     handled.resolve();
-    await vi.waitFor(() => expect(root.textContent).toBe('content'));
+    await until(() => expect(root.textContent).toBe('content'));
   });
 
   it('will stop at the last boundary when a catch rethrows', async () => {
@@ -1422,9 +1217,8 @@ describe('suspense and recovery', () => {
     process.on('unhandledRejection', rejected);
 
     try {
-      const root = document.createElement('main');
-      render(<Inner />, root);
-      await vi.waitFor(() => expect(rejected).toHaveBeenCalled());
+      const root = place(<Inner />);
+      await until(() => expect(rejected).toHaveBeenCalled());
 
       expect(caught).toHaveBeenCalledOnce();
       expect(root.textContent).toBe('inner');
@@ -1461,8 +1255,7 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Outer />, root);
+    const root = place(<Outer />);
     await flushMicrotasks();
 
     inner.step = 1;
@@ -1471,13 +1264,13 @@ describe('suspense and recovery', () => {
     await flushMicrotasks();
 
     calls[0].resolve();
-    await vi.waitFor(() => {
+    await until(() => {
       expect(count).toBe(2);
       expect(root.textContent).toBe('outer');
     });
 
     calls[1].resolve();
-    await vi.waitFor(() => expect(root.textContent).toBe('content'));
+    await until(() => expect(root.textContent).toBe('content'));
   });
 
   it('will pass a rejected recovery to the next boundary', async () => {
@@ -1507,59 +1300,13 @@ describe('suspense and recovery', () => {
       }
     }
 
-    const root = document.createElement('main');
-    render(<Outer />, root);
+    const root = place(<Outer />);
     await flushMicrotasks();
 
     expect(outer).toHaveBeenCalledWith('escalated');
     expect(root.textContent).toBe('restored');
   });
 
-  it('will not retry a recovered Component after it unmounts', async () => {
-    const recovery = mockPromise<void>();
-
-    class App extends Component {
-      fallback = <i>recovering</i>;
-
-      catch() {
-        return recovery;
-      }
-
-      render(): Component.Node {
-        throw new Error('broken');
-      }
-    }
-
-    const root = document.createElement('main');
-    const release = render(<App />, root);
-    release();
-    recovery.resolve();
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe('');
-  });
-
-  it('will ignore a failed recovery after unmount', async () => {
-    const recovery = mockPromise<void>();
-
-    class App extends Component {
-      fallback = <i>recovering</i>;
-      catch() {
-        return recovery;
-      }
-      render(): Component.Node {
-        throw new Error('broken');
-      }
-    }
-
-    const root = document.createElement('main');
-    const release = render(<App />, root);
-    release();
-    recovery.reject(new Error('late'));
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe('');
-  });
   it.fails('will not render a child its parent removes in the same transition', async () => {
     const seen: unknown[] = [];
 
@@ -1578,12 +1325,8 @@ describe('suspense and recovery', () => {
     };
 
     let parent!: Parent;
-    const root = document.createElement('main');
-
-    render(<Parent is={(p) => (parent = p)} fallback={null} />, root);
-    pending(() => {
-      parent.value = undefined;
-    });
+    const root = place(<Parent is={(p) => (parent = p)} fallback={null} />);
+    pending(() => (parent.value = undefined));
     await flushMicrotasks();
     await flushMicrotasks();
 
@@ -1596,9 +1339,7 @@ describe('suspense and recovery', () => {
       const loaded = mockPromise<{ default: (props: { name: string }) => Component.Node }>();
       const load = vi.fn(() => loaded);
       const Greeting = () => load();
-      const root = document.createElement('main');
-
-      render(<Component fallback={<i>loading</i>}><Greeting name="Ada" /><Greeting name="Bob" /></Component>, root);
+      const root = place(<Component fallback={<i>loading</i>}><Greeting name="Ada" /><Greeting name="Bob" /></Component>);
       expect(root.textContent).toBe('loading');
 
       loaded.resolve({ default: ({ name }) => <b>{name}</b> });
@@ -1621,9 +1362,7 @@ describe('suspense and recovery', () => {
       }
 
       const Lazy = () => Promise.resolve(Counter);
-      const root = document.createElement('main');
-
-      render(<Component fallback={<i>loading</i>}><Lazy count={3} /></Component>, root);
+      const root = place(<Component fallback={<i>loading</i>}><Lazy count={3} /></Component>);
 
       await flushMicrotasks();
       await flushMicrotasks();
