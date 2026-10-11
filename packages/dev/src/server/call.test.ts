@@ -1,23 +1,37 @@
 import { describe, expect, it } from "vitest";
 import { Readable } from "node:stream";
 
-import { State } from "@expressive/mvc";
+import { get, State } from "@expressive/mvc";
 
 import { dispatch, isCall, resolve, verify, type Endpoint, type Seats } from "./call";
 import { install } from "./context";
 
 const at = (...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
 
+const TAB = crypto.randomUUID();
+
 function request(url: string, name: string | undefined, body: string, type = "application/json", extra: Record<string, string> = {}) {
-  const headers: Record<string, string> = { "content-type": type, ...extra };
+  const headers: Record<string, string> = { "content-type": type, "x-expressive-connection": TAB, ...extra };
   if (name) headers["x-expressive-call"] = name;
   return Object.assign(Readable.from([body]), { method: "POST", url, headers });
 }
 
-async function send(endpoints: Endpoint[], req: ReturnType<typeof request>, dev = false, seats?: Seats) {
-  const res = { statusCode: 0, body: undefined as string | undefined, setHeader() {}, end(body?: string) { this.body = body; } };
+async function sent(endpoints: Endpoint[], req: ReturnType<typeof request>, dev = false, seats?: Seats) {
+  const headers: Record<string, string> = {};
+  const res = {
+    statusCode: 0,
+    body: undefined as string | undefined,
+    setHeader(name: string, value: string) { headers[name.toLowerCase()] = value; },
+    end(body?: string) { this.body = body; },
+  };
+
   await dispatch(req as any, res as any, () => endpoints, dev, seats);
-  return { status: res.statusCode, body: res.body && JSON.parse(res.body) };
+  return { status: res.statusCode, body: res.body && JSON.parse(res.body), headers };
+}
+
+async function send(endpoints: Endpoint[], req: ReturnType<typeof request>, dev = false, seats?: Seats) {
+  const { status, body } = await sent(endpoints, req, dev, seats);
+  return { status, body };
 }
 
 describe("call endpoints", () => {
@@ -63,12 +77,28 @@ describe("call dispatch", () => {
     { pattern: ["shared"], exports: async () => ({ calls: {}, classes: { "/shared#Limit": Limit, "/shared#Strange": Strange } }) },
   ];
 
-  it("will reply with a call's value as JSON", async () => {
-    expect(await send(endpoints, request("/tally?x=1", "add", "[1, 2]"))).toEqual({ status: 200, body: 3 });
+  it("will reply with a call's value and the tab's frame", async () => {
+    expect(await send(endpoints, request("/tally?x=1", "add", "[1, 2]"))).toEqual({ status: 200, body: { value: 3, frame: {} } });
   });
 
-  it("will reply 204 to undefined", async () => {
-    expect(await send(endpoints, request("/tally", "none", "[]"))).toEqual({ status: 204, body: undefined });
+  it("will leave out an undefined value", async () => {
+    expect(await send(endpoints, request("/tally", "none", "[]"))).toEqual({ status: 200, body: { frame: {} } });
+  });
+
+  it("will reply 400 to a call without a connection id", async () => {
+    const bad = { status: 400, body: { message: "Expected an x-expressive-connection id." } };
+    const { "x-expressive-connection": _, ...headers } = request("/tally", "add", "[]").headers;
+
+    expect(await send(endpoints, request("/tally", "add", "[]", "application/json", { "x-expressive-connection": "tab" }))).toEqual(bad);
+    expect(await send(endpoints, Object.assign(request("/tally", "add", "[]"), { headers }))).toEqual(bad);
+  });
+
+  it("will name the connection's epoch on every reply", async () => {
+    const first = await sent(endpoints, request("/tally", "add", "[1, 2]"));
+    const failed = await sent(endpoints, request("/tally", "fail", "[]"));
+
+    expect(first.headers["x-expressive-epoch"]).toMatch(/^[\w-]{8}$/);
+    expect(failed.headers["x-expressive-epoch"]).toBe(first.headers["x-expressive-epoch"]);
   });
 
   it("will identify a call by method, name header and JSON body", () => {
@@ -115,74 +145,139 @@ describe("call dispatch", () => {
 });
 
 describe("seat dispatch", () => {
+  class Visits extends State {
+    static ttl = 60;
+    count = 0;
+  }
+
   class Tally extends State {
     static ttl = 60;
     total = 0;
-    async add(by: number) { return (this.total += by); }
+    visits = get(Visits);
+    async add(by: number) { this.visits.count++; return (this.total += by); }
     async noop() {}
   }
 
-  const seats: Seats = async pattern => (pattern.join("/") === "tally" ? Tally : undefined);
-  const endpoints: Endpoint[] = [{
-    pattern: ["tally"],
-    exports: async () => ({ calls: {}, classes: {}, seat: { fields: ["total"], methods: { "default.add": "add", "default.noop": "noop" } } }),
-  }];
-  const pull = (extra: Record<string, string> = {}) => request("/tally", undefined, "[]", "application/json", { "x-expressive-get": "default", ...extra });
+  const seats: Seats = async pattern => ({ "": Visits, tally: Tally } as Record<string, State.Type>)[pattern.join("/")] as any;
+  const endpoints: Endpoint[] = [
+    {
+      pattern: [],
+      exports: async () => ({ calls: {}, classes: {}, seat: { fields: ["count"], methods: {} } }),
+    },
+    {
+      pattern: ["tally"],
+      exports: async () => ({
+        calls: { bump: async () => { Tally.get().total++; } },
+        classes: {},
+        seat: { fields: ["total"], methods: { "default.add": "add", "default.noop": "noop" } },
+      }),
+    },
+  ];
+
+  function tab() {
+    const id = crypto.randomUUID();
+    const headers = (extra: Record<string, string | undefined>) =>
+      Object.fromEntries(Object.entries({ "x-expressive-connection": id, ...extra }).filter(([, value]) => value)) as Record<string, string>;
+
+    return {
+      pull: (url = "/tally", version?: string) =>
+        send(endpoints, request(url, undefined, "[]", "application/json", headers({ "x-expressive-get": "default", "if-none-match": version })), false, seats),
+      call: (name: string, args = "[]", extra: Record<string, string | undefined> = {}) =>
+        send(endpoints, request("/tally", name, args, "application/json", headers(extra)), false, seats),
+    };
+  }
 
   install();
 
-  it("will reply to a pull with the seat's values and version", async () => {
-    const { status, body } = await send(endpoints, pull(), false, seats);
+  it("will reply to a pull with the seat's slot, values and version", async () => {
+    const { status, body } = await tab().pull();
 
     expect(status).toBe(200);
-    expect(body).toEqual({ values: { total: 0 }, version: expect.stringMatching(/^[\w-]+:\d+$/) });
+    expect(body).toEqual({ slot: 1, values: { total: expect.any(Number) }, version: expect.stringMatching(/^[\w-]+:\d+$/) });
   });
 
-  const invoke = (name: string, args: string, version?: string) =>
-    send(endpoints, request("/tally", name, args, "application/json", version ? { "if-none-match": version } : {}), false, seats);
+  it("will open a slot per pull", async () => {
+    const { pull } = tab();
 
-  it("will reply to a method call with its value, the patch since the caller's version and the version", async () => {
-    const before = (await send(endpoints, pull(), false, seats)).body.version;
-    const { body } = await invoke("default.add", "[2]", before);
+    expect((await pull("/tally")).body.slot).toBe(1);
+    expect((await pull("/")).body.slot).toBe(2);
+    expect((await pull("/tally")).body.slot).toBe(3);
+  });
 
-    expect(body).toEqual({ value: expect.any(Number), patch: { total: body.value }, version: expect.any(String) });
-    expect(body.version).not.toBe(before);
+  it("will pull only what changed since the version sent", async () => {
+    const { pull, call } = tab();
+    const { version } = (await pull()).body;
 
-    const unchanged = await invoke("default.noop", "[]", body.version);
-    expect(unchanged.body).toEqual({ value: undefined, patch: {}, version: body.version });
+    expect((await pull("/tally", version)).body).toEqual({ slot: 2, values: {}, version });
+
+    await call("default.add", "[1]");
+
+    expect((await pull("/tally", version)).body.values).toEqual({ total: expect.any(Number) });
+  });
+
+  it("will reply to a method call with its value and a frame of every slot it moved", async () => {
+    const { pull, call } = tab();
+    const tally = (await pull("/tally")).body;
+    const visits = (await pull("/")).body;
+    const { body } = await call("default.add", "[2]", { "x-expressive-slot": "1", "if-none-match": tally.version });
+
+    expect(body).toEqual({
+      value: tally.values.total + 2,
+      frame: {
+        1: { patch: { total: tally.values.total + 2 }, version: expect.any(String) },
+        2: { patch: { count: visits.values.count + 1 }, version: expect.any(String) },
+      },
+    });
+
+    expect((await call("default.noop", "[]", { "x-expressive-slot": "1", "if-none-match": body.frame[1].version })).body).toEqual({ frame: {} });
   });
 
   it("will patch a method call with changes the caller missed", async () => {
-    const { version } = (await send(endpoints, pull(), false, seats)).body;
-    const { body: other } = await invoke("default.add", "[3]", version);
-    const { body } = await invoke("default.noop", "[]", version);
+    const mine = tab();
+    const { version } = (await mine.pull()).body;
+    const other = (await tab().call("default.add", "[3]")).body;
+    const { body } = await mine.call("default.noop", "[]", { "x-expressive-slot": "1", "if-none-match": version });
 
-    expect(body).toEqual({ value: undefined, patch: { total: other.value }, version: other.version });
+    expect(body.frame[1]).toEqual({ patch: { total: other.value }, version: expect.any(String) });
   });
 
-  it("will patch every field for a call without a version", async () => {
-    const { body } = await invoke("default.noop", "[]");
-    expect(body.patch).toEqual({ total: expect.any(Number) });
+  it("will patch every field of the calling slot without a version, and no slot it does not hold", async () => {
+    const mine = tab();
+    await mine.pull();
+    await mine.pull();
+
+    const { body } = await mine.call("default.noop", "[]", { "x-expressive-slot": "2" });
+
+    expect(body.frame).toEqual({ 2: { patch: { total: expect.any(Number) }, version: expect.any(String) } });
+    expect((await tab().call("default.noop", "[]", { "x-expressive-slot": "1" })).body).toEqual({ frame: {} });
   });
 
-  it("will reply 304 to a pull that holds the current version, else only what changed", async () => {
-    const { version } = (await send(endpoints, pull(), false, seats)).body;
+  it("will frame a plain call's changes to the slots the tab holds", async () => {
+    const { pull, call } = tab();
+    const { values, version } = (await pull()).body;
 
-    expect((await send(endpoints, pull({ "if-none-match": version }), false, seats)).status).toBe(304);
+    expect((await call("bump")).body).toEqual({ frame: { 1: { patch: { total: values.total + 1 }, version: expect.not.stringMatching(version) } } });
+    expect((await tab().call("bump")).body).toEqual({ frame: {} });
+  });
 
-    await send(endpoints, request("/tally", "default.add", "[1]"), false, seats);
+  it("will drop the slots a request releases", async () => {
+    const { pull, call } = tab();
+    await pull("/tally");
+    await pull("/");
 
-    const { body } = await send(endpoints, pull({ "if-none-match": version }), false, seats);
-    expect(body.values).toEqual({ total: expect.any(Number) });
+    const { body } = await call("default.add", "[1]", { "x-expressive-release": "2,9" });
+
+    expect(Object.keys(body.frame)).toEqual(["1"]);
+    expect((await pull("/")).body.slot).toBe(3);
   });
 
   it("will reply 404 to a pull of a folder without a seat, or naming anything but default", async () => {
-    expect((await send([{ pattern: [], exports: async () => ({ calls: {}, classes: {} }) }], request("/", undefined, "[]", "application/json", { "x-expressive-get": "default" }))).status).toBe(404);
-    expect((await send(endpoints, pull({ "x-expressive-get": "other" }), false, seats)).status).toBe(404);
+    expect((await send([{ pattern: ["x"], exports: async () => ({ calls: {}, classes: {} }) }], request("/x", undefined, "[]", "application/json", { "x-expressive-get": "default" }))).status).toBe(404);
+    expect((await send(endpoints, request("/tally", undefined, "[]", "application/json", { "x-expressive-get": "other" }), false, seats)).status).toBe(404);
   });
 
   it("will identify a pull as a call", () => {
-    expect(isCall(pull() as any)).toBe(true);
+    expect(isCall(request("/tally", undefined, "[]", "application/json", { "x-expressive-get": "default" }) as any)).toBe(true);
   });
 });
 
