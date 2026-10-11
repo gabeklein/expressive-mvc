@@ -1,15 +1,34 @@
-import type { State, def as instruction } from "@expressive/mvc";
+import type { Context as Contexts, State, def as instruction } from "@expressive/mvc";
 
-export function runtime(Base: typeof State, def: typeof instruction) {
+interface Routed extends State {
+  base: string;
+  to: string;
+  router: { segment(to: string): string };
+}
+
+interface Meta {
+  id: string;
+  name: string;
+  pattern: string[];
+  fields: string[];
+  pool?: string;
+  path?: string;
+}
+
+export function runtime(Base: typeof State, def: typeof instruction, Context: typeof Contexts, Route: State.Type<Routed>) {
   const classes = new Map<string, ErrorConstructor>();
   const versions = new WeakMap<State, string>();
   const pending = new WeakMap<State, State.Apply[]>();
-  const meta = new WeakMap<State, { id: string; pattern: string[]; fields: string[] }>();
+  const meta = new WeakMap<State, Meta>();
   const attaching = new WeakMap<State, Promise<void>>();
   const early = new WeakMap<State, { patch: Record<string, unknown>; version: string }>();
   const dropped = new WeakSet<State>();
-  const twins = new Map<string, State>();
+  const twins = new Map<string, WeakRef<State>>();
   const released = new Set<string>();
+  const lost = new FinalizationRegistry<string>(id => {
+    twins.delete(id);
+    released.add(id);
+  });
   const refreshing = new WeakMap<State, Promise<void>>();
   const again = new WeakSet<State>();
   const connection = crypto.randomUUID();
@@ -82,8 +101,11 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     source = new EventSource(`/.expressive/stream?connection=${connection}`);
 
     on("hello", ({ epoch }) => adopt(epoch) && rejoin());
-    on("stale", stale => Object.keys(stale).forEach(id => twins.has(id) && refresh(twins.get(id)!)));
-    on("beat", ({ sum }) => sum !== checksum() && twins.forEach(refresh));
+    on("stale", stale => Object.keys(stale).forEach(id => {
+      const twin = twins.get(id)?.deref();
+      if (twin) refresh(twin);
+    }));
+    on("beat", ({ sum }) => sum !== checksum() && held().forEach(refresh));
   }
 
   function refresh(twin: State): void {
@@ -102,7 +124,8 @@ export function runtime(Base: typeof State, def: typeof instruction) {
   function checksum(): number {
     let sum = 0;
 
-    for (const [id, twin] of twins) {
+    for (const twin of held()) {
+      const { id } = meta.get(twin)!;
       const version = versions.get(twin);
       if (version) sum = (sum ^ fnv(`${id}@${version}`)) >>> 0;
     }
@@ -133,7 +156,7 @@ export function runtime(Base: typeof State, def: typeof instruction) {
 
   function apply(frame: Record<string, { patch: Record<string, unknown>; version: string }>): void {
     for (const [id, { patch, version }] of Object.entries(frame)) {
-      const twin = twins.get(id);
+      const twin = twins.get(id)?.deref();
 
       if (!twin) continue;
       if (versions.has(twin)) sync(twin, patch, version);
@@ -190,8 +213,8 @@ export function runtime(Base: typeof State, def: typeof instruction) {
   }
 
   async function attach(twin: State): Promise<void> {
-    const { id, pattern } = meta.get(twin)!;
-    const reply = await send(pathOf(pattern, "default"), { "x-expressive-get": "default", "x-expressive-twin": id, ...since(twin) }, []);
+    const { id, pool } = meta.get(twin)!;
+    const reply = await send(where(twin), { "x-expressive-get": pool ?? "default", "x-expressive-twin": id, ...since(twin) }, []);
 
     if (dropped.has(twin)) return void released.add(id);
     if (reply) sync(twin, reply.values, reply.version);
@@ -205,13 +228,14 @@ export function runtime(Base: typeof State, def: typeof instruction) {
   }
 
   async function rejoin(): Promise<void> {
-    await Promise.all([...twins.values()].map(attach));
+    await Promise.all(held().map(attach));
   }
 
   function leave(twin: State): void {
     const { id } = meta.get(twin)!;
 
     dropped.add(twin);
+    lost.unregister(twin);
     twins.delete(id);
     released.add(id);
   }
@@ -219,15 +243,35 @@ export function runtime(Base: typeof State, def: typeof instruction) {
   async function invoke(twin: State, name: string, args: unknown[]): Promise<unknown> {
     await attaching.get(twin);
 
-    const { id, pattern } = meta.get(twin)!;
-    const reply = await send(pathOf(pattern, name), { "x-expressive-call": name, "x-expressive-twin": id, ...since(twin) }, args);
+    const { id } = meta.get(twin)!;
+    const reply = await send(where(twin, name), { "x-expressive-call": name, "x-expressive-twin": id, ...since(twin) }, args);
 
     apply(reply.frame);
 
     return reply.value;
   }
 
-  function twin(pattern: string[], methods: Record<string, string>, fields: string[], name: string): State.Type {
+  function held(): State[] {
+    return [...twins.values()].map(ref => ref.deref()).filter(twin => twin !== undefined);
+  }
+
+  function where(twin: State, name = "default"): string {
+    const { pattern, pool, path } = meta.get(twin)!;
+    return pool ? path! : pathOf(pattern, name);
+  }
+
+  function place(twin: State): void {
+    const info = meta.get(twin)!;
+    const route = Context.get(twin).get(Route, false);
+
+    info.path = route ? pathOf(split(route.base + route.router.segment(route.to)), info.name) : "/.expressive/detached";
+  }
+
+  function split(path: string): string[] {
+    return path.split("/").filter(Boolean);
+  }
+
+  function twin(pattern: string[], methods: Record<string, string>, fields: string[], name: string, pool?: string): State.Type {
     const named = {
       [name]: class extends Base {
         constructor(...args: any[]) {
@@ -236,14 +280,15 @@ export function runtime(Base: typeof State, def: typeof instruction) {
           const id = `${name}-${uid()}`;
 
           pending.set(this, []);
-          meta.set(this, { id, pattern, fields });
-          twins.set(id, this);
+          meta.set(this, { id, name, pattern, fields, pool });
+          twins.set(id, new WeakRef(this));
+          lost.register(this, id, this);
           listen();
 
           for (const field of fields) (this as any)[field] = served();
 
           this.set(null, () => leave(this));
-          attaching.set(this, attach(this));
+          attaching.set(this, pool ? Promise.resolve().then(() => (place(this), attach(this))) : attach(this));
         }
       },
     };
