@@ -8,9 +8,9 @@ Runnable source (complete programs, served as HTML): [`props`](https://expressiv
 
 - **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they own no persistent Expressive instance.
 - **State** is display-agnostic - data and logic, no render. Use with `State.use()` in FCs.
-- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form controls, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as Provider + ErrorBoundary + Suspense in `main`.
+- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form controls, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as `<Component for>` + ErrorBoundary + Suspense in `main`.
 
-Premise: **the class tree is the app; rendering is a projection of it.** `App.new()` stands the UX up headless - every feature's status reads off the instance (`inbox.archive.open`, a pool's members, an import's progress) with no DOM. Keep that true: regions as fields rather than Providers, `has()` subtrees contributing to macro-state whether or not placed, render-less Components. Tests, devtools, and agents consume this surface as much as views do.
+Premise: **the class tree is the app; rendering is a projection of it.** `App.new()` stands the UX up headless - every feature's status reads off the instance (`inbox.archive.open`, a pool's members, an import's progress) with no DOM. Keep that true: regions as fields rather than `<Component for>` elements, `has()` subtrees contributing to macro-state whether or not placed, render-less Components. Tests, devtools, and agents consume this surface as much as views do.
 
 Rule of thumb: use `Component` when state is intrinsic to display logic - usually meaning it defines `render()`. Intrinsic to *this* display concern, not the surface - a second concern (a resize handle beside send) is a second class, composed as a mounted wrapper, not more fields on the first.
 
@@ -56,7 +56,7 @@ For one-shot feature builds and hook refactors, don't create `FooState` plus `Fo
 ## Basic Usage
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Counter extends Component {
   count = 0;
@@ -274,7 +274,7 @@ class ChatRoom extends Component {
 
 ## Props
 
-State fields become optional JSX props, applied to the instance every render.
+State fields become optional JSX props, applied to the instance every render. A prop omitted on a later render resets to `undefined` - unmanaged `_` fields included.
 
 ```tsx
 class Greeting extends Component {
@@ -310,6 +310,7 @@ Non-optional render props become required JSX attributes. All props (state + ren
 - `is` - callback receiving the instance on creation: `<Counter is={c => ref = c} />`
 - `ref` - standard React ref (object or callback), attached after mount, cleared on unmount
 - `fallback` - ReactNode for suspense/error UI, overrides the instance property; `false` opts out of the component's own boundary so suspension bubbles to an ancestor
+- `catch` - `(error, instance)` handler for this placement, replacing the member `catch`; a returned promise retries once settled
 
 ## Children and Context
 
@@ -353,7 +354,7 @@ class DataView extends Component {
 `pending()` marks work non-urgent - React keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary; the designation rides with the subscriber updates they queue, including for state this component does not own.
 
 ```tsx
-import { Component, pending } from '@expressive/react';
+import { Component, pending } from '@expressive/mvc';
 
 class Shell extends Component {
   busy = false;
@@ -414,6 +415,7 @@ class SafeView extends Component {
 - Rejected `catch()` propagates to the parent boundary.
 - Sync `catch()` retries immediately.
 - A repeated throw after recovery propagates out.
+- `<SafeView catch={(error, view) => …} />` handles errors for that placement in place of the member. Both receive `(error, instance)`.
 
 ## Subcomponents
 
@@ -475,7 +477,7 @@ function SidebarItems() {
 - `new()` - once after init, synchronously; runs during server render. Return cleanup for teardown.
 - `render(props)` - every render.
 - `mount()` - once when `<MyComponent />` commits, client only. Return cleanup for unmount. Not called for an instance placed as `{instance}` - the placing component does not own it (see [react.md](react.md)).
-- `catch(error)` - error boundary.
+- `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `State.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
 `MyComponent.use()` throws - a Component is rendered (`<MyComponent />` or `{instance}`), not used. For a bare instance use `MyComponent.new()`.

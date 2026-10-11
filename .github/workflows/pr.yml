@@ -2,15 +2,16 @@ name: PR
 
 on:
   pull_request:
-    branches: [main]
 
 concurrency:
   group: pr-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   verify:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -19,7 +20,13 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - run: bun run test
+      - name: Typecheck
+        id: typecheck
+        run: bun run typecheck
+
+      - name: Tests
+        if: success() || steps.typecheck.outcome == 'failure'
+        run: bun run coverage
 
       - run: bun run build
 
@@ -27,19 +34,112 @@ jobs:
         run: bun .github/scripts/dist-check.ts
 
       - name: Bundle size
-        continue-on-error: true
-        run: bun .github/scripts/size-limit.ts
+        if: github.base_ref == 'main' || github.event.pull_request.stack != null
+        continue-on-error: ${{ github.head_ref != 'changeset-release/main' }}
+        run: bun .github/scripts/size-limit.ts ${{ github.head_ref == 'changeset-release/main' && '--gate' || '' }}
 
       - name: Docs agree with code
         run: bun .github/scripts/docs-check.ts
 
       - name: Changeset reminder
+        if: github.base_ref == 'main' || github.event.pull_request.stack != null
         continue-on-error: true
-        run: bunx changeset status --since origin/main
+        env:
+          BASE: ${{ github.base_ref }}
+        run: bunx changeset status --since "origin/$BASE"
 
-      - name: Pack validation
-        continue-on-error: true
-        run: |
-          for pkg in mvc react router; do
-            (cd packages/$pkg && npm publish --dry-run)
-          done
+  dist-smoke:
+    if: >-
+      github.event.pull_request.stack == null && github.base_ref == 'main' ||
+      github.event.pull_request.stack != null &&
+      github.event.pull_request.stack.position == github.event.pull_request.stack.size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Cache npm
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: dist-smoke-npm-${{ runner.os }}-${{ hashFiles('package.json', 'packages/*/package.json') }}
+          restore-keys: dist-smoke-npm-${{ runner.os }}-
+
+      - run: bun run build
+
+      - name: Packed tarballs install and run
+        run: bun .github/scripts/dist-smoke.ts
+
+  e2e:
+    if: >-
+      github.event.pull_request.stack == null && github.base_ref == 'main' ||
+      github.event.pull_request.stack != null &&
+      github.event.pull_request.stack.position == github.event.pull_request.stack.size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - name: Playwright version
+        id: playwright
+        working-directory: examples
+        run: echo "version=$(bunx playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Chromium
+        id: browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium
+        if: steps.browsers.outputs.cache-hit != 'true'
+        working-directory: examples
+        run: bunx playwright install --with-deps chromium
+
+      - name: Install Chromium system dependencies
+        if: steps.browsers.outputs.cache-hit == 'true'
+        working-directory: examples
+        run: bunx playwright install-deps chromium
+
+      - name: Specs on React and dom
+        working-directory: examples
+        run: bun run e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: examples/test-results
+          retention-days: 7
+
+  hot:
+    if: >-
+      github.event.pull_request.stack == null && github.base_ref == 'main' ||
+      github.event.pull_request.stack != null &&
+      github.event.pull_request.stack.position == github.event.pull_request.stack.size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - name: Hot reload in Chrome
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: bun .github/scripts/hot-probe.ts
+
+  native:
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'react-native') && (
+        github.event.pull_request.stack == null && github.base_ref == 'main' ||
+        github.event.pull_request.stack != null &&
+        github.event.pull_request.stack.position == github.event.pull_request.stack.size
+      )
+    uses: ./.github/workflows/native.yml

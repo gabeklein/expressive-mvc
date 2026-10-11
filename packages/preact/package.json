@@ -21,18 +21,23 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && vitest run --coverage"
+    "typecheck": "tsc --noEmit --incremental",
+    "coverage": "vitest run --coverage",
+    "test": "bun run typecheck && bun run coverage"
   },
   "dependencies": {
-    "@expressive/react": "workspace:^",
-    "@expressive/mvc": "workspace:^"
+    "@expressive/react": "workspace:^"
   },
   "devDependencies": {
+    "@expressive/mvc": "workspace:^",
     "@testing-library/preact": "^3.2.3",
     "preact": "^10.0.0",
+    "preact-render-to-string": "^6.8.0",
+    "react-refresh": "^0.18.0",
     "tsdown": "^0.20.1"
   },
   "peerDependencies": {
+    "@expressive/mvc": "^0.88.0",
     "preact": "^10.0.0"
   }
 }

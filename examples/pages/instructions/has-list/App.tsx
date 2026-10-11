@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, has } from '@expressive/react';
+import { Component, has } from '@expressive/mvc';
 
 // `has<string>()` is the list mode: an ordered collection of plain values you
 // push, addressed by index. No spawned members, no keys - just a log. Reads
@@ -52,7 +52,7 @@ export default class Editor extends Component {
           <input
             value={draft}
             placeholder="Record an action…"
-            onChange={(e) => (this.draft = e.target.value)}
+            onInput={(e) => (this.draft = e.currentTarget.value)}
           />
           <button type="submit">Push</button>
         </form>

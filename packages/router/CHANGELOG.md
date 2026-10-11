@@ -1,5 +1,42 @@
 # @expressive/router
 
+## 0.9.2
+
+### Patch Changes
+
+- [#441](https://github.com/gabeklein/expressive-mvc/pull/441) [`397c212`](https://github.com/gabeklein/expressive-mvc/commit/397c212d7df9b23b9fe153ce76fb5ad7ce9543bc) **Breaking:** `@expressive/mvc/runtime` is removed. Host seams (`host`, `HostRuntime`, `Host`, `childrenOf`, `isElement`, `typeOf`, `propsOf`) move to `@expressive/mvc/jsx-runtime` beside the transform contract (`jsx`, `jsxs`, `jsxDEV`, `Fragment`, `JSX`); class HMR moves to its own subpath, `@expressive/mvc/hot`, exporting `accept` and `replaced`.
+
+  - Host seam imports from `@expressive/mvc/runtime` → `@expressive/mvc/jsx-runtime`.
+  - `import { hot } from '@expressive/mvc/runtime'` → `import * as hot from '@expressive/mvc/hot'`.
+  - `declare module '@expressive/mvc/runtime'` augmentations of `Host` → `declare module '@expressive/mvc/jsx-runtime'`.
+
+  Adapters, router, inspect, and the Vite plugins import the new path.
+
+- [#484](https://github.com/gabeklein/expressive-mvc/pull/484) [`a9b54a8`](https://github.com/gabeklein/expressive-mvc/commit/a9b54a8ff3dc30a4e35c94dbd17e31369c902bd3) `Link.Props` drops the anchor's `is` and `key` attributes, which clashed with the Component `is` callback and `key`, so a `Link.Props` value spreads onto `<Link>`.
+- Updated dependencies [[`f6d9d81`](https://github.com/gabeklein/expressive-mvc/commit/f6d9d81951916e216c5ded575a93eb8c11389a5e), [`606bd37`](https://github.com/gabeklein/expressive-mvc/commit/606bd3701546e99719628815e88c34ceb2d94978), [`29d1a48`](https://github.com/gabeklein/expressive-mvc/commit/29d1a481d4d58a85c46bf67ac2656f61bef95061), [`d816f89`](https://github.com/gabeklein/expressive-mvc/commit/d816f896d9a89060aca394ec1d41f6bcf11010a2), [`13b9fd5`](https://github.com/gabeklein/expressive-mvc/commit/13b9fd55b57fb701957ef1085598b7f5f6db627d), [`d804a68`](https://github.com/gabeklein/expressive-mvc/commit/d804a68e987b5e8914e99aaebc7dcae3cc858df1), [`bf7da4a`](https://github.com/gabeklein/expressive-mvc/commit/bf7da4a6356ff8224b9d5f8127ff7a5217e4b714), [`f6d9d81`](https://github.com/gabeklein/expressive-mvc/commit/f6d9d81951916e216c5ded575a93eb8c11389a5e), [`b4ca589`](https://github.com/gabeklein/expressive-mvc/commit/b4ca589a276bcd37bdbdcf6405efe0bd42179105), [`0863b57`](https://github.com/gabeklein/expressive-mvc/commit/0863b572541950346ec90e439d25c6bb3a402f35), [`5735f12`](https://github.com/gabeklein/expressive-mvc/commit/5735f124bea800a3e87835e41dd99f10c468da03), [`5fa6a0e`](https://github.com/gabeklein/expressive-mvc/commit/5fa6a0e6fa69a7afde9c02caa3f8bcf3367d5dbe), [`397c212`](https://github.com/gabeklein/expressive-mvc/commit/397c212d7df9b23b9fe153ce76fb5ad7ce9543bc), [`6993e16`](https://github.com/gabeklein/expressive-mvc/commit/6993e166a5b355790c6fbdae9d3b2674dcf86dd2), [`6b6498c`](https://github.com/gabeklein/expressive-mvc/commit/6b6498c334402e17a89951f4b82a8a689e361dc4), [`3390c35`](https://github.com/gabeklein/expressive-mvc/commit/3390c35059ee5290fb4c1a050b2bfd1fd0305065)]:
+  - @expressive/mvc@0.88.0
+
+## 0.9.1
+
+### Patch Changes
+
+- Updated dependencies [[`a450c4f`](https://github.com/gabeklein/expressive-mvc/commit/a450c4f494b4fef28821c8d6382c5532886a8716), [`66abbfb`](https://github.com/gabeklein/expressive-mvc/commit/66abbfbc6034af1be394aabc82f4bb3f9989a855), [`724b803`](https://github.com/gabeklein/expressive-mvc/commit/724b80351261a899f57f1ee2d9b1a67f16f07d0e)]:
+  - @expressive/mvc@0.87.0
+
+## 0.9.0
+
+### Minor Changes
+
+- [#394](https://github.com/gabeklein/expressive-mvc/pull/394) [`451911b`](https://github.com/gabeklein/expressive-mvc/commit/451911bcf19a1117cf0bd399669a7e1af6b60129) Declare `@expressive/mvc` as a peer dependency rather than a direct one. The adapters need the matching `@expressive/mvc` minor - upgrade them together; a pinned older `@expressive/mvc` beside a newer adapter fails at install. A caret range on a 0.x version resolves to a narrow window, so an app installing `@expressive/mvc` itself could end up with a second copy - two `State` classes, two context registries, and `instanceof` failing across the boundary. As a peer there is exactly one resolution, and a mismatch surfaces at install rather than silently at runtime.
+
+  Core re-exports from `@expressive/react` and `@expressive/preact` are now marked `@deprecated`, along with the default export of `State` in all three packages. Import `{ State }`, `Component` and instructions from `@expressive/mvc`; take `Provider` and `Consumer` from the adapter, and import the adapter once from an entry module so it registers. Nothing is removed yet - the default alias in particular hides adapter-augmented `State.*` types, so the named import is the correct one regardless.
+
+### Patch Changes
+
+- [#410](https://github.com/gabeklein/expressive-mvc/pull/410) [`2a157a7`](https://github.com/gabeklein/expressive-mvc/commit/2a157a7d04b96bfbb944f394c84e88e40d2f0a74) Published types no longer import the unexported `@expressive/mvc/state` subpath, so projects with `skipLibCheck: false` type-check, and `Router.global` no longer resolves to `any`.
+- Updated dependencies [[`522606a`](https://github.com/gabeklein/expressive-mvc/commit/522606a7c64453cc38ebdcceab4c741a63c2a6b3), [`2d9f0aa`](https://github.com/gabeklein/expressive-mvc/commit/2d9f0aad304397024ae7879b7126e26d0a93afe6), [`451911b`](https://github.com/gabeklein/expressive-mvc/commit/451911bcf19a1117cf0bd399669a7e1af6b60129), [`99dc2e9`](https://github.com/gabeklein/expressive-mvc/commit/99dc2e9bb182dbde2ac043ff645419cfe72530d9), [`3ce41fb`](https://github.com/gabeklein/expressive-mvc/commit/3ce41fbf5c24434dd7c44484593a4ee766a221ae)]:
+  - @expressive/mvc@0.86.0
+
 ## 0.8.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, get, has } from '@expressive/react';
+import { Component, get, has } from '@expressive/mvc';
 
 // The board owns every card in one pool and its columns in another, and
 // provides itself to both (and to the cards) so they reach it with
@@ -211,7 +211,7 @@ class Column extends Component {
           <input
             value={draft}
             placeholder="+ Add a card"
-            onChange={(e) => (this.draft = e.target.value)}
+            onInput={(e) => (this.draft = e.currentTarget.value)}
           />
         </form>
       </section>

@@ -2,7 +2,8 @@ import { listener } from "./observable";
 import { event, State, uid } from "./state";
 
 const LOOKUP = new WeakMap<State, Context>();
-const HELD = new WeakMap<State, Set<State>>();
+const HELD = new WeakMap<State, Map<State, Set<() => void>>>();
+const HOST = new WeakMap<Context, State>();
 let ROOT: Context;
 
 type Accept<T extends State = State> =
@@ -176,6 +177,8 @@ class Context {
     const init = new Set<() => void>();
     const { cleanup } = this;
 
+    const single = typeof inputs == "function" || inputs instanceof State;
+
     if (typeof inputs == "function" || inputs instanceof State)
       inputs = { [0]: inputs };
 
@@ -206,6 +209,8 @@ class Context {
       const state = owned ? new (V as State.Type)() : V.is;
       const remove = this.add(state, true);
 
+      if (single && this !== ROOT) HOST.set(this, state);
+
       init.add(() => {
         event(state);
         const dispose = forEach?.(state as T, owned);
@@ -233,17 +238,7 @@ class Context {
       const entries = provide.get(T);
       if (entries)
         for (const entry of entries)
-          if (!entry[1] && entry[0] !== I) {
-            const type = I.constructor as State.Extends;
-            const g = type.global;
-
-            if (entry[0].constructor === type && (typeof g == 'function' ? g(I) : g))
-              throw new Error(
-                `Cannot register ${I} as a global - ${entry[0]} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
-              );
-
-            return entries.delete(entry);
-          }
+          if (!entry[1] && entry[0] !== I) return entries.delete(entry);
     }
 
     for (
@@ -291,7 +286,13 @@ class Context {
       onDone.clear();
     }
 
-    const held = Array.from(HELD.get(I) || [], (child) => this.add(child));
+    const held = Array.from(HELD.get(I) || [], ([child, added]) => {
+      const done = this.add(child);
+      added.add(done);
+      return () => {
+        if (added.delete(done)) done();
+      };
+    });
 
     function remove() {
       cleanup.delete(remove);
@@ -349,10 +350,26 @@ function join(state: State, value: State): () => void {
 
   if (ctx) return ctx.add(value);
 
-  const held = HELD.get(state) || new Set();
-  HELD.set(state, held.add(value));
+  const held = HELD.get(state) || new Map();
+  const added = new Set<() => void>();
 
-  return () => held.delete(value);
+  HELD.set(state, held.set(value, added));
+
+  return () => {
+    held.delete(value);
+    added.forEach((done) => {
+      added.delete(done);
+      done();
+    });
+  };
 }
 
-export { Context, join };
+/** The State a host mounted `state` under - the one its nearest enclosing context was set up for. */
+function host(state: State) {
+  for (let ctx = LOOKUP.get(state); ctx; ctx = ctx.parent) {
+    const found = HOST.get(ctx);
+    if (found && found !== state) return found;
+  }
+}
+
+export { Context, host, join };

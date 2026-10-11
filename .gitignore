@@ -10,8 +10,10 @@ coverage
 coverage-badge.json
 size-report.json
 .size-probe
+.hot-probe
 dist
 node_modules
 package-lock.json
 yarn-error.log
 yarn.lock
+tsconfig.tsbuildinfo

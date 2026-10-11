@@ -6,7 +6,7 @@ description: The Component class - every method, prop, and lifecycle hook
 `Component` extends `State` and works directly as a React component - React mounts it as a class component, so it integrates with error boundaries, devtools, refs, and the React tree. The class itself is still a model: fields and getters hold state, and `render` is a projection of it.
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Counter extends Component {
   count = 0;
@@ -25,7 +25,7 @@ class Counter extends Component {
 
 ### `this.props`
 
-Readonly. Every prop passed to the JSX element - state-derived props, render-declared props, and special props (`is`, `fallback`, `children`).
+Readonly. Every prop passed to the JSX element - state-derived props, render-declared props, and special props (`is`, `fallback`, `catch`, `children`).
 
 `props` is itself observable: `this.set('props', callback)` fires whenever a render delivers new props, and effects reading `this.props` re-run with it.
 
@@ -34,6 +34,10 @@ Readonly. Every prop passed to the JSX element - state-derived props, render-dec
 `ReactNode | false`. Content displayed while the component or its children are suspended, and during error recovery. Can be set as a class field, updated inside `catch()`, or overridden by the JSX `fallback` prop.
 
 Defaults to `null` - nothing renders while suspended. Set `false` to opt out of the component's own Suspense boundary entirely; suspension then bubbles to the nearest ancestor boundary.
+
+### `this.key`
+
+Readonly `string`. Identity used when the instance is [rendered directly](#rendering-an-instance) in a collection. Defaults to the instance's unique id (`String(this)`); override it as a field (`override readonly key = 'nav'`) to supply your own.
 
 <br />
 
@@ -57,13 +61,13 @@ class Card extends Component {
 
 - The `= {} as T` default satisfies TypeScript's JSX inference and is safely ignored at runtime.
 - Non-optional parameter fields become required JSX attributes.
-- Without a parameter (or without `render()` altogether), children pass through a context provider.
+- Without `render()` altogether, children pass through - the instance still provides context, runs `mount()`, and places its boundaries.
 
 When a subclass overrides `render()`, it **composes** with the base rather than replacing it. Each render up the prototype chain wraps the one below as `props.children`, base-outermost - no `super.render()` call. A wrapper that omits `props.children` drops the inner content (the getter is lazy, so it never runs). See [Render composition](/docs/guides/components#render-composition).
 
 The whole composed chain runs in a single host render. Prefer `this` for reactivity over React hooks inside `render()`, and if you do use hooks, beware the sharp edge: a hook in a layer below a wrapper that *conditionally* renders `props.children` breaks the rules of hooks. For a scope isolated from that, use a [subcomponent](#subcomponents).
 
-### `catch(error)` <small>optional</small>
+### `catch(error, instance)` <small>optional</small>
 
 ```tsx
 class SafeView extends Component {
@@ -78,12 +82,15 @@ class SafeView extends Component {
 }
 ```
 
-Error boundary handler. Called when a child throws during render. While `catch()` is pending, `this.fallback` is displayed; when it resolves, `render()` is retried.
+Error boundary handler. Called with the thrown error and the instance when a child throws during render. While `catch()` is pending, `this.fallback` is displayed; when it resolves, `render()` is retried.
 
 - Setting `this.fallback` inside `catch()` gives error-specific UI (reverted after recovery).
 - Rejecting from `catch()` propagates the error to the next parent boundary.
-- Without `catch()`, errors propagate automatically.
+- If the retry throws again, that error propagates to the parent; a later error is caught again.
+- Without `catch()` (method or attribute), the component has no error boundary - errors propagate.
 - Sync `catch()` triggers immediate retry.
+
+Only render errors arrive here. Lifecycle and effect failures of the instance go to [`State.on({ catch })`](/docs/api/state#error-handling).
 
 <br />
 
@@ -93,10 +100,10 @@ Component inherits the full State lifecycle. See [State](/docs/api/state) for de
 
 - `new()` - one-shot setup on activation (runs on the server too), return cleanup.
 - `mount()` - client-only effects, once on commit; return a function to run on unmount. Never runs during server render, nor for an instance placed as `{component}` - a placement does not own what it renders.
-- `catch(error)` - error boundary, above.
+- `catch(error, instance)` - error boundary, above.
 - Destruction runs on unmount or `this.set(null)`.
 
-> A `use()` method never runs for a Component rendered as JSX - it belongs to the [`State.use()` hook path](/docs/api/hooks#with-a-use-method) only.
+> A Component is rendered, not used - `MyComponent.use()` throws, and a `use()` method never runs. For an instance outside the tree, use `MyComponent.new()`.
 
 <br />
 
@@ -119,7 +126,8 @@ Every `Component` also accepts these, regardless of state fields:
 | `is`       | `(instance: T) => void`  | Called once with the created instance                                |
 | `ref`      | `Ref<T>`                 | Standard React ref - the instance after mount, `null` on unmount     |
 | `fallback` | `ReactNode \| false`     | Overrides `this.fallback`; `false` defers to an ancestor boundary    |
-| `children` | `ReactNode`              | Passed through unless `render()` is declared without a parameter     |
+| `catch`    | `(error, instance) => void \| Promise<void>` | Handles this element's errors in place of the `catch()` method |
+| `children` | `ReactNode`              | Passed through when no `render()` is declared; otherwise read from the render parameter or `this.props` |
 
 `is` runs after props apply but **before** the `new()` lifecycle hook - so it may configure state that `new()` then observes. Use `ref` (object or callback, per React convention) for post-mount imperative access instead.
 
@@ -174,15 +182,55 @@ Assignment also works at runtime (`instance.Sidebar = fn`), which triggers a ref
 
 <br />
 
+## Rendering an instance
+
+An activated Component instance is itself a renderable element - place it as `{instance}`, alone or in an array:
+
+```tsx
+const items = [Item.new({ label: 'First' }), Item.new({ label: 'Second' })];
+
+<ul>{items}</ul>;
+```
+
+- Each is keyed by [`key`](#thiskey).
+- Placing subscribes, provides context and installs the instance's boundaries, but doesn't own it: `mount()` doesn't run, and unmounting only detaches. Whoever created it destroys it with `instance.set(null)`.
+- The same instance may be placed beneath separate parents.
+
+<br />
+
+## Providing a State: `<Component for>`
+
+The bare `Component` class - not a subclass - with a `for` attribute provides one State to its children. This replaces the deprecated `Provider`.
+
+```tsx
+<Component for={Session} name="Ada" is={(session) => session.load()}>
+  <App />
+</Component>
+```
+
+| Attribute  | Description                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| `for`      | A State class - constructed, owned, destroyed with the element - or an instance someone else owns |
+| `is`       | Called with each instance the element constructs; class only                               |
+| `fallback` | Wraps children in a Suspense boundary; without it, `<Component for>` adds none              |
+| `catch`    | Error boundary for children, `(error, instance)`                                            |
+| `[field]`  | Typed from the provided State; assigned to it on every render                               |
+
+A provided class's `mount()` runs with the element's; an instance passed in is never mounted or destroyed by it. Changing `for` releases the previous item and provides the next. One State per element - compose several as fields of a parent State. See [Context](/docs/guides/context#providing-with-component-for).
+
+<br />
+
 ## TypeScript shape
 
 ```ts
 declare class Component extends State {
   readonly props: Component.Props<this>;
+  readonly key: string;
   fallback: Component.Node;
 
   render(props?: {}): Component.Node;
-  catch?(error: Error): Promise<void> | void;
+  catch?(error: Error, instance: this): Promise<void> | void;
+  mount?(): (() => void) | void;
 }
 ```
 
@@ -196,4 +244,4 @@ Props are inferred automatically from state fields plus any `render(props)` decl
 
 - [Components guide](/docs/guides/components) - patterns, subclass composition, children, context.
 - [State](/docs/api/state) - the base class.
-- [Hooks](/docs/api/hooks) - `State.use`, `State.get`, `Provider`, `Consumer`.
+- [Hooks](/docs/api/hooks) - `State.use` and `State.get`.

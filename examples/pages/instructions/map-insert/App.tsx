@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, map } from '@expressive/react';
+import { Component, map } from '@expressive/mvc';
 
 // `map<K, V>()` is the insert mode: a reactive Map of values you place by
 // key with `set(key, value)` - no factory, no spawning. Bumping one key
@@ -56,7 +56,7 @@ export default class Inventory extends Component {
           <input
             value={item}
             placeholder="Add or bump an item…"
-            onChange={(e) => (this.item = e.target.value)}
+            onInput={(e) => (this.item = e.currentTarget.value)}
           />
           <button type="submit">Add</button>
         </form>

@@ -1,4 +1,4 @@
-import State, { Component, Provider, get, has, map, ref, set } from '@expressive/react';
+import State, { Component, get, has, map, ref, set } from '@expressive/react';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -309,9 +309,9 @@ function Renderer() {
       <Text testID="count">count: {counter.count}</Text>
       <Text testID="doubled">doubled: {counter.doubled}</Text>
       <Text testID="renders">renders: {renders.current}</Text>
-      <Provider for={counter}>
+      <Component for={counter}>
         <Panel label="panel" />
-      </Provider>
+      </Component>
       <Broken />
       <Pressable testID="bump" style={styles.button} onPress={counter.bump}>
         <Text style={styles.buttonText}>bump</Text>

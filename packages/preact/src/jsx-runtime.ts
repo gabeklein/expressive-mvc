@@ -1,26 +1,27 @@
 import { isValidElement } from 'preact';
 import { Children } from 'preact/compat';
 import { Fragment, jsx, jsxs } from 'preact/jsx-runtime';
-import { host } from '@expressive/mvc/runtime';
+import { host } from '@expressive/mvc/jsx-runtime';
 
-import type { ComponentChildren, JSX as PreactJSX, Ref } from 'preact';
+import type { Component as PreactComponent, ComponentChildren, JSX as PreactJSX, RefObject } from 'preact';
 
-declare module '@expressive/mvc/runtime' {
+declare module '@expressive/mvc/jsx-runtime' {
   interface Host {
     node: ComponentChildren;
     intrinsics: PreactJSX.IntrinsicElements;
+    elementClass: PreactComponent<any, any>;
   }
 }
 
 declare module '@expressive/mvc' {
   namespace Component {
-    interface BaseProps<T extends Component> {
+    interface BaseProps<T extends Component<any>> {
       /**
        * Ref which receives the instance of this component.
        * (Preact JSX does not add `ref` for non-preact classes, so it is
        * declared here - React infers it from its own class attributes.)
        */
-      ref?: Ref<T>;
+      ref?: RefObject<any> | { bivariant(instance: T | null): void }['bivariant'] | null;
     }
   }
 }

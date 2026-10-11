@@ -1,9 +1,7 @@
 import './App.css';
-
-import '@expressive/react';
+import type { Component } from '@expressive/mvc';
 
 import { Link, Route, Router } from '@expressive/router';
-import type { ReactNode } from 'react';
 
 class Museum extends Router {
   static global = false;
@@ -37,7 +35,7 @@ export default () => (
   </Museum>
 );
 
-const Frame = (props: { children?: ReactNode }) => (
+const Frame = (props: { children?: Component.Node }) => (
   <div className="container">
     <h1>Transitions</h1>
     <p>

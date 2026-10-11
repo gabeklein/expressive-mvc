@@ -1,8 +1,7 @@
 import './App.css';
 
-import { Component, get } from '@expressive/react';
+import { Component, get } from '@expressive/mvc';
 import { Link, NavLinks, Route, Router } from '@expressive/router';
-import type { ReactNode } from 'react';
 
 export default () => (
   <Router>
@@ -19,7 +18,7 @@ export default () => (
   </Router>
 );
 
-const Frame = (props: { children?: ReactNode }) => (
+const Frame = (props: { children?: Component.Node }) => (
   <div className="container">
     <h1>Navigation</h1>
     <p>
@@ -42,7 +41,7 @@ const Frame = (props: { children?: ReactNode }) => (
 );
 
 class Menu extends NavLinks {
-  List(props: { children?: ReactNode }) {
+  List(props: { children?: Component.Node }) {
     return <nav className="menu">{props.children}</nav>;
   }
 
@@ -50,7 +49,7 @@ class Menu extends NavLinks {
     return <Tab to={props.route.path}>{props.label}</Tab>;
   }
 
-  Group(props: { route: Route; children?: ReactNode }) {
+  Group(props: { route: Route; children?: Component.Node }) {
     return (
       <section className="group">
         <h4>{props.route.label}</h4>

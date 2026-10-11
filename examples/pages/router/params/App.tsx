@@ -1,8 +1,7 @@
 import './App.css';
 
-import { Component, get } from '@expressive/react';
+import { Component, get } from '@expressive/mvc';
 import { Link, Route, Router } from '@expressive/router';
-import type { ReactNode } from 'react';
 
 const PAGES = ['intro', 'install', 'api'];
 
@@ -19,7 +18,7 @@ export default () => (
   </Router>
 );
 
-const Frame = (props: { children?: ReactNode }) => (
+const Frame = (props: { children?: Component.Node }) => (
   <div className="container">
     <h1>Params</h1>
     <p>
@@ -42,7 +41,7 @@ const Frame = (props: { children?: ReactNode }) => (
 
 const Index = () => <p>Pick Docs above to enter a section with a param.</p>;
 
-const Section = (props: { children?: ReactNode }) => (
+const Section = (props: { children?: Component.Node }) => (
   <div className="section">
     <header>docs section</header>
     {props.children}

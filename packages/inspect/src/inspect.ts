@@ -1,8 +1,11 @@
-import { Context, State } from '@expressive/mvc';
-import { isElement } from '@expressive/mvc/runtime';
+import { Context, State, unbind } from '@expressive/mvc';
+import { listener } from '@expressive/mvc/observable';
+import { isElement } from '@expressive/mvc/jsx-runtime';
 
-import { act as run, journal, note, noteCall, noteDestroy, recordsCalls, type Frame, type Query } from './journal';
-import { entries, parsePath, serialize, walk } from './serialize';
+import { journal, note, noteCall, noteCaught, noteDestroy, notePatch, type Frame, type Query } from './journal';
+import { entries, parsePath, project, serialize, walk, type Select } from './serialize';
+import { bracket } from './bracket';
+import { tick, unreached, unsettled, type Act } from './settle';
 import { forget, seen, type TypeInfo } from './types';
 
 export interface Model extends TypeInfo {
@@ -44,15 +47,68 @@ const weak = (state: State): Row['ref'] =>
   typeof WeakRef === 'function' ? new WeakRef(state) : { deref: () => state };
 
 const live = new Map<string, Row>();
-const hooks = new Map<typeof State, () => boolean>();
-const wrapped = new WeakSet<State>();
+const hooks = new Map<typeof State, () => void>();
+
+const COPIES = Symbol.for('@expressive/mvc');
+
+const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const wrappers = new WeakMap<State, Instance>();
 const spans = new WeakMap<State, Span>();
 const reaper = new Reaper<string>(collected);
 
 let version = 0;
-let cached: { version: number; parents: Map<State, State> } | undefined;
+let cached: { version: number; owners: Map<State, State>; holders: Map<State, State> } | undefined;
 let lost = 0;
+let tally = counts();
+let copies = 1;
+let unwatch: (() => void) | undefined;
+
+function counts(): Record<string, number> {
+  return { dead: 0, unused: 0, getter: 0, setup: 0, effect: 0 };
+}
+
+/** The report `observe` last saw - the chain is synchronous, so `unhandled` checks it against its own. */
+let last: { error: unknown; event?: { handled: boolean } } | undefined;
+
+function observe(this: State, error: unknown, kind: string, key?: string) {
+  tally[kind]++;
+  last = { error, event: noteCaught(this, error, kind, key) };
+  return error;
+}
+
+function unhandled(this: State, error: unknown, kind: string, key?: string) {
+  if (last?.error !== error) observe.call(this, error, kind, key);
+  if (last!.event) last!.event.handled = false;
+  last = undefined;
+  return error;
+}
+
+export function clearCaught(): void {
+  tally = counts();
+}
+
+/** Count loaded copies of mvc from the list each one joins on first construction; warn once on a second. */
+function watchCopies() {
+  const list = ((globalThis as { [COPIES]?: unknown[] })[COPIES] ||= []);
+  const { push } = list;
+  const check = () => {
+    const was = copies;
+    copies = new Set([State, ...list]).size;
+    if (copies > 1 && was === 1)
+      console.warn(`${copies} copies of @expressive/mvc are loaded - inspect sees only the one it imports.`);
+  };
+
+  list.push = (...items) => {
+    const length = push.apply(list, items);
+    check();
+    return length;
+  };
+
+  check();
+  unwatch = () => {
+    list.push = push;
+  };
+}
 
 /** Registered instances still reachable, claimed or not. */
 function registered(): State[] {
@@ -63,7 +119,7 @@ function registered(): State[] {
 
 /** Instances on the mainline: claimed, or too young to judge, or every one when no host renders. */
 function* mainline(): Generator<State> {
-  const parents = ownership();
+  const parents = reach();
   for (const state of registered()) if (!orphaned(state, parents)) yield state;
 }
 
@@ -144,7 +200,7 @@ export class Instance {
 
   /** Reached by a host commit (`mount`), a claimed owner, or `static global`. Always true without a host. */
   get claimed() {
-    return !orphaned(this.state, ownership());
+    return !orphaned(this.state, reach());
   }
 
   /** Registration time (ms). */
@@ -180,8 +236,9 @@ export class Instance {
     return undefined;
   }
 
-  get(path?: string): unknown {
-    return serialize(walk(this.state, path));
+  get(path?: string, select?: Select): unknown {
+    const value = walk(this.state, path);
+    return select ? project(value, select) : serialize(value);
   }
 
   model(): Model {
@@ -189,8 +246,8 @@ export class Instance {
   }
 
   /** Run `work`, settle, and return the frames it produced. */
-  act(work: (state: State) => unknown): Promise<Frame[]> {
-    return run(() => work(this.state));
+  act(work: (state: State) => unknown, options?: Act): Promise<Frame[]> {
+    return act(() => work(this.state), options);
   }
 
   /** Call `fn` on each update, and with `null` on destroy; `keys` narrows updates. Returns unsubscribe. */
@@ -211,14 +268,20 @@ export class Instance {
 }
 
 export function attach(Type: typeof State = State): () => void {
-  if (!hooks.has(Type))
-    hooks.set(
-      Type,
-      Type.on(function (this: State) {
+  if (!unwatch) watchCopies();
+
+  if (!hooks.has(Type)) {
+    const observed = new Map<typeof State, () => void>();
+    const stopCatch = Type.on({ catch: unhandled });
+    const stopCall = Type.on({ type: trace, method: retrace });
+    const stopSetup = Type.on({
+      setup(this: State) {
         const self = this.is;
+        const T = self.constructor as typeof State;
         const id = String(self);
         const span: Span = { since: Date.now(), claimed: false, settled: false };
-        seen(self.constructor as typeof State);
+        if (!observed.has(T)) observed.set(T, T.on({ catch: observe }));
+        seen(T);
         live.set(id, { ref: weak(self) });
         spans.set(self, span);
         reaper.register(self, id, self);
@@ -226,8 +289,8 @@ export function attach(Type: typeof State = State): () => void {
           span.settled = true;
         }, 0);
         version++;
-        if (recordsCalls()) wrap(self);
         mounts(self);
+        const unpatch = listener(self, () => notePatch(self), REFRESH);
         const stop = self.set((key) => {
           const store = entries(self);
           if (typeof key === 'string' && typeof store.get(key) === 'object') version++;
@@ -235,14 +298,22 @@ export function attach(Type: typeof State = State): () => void {
         });
         return () => {
           stop();
+          unpatch();
           live.delete(id);
           reaper.unregister(self);
           span.until = Date.now();
           version++;
           noteDestroy(self);
         };
-      })
-    );
+      }
+    });
+    hooks.set(Type, () => {
+      for (const stop of observed.values()) stop();
+      stopCatch();
+      stopCall();
+      stopSetup();
+    });
+  }
 
   return () => {
     hooks.get(Type)?.();
@@ -256,6 +327,10 @@ export function detach(): void {
   live.clear();
   cached = undefined;
   lost = 0;
+  tally = counts();
+  copies = 1;
+  unwatch?.();
+  unwatch = undefined;
   journal.reset();
   forget();
 }
@@ -265,10 +340,25 @@ export function find(target: string): Instance | undefined {
   const byId = live.get(target);
   const held = byId && (byId.held ?? byId.ref.deref());
   if (held) return Instance.of(held);
+
+  const types = new Map<typeof State, string>();
+  let first: State | undefined;
+
   for (const pool of [mainline(), abandoned()])
-    for (const state of pool)
-      if (seen(state.constructor as typeof State).type === target) return Instance.of(state);
-  return undefined;
+    for (const state of pool) {
+      const Type = state.constructor as typeof State;
+      const info = seen(Type);
+      if (info.type !== target) continue;
+      first ??= state;
+      types.set(Type, info.typeId);
+    }
+
+  if (types.size > 1)
+    throw new Error(
+      `${target} matches ${types.size} classes (${[...types.values()].join(', ')}) - address by instance id or owner path, or label() one. models() lists their construction sites.`
+    );
+
+  return first && Instance.of(first);
 }
 
 export function instances(): Instance[] {
@@ -281,13 +371,24 @@ export function orphans(): Instance[] {
 }
 
 function* abandoned(): Generator<State> {
-  const parents = ownership();
+  const parents = reach();
   for (const state of registered()) if (orphaned(state, parents)) yield state;
 }
 
-/** Counts worth a look: live orphans, and unclaimed instances the collector already reaped. */
-export function warnings(): { orphans: number; collected: number } {
-  return { orphans: orphans().length, collected: lost };
+export interface Health {
+  /** Live instances no host, owner, or root slot claimed. */
+  orphans: number;
+  /** Unclaimed instances the collector already reaped. */
+  collected: number;
+  /** Loaded copies of `@expressive/mvc` - more than 1 means inspect cannot see every State. */
+  copies: number;
+  /** Reports by kind, including ones an app handler went on to handle; zeroed by `journal.clear()`. */
+  caught: Record<string, number>;
+}
+
+/** Counts worth a look before trusting what inspect shows. */
+export function health(): Health {
+  return { orphans: orphans().length, collected: lost, copies, caught: { ...tally } };
 }
 
 export function roots(): Instance[] {
@@ -318,10 +419,18 @@ export function tree(): Node[] {
   return out;
 }
 
-export function get(address?: string): unknown {
+/** Run `work` recording values; returns the frames it produced once `until` holds and activity goes quiet. */
+export async function act(work: () => unknown, options: Act = {}): Promise<Frame[]> {
+  const { frames, settled, pending, missing, timeout } = await bracket({ ...journal, get }, work, tick, options, true);
+  if (pending.length) throw unreached(timeout, pending, missing, frames);
+  if (!settled) unsettled(timeout);
+  return frames;
+}
+
+export function get(address?: string, select?: Select): unknown {
   if (!address) return models();
   const { target, path } = parsePath(address);
-  return find(target)?.get(path);
+  return find(target)?.get(path, select);
 }
 
 export function set(address: string, value: unknown): void {
@@ -349,8 +458,48 @@ export async function call(address: string, ...args: unknown[]): Promise<unknown
   return serialize(await method.apply(state, args));
 }
 
-export function wrapAll(): void {
-  for (const state of registered()) wrap(state);
+const TRACED = new WeakSet<Function>();
+
+/** Wrap a class's own methods before they bind, so each call is recorded. */
+function trace(type: typeof State) {
+  const proto = type.prototype as unknown as Record<string, Function>;
+
+  for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto)))
+    if (key != 'constructor' && key != 'render' && typeof desc.value == 'function' && desc.configurable)
+      proto[key] = traced(key, desc.value);
+}
+
+/**
+ * Rebind a method replaced through `set()` to a traced copy, so `unbind` still yields a function honoring `this`.
+ * A class bootstrapped before attach keeps its methods untraced - wrapped per instance, a hot patch would keep them.
+ */
+function retrace(this: State, key: string, fn: Function) {
+  const source = unbind(fn);
+  let proto = Object.getPrototypeOf(this);
+
+  while (!Object.prototype.hasOwnProperty.call(proto, key)) proto = Object.getPrototypeOf(proto);
+
+  if (key == 'render' || TRACED.has(source) || source === unbind(Object.getOwnPropertyDescriptor(proto, key)!.get!)) return;
+
+  const self = this as unknown as Record<string, Function>;
+
+  delete self[key];
+  self[key] = traced(key, source);
+}
+
+/** A `super` call reaches the base wrapper too; only the one `this[key]` resolves to records. */
+function traced(key: string, fn: Function) {
+  const wrapper = Object.defineProperties(
+    function (this: Record<string, Function>, ...args: unknown[]) {
+      if (unbind(this[key]) === wrapper) noteCall(this as unknown as State, key, args);
+      return fn.apply(this, args);
+    },
+    { name: { value: fn.name }, length: { value: fn.length } }
+  );
+
+  TRACED.add(wrapper);
+
+  return wrapper;
 }
 
 /** Observe the host commit: adapters call `mount?.()` once an instance is placed. */
@@ -384,49 +533,44 @@ function describe(state: State, parents: Map<State, State>): Model {
   return model;
 }
 
-function wrap(state: State) {
-  if (wrapped.has(state)) return;
-  wrapped.add(state);
-
-  const target = state as unknown as Record<string, Function>;
-  const seenKeys = new Set<string>(['render']);
-
-  for (let proto = Object.getPrototypeOf(state); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
-    for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
-      if (seenKeys.has(key) || typeof desc.get !== 'function' || desc.get !== desc.set) continue;
-
-      seenKeys.add(key);
-
-      const original = target[key];
-
-      target[key] = function (this: unknown, ...args: unknown[]) {
-        noteCall(state, key, args);
-        return original.apply(this, args);
-      };
-    }
+/** Each instance's owner, from mvc. */
+function ownership(): Map<State, State> {
+  return graph().owners;
 }
 
-function ownership(): Map<State, State> {
+/** Owner, else the first instance holding it - what keeps an instance from being abandoned. */
+function reach(): Map<State, State> {
+  return graph().holders;
+}
+
+function graph() {
   if (cached?.version !== version) {
-    const parents = new Map<State, State>();
+    const owners = new Map<State, State>();
+    const holders = new Map<State, State>();
 
-    for (const owner of registered())
-      for (const [key, value] of entries(owner)) {
-        const field = Object.getOwnPropertyDescriptor(owner, key)?.enumerable;
-        if (field || !(value instanceof State)) own(parents, owner, value);
+    for (const state of registered()) {
+      const owner = state.get(State, false);
+      if (owner) owners.set(state, owner);
+
+      for (const [key, value] of entries(state)) {
+        const field = Object.getOwnPropertyDescriptor(state, key)?.enumerable;
+        if (field || !(value instanceof State)) hold(holders, state, value);
       }
+    }
 
-    cached = { version, parents };
+    for (const [state, owner] of owners) holders.set(state, owner);
+
+    cached = { version, owners, holders };
   }
 
-  return cached.parents;
+  return cached;
 }
 
-function own(parents: Map<State, State>, owner: State, value: unknown) {
+function hold(holders: Map<State, State>, holder: State, value: unknown) {
   if (value instanceof State) {
-    if (!parents.has(value) && value !== owner) parents.set(value, owner);
+    if (!holders.has(value) && value !== holder) holders.set(value, holder);
   } else if (value && typeof value === 'object' && Symbol.iterator in value) {
     const items = value instanceof Map ? value.values() : (value as Iterable<unknown>);
-    for (const item of items) if (item instanceof State) own(parents, owner, item);
+    for (const item of items) if (item instanceof State) hold(holders, holder, item);
   }
 }

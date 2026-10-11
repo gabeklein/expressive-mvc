@@ -13,9 +13,22 @@ interface Scheduled {
   transition?: Transition;
   awaiting?: Set<Pending>;
   holds?: number;
+  owner?: object;
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
+
+/** Where errors caught in a flush go - `as` takes a report, `error` throws what is left uncaught. */
+const REPORT = {
+  as(kind: string, owner?: object, cause?: unknown, key?: string): void {
+    REPORT.error(cause);
+  },
+  error(err: unknown): void {
+    queueMicrotask(() => {
+      throw err;
+    });
+  }
+};
 let current: Iterable<Pending> | undefined;
 let replaying: Scheduled | undefined;
 
@@ -95,10 +108,10 @@ function flush() {
       if (transition) transition(handler);
       else handler();
     } catch (err) {
-      console.error(err);
-    } finally {
-      current = replaying = undefined;
+      REPORT.as('effect', scheduled.owner, err);
     }
+
+    current = replaying = undefined;
 
     if (!scheduled.holds) drop(scheduled);
   }
@@ -109,14 +122,15 @@ function flush() {
  * subscriber defers - it brackets the replay, but only where the scheduled
  * work asked for one.
  */
-function enqueue(handler: Handler, transition?: Transition) {
+function enqueue(handler: Handler, transition?: Transition, owner?: object) {
   if (!DISPATCH.size) queueMicrotask(flush);
 
   const scheduled = DISPATCH.get(handler);
 
   if (!scheduled) {
     const next: Scheduled = {
-      transition: current ? transition : undefined
+      transition: current ? transition : undefined,
+      owner
     };
 
     DISPATCH.set(handler, next);
@@ -168,4 +182,4 @@ function pending(work?: Handler): Promise<void> | (() => void) | undefined {
   return promise;
 }
 
-export { enqueue, hold, pending };
+export { enqueue, hold, pending, REPORT };

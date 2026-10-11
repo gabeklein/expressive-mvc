@@ -11,7 +11,7 @@ Recorded per instance (internal `LOOKUP` map); first explicit claim wins, and no
 | `State.new()`                                | `Context.root`   |
 | `new Context(StateClass)`                    | That context     |
 | `new State()` then `new Context(instance)`   | That context     |
-| `Provider for={StateClass}` (React)          | Provider context |
+| `<Component for={StateClass}>`               | Component context |
 
 > A bare `State.new()` resolves its `get()` lookups against root either way, but only *registers* into root - becoming findable by others - when the class opts in with `static global`. Registering is what locks a global's home to root; a private instance only falls back to root, so the first explicit context to claim it later still becomes its home. See [Root Context](#root-context).
 
@@ -79,24 +79,25 @@ Context.root.get(Private, false); // undefined - private, not a global
 
 Two rules keep a global deliberate:
 
-- **Re-declare on extend (runtime).** A subclass that would be global purely by inheriting `true` throws on activation; it must re-declare (`true` to keep, `false` to opt out). Checked only where the instance would actually register at root - a `<Provider>`-scoped one never trips it.
+- **Re-declare on extend (runtime).** A subclass that would be global purely by inheriting `true` throws on activation; it must re-declare (`true` to keep, `false` to opt out). Checked only where the instance would actually register at root - a `<Component for>`-scoped one never trips it.
 - **Lockout (compile-time).** A bare-literal `false` makes TypeScript reject a subclass `= true` (`TS2417`). Best-effort: a subclass escapes with a resolver (`static global = (() => true) as any`) or a wide cast - the sanctioned "I'm overriding the vendor" move. A plain `any`-cast boolean cannot.
 
-A context-claimed State never consults `global` - an instance provided by a `<Provider>` (or any explicit context) is unaffected by it.
+A context-claimed State never consults `global` - an instance provided by `<Component for>` (or any explicit context) is unaffected by it.
 
-> **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Provider>`. See [Server render](../react/react.md#server-render-ssr--rsc).
+> **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Component for>`. See [Server render](../react/react.md#server-render-ssr--rsc).
 
 ### Global Collision
 
-A global is a singleton - a second global instance of the same type throws on activation:
+A global may not shadow another. Activation throws if root already resolves the type (same class or a subclass instance), or if it would hide an instance whose class is one of its supertypes:
 
 ```ts
-const a = Sub.new(); // Sub declares `static global`
-Sub.new();           // throws - Sub already exists in root
+const a = Sub.new(); // Sub and Base both declare `static global`
+Sub.new();           // throws - a already exists in root
+Base.new();          // throws - a resolves Base
 Context.root.get(Sub); // a - first instance unaffected
 ```
 
-Destroy the existing one first (`a.set(null)`) and a fresh `Sub.new()` registers cleanly. To hold several deliberately, register them explicitly ([Explicit Bypass](#explicit-bypass)).
+Destroy the existing one first (`a.set(null)`) and a fresh instance registers cleanly - including a subclass replacing its base. To hold several deliberately, register them explicitly ([Explicit Bypass](#explicit-bypass)).
 
 ### Subtype Eviction
 
@@ -117,7 +118,7 @@ Context.root.get(SubB);        // b
 
 ### Explicit Bypass
 
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, JSX `Provider`) bypasses collision handling - no throw, no eviction. Global and explicit entries coexist; explicit wins on lookup.
+Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component for>`) bypasses collision handling - no throw, no eviction. Global and explicit entries coexist; explicit wins on lookup.
 
 ```ts
 const a = Sub.new();          // global, in root
@@ -157,7 +158,53 @@ ctx.get(Parent).foo = undefined;
 ctx.get(Foo); // Bar instance - heals
 ```
 
-Unlike root - where a same-type duplicate throws and ancestor contests evict permanently - scoped contexts model "candidates available here," root models "the global instance."
+Unlike root - where shadowing a global throws and sibling contests evict permanently - scoped contexts model "candidates available here," root models "the global instance."
+
+## Providing with Component
+
+Bare `Component` (not a subclass) given `for` provides one State to its children, in any host:
+
+```tsx
+<Component for={Session} name="Ada" is={(session) => …}>…</Component>  // constructed, owned
+<Component for={session} name="Ada">…</Component>                      // provided as-is
+```
+
+- A class is constructed, owned and destroyed with the element; `is` receives it; its `mount()` runs with the element's, and a replacement class takes over the mount.
+- An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted like a field - `for={new X()}` in render gives a State that lives for one render.
+- Other attributes are typed from the provided State and assign to it on every render.
+- Changing `for` releases the previous item, then provides the next.
+- No suspense boundary unless `fallback` or `catch` is passed. Bare `<Component>` without `for` keeps `fallback = null`.
+- One item only - several belong to a parent State that owns them as fields (`class Root extends State { theme = new Theme(); router = new BrowserRouter() }`), where they resolve each other as siblings with `get()`. Nesting `<Component for>` elements works but is a smell: the inner State can `get` the outer, not the reverse.
+
+## Ownership vs Context
+
+Context is where a State registers to be found; ownership is who constructed it. The two agree for a field child, and diverge whenever registration skips a level:
+
+- A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every State a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
+- Two siblings of one type are ambiguous to context (`get(Foo)` is `null`) but each has exactly one owner.
+- A host-mounted Component, `use()` instance or `<Component for>` is owned by the Component rendering it, with no field between them.
+
+`state.get(State)` reads the owner and `get(State, true)` lists what a State owns directly; neither consults context. Use a type to find a collaborator; use `State` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
+
+```ts
+class Node extends State {
+  parent = get(State, false);   // whoever constructed this Node
+  nodes = has(Node);            // owned - die with this Node
+}
+
+class Scene extends State {
+  nodes = has(Node);
+}
+
+const scene = Scene.new();
+const a = scene.nodes.add();
+const b = a.nodes.add();
+
+b.parent === a;                   // ownership, no type needed
+a.parent === scene;
+a.get(Scene) === scene;           // a type resolves its direct owner too
+scene.get(State, (node) => attach(node), true); // direct members only - a, not b
+```
 
 ## API Surface
 
@@ -181,4 +228,4 @@ Context.get(state);                    // static: state's home context
 Context.root;                          // global registry
 ```
 
-Primarily consumed via the [`get` instruction](../field/get.md) and React [`Provider`](../react/react.md).
+Primarily consumed via the [`get` instruction](../field/get.md) and [`<Component for>`](#providing-with-component).

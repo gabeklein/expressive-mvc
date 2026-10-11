@@ -36,35 +36,40 @@ function def<T>(arg1: def.Factory<T>) {
   return token as T extends void ? unknown : T;
 }
 
-State.on((self) => {
-  const store = STORE.get(self)!;
+State.on({
+  setup(self) {
+    const store = STORE.get(self)!;
 
-  for (const key in self) {
-    const property: PropertyDescriptor = Object.getOwnPropertyDescriptor(self, key) || {};
-    const entry = APPLY.get(property.value);
+    for (const key in self) {
+      const property: PropertyDescriptor = Object.getOwnPropertyDescriptor(self, key) || {};
+      const entry = APPLY.get(property.value);
 
-    if (entry === null)
-      throw new Error(
-        `${self}.${key} has an instruction applied to another State.`
-      );
+      if (entry === null)
+        throw new Error(
+          `${self}.${key} has an instruction applied to another State.`
+        );
 
-    if (!entry) continue;
+      if (!entry) continue;
 
-    const [instruction, pending] = entry;
+      if (key[0] == '_')
+        throw new Error(`${self}.${key} is unmanaged - instructions cannot apply to _ keys.`);
 
-    APPLY.set(property.value, null);
-    discard(self, pending);
-    delete (self as any)[key];
+      const [instruction, pending] = entry;
 
-    const output = instruction.call(self, key, self, store);
+      APPLY.set(property.value, null);
+      discard(self, pending);
+      delete (self as any)[key];
 
-    if (!output) continue;
+      const output = instruction.call(self, key, self, store);
 
-    const desc = typeof output == 'function' ? { destroy: output } : output;
+      if (!output) continue;
 
-    if (desc.destroy) listener(self, desc.destroy, null);
+      const desc = typeof output == 'function' ? { destroy: output } : output;
 
-    apply(self, key, desc, true);
+      if (desc.destroy) listener(self, desc.destroy, null);
+
+      apply(self, key, desc, true);
+    }
   }
 });
 

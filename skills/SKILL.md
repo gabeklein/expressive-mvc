@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (State vs Component, has-pool domain rows, region controllers), dependency snapshots, presence boundaries with get(true), Provider/context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (State vs Component, has-pool domain rows, region controllers), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
@@ -11,8 +11,9 @@ Class-based reactive state for React. State classes define reactive properties, 
 
 | Package              | Status    | Description                                                       |
 | -------------------- | --------- | ----------------------------------------------------------------- |
-| `@expressive/react`  | Published | React adapter. Primary import for State, Component, instructions. |
-| `@expressive/mvc`    | Published | Framework-agnostic core. Rarely imported directly.                |
+| `@expressive/mvc`    | Published | Framework-agnostic core. Primary import for State, Component, instructions. |
+| `@expressive/react`  | Published | React adapter. Supplies the host.                                 |
+| `@expressive/dom`    | Preview   | MVC-native client DOM renderer without a framework dependency.     |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 | `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
@@ -20,12 +21,14 @@ Class-based reactive state for React. State classes define reactive properties, 
 ### Installing
 
 ```bash
-npm install @expressive/react            # + @expressive/router for routing
+npm install @expressive/mvc @expressive/react    # + @expressive/router for routing
 ```
 
-`@expressive/mvc` comes as a dependency - **do not add it to `package.json`.** Import `State`, `Component`, and every instruction from `@expressive/react`, which re-exports the core. Depend on `@expressive/mvc` directly only for adapter-free code: a shared domain package, a Node service, a new adapter.
+`@expressive/mvc` is a peer dependency - add it to `package.json` and import `State`, `Component` and every instruction from it, whatever the host. `@expressive/react` supplies the host: import it once from your entry module so it registers. Its re-exports of the core are deprecated and will be removed, as is the default export of `State` - adapter-augmented `State.*` types are invisible through the default alias, so import `{ State }` by name.
 
 React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
+
+For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `State`, `Component` and instructions come from `@expressive/mvc`, while `render`, `Portal`, `style` and `macro` come from `@expressive/dom`. Its FC model, renderer API, portals, code splitting, and transition constraints are in [dom/dom.md](dom/dom.md).
 
 ## Start With Ownership, Not APIs
 
@@ -45,7 +48,7 @@ Counter-rules:
 - Avoid `Component` where a provided `State` suffices - Components carry React instance surface (`props`, `state`, `setState`, `forceUpdate`) that makes `.get()` IntelliSense noisier.
 - Prefer an FC over `Component` when state is zero or reducible and no boundary is wanted - a class holding only `get(...)` fields plus `render()` is an FC snapshotting `.get()`.
 - A render-less `Component` (children pass through while providing context and boundary placement) is only for cases where React tree placement is the feature: route controllers, progressive boundaries.
-- A provided State implicitly provides its child States - prefer `theme = new Theme()` on an existing owner over stacking Providers for every small controller.
+- A provided State implicitly provides its child States - prefer `theme = new Theme()` on an existing owner over stacking `<Component for>` elements for every small controller.
 
 ## Golden-Path Refactor Algorithm
 
@@ -56,7 +59,7 @@ Counter-rules:
 3. Choose `State`, `Component`, or a plain function component for each owner.
 4. Give every repeated UI entry own class in a `has` pool; actions about item belong on item.
 5. Split unrelated clusters remaining on page State to owned region States `composer = new Composer()`. Bias one concern per class - barrels are deliberate (page orchestrator, pool owner, mounting shell); shed a second concern the moment it appears, growing a feature or refactoring one alike.
-6. Provide classes directly `<Provider for={AppState}>` never an instance if only to provide it; the entrypoint Component's own fields provide implicitly - `main` only mounts `<Inbox />`.
+6. Provide classes directly `<Component for={AppState}>` never an instance if only to provide it; the entrypoint Component's own fields provide implicitly - `main` only mounts `<Inbox />`.
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
 9. Let contextual children call `.get()` instead of receiving drilled props.
@@ -73,18 +76,8 @@ Write output in the conventions of [react/style.md](react/style.md). They are op
 ## Core API
 
 ```tsx
-import State, {
-  Component,
-  ref,
-  def,
-  get,
-  has,
-  map,
-  pending,
-  set,
-  Consumer,
-  Provider
-} from '@expressive/react';
+import { State, Component, ref, def, get, has, map, pending, set } from '@expressive/mvc';
+import '@expressive/react'; // once, in the entry module
 ```
 
 ### State Class
@@ -155,7 +148,7 @@ function MyComponent() {
   return <button onClick={increment}>{count}</button>;
 }
 
-// Context state - reads nearest Provider, subscribes reactively
+// Context state - reads nearest provided instance, subscribes reactively
 function Child() {
   const { count } = Counter.get();
   return <span>{count}</span>;
@@ -247,9 +240,9 @@ function SettingsEditor() {
 
 This gives the child a strong contract - no fallback values threaded through its body. Declare gateable fields **optional** (`draft?: SettingsLocation`), not `| null`: the runtime check rejects only `undefined`, and `Required<T>` does not strip `null` from a union (see [react/react.md](react/react.md)). Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
 
-## Provider & Context
+## Providing Context
 
-Pass the class: `<Provider for={TransferState}>`. Pass an instance only when something else owns it (`<Provider for={counter}>` after `Counter.use()`). Several: `for={{ app: AppState, user: UserState }}`. `is` callbacks, fallback, field props: [react/react.md](react/react.md).
+Pass the class: `<Component for={TransferState}>`. Pass an instance only when something else owns it (`<Component for={counter}>` after `Counter.use()`). One item per element - several belong to a parent State owning them as fields, which makes them siblings; nesting `<Component for>` is a smell (the outer cannot `get` the inner). `is`, attributes, boundaries: [state/context.md](state/context.md#providing-with-component).
 
 ## Component Class
 
@@ -312,7 +305,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [state/get.md](state/get.md) - Instance `.get()` method: read values, run effects, context lookup
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
 - [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense, when a derivation should stay local
-- [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases
+- [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases; hot patching and the `hot` seam
 - [state/context.md](state/context.md) - Context system, global root, home context, ownership rules
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
@@ -320,9 +313,13 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### React
 
-- [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), Provider, Consumer, transparent writes, ForceRefresh
+- [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), providing state, transparent writes, ForceRefresh, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, effects
+
+### JSX
+
+- [dom/dom.md](dom/dom.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, Vite hot reload, exclusions
 
 ### Router
 
@@ -331,7 +328,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### Inspect
 
-- [inspect.md](inspect.md) - `@expressive/inspect`: install entry, instances in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, orphans and `warnings()`, Playwright use
+- [inspect.md](inspect.md) - `@expressive/inspect`: install entry, instances in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, orphans and `health()`, bridge and Vite relay
 
 ### Examples
 
@@ -353,4 +350,4 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 Audit a conversion as a separate pass over the diff - self-audits while authoring under-report architecture gaps.
 
-Fit and migration candidates: [examples/audit.md](examples/audit.md); approved migrations follow [react/refactor.md](react/refactor.md). Positioning: website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md).
+Fit and migration candidates: [examples/audit.md](examples/audit.md); approved migrations follow [react/refactor.md](react/refactor.md). Positioning: website-only [why](https://expressive.dev/llm/why.md), [comparisons](https://expressive.dev/llm/comparisons.md), and [dom vs React](https://expressive.dev/llm/dom.md).

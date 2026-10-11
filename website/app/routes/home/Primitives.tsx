@@ -249,7 +249,7 @@ function Instructions() {
 }
 
 const InstructionsCode = code /*tsx*/`
-  import State, { get, has, ref, set } from '@expressive/react';
+  import { State, get, has, ref, set } from '@expressive/mvc';
 
   class Profile extends State {
     first = 'Ada';
@@ -298,7 +298,7 @@ function Async() {
 }
 
 const AsyncCode = code /*tsx*/`
-  import { Component, set } from '@expressive/react';
+  import { Component, set } from '@expressive/mvc';
 
   class Profile extends Component {
     fallback = <p>Loading...</p>;
@@ -319,7 +319,7 @@ const AsyncCode = code /*tsx*/`
     }
 
     render() {
-      return <h1>Hello {this.user.name}!</h1>;
+      return <h1>Hello {this.user}!</h1>;
     }
   }
 
@@ -340,7 +340,7 @@ function Computed() {
 }
 
 const GettersCode = code /*tsx*/`
-  import State from '@expressive/react';
+  import { State } from '@expressive/mvc';
 
   type Item = { name: string; price: number; qty: number };
 
@@ -443,7 +443,7 @@ function Molecules() {
 }
 
 const MoleculesCode = code /*tsx*/`
-  import { Component } from '@expressive/react';
+  import { Component } from '@expressive/mvc';
 
   // A behavior-complete base: owns data and selection,
   // leaves appearance to overrideable subcomponents.
@@ -501,7 +501,7 @@ function Globals() {
 }
 
 const GlobalsCode = code /*tsx*/`
-  import State from '@expressive/react';
+  import { State } from '@expressive/mvc';
 
   class Session extends State {
     static global = true;
@@ -516,7 +516,7 @@ const GlobalsCode = code /*tsx*/`
   // Creating outside components activates and parks in global context.
   Session.new();
 
-  // Components still reach for it with .get() - no Provider needed.
+  // Components still reach for it with .get() - nothing to provide.
   function Status() {
     const { user, login } = Session.get();
 

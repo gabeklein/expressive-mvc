@@ -1,6 +1,6 @@
 import './App.css';
 
-import State, { Component, get } from '@expressive/react';
+import { State, Component, get } from '@expressive/mvc';
 
 const TAGS = ['all', 'math', 'code'];
 
@@ -83,7 +83,7 @@ class Filters extends Component {
         <input
           value={query.text}
           placeholder="Search titles"
-          onChange={(e) => (query.text = e.target.value)}
+          onInput={(e) => (query.text = e.currentTarget.value)}
         />
         <div className="tags">
           {TAGS.map((tag) => (

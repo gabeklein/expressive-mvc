@@ -1,4 +1,5 @@
-import { Context, join } from './context';
+import { Context, host, join } from './context';
+import { REPORT } from './dispatch';
 import {
   capture,
   event,
@@ -23,7 +24,9 @@ const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
 const PENDING = new Set<State | (() => void)>();
 
 /** External lifecycle listeners for any given State class. */
-const SETUP = new WeakMap<State.Extends, Set<State.Init<any> | State.On<any>>>();
+type Handler = State.On<any>;
+
+const SETUP = new WeakMap<State.Extends, Set<Handler>>();
 
 /** Parent-child relationships. */
 const PARENT = new WeakMap<object, State | null>();
@@ -37,15 +40,34 @@ const METHODS = new WeakMap<Function, Map<string, (value: any) => void>>();
 /** List of reactive getters defined by a given type. */
 const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
+/** Replacement for a getter captured by live computed properties, for hot patching. */
+const LATEST = new WeakMap<Function, Function>();
+
+/** Event every observer treats as watched, forcing a refresh after a hot patch. */
+const REFRESH = Symbol.for('@expressive/mvc.refresh');
+
 /** Stale flags for compute closures awaiting refresh on next access. */
 const STALE = new WeakSet<() => void>();
 
 /** Whether the deadline which drains `PENDING` is already queued for this tick. */
 let QUEUED = false;
 
+/** Global list each loaded copy of this module adds its `State` to, on first construction. */
+const COPIES = Symbol.for('@expressive/mvc');
+
+let ANNOUNCED = false;
+
 /** Adopters for managed properties which have held a child State. */
 const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
+const OWNS = new WeakMap<State, Set<State>>();
+const OWNED = new WeakMap<State, Set<(child: State) => void>>();
+
+type Overlay<T> = Record<string, unknown> & {
+  [K in State.Property<T>]?: T[K] extends (...args: infer A) => infer R
+  ? (this: T, ...args: A) => R
+  : T[K];
+};
 
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
@@ -57,7 +79,7 @@ declare namespace State {
     Omit<typeof State, never>;
 
   /** State constructor arguments */
-  type Args<T extends State = any> = (Args<T> | Init<T> | Assign<T> | void)[];
+  type Args<T extends State = any> = (Args<T> | Init<T> | Overlay<T> | void)[];
 
   /**
    * Value of `static global`. A boolean opts a State in or out of the
@@ -77,12 +99,9 @@ declare namespace State {
   type Init<T extends State = State> = (
     this: T,
     thisArg: T
-  ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
+  ) => Promise<void> | (() => void) | Args<T> | Overlay<T> | void;
 
-  /**
-   * Lifecycle handlers for `State.on`, keyed by when they run. A bare `Init`
-   * function passed to `on` is sugar for `{ before }`.
-   */
+  /** Lifecycle handlers for `State.on`, keyed by when they run. */
   interface On<T extends State = State> {
     /**
      * Per-class setup, run once when the class is first bootstrapped - before
@@ -93,28 +112,47 @@ declare namespace State {
     type?(type: State.Extends<T>): void;
 
     /**
-     * Per-instance setup, run in the `prepare` phase before `observe` and the
-     * `new()` hook. Equivalent to passing a bare function to `on`. May return a
-     * cleanup, constructor args, or an assign overlay.
+     * Per-instance, once constructed - before own values are observed and
+     * before constructor args and `new()`. May return a cleanup, constructor
+     * args, or an assign overlay.
      */
-    before?(this: T, thisArg: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
+    setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Overlay<T>;
 
     /**
-     * Per-instance setup, run at the `new()` slot - after own values are
-     * observed and constructor args applied. May return a cleanup function.
+     * Per-instance, once ready - after own values are observed, constructor
+     * args applied and `new()` has run. May return a cleanup function.
      */
-    after?(this: T, self: T): void | (() => void);
+    ready?(this: T, self: T): void | (() => void);
+
+    /**
+     * Runs each time a method is bound to an instance - first access,
+     * reassignment, and the rebind after a hot patch - with the key, the bound
+     * function and the instance. Tooling and development use.
+     */
+    method?(this: T, key: string, fn: Function, self: T): void;
+
+    /**
+     * Receives what an effect, refreshing getter or async initializer of this State
+     * or a subclass threw, a destroyed write, or an instance never activated - with
+     * its `kind` (`effect`, `getter`, `setup`, `dead`, `unused`) and `key` where
+     * one applies. Most-derived class first, last registered first, each once. Return the error
+     * (or another) to pass it on; return nothing to handle it; throw to let it escape.
+     * Passed off the end, a destroyed write outputs nothing, `unused` warns,
+     * anything else escapes uncaught.
+     */
+    catch?(this: T, error: unknown, kind: 'effect' | 'getter' | 'setup' | 'dead' | 'unused', key?: string): unknown;
   }
 
   /** Object overlay to override values and methods on a state. */
   type Assign<T> = Record<string, unknown> & {
-    [K in Field<T>]?: T[K] extends (...args: infer A) => infer R
-    ? (this: T, ...args: A) => R
-    : T[K];
-  };
+    [K in Property<T>]?: T[K];
+  } & ThisType<T>;
 
   /** Subset of `keyof T` not defined by base State. **/
-  type Field<T> = Exclude<keyof T, keyof State>;
+  type Property<T> = Exclude<keyof T, keyof State>;
+
+  /** Managed subset of Property<T> - excludes unmanaged `_` keys. **/
+  type Field<T> = Exclude<Property<T>, `_${string}`>;
 
   /** Any valid key for state, including but not limited to Field<T>. */
   type Event<T = State> = Field<T> | number | symbol | (string & {});
@@ -306,15 +344,48 @@ abstract class State {
     downstream?: boolean
   ): () => void;
 
+  // Owner overloads take `State` itself only - a subclass would otherwise match
+  // them in TypeScript's subtype pass, before the `State.Type<T>` overloads.
+
+  /** Owner of this State. Throws if it has none. */
+  get<T extends typeof State>(
+    type: T & (typeof State extends T ? unknown : never),
+    required?: true
+  ): State;
+
+  /** Owner of this State. Undefined if it has none. */
+  get<T extends typeof State>(
+    type: T & (typeof State extends T ? unknown : never),
+    required: boolean
+  ): State | undefined;
+
+  /**
+   * Run a callback for each State this one owns - those owned now, then each
+   * one as it activates. Callback may return a function, called when that State
+   * is destroyed.
+   *
+   * @returns Function to stop watching.
+   */
+  get<T extends typeof State>(
+    type: T & (typeof State extends T ? unknown : never),
+    callback: (child: State) => void | (() => void),
+    downstream: true
+  ): () => void;
+
   get(
-    arg1?: State.Effect<this> | State.Type | string | null,
+    arg1?: State.Effect<this> | State.Type | typeof State | string | null,
     arg2?: boolean | Context.Expect | (() => void),
     arg3?: boolean
   ) {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (State.is(arg1)) return Context.get(self).get(arg1, arg2, arg3, self);
+    if (arg1 === State)
+      return typeof arg2 == 'function'
+        ? owned(self, arg2 as (child: State) => void)
+        : observed(this, arg1, owner(self, arg2 as boolean));
+    if (State.is(arg1))
+      return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
@@ -333,7 +404,7 @@ abstract class State {
    * Properties which are not managed by this state will be ignored.
    *
    * @param assign - Object with properties to update.
-   * @param silent - If true, listeners will not be notified. If state is destroyed, will squash update without throwing.
+   * @param silent - If true, listeners will not be notified. If state is destroyed, stores the update without reporting it.
    * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
   set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
@@ -370,7 +441,7 @@ abstract class State {
   set(key: State.Event<this>): State.Updated<this>;
 
   /**
-   * Declare an end to updates. This event is final and will freeze state.
+   * Declare an end to updates. This event is final - later writes are stored but never dispatched.
    * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
    *
    * @param status - `null` to end updates.
@@ -416,7 +487,7 @@ abstract class State {
         if (
           typeof key == 'string' ||
           typeof key == 'number' ||
-          typeof key == 'symbol'
+          typeof key == 'symbol' && key !== REFRESH
         )
           return arg1.call(self, key, self);
       });
@@ -468,18 +539,27 @@ abstract class State {
   /**
    * Register a lifecycle handler for this State and its subclasses.
    *
-   * A bare function is per-instance setup run in the `prepare` phase (sugar for
-   * `{ before }`); if it returns a function, that runs when the instance is
-   * destroyed. Pass a {@link State.On} object to hook by cadence - `type`
-   * (per-class, at bootstrap), `before` (per-instance, before `new()`), and
-   * `after` (per-instance, at the `new()` slot).
+   * Hooks by cadence - `type` (per-class, at bootstrap), `setup` (per-instance,
+   * before values are observed), `ready` (per-instance, after `new()`), and
+   * `method` (per method binding). A function alone is a `setup` handler. A
+   * function returned from `setup` or `ready` runs when the instance is destroyed.
    *
    * @returns Function to remove the handler.
    */
   static on<T extends State>(
     this: State.Extends<T>,
-    handler: State.Init<T> | State.On<T>
+    setup: NonNullable<State.On<T>['setup']>
+  ): () => boolean;
+  static on<T extends State>(
+    this: State.Extends<T>,
+    handler: State.On<T>
+  ): () => boolean;
+  static on<T extends State>(
+    this: State.Extends<T>,
+    handler: State.On<T> | NonNullable<State.On<T>['setup']>
   ) {
+    if (typeof handler == 'function') handler = { setup: handler };
+
     let setup = SETUP.get(this);
 
     if (!setup) SETUP.set(this, (setup = new Set()));
@@ -502,6 +582,10 @@ define(State, 'toString', {
   }
 });
 
+function observed<T>(from: State, key: unknown, value: T): T {
+  return value instanceof State ? touch(from, key, value) : value;
+}
+
 /** Register a user OnEvent callback, preserving `this` and `source`. */
 function callback<T extends State>(
   self: T,
@@ -520,6 +604,11 @@ function init(state: State, ...args: State.Args) {
 
   if (T === State) throw new Error('Cannot create base State.');
 
+  if (!ANNOUNCED) {
+    ANNOUNCED = true;
+    ((globalThis as { [COPIES]?: unknown[] })[COPIES] ||= []).push(State);
+  }
+
   const { before, after } = bootstrap(T);
 
   ID.set(state, `${T}-${uid()}`);
@@ -529,7 +618,10 @@ function init(state: State, ...args: State.Args) {
     for (const key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
 
-      if ('value' in desc && desc.configurable) apply(state, key, desc, true);
+      if (!('value' in desc) || !desc.configurable) continue;
+
+      if (key[0] == '_') unmanaged(state, key, desc.value);
+      else apply(state, key, desc, true);
     }
   }
 
@@ -546,6 +638,15 @@ function init(state: State, ...args: State.Args) {
         `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
       );
 
+    for (let T: State.Extends = type; T !== State; T = Object.getPrototypeOf(T)) {
+      const found = Context.root.get(T, false);
+
+      if (found && (T === type || found.constructor === T))
+        throw new Error(
+          `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+        );
+    }
+
     return Context.root.add(state);
   }
 
@@ -556,7 +657,12 @@ function init(state: State, ...args: State.Args) {
 
     if (key === null) return null;
 
-    parent(state, null);
+    if (!PARENT.has(state)) parent(state, host(state) || null);
+
+    const above = PARENT.get(state);
+    const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
+
+    if (owns) listener(state, () => void owns.delete(state), null);
 
     const queue = [...before, observe, ...args, ...after, register];
 
@@ -568,15 +674,17 @@ function init(state: State, ...args: State.Args) {
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
         if (out instanceof Promise)
-          out.catch((err) => {
-            console.error(`Async error in constructor for ${state}:`);
-            console.error(err);
-          });
+          out.catch((err) => report('setup', state, err));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);
       }
     });
+
+    if (owns) {
+      owns.add(state);
+      OWNED.get(above)?.forEach((cb) => cb(state));
+    }
 
     let end = rest.length;
 
@@ -595,13 +703,22 @@ function init(state: State, ...args: State.Args) {
 
       for (const item of PENDING)
         if (typeof item == 'function') item();
-        else console.warn(`${item} was constructed but never activated.`);
+        else report('unused', item, new Error(`${item} was constructed but never activated.`));
 
       PENDING.clear();
     });
   }
 
   PENDING.add(state);
+}
+
+function unmanaged(state: State, key: string, value: unknown) {
+  define(state, key, {
+    configurable: true,
+    enumerable: false,
+    get: () => value,
+    set: (next) => { value = next }
+  });
 }
 
 /**
@@ -625,13 +742,11 @@ function bootstrap(T: State.Extends) {
   }
 
   for (const type of chain) {
-    for (const handler of SETUP.get(type) || [])
-      if (typeof handler == 'function') before.add(handler);
-      else {
-        if (handler.before) before.add(handler.before);
-        if (handler.after) after.add(handler.after);
-        if (handler.type) onType.add(handler.type);
-      }
+    for (const handler of SETUP.get(type) || []) {
+      if (handler.setup) before.add(handler.setup);
+      if (handler.ready) after.add(handler.ready);
+      if (handler.type) onType.add(handler.type);
+    }
 
     if (type === State) continue;
 
@@ -646,47 +761,78 @@ function bootstrap(T: State.Extends) {
     METHODS.set(type, (keys = new Map(keys)));
     GETTERS.set(type, (getters = new Map(getters)));
 
-    for (const [key, desc] of Object.entries(
-      Object.getOwnPropertyDescriptors(type.prototype)
-    )) {
-      if (key == 'constructor' || !desc.configurable) continue;
-
-      if (typeof desc.get == 'function') {
-        if (desc.configurable && typeof desc.set != 'function')
-          getters.set(key, desc.get);
-
-        continue;
-      }
-
-      const { value } = desc;
-
-      if (typeof value !== 'function') continue;
-
-      function bind(this: State, original?: Function) {
-        const { is } = this;
-
-        if (is.hasOwnProperty(key) && !original) return value as Function;
-
-        const fn = original || value;
-        const bound = fn.bind(is);
-
-        UNBIND.set(bound, fn);
-        define(is, key, { value: bound, writable: true, configurable: true });
-
-        return bound;
-      }
-
-      UNBIND.set(bind, value);
-
-      keys.set(key, bind);
-      define(type.prototype, key, { get: bind, set: bind });
-    }
+    classify(type, keys, getters);
   }
 
   if (getters.size)
     before.add((self) => getters.forEach(compute, self));
 
   return { before, after };
+}
+
+/** Bind own configurable methods of a type and collect its reactive getters. */
+function classify(
+  type: State.Extends,
+  keys: Map<string, (value: any) => void>,
+  getters: Map<string, () => unknown>
+) {
+  for (const [key, desc] of Object.entries(
+    Object.getOwnPropertyDescriptors(type.prototype)
+  )) {
+    if (key == 'constructor' || !desc.configurable) continue;
+
+    const { get, set } = desc;
+
+    if (key[0] == '_' && (get || set)) {
+      define(type.prototype, key, {
+        ...desc,
+        get: get && function (this: State) { return get.call(this.is || this) },
+        set: set && function (this: State, value: unknown) { set.call(this.is || this, value) }
+      });
+
+      continue;
+    }
+
+    if (typeof get == 'function') {
+      if (typeof set != 'function') getters.set(key, get);
+
+      continue;
+    }
+
+    const { value } = desc;
+
+    if (typeof value !== 'function') continue;
+
+    function bind(this: State, original?: Function) {
+      const { is } = this;
+
+      if (is.hasOwnProperty(key) && !original) return value as Function;
+
+      const fn = original || value;
+      const bound = fn.bind(is);
+
+      UNBIND.set(bound, fn);
+      define(is, key, { value: bound, writable: true, configurable: true });
+
+      for (const handler of stages(is.constructor as State.Extends, 'method')) handler.call(is, key, bound, is);
+
+      return bound;
+    }
+
+    UNBIND.set(bind, value);
+
+    keys.set(key, bind);
+    define(type.prototype, key, { get: bind, set: bind });
+  }
+}
+
+/** Handlers of one stage along the class chain - ancestor first, in registration order, each once. */
+function stages<K extends 'method' | 'catch'>(T: State.Extends, key: K): Set<NonNullable<State.On[K]>> {
+  const found = T === State ? new Set<NonNullable<State.On[K]>>() : stages(Object.getPrototypeOf(T), key);
+
+  for (const handler of SETUP.get(T) || []) if (handler[key]) found.add(handler[key]!);
+
+  return found;
 }
 
 /**
@@ -726,16 +872,14 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
     let next: unknown;
 
     try {
-      next = getter.call(proxy, proxy);
+      next = latest(getter).call(proxy, proxy);
     } catch (err) {
-      console.warn(
-        `An exception was thrown while ${initial ? 'initializing' : 'refreshing'
-        } ${this}.${key}.`
-      );
+      if (initial) {
+        console.warn(`An exception was thrown while initializing ${this}.${key}.`);
+        throw err;
+      }
 
-      if (initial) throw err;
-
-      console.error(err);
+      if (!(err instanceof Promise)) report('getter', this, err, key);
     }
 
     update(this, key, next, !isAsync);
@@ -907,6 +1051,35 @@ function children(state: State, callback: (child: State) => void) {
   return () => set!.delete(callback);
 }
 
+function owner(state: State, required?: boolean) {
+  const found = PARENT.get(state);
+
+  if (found || required === false) return found || undefined;
+
+  throw new Error(`${state} has no owner.`);
+}
+
+/**
+ * Report States owned by this one - those active now, then each one as it
+ * activates. A function returned by `callback` runs when that State is destroyed.
+ */
+function owned(state: State, callback: (child: State) => void | (() => void)) {
+  function each(child: State) {
+    const done = callback(child);
+    if (typeof done == 'function') listener(child, () => void done(), null);
+  }
+
+  OWNS.get(state)?.forEach(each);
+
+  let set = OWNED.get(state);
+
+  if (!set) OWNED.set(state, (set = new Set()));
+
+  set.add(each);
+
+  return () => void set!.delete(each);
+}
+
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
 
@@ -976,7 +1149,7 @@ function access(state: State, property: string, required?: boolean) {
 }
 
 function assign(state: State, data: State.Assign<State>, silent?: boolean) {
-  if (!silent) event(state);
+  if (!silent && observer(state) !== null) event(state);
 
   const methods = METHODS.get(state.constructor)!;
   const getters = GETTERS.get(state.constructor);
@@ -993,7 +1166,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
       if (set) {
         set.call(state, data[key], silent);
       } else {
-        (state as any)[key] = data[key];
+        Reflect.set(state, key, data[key]);
       }
     }
   }
@@ -1004,7 +1177,7 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
  *
  * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
  *
- * If `silent` is true, the update will not dispatch events and will return `false` instead of throwing if state is destroyed.
+ * A destroyed state stores the write without dispatch, reports it unless `silent`, and returns `false`.
  */
 function update<T>(
   state: State,
@@ -1013,16 +1186,15 @@ function update<T>(
   silent?: boolean,
   own?: boolean
 ) {
-  if (observer(state) === null) {
-    if (silent) return false;
-    throw new Error(
-      `Tried to update ${state}.${String(key)} but state is destroyed.`
-    );
-  }
-
   const store = STORE.get(state)!;
 
   if (value instanceof State) value = value.is as T;
+
+  if (observer(state) === null) {
+    if (!silent) report('dead', state, new Error(`Tried to update ${state}.${String(key)} but state is destroyed.`), String(key));
+    store[key] = value;
+    return false;
+  }
 
   if (key in store && value === store[key]) return false;
 
@@ -1034,6 +1206,30 @@ function update<T>(
 
   return true;
 }
+
+/**
+ * Pass an error along `catch` handlers - most-derived class first, last registered
+ * first, one on several classes once at the outermost - until one returns nothing. Passed off
+ * the end, a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught;
+ * so does a handler's throw.
+ */
+function report(kind: Parameters<NonNullable<State.On['catch']>>[1], owner: object | undefined, error: unknown, key?: string) {
+  const state = owner instanceof State ? owner : owner && PARENT.get(owner);
+
+  if (!state) return REPORT.error(error);
+
+  try {
+    for (const handler of [...stages(state.constructor as State.Extends, 'catch')].reverse())
+      if ((error = handler.call(state, error, kind, key)) === undefined) return;
+
+    if (kind == 'unused') console.warn(error);
+    else if (kind != 'dead') REPORT.error(error);
+  } catch (err) {
+    REPORT.error(err);
+  }
+}
+
+REPORT.as = report;
 
 /**
  * Hand a value stored by an owning writer to that property's adopter,
@@ -1057,6 +1253,12 @@ function adopt(state: State, key: unknown, value: unknown) {
   }
 
   claim(value);
+}
+
+/** Resolve a getter to its latest hot-patched replacement. */
+function latest(getter: Function) {
+  for (let next; (next = LATEST.get(getter)); ) getter = next;
+  return getter;
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
@@ -1088,4 +1290,5 @@ function parent(child: object, value?: State | null) {
   return true;
 }
 
-export { event, unbind, State, parent, children, PENDING, STORE, uid, access, update, apply, compute };
+export type { Handler };
+export { adopt, event, unbind, State, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };

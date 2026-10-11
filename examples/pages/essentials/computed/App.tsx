@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 // Beyond single values: a getter is a *computed* property. It tracks
 // whatever it reads and recomputes only when those inputs change - no
@@ -29,7 +29,7 @@ class TipCalculator extends Component {
           <input
             type="number"
             value={bill}
-            onChange={(e) => (this.bill = +e.target.value)}
+            onInput={(e) => (this.bill = +e.currentTarget.value)}
           />
         </label>
 
@@ -40,7 +40,7 @@ class TipCalculator extends Component {
             min={0}
             max={30}
             value={tipPercent}
-            onChange={(e) => (this.tipPercent = +e.target.value)}
+            onInput={(e) => (this.tipPercent = +e.currentTarget.value)}
           />
         </label>
 

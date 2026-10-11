@@ -1,7 +1,6 @@
 import { vi, describe, it, expect } from 'vitest';
-import { watch } from '../observable';
 import { State } from '../state';
-import { flushMicrotasks as flush } from '../../test.setup';
+import { fires } from '../../test.setup';
 import { get } from './get';
 import { map } from './map';
 
@@ -17,30 +16,20 @@ function managed(...args: any[]): any {
   return new map.Managed(args[0]);
 }
 
+const ab = (): [string, number][] => [['a', 1], ['b', 2]];
+
 describe('factory', () => {
-  it('will create empty map', () => {
+  it('will create empty map of class identity', () => {
     const items = managed<string, number>();
 
     expect(items).toBeInstanceOf(Map);
+    expect(items).toBeInstanceOf(map.Managed);
+    expect(managed((key: string) => key)).toBeInstanceOf(map.Managed);
     expect(items.size).toBe(0);
   });
 
-  it('will construct mode as class identity', () => {
-    expect(managed<string, number>()).toBeInstanceOf(map.Managed);
-    expect(managed((key: string) => key)).toBeInstanceOf(map.Managed);
-    expect(managed<string, number>()).toBeInstanceOf(Map);
-  });
-
   it('will accept entries', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
-    expect(Array.from(items)).toEqual([
-      ['a', 1],
-      ['b', 2]
-    ]);
+    expect(Array.from(managed(ab()))).toEqual(ab());
   });
 
   it('will copy entries from initial iterable', () => {
@@ -53,51 +42,39 @@ describe('factory', () => {
   });
 
   it('will treat falsy initial as empty', () => {
+    class Test extends State {
+      items = map<string, number>(null);
+    }
+
     expect(managed<string, number>(null).size).toBe(0);
     expect(managed<string, number>(false).size).toBe(0);
+    expect(Test.new().items.size).toBe(0);
   });
 });
 
 describe('map', () => {
-  it('will get and set values', () => {
+  it('will get, set, delete and clear values', () => {
     const items = managed<string, number>();
 
     expect(items.set('a', 1)).toBe(items);
     expect(items.get('a')).toBe(1);
-  });
-
-  it('will delete values', () => {
-    const items = managed([['a', 1]]);
-
     expect(items.delete('a')).toBe(true);
     expect(items.delete('a')).toBe(false);
     expect(items.has('a')).toBe(false);
-  });
 
-  it('will clear values', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
-    items.clear();
+    items.set('a', 1).set('b', 2).clear();
 
     expect(items.size).toBe(0);
   });
 
-  it('will support object keys', () => {
+  it('will support object and undefined keys', () => {
     const key = {};
-    const items = managed([[key, 'value']]);
+    const items = managed<object | undefined, string>([[key, 'value']]);
+
+    items.set(undefined, 'other');
 
     expect(items.get(key)).toBe('value');
-  });
-
-  it('will support undefined keys', () => {
-    const items = managed<undefined, string>();
-
-    items.set(undefined, 'value');
-
-    expect(items.get(undefined)).toBe('value');
+    expect(items.get(undefined)).toBe('other');
   });
 
   it('will return snapshot from get with no args', () => {
@@ -116,53 +93,21 @@ describe('map', () => {
     expect(items.get().get('a')).toBe('unwrapped');
   });
 
-  it('will not define add', () => {
-    const items = managed<string, number>();
-
-    expect(() => (items as any).add(1)).toThrow(TypeError);
-  });
-
-  it('will resolve falsy initial as empty field', () => {
-    class Test extends State {
-      items = map<string, number>(null);
-    }
-
-    expect(Test.new().items.size).toBe(0);
+  it.each([
+    ['insert', () => managed<string, number>()],
+    ['create', () => managed((key: string) => ({ key }))]
+  ])('will not define add in %s mode', (_, create) => {
+    expect(() => (create() as any).add(1)).toThrow(TypeError);
   });
 });
 
 describe('iteration', () => {
-  it('will iterate entries', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
+  it('will iterate entries, keys and values', () => {
+    const items = managed(ab());
 
-    expect(Array.from(items.entries())).toEqual([
-      ['a', 1],
-      ['b', 2]
-    ]);
-    expect(Array.from(items)).toEqual([
-      ['a', 1],
-      ['b', 2]
-    ]);
-  });
-
-  it('will iterate keys', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
+    expect(Array.from(items.entries())).toEqual(ab());
+    expect(Array.from(items)).toEqual(ab());
     expect(Array.from(items.keys())).toEqual(['a', 'b']);
-  });
-
-  it('will iterate values', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
     expect(Array.from(items.values())).toEqual([1, 2]);
   });
 
@@ -216,32 +161,19 @@ describe('create', () => {
     expect(items.size).toBe(1);
   });
 
-  it('will destroy owned state on delete', () => {
+  it('will destroy owned state on delete and clear', () => {
     const items = managed((key: string) => new Item());
-
-    items.set('a');
-    const item = items.get('a')!;
-
-    expect(item.get(null)).toBe(false);
+    const [a, b, c] = ['a', 'b', 'c'].map((key) => items.set(key).get(key)!);
 
     items.delete('a');
 
-    expect(item.get(null)).toBe(true);
-  });
-
-  it('will destroy owned state on clear', () => {
-    const items = managed((key: string) => new Item());
-
-    items.set('a');
-    items.set('b');
-
-    const a = items.get('a')!;
-    const b = items.get('b')!;
+    expect(a.get(null)).toBe(true);
+    expect(b.get(null)).toBe(false);
 
     items.clear();
 
-    expect(a.get(null)).toBe(true);
     expect(b.get(null)).toBe(true);
+    expect(c.get(null)).toBe(true);
   });
 
   it('will pass guest through factory unowned', () => {
@@ -270,45 +202,15 @@ describe('create', () => {
     expect(items.delete('a')).toBe(true);
     expect(items.size).toBe(0);
   });
-
-  it('will not define add', () => {
-    const items = managed((key: string) => ({ key }));
-
-    expect(() => (items as any).add()).toThrow(TypeError);
-  });
 });
 
 describe('transforms', () => {
-  it('will map values through callback', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
+  it('will map values, keys and entries through callback', () => {
+    const items = managed(ab());
 
-    const doubled = items.values((value, key) => `${key}:${value * 2}`);
-
-    expect(Array.from(doubled)).toEqual(['a:2', 'b:4']);
-  });
-
-  it('will map keys and entries through callback', () => {
-    const items = managed([['a', 1]]);
-
-    expect(Array.from(items.keys((key) => key.toUpperCase()))).toEqual(['A']);
-    expect(Array.from(items.entries(([key, value]) => key + value))).toEqual([
-      'a1'
-    ]);
-  });
-
-  it('will iterate transform more than once', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
-    const values = items.values((value) => value);
-
-    expect(Array.from(values)).toEqual([1, 2]);
-    expect(Array.from(values)).toEqual([1, 2]);
+    expect(Array.from(items.values((value, key) => `${key}:${value * 2}`))).toEqual(['a:2', 'b:4']);
+    expect(Array.from(items.keys((key) => key.toUpperCase()))).toEqual(['A', 'B']);
+    expect(Array.from(items.entries(([key, value]) => key + value))).toEqual(['a1', 'b2']);
   });
 
   it('will reflect current state on each iteration', () => {
@@ -323,12 +225,7 @@ describe('transforms', () => {
   });
 
   it('will survive break in for-of', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-
-    const values = items.values((value) => value);
+    const values = managed(ab()).values((value) => value);
 
     for (const value of values) if (value) break;
 
@@ -336,11 +233,7 @@ describe('transforms', () => {
   });
 
   it('will skip entry when callback throws false', () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2],
-      ['c', 3]
-    ]);
+    const items = managed([...ab(), ['c', 3]]);
 
     const odd = items.values((value) => {
       if (value % 2 == 0) throw false;
@@ -358,44 +251,6 @@ describe('transforms', () => {
 
     expect(() => Array.from(boom)).toThrow('boom');
   });
-
-  it('will track shape and values in effect', async () => {
-    const items = managed([['a', 1]]);
-    const fn = vi.fn();
-
-    watch(items, ($) => {
-      Array.from($.values((value) => value));
-      fn();
-    });
-    fn.mockClear();
-
-    items.set('a', 2);
-    await flush();
-    expect(fn).toHaveBeenCalledTimes(1);
-
-    items.set('b', 3);
-    await flush();
-    expect(fn).toHaveBeenCalledTimes(2);
-  });
-
-  it('will track shape only through keys transform', async () => {
-    const items = managed([['a', 1]]);
-    const fn = vi.fn();
-
-    watch(items, ($) => {
-      Array.from($.keys((key) => key));
-      fn();
-    });
-    fn.mockClear();
-
-    items.set('a', 2);
-    await flush();
-    expect(fn).not.toHaveBeenCalled();
-
-    items.set('b', 3);
-    await flush();
-    expect(fn).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe('adoption', () => {
@@ -403,56 +258,44 @@ describe('adoption', () => {
     value = 0;
   }
 
+  class Owner extends State {
+    items = map<string, Item>();
+    spawn = map((key: string) => new Item());
+  }
+
+  class Member extends State {
+    owner = get(Parent);
+  }
+
+  class Parent extends State {
+    members = map((key: string) => new Member());
+    guests = map<string, Member>();
+  }
+
   it('will parent spawned state to owner', () => {
-    class Member extends State {
-      owner = get(Owner);
-    }
-
-    class Owner extends State {
-      members = map((key: string) => new Member());
-    }
-
-    const first = Owner.new();
-    const second = Owner.new();
+    const first = Parent.new();
+    const second = Parent.new();
 
     expect(first.members.set('a').get('a')!.owner).toBe(first);
     expect(second.members.set('a').get('a')!.owner).toBe(second);
   });
 
-  it('will destroy owned members with owner', () => {
-    class Owner extends State {
-      items = map((key: string) => new Item());
-    }
-
+  it('will destroy owned members but not guests with owner', () => {
     const owner = Owner.new();
-    const a = owner.items.set('a').get('a')!;
-    const b = owner.items.set('b').get('b')!;
-
-    owner.set(null);
-
-    expect(a.get(null)).toBe(true);
-    expect(b.get(null)).toBe(true);
-  });
-
-  it('will not destroy guests with owner', () => {
-    class Owner extends State {
-      items = map<string, Item>();
-    }
-
-    const owner = Owner.new();
+    const a = owner.spawn.set('a').get('a')!;
+    const b = owner.spawn.set('b').get('b')!;
     const guest = Item.new();
 
     owner.items.set('g', guest);
     owner.set(null);
 
+    expect(a.get(null)).toBe(true);
+    expect(b.get(null)).toBe(true);
     expect(guest.get(null)).toBe(false);
+    expect(owner.spawn.size).toBe(0);
   });
 
   it('will evict guest when it dies', () => {
-    class Owner extends State {
-      items = map<string, Item>();
-    }
-
     const owner = Owner.new();
     const guest = Item.new();
 
@@ -464,10 +307,6 @@ describe('adoption', () => {
   });
 
   it('will evict every key of a destroyed value', () => {
-    class Owner extends State {
-      items = map<string, Item>();
-    }
-
     const owner = Owner.new();
     const item = new Item();
 
@@ -480,10 +319,6 @@ describe('adoption', () => {
   });
 
   it('will not destroy fresh value set to itself', () => {
-    class Owner extends State {
-      items = map<string, Item>();
-    }
-
     const owner = Owner.new();
     const item = new Item();
 
@@ -503,54 +338,27 @@ describe('adoption', () => {
       }
     }
 
-    const items = managed<string, Entry>();
-
-    items.set('a', new Entry());
+    managed<string, Entry>().set('a', new Entry());
 
     expect(ready).toHaveBeenCalled();
   });
 
   it('will throw on field reassignment', () => {
-    class Owner extends State {
-      items = map<string, Item>();
-    }
-
     const owner = Owner.new();
 
     expect(() => ((owner as any).items = null)).toThrow('is read-only');
     expect(owner.items).toBeInstanceOf(Map);
   });
 
-  it('will clear map when owner dies', () => {
-    class Owner extends State {
-      items = map((key: string) => new Item());
-    }
-
-    const owner = Owner.new();
-
-    owner.items.set('a');
-    owner.set(null);
-
-    expect(owner.items.size).toBe(0);
-  });
-
   it('will adopt fresh value stored via set', () => {
-    class Member extends State {
-      owner = get(Owner);
-    }
-
-    class Owner extends State {
-      members = map<string, Member>();
-    }
-
-    const owner = Owner.new();
+    const owner = Parent.new();
     const fresh = new Member();
 
-    owner.members.set('f', fresh);
+    owner.guests.set('f', fresh);
 
     expect(fresh.owner).toBe(owner);
 
-    owner.members.delete('f');
+    owner.guests.delete('f');
 
     expect(fresh.get(null)).toBe(true);
   });
@@ -565,22 +373,17 @@ describe('adoption', () => {
     }
 
     const owner = Owner.new();
-    const member = owner.members.get('a')!;
 
-    expect(member.owner).toBe(owner);
+    expect(owner.members.get('a')!.owner).toBe(owner);
   });
 
   it('will adopt distinct map per instance', () => {
-    class Owner extends State {
-      items = map((key: string) => new Item());
-    }
-
     const first = Owner.new();
     const second = Owner.new();
 
-    expect(first.items).not.toBe(second.items);
+    expect(first.spawn).not.toBe(second.spawn);
 
-    const item = first.items.set('a').get('a')!;
+    const item = first.spawn.set('a').get('a')!;
 
     second.set(null);
 
@@ -593,131 +396,26 @@ describe('adoption', () => {
 });
 
 describe('subscriptions', () => {
-  it('will fire on get(key) only when that key changes', async () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-    const fn = vi.fn();
+  type Items = map.Insert<string, number>;
 
-    watch(items, ($) => {
-      void $.get('a');
-      fn();
-    });
-    fn.mockClear();
-
-    items.set('b', 3);
-    await flush();
-    expect(fn).not.toBeCalled();
-
-    items.set('a', 2);
-    await flush();
-    expect(fn).toHaveBeenCalled();
-  });
-
-  it('will fire on has(key) when that key changes', async () => {
-    const items = managed<string, number>();
-    const fn = vi.fn();
-
-    watch(items, ($) => {
-      void $.has('a');
-      fn();
-    });
-    fn.mockClear();
-
-    items.set('b', 1);
-    await flush();
-    expect(fn).not.toBeCalled();
-
-    items.set('a', 1);
-    await flush();
-    expect(fn).toHaveBeenCalled();
-  });
-
-  it('will fire on size when shape changes', async () => {
-    const items = managed([['a', 1]]);
-    const fn = vi.fn();
-
-    watch(items, ($) => {
-      void $.size;
-      fn();
-    });
-    fn.mockClear();
-
-    items.set('a', 2);
-    await flush();
-    expect(fn).not.toBeCalled();
-
-    items.set('b', 2);
-    await flush();
-    expect(fn).toHaveBeenCalled();
-  });
-
-  it('will fire on iteration when values change', async () => {
-    const items = managed([
-      ['a', 1],
-      ['b', 2]
-    ]);
-    const fn = vi.fn();
-
-    watch(items, ($) => {
-      Array.from($.values());
-      fn();
-    });
-    fn.mockClear();
-
-    items.set('b', 3);
-    await flush();
-    expect(fn).toHaveBeenCalled();
-  });
-
-  it('will fire on keys when shape changes only', async () => {
-    const items = managed([['a', 1]]);
-    const fn = vi.fn();
-
-    watch(items, ($) => {
-      Array.from($.keys());
-      fn();
-    });
-    fn.mockClear();
-
-    items.set('a', 2);
-    await flush();
-    expect(fn).not.toBeCalled();
-
-    items.set('b', 2);
-    await flush();
-    expect(fn).toHaveBeenCalled();
-  });
-
-  it('will fire on deleted key subscribers', async () => {
-    const items = managed([['a', 1]]);
-    const fn = vi.fn();
-
-    watch(items, ($) => {
-      void $.get('a');
-      fn();
-    });
-    fn.mockClear();
-
-    items.delete('a');
-    await flush();
-    expect(fn).toHaveBeenCalled();
-  });
-
-  it('will not fire when setting unchanged value', async () => {
-    const items = managed([['a', 1]]);
-    const fn = vi.fn();
-
-    watch(items, ($) => {
-      void $.get('a');
-      fn();
-    });
-    fn.mockClear();
-
-    items.set('a', 1);
-    await flush();
-    expect(fn).not.toBeCalled();
+  it.each<[string, ($: Items) => unknown, (items: Items) => unknown, number]>([
+    ['will not fire get(key) when another key changes', ($) => $.get('a'), (items) => items.set('b', 3), 0],
+    ['will fire get(key) when that key changes', ($) => $.get('a'), (items) => items.set('a', 2), 1],
+    ['will fire get(key) when that key is deleted', ($) => $.get('a'), (items) => items.delete('a'), 1],
+    ['will not fire get(key) when setting unchanged value', ($) => $.get('a'), (items) => items.set('a', 1), 0],
+    ['will not fire has(key) when another key is added', ($) => $.has('c'), (items) => items.set('d', 1), 0],
+    ['will fire has(key) when that key is added', ($) => $.has('c'), (items) => items.set('c', 1), 1],
+    ['will not fire size when a value changes', ($) => $.size, (items) => items.set('a', 2), 0],
+    ['will fire size when shape changes', ($) => $.size, (items) => items.set('c', 2), 1],
+    ['will fire iteration when values change', ($) => Array.from($.values()), (items) => items.set('b', 3), 1],
+    ['will not fire keys when values change', ($) => Array.from($.keys()), (items) => items.set('a', 2), 0],
+    ['will fire keys when shape changes', ($) => Array.from($.keys()), (items) => items.set('c', 2), 1],
+    ['will fire values transform when values change', ($) => Array.from($.values((v) => v)), (items) => items.set('a', 2), 1],
+    ['will fire values transform when shape changes', ($) => Array.from($.values((v) => v)), (items) => items.set('c', 3), 1],
+    ['will not fire keys transform when values change', ($) => Array.from($.keys((k) => k)), (items) => items.set('a', 2), 0],
+    ['will fire keys transform when shape changes', ($) => Array.from($.keys((k) => k)), (items) => items.set('c', 3), 1]
+  ])('%s', async (_, read, act, runs) => {
+    expect(await fires(managed(ab()), read, act)).toBe(runs);
   });
 
   it('will track nested observable values', async () => {
@@ -727,16 +425,7 @@ describe('subscriptions', () => {
 
     const counter = Counter.new();
     const items = managed([['counter', counter]]);
-    const fn = vi.fn();
 
-    watch(items, ($) => {
-      void $.get('counter')?.count;
-      fn();
-    });
-    fn.mockClear();
-
-    counter.count++;
-    await flush();
-    expect(fn).toHaveBeenCalled();
+    expect(await fires(items, ($) => $.get('counter')?.count, () => counter.count++)).toBe(1);
   });
 });

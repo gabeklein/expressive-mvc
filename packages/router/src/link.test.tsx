@@ -7,6 +7,15 @@ import { Route } from './route';
 
 const router = browserRouter();
 
+type Props = {
+  to?: string;
+  replace?: boolean;
+  target?: string;
+  download?: string | boolean;
+  className?: string;
+  onClick?: (event: any) => void;
+};
+
 function leftClick(link: Link) {
   const preventDefault = vi.fn();
   const go = Reflect.get(link, 'go') as (event: {
@@ -30,72 +39,70 @@ function leftClick(link: Link) {
   return preventDefault;
 }
 
+const link = (props: Props = {}, route = '/') =>
+  render(
+    <Route to={route}>
+      <Link to="/about" {...props}>about</Link>
+    </Route>
+  ).container.querySelector('a')!;
+
+function grab(props: Props) {
+  let link!: Link;
+  const Grab = () => {
+    link = Link.get();
+    return <>about</>;
+  };
+  render(
+    <Route to="/">
+      <Link {...props}><Grab /></Link>
+    </Route>
+  );
+  return link;
+}
+
+async function click(a: HTMLAnchorElement, init: object = {}) {
+  let result!: boolean;
+  await act(async () => {
+    result = fireEvent.click(a, { button: 0, ...init });
+  });
+  return result;
+}
+
 describe('Link', () => {
-  it('renders an anchor with the target href', () => {
-    const view = render(
-      <Route to="/">
-        <Link to="/about">about</Link>
-      </Route>
-    );
-    const a = view.container.querySelector('a')!;
+  it('will render an anchor with the target href', () => {
+    const a = link();
     expect(a.getAttribute('href')).toBe('/about');
     expect(a.textContent).toBe('about');
   });
 
-  it('passes through bare invocation as foreign content', () => {
-    let link!: Link;
-    const Grab = () => {
-      link = Link.get();
-      return <>about</>;
-    };
-    render(
-      <Route to="/">
-        <Link to="/about"><Grab /></Link>
-      </Route>
-    );
+  it('will pass through bare invocation as foreign content', () => {
+    const link = grab({ to: '/about' });
     expect(Link.prototype.render.call(link)).toBeUndefined();
   });
 
-  it('navigates on plain left-click', async () => {
-    const view = render(
-      <Route to="/">
-        <Link to="/about">about</Link>
-      </Route>
-    );
-    await act(async () => {
-      fireEvent.click(view.container.querySelector('a')!, { button: 0 });
-    });
+  it.each([
+    ['will navigate on plain left-click', {}],
+    ['will navigate with target=_self', { target: '_self' }],
+    ['will navigate with target=_SELF', { target: '_SELF' }],
+    ['will navigate with download={false}', { download: false }]
+  ])('%s', async (_, props) => {
+    expect(await click(link(props))).toBe(false);
     expect(router.current.path).toBe('/about');
   });
 
-  it('ignores modifier-clicks (meta/ctrl/shift/alt)', async () => {
-    const view = render(
-      <Route to="/">
-        <Link to="/about">about</Link>
-      </Route>
-    );
-    const a = view.container.querySelector('a')!;
-    for (const mod of ['metaKey', 'ctrlKey', 'shiftKey', 'altKey'] as const) {
-      await act(async () => {
-        fireEvent.click(a, { button: 0, [mod]: true });
-      });
-      expect(router.current.path).toBe('/');
-    }
-  });
-
-  it('ignores middle-click (button !== 0)', async () => {
-    const view = render(
-      <Route to="/">
-        <Link to="/about">about</Link>
-      </Route>
-    );
-    await act(async () => {
-      fireEvent.click(view.container.querySelector('a')!, { button: 1 });
-    });
+  it.each([
+    ['will ignore meta-click', {}, { metaKey: true }],
+    ['will ignore ctrl-click', {}, { ctrlKey: true }],
+    ['will ignore shift-click', {}, { shiftKey: true }],
+    ['will ignore alt-click', {}, { altKey: true }],
+    ['will ignore middle-click', {}, { button: 1 }],
+    ['will not navigate if consumer onClick prevents default', { onClick: (e: any) => e.preventDefault() }, {}]
+  ])('%s', async (_, props, init) => {
+    await click(link(props), init);
     expect(router.current.path).toBe('/');
   });
 
-  it('respects defaultPrevented', async () => {
+  it('will respect defaultPrevented from an ancestor', async () => {
     const view = render(
       <Route to="/">
         <div onClickCapture={(e) => e.preventDefault()}>
@@ -103,72 +110,26 @@ describe('Link', () => {
         </div>
       </Route>
     );
-    await act(async () => {
-      fireEvent.click(view.container.querySelector('a')!, { button: 0 });
-    });
+    await click(view.container.querySelector('a')!);
     expect(router.current.path).toBe('/');
   });
 
   it('will call consumer onClick before navigating', async () => {
-    let clicked = false;
-    const view = render(
-      <Route to="/">
-        <Link to="/about" onClick={() => (clicked = true)}>
-          about
-        </Link>
-      </Route>
-    );
-    await act(async () => {
-      fireEvent.click(view.container.querySelector('a')!, { button: 0 });
-    });
-    expect(clicked).toBe(true);
+    const onClick = vi.fn(() => expect(router.current.path).toBe('/'));
+    await click(link({ onClick }));
+    expect(onClick).toHaveBeenCalledTimes(1);
     expect(router.current.path).toBe('/about');
   });
 
-  it('will not navigate if consumer onClick prevents default', async () => {
-    const view = render(
-      <Route to="/">
-        <Link to="/about" onClick={(e) => e.preventDefault()}>
-          about
-        </Link>
-      </Route>
-    );
-    await act(async () => {
-      fireEvent.click(view.container.querySelector('a')!, { button: 0 });
-    });
-    expect(router.current.path).toBe('/');
-  });
-
-  it('replace=true uses replaceState', async () => {
-    const view = render(
-      <Route to="/">
-        <Link to="/about" replace>
-          about
-        </Link>
-      </Route>
-    );
+  it('will replace history when replace', async () => {
     const before = window.history.length;
-    await act(async () => {
-      fireEvent.click(view.container.querySelector('a')!, { button: 0 });
-    });
+    await click(link({ replace: true }));
     expect(router.current.path).toBe('/about');
     expect(window.history.length).toBe(before);
   });
 
-  it('forwards extra anchor props (className, aria, data) but not to/replace', () => {
-    const view = render(
-      <Route to="/">
-        <Link
-          to="/about"
-          replace
-          className="nav"
-          aria-current="page"
-          data-id="x">
-          about
-        </Link>
-      </Route>
-    );
-    const a = view.container.querySelector('a')!;
+  it('will forward extra anchor props but not to/replace', () => {
+    const a = link({ replace: true, className: 'nav', 'aria-current': 'page', 'data-id': 'x' } as Props);
     expect(a.getAttribute('class')).toBe('nav');
     expect(a.getAttribute('aria-current')).toBe('page');
     expect(a.getAttribute('data-id')).toBe('x');
@@ -176,172 +137,42 @@ describe('Link', () => {
     expect(a.hasAttribute('replace')).toBe(false);
   });
 
-  it('resolves relative `to` against nearest Route (directory anchor)', async () => {
-    location('/posts/foo');
-    const view = render(
-      <Route to="/posts/:id">
-        <Link to="./edit">edit</Link>
-      </Route>
-    );
-    const a = view.container.querySelector('a')!;
-    expect(a.getAttribute('href')).toBe('/posts/foo/edit');
+  it.each([
+    ['will resolve relative `to` against nearest Route', '/posts/foo', '/posts/:id', './edit', '/posts/foo/edit'],
+    ['will preserve query and fragment in a relative `to`', '/posts/foo', '/posts/:id', './edit?tab=history#form', '/posts/foo/edit?tab=history#form'],
+    ['will resolve a fragment against the Route, keeping query', '/posts/foo?view=full#intro', '/posts/:id', '#details', '/posts/foo?view=full#details'],
+    ['will resolve a fragment against the root Route', '/?view=full', '/', '#details', '/?view=full#details']
+  ])('%s', async (_, at, route, to, href) => {
+    location(at);
+    const a = link({ to }, route);
+    expect(a.getAttribute('href')).toBe(href);
 
-    await act(async () => fireEvent.click(a, { button: 0 }));
-    expect(router.current.path).toBe('/posts/foo/edit');
-  });
-
-  it('will preserve query and fragment in a relative `to`', async () => {
-    location('/posts/foo');
-    const view = render(
-      <Route to="/posts/:id">
-        <Link to="./edit?tab=history#form">edit</Link>
-      </Route>
-    );
-    const a = view.container.querySelector('a')!;
-    expect(a.getAttribute('href')).toBe('/posts/foo/edit?tab=history#form');
-
-    await act(async () => fireEvent.click(a, { button: 0 }));
-    expect(router.current.url).toBe('/posts/foo/edit?tab=history#form');
-    expect(router.current.query.get('tab')).toBe('history');
-    expect(router.current.hash).toBe('#form');
-  });
-
-  it('will resolve a fragment against the Route and preserve query', async () => {
-    location('/posts/foo?view=full#intro');
-    const view = render(
-      <Route to="/posts/:id">
-        <Link to="#details">details</Link>
-      </Route>
-    );
-    const a = view.container.querySelector('a')!;
-    expect(a.getAttribute('href')).toBe('/posts/foo?view=full#details');
-
-    await act(async () => fireEvent.click(a, { button: 0 }));
-    expect(router.current.url).toBe('/posts/foo?view=full#details');
-  });
-
-  it('will resolve a fragment against the root Route', () => {
-    location('/?view=full');
-    const view = render(
-      <Route to="/">
-        <Link to="#details">details</Link>
-      </Route>
-    );
-
-    expect(view.container.querySelector('a')!.getAttribute('href')).toBe(
-      '/?view=full#details'
-    );
-  });
-
-  it('will preserve scheme-bearing and protocol-relative hrefs', () => {
-    const view = render(
-      <Route to="/">
-        <Link to="https://example.com/docs?q=1#intro">https</Link>
-        <Link to="//cdn.example.com/file.js">cdn</Link>
-      </Route>
-    );
-    const links = view.container.querySelectorAll('a');
-    expect(links[0].getAttribute('href')).toBe(
-      'https://example.com/docs?q=1#intro'
-    );
-    expect(links[1].getAttribute('href')).toBe('//cdn.example.com/file.js');
+    await click(a);
+    expect(router.current.url).toBe(href);
   });
 
   it.each([
-    'https://example.com/docs',
-    '//cdn.example.com/file.js'
-  ])('will leave external click %s to the browser', (to) => {
-    let link!: Link;
-    let clicked = false;
-    const Grab = () => {
-      link = Link.get();
-      return <>external</>;
-    };
-    render(
-      <Route to="/">
-        <Link to={to} onClick={() => (clicked = true)}>
-          <Grab />
-        </Link>
-      </Route>
-    );
+    ['will leave scheme-bearing hrefs to the browser', { to: 'https://example.com/docs?q=1#intro' }],
+    ['will leave protocol-relative hrefs to the browser', { to: '//cdn.example.com/file.js' }],
+    ['will leave target=_blank clicks to the browser', { to: '/about', target: '_blank' }],
+    ['will leave named target clicks to the browser', { to: '/about', target: 'preview' }],
+    ['will leave download clicks to the browser', { to: '/report', download: true }],
+    ['will leave empty download clicks to the browser', { to: '/report', download: '' }],
+    ['will leave named download clicks to the browser', { to: '/report', download: 'report.pdf' }]
+  ])('%s', (_, props) => {
+    const onClick = vi.fn();
+    const link = grab({ ...props, onClick });
 
-    const preventDefault = leftClick(link);
-    expect(clicked).toBe(true);
-    expect(preventDefault).not.toHaveBeenCalled();
+    expect(link.href).toBe(props.to);
+    expect(leftClick(link)).not.toHaveBeenCalled();
+    expect(onClick).toHaveBeenCalledTimes(1);
     expect(router.current.path).toBe('/');
   });
-
-  it.each(['_blank', 'preview'])(
-    'will leave target=%s clicks to the browser',
-    (target) => {
-      let link!: Link;
-      const Grab = () => {
-        link = Link.get();
-        return <>about</>;
-      };
-      render(
-        <Route to="/">
-          <Link to="/about" target={target}>
-            <Grab />
-          </Link>
-        </Route>
-      );
-
-      expect(leftClick(link)).not.toHaveBeenCalled();
-      expect(router.current.path).toBe('/');
-    }
-  );
-
-  it.each([true, '', 'report.pdf'])(
-    'will leave download=%s clicks to the browser',
-    (download) => {
-      let link!: Link;
-      const Grab = () => {
-        link = Link.get();
-        return <>report</>;
-      };
-      render(
-        <Route to="/">
-          <Link to="/report" download={download}>
-            <Grab />
-          </Link>
-        </Route>
-      );
-
-      expect(leftClick(link)).not.toHaveBeenCalled();
-      expect(router.current.path).toBe('/');
-    }
-  );
-
-  it.each([{ target: '_self' }, { target: '_SELF' }, { download: false }])(
-    'will navigate SPA-owned anchor intent',
-    async (props) => {
-      const view = render(
-        <Route to="/">
-          <Link to="/about" {...props}>
-            about
-          </Link>
-        </Route>
-      );
-
-      await act(async () => {
-        expect(
-          fireEvent.click(view.container.querySelector('a')!, { button: 0 })
-        ).toBe(false);
-      });
-
-      expect(router.current.path).toBe('/about');
-    }
-  );
 });
 
 describe('Link.match / Link.active', () => {
-  /** Counts renders so laziness can be asserted - reset per test. */
   let renders = 0;
 
-  /** Intended consumption: a subclass authors its own render (which fully
-   * replaces Link's anchor) and reads `active`/`match` to express activeness
-   * however the host wants - here a className plus a probe attribute. */
   class NavLink extends Link {
     render() {
       renders++;
@@ -356,88 +187,44 @@ describe('Link.match / Link.active', () => {
       );
     }
   }
+
   beforeEach(() => {
     renders = 0;
   });
 
-  it('match is true on an exact path', () => {
-    location('/about');
-    const view = render(
+  const nav = (to: string) =>
+    render(
       <Route to="*">
-        <NavLink to="/about">about</NavLink>
+        <NavLink to={to}>link</NavLink>
       </Route>
-    );
-    const a = view.container.querySelector('a')!;
-    expect(a.getAttribute('data-match')).toBe('true');
-    expect(a.getAttribute('class')).toBe('active');
+    ).container.querySelector('a')!;
+
+  it.each([
+    ['will match exactly on the same path', '/about', '/about', 'true', 'active'],
+    ['will match by prefix on a child path', '/blog/post-1', '/blog', 'false', 'active'],
+    ['will not match a sibling sharing a string prefix', '/blogging', '/blog', 'undefined', null],
+    ['will match a root link by prefix everywhere', '/about', '/', 'false', 'active']
+  ])('%s', (_, at, to, match, className) => {
+    location(at);
+    const a = nav(to);
+    expect(a.getAttribute('data-match')).toBe(match);
+    expect(a.getAttribute('class')).toBe(className);
   });
 
-  it('match is false on a prefix-only path', () => {
-    location('/blog/post-1');
-    const view = render(
-      <Route to="*">
-        <NavLink to="/blog">blog</NavLink>
-      </Route>
-    );
-    const a = view.container.querySelector('a')!;
-    expect(a.getAttribute('data-match')).toBe('false');
-    expect(a.getAttribute('class')).toBe('active');
-  });
-
-  it('match is undefined on an unrelated path (no false prefix)', () => {
-    location('/blogging');
-    const view = render(
-      <Route to="*">
-        <NavLink to="/blog">blog</NavLink>
-      </Route>
-    );
-    const a = view.container.querySelector('a')!;
-    expect(a.getAttribute('data-match')).toBe('undefined');
+  it('will toggle across navigation and re-render only because render reads active', async () => {
+    const a = nav('/about');
     expect(a.getAttribute('class')).toBe(null);
-  });
-
-  it('treats a root link as prefix of everything', () => {
-    location('/about');
-    const view = render(
-      <Route to="*">
-        <NavLink to="/">home</NavLink>
-      </Route>
-    );
-    expect(view.container.querySelector('a')!.getAttribute('data-match')).toBe(
-      'false'
-    );
-  });
-
-  it('toggles across navigation when read in render', async () => {
-    const view = render(
-      <Route to="*">
-        <NavLink to="/about">about</NavLink>
-      </Route>
-    );
-    const a = view.container.querySelector('a')!;
-    expect(a.getAttribute('class')).toBe(null);
+    expect(renders).toBe(1);
 
     await act(async () => router.current.goto('/about'));
     expect(a.getAttribute('class')).toBe('active');
+    expect(renders).toBe(2);
 
     await act(async () => router.current.goto('/'));
     expect(a.getAttribute('class')).toBe(null);
   });
 
-  it('re-renders on navigation only because render reads active', async () => {
-    render(
-      <Route to="*">
-        <NavLink to="/about">about</NavLink>
-      </Route>
-    );
-    expect(renders).toBe(1);
-
-    await act(async () => router.current.goto('/about'));
-    expect(renders).toBe(2);
-  });
-
-  it('does NOT re-render a Link that reads neither (lazy subscription)', async () => {
-    /** Reads neither `active` nor `match`, so it must stay inert across navigation. */
+  it('will not re-render a Link that reads neither (lazy subscription)', async () => {
     class PlainLink extends Link {
       render(props = {} as Link.Props) {
         renders++;
@@ -455,4 +242,16 @@ describe('Link.match / Link.active', () => {
     await act(async () => router.current.goto('/about'));
     expect(renders).toBe(1);
   });
+});
+
+it('will accept spread Link.Props', () => {
+  location('/');
+  const props: Link.Props = { to: '/about', children: 'About' };
+  const { getByText } = render(
+    <Route>
+      <Link {...props} />
+    </Route>
+  );
+
+  expect(getByText('About').getAttribute('href')).toBe('/about');
 });

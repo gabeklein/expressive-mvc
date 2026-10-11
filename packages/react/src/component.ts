@@ -27,7 +27,7 @@ declare module '@expressive/mvc' {
     /** @deprecated Only to satisfy host JSX. Use `this.get(State)` instead. */
     readonly context: Context;
     /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
-    readonly state: State.Values<this>;
+    readonly state: {};
     /** @deprecated Only to satisfy host JSX. Use `this.set({})` instead. */
     setState: (state: any, callback?: () => void) => void;
     /** @deprecated Only to satisfy host JSX. Use `this.set(key)` instead. */
@@ -58,22 +58,16 @@ Object.defineProperty(Component, 'use', {
 });
 
 /**
- * `State.on` handler that prepares a Component's prototype at bootstrap, before
- * mvc classifies its members:
- *
- * - On the root Component, host own-property keys are trapped so each lands as a
- *   plain own property (out of observed state); each adapter assigns its own set.
- * - capitalized methods are rewritten into subcomponents as non-configurable
- *   getters, so bootstrap skips them too.
- *
- * (Sealing `render` as the content-render seam is handled by core itself.)
- *
- * `before` covers the per-instance case: a capitalized function assigned as an
- * instance field (e.g. `Sidebar = Sidebar` to inject or override one), promoted
- * before `observe` so it is not mistaken for reactive state.
+ * On the root Component, host own-property keys are trapped so each lands as a
+ * plain own property (out of observed state); each adapter assigns its own set.
  */
 Component.on({
   type(type) {
+    const render = Object.getOwnPropertyDescriptor(type.prototype, 'render');
+
+    if (typeof render?.value == 'function')
+      Object.defineProperty(type.prototype, 'render', { ...render, configurable: false });
+
     if (type === Component)
       for (const key of Runtime.ignore)
         Object.defineProperty(Component.prototype, key, {
@@ -82,12 +76,10 @@ Component.on({
           }
         });
 
-    // capitalized methods into subcomponents
     subcomponents(type.prototype);
   },
-  before(self){
-    // capitalized instance fields into subcomponents
-    subcomponents(self, true);
+  setup(self) {
+    subcomponents(self);
   }
 });
 
@@ -129,7 +121,7 @@ function createFrame(from: Component, context: Context, children: unknown) {
 
   children = createProvider(context, children);
 
-  return from.catch
+  return from.props.catch || from.catch
     ? createElement(Runtime.ErrorBoundary, { self: from, children })
     : children;
 }
@@ -141,8 +133,8 @@ function createFrame(from: Component, context: Context, children: unknown) {
  * unmount.
  */
 function render(from: Component, context: Context) {
-  const { createElement } = Runtime;
-  const { commit, remove } = Runtime.dedupe(from, context);
+  const { createElement, dedupe } = Runtime;
+  const attempt = dedupe?.(from, context);
   const { is: owner, render } = from;
 
   const Render = () => render.call(from, from.props);
@@ -150,11 +142,11 @@ function render(from: Component, context: Context) {
     from = useWatch(from, () => {
       const release = owner.mount?.();
 
-      commit();
+      attempt?.commit();
 
       return () => {
         if (typeof release == 'function') release();
-        remove();
+        attempt?.remove();
         context.pop();
       };
     });
@@ -166,13 +158,13 @@ function render(from: Component, context: Context) {
 }
 
 /** Rewrite each own capitalized function on `target` into a subcomponent. */
-function subcomponents(target: object, configurable?: boolean) {
+function subcomponents(target: object) {
   for (const key of Object.getOwnPropertyNames(target)) {
     if (!/^[A-Z]/.test(key)) continue;
     const { value } = Object.getOwnPropertyDescriptor(target, key)!;
     if (typeof value != 'function') continue;
     Object.defineProperty(target, key, {
-      configurable,
+      configurable: true,
       get(this: Component) {
         const owner = this.is;
         let render = unbind(value);
@@ -197,7 +189,7 @@ function subcomponents(target: object, configurable?: boolean) {
           configurable: true
         });
 
-        subcomponents(this, true);
+        subcomponents(this);
       }
     });
   }

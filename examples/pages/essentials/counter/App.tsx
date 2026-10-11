@@ -1,7 +1,7 @@
 import './App.css';
 
 import Button from '@common/Button';
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 // Yes, it's a class with render(). No, it's nothing like the class
 // components you were told to avoid: no setState, no lifecycle methods,

@@ -1,37 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
-import { Component } from './component';
+import { Component, compose } from './component';
 import { Context } from './context';
-import { pending } from './dispatch';
+import { State, event } from './state';
 
-it('will default fallback to null', () => {
-  const foo = Component.new({});
-
-  expect(foo.fallback).toBe(null);
-});
-
-it('will construct without props', () => {
-  const foo = Component.new();
-
-  expect(foo.fallback).toBe(null);
-});
-
-it('will accept fallback as prop', () => {
-  const foo = Component.new({ fallback: 'Loading' });
-
-  expect(foo.fallback).toBe('Loading');
+it('will default fallback to null and accept it as prop', () => {
+  expect(Component.new().fallback).toBe(null);
+  expect(Component.new({}).fallback).toBe(null);
+  expect(Component.new({ fallback: 'Loading' }).fallback).toBe('Loading');
 });
 
 it('will render children by default', () => {
-  const foo = Component.new({ children: 'hello' });
-
-  expect(foo.render()).toBe('hello');
-});
-
-it('will render null without children', () => {
-  const foo = Component.new({});
-
-  expect(foo.render()).toBe(null);
+  expect(Component.new({ children: 'hello' }).render()).toBe('hello');
+  expect(Component.new({}).render()).toBe(null);
 });
 
 it('will derive key from instance identity', () => {
@@ -70,15 +51,13 @@ it('will call is callback once with instance', () => {
   const foo = Component.new({ is });
 
   expect(is).toBeCalledWith(foo);
-  expect(is).toBeCalled();
 
-  // ressigning props from another render.
   (foo as any).props = { is };
 
   expect(is).toHaveBeenCalledTimes(1);
 });
 
-it('will merge state when props reassigned', async () => {
+it('will merge state and reset omitted props when reassigned', async () => {
   class Foo extends Component {
     value?: number = 10;
     other?: number = 1;
@@ -93,51 +72,69 @@ it('will merge state when props reassigned', async () => {
   await foo.set();
 
   expect(foo.value).toBe(7);
-});
-
-it('will reset omitted props on reassignment', async () => {
-  class Foo extends Component {
-    value?: number = 10;
-    other?: number = 1;
-  }
-
-  const foo = Foo.new({ value: 5, other: 2 });
-
-  (foo as any).props = { value: 7 };
-  await foo.set();
-
   expect(foo.other).toBeUndefined();
 });
 
-// Seam: React may instantiate the class twice with the same props object
-// (e.g. StrictMode / reconciliation) before init completes. The second
-// construction must return the first instance, not a duplicate.
-it('will dedupe construction by props object', () => {
-  const props = { value: 1 };
+it('will accept _ keys as props', async () => {
+  class Foo extends Component {
+    _config?: string = 'foo';
+  }
 
-  const a = new Component(props);
-  const b = new Component(props);
+  const foo = Foo.new({ _config: 'bar' });
 
-  expect(b).toBe(a);
+  expect(foo._config).toBe('bar');
+
+  (foo as any).props = { _config: 'baz' };
+  await foo.set();
+
+  expect(foo._config).toBe('baz');
 });
 
-it('will release the twin discarded by dedupe', async () => {
-  const warn = mockWarn();
-  const props = { value: 1 };
+describe('twin construction', () => {
+  class Child extends State {}
 
-  const a = new Component(props);
-  const b = new Component(props);
+  class Foo extends Component {
+    child = new Child();
+    #secret = 'foo';
 
-  expect(b).toBe(a);
+    reveal() {
+      return this.#secret;
+    }
+  }
 
-  await flushMicrotasks();
+  for (const keep of ['first', 'second'] as const)
+    it(`will release the twin when the ${keep} activates`, async () => {
+      const warn = mockWarn();
+      const props = { value: 1 };
 
-  expect(warn).toBeCalledTimes(1);
-  expect(warn).toBeCalledWith(expect.stringContaining(String(a)));
+      const a = new Foo(props);
+      const b = new Foo(props);
+      const [kept, other] = keep == 'first' ? [a, b] : [b, a];
+      const released = vi.fn();
+
+      other.get(null, released);
+      event(kept);
+
+      await flushMicrotasks();
+
+      expect(kept.reveal()).toBe('foo');
+      expect(released).toBeCalledTimes(1);
+      expect(warn).not.toBeCalled();
+    });
+
+  it('will warn for each twin never activated', async () => {
+    const warn = mockWarn();
+    const props = { value: 1 };
+
+    new Component(props);
+    new Component(props);
+
+    await flushMicrotasks();
+
+    expect(warn).toBeCalledTimes(2);
+  });
 });
 
-// Seam: React passes context as a constructor argument alongside props.
-// Context instances must be filtered so they never apply as state overlays.
 it('will ignore Context passed as constructor argument', () => {
   class Foo extends Component {
     value?: number = 10;
@@ -150,25 +147,6 @@ it('will ignore Context passed as constructor argument', () => {
 });
 
 describe('render chain', () => {
-  // Render layering: a subclass authors content; each super render up the
-  // prototype chain wraps it as `children`, base-outermost. Asserted directly
-  // on the composed `render` - no host needed.
-  it('will compose subclass render as children of super', () => {
-    class Outer extends Component {
-      render(props = {} as { children?: unknown }): Component.Node {
-        return ['outer', props.children];
-      }
-    }
-
-    class Inner extends Outer {
-      render(): Component.Node {
-        return 'content';
-      }
-    }
-
-    expect(Inner.new({}).render()).toEqual(['outer', 'content']);
-  });
-
   it('will nest three levels inner to outer', () => {
     class A extends Component {
       render(props = {} as { children?: unknown }): Component.Node {
@@ -188,7 +166,6 @@ describe('render chain', () => {
       }
     }
 
-    // A (outermost) wraps B wraps C (innermost content).
     expect(C.new({}).render()).toEqual({ a: { b: 'leaf' } });
   });
 
@@ -213,15 +190,12 @@ describe('render chain', () => {
 
     expect(page.render()).toEqual(['Base', 'Hello']);
 
-    // Both layers read `this` off the same instance - render reflects updates.
     page.title = 'Updated';
     page.body = 'World';
 
     expect(page.render()).toEqual(['Updated', 'World']);
   });
 
-  // Documented footgun: a wrapper that never reads `props.children` drops the
-  // derived content. The children getter is lazy, so inner never even runs.
   it('will drop derived content if wrapper omits children', () => {
     const inner = vi.fn(() => 'never seen');
 
@@ -248,13 +222,9 @@ describe('render chain', () => {
       }
     }
 
-    // One override composes with the pass-through default to exactly itself.
     expect(Solo.new({}).render()).toBe('just me');
   });
 
-  // Intentional inverse of the footgun: a base may opt out of wrapping by
-  // detecting that a subclass supplied content. Composition synthesizes a fresh
-  // `children`, so it is not identical to the original `this.props.children`.
   it('lets a base defer to a subclass render via children identity', () => {
     class Base extends Component {
       render(props = {} as { children?: unknown }): Component.Node {
@@ -273,12 +243,8 @@ describe('render chain', () => {
 
     class Passthrough extends Base {}
 
-    // Subclass authored a render -> base defers, no wrapping.
     expect(Override.new({}).render()).toBe('replaced');
 
-    // Plain base and render-less subclass keep the base output (no composition
-    // layer, so `children` is the original props.children). The framework
-    // invokes render with the instance's own props - mirror that here.
     const base = Base.new({ children: 'x' });
     const pass = Passthrough.new({ children: 'y' });
     expect(base.render(base.props)).toEqual(['base', 'x']);
@@ -320,52 +286,253 @@ describe('props (static types)', () => {
     method() {}
   }
 
-  it('will accept writable fields and callbacks', () => {
-    const props: Component.StateProps<Test> = {
-      value: 1,
-      onClick: () => {},
-      pair: 2,
-      method() {}
-    };
+  it('will accept a subclass where its parent is expected', () => {
+    class Mesh extends Component {
+      label = 'x';
+    }
 
-    expect(props).toBeDefined();
+    class Ball extends Mesh {
+      radius = 1;
+    }
+
+    const take = (mesh: Mesh): Component => mesh;
+    const Type: typeof Mesh = Ball;
+
+    expect(take(Ball.new())).toBeInstanceOf(Mesh);
+    expect(Type).toBe(Ball);
   });
 
-  it('will reject get-only accessors', () => {
-    const props: Component.StateProps<Test> = {
+  it('will accept writable fields and callbacks only', () => {
+    const props: Component.StateProps<Test>[] = [
+      { value: 1, onClick: () => {}, pair: 2, method() {} },
       // @ts-expect-error - get-only accessor is not a settable prop
-      computed: 4
-    };
-
-    expect(props).toBeDefined();
-  });
-
-  it('will reject readonly fields', () => {
-    const props: Component.StateProps<Test> = {
+      { computed: 4 },
       // @ts-expect-error - readonly field is not a settable prop
-      id: 2
-    };
+      { id: 2 }
+    ];
 
-    expect(props).toBeDefined();
+    expect(props).toHaveLength(3);
   });
 });
 
-describe('transition', () => {
-  it('will run work and resolve where nothing observes', async () => {
-    class Test extends Component {
-      value = 'a';
+describe('composed', () => {
+  it.each([
+    ['will compose render layers of a State', false],
+    ['will compose a render sealed by the host', true]
+  ])('%s', (_, sealed) => {
+    class Frame extends State {
+      render(props?: { children?: unknown }) {
+        return `[${props?.children}]`;
+      }
     }
 
-    const test = Test.new();
-    let settled = false;
+    if (sealed)
+      Frame.on({
+        type({ prototype }) {
+          const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
+          Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
+        }
+      });
 
-    await pending(() => {
-      test.value = 'b';
-    }).then(() => {
-      settled = true;
+    class Page extends Frame {
+      render() {
+        return 'page';
+      }
+    }
+
+    expect(compose.call(Page.new(), {})).toBe('[page]');
+  });
+
+  it('will pass children through for a State without render', () => {
+    class Bare extends State {}
+
+    expect(compose.call(Bare.new(), { children: 'c' })).toBe('c');
+  });
+});
+
+describe('for', () => {
+  class Session extends State {
+    name = 'none';
+  }
+
+  it('will construct and provide a class', () => {
+    const is = vi.fn();
+    const provider = Component.new({ for: Session, name: 'Ada', is } as any);
+    const context = new Context().push(provider);
+    const session = context.get(Session);
+
+    expect(session.name).toBe('Ada');
+    expect(is).toBeCalledWith(session);
+    expect(is).not.toBeCalledWith(provider);
+  });
+
+  it('will destroy a provided class with the provider', () => {
+    const provider = Component.new({ for: Session } as any);
+    const context = new Context().push(provider);
+    const session = context.get(Session);
+
+    provider.set(null);
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will provide an instance without owning it', () => {
+    const session = Session.new();
+    const provider = Component.new({ for: session, name: 'Ada' } as any);
+    const context = new Context().push(provider);
+
+    expect(context.get(Session)).toBe(session);
+    expect(session.name).toBe('Ada');
+
+    provider.set(null);
+
+    expect(session.get(null)).toBe(false);
+  });
+
+  it('will adopt an instance not yet active', () => {
+    const session = new Session();
+    const provider = Component.new({ for: session } as any);
+
+    expect(new Context().push(provider).get(Session)).toBe(session);
+
+    provider.set(null);
+
+    expect(session.get(null)).toBe(true);
+  });
+
+  it('will forward props on update', async () => {
+    const provider = Component.new({ for: Session, name: 'Ada' } as any);
+    const context = new Context().push(provider);
+    const session = context.get(Session);
+
+    (provider as any).props = { for: Session, name: 'Grace' };
+    await expect(session).toHaveUpdated('name');
+
+    expect(session.name).toBe('Grace');
+    expect(context.get(Session)).toBe(session);
+  });
+
+  it('will release the previous item when for changes', async () => {
+    const provider = Component.new({ for: Session } as any);
+    const context = new Context().push(provider);
+    const first = context.get(Session);
+    const next = Session.new();
+
+    (provider as any).props = { for: next };
+    await flushMicrotasks();
+
+    expect(first.get(null)).toBe(true);
+    expect(context.get(Session)).toBe(next);
+
+    (provider as any).props = {};
+    await flushMicrotasks();
+
+    expect(next.get(null)).toBe(false);
+    expect(context.get(Session, false)).toBeUndefined();
+  });
+
+  it('will mount only a class it constructed', () => {
+    const cleanup = vi.fn();
+
+    class Owned extends State {
+      mount() {
+        return cleanup;
+      }
+    }
+
+    const owned = Component.new({ for: Owned } as any) as any;
+    const placed = Component.new({ for: Owned.new() } as any) as any;
+    const plain = Component.new({ for: Session } as any) as any;
+
+    owned.mount()();
+    placed.mount()();
+    plain.mount()();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will hand mount to the next class when for changes', async () => {
+    const log: string[] = [];
+
+    const tracked = (name: string) => class extends State {
+      mount() {
+        log.push(name + ':mount');
+        return () => log.push(name + ':unmount');
+      }
+
+      protected new() {
+        return () => log.push(name + ':destroy');
+      }
+    };
+
+    const First = tracked('first');
+    const Second = tracked('second');
+    const provider = Component.new({ for: First } as any) as any;
+    const release = provider.mount();
+
+    provider.props = { for: Second };
+    await flushMicrotasks();
+
+    provider.props = { for: Session };
+    await flushMicrotasks();
+
+    release();
+
+    expect(log).toEqual([
+      'first:mount',
+      'first:unmount',
+      'first:destroy',
+      'second:mount',
+      'second:unmount',
+      'second:destroy'
+    ]);
+  });
+
+  it('will keep a mount defined before it provides', () => {
+    const order: string[] = [];
+
+    class Owned extends State {
+      mount() {
+        order.push('owned');
+        return () => order.push('owned:done');
+      }
+    }
+
+    const stop = Component.on({
+      setup(self) {
+        Object.defineProperty(self, 'mount', {
+          configurable: true,
+          value: () => {
+            order.push('inherited');
+            return () => order.push('inherited:done');
+          }
+        });
+      }
     });
 
-    expect(test.value).toBe('b');
-    expect(settled).toBe(true);
+    const provider = Component.new({ for: Owned } as any) as any;
+
+    stop();
+    provider.mount()();
+
+    expect(order).toEqual(['inherited', 'owned', 'owned:done', 'inherited:done']);
+  });
+
+  it('will not default a boundary', () => {
+    const provider = Component.new({ for: Session } as any);
+    const bounded = Component.new({ for: Session, fallback: 'wait' } as any);
+
+    expect(provider.fallback).toBe(false);
+    expect(bounded.fallback).toBe('wait');
+  });
+
+  it('will not provide from a subclass', () => {
+    class Sub extends Component {}
+
+    const sub = Sub.new({ for: Session } as any);
+    const context = new Context().push(sub);
+
+    expect(sub.fallback).toBe(null);
+    expect(context.get(Session, false)).toBeUndefined();
   });
 });

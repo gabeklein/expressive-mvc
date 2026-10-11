@@ -1,5 +1,100 @@
 # @expressive/mvc
 
+## 0.88.0
+
+### Minor Changes
+
+- [#449](https://github.com/gabeklein/expressive-mvc/pull/449) [`f6d9d81`](https://github.com/gabeklein/expressive-mvc/commit/f6d9d81951916e216c5ded575a93eb8c11389a5e) A bare `Component` given `for` provides one State to its children in any host: `<Component for={Session} name="Ada">`. A class is constructed and owned by the element, receives `is`, and its `mount()` runs with the element's. An active instance is provided as-is, never destroyed. Other attributes assign to the provided State on every render. Changing `for` releases the previous item first. In `for` mode there is no default suspense boundary unless `fallback` or `catch` is passed.
+
+- [#445](https://github.com/gabeklein/expressive-mvc/pull/445) [`29d1a48`](https://github.com/gabeklein/expressive-mvc/commit/29d1a481d4d58a85c46bf67ac2656f61bef95061) **Behavior change:** a write to a destroyed state no longer throws. It is stored without dispatch - the writer reads back what it wrote, so a continuation like `do { this.again = false; await ... } while (this.again)` runs to its end - and reported to `catch` handlers with kind `dead`. Unhandled, it outputs nothing; a handler can escalate it (`State.on({ catch: (e) => { throw e } })` to fail a test run) but can no longer drop the write. Silent `set(assign, true)` stores without a report.
+
+  A late write is harmless on its own; repeated ones mean work outlived its owner - cancel it in a cleanup. Inspect counts them per instance.
+
+- [#431](https://github.com/gabeklein/expressive-mvc/pull/431) [`d816f89`](https://github.com/gabeklein/expressive-mvc/commit/d816f896d9a89060aca394ec1d41f6bcf11010a2) A State element owns a boundary from `fallback` or `catch` attributes as well as members: `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence and still passes through to a field of that name. `State.Props` types both, narrowed to a declared member's type. Function components and placed instances are unchanged. `@expressive/react` honors a `catch` attribute on a Component the same way, ahead of the member, and `Component.Props` types it. Every `catch`, member or attribute, now receives `(error, instance)`.
+
+- [#460](https://github.com/gabeklein/expressive-mvc/pull/460) [`d804a68`](https://github.com/gabeklein/expressive-mvc/commit/d804a68e987b5e8914e99aaebc7dcae3cc858df1) `get(State)` reads ownership: `state.get(State)` and the `get(State)` instruction return the owning State (`false` for optional), and `state.get(State, callback, true)` / `get(State, true)` report the States one owns. An instance nothing claims before activation - a host-rendered Component, a `use()` instance, a `<Provider>`'s - is now owned by the State its enclosing context was set up for, rather than none.
+
+- [#509](https://github.com/gabeklein/expressive-mvc/pull/509) [`bf7da4a`](https://github.com/gabeklein/expressive-mvc/commit/bf7da4a6356ff8224b9d5f8127ff7a5217e4b714) A global may no longer shadow another in root. Activation throws if root already resolves its type - including through a subclass instance - or if it would hide an instance whose class is one of its supertypes. Previously the newer global silently took the shared slot, leaving the older instance alive but unreachable. To replace a global, destroy it first (`set(null)`). Sibling subtypes still coexist, contesting their shared base.
+
+- [#454](https://github.com/gabeklein/expressive-mvc/pull/454) [`0863b57`](https://github.com/gabeklein/expressive-mvc/commit/0863b572541950346ec90e439d25c6bb3a402f35) The `Host` interface of `@expressive/mvc/jsx-runtime` takes an optional `element` member: further element types the host renders, joined into `JSX.ElementType`. Code typed with that JSX, such as a router `Route`'s `as`, then accepts them under that host.
+
+- [#441](https://github.com/gabeklein/expressive-mvc/pull/441) [`397c212`](https://github.com/gabeklein/expressive-mvc/commit/397c212d7df9b23b9fe153ce76fb5ad7ce9543bc) **Breaking:** `@expressive/mvc/runtime` is removed. Host seams (`host`, `HostRuntime`, `Host`, `childrenOf`, `isElement`, `typeOf`, `propsOf`) move to `@expressive/mvc/jsx-runtime` beside the transform contract (`jsx`, `jsxs`, `jsxDEV`, `Fragment`, `JSX`); class HMR moves to its own subpath, `@expressive/mvc/hot`, exporting `accept` and `replaced`.
+
+  - Host seam imports from `@expressive/mvc/runtime` → `@expressive/mvc/jsx-runtime`.
+  - `import { hot } from '@expressive/mvc/runtime'` → `import * as hot from '@expressive/mvc/hot'`.
+  - `declare module '@expressive/mvc/runtime'` augmentations of `Host` → `declare module '@expressive/mvc/jsx-runtime'`.
+
+  Adapters, router, inspect, and the Vite plugins import the new path.
+
+- [#458](https://github.com/gabeklein/expressive-mvc/pull/458) [`6993e16`](https://github.com/gabeklein/expressive-mvc/commit/6993e166a5b355790c6fbdae9d3b2674dcf86dd2) `State.on({ method })` for tooling: runs each time a method binds to an instance (first read, assigned replacement, rebind after a hot patch) with the key, bound function and instance.
+
+- [#437](https://github.com/gabeklein/expressive-mvc/pull/437) [`6b6498c`](https://github.com/gabeklein/expressive-mvc/commit/6b6498c334402e17a89951f4b82a8a689e361dc4) **Breaking:** `State.on` stages are renamed for when they run, and `catch` receives what was thrown instead of a `Caught`.
+
+  - `before` → `setup` - runs once the instance is constructed, before own values are observed, args, and `new()`.
+  - `after` → `ready` - runs after args apply and the instance's `new()` has run.
+  - `X.on(fn)` still registers a `setup` handler.
+  - `catch(error)` → `catch(error, kind, key?)` - `error` is what was thrown (or an `Error` for a destroyed write or an inactive state), `kind` is `effect`, `getter`, `setup`, `dead` or `unused`. Branch on `kind` where `instanceof Caught.*` was used.
+  - `Caught` and `Caught.log` are removed. Unhandled, an error escapes as thrown rather than wrapped.
+
+- [#430](https://github.com/gabeklein/expressive-mvc/pull/430) [`3390c35`](https://github.com/gabeklein/expressive-mvc/commit/3390c35059ee5290fb4c1a050b2bfd1fd0305065) `@expressive/mvc/jsx-runtime` exports `compose`, which renders `this` through its class's render layers composed up the prototype chain, so a State's render layers compose as a Component's do.
+
+### Patch Changes
+
+- [#457](https://github.com/gabeklein/expressive-mvc/pull/457) [`606bd37`](https://github.com/gabeklein/expressive-mvc/commit/606bd3701546e99719628815e88c34ceb2d94978) A subclass of a Component subclass is assignable to its parent type, so a function taking a `Mesh` accepts a `Ball extends Mesh`, and `typeof Mesh` accepts `Ball`. The `is` and `catch` attributes no longer make `props` contravariant in the instance type. In React, the deprecated `state` member, which exists only to satisfy React's JSX, is typed `{}`.
+
+- [#466](https://github.com/gabeklein/expressive-mvc/pull/466) [`13b9fd5`](https://github.com/gabeklein/expressive-mvc/commit/13b9fd55b57fb701957ef1085598b7f5f6db627d) `get(Type)` resolves any ancestor, not just the direct parent - a grandparent or a `has()` pool member's owner's owner resolves without a context. Nearest wins by depth; an ancestor beats a sibling at its own level.
+
+- [#449](https://github.com/gabeklein/expressive-mvc/pull/449) [`f6d9d81`](https://github.com/gabeklein/expressive-mvc/commit/f6d9d81951916e216c5ded575a93eb8c11389a5e) A State child assigned to a field before its owner joined a context is now dropped from that context when the field is cleared or reassigned. Previously it stayed resolvable there.
+
+- [#493](https://github.com/gabeklein/expressive-mvc/pull/493) [`b4ca589`](https://github.com/gabeklein/expressive-mvc/commit/b4ca589a276bcd37bdbdcf6405efe0bd42179105) `Host` takes `elementClass`, the instance a class must construct to render on that host; `JSX.ElementType`'s class arm reads it, so a type written against `@expressive/mvc/jsx-runtime` (like router's `as`) renders under the host's own JSX. React and Preact declare their `Component`, dom declares `State`. The class arm is no longer `abstract`.
+
+- [#485](https://github.com/gabeklein/expressive-mvc/pull/485) [`5735f12`](https://github.com/gabeklein/expressive-mvc/commit/5735f124bea800a3e87835e41dd99f10c468da03) Hot reload under Vite's module runner no longer replaces a class when an added or reordered import renumbers its bindings.
+
+- [#467](https://github.com/gabeklein/expressive-mvc/pull/467) [`5fa6a0e`](https://github.com/gabeklein/expressive-mvc/commit/5fa6a0e6fa69a7afde9c02caa3f8bcf3367d5dbe) `get(Type)` and `get(State)` called on a tracking proxy - an effect's `current`, a Component's render `this` - return a tracked State, so reads off it subscribe like a `get(Type)` field. `state.get(Type)` is typed as `Type` again, not `State`.
+
+## 0.87.0
+
+### Minor Changes
+
+- [#412](https://github.com/gabeklein/expressive-mvc/pull/412) [`a450c4f`](https://github.com/gabeklein/expressive-mvc/commit/a450c4f494b4fef28821c8d6382c5532886a8716) Add `hot.accept(id, classes)` to `@expressive/mvc/runtime` - the seam build integrations bind for class HMR. An edited `State` or `Component` class is patched onto the one already loaded and returned in its place: live instances keep their values and refresh with the new methods, getters, `render` and statics, and handlers the module registered with `on()` are replaced. A change a patch cannot carry (fields, constructor, `new()`, a member switching between method and getter) returns the new class instead, so the integration reloads - as does a subclass whose parent was replaced. `hot.replaced(listener)` reports each replaced class (`{ id, name, prev, next }`) synchronously inside `accept`, so a server host can retire instances of `prev`. The registry is keyed by module id rather than a bundler hot API, so it works in the browser and in Vite's server-side module runner alike.
+
+- [#417](https://github.com/gabeklein/expressive-mvc/pull/417) [`724b803`](https://github.com/gabeklein/expressive-mvc/commit/724b80351261a899f57f1ee2d9b1a67f16f07d0e) Fields prefixed with `_` are no longer managed. They are defined non-enumerable, never notify, stay writable after destroy, and are excluded from `get()`, iteration, `ref(this)`, and `State.Field` / `State.Values`. The new `State.Property<T>` keeps all own keys, `_` included, for overlays - `State.Assign` and React `Provider` props use it. Writes from effects, computeds, and render land on the instance. Overlays (constructor args, `set({ ... })`, Component props) still assign them, ignoring getter-only `_` accessors. A `_` prototype accessor stays plain rather than computed and always runs against the instance, so it can read `#private` fields from computeds and effects without subscribing. An instruction on a `_` key throws.
+
+  **Breaking:** a `_` field used as reactive state - such as a backing field behind a getter - no longer updates subscribers. Rename it without the prefix.
+
+### Patch Changes
+
+- [#419](https://github.com/gabeklein/expressive-mvc/pull/419) [`66abbfb`](https://github.com/gabeklein/expressive-mvc/commit/66abbfbc6034af1be394aabc82f4bb3f9989a855) A Component constructed twice for one element (React StrictMode) no longer returns the first instance from its constructor. Each construction is a full instance; whichever the host activates releases the other along with state its field initializers created. Fixes `#private` fields on Components throwing `Cannot initialize #x twice on the same object`, and field initializers running twice on the kept instance.
+
+## 0.86.0
+
+### Minor Changes
+
+- [#394](https://github.com/gabeklein/expressive-mvc/pull/394) [`451911b`](https://github.com/gabeklein/expressive-mvc/commit/451911bcf19a1117cf0bd399669a7e1af6b60129) Declare `@expressive/mvc` as a peer dependency rather than a direct one. The adapters need the matching `@expressive/mvc` minor - upgrade them together; a pinned older `@expressive/mvc` beside a newer adapter fails at install. A caret range on a 0.x version resolves to a narrow window, so an app installing `@expressive/mvc` itself could end up with a second copy - two `State` classes, two context registries, and `instanceof` failing across the boundary. As a peer there is exactly one resolution, and a mismatch surfaces at install rather than silently at runtime.
+
+  Core re-exports from `@expressive/react` and `@expressive/preact` are now marked `@deprecated`, along with the default export of `State` in all three packages. Import `{ State }`, `Component` and instructions from `@expressive/mvc`; take `Provider` and `Consumer` from the adapter, and import the adapter once from an entry module so it registers. Nothing is removed yet - the default alias in particular hides adapter-augmented `State.*` types, so the named import is the correct one regardless.
+
+- [#378](https://github.com/gabeklein/expressive-mvc/pull/378) [`99dc2e9`](https://github.com/gabeklein/expressive-mvc/commit/99dc2e9bb182dbde2ac043ff645419cfe72530d9) Add `State.on({ catch(error) })` and an exported `Caught` error class. Everything mvc used to log arrives as a `Caught` subclass, each a static property: `Inactive` (`warning: true`), `Destroyed`, `Getter`, `Init` and `Effect` (the last three with `cause`). Each carries `state`, and `key` where it applies. `name` is the case (`Caught.Effect`) and `message` names the class and ends with what was thrown, so consoles and error trackers title reports by both. Handlers chain like nested `catch` blocks - most-derived class first, last registered first: return the error (or a replacement) to pass it on, return nothing to handle it, throw to escape uncaught at once.
+
+  A write to a destroyed state still throws to the writer - now a `Caught.Destroyed` - since that is what stops a continuation writing after teardown. A `catch` handler returning nothing drops it instead.
+
+  **Behavior change:** unhandled, a warning still goes to `console.warn`, but an error thrown by an effect, a refreshing getter, or an async initializer now escapes uncaught instead of going to `console.error` - it fails a test run and crashes a Node process. Register `catch` to handle them - `State.on({ catch: Caught.log })` logs them instead, passing warnings and destroyed writes on. A getter suspending on a pending value while refreshing is not reported.
+
+  A listener returning a non-function value no longer queues it as a callback.
+
+### Patch Changes
+
+- [#353](https://github.com/gabeklein/expressive-mvc/pull/353) [`522606a`](https://github.com/gabeklein/expressive-mvc/commit/522606a7c64453cc38ebdcceab4c741a63c2a6b3) `has(Type)` now returns `has.Create<T>` and `has(Type, key)` returns `has.From<T, K>`, pools whose `add` is typed as two overloads - spawn from the key value (or constructor args) and admit an instance - instead of a single rest-tuple union, so editor hovers read `add(from: SessionInfo): Row` rather than `add(...args: [SessionInfo] | [Row]): Row`.
+
+- [#389](https://github.com/gabeklein/expressive-mvc/pull/389) [`2d9f0aa`](https://github.com/gabeklein/expressive-mvc/commit/2d9f0aad304397024ae7879b7126e26d0a93afe6) `health()` replaces `warnings()`: `{ orphans, collected, copies, caught }`.
+
+  - `copies` counts loaded copies of `@expressive/mvc` - each copy adds its `State` to `globalThis[Symbol.for('@expressive/mvc')]` the first time it constructs a State. More than one means inspect sees only its own copy's States; it warns once.
+  - `caught` counts `Caught` reports by case, including ones an app handler goes on to handle - inspect's `catch` joins each class as its first instance activates, ahead of app handlers registered before then. Inspect passes each report on, so behavior is unchanged. With the journal recording, each report is also a `caught` event carrying `{ case, message, stack, handled }` at any level; `summary()` counts them per instance. `journal.clear()` also zeroes the counts.
+
+  Inspect now needs the `@expressive/mvc` release that ships `Caught` - upgrade them together.
+
+- [#381](https://github.com/gabeklein/expressive-mvc/pull/381) [`3ce41fb`](https://github.com/gabeklein/expressive-mvc/commit/3ce41fbf5c24434dd7c44484593a4ee766a221ae) An effect or subscription (`state.get(fn)`, `State.use()` / `State.get()` in components, computed getters) no longer leaves its previous run's subscription attached when it re-runs. Listeners on the watched state - and on child states read through it - used to grow by one per re-run, so every write to a long-lived state slowed down steadily. A suspended run's subscription is released the same way once the effect runs again.
+
 ## 0.85.0
 
 ### Minor Changes

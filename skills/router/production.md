@@ -9,7 +9,7 @@ mutations, caching, retry, and request cancellation.
 | Need                                          | Use                                                                                                    |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Browser address + History API                 | `<BrowserRouter>`                                                                                      |
-| Unit/integration test without browser history | `Router.new({ path })` + `<Provider>`                                                                  |
+| Unit/integration test without browser history | `Router.new({ path })` + `<Component for>`                                                             |
 | React Native or another non-browser host      | `Router`; render host navigation controls                                                              |
 | Existing framework router                     | Keep it and bridge route values into MVC; do not add `@expressive/router` during an unrelated refactor |
 | Framework SSR/data routing                    | The framework router                                                                                   |
@@ -21,9 +21,9 @@ Provide the router explicitly when its starting path or lifetime matters.
 const router = Router.new({ path: '/projects/42' });
 
 render(
-  <Provider for={router}>
+  <Component for={router}>
     <AppRoutes />
-  </Provider>
+  </Component>
 );
 
 router.set(null);

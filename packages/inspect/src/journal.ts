@@ -13,7 +13,7 @@ export interface Options {
   paths?: string[];
   /** Property names to record on any type. */
   keys?: string[];
-  /** Also record method calls (wraps instance methods except `render`). */
+  /** Also record method calls, except `render`. */
   calls?: boolean;
 }
 
@@ -21,7 +21,7 @@ export interface Event {
   id: string;
   type: string;
   key: string;
-  kind: 'update' | 'event' | 'call' | 'destroy';
+  kind: 'update' | 'event' | 'call' | 'destroy' | 'caught' | 'hot';
   value?: unknown;
   args?: unknown[];
 }
@@ -32,6 +32,21 @@ export interface Frame {
   /** Frame whose flush scheduled the work that opened this one. */
   cause?: number;
   events: Event[];
+}
+
+export interface Summary {
+  id: string;
+  type: string;
+  /** Seq of the last frame touching this instance. */
+  last: number;
+  /** Updates and events per key, with the last recorded value at `values` level. */
+  keys: Record<string, { count: number; value?: unknown }>;
+  calls: Record<string, number>;
+  /** `caught` reports. */
+  caught: number;
+  /** Hot patches applied to it. */
+  hot: number;
+  destroyed: boolean;
 }
 
 export interface Query {
@@ -102,6 +117,46 @@ export const journal = {
       .join('\n');
   },
 
+  /** Per-instance digest of recorded frames, most recently active first. */
+  summary(query: Query = {}): Summary[] {
+    const by = new Map<string, Summary>();
+
+    for (const frame of journal.frames(query))
+      for (const event of frame.events) {
+        if (!event.id) continue;
+
+        let entry = by.get(event.id);
+
+        if (!entry) by.set(event.id, (entry = { id: event.id, type: event.type, last: 0, keys: {}, calls: {}, caught: 0, hot: 0, destroyed: false }));
+
+        entry.last = frame.seq;
+
+        if (event.kind === 'destroy') entry.destroyed = true;
+        else if (event.kind === 'call') entry.calls[event.key] = (entry.calls[event.key] || 0) + 1;
+        else if (event.kind === 'caught') entry.caught++;
+        else if (event.kind === 'hot') entry.hot++;
+        else {
+          const key = (entry.keys[event.key] ||= { count: 0 });
+          key.count++;
+          if ('value' in event) key.value = event.value;
+        }
+      }
+
+    return [...by.values()].sort((a, b) => b.last - a.last);
+  },
+
+  /**
+   * Record a page-level hot update: `key` names it (`update`, `reload`), `value`
+   * its detail. Recorded unfiltered while the journal is on.
+   */
+  hot(key: string, value?: unknown): void {
+    if (config.level === 'off') return;
+
+    const event: Event = { id: '', type: 'vite', key, kind: 'hot' };
+    if (value !== undefined) event.value = value;
+    push(event);
+  },
+
   clear(): void {
     frames.length = 0;
     open = undefined;
@@ -147,19 +202,6 @@ export function recordsCalls(): boolean {
   return config.calls && config.level !== 'off';
 }
 
-/** Run `work` with recording forced on; returns the frames it produced. */
-export async function act(work: () => unknown): Promise<Frame[]> {
-  const level = config.level;
-  const start = seq;
-  if (level === 'off') config.level = 'values';
-  try {
-    await work();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  } finally {
-    config.level = level;
-  }
-  return journal.frames({ since: start });
-}
 
 export function note(state: State, key: unknown, store: Map<string, unknown>): void {
   const name = String(key);
@@ -184,6 +226,22 @@ export function noteCall(state: State, key: string, args: unknown[]): void {
   const event: Event = { id: String(state), type: labelOf(state.constructor as typeof State), key, kind: 'call' };
   if (config.level === 'values') event.args = args.map((arg) => serialize(arg, 1));
   push(event);
+}
+
+export function noteCaught(state: State, error: unknown, kind: string, key?: string): { handled: boolean } | undefined {
+  if (!wants(state, key)) return;
+  const value = {
+    case: kind,
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+    handled: true
+  };
+  push({ id: String(state), type: labelOf(state.constructor as typeof State), key: key ?? '', kind: 'caught', value });
+  return value;
+}
+
+export function notePatch(state: State): void {
+  if (wants(state)) push({ id: String(state), type: labelOf(state.constructor as typeof State), key: 'patch', kind: 'hot' });
 }
 
 export function noteDestroy(state: State): void {

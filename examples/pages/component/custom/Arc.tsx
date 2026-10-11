@@ -1,7 +1,9 @@
-import { Component, get, ref } from '@expressive/react';
-import type { KeyboardEvent, PointerEvent, ReactNode } from 'react';
+import { Component, get, ref } from '@expressive/mvc';
 
 import { Scale } from './Scale';
+
+type Pointer = { currentTarget: SVGSVGElement; pointerId: number; clientX: number; clientY: number };
+type Key = { key: string; preventDefault(): void };
 
 const W = 240;
 const H = 148;
@@ -30,16 +32,16 @@ export class Arc extends Component {
     return (value - min) / (max - min);
   }
 
-  grab(e: PointerEvent<SVGSVGElement>) {
+  grab(e: Pointer) {
     e.currentTarget.setPointerCapture(e.pointerId);
     this.aim(e);
   }
 
-  drag(e: PointerEvent<SVGSVGElement>) {
+  drag(e: Pointer) {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) this.aim(e);
   }
 
-  nudge(e: KeyboardEvent<SVGSVGElement>) {
+  nudge(e: Key) {
     const by = STEP[e.key];
 
     if (!by) return;
@@ -48,7 +50,7 @@ export class Arc extends Component {
     this.scale.to(this.scale.value + by);
   }
 
-  aim(e: PointerEvent<SVGSVGElement>) {
+  aim(e: Pointer) {
     const { min, max } = this.scale;
     const box = this.track.current!.getBoundingClientRect();
     const unit = box.width / W;
@@ -62,7 +64,7 @@ export class Arc extends Component {
     this.scale.to(min + turn * (max - min));
   }
 
-  render(props = {} as { children?: ReactNode }) {
+  render(props = {} as { children?: Component.Node }) {
     const { progress } = this;
     const { value, min, max } = this.scale;
     const angle = Math.PI * (1 - progress);
@@ -81,7 +83,7 @@ export class Arc extends Component {
           onPointerMove={this.drag}
           onKeyDown={this.nudge}>
           <path className="groove" d={TRACK} />
-          <path className="filled" d={TRACK} strokeDasharray={`${progress * SWEEP} ${SWEEP}`} />
+          <path className="filled" d={TRACK} style={{ strokeDasharray: `${progress * SWEEP} ${SWEEP}` }} />
           <circle
             className="knob"
             cx={CX + R * Math.cos(angle)}

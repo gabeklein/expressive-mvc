@@ -1,8 +1,7 @@
 import './App.css';
 
-import State, { Component } from '@expressive/react';
+import { State, Component } from '@expressive/mvc';
 import { Route, Router } from '@expressive/router';
-import type { ReactNode } from 'react';
 
 export default () => (
   <div className="container">
@@ -68,7 +67,7 @@ class Wizard extends Component {
   }
 }
 
-const Frame = (props: { children?: ReactNode }) => (
+const Frame = (props: { children?: Component.Node }) => (
   <>
     <Progress />
     <div className="view">{props.children}</div>
@@ -94,7 +93,7 @@ const Progress = () => {
   );
 };
 
-const Controls = (props: { children?: ReactNode }) => {
+const Controls = (props: { children?: Component.Node }) => {
   const { parent, path, router } = Route.get();
   const steps = parent!.inner.filter((route) => route.label);
   const at = steps.findIndex((step) => step.path === path);
@@ -123,7 +122,7 @@ const Name = () => {
         <input
           value={name}
           placeholder="Ada Lovelace"
-          onChange={(e) => (me.name = e.target.value)}
+          onInput={(e) => (me.name = e.currentTarget.value)}
         />
       </label>
       <Controls />
@@ -141,7 +140,7 @@ const Details = () => {
         <input
           value={email}
           placeholder="ada@analytical.engine"
-          onChange={(e) => (me.email = e.target.value)}
+          onInput={(e) => (me.email = e.currentTarget.value)}
         />
       </label>
       <Controls />

@@ -1,6 +1,6 @@
 import './App.css';
 
-import State, { Component, get, map } from '@expressive/react';
+import { State, Component, get, map } from '@expressive/mvc';
 
 const COLS = ['A', 'B', 'C', 'D'];
 const ROWS = [1, 2, 3, 4, 5];
@@ -106,7 +106,7 @@ const CellView = ({ id }: { id: string }) => {
         <input
           autoFocus
           value={cell ? cell.input : ''}
-          onChange={(e) => sheet.edit(id, e.target.value)}
+          onInput={(e) => sheet.edit(id, e.currentTarget.value)}
           onBlur={() => (sheet.editing = '')}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === 'Escape') sheet.editing = '';

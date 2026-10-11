@@ -13,6 +13,9 @@ interface Setup {
   rendered: number;
   revision: number;
   mounted?: boolean;
+  fresh?: boolean;
+  getRevision?: () => number;
+  lapsed?: boolean;
   commit?: () => (() => void) | void;
   release?: (() => void) | void;
 }
@@ -34,7 +37,7 @@ export const Runtime = {} as {
   useRef<T>(initial: T): { current: T };
   /** Non-urgent bracket a subscriber replays through; absent where the host
    *  cannot defer, which keeps normal timing. */
-  transition?(work: () => void): void;
+  startTransition?(work: () => void): void;
   /** Consumed for pre-commit revision validation; absent where commits
    *  cannot interleave with writes. */
   useSyncExternalStore?(
@@ -42,8 +45,8 @@ export const Runtime = {} as {
     getSnapshot: () => number,
     getServerSnapshot?: () => number
   ): number;
-  /** Per-render-attempt lifecycle, set by each adapter (React stacks attempts; others no-op). */
-  dedupe(from: Component, context: Context): { commit(): void; remove(): void };
+  /** Per-render-attempt lifecycle; absent where render attempts do not stack. */
+  dedupe?(from: Component, context: Context): { commit(): void; remove(): void };
   /** Host error-boundary component, wrapping a Component whose `catch` is set. */
   ErrorBoundary: unknown;
   Suspense: any;
@@ -91,8 +94,10 @@ export function useSettle(tick: number) {
 /**
  * Run `init` once for the life of a hook and clean up when it unmounts, safe
  * under React StrictMode - a remount shares the render counter, so neither the
- * setup nor its cleanup repeats. `reset` invalidates the rendered value so
- * in-flight render attempts revalidate.
+ * setup nor its cleanup repeats. A cleanup following a render not yet committed
+ * - Fast Refresh re-running effects - defers a microtask, and is dropped if the
+ * effect runs again. `reset` invalidates the rendered value so in-flight render
+ * attempts revalidate.
  *
  * @returns The hook's own record, plus the render counter and its setter.
  */
@@ -110,12 +115,19 @@ export function useSetup<T extends Setup>(
     return current.rendered++;
   });
 
-  const getRevision = () => current.revision;
+  const getRevision = (current.getRevision ||= () => current.revision);
+
+  current.fresh = true;
 
   Runtime.useSyncExternalStore?.(noop, getRevision, getRevision);
 
   Runtime.useEffect(() => {
+    current.fresh = false;
+  });
+
+  Runtime.useEffect(() => {
     current.mounted = true;
+    current.lapsed = false;
 
     if (current.commit) {
       current.release = current.commit();
@@ -123,7 +135,16 @@ export function useSetup<T extends Setup>(
     }
 
     return () => {
-      if (--current.rendered <= 0) current.release?.();
+      if (!current.fresh) {
+        if (--current.rendered <= 0) current.release?.();
+        return;
+      }
+
+      current.lapsed = true;
+
+      queueMicrotask(() => {
+        if (current.lapsed) current.release?.();
+      });
     }
   }, []);
 
@@ -184,7 +205,7 @@ export function useWatch<T extends object>(
       return (update) => {
         if (update === true) reset();
       };
-    }, undefined, Runtime.transition);
+    }, undefined, Runtime.startTransition);
 
     return () => {
       const cleanup = mount?.();

@@ -9,7 +9,7 @@ Runnable source: the [`router`](https://expressive.dev/examples/router/overview)
 Routes are nested JSX, matched lexically from the tree (no config); navigation state is a reactive `Router` State any component can read or drive.
 
 ```bash
-npm install @expressive/router @expressive/react react
+npm install @expressive/router @expressive/mvc @expressive/react react
 ```
 
 ```tsx
@@ -21,7 +21,7 @@ import { Route, Link, NavLinks, Redirect, Router, BrowserRouter } from '@express
 - **`Router`** - the navigation State: current `path`, reactive `query`/`hash`, derived `url`, and an in-memory history stack. Headless; touches no browser globals, so it runs and tests anywhere. It is also the memory-router substrate.
 - **`BrowserRouter`** - binds the core to `window.location`/`history`, syncing `path`/`query`/`hash` on navigation (`goto`, `popstate`, `hashchange`, external `pushState`/`replaceState`).
 - **`Route`** - a `Component` that matches part of the URL and renders a page. Routes nest to mirror the URL hierarchy. Each `Route` is a scoped facade over the active `Router` (`path`, `match`, `query`, `goto`, `resolve`).
-- **`Link` / `NavLinks` / `Redirect`** - navigation UI built on `Route`.
+- **`Link` / `NavLinks` / `Redirect`** - navigation UI built on `Route`. They resolve against the nearest `Route` and throw outside one - render shared navigation inside a layout (`<Route as={Frame}>`), not beside Routes under the `Router`.
 
 A `<Route>` with no ancestor `Router` in context spins up a headless `Router`. For a browser app, provide a `BrowserRouter` so navigation reflects the address bar.
 
@@ -112,10 +112,10 @@ Force-404 marks only the declined URL; navigating elsewhere clears it. `null` me
 
 ## Code-split pages
 
-`as` takes a lazy component - `React.lazy`, or anything that suspends while its module loads. A `Route` is its own suspense boundary: on cold load `fallback` shows while the chunk loads, then the page resolves in place - the Route instance, its `match`, and any ancestor layout survive. On in-app navigation the previous screen holds instead (see [Deferred presentation](#deferred-presentation)).
+`as` takes a lazy component - `React.lazy`, a dom loader (`() => import('./Document')`), or anything that suspends while its module loads. A `Route` is its own suspense boundary: on cold load `fallback` shows while the chunk loads, then the page resolves in place - the Route instance, its `match`, and any ancestor layout survive. On in-app navigation the previous screen holds instead (see [Deferred presentation](#deferred-presentation)).
 
 ```tsx
-const Document = lazy(() => import('./Document'));
+const Document = lazy(() => import('./Document')); // dom: () => import('./Document')
 
 <Route to="document/:id" fallback={<Spinner />} as={Document} />
 ```

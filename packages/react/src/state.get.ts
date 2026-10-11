@@ -144,7 +144,7 @@ State.get = function get<T extends State>(
           };
         },
         argument === true,
-        Runtime.transition
+        Runtime.startTransition
       );
 
       if (mounted) {

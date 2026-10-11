@@ -3,7 +3,7 @@
 ## Counter
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Counter extends Component {
   count = 0;
@@ -29,7 +29,7 @@ class Counter extends Component {
 ## Form with Validation
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class LoginForm extends Component {
   email = '';
@@ -71,7 +71,7 @@ class LoginForm extends Component {
 ## Async Data Fetching
 
 ```tsx
-import { Component, set } from '@expressive/react';
+import { Component, set } from '@expressive/mvc';
 
 class Profile extends Component {
   fallback = (<p>Loading...</p>);
@@ -98,7 +98,7 @@ Suspense fits load-once data the view cannot render without. Keep explicit `load
 State about a collection entry lives on the entry's class, spawned thru a `has` pool - not id-keyed records or `(id, value)` methods on the page. The factory takes the API payload (DTO in); the page keeps fetch, the pool, and selection *policy*:
 
 ```tsx
-import State, { Component, get, has, set } from '@expressive/react';
+import { State, Component, get, has, set } from '@expressive/mvc';
 
 class Message extends Component {
   info = set<MessageDto>();   // payload stays one subobject - not exploded per key
@@ -182,15 +182,15 @@ class Attachment extends Component {
   file = set<File>();
   job?: UploadJob;
   composer = get(Composer);
-  stop = put<(() => void) | null>(null);  // unmanaged - see state/state.md
+  _stop: (() => void) | null = null;  // unmanaged - see state/state.md
 
   get uploading() {
     return !this.job?.done;
   }
 
   protected new() {
-    this.stop = api.upload(this.file, (job) => { this.job = job; });
-    return () => this.stop?.();
+    this._stop = api.upload(this.file, (job) => { this.job = job; });
+    return () => this._stop?.();
   }
 
   toApi(): AttachmentDto {
@@ -308,15 +308,17 @@ export class Session extends State {
 // webview/session.ts - the adapter; views import Session from here
 export { Session } from '../domain/session';
 
-Session.on(function (this: Session) {
-  const onMessage = (event: MessageEvent<HostToView>) => {
-    if (event.data?.type === 'state')
-      this.set(event.data.values as State.Assign<Session>);
-  };
+Session.on({
+  setup() {
+    const onMessage = (event: MessageEvent<HostToView>) => {
+      if (event.data?.type === 'state')
+        this.set(event.data.values as State.Assign<Session>);
+    };
 
-  window.addEventListener('message', onMessage);
-  signal('ready');
-  return () => window.removeEventListener('message', onMessage);
+    window.addEventListener('message', onMessage);
+    signal('ready');
+    return () => window.removeEventListener('message', onMessage);
+  }
 });
 ```
 
@@ -325,7 +327,7 @@ Construction stays with the consumer - `session = new Session()` on the entrypoi
 ## Context Sharing
 
 ```tsx
-import State, { Component, get, Provider } from '@expressive/react';
+import { State, Component, get } from '@expressive/mvc';
 
 class Theme extends State {
   color = 'blue';
@@ -358,9 +360,9 @@ class ThemedWidget extends Component {
 
 function App() {
   return (
-    <Provider for={Theme}>
+    <Component for={Theme}>
       <ThemedWidget />
-    </Provider>
+    </Component>
   );
 }
 ```
@@ -421,7 +423,7 @@ Default for a self-contained widget: the parent mounts `<UndoBar />` uncondition
 ## Computed Values
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Cart extends Component {
   items: { name: string; price: number; qty: number }[] = [];
@@ -453,7 +455,7 @@ class Cart extends Component {
 ## Debounced Search
 
 ```ts
-import State, { set } from '@expressive/react';
+import { State, set } from '@expressive/mvc';
 
 class Search extends State {
   query = '';
@@ -474,7 +476,7 @@ class Search extends State {
 ## Downstream Collection
 
 ```tsx
-import State, { Component, get } from '@expressive/react';
+import { State, Component, get } from '@expressive/mvc';
 
 class Tab extends State {
   label = '';
@@ -502,6 +504,36 @@ class TabGroup extends Component {
 }
 ```
 
+## Owned Collection
+
+Register what a Component constructs - rendered children, `use()` instances, pool members - without a type, and release each when it is destroyed:
+
+```tsx
+import { State, Component } from '@expressive/mvc';
+
+class Layer extends Component {}
+
+class Canvas extends Component {
+  new() {
+    return this.get(State, (layer) => {
+      const id = register(layer);
+      return () => unregister(id);
+    }, true);
+  }
+
+  render() {
+    return (
+      <section>
+        <Layer />
+        <Layer />
+      </section>
+    );
+  }
+}
+```
+
+Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(State)` - see [context.md](../state/context.md#ownership-vs-context).
+
 ## Refactoring Hooks Into State
 
 Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in `mount()`, event handlers in methods.
@@ -528,7 +560,7 @@ function LayoutBadge() {
 
 ```tsx
 // After: width is the source field, compact is a getter, and resize belongs to Viewport.
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class Viewport extends State {
   width = 0;
@@ -558,7 +590,7 @@ function LayoutBadge() {
 ## Effects & Cleanup
 
 ```ts
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class Timer extends State {
   elapsed = 0;

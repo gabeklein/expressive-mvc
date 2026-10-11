@@ -3,11 +3,9 @@
 Runnable source: [`has`](https://expressive.dev/examples/instructions/has) and [`has-list`](https://expressive.dev/examples/instructions/has-list) - complete programs, served as HTML.
 
 ```ts
-import State, { has } from '@expressive/mvc';
+import { State, has } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 ```
-
-> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
 
 A reactive collection a state *has*: an ordered list of values, or a pool of members it spawns and owns. Reads subscribe in active `watch()` / `State.get()` effects; writes notify precisely.
 
@@ -18,7 +16,9 @@ The argument selects the mode:
 | call | interface | insert | identity |
 | --- | --- | --- | --- |
 | `has<T>()` / `has(values)` | `has.List<T>` | `push` / `put` / `set(index)` | position |
-| `has(StateClass)` / `has(StateClass, fromKey)` / `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns, `add(value)` admits | the value itself |
+| `has(StateClass)` | `has.Create<T>` | `add(...args)` spawns, `add(instance)` admits | the value itself |
+| `has(StateClass, fromKey)` | `has.From<T, K>` | `add(from)` spawns, `add(instance)` admits | the value itself |
+| `has(factory)` | `has.Pool<T, A>` | `add(...args)` spawns | the value itself |
 
 A list stores values you give it, in order, by index. A pool spawns its members - `add` returns the member, the call site holds the reference, and the value is its own identity for `has`, `delete`, and eviction. A class-mode pool also takes a ready-made instance.
 
@@ -177,7 +177,7 @@ const mine = basket.items.add();          // new Item() - owned
 basket.items.add(Item.new());             // already activated - guest
 ```
 
-The hosting state adopts every collection at activation. Fresh `State` members are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members.
+The hosting state adopts every collection at activation. Fresh `State` members are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members. `member.get(State)` is the owner without naming its type; `owner.get(State, true)` lists owned members and field children together ([get.md](get.md#owner)).
 
 A `State` member that dies evicts itself - owned or guest - so a pool never serves destroyed members; adding one already destroyed throws. `member.set(null)` is a complete removal on its own. Lists do not adopt, destroy, or evict on death - they store values by position; use a pool (`has(Item)`) when members are owned `State`s.
 
@@ -222,11 +222,11 @@ Member fields read thru a subscribed context track deeply - a parent rendering `
 
 ```ts
 function has<T>(initial?: Iterable<T> | false | null): has.List<T>;
-function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Pool<T, State.Args<T> | [T]>;
+function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Create<T>;
 function has<T extends State, K extends State.Field<T>>(
   Type: new (...args: State.Args<T>) => T,
   fromKey: K
-): has.Pool<T, [T[K]] | [T]>;
+): has.From<T, K>;
 function has<R, A extends unknown[]>(
   make: (...args: A) => R
 ): has.Pool<Exclude<R, null | undefined>, A, R>;
@@ -247,7 +247,7 @@ class has.List<T> {
 
 class has.Pool<T, A extends unknown[] = unknown[], R = T> {
   readonly size: number;
-  add(...args: A): R;                          // constructor's or factory's own signature; class mode also takes [T]
+  add(...args: A): R;                          // constructor's or factory's own signature
   get(): State.Export<T>[];                    // snapshot
   get(predicate): T | undefined;
   has(value: T): boolean;
@@ -255,9 +255,19 @@ class has.Pool<T, A extends unknown[] = unknown[], R = T> {
   clear(): void;
   // map / filter / any / all / [Symbol.iterator]
 }
+
+interface has.Create<T extends State> extends has.Pool<T, State.Args<T>> {
+  add(...args: State.Args<T>): T;              // spawn
+  add(instance: T): T;                         // admit
+}
+
+interface has.From<T extends State, K extends State.Field<T>> extends has.Pool<T, [from: T[K]]> {
+  add(from: T[K]): T;                          // spawn
+  add(instance: T): T;                         // admit
+}
 ```
 
-`has.List` and `has.Pool` are the runtime classes - mode is class identity (`instanceof` works; a list has no `add`, a pool no `push`, as natural TypeErrors). Adapters may extend their prototypes - the seam for rendering facades.
+`has.List` and `has.Pool` are the runtime classes (`has.Create` and `has.From` type the class-mode pool) - mode is class identity (`instanceof` works; a list has no `add`, a pool no `push`, as natural TypeErrors). Adapters may extend their prototypes - the seam for rendering facades.
 
 ## Behavior
 
