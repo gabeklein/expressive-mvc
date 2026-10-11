@@ -37,3 +37,22 @@ test("shows another tab's change without a call of its own", async ({ page, cont
 
   await expect.poll(async () => Number(await output.textContent())).toBeGreaterThan(before);
 });
+
+test("gives each use() of a remote class its own server instance, for the life of the page", async ({ page, open }) => {
+  await open("/counter");
+  const left = page.getByRole("button", { name: /^Left/ });
+  const right = page.getByRole("button", { name: /^Right/ });
+  const clicks = page.locator("data");
+
+  await expect(left).toHaveText("Left 0");
+  const before = Number(await clicks.textContent());
+
+  await left.click();
+  await left.click();
+  await expect(left).toHaveText("Left 2");
+  await expect(right).toHaveText("Right 0");
+  await expect.poll(async () => Number(await clicks.textContent())).toBeGreaterThan(before);
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^Left/ })).toHaveText("Left 0");
+});
