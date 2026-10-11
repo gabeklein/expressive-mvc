@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // @vitest-environment-options { "url": "http://localhost/" }
 
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -10,7 +10,7 @@ import { Component, State } from "@expressive/mvc";
 
 import { browserRouter, location, mount, settle } from "../../test.setup";
 import { Route } from "../client";
-import { generateRoutes, sidecarPattern, sidecars } from "./routes";
+import { generateRoutes, remoteOf } from "./routes";
 import { scanExports } from "./scan";
 
 describe("app/ routing (codegen)", () => {
@@ -115,6 +115,15 @@ describe("app/ routing (codegen)", () => {
     expect(out).toContain('const About = () => import("../app/(about).tsx").then(m => m.Page);');
     expect(out).toContain('<Route to="about" as={About} />');
     expect(out).toContain('import { Page as Root } from "../app/index.tsx";');
+  });
+
+  it("will not route a remote/ folder", async () => {
+    const out = await generate({ "index.tsx": PAGE, "remote/index.ts": PAGE, "remote/bar.ts": PAGE });
+    expect(out).not.toContain("remote");
+  });
+
+  it("will throw if a folder has both a remote module and a remote/ folder", async () => {
+    await expect(generate({ "index.tsx": PAGE, "remote.ts": "", "remote/bar.ts": "" })).rejects.toThrow("has both a remote module and a remote/ folder - pick one.");
   });
 
   it("a module exporting Loading or Catch is imported statically", async () => {
@@ -368,31 +377,31 @@ describe("app/ routing (scope)", () => {
   });
 });
 
-describe("sidecars", () => {
-  const root = mkdtempSync(join(tmpdir(), "sidecars-"));
-  const appDir = join(root, "app");
+describe("remote modules", () => {
+  const appDir = join(tmpdir(), "app");
+  const at = (path: string) => {
+    const remote = remoteOf(appDir, join(appDir, path));
+    return remote && [remote.pattern, remote.module, remote.folder.slice(appDir.length)];
+  };
 
-  for (const path of ["remote.ts", "blog/[slug]/remote.ts", "(about)/remote.mts", "blog/index.tsx", "blog/remote.spec.ts", "docs/[...]/remote.js"]) {
-    mkdirSync(dirname(join(appDir, path)), { recursive: true });
-    writeFileSync(join(appDir, path), "");
-  }
-
-  afterAll(() => rmSync(root, { recursive: true, force: true }));
-
-  it("will find each folder's remote module with its route pattern", () => {
-    const found = sidecars(appDir).map(({ pattern, file }) => [file.slice(appDir.length), pattern]);
-
-    expect(found.sort()).toEqual([
-      ["/(about)/remote.mts", ["about"]],
-      ["/blog/[slug]/remote.ts", ["blog", ":slug"]],
-      ["/docs/[...]/remote.js", ["docs", "*"]],
-      ["/remote.ts", []],
-    ]);
+  it("will find a folder's remote module with its route pattern", () => {
+    expect(at("remote.ts")).toEqual([[], "", ""]);
+    expect(at("blog/[slug]/remote.ts")).toEqual([["blog", ":slug"], "", "/blog/[slug]"]);
+    expect(at("(about)/remote.mts")).toEqual([["about"], "", "/(about)"]);
+    expect(at("docs/[...]/remote.js")).toEqual([["docs", "*"], "", "/docs/[...]"]);
   });
 
-  it("will not take other modules, or files outside app/, as sidecars", () => {
-    expect(sidecarPattern(appDir, join(appDir, "blog/index.tsx"))).toBeUndefined();
-    expect(sidecarPattern(appDir, join(appDir, "blog/remote.spec.ts"))).toBeUndefined();
-    expect(sidecarPattern(appDir, join(root, "remote.ts"))).toBeUndefined();
+  it("will give every module in a remote/ folder its parent's pattern", () => {
+    expect(at("blog/remote/index.ts")).toEqual([["blog"], "", "/blog"]);
+    expect(at("blog/remote/bar.ts")).toEqual([["blog"], "bar", "/blog"]);
+    expect(at("blog/remote/bar/baz.ts")).toEqual([["blog"], "bar/baz", "/blog"]);
+    expect(at("blog/remote/bar/index.ts")).toEqual([["blog"], "bar", "/blog"]);
+  });
+
+  it("will not take other modules, or files outside app/, as remote", () => {
+    expect(at("blog/index.tsx")).toBeUndefined();
+    expect(at("blog/remote.spec.ts")).toBeUndefined();
+    expect(at("blog/remote/view.tsx")).toBeUndefined();
+    expect(remoteOf(appDir, join(tmpdir(), "remote.ts"))).toBeUndefined();
   });
 });

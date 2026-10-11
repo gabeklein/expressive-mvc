@@ -1,9 +1,12 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, dirname, extname, join, relative, sep } from "node:path";
+import { basename, extname, join, relative, sep } from "node:path";
 
 import { importRel } from "./project";
 
 const ROUTE_EXT = new Set([".tsx", ".jsx", ".ts", ".js"]);
+const REMOTE = "remote";
+const REMOTE_FILE = /^remote\.[cm]?[jt]s$/;
+const REMOTE_MODULE = /\.[cm]?[jt]s$/;
 
 const ROLES = [
   "Page",
@@ -62,11 +65,17 @@ function newNode(fields: Partial<RouteNode>): RouteNode {
 
 async function scanDir(dir: string, segment: string, name: string, scan: ExportScanner): Promise<RouteNode> {
   const node = newNode({ segment, name });
+  const entries = readdirSync(dir);
 
-  for (const entry of readdirSync(dir)) {
+  if (entries.includes(REMOTE) && entries.some(entry => REMOTE_FILE.test(entry)))
+    throw new Error(`${dir} has both a remote module and a remote/ folder - pick one.`);
+
+  for (const entry of entries) {
     const full = join(dir, entry);
 
     if (statSync(full).isDirectory()) {
+      if (entry === REMOTE) continue;
+
       const tag = classify(entry, true)!;
       node.children.push(await scanDir(full, tag.segment, name + tag.label, scan));
       continue;
@@ -269,23 +278,24 @@ function pascal(s: string): string {
     .join("");
 }
 
-const SIDECAR = /^remote\.[cm]?[jt]s$/;
-
-export interface Sidecar {
+export interface Remote {
   pattern: string[];
+  module: string;
+  folder: string;
   file: string;
 }
 
-export function sidecarPattern(appDir: string, file: string): string[] | undefined {
-  if (!SIDECAR.test(basename(file)) || !file.startsWith(appDir + sep)) return;
+export function remoteOf(appDir: string, file: string): Remote | undefined {
+  if (!file.startsWith(appDir + sep) || !REMOTE_MODULE.test(file)) return;
 
-  return relative(appDir, dirname(file)).split(sep).filter(Boolean).map(dir => classify(dir, true)!.segment);
-}
+  const parts = relative(appDir, file).split(sep);
+  const at = parts.indexOf(REMOTE);
+  const nested = at >= 0 && at < parts.length - 1;
 
-export function sidecars(appDir: string): Sidecar[] {
-  return readdirSync(appDir, { recursive: true, encoding: "utf8" }).flatMap(rel => {
-    const file = join(appDir, rel);
-    const pattern = sidecarPattern(appDir, file);
-    return pattern ? [{ pattern, file }] : [];
-  });
+  if (!nested && !REMOTE_FILE.test(parts.at(-1)!)) return;
+
+  const folders = nested ? parts.slice(0, at) : parts.slice(0, -1);
+  const module = nested ? parts.slice(at + 1).join("/").replace(REMOTE_MODULE, "").replace(/(^|\/)index$/, "") : "";
+
+  return { pattern: folders.map(dir => classify(dir, true)!.segment), module, folder: join(appDir, ...folders), file };
 }
