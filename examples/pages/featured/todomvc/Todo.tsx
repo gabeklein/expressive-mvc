@@ -1,4 +1,4 @@
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 export class Todo extends Component {
   text = '';
@@ -39,10 +39,11 @@ export class Todo extends Component {
       return (
         <li className="editing">
           <input
+            key="edit"
             className="edit"
             autoFocus
             value={draft}
-            onChange={(e) => (this.draft = e.target.value)}
+            onInput={(e) => (this.draft = e.currentTarget.value)}
             onBlur={this.commit}
             onKeyDown={(e) => {
               if (e.key === 'Enter') this.commit();

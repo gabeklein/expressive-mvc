@@ -1,8 +1,7 @@
 import './App.css';
 
-import State, { Component, get, has, Provider } from '@expressive/react';
+import { Component, get, has, State } from '@expressive/mvc';
 import { Link, Route, Router } from '@expressive/router';
-import type { ReactNode } from 'react';
 
 import { Todo } from './Todo';
 
@@ -29,14 +28,14 @@ export default () => (
 );
 
 const Todos = () => (
-  <Provider for={Store}>
+  <Component for={Store}>
     <Router>
       <Route as={Layout}>
         <Route as={List} />
         <Route to=":filter" as={List} />
       </Route>
     </Router>
-  </Provider>
+  </Component>
 );
 
 class Store extends State {
@@ -79,7 +78,7 @@ class Store extends State {
   }
 }
 
-const Layout = (props: { children?: ReactNode }) => {
+const Layout = (props: { children?: Component.Node }) => {
   const { is: store, draft } = Store.get();
 
   return (
@@ -94,7 +93,7 @@ const Layout = (props: { children?: ReactNode }) => {
           autoFocus
           placeholder="What needs to be done?"
           value={draft}
-          onChange={(e) => (store.draft = e.target.value)}
+          onInput={(e) => (store.draft = e.currentTarget.value)}
         />
       </form>
       {props.children}
