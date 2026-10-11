@@ -4,6 +4,14 @@ export function runtime(Base: typeof State, def: typeof instruction) {
   const classes = new Map<string, ErrorConstructor>();
   const versions = new WeakMap<State, string>();
   const pending = new WeakMap<State, State.Apply[]>();
+  const meta = new WeakMap<State, { pattern: string[]; fields: string[] }>();
+  const attaching = new WeakMap<State, Promise<void>>();
+  const slots = new WeakMap<State, number>();
+  const dropped = new WeakSet<State>();
+  const twins = new Map<number, State>();
+  const released = new Set<number>();
+  const connection = crypto.randomUUID();
+  let epoch: string | undefined;
   let syncing = false;
 
   function define(id: string, name: string): ErrorConstructor {
@@ -33,13 +41,26 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     return "/" + path.join("/");
   }
 
-  async function post(path: string, headers: Record<string, string>, body: unknown): Promise<Response> {
-    return fetch(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
+  async function send(path: string, headers: Record<string, string>, body: unknown): Promise<{ reply: any; reset: boolean }> {
+    const release: Record<string, string> = released.size ? { "x-expressive-release": [...released].join(",") } : {};
+    released.clear();
+
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-expressive-connection": connection, ...release, ...headers },
+      body: JSON.stringify(body),
+    });
+
+    const next = res.headers.get("x-expressive-epoch");
+    const reset = !!epoch && !!next && next !== epoch;
+
+    if (next) epoch = next;
+    if (reset) await rejoin();
+
+    return { reply: await settle(res), reset };
   }
 
   async function settle(res: Response): Promise<any> {
-    if (res.status === 204 || res.status === 304) return;
-
     const body = await res.json();
 
     if (res.ok) return body;
@@ -50,8 +71,21 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     throw Object.assign(new Type(message), fields);
   }
 
+  function apply(frame: Record<string, { patch: Record<string, unknown>; version: string }>, reset: boolean): void {
+    if (reset) return;
+
+    for (const [slot, { patch, version }] of Object.entries(frame)) {
+      const twin = twins.get(Number(slot));
+      if (twin) sync(twin, patch, version);
+    }
+  }
+
   async function call(pattern: string[], name: string, args: unknown[]): Promise<unknown> {
-    return settle(await post(pathOf(pattern, name), { "x-expressive-call": name }, args));
+    const { reply, reset } = await send(pathOf(pattern, name), { "x-expressive-call": name }, args);
+
+    apply(reply.frame, reset);
+
+    return reply.value;
   }
 
   function served(): unknown {
@@ -69,13 +103,13 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     });
   }
 
-  function sync(twin: State, fields: string[], values: Record<string, unknown>, version: string): void {
+  function sync(twin: State, values: Record<string, unknown>, version: string): void {
     const [generation, counter] = version.split(":");
     const [held, at] = versions.get(twin)?.split(":") ?? [];
     const configs = held === generation ? undefined : pending.get(twin);
 
     if (!configs && Number(counter) < Number(at)) return;
-    if (configs) values = Object.fromEntries(fields.map(field => [field, values[field]]));
+    if (configs) values = Object.fromEntries(meta.get(twin)!.fields.map(field => [field, values[field]]));
 
     versions.set(twin, version);
     syncing = true;
@@ -94,18 +128,50 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     return version ? { "if-none-match": version } : {};
   }
 
-  async function invoke(twin: State, pattern: string[], fields: string[], name: string, args: unknown[]): Promise<unknown> {
-    const { value, patch, version } = await settle(await post(pathOf(pattern, name), { "x-expressive-call": name, ...since(twin) }, args));
+  function attach(twin: State): Promise<void> {
+    const { pattern } = meta.get(twin)!;
+    const attached = send(pathOf(pattern, "default"), { "x-expressive-get": "default", ...since(twin) }, []).then(({ reply }) => {
+      const { slot, values, version } = reply;
 
-    sync(twin, fields, patch, version);
+      if (dropped.has(twin)) return void released.add(slot);
 
-    return value;
+      twins.set(slot, twin);
+      slots.set(twin, slot);
+      sync(twin, values, version);
+    });
+
+    attaching.set(twin, attached);
+
+    return attached;
   }
 
-  async function attach(twin: State, pattern: string[], fields: string[]): Promise<void> {
-    const { values, version } = await settle(await post(pathOf(pattern, "default"), { "x-expressive-get": "default" }, []));
+  async function rejoin(): Promise<void> {
+    const held = [...twins.values()];
 
-    sync(twin, fields, values, version);
+    twins.clear();
+    await Promise.all(held.map(attach));
+  }
+
+  function leave(twin: State): void {
+    const slot = slots.get(twin);
+
+    dropped.add(twin);
+
+    if (slot === undefined) return;
+
+    twins.delete(slot);
+    released.add(slot);
+  }
+
+  async function invoke(twin: State, name: string, args: unknown[]): Promise<unknown> {
+    await attaching.get(twin);
+
+    const headers = { "x-expressive-call": name, "x-expressive-slot": String(slots.get(twin)), ...since(twin) };
+    const { reply, reset } = await send(pathOf(meta.get(twin)!.pattern, name), headers, args);
+
+    apply(reply.frame, reset);
+
+    return reply.value;
   }
 
   function twin(pattern: string[], methods: Record<string, string>, fields: string[], name: string): State.Type {
@@ -115,10 +181,12 @@ export function runtime(Base: typeof State, def: typeof instruction) {
           super(...args);
 
           pending.set(this, []);
+          meta.set(this, { pattern, fields });
 
           for (const field of fields) (this as any)[field] = served();
 
-          attach(this, pattern, fields);
+          this.set(null, () => leave(this));
+          attach(this);
         }
       },
     };
@@ -129,7 +197,7 @@ export function runtime(Base: typeof State, def: typeof instruction) {
         configurable: true,
         writable: true,
         value(this: State, ...args: unknown[]) {
-          return invoke(this, pattern, fields, id, args);
+          return invoke(this, id, args);
         },
       });
 

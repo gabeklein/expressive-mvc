@@ -10,6 +10,7 @@ import { clientBuild, serverBuild } from "./build";
 import { expressive } from "./plugin";
 
 const PAGE = "export function Page(){ return <h1>hi</h1> }";
+const TAB = crypto.randomUUID();
 const PACKAGES = fileURLToPath(new URL("../../../", import.meta.url));
 
 const SOURCES: InlineConfig["resolve"] = {
@@ -226,23 +227,16 @@ describe("vite host", () => {
     await server.transformRequest("/app/tally/remote.ts");
     await server.listen(0);
 
-    const post = async (name: string, body: string) => (await fetch(new URL("/tally", server.resolvedUrls!.local[0]), {
+    const post = async (headers: Record<string, string>, body = "[]") => (await fetch(new URL("/tally", server.resolvedUrls!.local[0]), {
       method: "POST",
-      headers: { "content-type": "application/json", "x-expressive-call": name },
+      headers: { "content-type": "application/json", "x-expressive-connection": TAB, ...headers },
       body,
     })).json();
 
-    expect(await post("default.add", "[2]")).toMatchObject({ value: 2, patch: { total: 2 } });
-    expect(await post("default.add", "[3]")).toMatchObject({ value: 5, patch: { total: 5 } });
-    expect(await post("peek", "[]")).toBe(5);
-
-    const pulled = await (await fetch(new URL("/tally", server.resolvedUrls!.local[0]), {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-expressive-get": "default" },
-      body: "[]",
-    })).json();
-
-    expect(pulled).toMatchObject({ values: { total: 5 } });
+    expect(await post({ "x-expressive-get": "default" })).toEqual({ slot: 1, values: { total: 0 }, version: expect.any(String) });
+    expect(await post({ "x-expressive-call": "default.add", "x-expressive-slot": "1" }, "[2]")).toEqual({ value: 2, frame: { 1: { patch: { total: 2 }, version: expect.any(String) } } });
+    expect(await post({ "x-expressive-call": "default.add", "x-expressive-slot": "1" }, "[3]")).toEqual({ value: 5, frame: { 1: { patch: { total: 5 }, version: expect.any(String) } } });
+    expect(await post({ "x-expressive-call": "peek" })).toEqual({ value: 5, frame: {} });
   });
 
   it("will seat a folder's default for calls below it, imported by the client or not", async () => {
@@ -257,11 +251,11 @@ describe("vite host", () => {
 
     const res = await fetch(new URL("/tally", server.resolvedUrls!.local[0]), {
       method: "POST",
-      headers: { "content-type": "application/json", "x-expressive-call": "site" },
+      headers: { "content-type": "application/json", "x-expressive-connection": TAB, "x-expressive-call": "site" },
       body: "[]",
     });
 
-    expect(await res.json()).toBe("site");
+    expect(await res.json()).toEqual({ value: "site", frame: {} });
   });
 
   it("will throw if a sidecar exports what the client cannot call", async () => {
@@ -278,7 +272,7 @@ describe("vite host", () => {
 
     const res = await fetch(new URL("/tally", server.resolvedUrls!.local[0]), {
       method: "POST",
-      headers: { "content-type": "application/json", "x-expressive-call": "a" },
+      headers: { "content-type": "application/json", "x-expressive-connection": TAB, "x-expressive-call": "a" },
       body: "[]",
     });
 
@@ -290,12 +284,12 @@ describe("vite host", () => {
     await server.listen(0);
     const url = new URL("/tally", server.resolvedUrls!.local[0]);
 
-    const post = (body: string) => fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-expressive-call": "add" }, body });
+    const post = (body: string) => fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-expressive-connection": TAB, "x-expressive-call": "add" }, body });
 
     expect((await post("[2, 3]")).status).toBe(404);
 
     await server.transformRequest("/app/tally/remote.ts");
-    expect(await (await post("[2, 3]")).json()).toBe(5);
+    expect(await (await post("[2, 3]")).json()).toEqual({ value: 5, frame: {} });
 
     const over = await post("[10, 0]");
     expect(over.status).toBe(409);
@@ -322,11 +316,11 @@ describe("vite host", () => {
     await server.listen(0);
     const res = await fetch(new URL("/tally", server.resolvedUrls!.local[0]), {
       method: "POST",
-      headers: { "content-type": "application/json", "x-expressive-call": "math/sum:add" },
+      headers: { "content-type": "application/json", "x-expressive-connection": TAB, "x-expressive-call": "math/sum:add" },
       body: "[2, 3]",
     });
 
-    expect(await res.json()).toBe(5);
+    expect(await res.json()).toEqual({ value: 5, frame: {} });
   });
 
   it("will throw if a module outside its folder imports a remote/ module", async () => {
