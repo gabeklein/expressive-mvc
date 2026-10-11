@@ -1,8 +1,6 @@
 import './App.css';
 
-import { type ReactNode } from 'react';
-
-import { Provider } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 import { Link, Route, Router } from '@expressive/router';
 
 import { CartPage } from './Cart';
@@ -19,7 +17,7 @@ export default () => (
       and bumps it; a line stepped to zero destroys itself, which evicts it from
       the map.
     </p>
-    <Provider for={Cart}>
+    <Component for={Cart}>
       <Router>
         <Route as={Layout}>
           <Route as={Storefront} />
@@ -29,7 +27,7 @@ export default () => (
           <Route none as={NotFound} />
         </Route>
       </Router>
-    </Provider>
+    </Component>
     <small>
       Each line renders its own row, so the cart page drops the map straight
       into a <code>&lt;ul&gt;</code>. The badge reads only <code>count</code>,
@@ -38,7 +36,7 @@ export default () => (
   </div>
 );
 
-const Layout = ({ children }: { children?: ReactNode }) => (
+const Layout = ({ children }: { children?: Component.Node }) => (
   <div className="store">
     <header className="store-head">
       <Link to="/" className="brand">

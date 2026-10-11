@@ -1,4 +1,4 @@
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 import { Link } from '@expressive/router';
 
 import { getProduct, usd } from './catalog';

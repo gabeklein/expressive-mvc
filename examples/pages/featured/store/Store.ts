@@ -1,4 +1,4 @@
-import State, { map } from '@expressive/react';
+import { map, State } from '@expressive/mvc';
 
 import { Line } from './Line';
 
