@@ -634,6 +634,15 @@ function init(state: State, ...args: State.Args) {
         `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
       );
 
+    for (let T: State.Extends = type; T !== State; T = Object.getPrototypeOf(T)) {
+      const found = Context.root.get(T, false);
+
+      if (found && (T === type || found.constructor === T))
+        throw new Error(
+          `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+        );
+    }
+
     return Context.root.add(state);
   }
 

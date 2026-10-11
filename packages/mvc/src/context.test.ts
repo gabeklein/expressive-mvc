@@ -1221,6 +1221,60 @@ describe('root global', () => {
     first.set(null);
   });
 
+  it('will throw if a subtype would hide a supertype global', () => {
+    class Base extends State {
+      static readonly global: State.Global = true;
+    }
+    class Sub extends Base {
+      static readonly global = true;
+    }
+
+    const base = Base.new();
+
+    expect(() => Sub.new()).toThrow(
+      `as a global - ${base} already exists in root.`
+    );
+    expect(root.get(Base)).toBe(base);
+    expect(root.get(Sub, false)).toBeUndefined();
+
+    base.set(null);
+  });
+
+  it('will throw if a subtype global already resolves the type', () => {
+    class Base extends State {
+      static readonly global: State.Global = true;
+    }
+    class Sub extends Base {
+      static readonly global = true;
+    }
+
+    const sub = Sub.new();
+
+    expect(() => Base.new()).toThrow(
+      `as a global - ${sub} already exists in root.`
+    );
+    expect(root.get(Base)).toBe(sub);
+
+    sub.set(null);
+  });
+
+  it('will register a supertype after the subtype is destroyed', () => {
+    class Base extends State {
+      static readonly global: State.Global = true;
+    }
+    class Sub extends Base {
+      static readonly global = true;
+    }
+
+    Sub.new().set(null);
+
+    const base = Base.new();
+
+    expect(root.get(Base)).toBe(base);
+
+    base.set(null);
+  });
+
   it('will preserve subtype entries on eviction', () => {
     class Base extends State {}
     class SubA extends Base {

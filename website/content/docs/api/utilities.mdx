@@ -391,17 +391,17 @@ Without the declaration, a context-less instance stays private. `static global` 
 
 ### Global collision
 
-Two **implicit** instances of the same global class in root mutually evict at the contested ancestor:
+A global may not shadow another. Activation throws if root already resolves the type - the same class, or an instance of a subclass - or if the new instance would hide an instance whose class is one of its supertypes:
 
 ```ts
-const a = Sub.new(); // Sub declares `static global`
-const b = Sub.new();
-Context.root.get(Sub, false); // undefined - both evicted
+const a = Sub.new(); // Sub and Base both declare `static global`
+Sub.new();           // throws - a already exists in root
+Base.new();          // throws - a resolves Base
 ```
 
-Read it as "implicit collision opts out of global lookup" - if you create two, neither is *the* global instance. A third `Sub.new()` reclaims the now-empty slot.
+Destroy the existing instance first (`a.set(null)`) to register another - for example, to replace a global with a subclass in a test.
 
-Eviction is per-ancestor, so sibling subtypes only collide at their shared supertype:
+Sibling subtypes don't shadow each other - they collide only at their shared supertype, where both evict:
 
 ```ts
 // Base is a widened global; each subtype re-declares (required on extend)
