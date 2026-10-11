@@ -74,8 +74,9 @@ import { add } from "./remote";
 
 A call is `POST` to the folder's path with its params filled from the current location (`/blog/a`
 for `app/blog/[slug]/remote.ts`), an `x-expressive-call` header naming the function (`add`, or
-`feed/latest:add` inside `remote/`), and the arguments as a JSON array. The reply is the value as
-JSON, or 204 for `undefined`. Only the folder and those below it may import its sidecar.
+`feed/latest:add` inside `remote/`), the tab's `x-expressive-connection` id, and the arguments as a
+JSON array. The reply is `{ value, frame }` - the frame carries what the call changed on the tab's
+twins (below). Only the folder and those below it may import its sidecar.
 
 Only what the client imports is callable: the server accepts calls to the stubs the browser loaded in
 dev, and to those the client build generated in production - a helper module in `remote/` is never
@@ -163,9 +164,11 @@ Methods a seat inherits cross too: the build follows its bases by import - sourc
 base it cannot follow, such as `extends mixin(State)`, fails the build.
 
 A twin holds the seat's public values too. It attaches on construction and suspends until the
-snapshot arrives; each method's reply carries everything that changed since the twin's version, so an
-awaited call never reads stale. Values change on the server only - assigning a twin field throws. Twins made by client
-`use()`, and refresh of changes the server makes on its own, come later.
+snapshot arrives. Every call's reply - a twin's method or a plain function - carries everything that
+changed on any twin the tab holds since that twin last heard, so an awaited call never reads stale,
+even where it changed a parent folder's twin through `get()`. Values change on the server only -
+assigning a twin field throws. Twins made by client `use()`, and refresh of changes the server makes
+on its own, come later.
 
 ## Commands
 
