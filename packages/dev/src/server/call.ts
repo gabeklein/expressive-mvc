@@ -1,10 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { within, type Seat } from "./context";
+import { seated, within, type Seat } from "./context";
+import { changedSince, snapshot, versionOf } from "./version";
 
 export interface Exports {
   calls: Record<string, unknown>;
   classes: Record<string, unknown>;
+  seat?: { fields: string[]; methods: Record<string, string> };
 }
 
 export interface Endpoint {
@@ -52,7 +54,7 @@ export function resolve(endpoints: Endpoint[], at: string[]): Match | undefined 
 }
 
 export function isCall(req: IncomingMessage): boolean {
-  const name = req.headers["x-expressive-call"];
+  const name = req.headers["x-expressive-call"] ?? req.headers["x-expressive-get"];
   const json = req.headers["content-type"]?.startsWith("application/json");
 
   return req.method === "POST" && typeof name === "string" && !!json;
@@ -68,17 +70,50 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   const list = endpoints();
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
   const found = resolve(list, pathname.split("/").filter(Boolean));
-  const fn = found && await lookup(found.endpoint, req.headers["x-expressive-call"] as string);
+  const exports = found && await found.endpoint.exports();
+  const pull = req.headers["x-expressive-get"] as string | undefined;
+  const name = req.headers["x-expressive-call"] as string;
+  const method = exports?.seat && Object.hasOwn(exports.seat.methods, name) ? exports.seat.methods[name] : undefined;
+  const fn = !pull && !method && exports ? callOf(exports, name) : undefined;
 
-  if (!found || !fn) return reply(res, 404, { message: "Not found." });
+  if (!found || !exports || !(fn || method || pull === "default" && exports.seat)) return reply(res, 404, { message: "Not found." });
 
   const args = await readArgs(req);
 
   if (!args) return reply(res, 400, { message: "Expected a JSON array of arguments." });
 
+  const { fields } = exports.seat ?? { fields: [] };
+
   try {
-    const seated = await seatsAlong(seats, found.endpoint.pattern);
-    const value = await within(req, found.segments, () => fn(...args), seated);
+    const along = await seatsAlong(seats, found.endpoint.pattern);
+    const since = req.headers["if-none-match"] as string | undefined;
+
+    if (pull) {
+      const result = await within(req, found.segments, () => {
+        const seat = seated()!;
+        snapshot(seat, fields);
+        const keys = changedSince(seat, since, fields);
+        const version = versionOf(seat);
+
+        return keys.length || version !== since ? { values: snapshot(seat, keys), version } : undefined;
+      }, along);
+
+      return result ? reply(res, 200, result) : reply(res, 304);
+    }
+
+    if (method) {
+      const result = await within(req, found.segments, async () => {
+        const seat = seated()!;
+        const value = await (seat as any)[method](...args);
+        snapshot(seat, fields);
+
+        return { value, patch: snapshot(seat, changedSince(seat, since, fields)), version: versionOf(seat) };
+      }, along);
+
+      return reply(res, 200, result);
+    }
+
+    const value = await within(req, found.segments, () => fn!(...args), along);
     return value === undefined ? reply(res, 204) : reply(res, 200, value);
   } catch (error) {
     const { status, body } = await failure(error, list, dev);
@@ -90,8 +125,7 @@ function seatsAlong(seats: Seats, pattern: string[]): Promise<(Seat | undefined)
   return Promise.all(Array.from({ length: pattern.length + 1 }, (_, i) => seats(pattern.slice(0, i))));
 }
 
-async function lookup(endpoint: Endpoint, name: string): Promise<Call | undefined> {
-  const { calls } = await endpoint.exports();
+function callOf({ calls }: Exports, name: string): Call | undefined {
   const fn = Object.hasOwn(calls, name) ? calls[name] : undefined;
 
   return typeof fn === "function" ? (fn as Call) : undefined;

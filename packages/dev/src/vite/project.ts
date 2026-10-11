@@ -94,12 +94,15 @@ export function serverEntry(project: Project, from: string, exposure: Exposure, 
     const pick = (names: (remote: Exposed) => string[], id: (remote: Exposed, name: string) => string) =>
       group.flatMap(remote => names(remote).map(name => `${JSON.stringify(id(remote, name))}: ${alias(remote)}.${name}`)).join(", ");
 
-    const methods = group.flatMap(remote => (remote.seat?.methods ?? []).map(name =>
-      `${JSON.stringify(exposure.callId(remote, `default.${name}`))}: (...args) => ${alias(remote)}.default.use().${name}(...args)`));
-    const calls = [pick(remote => remote.calls, (remote, name) => exposure.callId(remote, name)), ...methods].filter(Boolean).join(", ");
+    const calls = pick(remote => remote.calls, (remote, name) => exposure.callId(remote, name));
     const classes = pick(remote => remote.classes, (remote, name) => exposure.classId(remote, name));
+    const seated = group.find(remote => remote.seat);
+    const seat = seated && JSON.stringify({
+      fields: seated.seat!.fields,
+      methods: Object.fromEntries(seated.seat!.methods.map(name => [exposure.callId(seated, `default.${name}`), name])),
+    });
 
-    return `    { pattern: ${JSON.stringify(group[0].pattern)}, async exports() { return { calls: { ${calls} }, classes: { ${classes} } }; } },`;
+    return `    { pattern: ${JSON.stringify(group[0].pattern)}, async exports() { return { calls: { ${calls} }, classes: { ${classes} }${seat ? `, seat: ${seat}` : ""} }; } },`;
   });
 
   return [

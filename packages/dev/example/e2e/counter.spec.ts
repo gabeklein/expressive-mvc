@@ -1,6 +1,6 @@
 import { expect, test } from "./fixture";
 
-test("calls a route default's methods through its twin, on an instance the server keeps", async ({ page, open }) => {
+test("reads a route default's values through its twin, kept current by its calls", async ({ page, open }) => {
   await open("/counter");
   const output = page.locator("output");
 
@@ -11,6 +11,8 @@ test("calls a route default's methods through its twin, on an instance the serve
   await expect(output).toHaveText("1");
 
   await page.reload();
+  await expect(output).toHaveText("1");
+
   await page.getByRole("button", { name: "Increment" }).click();
   await expect(output).toHaveText("2");
 });
