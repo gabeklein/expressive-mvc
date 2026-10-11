@@ -116,6 +116,32 @@ describe("connection", () => {
     });
   });
 
+  it("will drop a pooled twin's instance on release, and every one when the connection expires", () => {
+    vi.useFakeTimers();
+    const id = crypto.randomUUID();
+    const connection = connect(id)!;
+    const drops = { A: vi.fn(), B: vi.fn() };
+    const seat = tracked();
+
+    const cart = tracked();
+
+    hold(connection, "A", "/a", cart, ["total"], undefined, { id: "/a#Cart", drop: drops.A, current: () => true });
+    hold(connection, "B", "/a", tracked(), ["total"], undefined, { id: "/a#Cart", drop: drops.B, current: () => true });
+    hold(connection, "S", "/a", seat, ["total"]);
+
+    renew(connection, "/a", tracked());
+    expect(connection.twins.get("A")!.instance).toBe(cart);
+    expect(connection.twins.get("S")!.instance).not.toBe(seat);
+
+    release(connection, "A");
+    expect(drops.A).toHaveBeenCalledOnce();
+    expect(drops.B).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(300_000);
+    expect(drops.B).toHaveBeenCalledOnce();
+    expect(connection.twins.size).toBe(0);
+  });
+
   describe("stream", () => {
     const tick = () => new Promise(resolve => setTimeout(resolve));
 

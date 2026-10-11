@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { def, State } from "@expressive/mvc";
+import { Context, def, State } from "@expressive/mvc";
 
 import { runtime } from "./call";
 
@@ -34,10 +34,35 @@ class Source {
   }
 }
 
+class Spot extends State {
+  base = "";
+  to = "";
+  router = { segment: (to: string) => (to ? "/" + to : "") };
+}
+
+class Registry {
+  static made: Registry[] = [];
+  held = new Map<object, string>();
+
+  constructor(readonly cleanup: (id: string) => void) {
+    Registry.made.push(this);
+  }
+
+  register(target: object, id: string) {
+    this.held.set(target, id);
+  }
+
+  unregister(target: object) {
+    this.held.delete(target);
+  }
+}
+
 beforeEach(() => {
   Source.opened = [];
+  Registry.made = [];
   vi.stubGlobal("EventSource", Source);
-  ({ call, define, twin } = runtime(State, def));
+  vi.stubGlobal("FinalizationRegistry", Registry);
+  ({ call, define, twin } = runtime(State, def, Context, Spot));
   history.replaceState(null, "", "/tally");
 });
 
@@ -410,6 +435,93 @@ describe("stream", () => {
 
     source.emit("beat", { sum: 0 });
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("pooled twin", () => {
+  const tick = () => new Promise(resolve => setTimeout(resolve));
+
+  it("will build off any fiber at the detached root, naming its class", async () => {
+    const fetch = serve({ body: { values: { items: 0 }, version: "c:1" } });
+    const Cart = twin(["shop"], { add: "/shop#Cart.add" }, ["items"], "Cart", "/shop#Cart");
+    const cart = Cart.new() as any;
+
+    expect(fetch).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(cart.items).toBe(0));
+
+    expect(fetch).toHaveBeenCalledWith("/.expressive/detached", expect.anything());
+    expect(headers(fetch, 0)).toMatchObject({ "x-expressive-get": "/shop#Cart", "x-expressive-twin": idOf(fetch, 0) });
+  });
+
+  it("will build under its nearest route, at that route's place in the location", async () => {
+    history.replaceState(null, "", "/shop/42/edit");
+    const fetch = serve(
+      { body: { values: { items: 0 }, version: "c:1" } },
+      { body: () => ({ value: 1, frame: { [idOf(fetch, 0)]: { patch: { items: 1 }, version: "c:2" } } }) },
+    );
+    const Cart = twin(["shop"], { add: "/shop#Cart.add" }, ["items"], "Cart", "/shop#Cart");
+    const context = Context.root.push();
+    const route = Spot.new({ base: "/shop", to: ":id" });
+
+    context.add(route);
+    const cart = Cart.new() as any;
+    context.push(cart);
+
+    expect(await cart.add()).toBe(1);
+    expect(cart.items).toBe(1);
+    expect(fetch).toHaveBeenNthCalledWith(1, "/shop/42", expect.anything());
+    expect(fetch).toHaveBeenNthCalledWith(2, "/shop/42", expect.anything());
+    expect(headers(fetch, 1)).toMatchObject({ "x-expressive-call": "/shop#Cart.add", "x-expressive-twin": idOf(fetch, 0), "if-none-match": "c:1" });
+
+    history.replaceState(null, "", "/elsewhere");
+    serve({ body: { value: 2, frame: {} } });
+    expect(await cart.add()).toBe(2);
+  });
+
+  it("will build one per new(), for a client subclass too, which adds members of its own", async () => {
+    const fetch = serve({ body: { values: { items: 2 }, version: "c:1" } }, { body: { values: { items: 3 }, version: "d:1" } });
+    const Cart = twin(["shop"], {}, ["items"], "Cart", "/shop#Cart") as any;
+
+    class Local extends Cart {
+      get double() { return this.items * 2; }
+    }
+
+    const local = Local.new() as any;
+    await vi.waitFor(() => expect(local.double).toBe(4));
+
+    const other = Cart.new();
+    await vi.waitFor(() => expect(other.items).toBe(3));
+
+    expect(headers(fetch, 0)).toMatchObject({ "x-expressive-get": "/shop#Cart" });
+    expect(idOf(fetch, 0)).not.toBe(idOf(fetch, 1));
+  });
+
+  it("will release a twin collected without being destroyed", async () => {
+    const fetch = serve({ body: { values: { items: 0 }, version: "c:1" } }, { body: { frame: {} } });
+    const Cart = twin(["shop"], {}, ["items"], "Cart", "/shop#Cart");
+    const cart = Cart.new() as any;
+    const [registry] = Registry.made;
+
+    await vi.waitFor(() => expect(cart.items).toBe(0));
+    const id = registry.held.get(cart)!;
+
+    registry.cleanup(id);
+    Source.opened[0].emit("stale", { [id]: ["items"] });
+    await tick();
+    await call([], "bump", []);
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(headers(fetch, 1)).toMatchObject({ "x-expressive-release": id });
+  });
+
+  it("will stop watching for collection once destroyed", async () => {
+    serve({ body: { values: { items: 0 }, version: "c:1" } });
+    const cart = twin(["shop"], {}, ["items"], "Cart", "/shop#Cart").new() as any;
+    const [registry] = Registry.made;
+
+    expect(registry.held.has(cart)).toBe(true);
+    cart.set(null);
+    expect(registry.held.has(cart)).toBe(false);
   });
 });
 

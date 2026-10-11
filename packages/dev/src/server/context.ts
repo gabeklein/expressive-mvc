@@ -15,6 +15,7 @@ interface Layer {
   states: Map<Owned, Entry>;
   seat?: Entry;
   calls: number;
+  pooled: number;
 }
 
 interface Entry {
@@ -50,7 +51,7 @@ function frame(): Frame {
 
 function newLayer(prefix: string, parent?: Layer): Layer {
   const context = parent ? parent.context.push() : Context.root.push();
-  return { prefix, context, parent, children: new Map(), states: new Map(), calls: 0 };
+  return { prefix, context, parent, children: new Map(), states: new Map(), calls: 0, pooled: 0 };
 }
 
 function root(): Layer {
@@ -101,7 +102,7 @@ function seat(layer: Layer, Seat: Seat) {
   hold(frame().held, entry);
 }
 
-const isEmpty = (layer: Layer) => !layer.calls && !layer.states.size && !layer.children.size;
+const isEmpty = (layer: Layer) => !layer.calls && !layer.pooled && !layer.states.size && !layer.children.size;
 
 function prune(layer: Layer) {
   let at = layer;
@@ -207,6 +208,40 @@ function use(this: Owned) {
   hold(held, entry);
 
   return entry.instance;
+}
+
+let detached: Context | undefined;
+
+function detachedContext(): Context {
+  if (!detached) {
+    detached = Context.root.push();
+    detached.set({ 0: Current });
+  }
+
+  return detached;
+}
+
+export function construct(Type: State.Type, off = false): { instance: State; drop(): void; current(): boolean } {
+  const layer = off ? undefined : frame().layer;
+  const context = (layer ? layer.context : detachedContext()).push();
+  let instance!: State;
+
+  context.set({ 0: Type }, state => { instance = state; });
+  track(instance);
+
+  if (layer) {
+    layer.pooled++;
+    instance.set(null, () => {
+      layer.pooled--;
+      prune(layer);
+    });
+  }
+
+  return {
+    instance,
+    drop: () => void (instance.get(null) || context.pop()),
+    current: () => !instance.get(null) && (!layer || frame().layer === layer),
+  };
 }
 
 export function seated(): State | undefined {

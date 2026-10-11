@@ -9,6 +9,13 @@ interface Held {
   fields: string[];
   seen?: string;
   stop: () => void;
+  pool?: Pool;
+}
+
+export interface Pool {
+  id: string;
+  drop(): void;
+  current(): boolean;
 }
 
 export type Sink = (event: string, data: unknown) => void;
@@ -53,7 +60,10 @@ function expire(connection: Connection): void {
 
   if (connection.sink) return;
 
-  connection.timer = setTimeout(() => connections.delete(connection.id), TTL * 1000);
+  connection.timer = setTimeout(() => {
+    connections.delete(connection.id);
+    release(connection, [...connection.twins.keys()].join(","));
+  }, TTL * 1000);
   connection.timer.unref();
 }
 
@@ -136,19 +146,24 @@ export function release(connection: Connection, twins: unknown): void {
   if (typeof twins != "string") return;
 
   for (const twin of twins.split(",")) {
-    connection.twins.get(twin)?.stop();
+    const held = connection.twins.get(twin);
+
+    held?.stop();
+    held?.pool?.drop();
     connection.twins.delete(twin);
   }
 }
 
-export function hold(connection: Connection, twin: string, address: string, instance: State, fields: string[], seen?: string): void {
-  connection.twins.get(twin)?.stop();
-  connection.twins.set(twin, { address, instance, fields, seen, stop: watch(instance, () => announce(connection)) });
+export function hold(connection: Connection, twin: string, address: string, instance: State, fields: string[], seen?: string, pool?: Pool): void {
+  const held = connection.twins.get(twin);
+
+  held?.stop();
+  connection.twins.set(twin, { address, instance, fields, seen, pool, stop: watch(instance, () => announce(connection)) });
 }
 
 export function renew(connection: Connection, address: string, instance: State): void {
   for (const held of connection.twins.values()) {
-    if (held.address !== address || held.instance === instance) continue;
+    if (held.pool || held.address !== address || held.instance === instance) continue;
 
     held.stop();
     held.instance = instance;

@@ -1,7 +1,13 @@
 import { Component, get } from "@expressive/mvc";
 
 import Activity from "../remote";
-import Remote from "./remote";
+import Remote, { Tap } from "./remote";
+
+function Tapper(props: { label: string }) {
+  const tap = Tap.use();
+
+  return <button onClick={() => tap.tap()}>{props.label} {tap.taps}</button>;
+}
 
 export class Page extends Component {
   remote = get(Remote);
@@ -17,6 +23,8 @@ export class Page extends Component {
         <button onClick={() => remote.reset()}>Reset</button>
         <output>{remote.count}</output>
         <p>Clicks on this site: <data>{activity.clicks}</data></p>
+        <Tapper label="Left" />
+        <Tapper label="Right" />
       </>
     );
   }

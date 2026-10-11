@@ -10,10 +10,10 @@ import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject
 import { runtime } from "../client/call";
 import { Exposure, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
-import { dispatch, isCall, verify, type Endpoint, type Exports, type Seats } from "../server/call";
+import { dispatch, isCall, verify, type Endpoint, type Exports, type Pooled, type Seats } from "../server/call";
 import { isStream, stream } from "../server/stream";
 import { install } from "../server/context";
-import { scanExports, scanSidecar, scanTwin, type Sources } from "./scan";
+import { scanExports, scanSidecar, scanTwin, type Sources, type Twin } from "./scan";
 
 const MAIN = "main.tsx";
 const ROUTES = "routes.tsx";
@@ -166,10 +166,21 @@ export function expressive(): Plugin<Host> {
         const { calls, classes, seat, problems } = scanSidecar(source, file, !remote.module);
         const { twin, problems: inherited } = seat ? await scanTwin(source, file, sources) : { problems: [] };
         const all = [...problems, ...inherited];
+        const errors: string[] = [];
+        const pooled: Twin[] = [];
+
+        for (const name of classes) {
+          const scan = await scanTwin(source, file, sources, name);
+
+          if (scan.state) pooled.push(scan.twin!);
+          else errors.push(name);
+
+          all.push(...scan.problems);
+        }
 
         if (all.length) this.error(`${relative(root, file)}: ${all.join(" ")}`);
 
-        const exposed = { ...remote, calls, classes, seat: twin };
+        const exposed = { ...remote, calls, classes: errors, pooled, seat: twin };
         exposure.remotes.set(file, exposed);
 
         return stub(exposure, exposed);
@@ -177,7 +188,11 @@ export function expressive(): Plugin<Host> {
 
       switch (id) {
         case callId:
-          return `import { State, def } from "@expressive/mvc";\nexport const { call, define, twin } = (${runtime})(State, def);`;
+          return [
+            `import { Context, State, def } from "@expressive/mvc";`,
+            `import { Route } from "@expressive/dev";`,
+            `export const { call, define, twin } = (${runtime})(State, def, Context, Route);`,
+          ].join("\n");
         case mainId:
           return bootstrap(project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!));
         case routesId:
@@ -260,6 +275,7 @@ function endpointOf(host: ModuleRunner, root: string, exposure: Exposure, group:
     async exports() {
       const calls: Record<string, unknown> = {};
       const classes: Record<string, unknown> = {};
+      const pool: Record<string, Pooled> = {};
       let seat: Exports["seat"];
 
       for (const remote of group) {
@@ -270,11 +286,14 @@ function endpointOf(host: ModuleRunner, root: string, exposure: Exposure, group:
         for (const name of remote.classes) own[exposure.classId(remote, name)] = mod[name];
         if (remote.seat) seat = { fields: remote.seat.fields, methods: Object.fromEntries(remote.seat.methods.map(name => [exposure.callId(remote, `default.${name}`), name])) };
 
+        for (const twin of remote.pooled)
+          pool[exposure.classId(remote, twin.name)] = { Type: mod[twin.name], fields: twin.fields, methods: exposure.methodIds(remote, twin) };
+
         verify(relative(root, remote.file), { calls, classes: own });
         Object.assign(classes, own);
       }
 
-      return { calls, classes, seat };
+      return { calls, classes, seat, pool };
     },
   };
 }
@@ -292,6 +311,10 @@ function seatsOf(host: ModuleRunner, project: Project): Seats {
   };
 }
 
+function invert(methods: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(methods).map(([id, name]) => [name, id]));
+}
+
 function methodIds(exposure: Exposure, remote: Exposed): Record<string, string> {
   return Object.fromEntries(remote.seat!.methods.map(name => [name, exposure.callId(remote, `default.${name}`)]));
 }
@@ -304,6 +327,7 @@ function stub(exposure: Exposure, remote: Exposed): string {
     `const at = ${json(remote.pattern)};`,
     ...remote.calls.map(name => `export const ${name} = (...args) => call(at, ${json(exposure.callId(remote, name))}, args);`),
     ...remote.classes.map(name => `export const ${name} = define(${json(exposure.classId(remote, name))}, ${json(name)});`),
+    ...remote.pooled.map(twin => `export const ${twin.name} = twin(at, ${json(invert(exposure.methodIds(remote, twin)))}, ${json(twin.fields)}, ${json(twin.name)}, ${json(exposure.classId(remote, twin.name))});`),
     ...(remote.seat ? [`export default twin(at, ${json(methodIds(exposure, remote))}, ${json(remote.seat.fields)}, ${json(remote.seat.name)});`] : []),
     "",
   ].join("\n");

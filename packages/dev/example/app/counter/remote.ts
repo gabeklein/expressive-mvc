@@ -15,3 +15,13 @@ export default class Counter extends State {
     this.count = 0;
   }
 }
+
+export class Tap extends State {
+  protected activity = get(Activity);
+  taps = 0;
+
+  async tap() {
+    this.activity.clicks++;
+    return ++this.taps;
+  }
+}
