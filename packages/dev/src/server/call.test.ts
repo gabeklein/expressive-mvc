@@ -313,7 +313,10 @@ describe("pool dispatch", () => {
     name = "shop";
 
     static key() {
-      if (Current.get().request.headers["x-deny"]) throw new Error("Denied");
+      const { headers } = Current.get().request;
+
+      if (headers["x-deny"]) throw new Error("Denied");
+      return headers["x-user"] as string | undefined;
     }
   }
 
@@ -327,7 +330,7 @@ describe("pool dispatch", () => {
   const POOL = { "/shop#Cart": { Type: Cart, fields: ["items"], methods: { "/shop#Cart.add": "add", "/shop#Cart.seat": "seat" } } };
   const seats: Seats = async pattern => (pattern.join("/") === "shop" ? (Shop as any) : undefined);
   const endpoints: Endpoint[] = [
-    { pattern: ["shop"], exports: async () => ({ calls: {}, classes: {}, pool: POOL }) },
+    { pattern: ["shop"], exports: async () => ({ calls: { end: async () => { Shop.get().set(null); } }, classes: {}, pool: POOL }) },
     { pattern: ["detached"], exports: async () => ({ calls: {}, classes: {}, pool: { "/x#Note": { Type: class Note extends State { async seat() { return this.get(Shop, false) === undefined ? "none" : "shop"; } }, fields: [], methods: { "/x#Note.seat": "seat" } } } }) },
   ];
 
@@ -339,7 +342,7 @@ describe("pool dispatch", () => {
     return {
       id,
       pull: (twin: string, url = "/shop/42", extra: Record<string, string> = {}) => as(url, { "x-expressive-get": "/shop#Cart", "x-expressive-twin": twin, ...extra }),
-      call: (twin: string, method = "/shop#Cart.add", url = "/shop/42") => as(url, { "x-expressive-twin": twin }, method),
+      call: (twin: string, method = "/shop#Cart.add", url = "/shop/42", extra: Record<string, string> = {}) => as(url, { "x-expressive-twin": twin, ...extra }, method),
     };
   }
 
@@ -397,6 +400,29 @@ describe("pool dispatch", () => {
 
     expect((await send(endpoints, request("/shop/42", undefined, "[]", "application/json", { ...other, "x-expressive-get": "/x#Note" }), false, seats)).status).toBe(404);
     expect((await send(endpoints, request("/tally", "default.add", "[]", "application/json", other), false, seats)).status).toBe(404);
+  });
+
+  it("will refuse a twin whose walk now lands in another context, destroying its instance, and build afresh after", async () => {
+    const { id, pull, call } = tab();
+    const a = { "x-user": "a" };
+    const b = { "x-user": "b" };
+
+    await pull("Cart-A", "/shop/42", a);
+    await call("Cart-A", "/shop#Cart.add", "/shop/42", a);
+    const { instance } = connect(id)!.twins.get("Cart-A")!;
+
+    expect(await call("Cart-A", "/shop#Cart.add", "/shop/42", b)).toEqual({ status: 409, body: { message: "This twin's context was replaced - its instance is gone." } });
+    expect(instance.get(null)).toBe(true);
+    expect((await pull("Cart-A", "/shop/42", b)).body.values).toEqual({ items: 0 });
+  });
+
+  it("will refuse a twin whose seat ended", async () => {
+    const { pull, call } = tab();
+    const c = { "x-user": "c" };
+
+    await pull("Cart-A", "/shop/42", c);
+    expect((await call("end", "end", "/shop", c)).status).toBe(200);
+    expect((await call("Cart-A", "/shop#Cart.add", "/shop/42", c)).status).toBe(409);
   });
 
   it("will destroy a pooled instance its twin releases", async () => {

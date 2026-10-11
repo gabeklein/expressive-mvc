@@ -123,11 +123,17 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
 
     return result ? reply(res, 200, result) : reply(res, 304);
   } catch (error) {
+    if (error instanceof Moved) return reply(res, 409, { message: error.message });
+
     const { status, body } = await failure(error, list, dev);
     return reply(res, status, body);
   } finally {
     if (!pull) end(connection);
   }
+}
+
+class Moved extends Error {
+  message = "This twin's context was replaced - its instance is gone.";
 }
 
 interface Request {
@@ -171,10 +177,16 @@ async function inPool(req: IncomingMessage, connection: Connection, target: Targ
 
   return within(req, walk.segments, async () => {
     const held = connection.twins.get(twin);
+
+    if (held && !held.pool!.current()) {
+      release(connection, twin);
+      throw new Moved();
+    }
+
     const built = held ? undefined : construct(target.Type, off);
     const instance = held ? held.instance : built!.instance;
 
-    hold(connection, twin, address, instance, target.fields, since, held?.pool ?? { id: target.id, drop: built!.drop });
+    hold(connection, twin, address, instance, target.fields, since, held?.pool ?? { id: target.id, drop: built!.drop, current: built!.current });
 
     if (!target.method) return caughtUp(connection, twin, since);
 

@@ -221,7 +221,7 @@ function detachedContext(): Context {
   return detached;
 }
 
-export function construct(Type: State.Type, off = false): { instance: State; drop(): void } {
+export function construct(Type: State.Type, off = false): { instance: State; drop(): void; current(): boolean } {
   const layer = off ? undefined : frame().layer;
   const context = (layer ? layer.context : detachedContext()).push();
   let instance!: State;
@@ -237,7 +237,11 @@ export function construct(Type: State.Type, off = false): { instance: State; dro
     });
   }
 
-  return { instance, drop: () => void (instance.get(null) || context.pop()) };
+  return {
+    instance,
+    drop: () => void (instance.get(null) || context.pop()),
+    current: () => !instance.get(null) && (!layer || frame().layer === layer),
+  };
 }
 
 export function seated(): State | undefined {

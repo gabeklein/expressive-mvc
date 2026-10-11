@@ -15,6 +15,7 @@ interface Held {
 export interface Pool {
   id: string;
   drop(): void;
+  current(): boolean;
 }
 
 export type Sink = (event: string, data: unknown) => void;

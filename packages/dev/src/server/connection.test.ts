@@ -125,8 +125,8 @@ describe("connection", () => {
 
     const cart = tracked();
 
-    hold(connection, "A", "/a", cart, ["total"], undefined, { id: "/a#Cart", drop: drops.A });
-    hold(connection, "B", "/a", tracked(), ["total"], undefined, { id: "/a#Cart", drop: drops.B });
+    hold(connection, "A", "/a", cart, ["total"], undefined, { id: "/a#Cart", drop: drops.A, current: () => true });
+    hold(connection, "B", "/a", tracked(), ["total"], undefined, { id: "/a#Cart", drop: drops.B, current: () => true });
     hold(connection, "S", "/a", seat, ["total"]);
 
     renew(connection, "/a", tracked());

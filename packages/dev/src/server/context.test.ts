@@ -249,7 +249,11 @@ describe("pool", () => {
     const c = await call(["shop"], () => construct(Cart));
     expect(parentOf(c.instance)).toBe(parentOf(b.instance));
 
+    expect(await call(["shop"], () => b.current())).toBe(true);
+    expect(await call(["other"], () => b.current())).toBe(false);
+
     b.drop();
+    expect(await call(["shop"], () => b.current())).toBe(false);
     c.drop();
 
     const d = await call(["shop"], () => construct(Cart));
@@ -264,8 +268,10 @@ describe("pool", () => {
     expect(parentOf(a.instance)).toBe(parentOf(b.instance));
     expect(Context.get(a.instance).get(Current)).toBeInstanceOf(Current);
 
+    expect(await call(["any"], () => a.current())).toBe(true);
     a.drop();
     expect(a.instance.get(null)).toBe(true);
+    expect(a.current()).toBe(false);
   });
 });
 
