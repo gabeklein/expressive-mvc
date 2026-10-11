@@ -2313,6 +2313,22 @@ describe('set method', () => {
       expect(test.foo).toBe('bar');
     });
 
+    it('will keep subclass assignable to base with this-typed method', () => {
+      class Parent extends State {
+        self(): this {
+          return this;
+        }
+      }
+
+      class Child extends Parent {
+        value = 1;
+      }
+
+      const parent: Parent = Child.new();
+
+      expect(parent.self()).toBe(parent);
+    });
+
     it('will ignore properties not on state and built-ins', async () => {
       const test = Basic.new();
 
