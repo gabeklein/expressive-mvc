@@ -191,6 +191,11 @@ export class Cart extends State {
 }
 ```
 
+Reload the page when a call changes what a seat's `key()` returns - a login, a logout, switching
+accounts. Twins hold the context they were built in; a pooled twin's next request is refused once that
+context is replaced, but values already shown, client state under the route and replies to other
+calls can still carry the previous identity's data until the page reloads.
+
 ## Commands
 
 ```
