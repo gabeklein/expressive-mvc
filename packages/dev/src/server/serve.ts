@@ -5,6 +5,7 @@ import { extname, join, normalize } from "node:path";
 import type { AppConfig } from "./config";
 import { dispatch, isCall, verify, type Endpoint } from "./call";
 import { install, type Seat } from "./context";
+import { isStream, stream } from "./stream";
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -54,6 +55,7 @@ export function serve({ config, client, sidecars = [], seats = [] }: ServeOption
 
   const server = createServer(async (req, res) => {
     if (isCall(req)) return dispatch(req, res, () => sidecars, false, seatAt);
+    if (isStream(req)) return stream(req, res);
 
     const { pathname } = new URL(req.url ?? "/", "http://localhost");
 

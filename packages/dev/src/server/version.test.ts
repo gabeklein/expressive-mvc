@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { State } from "@expressive/mvc";
 
-import { changedSince, snapshot, track, versionOf } from "./version";
+import { changedSince, snapshot, track, versionOf, watch } from "./version";
 
 class Tally extends State {
   total = 0;
@@ -50,5 +50,23 @@ describe("versions", () => {
     tally.total = 3;
 
     expect(snapshot(tally, ["total", "double"])).toEqual({ total: 3, double: 6 });
+  });
+
+  it("will call a watcher once per flush until it stops watching", async () => {
+    const tally = Tally.new();
+    const watcher = vi.fn();
+
+    track(tally);
+    const stop = watch(tally, watcher);
+
+    tally.total = 1;
+    tally.label = "a";
+    await tally.set();
+    expect(watcher).toHaveBeenCalledTimes(1);
+
+    stop();
+    tally.total = 2;
+    await tally.set();
+    expect(watcher).toHaveBeenCalledTimes(1);
   });
 });
