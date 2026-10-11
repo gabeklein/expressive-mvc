@@ -60,26 +60,40 @@ abstract class Object3D<T extends THREE.Object3D = THREE.Object3D> extends State
   protected abstract create(): T;
 }
 
-class Group extends Object3D<THREE.Group> {
-  protected create() {
-    return new THREE.Group();
+type Base = abstract new (...args: any[]) => Object3D<any>;
+
+/**
+ * A node class for a three.js class - `keys` become members, typed from three's own declarations.
+ * An object with `updateProjectionMatrix` gets it after each member write.
+ */
+function node<T extends THREE.Object3D, K extends keyof T & string = never, B extends Base = typeof Object3D>(
+  Type: { prototype: T },
+  keys: readonly K[] = [],
+  base?: B
+) {
+  abstract class Node extends ((base || Object3D) as typeof Object3D<T>) {
+    protected create() {
+      return new (Type as unknown as new () => T)();
+    }
   }
+
+  if (keys.length)
+    Node.on({
+      setup: contract(
+        [...keys],
+        'updateProjectionMatrix' in Type.prototype
+          ? (object) => (object as THREE.Camera & { updateProjectionMatrix(): void }).updateProjectionMatrix()
+          : undefined
+      )
+    });
+
+  return Node as unknown as Pick<B, keyof B> &
+    (abstract new (...args: State.Args) => InstanceType<B> & Object3D<T> & Pick<T, K>);
 }
 
-class Scene extends Object3D<THREE.Scene> {
-  protected create() {
-    return new THREE.Scene();
-  }
-}
-
-class Mesh extends Object3D<THREE.Mesh> {
-  declare geometry: THREE.BufferGeometry;
-  declare material: THREE.Material | THREE.Material[];
-
-  protected create() {
-    return new THREE.Mesh();
-  }
-}
+class Group extends node(THREE.Group) {}
+class Scene extends node(THREE.Scene) {}
+class Mesh extends node(THREE.Mesh, ['geometry', 'material']) {}
 
 type Members = Record<string, unknown>;
 
@@ -275,6 +289,4 @@ Object3D.on({
   ready: mount
 });
 
-Mesh.on({ setup: contract(['geometry', 'material']) });
-
-export { contract, Group, Mesh, Object3D, objectOf, Scene, verify };
+export { Group, Mesh, node, Object3D, objectOf, Scene, verify };

@@ -48,8 +48,9 @@ arena.spinner.boost(1);
 
 - **Nodes** - `Object3D`, `Group`, `Scene`, `Mesh`, `PerspectiveCamera`,
   `OrthographicCamera`, and `AmbientLight`, `HemisphereLight`,
-  `DirectionalLight`, `PointLight`, `SpotLight` (all `Light`). Each represents one three.js
-  object, made once by `create()` and held as protected `_object`.
+  `DirectionalLight`, `PointLight`, `SpotLight` (all `Light`). Each represents
+  one three.js object, made once by `create()` and held as protected `_object`.
+  For a class not listed, extend `Object3D` and return it from `create()`.
 - **Members** - `visible`, plus `geometry` and `material` on `Mesh`, are
   reactive fields stored on the three.js object. Cameras and lights add their
   own (`fov`, `zoom`, `intensity`, ...); projection updates as they change. `position`, `rotation` and
