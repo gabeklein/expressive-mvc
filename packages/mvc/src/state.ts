@@ -62,6 +62,7 @@ const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
 const OWNS = new WeakMap<State, Set<State>>();
 const OWNED = new WeakMap<State, Set<(child: State) => void>>();
+const GLOBAL = new WeakSet<State>();
 
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
@@ -246,6 +247,9 @@ abstract class State {
    * that would inherit a global without its own declaration throws on
    * activation, so an accidental global (a forgotten `Provider`, an extended
    * global) cannot leak into the shared root.
+   *
+   * `State.new(true)` registers regardless of an inherited `true` or no
+   * declaration, and throws if `global` declares or resolves `false`.
    */
   static readonly global: State.Global = false;
 
@@ -513,8 +517,21 @@ abstract class State {
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends State>(this: State.Type<T>, ...args: State.Args<T>): T {
-    const instance = new this(...args);
+  static new<T extends State>(this: State.Type<T>, ...args: State.Args<T>): T;
+
+  /**
+   * Create and activate a new instance of this state, registered as a global.
+   * Throws if `static global` opts out, if `get()` already resolves this type,
+   * or if it would hide an instance of one of its supertypes.
+   *
+   * @param args - arguments sent to constructor
+   */
+  static new<T extends State>(this: State.Type<T>, global: true, ...args: State.Args<T>): T;
+
+  static new(this: State.Type, ...args: unknown[]) {
+    const global = args[0] === true;
+    const instance = new this(...(global ? args.slice(1) : args) as State.Args);
+    if (global) GLOBAL.add(instance);
     event(instance);
     return instance;
   }
@@ -626,13 +643,25 @@ function init(state: State, ...args: State.Args) {
 
     const type = state.constructor as typeof State;
     const g = type.global;
+    const on = typeof g == 'function' ? g(state) : g;
 
-    if (!(typeof g == 'function' ? g(state) : g)) return;
-
-    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
+    if (GLOBAL.has(state)) {
+      if (!on && declares(type))
+        throw new Error(`${type}.new(true) is not allowed - \`static global\` opts ${type.name} out.`);
+    } else if (!on) return;
+    else if (!Object.prototype.hasOwnProperty.call(type, 'global'))
       throw new Error(
         `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
       );
+
+    for (let T: State.Extends = type; T !== State; T = Object.getPrototypeOf(T)) {
+      const found = Context.root.get(T, false);
+
+      if (found && (T === type || found.constructor === T))
+        throw new Error(
+          `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+        );
+    }
 
     return Context.root.add(state);
   }
@@ -697,6 +726,13 @@ function init(state: State, ...args: State.Args) {
   }
 
   PENDING.add(state);
+}
+
+function declares(type: State.Extends) {
+  for (let T = type; T !== State; T = Object.getPrototypeOf(T))
+    if (Object.prototype.hasOwnProperty.call(T, 'global')) return true;
+
+  return false;
 }
 
 function unmanaged(state: State, key: string, value: unknown) {
