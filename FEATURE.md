@@ -116,7 +116,7 @@ Cached contexts, keyed. Each route layer resolves a cached `Context`; per-reques
 
 ## Current
 
-Per-request data sits behind one process-global `Current`, in context everywhere, whose accessors read `AsyncLocalStorage` (`{ request, connection, context }`, set by dev's walk) at call time: headers, cookies, the connection id, request and response tooling. Name open.
+Per-request data sits behind one process-global `Current`, in context everywhere, whose accessors read `AsyncLocalStorage` (`{ request, connection, context }`, set by dev's walk) at call time: headers, cookies, request and response tooling. Name open. No connection id - it follows from the context a call runs in, and the only use for it, a per-client registry, is better served by classes registering under an id of their own choosing (a session), which also outlives a reload.
 
 - **No per-request State.** `current = get(Current)` on any instance - reused or not - holds the one singleton, and every read reflects the request in progress. No `per()`, no reuse detection.
 - **Live, not computed.** mvc caches a prototype getter as a computed value unless it has a setter, is non-configurable or is `_`-prefixed (`classify()` in `state.ts`); `Current`'s accessors use one of those (as `Component`'s `key` does) or are methods.
