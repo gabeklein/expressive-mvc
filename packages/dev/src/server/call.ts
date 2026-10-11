@@ -86,9 +86,9 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
 
   try {
     const along = await seatsAlong(seats, found.endpoint.pattern);
+    const since = req.headers["if-none-match"] as string | undefined;
 
     if (pull) {
-      const since = req.headers["if-none-match"] as string | undefined;
       const result = await within(req, found.segments, () => {
         const seat = seated()!;
         snapshot(seat, fields);
@@ -104,11 +104,10 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
     if (method) {
       const result = await within(req, found.segments, async () => {
         const seat = seated()!;
-        snapshot(seat, fields);
-        const before = versionOf(seat);
         const value = await (seat as any)[method](...args);
+        snapshot(seat, fields);
 
-        return { value, patch: snapshot(seat, changedSince(seat, before, fields)), version: versionOf(seat) };
+        return { value, patch: snapshot(seat, changedSince(seat, since, fields)), version: versionOf(seat) };
       }, along);
 
       return reply(res, 200, result);

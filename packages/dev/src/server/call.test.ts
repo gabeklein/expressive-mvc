@@ -138,15 +138,31 @@ describe("seat dispatch", () => {
     expect(body).toEqual({ values: { total: 0 }, version: expect.stringMatching(/^[\w-]+:\d+$/) });
   });
 
-  it("will reply to a method call with its value, the patch and the version", async () => {
-    const before = (await send(endpoints, pull(), false, seats)).body.version;
-    const { body } = await send(endpoints, request("/tally", "default.add", "[2]"), false, seats);
+  const invoke = (name: string, args: string, version?: string) =>
+    send(endpoints, request("/tally", name, args, "application/json", version ? { "if-none-match": version } : {}), false, seats);
 
-    expect(body).toEqual({ value: 2, patch: { total: 2 }, version: expect.any(String) });
+  it("will reply to a method call with its value, the patch since the caller's version and the version", async () => {
+    const before = (await send(endpoints, pull(), false, seats)).body.version;
+    const { body } = await invoke("default.add", "[2]", before);
+
+    expect(body).toEqual({ value: expect.any(Number), patch: { total: body.value }, version: expect.any(String) });
     expect(body.version).not.toBe(before);
 
-    const unchanged = await send(endpoints, request("/tally", "default.noop", "[]"), false, seats);
+    const unchanged = await invoke("default.noop", "[]", body.version);
     expect(unchanged.body).toEqual({ value: undefined, patch: {}, version: body.version });
+  });
+
+  it("will patch a method call with changes the caller missed", async () => {
+    const { version } = (await send(endpoints, pull(), false, seats)).body;
+    const { body: other } = await invoke("default.add", "[3]", version);
+    const { body } = await invoke("default.noop", "[]", version);
+
+    expect(body).toEqual({ value: undefined, patch: { total: other.value }, version: other.version });
+  });
+
+  it("will patch every field for a call without a version", async () => {
+    const { body } = await invoke("default.noop", "[]");
+    expect(body.patch).toEqual({ total: expect.any(Number) });
   });
 
   it("will reply 304 to a pull that holds the current version, else only what changed", async () => {

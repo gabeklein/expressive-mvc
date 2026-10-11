@@ -163,8 +163,8 @@ Methods a seat inherits cross too: the build follows its bases by import - sourc
 base it cannot follow, such as `extends mixin(State)`, fails the build.
 
 A twin holds the seat's public values too. It attaches on construction and suspends until the
-snapshot arrives; each method's reply carries what the call changed, so an awaited call never reads
-stale. Values change on the server only - assigning a twin field throws. Twins made by client
+snapshot arrives; each method's reply carries everything that changed since the twin's version, so an
+awaited call never reads stale. Values change on the server only - assigning a twin field throws. Twins made by client
 `use()`, and refresh of changes the server makes on its own, come later.
 
 ## Commands
