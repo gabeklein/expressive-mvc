@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { State } from "@expressive/mvc";
 
-import { catchUp, connect, frameOf, open, release, renew } from "./connection";
+import { catchUp, connect, frameOf, hold, release, renew, twinOf } from "./connection";
 import { track } from "./version";
 
 class Tally extends State {
@@ -48,67 +48,71 @@ describe("connection", () => {
     expect(connect(id)!.epoch).not.toBe(epoch);
   });
 
-  it("will release only the slots it holds", () => {
-    const connection = connect(crypto.randomUUID())!;
-    const slot = open(connection, "/tally", tracked(), ["total"]);
-
-    release(connection, undefined);
-    release(connection, `${slot},7`);
-
-    expect(connection.slots.size).toBe(0);
-    expect(open(connection, "/tally", tracked(), ["total"])).toBe(slot + 1);
+  it("will accept a twin id of word characters, $ and -", () => {
+    expect(twinOf("Tally-X7K2QF")).toBe("Tally-X7K2QF");
+    expect(twinOf("$Tally_1")).toBe("$Tally_1");
+    expect(twinOf("a,b")).toBeUndefined();
+    expect(twinOf("")).toBeUndefined();
+    expect(twinOf("x".repeat(81))).toBeUndefined();
+    expect(twinOf(1)).toBeUndefined();
   });
 
-  it("will catch a slot up from its seen version", async () => {
+  it("will release the twins named", () => {
+    const connection = connect(crypto.randomUUID())!;
+
+    hold(connection, "A", "/tally", tracked(), ["total"]);
+    hold(connection, "B", "/tally", tracked(), ["total"]);
+    release(connection, undefined);
+    release(connection, "A,C");
+
+    expect([...connection.twins.keys()]).toEqual(["B"]);
+  });
+
+  it("will catch a twin up from its seen version", async () => {
     const connection = connect(crypto.randomUUID())!;
     const tally = tracked();
-    const slot = open(connection, "/tally", tally, ["total"]);
+    hold(connection, "A", "/tally", tally, ["total"]);
 
-    expect(catchUp(connection, slot).values).toEqual({ total: 0 });
-    expect(catchUp(connection, slot).values).toEqual({});
+    expect(catchUp(connection, "A").values).toEqual({ total: 0 });
+    expect(catchUp(connection, "A").values).toEqual({});
 
     tally.total = 2;
     await tally.set();
 
-    expect(catchUp(connection, slot).values).toEqual({ total: 2 });
+    expect(catchUp(connection, "A").values).toEqual({ total: 2 });
   });
 
-  it("will frame only the slots past their seen version", async () => {
+  it("will frame only the twins past their seen version", async () => {
     const connection = connect(crypto.randomUUID())!;
-    const a = tracked();
     const b = tracked();
 
-    catchUp(connection, open(connection, "/a", a, ["total"]));
-    catchUp(connection, open(connection, "/b", b, ["total"]));
+    hold(connection, "A", "/a", tracked(), ["total"]);
+    hold(connection, "B", "/b", b, ["total"]);
+    catchUp(connection, "A");
+    catchUp(connection, "B");
 
     b.total = 1;
     await b.set();
 
-    expect(frameOf(connection)).toEqual({ 2: { patch: { total: 1 }, version: expect.any(String) } });
+    expect(frameOf(connection)).toEqual({ B: { patch: { total: 1 }, version: expect.any(String) } });
     expect(frameOf(connection)).toEqual({});
   });
 
-  it("will renew every slot at an address with its new instance, and the named slot's seen version", () => {
+  it("will renew every twin at an address with its new instance, sent whole", () => {
     const connection = connect(crypto.randomUUID())!;
-    const a = open(connection, "/a", tracked(), ["total"]);
-    const b = open(connection, "/a", tracked(), ["total"]);
-    const c = open(connection, "/c", tracked(), ["total"]);
     const next = tracked();
 
-    catchUp(connection, a);
-    catchUp(connection, b);
-    catchUp(connection, c);
-    const { version } = catchUp(connection, a);
+    hold(connection, "A", "/a", tracked(), ["total"]);
+    hold(connection, "B", "/a", tracked(), ["total"]);
+    hold(connection, "C", "/c", tracked(), ["total"]);
+    frameOf(connection);
 
-    renew(connection, "/a", next, String(b), version);
-    renew(connection, "/b", tracked());
+    renew(connection, "/a", next);
 
-    expect(connection.slots.get(a)!.instance).toBe(next);
-    expect(connection.slots.get(b)!.instance).toBe(next);
-    expect(connection.slots.get(b)!.seen).toBe(version);
+    expect(connection.twins.get("A")!.instance).toBe(next);
     expect(frameOf(connection)).toEqual({
-      [a]: { patch: { total: 0 }, version: expect.any(String) },
-      [b]: { patch: { total: 0 }, version: expect.any(String) },
+      A: { patch: { total: 0 }, version: expect.any(String) },
+      B: { patch: { total: 0 }, version: expect.any(String) },
     });
   });
 });

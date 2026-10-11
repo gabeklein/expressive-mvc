@@ -233,9 +233,11 @@ describe("vite host", () => {
       body,
     })).json();
 
-    expect(await post({ "x-expressive-get": "default" })).toEqual({ slot: 1, values: { total: 0 }, version: expect.any(String) });
-    expect(await post({ "x-expressive-call": "default.add", "x-expressive-slot": "1" }, "[2]")).toEqual({ value: 2, frame: { 1: { patch: { total: 2 }, version: expect.any(String) } } });
-    expect(await post({ "x-expressive-call": "default.add", "x-expressive-slot": "1" }, "[3]")).toEqual({ value: 5, frame: { 1: { patch: { total: 5 }, version: expect.any(String) } } });
+    const twin = { "x-expressive-twin": "Tally-A" };
+
+    expect(await post({ "x-expressive-get": "default", ...twin })).toEqual({ values: { total: 0 }, version: expect.any(String) });
+    expect(await post({ "x-expressive-call": "default.add", ...twin }, "[2]")).toEqual({ value: 2, frame: { "Tally-A": { patch: { total: 2 }, version: expect.any(String) } } });
+    expect(await post({ "x-expressive-call": "default.add", ...twin }, "[3]")).toEqual({ value: 5, frame: { "Tally-A": { patch: { total: 5 }, version: expect.any(String) } } });
     expect(await post({ "x-expressive-call": "peek" })).toEqual({ value: 5, frame: {} });
   });
 

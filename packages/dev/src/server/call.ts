@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { catchUp, connect, frameOf, open, release, renew } from "./connection";
+import { catchUp, connect, frameOf, hold, release, renew, twinOf } from "./connection";
 import { seated, within, type Seat } from "./context";
 
 export interface Exports {
@@ -89,6 +89,10 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   res.setHeader("x-expressive-epoch", connection.epoch);
   release(connection, req.headers["x-expressive-release"]);
 
+  const twin = pull || method ? twinOf(req.headers["x-expressive-twin"]) : undefined;
+
+  if ((pull || method) && !twin) return reply(res, 400, { message: "Expected an x-expressive-twin id." });
+
   const { fields } = exports.seat ?? { fields: [] };
   const since = req.headers["if-none-match"] as string | undefined;
 
@@ -98,19 +102,19 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
     const result = await within(req, found.segments, async () => {
       const seat = seated();
 
+      if (seat) renew(connection, pathname, seat);
+      if (twin) hold(connection, twin, pathname, seat!, fields, since);
       if (pull) {
-        const slot = open(connection, pathname, seat!, fields, since);
-        return { slot, ...catchUp(connection, slot) };
+        const { values, version } = catchUp(connection, twin!);
+        return Object.keys(values).length || version !== since ? { values, version } : undefined;
       }
-
-      if (seat) renew(connection, pathname, seat, req.headers["x-expressive-slot"], since);
 
       const value = await (method ? (seat as any)[method](...args) : fn!(...args));
 
       return { value, frame: frameOf(connection) };
     }, along);
 
-    return reply(res, 200, result);
+    return result ? reply(res, 200, result) : reply(res, 304);
   } catch (error) {
     const { status, body } = await failure(error, list, dev);
     return reply(res, status, body);

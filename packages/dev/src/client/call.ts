@@ -4,15 +4,19 @@ export function runtime(Base: typeof State, def: typeof instruction) {
   const classes = new Map<string, ErrorConstructor>();
   const versions = new WeakMap<State, string>();
   const pending = new WeakMap<State, State.Apply[]>();
-  const meta = new WeakMap<State, { pattern: string[]; fields: string[] }>();
+  const meta = new WeakMap<State, { id: string; pattern: string[]; fields: string[] }>();
   const attaching = new WeakMap<State, Promise<void>>();
-  const slots = new WeakMap<State, number>();
+  const early = new WeakMap<State, { patch: Record<string, unknown>; version: string }>();
   const dropped = new WeakSet<State>();
-  const twins = new Map<number, State>();
-  const released = new Set<number>();
+  const twins = new Map<string, State>();
+  const released = new Set<string>();
   const connection = crypto.randomUUID();
   let epoch: string | undefined;
   let syncing = false;
+
+  function uid(): string {
+    return (0.278 + Math.random() * 0.722).toString(36).substring(2, 8).toUpperCase();
+  }
 
   function define(id: string, name: string): ErrorConstructor {
     // a computed key gives the anonymous class its name
@@ -41,7 +45,7 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     return "/" + path.join("/");
   }
 
-  async function send(path: string, headers: Record<string, string>, body: unknown): Promise<{ reply: any; reset: boolean }> {
+  async function send(path: string, headers: Record<string, string>, body: unknown): Promise<any> {
     const release: Record<string, string> = released.size ? { "x-expressive-release": [...released].join(",") } : {};
     released.clear();
 
@@ -57,10 +61,12 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     if (next) epoch = next;
     if (reset) await rejoin();
 
-    return { reply: await settle(res), reset };
+    return settle(res);
   }
 
   async function settle(res: Response): Promise<any> {
+    if (res.status === 304) return;
+
     const body = await res.json();
 
     if (res.ok) return body;
@@ -71,19 +77,20 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     throw Object.assign(new Type(message), fields);
   }
 
-  function apply(frame: Record<string, { patch: Record<string, unknown>; version: string }>, reset: boolean): void {
-    if (reset) return;
+  function apply(frame: Record<string, { patch: Record<string, unknown>; version: string }>): void {
+    for (const [id, { patch, version }] of Object.entries(frame)) {
+      const twin = twins.get(id);
 
-    for (const [slot, { patch, version }] of Object.entries(frame)) {
-      const twin = twins.get(Number(slot));
-      if (twin) sync(twin, patch, version);
+      if (!twin) continue;
+      if (versions.has(twin)) sync(twin, patch, version);
+      else early.set(twin, { patch: { ...early.get(twin)?.patch, ...patch }, version });
     }
   }
 
   async function call(pattern: string[], name: string, args: unknown[]): Promise<unknown> {
-    const { reply, reset } = await send(pathOf(pattern, name), { "x-expressive-call": name }, args);
+    const reply = await send(pathOf(pattern, name), { "x-expressive-call": name }, args);
 
-    apply(reply.frame, reset);
+    apply(reply.frame);
 
     return reply.value;
   }
@@ -128,48 +135,40 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     return version ? { "if-none-match": version } : {};
   }
 
-  function attach(twin: State): Promise<void> {
-    const { pattern } = meta.get(twin)!;
-    const attached = send(pathOf(pattern, "default"), { "x-expressive-get": "default", ...since(twin) }, []).then(({ reply }) => {
-      const { slot, values, version } = reply;
+  async function attach(twin: State): Promise<void> {
+    const { id, pattern } = meta.get(twin)!;
+    const reply = await send(pathOf(pattern, "default"), { "x-expressive-get": "default", "x-expressive-twin": id, ...since(twin) }, []);
 
-      if (dropped.has(twin)) return void released.add(slot);
+    if (dropped.has(twin)) return void released.add(id);
+    if (reply) sync(twin, reply.values, reply.version);
 
-      twins.set(slot, twin);
-      slots.set(twin, slot);
-      sync(twin, values, version);
-    });
+    const pending = early.get(twin);
 
-    attaching.set(twin, attached);
-
-    return attached;
+    if (pending) {
+      early.delete(twin);
+      sync(twin, pending.patch, pending.version);
+    }
   }
 
   async function rejoin(): Promise<void> {
-    const held = [...twins.values()];
-
-    twins.clear();
-    await Promise.all(held.map(attach));
+    await Promise.all([...twins.values()].map(attach));
   }
 
   function leave(twin: State): void {
-    const slot = slots.get(twin);
+    const { id } = meta.get(twin)!;
 
     dropped.add(twin);
-
-    if (slot === undefined) return;
-
-    twins.delete(slot);
-    released.add(slot);
+    twins.delete(id);
+    released.add(id);
   }
 
   async function invoke(twin: State, name: string, args: unknown[]): Promise<unknown> {
     await attaching.get(twin);
 
-    const headers = { "x-expressive-call": name, "x-expressive-slot": String(slots.get(twin)), ...since(twin) };
-    const { reply, reset } = await send(pathOf(meta.get(twin)!.pattern, name), headers, args);
+    const { id, pattern } = meta.get(twin)!;
+    const reply = await send(pathOf(pattern, name), { "x-expressive-call": name, "x-expressive-twin": id, ...since(twin) }, args);
 
-    apply(reply.frame, reset);
+    apply(reply.frame);
 
     return reply.value;
   }
@@ -180,13 +179,16 @@ export function runtime(Base: typeof State, def: typeof instruction) {
         constructor(...args: any[]) {
           super(...args);
 
+          const id = `${name}-${uid()}`;
+
           pending.set(this, []);
-          meta.set(this, { pattern, fields });
+          meta.set(this, { id, pattern, fields });
+          twins.set(id, this);
 
           for (const field of fields) (this as any)[field] = served();
 
           this.set(null, () => leave(this));
-          attach(this);
+          attaching.set(this, attach(this));
         }
       },
     };

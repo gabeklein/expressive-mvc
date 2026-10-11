@@ -3,7 +3,7 @@ import type { State } from "@expressive/mvc";
 
 import { changedSince, snapshot, versionOf } from "./version";
 
-interface Slot {
+interface Held {
   address: string;
   instance: State;
   fields: string[];
@@ -12,15 +12,15 @@ interface Slot {
 
 export interface Connection {
   epoch: string;
-  slots: Map<number, Slot>;
-  next: number;
+  twins: Map<string, Held>;
   timer?: ReturnType<typeof setTimeout>;
 }
 
-export type Frame = Record<number, { patch: Record<string, unknown>; version: string }>;
+export type Frame = Record<string, { patch: Record<string, unknown>; version: string }>;
 
 const TTL = 300;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TWIN = /^[\w$-]{1,80}$/;
 
 const connections = new Map<string, Connection>();
 
@@ -30,7 +30,7 @@ export function connect(id: unknown): Connection | undefined {
   let connection = connections.get(id);
 
   if (!connection) {
-    connection = { epoch: randomBytes(6).toString("base64url"), slots: new Map(), next: 0 };
+    connection = { epoch: randomBytes(6).toString("base64url"), twins: new Map() };
     connections.set(id, connection);
   }
 
@@ -41,31 +41,26 @@ export function connect(id: unknown): Connection | undefined {
   return connection;
 }
 
-export function release(connection: Connection, slots: unknown): void {
-  if (typeof slots != "string") return;
-
-  for (const slot of slots.split(",")) connection.slots.delete(Number(slot));
+export function twinOf(id: unknown): string | undefined {
+  return typeof id == "string" && TWIN.test(id) ? id : undefined;
 }
 
-export function open(connection: Connection, address: string, instance: State, fields: string[], seen?: string): number {
-  const slot = ++connection.next;
+export function release(connection: Connection, twins: unknown): void {
+  if (typeof twins != "string") return;
 
-  connection.slots.set(slot, { address, instance, fields, seen });
-
-  return slot;
+  for (const twin of twins.split(",")) connection.twins.delete(twin);
 }
 
-export function renew(connection: Connection, address: string, instance: State, slot?: unknown, seen?: string): void {
-  for (const [at, held] of connection.slots) {
-    if (held.address !== address) continue;
-
-    held.instance = instance;
-    if (String(at) === slot) held.seen = seen;
-  }
+export function hold(connection: Connection, twin: string, address: string, instance: State, fields: string[], seen?: string): void {
+  connection.twins.set(twin, { address, instance, fields, seen });
 }
 
-export function catchUp(connection: Connection, slot: number): { values: Record<string, unknown>; version: string } {
-  const held = connection.slots.get(slot)!;
+export function renew(connection: Connection, address: string, instance: State): void {
+  for (const held of connection.twins.values()) if (held.address === address) held.instance = instance;
+}
+
+export function catchUp(connection: Connection, twin: string): { values: Record<string, unknown>; version: string } {
+  const held = connection.twins.get(twin)!;
   const { instance, fields } = held;
 
   snapshot(instance, fields);
@@ -79,12 +74,12 @@ export function catchUp(connection: Connection, slot: number): { values: Record<
 export function frameOf(connection: Connection): Frame {
   const frame: Frame = {};
 
-  for (const [slot, held] of connection.slots) {
+  for (const [twin, held] of connection.twins) {
     snapshot(held.instance, held.fields);
     if (versionOf(held.instance) === held.seen) continue;
 
-    const { values, version } = catchUp(connection, slot);
-    frame[slot] = { patch: values, version };
+    const { values, version } = catchUp(connection, twin);
+    frame[twin] = { patch: values, version };
   }
 
   return frame;

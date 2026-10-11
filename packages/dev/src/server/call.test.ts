@@ -180,8 +180,8 @@ describe("seat dispatch", () => {
       Object.fromEntries(Object.entries({ "x-expressive-connection": id, ...extra }).filter(([, value]) => value)) as Record<string, string>;
 
     return {
-      pull: (url = "/tally", version?: string) =>
-        send(endpoints, request(url, undefined, "[]", "application/json", headers({ "x-expressive-get": "default", "if-none-match": version })), false, seats),
+      pull: (twin = "Tally-A", url = "/tally", version?: string) =>
+        send(endpoints, request(url, undefined, "[]", "application/json", headers({ "x-expressive-get": "default", "x-expressive-twin": twin, "if-none-match": version })), false, seats),
       call: (name: string, args = "[]", extra: Record<string, string | undefined> = {}) =>
         send(endpoints, request("/tally", name, args, "application/json", headers(extra)), false, seats),
     };
@@ -189,91 +189,97 @@ describe("seat dispatch", () => {
 
   install();
 
-  it("will reply to a pull with the seat's slot, values and version", async () => {
+  it("will reply to a pull with the seat's values and version", async () => {
     const { status, body } = await tab().pull();
 
     expect(status).toBe(200);
-    expect(body).toEqual({ slot: 1, values: { total: expect.any(Number) }, version: expect.stringMatching(/^[\w-]+:\d+$/) });
+    expect(body).toEqual({ values: { total: expect.any(Number) }, version: expect.stringMatching(/^[\w-]+:\d+$/) });
   });
 
-  it("will open a slot per pull", async () => {
-    const { pull } = tab();
+  it("will reply 400 to a pull or method call without a twin id", async () => {
+    const bad = { status: 400, body: { message: "Expected an x-expressive-twin id." } };
+    const { pull, call } = tab();
 
-    expect((await pull("/tally")).body.slot).toBe(1);
-    expect((await pull("/")).body.slot).toBe(2);
-    expect((await pull("/tally")).body.slot).toBe(3);
+    expect(await pull("")).toEqual(bad);
+    expect(await pull("a,b")).toEqual(bad);
+    expect(await call("default.noop")).toEqual(bad);
   });
 
-  it("will pull only what changed since the version sent", async () => {
+  it("will reply 304 to a pull that holds the current version, else only what changed", async () => {
     const { pull, call } = tab();
     const { version } = (await pull()).body;
 
-    expect((await pull("/tally", version)).body).toEqual({ slot: 2, values: {}, version });
+    expect((await pull("Tally-A", "/tally", version)).status).toBe(304);
 
-    await call("default.add", "[1]");
+    await call("default.add", "[1]", { "x-expressive-twin": "Tally-A" });
 
-    expect((await pull("/tally", version)).body.values).toEqual({ total: expect.any(Number) });
+    expect((await pull("Tally-A", "/tally", version)).body.values).toEqual({ total: expect.any(Number) });
   });
 
-  it("will reply to a method call with its value and a frame of every slot it moved", async () => {
+  it("will reply to a method call with its value and a frame of every twin it moved", async () => {
     const { pull, call } = tab();
-    const tally = (await pull("/tally")).body;
-    const visits = (await pull("/")).body;
-    const { body } = await call("default.add", "[2]", { "x-expressive-slot": "1", "if-none-match": tally.version });
+    const tally = (await pull("Tally-A")).body;
+    const visits = (await pull("Visits-B", "/")).body;
+    const { body } = await call("default.add", "[2]", { "x-expressive-twin": "Tally-A", "if-none-match": tally.version });
 
     expect(body).toEqual({
       value: tally.values.total + 2,
       frame: {
-        1: { patch: { total: tally.values.total + 2 }, version: expect.any(String) },
-        2: { patch: { count: visits.values.count + 1 }, version: expect.any(String) },
+        "Tally-A": { patch: { total: tally.values.total + 2 }, version: expect.any(String) },
+        "Visits-B": { patch: { count: visits.values.count + 1 }, version: expect.any(String) },
       },
     });
 
-    expect((await call("default.noop", "[]", { "x-expressive-slot": "1", "if-none-match": body.frame[1].version })).body).toEqual({ frame: {} });
+    const again = await call("default.noop", "[]", { "x-expressive-twin": "Tally-A", "if-none-match": body.frame["Tally-A"].version });
+    expect(again.body).toEqual({ frame: {} });
+  });
+
+  it("will frame each twin of the same seat on its own", async () => {
+    const { pull, call } = tab();
+    await pull("Tally-A");
+    await pull("Tally-B");
+
+    const { body } = await call("default.add", "[1]", { "x-expressive-twin": "Tally-A" });
+
+    expect(Object.keys(body.frame)).toEqual(["Tally-A", "Tally-B"]);
+    expect(body.frame["Tally-B"].patch).toEqual(body.frame["Tally-A"].patch);
   });
 
   it("will patch a method call with changes the caller missed", async () => {
     const mine = tab();
     const { version } = (await mine.pull()).body;
-    const other = (await tab().call("default.add", "[3]")).body;
-    const { body } = await mine.call("default.noop", "[]", { "x-expressive-slot": "1", "if-none-match": version });
+    const other = (await tab().call("default.add", "[3]", { "x-expressive-twin": "Tally-Z" })).body;
+    const { body } = await mine.call("default.noop", "[]", { "x-expressive-twin": "Tally-A", "if-none-match": version });
 
-    expect(body.frame[1]).toEqual({ patch: { total: other.value }, version: expect.any(String) });
+    expect(body.frame["Tally-A"]).toEqual({ patch: { total: other.value }, version: expect.any(String) });
   });
 
-  it("will patch every field of the calling slot without a version, and no slot it does not hold", async () => {
-    const mine = tab();
-    await mine.pull();
-    await mine.pull();
-
-    const { body } = await mine.call("default.noop", "[]", { "x-expressive-slot": "2" });
-
-    expect(body.frame).toEqual({ 2: { patch: { total: expect.any(Number) }, version: expect.any(String) } });
-    expect((await tab().call("default.noop", "[]", { "x-expressive-slot": "1" })).body).toEqual({ frame: {} });
+  it("will hold a twin a method call names, patching every field without a version", async () => {
+    const { body } = await tab().call("default.noop", "[]", { "x-expressive-twin": "Tally-A" });
+    expect(body.frame).toEqual({ "Tally-A": { patch: { total: expect.any(Number) }, version: expect.any(String) } });
   });
 
-  it("will frame a plain call's changes to the slots the tab holds", async () => {
+  it("will frame a plain call's changes to the twins the tab holds", async () => {
     const { pull, call } = tab();
     const { values, version } = (await pull()).body;
 
-    expect((await call("bump")).body).toEqual({ frame: { 1: { patch: { total: values.total + 1 }, version: expect.not.stringMatching(version) } } });
+    expect((await call("bump")).body).toEqual({ frame: { "Tally-A": { patch: { total: values.total + 1 }, version: expect.not.stringMatching(version) } } });
     expect((await tab().call("bump")).body).toEqual({ frame: {} });
   });
 
-  it("will drop the slots a request releases", async () => {
+  it("will drop the twins a request releases", async () => {
     const { pull, call } = tab();
-    await pull("/tally");
-    await pull("/");
+    await pull("Tally-A");
+    await pull("Visits-B", "/");
 
-    const { body } = await call("default.add", "[1]", { "x-expressive-release": "2,9" });
+    const { body } = await call("default.add", "[1]", { "x-expressive-twin": "Tally-A", "x-expressive-release": "Visits-B,Gone-C" });
 
-    expect(Object.keys(body.frame)).toEqual(["1"]);
-    expect((await pull("/")).body.slot).toBe(3);
+    expect(Object.keys(body.frame)).toEqual(["Tally-A"]);
   });
 
   it("will reply 404 to a pull of a folder without a seat, or naming anything but default", async () => {
     expect((await send([{ pattern: ["x"], exports: async () => ({ calls: {}, classes: {} }) }], request("/x", undefined, "[]", "application/json", { "x-expressive-get": "default" }))).status).toBe(404);
-    expect((await send(endpoints, request("/tally", undefined, "[]", "application/json", { "x-expressive-get": "other" }), false, seats)).status).toBe(404);
+    expect((await send(endpoints, request("/tally", undefined, "[]", "application/json", { "x-expressive-get": "other", "x-expressive-twin": "Tally-A" }), false, seats)).status).toBe(404);
   });
 
   it("will identify a pull as a call", () => {
