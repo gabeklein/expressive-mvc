@@ -1,8 +1,10 @@
-import type { State, set as field } from "@expressive/mvc";
+import type { State, def as instruction } from "@expressive/mvc";
 
-export function runtime(Base: typeof State, set: typeof field) {
+export function runtime(Base: typeof State, def: typeof instruction) {
   const classes = new Map<string, ErrorConstructor>();
   const versions = new WeakMap<State, string>();
+  const pending = new WeakMap<State, State.Apply[]>();
+  let syncing = false;
 
   function define(id: string, name: string): ErrorConstructor {
     // a computed key gives the anonymous class its name
@@ -52,20 +54,58 @@ export function runtime(Base: typeof State, set: typeof field) {
     return settle(await post(pathOf(pattern, name), { "x-expressive-call": name }, args));
   }
 
-  async function invoke(twin: State, pattern: string[], name: string, args: unknown[]): Promise<unknown> {
-    const { value, patch, version } = await settle(await post(pathOf(pattern, name), { "x-expressive-call": name }, args));
+  function served(): unknown {
+    return def((key, twin) => {
+      const config: State.Apply = {
+        get: true,
+        set() {
+          if (!syncing) throw new Error(`${twin}.${key} is read-only - change it through a method.`);
+        },
+      };
+
+      pending.get(twin)!.push(config);
+
+      return config;
+    });
+  }
+
+  function sync(twin: State, fields: string[], values: Record<string, unknown>, version: string): void {
+    const [generation, counter] = version.split(":");
+    const [held, at] = versions.get(twin)?.split(":") ?? [];
+    const configs = held === generation ? undefined : pending.get(twin);
+
+    if (!configs && Number(counter) < Number(at)) return;
+    if (configs) values = Object.fromEntries(fields.map(field => [field, values[field]]));
 
     versions.set(twin, version);
-    twin.set(patch);
+    syncing = true;
+
+    try {
+      twin.set(values);
+    } finally {
+      syncing = false;
+    }
+
+    configs?.splice(0).forEach(config => (config.get = false));
+  }
+
+  function since(twin: State): Record<string, string> {
+    const version = versions.get(twin);
+    return version ? { "if-none-match": version } : {};
+  }
+
+  async function invoke(twin: State, pattern: string[], fields: string[], name: string, args: unknown[]): Promise<unknown> {
+    const { value, patch, version } = await settle(await post(pathOf(pattern, name), { "x-expressive-call": name, ...since(twin) }, args));
+
+    sync(twin, fields, patch, version);
 
     return value;
   }
 
-  async function attach(twin: State, pattern: string[]): Promise<void> {
-    const reply = await settle(await post(pathOf(pattern, "default"), { "x-expressive-get": "default" }, []));
+  async function attach(twin: State, pattern: string[], fields: string[]): Promise<void> {
+    const { values, version } = await settle(await post(pathOf(pattern, "default"), { "x-expressive-get": "default" }, []));
 
-    versions.set(twin, reply.version);
-    twin.set(reply.values);
+    sync(twin, fields, values, version);
   }
 
   function twin(pattern: string[], methods: Record<string, string>, fields: string[], name: string): State.Type {
@@ -74,9 +114,11 @@ export function runtime(Base: typeof State, set: typeof field) {
         constructor(...args: any[]) {
           super(...args);
 
-          for (const field of fields) (this as any)[field] = set(undefined, () => {});
+          pending.set(this, []);
 
-          attach(this, pattern);
+          for (const field of fields) (this as any)[field] = served();
+
+          attach(this, pattern, fields);
         }
       },
     };
@@ -87,7 +129,7 @@ export function runtime(Base: typeof State, set: typeof field) {
         configurable: true,
         writable: true,
         value(this: State, ...args: unknown[]) {
-          return invoke(this, pattern, id, args);
+          return invoke(this, pattern, fields, id, args);
         },
       });
 
