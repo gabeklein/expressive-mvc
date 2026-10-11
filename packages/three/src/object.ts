@@ -6,6 +6,7 @@ const NODE = new WeakMap<THREE.Object3D, Object3D>();
 const AT = new WeakMap<Object3D, Object3D | undefined>();
 const TOUCHED = new Set<Object3D>();
 const WARNED = new WeakSet<Object3D>();
+const USES = new WeakMap<object, number>();
 
 /** A scene graph node, representing the three.js object `create` returns. */
 abstract class Object3D<T extends THREE.Object3D = THREE.Object3D> extends State {
@@ -103,7 +104,8 @@ function objectOf(self: object) {
 
 /**
  * At `setup` a subclass default is still a plain own value - route it to the object.
- * `changed` runs after defaults land and after each write.
+ * `changed` runs after defaults land and after each write. Geometry and materials held
+ * by members are counted - one no node holds any more is disposed.
  */
 function contract<T extends Object3D>(keys: string[], changed?: (object: THREE.Object3D) => void) {
   return (self: T) => {
@@ -125,17 +127,53 @@ function contract<T extends Object3D>(keys: string[], changed?: (object: THREE.O
       (self as State).set(key, {
         get: () => object[key],
         set(value: unknown) {
+          const previous = object[key];
+
           try {
             return write(self, object, key, value);
           } finally {
+            if (object[key] !== previous) {
+              hold(object[key]);
+              release(previous);
+            }
+
             changed?.(object as unknown as THREE.Object3D);
           }
         }
       });
+
+      hold(object[key]);
     }
 
     changed?.(object as unknown as THREE.Object3D);
+
+    return () => {
+      for (const key of keys) release(object[key]);
+    };
   };
+}
+
+function resources(value: unknown) {
+  return (Array.isArray(value) ? value : [value]).filter(
+    (item): item is THREE.BufferGeometry | THREE.Material =>
+      item instanceof THREE.BufferGeometry || item instanceof THREE.Material
+  );
+}
+
+function hold(value: unknown) {
+  for (const item of resources(value)) USES.set(item, (USES.get(item) || 0) + 1);
+}
+
+function release(value: unknown) {
+  for (const item of resources(value)) {
+    const uses = USES.get(item)! - 1;
+
+    if (uses) USES.set(item, uses);
+    else {
+      USES.delete(item);
+      item.dispose();
+    }
+  }
 }
 
 function vector(object: Members, key: string) {

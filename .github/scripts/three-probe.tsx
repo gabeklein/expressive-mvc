@@ -70,12 +70,15 @@ document.body.append(element);
 
 const probe = Probe.new();
 const { box } = probe.scene;
+const boxGeometry = box.geometry;
 
 probe._steps.push(
   () => (box.position = new THREE.Vector3(10, 0, 0)),
   () => (box.position.x = 0),
   () => (box.parent = null),
-  () => (box.parent = undefined)
+  () => (box.parent = undefined),
+  () => (box.geometry = new THREE.SphereGeometry(0.01)),
+  () => (box.geometry = boxGeometry)
 );
 
 await new Promise<void>((resolve) => {
@@ -85,7 +88,7 @@ await new Promise<void>((resolve) => {
 
 probe.set(null);
 
-const [first, moved, mutated, unplaced, restored] = probe._frames;
+const [first, moved, mutated, unplaced, restored, swapped, reused] = probe._frames;
 const show = (p: Pixel) => `rgb(${p.join(', ')})`;
 
 check('draws the scene through its camera', red(first.center), `center ${show(first.center)}`);
@@ -94,6 +97,8 @@ check('assignment moves the box', dark(moved.center), `center ${show(moved.cente
 check('in-place mutation still draws', red(mutated.center), `center ${show(mutated.center)}`);
 check('parent = null stops drawing it', dark(unplaced.center), `center ${show(unplaced.center)}`);
 check('unset parent draws it under its owner again', red(restored.center), `center ${show(restored.center)}`);
+check('a replaced geometry is gone', dark(swapped.center), `center ${show(swapped.center)}`);
+check('a disposed geometry assigned again draws again', red(reused.center), `center ${show(reused.center)}`);
 
 class Lit extends Box {
   material = new THREE.MeshStandardMaterial({ color: 0xffffff });

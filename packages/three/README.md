@@ -64,6 +64,9 @@ arena.spinner.boost(1);
   draw elsewhere (`null` for nowhere, or `parent = get(World)`); `children` lists
   what draws under a node. Placement never changes lifetime - destroying a node
   detaches it, destroying its parent returns it to its owner.
+- **Disposal** - geometry and materials are counted across the nodes holding
+  them and disposed when the last one replaces them or is destroyed. Sharing
+  needs no marking.
 - **`Viewport`** - the one host-facing root. Owns the renderer and a `Frame`; a
   subclass supplies `scene` and `camera`. Draws every frame while attached to a
   canvas or WebGL context, sizing renderer and camera to it. `draw()` is

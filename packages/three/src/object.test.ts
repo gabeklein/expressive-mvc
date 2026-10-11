@@ -673,3 +673,79 @@ describe('_object', () => {
     warn.mockRestore();
   });
 });
+
+describe('disposal', () => {
+  function spied<T extends { dispose(): void }>(resource: T) {
+    return Object.assign(resource, { dispose: vi.fn() });
+  }
+
+  it('will dispose its geometry and material when destroyed', () => {
+    const mesh = Mesh.new();
+    const geometry = spied(mesh.geometry);
+    const material = spied(mesh.material as THREE.Material);
+
+    mesh.set(null);
+
+    expect(geometry.dispose).toHaveBeenCalledTimes(1);
+    expect(material.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('will keep a shared resource until its last holder lets go', () => {
+    const geometry = spied(new THREE.BoxGeometry());
+
+    class Crate extends Mesh {
+      geometry = geometry;
+    }
+
+    const a = Crate.new();
+    const b = Crate.new();
+
+    a.set(null);
+    expect(geometry.dispose).not.toHaveBeenCalled();
+
+    b.set(null);
+    expect(geometry.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('will dispose a replaced resource no one else holds', () => {
+    const first = spied(new THREE.BoxGeometry());
+    const shared = spied(new THREE.BoxGeometry());
+    const mesh = Mesh.new({ geometry: first });
+    const other = Mesh.new({ geometry: shared });
+
+    mesh.geometry = shared;
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+
+    mesh.geometry = shared;
+    other.geometry = new THREE.BoxGeometry();
+    expect(shared.dispose).not.toHaveBeenCalled();
+  });
+
+  it('will count each material in a list', () => {
+    const red = spied(new THREE.MeshBasicMaterial());
+    const blue = spied(new THREE.MeshBasicMaterial());
+    const mesh = Mesh.new({ material: [red, blue] });
+    const other = Mesh.new({ material: blue });
+
+    mesh.set(null);
+
+    expect(red.dispose).toHaveBeenCalledTimes(1);
+    expect(blue.dispose).not.toHaveBeenCalled();
+
+    other.set(null);
+
+    expect(blue.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('will count a resource again after it was disposed', () => {
+    const geometry = spied(new THREE.BoxGeometry());
+
+    Mesh.new({ geometry }).set(null);
+
+    const again = Mesh.new({ geometry });
+
+    again.set(null);
+
+    expect(geometry.dispose).toHaveBeenCalledTimes(2);
+  });
+});
