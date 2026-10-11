@@ -45,13 +45,13 @@ describe("vite host", () => {
     return root;
   }
 
-  async function serve(root: string, host = expressive()) {
+  async function serve(root: string, host = expressive(), resolve = SOURCES) {
     const server = await createServer({
       root,
       configFile: false,
       logLevel: "silent",
       plugins: [host],
-      resolve: SOURCES,
+      resolve,
       optimizeDeps: { noDiscovery: true, include: [] },
     });
     servers.push(server);
@@ -162,7 +162,15 @@ describe("vite host", () => {
     await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow("only modules in app/tally/ and below may call it");
   });
 
-  const HOST = 'const { State } = (globalThis as any).hostMvc;';
+  const HOST = 'import { State } from "@expressive/mvc";';
+
+  function hostMvc(root: string): InlineConfig["resolve"] {
+    const shim = join(root, "host-mvc.ts");
+    const names = Object.keys((globalThis as any).hostMvc).filter(name => name !== "default");
+    writeFileSync(shim, `export const { ${names.join(", ")} } = (globalThis as any).hostMvc;`);
+
+    return { alias: [{ find: /^@expressive\/mvc$/, replacement: shim }, ...(SOURCES!.alias as any[])] };
+  }
   const SEAT = `
     ${HOST}
     export default class Tally extends State {
@@ -182,6 +190,26 @@ describe("vite host", () => {
     expect(stub).not.toContain("this.total");
   });
 
+  it("will twin the methods a seat inherits through imports", async () => {
+    const root = project({
+      "app/index.tsx": PAGE,
+      "app/lib/counter.ts": `${HOST} export class Counter extends State { count = 0; async increment() { return ++this.count; } protected async secret() {} }`,
+      "app/tally/remote.ts": `import { Counter } from "../lib/counter"; export default class Tally extends Counter { async add(by: number) { return by; } }`,
+    });
+    const server = await serve(root);
+
+    const stub = (await server.transformRequest("/app/tally/remote.ts"))?.code;
+    expect(stub).toMatch(/export default twin\(at, \{\s*"add": "default\.add",\s*"increment": "default\.increment"\s*\}, "Tally"\)/);
+    expect(stub).not.toContain("secret");
+  });
+
+  it("will throw if a seat's base cannot be followed", async () => {
+    const root = project({ "app/index.tsx": PAGE, "app/tally/remote.ts": `const mixin = (B: any) => B; ${HOST} export default class Tally extends mixin(State) {}` });
+    const server = await serve(root);
+
+    await expect(server.transformRequest("/app/tally/remote.ts")).rejects.toThrow("Tally extends an expression");
+  });
+
   it("will let the route tree provide a folder's twin", async () => {
     const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/index.tsx": PAGE, "app/tally/remote.ts": SEAT }));
 
@@ -193,7 +221,8 @@ describe("vite host", () => {
   });
 
   it("will call a seat's methods on the instance its folder holds", async () => {
-    const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/remote.ts": SEAT }));
+    const root = project({ "app/index.tsx": PAGE, "app/tally/remote.ts": SEAT });
+    const server = await serve(root, expressive(), hostMvc(root));
     await server.transformRequest("/app/tally/remote.ts");
     await server.listen(0);
 
@@ -214,7 +243,7 @@ describe("vite host", () => {
       "app/remote.ts": `${HOST} export default class Site extends State { static ttl = 60; name = "site"; }`,
       "app/tally/remote.ts": `import Site from "../remote"; export async function site() { return Site.get().name; }`,
     });
-    const server = await serve(root);
+    const server = await serve(root, expressive(), hostMvc(root));
     await server.transformRequest("/app/tally/remote.ts");
     await server.listen(0);
 

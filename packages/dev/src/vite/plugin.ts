@@ -12,7 +12,7 @@ import { Exposure, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
 import { dispatch, isCall, verify, type Endpoint, type Seats } from "../server/call";
 import { install } from "../server/context";
-import { scanExports, scanSidecar } from "./scan";
+import { scanExports, scanSidecar, scanTwin, type Sources } from "./scan";
 
 const MAIN = "main.tsx";
 const ROUTES = "routes.tsx";
@@ -151,15 +151,24 @@ export function expressive(): Plugin<Host> {
       return "scan" in options && options.scan ? { id: resolved.id, external: true } : resolved;
     },
 
-    load(id, options) {
+    async load(id, options) {
       const file = id.split("?")[0];
       const remote = !options?.ssr && remoteAt(file);
 
       if (remote) {
-        const { calls, classes, seat, problems } = scanSidecar(readFileSync(file, "utf8"), file, !remote.module);
-        if (problems.length) this.error(`${relative(root, file)}: ${problems.join(" ")}`);
+        const source = readFileSync(file, "utf8");
+        const sources: Sources = {
+          resolve: async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id,
+          read: path => readFileSync(path, "utf8"),
+        };
 
-        const exposed = { ...remote, calls, classes, seat };
+        const { calls, classes, seat, problems } = scanSidecar(source, file, !remote.module);
+        const { twin, problems: inherited } = seat ? await scanTwin(source, file, sources) : { problems: [] };
+        const all = [...problems, ...inherited];
+
+        if (all.length) this.error(`${relative(root, file)}: ${all.join(" ")}`);
+
+        const exposed = { ...remote, calls, classes, seat: twin };
         exposure.remotes.set(file, exposed);
 
         return stub(exposure, exposed);

@@ -20,13 +20,19 @@ export const scanExports: ExportScanner = async (source, path) => {
 export interface Twin {
   name: string;
   methods: string[];
+  fields: string[];
 }
 
 export interface SidecarScan {
   calls: string[];
   classes: string[];
-  seat?: Twin;
+  seat?: string;
   problems: string[];
+}
+
+export interface Sources {
+  resolve(spec: string, importer: string): Promise<string | undefined>;
+  read(file: string): string;
 }
 
 type Value = ESTree.Node | null | undefined;
@@ -127,22 +133,136 @@ function seat(scan: SidecarScan, value: Value, entry: boolean): void {
   if (!entry) return void scan.problems.push("Only a folder's remote entry - remote.ts or remote/index.ts - may export a default.");
   if (!isClass(value) || !value.superClass) return void scan.problems.push("A remote default is a State subclass - its methods are what the client calls.");
 
-  const name = value.id?.name ?? "default";
-  const methods: string[] = [];
+  scan.seat = value.id?.name ?? "default";
+}
 
-  for (const member of value.body.body) {
-    if (member.type !== "MethodDefinition" || member.kind !== "method" || member.static || member.computed) continue;
-    if (member.key.type !== "Identifier" || member.accessibility === "private" || member.accessibility === "protected") continue;
+interface Found {
+  cls: ESTree.Class;
+  module: Module;
+}
 
-    const method = member.key.name;
+interface Module {
+  file: string;
+  locals: Map<string, Value>;
+  imports: Map<string, { from: string; name: string }>;
+  exports: Map<string, Value>;
+}
 
-    if (method.startsWith("_") || RESERVED.has(method)) continue;
+const LIBRARY = /^@expressive\//;
 
-    if (member.value.async) methods.push(method);
-    else scan.problems.push(`${name}.${method}() is not async - every call to it crosses the wire.`);
+export async function scanTwin(source: string, path: string, sources: Sources): Promise<{ twin?: Twin; problems: string[] }> {
+  const module = moduleOf(path, source);
+  const value = module.exports.get("default");
+
+  if (!isClass(value)) return { problems: [] };
+
+  const twin: Twin = { name: value.id?.name ?? "default", methods: [], fields: [] };
+  const problems: string[] = [];
+  const seen = new Set<string>();
+
+  for (let at: Found | undefined = { cls: value, module }; at; at = await baseOf(at, sources, problems))
+    collect(at.cls, twin, seen, problems);
+
+  return { twin, problems };
+}
+
+function collect(cls: ESTree.Class, twin: Twin, seen: Set<string>, problems: string[]): void {
+  const owner = cls.id?.name ?? twin.name;
+
+  for (const member of cls.body.body) {
+    if (member.type !== "MethodDefinition" && member.type !== "PropertyDefinition") continue;
+    if (member.static || member.computed || member.key.type !== "Identifier") continue;
+    if (member.type === "MethodDefinition" && member.kind === "constructor") continue;
+
+    const { name } = member.key;
+
+    if (seen.has(name)) continue;
+    seen.add(name);
+
+    const hidden = member.accessibility === "private" || member.accessibility === "protected" || name.startsWith("_") || RESERVED.has(name);
+
+    if (hidden) continue;
+
+    if (member.type !== "MethodDefinition" || member.kind === "get") twin.fields.push(name);
+    else if (member.kind !== "method") continue;
+    else if (isAsync(member.value)) twin.methods.push(name);
+    else problems.push(`${owner}.${name}() is not async - every call to it crosses the wire.`);
+  }
+}
+
+function isAsync(fn: ESTree.Function): boolean {
+  const type = fn.returnType?.typeAnnotation;
+  const promised = type?.type === "TSTypeReference" && type.typeName.type === "Identifier" && type.typeName.name === "Promise";
+
+  return fn.async || promised;
+}
+
+async function baseOf({ cls, module }: Found, sources: Sources, problems: string[]): Promise<Found | undefined> {
+  const base = cls.superClass;
+  const owner = cls.id?.name ?? "default";
+
+  if (!base) return;
+
+  if (base.type !== "Identifier")
+    return void problems.push(`${owner} extends an expression - a twin's bases must be classes reached by name.`);
+
+  const local = module.locals.get(base.name);
+
+  if (isClass(local)) return { cls: local, module };
+
+  const imported = module.imports.get(base.name);
+
+  if (!imported) return void problems.push(`${owner} extends ${base.name}, which is neither declared nor imported in ${module.file}.`);
+  if (LIBRARY.test(imported.from)) return;
+
+  const file = await sources.resolve(imported.from, module.file);
+
+  if (!file) return void problems.push(`${owner} extends ${base.name} from "${imported.from}", which does not resolve.`);
+
+  const typed = declarations(file, sources);
+  const next = moduleOf(typed, sources.read(typed));
+  const exported = next.exports.get(imported.name);
+
+  if (!isClass(exported)) return void problems.push(`${owner} extends ${base.name}, which ${typed} does not export as a class.`);
+
+  return { cls: exported, module: next };
+}
+
+function declarations(file: string, sources: Sources): string {
+  const typed = file.replace(/\.([cm]?)js$/, ".d.$1ts");
+
+  if (typed === file) return file;
+
+  try {
+    sources.read(typed);
+    return typed;
+  } catch {
+    return file;
+  }
+}
+
+function moduleOf(file: string, source: string): Module {
+  const { program } = parseSync(file, source);
+  const locals = localBindings(program.body);
+  const imports = new Map<string, { from: string; name: string }>();
+  const exports = new Map<string, Value>();
+
+  for (const node of program.body) {
+    if (node.type === "ImportDeclaration")
+      for (const spec of node.specifiers ?? []) {
+        if (spec.type === "ImportNamespaceSpecifier") continue;
+        const name = spec.type === "ImportDefaultSpecifier" ? "default" : nameOf(spec.imported);
+        imports.set(spec.local.name, { from: node.source.value, name });
+      }
+
+    for (const [name, value] of exportsOf(node, locals)) exports.set(name, value);
+
+    const declared = node.type === "ExportNamedDeclaration" && node.declaration?.type === "ClassDeclaration" && node.declaration;
+
+    if (declared && declared.id) exports.set(declared.id.name, declared);
   }
 
-  scan.seat = { name, methods };
+  return { file, locals, imports, exports };
 }
 
 function localBindings(body: ESTree.Program["body"]): Map<string, Value> {
