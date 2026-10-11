@@ -1,6 +1,6 @@
 {
   "name": "@expressive/react",
-  "version": "0.88.0",
+  "version": "0.89.0",
   "description": "Class-based reactive state for React. Define models as plain classes; components update when the values they read change.",
   "keywords": [
     "expressive",
@@ -63,7 +63,7 @@
     "test": "bun run typecheck && bun run coverage"
   },
   "devDependencies": {
-    "@expressive/mvc": "^0.87.0",
+    "@expressive/mvc": "^0.88.0",
     "@testing-library/react": "^16.3.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -75,7 +75,7 @@
     "vite": "^7.3.1"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.87.0",
+    "@expressive/mvc": "^0.88.0",
     "react": ">=16.14.0 <20.0.0",
     "vite": ">=5"
   },
