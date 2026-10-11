@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { scanSidecar } from "./scan";
 
-const scan = (source: string) => scanSidecar(source, "api.ts");
+const scan = (source: string) => scanSidecar(source, "remote.ts");
 
 describe("sidecar scan", () => {
   it("will allow exported async functions, however declared", () => {
