@@ -173,7 +173,7 @@ it.
 
 A remote module may also export State classes. Each is a twin built per use: every `Cart.use()` in a
 component, or `Cart.new()` anywhere, gets a server instance of its own, alive while the client holds
-the twin. It is built under the component's nearest route, so its `get()` fields reach the seats
+the twin. Build twins through those two - not a raw `new Cart()`. It is built under the component's nearest route, so its `get()` fields reach the seats
 above it and every `key()` above it runs on each call; off any route it has no seat above it.
 
 ```ts

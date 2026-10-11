@@ -478,7 +478,7 @@ describe("pooled twin", () => {
     expect(await cart.add()).toBe(2);
   });
 
-  it("will build for a plain new and for a client subclass, which adds members of its own", async () => {
+  it("will build one per new(), for a client subclass too, which adds members of its own", async () => {
     const fetch = serve({ body: { values: { items: 2 }, version: "c:1" } }, { body: { values: { items: 3 }, version: "d:1" } });
     const Cart = twin(["shop"], {}, ["items"], "Cart", "/shop#Cart") as any;
 
@@ -489,8 +489,8 @@ describe("pooled twin", () => {
     const local = Local.new() as any;
     await vi.waitFor(() => expect(local.double).toBe(4));
 
-    const plain = new Cart();
-    await vi.waitFor(() => expect(plain.items).toBe(3));
+    const other = Cart.new();
+    await vi.waitFor(() => expect(other.items).toBe(3));
 
     expect(headers(fetch, 0)).toMatchObject({ "x-expressive-get": "/shop#Cart" });
     expect(idOf(fetch, 0)).not.toBe(idOf(fetch, 1));
