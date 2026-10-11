@@ -123,7 +123,7 @@ describe("twin scan", () => {
         async _helper() {}
         async use() {}
       }
-    `)).toEqual({ twin: { name: "Tally", methods: ["add"], fields: ["total", "double"] }, problems: [] });
+    `)).toEqual({ twin: { name: "Tally", methods: ["add"], fields: ["total", "double"] }, state: true, problems: [] });
   });
 
   it("will refuse a public method that is not async", async () => {
@@ -195,6 +195,17 @@ describe("twin scan", () => {
   });
 
   it("will find nothing without a default class", async () => {
-    expect(await twin(`export async function add() {}`)).toEqual({ problems: [] });
+    expect(await twin(`export async function add() {}`)).toEqual({ state: false, problems: [] });
+  });
+
+  it("will scan a named class as a State class when its bases reach an Expressive one", async () => {
+    const source = `${HEAD}
+      export class Cart extends State { items = 0; async add() {} }
+      export class Over extends Error { status = 409; toJSON() {} }
+    `;
+    const named = (name: string) => scanTwin(source, "/app/remote.ts", files({}), name);
+
+    expect(await named("Cart")).toEqual({ twin: { name: "Cart", methods: ["add"], fields: ["items"] }, state: true, problems: [] });
+    expect(await named("Over")).toMatchObject({ state: false, problems: [] });
   });
 });

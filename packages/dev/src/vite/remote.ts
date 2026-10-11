@@ -6,6 +6,7 @@ import type { Twin } from "./scan";
 export interface Exposed extends Remote {
   calls: string[];
   classes: string[];
+  pooled: Twin[];
   seat?: Twin;
 }
 
@@ -20,6 +21,10 @@ export class Exposure {
 
   classId(remote: Remote, name: string): string {
     return this.seal(globalId(remote, name));
+  }
+
+  methodIds(remote: Remote, twin: Twin): Record<string, string> {
+    return Object.fromEntries(twin.methods.map(name => [this.classId(remote, `${twin.name}.${name}`), name]));
   }
 
   byPattern(): Exposed[][] {

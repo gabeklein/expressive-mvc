@@ -267,6 +267,43 @@ describe("vite host", () => {
     await expect(server.transformRequest("/app/tally/remote.ts")).rejects.toThrow("add is neither an async function nor an Error subclass");
   });
 
+  const POOLED = `
+    ${HOST}
+    export class Cart extends State {
+      items = 0;
+      async add() { return ++this.items; }
+    }
+    export class Over extends Error {}
+  `;
+
+  it("will serve an exported State class to the browser as a twin built per use", async () => {
+    const root = project({ "app/index.tsx": PAGE, "app/shop/index.tsx": "import { Cart } from './remote'; export const Page = () => Cart", "app/shop/remote.ts": POOLED });
+    const server = await serve(root);
+
+    const stub = (await server.transformRequest("/app/shop/remote.ts"))?.code;
+    expect(stub).toContain('export const Cart = twin(at, { "add": "/shop#Cart.add" }, ["items"], "Cart", "/shop#Cart")');
+    expect(stub).toContain('export const Over = define("/shop#Over", "Over")');
+
+    const runtime = (await server.transformRequest("/.expressive/call.ts"))?.code;
+    expect(runtime).toMatch(/import \{ Route \} from "[^"]*dev\/src\/index[^"]*"/);
+  });
+
+  it("will build a twin's own instance on the module runner, under the route it names", async () => {
+    const root = project({ "app/index.tsx": PAGE, "app/shop/remote.ts": POOLED });
+    const server = await serve(root, expressive(), hostMvc(root));
+    await server.transformRequest("/app/shop/remote.ts");
+    await server.listen(0);
+
+    const post = async (headers: Record<string, string>) => (await fetch(new URL("/shop/42", server.resolvedUrls!.local[0]), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-expressive-connection": TAB, "x-expressive-twin": "Cart-A", ...headers },
+      body: "[]",
+    })).json();
+
+    expect(await post({ "x-expressive-get": "/shop#Cart" })).toEqual({ values: { items: 0 }, version: expect.any(String) });
+    expect(await post({ "x-expressive-call": "/shop#Cart.add" })).toEqual({ value: 1, frame: { "Cart-A": { patch: { items: 1 }, version: expect.any(String) } } });
+  });
+
   it("will refuse in dev a sidecar class that is not an Error", async () => {
     const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/remote.ts": "class Base {} export class Odd extends Base {} export async function a() {}" }));
     await server.transformRequest("/app/tally/remote.ts");
@@ -392,6 +429,17 @@ describe("vite host", () => {
 
     expect(server).toMatch(/seats: \[\{\s*pattern: \[\],\s*Type: Site\s*\}, \{\s*pattern: \["tally"\],\s*Type: Tally\s*\}\]/);
     expect(server).toMatch(/seat: \{\s*"fields": \["total"\],\s*"methods": \{\s*"default\.add": "add"\s*\}\s*\}/);
+  });
+
+  it("builds the node service with each folder's pooled classes", async () => {
+    const { server } = await buildBoth({
+      "index.ts": "export default { remote: { opaque: false } };",
+      "app/index.tsx": PAGE,
+      "app/shop/index.tsx": "import { Cart } from './remote'; export const Page = () => Cart",
+      "app/shop/remote.ts": POOLED,
+    });
+
+    expect(server).toMatch(/pool: \{\s*"\/shop#Cart": \{\s*Type: Cart,\s*fields: \["items"\],\s*methods: \{\s*"\/shop#Cart\.add": "add"\s*\}\s*\}\s*\}/);
   });
 
   it("builds readable ids when index.ts sets remote.opaque off", async () => {

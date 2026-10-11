@@ -150,20 +150,34 @@ interface Module {
 
 const LIBRARY = /^@expressive\//;
 
-export async function scanTwin(source: string, path: string, sources: Sources): Promise<{ twin?: Twin; problems: string[] }> {
+export interface TwinScan {
+  twin?: Twin;
+  state: boolean;
+  problems: string[];
+}
+
+export async function scanTwin(source: string, path: string, sources: Sources, name = "default"): Promise<TwinScan> {
   const module = moduleOf(path, source);
-  const value = module.exports.get("default");
+  const value = module.exports.get(name);
 
-  if (!isClass(value)) return { problems: [] };
+  if (!isClass(value)) return { state: false, problems: [] };
 
-  const twin: Twin = { name: value.id?.name ?? "default", methods: [], fields: [] };
+  const twin: Twin = { name: name === "default" ? value.id?.name ?? "default" : name, methods: [], fields: [] };
   const problems: string[] = [];
   const seen = new Set<string>();
+  let at: Found | Base | undefined = { cls: value, module };
 
-  for (let at: Found | undefined = { cls: value, module }; at; at = await baseOf(at, sources, problems))
+  while (at && "cls" in at) {
     collect(at.cls, twin, seen, problems);
+    at = await baseOf(at, sources, problems);
+  }
 
-  return { twin, problems };
+  const state = !!at?.library;
+
+  if (name !== "default") return state ? { twin, state, problems } : { state, problems: [] };
+  if (at?.global) problems.push(`${at.owner} extends ${at.global}, which is neither declared nor imported in ${module.file}.`);
+
+  return { twin, state, problems };
 }
 
 function collect(cls: ESTree.Class, twin: Twin, seen: Set<string>, problems: string[]): void {
@@ -197,7 +211,13 @@ function isAsync(fn: ESTree.Function): boolean {
   return fn.async || promised;
 }
 
-async function baseOf({ cls, module }: Found, sources: Sources, problems: string[]): Promise<Found | undefined> {
+interface Base {
+  owner: string;
+  library?: boolean;
+  global?: string;
+}
+
+async function baseOf({ cls, module }: Found, sources: Sources, problems: string[]): Promise<Found | Base | undefined> {
   const base = cls.superClass;
   const owner = cls.id?.name ?? "default";
 
@@ -212,8 +232,8 @@ async function baseOf({ cls, module }: Found, sources: Sources, problems: string
 
   const imported = module.imports.get(base.name);
 
-  if (!imported) return void problems.push(`${owner} extends ${base.name}, which is neither declared nor imported in ${module.file}.`);
-  if (LIBRARY.test(imported.from)) return;
+  if (!imported) return { owner, global: base.name };
+  if (LIBRARY.test(imported.from)) return { owner, library: true };
 
   const file = await sources.resolve(imported.from, module.file);
 
