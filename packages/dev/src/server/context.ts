@@ -5,6 +5,8 @@ import { createHash } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import { Context, State } from "@expressive/mvc";
 
+import { track } from "./version";
+
 interface Layer {
   prefix: string;
   context: Context;
@@ -184,6 +186,7 @@ function create(Type: Owned, layer: Layer): Entry {
   const entry: Entry = { Type, layer, context, instance, remove, refs: 0 };
 
   layer.states.set(Type, entry);
+  track(instance);
   instance.set(null, () => drop(entry));
 
   return entry;
@@ -204,6 +207,10 @@ function use(this: Owned) {
   hold(held, entry);
 
   return entry.instance;
+}
+
+export function seated(): State | undefined {
+  return frame().layer.seat?.instance;
 }
 
 function get(this: typeof State, required?: boolean) {

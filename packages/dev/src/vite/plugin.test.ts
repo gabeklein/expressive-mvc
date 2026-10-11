@@ -186,7 +186,7 @@ describe("vite host", () => {
     const server = await serve(root);
 
     const stub = (await server.transformRequest("/app/tally/remote.ts"))?.code;
-    expect(stub).toContain('export default twin(at, { "add": "default.add" }, "Tally")');
+    expect(stub).toContain('export default twin(at, { "add": "default.add" }, ["total"], "Tally")');
     expect(stub).not.toContain("this.total");
   });
 
@@ -199,7 +199,7 @@ describe("vite host", () => {
     const server = await serve(root);
 
     const stub = (await server.transformRequest("/app/tally/remote.ts"))?.code;
-    expect(stub).toMatch(/export default twin\(at, \{\s*"add": "default\.add",\s*"increment": "default\.increment"\s*\}, "Tally"\)/);
+    expect(stub).toMatch(/export default twin\(at, \{\s*"add": "default\.add",\s*"increment": "default\.increment"\s*\}, \["count"\], "Tally"\)/);
     expect(stub).not.toContain("secret");
   });
 
@@ -232,9 +232,17 @@ describe("vite host", () => {
       body,
     })).json();
 
-    expect(await post("default.add", "[2]")).toBe(2);
-    expect(await post("default.add", "[3]")).toBe(5);
+    expect(await post("default.add", "[2]")).toMatchObject({ value: 2, patch: { total: 2 } });
+    expect(await post("default.add", "[3]")).toMatchObject({ value: 5, patch: { total: 5 } });
     expect(await post("peek", "[]")).toBe(5);
+
+    const pulled = await (await fetch(new URL("/tally", server.resolvedUrls!.local[0]), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-expressive-get": "default" },
+      body: "[]",
+    })).json();
+
+    expect(pulled).toMatchObject({ values: { total: 5 } });
   });
 
   it("will seat a folder's default for calls below it, imported by the client or not", async () => {
@@ -373,7 +381,7 @@ describe("vite host", () => {
     });
 
     expect(server).toMatch(/seats: \[\{\s*pattern: \[\],\s*Type: Site\s*\}, \{\s*pattern: \["tally"\],\s*Type: Tally\s*\}\]/);
-    expect(server).toContain('"default.add": (...args) => Tally.use().add(...args)');
+    expect(server).toMatch(/seat: \{\s*"fields": \["total"\],\s*"methods": \{\s*"default\.add": "add"\s*\}\s*\}/);
   });
 
   it("builds readable ids when index.ts sets remote.opaque off", async () => {

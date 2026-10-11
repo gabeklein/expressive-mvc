@@ -3,11 +3,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { State } from "@expressive/mvc";
+import { def, State } from "@expressive/mvc";
 
 import { runtime } from "./call";
 
-const { call, define, twin } = runtime(State);
+const { call, define, twin } = runtime(State, def);
 
 function reply(status: number, body?: unknown) {
   const fetch = vi.fn(async () => new Response(body === undefined ? null : JSON.stringify(body), { status }));
@@ -82,18 +82,124 @@ describe("twin", () => {
     history.replaceState(null, "", "/");
   });
 
-  it("will make a named State whose methods call the server", async () => {
+  function replies(...bodies: unknown[]) {
+    const fetch = vi.fn(async () => new Response(JSON.stringify(bodies.shift()), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    return fetch;
+  }
+
+  it("will make a named State that attaches on creation and holds the snapshot", async () => {
     history.replaceState(null, "", "/tally");
-    const fetch = reply(200, 5);
-    const Tally = twin(["tally"], { add: "default.add" }, "Tally");
+    const fetch = replies({ values: { total: 4 }, version: "g:1" });
+    const Tally = twin(["tally"], {}, ["total"], "Tally");
     const tally = Tally.new() as any;
 
     expect(Tally.name).toBe("Tally");
     expect(tally).toBeInstanceOf(State);
-    expect(await tally.add(2, 3)).toBe(5);
     expect(fetch).toHaveBeenCalledWith("/tally", expect.objectContaining({
+      headers: expect.objectContaining({ "x-expressive-get": "default" }),
+      body: "[]",
+    }));
+
+    await vi.waitFor(() => expect(tally.total).toBe(4));
+  });
+
+  it("will call the server through a method and apply the reply's patch before resolving", async () => {
+    history.replaceState(null, "", "/tally");
+    const fetch = replies({ values: { total: 0 }, version: "g:1" }, { value: 5, patch: { total: 5 }, version: "g:2" });
+    const Tally = twin(["tally"], { add: "default.add" }, ["total"], "Tally");
+    const tally = Tally.new() as any;
+
+    await vi.waitFor(() => expect(tally.total).toBe(0));
+    expect(await tally.add(2, 3)).toBe(5);
+    expect(tally.total).toBe(5);
+    expect(fetch).toHaveBeenLastCalledWith("/tally", expect.objectContaining({
       headers: expect.objectContaining({ "x-expressive-call": "default.add" }),
       body: "[2,3]",
     }));
+  });
+
+  it("will send the held version with a call and patch only what changed", async () => {
+    history.replaceState(null, "", "/tally");
+    const fetch = replies({ values: { total: 0, label: "a" }, version: "g:1" }, { value: 1, patch: { total: 1 }, version: "g:2" });
+    const Tally = twin(["tally"], { add: "default.add" }, ["total", "label"], "Tally");
+    const tally = Tally.new() as any;
+
+    await vi.waitFor(() => expect(tally.total).toBe(0));
+    await tally.add(1);
+
+    expect(fetch).toHaveBeenLastCalledWith("/tally", expect.objectContaining({
+      headers: expect.objectContaining({ "if-none-match": "g:1" }),
+    }));
+    expect(tally.total).toBe(1);
+    expect(tally.label).toBe("a");
+  });
+
+  it("will throw if a twin field is assigned outside a reply", async () => {
+    history.replaceState(null, "", "/tally");
+    replies({ values: { total: 0 }, version: "g:1" });
+    const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
+
+    await vi.waitFor(() => expect(tally.total).toBe(0));
+
+    expect(() => (tally.total = 1)).toThrow(/\.total is read-only - change it through a method\.$/);
+    expect(() => tally.set({ total: 1 })).toThrow("read-only");
+    expect(tally.total).toBe(0);
+  });
+
+  it("will resolve a field the snapshot leaves out as undefined", async () => {
+    history.replaceState(null, "", "/tally");
+    replies({ values: {}, version: "g:1" });
+    const tally = twin(["tally"], {}, ["user"], "Tally").new() as any;
+
+    let thrown: unknown;
+    try { tally.user; } catch (error) { thrown = error; }
+
+    expect(await thrown).toBeUndefined();
+    expect(tally.user).toBeUndefined();
+  });
+
+  it("will ignore a reply older than the version it holds", async () => {
+    history.replaceState(null, "", "/tally");
+    let resolve!: (res: Response) => void;
+    const fetch = vi.fn()
+      .mockReturnValueOnce(new Promise<Response>(done => (resolve = done)))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ value: 1, patch: { total: 1 }, version: "g:2" })));
+    vi.stubGlobal("fetch", fetch);
+
+    const tally = twin(["tally"], { add: "default.add" }, ["total"], "Tally").new() as any;
+
+    await tally.add(1);
+    resolve(new Response(JSON.stringify({ values: { total: 0 }, version: "g:1" })));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await new Promise(resolve => setTimeout(resolve));
+
+    expect(tally.total).toBe(1);
+  });
+
+  it("will rewrite every field when the server's generation changes", async () => {
+    history.replaceState(null, "", "/tally");
+    replies({ values: { total: 4, label: "a" }, version: "g:9" }, { value: undefined, patch: { total: 0 }, version: "h:1" });
+    const tally = twin(["tally"], { reset: "default.reset" }, ["total", "label"], "Tally").new() as any;
+
+    await vi.waitFor(() => expect(tally.label).toBe("a"));
+    await tally.reset();
+
+    expect(tally.total).toBe(0);
+    expect(tally.label).toBeUndefined();
+  });
+
+  it("will suspend a required read until the snapshot arrives", async () => {
+    history.replaceState(null, "", "/tally");
+    replies({ values: { total: 7 }, version: "g:1" });
+    const Tally = twin(["tally"], {}, ["total"], "Tally");
+    const tally = Tally.new() as any;
+
+    let thrown: unknown;
+    try { tally.total; } catch (error) { thrown = error; }
+
+    expect(thrown).toBeInstanceOf(Promise);
+    await thrown;
+    expect(tally.total).toBe(7);
   });
 });
