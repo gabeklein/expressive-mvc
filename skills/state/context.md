@@ -84,15 +84,36 @@ Two rules keep a global deliberate:
 
 A context-claimed State never consults `global` - an instance provided by `<Component for>` (or any explicit context) is unaffected by it.
 
+### `State.new(true)`
+
+A leading `true` registers the instance as a global without a declaration - the call site opts in:
+
+```ts
+class Session extends State {}
+const session = Session.new(true, { user }); // remaining args go to the constructor
+Session.get(); // session
+```
+
+`static global` stays the policy:
+
+| Class declares          | `T.new()`                     | `T.new(true)`               |
+| ----------------------- | ----------------------------- | --------------------------- |
+| *(none)*                | private                       | registers                   |
+| own `true`              | registers                     | registers                   |
+| inherited `true`        | throws (re-declare)           | registers                   |
+| `false`, own or inherited | private                     | throws                      |
+| resolver                | registers if it returns true  | throws if it returns false  |
+
 > **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Component for>`. See [Server render](../react/react.md#server-render-ssr--rsc).
 
 ### Global Collision
 
-A global is a singleton - a second global instance of the same type throws on activation:
+A global may not shadow another. Registering throws on activation if root already resolves the type (the same class, or a subclass instance), or if it would hide an instance of exactly one of its supertypes:
 
 ```ts
 const a = Sub.new(); // Sub declares `static global`
-Sub.new();           // throws - Sub already exists in root
+Sub.new();           // throws - a already exists in root
+Base.new(true);      // throws - a resolves Base
 Context.root.get(Sub); // a - first instance unaffected
 ```
 
