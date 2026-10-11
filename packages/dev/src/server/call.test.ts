@@ -3,9 +3,9 @@ import { Readable } from "node:stream";
 
 import { get, State } from "@expressive/mvc";
 
-import { dispatch, isCall, resolve, verify, type Endpoint, type Seats } from "./call";
+import { DETACHED, dispatch, isCall, resolve, verify, walkOf, type Endpoint, type Seats } from "./call";
 import { connect, listen } from "./connection";
-import { install } from "./context";
+import { Current, install } from "./context";
 
 const at = (...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
 
@@ -304,6 +304,126 @@ describe("seat dispatch", () => {
 
   it("will identify a pull as a call", () => {
     expect(isCall(request("/tally", undefined, "[]", "application/json", { "x-expressive-get": "default" }) as any)).toBe(true);
+  });
+});
+
+describe("pool dispatch", () => {
+  class Shop extends State {
+    static ttl = 60;
+    name = "shop";
+
+    static key() {
+      if (Current.get().request.headers["x-deny"]) throw new Error("Denied");
+    }
+  }
+
+  class Cart extends State {
+    protected shop = get(Shop);
+    items = 0;
+    async add() { this.items++; return this.shop.name; }
+    async seat() { return this.get(Shop, false) === undefined ? "none" : "shop"; }
+  }
+
+  const POOL = { "/shop#Cart": { Type: Cart, fields: ["items"], methods: { "/shop#Cart.add": "add", "/shop#Cart.seat": "seat" } } };
+  const seats: Seats = async pattern => (pattern.join("/") === "shop" ? (Shop as any) : undefined);
+  const endpoints: Endpoint[] = [
+    { pattern: ["shop"], exports: async () => ({ calls: {}, classes: {}, pool: POOL }) },
+    { pattern: ["detached"], exports: async () => ({ calls: {}, classes: {}, pool: { "/x#Note": { Type: class Note extends State { async seat() { return this.get(Shop, false) === undefined ? "none" : "shop"; } }, fields: [], methods: { "/x#Note.seat": "seat" } } } }) },
+  ];
+
+  function tab() {
+    const id = crypto.randomUUID();
+    const as = (url: string, extra: Record<string, string>, name?: string) =>
+      send(endpoints, request(url, name, "[]", "application/json", { "x-expressive-connection": id, ...extra }), false, seats);
+
+    return {
+      id,
+      pull: (twin: string, url = "/shop/42", extra: Record<string, string> = {}) => as(url, { "x-expressive-get": "/shop#Cart", "x-expressive-twin": twin, ...extra }),
+      call: (twin: string, method = "/shop#Cart.add", url = "/shop/42") => as(url, { "x-expressive-twin": twin }, method),
+    };
+  }
+
+  install();
+
+  it("will build a twin's own instance under the route it names, and catch it up", async () => {
+    const { pull, call } = tab();
+
+    expect(await pull("Cart-A")).toEqual({ status: 200, body: { values: { items: 0 }, version: expect.any(String) } });
+    expect(await call("Cart-A")).toEqual({ status: 200, body: { value: "shop", frame: { "Cart-A": { patch: { items: 1 }, version: expect.any(String) } } } });
+  });
+
+  it("will give each twin its own instance, kept across pulls", async () => {
+    const { pull, call } = tab();
+    const { version } = (await pull("Cart-A")).body;
+    await pull("Cart-B");
+
+    const { body } = await call("Cart-A");
+
+    expect(Object.keys(body.frame)).toEqual(["Cart-A"]);
+    expect((await pull("Cart-A", "/shop/42", { "if-none-match": body.frame["Cart-A"].version })).status).toBe(304);
+    expect((await pull("Cart-A", "/shop/42", { "if-none-match": version })).body.values).toEqual({ items: 1 });
+  });
+
+  it("will run the gates above the route on every request", async () => {
+    const { id, pull, call } = tab();
+    await pull("Cart-A");
+
+    expect((await pull("Cart-B", "/shop/42", { "x-deny": "1" })).status).toBe(500);
+    expect(connect(id)!.twins.has("Cart-B")).toBe(false);
+
+    const denied = request("/shop/42", "/shop#Cart.add", "[]", "application/json", { "x-expressive-connection": id, "x-expressive-twin": "Cart-A", "x-deny": "1" });
+    expect((await send(endpoints, denied, false, seats)).status).toBe(500);
+    expect((await call("Cart-A")).body).toMatchObject({ value: "shop", frame: { "Cart-A": { patch: { items: 1 } } } });
+  });
+
+  it("will build off any route with no seat above it", async () => {
+    const { id } = tab();
+    const as = (extra: Record<string, string>, name?: string) =>
+      send(endpoints, request(DETACHED, name, "[]", "application/json", { "x-expressive-connection": id, "x-expressive-twin": "Note-A", ...extra }), false, seats);
+
+    expect((await as({ "x-expressive-get": "/x#Note" })).status).toBe(200);
+    expect((await as({}, "/x#Note.seat")).body.value).toBe("none");
+  });
+
+  it("will refuse a method for a twin it does not hold, or holds as something else", async () => {
+    const { pull, call } = tab();
+    await pull("Cart-A");
+
+    expect((await call("Cart-B")).status).toBe(404);
+
+    const mine = tab();
+    await mine.pull("Cart-A");
+    const other = { "x-expressive-connection": mine.id, "x-expressive-twin": "Cart-A" };
+
+    expect((await send(endpoints, request("/shop/42", undefined, "[]", "application/json", { ...other, "x-expressive-get": "/x#Note" }), false, seats)).status).toBe(404);
+    expect((await send(endpoints, request("/tally", "default.add", "[]", "application/json", other), false, seats)).status).toBe(404);
+  });
+
+  it("will destroy a pooled instance its twin releases", async () => {
+    const { id, pull } = tab();
+    await pull("Cart-A");
+    const { instance } = connect(id)!.twins.get("Cart-A")!;
+
+    await send(endpoints, request("/shop/42", undefined, "[]", "application/json", { "x-expressive-connection": id, "x-expressive-get": "/shop#Cart", "x-expressive-twin": "Cart-B", "x-expressive-release": "Cart-A" }), false, seats);
+
+    expect(instance.get(null)).toBe(true);
+  });
+});
+
+describe("walk", () => {
+  const at = (...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
+
+  it("will take each segment's pattern from the folder that claims it, else the segment itself", () => {
+    const list = [at("blog"), at("blog", ":slug"), at("blog", "new")];
+
+    expect(walkOf(list, ["blog", "hello", "edit"])).toEqual({ pattern: ["blog", ":slug", "edit"], segments: ["blog", "hello", "edit"] });
+    expect(walkOf(list, ["blog", "new"])).toEqual({ pattern: ["blog", "new"], segments: ["blog", "new"] });
+    expect(walkOf(list, ["about"])).toEqual({ pattern: ["about"], segments: ["about"] });
+    expect(walkOf(list, [])).toEqual({ pattern: [], segments: [] });
+  });
+
+  it("will end at a catch-all, which takes the rest of the path", () => {
+    expect(walkOf([at("docs", "*")], ["docs", "a", "b"])).toEqual({ pattern: ["docs", "*"], segments: ["docs", "a/b"] });
   });
 });
 

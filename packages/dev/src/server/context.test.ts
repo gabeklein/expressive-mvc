@@ -1,8 +1,8 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { IncomingMessage } from "node:http";
-import { get, State } from "@expressive/mvc";
+import { Context, get, State } from "@expressive/mvc";
 
-import { Current, install, within, type Seat } from "./context";
+import { construct, Current, install, within, type Seat } from "./context";
 
 const request = (url = "/", cookie = "") => ({ url, headers: { cookie } }) as IncomingMessage;
 const call = <T>(segments: string[], run: () => T) => within(request("/" + segments.join("/")), segments, run);
@@ -229,3 +229,43 @@ describe("Current", () => {
     });
   });
 });
+
+describe("pool", () => {
+  class Cart extends State {}
+
+  const parentOf = (state: State) => Context.get(state).parent;
+
+  it("will build an instance of its own in the call's layer, holding the layer alive", async () => {
+    const a = await call(["shop"], () => construct(Cart));
+    const b = await call(["shop"], () => construct(Cart));
+
+    expect(a.instance).not.toBe(b.instance);
+    expect(parentOf(a.instance)).toBe(parentOf(b.instance));
+
+    a.drop();
+    a.drop();
+    expect(a.instance.get(null)).toBe(true);
+
+    const c = await call(["shop"], () => construct(Cart));
+    expect(parentOf(c.instance)).toBe(parentOf(b.instance));
+
+    b.drop();
+    c.drop();
+
+    const d = await call(["shop"], () => construct(Cart));
+    expect(parentOf(d.instance)).not.toBe(parentOf(b.instance));
+    d.drop();
+  });
+
+  it("will build off any layer when detached", async () => {
+    const a = construct(Cart, true);
+    const b = construct(Cart, true);
+
+    expect(parentOf(a.instance)).toBe(parentOf(b.instance));
+    expect(Context.get(a.instance).get(Current)).toBeInstanceOf(Current);
+
+    a.drop();
+    expect(a.instance.get(null)).toBe(true);
+  });
+});
+
