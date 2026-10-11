@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -8,108 +8,13 @@ import { join, resolve } from 'node:path';
  * in CI resolves the built dist the way a consumer does: vitest aliases the
  * scope onto sources, and `npm publish --dry-run` runs no code at all.
  *
- * Runs from `ci:publish`, so it gates the publish itself rather than every merge.
+ * Probes and the consumer app live in `dist-smoke/`, copied into the fixture so
+ * their bare imports resolve against the installed tarballs. The consumer is a
+ * dom app built the way a consumer builds one: type-checked against the
+ * published declarations with `skipLibCheck` off, bundled and minified so
+ * `sideEffects` tree-shaking applies, then driven under happy-dom.
  */
-const PACKAGES = ['mvc', 'react', 'router', 'inspect'];
-
-const PROBES: Record<string, string> = {
-  mvc: `
-import assert from 'node:assert/strict';
-import State from '@expressive/mvc';
-
-class Store extends State {
-  count = 0;
-  get double() { return this.count * 2 }
-}
-
-const store = Store.new();
-const seen = [];
-
-store.get(({ count }) => { seen.push(count) });
-
-store.count = 2;
-
-const update = await store.set();
-
-assert.deepEqual(update, ['count']);
-assert.equal(store.double, 4);
-assert.deepEqual(seen, [0, 2]);
-
-store.set(null);
-
-console.log('mvc: State round-trip ok');
-`,
-  react: `
-import assert from 'node:assert/strict';
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import State, { Component, Provider, Consumer, get, set, ref, def, has, map } from '@expressive/react';
-
-for (const [name, value] of Object.entries({ State, Component, Provider, Consumer, get, set, ref, def, has, map }))
-  assert.equal(typeof value, 'function', name + ' is not exported by the built dist');
-
-class Counter extends State {
-  value = 5;
-}
-
-const View = () => createElement('span', null, Counter.use().value);
-
-assert.equal(renderToStaticMarkup(createElement(View)), '<span>5</span>');
-
-class Widget extends Component {
-  label = 'unset';
-
-  render() {
-    return createElement('b', null, this.label);
-  }
-}
-
-assert.equal(
-  renderToStaticMarkup(createElement(Widget, { label: 'patched' })),
-  '<b>patched</b>'
-);
-
-console.log('react: hook render + Component render ok');
-`,
-  router: `
-import assert from 'node:assert/strict';
-import { Router, BrowserRouter, Route, Link, Redirect, NavLinks, matchPattern } from '@expressive/router';
-
-for (const [name, value] of Object.entries({ Router, BrowserRouter, Route, Link, Redirect, NavLinks, matchPattern }))
-  assert.equal(typeof value, 'function', name + ' is not exported by the built dist');
-
-assert.deepEqual(matchPattern('/user/:id', '/user/42').params, { id: '42' });
-
-console.log('router: import shape ok');
-`,
-  inspect: `
-import assert from 'node:assert/strict';
-import '@expressive/inspect/install';
-import State from '@expressive/mvc';
-import { find, journal } from '@expressive/inspect';
-import { inspect } from '@expressive/inspect/playwright';
-
-class Composer extends State {
-  draft = '';
-  submit(text) { this.draft = text }
-}
-
-const composer = Composer.new();
-const page = { evaluate: async (fn, arg) => fn(arg) };
-const api = inspect(page);
-
-assert.equal(typeof globalThis.__EXPRESSIVE_INSPECT__, 'object');
-assert.equal(await api.get('Composer.draft'), '');
-
-const frames = await find('Composer').act((s) => s.submit('hi'));
-
-assert.equal(frames[0].events[0].key, 'draft');
-assert.equal(composer.draft, 'hi');
-assert.equal(journal.record().level, 'off');
-
-console.log('inspect: install + act + playwright bridge ok');
-`
-};
+const PACKAGES = ['mvc', 'react', 'dom', 'router', 'inspect'];
 
 function run(cmd: string[], cwd: string) {
   const { exitCode, stdout, stderr } = Bun.spawnSync(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });
@@ -122,6 +27,7 @@ function run(cmd: string[], cwd: string) {
   return out;
 }
 
+const ROOT = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 const fixture = mkdtempSync(join(tmpdir(), 'expressive-dist-smoke-'));
 const tarballs: Record<string, string> = {};
 
@@ -145,7 +51,13 @@ try {
         version: '0.0.0',
         private: true,
         type: 'module',
-        dependencies: { ...tarballs, react: '^19', 'react-dom': '^19' },
+        dependencies: {
+          ...tarballs,
+          react: '^19',
+          'react-dom': '^19',
+          'happy-dom': ROOT.devDependencies['happy-dom'],
+          typescript: ROOT.devDependencies.typescript
+        },
         overrides: tarballs
       },
       null,
@@ -155,12 +67,16 @@ try {
 
   run(['npm', 'install', '--no-audit', '--no-fund', '--loglevel=error'], fixture);
 
-  for (const [name, source] of Object.entries(PROBES)) {
-    const probe = `probe.${name}.mjs`;
+  cpSync(resolve('.github/scripts/dist-smoke'), fixture, { recursive: true });
 
-    writeFileSync(join(fixture, probe), source);
-    process.stdout.write(run(['node', probe], fixture));
-  }
+  for (const name of PACKAGES)
+    process.stdout.write(run(['node', `probes/${name}.mjs`], fixture));
+
+  const consumer = join(fixture, 'consumer');
+
+  run(['node', '../node_modules/typescript/bin/tsc', '-p', '.'], consumer);
+  run(['bun', 'build', 'app.tsx', '--outfile', 'bundle.js', '--format', 'esm', '--minify'], consumer);
+  process.stdout.write(run(['node', 'consumer.mjs'], consumer));
 } catch (error) {
   console.error(`Fixture kept for inspection: ${fixture}`);
   throw error;

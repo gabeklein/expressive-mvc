@@ -1,4 +1,4 @@
-import { Component, set } from '@expressive/react';
+import { Component, set } from '@expressive/mvc';
 
 export class Picker extends Component {
   name = '';

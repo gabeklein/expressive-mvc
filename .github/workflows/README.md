@@ -1,16 +1,50 @@
 # CI/CD Workflow Overview
 
-## pr.yml (pull requests -> main)
+## pr.yml (pull requests)
 
-Blocking: `bun run test`, `bun run build` and `dist-check.ts` (static invariants
-on the emitted dist - relative specifiers resolve, side-effect imports are
-declared). Steps backed by a script under `.github/scripts` invoke it directly;
-only workspace-wide commands are `package.json` entries. The frozen-lockfile
+Blocking: `bun run typecheck`, `bun run coverage`, `bun run build` and
+`dist-check.ts` (static invariants on the emitted dist - relative specifiers
+resolve, side-effect imports are declared). Tests still run after a failed
+typecheck, so a type error doesn't hide test results. Steps backed by a script
+under `.github/scripts` invoke it directly; only workspace-wide commands are
+`package.json` entries. The frozen-lockfile
 install in the `setup` action doubles as the internal-dependency desync guard -
 a workspace version that falls outside a sibling's range cannot reach main.
 
 Non-blocking signals: `changeset status` (a preview of which packages would
-bump) and `npm publish --dry-run` pack validation for the publishable packages.
+bump) and bundle size - the step summary and a warning annotation when a shape
+exceeds its budget. Budgets are re-set once per release, not per feature: on
+the Version Packages PR (`changeset-release/main`) the size step runs with
+`--gate` and fails `verify` while any shape is over. The fix is its own PR on
+`main` re-setting the budgets and the figures in `bundle-size.mdx`; the release
+PR picks it up when changesets refreshes the branch. `build:site` measures for
+the site's headline figure and never fails on budget.
+
+Beside `verify`, one run per push also holds:
+
+- `dist-smoke` - `dist-smoke.ts` (see below) on Node 24, so a dist a consumer
+  cannot load fails the PR that caused it rather than the release.
+- `e2e` - every example page's Playwright spec on React and dom.
+- `native` - calls `native.yml` for a PR labeled `react-native`.
+- `hot` - `hot-probe.ts`, the hot-reload gauntlet in Chrome on React and dom.
+  Not yet a required check.
+
+`verify` and `e2e` are required checks, matched by job name - renaming either
+job needs the branch protection updated with it.
+
+`verify` runs for a PR into any branch, so a PR into a trunk (a long-lived
+feature branch, see AGENTS.md) is checked without naming the trunk here. Its
+release-facing signals - bundle size and the changeset reminder - and the
+other jobs run only for PRs into `main` and stacks.
+
+A PR in a GitHub stack runs as if it targets the stack's base. `verify` runs on
+each layer; the others run only on the top one (`stack.position ==
+stack.size`), whose head is what lands when the stack merges - a skipped
+required check counts as passed. A PR merely based on another PR's branch,
+outside a stack, runs only `verify`: create stacks with `gh stack`.
+
+`verify` typechecks from scratch. Restored incremental build info re-checks
+only changed files, in an order that can surface type cycles a clean run does not.
 
 ## release.yml (push -> main)
 
@@ -19,16 +53,24 @@ bump) and `npm publish --dry-run` pack validation for the publishable packages.
 PR builds the packages, runs `dist-smoke.ts` and `native-check.ts`, then
 `changeset publish`.
 
+The PR is opened and pushed with a GitHub App installation token
+(`vars.RELEASE_APP_ID`, `secrets.RELEASE_APP_PRIVATE_KEY`; the app needs
+Contents and Pull requests read/write on this repo). Events from `GITHUB_TOKEN`
+start no workflow runs - GitHub instead holds them for approval, and `pr.yml`
+would never check the bumped versions. `GITHUB_TOKEN` stays in the step's env for
+`@changesets/changelog-github`'s PR lookups.
+
 `dist-smoke.ts` packs each publishable package, installs the tarballs into a
-throwaway project outside the repo and executes them under native Node ESM - the
+throwaway project outside the repo and executes the probes and consumer app in
+`scripts/dist-smoke/` under native Node ESM - the
 only consumer-shaped check of the built dist, since tests alias the `@expressive`
 scope onto sources. `native-check.ts` is its React Native counterpart: the same
 tarballs into a throwaway Expo app, asserting Metro resolves every published
 subpath for ios and android, `expo export` emits Hermes bytecode, and a `State`
 subclass behaves the same whether Metro keeps native class fields
 (`caller.engine` is `hermes`) or downlevels them to assignment (`jsEngine: jsc`).
-Both sit in `ci:publish` rather than `pr.yml` so a failure blocks the publish,
-and ordinary merges pay nothing for them.
+Both sit in `ci:publish` so a failure blocks the publish. `native-check.ts`
+stays out of `pr.yml` - ordinary merges pay nothing for an Expo build.
 
 Publishing authenticates via npm OIDC trusted publishing - no token secrets.
 Each published package's npm settings trust this exact workflow filename under
@@ -49,11 +91,13 @@ stream - the engine's weak-key constraint, dispatch batching, computed getters,
 suspense, context, `map`/`has`/`ref`, both routers, error recovery, and a write
 re-rendering through the native renderer.
 
-Opt a PR in with the `react-native` label; unlabeled PRs skip the job without
-claiming a runner. It also runs monthly, which is what catches an Expo or React
-Native SDK bump breaking resolution when no PR is involved. `workflow_dispatch`
-takes a `configuration` choice; otherwise the run is Release - minified Hermes
-bytecode with `__DEV__` false, the only configuration where an uncaught render
+Opt a PR in with the `react-native` label: adding it runs the gauntlet at once,
+and `pr.yml` calls it on every later push. Only adding a label creates a
+separate Native run - skipped unless the label is `react-native`. It also runs
+monthly, which is what catches an Expo or React Native SDK bump breaking
+resolution when no PR is involved. `workflow_dispatch` takes a `configuration`
+choice; otherwise the run is Release - minified Hermes bytecode with `__DEV__`
+false, the only configuration where an uncaught render
 error is fatal rather than a redbox.
 
 A Release build embeds the bundle, so the app's console never reaches Metro -

@@ -1,4 +1,4 @@
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 export class Control extends State {
   // Properties set starting values; assignments dispatch updates.

@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, get, map } from '@expressive/react';
+import { Component, get, map } from '@expressive/mvc';
 
 const PEOPLE = ['alice', 'bob', 'carol', 'dave'];
 const STATUS = ['online', 'away', 'busy'];

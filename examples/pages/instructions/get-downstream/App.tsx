@@ -1,6 +1,6 @@
 import './App.css';
 
-import State, { Component, get, has, Provider } from '@expressive/react';
+import { State, Component, get, has } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
@@ -11,10 +11,10 @@ export default () => (
       and the array tracks arrivals and departures on its own - nothing registers
       itself, nothing unregisters.
     </p>
-    <Provider for={Poll}>
+    <Component for={Poll}>
       <Tally />
       <Ballot />
-    </Provider>
+    </Component>
     <small>
       A callback vets each arrival. Write-ins return <code>false</code> from it, so
       they render and can be chosen - they just never join the roster the tally
@@ -66,7 +66,7 @@ class Ballot extends Component {
           <input
             value={draft}
             placeholder="Add a write-in"
-            onChange={(e) => (this.draft = e.target.value)}
+            onInput={(e) => (this.draft = e.currentTarget.value)}
           />
           <button type="submit">Add</button>
         </form>

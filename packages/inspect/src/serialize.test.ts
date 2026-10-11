@@ -46,6 +46,22 @@ describe('walk', () => {
     expect(walk(parent, 'plain.deep.deeper.deepest')).toBe(1);
     expect(walk(parent, 'list.1')).toBe(2);
   });
+
+  it('will read unmanaged _ keys without accessors', () => {
+    class Holder extends State {
+      _handle = 'foo';
+
+      get _derived() {
+        return 'bar';
+      }
+    }
+
+    const holder = Holder.new();
+
+    expect(walk(holder, '_handle')).toBe('foo');
+    expect(walk(holder, '_derived')).toBeUndefined();
+    expect(serialize(holder)).not.toHaveProperty('_handle');
+  });
 });
 
 describe('serialize', () => {

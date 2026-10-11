@@ -1,5 +1,5 @@
 import { Context, State, get, has } from '@expressive/mvc';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { flushMicrotasks } from '../test.setup';
 
@@ -20,8 +20,9 @@ class Parent extends State {
 }
 
 describe('Instance', () => {
+  beforeEach(() => void attach());
+
   it('will navigate ownership', () => {
-    attach();
     const parent = Parent.new();
     const kid = parent.kids.add();
     const loose = Child.new();
@@ -40,7 +41,6 @@ describe('Instance', () => {
   });
 
   it('will keep one Instance per state and reflect ownership changes', () => {
-    attach();
     const parent = Parent.new();
     const root = find('Parent')!;
     expect(find(String(parent))).toBe(root);
@@ -55,7 +55,6 @@ describe('Instance', () => {
   });
 
   it('will outlive destruction with alive, since, and until', () => {
-    attach();
     const parent = Parent.new();
     const child = Instance.of(parent.child);
     expect(child.alive).toBe(true);
@@ -82,7 +81,6 @@ describe('Instance', () => {
       static global = true;
       mode = 'dark';
     }
-    attach();
     const theme = Theme.new();
     const consumer = Consumer.new();
     expect(consumer.theme).toBe(theme);
@@ -93,7 +91,6 @@ describe('Instance', () => {
   });
 
   it('will keep unowned instances on the mainline without a host', async () => {
-    attach();
     const loose = Child.new();
     await flushMicrotasks();
     expect(models().map((m) => m.id)).toEqual([String(loose)]);
@@ -104,13 +101,11 @@ describe('Instance', () => {
     class Grand extends State {
       parent = new Parent();
     }
-    attach();
     const grand = Grand.new();
     expect(find('Grand')!.find('Child')!.id).toBe(String(grand.parent.child));
   });
 
   it('will read and describe', () => {
-    attach();
     Parent.new();
     const instance = find('Parent')!;
     expect(instance.get('title')).toBe('root');
@@ -121,7 +116,6 @@ describe('Instance', () => {
   });
 
   it('will act and return the frames produced', async () => {
-    attach();
     const parent = Parent.new();
     const instance = find('Parent')!;
     const frames = await instance.act((state) => (state as Parent).rename('acted'));
@@ -133,7 +127,6 @@ describe('Instance', () => {
   });
 
   it('will watch updates with optional key filter', async () => {
-    attach();
     const parent = Parent.new();
     const instance = find('Parent')!;
     const all: Array<string | null> = [];
@@ -152,8 +145,17 @@ describe('Instance', () => {
 });
 
 describe('type labels', () => {
+  const anonymous = () => {
+    const T = class extends State {
+      value = 1;
+    };
+    Object.defineProperty(T, 'name', { value: 't' });
+    return T;
+  };
+
+  beforeEach(() => void attach());
+
   it('will assign a stable typeId and capture a site', () => {
-    attach();
     Child.new();
     Child.new();
     const rows = models();
@@ -163,11 +165,7 @@ describe('type labels', () => {
   });
 
   it('will prefer an explicit label, then a resolved name, then a readable class name', () => {
-    const T = class extends State {
-      value = 1;
-    };
-    Object.defineProperty(T, 'name', { value: 't' });
-    attach();
+    const T = anonymous();
     T.new();
     const row = models()[0];
     expect(row.type).toBe(row.typeId);
@@ -184,11 +182,7 @@ describe('type labels', () => {
   });
 
   it('will resolve by site and displayName', () => {
-    const T = class extends State {
-      value = 1;
-    };
-    Object.defineProperty(T, 'name', { value: 't' });
-    attach();
+    const T = anonymous();
     T.new();
     const row = models()[0];
     resolve({ [row.site]: 'FromSite' });

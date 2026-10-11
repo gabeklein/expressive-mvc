@@ -1,9 +1,9 @@
-import { Context, State } from '@expressive/mvc';
-import { host } from '@expressive/mvc/runtime';
-import { describe, expect, it } from 'vitest';
+import { Component, Context, State } from '@expressive/mvc';
+import { host } from '@expressive/mvc/jsx-runtime';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { flushMicrotasks } from '../test.setup';
-import { attach, find, Instance, instances, models, orphans, warnings } from './index';
+import { attach, find, health, Instance, instances, models, orphans } from './index';
 import { collected } from './inspect';
 
 host({
@@ -50,8 +50,9 @@ class Resolved extends State {
 }
 
 describe('orphans under a host', () => {
+  beforeEach(() => void attach());
+
   it('will keep a fresh instance on the mainline until it settles', async () => {
-    attach();
     const plain = Plain.new();
     expect(models().length).toBe(1);
     expect(Instance.of(plain).claimed).toBe(true);
@@ -59,11 +60,10 @@ describe('orphans under a host', () => {
     expect(models()).toEqual([]);
     expect(orphans().map((o) => o.id)).toEqual([String(plain)]);
     expect(Instance.of(plain).claimed).toBe(false);
-    expect(warnings()).toEqual({ orphans: 1, collected: 0 });
+    expect(health()).toMatchObject({ orphans: 1, collected: 0 });
   });
 
   it('will claim on host mount and forward the original', async () => {
-    attach();
     const widget = Widget.new();
     await flushMicrotasks();
     expect(orphans().length).toBe(1);
@@ -76,15 +76,20 @@ describe('orphans under a host', () => {
   });
 
   it('will claim a mounted instance without its own mount', async () => {
-    attach();
     const plain = Plain.new() as Plain & { mount(): unknown };
     await flushMicrotasks();
     expect(plain.mount()).toBeUndefined();
     expect(Instance.of(plain).claimed).toBe(true);
   });
 
+  it('will claim a Component providing for', async () => {
+    const provider = Component.new({ for: Widget } as any) as Component & { mount(): unknown };
+    await flushMicrotasks();
+    provider.mount();
+    expect(Instance.of(provider).claimed).toBe(true);
+  });
+
   it('will claim owned children and root-provided globals', async () => {
-    attach();
     const owner = Owner.new();
     const global = Global.new();
     const resolved = Resolved.new();
@@ -102,7 +107,6 @@ describe('orphans under a host', () => {
   });
 
   it('will orphan the children of an orphan, and claim them with a mounted owner', async () => {
-    attach();
     const owner = Owner.new() as Owner & { mount(): void };
     await flushMicrotasks();
     expect(orphans().map((o) => o.type)).toEqual(['Owner', 'Plain']);
@@ -113,7 +117,6 @@ describe('orphans under a host', () => {
   });
 
   it('will ride along with a young owner without claiming', async () => {
-    attach();
     const early = Plain.new();
     await flushMicrotasks();
     class Late extends State {
@@ -130,7 +133,6 @@ describe('orphans under a host', () => {
     class Loop extends State {
       other?: Loop = undefined;
     }
-    attach();
     const a = Loop.new();
     const b = Loop.new();
     a.other = b;
@@ -140,7 +142,6 @@ describe('orphans under a host', () => {
   });
 
   it('will still find an orphan by label after the mainline', async () => {
-    attach();
     const orphan = Plain.new();
     await flushMicrotasks();
     const owner = Owner.new();
@@ -155,7 +156,6 @@ describe('orphans under a host', () => {
   });
 
   it('will ignore a mount after destruction', async () => {
-    attach();
     const plain = Plain.new() as Plain & { mount(): unknown };
     plain.set(null);
     expect(plain.mount()).toBeUndefined();
@@ -164,12 +164,11 @@ describe('orphans under a host', () => {
   });
 
   it('will count an unclaimed instance the collector reaped', async () => {
-    attach();
     const plain = Plain.new();
     await flushMicrotasks();
     collected(String(plain));
     collected(String(plain));
-    expect(warnings()).toEqual({ orphans: 0, collected: 1 });
+    expect(health()).toMatchObject({ orphans: 0, collected: 1 });
     expect(Instance.of(plain).alive).toBe(false);
   });
 });

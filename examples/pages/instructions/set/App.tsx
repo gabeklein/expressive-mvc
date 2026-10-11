@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, set } from '@expressive/react';
+import { Component, set } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
@@ -43,12 +43,12 @@ class Account extends Component {
       <>
         <label>
           Display name <small>(max 12 chars — extra input is rejected)</small>
-          <input value={name} onChange={(e) => (this.name = e.target.value)} />
+          <input value={name} onInput={(e) => (this.name = e.currentTarget.value)} />
         </label>
 
         <label>
           Search <small>(debounced 500ms by the callback’s cleanup)</small>
-          <input value={query} onChange={(e) => (this.query = e.target.value)} />
+          <input value={query} onInput={(e) => (this.query = e.currentTarget.value)} />
         </label>
 
         <p className="result">{result}</p>

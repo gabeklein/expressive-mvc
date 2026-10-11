@@ -1,7 +1,8 @@
 import { gzipSync } from 'bun';
+import type { BunPlugin } from 'bun';
 import { mkdirSync, rmSync } from 'node:fs';
 import { appendFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { withWorkspaceLinks } from './workspace-links';
 
 /**
@@ -9,58 +10,100 @@ import { withWorkspaceLinks } from './workspace-links';
  * Per-shape rather than one aggregate: the point is to notice when the adapter's
  * irreducible floor grows, or when a formerly shakeable export stops shaking.
  *
- * Each carries ~3.5% headroom over the measured figure, because CI does not pin
+ * Each carries ~2% headroom over the measured figure, because CI does not pin
  * a Bun version and minifier output drifts a little between them - measured at
- * <=0.5% across 1.3.1 and 1.3.14, so the margin is mostly slack. Real growth is
- * structural and clears it; toolchain drift does not. The react floor is the
- * exception: pinned to 9.1 kB, so ~1.9% - still above observed drift, but it
- * will flag sooner than the rest.
+ * <=0.5% across 1.3.1 and 1.3.14. Real growth is structural and clears it;
+ * toolchain drift does not.
+ *
+ * Budgets are a release decision. Without `--gate` the script reports and
+ * never fails; CI passes `--gate` only on the Version Packages PR, where one
+ * deliberate pass re-sets budgets and the figures quoted in docs.
+ *
+ * 10 kB is the line the maintainer cares about: `react: typical app`, the site's
+ * headline figure, crossed it at 10.14 kB in 2026-09 (State.on({ catch }), the error-report classes,
+ * the copies registry) - further growth there needs a deliberate decision.
  */
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 5570,
+    limit: 6290,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 9220,
+    limit: 10370,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 9100,
+    limit: 10350,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 10040,
+    limit: 11210,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 12190,
+    limit: 13300,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
+    name: 'dom: renderer',
+    limit: 18320,
+    code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
+           import { Fragment, Portal, createElement, render } from '@expressive/dom';
+           console.log(State, Component, Context, Fragment, Portal, createElement, def, get, has, map, pending, ref, render, set);`
+  },
+  {
+    name: 'dom: styling',
+    limit: 20550,
+    code: `import * as mvc from '@expressive/mvc';
+           import * as dom from '@expressive/dom';
+           console.log(mvc, dom);`
+  },
+  {
     name: 'router: everything',
-    limit: 12110,
+    limit: 13420,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'inspect: install',
-    limit: 9200,
+    limit: 11920,
     code: `import '@expressive/inspect/install';`
   },
   {
     name: 'react + router',
-    limit: 16530,
+    limit: 17490,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
   }
 ];
+
+/**
+ * Resolve `@expressive/*` through each package's exports map, the way a
+ * consumer does. Without this, Bun applies the nearest package `tsconfig.json`
+ * to files it processes - including a dependency's own `dist` - so an import of
+ * `@expressive/mvc` alongside an adapter resolves once to `dist` and once to
+ * `src`, and the probe measures two copies of the core.
+ */
+const published: BunPlugin = {
+  name: 'published-exports',
+  setup(build) {
+    build.onResolve({ filter: /^@expressive\// }, async ({ path }) => {
+      const [, name, ...rest] = path.split('/');
+      const dir = resolve('packages', name);
+      const manifest = await Bun.file(join(dir, 'package.json')).json();
+      const key = rest.length ? `./${rest.join('/')}` : '.';
+      const entry = manifest.exports?.[key]?.default ?? manifest.main;
+
+      return { path: join(dir, entry) };
+    });
+  }
+};
 
 // Measured through bare specifiers, as a consumer writes them, so the exports
 // map and each package's `sideEffects` both take part in the result.
@@ -80,6 +123,7 @@ try {
       entrypoints: [entry],
       minify: true,
       target: 'browser',
+      plugins: [published],
       format: 'esm',
       external: ['react', 'react-dom', 'react/jsx-runtime'],
       define: { 'process.env.NODE_ENV': '"production"' }
@@ -112,8 +156,10 @@ await Bun.write(
   JSON.stringify(Object.fromEntries(results.map(({ name, bytes }) => [name, bytes])), null, 2)
 );
 
-// Advisory step (`continue-on-error`), so a breach cannot rely on a red check to
-// be seen - the annotation reaches the PR's Checks tab, the table the run page.
+const gate = process.argv.includes('--gate');
+
+// Outside the release gate a breach is not a red check, so the annotation
+// carries it to the PR's Checks tab and the table to the run page.
 if (over.length)
   console.log(
     `::warning title=Bundle size::` +
@@ -134,7 +180,7 @@ if (process.env.GITHUB_STEP_SUMMARY)
       ),
       '',
       over.length
-        ? `${over.length} shape(s) over budget. Advisory - raise budgets in \`.github/scripts/size-limit.ts\` if intended.`
+        ? `${over.length} shape(s) over budget. Budgets are re-set at release - leave them unless the growth is unintended.`
         : 'All shapes within budget.',
       ''
     ].join('\n')
@@ -146,13 +192,13 @@ if (stale.length)
     ` Tighten them so the gate keeps its teeth.`
   );
 
-if (over.length)
+if (over.length && gate)
   throw new Error(
-    `Bundle size regressed:\n` +
+    `Bundle size exceeds budget:\n` +
     over.map(({ name, bytes, limit }) =>
       `  ${name}: ${kb(bytes)} exceeds budget ${kb(limit)}`).join('\n') +
-    `\n\nIf the growth is intended, raise the budget in .github/scripts/size-limit.ts` +
-    ` and update the figures quoted in docs (see website/content/docs/guides/bundle-size.mdx).`
+    `\n\nBefore this release merges, land a PR on main that re-sets the budgets in` +
+    ` .github/scripts/size-limit.ts and every size claim in the docs and site (git grep -nE '[0-9] ?kB' website skills).`
   );
 
-console.log('\nAll import shapes within budget.');
+console.log(over.length ? `\n${over.length} shape(s) over budget.` : '\nAll import shapes within budget.');

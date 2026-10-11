@@ -8,8 +8,9 @@ on:
         type: choice
         default: Debug
         options: [Debug, Release]
+  workflow_call:
   pull_request:
-    types: [opened, reopened, synchronize, labeled]
+    types: [labeled]
   schedule:
     - cron: '0 9 1 * *'
 
@@ -21,7 +22,8 @@ jobs:
   gauntlet:
     if: >-
       github.event_name != 'pull_request' ||
-      contains(github.event.pull_request.labels.*.name, 'react-native')
+      github.event.action != 'labeled' ||
+      github.event.label.name == 'react-native'
     strategy:
       fail-fast: false
       matrix:

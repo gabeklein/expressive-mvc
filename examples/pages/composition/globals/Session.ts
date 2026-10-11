@@ -1,4 +1,4 @@
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 export class Session extends State {
   // One session for the whole app - the declaration is what makes "the whole

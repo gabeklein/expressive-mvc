@@ -41,10 +41,14 @@ interface Observing {
   callback: Observer.Callback;
   watching: Set<Observer.Signal>;
   required?: boolean;
+  release: (() => void)[];
 }
 
 const Observer: unique symbol = Symbol('Observer');
 const Observing: unique symbol = Symbol('Observing');
+
+/** Event every observer treats as watched, to force a refresh. */
+const REFRESH = Symbol.for('@expressive/mvc.refresh');
 
 interface Observable { [Observer]?: Observer | null }
 interface Observed { [Observing]?: Observing }
@@ -84,14 +88,17 @@ function observer(state: object, create?: boolean) {
 function observe<T extends object>(
   object: T,
   callback: Observer.Callback,
-  required?: boolean
+  required?: boolean,
+  cleanup: (() => void)[] = []
 ): T {
   const watching = new Set<Observer.Signal>();
-  const observing: Observing = { callback, watching, required };
+  const observing: Observing = { callback, watching, required, release: cleanup };
 
   const release = listener(object, (key) => {
-    if (watching.has(key)) return observing.callback();
+    if (watching.has(key) || key === REFRESH) return observing.callback();
   });
+
+  cleanup.push(release);
 
   if (EffectContext)
     EffectContext.add((update) => {
@@ -123,10 +130,19 @@ function touch(from: object, key: any, value?: any) {
     active.watching.add(key);
 
     if (value instanceof Object && observer(value))
-      return observe(value, () => active.callback(), active.required);
+      return observe(
+        value,
+        () => active.callback(),
+        active.required,
+        active.release
+      );
   }
 
   return value;
+}
+
+function unobserve(observing: Observing) {
+  for (const release of observing.release) release();
 }
 
 function listener<T extends object>(
@@ -179,23 +195,23 @@ function event(state: object, key?: Observer.Event | null, silent?: boolean) {
     if (!Object.getOwnPropertyDescriptor(state, Observer)) return;
 
     (state as Observable)[Observer] = null;
-    return emit(o, key);
+    return emit(o, key, state);
   }
 
-  if (key === undefined) return emit(o, true);
+  if (key === undefined) return emit(o, true, state);
 
   if (!o.events.size && !silent)
     enqueue(() => {
-      emit(o, false);
+      emit(o, false, state);
       o.events = new Set();
-    });
+    }, undefined, state);
 
   o.events.add(key);
 
-  if (!silent) emit(o, key);
+  if (!silent) emit(o, key, state);
 }
 
-function emit(o: Observer, key: Observer.Signal): void {
+function emit(o: Observer, key: Observer.Signal, subject: object): void {
   const { listeners, pending, ready } = o;
 
   if (key === ready) return;
@@ -214,7 +230,7 @@ function emit(o: Observer, key: Observer.Signal): void {
       if (!filter || filter.has(k)) {
         const after = callback(k);
         if (after === null) listeners.delete(callback);
-        else if (after) enqueue(after);
+        else if (typeof after == 'function') enqueue(after, undefined, subject);
       }
 
   if (key === null) listeners.clear();
@@ -255,7 +271,8 @@ function watch<T extends object>(
   let events: readonly Observer.Event[] = [];
   let unset: ((update: boolean | null) => void) | undefined;
   let reset: (() => void) | null | undefined;
-  let previous: T | undefined;
+  let previous: Observing | undefined;
+  let latest: Observing | undefined;
   let queued = false;
   let suspense: ReturnType<typeof hold>;
 
@@ -275,7 +292,7 @@ function watch<T extends object>(
 
       if (reset === null) return null;
       if (ignore) {
-        if (queued) enqueue(invoke, transition);
+        if (queued) enqueue(invoke, transition, target);
         return;
       }
 
@@ -285,11 +302,14 @@ function watch<T extends object>(
       unset!(true);
       unset = undefined;
 
-      enqueue(invoke, transition);
+      enqueue(invoke, transition, target);
     }
 
     function run(release?: (update?: boolean | null) => void) {
+      if (previous !== latest) unobserve(latest!);
+
       const proxy = observe(target, onUpdate, argument === true);
+      const current = latest = (proxy as Observed)[Observing]!;
       const output = callback.call(proxy, proxy, events);
 
       if (observer(target) === null) {
@@ -298,10 +318,12 @@ function watch<T extends object>(
         return;
       }
 
-      if (previous && argument === false && !(proxy as Observed)[Observing]!.watching.size)
-        (previous as Observed)[Observing]!.callback = onUpdate;
-      else
-        previous = proxy;
+      if (previous && argument === false && !current.watching.size)
+        previous.callback = onUpdate;
+      else {
+        if (previous) unobserve(previous);
+        previous = current;
+      }
 
       ignore = false;
       reset = output === null ? null : invoke;

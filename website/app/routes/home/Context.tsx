@@ -13,7 +13,7 @@ export function Context() {
             Classes are their own context.
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Wrap a subtree in <code>&lt;Provider for=&#123;X&#125;&gt;</code> - 
+            Wrap a subtree in <code>&lt;Component for=&#123;X&#125;&gt;</code> - 
             components inside need only <code>X.get()</code>{' '}
             to interact with the nearest instance. Fully typed, zero boilerplate.
           </p>
@@ -154,7 +154,7 @@ class ThemeControl extends Component {
 function ExprCode({ mode }: { mode: Mode }) {
   const Example = code /*tsx*/`
     import React from 'react';
-    import State, { Provider } from '@expressive/react';
+    import { Component, State } from '@expressive/mvc';
 
     class Theme extends State {
       mode = '${mode}';
@@ -171,9 +171,9 @@ function ExprCode({ mode }: { mode: Mode }) {
     }
 
     const App = () => (
-      <Provider for={Theme}>
+      <Component for={Theme}>
         <Toggle />
-      </Provider>
+      </Component>
     );
   `;
 

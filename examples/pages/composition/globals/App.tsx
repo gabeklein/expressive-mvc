@@ -16,7 +16,7 @@ export default () => (
       Reaching one anywhere takes two halves: the class declares{' '}
       <code>static global</code>, and <code>.new()</code> activates it. Activation
       alone leaves an instance private to whoever made it - which is what keeps a
-      forgotten Provider from installing per-request state process-wide.
+      forgotten provider from installing per-request state process-wide.
     </p>
     <div className="cards">
       <Size />
@@ -24,7 +24,7 @@ export default () => (
       <Appearance />
     </div>
     <small>
-      No Provider anywhere. Each card calls <code>.get()</code> and subscribes to
+      Nothing provides them. Each card calls <code>.get()</code> and subscribes to
       only the fields it reads - resize the window and just the first one moves.
     </small>
   </div>

@@ -26,7 +26,7 @@ const apps = import.meta.glob<{ default: ComponentType }>('./pages/*/**/App.tsx'
 
 // Raw source of every example file, eager so the code viewer reads strings
 // directly and Vite hot-updates them when the real files change on disk.
-const sources = import.meta.glob('./pages/**/*.{ts,tsx,css}', {
+const sources = import.meta.glob(['./pages/**/*.{ts,tsx,css}', '!./pages/**/*.spec.ts'], {
   query: '?raw',
   import: 'default',
   eager: true
@@ -85,8 +85,11 @@ const paths = leaves(tree).map((d) => d.path);
 
 export const home = paths.find((p) => p === LANDING) ?? paths[0];
 
-export const loadFrame = () =>
-  apps[window.frameElement?.getAttribute('data-example') ?? ''];
+/** The example a frame renders: its iframe's `data-example`, or `?page=<path>` standalone. */
+export const loadFrame = () => {
+  const page = new URLSearchParams(location.search).get('page');
+  return apps[window.frameElement?.getAttribute('data-example') ?? `${BASE}${page}/App.tsx`];
+};
 
 const sortKey = (name: string) =>
   (name === 'App.tsx' ? '0' : name === 'App.css' ? '1' : '2') + name;

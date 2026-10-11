@@ -10,7 +10,7 @@
 
 ---
 
-Query the live model graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a Playwright spec, or the browser console. No UI, no network - a base layer for agents, devtools, and test helpers.
+Query the live model graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay - a base layer for agents, devtools, and test helpers.
 
 ```bash
 npm install --save-dev @expressive/inspect
@@ -40,22 +40,41 @@ const frames = await composer.act((s) => s.submit('hi'));   // run, settle, see 
 ## Across a boundary
 
 ```ts
-import { inspect } from '@expressive/inspect/playwright';
+import { inspect } from '@expressive/inspect/bridge';
 
-const api = inspect(page);                   // Page, Frame, or Locator
+const api = inspect(page);                   // anything with evaluate(fn, arg)
 await api.get('Composer.draft');
-const frames = await api.around(() => page.click('#submit'));
+const frames = await api.act(() => page.click('#submit'));
 ```
+
+A Node process under `--inspect`, or a browser with a debug port: `inspect(await devtools())`, `devtools` from the same entry.
+
+## From a running dev server
+
+```ts
+// vite.config.ts - installs the inspector and relays to open pages
+import inspect from '@expressive/inspect/vite';
+
+export default defineConfig({ plugins: [inspect()] });
+```
+
+```bash
+curl localhost:5173/__inspect                                   # connected pages, iframes included
+curl localhost:5173/__inspect/<id> -d '["get", "Composer.draft"]'
+curl localhost:5173/__inspect/<id> -d '["act", ["call", "Composer.submit", "hi"]]'   # { value, frames, settled, pending }
+```
+
+Local callers only; browser and proxied (tunnel) requests are refused.
 
 Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__.journal.record({ level: 'keys', paths: ['Composer.draft'] })`.
 
 ## Journal
 
-Off by default. `journal.record({ level, types, paths, keys, calls })`, then `frames({ since })`. A frame is one batch of writes plus its flush; work an effect defers carries a `cause` back to the frame that scheduled it. `export()` emits NDJSON for a sidecar.
+Off by default (the Vite relay records `keys` from load). `journal.record({ level, types, paths, keys, calls })`, then `frames({ since })`. A frame is one batch of writes plus its flush; work an effect defers carries a `cause` back to the frame that scheduled it. `export()` emits NDJSON for a sidecar; `summary()` digests it per instance.
 
 ## Orphans
 
-Instances a host never committed - a render thrown away, a StrictMode twin - stay out of `models()` and `tree()`. `orphans()` lists them, `warnings()` counts them.
+Instances a host never committed - a render thrown away, a StrictMode twin - stay out of `models()` and `tree()`. `orphans()` lists them, `health()` counts them - along with loaded mvc copies and caught reports.
 
 ## Minified builds
 

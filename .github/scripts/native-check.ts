@@ -23,14 +23,15 @@ const PACKAGES = ['mvc', 'react', 'router', 'inspect'];
 
 const SUBPATHS = [
   '@expressive/mvc',
-  '@expressive/mvc/runtime',
+  '@expressive/mvc/jsx-runtime',
   '@expressive/mvc/observable',
+  '@expressive/mvc/hot',
   '@expressive/react',
   '@expressive/react/adapter',
   '@expressive/router',
   '@expressive/inspect',
   '@expressive/inspect/install',
-  '@expressive/inspect/playwright'
+  '@expressive/inspect/bridge'
 ];
 
 const ENTRY = `
@@ -112,7 +113,7 @@ try {
       throw new Error(`No ${platform} source map emitted by expo export.`);
 
     for (const from of SUBPATHS) {
-      const [, scope, entry = 'index'] = /^@expressive\/(\w+)(?:\/(\w+))?$/.exec(from)!;
+      const [, scope, entry = 'index'] = /^@expressive\/(\w+)(?:\/([\w-]+))?$/.exec(from)!;
       const module = `@expressive/${scope}/dist/${entry}.js`;
 
       if (!sources.some(source => source.endsWith(module)))

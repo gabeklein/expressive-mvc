@@ -1,4 +1,4 @@
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 export class Theme extends State {
   // Global by nature: there is only one document to paint.

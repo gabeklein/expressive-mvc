@@ -1,7 +1,6 @@
 import './App.css';
 
-import { Component, ref } from '@expressive/react';
-import type { PointerEvent } from 'react';
+import { Component, ref } from '@expressive/mvc';
 
 // `ref` is the useRef replacement: a slot for a value outside the render
 // data - here the DOM node being dragged. Its callable form captures the
@@ -18,7 +17,7 @@ class Draggable extends Component {
 
   // Pointer events unify mouse and touch; capturing the pointer keeps the
   // drag tracking even when it outruns the box.
-  grab(e: PointerEvent) {
+  grab(e: Pointer) {
     const rect = this.box.current!.getBoundingClientRect();
 
     this.offset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -26,7 +25,7 @@ class Draggable extends Component {
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
-  move(e: PointerEvent) {
+  move(e: Pointer) {
     if (!this.dragging) return;
 
     const box = this.box.current!;
@@ -66,6 +65,8 @@ class Draggable extends Component {
     );
   }
 }
+
+type Pointer = { currentTarget: Element; pointerId: number; clientX: number; clientY: number };
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));

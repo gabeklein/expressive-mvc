@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, has } from '@expressive/react';
+import { Component, has } from '@expressive/mvc';
 
 const LINES = [
   [0, 1, 2],

@@ -20,4 +20,5 @@
     }
   },
   "include": ["main.tsx", "**/*.ts", "**/*.tsx"],
+  "exclude": ["app/frame.dom.ts", "node_modules", "dist"],
 }

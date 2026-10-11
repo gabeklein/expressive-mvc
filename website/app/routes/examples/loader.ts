@@ -12,7 +12,7 @@ export const EXAMPLE_LABELS = Object.fromEntries(
 
 // `*/**/*` requires at least one folder under examples/ - skips top-level
 // SPA scaffolding (package.json, vite.config.ts, main.tsx, etc.).
-const FILES = import.meta.glob('@examples/*/**/*', {
+const FILES = import.meta.glob(['@examples/*/**/*', '!@examples/**/*.spec.ts'], {
   query: '?raw',
   import: 'default',
   eager: true
@@ -20,6 +20,7 @@ const FILES = import.meta.glob('@examples/*/**/*', {
 
 const ENTRY = `\
 import './global.css';
+import '@expressive/react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 

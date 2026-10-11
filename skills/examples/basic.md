@@ -5,7 +5,7 @@ Working examples of the fundamentals.
 ## Counter (minimal)
 
 ```tsx
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class Counter extends State {
   count = 0;
@@ -37,7 +37,7 @@ function CounterApp() {
 Each entry is its own State in a `has` pool - `done` and `toggle` live on the item, not as `(id, value)` methods on the list:
 
 ```tsx
-import State, { has } from '@expressive/react';
+import { State, has } from '@expressive/mvc';
 
 class TodoItem extends State {
   text = '';
@@ -97,8 +97,7 @@ Rows that paint themselves become `Component` members placed as `{state.items}` 
 ## Async Data (with Suspense)
 
 ```tsx
-import State, { set, Provider } from '@expressive/react';
-import { Suspense } from 'react';
+import { State, Component, set } from '@expressive/mvc';
 
 interface User {
   id: number;
@@ -125,14 +124,10 @@ function Profile() {
 }
 
 function App() {
-  const profile = UserProfile.use({ userId: 1 });
-
   return (
-    <Provider for={profile}>
-      <Suspense fallback={<p>Loading...</p>}>
-        <Profile />
-      </Suspense>
-    </Provider>
+    <Component for={UserProfile} userId={1} fallback={<p>Loading...</p>}>
+      <Profile />
+    </Component>
   );
 }
 ```
@@ -140,7 +135,7 @@ function App() {
 ## Shared Context (parent/child communication)
 
 ```tsx
-import State, { get, Provider } from '@expressive/react';
+import { State, Component, get } from '@expressive/mvc';
 
 class Theme extends State {
   mode: 'light' | 'dark' = 'light';
@@ -167,10 +162,10 @@ function App() {
   const theme = Theme.use();
 
   return (
-    <Provider for={theme}>
+    <Component for={theme}>
       <button onClick={theme.toggle}>Toggle Theme</button>
       <PanelView />
-    </Provider>
+    </Component>
   );
 }
 
@@ -189,7 +184,7 @@ function PanelView() {
 ## Component Class (self-rendering)
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Search extends Component {
   query = '';
@@ -238,7 +233,7 @@ Explicit `loading` keeps previous results visible during refresh - the deliberat
 ## Form Validation (setter callbacks)
 
 ```tsx
-import State, { set } from '@expressive/react';
+import { State, set } from '@expressive/mvc';
 
 class SignupForm extends State {
   name = '';

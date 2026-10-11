@@ -29,7 +29,7 @@ export function CTA() {
         </div>
 
         <div className="flex flex-col gap-2 max-w-md mx-auto text-left">
-          <CopyPill label="Add to your app" command="npm install @expressive/react" />
+          <CopyPill label="Add to your app" command="npm install @expressive/mvc @expressive/react" />
           <CopyPill label="Ask your agent if MVC is right for you." command="npx skills add gabeklein/expressive-mvc" />
         </div>
         <p className="text-sm text-fd-muted-foreground mt-4">
