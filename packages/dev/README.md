@@ -92,12 +92,12 @@ fails its first call in dev and the built service at startup.
 
 ### Server State
 
-Inside a call, `X.use()` gets or creates an instance of `X` and `X.get()` finds one in context.
-Both throw outside a call. An instance is found again by its key - by default the location it was
-used at, so `/blog/a` and `/blog/b` hold separate ones and every visitor to a location shares one.
-`static key(prefix)` changes that: return `prefix` plus more to narrow, or something without it to
-share across locations. An instance lives while a call uses it, then `static ttl` seconds (0 by
-default); `set(null)` ends it at once.
+Inside a call, `X.use()` gets or creates the instance of `X` at the call's location - the
+sidecar's folder - and `X.get()` finds the nearest one at that location or above. Both throw outside
+a call. `/blog/a` and `/blog/b` hold separate instances, every visitor to a location shares one, and
+a `use()` further down shadows one above. `get()` finds nothing until a `use()` has made it. An
+instance lives while a call uses it, then `static ttl` seconds (300 by default); `set(null)` ends
+it at once.
 
 ```ts
 class Tally extends State {

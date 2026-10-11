@@ -16,22 +16,31 @@ describe("server use", () => {
     expect(() => Tally.use()).toThrow("Server State resolves only within a sidecar call.");
   });
 
-  it("will give one instance per key within a call, gone after it by default", async () => {
-    class Tally extends State { total = 0; }
+  it("will give one instance per layer within a call", async () => {
+    class Tally extends State {}
 
-    const first = await call(["tally"], () => {
-      const tally = Tally.use();
-      expect(Tally.use()).toBe(tally);
-      return tally;
+    await call(["tally"], () => {
+      expect(Tally.use()).toBe(Tally.use());
     });
+  });
 
+  it("will keep an instance five minutes after its last call by default", async () => {
+    vi.useFakeTimers();
+    class Tally extends State {}
+
+    const first = await call(["tally"], () => Tally.use());
+
+    vi.advanceTimersByTime(299_000);
+    expect(await call(["tally"], () => Tally.use())).toBe(first);
+
+    vi.advanceTimersByTime(300_000);
     expect(first.get(null)).toBe(true);
     expect(await call(["tally"], () => Tally.use())).not.toBe(first);
   });
 
   it("will keep an instance between calls for its ttl", async () => {
     vi.useFakeTimers();
-    class Tally extends State { static ttl = 60; total = 0; }
+    class Tally extends State { static ttl = 60; }
 
     const first = await call(["tally"], () => Tally.use());
     expect(await call(["tally"], () => Tally.use())).toBe(first);
@@ -41,25 +50,23 @@ describe("server use", () => {
     expect(await call(["tally"], () => Tally.use())).not.toBe(first);
   });
 
-  it("will key by location unless the class keys itself", async () => {
-    class Page extends State { static ttl = 60; }
-    class Shared extends State { static ttl = 60; static key() { return "shared"; } }
-    class Narrow extends State { static ttl = 60; static key(prefix: string) { return `${prefix}#narrow`; } }
+  it("will drop an instance after its call with a ttl of zero", async () => {
+    class Tally extends State { static ttl = 0; }
 
-    const a = await call(["blog", "a"], () => [Page.use(), Shared.use(), Narrow.use()]);
-    const b = await call(["blog", "b"], () => [Page.use(), Shared.use(), Narrow.use()]);
-    const again = await call(["blog", "a"], () => [Page.use(), Shared.use(), Narrow.use()]);
+    const first = await call(["tally"], () => Tally.use());
 
-    expect(b[0]).not.toBe(a[0]);
-    expect(b[1]).toBe(a[1]);
-    expect(b[2]).not.toBe(a[2]);
-    expect(again).toEqual(a);
-    expect(a[2]).not.toBe(a[0]);
+    expect(first.get(null)).toBe(true);
+    expect(await call(["tally"], () => Tally.use())).not.toBe(first);
   });
 
-  it("will throw if a key is neither a string nor a number", async () => {
-    class Bad extends State { static key() { return undefined as any; } }
-    await expect(call([], () => Bad.use())).rejects.toThrow("Bad.key() returned undefined - a key is a string or a number.");
+  it("will give each layer its own instance", async () => {
+    class Page extends State { static ttl = 60; }
+
+    const a = await call(["blog", "a"], () => Page.use());
+    const b = await call(["blog", "b"], () => Page.use());
+
+    expect(b).not.toBe(a);
+    expect(await call(["blog", "a"], () => Page.use())).toBe(a);
   });
 
   it("will drop an instance the app destroys", async () => {
@@ -68,6 +75,7 @@ describe("server use", () => {
     const first = await call(["tally"], () => Tally.use());
     first.set(null);
 
+    await expect(call(["tally"], () => Tally.get())).rejects.toThrow("Could not find Tally in context.");
     expect(await call(["tally"], () => Tally.use())).not.toBe(first);
   });
 
@@ -88,6 +96,47 @@ describe("server get", () => {
       expect(Missing.get(false)).toBeUndefined();
       expect(() => Missing.get()).toThrow("Could not find");
     });
+  });
+
+  it("will not find a class before use() makes it", async () => {
+    class Tally extends State {}
+
+    await expect(call(["tally"], () => Tally.get())).rejects.toThrow("Could not find Tally in context.");
+  });
+
+  it("will find what use() made, in its layer and below", async () => {
+    class Tally extends State { static ttl = 60; }
+
+    const made = await call(["blog"], () => {
+      const tally = Tally.use();
+      expect(Tally.get()).toBe(tally);
+      return tally;
+    });
+
+    expect(await call(["blog"], () => Tally.get())).toBe(made);
+    expect(await call(["blog", "a"], () => Tally.get())).toBe(made);
+    await expect(call(["docs"], () => Tally.get())).rejects.toThrow("Could not find Tally in context.");
+  });
+
+  it("will find what a deeper use() made over one above", async () => {
+    class Tally extends State { static ttl = 60; }
+
+    const above = await call(["blog"], () => Tally.use());
+    const below = await call(["blog", "a"], () => Tally.use());
+
+    expect(below).not.toBe(above);
+    expect(await call(["blog", "a", "x"], () => Tally.get())).toBe(below);
+    expect(await call(["blog", "b"], () => Tally.get())).toBe(above);
+  });
+
+  it("will not find what use() made once it expires", async () => {
+    vi.useFakeTimers();
+    class Tally extends State { static ttl = 60; }
+
+    await call(["tally"], () => Tally.use());
+    vi.advanceTimersByTime(60_000);
+
+    await expect(call(["tally"], () => Tally.get())).rejects.toThrow("Could not find Tally in context.");
   });
 });
 
