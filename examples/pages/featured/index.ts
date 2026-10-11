@@ -4,5 +4,6 @@ export default {
   tictactoe: 'Tic-Tac-Toe',
   stopwatch: 'Stopwatch',
   spreadsheet: 'Spreadsheet',
-  todomvc: 'TodoMVC'
+  todomvc: 'TodoMVC',
+  store: 'Store'
 };
