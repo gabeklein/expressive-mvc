@@ -6,13 +6,17 @@ interface Tracker {
   counter: number;
   dirty: boolean;
   keys: Map<string, number>;
+  watchers: Set<() => void>;
 }
 
 const trackers = new WeakMap<State, Tracker>();
 
 export function track(instance: State): void {
-  const tracker: Tracker = { generation: randomBytes(6).toString("base64url"), counter: 0, dirty: false, keys: new Map() };
-  const settle = () => { tracker.dirty = false; };
+  const tracker: Tracker = { generation: randomBytes(6).toString("base64url"), counter: 0, dirty: false, keys: new Map(), watchers: new Set() };
+  const settle = () => {
+    tracker.dirty = false;
+    tracker.watchers.forEach(watcher => watcher());
+  };
 
   trackers.set(instance, tracker);
   instance.set(key => {
@@ -26,6 +30,14 @@ export function track(instance: State): void {
     tracker.keys.set(key, tracker.counter);
     return settle;
   });
+}
+
+export function watch(instance: State, watcher: () => void): () => void {
+  const { watchers } = trackers.get(instance)!;
+
+  watchers.add(watcher);
+
+  return () => watchers.delete(watcher);
 }
 
 export function versionOf(instance: State): string {

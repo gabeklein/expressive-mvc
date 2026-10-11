@@ -4,6 +4,7 @@ import { Readable } from "node:stream";
 import { get, State } from "@expressive/mvc";
 
 import { dispatch, isCall, resolve, verify, type Endpoint, type Seats } from "./call";
+import { connect, listen } from "./connection";
 import { install } from "./context";
 
 const at = (...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
@@ -156,6 +157,7 @@ describe("seat dispatch", () => {
     visits = get(Visits);
     async add(by: number) { this.visits.count++; return (this.total += by); }
     async noop() {}
+    async slow() { this.total++; await new Promise(resolve => setTimeout(resolve, 5)); }
   }
 
   const seats: Seats = async pattern => ({ "": Visits, tally: Tally } as Record<string, State.Type>)[pattern.join("/")] as any;
@@ -169,7 +171,7 @@ describe("seat dispatch", () => {
       exports: async () => ({
         calls: { bump: async () => { Tally.get().total++; } },
         classes: {},
-        seat: { fields: ["total"], methods: { "default.add": "add", "default.noop": "noop" } },
+        seat: { fields: ["total"], methods: { "default.add": "add", "default.noop": "noop", "default.slow": "slow" } },
       }),
     },
   ];
@@ -265,6 +267,24 @@ describe("seat dispatch", () => {
 
     expect((await call("bump")).body).toEqual({ frame: { "Tally-A": { patch: { total: values.total + 1 }, version: expect.not.stringMatching(version) } } });
     expect((await tab().call("bump")).body).toEqual({ frame: {} });
+  });
+
+  it("will announce another tab's changes on the stream, and not the tab's own", async () => {
+    const id = crypto.randomUUID();
+    const events: [string, any][] = [];
+    const mine = { "x-expressive-connection": id, "x-expressive-twin": "Tally-A" };
+
+    listen(connect(id)!, (event, data) => events.push([event, data]));
+    await send(endpoints, request("/tally", undefined, "[]", "application/json", { ...mine, "x-expressive-get": "default" }), false, seats);
+    await new Promise(resolve => setTimeout(resolve));
+
+    await send(endpoints, request("/tally", "default.slow", "[]", "application/json", mine), false, seats);
+    await new Promise(resolve => setTimeout(resolve));
+    expect(events.map(([event]) => event)).toEqual(["hello"]);
+
+    await tab().call("default.add", "[1]", { "x-expressive-twin": "Tally-Z" });
+    await new Promise(resolve => setTimeout(resolve));
+    expect(events.slice(1)).toEqual([["stale", { "Tally-A": ["total"] }]]);
   });
 
   it("will drop the twins a request releases", async () => {

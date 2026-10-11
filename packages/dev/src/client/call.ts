@@ -10,7 +10,10 @@ export function runtime(Base: typeof State, def: typeof instruction) {
   const dropped = new WeakSet<State>();
   const twins = new Map<string, State>();
   const released = new Set<string>();
+  const refreshing = new WeakMap<State, Promise<void>>();
+  const again = new WeakSet<State>();
   const connection = crypto.randomUUID();
+  let source: EventSource | undefined;
   let epoch: string | undefined;
   let syncing = false;
 
@@ -56,12 +59,63 @@ export function runtime(Base: typeof State, def: typeof instruction) {
     });
 
     const next = res.headers.get("x-expressive-epoch");
-    const reset = !!epoch && !!next && next !== epoch;
 
-    if (next) epoch = next;
-    if (reset) await rejoin();
+    if (next && adopt(next)) await rejoin();
 
     return settle(res);
+  }
+
+  function adopt(next: string): boolean {
+    const reset = !!epoch && next !== epoch;
+
+    epoch = next;
+
+    return reset;
+  }
+
+  function listen(): void {
+    if (source) return;
+
+    const on = (event: string, handle: (data: any) => void) =>
+      source!.addEventListener(event, message => handle(JSON.parse((message as MessageEvent).data)));
+
+    source = new EventSource(`/.expressive/stream?connection=${connection}`);
+
+    on("hello", ({ epoch }) => adopt(epoch) && rejoin());
+    on("stale", stale => Object.keys(stale).forEach(id => twins.has(id) && refresh(twins.get(id)!)));
+    on("beat", ({ sum }) => sum !== checksum() && twins.forEach(refresh));
+  }
+
+  function refresh(twin: State): void {
+    if (refreshing.has(twin)) return void again.add(twin);
+
+    const done = attach(twin)
+      .catch(() => {})
+      .then(() => {
+        refreshing.delete(twin);
+        if (again.delete(twin)) refresh(twin);
+      });
+
+    refreshing.set(twin, done);
+  }
+
+  function checksum(): number {
+    let sum = 0;
+
+    for (const [id, twin] of twins) {
+      const version = versions.get(twin);
+      if (version) sum = (sum ^ fnv(`${id}@${version}`)) >>> 0;
+    }
+
+    return sum;
+  }
+
+  function fnv(text: string): number {
+    let hash = 0x811c9dc5;
+
+    for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+
+    return hash >>> 0;
   }
 
   async function settle(res: Response): Promise<any> {
@@ -184,6 +238,7 @@ export function runtime(Base: typeof State, def: typeof instruction) {
           pending.set(this, []);
           meta.set(this, { id, pattern, fields });
           twins.set(id, this);
+          listen();
 
           for (const field of fields) (this as any)[field] = served();
 

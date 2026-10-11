@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { State } from "@expressive/mvc";
 
-import { catchUp, connect, frameOf, hold, release, renew, twinOf } from "./connection";
+import { begin, catchUp, checksum, connect, end, frameOf, hold, listen, release, renew, twinOf } from "./connection";
 import { track } from "./version";
 
 class Tally extends State {
@@ -115,4 +115,133 @@ describe("connection", () => {
       B: { patch: { total: 0 }, version: expect.any(String) },
     });
   });
+
+  describe("stream", () => {
+    const tick = () => new Promise(resolve => setTimeout(resolve));
+
+    function streamed() {
+      const connection = connect(crypto.randomUUID())!;
+      const events: [string, any][] = [];
+      const close = listen(connection, (event, data) => events.push([event, data]));
+
+      return { connection, events, close };
+    }
+
+    it("will greet with the connection's epoch", () => {
+      const { connection, events } = streamed();
+      expect(events).toEqual([["hello", { epoch: connection.epoch }]]);
+    });
+
+    it("will name the stale keys of each twin past its seen version, once per flush", async () => {
+      const { connection, events } = streamed();
+      const tally = tracked();
+
+      hold(connection, "A", "/a", tally, ["total"]);
+      catchUp(connection, "A");
+      await tick();
+
+      tally.total = 1;
+      tally.total = 2;
+      await tick();
+
+      expect(events.slice(1)).toEqual([["stale", { A: ["total"] }]]);
+    });
+
+    it("will hold announcements while the tab's own call runs, then send only what it did not receive", async () => {
+      const { connection, events } = streamed();
+      const tally = tracked();
+
+      hold(connection, "A", "/a", tally, ["total"]);
+      catchUp(connection, "A");
+      begin(connection);
+      begin(connection);
+
+      tally.total = 1;
+      await tick();
+      end(connection);
+      await tick();
+      expect(events).toHaveLength(1);
+
+      frameOf(connection);
+      end(connection);
+      await tick();
+      expect(events).toHaveLength(1);
+
+      begin(connection);
+      tally.total = 2;
+      await tick();
+      end(connection);
+      await tick();
+      expect(events.slice(1)).toEqual([["stale", { A: ["total"] }]]);
+    });
+
+    it("will stop announcing a twin once released, and follow a renewed instance", async () => {
+      const { connection, events } = streamed();
+      const a = tracked();
+      const b = tracked();
+      const next = tracked();
+
+      hold(connection, "A", "/a", a, ["total"]);
+      hold(connection, "B", "/b", b, ["total"]);
+      catchUp(connection, "A");
+      catchUp(connection, "B");
+      release(connection, "A");
+      renew(connection, "/b", next);
+      renew(connection, "/b", next);
+      frameOf(connection);
+
+      a.total = 1;
+      b.total = 1;
+      await tick();
+      expect(events).toHaveLength(1);
+
+      next.total = 1;
+      await tick();
+      expect(events.slice(1)).toEqual([["stale", { B: ["total"] }]]);
+    });
+
+    it("will beat every 15 seconds with a checksum of what each twin has seen", () => {
+      vi.useFakeTimers();
+      const { connection, events, close } = streamed();
+
+      hold(connection, "A", "/a", tracked(), ["total"]);
+      hold(connection, "B", "/b", tracked(), ["total"]);
+      catchUp(connection, "A");
+
+      vi.advanceTimersByTime(15_000);
+      expect(events.at(-1)).toEqual(["beat", { sum: checksum(connection) }]);
+      expect(checksum(connection)).not.toBe(0);
+
+      close();
+      vi.advanceTimersByTime(15_000);
+      expect(events.filter(([event]) => event == "beat")).toHaveLength(1);
+    });
+
+    it("will keep the connection while its stream is open, and expire it after", () => {
+      vi.useFakeTimers();
+      const id = crypto.randomUUID();
+      const connection = connect(id)!;
+      const close = listen(connection, () => {});
+
+      connect(id);
+      vi.advanceTimersByTime(600_000);
+      expect(connect(id)).toBe(connection);
+
+      close();
+      vi.advanceTimersByTime(300_000);
+      expect(connect(id)).not.toBe(connection);
+    });
+
+    it("will let a newer stream take over without the older one's close undoing it", () => {
+      const connection = connect(crypto.randomUUID())!;
+      const first = listen(connection, () => {});
+      const second = vi.fn();
+
+      listen(connection, second);
+      first();
+
+      expect(connection.sink).toBe(second);
+    });
+  });
 });
+

@@ -25,3 +25,15 @@ test("updates another twin a call moved, in the same reply", async ({ page, open
   await page.getByRole("button", { name: "Increment" }).click();
   await expect.poll(async () => Number(await clicks.textContent())).toBeGreaterThan(before);
 });
+
+test("shows another tab's change without a call of its own", async ({ page, context, open }) => {
+  await open("/counter");
+  const output = page.locator("output");
+  const before = Number(await output.textContent());
+
+  const other = await context.newPage();
+  await other.goto("/counter");
+  await other.getByRole("button", { name: "Increment" }).click();
+
+  await expect.poll(async () => Number(await output.textContent())).toBeGreaterThan(before);
+});

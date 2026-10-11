@@ -17,7 +17,26 @@ let call: ReturnType<typeof runtime>["call"];
 let define: ReturnType<typeof runtime>["define"];
 let twin: ReturnType<typeof runtime>["twin"];
 
+class Source {
+  static opened: Source[] = [];
+  listeners = new Map<string, (message: { data: string }) => void>();
+
+  constructor(readonly url: string) {
+    Source.opened.push(this);
+  }
+
+  addEventListener(event: string, listener: (message: { data: string }) => void) {
+    this.listeners.set(event, listener);
+  }
+
+  emit(event: string, data: unknown) {
+    this.listeners.get(event)!({ data: JSON.stringify(data) });
+  }
+}
+
 beforeEach(() => {
+  Source.opened = [];
+  vi.stubGlobal("EventSource", Source);
   ({ call, define, twin } = runtime(State, def));
   history.replaceState(null, "", "/tally");
 });
@@ -305,3 +324,92 @@ describe("twin", () => {
     expect(headers(fetch, 4)).toMatchObject({ "x-expressive-get": "default", "x-expressive-twin": idOf(fetch, 1), "if-none-match": "b:1" });
   });
 });
+
+describe("stream", () => {
+  const settle = () => new Promise(resolve => setTimeout(resolve));
+
+  function fnv(text: string) {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+    return hash >>> 0;
+  }
+
+  async function attached(...replies: Reply[]) {
+    const fetch = serve({ body: { values: { total: 0 }, version: "g:1" } }, ...replies);
+    const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
+
+    await vi.waitFor(() => expect(tally.total).toBe(0));
+
+    return { fetch, tally, source: Source.opened[0], id: idOf(fetch, 0) };
+  }
+
+  it("will open one stream per tab on the first twin, on the tab's connection", async () => {
+    const { fetch } = await attached({ body: { values: {}, version: "g:1" } });
+    twin(["tally"], {}, [], "Other").new();
+
+    expect(Source.opened).toHaveLength(1);
+    expect(Source.opened[0].url).toBe(`/.expressive/stream?connection=${headers(fetch, 0)["x-expressive-connection"]}`);
+  });
+
+  it("will pull a twin the stream calls stale, by its version", async () => {
+    const { fetch, tally, source, id } = await attached({ body: { values: { total: 3 }, version: "g:2" } });
+
+    source.emit("stale", { [id]: ["total"], "Gone-X": ["total"] });
+    await vi.waitFor(() => expect(tally.total).toBe(3));
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(headers(fetch, 1)).toMatchObject({ "x-expressive-get": "default", "x-expressive-twin": id, "if-none-match": "g:1" });
+  });
+
+  it("will pull once more for news that arrives during a pull, not once per notice", async () => {
+    const { fetch, tally, source, id } = await attached(
+      { body: { values: { total: 1 }, version: "g:2" } },
+      { body: { values: { total: 2 }, version: "g:3" } },
+    );
+
+    source.emit("stale", { [id]: ["total"] });
+    source.emit("stale", { [id]: ["total"] });
+    source.emit("stale", { [id]: ["total"] });
+
+    await vi.waitFor(() => expect(tally.total).toBe(2));
+    await settle();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("will keep listening after a failed pull", async () => {
+    const { tally, source, id } = await attached(
+      { body: { message: "Internal error." }, status: 500 },
+      { body: { values: { total: 5 }, version: "g:2" } },
+    );
+
+    source.emit("stale", { [id]: ["total"] });
+    await settle();
+    source.emit("stale", { [id]: ["total"] });
+
+    await vi.waitFor(() => expect(tally.total).toBe(5));
+  });
+
+  it("will re-attach every twin when the stream says hello from a new epoch", async () => {
+    const { fetch, source, id } = await attached({ body: null, status: 304, epoch: "e2" });
+
+    source.emit("hello", { epoch: "e1" });
+    await settle();
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    source.emit("hello", { epoch: "e2" });
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(headers(fetch, 1)).toMatchObject({ "x-expressive-twin": id, "if-none-match": "g:1" });
+  });
+
+  it("will pull every twin when a heartbeat's checksum differs from its own", async () => {
+    const { fetch, source, id } = await attached({ body: null, status: 304 });
+
+    source.emit("beat", { sum: fnv(`${id}@g:1`) });
+    await settle();
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    source.emit("beat", { sum: 0 });
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+});
+

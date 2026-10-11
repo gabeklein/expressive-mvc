@@ -167,8 +167,9 @@ A twin holds the seat's public values too. It attaches on construction and suspe
 snapshot arrives. Every call's reply - a twin's method or a plain function - carries everything that
 changed on any twin the tab holds since that twin last heard, so an awaited call never reads stale,
 even where it changed a parent folder's twin through `get()`. Values change on the server only -
-assigning a twin field throws. Twins made by client `use()`, and refresh of changes the server makes
-on its own, come later.
+assigning a twin field throws. Changes made elsewhere - another tab, a timer on the server - arrive
+on a stream the tab opens with its first twin: the server names what went stale and the twin pulls
+it. Twins made by client `use()` come later.
 
 ## Commands
 

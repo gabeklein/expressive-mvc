@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { catchUp, connect, frameOf, hold, release, renew, twinOf } from "./connection";
+import { begin, catchUp, connect, end, frameOf, hold, release, renew, twinOf } from "./connection";
 import { seated, within, type Seat } from "./context";
 
 export interface Exports {
@@ -96,6 +96,8 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   const { fields } = exports.seat ?? { fields: [] };
   const since = req.headers["if-none-match"] as string | undefined;
 
+  if (!pull) begin(connection);
+
   try {
     const along = await seatsAlong(seats, found.endpoint.pattern);
 
@@ -118,6 +120,8 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
   } catch (error) {
     const { status, body } = await failure(error, list, dev);
     return reply(res, status, body);
+  } finally {
+    if (!pull) end(connection);
   }
 }
 

@@ -281,6 +281,20 @@ describe("vite host", () => {
     expect(res.status).toBe(500);
   });
 
+  it("will hold a tab's stream open on the dev server", async () => {
+    const server = await serve(project({ "app/index.tsx": PAGE }));
+    await server.listen(0);
+
+    const abort = new AbortController();
+    const res = await fetch(new URL(`/.expressive/stream?connection=${TAB}`, server.resolvedUrls!.local[0]), { signal: abort.signal });
+    const { value } = await res.body!.getReader().read();
+
+    expect(res.headers.get("content-type")).toBe("text/event-stream");
+    expect(new TextDecoder().decode(value)).toMatch(/^event: hello\ndata: \{"epoch":"[\w-]+"\}\n\n/);
+
+    abort.abort();
+  });
+
   it("will dispatch a call on the module runner", async () => {
     const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/remote.ts": SIDECAR }));
     await server.listen(0);
