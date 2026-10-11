@@ -478,6 +478,24 @@ describe("pooled twin", () => {
     expect(await cart.add()).toBe(2);
   });
 
+  it("will build for a plain new and for a client subclass, which adds members of its own", async () => {
+    const fetch = serve({ body: { values: { items: 2 }, version: "c:1" } }, { body: { values: { items: 3 }, version: "d:1" } });
+    const Cart = twin(["shop"], {}, ["items"], "Cart", "/shop#Cart") as any;
+
+    class Local extends Cart {
+      get double() { return this.items * 2; }
+    }
+
+    const local = Local.new() as any;
+    await vi.waitFor(() => expect(local.double).toBe(4));
+
+    const plain = new Cart();
+    await vi.waitFor(() => expect(plain.items).toBe(3));
+
+    expect(headers(fetch, 0)).toMatchObject({ "x-expressive-get": "/shop#Cart" });
+    expect(idOf(fetch, 0)).not.toBe(idOf(fetch, 1));
+  });
+
   it("will release a twin collected without being destroyed", async () => {
     const fetch = serve({ body: { values: { items: 0 }, version: "c:1" } }, { body: { frame: {} } });
     const Cart = twin(["shop"], {}, ["items"], "Cart", "/shop#Cart");
