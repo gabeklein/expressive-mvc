@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+import { catchUp, connect, frameOf, hold, release, renew, twinOf } from "./connection";
 import { seated, within, type Seat } from "./context";
-import { changedSince, snapshot, versionOf } from "./version";
 
 export interface Exports {
   calls: Record<string, unknown>;
@@ -82,39 +82,39 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse, endpoi
 
   if (!args) return reply(res, 400, { message: "Expected a JSON array of arguments." });
 
+  const connection = connect(req.headers["x-expressive-connection"]);
+
+  if (!connection) return reply(res, 400, { message: "Expected an x-expressive-connection id." });
+
+  res.setHeader("x-expressive-epoch", connection.epoch);
+  release(connection, req.headers["x-expressive-release"]);
+
+  const twin = pull || method ? twinOf(req.headers["x-expressive-twin"]) : undefined;
+
+  if ((pull || method) && !twin) return reply(res, 400, { message: "Expected an x-expressive-twin id." });
+
   const { fields } = exports.seat ?? { fields: [] };
+  const since = req.headers["if-none-match"] as string | undefined;
 
   try {
     const along = await seatsAlong(seats, found.endpoint.pattern);
-    const since = req.headers["if-none-match"] as string | undefined;
 
-    if (pull) {
-      const result = await within(req, found.segments, () => {
-        const seat = seated()!;
-        snapshot(seat, fields);
-        const keys = changedSince(seat, since, fields);
-        const version = versionOf(seat);
+    const result = await within(req, found.segments, async () => {
+      const seat = seated();
 
-        return keys.length || version !== since ? { values: snapshot(seat, keys), version } : undefined;
-      }, along);
+      if (seat) renew(connection, pathname, seat);
+      if (twin) hold(connection, twin, pathname, seat!, fields, since);
+      if (pull) {
+        const { values, version } = catchUp(connection, twin!);
+        return Object.keys(values).length || version !== since ? { values, version } : undefined;
+      }
 
-      return result ? reply(res, 200, result) : reply(res, 304);
-    }
+      const value = await (method ? (seat as any)[method](...args) : fn!(...args));
 
-    if (method) {
-      const result = await within(req, found.segments, async () => {
-        const seat = seated()!;
-        const value = await (seat as any)[method](...args);
-        snapshot(seat, fields);
+      return { value, frame: frameOf(connection) };
+    }, along);
 
-        return { value, patch: snapshot(seat, changedSince(seat, since, fields)), version: versionOf(seat) };
-      }, along);
-
-      return reply(res, 200, result);
-    }
-
-    const value = await within(req, found.segments, () => fn!(...args), along);
-    return value === undefined ? reply(res, 204) : reply(res, 200, value);
+    return result ? reply(res, 200, result) : reply(res, 304);
   } catch (error) {
     const { status, body } = await failure(error, list, dev);
     return reply(res, status, body);
