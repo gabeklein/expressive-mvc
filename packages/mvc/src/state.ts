@@ -140,7 +140,7 @@ declare namespace State {
   /** Object overlay to override values and methods on a state. */
   type Assign<T> = Record<string, unknown> & {
     [K in Property<T>]?: T[K] extends (...args: infer A) => infer R
-    ? { method(this: T, ...args: A): R }['method']
+    ? (this: T, ...args: A) => R
     : T[K];
   };
 
