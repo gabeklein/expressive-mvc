@@ -169,7 +169,27 @@ changed on any twin the tab holds since that twin last heard, so an awaited call
 even where it changed a parent folder's twin through `get()`. Values change on the server only -
 assigning a twin field throws. Changes made elsewhere - another tab, a timer on the server - arrive
 on a stream the tab opens with its first twin: the server names what went stale and the twin pulls
-it. Twins made by client `use()` come later.
+it.
+
+A remote module may also export State classes. Each is a twin built per use: every `Cart.use()` in a
+component, or `Cart.new()` anywhere, gets a server instance of its own, alive while the client holds
+the twin. It is built under the component's nearest route, so its `get()` fields reach the seats
+above it and every `key()` above it runs on each call; off any route it has no seat above it.
+
+```ts
+// app/shop/remote.ts
+import { State, get } from "@expressive/mvc";
+
+export default class Shop extends State {
+  name = "Shop";
+}
+
+export class Cart extends State {
+  protected shop = get(Shop);
+  items = 0;
+  async add() { return ++this.items; }
+}
+```
 
 ## Commands
 
