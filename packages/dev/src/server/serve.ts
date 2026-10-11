@@ -4,7 +4,7 @@ import { extname, join, normalize } from "node:path";
 
 import type { AppConfig } from "./config";
 import { dispatch, isCall, verify, type Endpoint } from "./call";
-import { install } from "./context";
+import { install, type Seat } from "./context";
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -43,13 +43,17 @@ export interface ServeOptions {
   config: AppConfig;
   client: string;
   sidecars?: Endpoint[];
+  seats?: { pattern: string[]; Type: Seat }[];
 }
 
-export function serve({ config, client, sidecars = [] }: ServeOptions): Server {
+export function serve({ config, client, sidecars = [], seats = [] }: ServeOptions): Server {
   install();
 
+  const seated = new Map(seats.map(({ pattern, Type }) => [pattern.join("/"), Type]));
+  const seatAt = async (pattern: string[]) => seated.get(pattern.join("/"));
+
   const server = createServer(async (req, res) => {
-    if (isCall(req)) return dispatch(req, res, () => sidecars, false);
+    if (isCall(req)) return dispatch(req, res, () => sidecars, false, seatAt);
 
     const { pathname } = new URL(req.url ?? "/", "http://localhost");
 

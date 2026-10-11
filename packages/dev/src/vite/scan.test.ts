@@ -58,11 +58,53 @@ describe("sidecar scan", () => {
     ]);
   });
 
-  it("will refuse re-exports and a default export", () => {
-    expect(scan(`export * from "./x"; export { y } from "./x"; export default async () => {}`).problems).toEqual([
+  it("will refuse re-exports", () => {
+    expect(scan(`export * from "./x"; export { y } from "./x";`).problems).toEqual([
       "A sidecar cannot re-export from another module.",
       "A sidecar cannot re-export from another module.",
-      "A sidecar's default export is not supported yet.",
+    ]);
+  });
+
+  it("will take a default class as the seat, with its public async methods", () => {
+    expect(scan(`
+      export default class Tally extends State {
+        static ttl = 60;
+        static async reset() {}
+        total = 0;
+        get double() { return this.total * 2 }
+        async add(by: number) {}
+        private async secret() {}
+        protected async guarded() {}
+        async #hidden() {}
+        async _internal() {}
+        _helper() {}
+        async use() {}
+      }
+    `)).toEqual({ calls: [], classes: [], seat: { name: "Tally", methods: ["add"] }, problems: [] });
+  });
+
+  it("will take a default class however exported", () => {
+    expect(scan(`class A extends State {} export { A as default }`).seat).toEqual({ name: "A", methods: [] });
+    expect(scan(`class B extends State {} export default B`).seat).toEqual({ name: "B", methods: [] });
+    expect(scan(`export default class extends State {}`).seat).toEqual({ name: "default", methods: [] });
+  });
+
+  it("will refuse a public method that is not async", () => {
+    expect(scan(`export default class Tally extends State { add() {} }`).problems).toEqual([
+      "Tally.add() is not async - every call to it crosses the wire.",
+    ]);
+  });
+
+  it("will refuse a default that is not a subclass", () => {
+    const problem = "A remote default is a State subclass - its methods are what the client calls.";
+
+    expect(scan(`export default async () => {}`).problems).toEqual([problem]);
+    expect(scan(`export default class {}`).problems).toEqual([problem]);
+  });
+
+  it("will refuse a default outside the folder's remote entry", () => {
+    expect(scanSidecar(`export default class A extends State {}`, "remote/bar.ts", false).problems).toEqual([
+      "Only a folder's remote entry - remote.ts or remote/index.ts - may export a default.",
     ]);
   });
 

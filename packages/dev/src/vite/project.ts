@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import type { Exposed, Exposure } from "./remote";
+import type { Remote } from "./routes";
 
 export interface Project {
   root: string;
@@ -83,17 +84,19 @@ function injectBeforeBody(html: string, tag: string): string {
     : html + "\n" + tag + "\n";
 }
 
-export function serverEntry(project: Project, from: string, exposure: Exposure): string {
+export function serverEntry(project: Project, from: string, exposure: Exposure, seats: Remote[] = []): string {
   const configSpec = project.configPath && JSON.stringify(importRel(from, project.configPath));
-  const remotes = [...exposure.remotes.values()];
-  const modules = remotes.map(remote => JSON.stringify(importRel(from, remote.file)));
-  const alias = (remote: Exposed) => `s${remotes.indexOf(remote)}`;
+  const files = [...new Set([...exposure.remotes.keys(), ...seats.map(seat => seat.file)])];
+  const modules = files.map(file => JSON.stringify(importRel(from, file)));
+  const alias = (remote: Remote) => `s${files.indexOf(remote.file)}`;
 
   const entries = exposure.byPattern().map(group => {
     const pick = (names: (remote: Exposed) => string[], id: (remote: Exposed, name: string) => string) =>
       group.flatMap(remote => names(remote).map(name => `${JSON.stringify(id(remote, name))}: ${alias(remote)}.${name}`)).join(", ");
 
-    const calls = pick(remote => remote.calls, (remote, name) => exposure.callId(remote, name));
+    const methods = group.flatMap(remote => (remote.seat?.methods ?? []).map(name =>
+      `${JSON.stringify(exposure.callId(remote, `default.${name}`))}: (...args) => ${alias(remote)}.default.use().${name}(...args)`));
+    const calls = [pick(remote => remote.calls, (remote, name) => exposure.callId(remote, name)), ...methods].filter(Boolean).join(", ");
     const classes = pick(remote => remote.classes, (remote, name) => exposure.classId(remote, name));
 
     return `    { pattern: ${JSON.stringify(group[0].pattern)}, async exports() { return { calls: { ${calls} }, classes: { ${classes} } }; } },`;
@@ -109,6 +112,7 @@ export function serverEntry(project: Project, from: string, exposure: Exposure):
     "  config,",
     `  client: fileURLToPath(new URL("../client/", import.meta.url)),`,
     "  sidecars: [", ...entries, "  ],",
+    "  seats: [", ...seats.map(seat => `    { pattern: ${JSON.stringify(seat.pattern)}, Type: ${alias(seat)}.default },`), "  ],",
     "});",
     "",
   ].join("\n");

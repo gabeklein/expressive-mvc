@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { IncomingMessage } from "node:http";
 import { get, State } from "@expressive/mvc";
 
-import { Current, install, within } from "./context";
+import { Current, install, within, type Seat } from "./context";
 
 const request = (url = "/", cookie = "") => ({ url, headers: { cookie } }) as IncomingMessage;
 const call = <T>(segments: string[], run: () => T) => within(request("/" + segments.join("/")), segments, run);
@@ -137,6 +137,76 @@ describe("server get", () => {
     vi.advanceTimersByTime(60_000);
 
     await expect(call(["tally"], () => Tally.get())).rejects.toThrow("Could not find Tally in context.");
+  });
+});
+
+describe("seats", () => {
+  const as = (user: string) => request("/", `user=${user}`);
+  const walk = <T>(req: IncomingMessage, segments: string[], seats: (Seat | undefined)[], run: () => T) => within(req, segments, run, seats);
+
+  it("will seat a layer's default as a call walks through it, found by get() there and below", async () => {
+    class Blog extends State {}
+
+    const here = await walk(request(), ["blog"], [undefined, Blog], () => Blog.get());
+    const below = await walk(request(), ["blog", "a"], [undefined, Blog], () => Blog.get());
+
+    expect(below).toBe(here);
+    expect(await walk(request(), ["blog"], [undefined, Blog], () => Blog.use())).toBe(here);
+  });
+
+  it("will narrow everything below by a seat's key", async () => {
+    class Session extends State { static key() { return Current.get().cookies.user; } }
+    class Cart extends State {}
+
+    const a = await walk(as("a"), ["shop"], [Session], () => [Session.get(), Cart.use()]);
+    const b = await walk(as("b"), ["shop"], [Session], () => [Session.get(), Cart.use()]);
+
+    expect(b[0]).not.toBe(a[0]);
+    expect(b[1]).not.toBe(a[1]);
+    expect(await walk(as("a"), ["shop"], [Session], () => [Session.get(), Cart.use()])).toEqual(a);
+  });
+
+  it("will pass the location through when a key is undefined", async () => {
+    class Shared extends State { static key() { return undefined; } }
+
+    const a = await walk(as("a"), ["docs"], [undefined, Shared], () => Shared.get());
+    expect(await walk(as("b"), ["docs"], [undefined, Shared], () => Shared.get())).toBe(a);
+  });
+
+  it("will run a key with the seats above it in reach", async () => {
+    class Session extends State { static key() { return Current.get().cookies.user; } org = "acme"; }
+    class Org extends State { static key() { return Session.get().org; } }
+
+    const org = await walk(as("a"), ["org"], [Session, Org], () => Org.get());
+    expect(org).toBeInstanceOf(Org);
+  });
+
+  it("will deny a call whose key throws, creating nothing", async () => {
+    class Gate extends State { static key(): string { throw new Error("Denied"); } }
+    const run = vi.fn();
+
+    await expect(walk(request(), ["gate"], [undefined, Gate], run)).rejects.toThrow("Denied");
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("will throw if a key is not a string, a number or undefined", async () => {
+    class Bad extends State { static key() { return {} as any; } }
+
+    await expect(walk(request(), ["bad"], [undefined, Bad], () => {})).rejects.toThrow("Bad.key() returned [object Object] - a key is a string, a number or undefined.");
+  });
+
+  it("will evict a seat's layer and everything below when it ends", async () => {
+    class Blog extends State {}
+    class Post extends State { static ttl = 60; }
+
+    const [blog, post] = await walk(request(), ["blog", "a"], [undefined, Blog], () => [Blog.get(), Post.use()]);
+    blog.set(null);
+
+    expect(post.get(null)).toBe(true);
+
+    const [again, fresh] = await walk(request(), ["blog", "a"], [undefined, Blog], () => [Blog.get(), Post.use()]);
+    expect(again).not.toBe(blog);
+    expect(fresh).not.toBe(post);
   });
 });
 

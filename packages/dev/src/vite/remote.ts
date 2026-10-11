@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 
 import type { Remote } from "./routes";
+import type { Twin } from "./scan";
 
 export interface Exposed extends Remote {
   calls: string[];
   classes: string[];
+  seat?: Twin;
 }
 
 export class Exposure {

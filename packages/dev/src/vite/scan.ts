@@ -17,9 +17,15 @@ export const scanExports: ExportScanner = async (source, path) => {
   return { exports: entries.map(entry => entry.n), classDefault };
 };
 
+export interface Twin {
+  name: string;
+  methods: string[];
+}
+
 export interface SidecarScan {
   calls: string[];
   classes: string[];
+  seat?: Twin;
   problems: string[];
 }
 
@@ -40,7 +46,9 @@ const nameOf = (node: ESTree.ModuleExportName) =>
 type Statement = ESTree.Program["body"][number];
 type Exported = [name: string, value: Value];
 
-export function scanSidecar(source: string, path: string): SidecarScan {
+const RESERVED = new Set(["new", "use", "mount", "get", "set", "is"]);
+
+export function scanSidecar(source: string, path: string, entry = true): SidecarScan {
   const { program, errors } = parseSync(path, source);
   const scan: SidecarScan = { calls: [], classes: [], problems: errors.map(error => error.message) };
   const locals = localBindings(program.body);
@@ -49,7 +57,10 @@ export function scanSidecar(source: string, path: string): SidecarScan {
     const problem = unsupported(node);
 
     if (problem) scan.problems.push(problem);
-    else for (const [name, value] of exportsOf(node, locals)) check(scan, name, value);
+    else
+      for (const [name, value] of exportsOf(node, locals))
+        if (name === "default") seat(scan, value, entry);
+        else check(scan, name, value);
   }
 
   return scan;
@@ -59,8 +70,6 @@ function unsupported(node: Statement): string | undefined {
   switch (node.type) {
     case "ExportAllDeclaration":
       return "A sidecar cannot re-export from another module.";
-    case "ExportDefaultDeclaration":
-      return "A sidecar's default export is not supported yet.";
     case "ExportNamedDeclaration": {
       const { declaration } = node;
 
@@ -80,6 +89,11 @@ function unsupported(node: Statement): string | undefined {
 }
 
 function exportsOf(node: Statement, locals: Map<string, Value>): Exported[] {
+  if (node.type === "ExportDefaultDeclaration") {
+    const { declaration } = node;
+    return [["default", declaration.type === "Identifier" ? locals.get(declaration.name) : declaration as Value]];
+  }
+
   if (node.type !== "ExportNamedDeclaration" || node.exportKind === "type") return [];
 
   const { declaration } = node;
@@ -107,6 +121,28 @@ function check(scan: SidecarScan, name: string, value: Value): void {
   if (isAsyncFunction) scan.calls.push(name);
   else if (isSubclass) scan.classes.push(name);
   else scan.problems.push(`${name} is neither an async function nor an Error subclass - the client could not use it.`);
+}
+
+function seat(scan: SidecarScan, value: Value, entry: boolean): void {
+  if (!entry) return void scan.problems.push("Only a folder's remote entry - remote.ts or remote/index.ts - may export a default.");
+  if (!isClass(value) || !value.superClass) return void scan.problems.push("A remote default is a State subclass - its methods are what the client calls.");
+
+  const name = value.id?.name ?? "default";
+  const methods: string[] = [];
+
+  for (const member of value.body.body) {
+    if (member.type !== "MethodDefinition" || member.kind !== "method" || member.static || member.computed) continue;
+    if (member.key.type !== "Identifier" || member.accessibility === "private" || member.accessibility === "protected") continue;
+
+    const method = member.key.name;
+
+    if (method.startsWith("_") || RESERVED.has(method)) continue;
+
+    if (member.value.async) methods.push(method);
+    else scan.problems.push(`${name}.${method}() is not async - every call to it crosses the wire.`);
+  }
+
+  scan.seat = { name, methods };
 }
 
 function localBindings(body: ESTree.Program["body"]): Map<string, Value> {

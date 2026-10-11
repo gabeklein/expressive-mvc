@@ -11,6 +11,7 @@ interface Layer {
   parent?: Layer;
   children: Map<string, Layer>;
   states: Map<Owned, Entry>;
+  seat?: Entry;
   calls: number;
 }
 
@@ -31,6 +32,8 @@ interface Frame {
 }
 
 type Owned = State.Type & { ttl?: number };
+
+export type Seat = Owned & { key?(): string | number | undefined };
 
 const TTL = 300;
 
@@ -57,27 +60,43 @@ function root(): Layer {
   return top;
 }
 
-function childPrefix(parent: string, segment: string): string {
-  const hash = createHash("sha256").update(`${parent}/${segment}`);
-  return hash.digest("base64url").slice(0, 22);
+function hash(text: string): string {
+  return createHash("sha256").update(text).digest("base64url").slice(0, 22);
 }
 
-function walk(segments: string[]): Layer {
-  let layer = root();
+function keyOf(Seat: Seat): string | undefined {
+  const key = Seat.key?.();
 
-  for (const segment of segments) {
-    const prefix = childPrefix(layer.prefix, segment);
-    let next = layer.children.get(prefix);
+  if (key === undefined) return;
+  if (typeof key != "string" && typeof key != "number")
+    throw new Error(`${Seat.name}.key() returned ${key} - a key is a string, a number or undefined.`);
 
-    if (!next) {
-      next = newLayer(prefix, layer);
-      layer.children.set(prefix, next);
-    }
+  return String(key);
+}
 
-    layer = next;
+function enter(parent: Layer, segment?: string, Seat?: Seat): Layer {
+  let prefix = segment === undefined ? parent.prefix : hash(`${parent.prefix}/${segment}`);
+  const key = Seat && keyOf(Seat);
+
+  if (key !== undefined) prefix = hash(`${prefix}#${key}`);
+
+  let layer = prefix === parent.prefix ? parent : parent.children.get(prefix);
+
+  if (!layer) {
+    layer = newLayer(prefix, parent);
+    parent.children.set(prefix, layer);
   }
 
+  if (Seat) seat(layer, Seat);
+
   return layer;
+}
+
+function seat(layer: Layer, Seat: Seat) {
+  const entry = layer.states.get(Seat) ?? create(Seat, layer);
+
+  layer.seat = entry;
+  hold(frame().held, entry);
 }
 
 const isEmpty = (layer: Layer) => !layer.calls && !layer.states.size && !layer.children.size;
@@ -85,7 +104,7 @@ const isEmpty = (layer: Layer) => !layer.calls && !layer.states.size && !layer.c
 function prune(layer: Layer) {
   let at = layer;
 
-  while (at.parent && isEmpty(at)) {
+  while (at.parent && at.parent.children.get(at.prefix) === at && isEmpty(at)) {
     at.context.pop();
     at.parent.children.delete(at.prefix);
     at = at.parent;
@@ -96,11 +115,28 @@ function drop(entry: Entry) {
   const { layer } = entry;
   if (layer.states.get(entry.Type) !== entry) return;
 
-  layer.states.delete(entry.Type);
+  if (layer.seat === entry) return evict(layer);
+
+  discard(entry);
+  prune(layer);
+}
+
+function discard(entry: Entry) {
+  entry.layer.states.delete(entry.Type);
   clearTimeout(entry.timer);
   entry.remove();
   entry.context.pop();
-  prune(layer);
+}
+
+function evict(layer: Layer) {
+  layer.seat = undefined;
+  layer.children.forEach(evict);
+  layer.states.forEach(discard);
+
+  if (!layer.parent) return;
+
+  layer.context.pop();
+  layer.parent.children.delete(layer.prefix);
 }
 
 function release(entry: Entry) {
@@ -114,19 +150,28 @@ function release(entry: Entry) {
   entry.timer.unref();
 }
 
-export async function within<T>(request: IncomingMessage, segments: string[], run: () => T): Promise<Awaited<T>> {
-  const layer = walk(segments);
-  const held = new Set<Entry>();
+export async function within<T>(request: IncomingMessage, segments: string[], run: () => T, seats: (Seat | undefined)[] = []): Promise<Awaited<T>> {
+  const frame: Frame = { request, layer: root(), held: new Set() };
 
-  layer.calls++;
+  return await store.run(frame, async (): Promise<Awaited<T>> => {
+    try {
+      frame.layer = enter(frame.layer, undefined, seats[0]);
 
-  try {
-    return await store.run({ request, layer, held }, run);
-  } finally {
-    layer.calls--;
-    held.forEach(release);
-    prune(layer);
-  }
+      for (const [i, segment] of segments.entries())
+        frame.layer = enter(frame.layer, segment, seats[i + 1]);
+
+      frame.layer.calls++;
+
+      try {
+        return await run();
+      } finally {
+        frame.layer.calls--;
+      }
+    } finally {
+      frame.held.forEach(release);
+      prune(frame.layer);
+    }
+  });
 }
 
 function create(Type: Owned, layer: Layer): Entry {
