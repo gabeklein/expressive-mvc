@@ -2313,6 +2313,58 @@ describe('set method', () => {
       expect(test.foo).toBe('bar');
     });
 
+    it('will keep subclass assignable to base with this-typed method', () => {
+      class Parent extends State {
+        self(): this {
+          return this;
+        }
+      }
+
+      class Child extends Parent {
+        value = 1;
+      }
+
+      const parent: Parent = Child.new();
+
+      expect(parent.self()).toBe(parent);
+    });
+
+    it('will keep subclass assignable to base with generic this-typed method', () => {
+      class Parent extends State {
+        foo = 'foo';
+
+        pick<K extends keyof this>(key: K): this[K] {
+          return this[key];
+        }
+      }
+
+      class Child extends Parent {
+        value = 1;
+      }
+
+      const parent: Parent = Child.new();
+
+      expect(parent.pick('foo')).toBe('foo');
+    });
+
+    it('will keep subclass assignable to base with this-typed field', () => {
+      class Parent extends State {
+        values: Partial<this> = {};
+
+        update(values: Partial<this>) {
+          this.values = values;
+        }
+      }
+
+      class Child extends Parent {
+        value = 1;
+      }
+
+      const parent: Parent = Child.new();
+
+      expect(parent).toBeInstanceOf(Parent);
+    });
+
     it('will ignore properties not on state and built-ins', async () => {
       const test = Basic.new();
 
