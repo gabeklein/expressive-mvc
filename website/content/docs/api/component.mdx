@@ -200,7 +200,7 @@ const items = [Item.new({ label: 'First' }), Item.new({ label: 'Second' })];
 
 ## Providing a State: `<Component for>`
 
-The bare `Component` class - not a subclass - with a `for` attribute provides one State to its children. This replaces the deprecated `Provider`.
+The bare `Component` class - not a subclass - with a `for` attribute provides one State to its children. This replaces the removed `Provider`.
 
 ```tsx
 <Component for={Session} name="Ada" is={(session) => session.load()}>

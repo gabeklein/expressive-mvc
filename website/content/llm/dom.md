@@ -55,4 +55,4 @@ Not yet measured: performance against other renderers, memory and listener leaks
 - Embeds and widgets, where a React runtime would otherwise be the largest dependency.
 - Teams that want no hooks beyond `State.use()`.
 
-An Expressive codebase moves between the two hosts with its models unchanged. With imports from `@expressive/mvc`, the recommended path, only `Provider` and `Consumer` come from the host package, and both hosts export them with the same props. The remaining port is small: `onChange` → `onInput` on text fields (equivalent on React), React event-type annotations dropped or inferred, and `Suspense` → a Component `fallback`.
+An Expressive codebase moves between the two hosts with its models unchanged. With imports from `@expressive/mvc`, the recommended path, state and provision import nothing host-specific - `<Component for>` is the same element on both hosts. The remaining port is small: `onChange` → `onInput` on text fields (equivalent on React), React event-type annotations dropped or inferred, and `Suspense` → a Component `fallback`.

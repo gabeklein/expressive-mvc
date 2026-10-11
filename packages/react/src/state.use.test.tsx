@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { Component, State, Provider, get, set } from '.';
+import { Component, State, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { flushMicrotasks, mockPromise, reactOnly } from '../test.setup';
 import { pending } from '@expressive/mvc';
@@ -434,9 +434,9 @@ describe('State.use', () => {
       };
 
       render(
-        <Provider for={Ambient}>
+        <Component for={Ambient}>
           <Element />
-        </Provider>
+        </Component>
       );
     });
   });
