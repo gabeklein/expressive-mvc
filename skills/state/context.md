@@ -88,15 +88,16 @@ A context-claimed State never consults `global` - an instance provided by `<Comp
 
 ### Global Collision
 
-A global is a singleton - a second global instance of the same type throws on activation:
+A global may not shadow another. Activation throws if root already resolves the type (same class or a subclass instance), or if it would hide an instance whose class is one of its supertypes:
 
 ```ts
-const a = Sub.new(); // Sub declares `static global`
-Sub.new();           // throws - Sub already exists in root
+const a = Sub.new(); // Sub and Base both declare `static global`
+Sub.new();           // throws - a already exists in root
+Base.new();          // throws - a resolves Base
 Context.root.get(Sub); // a - first instance unaffected
 ```
 
-Destroy the existing one first (`a.set(null)`) and a fresh `Sub.new()` registers cleanly. To hold several deliberately, register them explicitly ([Explicit Bypass](#explicit-bypass)).
+Destroy the existing one first (`a.set(null)`) and a fresh instance registers cleanly - including a subclass replacing its base. To hold several deliberately, register them explicitly ([Explicit Bypass](#explicit-bypass)).
 
 ### Subtype Eviction
 
@@ -157,7 +158,7 @@ ctx.get(Parent).foo = undefined;
 ctx.get(Foo); // Bar instance - heals
 ```
 
-Unlike root - where a same-type duplicate throws and ancestor contests evict permanently - scoped contexts model "candidates available here," root models "the global instance."
+Unlike root - where shadowing a global throws and sibling contests evict permanently - scoped contexts model "candidates available here," root models "the global instance."
 
 ## Providing with Component
 

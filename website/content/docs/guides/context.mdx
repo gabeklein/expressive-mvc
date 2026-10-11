@@ -345,7 +345,7 @@ new Context(cart); // cart's home is this context
 Useful in tests, and in code that prepares a state before mounting it into a tree.
 
 > **Good to know:** <br/>
-> A global is a singleton. A second `State.new()` of the same global class throws - destroy the first (`set(null)`) before creating another. Two *different* subclasses of a shared global base don't throw; they collide only at the base, where both are evicted - `Base.get()` finds neither rather than one silently winning, while each subclass stays findable by its own type. Explicit registration (`<Component for>`, or `Context.root.add(state, true)`) bypasses both rules.
+> A global may not shadow another. A second `State.new()` of the same global class throws, and so does a global subclass or supertype of one already in root - destroy the first (`set(null)`) before creating another. Two *different* subclasses of a shared global base don't throw; they collide only at the base, where both are evicted - `Base.get()` finds neither rather than one silently winning, while each subclass stays findable by its own type. Explicit registration (`<Component for>`, or `Context.root.add(state, true)`) bypasses both rules.
 
 That's the short version - constructor forms, `ctx.add`, eviction and subtype rules are all in [API: Utilities](/docs/api/utilities).
 
