@@ -2,7 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { Component } from '@expressive/mvc';
 import { propsOf, typeOf } from '@expressive/mvc/jsx-runtime';
 
-import { childrenOf, isElement, jsx, Fragment } from './jsx-runtime';
+import { jsx, Fragment } from './jsx-runtime';
+import { childrenOf, isElement } from './element';
 import { jsxDEV } from './jsx-dev-runtime';
 
 class Thing extends Component {

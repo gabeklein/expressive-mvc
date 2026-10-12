@@ -1,6 +1,7 @@
 import { Component, Context } from '@expressive/mvc';
 import { capture, watch } from '@expressive/mvc/observable';
-import { Fragment, childrenOf, isElement, type Element } from './jsx-runtime';
+import { Fragment } from './jsx-runtime';
+import { childrenOf, isElement, type Element } from './element';
 import { terminal, type Output } from './terminal';
 
 type Content = string | number | Element;
