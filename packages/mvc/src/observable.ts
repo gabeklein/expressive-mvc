@@ -14,11 +14,16 @@ declare namespace Observer {
 
   type EffectCleanup = (update: boolean | null) => void;
 
-  type Effect<T extends object> = (
+  type EffectOutput = EffectCleanup | Promise<EffectCleanup | null | void> | null | void;
+
+  type Effect<T extends object, R = EffectOutput> = (
     this: T,
     proxy: T,
     changed: readonly Event[]
-  ) => EffectCleanup | Promise<EffectCleanup | null | void> | null | void;
+  ) => R;
+
+  /** Stops the effect when called; awaited, cancels it and yields its value. */
+  type Release<R> = (() => void) & PromiseLike<R>;
 
   type Event = number | string | symbol;
 
@@ -247,26 +252,26 @@ function emit(o: Observer, key: Observer.Signal, subject: object): void {
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
-function watch<T extends object>(
+function watch<T extends object, R = void>(
   target: T,
-  callback: Observer.Effect<Required<T>>,
+  callback: Observer.Effect<Required<T>, R | Observer.EffectOutput>,
   requireValues: true,
   transition?: (work: () => void) => void
-): () => void;
+): Observer.Release<Awaited<R>>;
 
-function watch<T extends object>(
+function watch<T extends object, R = void>(
   target: T,
-  callback: Observer.Effect<T>,
+  callback: Observer.Effect<T, R | Observer.EffectOutput>,
   recursive?: boolean,
   transition?: (work: () => void) => void
-): () => void;
+): Observer.Release<Awaited<R>>;
 
-function watch<T extends object>(
+function watch<T extends object, R>(
   target: T,
-  callback: Observer.Effect<T>,
+  callback: Observer.Effect<T, unknown>,
   argument?: boolean,
   transition?: (work: () => void) => void
-) {
+): Observer.Release<Awaited<R>> {
   const o = observer(target, true);
   let events: readonly Observer.Event[] = [];
   let unset: ((update: boolean | null) => void) | undefined;
@@ -276,6 +281,19 @@ function watch<T extends object>(
   let queued = false;
   let pending = false;
   let suspense: ReturnType<typeof hold>;
+  let outcome: { ok: boolean; value: unknown } | undefined;
+  let awaiting: Promise<Awaited<R>> | undefined;
+  let settle: (() => void) | undefined;
+
+  function conclude(ok: boolean, value: unknown) {
+    if (outcome) return;
+    outcome = { ok, value };
+    if (settle) settle();
+  }
+
+  function destroyed() {
+    if (!outcome) conclude(false, new Error(`${target} is destroyed.`));
+  }
 
   function resume() {
     suspense?.();
@@ -333,6 +351,8 @@ function watch<T extends object>(
         if (typeof output == 'function') output(key);
         if (release) release(key);
       };
+      conclude(true, output);
+      if (awaiting) cleanup();
     }
 
     function run(release?: (update?: boolean | null) => void) {
@@ -344,6 +364,7 @@ function watch<T extends object>(
 
       if (observer(target) === null) {
         if (release) release(null);
+        destroyed();
         return discard(output, null);
       }
 
@@ -379,7 +400,10 @@ function watch<T extends object>(
           if (err instanceof Promise) return suspend(err);
 
           queued = false;
-          REPORT.as('effect', target, err);
+          conclude(false, err);
+
+          if (awaiting) cleanup();
+          else REPORT.as('effect', target, err);
         }
       );
     }
@@ -388,7 +412,11 @@ function watch<T extends object>(
       if (argument !== false) capture(run);
       else run();
     } catch (err) {
-      if (err instanceof Promise) suspend(err);
+      if (err instanceof Promise) return suspend(err);
+
+      conclude(false, err);
+
+      if (awaiting) cleanup();
       else throw err;
     }
   }
@@ -397,8 +425,10 @@ function watch<T extends object>(
     if (key === true) invoke();
     else if (key === null) {
       if (unset) unset(null);
+      unset = undefined;
       resume();
       reset = null;
+      destroyed();
     } else if (!reset) {
       suspense?.(false);
       return reset;
@@ -408,10 +438,31 @@ function watch<T extends object>(
   function cleanup() {
     if (unset) unset(false);
 
+    unset = undefined;
     resume();
     reset = null;
     unlisten();
+
+    if (!outcome) conclude(false, new Error(`${target} effect was cancelled before it settled.`));
   }
+
+  cleanup.then = <F, J>(
+    onFulfilled?: ((value: Awaited<R>) => F | PromiseLike<F>) | null,
+    onRejected?: ((reason: unknown) => J | PromiseLike<J>) | null
+  ) => {
+    if (!awaiting) {
+      awaiting = new Promise<Awaited<R>>((resolve, reject) => {
+        settle = () => (outcome!.ok ? resolve(outcome!.value as Awaited<R>) : reject(outcome!.value));
+      });
+
+      if (outcome) {
+        settle!();
+        cleanup();
+      }
+    }
+
+    return awaiting.then(onFulfilled, onRejected);
+  };
 
   if (EffectContext && argument !== false) EffectContext.add(cleanup);
 

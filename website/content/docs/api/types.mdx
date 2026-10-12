@@ -201,14 +201,22 @@ Return a function for a deduped settle callback. Return `null` to auto-unsubscri
 ### `State.Effect<T>`
 
 ```ts
-type Effect<T> = (
+type Effect<T, R = EffectCallback | Promise<EffectCallback | null | void> | null | void> = (
   this: T,
   current: T,
   update: readonly Event<T>[] | undefined
-) => EffectCallback | Promise<void> | null | void;
+) => R;
 
 type EffectCallback = (update: boolean | null) => void;
 ```
+
+### `State.Release<R>`
+
+```ts
+type Release<R = void> = (() => void) & PromiseLike<R>;
+```
+
+Returned by `get(effect)`. Call to stop the effect; await to stop it once a run completes clean and receive that run's value.
 
 ### `State.Setter<T>`
 

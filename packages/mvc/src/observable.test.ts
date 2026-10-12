@@ -718,6 +718,205 @@ describe('effect', () => {
     });
   });
 
+  describe('then', () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    it('will resolve with output of a completed sync run', async () => {
+      const test = Test.new();
+      const effect = vi.fn(($: Test) => $.value * 2);
+      const stop = watch(test, effect);
+
+      await expect(stop).resolves.toBe(2);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+    });
+
+    it('will resolve with a one-shot null', async () => {
+      const test = Test.new();
+
+      await expect(watch(test, () => null)).resolves.toBe(null);
+    });
+
+    it('will resolve once and cancel once', async () => {
+      const test = Test.new();
+      const cleanup = vi.fn();
+      const stop = watch(test, () => cleanup);
+
+      await expect(stop).resolves.toBe(cleanup);
+      await expect(stop).resolves.toBe(cleanup);
+
+      stop();
+
+      expect(cleanup).toBeCalledTimes(1);
+      expect(cleanup).toBeCalledWith(false);
+    });
+
+    it('will resolve after a suspended first run replays', async () => {
+      const test = Test.new();
+      const suspense = mockPromise<void>();
+      let attempt = 0;
+      const effect = vi.fn(($: Test) => {
+        if (!attempt++) throw suspense;
+        return $.value;
+      });
+
+      const stop = watch(test, effect);
+      const value = stop.then((value) => value);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      suspense.resolve();
+
+      await expect(value).resolves.toBe(2);
+
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will resolve with value of an async run', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => {
+        const { value } = $;
+        await 0;
+        return value + 1;
+      });
+
+      await expect(watch(test, effect)).resolves.toBe(2);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+    });
+
+    it('will not re-run for a change while awaited', async () => {
+      const test = Test.new();
+      const pending = mockPromise<string>();
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return pending;
+      });
+
+      const stop = watch(test, effect);
+      const value = stop.then();
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      pending.resolve('done');
+
+      await expect(value).resolves.toBe('done');
+
+      expect(effect).toBeCalledTimes(1);
+    });
+
+    it('will release nested effects', async () => {
+      class Nested extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const nested = Nested.new();
+      const inner = vi.fn(($: Nested) => void $.value);
+
+      await test.get(($) => {
+        void $.value;
+        watch(nested, inner);
+      });
+
+      nested.value = 2;
+      await expect(nested).toHaveUpdated();
+
+      expect(inner).toBeCalledTimes(1);
+    });
+
+    it('will reject if destroyed before a clean run', async () => {
+      const test = Test.new();
+      const pending = mockPromise<void>();
+      const stop = watch(test, () => pending);
+      const value = stop.then();
+
+      test.set(null);
+
+      await expect(value).rejects.toThrow('is destroyed');
+    });
+
+    it('will reject if first run destroys subject', async () => {
+      const test = Test.new();
+
+      await expect(watch(test, () => test.set(null)).then()).rejects.toThrow('is destroyed');
+    });
+
+    it('will reject if cancelled by hand while awaited', async () => {
+      const test = Test.new();
+      const stop = watch(test, () => mockPromise<void>());
+      const value = stop.then();
+
+      stop();
+
+      await expect(value).rejects.toThrow('cancelled before it settled');
+    });
+
+    it('will not reject if cancelled by hand without then', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const stop = watch(test, () => mockPromise<void>());
+
+      stop();
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+
+      await expect(stop.then()).rejects.toThrow('cancelled before it settled');
+    });
+
+    it('will reject with an async run error', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const expected = new Error('async error');
+      const cleanup = vi.fn();
+      const stop = watch(test, async () => {
+        watch(test, () => cleanup);
+        throw expected;
+      });
+
+      await expect(stop.then()).rejects.toBe(expected);
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+      expect(cleanup).toBeCalledWith(false);
+    });
+
+    it('will reject with a sync error on replay', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const expected = new Error('sync error');
+      const suspense = mockPromise<void>();
+      let attempt = 0;
+
+      const stop = watch(test, () => {
+        if (!attempt++) throw suspense;
+        throw expected;
+      });
+      const value = stop.then();
+
+      suspense.resolve();
+
+      await expect(value).rejects.toBe(expected);
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+    });
+  });
+
   describe('destroyed', () => {
     const error = mockError();
 
@@ -743,8 +942,8 @@ describe('effect', () => {
         test.done = true;
         await expect(test).toHaveUpdated();
       }],
-      ['will run cleanup when first run terminates subject', true, (test, effect) => test.get(effect)],
-      ['will run cleanup when uncaptured effect terminates subject', true, (test, effect) => watch(test, effect, false)]
+      ['will run cleanup when first run terminates subject', true, (test, effect) => void test.get(effect)],
+      ['will run cleanup when uncaptured effect terminates subject', true, (test, effect) => void watch(test, effect, false)]
     ])('%s', async (_, done, run) => {
       const test = Test.new({ done });
       const didCleanup = vi.fn();

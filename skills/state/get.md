@@ -38,10 +38,11 @@ state.get('method'); // unbound method
 ### Tracked effect
 
 ```ts
-get(effect: State.Effect<this>): () => void
+get(effect: State.Effect<this>): State.Release
+get<R>(effect: State.Effect<this, R>): State.Release<Awaited<R>>
 ```
 
-Runs `effect` immediately, then again whenever accessed properties change. Returns an unsubscribe function.
+Runs `effect` immediately, then again whenever accessed properties change. Returns an unsubscribe function, also awaitable (see **Await the release**).
 
 ```ts
 const stop = state.get((current, update) => {
@@ -70,6 +71,19 @@ const stop = state.get((current, update) => {
 **Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) - synchronously or after an `await` - pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
 
 **Before ready:** effects registered in constructors wait for activation before first run.
+
+**Await the release:** `await state.get(effect)` cancels the effect and yields the value of its first clean run - a one-shot read of tracked state that suspends until it can complete.
+
+- sync run already done - resolves at once with its output
+- first run suspended - resolves after the replay that completes
+- async run - resolves with what the promise resolves to; tracked changes in flight do not re-run it
+
+```ts
+const user = await state.get(($) => $.user);
+const total = await state.get(async ($) => (await fetch($.url)).json());
+```
+
+Rejects if the state is destroyed first, or the run throws a non-suspense error (which then skips `catch` handlers). Calling the release by hand before it settles rejects a promise already attached, silent otherwise. Returning the release from an `async` function unwraps and cancels it - TS does not flag this.
 
 To watch a specific property or event, use [`set(event, callback)`](set.md).
 
@@ -141,11 +155,13 @@ const stop = scene.get(State, (node) => attach(node), true);
 ## Type Signatures
 
 ```ts
-type Effect<T> = (
+type Effect<T, R = EffectCallback | Promise<EffectCallback | null | void> | null | void> = (
   this: T,
   current: T,
   update: readonly State.Event<T>[] | undefined
-) => EffectCallback | Promise<EffectCallback | null | void> | null | void;
+) => R;
 
 type EffectCallback = (update: boolean | null) => void;
+
+type Release<R = void> = (() => void) & PromiseLike<R>;
 ```

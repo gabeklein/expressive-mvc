@@ -1581,13 +1581,17 @@ describe('get method', () => {
         expect(cleanup).toBeCalledTimes(1);
       });
 
-      // TODO: should this complain?
-      it('will void return value and ignore returned promise', () => {
+      it('will resolve release with return value', async () => {
         const state = Test.new();
+        const stop = state.get(() => {});
 
-        // @ts-expect-error
-        expect(() => state.get(() => 'foobar')).not.toThrow();
-        expect(() => state.get(async () => {})).not.toThrow();
+        stop();
+
+        const value: string = await state.get(() => 'foobar');
+        const async: number = await state.get(async () => 1);
+        const none: void = await state.get(async () => {});
+
+        expect([value, async, none]).toEqual(['foobar', 1, undefined]);
       });
     });
 
@@ -1670,7 +1674,9 @@ describe('get method', () => {
       it('will remove listener on callback', async () => {
         class Test extends State {
           value = 1;
-          done = this.get((state) => cb(state.value));
+          done = this.get((state) => {
+            cb(state.value);
+          });
         }
 
         const cb = vi.fn();
