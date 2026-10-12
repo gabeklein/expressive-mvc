@@ -3,7 +3,7 @@
 ## Counter
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Counter extends Component {
   count = 0;
@@ -29,7 +29,7 @@ class Counter extends Component {
 ## Form with Validation
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class LoginForm extends Component {
   email = '';
@@ -71,7 +71,7 @@ class LoginForm extends Component {
 ## Async Data Fetching
 
 ```tsx
-import { Component, set } from '@expressive/react';
+import { Component, set } from '@expressive/mvc';
 
 class Profile extends Component {
   fallback = (<p>Loading...</p>);
@@ -423,7 +423,7 @@ Default for a self-contained widget: the parent mounts `<UndoBar />` uncondition
 ## Computed Values
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Cart extends Component {
   items: { name: string; price: number; qty: number }[] = [];

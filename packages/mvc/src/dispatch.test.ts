@@ -8,6 +8,16 @@ import { State } from './state';
 describe('dispatch', () => {
   mockError();
 
+  class Test extends State {
+    value = 1;
+  }
+
+  function settles(work: () => void) {
+    let done = false;
+    pending(work).then(() => (done = true));
+    return () => done;
+  }
+
   function scheduler(log: string[], name = 'transition') {
     return (work: () => void) => {
       log.push(`${name}:start`);
@@ -52,21 +62,13 @@ describe('dispatch', () => {
     ]);
   });
 
-  it('will not bracket a subscriber with no scheduler', async () => {
+  it.each<[string, (log: string[]) => void]>([
+    ['will not bracket a subscriber with no scheduler', (log) => pending(() => enqueue(() => log.push('dispatch')))],
+    ['will not bracket work queued on its own', (log) => enqueue(() => log.push('dispatch'), scheduler(log))]
+  ])('%s', async (_, act) => {
     const log: string[] = [];
 
-    pending(() => enqueue(() => log.push('dispatch')));
-
-    await flushMicrotasks();
-
-    expect(log).toEqual(['dispatch']);
-  });
-
-  it('will not bracket work queued on its own', async () => {
-    const log: string[] = [];
-
-    enqueue(() => log.push('dispatch'), scheduler(log));
-
+    act(log);
     await flushMicrotasks();
 
     expect(log).toEqual(['dispatch']);
@@ -143,16 +145,14 @@ describe('dispatch', () => {
   });
 
   it('will let nested work settle the replay holding its outer call', async () => {
-    let settled = false;
-
-    pending(() => enqueue(() => {
+    const settled = settles(() => enqueue(() => {
       const release = pending()!;
       pending(() => {}).then(release);
-    })).then(() => (settled = true));
+    }));
 
     await flushMicrotasks();
 
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will restore dispatch after pending work throws', async () => {
@@ -197,16 +197,15 @@ describe('dispatch', () => {
   it('will keep a handler urgent when pending work reaches it later', async () => {
     const transition = vi.fn((work: () => void) => work());
     const handler = vi.fn();
-    let settled = false;
 
     enqueue(handler, transition);
-    pending(() => enqueue(handler, transition)).then(() => (settled = true));
+    const settled = settles(() => enqueue(handler, transition));
 
     await flushMicrotasks();
 
     expect(handler).toHaveBeenCalledOnce();
     expect(transition).not.toHaveBeenCalled();
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will only upgrade inseparable watchers to urgent', async () => {
@@ -290,7 +289,6 @@ describe('dispatch', () => {
 
   it('will settle when a subscriber absorbs its replay', async () => {
     const log: string[] = [];
-
     let release!: () => void;
 
     pending(() => {
@@ -311,13 +309,11 @@ describe('dispatch', () => {
   });
 
   it('will settle on replay where no subscriber claims absorption', async () => {
-    let settled = false;
-
-    pending(() => enqueue(() => {})).then(() => (settled = true));
+    const settled = settles(() => enqueue(() => {}));
 
     await flushMicrotasks();
 
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will ignore a claim released more than once', async () => {
@@ -356,23 +352,21 @@ describe('dispatch', () => {
 
   it('will wait on every claim a single replay makes', async () => {
     const held: (() => void)[] = [];
-    let settled = false;
-
-    pending(() => enqueue(() => {
+    const settled = settles(() => enqueue(() => {
       held.push(pending()!, pending()!);
-    })).then(() => (settled = true));
+    }));
 
     await flushMicrotasks();
 
     held[0]();
     await flushMicrotasks();
 
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     held[1]();
     await flushMicrotasks();
 
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will settle a second call when its own replay is absorbed', async () => {
@@ -425,115 +419,78 @@ describe('dispatch', () => {
   });
 
   it('will hold a call while an effect it updated suspends', async () => {
-    class Test extends State {
-      value = 1;
-    }
-
     const test = Test.new();
     const gate = mockPromise();
     const seen: number[] = [];
     let open = false;
-    let settled = false;
 
     watch(test, ({ value }) => {
       if (value === 2 && !open) throw gate;
       seen.push(value);
     });
 
-    expect(seen).toEqual([1]);
-
-    pending(() => {
-      test.value = 2;
-    }).then(() => (settled = true));
-
+    const settled = settles(() => test.value = 2);
     await flushMicrotasks();
 
     expect(seen).toEqual([1]);
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     open = true;
     gate.resolve();
     await flushMicrotasks();
 
     expect(seen).toEqual([1, 2]);
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will hold once across repeated suspension', async () => {
-    class Test extends State {
-      value = 1;
-    }
-
     const test = Test.new();
     const gates = [mockPromise(), mockPromise()];
-    let settled = false;
 
     watch(test, ({ value }) => {
       if (value === 2 && gates.length) throw gates[0];
     });
 
-    pending(() => {
-      test.value = 2;
-    }).then(() => (settled = true));
-
+    const settled = settles(() => test.value = 2);
     await flushMicrotasks();
 
     gates.shift()!.resolve();
     await flushMicrotasks();
-
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     gates.shift()!.resolve();
     await flushMicrotasks();
-
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will retry a suspended effect after rejection', async () => {
-    class Test extends State {
-      value = 1;
-    }
-
     const test = Test.new();
     const gate = mockPromise();
     const effect = vi.fn(({ value }: Test) => {
       if (value === 2 && effect.mock.calls.length === 2) throw gate;
     });
-    let settled = false;
 
     watch(test, effect);
 
-    pending(() => {
-      test.value = 2;
-    }).then(() => (settled = true));
-
+    const settled = settles(() => test.value = 2);
     await flushMicrotasks();
 
     expect(effect).toHaveBeenCalledTimes(2);
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     gate.reject(new Error('failed'));
     await flushMicrotasks();
 
     expect(effect).toHaveBeenCalledTimes(3);
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will preserve pending causality through a suspended retry', async () => {
-    class Source extends State {
-      value = 1;
-    }
-
-    class Derived extends State {
-      value = 1;
-    }
-
-    const source = Source.new();
-    const derived = Derived.new();
+    const source = Test.new();
+    const derived = Test.new();
     const gate = mockPromise();
     let open = false;
     let release!: () => void;
-    let settled = false;
 
     watch(source, ({ value }) => {
       if (value === 2 && !open) throw gate;
@@ -544,10 +501,7 @@ describe('dispatch', () => {
       if (value === 2) release = pending()!;
     });
 
-    pending(() => {
-      source.value = 2;
-    }).then(() => (settled = true));
-
+    const settled = settles(() => source.value = 2);
     await flushMicrotasks();
 
     open = true;
@@ -555,19 +509,15 @@ describe('dispatch', () => {
     await flushMicrotasks();
 
     expect(derived.value).toBe(2);
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     release();
     await flushMicrotasks();
 
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
   });
 
   it('will join pending work arriving while an effect is suspended', async () => {
-    class Test extends State {
-      value = 1;
-    }
-
     const test = Test.new();
     const gate = mockPromise();
     const seen: number[] = [];
@@ -579,16 +529,10 @@ describe('dispatch', () => {
       seen.push(value);
     });
 
-    pending(() => {
-      test.value = 2;
-    }).then(() => settled.push('first'));
-
+    pending(() => test.value = 2).then(() => settled.push('first'));
     await flushMicrotasks();
 
-    pending(() => {
-      test.value = 3;
-    }).then(() => settled.push('second'));
-
+    pending(() => test.value = 3).then(() => settled.push('second'));
     await flushMicrotasks();
 
     expect(seen).toEqual([1]);
@@ -603,15 +547,10 @@ describe('dispatch', () => {
   });
 
   it('will claim pending work after an urgent suspension', async () => {
-    class Test extends State {
-      value = 1;
-    }
-
     const test = Test.new();
     const gate = mockPromise();
     const seen: number[] = [];
     const transition = vi.fn((work: () => void) => work());
-    let settled = false;
 
     watch(test, ({ value }) => {
       if (value === 2) throw gate;
@@ -621,113 +560,47 @@ describe('dispatch', () => {
     test.value = 2;
     await flushMicrotasks();
 
-    pending(() => {
-      test.value = 3;
-    }).then(() => (settled = true));
-
+    const settled = settles(() => test.value = 3);
     await flushMicrotasks();
 
     expect(seen).toEqual([1]);
-    expect(settled).toBe(false);
+    expect(settled()).toBe(false);
 
     gate.resolve();
     await flushMicrotasks();
 
     expect(seen).toEqual([1, 3]);
-    expect(settled).toBe(true);
+    expect(settled()).toBe(true);
     expect(transition).toHaveBeenCalledOnce();
   });
 
-  it('will release a suspended effect claim if it is destroyed', async () => {
-    class Test extends State {
-      value = 1;
-    }
-
-    const test = Test.new();
-    const gate = mockPromise();
-    const effect = vi.fn(({ value }: Test) => {
-      if (value === 2) throw gate;
-    });
-    let settled = false;
-
-    watch(test, effect);
-
-    pending(() => {
-      test.value = 2;
-    }).then(() => (settled = true));
-
-    await flushMicrotasks();
-
-    expect(settled).toBe(false);
-
-    test.set(null);
-    await flushMicrotasks();
-
-    expect(settled).toBe(true);
-    expect(effect).toHaveBeenCalledTimes(2);
-
-    gate.resolve();
-    await flushMicrotasks();
-
-    expect(effect).toHaveBeenCalledTimes(2);
-  });
-
-  it('will release a suspended effect claim if it is cancelled', async () => {
-    class Test extends State {
-      value = 1;
-    }
-
-    const test = Test.new();
-    const gate = mockPromise();
-    const effect = vi.fn(({ value }: Test) => {
-      if (value === 2) throw gate;
-    });
-    let settled = false;
-
-    const done = watch(test, effect);
-
-    pending(() => {
-      test.value = 2;
-    }).then(() => (settled = true));
-
-    await flushMicrotasks();
-
-    expect(settled).toBe(false);
-
-    done();
-    gate.resolve();
-    await flushMicrotasks();
-
-    expect(settled).toBe(true);
-    expect(effect).toHaveBeenCalledTimes(2);
-  });
-
-  it('will cancel a suspended retry already queued for replay', async () => {
-    class Test extends State {
-      value = 1;
-    }
-
+  it.each<[string, (test: Test, done: () => void, gate: Promise<void> & { resolve(): void }) => unknown]>([
+    ['will release a suspended effect claim if it is destroyed', (test) => test.set(null)],
+    ['will release a suspended effect claim if it is cancelled', (_, done) => done()],
+    ['will cancel a suspended retry already queued for replay', async (_, done, gate) => {
+      gate.resolve();
+      await gate;
+      done();
+    }]
+  ])('%s', async (_, release) => {
     const test = Test.new();
     const gate = mockPromise();
     const effect = vi.fn(({ value }: Test) => {
       if (value === 2) throw gate;
     });
     const done = watch(test, effect);
-    let settled = false;
 
-    pending(() => {
-      test.value = 2;
-    }).then(() => (settled = true));
-
+    const settled = settles(() => test.value = 2);
     await flushMicrotasks();
+    expect(settled()).toBe(false);
+
+    await release(test, done, gate);
+    await flushMicrotasks();
+    expect(settled()).toBe(true);
 
     gate.resolve();
-    await gate;
-    done();
     await flushMicrotasks();
-
     expect(effect).toHaveBeenCalledTimes(2);
-    expect(settled).toBe(true);
   });
 
   it('will carry every claim through a replay urgency strips', async () => {

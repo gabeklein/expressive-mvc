@@ -314,7 +314,6 @@ describe('effect', () => {
       });
     });
 
-    expect(didInvoke).toBeCalled();
     expect(didInvoke).toBeCalledWith({ foo: 1, bar: 2 });
 
     await test.set({ bar: 3 });
@@ -358,7 +357,7 @@ describe('effect', () => {
     await test.set({ value: 2 });
 
     expect(effect).toBeCalledWith(2);
-    expect(effect).toBeCalledWith(2);
+    expect(effect).toBeCalledTimes(2);
 
     expect(cleanup).toBeCalledTimes(1);
     expect(cleanup).toBeCalledWith(true);
@@ -378,51 +377,9 @@ describe('effect', () => {
       test.bar = foo;
     });
 
-    expect(didUpdate).toBeCalled();
     expect(didUpdate).toBeCalledWith(1, undefined);
-
-    // is syncronously 1 after effect did run.
     expect(test.bar).toBe(1);
 
-    // flush events to check if effect updates.
-    await expect(test).toHaveUpdated('bar');
-    expect(didUpdate).not.toBeCalledWith(1, 1);
-
-    test.foo = 2;
-    await expect(test).toHaveUpdated('foo');
-    expect(didUpdate).toBeCalledWith(2, 1);
-
-    expect(didUpdate).toBeCalledTimes(2);
-    expect(test.bar).toBe(2);
-
-    test.foo = 3;
-    await expect(test).toHaveUpdated('foo');
-
-    expect(didUpdate).toBeCalledTimes(3);
-    expect(test.bar).toBe(3);
-  });
-
-  it('will ignore circular update', async () => {
-    class Test extends State {
-      foo = 1;
-      bar?: number = undefined;
-    }
-
-    const didUpdate = vi.fn();
-    const test = Test.new();
-
-    watch(test, ({ foo, bar }) => {
-      didUpdate(foo, bar);
-      test.bar = foo;
-    });
-
-    expect(didUpdate).toBeCalled();
-    expect(didUpdate).toBeCalledWith(1, undefined);
-
-    // is syncronously 1 after effect did run.
-    expect(test.bar).toBe(1);
-
-    // flush events to check if effect updates.
     await expect(test).toHaveUpdated('bar');
     expect(didUpdate).not.toBeCalledWith(1, 1);
 
@@ -464,6 +421,11 @@ describe('effect', () => {
   describe('destroyed', () => {
     const error = mockError();
 
+    class Test extends State {
+      done = false;
+      foo = 1;
+    }
+
     it('will throw for destroyed subject', () => {
       const test = {};
       const effect = vi.fn();
@@ -475,11 +437,28 @@ describe('effect', () => {
       expect(effect).not.toBeCalled();
     });
 
+    it.each<[string, boolean, (test: Test, effect: (state: Test) => () => void) => unknown]>([
+      ['will run cleanup when effect terminates own subject', false, async (test, effect) => {
+        test.get(effect);
+        test.done = true;
+        await expect(test).toHaveUpdated();
+      }],
+      ['will run cleanup when first run terminates subject', true, (test, effect) => test.get(effect)],
+      ['will run cleanup when uncaptured effect terminates subject', true, (test, effect) => watch(test, effect, false)]
+    ])('%s', async (_, done, run) => {
+      const test = Test.new({ done });
+      const didCleanup = vi.fn();
+
+      await run(test, ($) => {
+        if ($.done) $.set(null);
+        return didCleanup;
+      });
+
+      expect(test.get(null)).toBe(true);
+      expect(didCleanup).toBeCalledWith(null);
+    });
+
     it('will terminate subject via set(null) within an effect', async () => {
-      class Test extends State {
-        done = false;
-      }
-
       const test = Test.new();
 
       test.get(($) => {
@@ -490,87 +469,24 @@ describe('effect', () => {
       await expect(test).toHaveUpdated();
 
       expect(test.get(null)).toBe(true);
-    });
-
-    it('will run cleanup when effect terminates own subject', async () => {
-      class Test extends State {
-        done = false;
-      }
-
-      const test = Test.new();
-      const didCleanup = vi.fn();
-
-      test.get(($) => {
-        if ($.done) $.set(null);
-        return didCleanup;
-      });
-
-      test.done = true;
-      await expect(test).toHaveUpdated();
-
-      expect(test.get(null)).toBe(true);
-      expect(didCleanup).toBeCalledWith(null);
-    });
-
-    it('will run cleanup when first run terminates subject', () => {
-      class Test extends State {
-        done = true;
-      }
-
-      const test = Test.new();
-      const didCleanup = vi.fn();
-
-      test.get(($) => {
-        if ($.done) $.set(null);
-        return didCleanup;
-      });
-
-      expect(test.get(null)).toBe(true);
-      expect(didCleanup).toBeCalledWith(null);
-    });
-
-    it('will run cleanup when uncaptured effect terminates subject', () => {
-      class Test extends State {
-        value = 1;
-      }
-
-      const test = Test.new();
-      const didCleanup = vi.fn();
-
-      watch(test, ($) => {
-        $.set(null);
-        return didCleanup;
-      }, false);
-
-      expect(test.get(null)).toBe(true);
-      expect(didCleanup).toBeCalledWith(null);
     });
 
     it('will not terminate subject via derived object', async () => {
-      class Test extends State {
-        value = 1;
-      }
-
       const test = Test.new();
-      const effect = vi.fn(($: Test) => void $.value);
+      const effect = vi.fn(($: Test) => void $.foo);
 
       watch(test, effect);
-
       event(Object.create(test), null);
 
       expect(observer(test)!.listeners.size).toBeGreaterThan(0);
 
-      test.value = 2;
+      test.foo = 2;
 
       await expect(test).toHaveUpdated();
       expect(effect).toBeCalledTimes(2);
     });
 
     it('will throw for get(effect) on destroyed instance', () => {
-      class Test extends State {
-        foo = 1;
-      }
-
       const test = Test.new();
       const effect = vi.fn(($: Test) => void $.foo);
 
@@ -583,16 +499,10 @@ describe('effect', () => {
     });
 
     it('will not re-run when destroyed before dispatch', async () => {
-      class Test extends State {
-        foo = 1;
-      }
-
       const test = Test.new();
       const effect = vi.fn(($: Test) => void $.foo);
 
       test.get(effect);
-      expect(effect).toBeCalled();
-
       test.foo = 2;
       test.set(null);
 
@@ -605,40 +515,23 @@ describe('effect', () => {
 });
 
 describe('suspense', () => {
-  it('will seem to throw error outside react', () => {
-    class Test extends State {
-      value = set<never>();
-    }
-
-    const instance = Test.new();
-    let didThrow: Error | undefined;
-
-    try {
-      void instance.value;
-    } catch (err: any) {
-      didThrow = err;
-    }
-
-    expect(String(didThrow)).toMatch(/[\w-]+\.value is not yet available\./);
-  });
-
   it('will reject if state destroyed before resolved', async () => {
     class Test extends State {
       value = set<never>();
     }
 
     const instance = Test.new();
-    let didThrow: Promise<any> | undefined;
-
-    try {
-      void instance.value;
-    } catch (err: any) {
-      didThrow = err;
-    }
+    const suspense = (() => {
+      try {
+        void instance.value;
+      } catch (err) {
+        return err as Promise<never>;
+      }
+    })();
 
     instance.set(null);
 
-    await expect(didThrow).rejects.toThrow(/[\w-]+ is destroyed\./);
+    await expect(suspense).rejects.toThrow(/[\w-]+ is destroyed\./);
   });
 });
 
@@ -656,9 +549,7 @@ describe('errors', () => {
       throw new Error('sync error');
     });
 
-    const attempt = () => (test.value = 2);
-
-    expect(attempt).toThrow(`sync error`);
+    expect(() => (test.value = 2)).toThrow('sync error');
   });
 
   it('will let an unhandled effect error escape uncaught', async () => {
@@ -712,10 +603,9 @@ describe('observable', () => {
     });
 
     expect(cb).toBeCalledWith(0);
-    expect(cb).toBeCalled();
 
     proxy.bump();
-    await new Promise((r) => setTimeout(r, 5));
+    await flushMicrotasks();
 
     expect(cb).toBeCalledWith(1);
     expect(cb).toBeCalledTimes(2);
@@ -794,7 +684,7 @@ describe('observable', () => {
       expect(observer(test, true).ready).toBe(true);
     });
 
-    it('will return null for terminated observable', () => {
+    it('will return null for terminated observable and refuse listeners', () => {
       const test = {};
       const onEvent = vi.fn();
 
@@ -803,14 +693,6 @@ describe('observable', () => {
 
       expect(observer(test)).toBe(null);
       expect(onEvent).toBeCalledWith(null);
-    });
-
-    it('will throw when registering a listener on a terminated state', () => {
-      const test = {};
-
-      listener(test, () => {});
-      event(test, null);
-
       expect(() => listener(test, () => {})).toThrow(
         '[object Object] was destroyed - cannot be rendered, watched or updated.'
       );

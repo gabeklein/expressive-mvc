@@ -7,8 +7,6 @@ import { State, has } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 ```
 
-> React apps import these from `@expressive/react` - the adapter re-exports every instruction. Examples below show the core import; do not add `@expressive/mvc` to a React app's `package.json`.
-
 A reactive collection a state *has*: an ordered list of values, or a pool of members it spawns and owns. Reads subscribe in active `watch()` / `State.get()` effects; writes notify precisely.
 
 A field instruction like `map()`, `set()`, and `ref()`: it resolves during activation of the hosting state, which adopts the collection in the same step. Not usable standalone. The field is read-only - assigning over it throws.

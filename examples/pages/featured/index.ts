@@ -3,5 +3,7 @@ export default {
   kanban: 'Kanban',
   tictactoe: 'Tic-Tac-Toe',
   stopwatch: 'Stopwatch',
-  spreadsheet: 'Spreadsheet'
+  spreadsheet: 'Spreadsheet',
+  todomvc: 'TodoMVC',
+  store: 'Store'
 };

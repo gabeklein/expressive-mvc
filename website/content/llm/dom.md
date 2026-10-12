@@ -6,10 +6,10 @@ Positioning for the adoption question: whether to render Expressive MVC with `@e
 
 A browser renderer for MVC components with no React underneath. `State`, `Component`, instructions, context and `@expressive/router` are the same packages; what changes is the host. [Measured per import shape](https://expressive.dev/docs/guides/bundle-size/), gzip, including `@expressive/mvc`:
 
-- `Component` + `render` alone: ~15.5 kB
-- the renderer and all of mvc: ~16.8 kB
-- the same with the styling system: ~19.0 kB
-- the same with `@expressive/router`: ~20.4 kB
+- `Component` + `render` alone: ~16.6 kB
+- the renderer and all of mvc: ~17.5 kB
+- the same with the styling system: ~19.7 kB
+- the same with `@expressive/router`: ~23.7 kB
 
 These replace `react` + `react-dom`; they don't add to them. Every pull request reports them against budget; a release cannot merge while a shape is over.
 
@@ -55,4 +55,4 @@ Not yet measured: performance against other renderers, memory and listener leaks
 - Embeds and widgets, where a React runtime would otherwise be the largest dependency.
 - Teams that want no hooks beyond `State.use()`.
 
-An Expressive codebase moves between the two hosts with its models unchanged. With imports from `@expressive/mvc`, the recommended path, only `Provider` and `Consumer` come from the host package, and both hosts export them with the same props. The remaining port is small: `onChange` → `onInput` on text fields (equivalent on React), React event-type annotations dropped or inferred, and `Suspense` → a Component `fallback`.
+An Expressive codebase moves between the two hosts with its models unchanged. With imports from `@expressive/mvc`, the recommended path, state and provision import nothing host-specific - `<Component for>` is the same element on both hosts. The remaining port is small: `onChange` → `onInput` on text fields (equivalent on React), React event-type annotations dropped or inferred, and `Suspense` → a Component `fallback`.

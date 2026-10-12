@@ -184,7 +184,7 @@ function PanelView() {
 ## Component Class (self-rendering)
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Search extends Component {
   query = '';

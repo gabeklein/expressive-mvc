@@ -10,7 +10,7 @@ React's 2019 move to hooks was a verdict on class *views*: `this`-binding in han
 
 A domain model is data + behavior + identity over time, which class syntax expresses natively: fields are observable state, getters derivations, methods actions, `extends` specialization, and the instance a stable identity outliving any render. Hooks replaced class views; they are not a container for long-lived, testable domain state.
 
-`Component` - the one class that renders - is an opt-in for state *intrinsic to a rendered unit* (see "Why 'MVC'"), not the default app shape.
+`Component` is the view-layer primitive, in two modes. Bare, as `<Component for={State}>`, it places a model in a subtree with suspense and error boundaries and renders nothing itself - no collapse. With a `render()`, it is the opt-in for state *intrinsic to a rendered unit* (see "Why 'MVC'"), not the default app shape.
 
 ## Why "MVC"
 
@@ -22,11 +22,11 @@ Strict MVC (Smalltalk-80; Krasner & Pope, 1988) has three load-bearing ideas:
 
 Expressive implements all three structurally:
 
-- **Model:** `State` - headless, framework-agnostic (enforced by package boundaries: `@expressive/mvc` has no framework imports), observable via subscription.
-- **View:** `State.get()` / `State.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter between. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
-- **Controller:** distributed, as in every surviving descendant (MVP, MVVM, Cocoa) - the host's event system interprets raw input; model methods (`increment()`, validated setters) translate gestures into model operations.
+- **Model:** `State` - headless, framework-agnostic (enforced by package boundaries: `@expressive/mvc` has no framework imports, and every adapter and renderer declares it as a peer dependency, never the reverse - a model module imports nothing from a host), observable via subscription.
+- **View:** `State.get()` / `State.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter between; under `@expressive/dom` a function component holds no renderer state at all - a view is a projection of a model snapshot. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
+- **Controller:** distributed, as in every surviving descendant (MVP, MVVM, Cocoa) - the renderer's event system interprets raw input (React's synthetic events through the adapter, native `addEventListener` under `@expressive/dom`); model methods (`increment()`, validated setters) translate gestures into model operations.
 
-`Component` deliberately collapses the triad for state intrinsic to one rendered unit - a form control, media player, route shell - where separating model from view is ceremony, not architecture. The collapse is scoped and opt-in; the separated form (`State` + observing function components) stays available and is the default for headless or shared state. Smalltalk's successors made the same trade, merging view and controller into widgets.
+`Component` deliberately collapses the triad for state intrinsic to one rendered unit - a form control, media player, route shell - where separating model from view is ceremony, not architecture. The collapse is scoped and opt-in; the separated form (`State` + observing function components) stays available and is the default for headless or shared state. Providing that form is also `Component`, bare: `<Component for={State}>` places a model and its boundaries in the tree without collapsing anything - the model stays the `for` State, the element stays a view node. Smalltalk's successors made the same trade, merging view and controller into widgets.
 
 ## Two verbs: why `get` and `set` carry overloads
 

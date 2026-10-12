@@ -63,6 +63,12 @@ const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
 const OWNS = new WeakMap<State, Set<State>>();
 const OWNED = new WeakMap<State, Set<(child: State) => void>>();
 
+type Overlay<T> = Record<string, unknown> & {
+  [K in State.Property<T>]?: T[K] extends (...args: infer A) => infer R
+  ? (this: T, ...args: A) => R
+  : T[K];
+};
+
 declare namespace State {
   /** Any type of State, using own class constructor as its identifier. */
   type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
@@ -73,7 +79,7 @@ declare namespace State {
     Omit<typeof State, never>;
 
   /** State constructor arguments */
-  type Args<T extends State = any> = (Args<T> | Init<T> | Assign<T> | void)[];
+  type Args<T extends State = any> = (Args<T> | Init<T> | Overlay<T> | void)[];
 
   /**
    * Value of `static global`. A boolean opts a State in or out of the
@@ -93,7 +99,7 @@ declare namespace State {
   type Init<T extends State = State> = (
     this: T,
     thisArg: T
-  ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
+  ) => Promise<void> | (() => void) | Args<T> | Overlay<T> | void;
 
   /** Lifecycle handlers for `State.on`, keyed by when they run. */
   interface On<T extends State = State> {
@@ -110,7 +116,7 @@ declare namespace State {
      * before constructor args and `new()`. May return a cleanup, constructor
      * args, or an assign overlay.
      */
-    setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
+    setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Overlay<T>;
 
     /**
      * Per-instance, once ready - after own values are observed, constructor
@@ -139,10 +145,8 @@ declare namespace State {
 
   /** Object overlay to override values and methods on a state. */
   type Assign<T> = Record<string, unknown> & {
-    [K in Property<T>]?: T[K] extends (...args: infer A) => infer R
-    ? (this: T, ...args: A) => R
-    : T[K];
-  };
+    [K in Property<T>]?: T[K];
+  } & ThisType<T>;
 
   /** Subset of `keyof T` not defined by base State. **/
   type Property<T> = Exclude<keyof T, keyof State>;
@@ -244,8 +248,8 @@ abstract class State {
    * with `static readonly global = true`; a resolver (see {@link State.Global})
    * makes the choice conditional. It must be declared per class - a subclass
    * that would inherit a global without its own declaration throws on
-   * activation, so an accidental global (a forgotten `Provider`, an extended
-   * global) cannot leak into the shared root.
+   * activation, so an accidental global (a forgotten `<Component for>`, an
+   * extended global) cannot leak into the shared root.
    */
   static readonly global: State.Global = false;
 
@@ -633,6 +637,15 @@ function init(state: State, ...args: State.Args) {
       throw new Error(
         `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
       );
+
+    for (let T: State.Extends = type; T !== State; T = Object.getPrototypeOf(T)) {
+      const found = Context.root.get(T, false);
+
+      if (found && (T === type || found.constructor === T))
+        throw new Error(
+          `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+        );
+    }
 
     return Context.root.add(state);
   }

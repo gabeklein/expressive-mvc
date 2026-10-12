@@ -68,9 +68,11 @@ Continue with [Getting Started](https://expressive.dev/docs/getting-started/), e
 
 | Package | Description |
 | --- | --- |
-| [`@expressive/mvc`](https://www.npmjs.com/package/@expressive/mvc) | Framework-agnostic reactive core and component model. Comes with the adapter - install directly only for host-agnostic code. |
-| [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) | React adapter and the recommended entry point for React applications. **The only package a React app installs.** |
-| [`@expressive/router`](https://www.npmjs.com/package/@expressive/router) | Host-agnostic router built on Expressive components. The newest package, and the one that moves the most. |
+| [`@expressive/mvc`](https://www.npmjs.com/package/@expressive/mvc) | Framework-agnostic reactive core and component model: `State`, `Component`, instructions, context. A peer dependency of every adapter - install it alongside one. |
+| [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) | React adapter. Registers the host - import it once from the entry. Also covers React Native and Expo. |
+| [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom) | MVC-native browser renderer with no React underneath - same core and router, native events, built-in styling. Early `0.x`; expect change. |
+| [`@expressive/router`](https://www.npmjs.com/package/@expressive/router) | Host-agnostic router built on Expressive components, for the React adapter and the DOM renderer alike. |
+| [`@expressive/inspect`](https://www.npmjs.com/package/@expressive/inspect) | Dev-only in-process inspector: registry, ownership tree, path queries, and a frame journal for tests, browser drivers, and agents. |
 
 All packages are pre-1.0 under one discipline: breaking changes land only in minor versions, each documented by a changeset in the package's CHANGELOG - patch releases are always safe to take.
 

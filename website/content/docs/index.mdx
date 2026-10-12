@@ -6,7 +6,8 @@ description: A class-based state backbone for modern UI applications
 Expressive MVC is a reactive state library built around **plain classes**. It's designed to be the backbone of your application - the place where data, behavior, and lifecycle live - so components can go back to doing what they're best at: describing UI.
 
 ```tsx
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
+import '@expressive/react';
 
 class Counter extends State {
   count = 0;

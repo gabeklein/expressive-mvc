@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { mockWarn } from '../test.setup';
 import { SETTLE_TIMEOUT, settle, unsettled } from './settle';
 
 afterEach(() => {
@@ -52,15 +53,12 @@ describe('settle', () => {
 
   it('will wait a macrotask by default', async () => {
     let n = 0;
-    const done = settle(() => Math.min(n++, 1));
-
-    await done;
-
+    await settle(() => Math.min(n++, 1));
     expect(n).toBe(3);
   });
 
   it('will warn with the default timeout', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = mockWarn();
     unsettled();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining(`Still active after ${SETTLE_TIMEOUT}ms`));
   });

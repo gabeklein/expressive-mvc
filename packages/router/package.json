@@ -1,6 +1,6 @@
 {
   "name": "@expressive/router",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Host-agnostic router built on Expressive MVC components.",
   "keywords": [
     "expressive",
@@ -46,8 +46,8 @@
     "test": "bun run typecheck && bun run coverage"
   },
   "devDependencies": {
-    "@expressive/mvc": "^0.87.0",
-    "@expressive/react": "^0.88.0",
+    "@expressive/mvc": "^0.88.0",
+    "@expressive/react": "^0.89.0",
     "@testing-library/react": "^16.3.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -56,6 +56,6 @@
     "tsdown": "^0.20.1"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.87.0"
+    "@expressive/mvc": "^0.88.0"
   }
 }

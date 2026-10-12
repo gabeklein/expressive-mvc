@@ -3,10 +3,10 @@ title: Types
 description: TypeScript type aliases on the State namespace
 ---
 
-Most public types are namespaced on `State`; component prop types are namespaced on `Component`. Import from `@expressive/mvc` or `@expressive/react`:
+Most public types are namespaced on `State`; component prop types are namespaced on `Component`. Import them from `@expressive/mvc`:
 
 ```ts
-import type { State } from '@expressive/react';
+import type { State } from '@expressive/mvc';
 ```
 
 <br />
@@ -139,17 +139,34 @@ type Init<T> = (
 
 ### `State.On<T>`
 
-Handler object accepted by `State.on()` - hooks lifecycle by phase.
+Handler object accepted by `State.on()` - hooks lifecycle by stage.
 
 ```ts
 interface On<T> {
   type?(type: State.Extends<T>): void;
   pre?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
   new?(this: T, self: T): void | (() => void);
+  bind?(this: T, key: string, fn: Function, self: T): void;
+  catch?(
+    this: T,
+    error: unknown,
+    kind: 'effect' | 'getter' | 'setup' | 'dead' | 'unused',
+    key?: string
+  ): unknown;
 }
 ```
 
-Phase timing is covered under [`State.on`](/docs/api/state#stateonhandler).
+Stage timing is covered under [`State.on`](/docs/api/state#stateonhandler); `catch` kinds under [Error handling](/docs/api/state#error-handling).
+
+### `State.Global<T>`
+
+Value of `static global`. A boolean opts a class in or out of the global root; a resolver decides per instance at activation.
+
+```ts
+type Global<T> = boolean | ((self: T) => boolean);
+```
+
+A bare literal (`static readonly global = true`) seals the choice for subclasses - widen a subclass's `static global` to `State.Global` to allow a resolver or a later override. See [root context and globals](/docs/api/utilities#root-context-and-globals).
 
 ### `State.Assign<T>`
 
@@ -270,5 +287,5 @@ type ref.CustomProxy<T extends State, R> =
 The full JSX prop type for a `Component` subclass. Combines:
 
 - State fields (optional)
-- `render(props)` declared props (optional or required as declared)
-- `is` and `fallback` special props
+- `render(props)` declared props (optional or required as declared), or `children` when `render` declares none
+- `is`, `fallback` and `catch` special props

@@ -75,9 +75,6 @@ Every getter re-runs whenever a dependency changes, and `submit` reads `valid` l
 
 > **Don't validate user input by rejecting it.** `throw false` discards the write, so a half-typed value never lands. `if (!value.includes('@')) throw false` makes the field impossible to type into - the first keystroke is rejected, so it can never reach a value containing `@`. Reject only what should never be stored at all; express "is this acceptable yet" as a getter, which also gives you somewhere to put the message.
 
-> **Good to know:** <br/>
-> Declaring that `from` parameter is what makes `set` computed - a zero-argument function would be a one-shot factory instead. Arity is the dispatch.
-
 <br />
 
 ## Debouncing
@@ -188,7 +185,7 @@ class ProfileForm extends State {
 The `ref` instruction creates a mutable holder that does **not** trigger re-renders on change. It's the `useRef` equivalent, but declared on the class and wired into the state event stream.
 
 ```tsx
-import State, { ref } from '@expressive/react';
+import { State, ref } from '@expressive/mvc';
 
 class VideoPlayer extends State {
   video = ref<HTMLVideoElement>();
@@ -232,7 +229,7 @@ Each `ref` object has:
 class AutoFocus extends State {
   input = ref<HTMLInputElement>((el) => {
     el.focus();
-    return () => el.blur(); // runs when replaced or destroyed
+    return () => el.blur(); // runs when replaced, including by null on unmount
   });
 }
 ```
@@ -261,7 +258,7 @@ form.refs.name.current = 'Alice'; // updates form.name
 form.refs.email; // ref.Object<string>
 ```
 
-Useful for handing ref objects to uncontrolled inputs, or any API that expects `{ current: T }` shapes. Computed getters are included but read-only; `this` is required - any other object throws.
+Useful for handing ref objects to uncontrolled inputs, or any API that expects `{ current: T }` shapes. Computed getters are included but read-only. It takes a State instance - usually `this`, though another state works too; a plain object throws.
 
 ### Custom ref proxy
 
@@ -282,7 +279,7 @@ The map function runs lazily once per key and its result is cached. This is the 
 Putting it together - validation, focus, submission state, all in one class:
 
 ```tsx
-import State, { set, ref } from '@expressive/react';
+import { State, set, ref } from '@expressive/mvc';
 
 class ContactForm extends State {
   name = set('', (v) => {
