@@ -1,5 +1,6 @@
-import { Component, Context } from '@expressive/mvc';
+import { Component, Context, unbind } from '@expressive/mvc';
 import { capture, watch } from '@expressive/mvc/observable';
+import { Block } from './block';
 import { Fragment } from './jsx-runtime';
 import { childrenOf, isElement, type Element } from './element';
 import { terminal, type Output } from './terminal';
@@ -77,10 +78,17 @@ function render(node: Component.Node, options: render.Options = {}): render.Rend
   };
 }
 
-function output(slot: Slot): string {
+function content(slot: Slot): string {
   return slot.kind == 'text'
     ? slot.text!
     : slot.children.map(output).join('');
+}
+
+function output(slot: Slot): string {
+  const text = content(slot);
+  const { instance } = slot;
+
+  return instance instanceof Block ? instance.format(text) : text;
 }
 
 function mount(node: Content, parent: Slot, app: App): Slot {
@@ -143,6 +151,9 @@ function activate(slot: Slot, app: App) {
     RENDERING++;
     try {
       show(slot, proxy.render(proxy.props as {}), app);
+
+      if (proxy instanceof Block)
+        unbind(proxy.format).call(proxy, content(slot));
     } catch (err) {
       if (err instanceof Promise) {
         show(slot, proxy.fallback, app);

@@ -1,21 +1,7 @@
 /* Demo: animated multi-step progress. Run with `bun example/steps.tsx`. */
-import { Component, render } from '@expressive/cli';
+import { Component, Panel, Progress, Spinner, Text, render } from '@expressive/cli';
 
-const FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 const STEPS = ['Build packages', 'Run tests', 'Publish release'];
-
-class Spinner extends Component {
-  frame = 0;
-
-  new() {
-    const timer = setInterval(() => this.frame++, 80);
-    return () => clearInterval(timer);
-  }
-
-  render() {
-    return FRAMES[this.frame % FRAMES.length];
-  }
-}
 
 class Task extends Component {
   label = '';
@@ -23,8 +9,19 @@ class Task extends Component {
   done = false;
 
   render() {
-    const icon = this.done ? '✔' : this.active ? <Spinner /> : '·';
-    return <>{'  '}{icon} {this.label}{'\n'}</>;
+    const icon = this.done ? (
+      <Text color="green">✔</Text>
+    ) : this.active ? (
+      <Text color="yellow"><Spinner /></Text>
+    ) : (
+      <Text dim>·</Text>
+    );
+
+    return (
+      <>
+        {' '}{icon} <Text dim={!this.active && !this.done}>{this.label}</Text>{'\n'}
+      </>
+    );
   }
 }
 
@@ -38,7 +35,7 @@ class Deploy extends Component {
       setTimeout(() => {
         app.unmount();
         process.exit(0);
-      }, 300);
+      }, 400);
     }, 1200);
 
     return () => clearInterval(timer);
@@ -46,8 +43,7 @@ class Deploy extends Component {
 
   render() {
     return (
-      <>
-        {'Deploying:\n'}
+      <Panel title="Deploy" padding={1}>
         {STEPS.map((label, i) => (
           <Task
             key={label}
@@ -56,7 +52,9 @@ class Deploy extends Component {
             active={i == this.finished}
           />
         ))}
-      </>
+        {'\n '}
+        <Progress value={this.finished / STEPS.length} width={26} />
+      </Panel>
     );
   }
 }

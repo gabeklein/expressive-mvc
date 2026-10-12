@@ -47,10 +47,23 @@ Two halves, deliberately separable:
 - `get(Type)` (instruction) is the context pattern that works in fields; `this.get(Type)` resolves during construction, before the instance is registered.
 - Suspense promises must be rethrown as settle-only derivatives (`err.then(noop, noop)`) so instance destruction doesn't leak an unhandled rejection through `watch`'s retry.
 
+### Turnkey components
+
+All shipped primitives are extensible class components per the core spec - subclass to customize (`class Dots extends Spinner { frames = ['.', '..', '...'] }`).
+
+- `Block` - the renderer seam: a Component whose `format(text)` transforms its rendered subtree string at paint time. Must be pure. Reads inside `format` are tracked, so style-state changes repaint. All styling/layout primitives build on this instead of intrinsic tags; `JSX.IntrinsicElements` stays empty on purpose.
+- `Text extends Block` - ANSI color + modifiers (`bold`, `dim`, `italic`, `underline`, `inverse`, `strike`); styles per line, re-opens around nested closes.
+- `Panel extends Block` - border (`round`/`single`/`double`/`bold`), `padding`, `title`; measures visible width (escape-aware) and sizes to content.
+- `Spinner` - `frames` + `interval`, timer owned by `new()`.
+- `Progress` - `value` (0-1), `width`, `filled`/`empty` characters.
+
+Layout is deliberately line-based (`\n` in strings, `format` for boxes) - no flexbox, no Yoga.
+
 ### Not yet supported (by design, MVP)
 
-- No intrinsic tags - `JSX.IntrinsicElements` is `{}`; components and text only. Layout is line-based via `\n` in strings.
 - No suspense bubbling: `fallback: false` renders nothing rather than deferring to an ancestor boundary.
+- No `<Static>` scrollback region (completed output flushed above the live frame) - next infrastructure item alongside stdin/keypress input.
+- Width measurement counts code points (escape-aware) but not east-asian double-width glyphs.
 - No rendering of Component *instances* as children (react adapter's `$$typeof` path).
 - No input handling or focus management.
 - No capitalized-method subcomponents.
