@@ -68,6 +68,10 @@ State.use = function use<T extends State>(
     });
 
     const context = outer.push(instance);
+    const teardown = () => {
+      context.pop();
+      instance.set(null);
+    };
 
     let ready = false;
 
@@ -81,15 +85,8 @@ State.use = function use<T extends State>(
 
       return useWatch(instance, () => {
         ready = true;
-
-        const release = (instance as UseState).mount?.();
-
-        return () => {
-          if (typeof release == 'function') release();
-          context.pop();
-          instance.set(null);
-        };
-      });
+        return (instance as UseState).mount?.();
+      }, teardown);
     };
   });
 
