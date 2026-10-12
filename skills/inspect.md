@@ -57,7 +57,7 @@ inspect.orphans().map((o) => o.type)
 instance.claimed
 ```
 
-Unclaimed instances are held weakly - the inspector never pins an abandoned render in memory. A rising `collected` with no `destroy` events is a leak the host cleaned up for you.
+Unclaimed instances are held weakly - the inspector never pins an abandoned render in memory. `@expressive/react` destroys an abandoned render's instances once React releases the attempt, so an orphan that persists is a stray `State.new()` or a host leak. A rising `collected` with no `destroy` events is a leak the host cleaned up for you.
 
 ## Health
 
