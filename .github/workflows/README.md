@@ -46,6 +46,13 @@ outside a stack, runs only `verify`: create stacks with `gh stack`.
 `verify` typechecks from scratch. Restored incremental build info re-checks
 only changed files, in an order that can surface type cycles a clean run does not.
 
+## major.yml (pull requests)
+
+`major` - `major-check.ts`: fails while the PR would publish a major without
+the `major` label - a changeset it adds or edits bumping a package `major`, or
+a package version crossing a major against the base (the Version Packages PR).
+Re-runs on label changes, so applying the label is the sign-off.
+
 ## release.yml (push -> main)
 
 `changesets/action` maintains the "Version Packages" PR (`changeset version`
