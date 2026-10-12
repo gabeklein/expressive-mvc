@@ -1,20 +1,19 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import type { State } from "@expressive/mvc";
+import { State } from "@expressive/mvc";
 
-import { begin, catchUp, connect, end, frameOf, hold, release, renew, twinOf, type Connection } from "./connection";
+import { begin, catchUp, connect, end, frameOf, hold, release, renew, twinOf, type Connection, type Shape } from "./connection";
 import { construct, seated, within, type Seat } from "./context";
 
 export interface Exports {
   calls: Record<string, unknown>;
   classes: Record<string, unknown>;
-  seat?: { fields: string[]; methods: Record<string, string> };
+  seat?: Shape & { methods: Record<string, string> };
   pool?: Record<string, Pooled>;
 }
 
-export interface Pooled {
+export interface Pooled extends Shape {
   Type: State.Type;
-  fields: string[];
   methods: Record<string, string>;
 }
 
@@ -148,17 +147,17 @@ interface Request {
 
 async function atFolder(req: IncomingMessage, connection: Connection, found: Match, exports: Exports, request: Request, seats: Seats) {
   const { pull, method, fn, twin, since, args, pathname } = request;
-  const { fields } = exports.seat ?? { fields: [] };
+  const shape = exports.seat ?? { fields: [] };
   const along = await seatsAlong(seats, found.endpoint.pattern);
 
   return within(req, found.segments, async () => {
     const seat = seated();
 
     if (seat) renew(connection, pathname, seat);
-    if (twin) hold(connection, twin, pathname, seat!, fields, since);
-    if (pull) return caughtUp(connection, twin!, since);
+    if (twin) hold(connection, twin, pathname, seat!, shape, since);
+    if (pull) return caughtUp(connection, twin!);
 
-    const value = await (method ? (seat as any)[method](...args) : fn!(...args));
+    const value = await (method ? invoke(seat!, method, args) : fn!(...args));
 
     return { value, frame: frameOf(connection) };
   }, along);
@@ -186,19 +185,31 @@ async function inPool(req: IncomingMessage, connection: Connection, target: Targ
     const built = held ? undefined : construct(target.Type, off);
     const instance = held ? held.instance : built!.instance;
 
-    hold(connection, twin, address, instance, target.fields, since, held?.pool ?? { id: target.id, drop: built!.drop, current: built!.current });
+    hold(connection, twin, address, instance, target, since, held?.pool ?? { id: target.id, drop: built!.drop, current: built!.current });
 
-    if (!target.method) return caughtUp(connection, twin, since);
+    if (!target.method) return caughtUp(connection, twin);
 
-    const value = await (instance as any)[target.method](...args);
+    const value = await invoke(instance, target.method, args);
 
     return { value, frame: frameOf(connection) };
   }, along);
 }
 
-function caughtUp(connection: Connection, twin: string, since?: string) {
-  const { values, version } = catchUp(connection, twin);
-  return Object.keys(values).length || version !== since ? { values, version } : undefined;
+function caughtUp(connection: Connection, twin: string) {
+  const frame = catchUp(connection, twin);
+  return Object.keys(frame).length ? { frame } : undefined;
+}
+
+function invoke(instance: State, method: string, args: unknown[]): unknown {
+  const path = method.split(".");
+  const name = path.pop()!;
+  let target: unknown = instance;
+
+  for (const field of path) target = (target as any)[field];
+
+  if (!(target instanceof State)) throw new Error(`${path.join(".")} is not set on ${instance}.`);
+
+  return (target as any)[name](...args);
 }
 
 async function pooledOf(list: Endpoint[], pull: string | undefined, name: string): Promise<Target | undefined> {
