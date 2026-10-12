@@ -8,7 +8,7 @@ import { Context, def, State } from "@expressive/mvc";
 import { runtime } from "./call";
 
 interface Reply {
-  body: unknown | (() => unknown);
+  body: unknown | ((sent: Record<string, string>) => unknown);
   status?: number;
   epoch?: string;
 }
@@ -72,9 +72,10 @@ afterEach(() => {
 });
 
 function serve(...replies: Reply[]) {
-  const fetch = vi.fn(async (..._: unknown[]) => {
+  const fetch = vi.fn(async (_path: unknown, init?: RequestInit) => {
     const { body, status = 200, epoch = "e1" } = replies.shift()!;
-    const json = status === 304 ? null : JSON.stringify(typeof body == "function" ? body() : body);
+    const sent = (init?.headers ?? {}) as Record<string, string>;
+    const json = status === 304 ? null : JSON.stringify(typeof body == "function" ? body(sent) : body);
 
     return new Response(json, { status, headers: { "x-expressive-epoch": epoch } });
   });
@@ -82,6 +83,8 @@ function serve(...replies: Reply[]) {
   vi.stubGlobal("fetch", fetch);
   return fetch;
 }
+
+const snap = (patch: Record<string, unknown>, version: string) => (sent: Record<string, string>) => ({ frame: { [sent["x-expressive-twin"]]: { patch, version } } });
 
 const headers = (fetch: { mock: { calls: unknown[][] } }, at: number) => (fetch.mock.calls[at][1] as RequestInit).headers as Record<string, string>;
 const idOf = (fetch: { mock: { calls: unknown[][] } }, at: number) => headers(fetch, at)["x-expressive-twin"];
@@ -146,7 +149,7 @@ describe("call", () => {
 
   it("will apply the frame to the tab's twins before resolving", async () => {
     const fetch = serve(
-      { body: { values: { total: 0 }, version: "g:1" } },
+      { body: snap({ total: 0 }, "g:1") },
       { body: () => ({ frame: { [idOf(fetch, 0)]: { patch: { total: 4 }, version: "g:2" }, "Gone-X": { patch: { total: 9 }, version: "g:1" } } }) },
     );
     const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
@@ -160,7 +163,7 @@ describe("call", () => {
 
 describe("twin", () => {
   it("will make a named State that attaches on creation under its own id and holds the snapshot", async () => {
-    const fetch = serve({ body: { values: { total: 4 }, version: "g:1" } });
+    const fetch = serve({ body: snap({ total: 4 }, "g:1") });
     const Tally = twin(["tally"], {}, ["total"], "Tally");
     const tally = Tally.new() as any;
 
@@ -174,7 +177,7 @@ describe("twin", () => {
   });
 
   it("will give each twin its own id", () => {
-    const fetch = serve({ body: { values: {}, version: "g:1" } }, { body: { values: {}, version: "g:1" } });
+    const fetch = serve({ body: snap({}, "g:1") }, { body: snap({}, "g:1") });
     const Tally = twin(["tally"], {}, [], "Tally");
 
     Tally.new();
@@ -185,7 +188,7 @@ describe("twin", () => {
 
   it("will call through a method once attached, naming itself and its version, and apply the frame before resolving", async () => {
     const fetch = serve(
-      { body: { values: { total: 0 }, version: "g:1" } },
+      { body: snap({ total: 0 }, "g:1") },
       { body: () => ({ value: 5, frame: { [idOf(fetch, 0)]: { patch: { total: 5 }, version: "g:2" } } }) },
     );
     const tally = twin(["tally"], { add: "default.add" }, ["total"], "Tally").new() as any;
@@ -199,8 +202,8 @@ describe("twin", () => {
   it("will update another twin the call moved", async () => {
     history.replaceState(null, "", "/tally/sub");
     const fetch = serve(
-      { body: { values: { total: 0 }, version: "a:1" } },
-      { body: { values: { count: 0 }, version: "b:1" } },
+      { body: snap({ total: 0 }, "a:1") },
+      { body: snap({ count: 0 }, "b:1") },
       { body: () => ({ frame: { [idOf(fetch, 0)]: { patch: { total: 1 }, version: "a:2" }, [idOf(fetch, 1)]: { patch: { count: 1 }, version: "b:2" } } }) },
     );
     const tally = twin(["tally"], { add: "default.add" }, ["total"], "Tally").new() as any;
@@ -225,14 +228,14 @@ describe("twin", () => {
 
     await call(["tally"], "bump", []);
     await call(["tally"], "bump", []);
-    attached(new Response(JSON.stringify({ values: { total: 1, label: "a" }, version: "g:2" }), epoch));
+    attached(new Response(JSON.stringify({ frame: { [idOf(fetch, 0)]: { patch: { total: 1, label: "a" }, version: "g:2" } } }), epoch));
 
     await vi.waitFor(() => expect(tally.total).toBe(2));
     expect(tally.label).toBe("a");
   });
 
   it("will throw if a twin field is assigned outside a reply", async () => {
-    serve({ body: { values: { total: 0 }, version: "g:1" } });
+    serve({ body: snap({ total: 0 }, "g:1") });
     const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
 
     await vi.waitFor(() => expect(tally.total).toBe(0));
@@ -243,7 +246,7 @@ describe("twin", () => {
   });
 
   it("will resolve a field the snapshot leaves out as undefined", async () => {
-    serve({ body: { values: {}, version: "g:1" } });
+    serve({ body: snap({}, "g:1") });
     const tally = twin(["tally"], {}, ["user"], "Tally").new() as any;
 
     let thrown: unknown;
@@ -255,7 +258,7 @@ describe("twin", () => {
 
   it("will ignore a patch older than the version it holds", async () => {
     const fetch = serve(
-      { body: { values: { total: 3 }, version: "g:3" } },
+      { body: snap({ total: 3 }, "g:3") },
       { body: () => ({ frame: { [idOf(fetch, 0)]: { patch: { total: 1 }, version: "g:1" } } }) },
     );
     const tally = twin(["tally"], { add: "default.add" }, ["total"], "Tally").new() as any;
@@ -266,7 +269,7 @@ describe("twin", () => {
 
   it("will rewrite every field when the server's generation changes", async () => {
     const fetch = serve(
-      { body: { values: { total: 4, label: "a" }, version: "g:9" } },
+      { body: snap({ total: 4, label: "a" }, "g:9") },
       { body: () => ({ frame: { [idOf(fetch, 0)]: { patch: { total: 0 }, version: "h:1" } } }) },
     );
     const tally = twin(["tally"], { reset: "default.reset" }, ["total", "label"], "Tally").new() as any;
@@ -278,7 +281,7 @@ describe("twin", () => {
   });
 
   it("will suspend a required read until the snapshot arrives", async () => {
-    serve({ body: { values: { total: 7 }, version: "g:1" } });
+    serve({ body: snap({ total: 7 }, "g:1") });
     const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
 
     let thrown: unknown;
@@ -291,7 +294,7 @@ describe("twin", () => {
 
   it("will release itself with the next request once destroyed, and only once", async () => {
     const fetch = serve(
-      { body: { values: { total: 0 }, version: "g:1" } },
+      { body: snap({ total: 0 }, "g:1") },
       { body: { frame: {} } },
       { body: { frame: {} } },
     );
@@ -320,7 +323,7 @@ describe("twin", () => {
 
     tally.set(null);
     await call(["tally"], "bump", []);
-    attached(new Response(JSON.stringify({ values: { total: 0 }, version: "g:1" }), epoch));
+    attached(new Response(JSON.stringify({ frame: { [id]: { patch: { total: 0 }, version: "g:1" } } }), epoch));
     await new Promise(resolve => setTimeout(resolve));
     await call(["tally"], "bump", []);
 
@@ -331,10 +334,10 @@ describe("twin", () => {
   it("will re-attach every twin when the connection's epoch changes, before the call resolves, keeping one that is current", async () => {
     history.replaceState(null, "", "/tally/sub");
     const fetch = serve(
-      { body: { values: { total: 0 }, version: "a:1" } },
-      { body: { values: { count: 0 }, version: "b:1" } },
+      { body: snap({ total: 0 }, "a:1") },
+      { body: snap({ count: 0 }, "b:1") },
       { body: () => ({ value: 1, frame: { [idOf(fetch, 0)]: { patch: { total: 1 }, version: "a:2" } } }), epoch: "e2" },
-      { body: { values: { total: 1 }, version: "a:2" }, epoch: "e2" },
+      { body: snap({ total: 1 }, "a:2"), epoch: "e2" },
       { body: null, status: 304, epoch: "e2" },
     );
     const tally = twin(["tally"], { add: "default.add" }, ["total"], "Tally").new() as any;
@@ -360,7 +363,7 @@ describe("stream", () => {
   }
 
   async function attached(...replies: Reply[]) {
-    const fetch = serve({ body: { values: { total: 0 }, version: "g:1" } }, ...replies);
+    const fetch = serve({ body: snap({ total: 0 }, "g:1") }, ...replies);
     const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
 
     await vi.waitFor(() => expect(tally.total).toBe(0));
@@ -369,7 +372,7 @@ describe("stream", () => {
   }
 
   it("will open one stream per tab on the first twin, on the tab's connection", async () => {
-    const { fetch } = await attached({ body: { values: {}, version: "g:1" } });
+    const { fetch } = await attached({ body: snap({}, "g:1") });
     twin(["tally"], {}, [], "Other").new();
 
     expect(Source.opened).toHaveLength(1);
@@ -377,7 +380,7 @@ describe("stream", () => {
   });
 
   it("will pull a twin the stream calls stale, by its version", async () => {
-    const { fetch, tally, source, id } = await attached({ body: { values: { total: 3 }, version: "g:2" } });
+    const { fetch, tally, source, id } = await attached({ body: snap({ total: 3 }, "g:2") });
 
     source.emit("stale", { [id]: ["total"], "Gone-X": ["total"] });
     await vi.waitFor(() => expect(tally.total).toBe(3));
@@ -388,8 +391,8 @@ describe("stream", () => {
 
   it("will pull once more for news that arrives during a pull, not once per notice", async () => {
     const { fetch, tally, source, id } = await attached(
-      { body: { values: { total: 1 }, version: "g:2" } },
-      { body: { values: { total: 2 }, version: "g:3" } },
+      { body: snap({ total: 1 }, "g:2") },
+      { body: snap({ total: 2 }, "g:3") },
     );
 
     source.emit("stale", { [id]: ["total"] });
@@ -404,7 +407,7 @@ describe("stream", () => {
   it("will keep listening after a failed pull", async () => {
     const { tally, source, id } = await attached(
       { body: { message: "Internal error." }, status: 500 },
-      { body: { values: { total: 5 }, version: "g:2" } },
+      { body: snap({ total: 5 }, "g:2") },
     );
 
     source.emit("stale", { [id]: ["total"] });
@@ -442,7 +445,7 @@ describe("pooled twin", () => {
   const tick = () => new Promise(resolve => setTimeout(resolve));
 
   it("will build off any fiber at the detached root, naming its class", async () => {
-    const fetch = serve({ body: { values: { items: 0 }, version: "c:1" } });
+    const fetch = serve({ body: snap({ items: 0 }, "c:1") });
     const Cart = twin(["shop"], { add: "/shop#Cart.add" }, ["items"], "Cart", "/shop#Cart");
     const cart = Cart.new() as any;
 
@@ -456,7 +459,7 @@ describe("pooled twin", () => {
   it("will build under its nearest route, at that route's place in the location", async () => {
     history.replaceState(null, "", "/shop/42/edit");
     const fetch = serve(
-      { body: { values: { items: 0 }, version: "c:1" } },
+      { body: snap({ items: 0 }, "c:1") },
       { body: () => ({ value: 1, frame: { [idOf(fetch, 0)]: { patch: { items: 1 }, version: "c:2" } } }) },
     );
     const Cart = twin(["shop"], { add: "/shop#Cart.add" }, ["items"], "Cart", "/shop#Cart");
@@ -479,7 +482,7 @@ describe("pooled twin", () => {
   });
 
   it("will build one per new(), for a client subclass too, which adds members of its own", async () => {
-    const fetch = serve({ body: { values: { items: 2 }, version: "c:1" } }, { body: { values: { items: 3 }, version: "d:1" } });
+    const fetch = serve({ body: snap({ items: 2 }, "c:1") }, { body: snap({ items: 3 }, "d:1") });
     const Cart = twin(["shop"], {}, ["items"], "Cart", "/shop#Cart") as any;
 
     class Local extends Cart {
@@ -497,7 +500,7 @@ describe("pooled twin", () => {
   });
 
   it("will release a twin collected without being destroyed", async () => {
-    const fetch = serve({ body: { values: { items: 0 }, version: "c:1" } }, { body: { frame: {} } });
+    const fetch = serve({ body: snap({ items: 0 }, "c:1") }, { body: { frame: {} } });
     const Cart = twin(["shop"], {}, ["items"], "Cart", "/shop#Cart");
     const cart = Cart.new() as any;
     const [registry] = Registry.made;
@@ -515,7 +518,7 @@ describe("pooled twin", () => {
   });
 
   it("will stop watching for collection once destroyed", async () => {
-    serve({ body: { values: { items: 0 }, version: "c:1" } });
+    serve({ body: snap({ items: 0 }, "c:1") });
     const cart = twin(["shop"], {}, ["items"], "Cart", "/shop#Cart").new() as any;
     const [registry] = Registry.made;
 
@@ -525,3 +528,130 @@ describe("pooled twin", () => {
   });
 });
 
+
+describe("child twin", () => {
+  const LINE = { name: "Line", fields: ["qty", "note"], methods: { bump: "default.line.bump" }, children: { note: { name: "Note", fields: ["text"], methods: {} } } };
+  const Order = () => twin(["tally"], {}, ["line"], "Order", undefined, { line: LINE });
+  const entries = (id: string, frame: Record<string, { patch: Record<string, unknown>; version: string }>) =>
+    Object.fromEntries(Object.entries(frame).map(([path, entry]) => [path ? `${id}.${path}` : id, entry]));
+  const reply = (frame: Record<string, { patch: Record<string, unknown>; version: string }>, value?: unknown) =>
+    (sent: Record<string, string>) => ({ value, frame: entries(sent["x-expressive-twin"], frame) });
+
+  it("will build a child its owner's patch marks, named for its class, and apply its own entries", async () => {
+    serve({
+      body: reply({
+        "": { patch: { line: { $child: "l" } }, version: "o:1" },
+        line: { patch: { qty: 1, note: { $child: "n" } }, version: "l:1" },
+        "line.note": { patch: { text: "hi" }, version: "n:1" },
+      }),
+    });
+    const order = Order().new() as any;
+
+    await vi.waitFor(() => expect(order.line.qty).toBe(1));
+
+    expect(order.line).toBeInstanceOf(State);
+    expect(order.line.constructor.name).toBe("Line");
+    expect(order.line.note.text).toBe("hi");
+  });
+
+  it("will keep a child through its own generation, replace it on another, and clear it on null", async () => {
+    const fetch = serve(
+      { body: reply({ "": { patch: { line: { $child: "l" } }, version: "o:1" }, line: { patch: { qty: 1 }, version: "l:1" } }) },
+      { body: reply({ "": { patch: { line: { $child: "l" } }, version: "o:2" }, line: { patch: { qty: 2 }, version: "l:2" } }) },
+      { body: reply({ "": { patch: { line: { $child: "m" } }, version: "o:3" }, line: { patch: { qty: 1 }, version: "m:1" } }) },
+      { body: reply({ "": { patch: { line: null }, version: "o:4" } }) },
+    );
+    const order = twin(["tally"], { touch: "default.touch" }, ["line"], "Order", undefined, { line: LINE }).new() as any;
+
+    await vi.waitFor(() => expect(order.line.qty).toBe(1));
+    const first = order.line;
+
+    await order.touch();
+    expect(order.line).toBe(first);
+    expect(first.qty).toBe(2);
+
+    await order.touch();
+    expect(order.line).not.toBe(first);
+    expect(order.line.qty).toBe(1);
+    expect(order.line.note).toBeUndefined();
+
+    await order.touch();
+    expect(order.line).toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("will drop a late entry for a child since replaced, or one it does not hold", async () => {
+    let late!: (res: Response) => void;
+    const epoch = { headers: { "x-expressive-epoch": "e1" } };
+    const fetch = vi.fn()
+      .mockImplementationOnce(async () => new Response(JSON.stringify({ frame: entries(idOf(fetch, 0), { "": { patch: { line: { $child: "l" } }, version: "o:1" }, line: { patch: { qty: 1 }, version: "l:1" } }) }), epoch))
+      .mockReturnValueOnce(new Promise<Response>(resolve => (late = resolve)))
+      .mockImplementationOnce(async () => new Response(JSON.stringify({ frame: entries(idOf(fetch, 0), { "": { patch: { line: { $child: "m" } }, version: "o:2" }, line: { patch: { qty: 7 }, version: "m:1" } }) }), epoch));
+    vi.stubGlobal("fetch", fetch);
+
+    const order = Order().new() as any;
+    await vi.waitFor(() => expect(order.line.qty).toBe(1));
+
+    const slow = call(["tally"], "slow", []);
+    await call(["tally"], "fast", []);
+    late(new Response(JSON.stringify({ frame: entries(idOf(fetch, 0), { line: { patch: { qty: 9 }, version: "l:3" }, "line.note": { patch: { text: "x" }, version: "n:1" } }) }), epoch));
+    await slow;
+
+    expect(order.line.qty).toBe(7);
+    expect(order.line.note).toBeUndefined();
+  });
+
+  it("will throw if a child field is assigned outside a reply", async () => {
+    serve({ body: reply({ "": { patch: { line: { $child: "l" } }, version: "o:1" }, line: { patch: { qty: 1 }, version: "l:1" } }) });
+    const order = Order().new() as any;
+
+    await vi.waitFor(() => expect(order.line.qty).toBe(1));
+
+    expect(() => (order.line.qty = 2)).toThrow(/\.qty is read-only - change it through a method\.$/);
+    expect(() => (order.line = undefined)).toThrow("read-only");
+  });
+
+  it("will call a child's method through its root twin, naming the root and its version", async () => {
+    const fetch = serve(
+      { body: reply({ "": { patch: { line: { $child: "l" } }, version: "o:1" }, line: { patch: { qty: 1 }, version: "l:1" } }) },
+      { body: reply({ line: { patch: { qty: 3 }, version: "l:2" } }, 3) },
+    );
+    const order = Order().new() as any;
+
+    await vi.waitFor(() => expect(order.line.qty).toBe(1));
+
+    expect(await order.line.bump(2)).toBe(3);
+    expect(order.line.qty).toBe(3);
+    expect(headers(fetch, 1)).toMatchObject({ "x-expressive-call": "default.line.bump", "x-expressive-twin": idOf(fetch, 0), "if-none-match": "o:1" });
+  });
+
+  it("will hold a child's entry that reaches it before its owner's snapshot, then apply it", async () => {
+    let attached!: (res: Response) => void;
+    const epoch = { headers: { "x-expressive-epoch": "e1" } };
+    const fetch = vi.fn()
+      .mockReturnValueOnce(new Promise<Response>(resolve => (attached = resolve)))
+      .mockImplementation(async () => new Response(JSON.stringify({ frame: entries(idOf(fetch, 0), { line: { patch: { qty: 2 }, version: "l:2" } }) }), epoch));
+    vi.stubGlobal("fetch", fetch);
+
+    const order = Order().new() as any;
+
+    await call(["tally"], "bump", []);
+    attached(new Response(JSON.stringify({ frame: entries(idOf(fetch, 0), { "": { patch: { line: { $child: "l" } }, version: "o:1" }, line: { patch: { qty: 1 }, version: "l:1" } }) }), epoch));
+
+    await vi.waitFor(() => expect(order.line.qty).toBe(2));
+  });
+
+  it("will pull its root twin when the stream calls a child stale", async () => {
+    const fetch = serve(
+      { body: reply({ "": { patch: { line: { $child: "l" } }, version: "o:1" }, line: { patch: { qty: 1 }, version: "l:1" } }) },
+      { body: reply({ line: { patch: { qty: 4 }, version: "l:2" } }) },
+    );
+    const order = Order().new() as any;
+
+    await vi.waitFor(() => expect(order.line.qty).toBe(1));
+    Source.opened[0].emit("stale", { [`${idOf(fetch, 0)}.line`]: ["qty"] });
+
+    await vi.waitFor(() => expect(order.line.qty).toBe(4));
+    expect(headers(fetch, 1)).toMatchObject({ "x-expressive-get": "default", "x-expressive-twin": idOf(fetch, 0), "if-none-match": "o:1" });
+  });
+});
