@@ -418,6 +418,71 @@ describe('effect', () => {
     expect(test.bar).toBe(3);
   });
 
+  describe('async', () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    it('will not wait for a pending run before re-running', async () => {
+      const test = Test.new();
+      const pending = mockPromise<void>();
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return pending;
+      });
+
+      watch(test, effect);
+
+      expect(effect).toBeCalledTimes(1);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+
+      pending.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will lose a suspense thrown after await', async () => {
+      const test = Test.new();
+      const suspense = mockPromise<void>();
+      const effect = vi.fn(async ($: Test) => {
+        void $.value;
+        await 0;
+        throw suspense;
+      });
+
+      let output: Promise<void> | undefined;
+
+      watch(test, ($) => (output = effect($)));
+
+      await expect(output).rejects.toBe(suspense);
+
+      suspense.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(1);
+    });
+
+    it('will not surface a rejection', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const expected = new Error('async error');
+
+      let output: Promise<void> | undefined;
+
+      watch(test, () => (output = Promise.reject(expected)));
+
+      await expect(output).rejects.toBe(expected);
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+    });
+  });
+
   describe('destroyed', () => {
     const error = mockError();
 
