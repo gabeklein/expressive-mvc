@@ -175,7 +175,7 @@ function TipExample({ bill, tipPercent, annotate }: TipExampleProps) {
 
   const Example = code /*tsx*/`
     import React from 'react';
-    import { Component } from '@expressive/react';
+    import { Component } from '@expressive/mvc';
 
     class TipCalculator extends Component {
       bill = ${bill};

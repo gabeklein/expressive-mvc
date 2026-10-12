@@ -1,6 +1,6 @@
 import { afterAll, afterEach, expect, vi, type MockInstance } from 'vitest';
 import { Context, State } from './src';
-import { listener } from './src/observable';
+import { listener, watch } from './src/observable';
 
 interface CustomMatchers<R = unknown> {
   /** Flush pending updates, optionally asserting specific keys were updated. */
@@ -33,12 +33,31 @@ Object.defineProperty(State.prototype, 'toJSON', {
 
 afterEach(() => Context.root.pop());
 
-export { mockError, mockPromise, mockUncaught, mockWarn, flushMicrotasks };
+export { fires, mockError, mockPromise, mockUncaught, mockWarn, flushMicrotasks };
 export type { MockPromise };
 
 /** Resolve after the task queue drains - flush pending dispatch/effects. */
 function flushMicrotasks() {
   return new Promise<void>((r) => setTimeout(r, 0));
+}
+
+/** Watch `read` on target, run `act`, then count how often the effect re-ran. */
+async function fires<T extends object>(
+  target: T,
+  read: ($: T) => unknown,
+  act: (target: T) => unknown
+) {
+  let runs = -1;
+
+  watch(target, ($) => {
+    read($);
+    runs++;
+  });
+
+  await act(target);
+  await flushMicrotasks();
+
+  return runs;
 }
 
 async function toHaveUpdated(

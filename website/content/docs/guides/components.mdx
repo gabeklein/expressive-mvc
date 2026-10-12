@@ -6,7 +6,7 @@ description: Smart, reusable components that own their behavior and rendering
 Function components work best dumb - take data, render UI, done. `Component` is for when the thing you're building *is* a component. It's a persistent class instance that doubles as a React component: state, methods, lifecycle, context, suspense, and error handling in one extensible class, instead of a complicated arrangement of hooks wired together for a single purpose.
 
 ```tsx
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 class Counter extends Component {
   count = 0;
@@ -31,9 +31,9 @@ Properties read via `this` in `render()` are tracked. When one changes, the comp
 
 Use **`State` + `.use()`** when you want headless logic separated from rendering - the most common pattern. The component stays dumb, the class handles the smarts.
 
-Use **`Component`** when state is intrinsic to display logic. Form controls, media players, data grids, layout shells - things where behavior and rendering move together. A hook-heavy route shell or tab panel doesn't need to become `FooState` plus `FooView`; when the rendered thing owns the behavior, make the rendered thing the class.
+Use **`Component`** when state is intrinsic to display logic. Form controls, media players, data grids, app and route entrypoints - things where behavior and rendering move together. A hook-heavy route shell or tab panel doesn't need to become `FooState` plus `FooView`; when the rendered thing owns the behavior, make the rendered thing the class.
 
-Usually a Component defines `render()`. Without one, children pass through while the instance provides context and Suspense/error-boundary placement - useful for route controllers and progressive `Boundary` wrappers, but that headless form is the exception.
+Usually a Component defines `render()`. Without one, children pass through while the instance still provides context, runs `mount()`, and places its Suspense and error boundaries - useful for route controllers, progressive `Boundary` wrappers, and mount-only ancestors like a focus trap. Don't write `render() { return this.props.children; }` - just omit it.
 
 > **Good to know:** <br/>
 > Don't use Component just because something is contextual. Components carry React-facing properties (`props`, `state`, `setState`...), which makes `.get()` IntelliSense noisier. Headless models should stay `State`.
@@ -223,15 +223,14 @@ Component instances survive across renders. `this` is stable - store references,
 ```tsx
 class ChatRoom extends Component {
   messages: Message[] = [];
-  socket: WebSocket | null = null;
   url = '';
 
-  new() {
-    this.socket = new WebSocket(this.url);
-    this.socket.onmessage = (e) => {
+  mount() {
+    const socket = new WebSocket(this.url);
+    socket.onmessage = (e) => {
       this.messages = [...this.messages, JSON.parse(e.data)];
     };
-    return () => this.socket?.close();
+    return () => socket.close();
   }
 
   render() {
@@ -247,6 +246,8 @@ class ChatRoom extends Component {
 ```
 
 No stale closures, no dependency arrays - just an object with methods. 🏝
+
+Sockets, timers and listeners belong in `mount()`, which runs once when the element commits, client-only. `new()` also runs during server render, where its cleanup never does.
 
 <br />
 
@@ -298,6 +299,7 @@ Every Component accepts these regardless of state fields:
 | `is`       | `(instance: T) => void` | Called once with the created instance                                  |
 | `ref`      | React ref (object or callback) | Standard ref - receives the instance after mount, `null` on unmount |
 | `fallback` | `ReactNode \| false`    | Shown while suspended or during error recovery; `false` opts out       |
+| `catch`    | `(error, instance) => void \| Promise<void>` | Handles errors from this element's content, in place of the class's `catch()` |
 
 ```tsx
 <Counter is={(c) => console.log('created', c)} fallback={<Loading />} />
@@ -329,7 +331,7 @@ function Header() {
 }
 ```
 
-This is why Component is a natural fit for layouts, shells, and feature containers - the container _is_ the context.
+This is why Component is a natural fit for app shells and feature containers - the container _is_ the context. To provide a headless `State` without writing a subclass, the bare class takes it as `for`: `<Component for={Theme}>` - see [Context](/docs/guides/context#providing-with-component-for).
 
 It works in both directions. A Component can consume upstream context with the `get` instruction, same as any State:
 
@@ -389,7 +391,7 @@ Key behaviors:
 - Reachable through context: `Dashboard.get()` then `<dashboard.Sidebar />`.
 - **Overridable** - subclasses redefine the method, or inject one as an instance field (`Sidebar = CustomSidebar`). That's what makes the Toggle example above work.
 
-They also double as a decomposition tool: pull a busy `.map` or chunk of chrome out of `render()` into a named section. [See them in action](/examples/component/subcomponents).
+Subcomponents are **extension points**, not a general decomposition tool. Ask whether a subclass would reasonably replace or wrap that renderer - `Toggle.Active`, a grid's `Row`, chrome a theme variant swaps. If not, pull the busy section into a plain function component calling `Dashboard.get()` instead; it keeps dependencies local without the override machinery. [See them in action](/examples/component/subcomponents).
 
 <br />
 
@@ -431,9 +433,20 @@ class SafeView extends Component {
 }
 ```
 
-- Setting `this.fallback` inside `catch()` shows error UI while recovery is pending. After `catch()` resolves, the fallback reverts and `render()` retries.
+`catch()` receives the thrown error and the instance: `catch(error, instance)`.
+
+- Setting `this.fallback` inside `catch()` shows error UI while recovery is pending. After `catch()` resolves, the fallback reverts and `render()` retries. A sync `catch()` retries immediately.
 - If `catch()` rejects, the error propagates to the nearest parent boundary.
-- If a child throws again after recovery, the error escapes.
+- If the retry throws again, that error escapes to the parent. A later, new error is caught again.
+- Without `catch()`, the component has no error boundary - errors propagate.
+
+A `catch` attribute handles errors for one placement, in place of the class's own `catch()`:
+
+```tsx
+<SafeView catch={(error, view) => report(error)} />
+```
+
+The boundary covers render errors only. A component's own lifecycle and effect failures go to the class-level [`State.on({ catch })`](/docs/api/state#error-handling) handler.
 
 Per-feature error handling without nesting `<ErrorBoundary>` wrappers. See the full recovery flow at [component/boundary](/examples/component/boundary).
 
@@ -443,15 +456,16 @@ Per-feature error handling without nesting `<ErrorBoundary>` wrappers. See the f
 
 Components inherit the full State lifecycle:
 
-- `new()` - called once after initialization. Return a cleanup function for unmount teardown.
-- `catch(error)` - error boundary handler.
+- `new()` - called once after initialization, including during server render. Return a cleanup function for teardown.
+- `mount()` - called once when the element commits, client-only. Return a cleanup function for unmount.
+- `catch(error, instance)` - error boundary handler.
 - Destruction on unmount or explicit `this.set(null)`.
 
 ```tsx
 class Timer extends Component {
   elapsed = 0;
 
-  new() {
+  mount() {
     const id = setInterval(() => this.elapsed++, 1000);
     return () => clearInterval(id);
   }
@@ -462,13 +476,31 @@ class Timer extends Component {
 }
 ```
 
-> A `use()` method only matters on the `MyComponent.use()` hook path - a Component rendered as JSX never calls it. Don't put per-render logic there expecting `<MyComponent />` to run it.
+> A Component is rendered, not used - `MyComponent.use()` throws. For an instance outside the tree, use `MyComponent.new()`.
 
 Component handles React strict mode correctly - only one instance is created despite double-mounts.
 
 <br />
 
+## Rendering an instance
+
+An activated Component instance renders where you place it - useful when another object or collection owns its lifecycle:
+
+```tsx
+const first = Item.new({ label: 'First' });
+const second = Item.new({ label: 'Second' });
+
+<>{first}</>
+<>{[first, second]}</>
+```
+
+- Each instance is keyed by `key`, defaulting to its unique id. Override the readonly `key` property for an application-defined identity.
+- Placing subscribes and provides context as usual, but the placement doesn't own the instance: unmounting only detaches, and `mount()` doesn't run. The owner destroys it with `instance.set(null)`.
+- One instance may appear beneath separate parents.
+
+<br />
+
 ## Next
 
-- [Context](/docs/guides/context) - Provider, `get` instruction, and downstream collection.
+- [Context](/docs/guides/context) - `<Component for>`, the `get` instruction, and downstream collection.
 - [API: Component](/docs/api/component) - every Component method and prop.

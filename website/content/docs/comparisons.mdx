@@ -16,7 +16,7 @@ Say you want a reusable `useFooBarBaz` that a widget can own. Flip through:
 <Compare labels={['Expressive', 'Hooks', 'Zustand', 'Jotai', 'Redux', 'MobX']}>
 
 ```tsx
-import State from '@expressive/react';
+import { State } from '@expressive/mvc';
 
 class FooBarBaz extends State {
   foo = 0;
@@ -192,7 +192,7 @@ Context is where store libraries quietly hand the problem back to you. In Expres
 <Compare labels={['Expressive', 'React Context', 'Zustand', 'Jotai']}>
 
 ```tsx
-import State, { get } from '@expressive/react';
+import { State, get } from '@expressive/mvc';
 
 class Theme extends State {
   mode = 'light';

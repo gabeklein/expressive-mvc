@@ -1,6 +1,9 @@
 import { bindLocation, deltaOf, navigate, Router } from './router';
 
 const SELF_DRIVEN = new WeakSet<object>();
+const LISTENERS = new Set<() => void>();
+
+let restore: (() => void) | undefined;
 
 /** Binds the headless core to `window.location` and browser history. */
 export class BrowserRouter extends Router {
@@ -49,24 +52,43 @@ export class BrowserRouter extends Router {
     window.addEventListener('popstate', sync);
     window.addEventListener('hashchange', sync);
 
-    const origPush = history.pushState.bind(history);
-    const origReplace = history.replaceState.bind(history);
-    history.pushState = (...args) => {
-      origPush(...args);
-      sync();
-    };
-    history.replaceState = (...args) => {
-      origReplace(...args);
-      sync();
-    };
+    const unpatch = patch(sync);
 
     return () => {
       window.removeEventListener('popstate', sync);
       window.removeEventListener('hashchange', sync);
-      history.pushState = origPush;
-      history.replaceState = origReplace;
+      unpatch();
     };
   }
+}
+
+function patch(sync: () => void) {
+  LISTENERS.add(sync);
+
+  if (!restore) {
+    const { pushState, replaceState } = history;
+    const notify = () => LISTENERS.forEach((sync) => sync());
+
+    history.pushState = function (...args) {
+      pushState.apply(this, args);
+      notify();
+    };
+    history.replaceState = function (...args) {
+      replaceState.apply(this, args);
+      notify();
+    };
+
+    restore = () => {
+      history.pushState = pushState;
+      history.replaceState = replaceState;
+      restore = undefined;
+    };
+  }
+
+  return () => {
+    LISTENERS.delete(sync);
+    if (!LISTENERS.size) restore?.();
+  };
 }
 
 function current() {

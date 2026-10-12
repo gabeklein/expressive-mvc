@@ -13,9 +13,9 @@
 
 The core of [Expressive MVC](https://github.com/gabeklein/expressive-mvc): reactive primitives built around plain classes, with no framework dependency. Provides the `State` model, instructions, context, and the renderer-agnostic `Component` that adapters like [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) build on.
 
-> **Building a React app?** Install [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) instead - it depends on this package, so you get the whole core through it and should **not** list `@expressive/mvc` in your `package.json` as well. Import `State`, `Component`, and every instruction from the adapter.
+> **Building a React app?** Install [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) alongside this package - the adapter declares `@expressive/mvc` as a peer dependency, so both belong in your `package.json`. Import `State`, `Component`, and every instruction from this package, and import the adapter once from your entry so the host registers. The same holds for [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom), the renderer without React.
 
-Install this package directly only for host-agnostic code that must not depend on a UI adapter - a shared domain package, a Node service, or a new adapter:
+Installed alone, it serves host-agnostic code - a shared domain package, a Node service, or a new adapter:
 
 ```bash
 npm install @expressive/mvc

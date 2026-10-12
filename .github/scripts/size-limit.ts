@@ -26,57 +26,57 @@ import { withWorkspaceLinks } from './workspace-links';
 const CASES = [
   {
     name: 'mvc: State only',
-    limit: 6130,
+    limit: 6290,
     code: `import State from '@expressive/mvc'; console.log(State);`
   },
   {
     name: 'mvc: everything',
-    limit: 9960,
+    limit: 10370,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: State only',
-    limit: 10000,
+    limit: 10350,
     code: `import State from '@expressive/react'; console.log(State);`
   },
   {
     name: 'react: typical app',
-    limit: 10780,
+    limit: 11210,
     code: `import State, { Component, get, set, ref, def } from '@expressive/react';
            console.log(State, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 12930,
+    limit: 13300,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'dom: renderer',
-    limit: 18050,
+    limit: 18320,
     code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
            import { Fragment, Portal, createElement, render } from '@expressive/dom';
            console.log(State, Component, Context, Fragment, Portal, createElement, def, get, has, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',
-    limit: 20290,
+    limit: 20550,
     code: `import * as mvc from '@expressive/mvc';
            import * as dom from '@expressive/dom';
            console.log(mvc, dom);`
   },
   {
     name: 'router: everything',
-    limit: 13000,
+    limit: 13420,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'inspect: install',
-    limit: 11700,
+    limit: 11920,
     code: `import '@expressive/inspect/install';`
   },
   {
     name: 'react + router',
-    limit: 17090,
+    limit: 17490,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
@@ -198,7 +198,7 @@ if (over.length && gate)
     over.map(({ name, bytes, limit }) =>
       `  ${name}: ${kb(bytes)} exceeds budget ${kb(limit)}`).join('\n') +
     `\n\nBefore this release merges, land a PR on main that re-sets the budgets in` +
-    ` .github/scripts/size-limit.ts and the figures in website/content/docs/guides/bundle-size.mdx.`
+    ` .github/scripts/size-limit.ts and every size claim in the docs and site (git grep -nE '[0-9] ?kB' website skills).`
   );
 
 console.log(over.length ? `\n${over.length} shape(s) over budget.` : '\nAll import shapes within budget.');

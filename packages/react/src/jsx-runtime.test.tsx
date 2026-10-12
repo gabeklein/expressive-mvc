@@ -32,17 +32,11 @@ describe('introspection', () => {
     expect(items[0]).toBe('a' as never);
   });
 
-  it('will identify elements', () => {
+  it('will read elements', () => {
     expect(isElement(element)).toBe(true);
     expect(isElement({ type: 'div' })).toBe(false);
-  });
-
-  it('will read element type', () => {
     expect(typeOf(element)).toBe('div');
     expect(typeOf('text')).toBeUndefined();
-  });
-
-  it('will read element props', () => {
     expect(propsOf(element)).toEqual({ id: 'foo' });
     expect(propsOf('text')).toEqual({});
   });

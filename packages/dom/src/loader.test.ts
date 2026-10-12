@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mockPromise } from '../test.setup';
+import { lazy, mockPromise } from '../test.setup';
 import { resolve } from './loader';
 import { isVNode } from './vnode';
 
@@ -21,8 +21,7 @@ describe('resolve', () => {
   });
 
   it('will suspend once and render a default export', async () => {
-    const loaded = mockPromise<{ default: () => null }>();
-    const Loader = () => loaded;
+    const [Loader, loaded] = lazy<{ default: () => null }>();
     const pending = suspend(Loader, Loader)!;
 
     expect(() => resolve(Loader, {}, Loader)).toThrow(pending);
@@ -33,8 +32,7 @@ describe('resolve', () => {
   });
 
   it('will render a directly exported component with props', async () => {
-    const loaded = mockPromise<(props: { value: number }) => number>();
-    const Loader = () => loaded;
+    const [Loader, loaded] = lazy<(props: { value: number }) => number>();
     const pending = suspend(Loader, Loader)!;
 
     loaded.resolve(({ value }) => value);
@@ -43,8 +41,7 @@ describe('resolve', () => {
   });
 
   it('will throw a falsy rejection', async () => {
-    const loaded = mockPromise<() => null>();
-    const Loader = () => loaded;
+    const [Loader, loaded] = lazy<() => null>();
     const pending = suspend(Loader, Loader)!;
 
     loaded.reject(0);
@@ -53,8 +50,7 @@ describe('resolve', () => {
   });
 
   it('will throw if a module has no component', async () => {
-    const loaded = mockPromise<any>();
-    const Loader = () => loaded;
+    const [Loader, loaded] = lazy<any>();
     const pending = suspend(Loader, Loader)!;
 
     loaded.resolve(undefined);

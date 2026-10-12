@@ -24,7 +24,7 @@ The cost is bounded and worth knowing: a write that lands *during* an in-flight 
 Consistency says *what* may be rendered together. It says nothing about *when*. For that, mark the writes:
 
 ```ts
-import { pending } from '@expressive/react';
+import { pending } from '@expressive/mvc';
 
 pending(() => {
   app.page = 'settings';
@@ -39,6 +39,10 @@ It also returns a promise, resolving once every reader has taken the update — 
 this.busy = true;
 pending(() => { app.page = 'settings' }).then(() => { this.busy = false });
 ```
+
+The promise never rejects. An exception from the callback propagates synchronously, and a reader that throws while taking the update is reported to `catch` handlers with kind `effect`, never to the writer. Without a renderer the promise still resolves once every subscriber has replayed — a way for headless code to wait out a whole cascade of updates, where `await state.set()` waits only for that one state's next flush.
+
+Where the flag is read matters. `busy` is written urgently, so its readers re-render while the deferred work is in flight. A component that reads `busy` *and* rebuilds the deferred content suspends, replacing the screen the deferral meant to keep. Read the flag from a sibling of that content, or from a wrapper receiving it as `children` — both leave its element untouched, so it holds.
 
 Four rules:
 
