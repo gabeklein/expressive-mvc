@@ -11,14 +11,9 @@ under `.github/scripts` invoke it directly; only workspace-wide commands are
 install in the `setup` action doubles as the internal-dependency desync guard -
 a workspace version that falls outside a sibling's range cannot reach main.
 
-Non-blocking signals: `changeset status` (a preview of which packages would
-bump) and bundle size - the step summary and a warning annotation when a shape
-exceeds its budget. Budgets are re-set once per release, not per feature: on
-the Version Packages PR (`changeset-release/main`) the size step runs with
-`--gate` and fails `verify` while any shape is over. The fix is its own PR on
-`main` re-setting the budgets and the figures in `bundle-size.mdx`; the release
-PR picks it up when changesets refreshes the branch. `build:site` measures for
-the site's headline figure and never fails on budget.
+Non-blocking signal: `changeset status` (a preview of which packages would
+bump). `build:site` measures bundle size for the site's headline figure and
+never fails on budget.
 
 Beside `verify`, one run per push also holds:
 
@@ -28,14 +23,19 @@ Beside `verify`, one run per push also holds:
 - `native` - calls `native.yml` for a PR labeled `react-native`.
 - `hot` - `hot-probe.ts`, the hot-reload gauntlet in Chrome on React and dom.
   Not yet a required check.
+- `size` - `size-limit.ts --gate`: fails while any import shape exceeds its
+  budget, with the table in the step summary. Not a required check - growth
+  shows red on the PR that caused it without blocking the merge. Budgets are
+  re-set once per release, not per feature: a PR on `main` re-sets them and
+  every size claim in the docs, before the Version Packages PR merges.
 
 `verify` and `e2e` are required checks, matched by job name - renaming either
 job needs the branch protection updated with it.
 
 `verify` runs for a PR into any branch, so a PR into a trunk (a long-lived
 feature branch, see AGENTS.md) is checked without naming the trunk here. Its
-release-facing signals - bundle size and the changeset reminder - and the
-other jobs run only for PRs into `main` and stacks.
+release-facing signal - the changeset reminder - `size`, and the other jobs run
+only for PRs into `main` and stacks.
 
 A PR in a GitHub stack runs as if it targets the stack's base. `verify` runs on
 each layer; the others run only on the top one (`stack.position ==
