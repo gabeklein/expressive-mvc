@@ -235,7 +235,7 @@ describe("vite host", () => {
 
     const twin = { "x-expressive-twin": "Tally-A" };
 
-    expect(await post({ "x-expressive-get": "default", ...twin })).toEqual({ values: { total: 0 }, version: expect.any(String) });
+    expect(await post({ "x-expressive-get": "default", ...twin })).toEqual({ frame: { "Tally-A": { patch: { total: 0 }, version: expect.any(String) } } });
     expect(await post({ "x-expressive-call": "default.add", ...twin }, "[2]")).toEqual({ value: 2, frame: { "Tally-A": { patch: { total: 2 }, version: expect.any(String) } } });
     expect(await post({ "x-expressive-call": "default.add", ...twin }, "[3]")).toEqual({ value: 5, frame: { "Tally-A": { patch: { total: 5 }, version: expect.any(String) } } });
     expect(await post({ "x-expressive-call": "peek" })).toEqual({ value: 5, frame: {} });
@@ -258,6 +258,52 @@ describe("vite host", () => {
     });
 
     expect(await res.json()).toEqual({ value: "site", frame: {} });
+  });
+
+  const OWNER = `
+    ${HOST}
+    class Line extends State {
+      qty = 1;
+      async bump(by: number) { return (this.qty += by); }
+    }
+    export default class Order extends State {
+      static ttl = 60;
+      line = new Line();
+      async reset() { this.line = new Line(); }
+    }
+  `;
+
+  it("will twin a seat's owned child, its methods named by their path", async () => {
+    const root = project({ "app/index.tsx": PAGE, "app/order/remote.ts": OWNER });
+    const server = await serve(root);
+
+    const stub = (await server.transformRequest("/app/order/remote.ts"))?.code;
+    expect(stub).toContain('export default twin(at, { "reset": "default.reset" }, ["line"], "Order", undefined, { "line": {');
+    expect(stub).toMatch(/"name": "Line",\s*"fields": \["qty"\],\s*"methods": \{\s*"bump": "default\.line\.bump"\s*\}/);
+  });
+
+  it("will call a child's method on the module runner, framing the child under its path", async () => {
+    const root = project({ "app/index.tsx": PAGE, "app/order/remote.ts": OWNER });
+    const server = await serve(root, expressive(), hostMvc(root));
+    await server.transformRequest("/app/order/remote.ts");
+    await server.listen(0);
+
+    const post = async (headers: Record<string, string>, body = "[]") => (await fetch(new URL("/order", server.resolvedUrls!.local[0]), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-expressive-connection": TAB, "x-expressive-twin": "Order-A", ...headers },
+      body,
+    })).json();
+
+    const { frame } = await post({ "x-expressive-get": "default" });
+
+    expect(frame).toEqual({
+      "Order-A": { patch: { line: { $child: expect.any(String) } }, version: expect.any(String) },
+      "Order-A.line": { patch: { qty: 1 }, version: expect.any(String) },
+    });
+    expect(await post({ "x-expressive-call": "default.line.bump", "if-none-match": frame["Order-A"].version }, "[2]")).toEqual({
+      value: 3,
+      frame: { "Order-A.line": { patch: { qty: 3 }, version: expect.any(String) } },
+    });
   });
 
   it("will throw if a sidecar exports what the client cannot call", async () => {
@@ -300,7 +346,7 @@ describe("vite host", () => {
       body: "[]",
     })).json();
 
-    expect(await post({ "x-expressive-get": "/shop#Cart" })).toEqual({ values: { items: 0 }, version: expect.any(String) });
+    expect(await post({ "x-expressive-get": "/shop#Cart" })).toEqual({ frame: { "Cart-A": { patch: { items: 0 }, version: expect.any(String) } } });
     expect(await post({ "x-expressive-call": "/shop#Cart.add" })).toEqual({ value: 1, frame: { "Cart-A": { patch: { items: 1 }, version: expect.any(String) } } });
   });
 
@@ -440,6 +486,17 @@ describe("vite host", () => {
     });
 
     expect(server).toMatch(/pool: \{\s*"\/shop#Cart": \{\s*Type: Cart,\s*fields: \["items"\],\s*methods: \{\s*"\/shop#Cart\.add": "add"\s*\}\s*\}\s*\}/);
+  });
+
+  it("builds the node service with a seat's children and their methods", async () => {
+    const { server } = await buildBoth({
+      "index.ts": "export default { remote: { opaque: false } };",
+      "app/index.tsx": PAGE,
+      "app/order/index.tsx": "import Order from './remote'; export const Page = () => Order",
+      "app/order/remote.ts": OWNER,
+    });
+
+    expect(server).toMatch(/seat: \{\s*"fields": \["line"\],\s*"children": \{\s*"line": \{\s*"fields": \["qty"\]\s*\}\s*\},\s*"methods": \{\s*"default\.reset": "reset",\s*"default\.line\.bump": "line\.bump"\s*\}\s*\}/);
   });
 
   it("builds readable ids when index.ts sets remote.opaque off", async () => {
