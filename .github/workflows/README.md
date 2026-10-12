@@ -28,6 +28,9 @@ Beside `verify`, one run per push also holds:
 - `native` - calls `native.yml` for a PR labeled `react-native`.
 - `hot` - `hot-probe.ts`, the hot-reload gauntlet in Chrome on React and dom.
   Not yet a required check.
+- `dev` - `packages/dev`'s example specs against its dev server and its built
+  server. Runs for a PR into any branch, since dev's PRs target its trunk. Not
+  a required check.
 
 `verify` and `e2e` are required checks, matched by job name - renaming either
 job needs the branch protection updated with it.
