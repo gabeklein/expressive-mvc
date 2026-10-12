@@ -171,6 +171,12 @@ assigning a twin field throws. Changes made elsewhere - another tab, a timer on 
 on a stream the tab opens with its first twin: the server names what went stale and the twin pulls
 it.
 
+A field holding a State its class owns - `line = new Line()`, or one declared `line?: Line` - is a
+child: the twin holds a twin of it, read-only like its other values, whose public `async` methods
+call through the owner (`order.line.bump()`). Assigning a new instance on the server replaces the
+child twin; clearing the field leaves it `undefined`. A public `get()` field fails the build - make
+it `protected` or `private`.
+
 A remote module may also export State classes. Each is a twin built per use: every `Cart.use()` in a
 component, or `Cart.new()` anywhere, gets a server instance of its own, alive while the client holds
 the twin. Build twins through those two - not a raw `new Cart()`. It is built under the component's nearest route, so its `get()` fields reach the seats
