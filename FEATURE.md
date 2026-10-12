@@ -92,7 +92,7 @@ content-type: application/json
   - *Call reply* is `{ value, frame }`: the return value, and for every twin the tab holds that went past its seen version, `{ <twin>: { patch, version } }` - for the calling twin, every public field changed since the version the call sent (`If-None-Match`, as a pull), so the call's own effects and anything the tab missed; for the rest, what changed since the server last sent them. An effect on another twin (a parent seat through `get()`, a pooled instance) settles in the same reply instead of a stream round trip. A seat's methods are `default.<method>`, a pooled class's `<class id>.<method>`; every method call names its twin id.
   - *Pull* - the one request shape for attach and refresh: `x-expressive-get: default` (the seat) or `<class id>` (a client construction, built on the first pull for its twin id; posted to the concrete path of the twin's route, which the server walks with its own patterns, or to `/.expressive/detached` off any route). `If-None-Match: <version>` returns only the keys changed since, or 304. The reply is `{ values, version }`. A destroyed twin's id rides the next request as `x-expressive-release`.
   - *Versions* are a server counter per instance, stepped per flush, as `generation:counter`: a version from before a rebuild never matches one after. Each key records the version it last changed at, which is what trims a pull. Never clocks - browser and server clocks drift, and a millisecond holds several flushes. The server's version is the only truth: the client holds the server's number per key, newer is a higher counter in the same generation, a different generation means a rebuild and the reply is taken whole; a lower counter in the same generation is an older reply and is dropped. The client never compares values. Under `set` (Later) a write carries `If-Match: <version>`; a stale one gets 409 with current values and the local write rolls back.
-  - *Children (next):* an owned child's values ride inline under its field and are addressed by path (`<twin>.cart`), with no id of their own; a reference (`get(Session)`, a `parent` field) is an address, never a copy, so cycles stay bounded.
+  - *Children (next):* an owned child's values ride inline under its field and are addressed by path (`<twin>.cart`), with no id of their own; its public `async` methods are callable through its owner's twin (`cart.add`). A reference (`get(Session)`, a `parent` field) is not a copy; whether a public one crosses at all is open (Open).
   - Not yet: call ids (Reliability), `set` (Later).
 
 ## Context model
@@ -172,6 +172,8 @@ Principles the MVP must not contradict; most land after it.
 
 ## Later
 
+- **Collections of children** - arrays of States and `map()` fields, by keyed path. Its own phase after children.
+
 - **TTL sweeper.** One per process; best effort. Evicting an entry evicts the keys it owns.
 - **Warm rehydration.** A State that packs its managed values into a token (JWT) or store and restores from it on a key miss - the same serialise/restore twins need for snapshots. Hot = in memory; warm = rebuilt without the source of truth; cold = the source of truth or the user. Stateless tokens cannot be revoked before expiry.
 - **`api/**` lane.** Calls from the bundled client work as in the MVP, walked from `api/`'s own root. For external clients: per-request identity (bearer), a `Call` State for HTTP concerns (headers, status, cookies; `Fetch` considered - its instance name shadows global `fetch()`), the reply pipeline (string → `text/plain`, `undefined` → 204, other values → JSON, status helpers, data primitives; uncaught → 500, message in dev only), REST as `protected` uppercase verbs on dev's `Route` (params from `this.match`, body as the one parameter), HTML replies via a server DOM shim, OpenAPI.
@@ -221,7 +223,8 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 ## Open
 
 - Status helpers - an exported error class's `status` field covers it for now. If wanted: naming (`NotFound` and `Redirect` collide with existing exports; leaning `Status.NotFound(...)`; `expressive-rpc` had `Forbidden`, `NotFound`, `Internal`, `BadInput`).
-- What counts as serializable on the wire (Date, Map, class instances); the connection id is transport only, never part of a key.
+- Public references (`session = get(Session)`): left server-only (the build refuses a public one until decided), or projected from the server as an address the client resolves to the twin it holds for that instance.
+- What counts as serializable on the wire - its own phase: a general codec in place of JSON, tagging `Date`, `Map`, `Set`, `BigInt`, `undefined` and more, with error classes (rebuilt today only when thrown) moved onto it, and room for explicitly supported extensions. Later on the same pipeline: functions sent as an id in a callback registry, called back through the same dispatch as methods and plain calls. The connection id is transport only, never part of a key.
 - How params reach server code - the walk already matches the path against dev's route table (not the router, which stays client-side); `Route.get().match` or something plainer, decided when step 2 needs it.
 - Optimistic writes - with `set` (Later): a local write sent with `If-Match`, rolled back on 409.
 - Demand as an mvc primitive - see Twins.
