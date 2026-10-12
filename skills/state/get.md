@@ -63,9 +63,11 @@ const stop = state.get((current, update) => {
 
 - `(event) => void` - cleanup, called with `true` (about to re-run), `false` (cancelled via `stop()`), or `null` (state destroyed)
 - `null` - cancel the effect (one-shot)
-- `Promise<void>` - ignored
+- `Promise` - the run is pending until it settles; the resolved value is treated as above (function → cleanup, `null` → cancel)
 
-**Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
+**Async effects:** tracked changes during a pending run do not re-run it - they accumulate, and one re-run follows settlement with every changed key in `update`. An async effect does not see intermediate states; sync effects remain the per-event tool. A rejection is reported like a sync throw (`catch` handlers, then uncaught); the effect then stays idle until cancelled. Cancel or destroy while pending: no re-run, a cleanup the run resolves to is called with `false` / `null`.
+
+**Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) - synchronously or after an `await` - pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
 
 **Before ready:** effects registered in constructors wait for activation before first run.
 
@@ -143,7 +145,7 @@ type Effect<T> = (
   this: T,
   current: T,
   update: readonly State.Event<T>[] | undefined
-) => EffectCallback | Promise<void> | null | void;
+) => EffectCallback | Promise<EffectCallback | null | void> | null | void;
 
 type EffectCallback = (update: boolean | null) => void;
 ```

@@ -1,4 +1,4 @@
-import { enqueue, hold } from './dispatch';
+import { enqueue, hold, REPORT } from './dispatch';
 
 declare namespace Observer {
   /**
@@ -18,7 +18,7 @@ declare namespace Observer {
     this: T,
     proxy: T,
     changed: readonly Event[]
-  ) => EffectCleanup | Promise<void> | null | void;
+  ) => EffectCleanup | Promise<EffectCleanup | null | void> | null | void;
 
   type Event = number | string | symbol;
 
@@ -274,11 +274,28 @@ function watch<T extends object>(
   let previous: Observing | undefined;
   let latest: Observing | undefined;
   let queued = false;
+  let pending = false;
   let suspense: ReturnType<typeof hold>;
 
   function resume() {
     suspense?.();
     suspense = undefined;
+  }
+
+  function suspend(on: Promise<unknown>) {
+    reset = undefined;
+    const suspended = suspense = hold(true, transition)!;
+    const replay = () => {
+      if (suspense !== suspended) return;
+      suspense = undefined;
+      suspended(invoke);
+    };
+    on.then(replay, replay);
+  }
+
+  function discard(output: unknown, key: boolean | null) {
+    if (output instanceof Promise) output.then((value) => discard(value, key), () => {});
+    else if (typeof output == 'function') output(key);
   }
 
   function invoke() {
@@ -288,9 +305,13 @@ function watch<T extends object>(
     let ignore: boolean = true;
 
     function onUpdate() {
-      events = [...o.events];
+      events = [...new Set([...events, ...o.events])];
 
       if (reset === null) return null;
+      if (pending) {
+        queued = true;
+        return;
+      }
       if (ignore) {
         if (queued) enqueue(invoke, transition, target);
         return;
@@ -305,6 +326,15 @@ function watch<T extends object>(
       enqueue(invoke, transition, target);
     }
 
+    function apply(output: unknown, release?: (update?: boolean | null) => void) {
+      ignore = false;
+      reset = output === null ? null : invoke;
+      unset = (key) => {
+        if (typeof output == 'function') output(key);
+        if (release) release(key);
+      };
+    }
+
     function run(release?: (update?: boolean | null) => void) {
       if (previous !== latest) unobserve(latest!);
 
@@ -313,9 +343,8 @@ function watch<T extends object>(
       const output = callback.call(proxy, proxy, events);
 
       if (observer(target) === null) {
-        if (typeof output == 'function') output(null);
         if (release) release(null);
-        return;
+        return discard(output, null);
       }
 
       if (previous && argument === false && !current.watching.size)
@@ -325,32 +354,42 @@ function watch<T extends object>(
         previous = current;
       }
 
-      ignore = false;
-      reset = output === null ? null : invoke;
-      unset = (key) => {
-        if (typeof output == 'function') output(key);
-        if (release) release(key);
-      };
-
       events = [];
+
+      if (!(output instanceof Promise)) return apply(output, release);
+
+      pending = true;
+      reset = invoke;
+      unset = release;
+
+      output.then(
+        (value) => {
+          pending = false;
+
+          if (reset === null) return discard(value, observer(target) === null ? null : false);
+
+          apply(value, release);
+
+          if (queued) onUpdate();
+        },
+        (err) => {
+          pending = false;
+
+          if (reset === null) return;
+          if (err instanceof Promise) return suspend(err);
+
+          queued = false;
+          REPORT.as('effect', target, err);
+        }
+      );
     }
 
     try {
       if (argument !== false) capture(run);
       else run();
     } catch (err) {
-      if (err instanceof Promise) {
-        reset = undefined;
-        const suspended = suspense = hold(true, transition)!;
-        const replay = () => {
-          if (suspense !== suspended) return;
-          suspense = undefined;
-          suspended(invoke);
-        };
-        err.then(replay, replay);
-      } else {
-        throw err;
-      }
+      if (err instanceof Promise) suspend(err);
+      else throw err;
     }
   }
 

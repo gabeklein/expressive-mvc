@@ -222,7 +222,7 @@ declare namespace State {
     this: T,
     current: T,
     update: readonly State.Event<T>[] | undefined
-  ) => EffectCallback | Promise<void> | null | void;
+  ) => EffectCallback | Promise<EffectCallback | null | void> | null | void;
 
   /**
    * A callback function returned by effect. Will be called when effect is stale.

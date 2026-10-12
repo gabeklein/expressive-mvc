@@ -421,9 +421,10 @@ describe('effect', () => {
   describe('async', () => {
     class Test extends State {
       value = 1;
+      other = 1;
     }
 
-    it('will not wait for a pending run before re-running', async () => {
+    it('will wait for a pending run before re-running', async () => {
       const test = Test.new();
       const pending = mockPromise<void>();
       const effect = vi.fn(($: Test) => {
@@ -438,7 +439,7 @@ describe('effect', () => {
       test.value = 2;
       await expect(test).toHaveUpdated();
 
-      expect(effect).toBeCalledTimes(2);
+      expect(effect).toBeCalledTimes(1);
 
       pending.resolve();
       await flushMicrotasks();
@@ -446,13 +447,188 @@ describe('effect', () => {
       expect(effect).toBeCalledTimes(2);
     });
 
-    it('will lose a suspense thrown after await', async () => {
+    it('will re-run once with every key changed while pending', async () => {
+      const test = Test.new();
+      const pending = mockPromise<void>();
+      const effect = vi.fn(($: Test, update: readonly (string | number | symbol)[]) => {
+        void $.value;
+        void $.other;
+        return update.length ? undefined : pending;
+      });
+
+      watch(test, effect);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      test.other = 2;
+      await expect(test).toHaveUpdated();
+
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+
+      pending.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenLastCalledWith(expect.anything(), ['value', 'other']);
+    });
+
+    it('will not re-run when nothing changed while pending', async () => {
+      const test = Test.new();
+      const pending = mockPromise<void>();
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return pending;
+      });
+
+      watch(test, effect);
+
+      pending.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(1);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will use a resolved function as cleanup', async () => {
+      const test = Test.new();
+      const cleanup = vi.fn();
+
+      watch(test, async ($) => {
+        void $.value;
+        return cleanup;
+      });
+
+      await flushMicrotasks();
+
+      expect(cleanup).not.toBeCalled();
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(cleanup).toBeCalledWith(true);
+    });
+
+    it('will cancel when resolved to null', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => {
+        void $.value;
+        return null;
+      });
+
+      watch(test, effect);
+      await flushMicrotasks();
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+    });
+
+    it('will not re-run when cancelled while pending', async () => {
+      const test = Test.new();
+      const pending = mockPromise<() => void>();
+      const cleanup = vi.fn();
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return pending;
+      });
+
+      const done = watch(test, effect);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      done();
+
+      pending.resolve(cleanup);
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(1);
+      expect(cleanup).toBeCalledWith(false);
+    });
+
+    it('will not re-run when destroyed while pending', async () => {
+      const test = Test.new();
+      const pending = mockPromise<() => void>();
+      const cleanup = vi.fn();
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return pending;
+      });
+
+      watch(test, effect);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      test.set(null);
+
+      pending.resolve(cleanup);
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(1);
+      expect(cleanup).toBeCalledWith(null);
+    });
+
+    it('will release a cleanup resolved after destroying within run', async () => {
+      const test = Test.new();
+      const cleanup = vi.fn();
+
+      watch(test, async () => {
+        test.set(null);
+        return cleanup;
+      });
+
+      await flushMicrotasks();
+
+      expect(cleanup).toBeCalledWith(null);
+    });
+
+    it('will ignore a rejection after destroying within run', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+
+      watch(test, async () => {
+        test.set(null);
+        throw new Error('late');
+      });
+
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+    });
+
+    it('will ignore a rejection after cancel', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const pending = mockPromise<void>();
+
+      const done = watch(test, () => pending);
+
+      done();
+
+      pending.reject(new Error('late'));
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+    });
+
+    it('will replay a suspense thrown after await', async () => {
       const test = Test.new();
       const suspense = mockPromise<void>();
+      let attempt = 0;
       const effect = vi.fn(async ($: Test) => {
         void $.value;
         await 0;
-        throw suspense;
+        if (!attempt++) throw suspense;
       });
 
       let output: Promise<void> | undefined;
@@ -461,13 +637,43 @@ describe('effect', () => {
 
       await expect(output).rejects.toBe(suspense);
 
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+
+      suspense.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(2);
+
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(3);
+    });
+
+    it('will not replay a suspense after cancel', async () => {
+      const test = Test.new();
+      const suspense = mockPromise<void>();
+      const effect = vi.fn(async () => {
+        await 0;
+        throw suspense;
+      });
+
+      const done = watch(test, effect);
+
+      await flushMicrotasks();
+      done();
+
       suspense.resolve();
       await flushMicrotasks();
 
       expect(effect).toBeCalledTimes(1);
     });
 
-    it('will not surface a rejection', async () => {
+    it('will surface a rejection as an effect error', async () => {
       const test = Test.new();
       const caught = mockUncaught();
       const expected = new Error('async error');
@@ -479,7 +685,36 @@ describe('effect', () => {
       await expect(output).rejects.toBe(expected);
       await flushMicrotasks();
 
+      expect(caught).toEqual([expected]);
+    });
+
+    it('will pass a rejection to catch handlers', async () => {
+      class Catching extends Test {
+        static handler = vi.fn(() => undefined);
+
+        static {
+          this.on({ catch: this.handler });
+        }
+      }
+
+      const test = Catching.new();
+      const caught = mockUncaught();
+      const expected = new Error('async error');
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return Promise.reject(expected);
+      });
+
+      watch(test, effect);
+      await flushMicrotasks();
+
+      expect(Catching.handler).toBeCalledWith(expected, 'effect', undefined);
       expect(caught).toEqual([]);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
     });
   });
 
