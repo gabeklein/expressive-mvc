@@ -12,7 +12,7 @@ import {
   type MockInstance
 } from 'vitest';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { mockPromise, flushMicrotasks, revisions, reactOnly } from '../test.setup';
+import { collect, mockPromise, flushMicrotasks, revisions, reactOnly } from '../test.setup';
 import { Runtime } from './runtime';
 
 function renderWith<T>(target: State.Type | State, hook: () => T) {
@@ -1042,5 +1042,44 @@ reactOnly.describe('State.get - fast refresh', () => {
     });
 
     expect(element.container.textContent).toBe('20');
+  });
+});
+
+reactOnly.describe('abandoned render', () => {
+  it('will not hold an abandoned render', async () => {
+    const live = new Set<State>();
+
+    class Parent extends State {}
+
+    class Test extends State {
+      new() {
+        live.add(this);
+        return () => live.delete(this);
+      }
+    }
+
+    const Child = () => {
+      Test.use();
+      Parent.get();
+      return null;
+    };
+
+    const Wait = () => {
+      throw mockPromise();
+    };
+
+    const element = render(
+      <Component for={Parent}>
+        <Suspense fallback={null}>
+          <Child />
+          <Wait />
+        </Suspense>
+      </Component>
+    );
+
+    element.rerender(<Component for={Parent} />);
+    await act(collect);
+
+    expect(live.size).toBe(0);
   });
 });

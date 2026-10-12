@@ -1,8 +1,8 @@
 import React, { Suspense } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Component, State, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { flushMicrotasks, mockPromise, reactOnly } from '../test.setup';
+import { collect, flushMicrotasks, mockPromise, reactOnly, suspender } from '../test.setup';
 import { pending } from '@expressive/mvc';
 import * as Refresh from 'react-refresh/runtime';
 
@@ -573,5 +573,98 @@ describe('owner', () => {
 
     expect(outer).not.toBe(inner);
     expect(inner.get(State, false)).toBeUndefined();
+  });
+});
+
+reactOnly.describe('abandoned render', () => {
+  const live = new Set<State>();
+
+  class Test extends State {
+    new() {
+      live.add(this);
+      return () => live.delete(this);
+    }
+  }
+
+  const Child = () => {
+    Test.use();
+    return null;
+  };
+
+  beforeEach(() => live.clear());
+
+  it('will destroy attempts superseded by a commit', async () => {
+    const { Wait, resolve } = suspender();
+
+    render(
+      <Suspense fallback={null}>
+        <Child />
+        <Wait />
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+    await act(collect);
+
+    expect(live.size).toBe(1);
+  });
+
+  it('will destroy a first mount removed while suspended', async () => {
+    const { Wait } = suspender();
+    const element = render(
+      <Suspense fallback={null}>
+        <Child />
+        <Wait />
+      </Suspense>
+    );
+
+    element.rerender(null);
+    await act(collect);
+
+    expect(live.size).toBe(0);
+  });
+
+  it('will destroy a dropped transition render', async () => {
+    const { Wait } = suspender();
+    let show!: (shown: boolean) => void;
+
+    const App = () => {
+      const [shown, setShown] = React.useState(false);
+      show = setShown;
+
+      return (
+        <Suspense fallback={null}>
+          {shown && <><Child /><Wait /></>}
+        </Suspense>
+      );
+    };
+
+    render(<App />);
+
+    await act(async () => React.startTransition(() => show(true)));
+    await act(async () => React.startTransition(() => show(false)));
+    await act(collect);
+
+    expect(live.size).toBe(0);
+  });
+
+  it('will keep an instance hidden by Activity', async () => {
+    const element = render(
+      <React.Activity mode="hidden">
+        <Child />
+      </React.Activity>
+    );
+
+    await act(collect);
+    expect(live.size).toBe(1);
+
+    element.rerender(
+      <React.Activity mode="visible">
+        <Child />
+      </React.Activity>
+    );
+
+    await act(collect);
+    expect(live.size).toBe(1);
   });
 });

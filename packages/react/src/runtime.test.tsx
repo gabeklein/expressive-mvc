@@ -1,6 +1,6 @@
 import { act, render } from '@testing-library/react';
 import { Activity, ReactNode, Suspense, useState } from 'react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Component, pending, State } from '.';
 import { mockPromise, reactOnly } from '../test.setup';

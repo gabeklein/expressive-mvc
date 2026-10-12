@@ -1,9 +1,9 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
-import { vi, expect, it, describe } from 'vitest';
+import { beforeEach, vi, expect, it, describe } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly } from '../test.setup';
+import { collect, mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly, suspender } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
 import { Component, State, pending, set } from '.';
 
@@ -1521,5 +1521,56 @@ describe('owner', () => {
 
     expect(wrapper).toBeInstanceOf(Component);
     expect(wrapper.get(State)).toBe(host);
+  });
+});
+
+reactOnly.describe('abandoned render', () => {
+  const live = new Set<State>();
+
+  class Test extends Component {
+    new() {
+      live.add(this);
+      return () => live.delete(this);
+    }
+  }
+
+  class Provided extends State {
+    new() {
+      live.add(this);
+      return () => live.delete(this);
+    }
+  }
+
+  beforeEach(() => live.clear());
+
+  it('will destroy a first mount removed while suspended', async () => {
+    const { Wait } = suspender();
+    const element = render(
+      <Suspense fallback={null}>
+        <Test />
+        <Wait />
+      </Suspense>
+    );
+
+    element.rerender(null);
+    await act(collect);
+
+    expect(live.size).toBe(0);
+  });
+
+  it('will destroy states provided by an abandoned render', async () => {
+    const { Wait } = suspender();
+    const element = render(
+      <Suspense fallback={null}>
+        <Component for={Provided}>
+          <Wait />
+        </Component>
+      </Suspense>
+    );
+
+    element.rerender(null);
+    await act(collect);
+
+    expect(live.size).toBe(0);
   });
 });
