@@ -56,3 +56,29 @@ test("gives each use() of a remote class its own server instance, for the life o
   await page.reload();
   await expect(page.getByRole("button", { name: /^Left/ })).toHaveText("Left 0");
 });
+
+test("reads an owned child through its owner's twin, and calls its methods", async ({ page, open }) => {
+  await open("/counter");
+  const tap = page.getByRole("button", { name: /^Left/ });
+  const since = page.locator("small").filter({ hasText: /^Left/ });
+
+  await expect(since).toHaveText("Left since clear: 0");
+
+  await tap.click();
+  await tap.click();
+  await expect(since).toHaveText("Left since clear: 2");
+
+  await page.getByRole("button", { name: "Clear Left" }).click();
+  await expect(since).toHaveText("Left since clear: 0");
+  await expect(tap).toHaveText("Left 2");
+
+  await tap.click();
+  await expect(since).toHaveText("Left since clear: 1");
+
+  await page.getByRole("button", { name: "Restart Left" }).click();
+  await expect(tap).toHaveText("Left 0");
+  await expect(since).toHaveText("Left since clear: 0");
+
+  await tap.click();
+  await expect(since).toHaveText("Left since clear: 1");
+});
