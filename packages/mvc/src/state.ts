@@ -261,7 +261,7 @@ abstract class State {
 
   constructor(...args: State.Args) {
     define(this, 'is', { value: this });
-    init(this, args, this.new);
+    init(this, args);
   }
 
   /**
@@ -270,7 +270,7 @@ abstract class State {
    *
    * It is recommended you protect this method.
    */
-  protected new?(): void | (() => void);
+  protected new?(...args: any[]): void | (() => void) | Promise<void>;
 
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
@@ -610,6 +610,7 @@ function init(state: State, ...args: State.Args) {
   }
 
   const { before, after } = bootstrap(T);
+  const hook = (state as unknown as { new?: State.Init }).new;
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
@@ -664,7 +665,7 @@ function init(state: State, ...args: State.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const queue = [...before, observe, ...args, ...after, register];
+    const queue = [...before, observe, ...args, hook, ...after, register];
 
     capture((release) => {
       listener(state, () => release(null), null);

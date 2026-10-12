@@ -3303,6 +3303,35 @@ describe('on type stage (static)', () => {
     expect(test.foo as unknown).toBe('claimed');
     expect(typeof foo.set).toBe('function');
   });
+
+  it('will let a handler wrap new before the first instance runs it', () => {
+    const seen: string[] = [];
+
+    class Test extends State {
+      protected new() {
+        seen.push('new');
+      }
+    }
+
+    Test.on({
+      type: (type) => {
+        const { value } = Object.getOwnPropertyDescriptor(type.prototype, 'new')!;
+
+        Object.defineProperty(type.prototype, 'new', {
+          configurable: true,
+          writable: true,
+          value(this: Test) {
+            seen.push('wrapped');
+            value.call(this);
+          }
+        });
+      }
+    });
+
+    Test.new();
+
+    expect(seen).toEqual(['wrapped', 'new']);
+  });
 });
 
 describe('on combined stages (static)', () => {
