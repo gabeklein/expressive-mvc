@@ -11,7 +11,7 @@ A browser renderer for MVC components with no React underneath. `State`, `Compon
 - the same with the styling system: ~19.7 kB
 - the same with `@expressive/router`: ~23.9 kB
 
-These replace `react` + `react-dom`; they don't add to them. Every pull request reports them against budget; a release cannot merge while a shape is over.
+These replace `react` + `react-dom`; they don't add to them. Every pull request checks them against budget; budgets are re-set each release.
 
 Status: `0.1`, the first release. It's a tested renderer for applications prepared to track pre-1.0 changes, not an LTS contract.
 

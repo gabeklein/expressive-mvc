@@ -16,8 +16,9 @@ import { withWorkspaceLinks } from './workspace-links';
  * toolchain drift does not.
  *
  * Budgets are a release decision. Without `--gate` the script reports and
- * never fails; CI passes `--gate` only on the Version Packages PR, where one
- * deliberate pass re-sets budgets and the figures quoted in docs.
+ * never fails. CI's `size` job passes `--gate` on every PR into main - a red
+ * check that does not block merging - and once per release a PR on main
+ * re-sets budgets and the figures quoted in docs.
  *
  * 10 kB is the line the maintainer cares about: `react: typical app`, the site's
  * headline figure, crossed it at 10.14 kB in 2026-09 (State.on({ catch }), the error-report classes,
@@ -158,8 +159,6 @@ await Bun.write(
 
 const gate = process.argv.includes('--gate');
 
-// Outside the release gate a breach is not a red check, so the annotation
-// carries it to the PR's Checks tab and the table to the run page.
 if (over.length)
   console.log(
     `::warning title=Bundle size::` +
@@ -197,7 +196,7 @@ if (over.length && gate)
     `Bundle size exceeds budget:\n` +
     over.map(({ name, bytes, limit }) =>
       `  ${name}: ${kb(bytes)} exceeds budget ${kb(limit)}`).join('\n') +
-    `\n\nBefore this release merges, land a PR on main that re-sets the budgets in` +
+    `\n\nLeave budgets alone unless the growth is unintended. Before the next release, land a PR on main that re-sets the budgets in` +
     ` .github/scripts/size-limit.ts and every size claim in the docs and site (git grep -nE '[0-9] ?kB' website skills).`
   );
 
