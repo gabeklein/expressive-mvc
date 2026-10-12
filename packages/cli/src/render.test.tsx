@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, vi } from 'vitest';
 import { Component, Context, State, get, set } from '@expressive/mvc';
 
 import { flushMicrotasks, mockPromise } from '../test.setup';
@@ -562,6 +562,16 @@ describe('output', () => {
     await flushMicrotasks();
 
     expect(writes).toEqual(['count: 0\n']);
+  });
+
+  it('will write to stdout by default', () => {
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const app = mount('to stdout');
+
+    app.unmount();
+
+    expect(write).toHaveBeenCalledWith(expect.stringContaining('to stdout'));
+    write.mockRestore();
   });
 
   it('will render within a provided context', () => {

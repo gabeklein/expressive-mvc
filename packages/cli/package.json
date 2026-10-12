@@ -6,7 +6,7 @@
   "license": "MIT",
   "author": {
     "name": "Gabe Klein",
-    "email": "gabe@termtm.com",
+    "email": "gabe@expressive.dev",
     "url": "https://github.com/gabeklein"
   },
   "repository": {
@@ -44,13 +44,16 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "tsc --noEmit && bun test --coverage --only-failures"
-  },
-  "dependencies": {
-    "@expressive/mvc": "workspace:^"
+    "typecheck": "tsc --noEmit --incremental",
+    "coverage": "vitest run --coverage",
+    "test": "bun run typecheck && bun run coverage"
   },
   "devDependencies": {
-    "@types/node": "^18.19.0",
+    "@expressive/mvc": "workspace:^",
+    "@types/node": "^25.2.0",
     "tsdown": "^0.20.1"
+  },
+  "peerDependencies": {
+    "@expressive/mvc": "^0.88.0"
   }
 }

@@ -179,7 +179,7 @@ function recover(slot: Slot, error: unknown, app: App) {
   if (!boundary || (boundary !== slot && RENDERING > 1)) throw error;
 
   const instance = boundary.instance!;
-  const result = instance.catch!(error as Error);
+  const result = instance.catch!(error as Error, instance);
 
   show(boundary, instance.fallback, app);
 
