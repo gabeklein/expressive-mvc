@@ -676,7 +676,7 @@ function tail(internal: Internal) {
 function settled(internal: Internal) {
   if (!internal.current) {
     if (STEP.get((internal.self as { next?: Function }).next!)?.length)
-      return Promise.reject(new Error(`${internal.self} is idle; next() takes arguments - call to start a run.`));
+      return Promise.reject(new Error(`${internal.self} is idle. next() takes arguments; call it to start a run.`));
 
     start(internal, []);
   }

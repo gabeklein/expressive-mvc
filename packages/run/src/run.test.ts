@@ -818,7 +818,7 @@ describe('runs', () => {
     const test = Test.new();
 
     await expect(test.then((value) => value)).rejects.toThrow(
-      `${test} is idle; next() takes arguments - call to start a run.`
+      `${test} is idle. next() takes arguments; call it to start a run.`
     );
     expect(test.then.runs).toBe(0);
     expect(await test.next('x')).toBe('x');
@@ -863,7 +863,7 @@ describe('runs', () => {
 
     const test = Test.new();
 
-    await expect(test).rejects.toThrow(`${test} is idle; next() takes arguments - call to start a run.`);
+    await expect(test).rejects.toThrow(`${test} is idle. next() takes arguments; call it to start a run.`);
   });
 
   it('will reject the instance when the last run failed', async () => {
