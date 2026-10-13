@@ -48,7 +48,7 @@ interface Internal extends Runner.Snapshot {
 const FRAME = new WeakMap<object, Frame>();
 const STEP = new WeakMap<Function, Function>();
 const TOKEN = new WeakMap<object, Frame>();
-const WAITS = new WeakSet<object>();
+const REF = new WeakMap<Function, { internal: Internal; key: string }>();
 const HOOK = /^(before|after)([A-Z]|$)/;
 const KEYS = ['status', 'active', 'record', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
@@ -60,12 +60,14 @@ declare namespace Runner {
     ? Awaited<R> extends void ? A[0] : Awaited<R>
     : State.Values<T>;
 
-  /** A planned item: a step, a parallel group (`group`), or a wait. */
+  /** A planned item: a step, a parallel group (`group`), or a wait (`answers`). */
   interface Node {
     id: string;
     key: string;
     args: unknown[];
     group?: Node[];
+    /** Keys of the steps which may answer this wait. */
+    answers?: string[];
   }
 
   /** What a step call inside a step returns - inert, not awaitable. */
@@ -90,7 +92,12 @@ declare namespace Runner {
 
   interface Wait {
     id: string;
-    context: unknown;
+    /** Key of the step which opened the wait. */
+    step: string;
+    /** Arguments of the step which opened the wait. */
+    args: unknown[];
+    /** Keys of the steps which may answer it. */
+    answers: string[];
   }
 
   interface Retry {
@@ -128,6 +135,12 @@ declare namespace Runner {
      */
     <I, This>(this: This, items: Iterable<I>, each: (item: I, index: number) => unknown): Runner.Token;
 
+    /**
+     * Inside a step: park this point in the plan until an outside call to one of these steps
+     * answers it. The next step in sequence runs once the answer, and all it schedules, is done.
+     */
+    <This>(this: This, ...steps: ((...args: any[]) => unknown)[]): Runner.Token;
+
     /** The instance this controller runs. */
     readonly on: T;
     readonly status: Runner.Status;
@@ -149,8 +162,6 @@ declare namespace Runner {
     end(value?: unknown): void;
     /** Cancel: discard pending steps and queued runs; in-flight steps settle and commit. */
     stop(options?: Runner.Stop): void;
-    /** Inside a step: a token which parks its branch until an outside step call answers it. */
-    wait(context?: unknown): Runner.Token;
     /** At the top of a step: try it again on throw. */
     retry(config: Runner.Retry): void;
 
@@ -214,7 +225,6 @@ function run<T extends State>(self: T): Runner<T> {
     get: { value: () => snapshot(internal) },
     end: { value: () => call(internal, 'end', []) },
     stop: { value: (options?: Runner.Stop) => stop(internal, options) },
-    wait: { value: () => outside('wait') },
     retry: { value: () => outside('retry') },
     [Symbol.iterator]: {
       value(this: Runner.Controller) {
@@ -246,6 +256,7 @@ function run<T extends State>(self: T): Runner<T> {
 
       steps.add(key);
       STEP.set(step, unbind(desc.get!));
+      REF.set(step, { internal, key });
       Object.defineProperty(self, key, { value: step, writable: true, configurable: true });
     }
 
@@ -280,7 +291,7 @@ function call(internal: Internal, key: string, args: unknown[], frame?: Frame) {
   if (key == 'next') return start(internal, args);
 
   const { current } = internal;
-  const wait = current && key != 'end' && current.parked.keys().next().value;
+  const wait = current && [...current.parked.keys()].find((wait) => wait.answers.includes(key));
 
   if (wait) return wake(current, wait, key, args);
 
@@ -392,7 +403,7 @@ async function exec(run: Run, item: Runner.Node): Promise<void> {
 
   let frame: Frame | undefined;
 
-  if (WAITS.has(item)) frame = await park(run, item);
+  if (item.answers) frame = await park(run, item);
   else if (item.key != 'end') frame = await invoke(run, item);
 
   if (frame) for (const child of frame.items) await exec(run, child);
@@ -400,7 +411,8 @@ async function exec(run: Run, item: Runner.Node): Promise<void> {
 
 function park(run: Run, item: Runner.Node) {
   const { internal } = run;
-  const wait: Runner.Wait = { id: item.id, context: item.args[0] };
+  const { key, args } = TOKEN.get(item)!;
+  const wait: Runner.Wait = { id: item.id, step: key, args, answers: item.answers! };
   let closures = [...run.undo.values()].some((undo) => typeof undo == 'function');
 
   if (closures && !run.warned) {
@@ -442,7 +454,7 @@ function enter(run: Run, node: Runner.Node) {
 
       if (value === runner) return view(frame);
       if (typeof value != 'function') return value;
-      if (STEP.has(value)) return value.bind(frame.proxy);
+      if (STEP.has(value)) return ref(value, frame.proxy);
 
       return Object.hasOwn(target, prop) ? value : value.bind(target);
     },
@@ -470,19 +482,24 @@ function view(frame: Frame): Runner.Controller {
 
   const { internal } = frame.run;
 
-  const view = function (steps: unknown, each?: (item: unknown, index: number) => unknown) {
+  const view = function (...args: unknown[]) {
+    const [steps, each] = args as [Iterable<unknown>, (item: unknown, index: number) => unknown];
+    const refs = args.map((arg) => REF.get(arg as Function));
+    let waits = refs.length && refs.every((ref) => ref?.internal === internal);
+
+    if (waits) return wait(frame, refs.map((ref) => ref!.key));
+
     let awaited = !steps || typeof steps == 'function';
 
     if (awaited) throw new Error('a step cannot await its own run.');
 
-    return group(frame, Array.from(steps as Iterable<unknown>, each!));
+    return group(frame, Array.from(steps, each));
   } as Runner.Controller;
 
   Object.setPrototypeOf(view, internal.runner);
   Object.defineProperties(view, {
     then: { value: view },
     end: { value: (value?: unknown) => issue(frame, 'end', value === undefined ? [] : [value]) },
-    wait: { value: (context?: unknown) => wait(frame, context) },
     retry: { value: (config: Runner.Retry) => void (frame.retry = config) }
   });
 
@@ -502,12 +519,18 @@ function group(frame: Frame, members: unknown[]) {
   return group;
 }
 
-function wait(frame: Frame, context: unknown) {
-  const token = issue(frame, 'wait', [context]);
+function wait(frame: Frame, answers: string[]) {
+  for (const key of answers) if (key == 'next' || key == 'end') throw new Error(`${key} cannot answer a wait.`);
 
-  WAITS.add(token);
+  return Object.assign(issue(frame, 'wait', []), { answers });
+}
 
-  return token;
+function ref(step: Function, proxy: State) {
+  const bound = step.bind(proxy);
+
+  REF.set(bound, REF.get(step)!);
+
+  return bound;
 }
 
 function hook(self: State, key: string, ...args: unknown[]) {
@@ -583,7 +606,7 @@ function commit(frame: Frame, out: unknown, attempt: number) {
   if (late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
 
   let undo: Function | Runner.Node | undefined;
-  let token = TOKEN.get(out as object) === frame && items.includes(out as Runner.Node) && !WAITS.has(out as object);
+  let token = TOKEN.get(out as object) === frame && items.includes(out as Runner.Node) && !(out as Runner.Node).answers;
 
   if (key == 'end') {
     if (items.length) throw new Error(`end cannot schedule ${items[0].key}.`);

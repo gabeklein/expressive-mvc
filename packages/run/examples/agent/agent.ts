@@ -32,7 +32,7 @@ export class Agent extends State {
     let allowed = this.mode === 'yolo';
 
     if (allowed || this.mode === 'auto' && safe(call)) this.exec(call);
-    else this.then.wait(call);
+    else this.then(this.allow, this.deny);
   }
 
   protected async exec(call: ToolCall) {

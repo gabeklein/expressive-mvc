@@ -46,7 +46,7 @@ it('will wait for approval and resume', async () => {
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
-  const [write, read] = agent.then.waiting.map((wait) => wait.context as ToolCall);
+  const [write, read] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
 
   expect(write).toMatchObject({ name: 'write', input: 'notes' });
   expect(read).toMatchObject({ name: 'read', input: 'docs' });

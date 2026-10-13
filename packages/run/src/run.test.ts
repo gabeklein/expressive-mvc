@@ -1369,18 +1369,18 @@ describe('stop', () => {
 });
 
 describe('wait', () => {
-  it('will park until an outside call answers', async () => {
+  it('will park until a listed step answers', async () => {
     class Test extends State {
       then = run(this);
       answer = '';
 
       next() {
-        this.ask();
+        this.ask('question');
         this.later();
       }
 
-      ask() {
-        this.then.wait('question');
+      ask(question: string) {
+        this.then(this.reply, this.skip);
       }
 
       reply(answer: string) {
@@ -1388,6 +1388,7 @@ describe('wait', () => {
         this.thanks();
       }
 
+      skip() {}
       thanks() {}
       later() {}
     }
@@ -1397,7 +1398,7 @@ describe('wait', () => {
 
     await flushMicrotasks();
     expect(test.then.status).toBe('waiting');
-    expect(test.then.waiting).toEqual([{ id: 'wait#1', context: 'question' }]);
+    expect(test.then.waiting).toEqual([{ id: 'wait#1', step: 'ask', args: ['question'], answers: ['reply', 'skip'] }]);
 
     test.reply('yes');
     expect(test.then.waiting).toEqual([]);
@@ -1405,7 +1406,41 @@ describe('wait', () => {
 
     expect(await result).toEqual({ answer: 'yes' });
     expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'reply#1', 'thanks#1', 'later#1']);
+    expect(test.then.record[1].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['reply', 'skip'] }]);
     expect(test.then.record[2]).toMatchObject({ wake: 'wait#1', patch: { answer: 'yes' } });
+  });
+
+  it('will run what follows a wait after its answer', async () => {
+    const order: string[] = [];
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply);
+        this.log('after');
+      }
+
+      reply() {
+        this.log('reply');
+        this.log('reply again');
+      }
+
+      log(message: string) {
+        order.push(message);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    test.reply();
+    await result;
+
+    expect(order).toEqual(['reply', 'reply again', 'after']);
   });
 
   it('will answer the oldest wait first', async () => {
@@ -1418,7 +1453,7 @@ describe('wait', () => {
       }
 
       ask(name: string) {
-        this.then.wait(name);
+        this.then(this.reply);
       }
 
       reply(answer: string) {
@@ -1430,7 +1465,7 @@ describe('wait', () => {
     const seen: unknown[] = [];
     const result = test.next();
 
-    test.get((self) => void seen.push(self.then.waiting.map((wait) => wait.context)));
+    test.get((self) => void seen.push(self.then.waiting.map((wait) => wait.args[0])));
 
     await flushMicrotasks();
     test.reply('1');
@@ -1446,6 +1481,76 @@ describe('wait', () => {
     expect(seen).toEqual([[], ['a', 'b'], ['b'], []]);
   });
 
+  it('will not answer a wait with a step it does not list', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply);
+      }
+
+      reply() {}
+      other() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(() => test.other()).toThrow('other cannot be called from outside; call next() to run.');
+
+    test.reply();
+    await result;
+  });
+
+  it('will fail if next or end answers a wait', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next(end: boolean) {
+        if (end) this.then(this.end);
+        else this.then(this.next);
+      }
+
+      end() {}
+    }
+
+    const test = Test.new();
+
+    await expect(test.next(true)).rejects.toThrow('end cannot answer a wait.');
+    await expect(test.next(false)).rejects.toThrow('next cannot answer a wait.');
+  });
+
+  it('will fail if a step returns its wait', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        return this.then(this.reply);
+      }
+
+      reply() {}
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('next returned a value; a step returns nothing, or its undo.');
+  });
+
+  it('will not wait on a step of another instance', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next(other?: Test) {
+        if (other) this.then(other.reply);
+      }
+
+      reply() {}
+    }
+
+    const other = Test.new();
+
+    await expect(Test.new().next(other)).rejects.toThrow('a step cannot await its own run.');
+  });
+
   it('will warn once if undo closures are held', async () => {
     const warn = mockWarn();
 
@@ -1459,7 +1564,7 @@ describe('wait', () => {
       }
 
       ask() {
-        this.then.wait();
+        this.then(this.reply);
       }
 
       reply() {}
@@ -1483,13 +1588,14 @@ describe('wait', () => {
       then = run(this);
 
       next() {
-        this.then.wait();
+        this.then(this.reply);
       }
 
       reply() {}
     }
 
     const test = Test.new();
+    const reply = test.reply;
     const result = test.next();
 
     await flushMicrotasks();
@@ -1497,36 +1603,17 @@ describe('wait', () => {
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
     expect(test.then.waiting).toEqual([]);
-    expect(() => test.reply()).toThrow('reply cannot be called from outside; call next() to run.');
+    expect(() => reply()).toThrow('reply cannot be called from outside; call next() to run.');
   });
 
-  it('will not answer a wait with end', async () => {
-    class Test extends State {
-      then = run(this);
-
-      next() {
-        this.then.wait();
-      }
-
-      end() {}
-    }
-
-    const test = Test.new();
-
-    test.next();
-    await flushMicrotasks();
-    expect(() => test.end()).toThrow('end cannot be called from outside; call next() to run.');
-    test.then.stop();
-  });
-
-  it('will throw if wait or retry is called outside a step', () => {
+  it('will not have wait on the runner', () => {
     class Test extends State {
       then = run(this);
     }
 
     const test = Test.new();
 
-    expect(() => test.then.wait()).toThrow('wait must be called inside a step.');
+    expect('wait' in test.then).toBe(false);
     expect(() => test.then.retry({ attempts: 2 })).toThrow('retry must be called inside a step.');
   });
 });
