@@ -10,7 +10,7 @@ export class SubmitOrder extends State {
   charge?: Charge = undefined;
   tracking = '';
 
-  protected new() {
+  next() {
     this.reserve();
   }
 
@@ -25,9 +25,8 @@ export class SubmitOrder extends State {
   async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
-    this.ship(this.charge.id);
-    this.receipt(this.charge.receiptUrl);
-    this.done();
+    this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
+    this.end();
 
     return this.refund(this.charge.id);
   }
@@ -44,7 +43,7 @@ export class SubmitOrder extends State {
     await stripe.refund(chargeId);
   }
 
-  done() {
+  end() {
     return { orderId: this.charge!.id, tracking: this.tracking };
   }
 }
