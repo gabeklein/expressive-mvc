@@ -1,0 +1,53 @@
+import { has, State } from '@expressive/mvc';
+import { run } from '@expressive/run';
+
+import { model, result, safe, toolCalls, tools, user, type Message, type ToolCall } from './services';
+
+export class Agent extends State {
+  then = run(this);
+
+  mode: 'ask' | 'auto' | 'yolo' = 'ask';
+  messages = has<Message>();
+
+  async next(prompt: string) {
+    this.messages.push(user(prompt));
+    this.turn();
+  }
+
+  async turn() {
+    const reply = await model.create(this.messages);
+
+    this.messages.push(reply);
+
+    const calls = toolCalls(reply);
+
+    if (calls.length) {
+      this.then(calls, this.tool);
+      this.turn();
+    }
+    else this.end(reply);
+  }
+
+  tool(call: ToolCall) {
+    let allowed = this.mode === 'yolo';
+
+    if (allowed || this.mode === 'auto' && safe(call)) this.exec(call);
+    else this.then.wait(call);
+  }
+
+  async exec(call: ToolCall) {
+    this.messages.push(result(call, await tools.run(call)));
+  }
+
+  allow(call: ToolCall) {
+    this.exec(call);
+  }
+
+  deny(call: ToolCall) {
+    this.messages.push(result(call, 'denied'));
+  }
+
+  end(reply: Message) {
+    return reply.content;
+  }
+}
