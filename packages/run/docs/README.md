@@ -64,8 +64,8 @@ const { orderId } = await order;      // runs next(), typed by end()
 Journal after a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1 → end#1`. A `courier.book` failure unwinds every committed step: `receipt` (prior restored), `refund('ch_42')`, `inventory.release('hold_sku')`, `next`.
 
 - [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, the first-call rule, helpers, `end`, what a step may return
-- [runs.md](runs.md) - `next`, repeating, the queue, awaiting, `stop`
-- [wait.md](wait.md) - parking a branch until an outside call answers it
+- [runs.md](runs.md) - `next`, repeating, the queue, awaiting, `end` from outside, `stop`
+- [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called from outside; answering steps are present only while waited for
 - [retry.md](retry.md) - per-step retry with backoff
 - [hooks.md](hooks.md) - `before`/`after`, per step or for all
 - [undo.md](undo.md) - undo closures, returned tokens, the unwind on failure
@@ -75,6 +75,6 @@ Journal after a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receip
 
 Opinionated, opt-out: steps are `protected async`. Calling a step schedules it and yields no value - `protected` makes the type match the runtime (outside calls throw), `async` makes the declared `Promise<void>` say so uniformly. Neither is enforced.
 
-- Public: `next` - called from outside, its parameters type the call; steps answering a `wait` (`allow`, `deny`) - called from outside. Still `async`.
+- Public: `next` - called from outside, its parameters type the call; answering steps (`allow`, `deny`) - called from outside while a wait accepts them. Still `async`.
 - `end` is `protected`, `async` only if it awaits - the result type is read from it either way.
 - Hooks are `protected` - nothing reads them through the type - and not `async`: their return is not awaited.

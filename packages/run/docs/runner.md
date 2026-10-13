@@ -8,15 +8,15 @@
 | `active` | key of a step in flight, else `undefined`; with a group in flight, the latest invoked |
 | `record` | the current or last run's journal - one entry per settled step, in commit order |
 | `queue` | argument arrays of queued `next()` calls |
-| `waiting` | open waits, `{ id, context }`, oldest first |
+| `waiting` | open waits, `{ id, step, args, answers }`, oldest first ([wait.md](wait.md)) |
 | `runs` | finished runs - ended, failed or stopped |
 | `error` | what failed the run, or what its last undo threw |
 | `on` | the instance |
-| `end(value?)` | in a step: end the run once everything else has settled ([steps.md](steps.md#end-joins)) |
+| `end(value?)` | in a step: end the run once everything else has settled ([steps.md](steps.md#end-joins)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |
 | `stop({ undo? })` | cancel ([runs.md](runs.md#stop)) |
-| `wait(context?)` | in a step: park this branch ([wait.md](wait.md)) |
 | `retry({ attempts, backoff? })` | in a step: retry it ([retry.md](retry.md)) |
 | `then(tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
+| `then(...steps)` | in a step: a wait answered by one of these steps ([wait.md](wait.md)) |
 
 Entry: `{ id, key, args, prior, patch, next, undo?, undone?, wake?, attempt?, error? }` ([steps.md](steps.md#entry)).
 

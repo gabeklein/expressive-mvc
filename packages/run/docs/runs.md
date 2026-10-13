@@ -2,7 +2,7 @@
 
 ## `next` starts a run
 
-From outside a step, `next(...args)` is the one callable step: it starts a run and returns a Promise settling with it - the result, or the error. Any other step called from outside throws `ship cannot be called from outside; call next() to run.` - except one answering an open wait ([wait.md](wait.md)).
+From outside a step, `next(...args)` is the one callable step: it starts a run and returns a Promise settling with it - the result, or the error. Any other step reads `undefined` from outside, except one an open wait accepts ([wait.md](wait.md)); a held reference called with no wait accepting it throws `ship cannot be called from outside; call next() to run.`
 
 ```ts
 class Agent extends State {
@@ -72,9 +72,20 @@ class Checkout extends State {
 
 Named `run`, the controller is the thenable: `await x.run`.
 
+## End from outside
+
+`then.end(value?)` from outside ends the active run without undoing anything:
+
+- pending steps are discarded - not journaled; open waits are released;
+- in-flight steps settle and commit - what they schedule never runs;
+- then `end` runs with `value` - the class's `end` if declared, else the result is `value`, else the dump - and the run resolves with the result as a normal end;
+- the queue proceeds - the next queued run starts.
+
+Idle, or with the run already ending, stopped or failed, it does nothing. A step in flight failing meanwhile fails the run as usual. Inside a step, `this.then.end(value)` joins instead ([steps.md](steps.md#end-joins)).
+
 ## Stop
 
-`then.stop()` - or `this.then.stop()` in a step - cancels the active run:
+`then.stop()` - or `this.then.stop()` in a step - cancels the active run, rejecting it and the queue:
 
 - status `stopped` at once; pending steps are discarded; open waits are released;
 - in-flight steps settle and commit - their entries are recorded, what they schedule never runs;

@@ -65,7 +65,18 @@ this.then(calls, (call) => this.tool(call));
 this.then(calls, this.tool);           // tool(call, index)
 ```
 
-Members must be tokens this step issued (`then() takes steps called by next.`). Calling `this.then` as a thenable - `await this` in a step - fails the run: `a step cannot await its own run.` Outside a step, `then(steps)` throws `then(steps) must be called inside a step.`
+Members must be tokens this step issued (`then() takes steps called by next.`).
+
+## `then` by argument
+
+Inside a step, `this.then`:
+
+- `(tokens)` - an iterable first: a parallel group;
+- `(items, each)` - an iterable and a mapper, or a step: a mapped group;
+- `(...steps)` - every argument a step of this instance (`this.allow`): a wait ([wait.md](wait.md));
+- anything else - `await this` included - fails the run: `a step cannot await its own run.`
+
+Outside a step, `then(f, r)` is the thenable ([runs.md](runs.md#awaiting-the-instance---start-or-join)); `then(steps)` throws `then(steps) must be called inside a step.`
 
 Writes are attributed per frame with members in flight: each member's `patch` holds its own writes. `active` names the latest member invoked.
 
@@ -114,7 +125,7 @@ protected end() {
 }
 ```
 
-`end` scheduling a step fails the run (`end cannot schedule more.`), as does scheduling `end` twice (`end was scheduled twice.`). From outside, `end` throws like any step but `next`.
+`end` scheduling a step fails the run (`end cannot schedule more.`), as does scheduling `end` twice (`end was scheduled twice.`). From outside, `instance.end` reads `undefined`; `then.end(value)` ends the active run early ([runs.md](runs.md#end-from-outside)).
 
 ## What a step returns
 
