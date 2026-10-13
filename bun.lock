@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive-mvc",
@@ -137,6 +138,17 @@
         "@types/react-dom": "^19",
         "react": "^19",
         "react-dom": "^19",
+        "tsdown": "^0.20.1",
+      },
+      "peerDependencies": {
+        "@expressive/mvc": "^0.88.0",
+      },
+    },
+    "packages/run": {
+      "name": "@expressive/run",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@expressive/mvc": "workspace:*",
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
@@ -385,6 +397,8 @@
     "@expressive/react": ["@expressive/react@workspace:packages/react"],
 
     "@expressive/router": ["@expressive/router@workspace:packages/router"],
+
+    "@expressive/run": ["@expressive/run@workspace:packages/run"],
 
     "@floating-ui/core": ["@floating-ui/core@1.7.5", "", { "dependencies": { "@floating-ui/utils": "^0.2.11" } }, "sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ=="],
 

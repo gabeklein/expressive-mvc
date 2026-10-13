@@ -1,0 +1,55 @@
+{
+  "name": "@expressive/run",
+  "version": "0.0.0",
+  "description": "Durable, resumable runs built from Expressive MVC State classes.",
+  "keywords": [
+    "expressive",
+    "mvc",
+    "workflow",
+    "durable",
+    "state"
+  ],
+  "license": "MIT",
+  "private": true,
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@expressive.dev",
+    "url": "https://github.com/gabeklein"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit --incremental",
+    "coverage": "vitest run --coverage",
+    "test": "bun run typecheck && bun run coverage"
+  },
+  "devDependencies": {
+    "@expressive/mvc": "workspace:*",
+    "tsdown": "^0.20.1"
+  },
+  "peerDependencies": {
+    "@expressive/mvc": "^0.88.0"
+  }
+}
