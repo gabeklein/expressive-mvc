@@ -3304,6 +3304,30 @@ describe('on type stage (static)', () => {
     expect(typeof foo.set).toBe('function');
   });
 
+  it('will run new as the prototype defines it when activation reaches it', () => {
+    const seen: string[] = [];
+
+    class Test extends State {
+      protected new() {
+        seen.push('new');
+      }
+    }
+
+    const test = new Test();
+
+    Object.defineProperty(Test.prototype, 'new', {
+      configurable: true,
+      writable: true,
+      value() {
+        seen.push('wrapped');
+      }
+    });
+
+    test.set({});
+
+    expect(seen).toEqual(['wrapped']);
+  });
+
   it('will let a handler wrap new before the first instance runs it', () => {
     const seen: string[] = [];
 

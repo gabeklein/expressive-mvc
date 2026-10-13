@@ -610,7 +610,7 @@ function init(state: State, ...args: State.Args) {
   }
 
   const { before, after } = bootstrap(T);
-  const hook = (state as unknown as { new?: State.Init }).new;
+  const hook = () => (Reflect.get(T.prototype, 'new', state) as State.Init | undefined)?.call(state, state);
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
