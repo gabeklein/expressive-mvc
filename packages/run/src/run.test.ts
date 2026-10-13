@@ -567,13 +567,15 @@ describe('then', () => {
 });
 
 describe('undo', () => {
-  it('will unwind closures in reverse and restore fields', async () => {
+  it('will unwind every step in reverse and restore fields', async () => {
     const order: string[] = [];
 
     class Test extends State {
       run = run(this);
       a = 0;
       b = 0;
+      c = 0;
+      d = 0;
 
       protected new() {
         this.first();
@@ -588,10 +590,16 @@ describe('undo', () => {
       second() {
         this.b = 2;
         this.third();
-        return () => void order.push(`undo second b=${this.b}`);
       }
 
       third() {
+        this.c = 3;
+        this.fourth();
+        return () => void order.push(`undo third c=${this.c}`);
+      }
+
+      fourth() {
+        this.d = 4;
         throw new Error('boom');
       }
     }
@@ -599,14 +607,34 @@ describe('undo', () => {
     const test = Test.new();
 
     await expect(test.run).rejects.toThrow('boom');
-    expect(order).toEqual(['undo second b=2', 'undo first a=1']);
-    expect(test.a).toBe(0);
-    expect(test.b).toBe(0);
+    expect(order).toEqual(['undo third c=3', 'undo first a=1']);
+    expect(test.get()).toMatchObject({ a: 0, b: 0, c: 0, d: 0 });
     expect(test.run.entries.map((entry) => [entry.key, entry.undo, entry.undone])).toEqual([
-      ['new', undefined, undefined],
+      ['new', undefined, true],
       ['first', 'closure', true],
-      ['second', 'closure', true]
+      ['second', undefined, true],
+      ['third', 'closure', true]
     ]);
+  });
+
+  it('will restore writes of a step failing its rules', async () => {
+    class Test extends State {
+      run = run(this);
+      value = 0;
+
+      protected new() {
+        this.value = 1;
+        this.first();
+        this.value = 2;
+      }
+
+      first() {}
+    }
+
+    const test = Test.new();
+
+    await expect(test.run).rejects.toThrow('new wrote value after scheduling first.');
+    expect(test.value).toBe(0);
   });
 
   it('will unwind through a returned step', async () => {

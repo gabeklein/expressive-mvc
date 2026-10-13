@@ -65,7 +65,7 @@ it('will unwind what succeeded when a step fails', async () => {
   expect(inventory.release).toHaveBeenCalledWith('hold_sku');
   expect(order.charge).toBeUndefined();
   expect(order.then.entries.map((entry) => [entry.id, entry.undo && (entry.undo == 'closure' ? 'closure' : entry.undo.key), entry.undone])).toEqual([
-    ['new#1', undefined, undefined],
+    ['new#1', undefined, true],
     ['reserve#1', 'closure', true],
     ['pay#1', 'refund', true]
   ]);

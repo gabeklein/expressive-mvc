@@ -267,15 +267,20 @@ function invoke(runner: Runner, node: Node, undo?: Function | true) {
   internal.running = frame;
   update(runner, 'step', node.key);
 
+  const restore = (error: unknown) => {
+    Object.assign(self, frame.prior);
+    throw error;
+  };
+
   let out: unknown;
 
   try {
     out = fn.apply(proxy, node.args);
   } catch (error) {
-    return Promise.reject(error);
+    return Promise.reject(error).catch(restore);
   }
 
-  return Promise.resolve(out).then((out) => settle(runner, frame, out));
+  return Promise.resolve(out).then((out) => settle(runner, frame, out)).catch(restore);
 }
 
 function settle(runner: Runner, frame: Frame, out: unknown) {
@@ -372,13 +377,11 @@ async function fail(runner: Runner, error: unknown) {
   for (const entry of [...entries].reverse()) {
     const how = undo.get(entry.id);
 
-    if (!how) continue;
-
     try {
       if (typeof how == 'function') await invoke(runner, { id: `${entry.id}:undo`, key: entry.key, args: [], after: [] }, how);
-      else await invoke(runner, { ...how, id: `${entry.id}:undo` }, true);
+      else if (how) await invoke(runner, { ...how, id: `${entry.id}:undo` }, true);
 
-      for (const [key, value] of Object.entries(entry.prior)) (self as any)[key] = value;
+      Object.assign(self, entry.prior);
 
       entry.undone = true;
     } catch (cause) {
@@ -393,10 +396,9 @@ async function fail(runner: Runner, error: unknown) {
 
   internal.reject(internal.error);
 
-  if (!internal.awaited)
-    queueMicrotask(() => queueMicrotask(() => {
-      if (!internal.awaited) throw internal.error;
-    }));
+  queueMicrotask(() => queueMicrotask(() => {
+    if (!internal.awaited) throw internal.error;
+  }));
 }
 
 export { run, Runner };
