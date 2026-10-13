@@ -9,9 +9,18 @@ const cart: Cart = { id: 'c1', email: 'a@b.c', items: ['sku'], total: 42 };
 afterEach(() => vi.restoreAllMocks());
 
 it('will run every step to done', async () => {
-  const result = await SubmitOrder.new({ cart });
+  const order = SubmitOrder.new({ cart });
 
-  expect(result).toEqual({ orderId: 'ch_42', tracking: 'trk_c1_ch_42' });
+  expect(await order.run).toEqual({ orderId: 'ch_42', tracking: 'trk_c1_ch_42' });
+  expect(order.run.status).toBe('done');
+  expect(order.run.entries.map((entry) => `${entry.key} > ${entry.next}`)).toEqual([
+    'new > reserve',
+    'reserve > pay',
+    'pay > ship',
+    'ship > receipt',
+    'receipt > done',
+    'done > undefined'
+  ]);
 });
 
 it('will expose progress as fields', async () => {
@@ -27,16 +36,18 @@ it('will expose progress as fields', async () => {
   order.set('tracking', () => void seen.push(order.tracking));
 
   expect(order.charge).toBeUndefined();
+  expect(order.run.step).toBe('reserve');
   expect(stripe.charge).not.toHaveBeenCalled();
 
   held.resolve();
-  await expect(order).not.toHaveUpdated();
+  await expect(order.run).toHaveUpdated('step');
+  expect(order.run.step).toBe('pay');
   expect(stripe.charge).toHaveBeenCalledWith(42);
 
   charged.resolve({ id: 'ch_1', receiptUrl: 'url' });
   await expect(order).toHaveUpdated('charge');
 
-  expect(await order).toEqual({ orderId: 'ch_1', tracking: 'trk_c1_ch_1' });
+  expect(await order.run).toEqual({ orderId: 'ch_1', tracking: 'trk_c1_ch_1' });
   expect(seen).toEqual(['trk_c1_ch_1']);
 });
 
@@ -45,5 +56,7 @@ it('will reject when a step throws', async () => {
 
   const order = SubmitOrder.new({ cart });
 
-  await expect(order).rejects.toThrow('no couriers');
+  await expect(order.run).rejects.toThrow('no couriers');
+  expect(order.run.status).toBe('failed');
+  expect(order.run.error).toEqual(new Error('no couriers'));
 });

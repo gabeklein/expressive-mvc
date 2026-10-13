@@ -1,7 +1,11 @@
-import { Runner } from '@expressive/run';
+import { State } from '@expressive/mvc';
+import { run } from '@expressive/run';
+
 import { courier, inventory, mail, stripe, type Cart, type Charge } from './services';
 
-export class SubmitOrder extends Runner {
+export class SubmitOrder extends State {
+  run = run(this);
+
   cart!: Cart;
   charge?: Charge = undefined;
   tracking = '';

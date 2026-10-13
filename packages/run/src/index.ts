@@ -1,1 +1,1 @@
-export { Runner } from './runner';
+export { run, Runner } from './run';
