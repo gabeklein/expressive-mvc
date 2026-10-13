@@ -443,7 +443,6 @@ function enter(run: Run, node: Runner.Node) {
       if (value === runner) return view(frame);
       if (typeof value != 'function') return value;
       if (STEP.has(value)) return value.bind(frame.proxy);
-      if ((prop as string)[0] == '_') return unbind(value).bind(frame.proxy);
 
       return Object.hasOwn(target, prop) ? value : value.bind(target);
     },

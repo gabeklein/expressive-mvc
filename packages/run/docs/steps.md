@@ -87,15 +87,14 @@ A step called on a frame that has already settled - from a timer, say - throws `
 
 ## Helpers
 
-A `_`-prefixed method is not a step: never wrapped, called inline, its result used by the caller. Called from a step, its `this` is that step's proxy - its writes are in the step's `patch` and subject to the write guard.
+A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no `patch` or `prior`, pass the write guard, and are not rolled back on failure; a step it calls is an outside call. A helper computes; the step assigns.
 
 ```ts
 first() {
-  this.value = this._double(2);        // patch: { label: 'doubled', value: 4 }
+  this.value = this._double(2);        // patch: { value: 4 }
 }
 
 _double(n: number) {
-  this.label = 'doubled';
   return n * 2;
 }
 ```
@@ -145,4 +144,4 @@ Each settled step is one journal entry (`record` on the [runner](runner.md)):
 
 Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `attempt`, `error` - retries ([retry.md](retry.md)); `undone` - the unwind ([undo.md](undo.md)).
 
-Writes from outside the run, through `this.is`, or in hooks are in no patch.
+Writes from outside the run, through `this.is`, in helpers, or in hooks are in no patch.

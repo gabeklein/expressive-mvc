@@ -254,7 +254,31 @@ describe('steps', () => {
     expect(values).toMatchObject({ value: 1 });
   });
 
-  it('will run helpers with the step as this', async () => {
+  it('will run helpers on the instance', async () => {
+    let self: unknown;
+
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.value = this._double(2);
+      }
+
+      _double(n: number) {
+        self = this;
+        return n * 2;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(await test.next()).toEqual({ value: 4 });
+    expect(self).toBe(test);
+    expect(test.then.record[0].patch).toEqual({ value: 4 });
+  });
+
+  it('will not journal writes of a helper', async () => {
     class Test extends State {
       then = run(this);
       value = 0;
@@ -272,10 +296,8 @@ describe('steps', () => {
 
     const test = Test.new();
 
-    test._double(1);
-
     expect(await test.next()).toEqual({ value: 4, label: 'doubled' });
-    expect(test.then.record[0].patch).toEqual({ label: 'doubled', value: 4 });
+    expect(test.then.record[0]).toMatchObject({ prior: { value: 0 }, patch: { value: 4 } });
   });
 
   it('will pass function fields through', async () => {
@@ -1737,6 +1759,34 @@ describe('undo', () => {
     ]);
   });
 
+  it('will not roll back writes of a helper', async () => {
+    class Test extends State {
+      then = run(this);
+      value = 0;
+      count = 0;
+
+      next() {
+        this.value = this._count();
+        this.first();
+      }
+
+      first() {
+        this._count();
+        throw new Error('boom');
+      }
+
+      _count() {
+        return ++this.count;
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.value).toBe(0);
+    expect(test.count).toBe(2);
+  });
+
   it('will unwind a branch which commits after another fails', async () => {
     const work = mockPromise();
     const undo = vi.fn();
@@ -1924,7 +1974,7 @@ describe('failures', () => {
     expect(test.value).toBe(0);
   });
 
-  it('will reject when a helper writes after scheduling', async () => {
+  it('will not guard writes of a helper after scheduling', async () => {
     class Test extends State {
       then = run(this);
       value = 0;
@@ -1941,7 +1991,12 @@ describe('failures', () => {
       first() {}
     }
 
-    await expect(Test.new().next()).rejects.toThrow('next wrote value after scheduling first.');
+    const test = Test.new();
+
+    await test.next();
+
+    expect(test.value).toBe(1);
+    expect(test.then.record[0].patch).toEqual({});
   });
 
   it('will reject when a step keeps working after scheduling', async () => {
