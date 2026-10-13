@@ -270,7 +270,7 @@ abstract class State {
    *
    * It is recommended you protect this method.
    */
-  protected new?(...args: any[]): void | (() => void) | Promise<void>;
+  protected new?(): void | (() => void) | Promise<void>;
 
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
