@@ -3328,6 +3328,29 @@ describe('on type stage (static)', () => {
     expect(seen).toEqual(['wrapped']);
   });
 
+  it('will run an own non-enumerable new as the instance defines it', () => {
+    const seen: string[] = [];
+
+    class Test extends State {
+      protected new() {
+        seen.push('new');
+      }
+    }
+
+    const test = new Test();
+
+    Object.defineProperty(test, 'new', {
+      configurable: true,
+      value() {
+        seen.push('own');
+      }
+    });
+
+    test.set({});
+
+    expect(seen).toEqual(['own']);
+  });
+
   it('will let a handler wrap new before the first instance runs it', () => {
     const seen: string[] = [];
 

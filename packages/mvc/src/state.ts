@@ -610,7 +610,12 @@ function init(state: State, ...args: State.Args) {
   }
 
   const { before, after } = bootstrap(T);
-  const hook = () => (Reflect.get(T.prototype, 'new', state) as State.Init | undefined)?.call(state, state);
+  const hook = () => {
+    const own = Object.getOwnPropertyDescriptor(state, 'new');
+    const fn = own ? !own.enumerable && own.value : Reflect.get(T.prototype, 'new', state);
+
+    return typeof fn == 'function' ? fn.call(state, state) : undefined;
+  };
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
