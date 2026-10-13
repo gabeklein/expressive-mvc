@@ -1,6 +1,6 @@
 # @expressive/run
 
-Runs built from Expressive MVC `State` classes: every method is a step, a step schedules the next by calling it, fields carry data between them. A run is atomic - all or nothing, with undo closures and an in-memory journal - and the instance is awaitable. Unreleased.
+Runs built from Expressive MVC `State` classes: every method is a step, a step schedules the next by calling it, fields carry data between them. `next()` starts a run; runs repeat, queue, park on a wait and resume. A run is atomic - all or nothing, with undo closures and an in-memory journal - and the instance is awaitable. Unreleased.
 
 ```ts
 class SubmitOrder extends State {
@@ -10,7 +10,7 @@ class SubmitOrder extends State {
   charge?: Charge = undefined;
   tracking = '';
 
-  protected new() {
+  next() {
     this.reserve();
   }
 
@@ -25,9 +25,8 @@ class SubmitOrder extends State {
   async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
-    this.ship(this.charge.id);
-    this.receipt(this.charge.receiptUrl);
-    this.done();
+    this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
+    this.end();
 
     return this.refund(this.charge.id);
   }
@@ -44,15 +43,15 @@ class SubmitOrder extends State {
     await stripe.refund(chargeId);
   }
 
-  done() {
+  end() {
     return { orderId: this.charge!.id, tracking: this.tracking };
   }
 }
 
 const order = SubmitOrder.new({ cart });
 
-order.then.status;             // 'running' - reactive, like any field
-const receipt = await order;
+order.then.status;             // 'idle' - reactive, like any field
+const receipt = await order;   // runs next(), then everything it schedules
 ```
 
 [docs/](docs/README.md) documents shipped behavior. Scope, decisions and status live in [FEATURE.md](../../FEATURE.md) on the `feat/run` trunk.

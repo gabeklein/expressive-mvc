@@ -1,0 +1,82 @@
+# Runs - `next`, Repeat, Queue, Stop
+
+## `next` starts a run
+
+From outside a step, `next(...args)` is the one callable step: it starts a run and returns a Promise settling with it - the result, or the error. Any other step called from outside throws `ship cannot be called from outside; call next() to run.` - except one answering an open wait ([wait.md](wait.md)).
+
+```ts
+class Agent extends State {
+  then = run(this);
+  messages = has<Message>();
+
+  async next(prompt: string) {
+    this.messages.push(user(prompt));
+    this.turn();
+  }
+}
+
+const reply = await agent.next('ship it');
+```
+
+Nothing starts on its own. A class wanting a run on creation writes `new() { this.next(); }`.
+
+## Runs repeat
+
+A finished run returns status to `idle`; the next `next()` starts a fresh run with its own `record` and ids. Instance fields persist across runs. `runs` counts finished runs - ended, failed or stopped. `status` `stopped`/`failed` and `error` hold until the next run starts.
+
+```ts
+await agent.next('write notes');
+await agent.next('now the tests');     // messages kept, then.runs == 2
+```
+
+## Queue
+
+`next()` from outside while a run is active queues a run, first in first out. `then.queue` lists the queued argument arrays, reactive. Each call's Promise settles with its own run. A failed run does not clear the queue.
+
+```ts
+const first = agent.next('write notes');
+const second = agent.next('read docs');
+
+agent.then.queue;                      // [['read docs']]
+```
+
+## Awaiting the instance - start or join
+
+Named `then`, the Runner makes the instance a thenable. Awaiting it:
+
+- idle with nothing queued - calls `next()` with no arguments, as an outside call would, then joins that run;
+- otherwise joins - settles once the active run and everything queued behind it have, with the last run's result; rejects if that last run failed or was stopped.
+
+```ts
+const result = await SubmitOrder.new({ cart });   // runs next()
+await Promise.resolve(order);                     // same
+```
+
+The type is the guard: the thenable signature exists only when `next` takes no required arguments. With `next(prompt: string)`, `agent.then(fn)` does not compile and neither does `await agent` (TS1320 - `then` is still callable for groups). Await `agent.next(prompt)` instead. At runtime an idle await always calls `next()`.
+
+A `set` factory returning the instance resolves to the result, suspending until then:
+
+```ts
+class Checkout extends State {
+  receipt = set(async () => SubmitOrder.new({ cart }));
+}
+```
+
+Named `run`, the controller is the thenable: `await x.run`.
+
+## Stop
+
+`then.stop()` - or `this.then.stop()` in a step - cancels the active run:
+
+- status `stopped` at once; pending steps are discarded; open waits are released;
+- in-flight steps settle and commit - their entries are recorded, what they schedule never runs;
+- queued runs are dropped: `queue` empties, each queued Promise rejects with an error named `'Stopped'`;
+- once in-flight steps have settled, the run's Promise rejects with that error.
+
+`stop({ undo: true })` also unwinds the run as a failure would ([undo.md](undo.md)); an undo that throws sets `error` and the run rejects with it. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
+
+A stopped run is not rethrown uncaught.
+
+## Unawaited failures
+
+A failed run nobody awaited - neither `next()`'s Promise nor the instance - rethrows uncaught two microtasks after rejecting. `await` it, or `.then` it, before then - or let it surface.
