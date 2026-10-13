@@ -9,8 +9,7 @@ class SubmitOrder extends Runner {
   charge?: Charge = undefined;
   tracking = "";
 
-  protected new(cart: Cart) {
-    this.cart = cart;
+  protected new() {
     this.reserve();
   }
 
@@ -32,7 +31,7 @@ class SubmitOrder extends Runner {
   }
 }
 
-const result = await SubmitOrder.new(cart);
+const result = await SubmitOrder.new({ cart });
 ```
 
 - **A `Runner` is one run.** Its methods are steps; each hands off to the next
@@ -40,7 +39,9 @@ const result = await SubmitOrder.new(cart);
   read for progress, write to steer.
 - **Nothing awaits a step.** The runtime invokes the next step after the
   current one settles cleanly; a step which throws discards its handoff.
-- **`done` ends the run** and types its result. `await X.new(args)` resolves to
-  it; `X.new(args)` alone is the live instance.
+- **Inputs are fields**, assigned at `X.new({ ... })` as with any State - so they
+  show wherever the run's state does.
+- **`done` ends the run** and types its result. `await X.new({ ... })` resolves to
+  it; `X.new({ ... })` alone is the live instance.
 - **Runs are records** - constructor args plus a journal of steps - so an
   instance can be rebuilt mid-run: resume, retry, fork to debug.

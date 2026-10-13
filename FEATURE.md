@@ -5,32 +5,34 @@ Durable, resumable runs built from `State` classes. Scope and agreed shape - upd
 ## Workflow
 
 - `feat/run` is the trunk. Each step lands as its own PR into it, small enough to hand-review; the trunk merges to `main` when release-ready.
-- Merge `main` into the trunk as it moves. Core fixes land on `main` as their own PRs - `fix/new-init` (`new()` read at activation, typed as an `Init`) is the first; the trunk is based on it.
+- Merge `main` into the trunk as it moves. Core fixes land on `main` as their own PRs - `fix/new-init` (`new()` read at activation, `Promise<void>` return) is the first; the trunk is based on it.
 - `packages/run/examples/<case>/` holds the benchmark classes with their tests - the DX as a user writes it, no runtime internals. Standing exception to the adjacent-test rule, recorded in AGENTS.md.
 - The package is `private` until its first release; nothing is exported from a published entry.
 - Trunk commits carry no trailers.
 
 ## Goal
 
-Long-running processes the Expressive way. A `Runner` instance is exactly one dispatch of actions: created to run, auto-started by `new()`, finished by `done`. Its methods are steps which hand off to one another; its fields carry the data between them. The record of a run - constructor args plus a journal of steps - is enough to rebuild an instance mid-swing, so instances are fungible: resume, retry, fork to debug and inspect are all one operation with a different cursor.
+Long-running processes the Expressive way. A `Runner` instance is exactly one dispatch of actions: created to run, auto-started by `new()`, finished by `done`. Its methods are steps which hand off to one another; its fields carry the data between them. The record of a run - its values plus a journal of steps - is enough to rebuild an instance mid-swing, so instances are fungible: resume, retry, fork to debug and inspect are all one operation with a different cursor.
 
 Reference case study is Inngest. It replays an orchestrating function because closures cannot be serialized, so data leaves a step as a return value and re-enters as a memoized input. Here there is no orchestrator and no replay: steps never await each other, a run is a linked list, and resuming is "restore fields from the last commit, invoke the pending step with its journaled args".
 
 ## Agreed shape
 
-- **`new()` is the entry point**, not a macro function. It receives the constructor args and hands off to the first step. It is public: TypeScript cannot read a protected member through a type parameter, and `Runner.new(...args)` types its arguments from it. A Runner's constructor arguments are its entry's arguments, not mvc's `Init`/`Assign` overlays.
+- **`new()` is the entry point**, not a macro function - `protected new()`, parameterless, mvc's own hook. It hands off to the first step.
+- **Inputs are fields.** `X.new({ cart })` assigns them as any State's constructor does, so they show in the dump, the journal, a twin and inspect, and construction and resume are one operation - an overlay, then `new()`. Required inputs are not enforced by the type (`Assign<T>` is partial); a missing one fails at the step that reads it. Parameters on `new` were rejected: TypeScript cannot read a protected member through a type parameter, so typing them forced `new` public and a wider `State.new`.
 - **Steps hand off, they do not return.** A call to a step from inside a running step is not a call: the runtime records it as the continuation and returns an inert token; the step's body settles. The next step is invoked after a clean settle only. A step that hands off and then throws has not handed off - commit is `{ step, args, patch, next }` on clean settle, so a failing step discards its handoff and its patch together.
 - **Nothing in user code awaits a step.** A step's own promise is held by the runtime; `await this.next()` is a no-op. Enforcement: after a step has issued its handoff, a field write or another step call from it throws. A settle landing well after the handoff is a dev warning, not an error - a `finally` releasing a lock is legitimate trailing work.
 - **A step that settles with no handoff** stalls the run at the top of the chain (an error, unless it called `wait`), or completes its branch inside a fork.
 - **Data lives in fields and args.** Fields are run-scoped and durable; args are step-scoped and journaled. Both must survive structured clone. Any value reaching `done` flows through one or the other.
 - **`done` is user-declared, Runner-managed** - like `render` in dom. Runner knows the name, enforces once-only and lets any step call it. Undeclared, it resolves the run with a dump of public values. Declared, `done(value: T)` types what steps pass and what the run resolves to (`ReturnType`, or `T` when void).
-- **`then` is Runner's.** `await X.new(args)` resolves to the result; `X.new(args)` alone is the live instance. A user step named `then` fails at bootstrap. The only thenable-aware path in mvc is `set(fn)`'s factory output, so `task = X.new(args)` on another State holds the instance and `task = set(() => X.new(args))` suspends until the result.
+- **`then` is Runner's.** `await X.new({ ... })` resolves to the result; `X.new({ ... })` alone is the live instance. A user step named `then` fails at bootstrap. The only thenable-aware path in mvc is `set(fn)`'s factory output, so `task = X.new({ ... })` on another State holds the instance and `task = set(() => X.new({ ... }))` suspends until the result.
 - **Accumulators are handoffs**: `all(tokens, next)`, `race(tokens, next)`, `each(items, step, next)`. Branches run serially by default. A branch's value is whatever it wrote to fields; the join invokes `next` with no arguments. No `for`/`while` - a step calling itself is a loop and journals as one.
 - **`wait` is a handoff, not an await.** It parks the run (or branch); the next step comes from outside - a public step called on the instance. That is waitForEvent with no event bus: the caller is the event, the method its handler. The runtime distinguishes who called only for the journal.
 - **Outside writes are allowed and journaled** as their own entries, distinct from a step's patch - a steer is visible in the trace as an intervention, and resume stays faithful. `cancel()` is a steer read at the next handoff; the in-flight step completes and nothing follows. A read-only trap is not planned until a case demands it; `protected` is the convention.
 - **`catch(error, step)`** follows `Component.catch`: a returned promise retries after it settles; a returned token redirects (compensation); throwing fails the run.
 - **Core changes go upstream.** Build on `State.on({ type, setup, method, catch })` and `instance.set(cb)`: `type` wraps steps before they are bound, `setup` returning an overlay hydrates silently on resume. No internal imports - `@expressive/mvc` is a workspace peer.
 - **Writes in `new` are not guarded.** mvc captures events during activation and replays them after, so a write in `new` reaches the listener after its handoff; every later step is guarded.
+- **`Runner.new` is `State.new`**, typed to return the live instance (`T & PromiseLike<Result>`); nothing else is overridden.
 - **An unawaited failure throws uncaught** a macrotask later, as mvc's own reports do - a run nobody observes still fails loudly.
 - **Serializability.** `has`/`map` children snapshot recursively; `get()` references re-resolve by context; `ref` and computed fields are skipped; `set(async)` factories on a Runner are journaled like steps.
 
@@ -44,8 +46,7 @@ class SubmitOrder extends Runner {
   charge?: Charge = undefined;
   tracking = "";
 
-  protected new(cart: Cart) {
-    this.cart = cart;
+  protected new() {
     this.reserve();
   }
 
@@ -68,7 +69,7 @@ class SubmitOrder extends Runner {
   }
 }
 
-const result = await SubmitOrder.new(cart);
+const result = await SubmitOrder.new({ cart });
 ```
 
 ```ts
@@ -76,8 +77,10 @@ class Turn extends Runner {
   mode: 'ask' | 'auto' | 'yolo' = 'ask';
   messages: Message[] = [];
 
-  protected new(prompt: string) {
-    this.messages = [user(prompt)];
+  prompt = '';
+
+  protected new() {
+    this.messages = [user(this.prompt)];
     this.sample();
   }
 

@@ -6,8 +6,7 @@ export class SubmitOrder extends Runner {
   charge?: Charge = undefined;
   tracking = '';
 
-  new(cart: Cart) {
-    this.cart = cart;
+  protected new() {
     this.reserve();
   }
 

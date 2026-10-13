@@ -27,11 +27,8 @@ interface Run {
 }
 
 const RUN = new WeakMap<Runner, Run>();
-const ARGS = new WeakMap<Runner, unknown[]>();
 
 declare namespace Runner {
-  type Args<T> = T extends { new?(...args: infer A): any } ? A : never;
-
   type Result<T> = T extends { done(...args: infer A): infer R }
     ? 0 extends 1 & R ? State.Values<T> : R extends void ? A[0] : R
     : never;
@@ -40,21 +37,13 @@ declare namespace Runner {
 }
 
 class Runner extends State {
-  constructor(...args: unknown[]) {
-    super();
-    ARGS.set(this, args);
-  }
-
-  /** Entry point - receives the constructor arguments and hands off to the first step. */
-  new?(...args: any[]): any;
-
   /** Ends the run. Any step may hand off to it, once. Undeclared, resolves with a dump of public values. */
   done(...args: any[]): any {
     return this.get();
   }
 
-  /** Create and start a run. The instance is live - `await` it for the result of `done`. */
-  static new<T extends State>(this: State.Type<T>, ...args: Runner.Args<T> | State.Args<T>): Runner.Live<T> {
+  /** Create and start a run - inputs are its fields, assigned as with any State. The instance is live: `await` it for the result of `done`. */
+  static new<T extends State>(this: State.Type<T>, ...args: State.Args<T>): Runner.Live<T> {
     return (State.new as (this: unknown, ...args: unknown[]) => Runner.Live<T>).call(this, ...args);
   }
 }
@@ -127,7 +116,7 @@ function step(key: string, fn: Function) {
     if (run.status != 'running') throw new Error(`${self} is ${run.status}; ${key} cannot run.`);
 
     if (!current) {
-      invoke(self, run, { key, args: key == 'new' ? ARGS.get(self)! : args, wrote: new Set() });
+      invoke(self, run, { key, args: key == 'new' ? [] : args, wrote: new Set() });
       return;
     }
 

@@ -9,9 +9,11 @@ describe('steps', () => {
     const order: string[] = [];
 
     class Test extends Runner {
-      new(seed: number) {
-        order.push(`new:${seed}`);
-        this.first(seed + 1);
+      seed = 0;
+
+      protected new() {
+        order.push(`new:${this.seed}`);
+        this.first(this.seed + 1);
       }
 
       async first(n: number) {
@@ -30,7 +32,7 @@ describe('steps', () => {
       }
     }
 
-    const run = Test.new(1);
+    const run = Test.new({ seed: 1 });
 
     expect(run).toBeInstanceOf(State);
     expect(order).toEqual(['new:1']);
@@ -43,7 +45,7 @@ describe('steps', () => {
     const second = vi.fn();
 
     class Test extends Runner {
-      new() {
+      protected new() {
         this.first();
       }
 
@@ -70,7 +72,7 @@ describe('steps', () => {
 
   it('will resolve with the argument when done returns nothing', async () => {
     class Test extends Runner {
-      new() {
+      protected new() {
         this.done('value');
       }
 
@@ -86,7 +88,7 @@ describe('steps', () => {
     class Test extends Runner {
       count = 0;
 
-      new() {
+      protected new() {
         this.count = 1;
         this.done();
       }
@@ -99,7 +101,7 @@ describe('steps', () => {
     class Test extends Runner {
       mode = 'ask';
 
-      new() {
+      protected new() {
         this.first();
       }
 
@@ -124,22 +126,28 @@ describe('steps', () => {
     await expect(run).toHaveUpdated('mode');
   });
 
-  it('will type run arguments from new', () => {
+  it('will type inputs as fields', async () => {
     class Test extends Runner {
-      new(a: number, b: string) {
-        void [a, b];
-        this.done();
+      a = 0;
+      b = '';
+
+      protected new() {
+        this.done(`${this.a}${this.b}`);
+      }
+
+      done(value: string) {
+        void value;
       }
     }
 
     // @ts-expect-error
-    Test.new('a', 1);
-    Test.new(1, 'b');
+    Test.new({ a: 'one' });
+    expect(await Test.new({ a: 1, b: 'b' })).toBe('1b');
   });
 
   it('will type the result from done', async () => {
     class Test extends Runner {
-      new() {
+      protected new() {
         this.done(1);
       }
 
@@ -157,7 +165,7 @@ describe('steps', () => {
 describe('failures', () => {
   it('will reject when a step throws synchronously', async () => {
     class Test extends Runner {
-      new() {
+      protected new() {
         throw new Error('sync');
       }
     }
@@ -169,7 +177,7 @@ describe('failures', () => {
     const next = vi.fn();
 
     class Test extends Runner {
-      new() {
+      protected new() {
         this.first();
       }
 
@@ -189,7 +197,7 @@ describe('failures', () => {
 
   it('will reject when a step settles without handing off', async () => {
     class Test extends Runner {
-      new() {
+      protected new() {
         this.first();
       }
 
@@ -203,7 +211,7 @@ describe('failures', () => {
     class Test extends Runner {
       value = 0;
 
-      new() {
+      protected new() {
         this.first();
       }
 
@@ -218,7 +226,7 @@ describe('failures', () => {
 
   it('will throw if a step hands off twice', async () => {
     class Test extends Runner {
-      new() {
+      protected new() {
         this.first();
         this.second();
       }
@@ -232,7 +240,7 @@ describe('failures', () => {
 
   it('will throw if a step is called after the run is done', async () => {
     class Test extends Runner {
-      new() {
+      protected new() {
         this.done();
       }
 
@@ -260,7 +268,7 @@ describe('failures', () => {
     const caught = mockUncaught();
 
     class Test extends Runner {
-      new() {
+      protected new() {
         throw new Error('nobody listening');
       }
     }
