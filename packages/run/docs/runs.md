@@ -18,6 +18,8 @@ class Agent extends State {
 const reply = await agent.next('ship it');
 ```
 
+`next`'s parameters also decide whether awaiting an idle instance can start a run - see [Awaiting the instance](#awaiting-the-instance---start-or-join); an optional parameter needs a default.
+
 Nothing starts on its own. A class wanting a run on creation writes `new() { this.next(); }`.
 
 ## Runs repeat
@@ -44,7 +46,7 @@ agent.then.queue;                      // [['read docs']]
 
 Named `then`, the Runner makes the instance a thenable. Awaiting it:
 
-- idle with nothing queued - calls `next()` with no arguments, as an outside call would, then joins that run; if `next` declares parameters, rejects instead: `Agent-… is idle; next() takes arguments - call next(...) to start a run.`;
+- idle with nothing queued - calls `next()` with no arguments, as an outside call would, then joins that run; if `next` declares parameters, rejects instead: `Agent-… is idle; next() takes arguments - call to start a run.`;
 - otherwise joins - settles once the active run and everything queued behind it have, with the last run's result; rejects if that last run failed or was stopped. Any `next` signature.
 
 ```ts
@@ -58,7 +60,7 @@ await agent;                                      // joins - 'done'
 await agent;                                      // idle - rejects; await agent.next(prompt)
 ```
 
-The check is `next.length`: a TS-optional parameter counts - give it a default (`next(prompt = '')`) to make an idle await start it.
+> **Optional parameters.** The check is `next.length`, which counts a TS-optional parameter - `next(prompt?: string)` rejects on an idle await. Give it a default instead: `next(prompt = '')` has length 0, so an idle await starts it.
 
 A `set` factory returning the instance resolves to the result, suspending until then:
 

@@ -20,7 +20,7 @@ it('will reject an idle await without a prompt', async () => {
   const agent = Agent.new({ mode: 'yolo' });
 
   await expect(agent.then((reply) => reply)).rejects.toThrow(
-    `${agent} is idle; next() takes arguments - call next(...) to start a run.`
+    `${agent} is idle; next() takes arguments - call to start a run.`
   );
   expect(agent.then.runs).toBe(0);
 });

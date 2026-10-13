@@ -5,7 +5,7 @@ import { State } from '@expressive/mvc';
 import { run } from '@expressive/run';
 ```
 
-`run(this)` makes a `State` runnable: every method is a step, a step schedules the next by calling it, fields carry data between steps. `next(...args)` is the entry - called from outside, it starts a run. The `Runner` it returns is the controller - status, journal, result. Named `then`, the instance itself is awaitable; `run = run(this)` keeps it `await x.run`.
+`run(this)` makes a `State` runnable: every method is a step, a step schedules the next by calling it, fields carry data between steps. `next(...args)` is the entry - called from outside, it starts a run; awaiting an idle instance starts it too, only if `next` takes no arguments (an optional one needs a default - [runs.md](runs.md#awaiting-the-instance---start-or-join)). The `Runner` it returns is the controller - status, journal, result. Named `then`, the instance itself is awaitable; `run = run(this)` keeps it `await x.run`.
 
 Inputs are fields - `X.new({ cart })` assigns them as any State's constructor does - or `next`'s arguments. `new()` stays mvc's setup hook; nothing starts on its own.
 
