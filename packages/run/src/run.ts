@@ -54,9 +54,6 @@ const KEYS = ['status', 'active', 'record', 'queue', 'waiting', 'runs', 'error']
 const SLACK = 8;
 
 declare namespace Runner {
-  /** `true` when `next` can be called with no arguments. */
-  type Startable<T> = T extends { next(...args: infer A): any } ? ([] extends A ? true : false) : true;
-
   type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'failed';
 
   type Result<T> = T extends { end(...args: infer A): infer R }
@@ -161,7 +158,7 @@ declare namespace Runner {
   }
 
   interface Thenable<T extends State = State> {
-    /** Idle, runs `next()`; then settles once the active run and every queued one have, with the last one's result. */
+    /** Idle, runs `next()` - rejecting if it takes arguments; then settles once the active run and every queued one have, with the last one's result. */
     <R1 = Runner.Result<T>, R2 = never>(
       onfulfilled?: ((value: Runner.Result<T>) => R1 | PromiseLike<R1>) | null,
       onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null
@@ -172,10 +169,10 @@ declare namespace Runner {
 }
 
 /**
- * The controller. Awaitable - a thenable, and so the instance with it as `then` - only when
- * `next` takes no required arguments: awaiting it idle runs `next()`.
+ * The controller, and a thenable - so the instance with it as `then`. Awaiting it joins the
+ * active run; idle, it runs `next()`, or rejects if `next` takes arguments.
  */
-type Runner<T extends State = State> = Runner.Controller<T> & (Runner.Startable<T> extends true ? Runner.Thenable<T> : unknown);
+type Runner<T extends State = State> = Runner.Controller<T> & Runner.Thenable<T>;
 
 /**
  * Make this State runnable: its methods become steps, each scheduling the next, and the
@@ -199,7 +196,7 @@ function run<T extends State>(self: T): Runner<T> {
     if (onfulfilled && typeof onfulfilled == 'object') throw new Error('then(steps) must be called inside a step.');
 
     return settled(internal).then(onfulfilled as any, onrejected as any);
-  } as Runner<T> & Runner.Thenable<T>;
+  } as Runner<T>;
 
   internal.runner = runner as never;
 
@@ -677,7 +674,12 @@ function tail(internal: Internal) {
 }
 
 function settled(internal: Internal) {
-  if (!internal.current) start(internal, []);
+  if (!internal.current) {
+    if (STEP.get((internal.self as { next?: Function }).next!)?.length)
+      return Promise.reject(new Error(`${internal.self} is idle; next() takes arguments - call next(...) to start a run.`));
+
+    start(internal, []);
+  }
 
   return join(internal);
 }

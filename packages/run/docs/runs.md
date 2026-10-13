@@ -44,15 +44,21 @@ agent.then.queue;                      // [['read docs']]
 
 Named `then`, the Runner makes the instance a thenable. Awaiting it:
 
-- idle with nothing queued - calls `next()` with no arguments, as an outside call would, then joins that run;
-- otherwise joins - settles once the active run and everything queued behind it have, with the last run's result; rejects if that last run failed or was stopped.
+- idle with nothing queued - calls `next()` with no arguments, as an outside call would, then joins that run; if `next` declares parameters, rejects instead: `Agent-… is idle; next() takes arguments - call next(...) to start a run.`;
+- otherwise joins - settles once the active run and everything queued behind it have, with the last run's result; rejects if that last run failed or was stopped. Any `next` signature.
 
 ```ts
 const result = await SubmitOrder.new({ cart });   // runs next()
 await Promise.resolve(order);                     // same
 ```
 
-The type is the guard: the thenable signature exists only when `next` takes no required arguments. With `next(prompt: string)`, `agent.then(fn)` does not compile and neither does `await agent` (TS1320 - `then` is still callable for groups). Await `agent.next(prompt)` instead. At runtime an idle await always calls `next()`.
+```ts
+agent.next('ship it');
+await agent;                                      // joins - 'done'
+await agent;                                      // idle - rejects; await agent.next(prompt)
+```
+
+The check is `next.length`: a TS-optional parameter counts - give it a default (`next(prompt = '')`) to make an idle await start it.
 
 A `set` factory returning the instance resolves to the result, suspending until then:
 

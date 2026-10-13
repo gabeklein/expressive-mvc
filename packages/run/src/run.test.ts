@@ -806,7 +806,7 @@ describe('runs', () => {
     expect(test.then.runs).toBe(3);
   });
 
-  it('will not be awaitable when next takes arguments', async () => {
+  it('will reject an idle await when next takes arguments', async () => {
     class Test extends State {
       then = run(this);
 
@@ -817,11 +817,39 @@ describe('runs', () => {
 
     const test = Test.new();
 
-    // @ts-expect-error
-    const started = test.then((value: unknown) => value);
-
-    expect(await started).toEqual({});
+    await expect(test.then((value) => value)).rejects.toThrow(
+      `${test} is idle; next() takes arguments - call next(...) to start a run.`
+    );
+    expect(test.then.runs).toBe(0);
     expect(await test.next('x')).toBe('x');
+  });
+
+  it('will join a run when next takes arguments', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next(prompt: string) {
+        this.then.end(prompt);
+      }
+    }
+
+    const test = Test.new();
+
+    test.next('x');
+
+    expect(await test).toBe('x');
+  });
+
+  it('will start on idle await when next has defaults', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next(x = 1) {
+        this.then.end(x);
+      }
+    }
+
+    expect(await Test.new()).toBe(1);
   });
 
   it('will reject the instance when the last run failed', async () => {

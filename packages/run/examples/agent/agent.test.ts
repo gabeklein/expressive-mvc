@@ -16,13 +16,21 @@ it('will run a turn to end', async () => {
   expect(agent.then.record.map((entry) => entry.id)).toEqual(['next#1', 'turn#1', 'tool#1', 'exec#1', 'turn#2', 'end#1']);
 });
 
-it('will not be awaitable without a prompt', async () => {
+it('will reject an idle await without a prompt', async () => {
   const agent = Agent.new({ mode: 'yolo' });
-  // @ts-expect-error
-  const start = () => agent.then((reply) => reply);
 
-  void start;
-  expect(await agent.next('write notes')).toBe('done');
+  await expect(agent.then((reply) => reply)).rejects.toThrow(
+    `${agent} is idle; next() takes arguments - call next(...) to start a run.`
+  );
+  expect(agent.then.runs).toBe(0);
+});
+
+it('will join a turn in progress', async () => {
+  const agent = Agent.new({ mode: 'yolo' });
+
+  agent.next('write notes');
+
+  expect(await agent).toBe('done');
 });
 
 it('will run safe tools without asking in auto', async () => {
