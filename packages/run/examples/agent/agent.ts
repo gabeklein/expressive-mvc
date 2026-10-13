@@ -14,7 +14,7 @@ export class Agent extends State {
     this.turn();
   }
 
-  async turn() {
+  protected async turn() {
     const reply = await model.create(this.messages);
 
     this.messages.push(reply);
@@ -28,26 +28,26 @@ export class Agent extends State {
     else this.end(reply);
   }
 
-  tool(call: ToolCall) {
+  protected async tool(call: ToolCall) {
     let allowed = this.mode === 'yolo';
 
     if (allowed || this.mode === 'auto' && safe(call)) this.exec(call);
     else this.then.wait(call);
   }
 
-  async exec(call: ToolCall) {
+  protected async exec(call: ToolCall) {
     this.messages.push(result(call, await tools.run(call)));
   }
 
-  allow(call: ToolCall) {
+  async allow(call: ToolCall) {
     this.exec(call);
   }
 
-  deny(call: ToolCall) {
+  async deny(call: ToolCall) {
     this.messages.push(result(call, 'denied'));
   }
 
-  end(reply: Message) {
+  protected end(reply: Message) {
     return reply.content;
   }
 }

@@ -3,18 +3,18 @@
 `this.then.wait(context?)` in a step issues a token which, when its turn comes in the plan, parks its branch. Status is `waiting` while any wait is open; `then.waiting` lists open waits as `{ id, context }`, oldest first, reactive.
 
 ```ts
-tool(call: ToolCall) {
+protected async tool(call: ToolCall) {
   let allowed = this.mode === 'yolo';
 
   if (allowed || this.mode === 'auto' && safe(call)) this.exec(call);
   else this.then.wait(call);
 }
 
-allow(call: ToolCall) {
+async allow(call: ToolCall) {
   this.exec(call);
 }
 
-deny(call: ToolCall) {
+async deny(call: ToolCall) {
   this.messages.push(result(call, 'denied'));
 }
 ```

@@ -7,7 +7,7 @@ A step registers its own undo by what it returns. On failure the run unwinds eve
 Returning a function registers it. It runs with a proxy as `this`, so it reads the fields as the run left them.
 
 ```ts
-async reserve() {
+protected async reserve() {
   const hold = await inventory.hold(this.cart.items);
 
   this.pay();
@@ -23,7 +23,7 @@ Entry: `undo: 'closure'`. Closures do not survive a resume in the job tier; a wa
 Returning a token the step issued registers that step as a durable undo `{ id, key, args }` and removes it from the plan - it never runs forward. The token arrives intact from an `async` step.
 
 ```ts
-async pay() {
+protected async pay() {
   this.charge = await stripe.charge(this.cart.total);
 
   this.ship(this.charge.id);
@@ -32,7 +32,7 @@ async pay() {
   return this.refund(this.charge.id);
 }
 
-async refund(chargeId: string) {
+protected async refund(chargeId: string) {
   await stripe.refund(chargeId);
 }
 ```

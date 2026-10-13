@@ -33,6 +33,7 @@ Shipped behavior is documented in [packages/run/docs/](packages/run/docs/README.
 - **The first step call ends the step's work.** After its first token, a step may only issue tokens, group them, and return. Enforced two ways: a write through the step's proxy after its first token fails the run; a settle landing later than a few microtasks (`SLACK`) after its last token event - issue or group - fails the run. A sync side effect after scheduling cannot be detected; side effects are steps. Documented discipline.
 - **Each step runs with a proxy as `this`.** Writes through it are the entry's `patch`, with `prior` values recorded for the unwind; a token is attributed to the frame whose proxy issued it, so parallel members attribute without `AsyncLocalStorage`. Reads pass through; State's own methods bind to the instance. `this.is` is the real instance: a write through it, or from outside, is a steer - allowed, in no patch.
 - **`_`-prefixed methods are helpers**, mvc's unmanaged convention: not wrapped, called inline, run on the instance as mvc binds them - their writes are in no patch, pass the write guard and are not rolled back. A helper computes; the step assigns.
+- **Steps are `protected async`** - opinionated convention, opt-out, applied in examples and docs. `next` and wake steps stay public; `end` and hooks are protected - `Runner.Result` reads `end` by indexed access, which sees protected members, and unwraps it with `Awaited`.
 - **Return guard.** A step returns nothing, a function (its undo closure), or a token it issued - `return this.release(id)` removes the token from the plan and journals it as a durable undo `{ id, key, args }`. Anything else fails the run. `end`'s return is its result, not an undo.
 - **`end` joins.** Class hook `end(value?)` and `this.then.end(value?)` mean the same: it runs once, after everything else in the run; its return, else its argument, else a dump of public values (the `Runner` excluded) is the result. A plan that drains without `end` ends with the dump. `end` scheduling a step, or scheduled twice, fails the run.
 - **Rollback is all or nothing.** On failure: status `failed`, pending discarded, waits released, the failing step's own writes restored; in-flight members settle and commit; then every committed entry is unwound in reverse - its undo if any (closure with a proxy as `this`, or the undo step with its journaled args), then its `prior` restored, `undone: true`. An undo that throws marks `undone: 'failed'`, replaces `error`, stops the unwind. Undo frames cannot schedule. Then the result rejects; unawaited, it rethrows uncaught two microtasks later.
@@ -56,11 +57,11 @@ class SubmitOrder extends State {
   charge?: Charge = undefined;
   tracking = '';
 
-  next() {
+  async next() {
     this.reserve();
   }
 
-  async reserve() {
+  protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
     this.pay();
@@ -68,7 +69,7 @@ class SubmitOrder extends State {
     return () => inventory.release(hold);
   }
 
-  async pay() {
+  protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
     this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
@@ -77,19 +78,19 @@ class SubmitOrder extends State {
     return this.refund(this.charge.id);
   }
 
-  async ship(chargeId: string) {
+  protected async ship(chargeId: string) {
     this.tracking = (await courier.book(this.cart, chargeId)).id;
   }
 
-  async receipt(url: string) {
+  protected async receipt(url: string) {
     await mail.send(this.cart.email, url);
   }
 
-  async refund(chargeId: string) {
+  protected async refund(chargeId: string) {
     await stripe.refund(chargeId);
   }
 
-  end() {
+  protected end() {
     return { orderId: this.charge!.id, tracking: this.tracking };
   }
 }
@@ -109,7 +110,7 @@ class Agent extends State {
     this.turn();
   }
 
-  async turn() {
+  protected async turn() {
     const reply = await model.create(this.messages);
 
     this.messages.push(reply);
@@ -123,26 +124,26 @@ class Agent extends State {
     else this.end(reply);
   }
 
-  tool(call: ToolCall) {
+  protected async tool(call: ToolCall) {
     let allowed = this.mode === 'yolo';
 
     if (allowed || this.mode === 'auto' && safe(call)) this.exec(call);
     else this.then.wait(call);
   }
 
-  async exec(call: ToolCall) {
+  protected async exec(call: ToolCall) {
     this.messages.push(result(call, await tools.run(call)));
   }
 
-  allow(call: ToolCall) {
+  async allow(call: ToolCall) {
     this.exec(call);
   }
 
-  deny(call: ToolCall) {
+  async deny(call: ToolCall) {
     this.messages.push(result(call, 'denied'));
   }
 
-  end(reply: Message) {
+  protected end(reply: Message) {
     return reply.content;
   }
 }

@@ -3,7 +3,7 @@
 `this.then.retry({ attempts, backoff? })` at the top of a step configures that step: on throw, it is invoked again, up to `attempts` tries in total. Before each retry the fields it wrote are restored to its `prior`; with `backoff(attempt)`, the retry waits that many milliseconds (`setTimeout`), `attempt` being the try that failed.
 
 ```ts
-async ship(chargeId: string) {
+protected async ship(chargeId: string) {
   this.then.retry({ attempts: 3, backoff: (attempt) => attempt * 1000 });
 
   this.tracking = (await courier.book(this.cart, chargeId)).id;

@@ -17,11 +17,11 @@ class SubmitOrder extends State {
   charge?: Charge = undefined;
   tracking = '';
 
-  next() {
+  async next() {
     this.reserve();
   }
 
-  async reserve() {
+  protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
     this.pay();
@@ -29,7 +29,7 @@ class SubmitOrder extends State {
     return () => inventory.release(hold);
   }
 
-  async pay() {
+  protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
     this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
@@ -38,19 +38,19 @@ class SubmitOrder extends State {
     return this.refund(this.charge.id);
   }
 
-  async ship(chargeId: string) {
+  protected async ship(chargeId: string) {
     this.tracking = (await courier.book(this.cart, chargeId)).id;
   }
 
-  async receipt(url: string) {
+  protected async receipt(url: string) {
     await mail.send(this.cart.email, url);
   }
 
-  async refund(chargeId: string) {
+  protected async refund(chargeId: string) {
     await stripe.refund(chargeId);
   }
 
-  end() {
+  protected end() {
     return { orderId: this.charge!.id, tracking: this.tracking };
   }
 }
@@ -70,3 +70,11 @@ Journal after a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receip
 - [hooks.md](hooks.md) - `before`/`after`, per step or for all
 - [undo.md](undo.md) - undo closures, returned tokens, the unwind on failure
 - [runner.md](runner.md) - the controller: members, reactivity, snapshot
+
+## Conventions
+
+Opinionated, opt-out: steps are `protected async`. Calling a step schedules it and yields no value - `protected` makes the type match the runtime (outside calls throw), `async` makes the declared `Promise<void>` say so uniformly. Neither is enforced.
+
+- Public: `next` - called from outside, its parameters type the call; steps answering a `wait` (`allow`, `deny`) - called from outside. Still `async`.
+- `end` is `protected`, `async` only if it awaits - the result type is read from it either way.
+- Hooks are `protected` - nothing reads them through the type - and not `async`: their return is not awaited.

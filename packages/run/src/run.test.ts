@@ -1,5 +1,5 @@
 import { has, set, State } from '@expressive/mvc';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockPromise, mockUncaught, mockWarn } from '../test.setup';
 import { run, type Runner } from './run';
@@ -361,6 +361,63 @@ describe('steps', () => {
     const result: { n: number } = await test.then;
 
     expect(result).toEqual({ n: 1 });
+  });
+
+  it('will type the result from a protected end', async () => {
+    class Test extends State {
+      then = run(this);
+
+      protected async next() {
+        this.end(1);
+      }
+
+      protected end(n: number) {
+        return { n };
+      }
+    }
+
+    const result = await Test.new();
+
+    expectTypeOf(result).toEqualTypeOf<{ n: number }>();
+    expect(result).toEqual({ n: 1 });
+  });
+
+  it('will type the result from an async end', async () => {
+    class Test extends State {
+      then = run(this);
+
+      protected async next() {
+        this.end(1);
+      }
+
+      protected async end(n: number): Promise<{ n: number }> {
+        return { n };
+      }
+    }
+
+    const result = await Test.new();
+
+    expectTypeOf(result).toEqualTypeOf<{ n: number }>();
+    expect(result).toEqual({ n: 1 });
+  });
+
+  it('will type the result from the argument of an async end', async () => {
+    class Test extends State {
+      then = run(this);
+
+      protected async next() {
+        this.end('x');
+      }
+
+      protected async end(value: string) {
+        void value;
+      }
+    }
+
+    const result = await Test.new();
+
+    expectTypeOf(result).toEqualTypeOf<string>();
+    expect(result).toBe('x');
   });
 });
 
@@ -1635,28 +1692,28 @@ describe('hooks', () => {
       then = run(this);
       value = 0;
 
-      next() {
+      async next() {
         this.ship('a', 1);
       }
 
-      ship(id: string, n: number) {
+      protected async ship(id: string, n: number) {
         order.push(['ship', id, n]);
       }
 
-      before(key: string, args: unknown[], skip: boolean) {
+      protected before(key: string, args: unknown[], skip: boolean) {
         this.value++;
         order.push(['before', key, args, skip]);
       }
 
-      after(key: string, entry: Runner.Entry, skip: boolean) {
+      protected after(key: string, entry: Runner.Entry, skip: boolean) {
         order.push(['after', key, entry.id, skip]);
       }
 
-      beforeShip(skip: boolean, id: string, n: number) {
+      protected beforeShip(skip: boolean, id: string, n: number) {
         order.push(['beforeShip', skip, id, n]);
       }
 
-      afterShip(skip: boolean, entry: Runner.Entry) {
+      protected afterShip(skip: boolean, entry: Runner.Entry) {
         order.push(['afterShip', skip, entry.id]);
       }
     }

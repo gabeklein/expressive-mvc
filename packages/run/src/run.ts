@@ -56,8 +56,8 @@ const SLACK = 8;
 declare namespace Runner {
   type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'failed';
 
-  type Result<T> = T extends { end(...args: infer A): infer R }
-    ? R extends void ? A[0] : R
+  type Result<T> = (T & { end: unknown })['end'] extends (...args: infer A) => infer R
+    ? Awaited<R> extends void ? A[0] : Awaited<R>
     : State.Values<T>;
 
   /** A planned item: a step, a parallel group (`group`), or a wait. */

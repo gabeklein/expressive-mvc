@@ -1,6 +1,6 @@
 # Steps - A Body Is a Plan
 
-Every method on the class, bases included, is a step - wrapped as an own non-enumerable property of the instance, the prototype untouched. Not steps: `new`, getters, `_`-prefixed helpers, and `before`/`after` hooks ([hooks.md](hooks.md)). A step runs with a proxy as `this`: writes through it are the entry's `patch`, with `prior` values recorded; reads pass through.
+Every method on the class, bases included, is a step - `protected async` by convention ([README.md](README.md#conventions)) - wrapped as an own non-enumerable property of the instance, the prototype untouched. Not steps: `new`, getters, `_`-prefixed helpers, and `before`/`after` hooks ([hooks.md](hooks.md)). A step runs with a proxy as `this`: writes through it are the entry's `patch`, with `prior` values recorded; reads pass through.
 
 `next` is the entry ([runs.md](runs.md)). Inside a step, `this.next(x)` is an ordinary step call - how a loop repeats.
 
@@ -9,7 +9,7 @@ Every method on the class, bases included, is a step - wrapped as an own non-enu
 Inside a step, calling another step does not run it. It returns an inert token - not awaitable - scheduled after the caller settles cleanly. A caller that throws has scheduled nothing. `await this.a()` is a no-op.
 
 ```ts
-async reserve() {
+protected async reserve() {
   const hold = await inventory.hold(this.cart.items);
 
   this.pay();                          // token - runs after reserve settles
@@ -21,12 +21,12 @@ async reserve() {
 Tokens a step issues run one after another, in issue order. Each runs to completion - including everything it schedules, transitively - before the next sibling starts.
 
 ```ts
-next() {
+async next() {
   this.a();                            // a, then all a schedules
   this.b();                            // then b
 }
 
-async a() {
+protected async a() {
   await work();
   this.a1();                           // runs before b
 }
@@ -35,7 +35,7 @@ async a() {
 Loops are plain loops, or `this.next()` again:
 
 ```ts
-next(until: number) {
+async next(until: number) {
   let done = this.count == until;
 
   if (done) return;
@@ -50,7 +50,7 @@ next(until: number) {
 `this.then(tokens)` takes those tokens out of the sequence and runs them as one group, at the point of the call: members run concurrently, each through its own subtree; the group completes when every member has; the next item in sequence runs after.
 
 ```ts
-async pay() {
+protected async pay() {
   this.charge = await stripe.charge(this.cart.total);
 
   this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
@@ -74,7 +74,7 @@ Writes are attributed per frame with members in flight: each member's `patch` ho
 After its first token, a step may only issue more tokens, group them, and return. A write through `this` after the first token fails the run (`pay wrote charge after scheduling ship.`). Settling more than a few microtasks after the last token event - a token issued, a group made - fails the run (`pay kept working after scheduling ship.`).
 
 ```ts
-async pay() {
+protected async pay() {
   this.charge = await stripe.charge(this.cart.total);   // work, then writes
 
   this.ship(this.charge.id);                            // scheduling - work is over
@@ -90,7 +90,7 @@ A step called on a frame that has already settled - from a timer, say - throws `
 A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no `patch` or `prior`, pass the write guard, and are not rolled back on failure; a step it calls is an outside call. A helper computes; the step assigns.
 
 ```ts
-first() {
+protected async first() {
   this.value = this._double(2);        // patch: { value: 4 }
 }
 
@@ -104,12 +104,12 @@ _double(n: number) {
 `end` runs once, after everything else in the run - wherever it was scheduled. A class-declared `end(value)` is a step that types the result: its return, else its argument. `this.then.end(value?)` is the controller form - an undeclared `end`, or an early end; with a class `end`, `value` is its argument. With neither a return nor an argument, the result is a dump of the class's public values, the `Runner` excluded. A run whose plan drains without `end` ends with the dump.
 
 ```ts
-next() {
+async next() {
   this.end();                          // runs last
   this.a();
 }
 
-end() {
+protected end() {
   return { orderId: this.charge!.id, tracking: this.tracking };
 }
 ```

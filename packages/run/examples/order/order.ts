@@ -10,11 +10,11 @@ export class SubmitOrder extends State {
   charge?: Charge = undefined;
   tracking = '';
 
-  next() {
+  async next() {
     this.reserve();
   }
 
-  async reserve() {
+  protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
     this.pay();
@@ -22,7 +22,7 @@ export class SubmitOrder extends State {
     return () => inventory.release(hold);
   }
 
-  async pay() {
+  protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
     this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
@@ -31,19 +31,19 @@ export class SubmitOrder extends State {
     return this.refund(this.charge.id);
   }
 
-  async ship(chargeId: string) {
+  protected async ship(chargeId: string) {
     this.tracking = (await courier.book(this.cart, chargeId)).id;
   }
 
-  async receipt(url: string) {
+  protected async receipt(url: string) {
     await mail.send(this.cart.email, url);
   }
 
-  async refund(chargeId: string) {
+  protected async refund(chargeId: string) {
     await stripe.refund(chargeId);
   }
 
-  end() {
+  protected end() {
     return { orderId: this.charge!.id, tracking: this.tracking };
   }
 }
