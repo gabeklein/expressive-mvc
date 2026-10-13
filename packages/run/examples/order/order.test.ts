@@ -11,7 +11,7 @@ afterEach(() => vi.restoreAllMocks());
 it('will run every step to end', async () => {
   const order = SubmitOrder.new({ cart });
 
-  expect(await order.next()).toEqual({ orderId: 'ch_42', tracking: 'trk_c1_ch_42' });
+  expect(await order).toEqual({ orderId: 'ch_42', tracking: 'trk_c1_ch_42' });
   expect(order.then.status).toBe('idle');
   expect(order.then.record.map((entry) => entry.id)).toEqual([
     'next#1',

@@ -34,12 +34,12 @@ interface Frame extends Runner.Node {
   armed?: number;
   settled?: boolean;
   result?: unknown;
-  view?: Runner;
+  view?: Runner.Controller;
 }
 
 interface Internal extends Runner.Snapshot {
   self: State;
-  runner: Runner;
+  runner: Runner.Controller & Runner.Thenable;
   current?: Run;
   last?: Run;
   queued: Run[];
@@ -54,6 +54,9 @@ const KEYS = ['status', 'active', 'record', 'queue', 'waiting', 'runs', 'error']
 const SLACK = 8;
 
 declare namespace Runner {
+  /** `true` when `next` can be called with no arguments. */
+  type Startable<T> = T extends { next(...args: infer A): any } ? ([] extends A ? true : false) : true;
+
   type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'failed';
 
   type Result<T> = T extends { end(...args: infer A): infer R }
@@ -114,57 +117,65 @@ declare namespace Runner {
     runs: number;
     error: unknown;
   }
+
+  interface Controller<T extends State = State> {
+    /**
+     * Inside a step: run these tokens as one parallel group at this point in the plan.
+     * The next step in sequence runs once every member, and all it schedules, is done.
+     */
+    <This>(this: This, steps: Iterable<unknown>): Runner.Token;
+
+    /**
+     * Inside a step: call `each` per item - a function issuing a step, or a step itself -
+     * and run the tokens as one parallel group.
+     */
+    <I, This>(this: This, items: Iterable<I>, each: (item: I, index: number) => unknown): Runner.Token;
+
+    /** The instance this controller runs. */
+    readonly on: T;
+    readonly status: Runner.Status;
+    /** Key of a step in flight - the latest invoked, with a group in flight. */
+    readonly active: string | undefined;
+    /** Journal of the current or last run - one entry per settled step. */
+    readonly record: readonly Runner.Entry[];
+    /** Arguments of each `next()` waiting for the active run to finish. */
+    readonly queue: readonly unknown[][];
+    /** Open waits, oldest first. */
+    readonly waiting: readonly Runner.Wait[];
+    /** Runs finished - ended, failed or stopped. */
+    readonly runs: number;
+    readonly error: unknown;
+
+    /** A plain snapshot of status, active, record, queue, waiting, runs and error. */
+    get(): Runner.Snapshot;
+    /** Ends the run once everything else pending has settled - with this value, else the class's `end`, else a dump of its public values. */
+    end(value?: unknown): void;
+    /** Cancel: discard pending steps and queued runs; in-flight steps settle and commit. */
+    stop(options?: Runner.Stop): void;
+    /** Inside a step: a token which parks its branch until an outside step call answers it. */
+    wait(context?: unknown): Runner.Token;
+    /** At the top of a step: try it again on throw. */
+    retry(config: Runner.Retry): void;
+
+    [Symbol.iterator](): Iterator<Runner.Entry>;
+  }
+
+  interface Thenable<T extends State = State> {
+    /** Idle, runs `next()`; then settles once the active run and every queued one have, with the last one's result. */
+    <R1 = Runner.Result<T>, R2 = never>(
+      onfulfilled?: ((value: Runner.Result<T>) => R1 | PromiseLike<R1>) | null,
+      onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null
+    ): Promise<R1 | R2>;
+
+    then: Runner<T>;
+  }
 }
 
-interface Runner<T extends State = State> {
-  /**
-   * Inside a step: run these tokens as one parallel group at this point in the plan.
-   * The next step in sequence runs once every member, and all it schedules, is done.
-   */
-  <This>(this: This, steps: readonly unknown[]): Runner.Token;
-
-  /**
-   * Inside a step: call `each` per item - a function issuing a step, or a step itself -
-   * and run the tokens as one parallel group.
-   */
-  <I, This>(this: This, items: readonly I[], each: (item: I, index: number) => unknown): Runner.Token;
-
-  /** Settles once the active run and every queued one have, with the last one's result. */
-  <R1 = Runner.Result<T>, R2 = never>(
-    onfulfilled?: ((value: Runner.Result<T>) => R1 | PromiseLike<R1>) | null,
-    onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null
-  ): Promise<R1 | R2>;
-
-  then: Runner<T>;
-
-  /** The instance this controller runs. */
-  readonly on: T;
-  readonly status: Runner.Status;
-  /** Key of a step in flight - the latest invoked, with a group in flight. */
-  readonly active: string | undefined;
-  /** Journal of the current or last run - one entry per settled step. */
-  readonly record: readonly Runner.Entry[];
-  /** Arguments of each `next()` waiting for the active run to finish. */
-  readonly queue: readonly unknown[][];
-  /** Open waits, oldest first. */
-  readonly waiting: readonly Runner.Wait[];
-  /** Runs finished - ended, failed or stopped. */
-  readonly runs: number;
-  readonly error: unknown;
-
-  /** A plain snapshot of status, active, record, queue, waiting, runs and error. */
-  get(): Runner.Snapshot;
-  /** Ends the run once everything else pending has settled - with this value, else the class's `end`, else a dump of its public values. */
-  end(value?: unknown): void;
-  /** Cancel: discard pending steps and queued runs; in-flight steps settle and commit. */
-  stop(options?: Runner.Stop): void;
-  /** Inside a step: a token which parks its branch until an outside step call answers it. */
-  wait(context?: unknown): Runner.Token;
-  /** At the top of a step: try it again on throw. */
-  retry(config: Runner.Retry): void;
-
-  [Symbol.iterator](): Iterator<Runner.Entry>;
-}
+/**
+ * The controller. Awaitable - a thenable, and so the instance with it as `then` - only when
+ * `next` takes no required arguments: awaiting it idle runs `next()`.
+ */
+type Runner<T extends State = State> = Runner.Controller<T> & (Runner.Startable<T> extends true ? Runner.Thenable<T> : unknown);
 
 /**
  * Make this State runnable: its methods become steps, each scheduling the next, and the
@@ -185,12 +196,12 @@ function run<T extends State>(self: T): Runner<T> {
   } as unknown as Internal;
 
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
-    if (Array.isArray(onfulfilled)) throw new Error('then(steps) must be called inside a step.');
+    if (onfulfilled && typeof onfulfilled == 'object') throw new Error('then(steps) must be called inside a step.');
 
     return settled(internal).then(onfulfilled as any, onrejected as any);
-  } as Runner<T>;
+  } as Runner<T> & Runner.Thenable<T>;
 
-  internal.runner = runner;
+  internal.runner = runner as never;
 
   for (const key of KEYS)
     Object.defineProperty(runner, key, {
@@ -209,7 +220,7 @@ function run<T extends State>(self: T): Runner<T> {
     wait: { value: () => outside('wait') },
     retry: { value: () => outside('retry') },
     [Symbol.iterator]: {
-      value(this: Runner) {
+      value(this: Runner.Controller) {
         return this.record[Symbol.iterator]();
       }
     }
@@ -458,16 +469,18 @@ function enter(run: Run, node: Runner.Node) {
   return frame;
 }
 
-function view(frame: Frame): Runner {
+function view(frame: Frame): Runner.Controller {
   if (frame.view) return frame.view;
 
   const { internal } = frame.run;
 
-  const view = function (steps: unknown, each?: Function) {
-    if (!Array.isArray(steps)) throw new Error(`${frame.key} cannot await its own run.`);
+  const view = function (steps: unknown, each?: (item: unknown, index: number) => unknown) {
+    let awaited = !steps || typeof steps == 'function';
 
-    return group(frame, each ? steps.map((item, index) => each(item, index)) : steps);
-  } as Runner;
+    if (awaited) throw new Error('a step cannot await its own run.');
+
+    return group(frame, Array.from(steps as Iterable<unknown>, each!));
+  } as Runner.Controller;
 
   Object.setPrototypeOf(view, internal.runner);
   Object.defineProperties(view, {
@@ -663,16 +676,20 @@ function tail(internal: Internal) {
   return internal.queued.at(-1) || internal.current || internal.last;
 }
 
-function settled(internal: Internal): Promise<unknown> {
-  const run = tail(internal);
+function settled(internal: Internal) {
+  if (!internal.current) start(internal, []);
 
-  if (!run) return Promise.resolve(undefined);
+  return join(internal);
+}
 
-  for (const each of [internal.current, ...internal.queued, run]) if (each) each.awaited = true;
+function join(internal: Internal): Promise<unknown> {
+  const run = tail(internal)!;
+
+  for (const each of [internal.current, ...internal.queued, run].filter(Boolean)) each!.awaited = true;
 
   return run.promise.then(
-    (value) => (tail(internal) === run ? value : settled(internal)),
-    (error) => (tail(internal) === run ? Promise.reject(error) : settled(internal))
+    (value) => (tail(internal) === run ? value : join(internal)),
+    (error) => (tail(internal) === run ? Promise.reject(error) : join(internal))
   );
 }
 

@@ -498,6 +498,38 @@ describe('groups', () => {
     expect(seen).toEqual([['a', 0], ['b', 1]]);
   });
 
+  it('will fail if a step calls then as a thenable', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        (this.then as Function)(() => {});
+      }
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('a step cannot await its own run.');
+  });
+
+  it('will map an iterable to a group', async () => {
+    const seen: string[] = [];
+
+    class Test extends State {
+      then = run(this);
+      items = new Set(['a', 'b']);
+
+      next() {
+        this.then(this.items, this.fetch);
+      }
+
+      fetch(item: string) {
+        seen.push(item);
+      }
+    }
+
+    await Test.new().next();
+    expect(seen).toEqual(['a', 'b']);
+  });
+
   it('will fail if a step awaits its own run', async () => {
     class Test extends State {
       then = run(this);
@@ -507,7 +539,7 @@ describe('groups', () => {
       }
     }
 
-    await expect(Test.new().next()).rejects.toThrow('next cannot await its own run.');
+    await expect(Test.new().next()).rejects.toThrow('a step cannot await its own run.');
   });
 
   it('will fail if a group holds what the step did not call', async () => {
@@ -729,12 +761,12 @@ describe('runs', () => {
     class Test extends State {
       then = run(this);
 
-      async next(value: string) {
+      async next(value?: string) {
         await work;
         this.end(value);
       }
 
-      end(value: string) {
+      end(value?: string) {
         void value;
       }
     }
@@ -753,28 +785,50 @@ describe('runs', () => {
     expect(test.then.runs).toBe(3);
   });
 
-  it('will resolve the instance at once when idle', async () => {
+  it('will start a run when awaited idle', async () => {
+    const next = vi.fn();
+
     class Test extends State {
       then = run(this);
 
-      next() {
-        this.then.end('x');
+      next(value = 'x') {
+        next(value);
+        this.then.end(value);
       }
     }
 
     const test = Test.new();
 
-    expect(await test).toBeUndefined();
-
-    await test.next();
     expect(await test).toBe('x');
+    expect(await test.next('y')).toBe('y');
+    expect(await test).toBe('x');
+    expect(next.mock.calls).toEqual([['x'], ['y'], ['x']]);
+    expect(test.then.runs).toBe(3);
+  });
+
+  it('will not be awaitable when next takes arguments', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next(prompt: string) {
+        this.then.end(prompt);
+      }
+    }
+
+    const test = Test.new();
+
+    // @ts-expect-error
+    const started = test.then((value: unknown) => value);
+
+    expect(await started).toEqual({});
+    expect(await test.next('x')).toBe('x');
   });
 
   it('will reject the instance when the last run failed', async () => {
     class Test extends State {
       then = run(this);
 
-      next(fail: boolean) {
+      next(fail?: boolean) {
         if (fail) throw new Error('boom');
       }
     }
@@ -1061,7 +1115,7 @@ describe('stop', () => {
 
     work.resolve();
     await expect(first).rejects.toMatchObject({ name: 'Stopped' });
-    await expect(test).rejects.toMatchObject({ name: 'Stopped' });
+    expect(test.then.runs).toBe(1);
   });
 
   it('will unwind on stop with undo', async () => {
