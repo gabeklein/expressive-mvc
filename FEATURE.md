@@ -12,13 +12,14 @@ Durable, resumable runs built from `State` classes. Scope and agreed shape - upd
 
 ## Goal
 
-Long-running processes the Expressive way. A State with `run = run(this)` is exactly one dispatch of actions: created to run, auto-started by `new()`, finished by `done`. Its methods are steps which schedule one another; its fields carry the data between them. The `Runner` the instruction returns is the controller - status, journal, result, seams. The record of a run - its values plus a journal of steps - is enough to rebuild an instance mid-swing, so instances are fungible: resume, retry, fork to debug and inspect are all one operation with a different cursor.
+Long-running processes the Expressive way. A State with `then = run(this)` is exactly one dispatch of actions: created to run, auto-started by `new()`, finished by `done`. Its methods are steps which schedule one another; its fields carry the data between them. The `Runner` the instruction returns is the controller - status, journal, result, seams. The record of a run - its values plus a journal of steps - is enough to rebuild an instance mid-swing, so instances are fungible: resume, retry, fork to debug and inspect are all one operation with a different cursor.
 
 Reference case study is Inngest. It replays an orchestrating function because closures cannot be serialized, so data leaves a step as a return value and re-enters as a memoized input. Here there is no orchestrator and no replay: steps never await each other's work, a run is a plan of tokens, and resuming is "restore fields from the last commit, invoke the pending plan with its journaled args".
 
 ## Agreed shape
 
-- **`run(this)` is the instruction, `Runner` the controller.** No base class - a State opts in with one field, as with `ref(this)`. The initializer runs after the class has bootstrapped and before activation, so the instruction sees every step before any is bound. It defines wrapped steps as own, non-enumerable properties of the instance; the prototype is never touched, so a class is unaffected outside the instances that opted in. The `Runner` is an observable callable, not a State - a function made observable with `event`/`touch` from `@expressive/mvc/observable`, as `map`/`has` are: `status`, `step`, `error`, `entries` (the journal) are reactive; `on` is the instance; `get()` is the record `{ status, step, error, entries }`; `done(value?)` ends the run; `then` resolves it - `await x.run`. No name on the user's class is reserved.
+- **`run(this)` is the instruction, `Runner` the controller.** No base class - a State opts in with one field, as with `ref(this)`. The initializer runs after the class has bootstrapped and before activation, so the instruction sees every step before any is bound. It defines wrapped steps as own, non-enumerable properties of the instance; the prototype is never touched, so a class is unaffected outside the instances that opted in. The `Runner` is an observable callable, not a State - a function made observable with `event`/`touch` from `@expressive/mvc/observable`, as `map`/`has` are: `status`, `step`, `error`, `entries` (the journal) are reactive; `on` is the instance; `get()` is the record `{ status, step, error, entries }`; `done(value?)` ends the run; `then` resolves it. No name on the user's class is reserved - the field name is the user's; `then` makes the instance itself awaitable, `run = run(this)` keeps it `await x.run`.
+- **`then = run(this)`** - the instance is awaitable; `Promise.resolve(instance)` and a `set(async () => X.new())` factory resolve to the result, which is the opt-in; a tracking read of `then` (render, `get()` effect) is an observable view and not callable, so `await` the instance outside tracking contexts.
 - **`new()` is the entry point**, not a macro function - `protected new()`, parameterless, mvc's own hook. It schedules the first step. mvc reads it when activation reaches it, so the own wrapper applies to the first instance (`fix/new-init`).
 - **Inputs are fields.** `X.new({ cart })` assigns them as any State's constructor does, so they show in the dump, the journal, a twin and inspect, and construction and resume are one operation - an overlay, then `new()`. Required inputs are not enforced by the type (`Assign<T>` is partial); a missing one fails at the step that reads it. Parameters on `new` were rejected: TypeScript cannot read a protected member through a type parameter.
 - **A step body is a plan builder.** A step called from inside a running step does not run: it returns an inert thenable token, scheduled after the calling step settles cleanly. Tokens scheduled together are a fork - serial, in issue order, by default. `await this.a()` resolves immediately (an opaque handle) and records order only: a token depends on every token awaited before it was issued (`after: [...ids]`), so `await Promise.all([this.a(), this.b()])` joins. Loops are plain JS loops. A step that throws after scheduling has scheduled nothing - commit is `{ id, key, args, prior, patch, next }` on clean settle, so a failing step discards its tokens and its patch together.
@@ -43,7 +44,7 @@ Two classes drive design and tests. Order first.
 
 ```ts
 class SubmitOrder extends State {
-  run = run(this);
+  then = run(this);
 
   cart!: Cart;
   charge?: Charge = undefined;
@@ -77,12 +78,12 @@ class SubmitOrder extends State {
 }
 
 const order = SubmitOrder.new({ cart });
-const result = await order.run;
+const result = await order;
 ```
 
 ```ts
 class Turn extends State {
-  run = run(this);
+  then = run(this);
 
   mode: 'ask' | 'auto' | 'yolo' = 'ask';
   messages: Message[] = [];
@@ -143,6 +144,6 @@ Deferred: `property = run(X, ...args)` (a child run nested under one step of the
 
 - Hot reload: a patch's rebind redefines an own method and drops the wrapper. Re-wrapping needs a per-instance seam - a class-level `method` handler is a permanent side effect on the class, which the instruction avoids on purpose.
 - Which `_`-prefixed convention excludes a field from the `done` dump, if any.
-- `run.done`'s argument is `unknown` inside the class body (a conditional over the polymorphic `this` cannot resolve there); the typed path is the class's own `done` step.
+- `this.then.done`'s argument is `unknown` inside the class body (a conditional over the polymorphic `this` cannot resolve there); the typed path is the class's own `done` step.
 - A `wait` while closure undos are held should warn or fail - closures do not survive a resume; only returned-token undos `{ key, args }` do.
 - The lateness guard sees token events only: a sync side effect after scheduling is invisible to it.

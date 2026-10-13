@@ -4,7 +4,7 @@ import { run } from '@expressive/run';
 import { courier, inventory, mail, stripe, type Cart, type Charge } from './services';
 
 export class SubmitOrder extends State {
-  run = run(this);
+  then = run(this);
 
   cart!: Cart;
   charge?: Charge = undefined;

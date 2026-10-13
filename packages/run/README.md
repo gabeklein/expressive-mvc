@@ -6,7 +6,7 @@ scope, decisions and status live in [FEATURE.md](../../FEATURE.md) on the
 
 ```ts
 class SubmitOrder extends State {
-  run = run(this);
+  then = run(this);
 
   cart!: Cart;
   charge?: Charge = undefined;
@@ -53,14 +53,15 @@ class SubmitOrder extends State {
 
 const order = SubmitOrder.new({ cart });
 
-order.run.status;              // 'running' - reactive, like any field
-const receipt = await order.run;
+order.then.status;             // 'running' - reactive, like any field
+const receipt = await order;
 ```
 
 - **`run(this)` makes a State a run.** Every method is a step, `_`-prefixed
   ones are helpers (inline, unwrapped). Steps are wrapped as own
   non-enumerable properties of the instance - the prototype is untouched.
-  `new()` is the entry point.
+  `new()` is the entry point. The field name is the user's; `then` makes
+  the instance itself awaitable, `run = run(this)` keeps it `await x.run`.
 - **A step body is a plan builder.** Calling a step from inside a step does
   not run it: it returns an inert token, scheduled after the caller settles
   cleanly. Tokens issued together fork, run serially in issue order.
@@ -78,9 +79,9 @@ const receipt = await order.run;
   return is the result.
 - **`done` joins.** It runs once nothing else is pending. A class `done`
   is a step that types the result (its return, else its argument);
-  `run.done(value?)` is the controller form - undeclared `done`, or an
-  early end. A plan that drains without `done` ends with a dump of public
-  values, the `Runner` excluded.
+  `this.then.done(value?)` is the controller form - undeclared `done`, or
+  an early end. A plan that drains without `done` ends with a dump of
+  public values, the `Runner` excluded.
 - **Each step runs with a proxy as `this`.** Writes through it are the
   entry's `patch`, with `prior` values; a token is attributed to the frame
   whose proxy issued it. `this.is` and outside writes are steers, not
@@ -93,7 +94,11 @@ const receipt = await order.run;
   microtasks later.
 - **The `Runner` is the controller** - an observable callable, not a
   State: `status`, `step`, `error`, `entries` are reactive; `on` is the
-  instance; `get()` is the record; `await` it for the result. Outside
+  instance; `get()` is the record; `await` it for the result. Named
+  `then`, the instance resolves the same way - `Promise.resolve(order)`
+  and a `set(async () => SubmitOrder.new())` factory yield the result. A
+  tracking read of `then` (render, `get()` effect) is an observable view,
+  not callable - `await` the instance outside tracking contexts. Outside
   calls: a step while one runs throws; any step after done or failed
   throws.
 - **Inputs are fields**, assigned at `X.new({ ... })` as with any State, so

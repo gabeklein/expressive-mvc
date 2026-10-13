@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { set, State } from '@expressive/mvc';
 import { describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockPromise, mockUncaught } from '../test.setup';
@@ -431,6 +431,117 @@ describe('steps', () => {
     const result: { n: number } = await Test.new().run;
 
     expect(result).toEqual({ n: 1 });
+  });
+});
+
+describe('then', () => {
+  it('will await the instance when the field is then', async () => {
+    class Test extends State {
+      then = run(this);
+
+      protected new() {
+        this.first();
+      }
+
+      first() {
+        this.then.done('x');
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.then.on).toBe(test);
+    expect(await test).toBe('x');
+    expect(await Promise.resolve(test)).toBe('x');
+    expect(test.then.status).toBe('done');
+  });
+
+  it('will type the result from done through the instance', async () => {
+    class Test extends State {
+      then = run(this);
+
+      protected new() {
+        this.done(1);
+      }
+
+      done(n: number) {
+        return { n };
+      }
+    }
+
+    const result: { n: number } = await Test.new();
+    const awaited: Awaited<Test> = result;
+
+    expect(awaited).toEqual({ n: 1 });
+  });
+
+  it('will observe then as a view which is not callable', async () => {
+    const seen: string[] = [];
+    let view: unknown;
+
+    class Test extends State {
+      then = run(this);
+
+      protected new() {
+        this.first();
+      }
+
+      async first() {
+        await flushMicrotasks();
+      }
+    }
+
+    const test = Test.new();
+
+    test.get((self) => {
+      view = self.then;
+      seen.push(self.then.status);
+    });
+
+    expect(typeof view).toBe('object');
+    expect(seen).toEqual(['running']);
+
+    await test;
+    await flushMicrotasks();
+
+    expect(seen).toEqual(['running', 'done']);
+  });
+
+  it('will resolve a set factory to the result', async () => {
+    class Test extends State {
+      then = run(this);
+
+      protected new() {
+        this.then.done('x');
+      }
+    }
+
+    class Other extends State {
+      value = set(async () => Test.new());
+    }
+
+    const other = Other.new();
+
+    expect(() => other.value).toThrow(expect.any(Promise));
+
+    await flushMicrotasks();
+
+    expect(other.value).toBe('x');
+  });
+
+  it('will export then as a field and exclude it from the dump', async () => {
+    class Test extends State {
+      then = run(this);
+      count = 1;
+
+      protected new() {}
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test)).toContain('then');
+    expect(test.get().then).toBe(test.then);
+    expect(await test).toEqual({ count: 1 });
   });
 });
 
