@@ -11,14 +11,20 @@ export interface Charge {
 }
 
 export const inventory = {
-  async hold(items: string[]): Promise<void> {
-    void items;
+  async hold(items: string[]): Promise<string> {
+    return `hold_${items.join('+')}`;
+  },
+  async release(hold: string): Promise<void> {
+    void hold;
   }
 };
 
 export const stripe = {
   async charge(amount: number): Promise<Charge> {
     return { id: `ch_${amount}`, receiptUrl: `https://receipts.test/${amount}` };
+  },
+  async refund(chargeId: string): Promise<void> {
+    void chargeId;
   }
 };
 

@@ -15,24 +15,33 @@ export class SubmitOrder extends State {
   }
 
   async reserve() {
-    await inventory.hold(this.cart.items);
+    const hold = await inventory.hold(this.cart.items);
+
     this.pay();
+
+    return () => inventory.release(hold);
   }
 
   async pay() {
-    const charge = await stripe.charge(this.cart.total);
-    this.charge = charge;
-    this.ship(charge.id);
+    this.charge = await stripe.charge(this.cart.total);
+
+    this.ship(this.charge.id);
+    this.receipt(this.charge.receiptUrl);
+    this.done();
+
+    return this.refund(this.charge.id);
   }
 
   async ship(chargeId: string) {
     this.tracking = (await courier.book(this.cart, chargeId)).id;
-    this.receipt(this.charge!.receiptUrl);
   }
 
   async receipt(url: string) {
     await mail.send(this.cart.email, url);
-    this.done();
+  }
+
+  async refund(chargeId: string) {
+    await stripe.refund(chargeId);
   }
 
   done() {

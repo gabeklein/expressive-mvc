@@ -1,71 +1,111 @@
 import { State, unbind } from '@expressive/mvc';
+import { event, touch } from '@expressive/mvc/observable';
 
-interface Token {
+interface Node {
+  id: string;
   key: string;
   args: unknown[];
+  after: string[];
 }
 
-interface Frame extends Token {
-  handoff?: Token;
+interface Token extends Node {
+  then(onfulfilled?: (value: Handle) => unknown, onrejected?: (reason: unknown) => unknown): Promise<unknown>;
+}
+
+interface Handle {
+  [UNDO]: Token;
+}
+
+interface Frame extends Node {
+  tokens: Token[];
+  awaited: Set<string>;
   wrote: Set<string>;
+  prior: Record<string, unknown>;
   violation?: string;
+  late?: boolean;
+  armed?: number;
+  settled?: boolean;
+  unwind?: boolean;
 }
 
-interface Control {
-  self: State;
-  current?: Frame;
+interface Internal<T extends State = State> {
+  self: T;
+  status: Runner.Status;
+  step: string;
+  error: unknown;
+  entries: Runner.Entry[];
+  pending: Node[];
+  done: Set<string>;
+  running?: Frame;
+  undo: Map<string, Function | Node>;
+  counts: Map<string, number>;
   result: Promise<unknown>;
   awaited: boolean;
   resolve(value: unknown): void;
   reject(error: unknown): void;
 }
 
-const CONTROL = new WeakMap<Runner, Control>();
+const INTERNAL = Symbol('run');
+const UNDO = Symbol('undo');
 const FRAME = new WeakMap<object, Frame>();
 const STEP = new WeakMap<Function, Function>();
+const SLACK = 8;
 
 declare namespace Runner {
+  type Status = 'running' | 'done' | 'failed';
+
   type Result<T> = T extends { done(...args: infer A): infer R }
     ? R extends void ? A[0] : R
     : State.Values<T>;
 
-  interface Entry extends Token {
-    patch: Record<string, unknown>;
-    next?: string;
+  interface Entry {
+    id: string;
+    key: string;
+    args: unknown[];
+    prior: { [key: string]: unknown };
+    patch: { [key: string]: unknown };
+    next: Node[];
+    undo?: 'closure' | Node;
+    undone?: true | 'failed';
+  }
+
+  interface Record {
+    status: Status;
+    step: string;
+    error: unknown;
+    entries: Entry[];
   }
 }
 
-class Runner<T extends State = State> extends State {
-  status: 'running' | 'done' | 'failed' = 'running';
-  step = '';
-  error: unknown = undefined;
-  entries: Runner.Entry[] = [];
-
-  /** Ends the run after the current step settles - with this value, else the class's `done`, else a dump of its public values. */
-  done(value?: unknown) {
-    handoff(this, 'done', value === undefined ? [] : [value], CONTROL.get(this.is)!.current);
-  }
+interface Runner<T extends State = State> {
+  (onfulfilled?: ((value: Runner.Result<T>) => unknown) | null, onrejected?: ((reason: unknown) => unknown) | null): Promise<unknown>;
 
   then<R1 = Runner.Result<T>, R2 = never>(
     onfulfilled?: ((value: Runner.Result<T>) => R1 | PromiseLike<R1>) | null,
     onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null
-  ): Promise<R1 | R2> {
-    const control = CONTROL.get(this.is)!;
+  ): Promise<R1 | R2>;
 
-    control.awaited = true;
+  /** The instance this controller runs. */
+  readonly on: T;
+  readonly status: Runner.Status;
+  /** Key of the step in flight, or empty. */
+  readonly step: string;
+  readonly error: unknown;
+  /** The journal - one entry per settled step. */
+  readonly entries: readonly Runner.Entry[];
 
-    return control.result.then(onfulfilled as any, onrejected);
-  }
+  get(): Runner.Record;
+  /** Ends the run once every other scheduled step has settled - with this value, else the class's `done`, else a dump of its public values. */
+  done(value?: unknown): void;
 }
 
 /**
- * Make this State a run: its methods become steps, each handing off to the next, and the
- * returned Runner is the controller - status, journal, result.
+ * Make this State runnable: its methods become steps, each scheduling the next, and the
+ * returned Runner is the controller - status, journal, result. `_`-prefixed methods are helpers.
  */
 function run<T extends State>(self: T): Runner<T> {
-  const runner = new Runner<T>();
-  let resolve!: Control['resolve'];
-  let reject!: Control['reject'];
+  let resolve!: Internal['resolve'];
+  let reject!: Internal['reject'];
 
   const result = new Promise((res, rej) => {
     resolve = res;
@@ -74,111 +114,241 @@ function run<T extends State>(self: T): Runner<T> {
 
   result.catch(() => {});
 
-  const control: Control = { self, result, awaited: false, resolve, reject };
+  const internal: Internal<T> = {
+    self,
+    status: 'running',
+    step: '',
+    error: undefined,
+    entries: [],
+    pending: [],
+    done: new Set(),
+    undo: new Map(),
+    counts: new Map(),
+    result,
+    awaited: false,
+    resolve,
+    reject
+  };
 
-  CONTROL.set(runner, control);
+  const runner = function (onfulfilled?: Function | null, onrejected?: Function | null) {
+    internal.awaited = true;
+    return result.then(onfulfilled as any, onrejected as any);
+  } as Runner<T>;
+
+  Object.defineProperties(runner, {
+    [INTERNAL]: { value: internal },
+    then: { value: runner },
+    on: { value: self },
+    status: { get(this: object) { return touch(this, 'status', internal.status); } },
+    step: { get(this: object) { return touch(this, 'step', internal.step); } },
+    error: { get(this: object) { return touch(this, 'error', internal.error); } },
+    entries: { get(this: object) { return touch(this, 'entries', internal.entries); } },
+    get: {
+      value() {
+        const { status, step, error, entries } = internal;
+
+        return { status, step, error, entries };
+      }
+    },
+    done: {
+      value(value?: unknown) {
+        schedule(runner, 'done', value === undefined ? [] : [value], internal.running);
+      }
+    }
+  });
+
+  event(runner);
 
   for (let proto = Object.getPrototypeOf(self); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
     for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
-      const fn = unbind(desc.get);
-
-      if (key == 'constructor' || key[0] == '_' || !desc.get || typeof fn != 'function' || Object.hasOwn(self, key)) continue;
+      if (key == 'constructor' || key[0] == '_' || !desc.get || Object.hasOwn(self, key)) continue;
 
       const wrapper = function (this: object, ...args: unknown[]) {
-        const frame = FRAME.get(this);
-
-        return handoff(runner, key, key == 'new' ? [] : args, frame);
+        return schedule(runner, key, key == 'new' ? [] : args, FRAME.get(this));
       };
 
-      STEP.set(wrapper, fn);
+      STEP.set(wrapper, unbind(desc.get));
       Object.defineProperty(self, key, { value: wrapper, writable: true, configurable: true });
     }
 
   return runner;
 }
 
-function handoff(runner: Runner, key: string, args: unknown[], frame?: Frame) {
-  const control = CONTROL.get(runner.is)!;
+function internals(runner: Runner) {
+  return (runner as unknown as { [INTERNAL]: Internal })[INTERNAL];
+}
 
-  if (control.current && !frame) throw new Error(`${control.current.key} is running; ${key} cannot be called from outside.`);
+function update(runner: Runner, key: keyof Runner.Record, value: unknown) {
+  internals(runner)[key] = value as never;
+  event(runner, key);
+}
 
-  if (frame?.handoff) throw new Error(`${frame.key} already handed off to ${frame.handoff.key}; cannot call ${key}.`);
+function schedule(runner: Runner, key: string, args: unknown[], frame?: Frame) {
+  const internal = internals(runner);
 
-  const token = { key, args };
+  if (internal.status != 'running') throw new Error(`${internal.self} is ${internal.status}; ${key} cannot run.`);
 
-  if (frame) frame.handoff = token;
-  else invoke(runner, key, args);
+  if (!frame) {
+    if (internal.running) throw new Error(`${internal.running.key} is running; ${key} cannot be called from outside.`);
+
+    invoke(runner, node(internal, key, args, [])).catch((error) => fail(runner, error));
+    return;
+  }
+
+  const token = node(internal, key, args, [...frame.awaited]) as Token;
+  const handle = { [UNDO]: token };
+
+  token.then = (onfulfilled, onrejected) => {
+    frame.awaited.add(token.id);
+
+    const out = Promise.resolve(handle).then(onfulfilled, onrejected);
+
+    arm(frame);
+    return out;
+  };
+
+  frame.tokens.push(token);
+  arm(frame);
 
   return token;
 }
 
-function invoke(runner: Runner, key: string, args: unknown[]) {
-  const control = CONTROL.get(runner.is)!;
-  const { self } = control;
+function node(internal: Internal, key: string, args: unknown[], after: string[]): Node {
+  const count = (internal.counts.get(key) || 0) + 1;
 
-  if (runner.status != 'running') throw new Error(`${self} is ${runner.status}; ${key} cannot run.`);
+  internal.counts.set(key, count);
 
-  const fn = STEP.get((self as any)[key]);
-  const frame: Frame = { key, args, wrote: new Set() };
+  return { id: `${key}#${count}`, key, args, after };
+}
+
+function arm(frame: Frame) {
+  const armed = (frame.armed = (frame.armed || 0) + 1);
+  let hops = SLACK;
+
+  const tick = () => {
+    if (frame.settled || frame.armed != armed) return;
+    if (--hops) queueMicrotask(tick);
+    else frame.late = true;
+  };
+
+  queueMicrotask(tick);
+}
+
+function invoke(runner: Runner, node: Node, undo?: Function | true) {
+  const internal = internals(runner);
+  const { self } = internal;
+  const fn = typeof undo == 'function' ? undo : STEP.get((self as any)[node.key]) || (() => {});
+  const frame: Frame = { ...node, tokens: [], awaited: new Set(), wrote: new Set(), prior: {}, unwind: !!undo };
   const proxy = new Proxy(self, {
     get(target, prop) {
       const value = Reflect.get(target, prop, target);
 
-      if (typeof value != 'function') return value;
-      if (STEP.has(value)) return value.bind(proxy);
+      if (typeof value != 'function' || Object.hasOwn(target, prop)) return STEP.has(value) ? value.bind(proxy) : value;
 
       return value.bind(target);
     },
     set(target, prop, value) {
       const key = String(prop);
 
-      frame.wrote.add(key);
-      if (frame.handoff) frame.violation ||= key;
+      if (!frame.wrote.has(key)) {
+        frame.prior[key] = Reflect.get(target, prop, target);
+        frame.wrote.add(key);
+      }
+
+      if (frame.tokens.length) frame.violation ||= key;
 
       return Reflect.set(target, prop, value, target);
     }
   });
 
   FRAME.set(proxy, frame);
-  control.current = frame;
-  runner.step = key;
+  internal.running = frame;
+  update(runner, 'step', node.key);
 
   let out: unknown;
 
   try {
-    out = fn && fn.apply(proxy, args);
+    out = fn.apply(proxy, node.args);
   } catch (error) {
-    return fail(runner, control, error);
+    return Promise.reject(error);
   }
 
-  Promise.resolve(out).then(() => settle(runner, control, frame, out), (error) => fail(runner, control, error));
+  return Promise.resolve(out).then((out) => settle(runner, frame, out));
 }
 
-function settle(runner: Runner, control: Control, frame: Frame, out: unknown) {
-  const { key, args, handoff, wrote, violation } = frame;
-  const { self } = control;
+function settle(runner: Runner, frame: Frame, out: unknown) {
+  const internal = internals(runner);
+  const { self } = internal;
+  const { id, key, args, tokens, wrote, prior, violation, late } = frame;
 
-  if (violation) return fail(runner, control, new Error(`${key} wrote ${violation} after handing off to ${handoff!.key}.`));
+  frame.settled = true;
+  internal.running = undefined;
+  update(runner, 'step', '');
+
+  if (frame.unwind) return;
+
+  if (violation) throw new Error(`${key} wrote ${violation} after scheduling ${tokens[0].key}.`);
+  if (late) throw new Error(`${key} kept working after scheduling ${tokens[0].key}.`);
+
+  let undo: Function | Node | undefined;
+
+  if (key == 'done') {
+    if (tokens.length) throw new Error(`done cannot schedule ${tokens[0].key}.`);
+    if (out === undefined) out = args.length ? args[0] : dump(self, runner);
+  }
+  else if (typeof out == 'function') undo = out;
+  else if (out && typeof out == 'object' && UNDO in out) {
+    const token = (out as Handle)[UNDO];
+
+    tokens.splice(tokens.indexOf(token), 1);
+    undo = { id: token.id, key: token.key, args: token.args, after: [] };
+  }
+  else if (out !== undefined) throw new Error(`${key} returned a value; a step returns nothing, or its undo.`);
 
   const values = self.get() as Record<string, unknown>;
   const patch = Object.fromEntries([...wrote].map((key) => [key, values[key]]));
+  const next = tokens.map(({ id, key, args, after }) => ({ id, key, args, after }));
+  const entry: Runner.Entry = { id, key, args, prior, patch, next };
 
-  runner.entries = [...runner.entries, { key, args, patch, next: handoff?.key }];
-  control.current = undefined;
+  if (undo) {
+    entry.undo = typeof undo == 'function' ? 'closure' : undo;
+    internal.undo.set(id, undo);
+  }
 
-  if (key == 'done') {
-    runner.status = 'done';
-    runner.step = '';
+  internal.done.add(id);
+  internal.pending.push(...next);
+  update(runner, 'entries', [...internal.entries, entry]);
 
-    if (out === undefined) out = args.length ? args[0] : dump(self, runner);
+  if (key == 'done') return finish(runner, out);
 
-    control.resolve(out);
+  drain(runner);
+}
+
+function drain(runner: Runner) {
+  const internal = internals(runner);
+  const { pending, done } = internal;
+
+  const ready = pending.find((node) =>
+    node.key == 'done' ? pending.length == 1 : node.after.every((id) => done.has(id))
+  );
+
+  if (!ready) {
+    const stuck = pending.find((node) => node.key != 'done');
+
+    if (stuck) throw new Error(`${stuck.key} waits on ${stuck.after.find((id) => !done.has(id))}, which was returned as an undo.`);
+    if (pending.length) throw new Error('done was scheduled twice.');
+
+    finish(runner, dump(internal.self, runner));
     return;
   }
 
-  if (!handoff) return fail(runner, control, new Error(`${key} settled without handing off.`));
+  pending.splice(pending.indexOf(ready), 1);
+  invoke(runner, ready).catch((error) => fail(runner, error));
+}
 
-  invoke(runner, handoff.key, handoff.args);
+function finish(runner: Runner, value: unknown) {
+  update(runner, 'status', 'done');
+  internals(runner).resolve(value);
 }
 
 function dump(self: State, runner: Runner) {
@@ -187,16 +357,43 @@ function dump(self: State, runner: Runner) {
   return Object.fromEntries(Object.entries(values).filter(([key]) => (self as any)[key] !== runner));
 }
 
-function fail(runner: Runner, control: Control, error: unknown) {
-  runner.status = 'failed';
-  runner.step = '';
-  runner.error = error;
-  control.current = undefined;
-  control.reject(error);
+async function fail(runner: Runner, error: unknown) {
+  const internal = internals(runner);
+  const { self, entries, undo } = internal;
 
-  if (!control.awaited)
+  internal.running = undefined;
+  internal.pending.length = 0;
+  update(runner, 'status', 'failed');
+  update(runner, 'error', error);
+  update(runner, 'step', '');
+
+  for (const entry of [...entries].reverse()) {
+    const how = undo.get(entry.id);
+
+    if (!how) continue;
+
+    try {
+      if (typeof how == 'function') await invoke(runner, { id: `${entry.id}:undo`, key: entry.key, args: [], after: [] }, how);
+      else await invoke(runner, { ...how, id: `${entry.id}:undo` }, true);
+
+      for (const [key, value] of Object.entries(entry.prior)) (self as any)[key] = value;
+
+      entry.undone = true;
+    } catch (cause) {
+      entry.undone = 'failed';
+      update(runner, 'error', cause);
+      update(runner, 'entries', [...entries]);
+      break;
+    }
+
+    update(runner, 'entries', [...entries]);
+  }
+
+  internal.reject(internal.error);
+
+  if (!internal.awaited)
     queueMicrotask(() => queueMicrotask(() => {
-      if (!control.awaited) throw error;
+      if (!internal.awaited) throw internal.error;
     }));
 }
 

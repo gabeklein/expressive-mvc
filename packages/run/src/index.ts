@@ -1,1 +1,1 @@
-export { run, Runner } from './run';
+export { run, type Runner } from './run';
