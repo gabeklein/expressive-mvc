@@ -14,10 +14,11 @@ interface Run {
   undo: Map<string, Function | Runner.Node>;
   end?: Runner.Node;
   halted?: 'failed' | 'stopped';
+  ending?: boolean;
   error?: unknown;
   stopped?: Error;
   warned?: boolean;
-  drained?: () => void;
+  drained: (() => void)[];
 }
 
 interface Answer {
@@ -165,7 +166,11 @@ declare namespace Runner {
 
     /** A plain snapshot of status, active, record, queue, waiting, runs and error. */
     get(): Runner.Snapshot;
-    /** Ends the run once everything else pending has settled - with this value, else the class's `end`, else a dump of its public values. */
+    /**
+     * Inside a step: end the run once everything else pending has settled. From outside: discard
+     * pending steps and end once those in flight settle. The result is the class's `end` given this
+     * value, else the value, else a dump of its public values.
+     */
     end(value?: unknown): void;
     /** Cancel: discard pending steps and queued runs; in-flight steps settle and commit. */
     stop(options?: Runner.Stop): void;
@@ -232,7 +237,7 @@ function run<T extends State>(self: T): Runner<T> {
     then: { value: runner },
     on: { value: self },
     get: { value: () => snapshot(internal) },
-    end: { value: () => call(internal, 'end', []) },
+    end: { value: (value?: unknown) => conclude(internal, value) },
     stop: { value: (options?: Runner.Stop) => stop(internal, options) },
     retry: { value: () => outside('retry') },
     [Symbol.iterator]: {
@@ -374,7 +379,8 @@ function start(internal: Internal, args: unknown[]) {
     counts: new Map(),
     flight: new Set(),
     parked: new Map(),
-    undo: new Map()
+    undo: new Map(),
+    drained: []
   };
 
   promise.catch(() => {});
@@ -408,12 +414,12 @@ function begin(run: Run) {
   update(internal, 'status', 'running');
 
   exec(run, node(run, 'next', run.args)).then(() => {
-    if (!run.halted) end(run);
+    if (!run.halted && !run.ending) end(run);
   });
 }
 
 async function exec(run: Run, item: Runner.Node): Promise<void> {
-  if (run.halted) return;
+  if (run.halted || run.ending) return;
 
   if (item.group) {
     await Promise.all(item.group.map((member) => exec(run, member)));
@@ -648,7 +654,7 @@ async function invoke(run: Run, node: Runner.Node, wake?: string): Promise<Frame
     flight.delete(frame);
     update(internal, 'active', [...flight].at(-1)?.key);
 
-    if (!flight.size) run.drained?.();
+    if (!flight.size) for (const resolve of run.drained.splice(0)) resolve();
   }
 }
 
@@ -702,14 +708,30 @@ function record(internal: Internal, entry: Runner.Entry) {
   update(internal, 'record', internal.record.concat(entry));
 }
 
-async function end(run: Run) {
-  const { internal } = run;
+function conclude(internal: Internal, value: unknown) {
+  const run = internal.current;
 
-  if (!run.end) return finish(run, dump(internal));
+  if (!run || run.halted || run.ending) return;
 
-  const frame = await invoke(run, run.end);
+  release(run);
+  end(run, node(run, 'end', value === undefined ? [] : [value]));
+}
+
+async function end(run: Run, item = run.end) {
+  run.ending = true;
+
+  await drain(run);
+
+  if (run.halted) return;
+  if (!item) return finish(run, dump(run.internal));
+
+  const frame = await invoke(run, item);
 
   if (frame && !run.halted) finish(run, frame.result);
+}
+
+function drain(run: Run) {
+  if (run.flight.size) return new Promise<void>((resolve) => run.drained.push(resolve));
 }
 
 function dump(internal: Internal) {
@@ -805,7 +827,8 @@ function halt(run: Run, status: 'failed' | 'stopped', error?: unknown, undo = st
 }
 
 async function finalize(run: Run, undo: boolean) {
-  if (run.flight.size) await new Promise<void>((resolve) => (run.drained = resolve));
+  await drain(run);
+
   if (undo) await unwind(run);
 
   const { error } = run;

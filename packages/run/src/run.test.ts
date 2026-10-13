@@ -768,14 +768,119 @@ describe('end', () => {
     await expect(Test.new().next()).rejects.toThrow('end was scheduled twice.');
   });
 
-  it('will throw if end is called from outside', () => {
+  it('will do nothing if ended from outside while idle', () => {
     class Test extends State {
       then = run(this);
     }
 
     const test = Test.new();
 
-    expect(() => test.then.end()).toThrow('end cannot be called from outside; call next() to run.');
+    test.then.end('x');
+
+    expect(test.then.status).toBe('idle');
+    expect(test.then.runs).toBe(0);
+  });
+
+  it('will end from outside once steps in flight settle', async () => {
+    const work = mockPromise();
+    const more = mockPromise();
+    const later = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      async next(work: Promise<void>) {
+        await work;
+        this.value = 1;
+        this.later();
+      }
+
+      async later() {
+        later();
+      }
+
+      protected end(value: string) {
+        return `${value}:${this.value}`;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next(work);
+    const queued = test.next(more);
+
+    await flushMicrotasks();
+    test.then.end('early');
+    test.then.end('again');
+    expect(test.then.status).toBe('running');
+
+    work.resolve();
+
+    expect(await result).toBe('early:1');
+    expect(later).not.toHaveBeenCalled();
+    expect(test.then.runs).toBe(1);
+
+    await flushMicrotasks();
+    expect(test.then.status).toBe('running');
+    test.then.end('second');
+    more.resolve();
+
+    expect(await queued).toBe('second:1');
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'end#1']);
+  });
+
+  it('will end from outside with the value, else a dump', async () => {
+    class Test extends State {
+      then = run(this);
+      count = 1;
+
+      next() {
+        this.then(this.reply);
+      }
+
+      async reply() {}
+    }
+
+    const test = Test.new();
+    const first = test.next();
+
+    await flushMicrotasks();
+    expect(test.reply).toBeTypeOf('function');
+
+    test.then.end('x');
+
+    expect(test.reply).toBeUndefined();
+    expect(test.then.waiting).toEqual([]);
+    expect(await first).toBe('x');
+
+    const second = test.next();
+
+    await flushMicrotasks();
+    test.then.end();
+
+    expect(await second).toEqual({ count: 1 });
+  });
+
+  it('will fail if a step in flight fails after an outside end', async () => {
+    const work = mockPromise();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        await work;
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    test.then.end('x');
+    work.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.then.status).toBe('failed');
   });
 });
 
