@@ -1019,7 +1019,7 @@ describe('runs', () => {
     ]);
   });
 
-  it('will throw if a step is called from outside', () => {
+  it('will not expose a step outside unless a wait accepts it', () => {
     class Test extends State {
       then = run(this);
 
@@ -1028,7 +1028,8 @@ describe('runs', () => {
 
     const test = Test.new();
 
-    expect(() => test.second()).toThrow('second cannot be called from outside; call next() to run.');
+    expect(test.second).toBeUndefined();
+    expect(Object.keys(test)).not.toContain('second');
   });
 });
 
@@ -1481,6 +1482,191 @@ describe('wait', () => {
     expect(seen).toEqual([[], ['a', 'b'], ['b'], []]);
   });
 
+  it('will expose a step only while a wait accepts it', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply);
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const seen: boolean[] = [];
+
+    test.get((self) => void seen.push(typeof self.reply == 'function'));
+
+    expect(test.reply).toBeUndefined();
+
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(test.reply).toBeTypeOf('function');
+    expect(Object.keys(test)).not.toContain('reply');
+
+    test.reply();
+    expect(test.reply).toBeUndefined();
+
+    await result;
+    await flushMicrotasks();
+    expect(seen).toEqual([false, true, false]);
+  });
+
+  it('will schedule a waited-for step from inside a step', async () => {
+    class Test extends State {
+      then = run(this);
+      count = 0;
+
+      next() {
+        this.reply();
+      }
+
+      reply() {
+        this.count++;
+      }
+    }
+
+    expect(await Test.new().next()).toEqual({ count: 1 });
+  });
+
+  it('will answer the wait opened with the same first argument', async () => {
+    class Test extends State {
+      then = run(this);
+      answers: string[] = [];
+
+      next() {
+        this.then(['a', 'b'], this.ask);
+      }
+
+      ask(name: string) {
+        this.then(this.reply);
+      }
+
+      reply(name: string) {
+        this.answers = this.answers.concat(name);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.reply('b');
+
+    expect(test.then.waiting.map((wait) => wait.args[0])).toEqual(['a']);
+
+    test.reply('a');
+    await result;
+
+    expect(test.then.record.filter((entry) => entry.wake).map((entry) => [entry.wake, entry.args])).toEqual([
+      ['wait#2', ['b']],
+      ['wait#1', ['a']]
+    ]);
+  });
+
+  it('will resolve an answer once its own branch is done', async () => {
+    const work = mockPromise();
+    const order: string[] = [];
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply);
+        this.later();
+      }
+
+      async reply() {
+        this.follow();
+      }
+
+      async follow() {
+        await work;
+        order.push('follow');
+      }
+
+      async later() {
+        await work;
+        order.push('later');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+
+    const answered = test.reply().then(() => order.push('answered'));
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    work.resolve();
+    await answered;
+    expect(order).toEqual(['follow', 'answered']);
+
+    await result;
+    expect(order).toEqual(['follow', 'answered', 'later']);
+  });
+
+  it('will reject an answer if the run stops first', async () => {
+    const work = mockPromise();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply);
+      }
+
+      async reply() {
+        this.follow();
+      }
+
+      async follow() {
+        await work;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+
+    const answered = test.reply();
+
+    await flushMicrotasks();
+    test.then.stop();
+    work.resolve();
+
+    await expect(answered).rejects.toMatchObject({ name: 'Stopped' });
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+  });
+
+  it('will reject an answer if its step fails', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply);
+      }
+
+      async reply() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+
+    await expect(test.reply()).rejects.toThrow('boom');
+    await expect(result).rejects.toThrow('boom');
+  });
+
   it('will not answer a wait with a step it does not list', async () => {
     class Test extends State {
       then = run(this);
@@ -1497,7 +1683,7 @@ describe('wait', () => {
     const result = test.next();
 
     await flushMicrotasks();
-    expect(() => test.other()).toThrow('other cannot be called from outside; call next() to run.');
+    expect(test.other).toBeUndefined();
 
     test.reply();
     await result;
@@ -1595,10 +1781,12 @@ describe('wait', () => {
     }
 
     const test = Test.new();
-    const reply = test.reply;
     const result = test.next();
 
     await flushMicrotasks();
+
+    const { reply } = test;
+
     test.then.stop();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
@@ -1837,7 +2025,7 @@ describe('hooks', () => {
     const test = Test.new();
 
     expect(test.beforeNext()).toBe('hook');
-    expect(() => test.beforehand()).toThrow('beforehand cannot be called from outside; call next() to run.');
+    expect(test.beforehand).toBeUndefined();
   });
 
   it('will fail when a hook throws', async () => {

@@ -40,26 +40,90 @@ it('will run safe tools without asking in auto', async () => {
   expect(agent.then.waiting).toEqual([]);
 });
 
-it('will wait for approval and resume', async () => {
+it('will offer allow only while a tool call waits', async () => {
   const agent = Agent.new();
-  const reply = agent.next('write notes, read docs');
+  const seen: boolean[] = [];
+
+  agent.get((self) => void seen.push(!!self.allow));
+
+  expect(agent.allow).toBeUndefined();
+
+  const reply = agent.next('write notes');
+
+  await vi.waitFor(() => expect(agent.allow).toBeDefined());
+
+  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+
+  await agent.allow(call);
+
+  expect(agent.allow).toBeUndefined();
+  expect(await reply).toBe('done');
+  expect(seen).toEqual([false, true, false]);
+});
+
+it('will resolve allow once its tool has run', async () => {
+  const agent = Agent.new();
+  const reply = agent.next('write notes');
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
-  const [write, read] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
 
-  expect(write).toMatchObject({ name: 'write', input: 'notes' });
-  expect(read).toMatchObject({ name: 'read', input: 'docs' });
+  await agent.allow(call);
 
-  agent.allow(write);
-  agent.deny(read);
+  expect(agent.messages.get(-1)).toEqual({ role: 'tool', content: 'call_1_0: write notes ok' });
+  expect(await reply).toBe('done');
+});
+
+it('will answer the tool call it is given', async () => {
+  const agent = Agent.new();
+  const reply = agent.next('write notes, write docs');
+
+  await vi.waitFor(() => expect(agent.then.waiting).toHaveLength(2));
+
+  const [notes, docs] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+
+  await agent.allow(docs);
+
+  expect(agent.then.waiting.map((wait) => wait.args[0])).toEqual([notes]);
+  expect(agent.messages.get(-1)).toEqual({ role: 'tool', content: 'call_1_1: write docs ok' });
+
+  await agent.deny(notes);
 
   expect(await reply).toBe('done');
-  expect([...agent.messages].map((message) => message.content)).toContain('call_1_1: denied');
   expect(agent.then.record.filter((entry) => entry.wake).map((entry) => [entry.key, entry.wake])).toEqual([
-    ['allow', 'wait#1'],
-    ['deny', 'wait#2']
+    ['allow', 'wait#2'],
+    ['deny', 'wait#1']
   ]);
+});
+
+it('will deny a tool call', async () => {
+  const agent = Agent.new();
+  const reply = agent.next('write notes');
+
+  await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
+
+  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+
+  await agent.deny(call);
+
+  expect(await reply).toBe('done');
+  expect([...agent.messages].map((message) => message.content)).toContain('call_1_0: denied');
+});
+
+it('will throw if allow is called after its wait closed', async () => {
+  const agent = Agent.new();
+  const reply = agent.next('write notes');
+
+  await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
+
+  const { allow } = agent;
+  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+
+  allow(call);
+
+  expect(() => allow(call)).toThrow('allow cannot be called from outside; call next() to run.');
+  expect(await reply).toBe('done');
 });
 
 it('will keep messages across runs', async () => {

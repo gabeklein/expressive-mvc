@@ -10,7 +10,7 @@ interface Run {
   awaited?: boolean;
   counts: Map<string, number>;
   flight: Set<Frame>;
-  parked: Map<Runner.Wait, (frame?: Promise<Frame | undefined>) => void>;
+  parked: Map<Runner.Wait, (answer?: Answer) => void>;
   undo: Map<string, Function | Runner.Node>;
   end?: Runner.Node;
   halted?: 'failed' | 'stopped';
@@ -18,6 +18,11 @@ interface Run {
   stopped?: Error;
   warned?: boolean;
   drained?: () => void;
+}
+
+interface Answer {
+  frame: Promise<Frame | undefined>;
+  done(): void;
 }
 
 interface Frame extends Runner.Node {
@@ -43,6 +48,8 @@ interface Internal extends Runner.Snapshot {
   current?: Run;
   last?: Run;
   queued: Run[];
+  steps: Map<string, Function>;
+  present: Set<string>;
 }
 
 const FRAME = new WeakMap<object, Frame>();
@@ -200,7 +207,9 @@ function run<T extends State>(self: T): Runner<T> {
     waiting: [],
     runs: 0,
     error: undefined,
-    queued: []
+    queued: [],
+    steps: new Map(),
+    present: new Set()
   } as unknown as Internal;
 
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
@@ -235,7 +244,6 @@ function run<T extends State>(self: T): Runner<T> {
 
   event(runner);
 
-  const steps = new Set<string>();
   const hooks: string[] = [];
 
   for (let proto = Object.getPrototypeOf(self); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
@@ -254,16 +262,28 @@ function run<T extends State>(self: T): Runner<T> {
         return call(internal, key, args, FRAME.get(this));
       };
 
-      steps.add(key);
+      internal.steps.set(key, step);
       STEP.set(step, unbind(desc.get!));
       REF.set(step, { internal, key });
-      Object.defineProperty(self, key, { value: step, writable: true, configurable: true });
+      Object.defineProperty(
+        self,
+        key,
+        key == 'next'
+          ? { value: step, writable: true, configurable: true }
+          : {
+              configurable: true,
+              get(this: object) {
+                touch(this, key);
+                return internal.present.has(key) ? step : undefined;
+              }
+            }
+      );
     }
 
   for (const hook of hooks) {
     const target = hook.replace(HOOK, (_, __, first: string) => first.toLowerCase());
 
-    if (target && !steps.has(target)) throw new Error(`${hook} has no step ${target}.`);
+    if (target && !internal.steps.has(target)) throw new Error(`${hook} has no step ${target}.`);
   }
 
   self.get(null, () => stop(internal));
@@ -291,9 +311,10 @@ function call(internal: Internal, key: string, args: unknown[], frame?: Frame) {
   if (key == 'next') return start(internal, args);
 
   const { current } = internal;
-  const wait = current && [...current.parked.keys()].find((wait) => wait.answers.includes(key));
+  const open = current ? [...current.parked.keys()].filter((wait) => wait.answers.includes(key)) : [];
+  const wait = open.find((wait) => wait.args[0] === args[0]) || open[0];
 
-  if (wait) return wake(current, wait, key, args);
+  if (wait) return wake(current!, wait, key, args);
 
   throw new Error(`${key} cannot be called from outside; call next() to run.`);
 }
@@ -364,12 +385,10 @@ function start(internal: Internal, args: unknown[]) {
   }
   else begin(run);
 
-  return handle(run);
+  return handle(run, run.promise.then());
 }
 
-function handle(run: Run) {
-  const out = run.promise.then();
-
+function handle<T>(run: Run, out: Promise<T>) {
   out.catch(() => {});
 
   return Object.defineProperty(out, 'then', {
@@ -401,11 +420,18 @@ async function exec(run: Run, item: Runner.Node): Promise<void> {
     return;
   }
 
-  let frame: Frame | undefined;
+  if (item.answers) {
+    const answer = await park(run, item);
 
-  if (item.answers) frame = await park(run, item);
-  else if (item.key != 'end') frame = await invoke(run, item);
+    if (answer) {
+      await descend(run, await answer.frame);
+      answer.done();
+    }
+  }
+  else if (item.key != 'end') await descend(run, await invoke(run, item));
+}
 
+async function descend(run: Run, frame?: Frame) {
   if (frame) for (const child of frame.items) await exec(run, child);
 }
 
@@ -420,7 +446,7 @@ function park(run: Run, item: Runner.Node) {
     console.warn(`${internal.self} is waiting with undo closures held; a closure does not survive a resume.`);
   }
 
-  return new Promise<Frame | undefined>((resolve) => {
+  return new Promise<Answer | undefined>((resolve) => {
     run.parked.set(wait, resolve);
     sync(run);
   });
@@ -428,18 +454,43 @@ function park(run: Run, item: Runner.Node) {
 
 function wake(run: Run, wait: Runner.Wait, key: string, args: unknown[]) {
   const resolve = run.parked.get(wait)!;
+  let done!: () => void;
+  let fail!: (error: unknown) => void;
+
+  const answered = new Promise<void>((res, rej) => {
+    done = res;
+    fail = rej;
+  });
 
   run.parked.delete(wait);
   sync(run);
-  resolve(invoke(run, node(run, key, args), wait.id));
+  resolve({
+    frame: invoke(run, node(run, key, args), wait.id),
+    done: () => (run.halted ? run.promise.catch(fail) : done())
+  });
+
+  return handle(run, answered);
+}
+
+function release(run: Run) {
+  for (const resolve of run.parked.values()) resolve();
+
+  run.parked.clear();
+  sync(run);
 }
 
 function sync(run: Run) {
-  const { internal, parked } = run;
+  const { internal, parked, halted } = run;
+  const { self, present } = internal;
+  const waits = [...parked.keys()];
+  const answers = new Set(waits.flatMap((wait) => wait.answers));
 
-  update(internal, 'waiting', [...parked.keys()]);
+  internal.present = answers;
+  update(internal, 'waiting', waits);
 
-  update(internal, 'status', parked.size ? 'waiting' : 'running');
+  for (const key of new Set([...present, ...answers])) if (present.has(key) != answers.has(key)) event(self, key);
+
+  if (!halted) update(internal, 'status', parked.size ? 'waiting' : 'running');
 }
 
 function enter(run: Run, node: Runner.Node) {
@@ -450,11 +501,14 @@ function enter(run: Run, node: Runner.Node) {
 
   frame.proxy = new Proxy(self, {
     get(target, prop) {
+      const step = internal.steps.get(prop as string);
+
+      if (step) return ref(step, frame.proxy);
+
       const value = Reflect.get(target, prop, target);
 
       if (value === runner) return view(frame);
       if (typeof value != 'function') return value;
-      if (STEP.has(value)) return ref(value, frame.proxy);
 
       return Object.hasOwn(target, prop) ? value : value.bind(target);
     },
@@ -545,7 +599,7 @@ async function invoke(run: Run, node: Runner.Node, wake?: string): Promise<Frame
   const { internal, flight } = run;
   const { self } = internal;
   const { id, key, args } = node;
-  const fn = STEP.get((self as any)[key]) || (() => {});
+  const fn = STEP.get(internal.steps.get(key)!) || (() => {});
   const frame = enter(run, node);
 
   frame.wake = wake;
@@ -697,7 +751,7 @@ function tail(internal: Internal) {
 
 function settled(internal: Internal) {
   if (!internal.current) {
-    if (STEP.get((internal.self as { next?: Function }).next!)?.length)
+    if (STEP.get(internal.steps.get('next')!)?.length)
       return Promise.reject(new Error(`${internal.self} is idle. next() takes arguments; call it to start a run.`));
 
     start(internal, []);
@@ -734,7 +788,7 @@ function stop(internal: Internal, options: Runner.Stop = {}) {
 }
 
 function halt(run: Run, status: 'failed' | 'stopped', error?: unknown, undo = status == 'failed') {
-  const { internal, parked } = run;
+  const { internal } = run;
 
   if (run.halted) return;
 
@@ -746,10 +800,7 @@ function halt(run: Run, status: 'failed' | 'stopped', error?: unknown, undo = st
     update(internal, 'error', error);
   }
 
-  for (const resolve of parked.values()) resolve();
-
-  parked.clear();
-  update(internal, 'waiting', []);
+  release(run);
   finalize(run, undo);
 }
 
@@ -797,7 +848,7 @@ async function unwind(run: Run) {
 }
 
 function undo(run: Run, entry: Runner.Entry, how: Function | Runner.Node) {
-  const { self } = run.internal;
+  const { steps } = run.internal;
   const frame = enter(run, { id: `${entry.id}:undo`, key: entry.key, args: [] });
   const { proxy } = frame;
 
@@ -805,7 +856,7 @@ function undo(run: Run, entry: Runner.Entry, how: Function | Runner.Node) {
 
   if (typeof how == 'function') return how.call(proxy);
 
-  return STEP.get((self as any)[how.key])!.apply(proxy, how.args);
+  return STEP.get(steps.get(how.key)!)!.apply(proxy, how.args);
 }
 
 export { run, Runner };
