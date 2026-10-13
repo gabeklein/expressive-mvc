@@ -15,7 +15,7 @@ Two tiers. A **runnable** - `run(this)` - is atomic: single process, all or noth
 
 ## Goal
 
-Long-running processes the Expressive way. A State with `then = run(this)` is one dispatch of actions: its methods are steps which schedule one another, its fields carry the data between them, `done` ends it. The `Runner` the instruction returns is the controller - status, journal, result, seams. The journal - each step's args, patch and what it scheduled - makes a run legible mid-swing, and the undo it carries makes a run atomic.
+Long-running processes the Expressive way. A State with `then = run(this)` is runnable: `next()` starts a run, its methods are steps which schedule one another, its fields carry the data between them, `end` ends it. The `Runner` the instruction returns is the controller - status, journal, queue, waits, result. The journal - each step's args, patch and what it scheduled - makes a run legible mid-swing, and the undo it carries makes a run atomic.
 
 Reference case study is Inngest. It replays an orchestrating function because closures cannot be serialized, so data leaves a step as a return value and re-enters as a memoized input. Here there is no orchestrator and no replay: steps never await each other's work, a run is a plan of tokens, and each step commits its own patch.
 
@@ -23,24 +23,30 @@ Reference case study is Inngest. It replays an orchestrating function because cl
 
 Shipped behavior is documented in [packages/run/docs/](packages/run/docs/README.md); this list holds the decisions behind it and those not yet built.
 
-- **`run(this)` is the instruction, `Runner` the controller.** No base class - a State opts in with one field, as with `ref(this)`. The initializer runs after the class has bootstrapped and before activation, so the instruction sees every step before any is bound. It defines wrapped steps as own, non-enumerable properties of the instance; the prototype is never touched. The `Runner` is an observable callable, not a State - a function made observable with `event`/`touch` from `@expressive/mvc/observable`, as `map`/`has` are. No name on the user's class is reserved - the field name is the user's.
-- **`then = run(this)` is the primary form** - the instance is awaitable; `Promise.resolve(instance)` and a `set(async () => X.new())` factory resolve to the result. A tracking read of `then` (render, `get()` effect) is an observable view and not callable, so `await` the instance outside tracking contexts. `run = run(this)` keeps it `await x.run`.
-- **Entry.** `new()` schedules the first step today; step 2 moves the entry to `start()` so runs repeat (Plan). mvc reads `new` when activation reaches it, so the own wrapper applies to the first instance (`fix/new-init`).
-- **Inputs are fields.** `X.new({ cart })` assigns them as any State's constructor does, so they show in the dump, the journal, a twin and inspect. Required inputs are not enforced by the type (`Assign<T>` is partial); a missing one fails at the step that reads it. Parameters on the entry were rejected: TypeScript cannot read a protected member through a type parameter.
-- **A step body is a plan builder.** A step called from inside a running step does not run: it returns an inert thenable token, scheduled after the calling step settles cleanly. Tokens scheduled together are a fork - serial, in issue order. `await this.a()` resolves immediately (an opaque handle) and records order only: a token depends on every token awaited before it was issued (`after: [...ids]`), so `await Promise.all([this.a(), this.b()])` joins. Loops are plain JS loops. Commit is `{ id, key, args, prior, patch, next }` on clean settle; a step that throws has scheduled nothing and journaled nothing.
-- **The first step call ends the step's work.** After scheduling, a step may only schedule more, await tokens, and return. Enforced two ways: a write through the step's proxy after its first token fails the run; a settle landing later than a few microtasks (`SLACK`) after its last token event fails the run ("kept working after scheduling") - each token event re-arms, latest arm wins. A sync side effect after scheduling cannot be detected; side effects are steps. Documented discipline.
-- **Each step runs with a proxy as `this`.** Writes through it are the entry's `patch`, with `prior` values recorded for the unwind; a token is attributed to the frame whose proxy issued it, so parallel branches attribute without `AsyncLocalStorage`. Reads pass through; State's own methods bind to the instance. `this.is` is the real instance: a write through it, or from outside, is a steer - allowed, in no patch.
-- **`_`-prefixed methods are helpers**, mvc's unmanaged convention: not wrapped, called inline, their result the step's. They bind to the instance, not the frame - a write inside one is not journaled. Every other method on the class, bases included, is a step; a step invoked inside a step is always scheduled, never called.
-- **Return guard.** A step returns nothing, a function (its undo closure), or a token - `return this.release(id)` removes the token from the plan and journals it as a durable undo `{ key, args }`. Anything else fails the run. `done`'s return is its result, not an undo.
-- **`done` joins.** It runs only when nothing else is pending. A class-declared `done(value)` is a step that types the result (`ReturnType`, or its argument when void); `this.then.done(value?)` is the controller form - undeclared `done`, or an early end. When the plan drains with no `done`, the run ends implicitly with a dump of the class's public values, the `Runner` excluded. `done` scheduling a step, or scheduled twice, fails the run.
-- **Rollback.** On failure: status `failed`, pending plan discarded, entries with an undo unwound in reverse commit order - run the undo (closure with the frame proxy as `this`; or the undo step with its journaled args), restore that entry's `prior` values, mark `undone: true`. An entry without an undo keeps its patch. An undo that throws marks `undone: 'failed'`, replaces `error`, stops the unwind. Undo frames cannot schedule steps - they hit the "is failed" guard. Then the result rejects; unawaited, it rethrows uncaught two microtasks later, as mvc's own reports do.
-- **Outside calls.** A step called with no frame while one runs throws `<step> is running; <key> cannot be called from outside.`; after done or failed, `<instance> is <status>; <key> cannot run.`. Step 2 adds `wait` as the one sanctioned outside call while a plan is pending.
-- **Data lives in fields and args.** Fields are run-scoped; args are step-scoped and journaled. Any value reaching `done` flows through one or the other.
+- **`run(this)` is the instruction, `Runner` the controller.** No base class - a State opts in with one field, as with `ref(this)`. The initializer runs after the class has bootstrapped and before activation, so the instruction sees every step before any is bound. It defines wrapped steps as own, non-enumerable properties of the instance; the prototype is never touched. Getters, `new`, `_` helpers and hooks are not wrapped. The `Runner` is an observable callable, not a State - a function made observable with `event`/`touch` from `@expressive/mvc/observable`, as `map`/`has` are. No name on the user's class is reserved - the field name is the user's.
+- **`next(...args)` is the entry.** User-declared, any parameters. From outside it is the only callable step: it starts a run and returns a Promise settling with it. Any other step from outside throws (`<key> cannot be called from outside; call next() to run.`), except one answering an open wait. Inside a step `this.next(x)` is an ordinary step call - how an agent loops. `new()` stays mvc's setup hook, unwrapped; no auto-start - a class wanting one writes `new() { this.next(); }`.
+- **Runs repeat.** Each run has its own `record` and ids; fields persist; `runs` counts finished runs; a finished run returns status to `idle`, `stopped`/`failed` hold until the next run starts. `next()` while a run is active queues a run, FIFO, listed in `then.queue`; each call's Promise settles with its own run; a failure does not clear the queue.
+- **`await instance` is start-or-join.** Idle with nothing queued, it calls `next()` with no arguments; otherwise it joins - settling once the active run and the queue drain, with the last run's result. The type is the guard: `Runner<T>` is `Runner.Controller<T>` intersected with the thenable signature only when `[]` satisfies `next`'s parameters. `then = run(this)` is the primary form - `Promise.resolve(instance)` and a `set(async () => X.new())` factory resolve to the result. A tracking read of `then` is an observable view and not callable. `run = run(this)` keeps it `await x.run`.
+- **Inputs are fields, or `next`'s arguments.** `X.new({ cart })` assigns fields as any State's constructor does, so they show in the dump, the journal, a twin and inspect. Required inputs are not enforced by the type (`Assign<T>` is partial); a missing one fails at the step that reads it.
+- **A step body is a plan builder.** A step called from inside a running step does not run: it returns an inert, non-thenable token, scheduled after the calling step settles cleanly. Tokens run in sequence, depth-first: each, with everything it schedules, before the next sibling. `this.then(tokens)` / `this.then(items, each)` makes one parallel group at that point - members run concurrently, the group completes when every member's subtree has. Commit is `{ id, key, args, prior, patch, next }` on clean settle; a step that throws has scheduled nothing.
+- **`then` is overloaded by argument.** A function or nothing first is the thenable; an iterable first is a group (inside a step only - outside it throws). A step calling the thenable form, `await this` included, fails: `a step cannot await its own run.` Group signatures carry a generic `this` parameter so the await check skips them; the instance stays awaitable when the thenable part is present.
+- **The first step call ends the step's work.** After its first token, a step may only issue tokens, group them, and return. Enforced two ways: a write through the step's proxy after its first token fails the run; a settle landing later than a few microtasks (`SLACK`) after its last token event - issue or group - fails the run. A sync side effect after scheduling cannot be detected; side effects are steps. Documented discipline.
+- **Each step runs with a proxy as `this`.** Writes through it are the entry's `patch`, with `prior` values recorded for the unwind; a token is attributed to the frame whose proxy issued it, so parallel members attribute without `AsyncLocalStorage`. Reads pass through; State's own methods bind to the instance. `this.is` is the real instance: a write through it, or from outside, is a steer - allowed, in no patch.
+- **`_`-prefixed methods are helpers**, mvc's unmanaged convention: not wrapped, called inline, bound to the calling frame's proxy - their writes are in the step's patch and under the write guard.
+- **Return guard.** A step returns nothing, a function (its undo closure), or a token it issued - `return this.release(id)` removes the token from the plan and journals it as a durable undo `{ id, key, args }`. Anything else fails the run. `end`'s return is its result, not an undo.
+- **`end` joins.** Class hook `end(value?)` and `this.then.end(value?)` mean the same: it runs once, after everything else in the run; its return, else its argument, else a dump of public values (the `Runner` excluded) is the result. A plan that drains without `end` ends with the dump. `end` scheduling a step, or scheduled twice, fails the run.
+- **Rollback is all or nothing.** On failure: status `failed`, pending discarded, waits released, the failing step's own writes restored; in-flight members settle and commit; then every committed entry is unwound in reverse - its undo if any (closure with a proxy as `this`, or the undo step with its journaled args), then its `prior` restored, `undone: true`. An undo that throws marks `undone: 'failed'`, replaces `error`, stops the unwind. Undo frames cannot schedule. Then the result rejects; unawaited, it rethrows uncaught two microtasks later.
+- **`stop({ undo? })` cancels.** Pending discarded, waits released, in-flight steps settle and commit but schedule nothing, status `stopped`, queue cleared with each queued Promise rejecting with an error named `'Stopped'`, the current run rejecting with it once in-flight steps settle. `undo: true` unwinds as a failure does. `set(null)` stops. Finishing never destroys the instance.
+- **`this.then.wait(context)`** is a token which parks its branch: status `waiting`, `then.waiting` lists `{ id, context }`. An outside call to any step but `next`/`end` answers the oldest wait - journaled `wake: <id>`, its schedule in the wait's place, the plan continuing after. A wait reached while closure undos are held warns once per run - a job-tier constraint surfaced early.
+- **`this.then.retry({ attempts, backoff? })`** at the top of a step configures that step: on a throw from its body, fields restored to its `prior`, it runs again after `backoff(attempt)` ms, up to `attempts` tries. Each failed try is its own entry with `attempt` and `error`; the committed one carries `attempt` past the first. Rule violations do not retry; a stopped run does not retry. No class-level or static retry.
+- **Hooks.** `before(key, args, skip)` / `after(key, entry, skip)` and per-step `before<Step>(skip, ...args)` / `after<Step>(skip, entry)`, excluded from wrapping by prefix (followed by an uppercase letter, or the bare name). Order: before → before<Step> → step → after<Step> → after; once per step, not per retry, not for undos. Raw instance as `this`, writes unjournaled, return ignored. `skip` is always false at this tier; the signature is shared with the job tier. A per-step hook without its step throws at construction.
+- **Runner surface.** `status` (`idle | running | waiting | stopped | failed`), `active` (a step in flight, the latest invoked with a group), `record`, `queue`, `waiting`, `runs`, `error` - enumerable getters, so `{ ...instance.then }` is a snapshot; iterable over `record`; `on`; `end`, `stop`, `wait`, `retry`; a non-enumerable `get()` snapshot.
+- **Data lives in fields and args.** Fields persist across runs; args are step-scoped and journaled. Any value reaching `end` flows through one or the other.
 - **Core changes go upstream.** Public mvc API only - `@expressive/mvc` is a workspace peer.
 
 ## Benchmarks
 
-Two classes drive design and tests. SubmitOrder is green on the shipped loop ([packages/run/examples/order/order.ts](packages/run/examples/order/order.ts)); Agent is the target for step 2 - it uses `start`, `wait` and repeatable runs, none of which has shipped.
+Two classes drive design and tests, both green: [SubmitOrder](packages/run/examples/order/order.ts) and [Agent](packages/run/examples/agent/agent.ts), each with mocked services.
 
 ```ts
 class SubmitOrder extends State {
@@ -50,7 +56,7 @@ class SubmitOrder extends State {
   charge?: Charge = undefined;
   tracking = '';
 
-  protected new() {
+  next() {
     this.reserve();
   }
 
@@ -65,9 +71,8 @@ class SubmitOrder extends State {
   async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
-    this.ship(this.charge.id);
-    this.receipt(this.charge.receiptUrl);
-    this.done();
+    this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
+    this.end();
 
     return this.refund(this.charge.id);
   }
@@ -84,13 +89,12 @@ class SubmitOrder extends State {
     await stripe.refund(chargeId);
   }
 
-  done() {
+  end() {
     return { orderId: this.charge!.id, tracking: this.tracking };
   }
 }
 
-const order = SubmitOrder.new({ cart });
-const result = await order;
+const result = await SubmitOrder.new({ cart });
 ```
 
 ```ts
@@ -100,27 +104,23 @@ class Agent extends State {
   mode: 'ask' | 'auto' | 'yolo' = 'ask';
   messages = has<Message>();
 
-  prompt = '';
-
-  start() {
-    this.messages.push(user(this.prompt));
+  async next(prompt: string) {
+    this.messages.push(user(prompt));
     this.turn();
   }
 
   async turn() {
-    const reply = await model.create({ messages: [...this.messages], tools });
+    const reply = await model.create(this.messages);
 
     this.messages.push(reply);
 
     const calls = toolCalls(reply);
 
-    if (!calls.length) {
-      this.done(reply);
-      return;
+    if (calls.length) {
+      this.then(calls, this.tool);
+      this.turn();
     }
-
-    await Promise.all(calls.map((call) => this.tool(call)));
-    this.turn();
+    else this.end(reply);
   }
 
   tool(call: ToolCall) {
@@ -142,34 +142,35 @@ class Agent extends State {
     this.messages.push(result(call, 'denied'));
   }
 
-  done(reply: Message) {}
+  end(reply: Message) {
+    return reply.content;
+  }
 }
 
 const agent = Agent.new();
 
-agent.prompt = 'ship it';
-await agent;                            // one turn
-
-agent.prompt = 'now the tests';
-await agent;                            // the next - messages persist, then.runs == 2
+await agent.next('ship it');            // one turn
+await agent.next('now the tests');      // the next - messages persist, then.runs == 2
 ```
 
-Agent exercises what Order does not: a run per turn on one instance, park and wake by outside call (`allow`/`deny`), steering (`agent.mode = 'yolo'` before the next `tool`), and the journal as transcript.
+Agent exercises what Order does not: a run per turn on one instance, a queue, park and wake by outside call (`allow`/`deny`), steering (`agent.mode = 'yolo'` before the next `tool`), and the journal as transcript.
 
 ## Plan
 
 In order; stop and reassess after 2 if the journal is ugly.
 
-- [x] **The loop** - `run(this)` wrapping `new` and steps per instance (own, non-enumerable), proxy-bound frames, plan-builder tokens with `await` as order and `Promise.all` as join, settle-then-commit, write and lateness guards, return guard, `_` helpers, undo closures and returned-token undos, reverse unwind with `prior` restore, `done` joining and implicit end, `Runner` as observable callable with `on`/`get()`/`status`/`step`/`entries`/`error`/`done`/`then`, `then = run(this)` making the instance awaitable. Order green with mocked services, including the unwind.
-- [ ] **Repeatable runs, hooks, wait, cancel** - Agent green.
-  - [ ] **`start()` is the entry**, not `new()` - runs are repeatable. `then()` while idle starts a run and returns its promise; while running, joins it; after a run, the next `then()` starts a fresh run with its own journal. `then.runs` counts; instance fields persist across runs. `new()` stays free for setup. No auto-start.
-  - [ ] **`this.then({ attempts, backoff })`** at the top of a step configures that step - granular retry only. On failure the node re-queues with `attempt + 1` after the backoff; retries do not fire before/after hooks. No class-level or static retry.
-  - [ ] **Hooks** - `before(key, args, skip)` / `after(key, entry, skip)` and per-step `beforeShip(skip, ...args)` / `afterShip(skip, entry)`, excluded from wrapping by prefix. Alignment is enforced by the type of `run(this)`: a `beforeX` without a step `x`, or with a mismatched signature, fails to compile (template-literal mapped type). `skip` is always false at this tier; the signature is shared with the job tier.
-  - [ ] **`this.then.wait(context)`** - a token holding its branch open until an outside step is called, the one allowed outside call while a plan is pending. `then.waiting` lists open waits with their context, reactive. `this.then.sleep(ms)` in-process. Both warn if closure undos are held - a job-tier concern surfaced early.
-  - [ ] **Destroy is cancel.** `set(null)` mid-run: the in-flight step settles and commits, nothing follows, status `cancelled`. `then.cancel({ rollback: true })` unwinds. Finishing never destroys - a finished run is inert and readable.
-- [ ] **Steering entries and parallel forks** - outside writes journaled as their own entries, distinct from a step's patch, so a steer is visible in the trace.
-
-`then` is overloaded by position: `then(fn, fn)` is the thenable, `then({ ... })` inside a step is that step's config. A positional `then(args)` was considered and held.
+- [x] **The loop** - `run(this)` wrapping steps per instance (own, non-enumerable), proxy-bound frames, plan-builder tokens, settle-then-commit, write and lateness guards, return guard, `_` helpers, undo closures and returned-token undos, reverse unwind with `prior` restore, joining end and implicit end, `Runner` as observable callable, `then = run(this)` making the instance awaitable. Order green with mocked services, including the unwind.
+- [x] **Repeatable runs, hooks, wait, cancel** - Agent green.
+  - [x] **`next()` is the entry**, runs repeat and queue; `await instance` is start-or-join, gated by type on `next`'s parameters.
+  - [x] **Depth-first sequence and parallel groups** - `this.then(tokens)`, `this.then(items, each)`; tokens non-thenable; `after`/await-order dropped.
+  - [x] **`this.then.retry({ attempts, backoff })`** - per step, hooks not refired.
+  - [x] **Hooks** - `before`/`after`, per-step `before<Step>`/`after<Step>`; orphans throw at runtime (type check: see Open).
+  - [x] **`this.then.wait(context)`** - park, `then.waiting`, wake by outside call; closure-undo warning.
+  - [x] **`stop({ undo })`**, `set(null)` stops.
+  - [x] **Fixes** - `_` helpers bound to the frame; rollback all or nothing.
+  - [x] **Renames** - `end` (was `done`), `active` (was `step`), `record` (was `entries`), status `idle` (was `done`).
+- [ ] **Steering entries** - outside writes journaled as their own entries, distinct from a step's patch, so a steer is visible in the trace.
+- [ ] **`this.then.sleep(ms)`** - in-process, warning like `wait` when closure undos are held. Not built in step 2.
 
 Held: recovery policy beyond per-step retry - a `catch` hook is not in the plan.
 
@@ -177,10 +178,16 @@ Deferred: `property = run(X, ...args)` (a child run nested under one step of the
 
 ## Open
 
+- Hook alignment by type is not enforced. `run(this)` in a field initializer infers the polymorphic `this`, and TS cannot relate `this` to a mapped type over it: `self: T & Aligned<T>` (a template-literal mapped type over `before${S}`/`after${S}` keys) rejects every class, aligned or not, and a conditional rest-parameter check stays deferred. A concrete check works only where the class type is concrete - e.g. an opt-in `class Agent extends State implements Runner.Hooks<Agent>` (new surface, not added). Shipped instead: a per-step hook without its step throws at construction; signatures are unchecked.
+- With `next` taking required arguments, a bare `await instance` is a compile error (TS1320 - `then` still has call signatures, for groups), not the instance type. That is the guard working, louder than intended.
+- `instance.get()` exports the Runner function itself under its field: mvc's `values()` duck-types `get()` only on objects, so the Runner's `get()` snapshot is not used there.
+- A wake call returns nothing; the run's Promise carries the outcome. An answered wait is matched by age, not by which call answered it.
+- Status is `waiting` while any wait is open, even with other members in flight.
 - Hot reload: a patch's rebind redefines an own method and drops the wrapper. Re-wrapping needs a per-instance seam - a class-level `method` handler is a permanent side effect on the class, which the instruction avoids on purpose.
-- Which `_`-prefixed convention excludes a field from the `done` dump, if any.
-- `this.then.done`'s argument is `unknown` inside the class body (a conditional over the polymorphic `this` cannot resolve there); the typed path is the class's own `done` step.
+- Which `_`-prefixed convention excludes a field from the `end` dump, if any.
+- `this.then.end`'s argument is `unknown` inside the class body (a conditional over the polymorphic `this` cannot resolve there); the typed path is the class's own `end`. Likewise `next()`'s Promise is typed by the class's `next` declaration, not the run's result - await the instance for the typed result.
 - The lateness guard sees token events only: a sync side effect after scheduling is invisible to it.
+- Rollback covers field writes only - `has`/`map` mutations (`messages.push`) have no `prior`.
 
 ## Job tier (parked)
 
