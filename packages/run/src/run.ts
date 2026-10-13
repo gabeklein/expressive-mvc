@@ -243,9 +243,11 @@ function invoke(runner: Runner, node: Node, undo?: Function | true) {
     get(target, prop) {
       const value = Reflect.get(target, prop, target);
 
-      if (typeof value != 'function' || Object.hasOwn(target, prop)) return STEP.has(value) ? value.bind(proxy) : value;
+      if (typeof value != 'function') return value;
+      if (STEP.has(value)) return value.bind(proxy);
+      if ((prop as string)[0] == '_') return unbind(value).bind(proxy);
 
-      return value.bind(target);
+      return Object.hasOwn(target, prop) ? value : value.bind(target);
     },
     set(target, prop, value) {
       const key = String(prop);

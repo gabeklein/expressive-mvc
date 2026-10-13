@@ -364,10 +364,11 @@ describe('steps', () => {
     expect(test.run.entries.map((entry) => entry.patch)).toEqual([{}, {}, {}]);
   });
 
-  it('will run helpers inline and blame their writes on the step', async () => {
+  it('will run helpers with the step as this', async () => {
     class Test extends State {
       run = run(this);
       value = 0;
+      label = '';
 
       protected new() {
         this.first();
@@ -378,14 +379,34 @@ describe('steps', () => {
       }
 
       _double(n: number) {
+        this.label = 'doubled';
         return n * 2;
       }
     }
 
     const test = Test.new();
 
-    expect(await test.run).toEqual({ value: 4 });
-    expect(test.run.entries[1].patch).toEqual({ value: 4 });
+    test._double(1);
+
+    expect(await test.run).toEqual({ value: 4, label: 'doubled' });
+    expect(test.run.entries[1].patch).toEqual({ label: 'doubled', value: 4 });
+  });
+
+  it('will pass function fields through', async () => {
+    const fn = () => 1;
+    let seen: unknown;
+
+    class Test extends State {
+      run = run(this);
+      fn = fn;
+
+      protected new() {
+        seen = this.fn;
+      }
+    }
+
+    await Test.new().run;
+    expect(seen).toBe(fn);
   });
 
   it('will be observed through the instance', async () => {
@@ -740,6 +761,26 @@ describe('failures', () => {
 
       protected new() {
         this.first();
+        this.value = 1;
+      }
+
+      first() {}
+    }
+
+    await expect(Test.new().run).rejects.toThrow('new wrote value after scheduling first.');
+  });
+
+  it('will reject when a helper writes after scheduling', async () => {
+    class Test extends State {
+      run = run(this);
+      value = 0;
+
+      protected new() {
+        this.first();
+        this._set();
+      }
+
+      _set() {
         this.value = 1;
       }
 
