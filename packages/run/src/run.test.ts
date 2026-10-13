@@ -52,14 +52,18 @@ describe('steps', () => {
       run = run(this);
 
       protected new() {
-        this.done();
+        this.run.done();
       }
     }
 
+    Test.new();
+
     const before = Object.getOwnPropertyDescriptor(Test.prototype, 'new');
     const test = Test.new();
+    const own = Object.getOwnPropertyDescriptor(test, 'new')!;
 
     expect(Object.getOwnPropertyDescriptor(Test.prototype, 'new')).toEqual(before);
+    expect(own.enumerable).toBe(false);
     expect(Object.keys(test)).not.toContain('new');
   });
 
@@ -81,7 +85,7 @@ describe('steps', () => {
 
       second() {
         second();
-        this.done();
+        this.run.done();
       }
     }
 
@@ -111,7 +115,7 @@ describe('steps', () => {
       first() {
         this.b = 'x';
         this.a = 2;
-        this.done();
+        this.run.done();
       }
     }
 
@@ -210,7 +214,7 @@ describe('steps', () => {
 
       first() {
         this.value = this._double(2);
-        this.done();
+        this.run.done();
       }
 
       _double(n: number) {
@@ -304,7 +308,7 @@ describe('failures', () => {
       value = 0;
 
       protected new() {
-        this.done();
+        this.run.done();
         this.value = 1;
       }
     }
@@ -340,7 +344,7 @@ describe('failures', () => {
 
       async first() {
         await work;
-        this.done();
+        this.run.done();
       }
 
       second() {}
@@ -348,6 +352,7 @@ describe('failures', () => {
 
     const test = Test.new();
 
+    await flushMicrotasks();
     expect(() => test.second()).toThrow('first is running; second cannot be called from outside.');
 
     work.resolve();
@@ -359,7 +364,7 @@ describe('failures', () => {
       run = run(this);
 
       protected new() {
-        this.done();
+        this.run.done();
       }
 
       again() {}

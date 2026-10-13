@@ -36,6 +36,7 @@ it('will expose progress as fields', async () => {
   order.set('tracking', () => void seen.push(order.tracking));
 
   expect(order.charge).toBeUndefined();
+  await expect(order.run).toHaveUpdated('step');
   expect(order.run.step).toBe('reserve');
   expect(stripe.charge).not.toHaveBeenCalled();
 

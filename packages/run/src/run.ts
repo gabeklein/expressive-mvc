@@ -22,7 +22,7 @@ interface Control {
 
 const CONTROL = new WeakMap<Runner, Control>();
 const FRAME = new WeakMap<object, Frame>();
-const STEP = new WeakSet<Function>();
+const STEP = new WeakMap<Function, Function>();
 
 declare namespace Runner {
   type Result<T> = T extends { done(...args: infer A): infer R }
@@ -41,9 +41,9 @@ class Runner<T extends State = State> extends State {
   error: unknown = undefined;
   entries: Runner.Entry[] = [];
 
-  /** Ends the run after the current step settles. Undeclared `done` on the class resolves with a dump of its public values. */
-  done(value?: Runner.Result<T>) {
-    handoff(this, 'done', value === undefined ? [] : [value]);
+  /** Ends the run after the current step settles - with this value, else the class's `done`, else a dump of its public values. */
+  done(value?: unknown) {
+    handoff(this, 'done', value === undefined ? [] : [value], CONTROL.get(this.is)!.current);
   }
 
   then<R1 = Runner.Result<T>, R2 = never>(
@@ -87,19 +87,17 @@ function run<T extends State>(self: T): Runner<T> {
       const wrapper = function (this: object, ...args: unknown[]) {
         const frame = FRAME.get(this);
 
-        if (frame) return handoff(runner, key, args, frame);
-
-        invoke(runner, key, fn, args);
+        return handoff(runner, key, key == 'new' ? [] : args, frame);
       };
 
-      STEP.add(wrapper);
+      STEP.set(wrapper, fn);
       Object.defineProperty(self, key, { value: wrapper, writable: true, configurable: true });
     }
 
   return runner;
 }
 
-function handoff(runner: Runner, key: string, args: unknown[], frame = CONTROL.get(runner.is)!.current) {
+function handoff(runner: Runner, key: string, args: unknown[], frame?: Frame) {
   const control = CONTROL.get(runner.is)!;
 
   if (control.current && !frame) throw new Error(`${control.current.key} is running; ${key} cannot be called from outside.`);
@@ -109,17 +107,18 @@ function handoff(runner: Runner, key: string, args: unknown[], frame = CONTROL.g
   const token = { key, args };
 
   if (frame) frame.handoff = token;
-  else invoke(runner, key, key == 'done' ? (control.self as any).done : undefined, args);
+  else invoke(runner, key, args);
 
   return token;
 }
 
-function invoke(runner: Runner, key: string, fn: Function | undefined, args: unknown[]) {
+function invoke(runner: Runner, key: string, args: unknown[]) {
   const control = CONTROL.get(runner.is)!;
   const { self } = control;
 
   if (runner.status != 'running') throw new Error(`${self} is ${runner.status}; ${key} cannot run.`);
 
+  const fn = STEP.get((self as any)[key]);
   const frame: Frame = { key, args, wrote: new Set() };
   const proxy = new Proxy(self, {
     get(target, prop) {
@@ -131,10 +130,10 @@ function invoke(runner: Runner, key: string, fn: Function | undefined, args: unk
       return value.bind(target);
     },
     set(target, prop, value) {
-      if (typeof prop == 'string') {
-        frame.wrote.add(prop);
-        if (frame.handoff) frame.violation ||= prop;
-      }
+      const key = String(prop);
+
+      frame.wrote.add(key);
+      if (frame.handoff) frame.violation ||= key;
 
       return Reflect.set(target, prop, value, target);
     }
@@ -179,15 +178,13 @@ function settle(runner: Runner, control: Control, frame: Frame, out: unknown) {
 
   if (!handoff) return fail(runner, control, new Error(`${key} settled without handing off.`));
 
-  invoke(runner, handoff.key, handoff.key == 'done' ? (self as any).done : unbind((self as any)[handoff.key]), handoff.args);
+  invoke(runner, handoff.key, handoff.args);
 }
 
 function dump(self: State, runner: Runner) {
   const values = self.get() as Record<string, unknown>;
 
-  for (const key in self) if ((self as any)[key] === runner) delete values[key];
-
-  return values;
+  return Object.fromEntries(Object.entries(values).filter(([key]) => (self as any)[key] !== runner));
 }
 
 function fail(runner: Runner, control: Control, error: unknown) {
