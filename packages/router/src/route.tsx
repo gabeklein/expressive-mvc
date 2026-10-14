@@ -1,4 +1,4 @@
-import { Component, set } from '@expressive/mvc';
+import { Component, set, unbind } from '@expressive/mvc';
 import { childrenOf, Fragment, isElement, propsOf, typeOf } from '@expressive/mvc/jsx-runtime';
 import type { JSX } from '@expressive/mvc/jsx-runtime';
 
@@ -218,39 +218,75 @@ export class Route extends Component {
     this.router.goto(path, replace);
   }
 
-  render(props = {} as { children?: Component.Node }): Component.Node {
-    const { as: Component, is: self, matched, parent, redirect, router } = this;
+  /**
+   * Content shown while matched - the `as` element around `children`, or
+   * `children` alone. A subclass override is its page: Route still gates it on
+   * match, guards and redirects, and runs it only when matched. Call
+   * `super.render()` to place the default content.
+   */
+  render(): Component.Node {
+    const { as: Component, children } = this;
+    return Component ? <Component>{children}</Component> : children;
+  }
+}
 
-    if (!matched && typeof redirect === 'function')
-      GUARD.delete(self);
+Route.on({
+  setup(self) {
+    Object.defineProperty(self, 'render', {
+      configurable: true,
+      writable: true,
+      value: frame
+    });
+  }
+});
 
-    if (parent) {
-      register(parent.is, self);
+/** Route's own render: arbitration, guards and the match gate around its page. */
+function frame(this: Route): Component.Node {
+  const { is: self, matched, parent, redirect, router } = this;
 
-      // `path` read via our own proxy so re-arbitration re-renders us.
-      if (Component && cedes(parent, self, () => router.path))
-        return null;
-    }
+  if (!matched && typeof redirect === 'function')
+    GUARD.delete(self);
 
-    if (typeof redirect === 'string')
-      return matched
-        ? <Redirect to={redirect} replace />
-        : null;
+  if (parent) {
+    register(parent.is, self);
 
-    if (typeof redirect === 'function'){
-      const target = guard(self, redirect);
-      if (target) return <Redirect to={target} replace />;
-      if (router.rejected === router.path) return null;
-    }
+    // `path` read via our own proxy so re-arbitration re-renders us.
+    if (this.as && cedes(parent, self, () => router.path))
+      return null;
+  }
 
-    if (Object.getOwnPropertyDescriptor(props, 'children')?.get)
-      return matched ? props.children : null;
-
-    const children = this.children;
-
+  if (typeof redirect === 'string')
     return matched
-      ? Component ? <Component>{children}</Component> : children
-      : allRoutes(children) ? children : null;
+      ? <Redirect to={redirect} replace />
+      : null;
+
+  if (typeof redirect === 'function'){
+    const target = guard(self, redirect);
+    if (target) return <Redirect to={target} replace />;
+    if (router.rejected === router.path) return null;
+  }
+
+  const { render, own } = page(self);
+
+  if (matched) return render.call(this);
+
+  if (own) return null;
+
+  const { children } = this;
+
+  return allRoutes(children) ? children : null;
+}
+
+/** The page render of a Route's class, and whether a subclass defines it. */
+function page(self: Route) {
+  for (let T = self.constructor as typeof Route; ; T = Object.getPrototypeOf(T)) {
+    const desc = Object.getOwnPropertyDescriptor(T.prototype, 'render');
+
+    if (desc)
+      return {
+        render: unbind(desc.get || desc.value) as (this: Route) => Component.Node,
+        own: T !== Route
+      };
   }
 }
 

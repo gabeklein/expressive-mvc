@@ -75,9 +75,9 @@ describe('Link', () => {
     expect(a.textContent).toBe('about');
   });
 
-  it('will pass through bare invocation as foreign content', () => {
+  it('will render an anchor when invoked without props', () => {
     const link = grab({ to: '/about' });
-    expect(Link.prototype.render.call(link)).toBeUndefined();
+    expect(Link.prototype.render.call(link)).toMatchObject({ type: 'a' });
   });
 
   it.each([
