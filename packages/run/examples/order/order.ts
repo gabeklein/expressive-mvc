@@ -1,14 +1,12 @@
-import { State } from '@expressive/mvc';
-import { run } from '@expressive/run';
+import { Job } from '@expressive/run';
 
 import { courier, inventory, mail, stripe, type Cart, type Charge } from './services';
 
-export class SubmitOrder extends State {
-  then = run(this);
-
+export class SubmitOrder extends Job {
   cart!: Cart;
   charge?: Charge = undefined;
   tracking = '';
+  notice = '';
 
   async next() {
     this.reserve();
@@ -45,5 +43,9 @@ export class SubmitOrder extends State {
 
   protected end() {
     return { orderId: this.charge!.id, tracking: this.tracking };
+  }
+
+  protected back(error: unknown) {
+    this.notice = `Order ${this.cart.id} was not placed: ${(error as Error).message}`;
   }
 }

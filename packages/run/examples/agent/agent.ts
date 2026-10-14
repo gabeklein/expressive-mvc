@@ -1,11 +1,9 @@
-import { has, State } from '@expressive/mvc';
-import { run } from '@expressive/run';
+import { has } from '@expressive/mvc';
+import { Job } from '@expressive/run';
 
 import { model, result, safe, toolCalls, tools, user, type Message, type ToolCall } from './services';
 
-export class Agent extends State {
-  then = run(this);
-
+export class Agent extends Job {
   mode: 'ask' | 'auto' | 'yolo' = 'ask';
   messages = has<Message>();
 

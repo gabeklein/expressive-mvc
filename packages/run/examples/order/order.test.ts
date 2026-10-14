@@ -83,6 +83,7 @@ it('will unwind what succeeded when a step fails', async () => {
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(inventory.release).toHaveBeenCalledWith('hold_sku');
   expect(order.charge).toBeUndefined();
+  expect(order.notice).toBe('Order c1 was not placed: no couriers');
   expect(order.then.record.map((entry) => [entry.id, entry.undo && (entry.undo == 'closure' ? 'closure' : entry.undo.key), entry.undone])).toEqual([
     ['next#1', undefined, true],
     ['reserve#1', 'closure', true],
