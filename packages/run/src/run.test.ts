@@ -2156,6 +2156,160 @@ describe('hooks', () => {
 
     expect(() => Test.new()).toThrow('afterShip has no step ship.');
   });
+
+  it('will call back once the unwind completes', async () => {
+    const order: unknown[] = [];
+
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      async next() {
+        this.value = 1;
+        this.fail();
+
+        return () => void order.push('undo');
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected back(error: unknown) {
+        order.push(['back', this.value, this.then.status, (error as Error).message]);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next().catch((error: Error) => void order.push(['rejected', error.message]));
+
+    await result;
+    expect(order).toEqual(['undo', ['back', 0, 'failed', 'boom'], ['rejected', 'boom']]);
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next']);
+  });
+
+  it('will call back after a halted unwind', async () => {
+    mockWarn();
+
+    const back = vi.fn();
+
+    class Item extends State {}
+
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+
+      protected new() {
+        this.items.add({});
+      }
+
+      next() {
+        this.items.clear();
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected back(error: unknown) {
+        back(error, this.then.record[0].halted);
+      }
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('boom');
+    expect(back).toHaveBeenCalledWith(new Error('boom'), true);
+  });
+
+  it('will call back on stop with undo', async () => {
+    const work = mockPromise();
+    const back = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        await work;
+      }
+
+      protected back(error: unknown) {
+        back(error);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    test.then.stop({ undo: true });
+    work.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(back.mock.calls[0][0]).toMatchObject({ name: 'Stopped' });
+  });
+
+  it('will not call back on stop without undo', async () => {
+    const work = mockPromise();
+    const back = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        await work;
+      }
+
+      protected back() {
+        back();
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    test.then.stop();
+    work.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(back).not.toHaveBeenCalled();
+  });
+
+  it('will replace the error when back throws', async () => {
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        throw new Error('boom');
+      }
+
+      protected back() {
+        throw new Error('back');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('back');
+    expect(test.then.error).toEqual(new Error('back'));
+  });
+
+  it('will not wrap back as a step', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {}
+
+      back() {
+        return this;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.back()).toBe(test);
+    await test.next();
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next']);
+  });
 });
 
 describe('undo', () => {

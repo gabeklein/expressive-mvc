@@ -222,7 +222,7 @@ type Runner<T extends State = State> = Runner.Controller<T> & Runner.Thenable<T>
 /**
  * Make this State runnable: its methods become steps, each scheduling the next, and the
  * returned Runner is the controller - status, journal, result. `next()` starts a run.
- * `_`-prefixed methods are helpers; `before`/`after`-prefixed ones are hooks.
+ * `_`-prefixed methods are helpers; `before`/`after`-prefixed ones and `back` are hooks.
  */
 function run<T extends State>(self: T): Runner<T> {
   const internal = {
@@ -276,7 +276,7 @@ function run<T extends State>(self: T): Runner<T> {
   for (let proto = Object.getPrototypeOf(self); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
     for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
       let method = desc.get && unbind(desc.get) !== desc.get;
-      let skip = !method || key == 'new' || key[0] == '_' || Object.hasOwn(self, key);
+      let skip = !method || key == 'new' || key == 'back' || key[0] == '_' || Object.hasOwn(self, key);
 
       if (skip) continue;
 
@@ -960,7 +960,10 @@ function halt(run: Run, status: 'failed' | 'stopped', error?: unknown, undo = st
 async function finalize(run: Run, undo: boolean) {
   await drain(run);
 
-  if (undo) await unwind(run);
+  if (undo) {
+    await unwind(run);
+    back(run);
+  }
 
   const { error } = run;
 
@@ -1005,6 +1008,17 @@ async function unwind(run: Run) {
     } finally {
       update(internal, 'record', record.slice());
     }
+  }
+}
+
+function back(run: Run) {
+  const { internal, error, stopped } = run;
+
+  try {
+    hook(internal.self, 'back', error === undefined ? stopped : error);
+  } catch (cause) {
+    run.error = cause;
+    update(internal, 'error', cause);
   }
 }
 
