@@ -318,6 +318,30 @@ function run<T extends State>(self: T): Runner<T> {
   return runner;
 }
 
+/**
+ * A runnable State: its methods are steps, `next()` starts a run and `await job` joins it,
+ * resolving with the result of `end`. The members below are the contract - each optional.
+ */
+class Job extends State {
+  /** The controller - status, journal, queue, waits; awaiting the instance awaits it. */
+  readonly then = run(this);
+
+  /** The entry: starts a run, or queues one while a run is active. Settles with its run. */
+  next?(...args: any[]): unknown;
+
+  /** Runs last in a run. Its return, else its argument, else a dump of public values, is the result. */
+  protected end?(value?: any): unknown;
+
+  /** Before each step, once per step. `skip` is true when the step is replayed. */
+  protected before?(step: string, args: unknown[], skip: boolean): void;
+
+  /** After each step commits, once per step. `skip` is true when the step is replayed. */
+  protected after?(step: string, entry: Runner.Entry, skip: boolean): void;
+
+  /** Once an unwind completes, halted or not, before the run rejects with `error`. A throw replaces it. */
+  protected back?(error: unknown): void;
+}
+
 function outside(key: string): never {
   throw new Error(`${key} must be called inside a step.`);
 }
@@ -1034,4 +1058,4 @@ function undo(run: Run, entry: Runner.Entry, how: Function | Runner.Node) {
   return STEP.get(steps.get(how.key)!)!.apply(proxy, how.args);
 }
 
-export { run, Runner };
+export { Job, run, Runner };

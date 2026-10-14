@@ -2,7 +2,7 @@ import { has, map, set, State } from '@expressive/mvc';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockPromise, mockUncaught, mockWarn } from '../test.setup';
-import { run, type Runner } from './run';
+import { Job, run, type Runner } from './run';
 
 describe('steps', () => {
   it('will run steps from next through to end', async () => {
@@ -3224,5 +3224,128 @@ describe('failures', () => {
     await test.next('a');
     await test.next('b');
     expect([...test.items]).toEqual(['a', 'b']);
+  });
+});
+
+describe('Job', () => {
+  it('will run and type the result from end', async () => {
+    class Test extends Job {
+      value = 0;
+
+      async next(n: number) {
+        this.value = n;
+        this.end();
+      }
+
+      protected end() {
+        return { n: this.value };
+      }
+    }
+
+    const test = Test.new();
+    const result = await test.next(2);
+
+    expectTypeOf(test.then).toEqualTypeOf<Runner<Test>>();
+    expectTypeOf(test.then.status).toEqualTypeOf<Runner.Status>();
+    expectTypeOf<Awaited<Test>>().toEqualTypeOf<{ n: number }>();
+    expect(result).toEqual({ n: 2 });
+    expect(test.then.on).toBe(test);
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'end']);
+  });
+
+  it('will type the result as values without end', async () => {
+    class Test extends Job {
+      value = 1;
+
+      async next() {}
+    }
+
+    const result = await Test.new();
+
+    expectTypeOf(result).toEqualTypeOf<State.Values<Test>>();
+    expect(result).toEqual({ value: 1 });
+  });
+
+  it('will allow next to narrow its parameters', async () => {
+    class Test extends Job {
+      prompt = '';
+
+      async next(prompt: string) {
+        this.prompt = prompt;
+      }
+    }
+
+    const test = Test.new();
+
+    expectTypeOf(test.next).parameters.toEqualTypeOf<[prompt: string]>();
+    await test.next('hi');
+    expect(test.prompt).toBe('hi');
+  });
+
+  it('will not define hooks on the prototype', () => {
+    const own = Object.getOwnPropertyNames(Job.prototype);
+
+    expect(own).toEqual(['constructor']);
+  });
+
+  it('will call hooks declared by override', async () => {
+    const order: unknown[] = [];
+
+    class Test extends Job {
+      async next() {
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected override before(step: string) {
+        order.push(['before', step]);
+      }
+
+      protected override after(step: string, entry: Runner.Entry) {
+        order.push(['after', step, entry.id]);
+      }
+
+      protected override back(error: unknown) {
+        order.push(['back', (error as Error).message]);
+      }
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('boom');
+    expect(order).toEqual([
+      ['before', 'next'],
+      ['after', 'next', 'next#1'],
+      ['before', 'fail'],
+      ['back', 'boom']
+    ]);
+  });
+
+  it('will check hooks by declaration', () => {
+    class Test extends Job {
+      async next() {}
+
+      // @ts-expect-error
+      protected override before(step: number) {
+        void step;
+      }
+
+      // @ts-expect-error
+      protected override back(error: unknown, more: number) {
+        void error, more;
+      }
+
+      // @ts-expect-error
+      protected override bakc() {}
+    }
+
+    const assign = (test: Test) => {
+      // @ts-expect-error
+      test.then = run(test);
+    };
+
+    expectTypeOf(assign).toBeFunction();
+    expect(Test.new().then.status).toBe('idle');
   });
 });
