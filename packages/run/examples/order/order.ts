@@ -23,7 +23,7 @@ export class SubmitOrder extends Job {
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
-    this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
+    this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.end();
 
     return this.refund(this.charge.id);

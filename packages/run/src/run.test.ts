@@ -431,7 +431,7 @@ describe('groups', () => {
       then = run(this);
 
       next() {
-        this.then([this.a(), this.b()]);
+        this.then(this.a(), this.b());
         this.c();
       }
 
@@ -479,7 +479,7 @@ describe('groups', () => {
       then = run(this);
 
       next() {
-        this.then([this.a(), this.b()]);
+        this.then(this.a(), this.b());
         this.c();
       }
 
@@ -515,7 +515,7 @@ describe('groups', () => {
       y = 0;
 
       next() {
-        this.then([this.a(), this.b()]);
+        this.then(this.a(), this.b());
       }
 
       async a() {
@@ -626,11 +626,45 @@ describe('groups', () => {
       then = run(this);
 
       next() {
-        this.then([{}]);
+        this.then({});
       }
     }
 
     await expect(Test.new().next()).rejects.toThrow('then() takes steps called by next.');
+  });
+
+  it('will not take an array of tokens as a group', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then([this.a(), this.b()]);
+      }
+
+      a() {}
+      b() {}
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('then() takes steps called by next.');
+  });
+
+  it('will group a single token', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.a());
+      }
+
+      a() {}
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record[0].next).toEqual([
+      { id: 'then#1', key: 'then', args: [], group: [{ id: 'a#1', key: 'a', args: [] }] }
+    ]);
   });
 
   it('will throw if a group is made outside a step', () => {
@@ -2387,7 +2421,7 @@ describe('undo', () => {
       value = 0;
 
       next() {
-        this.then([this.a(), this.b()]);
+        this.then(this.a(), this.b());
       }
 
       async a() {
@@ -2616,7 +2650,7 @@ describe('collections', () => {
       items = has(['a']);
 
       next() {
-        this.then([this.write(), this.read()]);
+        this.then(this.write(), this.read());
         this.fail();
       }
 
@@ -2659,7 +2693,7 @@ describe('collections', () => {
       items = has(['a']);
 
       next() {
-        this.then([this.early(), this.late()]);
+        this.then(this.early(), this.late());
         this.fail();
       }
 

@@ -104,12 +104,6 @@ declare namespace Runner {
 
   interface Controller<T extends State = State> {
     /**
-     * Inside a step: run these tokens as one parallel group at this point in the plan.
-     * The next step in sequence runs once every member, and all it schedules, is done.
-     */
-    <This>(this: This, steps: Iterable<unknown>): Runner.Token;
-
-    /**
      * Inside a step: call `each` per item - a function issuing a step, or a step itself -
      * and run the tokens as one parallel group.
      */
@@ -120,6 +114,12 @@ declare namespace Runner {
      * answers it. The next step in sequence runs once the answer, and all it schedules, is done.
      */
     <This>(this: This, ...steps: ((...args: any[]) => unknown)[]): Runner.Token;
+
+    /**
+     * Inside a step: run these tokens as one parallel group at this point in the plan.
+     * The next step in sequence runs once every member, and all it schedules, is done.
+     */
+    <This>(this: This, ...steps: unknown[]): Runner.Token;
 
     /** The instance this controller runs. */
     readonly on: T;
@@ -857,17 +857,17 @@ class Frame extends State {
     if (this._view) return this._view;
 
     const view = (...args: unknown[]) => {
-      const [steps, each] = args as [Iterable<unknown>, (item: unknown, index: number) => unknown];
+      const [items, each] = args as [Iterable<unknown>, (item: unknown, index: number) => unknown];
       const refs = args.map((arg) => this.keyOf(arg));
+      let mapped = args.length == 2 && iterable(items) && typeof each == 'function';
+      let grouped = args.length && args.every((arg) => arg && typeof arg == 'object');
       let waits = refs.length && refs.every(Boolean);
 
+      if (mapped) return this.group(Array.from(items, each));
+      if (grouped) return this.group(args);
       if (waits) return this.wait(refs as string[]);
 
-      let awaited = !steps || typeof steps == 'function';
-
-      if (awaited) throw new Error('a step cannot await its own run.');
-
-      return this.group(Array.from(steps, each));
+      throw new Error('a step cannot await its own run.');
     };
 
     Object.setPrototypeOf(view, this.run.control._runner);
@@ -1008,6 +1008,10 @@ class Wait extends State {
 
 function signal(key: unknown) {
   return typeof key != 'boolean' && key !== null;
+}
+
+function iterable(value: unknown): value is Iterable<unknown> {
+  return value != null && typeof (value as Iterable<unknown>)[Symbol.iterator] == 'function';
 }
 
 function outside(key: string): never {
