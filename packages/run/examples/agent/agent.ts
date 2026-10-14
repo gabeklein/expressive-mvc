@@ -1,7 +1,7 @@
 import { has } from '@expressive/mvc';
 import { Job } from '@expressive/run';
 
-import { model, result, safe, toolCalls, tools, user, type Message, type ToolCall } from './services';
+import { delay, MINUTE, model, result, safe, toolCalls, tools, user, type Message, type ToolCall } from './services';
 
 export class Agent extends Job {
   mode: 'ask' | 'auto' | 'yolo' = 'ask';
@@ -30,7 +30,11 @@ export class Agent extends Job {
     let allowed = this.mode === 'yolo';
 
     if (allowed || this.mode === 'auto' && safe(call)) this.exec(call);
-    else this.then(this.allow, this.deny);
+    else
+      this.then(this.allow, this.deny, async (signal) => {
+        await delay(MINUTE, { signal });
+        this.deny(call);
+      });
   }
 
   protected async exec(call: ToolCall) {

@@ -18,6 +18,18 @@ export const toolCalls = (message: Message) => message.calls || [];
 
 export const safe = (call: ToolCall) => call.name == 'read';
 
+export const MINUTE = 60_000;
+
+export const delay = (ms: number, { signal }: { signal: AbortSignal }) =>
+  new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+
+    signal.addEventListener('abort', () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    });
+  });
+
 export const model = {
   async create(messages: Iterable<Message>): Promise<Message> {
     const list = [...messages];

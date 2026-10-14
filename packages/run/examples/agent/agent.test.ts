@@ -1,7 +1,9 @@
-import { expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 
 import { Agent } from './agent';
-import { model, tools, type ToolCall } from './services';
+import { MINUTE, model, tools, type ToolCall } from './services';
+
+afterEach(() => void vi.useRealTimers());
 
 it('will run a turn to end', async () => {
   const agent = Agent.new({ mode: 'yolo' });
@@ -180,4 +182,73 @@ it('will not repeat what a retried tool wrote', async () => {
     'done'
   ]);
   expect(agent.then.record.filter((entry) => entry.key == 'exec').map((entry) => entry.attempt)).toEqual([1, 2]);
+});
+
+it('will deny a tool call nobody answers within a minute', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+  const agent = Agent.new();
+  const reply = agent.next('write notes');
+
+  await vi.advanceTimersByTimeAsync(MINUTE - 1);
+  expect(agent.then.status).toBe('waiting');
+
+  await vi.advanceTimersByTimeAsync(1);
+  expect(await reply).toBe('done');
+  expect(agent.messages.get(-2)).toEqual({ role: 'tool', content: 'call_1_0: denied' });
+});
+
+it('will time out each tool call on its own', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+  const agent = Agent.new();
+  const reply = agent.next('write notes, write docs');
+
+  await vi.advanceTimersByTimeAsync(MINUTE / 2);
+
+  const [notes, docs] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+
+  await agent.allow(docs);
+  await vi.advanceTimersByTimeAsync(MINUTE / 2);
+
+  expect(await reply).toBe('done');
+  expect(agent.then.record.filter((entry) => entry.wake).map((entry) => [entry.key, entry.args[0], entry.wake])).toEqual([
+    ['allow', docs, 'wait#2'],
+    ['deny', notes, 'wait#1']
+  ]);
+});
+
+it('will time out parallel tool calls each against its own wait', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+  const agent = Agent.new();
+  const reply = agent.next('write notes, write docs');
+
+  await vi.advanceTimersByTimeAsync(MINUTE);
+
+  expect(await reply).toBe('done');
+  expect(agent.then.record.filter((entry) => entry.wake).map((entry) => [(entry.args[0] as ToolCall).id, entry.wake])).toEqual([
+    ['call_1_0', 'wait#1'],
+    ['call_1_1', 'wait#2']
+  ]);
+});
+
+it('will not let a stale timeout deny the next turn', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+  const agent = Agent.new();
+  const first = agent.next('write notes');
+
+  await vi.advanceTimersByTimeAsync(MINUTE / 2);
+  await agent.allow(agent.then.waiting[0].args[0] as ToolCall);
+  await first;
+
+  const second = agent.next('write docs');
+
+  await vi.advanceTimersByTimeAsync(MINUTE / 2);
+  expect(agent.then.status).toBe('waiting');
+
+  await vi.advanceTimersByTimeAsync(MINUTE / 2);
+  expect(await second).toBe('done');
+  expect(agent.messages.get(-2)).toEqual({ role: 'tool', content: 'call_5_0: denied' });
 });
