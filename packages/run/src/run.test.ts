@@ -2090,6 +2090,134 @@ describe('wait', () => {
     expect(() => reply()).toThrow('reply cannot be called from outside; call next() to run.');
   });
 
+  it('will answer its own wait through a settled step', async () => {
+    const calls = new Map<string, () => unknown>();
+
+    class Test extends State {
+      then = run(this);
+      answers: string[] = [];
+
+      next() {
+        this.then(['a', 'b'], this.ask);
+      }
+
+      ask(name: string) {
+        calls.set(name, () => this.reply(name.toUpperCase()));
+        this.then(this.reply);
+      }
+
+      reply(answer: string) {
+        this.answers = this.answers.concat(answer);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.waiting).toHaveLength(2));
+
+    await calls.get('b')!();
+    expect(test.then.waiting.map((wait) => wait.args[0])).toEqual(['a']);
+
+    await calls.get('a')!();
+    await result;
+
+    expect(test.answers).toEqual(['B', 'A']);
+    expect(test.then.record.filter((entry) => entry.wake).map((entry) => [entry.wake, entry.args])).toEqual([
+      ['wait#2', ['B']],
+      ['wait#1', ['A']]
+    ]);
+  });
+
+  it('will route a settled step call as an outside call', async () => {
+    let poke!: () => unknown;
+
+    class Test extends State {
+      then = run(this);
+      answer = '';
+
+      next() {
+        poke = () => this.reply('poked');
+        this.ask();
+      }
+
+      ask() {
+        this.then(this.reply);
+      }
+
+      reply(answer: string) {
+        this.answer = answer;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    await poke();
+
+    expect(await result).toEqual({ answer: 'poked' });
+  });
+
+  it('will bind a settled step call to its run', async () => {
+    let poke!: () => unknown;
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        poke = () => this.reply();
+        this.then(this.reply);
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const first = test.next();
+    const stale = poke;
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    test.reply();
+    await first;
+
+    const second = test.next();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    expect(() => stale()).toThrow('next has settled; reply cannot run.');
+    expect(test.then.waiting).toHaveLength(1);
+
+    await poke();
+    await second;
+  });
+
+  it('will not journal writes through a settled step', async () => {
+    let write!: () => void;
+
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      next() {
+        write = () => void (this.value = 1);
+        this.then(this.reply);
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    write();
+    test.reply();
+    await result;
+
+    expect(test.value).toBe(1);
+    expect(test.then.record.map((entry) => entry.patch)).toEqual([{}, {}]);
+  });
+
   it('will not have wait on the runner', () => {
     class Test extends State {
       then = run(this);
@@ -3340,6 +3468,21 @@ describe('failures', () => {
 
     await Test.new().next();
     expect(late).toThrow('next has settled; second cannot run.');
+  });
+
+  it('will throw if a settled step schedules through then', async () => {
+    let late: () => unknown = () => {};
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        late = () => this.then.end();
+      }
+    }
+
+    await Test.new().next();
+    expect(late).toThrow('next has settled; end cannot run.');
   });
 
   it('will throw uncaught when nobody awaits a failed run', async () => {

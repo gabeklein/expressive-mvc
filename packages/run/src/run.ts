@@ -317,8 +317,7 @@ class Control extends State {
     if (key == 'next') return this.start(args);
 
     const { _current: current } = this;
-    const open = current ? current.waits.filter((wait) => wait.answers.includes(key)) : [];
-    const wait = open.find((wait) => wait.args[0] === args[0]) || open[0];
+    const wait = current && current.route(key, args);
 
     if (wait) return current!.wake(wait, key, args);
 
@@ -465,6 +464,12 @@ class Run extends State {
     return { id: `${key}#${count}`, key, args };
   }
 
+  route(key: string, args: unknown[], from?: Frame) {
+    const open = this.waits.filter((wait) => wait.answers.includes(key));
+
+    return open.find((wait) => wait._from === from) || open.find((wait) => wait.args[0] === args[0]) || open[0];
+  }
+
   accepts(key: string, except?: Wait) {
     return this.waits.any((wait) => wait !== except && wait._open && wait.answers.includes(key));
   }
@@ -505,7 +510,7 @@ class Run extends State {
     }
 
     return new Promise<Answer | undefined>((resolve) => {
-      this.waits.add({ id: item.id, step: from.key, args: from.args, answers: item.answers!, _park: resolve });
+      this.waits.add({ id: item.id, step: from.key, args: from.args, answers: item.answers!, _from: from, _park: resolve });
     });
   }
 
@@ -812,6 +817,8 @@ class Frame extends State {
       set: (target, prop, value) => {
         const key = String(prop);
 
+        if (this._settled) return Reflect.set(target, prop, value, target);
+
         if (!this._wrote.has(key)) {
           this._prior[key] = Reflect.get(target, prop, target);
           this._wrote.add(key);
@@ -832,7 +839,7 @@ class Frame extends State {
   ref(key: string) {
     let ref = this._refs.get(key);
 
-    if (!ref) this._refs.set(key, (ref = (...args: unknown[]) => this.issue(key, args)));
+    if (!ref) this._refs.set(key, (ref = (...args: unknown[]) => (this._settled ? this.answer(key, args) : this.issue(key, args))));
 
     return ref;
   }
@@ -853,6 +860,16 @@ class Frame extends State {
     this.arm();
 
     return token;
+  }
+
+  answer(key: string, args: unknown[]) {
+    const { run } = this;
+    let live = run.control._current === run;
+    const wait = live && run.route(key, args, this);
+
+    if (wait) return run.wake(wait, key, args);
+
+    throw new Error(`${this.key} has settled; ${key} cannot run.`);
   }
 
   arm() {
@@ -1011,6 +1028,7 @@ class Wait extends State {
   args: unknown[] = [];
   answers: string[] = [];
 
+  _from!: Frame;
   _park!: (answer?: Answer) => void;
   _answer?: Answer = undefined;
   _open = true;
