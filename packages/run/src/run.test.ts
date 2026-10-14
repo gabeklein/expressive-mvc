@@ -2230,6 +2230,325 @@ describe('wait', () => {
   });
 });
 
+describe('watchers', () => {
+  afterEach(() => void vi.useRealTimers());
+
+  function delay(ms: number, { signal }: { signal: AbortSignal }) {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, ms);
+
+      signal.addEventListener('abort', () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    });
+  }
+
+  it('will answer a wait from a watcher', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    class Test extends State {
+      then = run(this);
+      answer = '';
+
+      next() {
+        this.then(this.allow, this.deny, async (signal) => {
+          await delay(100, { signal });
+          this.deny('timeout');
+        });
+      }
+
+      allow() {
+        this.answer = 'allowed';
+      }
+
+      deny(reason: string) {
+        this.answer = reason;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.advanceTimersByTimeAsync(99);
+    expect(test.then.status).toBe('waiting');
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await result).toEqual({ answer: 'timeout' });
+    expect(test.then.record.map((entry) => [entry.id, entry.wake])).toEqual([
+      ['next#1', undefined],
+      ['deny#1', 'wait#1']
+    ]);
+    expect(test.then.record[0].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['allow', 'deny'] }]);
+  });
+
+  it('will abort watchers once answered from outside', async () => {
+    let signal!: AbortSignal;
+    const lost = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply, async (given) => {
+          signal = given;
+          await delay(100, { signal: given }).catch(lost);
+          throw new Error('lost');
+        });
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    expect(signal.aborted).toBe(false);
+
+    test.reply();
+    expect(signal.aborted).toBe(true);
+
+    expect(await result).toEqual({});
+    expect(lost).toHaveBeenCalled();
+  });
+
+  it('will leave the wait open if a watcher settles without answering', async () => {
+    const nudge = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply, async () => {
+          nudge();
+        });
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(nudge).toHaveBeenCalled());
+    await flushMicrotasks();
+    expect(test.then.status).toBe('waiting');
+
+    test.reply();
+    await result;
+  });
+
+  it('will start watchers when the plan reaches the wait', async () => {
+    const work = mockPromise();
+    const watcher = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.slow();
+        this.ask();
+      }
+
+      async slow() {
+        await work;
+      }
+
+      ask() {
+        this.then(this.reply, watcher);
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(watcher).not.toHaveBeenCalled();
+
+    work.resolve();
+    await vi.waitFor(() => expect(watcher).toHaveBeenCalledWith(expect.any(AbortSignal)));
+
+    test.reply();
+    await result;
+  });
+
+  it('will call a watcher function on the step which opened the wait', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.ask('question');
+      }
+
+      ask(question: string) {
+        this.then(this.reply, function (this: Test) {
+          this.reply(`re: ${question}`);
+        });
+      }
+
+      reply(answer: string) {
+        this.end(answer);
+      }
+
+      end(answer: string) {
+        void answer;
+      }
+    }
+
+    expect(await Test.new().next()).toBe('re: question');
+  });
+
+  it('will answer each wait from its own watcher', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then([200, 100], this.ask);
+      }
+
+      ask(ms: number) {
+        this.then(this.reply, async (signal) => {
+          await delay(ms, { signal });
+          this.reply();
+        });
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.advanceTimersByTimeAsync(200);
+    await result;
+
+    expect(test.then.record.filter((entry) => entry.wake).map((entry) => entry.wake)).toEqual(['wait#2', 'wait#1']);
+  });
+
+  it('will fail the run if a watcher throws before the wait closes', async () => {
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.value = 1;
+        this.then(this.reply, async () => {
+          throw new Error('watcher');
+        });
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('watcher');
+    expect(test.value).toBe(0);
+    expect(test.then.waiting).toEqual([]);
+    expect(test.then.status).toBe('failed');
+  });
+
+  it('will not let a stale watcher answer the next run', async () => {
+    const gate = mockPromise();
+    const late = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next(first: boolean) {
+        this.then(this.reply, async () => {
+          if (!first) return;
+
+          await gate;
+
+          try {
+            this.reply();
+          } catch (error) {
+            late(error);
+            throw error;
+          }
+        });
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const first = test.next(true);
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    test.reply();
+    await first;
+
+    const second = test.next(false);
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    gate.resolve();
+    await vi.waitFor(() => expect(late).toHaveBeenCalledWith(new Error('next has settled; reply cannot run.')));
+    expect(test.then.waiting).toHaveLength(1);
+
+    test.reply();
+    await second;
+  });
+
+  it('will abort watchers when the run stops', async () => {
+    let signal!: AbortSignal;
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply, (given) => void (signal = given));
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    test.then.stop();
+
+    expect(signal.aborted).toBe(true);
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+  });
+
+  it('will fail if tokens are mixed with step references', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.a(), this.reply);
+      }
+
+      a() {}
+      reply() {}
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('then() takes called steps or step references, not both.');
+  });
+
+  it('will type a watcher signal', () => {
+    class Test extends Job {
+      async next() {
+        this.then(this.reply, async (signal) => {
+          expectTypeOf(signal).toEqualTypeOf<AbortSignal>();
+        });
+      }
+
+      async reply() {}
+    }
+
+    expect(Test.new().then.status).toBe('idle');
+  });
+});
+
 describe('retry', () => {
   afterEach(() => void vi.useRealTimers());
 

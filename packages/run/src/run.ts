@@ -116,9 +116,18 @@ declare namespace Runner {
     <This>(this: This, step: (signal: AbortSignal) => unknown): void;
 
     /**
-     * Inside a step: park this point in the plan until an outside call to one of these steps
-     * answers it. The next step in sequence runs once the answer, and all it schedules, is done.
+     * Inside a step: park this point in the plan until a call to one of these steps answers it -
+     * from outside, or from a watcher: a plain function started when the plan reaches the wait,
+     * given an `AbortSignal` aborted once the wait closes. The next step in sequence runs once
+     * the answer, and all it schedules, is done.
      */
+    <This>(this: This, ...steps: [...steps: ((...args: any[]) => unknown)[], watcher: (signal: AbortSignal) => unknown]): Runner.Token;
+
+    <This>(
+      this: This,
+      ...steps: [...steps: ((...args: any[]) => unknown)[], watcher: (signal: AbortSignal) => unknown, other: (signal: AbortSignal) => unknown]
+    ): Runner.Token;
+
     <This>(this: This, ...steps: ((...args: any[]) => unknown)[]): Runner.Token;
 
     /**
@@ -423,6 +432,7 @@ class Run extends State {
   _held = new Map<string, Map<string, Held>>();
   _captures = new Map<Collection, Held>();
   _inline = new Map<string, Function>();
+  _watchers = new Map<string, Function[]>();
   _drained: (() => void)[] = [];
   _end?: Runner.Node = undefined;
   _halted?: 'failed' | 'stopped' = undefined;
@@ -510,7 +520,9 @@ class Run extends State {
     }
 
     return new Promise<Answer | undefined>((resolve) => {
-      this.waits.add({ id: item.id, step: from.key, args: from.args, answers: item.answers!, _from: from, _park: resolve });
+      const wait = this.waits.add({ id: item.id, step: from.key, args: from.args, answers: item.answers!, _from: from, _park: resolve });
+
+      for (const watcher of this._watchers.get(item.id) || []) wait.watch(watcher);
     });
   }
 
@@ -890,16 +902,18 @@ class Frame extends State {
 
     const view = (...args: unknown[]) => {
       const [items, each] = args as [unknown, (item: unknown, index: number) => unknown];
-      const refs = args.map((arg) => this.keyOf(arg));
+      const fns = args.filter((arg) => typeof arg == 'function');
+      const refs = fns.map((fn) => this.keyOf(fn)).filter(Boolean) as string[];
       let mapped = args.length == 2 && iterable(items) && typeof each == 'function';
       let grouped = args.length && args.every((arg) => arg && typeof arg == 'object');
-      let waits = refs.length && refs.every(Boolean);
-      let inline = args.length == 1 && typeof items == 'function' && !refs[0];
+      let functions = args.length && fns.length == args.length;
+      let mixed = fns.length && args.some((arg) => arg && typeof arg == 'object');
 
       if (mapped) return this.group(Array.from(items as Iterable<unknown>, each));
       if (grouped) return this.group(args);
-      if (waits) return this.wait(refs as string[]);
-      if (inline) return this.inline(items as Function);
+      if (functions && refs.length) return this.wait(refs, fns.filter((fn) => !this.keyOf(fn)));
+      if (functions && args.length == 1) return this.inline(items as Function);
+      if (mixed) throw new Error('then() takes called steps or step references, not both.');
 
       throw new Error('a step cannot await its own run.');
     };
@@ -935,10 +949,14 @@ class Frame extends State {
     return token;
   }
 
-  wait(answers: string[]) {
+  wait(answers: string[], watchers: Function[]) {
     for (const key of answers) if (key == 'next' || key == 'end') throw new Error(`${key} cannot answer a wait.`);
 
-    return Object.assign(this.issue('wait', []), { answers });
+    const token = Object.assign(this.issue('wait', []), { answers });
+
+    if (watchers.length) this.run._watchers.set(token.id, watchers);
+
+    return token;
   }
 
   commit(out: unknown, attempt: number) {
@@ -1031,6 +1049,7 @@ class Wait extends State {
   _from!: Frame;
   _park!: (answer?: Answer) => void;
   _answer?: Answer = undefined;
+  _abort = new AbortController();
   _open = true;
 
   protected new() {
@@ -1044,8 +1063,17 @@ class Wait extends State {
 
       for (const key of answers) if (!run.accepts(key)) event(self, key);
 
+      this._abort.abort();
       this._park(this._answer);
     };
+  }
+
+  watch(watcher: Function) {
+    const { signal } = this._abort;
+
+    (async () => watcher.call(this._from._proxy, signal))().catch((error) => {
+      if (this._open) this.run.halt('failed', error);
+    });
   }
 }
 
