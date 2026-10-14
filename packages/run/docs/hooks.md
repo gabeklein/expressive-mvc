@@ -1,6 +1,6 @@
-# Hooks - Before and After
+# Hooks - Before, After, Back
 
-Methods named `before`/`after`, or those followed by an uppercase letter (`beforeShip`), are hooks: never wrapped, never scheduled - from outside they are plain methods. `beforehand` is a step.
+Methods named `before`/`after`, or those followed by an uppercase letter (`beforeShip`), and `back`, are hooks: never wrapped, never scheduled - from outside they are plain methods. `beforehand` is a step.
 
 ```ts
 protected before(key: string, args: unknown[], skip: boolean) {}
@@ -14,4 +14,14 @@ Order around each step: `before` → `before<Step>` → step → `after<Step>` �
 
 Hooks are `protected` by convention ([README.md](README.md#conventions)) and synchronous. Hooks run with the raw instance as `this`: their writes are in no patch and do not count as step work; their return is ignored and not awaited. A hook that throws fails the run. Hooks fire for `next`, `end` and steps answering a wait; not per retry, and not for undos.
 
-A per-step hook without its step throws when the instance is created: `afterShip has no step ship.` The signature is not checked by type - see FEATURE.md.
+A per-step hook without its step throws when the instance is created: `afterShip has no step ship.` On a `Job`, `before`/`after`/`back` are declared - `override` checks their signatures ([job.md](job.md)); per-step hooks and `run(this)` classes are unchecked.
+
+## `back`
+
+```ts
+protected back(error: unknown) {
+  this.notice = `Order ${this.cart.id} was not placed: ${(error as Error).message}`;
+}
+```
+
+Runs once after an unwind completes - halted at an irreversible entry or not - before the run rejects. `error` is what the run rejects with: the failure, an undo's throw, or the `'Stopped'` error. Runs for a failure and `stop({ undo: true })`; not for `stop()`. Raw instance as `this`, writes unjournaled, return ignored. A throw from it replaces `error` and the run rejects with that.

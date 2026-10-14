@@ -48,7 +48,8 @@ A step that throws, breaks a rule, or returns anything but an undo fails the run
 3. Every committed entry, newest first: its undo runs if it has one (closure, or the undo step with its journaled args), then its `prior` values are restored; `undone: true`. Entries without an undo are restored too.
 4. An undo that throws: `undone: 'failed'`, `error` replaced by what it threw, the unwind stops there.
 5. An `irreversible` entry stops the unwind: it gets `halted: true` ([Collections](#collections)).
-6. The run rejects with `error`.
+6. `back(error)` runs, if declared ([hooks.md](hooks.md#back)); a throw from it replaces `error`.
+7. The run rejects with `error`.
 
 ```ts
 vi.spyOn(courier, 'book').mockRejectedValue(new Error('no couriers'));

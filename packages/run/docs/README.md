@@ -1,18 +1,15 @@
-# `run` - Runnable State
+# `Job` - Runnable State
 
 ```ts
-import { State } from '@expressive/mvc';
-import { run } from '@expressive/run';
+import { Job } from '@expressive/run';
 ```
 
-`run(this)` makes a `State` runnable: every method is a step, a step schedules the next by calling it, fields carry data between steps. `next(...args)` is the entry - called from outside, it starts a run; awaiting an idle instance starts it too, only if `next` takes no arguments (an optional one needs a default - [runs.md](runs.md#awaiting-the-instance---start-or-join)). The `Runner` it returns is the controller - status, journal, result. Named `then`, the instance itself is awaitable; `run = run(this)` keeps it `await x.run`.
+A `Job` is a `State` whose methods are steps: a step schedules the next by calling it, fields carry data between steps. `next(...args)` is the entry - called from outside, it starts a run; awaiting an idle instance starts it too, only if `next` takes no arguments (an optional one needs a default - [runs.md](runs.md#awaiting-the-instance---start-or-join)). `then` is the controller - status, journal, result - so the instance itself is awaitable, typed by `end`. `Job` declares the contract - `next`, `end`, hooks - as optional members ([job.md](job.md)).
 
 Inputs are fields - `X.new({ cart })` assigns them as any State's constructor does - or `next`'s arguments. `new()` stays mvc's setup hook; nothing starts on its own.
 
 ```ts
-class SubmitOrder extends State {
-  then = run(this);
-
+class SubmitOrder extends Job {
   cart!: Cart;
   charge?: Charge = undefined;
   tracking = '';
@@ -61,13 +58,26 @@ order.then.status;                    // 'idle' - reactive
 const { orderId } = await order;      // runs next(), typed by end()
 ```
 
+`run(this)` is the casual form - a `State` that just wants runnable steps names the field itself:
+
+```ts
+class Sync extends State {
+  then = run(this);
+
+  async next() {
+    this.pull();
+  }
+}
+```
+
 Journal after a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1 → end#1`. A `courier.book` failure unwinds every committed step: `receipt` (prior restored), `refund('ch_42')`, `inventory.release('hold_sku')`, `next`.
 
+- [job.md](job.md) - the contract: members, visibility, when each runs; `run(this)` on a plain State
 - [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, the first-call rule, helpers, `end`, what a step may return
 - [runs.md](runs.md) - `next`, repeating, the queue, awaiting, `end` from outside, `stop`
 - [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called from outside; answering steps are present only while waited for
 - [retry.md](retry.md) - per-step retry with backoff
-- [hooks.md](hooks.md) - `before`/`after`, per step or for all
+- [hooks.md](hooks.md) - `before`/`after`, per step or for all; `back` after an unwind
 - [undo.md](undo.md) - undo closures, returned tokens, the unwind on failure
 - [runner.md](runner.md) - the controller: members, reactivity, snapshot
 

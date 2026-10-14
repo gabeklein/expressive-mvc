@@ -5,8 +5,7 @@
 From outside a step, `next(...args)` is the one callable step: it starts a run and returns a Promise settling with it - the result, or the error. Any other step reads `undefined` from outside, except one an open wait accepts ([wait.md](wait.md)); a held reference called with no wait accepting it throws `ship cannot be called from outside; call next() to run.`
 
 ```ts
-class Agent extends State {
-  then = run(this);
+class Agent extends Job {
   messages = has<Message>();
 
   async next(prompt: string) {
@@ -92,7 +91,7 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 - queued runs are dropped: `queue` empties, each queued Promise rejects with an error named `'Stopped'`;
 - once in-flight steps have settled, the run's Promise rejects with that error.
 
-`stop({ undo: true })` also unwinds the run as a failure would ([undo.md](undo.md)); an undo that throws sets `error` and the run rejects with it. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
+`stop({ undo: true })` also unwinds the run as a failure would ([undo.md](undo.md)), `back` included; an undo or `back` that throws sets `error` and the run rejects with it. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 
 A stopped run is not rethrown uncaught.
 
