@@ -250,6 +250,8 @@ function Footer() {
 
 The page remains orchestrator - route identity, session, request dispatch, page-level errors. Split when the second cluster appears, not as late cleanup.
 
+Name a headless controller `Control`, or `<Feature>Control` once an app has several - two classes sharing a name make `@expressive/inspect` label lookups throw.
+
 Children of a region `.get()` the region, never the page above it and back down. Facts they repeat become getters on the region; nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope.
 
 ## Bridging an Existing Router

@@ -10,7 +10,7 @@ mutations, caching, retry, and request cancellation.
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Browser address + History API                 | `<BrowserRouter>`                                                                                      |
 | Unit/integration test without browser history | `Router.new({ path })` + `<Component for>`                                                             |
-| React Native or another non-browser host      | `Router`; render host navigation controls                                                              |
+| React Native or another non-browser host      | `Router`; render host navigation UI                                                                    |
 | Existing framework router                     | Keep it and bridge route values into MVC; do not add `@expressive/router` during an unrelated refactor |
 | Framework SSR/data routing                    | The framework router                                                                                   |
 
@@ -158,7 +158,7 @@ global, so requests do not leak the default instance. This is crash and
 isolation safety, not an SSR routing system.
 
 On React Native use Router directly. BrowserRouter requires browser globals;
-Link and NavLinks render DOM elements, so native controls call `goto` instead.
+Link and NavLinks render DOM elements, so native buttons call `goto` instead.
 
 ## Accessibility ownership
 

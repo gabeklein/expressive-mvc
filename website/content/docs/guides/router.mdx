@@ -294,7 +294,7 @@ the owning Model should use `AbortController` or its own generation check.
 - Server rendering is safe from shared global router state, but request-path
   routing, redirects, loader serialization, and hydration are not a supported
   SSR routing system today.
-- On React Native, use `Router` and render navigation controls from native host
+- On React Native, use `Router` and render navigation UI from native host
   components that call `goto`. `BrowserRouter`, `Link`, and `NavLinks` are
   DOM-facing.
 - A Component may own its own `Router` as a field. Routes it renders match that

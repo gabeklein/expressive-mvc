@@ -358,7 +358,7 @@ function ReviewActions() {
 
 Pure presentation components (a `Metric`, a `StatusCallout`) may still take plain props - context replaces drilled *state*, not every value.
 
-`.get()` the nearest real parent. When Composer owns the form, its controls call `Composer.get()` - reaching over to `ComposePage.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'sending'`) become parent getters (`get sending()`); nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope - `config`, not `sendOptions`. Only the parent holds `get(ComposePage)`. The entrypoint is not exempt: token and frame chrome reads its own snapshot (`Frame` `.get()`s `theme`) - don't snapshot `this` at the root only to drill `style`.
+`.get()` the nearest real parent. When Composer owns the form, its inputs call `Composer.get()` - reaching over to `ComposePage.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'sending'`) become parent getters (`get sending()`); nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope - `config`, not `sendOptions`. Only the parent holds `get(ComposePage)`. The entrypoint is not exempt: token and frame chrome reads its own snapshot (`Frame` `.get()`s `theme`) - don't snapshot `this` at the root only to drill `style`.
 
 ## 10. Destructure an exact dependency snapshot
 
@@ -511,7 +511,7 @@ Same when section chrome wraps one Component - `open`/`onToggle` read from the p
 
 Independent siblings that never interact (recipient field, attachment picker) split into local FCs in the same module, each snapshotting what it needs - independent *features* split; one-op chrome like a lone send button stays. A layout-only row with no state inlines into `render()`.
 
-The line/depth threshold alone is never grounds for a finding. To fail a branch, name the concrete cost: a conditional subscription, multiple independent decisions in one branch, independent controls funneled thru one snapshot, mixed ownership, a duplicated dependency snapshot, or navigation a well-named scope would materially improve. "A separate component would be slightly nicer" is polish, not a defect.
+The line/depth threshold alone is never grounds for a finding. To fail a branch, name the concrete cost: a conditional subscription, multiple independent decisions in one branch, independent inputs funneled thru one snapshot, mixed ownership, a duplicated dependency snapshot, or navigation a well-named scope would materially improve. "A separate component would be slightly nicer" is polish, not a defect.
 
 ## 14. Audit with this checklist
 

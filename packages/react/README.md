@@ -45,7 +45,7 @@ function CounterWidget() {
 
 ## Component
 
-`Component` is a `Model` that owns its own rendering - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form controls, layout shells, route controllers, media players.
+`Component` is a `Model` that owns its own rendering - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form inputs, layout shells, route controllers, media players.
 
 ```tsx
 import { Component } from '@expressive/mvc';
@@ -196,7 +196,7 @@ function Profile() {
 - **`Model.use()`** - create an instance bound to a component's lifecycle.
 - **`Model.get()`** - read shared state from context, no prop drilling.
 - **`<Component for={Model}>`** - explicit hierarchical dependency injection.
-- **`Component`** - smart controls and shells whose behavior lives in the tree.
+- **`Component`** - smart widgets and shells whose behavior lives in the tree.
 - **Suspense & error boundaries** - async values suspend; `catch()` handles child errors.
 
 Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**

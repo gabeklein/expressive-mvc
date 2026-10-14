@@ -36,8 +36,8 @@ The most common failure when adopting this library is translating hooks one-for-
 
 For every stateful concern, pick exactly one owner:
 
-- **`Component`** - state intrinsic to one display subtree: controls, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region Model fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
-- **`Model`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()` / `Model.use()`.
+- **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region Model fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
+- **`Model`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()` / `Model.use()`. Two roles: a *domain model* (`Cart`, `Message`, a pool row) outlives any one placement; a *controller* (`Control`, `<Feature>Control` in apps) is constructed where a page, region or route places it, holds domain models as fields, and translates gestures into operations on them.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
 Concerns include the rows: UI state describing an entry in a collection - selection, status, progress - is its own `Model` or `Component` spawned in a `has` pool; actions about item belong on item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class; subsets are a second pool admitting the same members.

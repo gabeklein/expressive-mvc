@@ -286,7 +286,7 @@ For single booleans, form field focus, or throwaway UI state, `useState` is stil
 
 When it does, choose the class shape by ownership:
 
-- **`Component`** when the state is intrinsic to one rendered unit - a shell, tab panel, form control, media player, editor surface.
+- **`Component`** when the state is intrinsic to one rendered unit - a shell, tab panel, form input, media player, editor surface.
 - **`Model`** when the state is display-agnostic, shared across components, or worth testing as a model without rendering.
 
 Don't reach for `Component` just because a class is contextual - `Model` handles headless controllers fine, and child Models of anything provided are available to descendants automatically.

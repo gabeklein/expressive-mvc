@@ -13,7 +13,7 @@ Don't migrate hooks. **Migrate ownership.**
 
 A "feature" is a unit of behavior - a form, a wizard, a search page, a shopping cart, a chat thread. When you identify one, ask whether that behavior is a model or a component.
 
-If the state is headless, testable without rendering, or useful as a model, extract it into a `Model` class. If the state is intrinsic to display logic - a shell, local router, tab panel, menu, editor surface, media player, form control, or toast host - put it directly on a `Component`.
+If the state is headless, testable without rendering, or useful as a model, extract it into a `Model` class. If the state is intrinsic to display logic - a shell, local router, tab panel, menu, editor surface, media player, form input, or toast host - put it directly on a `Component`.
 
 This is deliberately bottom-up. You don't need buy-in from the whole team before you start. You don't need a migration epic. You don't need to touch routing, build config, or tests. You just rewrite the next feature you're already working on.
 
