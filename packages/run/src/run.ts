@@ -1,28 +1,7 @@
-import { has, map, State, unbind } from '@expressive/mvc';
+import { get, has, map, State, unbind } from '@expressive/mvc';
 import { event, listener, touch } from '@expressive/mvc/observable';
 
 type Collection = has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>;
-
-interface Run {
-  internal: Internal;
-  args: unknown[];
-  promise: Promise<unknown>;
-  resolve(value: unknown): void;
-  reject(error: unknown): void;
-  awaited?: boolean;
-  counts: Map<string, number>;
-  flight: Set<Frame>;
-  parked: Map<Runner.Wait, (answer?: Answer) => void>;
-  undo: Map<string, Function | Runner.Node>;
-  end?: Runner.Node;
-  halted?: 'failed' | 'stopped';
-  ending?: boolean;
-  error?: unknown;
-  stopped?: Error;
-  warned?: boolean;
-  drained: (() => void)[];
-  held: Map<Collection, Held>;
-}
 
 interface Held {
   key: string;
@@ -33,51 +12,22 @@ interface Held {
   release(): void;
 }
 
+interface Ticket {
+  args: unknown[];
+  promise: Promise<unknown>;
+  resolve(value: unknown): void;
+  reject(error: unknown): void;
+  awaited?: boolean;
+}
+
 interface Answer {
   frame: Promise<Frame | undefined>;
   done(): void;
 }
 
-interface Frame extends Runner.Node {
-  run: Run;
-  proxy: State;
-  items: Runner.Node[];
-  wrote: Set<string>;
-  prior: Record<string, unknown>;
-  held: Map<string, Held>;
-  changed: Set<string>;
-  lost: Set<string>;
-  wake?: string;
-  undo?: boolean;
-  retry?: Runner.Retry;
-  violation?: string;
-  late?: boolean;
-  armed?: number;
-  settled?: boolean;
-  result?: unknown;
-  view?: Runner.Controller;
-}
-
-interface Internal extends Runner.Snapshot {
-  self: State;
-  runner: Runner.Controller & Runner.Thenable;
-  current?: Run;
-  last?: Run;
-  queued: Run[];
-  steps: Map<string, Function>;
-  present: Set<string>;
-}
-
-const FRAME = new WeakMap<object, Frame>();
-const STEP = new WeakMap<Function, Function>();
-const TOKEN = new WeakMap<object, Frame>();
-const HELD = new WeakMap<Runner.Entry, Map<string, Held>>();
-const REF = new WeakMap<Function, { internal: Internal; key: string }>();
 const HOOK = /^(before|after)([A-Z]|$)/;
 const KEYS = ['status', 'active', 'record', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
-
-let quiet = false;
 
 declare namespace Runner {
   type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'failed';
@@ -225,42 +175,38 @@ type Runner<T extends State = State> = Runner.Controller<T> & Runner.Thenable<T>
  * `_`-prefixed methods are helpers; `before`/`after`-prefixed ones and `back` are hooks.
  */
 function run<T extends State>(self: T): Runner<T> {
-  const internal = {
-    self,
-    status: 'idle',
-    active: undefined,
-    record: [],
-    queue: [],
-    waiting: [],
-    runs: 0,
-    error: undefined,
-    queued: [],
-    steps: new Map(),
-    present: new Set()
-  } as unknown as Internal;
-
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
     if (onfulfilled && typeof onfulfilled == 'object') throw new Error('then(steps) must be called inside a step.');
 
-    return settled(internal).then(onfulfilled as any, onrejected as any);
+    return control.settled().then(onfulfilled as any, onrejected as any);
   } as Runner<T>;
 
-  internal.runner = runner as never;
+  const control = Control.new({ _self: self, _runner: runner });
+
+  const read: Record<(typeof KEYS)[number], () => unknown> = {
+    status: () => control.status,
+    active: () => control.active,
+    record: () => control.run.record.get(),
+    queue: () => control.queue.map((ticket) => ticket.args),
+    waiting: () => [...control.run._parked.keys()],
+    runs: () => control.runs,
+    error: () => control.error
+  };
 
   for (const key of KEYS)
     Object.defineProperty(runner, key, {
       enumerable: true,
       get(this: object) {
-        return touch(this, key, internal[key]);
+        return touch(this, key, read[key]());
       }
     });
 
   Object.defineProperties(runner, {
     then: { value: runner },
     on: { value: self },
-    get: { value: () => snapshot(internal) },
-    end: { value: (value?: unknown) => conclude(internal, value) },
-    stop: { value: (options?: Runner.Stop) => stop(internal, options) },
+    get: { value: () => Object.fromEntries(KEYS.map((key) => [key, read[key]()])) },
+    end: { value: (value?: unknown) => control.conclude(value) },
+    stop: { value: (options?: Runner.Stop) => control.stop(options) },
     retry: { value: () => outside('retry') },
     [Symbol.iterator]: {
       value(this: Runner.Controller) {
@@ -285,13 +231,9 @@ function run<T extends State>(self: T): Runner<T> {
         continue;
       }
 
-      const step = function (this: object, ...args: unknown[]) {
-        return call(internal, key, args, FRAME.get(this));
-      };
+      const step = (...args: unknown[]) => control.call(key, args);
 
-      internal.steps.set(key, step);
-      STEP.set(step, unbind(desc.get!));
-      REF.set(step, { internal, key });
+      control._steps.set(key, unbind(desc.get!));
       Object.defineProperty(
         self,
         key,
@@ -301,7 +243,7 @@ function run<T extends State>(self: T): Runner<T> {
               configurable: true,
               get(this: object) {
                 touch(this, key);
-                return internal.present.has(key) ? step : undefined;
+                return control.accepts(key) ? step : undefined;
               }
             }
       );
@@ -310,10 +252,10 @@ function run<T extends State>(self: T): Runner<T> {
   for (const hook of hooks) {
     const target = hook.replace(HOOK, (_, __, first: string) => first.toLowerCase());
 
-    if (target && !internal.steps.has(target)) throw new Error(`${hook} has no step ${target}.`);
+    if (target && !control._steps.has(target)) throw new Error(`${hook} has no step ${target}.`);
   }
 
-  self.get(null, () => stop(internal));
+  self.get(null, () => control.stop());
 
   return runner;
 }
@@ -342,308 +284,726 @@ class Job extends State {
   protected back?(error: unknown): void;
 }
 
+class Control extends State {
+  status: Runner.Status = 'idle';
+  active: string | undefined = undefined;
+  runs = 0;
+  error: unknown = undefined;
+  queue = has<Ticket>();
+  run = new Run();
+
+  _self!: State;
+  _runner!: object;
+  _steps = new Map<string, Function>();
+  _current?: Run = undefined;
+  _present = new Set<string>();
+
+  protected new() {
+    const { _runner } = this;
+
+    listener(this.queue, (key) => {
+      if (signal(key)) event(this, 'queue');
+    });
+
+    return this.set((key) => void event(_runner, key == 'run' ? 'record' : (key as string)));
+  }
+
+  call(key: string, args: unknown[]) {
+    if (key == 'next') return this.start(args);
+
+    const { _current: current } = this;
+    const open = current ? [...current._parked.keys()].filter((wait) => wait.answers.includes(key)) : [];
+    const wait = open.find((wait) => wait.args[0] === args[0]) || open[0];
+
+    if (wait) return current!.wake(wait, key, args);
+
+    throw new Error(`${key} cannot be called from outside; call next() to run.`);
+  }
+
+  accepts(key: string) {
+    return this._present.has(key);
+  }
+
+  start(args: unknown[]) {
+    const ticket = { args } as Ticket;
+
+    ticket.promise = new Promise((resolve, reject) => {
+      ticket.resolve = resolve;
+      ticket.reject = reject;
+    });
+
+    ticket.promise.catch(() => {});
+
+    if (this._current) this.queue.push(ticket);
+    else this.begin(ticket);
+
+    return handle(ticket, ticket.promise.then());
+  }
+
+  begin(ticket: Ticket) {
+    const run = new Run({ _ticket: ticket });
+
+    this._current = this.run = run;
+    this.error = undefined;
+    this.status = 'running';
+
+    run.start();
+  }
+
+  advance() {
+    const next = this.queue.pop(0);
+
+    if (next) this.begin(next);
+  }
+
+  tail() {
+    return this.queue.get(-1) || this.run._ticket;
+  }
+
+  settled() {
+    if (!this._current) {
+      if (this._steps.get('next')?.length)
+        return Promise.reject(new Error(`${this._self} is idle. next() takes arguments; call it to start a run.`));
+
+      this.start([]);
+    }
+
+    return this.join();
+  }
+
+  join(): Promise<unknown> {
+    const ticket = this.tail()!;
+
+    const tickets = [this._current?._ticket, ...this.queue, ticket].filter(Boolean) as Ticket[];
+
+    for (const each of tickets) each.awaited = true;
+
+    return ticket.promise.then(
+      (value) => (this.tail() === ticket ? value : this.join()),
+      (error) => (this.tail() === ticket ? Promise.reject(error) : this.join())
+    );
+  }
+
+  conclude(value: unknown) {
+    const { _current: run } = this;
+
+    if (!run || run._halted || run._ending) return;
+
+    run.release();
+    run.end(run.node('end', value === undefined ? [] : [value]));
+  }
+
+  stop(options: Runner.Stop = {}) {
+    const { _current: current, queue } = this;
+
+    if (!current) return;
+
+    const stopped = Object.assign(new Error(`${this._self} was stopped.`), { name: 'Stopped' });
+
+    for (const ticket of queue) ticket.reject(stopped);
+
+    queue.clear();
+    current._stopped = stopped;
+    current.halt('stopped', undefined, options.undo);
+  }
+}
+
+class Run extends State {
+  control = get(Control);
+  record = has<Runner.Entry>();
+  frames = has(Frame);
+
+  _ticket!: Ticket;
+  _counts = new Map<string, number>();
+  _undo = new Map<string, Function | Runner.Node>();
+  _held = new Map<string, Map<string, Held>>();
+  _captures = new Map<Collection, Held>();
+  _parked = new Map<Runner.Wait, (answer?: Answer) => void>();
+  _drained: (() => void)[] = [];
+  _end?: Runner.Node = undefined;
+  _halted?: 'failed' | 'stopped' = undefined;
+  _ending?: boolean = undefined;
+  _error?: unknown = undefined;
+  _stopped?: Error = undefined;
+  _warned?: boolean = undefined;
+  _quiet = false;
+
+  protected new() {
+    const { control } = this;
+
+    listener(this.record, (key) => {
+      if (signal(key) && control.run === this) event(control, 'record');
+    });
+  }
+
+  start() {
+    this.exec(this.node('next', this._ticket.args)).then(() => {
+      if (!this._halted && !this._ending) this.end();
+    });
+  }
+
+  node(key: string, args: unknown[]): Runner.Node {
+    const count = (this._counts.get(key) || 0) + 1;
+
+    this._counts.set(key, count);
+
+    return { id: `${key}#${count}`, key, args };
+  }
+
+  flight() {
+    return this.frames.filter((frame) => !frame._undo);
+  }
+
+  async exec(item: Runner.Node, from?: Frame): Promise<void> {
+    if (this._halted || this._ending) return;
+
+    if (item.group) {
+      await Promise.all(item.group.map((member) => this.exec(member, from)));
+      return;
+    }
+
+    if (item.answers) {
+      const answer = await this.park(item, from!);
+
+      if (answer) {
+        await this.descend(await answer.frame);
+        answer.done();
+      }
+    }
+    else if (item.key != 'end') await this.descend(await this.invoke(item));
+  }
+
+  async descend(frame?: Frame) {
+    if (frame) for (const child of frame._items) await this.exec(child, frame);
+  }
+
+  park(item: Runner.Node, from: Frame) {
+    let closures = [...this._undo.values()].some((undo) => typeof undo == 'function');
+
+    if (closures && !this._warned) {
+      this._warned = true;
+      console.warn(`${this.control._self} is waiting with undo closures held; a closure does not survive a resume.`);
+    }
+
+    const wait: Runner.Wait = { id: item.id, step: from.key, args: from.args, answers: item.answers! };
+
+    return new Promise<Answer | undefined>((resolve) => {
+      this._parked.set(wait, resolve);
+      this.sync();
+    });
+  }
+
+  wake(wait: Runner.Wait, key: string, args: unknown[]) {
+    const { _ticket } = this;
+    const resolve = this._parked.get(wait)!;
+    let done!: () => void;
+    let fail!: (error: unknown) => void;
+
+    const answered = new Promise<void>((res, rej) => {
+      done = res;
+      fail = rej;
+    });
+
+    this._parked.delete(wait);
+    this.sync();
+    resolve({
+      frame: this.invoke(this.node(key, args), wait.id),
+      done: () => (this._halted ? _ticket.promise.catch(fail) : done())
+    });
+
+    return handle(_ticket, answered);
+  }
+
+  release() {
+    for (const resolve of this._parked.values()) resolve();
+
+    this._parked.clear();
+    this.sync();
+  }
+
+  sync() {
+    const { control, _parked } = this;
+    const { _self: self, _present: present } = control;
+    const answers = new Set([..._parked.keys()].flatMap((wait) => wait.answers));
+
+    control._present = answers;
+    event(control, 'waiting');
+
+    for (const key of new Set([...present, ...answers])) if (present.has(key) != answers.has(key)) event(self, key);
+
+    if (!this._halted) control.status = _parked.size ? 'waiting' : 'running';
+  }
+
+  async invoke(node: Runner.Node, wake?: string): Promise<Frame | undefined> {
+    const { control } = this;
+    const { _self: self } = control;
+    const { id, key, args } = node;
+    const fn = control._steps.get(key) || (() => {});
+    const frame = this.frames.add({ id, key, args, _wake: wake });
+
+    control.active = key;
+
+    try {
+      hook(self, 'before', key, args, false);
+      hook(self, `before${capital(key)}`, false, ...args);
+
+      let out: unknown;
+
+      for (let attempt = 1; ; attempt++)
+        try {
+          out = await fn.apply(frame._proxy, args);
+          frame._settled = true;
+
+          const entry = frame.commit(out, attempt);
+
+          hook(self, `after${capital(key)}`, false, entry);
+          hook(self, 'after', key, entry, false);
+
+          return frame;
+        } catch (error) {
+          let irreversible = [...frame._lost];
+          let retry = !frame._settled && !irreversible.length && frame._retry && attempt < frame._retry.attempts;
+
+          if (irreversible.length) this.record.push({ ...frame.journal(), error, irreversible, ...frame._retry && { attempt } });
+          if (!retry) throw error;
+
+          this.restore(frame._prior, frame.touched());
+          frame.leave();
+          Object.assign(frame, { _held: new Map(), _changed: new Set() });
+          this.record.push({ id, key, args, prior: {}, patch: {}, next: [], attempt, error });
+
+          const delay = frame._retry!.backoff?.(attempt);
+
+          await new Promise((resolve) => (delay ? setTimeout(resolve, delay) : resolve(0)));
+
+          if (this._halted) throw error;
+
+          Object.assign(frame, { _items: [], _wrote: new Set(), _prior: {}, _violation: undefined, _late: undefined });
+          frame._armed++;
+        }
+    } catch (error) {
+      frame._settled = true;
+
+      if (!frame._lost.size) this.restore(frame._prior, frame.touched());
+
+      this.halt('failed', error);
+    } finally {
+      this.frames.delete(frame);
+      control.active = this.flight().at(-1)?.key;
+
+      if (!this.flight().length) for (const resolve of this._drained.splice(0)) resolve();
+    }
+  }
+
+  async end(item = this._end) {
+    this._ending = true;
+
+    await this.drain();
+
+    if (this._halted) return;
+    if (!item) return this.finish(dump(this.control));
+
+    const frame = await this.invoke(item);
+
+    if (frame && !this._halted) this.finish(frame._result);
+  }
+
+  drain() {
+    if (this.flight().length) return new Promise<void>((resolve) => this._drained.push(resolve));
+  }
+
+  finish(value: unknown) {
+    this.close();
+    this.control.status = 'idle';
+    this._ticket.resolve(value);
+    this.control.advance();
+  }
+
+  close() {
+    const { control } = this;
+
+    control._current = undefined;
+    control.runs++;
+    this.frames.clear();
+  }
+
+  halt(status: 'failed' | 'stopped', error?: unknown, undo = status == 'failed') {
+    const { control } = this;
+
+    if (this._halted) return;
+
+    this._halted = status;
+    control.status = status;
+
+    if (status == 'failed') {
+      this._error = error;
+      control.error = error;
+    }
+
+    this.release();
+    this.finalize(undo);
+  }
+
+  async finalize(undo: boolean) {
+    await this.drain();
+
+    if (undo) {
+      await this.unwind();
+      this.back();
+    }
+
+    const { _error: error, _ticket } = this;
+
+    this.close();
+    _ticket.reject(error === undefined ? this._stopped : error);
+
+    if (error !== undefined)
+      queueMicrotask(() => queueMicrotask(() => {
+        if (!_ticket.awaited) throw error;
+      }));
+
+    this.control.advance();
+  }
+
+  async unwind() {
+    const { control, record } = this;
+    const entries = record.get() as Runner.Entry[];
+
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const entry = entries[i];
+      const how = this._undo.get(entry.id);
+
+      if (entry.irreversible) {
+        entry.halted = true;
+        event(record, i);
+        console.warn(`${control._self} stopped unwinding at ${entry.id}: ${entry.irreversible.join(', ')} cannot be restored.`);
+        break;
+      }
+
+      if ('error' in entry) continue;
+
+      try {
+        if (how) await this.undo(entry, how);
+
+        this.restore(entry.prior, this._held.get(entry.id)!);
+        entry.undone = true;
+      } catch (cause) {
+        entry.undone = 'failed';
+        this._error = cause;
+        control.error = cause;
+        break;
+      } finally {
+        event(record, i);
+      }
+    }
+  }
+
+  back() {
+    const { control, _error: error, _stopped } = this;
+
+    try {
+      hook(control._self, 'back', error === undefined ? _stopped : error);
+    } catch (cause) {
+      this._error = cause;
+      control.error = cause;
+    }
+  }
+
+  async undo(entry: Runner.Entry, how: Function | Runner.Node) {
+    const frame = this.frames.add({ id: `${entry.id}:undo`, key: entry.key, args: [], _undo: true });
+    const { _proxy } = frame;
+
+    try {
+      if (typeof how == 'function') return await how.call(_proxy);
+
+      return await this.control._steps.get(how.key)!.apply(_proxy, how.args);
+    } finally {
+      this.frames.delete(frame);
+    }
+  }
+
+  capture(key: string, value: Collection) {
+    const raw = value instanceof has.List ? value.get(0, value.size) : value instanceof Map ? new Map(value) : [...value];
+    const held = { key, value, raw, prior: value.get(), readers: new Set() } as Held;
+
+    held.release = listener(value, (signal) => {
+      if (this._quiet || typeof signal == 'boolean' || signal === null) return;
+
+      const gone = lost(held, signal);
+
+      for (const reader of held.readers) {
+        reader._changed.add(key);
+        if (gone) reader._lost.add(key);
+      }
+    });
+
+    this._captures.set(value, held);
+
+    return held;
+  }
+
+  restore(prior: Record<string, unknown>, held: Map<string, Held>) {
+    const self = this.control._self as any;
+
+    for (const key in prior) if (!held.has(key)) self[key] = prior[key];
+
+    this._quiet = true;
+
+    try {
+      for (const each of held.values()) revert(each);
+    } finally {
+      this._quiet = false;
+    }
+  }
+}
+
+class Frame extends State {
+  run = get(Run);
+  id = '';
+  key = '';
+  args: unknown[] = [];
+
+  _proxy!: State;
+  _view?: Runner.Controller = undefined;
+  _refs = new Map<string, Function>();
+  _abort = new AbortController();
+  _items: Runner.Node[] = [];
+  _wrote = new Set<string>();
+  _prior: Record<string, unknown> = {};
+  _held = new Map<string, Held>();
+  _changed = new Set<string>();
+  _lost = new Set<string>();
+  _wake?: string = undefined;
+  _undo?: boolean = undefined;
+  _retry?: Runner.Retry = undefined;
+  _violation?: string = undefined;
+  _late?: boolean = undefined;
+  _armed = 0;
+  _settled?: boolean = undefined;
+  _result?: unknown = undefined;
+
+  protected new() {
+    const { _self: self, _steps, _runner } = this.run.control;
+
+    this._proxy = new Proxy(self, {
+      get: (target, prop) => {
+        if (_steps.has(prop as string)) return this.ref(prop as string);
+
+        const value = Reflect.get(target, prop, target);
+
+        if (value === _runner) return this.view();
+        if (typeof value != 'function') {
+          let fresh = !this._undo && !this._settled && !this._held.has(prop as string) && collection(value);
+
+          if (fresh) this.hold(prop as string, value);
+
+          return value;
+        }
+
+        return Object.hasOwn(target, prop) ? value : value.bind(target);
+      },
+      set: (target, prop, value) => {
+        const key = String(prop);
+
+        if (!this._wrote.has(key)) {
+          this._prior[key] = Reflect.get(target, prop, target);
+          this._wrote.add(key);
+        }
+
+        if (this._items.length) this._violation ||= key;
+
+        return Reflect.set(target, prop, value, target);
+      }
+    });
+
+    return () => {
+      this._abort.abort();
+      this.leave();
+    };
+  }
+
+  ref(key: string) {
+    let ref = this._refs.get(key);
+
+    if (!ref) this._refs.set(key, (ref = (...args: unknown[]) => this.issue(key, args)));
+
+    return ref;
+  }
+
+  keyOf(fn: unknown) {
+    for (const [key, ref] of this._refs) if (ref === fn) return key;
+  }
+
+  issue(key: string, args: unknown[]) {
+    const { run } = this;
+
+    if (this._undo) throw new Error(`${run.control._self} is ${run.control.status}; ${key} cannot run.`);
+    if (this._settled) throw new Error(`${this.key} has settled; ${key} cannot run.`);
+
+    const token = run.node(key, args);
+
+    this._items.push(token);
+    this.arm();
+
+    return token;
+  }
+
+  arm() {
+    const armed = ++this._armed;
+    let hops = SLACK;
+
+    const tick = () => {
+      if (this._settled || this._armed != armed) return;
+      if (--hops) queueMicrotask(tick);
+      else this._late = true;
+    };
+
+    queueMicrotask(tick);
+  }
+
+  view(): Runner.Controller {
+    if (this._view) return this._view;
+
+    const view = (...args: unknown[]) => {
+      const [steps, each] = args as [Iterable<unknown>, (item: unknown, index: number) => unknown];
+      const refs = args.map((arg) => this.keyOf(arg));
+      let waits = refs.length && refs.every(Boolean);
+
+      if (waits) return this.wait(refs as string[]);
+
+      let awaited = !steps || typeof steps == 'function';
+
+      if (awaited) throw new Error('a step cannot await its own run.');
+
+      return this.group(Array.from(steps, each));
+    };
+
+    Object.setPrototypeOf(view, this.run.control._runner);
+    Object.defineProperties(view, {
+      then: { value: view },
+      end: { value: (value?: unknown) => this.issue('end', value === undefined ? [] : [value]) },
+      retry: { value: (config: Runner.Retry) => void (this._retry = config) }
+    });
+
+    return (this._view = view as Runner.Controller);
+  }
+
+  group(members: unknown[]) {
+    for (const member of members)
+      if (!this._items.includes(member as Runner.Node)) throw new Error(`then() takes steps called by ${this.key}.`);
+
+    const group = { ...this.run.node('then', []), group: members as Runner.Node[] };
+
+    this._items = this._items.filter((item) => !members.includes(item));
+    this._items.push(group);
+    this.arm();
+
+    return group;
+  }
+
+  wait(answers: string[]) {
+    for (const key of answers) if (key == 'next' || key == 'end') throw new Error(`${key} cannot answer a wait.`);
+
+    return Object.assign(this.issue('wait', []), { answers });
+  }
+
+  commit(out: unknown, attempt: number) {
+    const { run, id, key, args, _items: items, _violation, _late, _wake, _lost } = this;
+
+    if (_violation) throw new Error(`${key} wrote ${_violation} after scheduling ${items[0].key}.`);
+    if (_late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
+
+    let undo: Function | Runner.Node | undefined;
+    let token = items.includes(out as Runner.Node) && !(out as Runner.Node).group && !(out as Runner.Node).answers;
+
+    if (key == 'end') {
+      if (items.length) throw new Error(`end cannot schedule ${items[0].key}.`);
+
+      this._result = out !== undefined ? out : args.length ? args[0] : dump(run.control);
+    }
+    else if (typeof out == 'function') undo = out;
+    else if (token) {
+      undo = out as Runner.Node;
+      items.splice(items.indexOf(undo), 1);
+    }
+    else if (out !== undefined) throw new Error(`${key} returned a value; a step returns nothing, or its undo.`);
+
+    for (const item of items)
+      if (item.key == 'end') {
+        if (run._end) throw new Error('end was scheduled twice.');
+
+        run._end = item;
+      }
+
+    const entry: Runner.Entry = { ...this.journal(), next: items };
+
+    if (_wake) entry.wake = _wake;
+    if (attempt > 1) entry.attempt = attempt;
+
+    if (undo) {
+      entry.undo = typeof undo == 'function' ? 'closure' : undo;
+      run._undo.set(id, undo);
+    }
+    else if (_lost.size) entry.irreversible = [..._lost];
+
+    run._held.set(id, this.touched());
+    run.record.push(entry);
+
+    return entry;
+  }
+
+  journal(): Runner.Entry {
+    const { run, id, key, args, _wrote, _prior, _held, _changed } = this;
+    const values = run.control._self.get() as Record<string, unknown>;
+    const collections = [..._changed].map((key) => [key, _held.get(key)!.prior]);
+    const patch = Object.fromEntries([..._wrote, ..._changed].map((key) => [key, values[key]]));
+
+    return { id, key, args, prior: { ..._prior, ...Object.fromEntries(collections) }, patch, next: [] };
+  }
+
+  hold(key: string, value: Collection) {
+    const { run } = this;
+    const held = run._captures.get(value) || run.capture(key, value);
+
+    held.readers.add(this);
+    this._held.set(key, held);
+  }
+
+  leave() {
+    for (const each of this._held.values()) {
+      each.readers.delete(this);
+
+      if (each.readers.size) continue;
+
+      each.release();
+      this.run._captures.delete(each.value);
+    }
+  }
+
+  touched() {
+    const { _held, _changed } = this;
+
+    return new Map([..._changed].map((key) => [key, _held.get(key)!]));
+  }
+}
+
+function signal(key: unknown) {
+  return typeof key != 'boolean' && key !== null;
+}
+
 function outside(key: string): never {
   throw new Error(`${key} must be called inside a step.`);
 }
 
-function snapshot(internal: Internal): Runner.Snapshot {
-  const { status, active, record, queue, waiting, runs, error } = internal;
-
-  return { status, active, record, queue, waiting, runs, error };
-}
-
-function update<K extends keyof Runner.Snapshot>(internal: Internal, key: K, value: Runner.Snapshot[K]) {
-  (internal as Runner.Snapshot)[key] = value;
-  event(internal.runner, key);
-}
-
-function call(internal: Internal, key: string, args: unknown[], frame?: Frame) {
-  if (frame) return issue(frame, key, args);
-  if (key == 'next') return start(internal, args);
-
-  const { current } = internal;
-  const open = current ? [...current.parked.keys()].filter((wait) => wait.answers.includes(key)) : [];
-  const wait = open.find((wait) => wait.args[0] === args[0]) || open[0];
-
-  if (wait) return wake(current!, wait, key, args);
-
-  throw new Error(`${key} cannot be called from outside; call next() to run.`);
-}
-
-function issue(frame: Frame, key: string, args: unknown[]) {
-  const { run } = frame;
-  const { internal } = run;
-
-  if (frame.undo) throw new Error(`${internal.self} is ${internal.status}; ${key} cannot run.`);
-  if (frame.settled) throw new Error(`${frame.key} has settled; ${key} cannot run.`);
-
-  const token = node(run, key, args);
-
-  frame.items.push(token);
-  TOKEN.set(token, frame);
-  arm(frame);
-
-  return token;
-}
-
-function node(run: Run, key: string, args: unknown[]): Runner.Node {
-  const count = (run.counts.get(key) || 0) + 1;
-
-  run.counts.set(key, count);
-
-  return { id: `${key}#${count}`, key, args };
-}
-
-function arm(frame: Frame) {
-  const armed = (frame.armed = (frame.armed || 0) + 1);
-  let hops = SLACK;
-
-  const tick = () => {
-    if (frame.settled || frame.armed != armed) return;
-    if (--hops) queueMicrotask(tick);
-    else frame.late = true;
-  };
-
-  queueMicrotask(tick);
-}
-
-function start(internal: Internal, args: unknown[]) {
-  let resolve!: Run['resolve'];
-  let reject!: Run['reject'];
-
-  const promise = new Promise((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-
-  const run: Run = {
-    internal,
-    args,
-    promise,
-    resolve,
-    reject,
-    counts: new Map(),
-    flight: new Set(),
-    parked: new Map(),
-    undo: new Map(),
-    drained: [],
-    held: new Map()
-  };
-
-  promise.catch(() => {});
-
-  if (internal.current) {
-    internal.queued.push(run);
-    update(internal, 'queue', internal.queued.map((run) => run.args));
-  }
-  else begin(run);
-
-  return handle(run, run.promise.then());
-}
-
-function handle<T>(run: Run, out: Promise<T>) {
+function handle<T>(ticket: Ticket, out: Promise<T>) {
   out.catch(() => {});
 
   return Object.defineProperty(out, 'then', {
     value(this: Promise<unknown>, ...args: Parameters<Promise<unknown>['then']>) {
-      run.awaited = true;
+      ticket.awaited = true;
       return Promise.prototype.then.apply(this, args);
     }
   });
-}
-
-function begin(run: Run) {
-  const { internal } = run;
-
-  internal.current = run;
-  update(internal, 'record', []);
-  update(internal, 'error', undefined);
-  update(internal, 'status', 'running');
-
-  exec(run, node(run, 'next', run.args)).then(() => {
-    if (!run.halted && !run.ending) end(run);
-  });
-}
-
-async function exec(run: Run, item: Runner.Node): Promise<void> {
-  if (run.halted || run.ending) return;
-
-  if (item.group) {
-    await Promise.all(item.group.map((member) => exec(run, member)));
-    return;
-  }
-
-  if (item.answers) {
-    const answer = await park(run, item);
-
-    if (answer) {
-      await descend(run, await answer.frame);
-      answer.done();
-    }
-  }
-  else if (item.key != 'end') await descend(run, await invoke(run, item));
-}
-
-async function descend(run: Run, frame?: Frame) {
-  if (frame) for (const child of frame.items) await exec(run, child);
-}
-
-function park(run: Run, item: Runner.Node) {
-  const { internal } = run;
-  const { key, args } = TOKEN.get(item)!;
-  const wait: Runner.Wait = { id: item.id, step: key, args, answers: item.answers! };
-  let closures = [...run.undo.values()].some((undo) => typeof undo == 'function');
-
-  if (closures && !run.warned) {
-    run.warned = true;
-    console.warn(`${internal.self} is waiting with undo closures held; a closure does not survive a resume.`);
-  }
-
-  return new Promise<Answer | undefined>((resolve) => {
-    run.parked.set(wait, resolve);
-    sync(run);
-  });
-}
-
-function wake(run: Run, wait: Runner.Wait, key: string, args: unknown[]) {
-  const resolve = run.parked.get(wait)!;
-  let done!: () => void;
-  let fail!: (error: unknown) => void;
-
-  const answered = new Promise<void>((res, rej) => {
-    done = res;
-    fail = rej;
-  });
-
-  run.parked.delete(wait);
-  sync(run);
-  resolve({
-    frame: invoke(run, node(run, key, args), wait.id),
-    done: () => (run.halted ? run.promise.catch(fail) : done())
-  });
-
-  return handle(run, answered);
-}
-
-function release(run: Run) {
-  for (const resolve of run.parked.values()) resolve();
-
-  run.parked.clear();
-  sync(run);
-}
-
-function sync(run: Run) {
-  const { internal, parked, halted } = run;
-  const { self, present } = internal;
-  const waits = [...parked.keys()];
-  const answers = new Set(waits.flatMap((wait) => wait.answers));
-
-  internal.present = answers;
-  update(internal, 'waiting', waits);
-
-  for (const key of new Set([...present, ...answers])) if (present.has(key) != answers.has(key)) event(self, key);
-
-  if (!halted) update(internal, 'status', parked.size ? 'waiting' : 'running');
-}
-
-function enter(run: Run, node: Runner.Node) {
-  const { internal } = run;
-  const { self, runner } = internal;
-
-  const frame = { ...node, run, items: [], wrote: new Set(), prior: {}, held: new Map(), changed: new Set(), lost: new Set() } as unknown as Frame;
-
-  frame.proxy = new Proxy(self, {
-    get(target, prop) {
-      const step = internal.steps.get(prop as string);
-
-      if (step) return ref(step, frame.proxy);
-
-      const value = Reflect.get(target, prop, target);
-
-      if (value === runner) return view(frame);
-      if (typeof value != 'function') {
-        let fresh = !frame.undo && !frame.settled && !frame.held.has(prop as string) && collection(value);
-
-        if (fresh) hold(frame, prop as string, value);
-
-        return value;
-      }
-
-      return Object.hasOwn(target, prop) ? value : value.bind(target);
-    },
-    set(target, prop, value) {
-      const key = String(prop);
-
-      if (!frame.wrote.has(key)) {
-        frame.prior[key] = Reflect.get(target, prop, target);
-        frame.wrote.add(key);
-      }
-
-      if (frame.items.length) frame.violation ||= key;
-
-      return Reflect.set(target, prop, value, target);
-    }
-  });
-
-  FRAME.set(frame.proxy, frame);
-
-  return frame;
-}
-
-function view(frame: Frame): Runner.Controller {
-  if (frame.view) return frame.view;
-
-  const { internal } = frame.run;
-
-  const view = function (...args: unknown[]) {
-    const [steps, each] = args as [Iterable<unknown>, (item: unknown, index: number) => unknown];
-    const refs = args.map((arg) => REF.get(arg as Function));
-    let waits = refs.length && refs.every((ref) => ref?.internal === internal);
-
-    if (waits) return wait(frame, refs.map((ref) => ref!.key));
-
-    let awaited = !steps || typeof steps == 'function';
-
-    if (awaited) throw new Error('a step cannot await its own run.');
-
-    return group(frame, Array.from(steps, each));
-  } as Runner.Controller;
-
-  Object.setPrototypeOf(view, internal.runner);
-  Object.defineProperties(view, {
-    then: { value: view },
-    end: { value: (value?: unknown) => issue(frame, 'end', value === undefined ? [] : [value]) },
-    retry: { value: (config: Runner.Retry) => void (frame.retry = config) }
-  });
-
-  return (frame.view = view);
-}
-
-function group(frame: Frame, members: unknown[]) {
-  for (const member of members)
-    if (!frame.items.includes(member as Runner.Node)) throw new Error(`then() takes steps called by ${frame.key}.`);
-
-  const group = { ...node(frame.run, 'then', []), group: members as Runner.Node[] };
-
-  frame.items = frame.items.filter((item) => !members.includes(item));
-  frame.items.push(group);
-  arm(frame);
-
-  return group;
-}
-
-function wait(frame: Frame, answers: string[]) {
-  for (const key of answers) if (key == 'next' || key == 'end') throw new Error(`${key} cannot answer a wait.`);
-
-  return Object.assign(issue(frame, 'wait', []), { answers });
-}
-
-function ref(step: Function, proxy: State) {
-  const bound = step.bind(proxy);
-
-  REF.set(bound, REF.get(step)!);
-
-  return bound;
 }
 
 function hook(self: State, key: string, ...args: unknown[]) {
@@ -654,155 +1014,14 @@ function capital(key: string) {
   return key[0].toUpperCase() + key.slice(1);
 }
 
-async function invoke(run: Run, node: Runner.Node, wake?: string): Promise<Frame | undefined> {
-  const { internal, flight } = run;
-  const { self } = internal;
-  const { id, key, args } = node;
-  const fn = STEP.get(internal.steps.get(key)!) || (() => {});
-  const frame = enter(run, node);
+function dump({ _self: self, _runner }: Control) {
+  const values = self.get() as Record<string, unknown>;
 
-  frame.wake = wake;
-  flight.add(frame);
-  update(internal, 'active', key);
-
-  try {
-    hook(self, 'before', key, args, false);
-    hook(self, `before${capital(key)}`, false, ...args);
-
-    let out: unknown;
-
-    for (let attempt = 1; ; attempt++)
-      try {
-        out = await fn.apply(frame.proxy, args);
-        frame.settled = true;
-
-        const entry = commit(frame, out, attempt);
-
-        hook(self, `after${capital(key)}`, false, entry);
-        hook(self, 'after', key, entry, false);
-
-        return frame;
-      } catch (error) {
-        let irreversible = [...frame.lost];
-        let retry = !frame.settled && !irreversible.length && frame.retry && attempt < frame.retry.attempts;
-
-        if (irreversible.length) record(internal, { ...journal(frame), error, irreversible, ...frame.retry && { attempt } });
-        if (!retry) throw error;
-
-        restore(self, frame.prior, touched(frame));
-        leave(frame);
-        Object.assign(frame, { held: new Map(), changed: new Set() });
-        record(internal, { id, key, args, prior: {}, patch: {}, next: [], attempt, error });
-
-        const delay = frame.retry!.backoff?.(attempt);
-
-        await new Promise((resolve) => (delay ? setTimeout(resolve, delay) : resolve(0)));
-
-        if (run.halted) throw error;
-
-        Object.assign(frame, { items: [], wrote: new Set(), prior: {}, violation: undefined, late: undefined });
-        frame.armed = (frame.armed || 0) + 1;
-      }
-  } catch (error) {
-    frame.settled = true;
-
-    if (!frame.lost.size) restore(self, frame.prior, touched(frame));
-
-    halt(run, 'failed', error);
-  } finally {
-    leave(frame);
-    flight.delete(frame);
-    update(internal, 'active', [...flight].at(-1)?.key);
-
-    if (!flight.size) for (const resolve of run.drained.splice(0)) resolve();
-  }
-}
-
-function commit(frame: Frame, out: unknown, attempt: number) {
-  const { run, id, key, args, items, violation, late, wake, lost } = frame;
-  const { internal } = run;
-
-  if (violation) throw new Error(`${key} wrote ${violation} after scheduling ${items[0].key}.`);
-  if (late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
-
-  let undo: Function | Runner.Node | undefined;
-  let token = TOKEN.get(out as object) === frame && items.includes(out as Runner.Node) && !(out as Runner.Node).answers;
-
-  if (key == 'end') {
-    if (items.length) throw new Error(`end cannot schedule ${items[0].key}.`);
-
-    frame.result = out !== undefined ? out : args.length ? args[0] : dump(internal);
-  }
-  else if (typeof out == 'function') undo = out;
-  else if (token) {
-    undo = out as Runner.Node;
-    items.splice(items.indexOf(undo), 1);
-  }
-  else if (out !== undefined) throw new Error(`${key} returned a value; a step returns nothing, or its undo.`);
-
-  for (const item of items)
-    if (item.key == 'end' && TOKEN.has(item)) {
-      if (run.end) throw new Error('end was scheduled twice.');
-
-      run.end = item;
-    }
-
-  const entry: Runner.Entry = { ...journal(frame), next: items };
-
-  if (wake) entry.wake = wake;
-  if (attempt > 1) entry.attempt = attempt;
-
-  if (undo) {
-    entry.undo = typeof undo == 'function' ? 'closure' : undo;
-    run.undo.set(id, undo);
-  }
-  else if (lost.size) entry.irreversible = [...lost];
-
-  HELD.set(entry, touched(frame));
-  record(internal, entry);
-
-  return entry;
-}
-
-function journal(frame: Frame): Runner.Entry {
-  const { run, id, key, args, wrote, prior, held, changed } = frame;
-  const values = run.internal.self.get() as Record<string, unknown>;
-  const collections = [...changed].map((key) => [key, held.get(key)!.prior]);
-  const patch = Object.fromEntries([...wrote, ...changed].map((key) => [key, values[key]]));
-
-  return { id, key, args, prior: { ...prior, ...Object.fromEntries(collections) }, patch, next: [] };
+  return Object.fromEntries(Object.entries(values).filter(([key]) => (self as any)[key] !== _runner));
 }
 
 function collection(value: unknown): value is Collection {
   return value instanceof has.List || value instanceof has.Pool || value instanceof map.Managed;
-}
-
-function hold(frame: Frame, key: string, value: Collection) {
-  const { run } = frame;
-  const held = run.held.get(value) || capture(run, key, value);
-
-  held.readers.add(frame);
-  frame.held.set(key, held);
-}
-
-function capture(run: Run, key: string, value: Collection) {
-  const raw = value instanceof has.List ? value.get(0, value.size) : value instanceof Map ? new Map(value) : [...value];
-  const held = { key, value, raw, prior: value.get(), readers: new Set() } as Held;
-
-  held.release = listener(value, (signal) => {
-    if (quiet || typeof signal == 'boolean' || signal === null) return;
-
-    const gone = lost(held, signal);
-
-    for (const reader of held.readers) {
-      reader.changed.add(key);
-      if (gone) reader.lost.add(key);
-    }
-  });
-
-  run.held.set(value, held);
-
-  return held;
 }
 
 function lost({ value, raw }: Held, signal: unknown) {
@@ -814,33 +1033,6 @@ function lost({ value, raw }: Held, signal: unknown) {
 
 function dead(value: unknown) {
   return value instanceof State && value.get(null);
-}
-
-function leave(frame: Frame) {
-  for (const each of frame.held.values()) {
-    each.readers.delete(frame);
-
-    if (each.readers.size) continue;
-
-    each.release();
-    frame.run.held.delete(each.value);
-  }
-}
-
-function touched({ held, changed }: Frame) {
-  return new Map([...changed].map((key) => [key, held.get(key)!]));
-}
-
-function restore(self: State, prior: Record<string, unknown>, held: Map<string, Held>) {
-  for (const key in prior) if (!held.has(key)) (self as any)[key] = prior[key];
-
-  quiet = true;
-
-  try {
-    for (const each of held.values()) revert(each);
-  } finally {
-    quiet = false;
-  }
 }
 
 function revert({ value, raw }: Held) {
@@ -857,205 +1049,6 @@ function revert({ value, raw }: Held) {
     for (const key of [...value.keys()]) if (!before.has(key)) value.delete(key);
     for (const [key, item] of before) if (value.get(key) !== item && !dead(item)) value.set(key, item);
   }
-}
-
-function record(internal: Internal, entry: Runner.Entry) {
-  update(internal, 'record', internal.record.concat(entry));
-}
-
-function conclude(internal: Internal, value: unknown) {
-  const run = internal.current;
-
-  if (!run || run.halted || run.ending) return;
-
-  release(run);
-  end(run, node(run, 'end', value === undefined ? [] : [value]));
-}
-
-async function end(run: Run, item = run.end) {
-  run.ending = true;
-
-  await drain(run);
-
-  if (run.halted) return;
-  if (!item) return finish(run, dump(run.internal));
-
-  const frame = await invoke(run, item);
-
-  if (frame && !run.halted) finish(run, frame.result);
-}
-
-function drain(run: Run) {
-  if (run.flight.size) return new Promise<void>((resolve) => run.drained.push(resolve));
-}
-
-function dump(internal: Internal) {
-  const { self, runner } = internal;
-  const values = self.get() as Record<string, unknown>;
-
-  return Object.fromEntries(Object.entries(values).filter(([key]) => (self as any)[key] !== runner));
-}
-
-function finish(run: Run, value: unknown) {
-  const { internal } = run;
-
-  close(run);
-  update(internal, 'status', 'idle');
-  run.resolve(value);
-  advance(internal);
-}
-
-function close(run: Run) {
-  const { internal } = run;
-
-  internal.current = undefined;
-  internal.last = run;
-  update(internal, 'runs', internal.runs + 1);
-}
-
-function advance(internal: Internal) {
-  const next = internal.queued.shift();
-
-  if (!next) return;
-
-  update(internal, 'queue', internal.queued.map((run) => run.args));
-  begin(next);
-}
-
-function tail(internal: Internal) {
-  return internal.queued.at(-1) || internal.current || internal.last;
-}
-
-function settled(internal: Internal) {
-  if (!internal.current) {
-    if (STEP.get(internal.steps.get('next')!)?.length)
-      return Promise.reject(new Error(`${internal.self} is idle. next() takes arguments; call it to start a run.`));
-
-    start(internal, []);
-  }
-
-  return join(internal);
-}
-
-function join(internal: Internal): Promise<unknown> {
-  const run = tail(internal)!;
-
-  for (const each of [internal.current, ...internal.queued, run].filter(Boolean)) each!.awaited = true;
-
-  return run.promise.then(
-    (value) => (tail(internal) === run ? value : join(internal)),
-    (error) => (tail(internal) === run ? Promise.reject(error) : join(internal))
-  );
-}
-
-function stop(internal: Internal, options: Runner.Stop = {}) {
-  const { current, queued, self } = internal;
-
-  if (!current) return;
-
-  const stopped = Object.assign(new Error(`${self} was stopped.`), { name: 'Stopped' });
-
-  for (const run of queued) run.reject(stopped);
-
-  queued.length = 0;
-  update(internal, 'queue', []);
-
-  current.stopped = stopped;
-  halt(current, 'stopped', undefined, options.undo);
-}
-
-function halt(run: Run, status: 'failed' | 'stopped', error?: unknown, undo = status == 'failed') {
-  const { internal } = run;
-
-  if (run.halted) return;
-
-  run.halted = status;
-  update(internal, 'status', status);
-
-  if (status == 'failed') {
-    run.error = error;
-    update(internal, 'error', error);
-  }
-
-  release(run);
-  finalize(run, undo);
-}
-
-async function finalize(run: Run, undo: boolean) {
-  await drain(run);
-
-  if (undo) {
-    await unwind(run);
-    back(run);
-  }
-
-  const { error } = run;
-
-  close(run);
-  run.reject(error === undefined ? run.stopped : error);
-
-  if (error !== undefined)
-    queueMicrotask(() => queueMicrotask(() => {
-      if (!run.awaited) throw error;
-    }));
-
-  advance(run.internal);
-}
-
-async function unwind(run: Run) {
-  const { internal } = run;
-  const { self, record } = internal;
-
-  for (let i = record.length - 1; i >= 0; i--) {
-    const entry = record[i];
-    const how = run.undo.get(entry.id);
-
-    if (entry.irreversible) {
-      entry.halted = true;
-      update(internal, 'record', record.slice());
-      console.warn(`${self} stopped unwinding at ${entry.id}: ${entry.irreversible.join(', ')} cannot be restored.`);
-      break;
-    }
-
-    if ('error' in entry) continue;
-
-    try {
-      if (how) await undo(run, entry, how);
-
-      restore(self, entry.prior, HELD.get(entry)!);
-      entry.undone = true;
-    } catch (cause) {
-      entry.undone = 'failed';
-      run.error = cause;
-      update(internal, 'error', cause);
-      break;
-    } finally {
-      update(internal, 'record', record.slice());
-    }
-  }
-}
-
-function back(run: Run) {
-  const { internal, error, stopped } = run;
-
-  try {
-    hook(internal.self, 'back', error === undefined ? stopped : error);
-  } catch (cause) {
-    run.error = cause;
-    update(internal, 'error', cause);
-  }
-}
-
-function undo(run: Run, entry: Runner.Entry, how: Function | Runner.Node) {
-  const { steps } = run.internal;
-  const frame = enter(run, { id: `${entry.id}:undo`, key: entry.key, args: [] });
-  const { proxy } = frame;
-
-  frame.undo = true;
-
-  if (typeof how == 'function') return how.call(proxy);
-
-  return STEP.get(steps.get(how.key)!)!.apply(proxy, how.args);
 }
 
 export { Job, run, Runner };
