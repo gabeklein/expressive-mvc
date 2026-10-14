@@ -1,7 +1,7 @@
-import { has, State, unbind } from '@expressive/mvc';
+import { has, map, State, unbind } from '@expressive/mvc';
 import { event, listener, touch } from '@expressive/mvc/observable';
 
-type Collection = has.List<unknown>;
+type Collection = has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>;
 
 interface Run {
   internal: Internal;
@@ -27,7 +27,7 @@ interface Run {
 interface Held {
   key: string;
   value: Collection;
-  raw: unknown[];
+  raw: unknown[] | Map<unknown, unknown>;
   prior: unknown;
   readers: Set<Frame>;
   release(): void;
@@ -740,7 +740,7 @@ function journal(frame: Frame): Runner.Entry {
 }
 
 function collection(value: unknown): value is Collection {
-  return value instanceof has.List;
+  return value instanceof has.List || value instanceof has.Pool || value instanceof map.Managed;
 }
 
 function hold(frame: Frame, key: string, value: Collection) {
@@ -752,7 +752,7 @@ function hold(frame: Frame, key: string, value: Collection) {
 }
 
 function capture(run: Run, key: string, value: Collection) {
-  const raw = value.get(0, value.size);
+  const raw = value instanceof has.List ? value.get(0, value.size) : value instanceof Map ? new Map(value) : [...value];
   const held = { key, value, raw, prior: value.get(), readers: new Set() } as Held;
 
   held.release = listener(value, (signal) => {
@@ -764,6 +764,10 @@ function capture(run: Run, key: string, value: Collection) {
   run.held.set(value, held);
 
   return held;
+}
+
+function dead(value: unknown) {
+  return value instanceof State && value.get(null);
 }
 
 function leave(frame: Frame) {
@@ -794,8 +798,19 @@ function restore(self: State, prior: Record<string, unknown>, held: Map<string, 
 }
 
 function revert({ value, raw }: Held) {
-  value.pop(0, value.size);
-  value.push(...raw);
+  if (value instanceof has.List) {
+    value.pop(0, value.size);
+    value.push(...(raw as unknown[]));
+  }
+  else if (value instanceof has.Pool) {
+    for (const member of [...value]) if (!(raw as unknown[]).includes(member)) value.delete(member);
+  }
+  else {
+    const before = raw as Map<unknown, unknown>;
+
+    for (const key of [...value.keys()]) if (!before.has(key)) value.delete(key);
+    for (const [key, item] of before) if (value.get(key) !== item && !dead(item)) value.set(key, item);
+  }
 }
 
 function record(internal: Internal, entry: Runner.Entry) {

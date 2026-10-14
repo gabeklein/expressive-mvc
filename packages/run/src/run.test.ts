@@ -1,4 +1,4 @@
-import { has, set, State } from '@expressive/mvc';
+import { has, map, set, State } from '@expressive/mvc';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockPromise, mockUncaught, mockWarn } from '../test.setup';
@@ -2344,6 +2344,10 @@ describe('undo', () => {
 });
 
 describe('collections', () => {
+  class Item extends State {
+    name = '';
+  }
+
   it('will roll back list push, put, pop and set', async () => {
     class Test extends State {
       then = run(this);
@@ -2390,6 +2394,26 @@ describe('collections', () => {
 
     await test.next();
     expect(test.then.record[0]).toMatchObject({ prior: { count: 0 }, patch: { count: 1 } });
+  });
+
+  it('will journal a collection in its export form', async () => {
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+
+      next(name: string) {
+        this.items.add({ name });
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next('a');
+    await test.next('b');
+    expect(test.then.record[0]).toMatchObject({
+      prior: { items: [{ name: 'a' }] },
+      patch: { items: [{ name: 'a' }, { name: 'b' }] }
+    });
   });
 
   it('will not capture writes outside a step proxy', async () => {
@@ -2512,6 +2536,106 @@ describe('collections', () => {
     expect(test.items.get()).toEqual(['a']);
   });
 
+  it('will roll back a map', async () => {
+    class Test extends State {
+      then = run(this);
+      values = map([['a', 1], ['b', 2], ['c', 3]]);
+
+      next() {
+        this.values.set('a', 10);
+        this.values.delete('b');
+        this.values.set('d', 4);
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.values.get()).toEqual(new Map([['a', 1], ['b', 2], ['c', 3]]));
+    expect(test.then.record[0]).toMatchObject({
+      prior: { values: new Map([['a', 1], ['b', 2], ['c', 3]]) },
+      patch: { values: new Map([['a', 10], ['c', 3], ['d', 4]]) }
+    });
+  });
+
+  it('will restore a guest State removed from a map', async () => {
+    const guest = Item.new({ name: 'guest' });
+
+    class Test extends State {
+      then = run(this);
+      values = map<string, Item>([['a', guest]]);
+
+      next() {
+        this.values.delete('a');
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.values.get('a')).toBe(guest);
+  });
+
+  it('will remove pool members added by a failed run', async () => {
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+
+      protected new() {
+        this.items.add({ name: 'kept' });
+      }
+
+      next() {
+        this.add();
+        this.fail();
+      }
+
+      protected async add() {
+        this.items.add({ name: 'a' });
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+
+    expect(test.then.record[1].patch).toEqual({ items: [{ name: 'kept' }, { name: 'a' }] });
+    expect(test.items.map((item) => item.name)).toEqual(['kept']);
+  });
+
+  it('will destroy a member a failing step added', async () => {
+    let added!: Item;
+
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+
+      next() {
+        added = this.items.add({ name: 'a' });
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.items.size).toBe(0);
+    expect(added.get(null)).toBe(true);
+  });
 });
 
 describe('failures', () => {
