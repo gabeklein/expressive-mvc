@@ -2584,6 +2584,7 @@ describe('collections', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.values.get('a')).toBe(guest);
+    expect(test.then.record[0].irreversible).toBeUndefined();
   });
 
   it('will remove pool members added by a failed run', async () => {
@@ -2635,6 +2636,239 @@ describe('collections', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.items.size).toBe(0);
     expect(added.get(null)).toBe(true);
+  });
+});
+
+describe('irreversible', () => {
+  class Item extends State {
+    name = '';
+  }
+
+  it('will stop the unwind at a removed pool member', async () => {
+    const warn = mockWarn();
+
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+      value = 0;
+
+      protected new() {
+        this.items.add({ name: 'a' });
+      }
+
+      next() {
+        this.value = 1;
+        this.drop();
+      }
+
+      protected async drop() {
+        this.value = 2;
+        this.items.clear();
+        this.fail();
+      }
+
+      protected async fail() {
+        this.value = 3;
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.value).toBe(2);
+    expect(test.then.error).toEqual(new Error('boom'));
+    expect(test.then.record.map((entry) => [entry.key, entry.irreversible, entry.halted, entry.undone])).toEqual([
+      ['next', undefined, undefined, undefined],
+      ['drop', ['items'], true, undefined]
+    ]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(`${test} stopped unwinding at drop#1: items cannot be restored.`);
+  });
+
+  it('will unwind steps after an irreversible one', async () => {
+    mockWarn();
+
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+      value = 0;
+
+      protected new() {
+        this.items.add({ name: 'a' });
+      }
+
+      next() {
+        this.drop();
+      }
+
+      protected async drop() {
+        this.items.clear();
+        this.write();
+      }
+
+      protected async write() {
+        this.value = 1;
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.value).toBe(0);
+    expect(test.then.record.map((entry) => [entry.key, entry.undone])).toEqual([
+      ['next', undefined],
+      ['drop', undefined],
+      ['write', true]
+    ]);
+  });
+
+  it('will be reversible with an undo of its own', async () => {
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+      values = map((key: string) => new Item({ name: key }));
+
+      protected new() {
+        this.items.add({ name: 'a' });
+        this.values.set('a');
+      }
+
+      next() {
+        this.items.clear();
+        this.values.delete('a');
+        this.values.set('b');
+        this.fail();
+        return undo;
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(test.items.size).toBe(0);
+    expect([...test.values.keys()]).toEqual([]);
+    expect(test.then.record[0]).toMatchObject({ undo: 'closure', undone: true });
+    expect(test.then.record[0].irreversible).toBeUndefined();
+  });
+
+  it('will be irreversible when a map evicts an owned value', async () => {
+    mockWarn();
+
+    class Test extends State {
+      then = run(this);
+      values = map<string, Item>();
+
+      protected new() {
+        this.values.set('a', new Item({ name: 'a' }));
+      }
+
+      next() {
+        this.values.set('a', new Item({ name: 'b' }));
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.values.get('a')!.name).toBe('b');
+    expect(test.then.record[0]).toMatchObject({ irreversible: ['values'], halted: true });
+  });
+
+  it('will not retry an irreversible step', async () => {
+    mockWarn();
+
+    const attempt = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+      value = 0;
+
+      protected new() {
+        this.items.add({ name: 'a' });
+      }
+
+      next() {
+        this.then.retry({ attempts: 3 });
+        attempt();
+        this.value = 1;
+        this.items.clear();
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(attempt).toHaveBeenCalledTimes(1);
+    expect(test.value).toBe(1);
+    expect(test.then.record).toEqual([
+      {
+        id: 'next#1',
+        key: 'next',
+        args: [],
+        prior: { value: 0, items: [{ name: 'a' }] },
+        patch: { value: 1, items: [] },
+        next: [],
+        error: new Error('boom'),
+        irreversible: ['items'],
+        attempt: 1,
+        halted: true
+      }
+    ]);
+  });
+
+  it('will keep the writes of a failing irreversible step', async () => {
+    const warn = mockWarn();
+
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+      value = 0;
+
+      protected new() {
+        this.items.add({ name: 'a' });
+      }
+
+      next() {
+        this.value = 1;
+        this.drop();
+      }
+
+      protected async drop() {
+        this.value = 2;
+        this.items.clear();
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.value).toBe(2);
+    expect(test.then.record.map((entry) => [entry.key, entry.error, entry.halted, entry.undone])).toEqual([
+      ['next', undefined, undefined, undefined],
+      ['drop', new Error('boom'), true, undefined]
+    ]);
+    expect(warn).toHaveBeenCalledWith(`${test} stopped unwinding at drop#1: items cannot be restored.`);
   });
 });
 

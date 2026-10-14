@@ -46,6 +46,7 @@ interface Frame extends Runner.Node {
   prior: Record<string, unknown>;
   held: Map<string, Held>;
   changed: Set<string>;
+  lost: Set<string>;
   wake?: string;
   undo?: boolean;
   retry?: Runner.Retry;
@@ -113,6 +114,10 @@ declare namespace Runner {
     attempt?: number;
     /** What a failed attempt threw. */
     error?: unknown;
+    /** Collections changed in a way no restore can undo - the unwind stops here. */
+    irreversible?: string[];
+    /** The unwind stopped at this entry; it and every entry before it stay applied. */
+    halted?: true;
   }
 
   interface Wait {
@@ -521,7 +526,7 @@ function enter(run: Run, node: Runner.Node) {
   const { internal } = run;
   const { self, runner } = internal;
 
-  const frame = { ...node, run, items: [], wrote: new Set(), prior: {}, held: new Map(), changed: new Set() } as unknown as Frame;
+  const frame = { ...node, run, items: [], wrote: new Set(), prior: {}, held: new Map(), changed: new Set(), lost: new Set() } as unknown as Frame;
 
   frame.proxy = new Proxy(self, {
     get(target, prop) {
@@ -654,8 +659,10 @@ async function invoke(run: Run, node: Runner.Node, wake?: string): Promise<Frame
 
         return frame;
       } catch (error) {
-        let retry = !frame.settled && frame.retry && attempt < frame.retry.attempts;
+        let irreversible = [...frame.lost];
+        let retry = !frame.settled && !irreversible.length && frame.retry && attempt < frame.retry.attempts;
 
+        if (irreversible.length) record(internal, { ...journal(frame), error, irreversible, ...frame.retry && { attempt } });
         if (!retry) throw error;
 
         restore(self, frame.prior, touched(frame));
@@ -674,7 +681,9 @@ async function invoke(run: Run, node: Runner.Node, wake?: string): Promise<Frame
       }
   } catch (error) {
     frame.settled = true;
-    restore(self, frame.prior, touched(frame));
+
+    if (!frame.lost.size) restore(self, frame.prior, touched(frame));
+
     halt(run, 'failed', error);
   } finally {
     leave(frame);
@@ -686,7 +695,7 @@ async function invoke(run: Run, node: Runner.Node, wake?: string): Promise<Frame
 }
 
 function commit(frame: Frame, out: unknown, attempt: number) {
-  const { run, id, key, args, items, violation, late, wake } = frame;
+  const { run, id, key, args, items, violation, late, wake, lost } = frame;
   const { internal } = run;
 
   if (violation) throw new Error(`${key} wrote ${violation} after scheduling ${items[0].key}.`);
@@ -723,6 +732,7 @@ function commit(frame: Frame, out: unknown, attempt: number) {
     entry.undo = typeof undo == 'function' ? 'closure' : undo;
     run.undo.set(id, undo);
   }
+  else if (lost.size) entry.irreversible = [...lost];
 
   HELD.set(entry, touched(frame));
   record(internal, entry);
@@ -758,12 +768,24 @@ function capture(run: Run, key: string, value: Collection) {
   held.release = listener(value, (signal) => {
     if (quiet || typeof signal == 'boolean' || signal === null) return;
 
-    for (const reader of held.readers) reader.changed.add(key);
+    const gone = lost(held, signal);
+
+    for (const reader of held.readers) {
+      reader.changed.add(key);
+      if (gone) reader.lost.add(key);
+    }
   });
 
   run.held.set(value, held);
 
   return held;
+}
+
+function lost({ value, raw }: Held, signal: unknown) {
+  if (value instanceof has.Pool) return (raw as unknown[]).includes(signal) && !value.has(signal);
+  if (value instanceof Map) return dead((raw as Map<unknown, unknown>).get(signal));
+
+  return false;
 }
 
 function dead(value: unknown) {
@@ -960,6 +982,13 @@ async function unwind(run: Run) {
   for (let i = record.length - 1; i >= 0; i--) {
     const entry = record[i];
     const how = run.undo.get(entry.id);
+
+    if (entry.irreversible) {
+      entry.halted = true;
+      update(internal, 'record', record.slice());
+      console.warn(`${self} stopped unwinding at ${entry.id}: ${entry.irreversible.join(', ')} cannot be restored.`);
+      break;
+    }
 
     if ('error' in entry) continue;
 
