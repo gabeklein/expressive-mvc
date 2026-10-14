@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
-import { Component, compose } from './component';
+import { Component } from './component';
 import { Context } from './context';
 import { State, event } from './state';
 
@@ -146,30 +146,34 @@ it('will ignore Context passed as constructor argument', () => {
   expect(Object.keys(foo.get())).not.toContain('0');
 });
 
-describe('render chain', () => {
-  it('will nest three levels inner to outer', () => {
-    class A extends Component {
-      render(props = {} as { children?: unknown }): Component.Node {
-        return { a: props.children };
-      }
-    }
+describe('render', () => {
+  it('will pass children through by default', () => {
+    const test = Component.new({ children: 'content' });
 
-    class B extends A {
-      render(props = {} as { children?: unknown }): Component.Node {
-        return { b: props.children };
-      }
-    }
-
-    class C extends B {
-      render(): Component.Node {
-        return 'leaf';
-      }
-    }
-
-    expect(C.new({}).render()).toEqual({ a: { b: 'leaf' } });
+    expect(test.render()).toBe('content');
+    expect(test.render({ children: 'given' })).toBe('given');
   });
 
-  it('will bind each composed layer to live instance state', () => {
+  it('will replace base render in a subclass', () => {
+    const base = vi.fn(() => 'base');
+
+    class Frame extends Component {
+      render(): Component.Node {
+        return base();
+      }
+    }
+
+    class Page extends Frame {
+      render(): Component.Node {
+        return 'page';
+      }
+    }
+
+    expect(Page.new({}).render()).toBe('page');
+    expect(base).not.toHaveBeenCalled();
+  });
+
+  it('will reach base render through super', () => {
     class Frame extends Component {
       title = 'Base';
 
@@ -182,7 +186,7 @@ describe('render chain', () => {
       body = 'Hello';
 
       render(): Component.Node {
-        return this.body;
+        return super.render({ children: this.body });
       }
     }
 
@@ -194,61 +198,6 @@ describe('render chain', () => {
     page.body = 'World';
 
     expect(page.render()).toEqual(['Updated', 'World']);
-  });
-
-  it('will drop derived content if wrapper omits children', () => {
-    const inner = vi.fn(() => 'never seen');
-
-    class Shell extends Component {
-      render(): Component.Node {
-        return 'shell only';
-      }
-    }
-
-    class Lost extends Shell {
-      render(): Component.Node {
-        return inner();
-      }
-    }
-
-    expect(Lost.new({}).render()).toBe('shell only');
-    expect(inner).not.toHaveBeenCalled();
-  });
-
-  it('will preserve identity for single-level override', () => {
-    class Solo extends Component {
-      render(): Component.Node {
-        return 'just me';
-      }
-    }
-
-    expect(Solo.new({}).render()).toBe('just me');
-  });
-
-  it('lets a base defer to a subclass render via children identity', () => {
-    class Base extends Component {
-      render(props = {} as { children?: unknown }): Component.Node {
-        if (props.children !== this.props.children)
-          return props.children;
-
-        return ['base', props.children];
-      }
-    }
-
-    class Override extends Base {
-      render(): Component.Node {
-        return 'replaced';
-      }
-    }
-
-    class Passthrough extends Base {}
-
-    expect(Override.new({}).render()).toBe('replaced');
-
-    const base = Base.new({ children: 'x' });
-    const pass = Passthrough.new({ children: 'y' });
-    expect(base.render(base.props)).toEqual(['base', 'x']);
-    expect(pass.render(pass.props)).toEqual(['base', 'y']);
   });
 });
 
@@ -312,41 +261,6 @@ describe('props (static types)', () => {
     ];
 
     expect(props).toHaveLength(3);
-  });
-});
-
-describe('composed', () => {
-  it.each([
-    ['will compose render layers of a State', false],
-    ['will compose a render sealed by the host', true]
-  ])('%s', (_, sealed) => {
-    class Frame extends State {
-      render(props?: { children?: unknown }) {
-        return `[${props?.children}]`;
-      }
-    }
-
-    if (sealed)
-      Frame.on({
-        type({ prototype }) {
-          const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
-          Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
-        }
-      });
-
-    class Page extends Frame {
-      render() {
-        return 'page';
-      }
-    }
-
-    expect(compose.call(Page.new(), {})).toBe('[page]');
-  });
-
-  it('will pass children through for a State without render', () => {
-    class Bare extends State {}
-
-    expect(compose.call(Bare.new(), { children: 'c' })).toBe('c');
   });
 });
 

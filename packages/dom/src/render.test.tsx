@@ -1190,6 +1190,14 @@ describe('render', () => {
 });
 
 describe('renderable State', () => {
+  it('will pass children through a State without render', () => {
+    class Bare extends State {}
+    const root = document.createElement('main');
+
+    render(<div><Bare>text</Bare><Bare /></div>, root);
+    expect(root.textContent).toBe('text');
+  });
+
   it('will be owned by enclosing Component', () => {
     let inner!: State;
 

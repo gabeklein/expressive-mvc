@@ -1,7 +1,7 @@
-import { Component, Context, State } from '@expressive/mvc';
+import { Component, Context, State, unbind } from '@expressive/mvc';
 import { has, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
-import { Fragment, compose } from '@expressive/mvc/jsx-runtime';
+import { Fragment } from '@expressive/mvc/jsx-runtime';
 
 import { call, commit, dispose, enter } from './adapter';
 import { latest, same, track, untrack } from './hot';
@@ -363,7 +363,7 @@ function mountComponent(
   fiber.owned = owned;
   fiber.appearance = appearance;
   fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
-  fiber.render = () => enter(fiber.scope!, () => compose.call(fiber.value as State, fiber.props));
+  fiber.render = () => enter(fiber.scope!, () => draw(fiber.value as Renderable, fiber.props!));
   probing(fiber);
 
   let first = true;
@@ -933,6 +933,10 @@ function source(value: RenderNode): RenderNode {
     value = Object.getPrototypeOf(value);
 
   return value;
+}
+
+function draw(state: Renderable, props: Record<string, any>): RenderNode {
+  return state.render ? unbind(state.render).call(state, props) : props.children ?? null;
 }
 
 function renderable(value: unknown): value is Renderable {

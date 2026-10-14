@@ -1,13 +1,10 @@
 import { Context } from './context';
 import { set } from './field/set';
-import { State, adopt, trailing, unbind } from './state';
+import { State, adopt, trailing } from './state';
 
 import type { Host } from './jsx-runtime';
 
 const PENDING = new WeakMap<object, Component<any>>();
-
-/** Per-class composed content render. */
-let CHAIN = new WeakMap<Function, Function>();
 
 type IfEquals<X, Y, A, B> =
   (<T>() => T extends X ? 1 : 2) extends
@@ -144,12 +141,6 @@ class Component<P = unknown> extends State {
     this.set('props', () => {
       this.set(merge(this.props));
     });
-
-    Object.defineProperty(this, 'render', {
-      writable: true,
-      configurable: true,
-      value: compose
-    });
   }
 
   /**
@@ -160,8 +151,6 @@ class Component<P = unknown> extends State {
    * props from JSX, beyond those merged to state properties; declare its shape
    * via `props = {} as { ... }`. Without a parameter (the default below),
    * children pass through.
-   *
-   * The constructor installs a composed `render` per instance.
    */
   render(props?: {}): Component.Node {
     const { children } = (props || this.props) as { children?: Component.Node };
@@ -263,50 +252,4 @@ function provide(self: Component<any>) {
   self.set('props', sync);
 }
 
-/**
- * Render `this` through its class's composed content render: content renders
- * up the prototype chain, each base layer receiving the subclass's as a lazy
- * `children` getter. Falls back to passing `children` through.
- */
-function compose(this: State, props?: {}) {
-  const type = this.constructor;
-  let render = CHAIN.get(type);
-
-  if (!render) {
-    for (let T = type; T !== Component && T !== State; T = Object.getPrototypeOf(T)) {
-      const next = method(T);
-
-      if (next) render = render ? wrap(next, render) : next;
-    }
-
-    if (!render) render = method(Component)!;
-
-    CHAIN.set(type, render);
-  }
-
-  return render.call(this, props);
-}
-
-function method(from: Function) {
-  const desc = Object.getOwnPropertyDescriptor(from.prototype, 'render');
-  if (desc) return unbind(desc.get || desc.value) as Function;
-}
-
-function wrap(outer: Function, inner: Function): Function {
-  return function (this: State, props?: {}) {
-    const self = this;
-    return outer.call(self, {
-      ...props,
-      get children() {
-        return inner.call(self, props);
-      }
-    });
-  };
-}
-
-/** Drop composed renders, so each is rebuilt from current prototypes. */
-function rechain() {
-  CHAIN = new WeakMap();
-}
-
-export { Component, compose, rechain };
+export { Component };
