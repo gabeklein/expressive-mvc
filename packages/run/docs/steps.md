@@ -47,13 +47,13 @@ async next(until: number) {
 
 ## Parallel groups
 
-`this.then(tokens)` takes those tokens out of the sequence and runs them as one group, at the point of the call: members run concurrently, each through its own subtree; the group completes when every member has; the next item in sequence runs after.
+`this.then(a, b, …)` takes those tokens out of the sequence and runs them as one group, at the point of the call: members run concurrently, each through its own subtree; the group completes when every member has; the next item in sequence runs after.
 
 ```ts
 protected async pay() {
   this.charge = await stripe.charge(this.cart.total);
 
-  this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
+  this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
   this.end();
 }
 ```
@@ -65,16 +65,44 @@ this.then(calls, (call) => this.tool(call));
 this.then(calls, this.tool);           // tool(call, index)
 ```
 
-Members must be tokens this step issued (`then() takes steps called by next.`).
+Members must be tokens this step issued (`then() takes steps called by next.`). An array is not a group - `[]` is only the `items` of a mapped group.
+
+## Inline steps
+
+`this.then(fn)` with one plain function is an anonymous step: journaled `then#n` (key `then`, `args: []`) and run in its place in the plan as a full step - its own entry, write guard, return guard, hooks with key `then`. It receives an `AbortSignal`, aborted when the run stops, so a `fetch` or timer ends early. Not durable - the function lives in memory.
+
+```ts
+protected async pay() {
+  this.charge = await stripe.charge(this.cart.total);
+
+  this.then(async (signal) => {
+    await fetch(this.cart.hook, { method: 'POST', signal });
+  });
+}
+```
+
+Like any step it returns nothing or its undo - an arrow returning `fetch(…)` fails the run.
+
+A `function` gets the inline step's own proxy as `this` - its writes are in its `patch`, its step calls schedule. An arrow's `this` is the enclosing step's proxy, settled by the time it runs: its writes are unmanaged and its step calls are [settled calls](#calls-after-a-step-settles).
+
+Returned, an inline step is the step's undo ([undo.md](undo.md#a-returned-token)), typed `void` so the step stays `Promise<void>`:
+
+```ts
+return this.then(() => stripe.refund(this.charge!.id));
+```
 
 ## `then` by argument
 
 Inside a step, `this.then`:
 
-- `(tokens)` - an iterable first: a parallel group;
+- `(...tokens)` - tokens this step issued: a parallel group;
 - `(items, each)` - an iterable and a mapper, or a step: a mapped group;
-- `(...steps)` - every argument a step of this instance (`this.allow`): a wait ([wait.md](wait.md));
-- anything else - `await this` included - fails the run: `a step cannot await its own run.`
+- `(...steps)` - steps of this instance (`this.allow`), plus any plain functions as watchers: a wait ([wait.md](wait.md));
+- `(fn)` - one plain function: an inline step;
+- tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
+- anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
+
+Every form returns a token typed `void`; returned from a step, it is the step's undo ([undo.md](undo.md#a-returned-token)).
 
 Outside a step, `then(f, r)` is the thenable ([runs.md](runs.md#awaiting-the-instance---start-or-join)); `then(steps)` throws `then(steps) must be called inside a step.`
 
@@ -94,7 +122,9 @@ protected async pay() {
 
 A sync side effect after scheduling - a mailer call - is invisible to the guard. Side effects are steps.
 
-A step called on a frame that has already settled - from a timer, say - throws `next has settled; second cannot run.`
+## Calls after a step settles
+
+A step called through the proxy of a step that has settled - from a timer, a watcher, an arrow - is an outside call: nothing is buffered. It answers an open wait accepting it - one the settled step opened first, else as any outside call ([wait.md](wait.md#answering-steps)) - or throws `next has settled; second cannot run.` It is bound to its run: once that run ends, every call through it throws. Writes through a settled proxy are unmanaged - in no `patch`, not rolled back.
 
 ## Helpers
 
@@ -129,7 +159,7 @@ protected end() {
 
 ## What a step returns
 
-Nothing, a closure (its undo), or a token it issued - `return this.release(id)` registers that step as its undo and removes it from the plan ([undo.md](undo.md)). Any other value fails the run (`first returned a value; a step returns nothing, or its undo.`). `end`'s return is the result.
+Nothing, a closure (its undo), or a token it issued - a step, group, wait or inline step: `return this.release(id)` registers that step as its undo and removes it from the plan ([undo.md](undo.md)). Any other value fails the run (`first returned a value; a step returns nothing, or its undo.`). `end`'s return is the result.
 
 ## Entry
 

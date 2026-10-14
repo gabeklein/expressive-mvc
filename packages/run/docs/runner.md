@@ -15,8 +15,9 @@
 | `end(value?)` | in a step: end the run once everything else has settled ([steps.md](steps.md#end-joins)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |
 | `stop({ undo? })` | cancel ([runs.md](runs.md#stop)) |
 | `retry({ attempts, backoff? })` | in a step: retry it ([retry.md](retry.md)) |
-| `then(tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
-| `then(...steps)` | in a step: a wait answered by one of these steps ([wait.md](wait.md)) |
+| `then(...tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
+| `then(fn)` | in a step: an inline step ([steps.md](steps.md#inline-steps)) |
+| `then(...steps, ...watchers)` | in a step: a wait answered by one of these steps ([wait.md](wait.md)) |
 
 Entry: `{ id, key, args, prior, patch, next, undo?, undone?, wake?, attempt?, error?, irreversible?, halted? }` ([steps.md](steps.md#entry)).
 

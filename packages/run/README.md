@@ -1,6 +1,6 @@
 # @expressive/run
 
-Runs built from Expressive MVC `State` classes: extend `Job` and every method is a step, a step schedules the next by calling it, fields carry data between them. `next()` starts a run; runs repeat, queue, park on a wait and resume. A run is atomic - all or nothing, with undo closures and an in-memory journal - and the instance is awaitable. Unreleased.
+Runs built from Expressive MVC `State` classes: extend `Job` and every method is a step, a step schedules the next by calling it, fields carry data between them. `next()` starts a run; runs repeat, queue, park on a wait - answered from outside or by a watcher - and resume. A run is atomic - all or nothing, with undo closures and an in-memory journal - and the instance is awaitable. Unreleased.
 
 ```ts
 class SubmitOrder extends Job {
@@ -23,7 +23,7 @@ class SubmitOrder extends Job {
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
-    this.then([this.ship(this.charge.id), this.receipt(this.charge.receiptUrl)]);
+    this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.end();
 
     return this.refund(this.charge.id);

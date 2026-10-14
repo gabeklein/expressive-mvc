@@ -39,15 +39,43 @@ protected async refund(chargeId: string) {
 
 Entry: `undo: { id: 'refund#1', key: 'refund', args: ['ch_42'] }`, `next` without it. `end` never registers an undo - its return is the result.
 
+Any token kind works - each is typed `void`, so the step stays `Promise<void>`:
+
+- an inline step - `return this.then(() => stripe.refund(id))` - runs its function, given an `AbortSignal`; not durable ([steps.md](steps.md#inline-steps));
+- a group - `return this.then(this.refund(id), this.notify(id))` - runs its members concurrently;
+- a wait - see below.
+
+### A returned wait
+
+`return this.then(this.refund, this.keep)` parks the unwind at this entry until one of those steps answers - from outside or a [watcher](wait.md#watchers), which starts when the unwind reaches it:
+
+```ts
+protected async pay() {
+  this.charge = await stripe.charge(this.cart.total);
+  this.ship(this.charge.id);
+
+  return this.then(this.refund, this.keep, async (signal) => {
+    await delay(DAY, { signal });
+    this.refund(this.charge!.id);
+  });
+}
+```
+
+- While parked: status `waiting`, `then.waiting` lists it with the step that returned it, answering steps are present; the run does not reject.
+- The answer runs as an undo frame: journaled with `wake`, no hooks, cannot schedule (`… is failed; more cannot run.`). Its call's Promise settles when it completes.
+- Any answer completes the entry's compensation - `keep` doing nothing included: the unwind continues, restoring the entry's `prior`.
+- An answer that throws, or a watcher throwing before an answer, fails the undo as any undo throwing does.
+- `stop()` halts the unwind there: the entry gets `halted: true`, it and every entry before it stay applied; status and `error` stay the failure's.
+
 ## The unwind
 
 A step that throws, breaks a rule, or returns anything but an undo fails the run:
 
 1. Status `failed`, `error` set; pending steps are discarded, open waits released; the failing step's own writes are restored to its `prior`, unless it is [irreversible](#irreversible).
 2. Steps still in flight - parallel members - settle; their commits are recorded.
-3. Every committed entry, newest first: its undo runs if it has one (closure, or the undo step with its journaled args), then its `prior` values are restored; `undone: true`. Entries without an undo are restored too.
+3. Every committed entry, newest first: its undo runs if it has one (closure, or the returned token - a step with its journaled args, an inline step, a group's members, a wait's answer), then its `prior` values are restored; `undone: true`. Entries without an undo are restored too.
 4. An undo that throws: `undone: 'failed'`, `error` replaced by what it threw, the unwind stops there.
-5. An `irreversible` entry stops the unwind: it gets `halted: true` ([Collections](#collections)).
+5. An `irreversible` entry stops the unwind: it gets `halted: true` ([Collections](#collections)). So does `stop()` while the unwind is parked on a [returned wait](#a-returned-wait).
 6. `back(error)` runs, if declared ([hooks.md](hooks.md#back)); a throw from it replaces `error`.
 7. The run rejects with `error`.
 
