@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 
 import { Agent } from './agent';
-import type { ToolCall } from './services';
+import { model, tools, type ToolCall } from './services';
 
 it('will run a turn to end', async () => {
   const agent = Agent.new({ mode: 'yolo' });
@@ -150,4 +150,34 @@ it('will queue a prompt sent mid-turn', async () => {
   await second;
   expect(agent.messages.get(-1)).toEqual({ role: 'assistant', content: 'done' });
   expect(agent.messages.size).toBe(8);
+});
+
+it('will roll back a failing turn', async () => {
+  const agent = Agent.new({ mode: 'yolo' });
+
+  await agent.next('write notes');
+
+  vi.spyOn(model, 'create').mockRejectedValueOnce(new Error('overloaded'));
+
+  await expect(agent.next('write tests')).rejects.toThrow('overloaded');
+  expect(agent.messages.size).toBe(4);
+  expect(agent.then.record.map((entry) => [entry.id, entry.undone])).toEqual([['next#1', true]]);
+});
+
+it('will not repeat what a retried tool wrote', async () => {
+  const agent = Agent.new({ mode: 'yolo' });
+
+  vi.spyOn(tools, 'run').mockImplementationOnce(async (call) => {
+    agent.messages.push({ role: 'tool', content: `${call.id}: started` });
+    throw new Error('timeout');
+  });
+
+  expect(await agent.next('write notes')).toBe('done');
+  expect([...agent.messages].map((message) => message.content)).toEqual([
+    'write notes',
+    '',
+    'call_1_0: write notes ok',
+    'done'
+  ]);
+  expect(agent.then.record.filter((entry) => entry.key == 'exec').map((entry) => entry.attempt)).toEqual([1, 2]);
 });

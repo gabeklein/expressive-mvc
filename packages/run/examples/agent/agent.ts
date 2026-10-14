@@ -36,6 +36,7 @@ export class Agent extends State {
   }
 
   protected async exec(call: ToolCall) {
+    this.then.retry({ attempts: 2 });
     this.messages.push(result(call, await tools.run(call)));
   }
 

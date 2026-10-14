@@ -1,5 +1,7 @@
-import { State, unbind } from '@expressive/mvc';
-import { event, touch } from '@expressive/mvc/observable';
+import { has, State, unbind } from '@expressive/mvc';
+import { event, listener, touch } from '@expressive/mvc/observable';
+
+type Collection = has.List<unknown>;
 
 interface Run {
   internal: Internal;
@@ -19,6 +21,16 @@ interface Run {
   stopped?: Error;
   warned?: boolean;
   drained: (() => void)[];
+  held: Map<Collection, Held>;
+}
+
+interface Held {
+  key: string;
+  value: Collection;
+  raw: unknown[];
+  prior: unknown;
+  readers: Set<Frame>;
+  release(): void;
 }
 
 interface Answer {
@@ -32,6 +44,8 @@ interface Frame extends Runner.Node {
   items: Runner.Node[];
   wrote: Set<string>;
   prior: Record<string, unknown>;
+  held: Map<string, Held>;
+  changed: Set<string>;
   wake?: string;
   undo?: boolean;
   retry?: Runner.Retry;
@@ -56,10 +70,13 @@ interface Internal extends Runner.Snapshot {
 const FRAME = new WeakMap<object, Frame>();
 const STEP = new WeakMap<Function, Function>();
 const TOKEN = new WeakMap<object, Frame>();
+const HELD = new WeakMap<Runner.Entry, Map<string, Held>>();
 const REF = new WeakMap<Function, { internal: Internal; key: string }>();
 const HOOK = /^(before|after)([A-Z]|$)/;
 const KEYS = ['status', 'active', 'record', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
+
+let quiet = false;
 
 declare namespace Runner {
   type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'failed';
@@ -380,7 +397,8 @@ function start(internal: Internal, args: unknown[]) {
     flight: new Set(),
     parked: new Map(),
     undo: new Map(),
-    drained: []
+    drained: [],
+    held: new Map()
   };
 
   promise.catch(() => {});
@@ -503,7 +521,7 @@ function enter(run: Run, node: Runner.Node) {
   const { internal } = run;
   const { self, runner } = internal;
 
-  const frame = { ...node, run, items: [], wrote: new Set(), prior: {} } as unknown as Frame;
+  const frame = { ...node, run, items: [], wrote: new Set(), prior: {}, held: new Map(), changed: new Set() } as unknown as Frame;
 
   frame.proxy = new Proxy(self, {
     get(target, prop) {
@@ -514,7 +532,13 @@ function enter(run: Run, node: Runner.Node) {
       const value = Reflect.get(target, prop, target);
 
       if (value === runner) return view(frame);
-      if (typeof value != 'function') return value;
+      if (typeof value != 'function') {
+        let fresh = !frame.undo && !frame.settled && !frame.held.has(prop as string) && collection(value);
+
+        if (fresh) hold(frame, prop as string, value);
+
+        return value;
+      }
 
       return Object.hasOwn(target, prop) ? value : value.bind(target);
     },
@@ -634,7 +658,9 @@ async function invoke(run: Run, node: Runner.Node, wake?: string): Promise<Frame
 
         if (!retry) throw error;
 
-        Object.assign(self, frame.prior);
+        restore(self, frame.prior, touched(frame));
+        leave(frame);
+        Object.assign(frame, { held: new Map(), changed: new Set() });
         record(internal, { id, key, args, prior: {}, patch: {}, next: [], attempt, error });
 
         const delay = frame.retry!.backoff?.(attempt);
@@ -648,9 +674,10 @@ async function invoke(run: Run, node: Runner.Node, wake?: string): Promise<Frame
       }
   } catch (error) {
     frame.settled = true;
-    Object.assign(self, frame.prior);
+    restore(self, frame.prior, touched(frame));
     halt(run, 'failed', error);
   } finally {
+    leave(frame);
     flight.delete(frame);
     update(internal, 'active', [...flight].at(-1)?.key);
 
@@ -659,7 +686,7 @@ async function invoke(run: Run, node: Runner.Node, wake?: string): Promise<Frame
 }
 
 function commit(frame: Frame, out: unknown, attempt: number) {
-  const { run, id, key, args, items, wrote, prior, violation, late, wake } = frame;
+  const { run, id, key, args, items, violation, late, wake } = frame;
   const { internal } = run;
 
   if (violation) throw new Error(`${key} wrote ${violation} after scheduling ${items[0].key}.`);
@@ -687,9 +714,7 @@ function commit(frame: Frame, out: unknown, attempt: number) {
       run.end = item;
     }
 
-  const values = internal.self.get() as Record<string, unknown>;
-  const patch = Object.fromEntries([...wrote].map((key) => [key, values[key]]));
-  const entry: Runner.Entry = { id, key, args, prior, patch, next: items };
+  const entry: Runner.Entry = { ...journal(frame), next: items };
 
   if (wake) entry.wake = wake;
   if (attempt > 1) entry.attempt = attempt;
@@ -699,9 +724,78 @@ function commit(frame: Frame, out: unknown, attempt: number) {
     run.undo.set(id, undo);
   }
 
+  HELD.set(entry, touched(frame));
   record(internal, entry);
 
   return entry;
+}
+
+function journal(frame: Frame): Runner.Entry {
+  const { run, id, key, args, wrote, prior, held, changed } = frame;
+  const values = run.internal.self.get() as Record<string, unknown>;
+  const collections = [...changed].map((key) => [key, held.get(key)!.prior]);
+  const patch = Object.fromEntries([...wrote, ...changed].map((key) => [key, values[key]]));
+
+  return { id, key, args, prior: { ...prior, ...Object.fromEntries(collections) }, patch, next: [] };
+}
+
+function collection(value: unknown): value is Collection {
+  return value instanceof has.List;
+}
+
+function hold(frame: Frame, key: string, value: Collection) {
+  const { run } = frame;
+  const held = run.held.get(value) || capture(run, key, value);
+
+  held.readers.add(frame);
+  frame.held.set(key, held);
+}
+
+function capture(run: Run, key: string, value: Collection) {
+  const raw = value.get(0, value.size);
+  const held = { key, value, raw, prior: value.get(), readers: new Set() } as Held;
+
+  held.release = listener(value, (signal) => {
+    if (quiet || typeof signal == 'boolean' || signal === null) return;
+
+    for (const reader of held.readers) reader.changed.add(key);
+  });
+
+  run.held.set(value, held);
+
+  return held;
+}
+
+function leave(frame: Frame) {
+  for (const each of frame.held.values()) {
+    each.readers.delete(frame);
+
+    if (each.readers.size) continue;
+
+    each.release();
+    frame.run.held.delete(each.value);
+  }
+}
+
+function touched({ held, changed }: Frame) {
+  return new Map([...changed].map((key) => [key, held.get(key)!]));
+}
+
+function restore(self: State, prior: Record<string, unknown>, held: Map<string, Held>) {
+  for (const key in prior) if (!held.has(key)) (self as any)[key] = prior[key];
+
+  quiet = true;
+
+  try {
+    for (const each of held.values()) revert(each);
+  } finally {
+    quiet = false;
+  }
+}
+
+function revert({ value, raw }: Held) {
+  value.pop(0, value.size);
+  value.push(...raw);
 }
 
 function record(internal: Internal, entry: Runner.Entry) {
@@ -857,7 +951,7 @@ async function unwind(run: Run) {
     try {
       if (how) await undo(run, entry, how);
 
-      Object.assign(self, entry.prior);
+      restore(self, entry.prior, HELD.get(entry)!);
       entry.undone = true;
     } catch (cause) {
       entry.undone = 'failed';

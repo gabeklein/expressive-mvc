@@ -2343,6 +2343,177 @@ describe('undo', () => {
   });
 });
 
+describe('collections', () => {
+  it('will roll back list push, put, pop and set', async () => {
+    class Test extends State {
+      then = run(this);
+      items = has(['a', 'b', 'c']);
+
+      next() {
+        this.items.push('d');
+        this.items.put(0, 'z');
+        this.items.pop(1);
+        this.items.set(-1, 'e');
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.items.get()).toEqual(['a', 'b', 'c']);
+    expect(test.then.record).toEqual([
+      expect.objectContaining({
+        prior: { items: ['a', 'b', 'c'] },
+        patch: { items: ['z', 'b', 'c', 'e'] },
+        undone: true
+      })
+    ]);
+  });
+
+  it('will record nothing for a read without change', async () => {
+    class Test extends State {
+      then = run(this);
+      items = has(['a']);
+      count = 0;
+
+      next() {
+        this.count = this.items.size;
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record[0]).toMatchObject({ prior: { count: 0 }, patch: { count: 1 } });
+  });
+
+  it('will not capture writes outside a step proxy', async () => {
+    class Test extends State {
+      then = run(this);
+      items = has<string>();
+
+      next() {
+        this.is.items.push('a');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record[0].patch).toEqual({});
+  });
+
+  it('will restore a list before a retry', async () => {
+    let tries = 0;
+
+    class Test extends State {
+      then = run(this);
+      items = has<string>();
+
+      next() {
+        this.then.retry({ attempts: 2 });
+        this.items.push(`try ${++tries}`);
+
+        if (tries < 2) throw new Error('flaky');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.items.get()).toEqual(['try 2']);
+    expect(test.then.record.map((entry) => entry.patch)).toEqual([{}, { items: ['try 2'] }]);
+  });
+
+  it('will attribute a change to every parallel step reading the list', async () => {
+    const gate = mockPromise();
+
+    class Test extends State {
+      then = run(this);
+      items = has(['a']);
+
+      next() {
+        this.then([this.write(), this.read()]);
+        this.fail();
+      }
+
+      protected async write() {
+        await gate;
+        this.items.push('b');
+      }
+
+      protected async read() {
+        this.items.size;
+        await gate;
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    gate.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.items.get()).toEqual(['a']);
+    expect(test.then.record.map((entry) => [entry.key, entry.prior, entry.patch])).toEqual([
+      ['next', {}, {}],
+      ['write', { items: ['a'] }, { items: ['a', 'b'] }],
+      ['read', { items: ['a'] }, { items: ['a', 'b'] }]
+    ]);
+  });
+
+  it('will restore the earliest snapshot of parallel steps', async () => {
+    const first = mockPromise();
+    const second = mockPromise();
+
+    class Test extends State {
+      then = run(this);
+      items = has(['a']);
+
+      next() {
+        this.then([this.early(), this.late()]);
+        this.fail();
+      }
+
+      protected async early() {
+        this.items.push('b');
+        await first;
+      }
+
+      protected async late() {
+        await second;
+        this.items.push('c');
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    second.resolve();
+    await flushMicrotasks();
+    first.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.items.get()).toEqual(['a']);
+  });
+
+});
+
 describe('failures', () => {
   it('will reject when a step throws synchronously', async () => {
     class Test extends State {
