@@ -4,13 +4,12 @@ import { Component } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
-    <h1>Render Composition</h1>
+    <h1>Extending a Base</h1>
     <p>
-      A subclass that writes its own <code>render</code> does not replace the
-      base's - it composes with it. Panel's render runs outermost and the
-      subclass's output arrives as <code>props.children</code>. There is no{' '}
-      <code>super.render()</code> to call; you read children where content should
-      slot.
+      Panel renders its chrome and places <code>&lt;this.Body /&gt;</code> where
+      content belongs. Each subclass overrides <code>Body</code> - a subcomponent
+      bound to the same instance - and leaves <code>render</code> alone, so the
+      base keeps its chrome.
     </p>
     <div className="pair">
       <Tally />
@@ -33,7 +32,11 @@ class Panel extends Component {
     this.open = !this.open;
   }
 
-  render(props = {} as { children?: Component.Node }) {
+  Body(): Component.Node {
+    return this.props.children;
+  }
+
+  render() {
     const { title, open } = this;
 
     return (
@@ -42,7 +45,7 @@ class Panel extends Component {
           <b>{title}</b>
           <span>{open ? '–' : '+'}</span>
         </button>
-        {open && <div className="body">{props.children}</div>}
+        {open && <div className="body"><this.Body /></div>}
       </section>
     );
   }
@@ -52,7 +55,7 @@ class Tally extends Panel {
   title = 'Tally';
   count = 3;
 
-  render() {
+  Body() {
     const { count } = this;
 
     return (
@@ -69,7 +72,7 @@ class Notes extends Panel {
   title = 'Notes';
   text = '';
 
-  render() {
+  Body() {
     const { text } = this;
 
     return (

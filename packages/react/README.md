@@ -62,17 +62,21 @@ class Counter extends Component {
 
 Anything read through `this` in `render()` is reactive; the instance survives across renders, so refs, sockets, and Maps held on `this` persist. State fields also become optional JSX props (`<Counter count={5} />`).
 
-### Render composition
+### Extending a base
 
-When a subclass overrides `render()`, it **composes** with its base rather than replacing it - no `super.render()`. Each `render()` up the prototype chain wraps the one below, base-outermost, with the inner output arriving as `props.children`.
+`render()` overrides like any method - a subclass render replaces the base's (`super.render(props)` wraps it). To keep base chrome around subclass content, render a subcomponent the subclass overrides:
 
 ```tsx
 class Frame extends Component {
-  render(props = {} as { children?: React.ReactNode }) {
+  Body(): React.ReactNode {
+    return this.props.children;
+  }
+
+  render() {
     return (
       <section className="frame">
         <header>Frame</header>
-        {props.children}
+        <this.Body />
       </section>
     );
   }
@@ -80,15 +84,13 @@ class Frame extends Component {
 
 class Page extends Frame {
   body = 'Hello';
-  render() {
+  Body() {
     return <p>{this.body}</p>;
   }
 }
 
 // <Page /> -> <section class="frame"><header>Frame</header><p>Hello</p></section>
 ```
-
-Every layer binds to the same live instance, so all read the same reactive `this`. A base that wraps must declare a `props` parameter and render `props.children` - a layer that ignores it silently drops everything below. (A base can also choose to *defer* to a subclass's render, e.g. a leaf `<a>` that's overridable; the base detects the subclass content by identity and returns it as-is.)
 
 ### Subcomponents
 

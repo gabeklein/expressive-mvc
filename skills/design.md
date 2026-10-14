@@ -37,13 +37,11 @@ A `State` subclass's instance namespace belongs to the **user's domain** - every
 
 Overloads dispatch on the **kind** of the first argument - property key, function, `null`, State class, plain object - not on subtle arity. Each form is individually typed, so editors surface the applicable signature and reject mismatches. Consequential forms are not shape-ambiguous: destruction is only ever explicit `set(null)`, and a wrong-kind argument is a compile error, not a silent behavior change. The trade: `get`/`set` are less self-describing than dedicated names, so every overload is enumerated in [state/get.md](state/get.md) and [state/set.md](state/set.md). The alternative would have cost the model author's own vocabulary.
 
-## Render composition is one designated seam
+## Render overrides like any method
 
-On `Component`, a subclass's `render()` **composes** with its base (base outermost, subclass output arriving as `props.children`) instead of replacing it. Only `render` does this - sealed at class bootstrap as the single composition seam. Every other member (getters, methods, subcomponents, lifecycle hooks) overrides with standard JavaScript replace semantics.
+`render()` follows standard JavaScript replace semantics on `State` and `Component` alike, in every host. A base that wants to keep its chrome while subclasses supply content exposes a subcomponent extension point and renders it (`<this.Body />`); a subclass that replaces `render` owns the output and calls `super.render(props)` to wrap the base.
 
-Reason: a reactive component's base render is *chrome plus subscriptions* - layout, suspense boundary, context - that must run for the subclass to function. Override-with-`super.render()` makes every subclass remember the call and thread its output by hand; one forgotten `super` silently loses the base's boundaries. Composition inverts the default: the base owns its chrome once, the subclass authors only content, and all layers bind to the same reactive `this` - the template-method pattern with automatic wiring.
-
-A base can opt out and defer entirely to subclass content (identity check on `children` - see [react/component.md](react/component.md)), so leaf primitives stay fully replaceable. The choice sits with the base, which knows whether its chrome is load-bearing.
+Reason: implicit render composition made one member behave unlike every other, hid the direction of wrapping, and needed per-instance machinery hot reload had to invalidate. Boundaries, suspense and context are established by the host frame regardless of what `render` returns, so a forgotten `super` drops chrome, not function. A base whose frame is load-bearing guards it itself - `Route` gates a subclass `render` as its page.
 
 ## PascalCase members are JSX's own convention
 

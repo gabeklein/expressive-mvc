@@ -1,6 +1,6 @@
 import { expect, test } from '../../../e2e';
 
-test('will compose subclass render inside base chrome with independent state', async ({ page, open }) => {
+test('will place subclass content inside base chrome with independent state', async ({ page, open }) => {
   await open('composition/extension');
   const tallyHead = page.getByRole('button', { name: /^Tally/ });
   const notesHead = page.getByRole('button', { name: /^Notes/ });
