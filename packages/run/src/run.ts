@@ -372,7 +372,6 @@ class Control extends State {
 
   join(): Promise<unknown> {
     const ticket = this.tail()!;
-
     const tickets = [this._current?._ticket, ...this.queue, ticket].filter(Boolean) as Ticket[];
 
     for (const each of tickets) each.awaited = true;
@@ -719,10 +718,10 @@ class Run extends State {
     const raw = value instanceof has.List ? value.get(0, value.size) : value instanceof Map ? new Map(value) : [...value];
     const held = { key, value, raw, prior: value.get(), readers: new Set() } as Held;
 
-    held.release = listener(value, (signal) => {
-      if (this._quiet || typeof signal == 'boolean' || signal === null) return;
+    held.release = listener(value, (change) => {
+      if (this._quiet || !signal(change)) return;
 
-      const gone = lost(held, signal);
+      const gone = lost(held, change);
 
       for (const reader of held.readers) {
         reader._changed.add(key);
