@@ -58,10 +58,10 @@ order.then.status;                    // 'idle' - reactive
 const { orderId } = await order;      // runs next(), typed by end()
 ```
 
-`run(this)` is the casual form - a `State` that just wants runnable steps names the field itself:
+`Job` is the canonical form. The escape hatch, for a class that cannot extend `Job` - it already extends another `State` or a `Component` - is `then = run(this)`: the same runtime, hooks found by name and unchecked ([job.md](job.md#escape-hatch-runthis)).
 
 ```ts
-class Sync extends State {
+class Sync extends Remote {
   then = run(this);
 
   async next() {
@@ -72,7 +72,7 @@ class Sync extends State {
 
 Journal after a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1 → end#1`. A `courier.book` failure unwinds every committed step: `receipt` (prior restored), `refund('ch_42')`, `inventory.release('hold_sku')`, `next`.
 
-- [job.md](job.md) - the contract: members, visibility, when each runs; `run(this)` on a plain State
+- [job.md](job.md) - the contract: members, visibility, when each runs; the `run(this)` escape hatch
 - [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, the first-call rule, helpers, `end`, what a step may return
 - [runs.md](runs.md) - `next`, repeating, the queue, awaiting, `end` from outside, `stop`
 - [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called from outside; answering steps are present only while waited for

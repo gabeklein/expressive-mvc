@@ -19,12 +19,12 @@ class Job extends State {
 
 Other methods are steps, `protected async` by convention ([README.md](README.md#conventions)). Per-step `before<Step>`/`after<Step>` are checked at runtime only.
 
-## `run(this)` on a State
+## Escape hatch: `run(this)`
 
-The same runtime without the base class: any field holds the `Runner`, any `State` subclass opts in. Hooks are found by name, `back` included; nothing is declared, so signatures are unchecked.
+For a class that cannot extend `Job` - it already extends another `State` or a `Component`. The same runtime without the base class: the field holds the `Runner`. Hooks are found by name, `back` included; nothing is declared, so signatures are unchecked. Prefer `Job` otherwise.
 
 ```ts
-class Sync extends State {
+class Sync extends Remote {
   then = run(this);
 }
 ```
