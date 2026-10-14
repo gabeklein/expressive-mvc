@@ -23,6 +23,12 @@ interface Ticket {
 interface Answer {
   frame: Promise<Frame | undefined>;
   done(): void;
+  fail(error: unknown): void;
+}
+
+interface Undo {
+  how: Function | Runner.Node;
+  from: Frame;
 }
 
 const HOOK = /^(before|after)([A-Z]|$)/;
@@ -107,7 +113,7 @@ declare namespace Runner {
      * Inside a step: call `each` per item - a function issuing a step, or a step itself -
      * and run the tokens as one parallel group.
      */
-    <I, This>(this: This, items: Iterable<I>, each: (item: I, index: number) => unknown): Runner.Token;
+    <I, This>(this: This, items: Iterable<I>, each: (item: I, index: number) => unknown): void;
 
     /**
      * Inside a step: an anonymous step at this point in the plan, given an `AbortSignal` aborted
@@ -119,22 +125,23 @@ declare namespace Runner {
      * Inside a step: park this point in the plan until a call to one of these steps answers it -
      * from outside, or from a watcher: a plain function started when the plan reaches the wait,
      * given an `AbortSignal` aborted once the wait closes. The next step in sequence runs once
-     * the answer, and all it schedules, is done.
+     * the answer, and all it schedules, is done. Returned, it parks the unwind until answered.
      */
-    <This>(this: This, ...steps: [...steps: ((...args: any[]) => unknown)[], watcher: (signal: AbortSignal) => unknown]): Runner.Token;
+    <This>(this: This, ...steps: [...steps: ((...args: any[]) => unknown)[], watcher: (signal: AbortSignal) => unknown]): void;
 
     <This>(
       this: This,
       ...steps: [...steps: ((...args: any[]) => unknown)[], watcher: (signal: AbortSignal) => unknown, other: (signal: AbortSignal) => unknown]
-    ): Runner.Token;
+    ): void;
 
-    <This>(this: This, ...steps: ((...args: any[]) => unknown)[]): Runner.Token;
+    <This>(this: This, ...steps: ((...args: any[]) => unknown)[]): void;
 
     /**
      * Inside a step: run these tokens as one parallel group at this point in the plan.
      * The next step in sequence runs once every member, and all it schedules, is done.
+     * Returned, its members are the step's undo.
      */
-    <This>(this: This, ...steps: unknown[]): Runner.Token;
+    <This>(this: This, ...steps: unknown[]): void;
 
     /** The instance this controller runs. */
     readonly on: T;
@@ -416,6 +423,7 @@ class Control extends State {
 
     queue.clear();
     current._stopped = stopped;
+    current.release();
     current.halt('stopped', undefined, options.undo);
   }
 }
@@ -428,7 +436,7 @@ class Run extends State {
 
   _ticket!: Ticket;
   _counts = new Map<string, number>();
-  _undo = new Map<string, Function | Runner.Node>();
+  _undo = new Map<string, Undo>();
   _held = new Map<string, Map<string, Held>>();
   _captures = new Map<Collection, Held>();
   _inline = new Map<string, Function>();
@@ -456,7 +464,7 @@ class Run extends State {
 
       event(control, 'waiting');
 
-      if (!this._halted) control.status = this.waits.size ? 'waiting' : 'running';
+      control.status = this.waits.size ? 'waiting' : this._halted || 'running';
     });
   }
 
@@ -511,16 +519,17 @@ class Run extends State {
     if (frame) for (const child of frame._items) await this.exec(child, frame);
   }
 
-  park(item: Runner.Node, from: Frame) {
-    let closures = [...this._undo.values()].some((undo) => typeof undo == 'function');
+  park(item: Runner.Node, from: Frame, undo?: boolean) {
+    let closures = [...this._undo.values()].some(({ how }) => typeof how == 'function');
 
     if (closures && !this._warned) {
       this._warned = true;
       console.warn(`${this.control._self} is waiting with undo closures held; a closure does not survive a resume.`);
     }
 
-    return new Promise<Answer | undefined>((resolve) => {
-      const wait = this.waits.add({ id: item.id, step: from.key, args: from.args, answers: item.answers!, _from: from, _park: resolve });
+    return new Promise<Answer | undefined>((resolve, reject) => {
+      const { id, answers } = item;
+      const wait = this.waits.add({ id, step: from.key, args: from.args, answers, _from: from, _undo: undo, _park: resolve, _fail: reject });
 
       for (const watcher of this._watchers.get(item.id) || []) wait.watch(watcher);
     });
@@ -536,11 +545,11 @@ class Run extends State {
       fail = rej;
     });
 
-    const answer = { done: () => (this._halted ? _ticket.promise.catch(fail) : done()) } as Answer;
+    const answer = { done: () => (this._halted && !wait._undo ? _ticket.promise.catch(fail) : done()), fail } as Answer;
 
     wait._answer = answer;
     this.waits.delete(wait);
-    answer.frame = this.invoke(this.node(key, args), wait.id);
+    answer.frame = this.invoke(this.node(key, args), wait.id, wait._undo);
 
     return handle(_ticket, answered);
   }
@@ -549,20 +558,23 @@ class Run extends State {
     this.waits.clear();
   }
 
-  async invoke(node: Runner.Node, wake?: string): Promise<Frame | undefined> {
+  async invoke(node: Runner.Node, wake?: string, undo?: boolean): Promise<Frame | undefined> {
     const { control } = this;
     const { _self: self } = control;
     const { id, key, args } = node;
     const inline = this._inline.get(id);
     const fn = inline || control._steps.get(key) || (() => {});
-    const frame = this.frames.add({ id, key, args, _wake: wake });
+    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo });
     const input = inline ? [frame._abort.signal] : args;
+    const hooks = !undo;
 
     control.active = key;
 
     try {
-      hook(self, 'before', key, args, false);
-      hook(self, `before${capital(key)}`, false, ...args);
+      if (hooks) {
+        hook(self, 'before', key, args, false);
+        hook(self, `before${capital(key)}`, false, ...args);
+      }
 
       let out: unknown;
 
@@ -573,8 +585,10 @@ class Run extends State {
 
           const entry = frame.commit(out, attempt);
 
-          hook(self, `after${capital(key)}`, false, entry);
-          hook(self, 'after', key, entry, false);
+          if (hooks) {
+            hook(self, `after${capital(key)}`, false, entry);
+            hook(self, 'after', key, entry, false);
+          }
 
           return frame;
         } catch (error) {
@@ -602,6 +616,7 @@ class Run extends State {
       frame._settled = true;
 
       if (!frame._lost.size) this.restore(frame._prior, frame.touched());
+      if (undo) throw error;
 
       this.halt('failed', error);
     } finally {
@@ -691,7 +706,7 @@ class Run extends State {
 
     for (let i = entries.length - 1; i >= 0; i--) {
       const entry = entries[i];
-      const how = this._undo.get(entry.id);
+      const undo = this._undo.get(entry.id);
 
       if (entry.irreversible) {
         entry.halted = true;
@@ -703,7 +718,12 @@ class Run extends State {
       if ('error' in entry) continue;
 
       try {
-        if (how) await this.undo(entry, how);
+        let done = !undo || (await this.undo(entry, undo.how, undo.from));
+
+        if (!done) {
+          entry.halted = true;
+          break;
+        }
 
         this.restore(entry.prior, this._held.get(entry.id)!);
         entry.undone = true;
@@ -729,21 +749,45 @@ class Run extends State {
     }
   }
 
-  async undo(entry: Runner.Entry, how: Function | Runner.Node) {
+  async undo(entry: Runner.Entry, how: Function | Runner.Node, from: Frame): Promise<boolean> {
+    if (typeof how != 'function' && how.group) {
+      const done = await Promise.all(how.group.map((member) => this.undo(entry, member, from)));
+
+      return done.every(Boolean);
+    }
+
+    if (typeof how != 'function' && how.answers) return this.compensate(how, from);
+
     const frame = this.frames.add({ id: `${entry.id}:undo`, key: entry.key, args: [], _undo: true });
     const { _proxy } = frame;
+    const inline = typeof how != 'function' && this._inline.get(how.id);
 
     try {
-      if (typeof how == 'function') return await how.call(_proxy);
+      if (typeof how == 'function') await how.call(_proxy);
+      else if (inline) await inline.call(_proxy, frame._abort.signal);
+      else await this.control._steps.get(how.key)!.apply(_proxy, how.args);
 
-      const inline = this._inline.get(how.id);
-
-      if (inline) return await inline.call(_proxy, frame._abort.signal);
-
-      return await this.control._steps.get(how.key)!.apply(_proxy, how.args);
+      return true;
     } finally {
       this.frames.delete(frame);
     }
+  }
+
+  async compensate(item: Runner.Node, from: Frame) {
+    const answer = await this.park(item, from, true);
+
+    if (!answer) return false;
+
+    try {
+      await answer.frame;
+    } catch (error) {
+      answer.fail(error);
+      throw error;
+    }
+
+    answer.done();
+
+    return true;
   }
 
   capture(key: string, value: Collection) {
@@ -925,7 +969,7 @@ class Frame extends State {
       retry: { value: (config: Runner.Retry) => void (this._retry = config) }
     });
 
-    return (this._view = view as Runner.Controller);
+    return (this._view = view as unknown as Runner.Controller);
   }
 
   group(members: unknown[]) {
@@ -966,7 +1010,7 @@ class Frame extends State {
     if (_late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
 
     let undo: Function | Runner.Node | undefined;
-    let token = items.includes(out as Runner.Node) && !(out as Runner.Node).group && !(out as Runner.Node).answers;
+    let token = items.includes(out as Runner.Node);
 
     if (key == 'end') {
       if (items.length) throw new Error(`end cannot schedule ${items[0].key}.`);
@@ -994,7 +1038,7 @@ class Frame extends State {
 
     if (undo) {
       entry.undo = typeof undo == 'function' ? 'closure' : undo;
-      run._undo.set(id, undo);
+      run._undo.set(id, { how: undo, from: this });
     }
     else if (_lost.size) entry.irreversible = [..._lost];
 
@@ -1047,7 +1091,9 @@ class Wait extends State {
   answers: string[] = [];
 
   _from!: Frame;
+  _undo?: boolean = undefined;
   _park!: (answer?: Answer) => void;
+  _fail!: (error: unknown) => void;
   _answer?: Answer = undefined;
   _abort = new AbortController();
   _open = true;
@@ -1071,9 +1117,17 @@ class Wait extends State {
   watch(watcher: Function) {
     const { signal } = this._abort;
 
-    (async () => watcher.call(this._from._proxy, signal))().catch((error) => {
-      if (this._open) this.run.halt('failed', error);
-    });
+    (async () => watcher.call(this._from._proxy, signal))().catch((error) => this.fail(error));
+  }
+
+  fail(error: unknown) {
+    const { run } = this;
+
+    if (!this._open) return;
+    if (!this._undo) return run.halt('failed', error);
+
+    this._fail(error);
+    run.waits.delete(this);
   }
 }
 

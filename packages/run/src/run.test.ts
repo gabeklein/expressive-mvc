@@ -2003,20 +2003,6 @@ describe('wait', () => {
     await expect(test.next(false)).rejects.toThrow('next cannot answer a wait.');
   });
 
-  it('will fail if a step returns its wait', async () => {
-    class Test extends State {
-      then = run(this);
-
-      next() {
-        return this.then(this.reply);
-      }
-
-      reply() {}
-    }
-
-    await expect(Test.new().next()).rejects.toThrow('next returned a value; a step returns nothing, or its undo.');
-  });
-
   it('will not wait on a step of another instance', async () => {
     class Test extends State {
       then = run(this);
@@ -3132,6 +3118,351 @@ describe('undo', () => {
     }
 
     await expect(Test.new().next()).rejects.toThrow(/is failed; next cannot run/);
+  });
+});
+
+describe('undo tokens', () => {
+  afterEach(() => void vi.useRealTimers());
+
+  it('will run the members of a returned group', async () => {
+    const order: string[] = [];
+    const refund = mockPromise();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        this.fail();
+
+        return this.then(this.refund(), this.notify());
+      }
+
+      async refund() {
+        order.push('refund');
+        await refund;
+        order.push('refunded');
+      }
+
+      async notify() {
+        order.push('notify');
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(order).toEqual(['refund', 'notify']));
+    refund.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(order).toEqual(['refund', 'notify', 'refunded']);
+    expect(test.then.record[0]).toMatchObject({
+      undo: { id: 'then#1', key: 'then', args: [], group: [{ id: 'refund#1' }, { id: 'notify#1' }] },
+      undone: true
+    });
+    expect(test.then.record[0].next).toEqual([{ id: 'fail#1', key: 'fail', args: [] }]);
+  });
+
+  it('will park the unwind on a returned wait', async () => {
+    const charge = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+      charged = false;
+
+      async next() {
+        this.pay('ch_1');
+      }
+
+      async pay(id: string) {
+        this.charged = true;
+        this.fail();
+
+        return this.then(this.refund, this.keep);
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+
+      async refund(id: string) {
+        charge(id);
+      }
+
+      async keep() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+    let settled = false;
+
+    result.catch(() => (settled = true));
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    await flushMicrotasks();
+
+    expect(settled).toBe(false);
+    expect(test.charged).toBe(true);
+    expect(test.then.error).toEqual(new Error('boom'));
+    expect(test.then.waiting).toEqual([{ id: 'wait#1', step: 'pay', args: ['ch_1'], answers: ['refund', 'keep'] }]);
+    expect(test.refund).toBeTypeOf('function');
+
+    await test.refund('ch_1');
+
+    await expect(result).rejects.toThrow('boom');
+    expect(charge).toHaveBeenCalledWith('ch_1');
+    expect(test.charged).toBe(false);
+    expect(test.then.status).toBe('failed');
+    expect(test.then.record.map((entry) => [entry.id, entry.wake, entry.undone])).toEqual([
+      ['next#1', undefined, true],
+      ['pay#1', undefined, true],
+      ['refund#1', 'wait#1', undefined]
+    ]);
+    expect(test.then.record[1].undo).toEqual({ id: 'wait#1', key: 'wait', args: [], answers: ['refund', 'keep'] });
+  });
+
+  it('will continue the unwind after an answer which does nothing', async () => {
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      async next() {
+        this.value = 1;
+        this.fail();
+
+        return this.then(this.refund, this.keep);
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+
+      async refund() {}
+      async keep() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    await test.keep();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.value).toBe(0);
+    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+      ['next#1', true],
+      ['keep#1', undefined]
+    ]);
+  });
+
+  it('will not let an unwind answer schedule', async () => {
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        this.fail();
+
+        return this.then(this.refund);
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+
+      async refund() {
+        this.more();
+      }
+
+      async more() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    await expect(test.refund()).rejects.toThrow(`${test} is failed; more cannot run.`);
+
+    await expect(result).rejects.toThrow(`${test} is failed; more cannot run.`);
+    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([['next#1', 'failed']]);
+  });
+
+  it('will not call hooks for an unwind answer', async () => {
+    const before = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        this.fail();
+
+        return this.then(this.refund);
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+
+      async refund() {}
+
+      before(key: string) {
+        before(key);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    await test.refund();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(before.mock.calls).toEqual([['next'], ['fail']]);
+  });
+
+  it('will halt a parked unwind on stop', async () => {
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      async next() {
+        this.value = 1;
+        this.first();
+
+        return undo;
+      }
+
+      async first() {
+        this.value = 2;
+        this.second();
+
+        return this.then(this.refund);
+      }
+
+      async second() {
+        this.value = 3;
+        this.fail();
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+
+      async refund() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    expect(test.value).toBe(2);
+
+    test.then.stop();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(undo).not.toHaveBeenCalled();
+    expect(test.value).toBe(2);
+    expect(test.then.status).toBe('failed');
+    expect(test.refund).toBeUndefined();
+    expect(test.then.record.map((entry) => [entry.id, entry.undone, entry.halted])).toEqual([
+      ['next#1', undefined, undefined],
+      ['first#1', undefined, true],
+      ['second#1', true, undefined]
+    ]);
+  });
+
+  it('will answer an unwind wait from a watcher', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+
+    const refund = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        this.fail();
+
+        return this.then(this.refund, this.keep, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          this.refund();
+        });
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+
+      async refund() {
+        refund();
+      }
+
+      async keep() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    result.catch(() => {});
+
+    await vi.advanceTimersByTimeAsync(99);
+    expect(test.then.status).toBe('waiting');
+
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(result).rejects.toThrow('boom');
+    expect(refund).toHaveBeenCalled();
+  });
+
+  it('will fail the undo if a watcher of its wait throws', async () => {
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        this.fail();
+
+        return this.then(this.refund, async () => {
+          throw new Error('watcher');
+        });
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+
+      async refund() {}
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('watcher');
+    expect(test.then.waiting).toEqual([]);
+    expect(test.then.record.map((entry) => entry.undone)).toEqual(['failed']);
+  });
+
+  it('will keep a step Promise<void> when it returns a group or a wait', () => {
+    class Test extends Job {
+      async next() {
+        return this.then(this.a(), this.b());
+      }
+
+      protected async a() {
+        return this.then(this.refund, this.keep);
+      }
+
+      protected async b() {
+        return this.then([1, 2], this.refund);
+      }
+
+      async refund() {}
+      async keep() {}
+    }
+
+    expectTypeOf<ReturnType<Test['next']>>().toEqualTypeOf<Promise<void>>();
+    expect(Test.new().then.status).toBe('idle');
   });
 });
 
