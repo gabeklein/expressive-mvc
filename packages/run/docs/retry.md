@@ -12,6 +12,8 @@ protected async ship(chargeId: string) {
 
 Each failed try is journaled as its own entry - `{ id, key, args, prior: {}, patch: {}, next: [], attempt, error }` - with the same `id` as the step. The entry that commits carries `attempt` when it is not the first. After the last try fails, the run fails and unwinds as usual.
 
-Only throws from the step body retry: a broken rule - write after scheduling, lateness, a bad return - fails the run at once. Hooks run once around all tries, not per try. A run stopped during a backoff does not try again.
+Only throws from the step body retry: a broken rule - write after scheduling, lateness, a bad return - fails the run at once. So does an irreversible step ([undo.md](undo.md#irreversible)) - one that removed a pool member or destroyed a map value: its failing try is journaled with `irreversible` beside `attempt` and `error`, its writes stay, and the unwind halts there.
+
+Before a retry, collections the step changed return to their capture ([undo.md](undo.md#collections)) - a retried step's pushes do not repeat. Hooks run once around all tries, not per try. A run stopped during a backoff does not try again.
 
 Outside a step, `then.retry()` throws `retry must be called inside a step.`

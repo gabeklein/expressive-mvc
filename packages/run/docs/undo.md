@@ -43,11 +43,12 @@ Entry: `undo: { id: 'refund#1', key: 'refund', args: ['ch_42'] }`, `next` withou
 
 A step that throws, breaks a rule, or returns anything but an undo fails the run:
 
-1. Status `failed`, `error` set; pending steps are discarded, open waits released; the failing step's own writes are restored to its `prior`.
+1. Status `failed`, `error` set; pending steps are discarded, open waits released; the failing step's own writes are restored to its `prior`, unless it is [irreversible](#irreversible).
 2. Steps still in flight - parallel members - settle; their commits are recorded.
 3. Every committed entry, newest first: its undo runs if it has one (closure, or the undo step with its journaled args), then its `prior` values are restored; `undone: true`. Entries without an undo are restored too.
 4. An undo that throws: `undone: 'failed'`, `error` replaced by what it threw, the unwind stops there.
-5. The run rejects with `error`.
+5. An `irreversible` entry stops the unwind: it gets `halted: true` ([Collections](#collections)).
+6. The run rejects with `error`.
 
 ```ts
 vi.spyOn(courier, 'book').mockRejectedValue(new Error('no couriers'));
@@ -62,6 +63,40 @@ order.then.record.map((e) => [e.id, e.undone]);
 // [['next#1', true], ['reserve#1', true], ['pay#1', true], ['receipt#1', true]]
 ```
 
-Here `refund('ch_42')` ran, then `release('hold_sku')`. Writes to `has`/`map` collections (`push`, `set`) are not field writes - no `prior`, not restored.
+Here `refund('ch_42')` ran, then `release('hold_sku')`.
 
 Undo frames cannot schedule: a step called from an undo throws (`… is failed; next cannot run.`), which fails that undo. `stop({ undo: true })` unwinds the same way with status `stopped` ([runs.md](runs.md#stop)). Hooks do not run for undos.
+
+## Collections
+
+A `has` list, `has` pool or `map` read by a step through `this` is captured: its contents as of that read, held while the step is in flight. Mutating it in place - `this.messages.push(x)` - is then part of the step:
+
+- The entry gains the field: `prior` and `patch` in export form (`collection.get()`). A read without a change records nothing.
+- A change from anywhere while the step is in flight counts - another step's, an outside call's. Parallel steps reading one collection share the earliest capture, and a change is in every such step's entry.
+- Rollback, and a retry's restore, return it to the capture: a list is refilled in order; pool members the step added are deleted - destroyed when owned; map keys the step added are deleted, changed or removed ones set back.
+- Reads through `this.is` and `_` helpers are not captured.
+
+```ts
+async next(prompt: string) {
+  this.messages.push(user(prompt));    // prior: { messages: [] }, patch: { messages: [{ role: 'user', … }] }
+  this.turn();
+}
+```
+
+A failing turn leaves `messages` as it was before `next`.
+
+### Irreversible
+
+Some changes cannot be put back: a pool member removed - by `delete`, `clear` or its own destruction - and a map value that was destroyed when removed or replaced (an owned `State`). A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`.
+
+- The unwind stops at the first irreversible entry, newest first. Entries after it are undone; it and every entry before it stay applied, without `undone`; it gets `halted: true`; `error` stays the original failure. `console.warn` names it once: `<instance> stopped unwinding at drop#1: items cannot be restored.`
+- A failing step that made one keeps its writes - fields included - and is journaled with `error` and `irreversible`, so the unwind halts there and nothing before it is undone.
+- An irreversible step is not retried ([retry.md](retry.md)).
+- A step returning an undo - closure or token - is reversible: the unwind runs its undo, then restores what can be restored.
+
+A map restores through its own `set(key, value)`: a factory map (`map((key) => …)`) passes the old value to its factory, so only keys it added are restored exactly.
+
+### Plain arrays and objects
+
+`this.cart.items.push(x)` on a plain array or object is not observable - not journaled, not restored. Assign instead: `this.items = [...this.items, x]` is a field write.
+

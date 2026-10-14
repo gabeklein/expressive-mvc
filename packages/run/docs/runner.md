@@ -18,7 +18,7 @@
 | `then(tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
 | `then(...steps)` | in a step: a wait answered by one of these steps ([wait.md](wait.md)) |
 
-Entry: `{ id, key, args, prior, patch, next, undo?, undone?, wake?, attempt?, error? }` ([steps.md](steps.md#entry)).
+Entry: `{ id, key, args, prior, patch, next, undo?, undone?, wake?, attempt?, error?, irreversible?, halted? }` ([steps.md](steps.md#entry)).
 
 `status`, `active`, `record`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them. The Runner iterates `record`:
 

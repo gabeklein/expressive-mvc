@@ -41,6 +41,7 @@ Shipped behavior is documented in [packages/run/docs/](packages/run/docs/README.
 - **`stop({ undo? })` cancels.** Pending discarded, waits released, in-flight steps settle and commit but schedule nothing, status `stopped`, queue cleared with each queued Promise rejecting with an error named `'Stopped'`, the current run rejecting with it once in-flight steps settle. `undo: true` unwinds as a failure does. `set(null)` stops. Finishing never destroys the instance.
 - **`this.then(...steps)` waits.** Step references, no array - a token parking that point in the plan, answered by any one of the listed steps; what follows runs after the answer's subtree. Journaled `{ id: 'wait#n', key: 'wait', args: [], answers }`; status `waiting`; `then.waiting` lists `{ id, step, args, answers }` - the opening step's key and args. `next`/`end` cannot answer. A wait reached while closure undos are held warns once per run - a job-tier constraint surfaced early.
 - **Answering steps are present only while waited for.** Every step but `next` is an own non-enumerable getter: from outside it reads the step while an open wait in the current run accepts it, else `undefined`; the read `touch`es its key and a change in the accepted set emits `event(instance, key)`. Inside a step every step reads through the proxy as usual. The declared type stays non-optional. An outside call answers the open wait whose opening step's first argument is `===` its own, else the oldest accepting it - journaled `wake: <id>`, run in the wait's place. It returns a Promise resolving when that step and its subtree complete (also when an outside `end` drops the subtree), rejecting with the run's error if it fails or stops first; awaiting it counts as awaiting the run. No buffering.
+- **Collections a step reads are part of its unit.** A `has` list, `has` pool or `map` read through the step's proxy is captured (detected by `instanceof has.List`/`has.Pool`/`map.Managed`, public classes): its raw contents at that read, and a `listener` for the frame's duration. Any emission while the frame is in flight - its own, a sibling's, an outside call's - puts the field in the entry, `prior`/`patch` in export form (`get()`); a read without one records nothing. Parallel frames reading one collection share the earliest capture. Restore - rollback and retry - goes through the collection's own API: a list is refilled, added pool members and map keys deleted, changed map keys set back. A removed pool member, or a map value destroyed on removal, cannot come back: without a user undo the entry is `irreversible: [field]`. An irreversible step is not retried - its failing try is journaled with `irreversible` and keeps its writes; the unwind stops at the first irreversible entry, newest first, marking it `halted: true` with one `console.warn`; `error` stays the original. A user undo makes the step reversible: the undo runs, then what can be restored is. Plain arrays and objects mutated in place are not observable - assign instead.
 - **`this.then.retry({ attempts, backoff? })`** at the top of a step configures that step: on a throw from its body, fields restored to its `prior`, it runs again after `backoff(attempt)` ms, up to `attempts` tries. Each failed try is its own entry with `attempt` and `error`; the committed one carries `attempt` past the first. Rule violations do not retry; a stopped run does not retry. No class-level or static retry.
 - **Hooks.** `before(key, args, skip)` / `after(key, entry, skip)` and per-step `before<Step>(skip, ...args)` / `after<Step>(skip, entry)`, excluded from wrapping by prefix (followed by an uppercase letter, or the bare name). Order: before → before<Step> → step → after<Step> → after; once per step, not per retry, not for undos. Raw instance as `this`, writes unjournaled, return ignored. `skip` is always false at this tier; the signature is shared with the job tier. A per-step hook without its step throws at construction.
 - **Runner surface.** `status` (`idle | running | waiting | stopped | failed`), `active` (a step in flight, the latest invoked with a group), `record`, `queue`, `waiting`, `runs`, `error` - enumerable getters, so `{ ...instance.then }` is a snapshot; iterable over `record`; `on`; `end`, `stop`, `retry`; a non-enumerable `get()` snapshot.
@@ -134,6 +135,7 @@ class Agent extends State {
   }
 
   protected async exec(call: ToolCall) {
+    this.then.retry({ attempts: 2 });
     this.messages.push(result(call, await tools.run(call)));
   }
 
@@ -156,7 +158,7 @@ await agent.next('ship it');            // one turn
 await agent.next('now the tests');      // the next - messages persist, then.runs == 2
 ```
 
-Agent exercises what Order does not: a run per turn on one instance, a queue, park and wake by outside call (`allow`/`deny`), steering (`agent.mode = 'yolo'` before the next `tool`), and the journal as transcript.
+Agent exercises what Order does not: a run per turn on one instance, a queue, park and wake by outside call (`allow`/`deny`), steering (`agent.mode = 'yolo'` before the next `tool`), a failing turn rolling `messages` back, and the journal as transcript.
 
 ## Plan
 
@@ -190,7 +192,10 @@ Deferred: `property = run(X, ...args)` (a child run nested under one step of the
 - Which `_`-prefixed convention excludes a field from the `end` dump, if any.
 - `this.then.end`'s argument is `unknown` inside the class body (a conditional over the polymorphic `this` cannot resolve there); the typed path is the class's own `end`. Likewise `next()`'s Promise is typed by the class's `next` declaration, not the run's result - await the instance for the typed result.
 - The lateness guard sees token events only: a sync side effect after scheduling is invisible to it.
-- Rollback covers field writes only - `has`/`map` mutations (`messages.push`) have no `prior`.
+- A retry restores a collection to the capture it shares with parallel siblings, so a sibling's change to it - committed or not - is undone with the retrying step's. Per-frame attribution would need the step's calls into the collection, not its events.
+- A map restores through its own `set(key, value)`: a factory map passes the old value to its factory, so only keys the step added restore exactly. The factory/insert mode is not visible through public API.
+- A pool member removed without being destroyed (a guest) still counts as irreversible; a class-mode pool could re-admit it by `add(instance)`.
+- A collection changed after the step's first token is not caught by the write guard - the guard sees proxy writes only, and an emission may be a sibling's.
 
 ## Job tier (parked)
 

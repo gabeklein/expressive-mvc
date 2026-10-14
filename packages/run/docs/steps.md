@@ -153,6 +153,8 @@ Each settled step is one journal entry (`record` on the [runner](runner.md)):
 }
 ```
 
-Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `attempt`, `error` - retries ([retry.md](retry.md)); `undone` - the unwind ([undo.md](undo.md)).
+Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `attempt`, `error` - retries ([retry.md](retry.md)); `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)).
+
+A `has`/`map` collection the step read through `this` and changed in place is in `prior` and `patch` too, in export form ([undo.md](undo.md#collections)).
 
 Writes from outside the run, through `this.is`, in helpers, or in hooks are in no patch.
