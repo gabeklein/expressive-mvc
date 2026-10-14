@@ -222,6 +222,7 @@ A resumable sequence of runnables with checkpoints. It attaches to the shipped `
 - **`save(record)` / `wake(at)`.** Seams on the class where they read as its business, config where a host supplies them, class winning. `save` is awaited before the next step - durability is "every commit awaited". `wake` defaults to `setTimeout`; a host persists `wakeAt` and resumes later.
 - **`resume`.** `run.resume(Type, record)` rebuilds: values overlay, then the pending plan with its journaled args. Construction and resume are one operation - an overlay, then the entry.
 - **Durable undo by returned token only.** Closures do not survive a resume; `{ key, args }` does. The base tier's `wait`/`sleep` warning is this constraint surfaced early.
+- **Durable timers - revisit with the hot path.** A watcher's `await delay(DAY, { signal })` dies with the process, and a closure cannot be rebuilt on resume. Long waits need a durable form the host can persist and re-arm - a timer whose deadline is in the record (`wakeAt`), firing a named answer step - e.g. a wait option `{ after: DAY, call: this.refund }` or a `this.then.sleep(ms)` token backed by `wake(at)`. Closure watchers stay the in-process form.
 - **Hydration hooks with `skip`.** `before`/`after` share the base-tier signature; `skip` is true when a step is being replayed from the record.
 - **Slot form.** `run(Type, cfg)` - a host ships `const durable = (cfg) => run(self, { save, wake, ...cfg })`.
 - **Persistence.** ORM-backed records; persistence adapters.
