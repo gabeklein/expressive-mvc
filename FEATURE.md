@@ -186,6 +186,15 @@ Later, on `Job` - the job tier: `save`/`load`/`wake`, `skip = true` on replay, c
 
 Held: recovery policy beyond per-step retry - a `catch` hook is not in the plan.
 
+Held - compensation and waits, designed, not built:
+
+- **Undo takes any token kind.** A returned step token runs its step (shipped); a returned group runs its members; a returned wait parks the unwind until answered - `return this.then(this.refund, this.keep)`. While parked: status `waiting`, `then.waiting` shows it, the run does not reject; `stop()` halts it. The answer runs as an undo frame (journaled, cannot schedule). `keep` - declining - leaves the step's writes and halts the unwind there, as at an irreversible entry.
+- **Groups are variadic.** `this.then(a, b)` replaces `this.then([a, b])`; `[]` stays only as the items of `then(items, mapper)` - no new role assigned.
+- **Watchers.** A plain (non-step) async function in a wait's arguments is a watcher: `this.then(this.refund, this.keep, async () => { await delay(60_000, { signal: this.then.signal }); this.refund(); })`. It starts with the wait and answers it by calling an accepted step. The wait closes on its first answer - from outside or a watcher; a watcher that loses has its signal aborted, its answer dropped and its writes restored. Watchers are functions only, never step tokens: they cannot be rolled back, so nothing should suggest they can - the body waits and decides, the answer acts.
+- **Inline step.** One plain function, `this.then(() => ...)`, is an anonymous step - void-typed, so `return this.then(() => stripe.refund(id))` keeps a step `Promise<void>`. Not durable. Two functions remain the thenable (`await this` inside a step throws).
+- **`this.then.signal`** - an `AbortSignal` per frame, aborted when the frame loses or the run stops, so a timer or `fetch` ends early.
+- `this.then` dispatch, then: tokens → group; step refs (+ watcher functions) → wait; one function → inline step; `(items, mapper)` → mapped group; tokens mixed with refs → throw.
+
 Deferred: `property = run(X, ...args)` (a child run nested under one step of the parent).
 
 ## Open
