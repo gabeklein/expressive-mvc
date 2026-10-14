@@ -110,6 +110,12 @@ declare namespace Runner {
     <I, This>(this: This, items: Iterable<I>, each: (item: I, index: number) => unknown): Runner.Token;
 
     /**
+     * Inside a step: an anonymous step at this point in the plan, given an `AbortSignal` aborted
+     * when the run stops. Returned, it is the step's undo. Not durable.
+     */
+    <This>(this: This, step: (signal: AbortSignal) => unknown): void;
+
+    /**
      * Inside a step: park this point in the plan until an outside call to one of these steps
      * answers it. The next step in sequence runs once the answer, and all it schedules, is done.
      */
@@ -417,6 +423,7 @@ class Run extends State {
   _undo = new Map<string, Function | Runner.Node>();
   _held = new Map<string, Map<string, Held>>();
   _captures = new Map<Collection, Held>();
+  _inline = new Map<string, Function>();
   _drained: (() => void)[] = [];
   _end?: Runner.Node = undefined;
   _halted?: 'failed' | 'stopped' = undefined;
@@ -529,8 +536,10 @@ class Run extends State {
     const { control } = this;
     const { _self: self } = control;
     const { id, key, args } = node;
-    const fn = control._steps.get(key) || (() => {});
+    const inline = this._inline.get(id);
+    const fn = inline || control._steps.get(key) || (() => {});
     const frame = this.frames.add({ id, key, args, _wake: wake });
+    const input = inline ? [frame._abort.signal] : args;
 
     control.active = key;
 
@@ -542,7 +551,7 @@ class Run extends State {
 
       for (let attempt = 1; ; attempt++)
         try {
-          out = await fn.apply(frame._proxy, args);
+          out = await fn.apply(frame._proxy, input);
           frame._settled = true;
 
           const entry = frame.commit(out, attempt);
@@ -627,6 +636,8 @@ class Run extends State {
     this._halted = status;
     control.status = status;
 
+    for (const frame of this.frames) frame._abort.abort();
+
     if (status == 'failed') {
       this._error = error;
       control.error = error;
@@ -707,6 +718,10 @@ class Run extends State {
 
     try {
       if (typeof how == 'function') return await how.call(_proxy);
+
+      const inline = this._inline.get(how.id);
+
+      if (inline) return await inline.call(_proxy, frame._abort.signal);
 
       return await this.control._steps.get(how.key)!.apply(_proxy, how.args);
     } finally {
@@ -857,15 +872,17 @@ class Frame extends State {
     if (this._view) return this._view;
 
     const view = (...args: unknown[]) => {
-      const [items, each] = args as [Iterable<unknown>, (item: unknown, index: number) => unknown];
+      const [items, each] = args as [unknown, (item: unknown, index: number) => unknown];
       const refs = args.map((arg) => this.keyOf(arg));
       let mapped = args.length == 2 && iterable(items) && typeof each == 'function';
       let grouped = args.length && args.every((arg) => arg && typeof arg == 'object');
       let waits = refs.length && refs.every(Boolean);
+      let inline = args.length == 1 && typeof items == 'function' && !refs[0];
 
-      if (mapped) return this.group(Array.from(items, each));
+      if (mapped) return this.group(Array.from(items as Iterable<unknown>, each));
       if (grouped) return this.group(args);
       if (waits) return this.wait(refs as string[]);
+      if (inline) return this.inline(items as Function);
 
       throw new Error('a step cannot await its own run.');
     };
@@ -891,6 +908,14 @@ class Frame extends State {
     this.arm();
 
     return group;
+  }
+
+  inline(fn: Function) {
+    const token = this.issue('then', []);
+
+    this.run._inline.set(token.id, fn);
+
+    return token;
   }
 
   wait(answers: string[]) {

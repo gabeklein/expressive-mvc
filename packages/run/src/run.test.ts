@@ -582,7 +582,7 @@ describe('groups', () => {
       then = run(this);
 
       next() {
-        (this.then as Function)(() => {});
+        (this.then as Function)(() => {}, () => {});
       }
     }
 
@@ -673,6 +673,163 @@ describe('groups', () => {
     }
 
     expect(() => Test.new().then([])).toThrow('then(steps) must be called inside a step.');
+  });
+});
+
+describe('inline', () => {
+  it('will run a function as a step in its place in the plan', async () => {
+    const order: string[] = [];
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.a();
+        this.then(() => void order.push('inline'));
+        this.b();
+      }
+
+      a() {
+        order.push('a');
+      }
+
+      b() {
+        order.push('b');
+      }
+
+      before(key: string) {
+        order.push(`before:${key}`);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(order).toEqual(['before:next', 'before:a', 'a', 'before:then', 'inline', 'before:b', 'b']);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'then#1', 'b#1']);
+    expect(test.then.record[0].next).toEqual([
+      { id: 'a#1', key: 'a', args: [] },
+      { id: 'then#1', key: 'then', args: [] },
+      { id: 'b#1', key: 'b', args: [] }
+    ]);
+  });
+
+  it('will run a function with its own proxy as a full step', async () => {
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.then(function (this: Test) {
+          this.value = 1;
+          this.later();
+        });
+      }
+
+      later() {}
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record.map((entry) => [entry.id, entry.patch, entry.next.map((node) => node.id)])).toEqual([
+      ['next#1', {}, ['then#1']],
+      ['then#1', { value: 1 }, ['later#1']],
+      ['later#1', {}, []]
+    ]);
+  });
+
+  it('will give an arrow the settled proxy of its step', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(() => {
+          this.later();
+        });
+      }
+
+      later() {}
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('next has settled; later cannot run.');
+  });
+
+  it('will abort the signal when the run stops', async () => {
+    const work = mockPromise();
+    let signal!: AbortSignal;
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(async (given) => {
+          signal = given;
+          await work;
+        });
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    expect(signal.aborted).toBe(false);
+
+    test.then.stop();
+    expect(signal.aborted).toBe(true);
+
+    work.resolve();
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'then#1']);
+  });
+
+  it('will run a returned function as the undo', async () => {
+    const refund = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        this.fail();
+
+        return this.then((signal) => refund(signal.aborted));
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(refund).toHaveBeenCalledWith(false);
+    expect(test.then.record[0]).toMatchObject({ undo: { id: 'then#1', key: 'then', args: [] }, undone: true });
+    expect(test.then.record[0].next).toEqual([{ id: 'fail#1', key: 'fail', args: [] }]);
+  });
+
+  it('will type a returned function as no value', async () => {
+    class Test extends Job {
+      async next() {
+        return this.then(() => {});
+      }
+    }
+
+    expectTypeOf<ReturnType<Test['next']>>().toEqualTypeOf<Promise<void>>();
+    await Test.new().next();
+  });
+
+  it('will fail if the function returns a value', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(() => 1);
+      }
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('then returned a value; a step returns nothing, or its undo.');
   });
 });
 
