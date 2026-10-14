@@ -188,7 +188,7 @@ function run<T extends State>(self: T): Runner<T> {
     active: () => control.active,
     record: () => control.run.record.get(),
     queue: () => control.queue.map((ticket) => ticket.args),
-    waiting: () => [...control.run._parked.keys()],
+    waiting: () => control.run.waits.map(({ id, step, args, answers }) => ({ id, step, args, answers })),
     runs: () => control.runs,
     error: () => control.error
   };
@@ -296,7 +296,6 @@ class Control extends State {
   _runner!: object;
   _steps = new Map<string, Function>();
   _current?: Run = undefined;
-  _present = new Set<string>();
 
   protected new() {
     const { _runner } = this;
@@ -312,7 +311,7 @@ class Control extends State {
     if (key == 'next') return this.start(args);
 
     const { _current: current } = this;
-    const open = current ? [...current._parked.keys()].filter((wait) => wait.answers.includes(key)) : [];
+    const open = current ? current.waits.filter((wait) => wait.answers.includes(key)) : [];
     const wait = open.find((wait) => wait.args[0] === args[0]) || open[0];
 
     if (wait) return current!.wake(wait, key, args);
@@ -321,7 +320,7 @@ class Control extends State {
   }
 
   accepts(key: string) {
-    return this._present.has(key);
+    return !!this._current?.accepts(key);
   }
 
   start(args: unknown[]) {
@@ -412,13 +411,13 @@ class Run extends State {
   control = get(Control);
   record = has<Runner.Entry>();
   frames = has(Frame);
+  waits = has(Wait);
 
   _ticket!: Ticket;
   _counts = new Map<string, number>();
   _undo = new Map<string, Function | Runner.Node>();
   _held = new Map<string, Map<string, Held>>();
   _captures = new Map<Collection, Held>();
-  _parked = new Map<Runner.Wait, (answer?: Answer) => void>();
   _drained: (() => void)[] = [];
   _end?: Runner.Node = undefined;
   _halted?: 'failed' | 'stopped' = undefined;
@@ -434,6 +433,16 @@ class Run extends State {
     listener(this.record, (key) => {
       if (signal(key) && control.run === this) event(control, 'record');
     });
+
+    listener(this.waits, (key) => {
+      let current = signal(key) && control._current === this;
+
+      if (!current) return;
+
+      event(control, 'waiting');
+
+      if (!this._halted) control.status = this.waits.size ? 'waiting' : 'running';
+    });
   }
 
   start() {
@@ -448,6 +457,10 @@ class Run extends State {
     this._counts.set(key, count);
 
     return { id: `${key}#${count}`, key, args };
+  }
+
+  accepts(key: string, except?: Wait) {
+    return this.waits.any((wait) => wait !== except && wait._open && wait.answers.includes(key));
   }
 
   flight() {
@@ -485,17 +498,13 @@ class Run extends State {
       console.warn(`${this.control._self} is waiting with undo closures held; a closure does not survive a resume.`);
     }
 
-    const wait: Runner.Wait = { id: item.id, step: from.key, args: from.args, answers: item.answers! };
-
     return new Promise<Answer | undefined>((resolve) => {
-      this._parked.set(wait, resolve);
-      this.sync();
+      this.waits.add({ id: item.id, step: from.key, args: from.args, answers: item.answers!, _park: resolve });
     });
   }
 
-  wake(wait: Runner.Wait, key: string, args: unknown[]) {
+  wake(wait: Wait, key: string, args: unknown[]) {
     const { _ticket } = this;
-    const resolve = this._parked.get(wait)!;
     let done!: () => void;
     let fail!: (error: unknown) => void;
 
@@ -504,34 +513,17 @@ class Run extends State {
       fail = rej;
     });
 
-    this._parked.delete(wait);
-    this.sync();
-    resolve({
-      frame: this.invoke(this.node(key, args), wait.id),
-      done: () => (this._halted ? _ticket.promise.catch(fail) : done())
-    });
+    const answer = { done: () => (this._halted ? _ticket.promise.catch(fail) : done()) } as Answer;
+
+    wait._answer = answer;
+    this.waits.delete(wait);
+    answer.frame = this.invoke(this.node(key, args), wait.id);
 
     return handle(_ticket, answered);
   }
 
   release() {
-    for (const resolve of this._parked.values()) resolve();
-
-    this._parked.clear();
-    this.sync();
-  }
-
-  sync() {
-    const { control, _parked } = this;
-    const { _self: self, _present: present } = control;
-    const answers = new Set([..._parked.keys()].flatMap((wait) => wait.answers));
-
-    control._present = answers;
-    event(control, 'waiting');
-
-    for (const key of new Set([...present, ...answers])) if (present.has(key) != answers.has(key)) event(self, key);
-
-    if (!this._halted) control.status = _parked.size ? 'waiting' : 'running';
+    this.waits.clear();
   }
 
   async invoke(node: Runner.Node, wake?: string): Promise<Frame | undefined> {
@@ -625,6 +617,7 @@ class Run extends State {
     control._current = undefined;
     control.runs++;
     this.frames.clear();
+    this.waits.clear();
   }
 
   halt(status: 'failed' | 'stopped', error?: unknown, undo = status == 'failed') {
@@ -984,6 +977,33 @@ class Frame extends State {
     const { _held, _changed } = this;
 
     return new Map([..._changed].map((key) => [key, _held.get(key)!]));
+  }
+}
+
+class Wait extends State {
+  run = get(Run);
+  id = '';
+  step = '';
+  args: unknown[] = [];
+  answers: string[] = [];
+
+  _park!: (answer?: Answer) => void;
+  _answer?: Answer = undefined;
+  _open = true;
+
+  protected new() {
+    const { run, answers } = this;
+    const { _self: self } = run.control;
+
+    for (const key of answers) if (!run.accepts(key, this)) event(self, key);
+
+    return () => {
+      this._open = false;
+
+      for (const key of answers) if (!run.accepts(key)) event(self, key);
+
+      this._park(this._answer);
+    };
   }
 }
 
