@@ -32,7 +32,7 @@ const counter = Counter.new();
 Inside React, `Counter.use()` activates for you. Outside React, reach for `.new()`.
 
 > **Good to know:** <br />
-> If you're stuck holding a plain-constructed instance, `await state.set()` will activate it - the no-arg form fires the ready event if it hasn't fired already. Deferring activation on purpose is an advanced move (it controls where the state lands in [context](/docs/guides/context)), but the escape hatch is there.
+> If you're stuck holding a plain-constructed instance, `await state.set()` will activate it - the no-arg form fires the ready event if it hasn't fired already. Deferring activation on purpose is an advanced move (it controls where the model lands in [context](/docs/guides/context)), but the escape hatch is there.
 
 ### Initial values and callbacks
 
@@ -159,7 +159,7 @@ const { is: counter, count } = Counter.use();
 counter.count = 5; // works
 ```
 
-Destructuring breaks the binding between a local variable and the property, so `count = 5` just reassigns the local. `is` hands you back the live instance. Destructure it first so the handle is easy to spot, and alias it to the state concept (`counter`, `form`, `dashboard`) rather than keeping a local named `is`.
+Destructuring breaks the binding between a local variable and the property, so `count = 5` just reassigns the local. `is` hands you back the live instance. Destructure it first so the handle is easy to spot, and alias it to the model's concept (`counter`, `form`, `dashboard`) rather than keeping a local named `is`.
 
 ### Silent reads
 
@@ -299,11 +299,11 @@ This is automatic in React - `Model.use()` destroys on unmount, and so does `<Co
 4. **The `new()` hook's returned cleanup** is called.
 5. **Dispatch stops** - no further events or effects.
 
-A write that lands afterward - a late fetch, a timer nobody cleared - is stored without notifying anyone, so the code that made it runs to its end. Each such write is reported to [`catch` handlers](#class-level-setup-with-modelon) with kind `dead`; unhandled, it outputs nothing. One late completion is harmless; repeated late writes mean work outlived its owner, so cancel it in a cleanup rather than guarding writes. Subscribing to a destroyed state still throws.
+A write that lands afterward - a late fetch, a timer nobody cleared - is stored without notifying anyone, so the code that made it runs to its end. Each such write is reported to [`catch` handlers](#class-level-setup-with-modelon) with kind `dead`; unhandled, it outputs nothing. One late completion is harmless; repeated late writes mean work outlived its owner, so cancel it in a cleanup rather than guarding writes. Subscribing to a destroyed model still throws.
 
 <br />
 
-## Child states
+## Child models
 
 Assign a Model to a field and it becomes a managed child:
 
@@ -322,9 +322,9 @@ class User extends Model {
 - Owned children activate with the parent and destroy with the parent.
 - Replacing a child property (`this.address = new Address()`) destroys the old one.
 - Setting an owned child to `null` destroys it.
-- A state passed in from outside is _not_ owned - replacing it does not destroy it.
+- A model passed in from outside is _not_ owned - replacing it does not destroy it.
 
-Child state changes propagate through nested subscriptions:
+Child model changes propagate through nested subscriptions:
 
 ```tsx
 function UserStreet() {

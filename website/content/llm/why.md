@@ -2,9 +2,9 @@
 
 The argument for adopting Expressive MVC, stated concretely. Companion to [comparisons.md](comparisons.md) (head-to-head positioning) and [design.md](design.md) (rationale behind individual design choices). Claims here describe the common case; the honest boundaries are stated inline and the [audit guide](examples/audit.md) lists the cases where the recommendation is to not adopt.
 
-## Code that is cheap to read - for people and for models
+## Code that is cheap to read - for people and for agents
 
-Hook-based components are context-sensitive: understanding one line requires reconstructing call order (Rules of Hooks), dependency arrays, and which render's closure a callback captured. That reconstruction is re-paid on every read - by reviewers, by new hires, and by language models, which pay for it in tokens and in comprehension errors (the classic agent failure modes: a stale-closure bug introduced by an edit, a dependency array that no longer matches the effect body).
+Hook-based components are context-sensitive: understanding one line requires reconstructing call order (Rules of Hooks), dependency arrays, and which render's closure a callback captured. That reconstruction is re-paid on every read - by reviewers, by new hires, and by LLMs, which pay for it in tokens and in comprehension errors (the classic agent failure modes: a stale-closure bug introduced by an edit, a dependency array that no longer matches the effect body).
 
 Expressive models read linearly. A class field is state, a getter is a derived value, a method is an action - position in the file carries no hidden semantics, and there is nothing equivalent to hook ordering to violate. In components, the destructuring statement *is* the dependency declaration: `const { user, total } = Cart.get()` names exactly what this view depends on, in place, checked by TypeScript. There are no dependency arrays anywhere in the system, so there is nothing to desynchronize.
 
@@ -20,7 +20,7 @@ The payoff compounds with codebase size: repeated logic collapses into shared ba
 
 A component that accumulates fetches, derived values, handlers, and effects is unambiguous developer friction: slow to review, prone to merge conflicts, a re-render blast radius that grows with every added concern, and - increasingly relevant - an oversized context window cost for any agent asked to modify it safely.
 
-Expressive's answer is mechanical rather than aspirational. Model and behavior hoist into a model class; the component shrinks to a projection that subscribes to exactly the fields it reads. Because any component anywhere in the tree can subscribe to a model at the same cost (`Cart.get()`), there is no gravitational pull to keep logic in one giant component "where the state already is." The [refactoring guide](react/refactor.md) documents the extraction as a step-by-step algorithm - ownership triage, dependency snapshots, review checklist - precisely so that agents can execute it without judgment calls.
+Expressive's answer is mechanical rather than aspirational. State and behavior hoist into a model class; the component shrinks to a projection that subscribes to exactly the fields it reads. Because any component anywhere in the tree can subscribe to a model at the same cost (`Cart.get()`), there is no gravitational pull to keep logic in one giant component "where the state already is." The [refactoring guide](react/refactor.md) documents the extraction as a step-by-step algorithm - ownership triage, dependency snapshots, review checklist - precisely so that agents can execute it without judgment calls.
 
 ## A standard library, not a stack
 

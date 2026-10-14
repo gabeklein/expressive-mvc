@@ -227,7 +227,7 @@ class Greeting extends Component {
 
 ### Render Props
 
-Extra props (beyond state fields) via a `render()` parameter:
+Extra props (beyond model fields) via a `render()` parameter:
 
 ```tsx
 class Card extends Component {
@@ -241,7 +241,7 @@ class Card extends Component {
 <Card title="Hello" className="card" />;
 ```
 
-Non-optional render props become required JSX attributes. All props (state + render + special) are on `this.props`.
+Non-optional render props become required JSX attributes. All props (model + render + special) are on `this.props`.
 
 ### Special Props
 

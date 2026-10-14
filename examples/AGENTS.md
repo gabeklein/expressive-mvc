@@ -20,7 +20,7 @@ Style:
 - All descriptive copy lives in the frame. Demo components hold only live content: readouts, `fallback`s, error messages, control labels. A trailing note belongs below the demo element in the export, not inside the demo.
 - Copy over comments: anything a comment would explain to the reader belongs in the page's visible copy instead. This is stricter than the repo-wide no-comments rule - an example has a place to put the explanation, so it must use it. Keep a comment only when copy genuinely cannot carry it (cryptic math, why a line is shaped a certain way).
 - Arrow functions for function components, consistently. Plain helpers may stay declarations when their position requires hoisting.
-- `new Child()` for nested state, never `Child.new()` - bare construction makes the instance state the parent owns (built there, activated into that context, destroyed with it); `.new()` creates a private context-less instance.
+- `new Child()` for nested models, never `Child.new()` - bare construction makes the instance a model the parent owns (built there, activated into that context, destroyed with it); `.new()` creates a private context-less instance.
 - Owned collections use `has()`, never a plain array reassigned by spread - `push` to append, `clear` to reset, `.map((v, i) => ...)` directly in render (it tracks). Spread-and-replace is the React reflex, and an example is where reflexes get copied.
 - Keep each example focused. Prefer a render prop over a subclass or subcomponent seam; declare extra render props as `render(props = {} as { ... })`.
 - Name demo components for their role, never `Demo`. A `fallback` belongs in a `Fallback()` subcomponent, not JSX built inline inside `catch()`. Render-less components are fine when tree placement is the point.
@@ -31,7 +31,7 @@ Style:
 
 Every page runs on `@expressive/react` and `@expressive/dom` unchanged. Keep it that way:
 
-- Import `Model`, `Component` and instructions from `@expressive/mvc`; provide state with `<Component for={…}>`. `@expressive/react` is aliased to dom in dom mode.
+- Import `Model`, `Component` and instructions from `@expressive/mvc`; provide models with `<Component for={…}>`. `@expressive/react` is aliased to dom in dom mode.
 - No `react` imports in pages. Use `Component.Node` for children, and structural types for handler parameters that need annotating.
 - Text fields use `onInput` (identical on React). Checkboxes and selects keep `onChange`.
 - No `Suspense`: give the component that owns the pending value a `fallback`.

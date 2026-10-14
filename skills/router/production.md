@@ -29,7 +29,7 @@ render(
 router.set(null);
 ```
 
-## Page data belongs to Model
+## Page data belongs to a Model
 
 No router loaders, actions, fetchers, cache, or revalidation APIs. A page
 `Component` or owned domain `Model` reads the nearest Route; a reactive async

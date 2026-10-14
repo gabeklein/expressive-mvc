@@ -153,7 +153,7 @@ class Viewport extends Model {
 
 `<Component for={Model}>` runs the provided Model's `mount()` with its own commit:
 
-- Like any parent, it mounts *after* its descendants (React commits bottom-up) - a descendant should react to provided state by subscription, not read it imperatively in its own `mount()`.
+- Like any parent, it mounts *after* its descendants (React commits bottom-up) - a descendant should react to a provided model by subscription, not read it imperatively in its own `mount()`.
 - Replacing `for` with another class unmounts and destroys the previous Model, then mounts the new one.
 
 The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. A hook firing once per observer is not a lifecycle - to react to an instance a component does not own, subscribe with `Model.get()` or an event.
@@ -215,7 +215,7 @@ A class must be top-level `class X` or `let X = class` - a `const` binding canno
 
 ## Model.get() - Context Hook
 
-Fetches an instance from context (provided by a `Component` or `<Component for>`) and independently subscribes to accessed properties. Available on all Model.
+Fetches an instance from context (provided by a `Component` or `<Component for>`) and independently subscribes to accessed properties. Available on every Model.
 
 ```tsx
 function Profile() {

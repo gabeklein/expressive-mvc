@@ -1,6 +1,6 @@
 # Inspect
 
-`@expressive/inspect` - in-process inspector over live Model: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
+`@expressive/inspect` - in-process inspector over live models: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
 
 ## Install
 
@@ -38,7 +38,7 @@ await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
 await composer.act(work, { until: { 'Composer.status': 'sent' }, timeout: 3000, record: { paths: [] } })
 ```
 
-Ownership is mvc's (`get(Model)`): a Model constructed into a field, `has` pool, or `map`, or mounted by a host, is that owner's child; a `get(Type)` reference or an already-active instance assigned in is not. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
+Ownership is mvc's (`get(Model)`): a Model constructed into a field, `has` pool, or `map`, or mounted by a host, is that owner's child; a `get(Type)` reference or an already-active instance assigned in is not. One `Instance` per model - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
 `act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s), with a warning that frames may be incomplete.
 
@@ -83,7 +83,7 @@ inspect.set('Composer.draft', 'x')
 await inspect.call('Composer.submit', 'x')
 ```
 
-Reads come from stored values, never accessors - no getter, factory, or suspense fires. An unmanaged `_` key reads only when addressed by name; whole-state views omit it. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested Models serialize to `{ $ref, $type }` - follow one with `get(`${$ref}.key`)`; caps: strings 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
+Reads come from stored values, never accessors - no getter, factory, or suspense fires. An unmanaged `_` key reads only when addressed by name; whole-model views omit it. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested Models serialize to `{ $ref, $type }` - follow one with `get(`${$ref}.key`)`; caps: strings 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
 
 A selection reads several keys as one snapshot - one synchronous pass, so no write lands between them, unlike separate `get`s over the bridge or relay. `true` takes a value as `get` would; an object picks keys and descends through Models (keeping `$ref`), `Map`s and objects, applying to each element of a list (capped at 24). Relay: `["get", "Sidebar", { "status": true }]`.
 

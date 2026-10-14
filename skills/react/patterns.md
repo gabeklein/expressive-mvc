@@ -371,7 +371,7 @@ function App() {
 
 ## Contextual Children (No Prop Drilling)
 
-Children of a provided state declare their own dependencies with `.get()` - don't thread state values and callbacks through props:
+Children of a provided model declare their own dependencies with `.get()` - don't thread state values and callbacks through props:
 
 ```tsx
 // Before: parent unpacks state and drills it down
@@ -576,7 +576,7 @@ class Canvas extends Component {
 
 Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(Model)` - see [context.md](../state/context.md#ownership-vs-context).
 
-## Refactoring Hooks Into Model
+## Refactoring Hooks Into a Model
 
 Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in `mount()`, event handlers in methods.
 

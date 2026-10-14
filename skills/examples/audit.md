@@ -130,7 +130,7 @@ function ThemeToggle() {
 1. **Start small** - one complex component; decide whether its behavior belongs in a `Component` or a display-agnostic `Model`.
 2. **Coexist** - works alongside existing hooks; no need to migrate everything.
 3. **Bottom-up when coexisting** - leaf components first, then shared state. A one-shot conversion inverts this: route/page controllers, then domain pools, then mature leaf widgets (see the refactor guide).
-4. **Test independently** - state classes test without React; use this to raise coverage.
+4. **Test independently** - model classes test without React; use this to raise coverage.
 
 ## After Selection
 

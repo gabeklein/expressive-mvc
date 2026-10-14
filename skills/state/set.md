@@ -1,6 +1,6 @@
 # `state.set()` - Write & Listen
 
-Instance method for writing values, dispatching events, listening to updates, destroying state, and defining properties - every write-side operation on one verb, dispatched on the first argument's kind, each form individually typed (see [design.md](../design.md)).
+Instance method for writing values, dispatching events, listening to updates, destroying the model, and defining properties - every write-side operation on one verb, dispatched on the first argument's kind, each form individually typed (see [design.md](../design.md)).
 
 ## Overloads
 
@@ -10,9 +10,9 @@ Instance method for writing values, dispatching events, listening to updates, de
 set(): Model.Updated<this>
 ```
 
-Returns a promise-like array of keys updated in the current batch, resolving when the flush completes - an empty array if no update is outstanding. Also activates a state created with `new` (not `Model.new()`).
+Returns a promise-like array of keys updated in the current batch, resolving when the flush completes - an empty array if no update is outstanding. Also activates a model created with `new` (not `Model.new()`).
 
-This is one state's next flush. To wait on the whole cascade a write sets off - every subscriber, including readers of other states - use `pending(work)` ([state.md](state.md#presentation-transitions)).
+This is one model's next flush. To wait on the whole cascade a write sets off - every subscriber, including readers of other models - use `pending(work)` ([state.md](state.md#presentation-transitions)).
 
 ```ts
 const updated = await state.set();
@@ -25,7 +25,7 @@ const updated = await state.set();
 set(assign?: Model.Assign<this>, silent?: boolean): Model.Updated<this>
 ```
 
-Merges an object into state. Only known properties and methods apply; unknown keys and `is` are ignored.
+Merges an object into the model. Only known properties and methods apply; unknown keys and `is` are ignored.
 
 So `set(values)` is the wire-snapshot ingest: a host payload may be a superset - extra keys drop, missing keys stay untouched. `undefined` / `null` present in the bag *do* write, so don't pad. On a subclassable class the ingest call is `this.set(msg.values as Model.Assign<Session>)` (cast below); never hand-roll an `apply()`/`pick` loop over declared fields.
 
@@ -115,7 +115,7 @@ state.set(42); // number event
 set(status: null): void
 ```
 
-Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, dispatch stops. Afterward, assignment is stored without dispatch and reported to `catch` handlers with kind `dead`; unhandled, it outputs nothing. Silent `set(assign, true)` stores without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
+Terminates the model: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, dispatch stops. Afterward, assignment is stored without dispatch and reported to `catch` handlers with kind `dead`; unhandled, it outputs nothing. Silent `set(assign, true)` stores without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
 
 ```ts
 state.set(null);
@@ -151,7 +151,7 @@ Defines or updates a managed property from a descriptor. On an already-managed p
 state.set('foo', { value: 'bar' }); // update value (bypasses setter)
 state.set('bar', { value: 'hello', set: false }); // read-only property
 state.set('baz', { value: 'hidden', enumerable: false }); // non-enumerable property
-state.set('child', { value: new ChildModel() }); // registers child state
+state.set('child', { value: new ChildModel() }); // registers child model
 ```
 
 | Field        | Meaning                                                       |

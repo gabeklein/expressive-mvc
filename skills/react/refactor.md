@@ -297,7 +297,7 @@ Audit rule: **delete any method whose body is only `this.field = value`** - voca
 
 ## 8. Getters: shared and semantic only
 
-A derived value earns a getter on shared state when it has multiple consumers, domain or workflow meaning, cost enough to merit memoized tracking, a place in the state's deliberate API, or introspection value (debugging, devtools):
+A derived value earns a getter on shared state when it has multiple consumers, domain or workflow meaning, cost enough to merit memoized tracking, a place in the model's deliberate API, or introspection value (debugging, devtools):
 
 ```tsx
 get hasBlocking() {        // read by notices, actions, and header

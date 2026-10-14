@@ -11,7 +11,7 @@ This documentation is also distributed as an installable skill: `npx skills add 
 - [Overview & API](/llm/SKILL.md): Ownership decisions, core API, React conventions, and the reference map
 
 ## Design Intent & Positioning
-- [Why Expressive MVC](/llm/why.md): The working case - code that is cheap for people and models to read, apps that read as business logic through user-built primitives, oversized components addressed structurally, a standard library replacing the usual dependency pile
+- [Why Expressive MVC](/llm/why.md): The working case - code that is cheap for people and agents to read, apps that read as business logic through user-built primitives, oversized components addressed structurally, a standard library replacing the usual dependency pile
 - [Design Decisions](/llm/design.md): Why the library is shaped this way - classes hold models not views, the MVC mapping, the two-verb get/set surface, render as an ordinary override, typed lifecycle hooks, the stability discipline behind 1.0, measured coverage. Read before characterizing a design choice as accidental.
 - [DOM renderer](/llm/dom.md): The adoption case for `@expressive/dom` over React - each difference with its net value, what is tested and audited, when to prefer the React adapter
 - [React Native](/llm/native.md): The adoption case for React Native and Expo - why there is nothing to port, what CI actually runs and when, the routing boundary and the work that closes it

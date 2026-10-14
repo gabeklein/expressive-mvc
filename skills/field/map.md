@@ -9,7 +9,7 @@ import { watch } from '@expressive/mvc/observable';
 
 A reactive `Map`. Reads subscribe in active `watch()` / `Model.get()` effects; writes notify only the changed key, plus collection shape when entries are added or removed.
 
-A field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves during activation of the hosting state, which adopts the map in the same step. Not usable standalone.
+A field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves during activation of the hosting model, which adopts the map in the same step. Not usable standalone.
 
 The argument selects the mode:
 
@@ -103,7 +103,7 @@ basket.items.set('b', Item.new());   // already activated - guest
 
 Ownership follows freshness, in both modes and however a value arrives. A fresh (never-activated) `Model` - a `new Item()` handed to `set`, constructed by a factory, or in initial entries - is adopted and owned; the map destroys it when its entry is deleted, cleared, or replaced. An already-activated value (`Item.new()`) is a guest - its parent is settled, so it is held but never destroyed. Non-Model values are never owned.
 
-The hosting state adopts every map at activation, so a usable map always has an owner. The field is read-only - assigning over it throws. Fresh `Model` values are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members. Owned members die with the owner. `value.get(Model)` is the owner without naming its type ([get.md](get.md#owner)).
+The hosting model adopts every map at activation, so a usable map always has an owner. The field is read-only - assigning over it throws. Fresh `Model` values are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members. Owned members die with the owner. `value.get(Model)` is the owner without naming its type ([get.md](get.md#owner)).
 
 Destruction is an eviction concern, separate from context: `delete` destroys the owned entry it removes, `clear` does so for every entry, and the owner dying is a `clear`. So `map.Managed` can be constructed without an owner (`new map.Managed()`, chiefly for testing) - no context to parent fresh values into, but it still owns and destroys them on eviction; guests behave as usual.
 

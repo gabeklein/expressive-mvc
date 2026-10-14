@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Install, write your first state class, and learn how the pieces fit together
+description: Install, write your first model class, and learn how the pieces fit together
 ---
 
 ## Install
@@ -63,7 +63,7 @@ Editing a `Model` or `Component` class then patches it in place - instances keep
 
 <br />
 
-## Your first state
+## Your first model
 
 Ultimately, the workflow is pretty simple.
 
@@ -206,7 +206,7 @@ function TodoList() {
 
 ## The `is` property
 
-After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every Model exposes `is`, a loop-back to the instance itself. Prefer destructuring it first, aliased to the state's concept:
+After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every Model exposes `is`, a loop-back to the instance itself. Prefer destructuring it first, aliased to the model's concept:
 
 ```tsx
 const { is: todo, draft } = TodoApp.use();
@@ -277,7 +277,7 @@ You don't need a class for every component. Good signals you should reach for on
 - Three or more related pieces of state.
 - An effect that syncs two or more state values.
 - A handler that touches more than one state value.
-- Model shared between components.
+- State shared between components.
 - A custom hook that returns an object.
 - Async logic - fetching, polling, websockets.
 - Props being passed down mostly to support state sharing.

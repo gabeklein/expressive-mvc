@@ -317,7 +317,7 @@ test('cleans up on destroy', () => {
 });
 ```
 
-A write to a destroyed state doesn't throw - the value is stored without dispatch, so a late continuation runs to its end. Each such write is reported to `catch` handlers with kind `dead`, and unhandled it outputs nothing. That silence is right in production, but in tests a repeated late write usually means an interval or subscription outlived its owner. To make the run fail on one, escalate from a handler in your test setup:
+A write to a destroyed model doesn't throw - the value is stored without dispatch, so a late continuation runs to its end. Each such write is reported to `catch` handlers with kind `dead`, and unhandled it outputs nothing. That silence is right in production, but in tests a repeated late write usually means an interval or subscription outlived its owner. To make the run fail on one, escalate from a handler in your test setup:
 
 ```ts
 import { Model } from '@expressive/mvc';
@@ -392,7 +392,7 @@ test('refreshes on update', async () => {
 
 - **`act()`** - unless a component is actually mounted, there's no renderer to flush.
 - **`@testing-library/react`** - you're not rendering anything.
-- **`jsdom`** - same deal; state classes never touch the DOM on their own.
+- **`jsdom`** - same deal; model classes never touch the DOM on their own.
 - **Mocks for hooks** - Model classes don't call hooks. A `use()` method only runs on the `Model.use()` hook path, which `.new()` sidesteps entirely.
 
 Most of your logic tests end up as plain synchronous functions. That was the point of the classes all along.

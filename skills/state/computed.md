@@ -139,7 +139,7 @@ class Profile extends Model {
 
 ## When to Promote a Derivation
 
-A derived value earns a getter on shared state when it is read by **multiple consumers**, carries **domain or workflow meaning**, is **expensive** enough for memoized tracking, is a **deliberate part of the state's API**, or makes the state usefully **introspectable** (debugging, devtools). A calculation feeding one view - a formatted label, a step index, a `canSubmit` for one button - belongs in that component beside its dependency snapshot; promoting it widens the surface without adding meaning. Judge meaning, not reference counts - see [../react/refactor.md](../react/refactor.md) step 6.
+A derived value earns a getter on shared state when it is read by **multiple consumers**, carries **domain or workflow meaning**, is **expensive** enough for memoized tracking, is a **deliberate part of the model's API**, or makes the model usefully **introspectable** (debugging, devtools). A calculation feeding one view - a formatted label, a step index, a `canSubmit` for one button - belongs in that component beside its dependency snapshot; promoting it widens the surface without adding meaning. Judge meaning, not reference counts - see [../react/refactor.md](../react/refactor.md) step 6.
 
 ## When NOT a Computed
 
