@@ -2798,6 +2798,351 @@ describe('retry', () => {
   });
 });
 
+describe('suspense', () => {
+  it('will wait in next for a pending value', async () => {
+    let tries = 0;
+
+    class Test extends Model {
+      then = run(this);
+      price = set<number>();
+      total = 0;
+
+      next() {
+        tries++;
+        this.total = this.price * 2;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(tries).toBe(1);
+    expect(test.then.status).toBe('running');
+    expect(test.then.active).toBe('next');
+    expect(test.then.record).toEqual([]);
+
+    test.price = 3;
+
+    await result;
+    expect(tries).toBe(2);
+    expect(test.total).toBe(6);
+    expect(test.then.record).toEqual([{ id: 'next#1', key: 'next', args: [], wrote: ['total'], next: [] }]);
+  });
+
+  it('will restore writes and drop tokens of a suspended try', async () => {
+    const order: string[] = [];
+
+    class Test extends Model {
+      then = run(this);
+      price = set<number>();
+      note = '';
+
+      next() {
+        this.quote();
+      }
+
+      async quote() {
+        this.note = 'quoting';
+        order.push(`quote:${this.note}`);
+        this.report();
+        this.price;
+      }
+
+      async report() {
+        order.push(`report:${this.note}`);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(order).toEqual(['quote:quoting']));
+    expect(test.note).toBe('');
+
+    test.price = 5;
+
+    await result;
+    expect(order).toEqual(['quote:quoting', 'quote:quoting', 'report:quoting']);
+    expect(test.then.record.map(({ id, wrote, next }) => [id, wrote, next.map((node) => node.id)])).toEqual([
+      ['next#1', [], ['quote#1']],
+      ['quote#1', ['note'], ['report#2']],
+      ['report#2', [], []]
+    ]);
+  });
+
+  it('will wait for a getter over a pending value', async () => {
+    class Test extends Model {
+      then = run(this);
+      price = set<number>();
+      total = 0;
+
+      get taxed() {
+        return this.price * 2;
+      }
+
+      next() {
+        this.total = this.taxed;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.price = 4;
+
+    await result;
+    expect(test.total).toBe(8);
+  });
+
+  it('will wait after an await', async () => {
+    const work = mockPromise();
+    let tries = 0;
+
+    class Test extends Model {
+      then = run(this);
+      price = set<number>();
+      total = 0;
+
+      async next() {
+        tries++;
+        await work;
+        this.total = this.price;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    work.resolve();
+    await vi.waitFor(() => expect(tries).toBe(1));
+    await flushMicrotasks();
+
+    test.price = 7;
+
+    await result;
+    expect(tries).toBe(2);
+    expect(test.total).toBe(7);
+  });
+
+  it('will fail with the rejection of a pending value', async () => {
+    const pending = mockPromise();
+
+    class Test extends Model {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.value = 1;
+        throw pending;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    pending.reject(new Error('gone'));
+
+    await expect(result).rejects.toThrow('gone');
+    expect(test.value).toBe(0);
+    expect(test.then.status).toBe('failed');
+    expect(test.then.record).toEqual([]);
+  });
+
+  it('will not count a suspended try as an attempt', async () => {
+    const pending = mockPromise();
+    let tries = 0;
+
+    class Test extends Model {
+      then = run(this);
+
+      next() {
+        this.then.retry({ attempts: 2 });
+        tries++;
+
+        if (tries == 1) throw pending;
+        if (tries == 2) throw new Error('flaky');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    pending.resolve();
+
+    await result;
+    expect(tries).toBe(3);
+    expect(test.then.record).toEqual([
+      { id: 'next#1', key: 'next', args: [], wrote: [], next: [], attempt: 1, error: new Error('flaky') },
+      { id: 'next#1', key: 'next', args: [], wrote: [], next: [], attempt: 2 }
+    ]);
+  });
+
+  it('will retry a rejected pending value as a failed attempt', async () => {
+    const pending = mockPromise();
+    let tries = 0;
+
+    class Test extends Model {
+      then = run(this);
+
+      next() {
+        this.then.retry({ attempts: 2 });
+
+        if (++tries == 1) throw pending;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    pending.reject(new Error('gone'));
+
+    await result;
+    expect(tries).toBe(2);
+    expect(test.then.record.map(({ attempt, error }) => [attempt, error])).toEqual([
+      [1, new Error('gone')],
+      [2, undefined]
+    ]);
+  });
+
+  it('will not fire hooks again', async () => {
+    const order: string[] = [];
+
+    class Test extends Model {
+      then = run(this);
+      price = set<number>();
+
+      next() {
+        order.push(`next:${this.price}`);
+      }
+
+      before(key: string) {
+        order.push(`before:${key}`);
+      }
+
+      after(key: string) {
+        order.push(`after:${key}`);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.price = 1;
+
+    await result;
+    expect(order).toEqual(['before:next', 'next:1', 'after:next']);
+  });
+
+  it('will abort when stopped while waiting', async () => {
+    class Test extends Model {
+      then = run(this);
+      price = set<number>();
+      value = 0;
+
+      next() {
+        this.value = 1;
+        this.value = this.price;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.then.stop();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(test.value).toBe(0);
+    expect(test.then.status).toBe('stopped');
+    expect(test.then.record).toEqual([]);
+  });
+
+  it('will end without the step when ended while waiting', async () => {
+    class Test extends Model {
+      then = run(this);
+      price = set<number>();
+
+      next() {
+        this.price;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.then.end('early');
+
+    expect(await result).toBe('early');
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['end#1']);
+  });
+
+  it('will abort a pending read after the step was stopped', async () => {
+    const work = mockPromise();
+
+    class Test extends Model {
+      then = run(this);
+      price = set<number>();
+
+      async next() {
+        await work;
+        this.price;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.then.stop();
+    work.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(test.then.error).toBeUndefined();
+  });
+
+  it('will fail a committed step reading a pending value', async () => {
+    const pending = mockPromise();
+
+    class Test extends Model {
+      then = run(this);
+
+      next() {
+        this.then.commit();
+        throw pending;
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toBe(pending);
+    expect(test.then.record).toMatchObject([{ id: 'next#1', committed: true, error: pending }]);
+  });
+
+  it('will fail a hook reading a pending value after its step', async () => {
+    class Test extends Model {
+      then = run(this);
+      price = set<number>();
+
+      next() {}
+
+      after() {
+        this.price;
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toBeInstanceOf(Promise);
+  });
+});
+
 describe('hooks', () => {
   it('will call hooks around each step', async () => {
     const order: unknown[][] = [];

@@ -14,6 +14,8 @@ Each failed try is journaled as its own entry - `{ id, key, args, next: [], wrot
 
 Only throws from the step body retry: a broken rule - write after scheduling, lateness, a bad return - fails the run at once. So does an irreversible step ([undo.md](undo.md#irreversible)) - one that removed a pool member or destroyed a map value - and one that called [`then.commit()`](undo.md#commit): its failing try is journaled with `irreversible` or `committed` beside `attempt` and `error`, its writes stay, and the unwind halts there. A step rejecting with its own aborted [signal](steps.md#the-step-signal)'s reason is not retried either.
 
+A step waiting on a [pending value](steps.md#pending-values) is not retrying: the wait uses no attempt.
+
 Before a retry, collections the step changed return to their capture ([undo.md](undo.md#collections)) - a retried step's pushes do not repeat. Hooks run once around all tries, not per try. A run stopped, or ended from outside, during a backoff does not try again.
 
 Outside a step, `then.retry()` throws `retry must be called inside a step.`

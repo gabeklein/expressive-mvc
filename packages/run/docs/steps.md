@@ -130,6 +130,27 @@ Outside a step, `then(f, r)` is the thenable ([runs.md](runs.md#awaiting-the-ins
 
 Writes are attributed per frame with members in flight: each member's entry lists its own writes. `active` names the latest member invoked.
 
+## Pending values
+
+A step reading a pending value - an unset `set<T>()`, an async factory, a getter over one - waits for it instead of failing. mvc throws a suspense Promise; the step's try ends there: its writes are restored, its tokens dropped, then it runs again from the top once the Promise resolves. No entry for the suspended try, no hooks refired, not counted against [`retry`](retry.md) - though token ids it issued stay counted (`report#2` commits). Status stays `running`, `active` names the step.
+
+```ts
+class Checkout extends Job {
+  cart!: Cart;
+  rate = set<number>();                // assigned by a view, a socket, another step
+  total = 0;
+
+  protected async quote() {
+    this.total = this.cart.total * this.rate;
+  }
+}
+```
+
+- A rejection is the try's error - retried if configured, else the run fails with it.
+- `stop()` or an outside `end` while waiting aborts the step as for its [signal](#the-step-signal) - writes restored, no entry, no new failure.
+- A step past [`commit()`](undo.md#commit), or with an irreversible change, cannot start over: the Promise fails it as any throw. So does one thrown from an `after` hook.
+- Any thrown `Promise` counts, not only mvc's.
+
 ## The first step call ends the step's work
 
 After its first token, a step may only issue more tokens, group them, and return. A write through `this` after the first token fails the run (`pay wrote charge after scheduling ship.`). Settling more than a few microtasks after the last token event - a token issued, a group made - fails the run (`pay kept working after scheduling ship.`).

@@ -768,9 +768,24 @@ class Run extends Model {
           }
 
           return frame;
-        } catch (error) {
+        } catch (thrown) {
+          let error = thrown;
           let irreversible = [...frame._lost];
           let fixed = irreversible.length || frame._committed;
+
+          if (error instanceof Promise && !frame._settled && !fixed) {
+            this.reset(frame);
+
+            const failed = await frame.pause(error);
+
+            if (!failed) {
+              attempt--;
+              continue;
+            }
+
+            error = failed.cause;
+          }
+
           let retry = !frame._settled && !fixed && !frame._abort.signal.aborted && frame._retry && attempt < frame._retry.attempts;
 
           if (fixed)
@@ -778,9 +793,7 @@ class Run extends Model {
 
           if (!retry) throw error;
 
-          this.restore(frame._prior, frame.touched());
-          frame.leave();
-          Object.assign(frame, { _held: new Map(), _changed: new Set() });
+          this.reset(frame);
           this.record.push({ id, key, args, next: [], wrote: [], attempt, error });
 
           const delay = frame._retry!.backoff?.(attempt);
@@ -788,9 +801,6 @@ class Run extends Model {
           await new Promise((resolve) => (delay ? setTimeout(resolve, delay) : resolve(0)));
 
           if (frame._abort.signal.aborted) throw error;
-
-          Object.assign(frame, { _items: [], _wrote: new Set(), _prior: {}, _violation: undefined, _late: undefined });
-          frame._armed++;
         }
     } catch (error) {
       frame._settled = true;
@@ -807,6 +817,22 @@ class Run extends Model {
 
       if (!this.flight().length) for (const resolve of this._drained.splice(0)) resolve();
     }
+  }
+
+  reset(frame: Frame) {
+    this.restore(frame._prior, frame.touched());
+    frame.leave();
+    frame._armed++;
+
+    Object.assign(frame, {
+      _held: new Map(),
+      _changed: new Set(),
+      _items: [],
+      _wrote: new Set(),
+      _prior: {},
+      _violation: undefined,
+      _late: undefined
+    });
   }
 
   async end(item = this._end) {
@@ -1159,6 +1185,17 @@ class Frame extends Model {
     if (wait) return run.wake(wait, key, args);
 
     throw new Error(`${this.key} has settled; ${key} cannot run.`);
+  }
+
+  async pause(pending: Promise<unknown>) {
+    const { signal } = this._abort;
+    const abort = new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+    let failed: { cause: unknown } | undefined;
+
+    if (!signal.aborted) await Promise.race([pending, abort]).catch((cause) => (failed = { cause }));
+    if (signal.aborted) throw signal.reason;
+
+    return failed;
   }
 
   arm() {
