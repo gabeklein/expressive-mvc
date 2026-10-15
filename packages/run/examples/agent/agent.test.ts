@@ -24,6 +24,7 @@ it('will run a turn to end', async () => {
 it('will reject an idle await without a prompt', async () => {
   const agent = Agent.new({ mode: 'yolo' });
 
+  // next takes a prompt, so an idle await cannot start a run
   await expect(agent.then((reply) => reply)).rejects.toThrow(
     `${agent} is idle. next() takes arguments; call it to start a run.`
   );
@@ -35,6 +36,7 @@ it('will join a turn in progress', async () => {
 
   agent.next('write notes');
 
+  // a run is active, so awaiting the instance joins it
   expect(await agent).toBe('done');
 });
 
@@ -49,6 +51,7 @@ it('will offer allow only while a tool call waits', async () => {
   const agent = Agent.new();
   const seen: boolean[] = [];
 
+  // presence is reactive - an effect reading allow reruns as the wait opens and closes
   agent.get((self) => void seen.push(!!self.allow));
 
   expect(agent.allow).toBeUndefined();
@@ -74,6 +77,7 @@ it('will resolve allow once its tool has run', async () => {
 
   const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
 
+  // an answer's Promise settles once that step and what it scheduled are done - not the whole run
   await agent.allow(call);
 
   expect(agent.messages.get(-1)).toEqual({ role: 'tool', content: 'call_1_0: write notes ok' });
@@ -88,6 +92,7 @@ it('will answer the tool call it is given', async () => {
 
   const [notes, docs] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
 
+  // routed by first argument: the wait opened by tool(docs) takes it
   await agent.allow(docs);
 
   expect(agent.then.waiting.map((wait) => wait.args[0])).toEqual([notes]);
@@ -127,6 +132,7 @@ it('will throw if allow is called after its wait closed', async () => {
 
   allow(call);
 
+  // nothing is buffered - a held reference throws once no wait accepts it
   expect(() => allow(call)).toThrow('allow cannot be called from outside; call next() to run.');
   expect(await reply).toBe('done');
 });
@@ -147,6 +153,7 @@ it('will queue a prompt sent mid-turn', async () => {
   const first = agent.next('write notes');
   const second = agent.next('read docs');
 
+  // each queued call settles with its own run
   expect(agent.then.queue).toEqual([['read docs']]);
 
   await first;
@@ -169,6 +176,7 @@ it('will keep what a failing turn committed', async () => {
     });
 
   await expect(agent.next('write notes')).rejects.toThrow('overloaded');
+  // light journal: committed pushes stay, the failing turn's draft chunks are restored
   expect([...agent.messages].map((message) => message.content)).toEqual(['write notes', '', 'call_1_0: write notes ok']);
   expect(agent.draft.size).toBe(0);
   expect(agent.then.record.map((entry) => [entry.id, entry.wrote, entry.undone])).toEqual([
@@ -279,10 +287,80 @@ it('will not let a stale timeout deny the next turn', async () => {
 
   const second = agent.next('write docs');
 
+  // the first run's watcher was aborted when its wait closed; this wait gets a fresh minute
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
   expect(agent.then.status).toBe('waiting');
 
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
   expect(await second).toBe('done');
   expect(agent.messages.get(-2)).toEqual({ role: 'tool', content: 'call_5_0: denied' });
+});
+
+it('will pull steering sent mid-turn before ending', async () => {
+  const agent = Agent.new({ mode: 'yolo' });
+  const reply = agent.next('write notes');
+
+  // the push is unmanaged; the pull happens inside turn, so it is part of that turn's entry
+  agent.steers.push('read docs');
+
+  expect(await reply).toBe('done');
+  expect(agent.steers.size).toBe(0);
+  expect([...agent.messages].map((message) => message.content)).toEqual([
+    'write notes',
+    '',
+    'call_1_0: write notes ok',
+    'done',
+    'read docs',
+    '',
+    'call_5_0: read docs ok',
+    'done'
+  ]);
+  expect(agent.then.record.find((entry) => entry.id == 'turn#2')!.wrote).toContain('steers');
+});
+
+it('will steer later tool calls by writing mode', async () => {
+  const agent = Agent.new();
+  const reply = agent.next('write notes');
+
+  await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
+
+  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+
+  agent.mode = 'yolo';
+  agent.steers.push('write docs');
+
+  await agent.allow(call);
+
+  expect(await reply).toBe('done');
+  expect(agent.messages.get(-2)).toEqual({ role: 'tool', content: 'call_5_0: write docs ok' });
+  // only the first call waited; a steer is in no entry
+  expect(agent.then.record.filter((entry) => entry.wake)).toHaveLength(1);
+  expect(agent.then.record.some((entry) => entry.wrote.includes('mode'))).toBe(false);
+});
+
+it('will end a turn early from outside', async () => {
+  const agent = Agent.new();
+  const reply = agent.next('write notes');
+
+  await vi.waitFor(() => expect(agent.allow).toBeDefined());
+
+  // end runs with this value; the open wait is released and nothing is undone
+  agent.then.end({ role: 'assistant', content: 'enough' });
+
+  expect(await reply).toBe('enough');
+  expect(agent.allow).toBeUndefined();
+  expect(agent.then.status).toBe('idle');
+  expect(agent.messages.size).toBe(2);
+});
+
+it('will stop a turn when destroyed', async () => {
+  const agent = Agent.new();
+  const reply = agent.next('write notes');
+
+  await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
+
+  agent.set(null);
+
+  await expect(reply).rejects.toMatchObject({ name: 'Stopped' });
+  expect(agent.then.status).toBe('stopped');
 });
