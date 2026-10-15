@@ -136,6 +136,7 @@ function render(from: Component, context: Context) {
   const { createElement, dedupe } = Runtime;
   const attempt = dedupe?.(from, context);
   const { is: owner } = from;
+  // Read before bootstrap shadows an instance `render` with this host.
   const own = Object.prototype.hasOwnProperty.call(owner, 'render') && owner.render;
   const teardown = () => {
     attempt?.remove();

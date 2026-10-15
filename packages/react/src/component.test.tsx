@@ -773,10 +773,14 @@ describe('render override', () => {
 
     await act(async () => {
       instance.title = 'Updated';
-      instance.body = 'World';
     });
 
     expect(screen).toHaveText('Updated');
+
+    await act(async () => {
+      instance.body = 'World';
+    });
+
     expect(screen).toHaveText('World');
   });
 

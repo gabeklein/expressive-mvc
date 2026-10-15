@@ -240,7 +240,6 @@ Route.on({
   }
 });
 
-/** Route's own render: arbitration, guards and the match gate around its page. */
 function frame(this: Route): Component.Node {
   const { is: self, matched, parent, redirect, router } = this;
 
