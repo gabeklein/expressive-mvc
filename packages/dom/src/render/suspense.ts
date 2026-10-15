@@ -1,4 +1,5 @@
-import { range, move, moveRange } from './fiber';
+import { fragment } from './commits';
+import { move, moveRange, range } from './fiber';
 import type { Boundary, Fiber } from './fiber';
 import { unmountFiber } from './mount';
 import { reconcile } from './reconcile';
@@ -9,6 +10,35 @@ const dirty = new Set<Boundary>();
 const stashes = new WeakMap<globalThis.Node, Fiber>();
 let holding: { thrown: unknown; fiber?: Fiber } | undefined;
 let settling = false;
+
+function park(fiber: Fiber) {
+  move(fiber, fragment(), null);
+}
+
+function hold(fiber: Fiber, error: unknown) {
+  if (!holding || error !== holding.thrown) return false;
+
+  park(fiber);
+  holding.fiber = fiber;
+  return true;
+}
+
+function gather(error: unknown, next: Fiber[], old: Fiber[]) {
+  if (!holding || error !== holding.thrown) return;
+
+  for (const fiber of next) if (!old.includes(fiber)) park(fiber);
+  if (holding.fiber) next.push(holding.fiber);
+  holding.fiber = undefined;
+}
+
+function hostOf(parent: globalThis.Node) {
+  let host = parent;
+
+  for (let owner = stashes.get(host); owner; owner = stashes.get(host))
+    host = owner.end.parentNode!;
+
+  return host;
+}
 
 function wait(fiber: Fiber, boundary: Boundary) {
   if (fiber.waitingOn !== boundary) unwait(fiber);
@@ -165,4 +195,4 @@ function isThenable(value: unknown): value is PromiseLike<unknown> {
   return !!value && typeof (value as PromiseLike<unknown>).then == 'function';
 }
 
-export { holding, isThenable, settle, stashes, suspend, unwait };
+export { gather, hold, hostOf, isThenable, settle, suspend, unwait };

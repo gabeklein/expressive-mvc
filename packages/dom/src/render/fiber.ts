@@ -3,7 +3,6 @@ import { Context, State } from '@expressive/mvc';
 import type { Key, Node as RenderNode } from '../node/vnode';
 import type { AppearanceContext } from '../style/protocol';
 import type { Scope } from './adapter';
-import { fragment } from './commits';
 import type { Claim } from './style';
 
 type Container = Element | DocumentFragment;
@@ -103,10 +102,6 @@ function makeScope(kind: Scope['kind'], context: Context, update: (passive: bool
   };
 }
 
-function park(fiber: Fiber) {
-  move(fiber, fragment(), null);
-}
-
 function moveRange(start: globalThis.Node, end: globalThis.Node, target: globalThis.Node) {
   let node: globalThis.Node | null = start;
 
@@ -141,5 +136,5 @@ function removeRange(start: globalThis.Node, end: globalThis.Node) {
   }
 }
 
-export { makeScope, move, moveRange, park, range, removeRange };
+export { makeScope, move, moveRange, range, removeRange };
 export type { Appearance, Boundary, Container, Fiber, Placement, Renderable, Style };
