@@ -167,7 +167,7 @@ Context lookup. Fetches another instance from the ambient context hierarchy.
 ### `get(Type)` - required upstream
 
 ```ts
-parent = get(ParentModel);
+parent = get(Parent);
 ```
 
 Throws `"Required {Type} not found in context for {subject}."` if missing.
@@ -181,7 +181,7 @@ maybe = get(OptionalSvc, false); // T | undefined
 ### `get(Type, callback)` - upstream with lifecycle
 
 ```ts
-parent = get(ParentModel, (parent, self) => {
+parent = get(Parent, (parent, self) => {
   console.log('attached:', parent);
   return () => console.log('detached');
 });
@@ -358,7 +358,7 @@ The factory runs during activation and can return:
 
 Setter callbacks behave like `set()` callbacks: throw `false` to reject, throw `true` to accept silently, return a value to transform.
 
-> Nesting instances needs no instruction at all. `child = new ChildModel()` is auto-parented, activated, and destroyed with its parent.
+> Nesting instances needs no instruction at all. `child = new Child()` is auto-parented, activated, and destroyed with its parent.
 
 <br />
 

@@ -42,14 +42,14 @@ Keys of `T` excluding inherited `Model` members (`get`, `set`, `is`, etc.). This
 Managed keys only - `Model.Property<T>` without `_` keys. Snapshots (`Model.Values<T>`), `ref` proxies and instruction keys use this.
 
 ```ts
-class MyModel extends Model {
+class FormState extends Model {
   foo = 1;
   bar = 'hello';
   _handle = null;
 }
 
-type Properties = Model.Property<MyModel>; // 'foo' | 'bar' | '_handle'
-type Fields = Model.Field<MyModel>; // 'foo' | 'bar'
+type Properties = Model.Property<FormState>; // 'foo' | 'bar' | '_handle'
+type Fields = Model.Field<FormState>; // 'foo' | 'bar'
 ```
 
 ### `Model.Event<T>`

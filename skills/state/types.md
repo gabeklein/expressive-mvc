@@ -32,7 +32,7 @@ function create<T extends Model>(Type: Model.Type<T>): T;
 Both exclude base Model members (`get`, `set`, `is`, etc.). `Field` also excludes unmanaged `_` keys - use it for managed state (`Values`, `ref`, `def`, `has`); `Property` for overlays (`Assign`, props):
 
 ```ts
-class MyModel extends Model {
+class FormState extends Model {
   foo = 1; // Property and Field
   _bar = 'hello'; // Property only
   // get(), set(), is, etc. - excluded

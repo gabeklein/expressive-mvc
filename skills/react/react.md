@@ -68,8 +68,8 @@ function App() {
 Same arguments as `Model.new()` - objects, callbacks:
 
 ```tsx
-const state = MyModel.use({ count: 10 });
-const state = MyModel.use((self) => {
+const state = Counter.use({ count: 10 });
+const state = Counter.use((self) => {
   /* init, runs once */
 });
 ```

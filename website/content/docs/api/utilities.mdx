@@ -287,7 +287,7 @@ import { Context } from '@expressive/mvc';
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
 
-const child = ctx.push({ ChildModel });
+const child = ctx.push({ PageControl });
 child.pop();
 ```
 
@@ -343,12 +343,12 @@ The escape hatch for "create now, place later" is the difference between `new Mo
 
 ```ts
 // .new() activates immediately - home is root, locked
-const a = MyModel.new();
+const a = FormState.new();
 new Context(a); // does NOT change a's home
 
-// new MyModel() constructs without the activation event -
+// new FormState() constructs without the activation event -
 // the first explicit Context claims it before init runs
-const b = new MyModel();
+const b = new FormState();
 new Context(b); // b's home is this context
 ```
 

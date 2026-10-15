@@ -11,7 +11,7 @@ Low-level primitive for custom property behavior during initialization. Every ot
 ## Usage
 
 ```ts
-class MyModel extends Model {
+class FormState extends Model {
   custom = def((key, subject, state) => {
     // key: property name (string)
     // subject: the instance
@@ -74,4 +74,4 @@ interface def.Config<T> extends Model.Apply<T> {
 
 ## Child Instance (No Instruction Needed)
 
-Nest instances by direct assignment (`child = new ChildModel()`) - auto-parented, activated, and destroyed with the parent. See [state.md](../state/state.md#child-instances).
+Nest instances by direct assignment (`child = new Child()`) - auto-parented, activated, and destroyed with the parent. See [state.md](../state/state.md#child-instances).

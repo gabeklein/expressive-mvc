@@ -138,7 +138,7 @@ Nest by direct assignment. Children are auto-parented, activated, and destroyed 
 
 ```ts
 class Parent extends Model {
-  child = new ChildModel(); // parented and activated when Parent initializes
+  child = new Child(); // parented and activated when Parent initializes
 }
 ```
 
@@ -179,7 +179,7 @@ Type guard - true if the argument is this class or a subclass.
 
 ```ts
 Counter.is(SubCounter); // true
-Counter.is(OtherModel); // false
+Counter.is(Timer); // false
 ```
 
 ### `Model.on()`

@@ -24,9 +24,9 @@ To choose a home other than root, construct with `new Model()` and place it in t
 const a = MyGlobal.new();
 new Context(a); // does NOT change a's home
 
-// new MyModel() constructs without activating
+// new FormState() constructs without activating
 // - the first explicit Context claims it before init runs
-const b = new MyModel();
+const b = new FormState();
 new Context(b); // b's home is this context
 ```
 
@@ -136,7 +136,7 @@ import { Context } from '@expressive/mvc';
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
 
-const child = ctx.push({ ChildModel });
+const child = ctx.push({ PageControl });
 child.pop(); // destroy child context
 ```
 
