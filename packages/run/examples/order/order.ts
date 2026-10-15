@@ -3,6 +3,8 @@ import { Job } from '@expressive/run';
 import { courier, inventory, mail, stripe, type Cart, type Charge } from './services';
 
 export class SubmitOrder extends Job {
+  static readonly rewind = true;
+
   cart!: Cart;
   charge?: Charge = undefined;
   tracking = '';

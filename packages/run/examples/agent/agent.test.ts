@@ -154,7 +154,7 @@ it('will queue a prompt sent mid-turn', async () => {
   expect(agent.messages.size).toBe(8);
 });
 
-it('will roll back a failing turn', async () => {
+it('will keep what a failing turn committed', async () => {
   const agent = Agent.new({ mode: 'yolo' });
 
   await agent.next('write notes');
@@ -162,8 +162,9 @@ it('will roll back a failing turn', async () => {
   vi.spyOn(model, 'create').mockRejectedValueOnce(new Error('overloaded'));
 
   await expect(agent.next('write tests')).rejects.toThrow('overloaded');
-  expect(agent.messages.size).toBe(4);
-  expect(agent.then.record.map((entry) => [entry.id, entry.undone])).toEqual([['next#1', true]]);
+  expect(agent.messages.size).toBe(5);
+  expect(agent.messages.get(-1)).toEqual({ role: 'user', content: 'write tests' });
+  expect(agent.then.record.map((entry) => [entry.id, entry.wrote, entry.undone])).toEqual([['next#1', ['messages'], undefined]]);
 });
 
 it('will not repeat what a retried tool wrote', async () => {

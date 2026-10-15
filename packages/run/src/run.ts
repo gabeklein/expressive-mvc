@@ -59,9 +59,13 @@ declare namespace Runner {
     id: string;
     key: string;
     args: unknown[];
-    prior: { [key: string]: unknown };
-    patch: { [key: string]: unknown };
     next: Node[];
+    /** Fields the step wrote, collections changed in place included. */
+    wrote: string[];
+    /** With `rewind`: values before the step's first write to each. */
+    prior?: { [key: string]: unknown };
+    /** With `rewind`: values the step left. */
+    patch?: { [key: string]: unknown };
     undo?: 'closure' | Node;
     undone?: true | 'failed';
     /** Id of the wait this step answered. */
@@ -91,6 +95,11 @@ declare namespace Runner {
     attempts: number;
     /** Milliseconds to wait before the next try, given the one that failed. */
     backoff?(attempt: number): number;
+  }
+
+  interface Options {
+    /** Keep `prior`/`patch` per entry; the unwind restores committed steps' fields. */
+    rewind?: boolean;
   }
 
   interface Stop {
@@ -196,14 +205,14 @@ type Runner<T extends State = State> = Runner.Controller<T> & Runner.Thenable<T>
  * returned Runner is the controller - status, journal, result. `next()` starts a run.
  * `_`-prefixed methods are helpers; `before`/`after`-prefixed ones and `back` are hooks.
  */
-function run<T extends State>(self: T): Runner<T> {
+function run<T extends State>(self: T, options: Runner.Options = {}): Runner<T> {
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
     if (onfulfilled && typeof onfulfilled == 'object') throw new Error('then(steps) must be called inside a step.');
 
     return control.settled().then(onfulfilled as any, onrejected as any);
   } as Runner<T>;
 
-  const control = Control.new({ _self: self, _runner: runner });
+  const control = Control.new({ _self: self, _runner: runner, _rewind: options.rewind });
 
   const read: Record<(typeof KEYS)[number], () => unknown> = {
     status: () => control.status,
@@ -287,8 +296,11 @@ function run<T extends State>(self: T): Runner<T> {
  * resolving with the result of `end`. The members below are the contract - each optional.
  */
 class Job extends State {
+  /** Keep `prior`/`patch` per entry and restore committed steps' fields on unwind. */
+  declare static readonly rewind?: boolean;
+
   /** The controller - status, journal, queue, waits; awaiting the instance awaits it. */
-  readonly then = run(this);
+  readonly then = run(this, this.constructor as typeof Job);
 
   /** The entry: starts a run, or queues one while a run is active. Settles with its run. */
   next?(...args: any[]): unknown;
@@ -316,6 +328,7 @@ class Control extends State {
 
   _self!: State;
   _runner!: object;
+  _rewind?: boolean = undefined;
   _steps = new Map<string, Function>();
   _current?: Run = undefined;
 
@@ -601,7 +614,7 @@ class Run extends State {
           this.restore(frame._prior, frame.touched());
           frame.leave();
           Object.assign(frame, { _held: new Map(), _changed: new Set() });
-          this.record.push({ id, key, args, prior: {}, patch: {}, next: [], attempt, error });
+          this.record.push({ id, key, args, next: [], wrote: [], attempt, error });
 
           const delay = frame._retry!.backoff?.(attempt);
 
@@ -702,6 +715,7 @@ class Run extends State {
 
   async unwind() {
     const { control, record } = this;
+    const { _rewind: rewind } = control;
     const entries = record.get() as Runner.Entry[];
 
     for (let i = entries.length - 1; i >= 0; i--) {
@@ -725,8 +739,8 @@ class Run extends State {
           break;
         }
 
-        this.restore(entry.prior, this._held.get(entry.id)!);
-        entry.undone = true;
+        if (rewind) this.restore(entry.prior!, this._held.get(entry.id)!);
+        if (undo || rewind) entry.undone = true;
       } catch (cause) {
         entry.undone = 'failed';
         this._error = cause;
@@ -1042,7 +1056,8 @@ class Frame extends State {
     }
     else if (_lost.size) entry.irreversible = [..._lost];
 
-    run._held.set(id, this.touched());
+    if (run.control._rewind) run._held.set(id, this.touched());
+
     run.record.push(entry);
 
     return entry;
@@ -1050,11 +1065,18 @@ class Frame extends State {
 
   journal(): Runner.Entry {
     const { run, id, key, args, _wrote, _prior, _held, _changed } = this;
-    const values = run.control._self.get() as Record<string, unknown>;
-    const collections = [..._changed].map((key) => [key, _held.get(key)!.prior]);
-    const patch = Object.fromEntries([..._wrote, ..._changed].map((key) => [key, values[key]]));
+    const wrote = [...new Set([..._wrote, ..._changed])];
+    const entry: Runner.Entry = { id, key, args, next: [], wrote };
 
-    return { id, key, args, prior: { ..._prior, ...Object.fromEntries(collections) }, patch, next: [] };
+    if (run.control._rewind) {
+      const values = run.control._self.get() as Record<string, unknown>;
+      const collections = [..._changed].map((key) => [key, _held.get(key)!.prior]);
+
+      entry.prior = { ..._prior, ...Object.fromEntries(collections) };
+      entry.patch = Object.fromEntries(wrote.map((key) => [key, values[key]]));
+    }
+
+    return entry;
   }
 
   hold(key: string, value: Collection) {

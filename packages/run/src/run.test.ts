@@ -42,10 +42,10 @@ describe('steps', () => {
     expect(order).toEqual(['next:1', 'first:2', 'second:3', 'end:3']);
     expect(test.then.status).toBe('idle');
     expect(test.then.record).toEqual([
-      { id: 'next#1', key: 'next', args: [1], prior: {}, patch: {}, next: [{ id: 'first#1', key: 'first', args: [2] }] },
-      { id: 'first#1', key: 'first', args: [2], prior: {}, patch: {}, next: [{ id: 'second#1', key: 'second', args: [3] }] },
-      { id: 'second#1', key: 'second', args: [3], prior: {}, patch: {}, next: [{ id: 'end#1', key: 'end', args: [3] }] },
-      { id: 'end#1', key: 'end', args: [3], prior: {}, patch: {}, next: [] }
+      { id: 'next#1', key: 'next', args: [1], wrote: [], next: [{ id: 'first#1', key: 'first', args: [2] }] },
+      { id: 'first#1', key: 'first', args: [2], wrote: [], next: [{ id: 'second#1', key: 'second', args: [3] }] },
+      { id: 'second#1', key: 'second', args: [3], wrote: [], next: [{ id: 'end#1', key: 'end', args: [3] }] },
+      { id: 'end#1', key: 'end', args: [3], wrote: [], next: [] }
     ]);
   });
 
@@ -204,9 +204,34 @@ describe('steps', () => {
     expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'next#2', 'next#3', 'next#4']);
   });
 
-  it('will record prior and patch of what each step wrote', async () => {
+  it('will record which fields each step wrote', async () => {
     class Test extends State {
       then = run(this);
+      a = 0;
+      b = '';
+
+      next() {
+        this.a = 1;
+        this.first();
+      }
+
+      first() {
+        this.b = 'x';
+        this.a = 2;
+        this.a = 3;
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([['a'], ['b', 'a']]);
+    expect(test.then.record.some((entry) => 'prior' in entry || 'patch' in entry)).toBe(false);
+  });
+
+  it('will record prior and patch with rewind', async () => {
+    class Test extends State {
+      then = run(this, { rewind: true });
       a = 0;
       b = '';
 
@@ -275,7 +300,7 @@ describe('steps', () => {
 
     expect(await test.next()).toEqual({ value: 4 });
     expect(self).toBe(test);
-    expect(test.then.record[0].patch).toEqual({ value: 4 });
+    expect(test.then.record[0].wrote).toEqual(['value']);
   });
 
   it('will not journal writes of a helper', async () => {
@@ -297,7 +322,7 @@ describe('steps', () => {
     const test = Test.new();
 
     expect(await test.next()).toEqual({ value: 4, label: 'doubled' });
-    expect(test.then.record[0]).toMatchObject({ prior: { value: 0 }, patch: { value: 4 } });
+    expect(test.then.record[0].wrote).toEqual(['value']);
   });
 
   it('will pass function fields through', async () => {
@@ -338,7 +363,7 @@ describe('steps', () => {
     test.mode = 'yolo';
 
     expect(await result).toBe('yolo');
-    expect(test.then.record.map((entry) => entry.patch)).toEqual([{}, {}]);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], []]);
   });
 
   it('will type the result from end', async () => {
@@ -532,10 +557,10 @@ describe('groups', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => [entry.key, entry.patch])).toEqual([
-      ['next', {}],
-      ['b', { y: 1 }],
-      ['a', { x: 1 }]
+    expect(test.then.record.map((entry) => [entry.key, entry.wrote])).toEqual([
+      ['next', []],
+      ['b', ['y']],
+      ['a', ['x']]
     ]);
   });
 
@@ -732,10 +757,10 @@ describe('inline', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => [entry.id, entry.patch, entry.next.map((node) => node.id)])).toEqual([
-      ['next#1', {}, ['then#1']],
-      ['then#1', { value: 1 }, ['later#1']],
-      ['later#1', {}, []]
+    expect(test.then.record.map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
+      ['next#1', [], ['then#1']],
+      ['then#1', ['value'], ['later#1']],
+      ['later#1', [], []]
     ]);
   });
 
@@ -1093,7 +1118,7 @@ describe('runs', () => {
     expect(test.then.runs).toBe(2);
     expect(test.then.status).toBe('idle');
     expect(test.then.record).toEqual([
-      { id: 'next#1', key: 'next', args: [2], prior: { count: 1 }, patch: { count: 3 }, next: [] }
+      { id: 'next#1', key: 'next', args: [2], wrote: ['count'], next: [] }
     ]);
   });
 
@@ -1541,7 +1566,7 @@ describe('stop', () => {
     const undo = vi.fn();
 
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       value = 0;
 
       next() {
@@ -1704,7 +1729,7 @@ describe('wait', () => {
     expect(await result).toEqual({ answer: 'yes' });
     expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'reply#1', 'thanks#1', 'later#1']);
     expect(test.then.record[1].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['reply', 'skip'] }]);
-    expect(test.then.record[2]).toMatchObject({ wake: 'wait#1', patch: { answer: 'yes' } });
+    expect(test.then.record[2]).toMatchObject({ wake: 'wait#1', wrote: ['answer'] });
   });
 
   it('will run what follows a wait after its answer', async () => {
@@ -2201,7 +2226,7 @@ describe('wait', () => {
     await result;
 
     expect(test.value).toBe(1);
-    expect(test.then.record.map((entry) => entry.patch)).toEqual([{}, {}]);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], []]);
   });
 
   it('will not have wait on the runner', () => {
@@ -2434,7 +2459,7 @@ describe('watchers', () => {
     const test = Test.new();
 
     await expect(test.next()).rejects.toThrow('watcher');
-    expect(test.value).toBe(0);
+    expect(test.value).toBe(1);
     expect(test.then.waiting).toEqual([]);
     expect(test.then.status).toBe('failed');
   });
@@ -2557,9 +2582,9 @@ describe('retry', () => {
 
     expect(await test.next()).toEqual({ value: 3 });
     expect(test.then.record).toEqual([
-      { id: 'next#1', key: 'next', args: [], prior: {}, patch: {}, next: [], attempt: 1, error: new Error('try 1') },
-      { id: 'next#1', key: 'next', args: [], prior: {}, patch: {}, next: [], attempt: 2, error: new Error('try 2') },
-      { id: 'next#1', key: 'next', args: [], prior: { value: 0 }, patch: { value: 3 }, next: [], attempt: 3 }
+      { id: 'next#1', key: 'next', args: [], wrote: [], next: [], attempt: 1, error: new Error('try 1') },
+      { id: 'next#1', key: 'next', args: [], wrote: [], next: [], attempt: 2, error: new Error('try 2') },
+      { id: 'next#1', key: 'next', args: [], wrote: ['value'], next: [], attempt: 3 }
     ]);
   });
 
@@ -2735,7 +2760,7 @@ describe('hooks', () => {
       ['after', 'ship', 'ship#1', false]
     ]);
     expect(test.value).toBe(2);
-    expect(test.then.record.map((entry) => entry.patch)).toEqual([{}, {}]);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], []]);
   });
 
   it('will not wrap hooks as steps', async () => {
@@ -2808,7 +2833,7 @@ describe('hooks', () => {
     const result = test.next().catch((error: Error) => void order.push(['rejected', error.message]));
 
     await result;
-    expect(order).toEqual(['undo', ['back', 0, 'failed', 'boom'], ['rejected', 'boom']]);
+    expect(order).toEqual(['undo', ['back', 1, 'failed', 'boom'], ['rejected', 'boom']]);
     expect(test.then.record.map((entry) => entry.key)).toEqual(['next']);
   });
 
@@ -2937,11 +2962,48 @@ describe('hooks', () => {
 });
 
 describe('undo', () => {
-  it('will unwind every step in reverse and restore fields', async () => {
+  it('will run undos in reverse and keep committed writes', async () => {
     const order: string[] = [];
 
     class Test extends State {
       then = run(this);
+      a = 0;
+      b = 0;
+      c = 0;
+
+      next() {
+        this.a = 1;
+        this.first();
+        return () => void order.push(`undo next a=${this.a}`);
+      }
+
+      first() {
+        this.b = 2;
+        this.second();
+      }
+
+      second() {
+        this.c = 3;
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(order).toEqual(['undo next a=1']);
+    expect(test.get()).toMatchObject({ a: 1, b: 2, c: 0 });
+    expect(test.then.record.map((entry) => [entry.key, entry.undo, entry.undone])).toEqual([
+      ['next', 'closure', true],
+      ['first', undefined, undefined]
+    ]);
+  });
+
+  it('will unwind every step in reverse and restore fields with rewind', async () => {
+    const order: string[] = [];
+
+    class Test extends State {
+      then = run(this, { rewind: true });
       a = 0;
       b = 0;
       c = 0;
@@ -2976,7 +3038,7 @@ describe('undo', () => {
 
   it('will not roll back writes of a helper', async () => {
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       value = 0;
       count = 0;
 
@@ -3007,7 +3069,7 @@ describe('undo', () => {
     const undo = vi.fn();
 
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       value = 0;
 
       next() {
@@ -3171,7 +3233,7 @@ describe('undo tokens', () => {
     const charge = vi.fn();
 
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       charged = false;
 
       async next() {
@@ -3227,7 +3289,7 @@ describe('undo tokens', () => {
 
   it('will continue the unwind after an answer which does nothing', async () => {
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       value = 0;
 
       async next() {
@@ -3327,7 +3389,7 @@ describe('undo tokens', () => {
     const undo = vi.fn();
 
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       value = 0;
 
       async next() {
@@ -3473,7 +3535,7 @@ describe('collections', () => {
 
   it('will roll back list push, put, pop and set', async () => {
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       items = has(['a', 'b', 'c']);
 
       next() {
@@ -3516,12 +3578,12 @@ describe('collections', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record[0]).toMatchObject({ prior: { count: 0 }, patch: { count: 1 } });
+    expect(test.then.record[0].wrote).toEqual(['count']);
   });
 
   it('will journal a collection in its export form', async () => {
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       items = has(Item);
 
       next(name: string) {
@@ -3552,7 +3614,7 @@ describe('collections', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record[0].patch).toEqual({});
+    expect(test.then.record[0].wrote).toEqual([]);
   });
 
   it('will restore a list before a retry', async () => {
@@ -3574,14 +3636,14 @@ describe('collections', () => {
 
     await test.next();
     expect(test.items.get()).toEqual(['try 2']);
-    expect(test.then.record.map((entry) => entry.patch)).toEqual([{}, { items: ['try 2'] }]);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], ['items']]);
   });
 
   it('will attribute a change to every parallel step reading the list', async () => {
     const gate = mockPromise();
 
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       items = has(['a']);
 
       next() {
@@ -3624,7 +3686,7 @@ describe('collections', () => {
     const second = mockPromise();
 
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       items = has(['a']);
 
       next() {
@@ -3661,7 +3723,7 @@ describe('collections', () => {
 
   it('will roll back a map', async () => {
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       values = map([['a', 1], ['b', 2], ['c', 3]]);
 
       next() {
@@ -3690,7 +3752,7 @@ describe('collections', () => {
     const guest = Item.new({ name: 'guest' });
 
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       values = map<string, Item>([['a', guest]]);
 
       next() {
@@ -3712,7 +3774,7 @@ describe('collections', () => {
 
   it('will remove pool members added by a failed run', async () => {
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       items = has(Item);
 
       protected new() {
@@ -3813,7 +3875,7 @@ describe('irreversible', () => {
     mockWarn();
 
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       items = has(Item);
       value = 0;
 
@@ -3855,7 +3917,7 @@ describe('irreversible', () => {
     const undo = vi.fn();
 
     class Test extends State {
-      then = run(this);
+      then = run(this, { rewind: true });
       items = has(Item);
       values = map((key: string) => new Item({ name: key }));
 
@@ -3948,8 +4010,7 @@ describe('irreversible', () => {
         id: 'next#1',
         key: 'next',
         args: [],
-        prior: { value: 0, items: [{ name: 'a' }] },
-        patch: { value: 1, items: [] },
+        wrote: ['value', 'items'],
         next: [],
         error: new Error('boom'),
         irreversible: ['items'],
@@ -4085,7 +4146,7 @@ describe('failures', () => {
     await test.next();
 
     expect(test.value).toBe(1);
-    expect(test.then.record[0].patch).toEqual({});
+    expect(test.then.record[0].wrote).toEqual([]);
   });
 
   it('will reject when a step keeps working after scheduling', async () => {
@@ -4264,6 +4325,37 @@ describe('Job', () => {
     expectTypeOf(test.next).parameters.toEqualTypeOf<[prompt: string]>();
     await test.next('hi');
     expect(test.prompt).toBe('hi');
+  });
+
+  it('will rewind when the class opts in', async () => {
+    class Light extends Job {
+      value = 0;
+
+      async next() {
+        this.value = 1;
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    class Rewind extends Light {
+      static readonly rewind = true;
+    }
+
+    const light = Light.new();
+    const rewind = Rewind.new();
+
+    await expect(light.next()).rejects.toThrow('boom');
+    await expect(rewind.next()).rejects.toThrow('boom');
+
+    expect(Object.hasOwn(Job, 'rewind')).toBe(false);
+    expect(light.value).toBe(1);
+    expect(light.then.record[0]).not.toHaveProperty('prior');
+    expect(rewind.value).toBe(0);
+    expect(rewind.then.record[0]).toMatchObject({ prior: { value: 0 }, patch: { value: 1 }, undone: true });
   });
 
   it('will not define hooks on the prototype', () => {
