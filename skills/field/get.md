@@ -6,14 +6,14 @@ Runnable source: [`get`](https://expressive.dev/examples/instructions/get) (upst
 import { get } from '@expressive/mvc';
 ```
 
-Fetches another State from the context hierarchy, upstream or downstream.
+Fetches another Model from the context hierarchy, upstream or downstream.
 
 ## Overloads
 
 ### Upstream
 
 ```ts
-class Child extends State {
+class Child extends Model {
   parent = get(ParentState);          // nearest instance; throws if not found
   maybe = get(ParentState, false);    // T | undefined; never throws
 }
@@ -22,7 +22,7 @@ class Child extends State {
 ### Upstream with callback
 
 ```ts
-class Child extends State {
+class Child extends Model {
   parent = get(ParentState, (parent, self) => {
     console.log('found:', parent);
     return () => console.log('detached');
@@ -35,7 +35,7 @@ Receives `(state, subject)`. Runs when the upstream resolves, and again when it 
 ### Downstream collection
 
 ```ts
-class Parent extends State {
+class Parent extends Model {
   children = get(ChildState, true);
   tracked = get(ChildState, true, (child, self) => {
     console.log('registered:', child);
@@ -49,7 +49,7 @@ class Parent extends State {
 ### Downstream single
 
 ```ts
-class Parent extends State {
+class Parent extends Model {
   child = get(ChildState, true, true);   // throws if not found
   maybe = get(ChildState, true, false);  // T | undefined
 }
@@ -60,28 +60,28 @@ One downstream child; updates when a matching child appears or is removed.
 ### Owner
 
 ```ts
-class Child extends State {
-  owner = get(State);         // owning State; throws if none
-  maybe = get(State, false);  // State | undefined
+class Child extends Model {
+  owner = get(Model);         // owning Model; throws if none
+  maybe = get(Model, false);  // Model | undefined
 }
 
-class Parent extends State {
-  owned = get(State, true);   // every State this one owns
+class Parent extends Model {
+  owned = get(Model, true);   // every Model this one owns
 }
 ```
 
-`State` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect the States this one owns directly - not grandchildren, not context descendants; callbacks and the single forms work as for other types. The owner never changes after activation, so `get(State)` is a stable reference, not a subscription.
+`Model` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect the Models this one owns directly - not grandchildren, not context descendants; callbacks and the single forms work as for other types. The owner never changes after activation, so `get(Model)` is a stable reference, not a subscription.
 
 ## Type Signatures
 
 ```ts
-function get<T extends State>(Type: State.Extends<T>, callback?: get.Callback<T>): T;
-function get<T extends State>(Type: State.Extends<T>, required: false): T | undefined;
-function get<T extends State>(Type: State.Extends<T>, downstream: true, callback?: get.Callback<T>): T[];
-function get<T extends State>(Type: State.Extends<T>, downstream: true, single: true): T;
-function get<T extends State>(Type: State.Extends<T>, downstream: true, required: false): T | undefined;
+function get<T extends Model>(Type: Model.Extends<T>, callback?: get.Callback<T>): T;
+function get<T extends Model>(Type: Model.Extends<T>, required: false): T | undefined;
+function get<T extends Model>(Type: Model.Extends<T>, downstream: true, callback?: get.Callback<T>): T[];
+function get<T extends Model>(Type: Model.Extends<T>, downstream: true, single: true): T;
+function get<T extends Model>(Type: Model.Extends<T>, downstream: true, required: false): T | undefined;
 
-type get.Callback<T> = (state: T, subject: State) => void | boolean | (() => void);
+type get.Callback<T> = (state: T, subject: Model) => void | boolean | (() => void);
 ```
 
 ## Behavior

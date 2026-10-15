@@ -12,9 +12,9 @@ Everything on this page comes from `@expressive/mvc` - the core package under ev
 The core package has a main entry and a few subpaths:
 
 ```ts
-// main entry - State and friends
+// main entry - Model and friends
 import {
-  State,
+  Model,
   Component,
   Context,
   def,
@@ -43,9 +43,9 @@ import { accept, replaced } from '@expressive/mvc/hot';
 
 `@expressive/mvc/jsx-runtime` and `/jsx-dev-runtime` also exist, for the JSX transform - you don't import them by hand.
 
-An adapter such as `@expressive/react` is imported once, for its side effect, in your app's entry (`import '@expressive/react'`). Its re-exports of `State`, `Component`, the instructions and friends - and its default export - are deprecated; import those from `@expressive/mvc`. The core package is a peer dependency of the adapter, so install both.
+An adapter such as `@expressive/react` is imported once, for its side effect, in your app's entry (`import '@expressive/react'`). Its re-exports of `Model`, `Component`, the instructions and friends - and its default export - are deprecated; import those from `@expressive/mvc`. The core package is a peer dependency of the adapter, so install both.
 
-> There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `queued` and `capture` - plumbing State itself uses; you'll probably never need them.)
+> There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `queued` and `capture` - plumbing Model itself uses; you'll probably never need them.)
 
 <br />
 
@@ -143,19 +143,19 @@ import { event } from '@expressive/mvc/observable';
 
 event(state, 'my-event');           // key event - same as state.set('my-event')
 event(state, Symbol.for('sync'));   // symbols make good custom events
-event(state);                       // ready event - what State.new() fires after construction
+event(state);                       // ready event - what Model.new() fires after construction
 event(state, null);                 // terminal - same as state.set(null)
 ```
 
 Pass `silent: true` to record a key into the current batch without notifying key listeners immediately.
 
-> `event(target)` with no key is the activation signal itself. This is exactly the difference between `new State()` and `State.new()` - the latter constructs, then calls `event(instance)`.
+> `event(target)` with no key is the activation signal itself. This is exactly the difference between `new Model()` and `Model.new()` - the latter constructs, then calls `event(instance)`.
 
 <br />
 
 ## `touch(target, key, value?)`
 
-Report a read to whichever effect is currently watching. This is how State properties register themselves for tracking - and how a plain class can join in.
+Report a read to whichever effect is currently watching. This is how Model properties register themselves for tracking - and how a plain class can join in.
 
 ```ts
 function touch(from: object, key: any): void;
@@ -191,9 +191,9 @@ const counter = new Counter();
 observer(counter, true);
 ```
 
-Now `watch(counter, ...)` works - no State required. ✨
+Now `watch(counter, ...)` works - no Model required. ✨
 
-This is a headless seam. React components subscribe through [`State.use()` or `State.get()`](/docs/api/hooks), so reaching React with a custom observable means wrapping it in a State; there is no hook that subscribes to an arbitrary object.
+This is a headless seam. React components subscribe through [`Model.use()` or `Model.get()`](/docs/api/hooks), so reaching React with a custom observable means wrapping it in a Model; there is no hook that subscribes to an arbitrary object.
 
 <br />
 
@@ -271,7 +271,7 @@ import { unbind } from '@expressive/mvc';
 const raw = unbind(state.someMethod);
 ```
 
-State auto-binds methods on first access, so you can destructure and pass them around freely. `unbind` reverses that - handy when you need identity comparison against the prototype, or want to re-wrap the raw function.
+Model auto-binds methods on first access, so you can destructure and pass them around freely. `unbind` reverses that - handy when you need identity comparison against the prototype, or want to re-wrap the raw function.
 
 - `state.get('someMethod')` already returns the unbound original, so often you don't need `unbind` at all.
 
@@ -279,7 +279,7 @@ State auto-binds methods on first access, so you can destructure and pass them a
 
 ## `Context`
 
-The hierarchical registry behind `<Component for>` and the `get` instruction. Every active State has a **home context**, assigned at activation, which decides where its `state.get(Type)` lookups originate.
+The hierarchical registry behind `<Component for>` and the `get` instruction. Every active Model has a **home context**, assigned at activation, which decides where its `state.get(Type)` lookups originate.
 
 ```ts
 import { Context } from '@expressive/mvc';
@@ -328,18 +328,18 @@ A state's home is recorded once, at activation, and is permanent.
 
 | Activation path                            | Home becomes     |
 | ------------------------------------------ | ---------------- |
-| `State.new()`                              | `Context.root`   |
+| `Model.new()`                              | `Context.root`   |
 | `new Context(StateClass)`                  | that context     |
-| `new State()` then `new Context(instance)` | that context     |
+| `new Model()` then `new Context(instance)` | that context     |
 | `<Component for={StateClass}>`             | its context      |
 
 > First-wins: once a state has a home, no later context can transfer ownership.
 
-> A bare `State.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when the class declares [`static global`](#root-context-and-globals).
+> A bare `Model.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when the class declares [`static global`](#root-context-and-globals).
 
 ### Construct vs activate
 
-The escape hatch for "create now, place later" is the difference between `new State()` and `State.new()`:
+The escape hatch for "create now, place later" is the difference between `new Model()` and `Model.new()`:
 
 ```ts
 // .new() activates immediately - home is root, locked
@@ -356,10 +356,10 @@ This matters in tests, and in any code which prepares a state before placing it 
 
 ### Child inheritance
 
-State-typed fields join their parent's home context at activation - children don't independently route to root:
+Model-typed fields join their parent's home context at activation - children don't independently route to root:
 
 ```ts
-class Parent extends State {
+class Parent extends Model {
   child = new Child();
 }
 
@@ -371,10 +371,10 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 ### Root context and globals
 
-`Context.root` is a regular `Context` instance serving as the global registry. A state activated by `State.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no provider - when the class declares `static global`:
+`Context.root` is a regular `Context` instance serving as the global registry. A state activated by `Model.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no provider - when the class declares `static global`:
 
 ```ts
-class Theme extends State {
+class Theme extends Model {
   static global = true;
 }
 
@@ -423,7 +423,7 @@ Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component
 Scoped contexts use softer collision semantics: implicit candidates both stay registered, and a lookup at the shared ancestor returns `null` (ambiguous) rather than evicting. Removing one heals it:
 
 ```ts
-class Parent extends State {
+class Parent extends Model {
   foo: Foo | undefined = new Foo();
   bar = new Bar(); // Bar extends Foo
 }
@@ -449,8 +449,8 @@ function replaced(listener: (event: Replaced) => void): () => void;
 interface Replaced {
   id: string;
   name: string;
-  prev: State.Extends;
-  next: State.Extends;
+  prev: Model.Extends;
+  next: Model.Extends;
 }
 ```
 
@@ -464,5 +464,5 @@ The registry is keyed by `id`, so it works wherever edited modules re-run while 
 ## See also
 
 - [Context guide](/docs/guides/context) - the JSX-facing surface: `<Component for>`, `get` instruction, patterns.
-- [State](/docs/api/state) - `set(callback)` and `get(effect)`, the instance-method forms of these helpers.
-- [Hooks](/docs/api/hooks) - `State.use` and `State.get`, the React subscription paths.
+- [Model](/docs/api/state) - `set(callback)` and `get(effect)`, the instance-method forms of these helpers.
+- [Hooks](/docs/api/hooks) - `Model.use` and `Model.get`, the React subscription paths.

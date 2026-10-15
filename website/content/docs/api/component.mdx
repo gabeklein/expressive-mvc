@@ -3,7 +3,7 @@ title: Component
 description: The Component class - every method, prop, and lifecycle hook
 ---
 
-`Component` extends `State` and works directly as a React component - React mounts it as a class component, so it integrates with error boundaries, devtools, refs, and the React tree. The class itself is still a model: fields and getters hold state, and `render` is a projection of it.
+`Component` extends `Model` and works directly as a React component - React mounts it as a class component, so it integrates with error boundaries, devtools, refs, and the React tree. The class itself is still a model: fields and getters hold state, and `render` is a projection of it.
 
 ```tsx
 import { Component } from '@expressive/mvc';
@@ -88,13 +88,13 @@ Error boundary handler. Called with the thrown error and the instance when a chi
 - Without `catch()` (method or attribute), the component has no error boundary - errors propagate.
 - Sync `catch()` triggers immediate retry.
 
-Only render errors arrive here. Lifecycle and effect failures of the instance go to [`State.on({ catch })`](/docs/api/state#error-handling).
+Only render errors arrive here. Lifecycle and effect failures of the instance go to [`Model.on({ catch })`](/docs/api/state#error-handling).
 
 <br />
 
 ## Lifecycle hooks
 
-Component inherits the full State lifecycle. See [State](/docs/api/state) for details.
+Component inherits the full Model lifecycle. See [Model](/docs/api/state) for details.
 
 - `new()` - one-shot setup on activation (runs on the server too), return cleanup.
 - `mount()` - client-only effects, once on commit; return a function to run on unmount. Never runs during server render, nor for an instance placed as `{component}` - a placement does not own what it renders.
@@ -196,9 +196,9 @@ const items = [Item.new({ label: 'First' }), Item.new({ label: 'Second' })];
 
 <br />
 
-## Providing a State: `<Component for>`
+## Providing a Model: `<Component for>`
 
-The bare `Component` class - not a subclass - with a `for` attribute provides one State to its children. This replaces the removed `Provider`.
+The bare `Component` class - not a subclass - with a `for` attribute provides one Model to its children. This replaces the removed `Provider`.
 
 ```tsx
 <Component for={Session} name="Ada" is={(session) => session.load()}>
@@ -208,20 +208,20 @@ The bare `Component` class - not a subclass - with a `for` attribute provides on
 
 | Attribute  | Description                                                                                 |
 | ---------- | ------------------------------------------------------------------------------------------- |
-| `for`      | A State class - constructed, owned, destroyed with the element - or an instance someone else owns |
+| `for`      | A Model class - constructed, owned, destroyed with the element - or an instance someone else owns |
 | `is`       | Called with each instance the element constructs; class only                               |
 | `fallback` | Wraps children in a Suspense boundary; without it, `<Component for>` adds none              |
 | `catch`    | Error boundary for children, `(error, instance)`                                            |
-| `[field]`  | Typed from the provided State; assigned to it on every render                               |
+| `[field]`  | Typed from the provided Model; assigned to it on every render                               |
 
-A provided class's `mount()` runs with the element's; an instance passed in is never mounted or destroyed by it. Changing `for` releases the previous item and provides the next. One State per element - compose several as fields of a parent State. See [Context](/docs/guides/context#providing-with-component-for).
+A provided class's `mount()` runs with the element's; an instance passed in is never mounted or destroyed by it. Changing `for` releases the previous item and provides the next. One Model per element - compose several as fields of a parent Model. See [Context](/docs/guides/context#providing-with-component-for).
 
 <br />
 
 ## TypeScript shape
 
 ```ts
-declare class Component extends State {
+declare class Component extends Model {
   readonly props: Component.Props<this>;
   readonly key: string;
   fallback: Component.Node;
@@ -241,5 +241,5 @@ Props are inferred automatically from state fields plus any `render(props)` decl
 ## See also
 
 - [Components guide](/docs/guides/components) - patterns, subclass composition, children, context.
-- [State](/docs/api/state) - the base class.
-- [Hooks](/docs/api/hooks) - `State.use` and `State.get`.
+- [Model](/docs/api/state) - the base class.
+- [Hooks](/docs/api/hooks) - `Model.use` and `Model.get`.

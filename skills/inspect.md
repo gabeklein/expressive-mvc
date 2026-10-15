@@ -1,17 +1,17 @@
 # Inspect
 
-`@expressive/inspect` - in-process inspector over live State: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
+`@expressive/inspect` - in-process inspector over live Model: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
 
 ## Install
 
 ```ts
-// first import of the app entry, before any State is constructed
+// first import of the app entry, before any Model is constructed
 import '@expressive/inspect/install';
 ```
 
-Attaches to `State` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `State` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build. A value already on `globalThis.__EXPRESSIVE_INSPECT__` of the form `{ record }` is read first, so a driver can arm recording before the page boots ([below](#failure-journal)).
+Attaches to `Model` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `Model` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build. A value already on `globalThis.__EXPRESSIVE_INSPECT__` of the form `{ record }` is read first, so a driver can arm recording before the page boots ([below](#failure-journal)).
 
-Programmatic: `attach(State)` returns detach; `attach(Sub)` scopes to a subclass.
+Programmatic: `attach(Model)` returns detach; `attach(Sub)` scopes to a subclass.
 
 Under Vite, the plugin installs it - see [Vite](#vite).
 
@@ -38,18 +38,18 @@ await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
 await composer.act(work, { until: { 'Composer.status': 'sent' }, timeout: 3000, record: { paths: [] } })
 ```
 
-Ownership is mvc's (`get(State)`): a State constructed into a field, `has` pool, or `map`, or mounted by a host, is that owner's child; a `get(Type)` reference or an already-active instance assigned in is not. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
+Ownership is mvc's (`get(Model)`): a Model constructed into a field, `has` pool, or `map`, or mounted by a host, is that owner's child; a `get(Type)` reference or an already-active instance assigned in is not. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
 `act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s), with a warning that frames may be incomplete.
 
 - `until` - what to wait for first, for work that waits on I/O, where quiet arrives before the change does. Unmet within `timeout`, `act` throws - the error names what never arrived and carries `frames` and `pending`.
   - `{ 'Chat.status': 'ready' }` - each address holds that value, compared as `get` returns it - past its caps (depth 2, 240-char strings) a value never matches, so compare a leaf. Precise everywhere: a loading write doesn't count, a value the step already awaited is met at once, and it reads current values, so the journal's filters don't apply. Prefer it.
-  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). An address naming no State throws right away. So does a `_` key - unmanaged, it emits no frames; use the value form. Under an app's recording filters, the addresses join the window's recording. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself never counts; use the value form there.
+  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). An address naming no Model throws right away. So does a `_` key - unmanaged, it emits no frames; use the value form. Under an app's recording filters, the addresses join the window's recording. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself never counts; use the value form there.
 - `record` - filters for this window instead of the journal's (`{ types: [], paths: [], keys: [] }` records everything); the journal's recording is restored after. Filtered-out events don't count as activity - narrow to exclude a poller or animation loop rather than raising the timeout.
 
 ## Orphans
 
-Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner or holder, or by holding its `static global` slot in the root context. One settled but unclaimed - a render React threw away, a StrictMode twin, a `State.new()` nobody placed - is an orphan; so are its children. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`; label lookups resolve mainline first. `orphans()` lists them; `health()` counts them plus unclaimed instances the collector already reaped. Without a host every instance is mainline.
+Under a host adapter, an activated instance is **claimed** by a host commit (`mount`), by a claimed owner or holder, or by holding its `static global` slot in the root context. One settled but unclaimed - a render React threw away, a StrictMode twin, a `Model.new()` nobody placed - is an orphan; so are its children. Orphans stay out of `models()`, `tree()`, `instances()`, `roots()`; label lookups resolve mainline first. `orphans()` lists them; `health()` counts them plus unclaimed instances the collector already reaped. Without a host every instance is mainline.
 
 ```ts
 inspect.health().orphans            // 54 - a suspended first render left a full tree behind
@@ -57,7 +57,7 @@ inspect.orphans().map((o) => o.type)
 instance.claimed
 ```
 
-Unclaimed instances are held weakly - the inspector never pins an abandoned render in memory. `@expressive/react` destroys an abandoned render's instances once React releases the attempt, so in a production build an orphan that persists is a stray `State.new()` or a host leak. React's development build can keep abandoned attempts reachable - expect orphans there. A rising `collected` with no `destroy` events is a leak the host cleaned up for you.
+Unclaimed instances are held weakly - the inspector never pins an abandoned render in memory. `@expressive/react` destroys an abandoned render's instances once React releases the attempt, so in a production build an orphan that persists is a stray `Model.new()` or a host leak. React's development build can keep abandoned attempts reachable - expect orphans there. A rising `collected` with no `destroy` events is a leak the host cleaned up for you.
 
 ## Health
 
@@ -67,12 +67,12 @@ Check before trusting what inspect shows:
 inspect.health() // { orphans, collected, copies, caught: { Destroyed, Inactive, Getter, Init, Effect } } - also on the bridge and relay
 ```
 
-- `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only States from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it. Counted only where inspect is loaded; a bundle that never imports it goes unseen.
-- `caught` - reports by `kind`, handled or not ([State.on()](state/state.md#stateon)). Inspect's `catch` joins each class as its first instance activates, ahead of app handlers registered before then, and passes each report on - behavior is unchanged. A handler registered on that class afterward runs first; one that handles or replaces a report hides the original. `journal.clear()` zeroes the counts - clear per test to assert on one test's reports.
+- `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only Models from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it. Counted only where inspect is loaded; a bundle that never imports it goes unseen.
+- `caught` - reports by `kind`, handled or not ([Model.on()](state/state.md#stateon)). Inspect's `catch` joins each class as its first instance activates, ahead of app handlers registered before then, and passes each report on - behavior is unchanged. A handler registered on that class afterward runs first; one that handles or replaces a report hides the original. `journal.clear()` zeroes the counts - clear per test to assert on one test's reports.
 
 ## Addresses (across a boundary)
 
-`Type.path` or `Type-id.path`. `Type` is the label (first live instance); the path steps through child States, `Map`s, arrays, objects.
+`Type.path` or `Type-id.path`. `Type` is the label (first live instance); the path steps through child Models, `Map`s, arrays, objects.
 
 ```ts
 inspect.models()                 // flat list with parent ids
@@ -83,9 +83,9 @@ inspect.set('Composer.draft', 'x')
 await inspect.call('Composer.submit', 'x')
 ```
 
-Reads come from stored values, never accessors - no getter, factory, or suspense fires. An unmanaged `_` key reads only when addressed by name; whole-state views omit it. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested States serialize to `{ $ref, $type }` - follow one with `get(`${$ref}.key`)`; caps: strings 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
+Reads come from stored values, never accessors - no getter, factory, or suspense fires. An unmanaged `_` key reads only when addressed by name; whole-state views omit it. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested Models serialize to `{ $ref, $type }` - follow one with `get(`${$ref}.key`)`; caps: strings 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
 
-A selection reads several keys as one snapshot - one synchronous pass, so no write lands between them, unlike separate `get`s over the bridge or relay. `true` takes a value as `get` would; an object picks keys and descends through States (keeping `$ref`), `Map`s and objects, applying to each element of a list (capped at 24). Relay: `["get", "Sidebar", { "status": true }]`.
+A selection reads several keys as one snapshot - one synchronous pass, so no write lands between them, unlike separate `get`s over the bridge or relay. `true` takes a value as `get` would; an object picks keys and descends through Models (keeping `$ref`), `Map`s and objects, applying to each element of a list (capped at 24). Relay: `["get", "Sidebar", { "status": true }]`.
 
 ## Labels and minified builds
 
@@ -121,13 +121,13 @@ Filters OR together; none set records everything. `paths` take a label, `typeId`
 
 A frame is one synchronous batch of writes plus its flush, including writes effects make synchronously during it - the unit React commits. Work an effect defers to a later microtask opens a new frame with `cause` set to the scheduling frame; work deferred to a macrotask starts a new root. Events: `update` (stored key), `event` (custom dispatch), `call` (method, `render` excluded; not recorded for a class first constructed before attach), `destroy`, `caught` (a report, `value: { case, message, stack, handled }` at any level - `case` is its kind; `stack` is the throw site, the write site for `dead`; `handled` is false when the report got past every app handler; a replacement keeps the kind it replaced), `hot` (an HMR update, below). Retains 500 frames.
 
-`hot` events separate state an edit reset from an app bug. On an instance, `key: 'patch'` - its class was hot-patched and the instance survived. Page-level ones carry `id: ''`, `type: 'vite'`: `update` (`value`: module paths) opens each hot update, so a `destroy` in the frames after it is the edit remounting - React Refresh, or dom recreating `State.use()` slots whose order changed; `reload` opens the journal of the page a full reload brought up, `value` the reason - `{ module, class, reason }` when a class could not be patched (`reason`: `'class changed shape'` or `'private members'`), `{ path, triggeredBy }` for Vite's own reloads.
+`hot` events separate state an edit reset from an app bug. On an instance, `key: 'patch'` - its class was hot-patched and the instance survived. Page-level ones carry `id: ''`, `type: 'vite'`: `update` (`value`: module paths) opens each hot update, so a `destroy` in the frames after it is the edit remounting - React Refresh, or dom recreating `Model.use()` slots whose order changed; `reload` opens the journal of the page a full reload brought up, `value` the reason - `{ module, class, reason }` when a class could not be patched (`reason`: `'class changed shape'` or `'private members'`), `{ path, triggeredBy }` for Vite's own reloads.
 
 Bulk analysis belongs outside the page: `export` to a sidecar and query there.
 
-## Testing a State
+## Testing a Model
 
-`act` is the default assertion for State specs - run a mutation, get back what changed:
+`act` is the default assertion for Model specs - run a mutation, get back what changed:
 
 ```ts
 import { attach, find } from '@expressive/inspect';
@@ -163,7 +163,7 @@ Drive input through the UI; assert on the model. Reserve DOM assertions for pres
 
 ## Failure journal
 
-Record from the first State in any browser a driver controls - the app turns it on, so nothing is missed before a test attaches. The Vite plugin covers the dev server only; e2e against a built app (`vite preview`, a production build) needs the inspector in that build. Gate it on a flag the bundler folds, so a production build drops inspect entirely:
+Record from the first Model in any browser a driver controls - the app turns it on, so nothing is missed before a test attaches. The Vite plugin covers the dev server only; e2e against a built app (`vite preview`, a production build) needs the inspector in that build. Gate it on a flag the bundler folds, so a production build drops inspect entirely:
 
 ```ts
 // debug.ts - first import of the app entry; CI builds with `vite build --mode e2e`

@@ -1,13 +1,13 @@
 # `state.get()` - Read & Subscribe
 
-Instance method for reading values, running effects, checking status, and fetching from context - every read-side operation on one verb, dispatched on the first argument's kind (property key, effect function, `null`, State class), each form individually typed (see [design.md](../design.md)).
+Instance method for reading values, running effects, checking status, and fetching from context - every read-side operation on one verb, dispatched on the first argument's kind (property key, effect function, `null`, Model class), each form individually typed (see [design.md](../design.md)).
 
 ## Overloads
 
 ### Export all values
 
 ```ts
-get(): State.Values<this>
+get(): Model.Values<this>
 ```
 
 Returns a frozen plain object of all managed values - including non-enumerable `set()` / `ref` fields; lazy factories and computeds appear once computed. Recursively exports child states; exotic values (ref, etc.) unwrap via their `.get()`. Circular references (parent/child loops) return the same exported object.
@@ -20,7 +20,7 @@ const values = state.get();
 ### Get single property
 
 ```ts
-get<T extends State.Event<this>>(key: T, required?: boolean): State.Value<this, T>
+get<T extends Model.Event<this>>(key: T, required?: boolean): Model.Value<this, T>
 ```
 
 Returns the underlying value; exotic values like `ref.Object` unwrap via `.get()`.
@@ -38,8 +38,8 @@ state.get('method'); // unbound method
 ### Tracked effect
 
 ```ts
-get(effect: State.Effect<this>): State.Release
-get<R>(effect: State.Effect<this, Promise<R>>): State.Release<R>
+get(effect: Model.Effect<this>): Model.Release
+get<R>(effect: Model.Effect<this, Promise<R>>): Model.Release<R>
 ```
 
 Runs `effect` immediately, then again whenever accessed properties change. Returns an unsubscribe function, also awaitable (see **Await the release**).
@@ -57,7 +57,7 @@ const stop = state.get((current, update) => {
 
 - Only reads via the `current` proxy subscribe - not via `this` or method calls.
 - Nested child state properties track deeply (`current.child.value`); replacing a child re-subscribes to the new one.
-- `current.get(Type)` and `current.get(State)` track the same way - reads off the fetched State subscribe.
+- `current.get(Type)` and `current.get(Model)` track the same way - reads off the fetched Model subscribe.
 - Simultaneous updates to several tracked properties produce one re-run.
 
 **Effect return value:**
@@ -113,11 +113,11 @@ const stop = state.get(null, () => console.log('destroyed'));
 ### Fetch from context
 
 ```ts
-get<T extends State>(type: State.Type<T>, required?: true): T
-get<T extends State>(type: State.Type<T>, required: boolean): T | undefined
+get<T extends Model>(type: Model.Type<T>, required?: true): T
+get<T extends Model>(type: Model.Type<T>, required: boolean): T | undefined
 ```
 
-Fetches a State of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
+Fetches a Model of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
 
 ```ts
 const parent = child.get(ParentState);
@@ -127,28 +127,28 @@ const maybe = child.get(ParentState, false);
 ### Subscribe to context
 
 ```ts
-get<T extends State>(type: State.Type<T>, callback: Context.Expect<T>, downstream?: boolean): () => void
+get<T extends Model>(type: Model.Type<T>, callback: Context.Expect<T>, downstream?: boolean): () => void
 ```
 
-Fires `callback` when a State of that type becomes available - immediately if already present. Searches both directions by default; `downstream: true` watches only children, `false` only parents.
+Fires `callback` when a Model of that type becomes available - immediately if already present. Searches both directions by default; `downstream: true` watches only children, `false` only parents.
 
 ### Owner
 
 ```ts
-get(type: typeof State, required?: true): State
-get(type: typeof State, required: boolean): State | undefined
-get(type: typeof State, callback: (child: State) => void | (() => void), downstream: true): () => void
+get(type: typeof Model, required?: true): Model
+get(type: typeof Model, required: boolean): Model | undefined
+get(type: typeof Model, callback: (child: Model) => void | (() => void), downstream: true): () => void
 ```
 
-`State` is never in context - `get(State)` reads ownership instead. An instance's owner is the State that constructed it into a field, `has()` pool or `map()`; failing that, the State its nearest enclosing context was set up for - the Component rendering a host-mounted Component, `use()` instance or `<Provider>`. `<Component for={X}>` owns X. A root, or an instance already active when something held it, has none. Missing throws `"{state} has no owner."`; `false` returns `undefined`.
+`Model` is never in context - `get(Model)` reads ownership instead. An instance's owner is the Model that constructed it into a field, `has()` pool or `map()`; failing that, the Model its nearest enclosing context was set up for - the Component rendering a host-mounted Component, `use()` instance or `<Provider>`. `<Component for={X}>` owns X. A root, or an instance already active when something held it, has none. Missing throws `"{state} has no owner."`; `false` returns `undefined`.
 
-Ownership is fixed at activation: later holders, context pushes and field moves do not change it, and the value is not reactive. Context is where a State registers to be found; ownership is who constructed it - see [context.md](context.md#ownership-vs-context).
+Ownership is fixed at activation: later holders, context pushes and field moves do not change it, and the value is not reactive. Context is where a Model registers to be found; ownership is who constructed it - see [context.md](context.md#ownership-vs-context).
 
-With a callback and `true`, runs per owned State - direct children only, not their descendants - current ones, then each as it activates. A returned function runs when that State is destroyed, including with its owner. Returns a stop function.
+With a callback and `true`, runs per owned Model - direct children only, not their descendants - current ones, then each as it activates. A returned function runs when that Model is destroyed, including with its owner. Returns a stop function.
 
 ```ts
-const owner = child.get(State);
-const stop = scene.get(State, (node) => attach(node), true);
+const owner = child.get(Model);
+const stop = scene.get(Model, (node) => attach(node), true);
 ```
 
 ## Type Signatures
@@ -157,7 +157,7 @@ const stop = scene.get(State, (node) => attach(node), true);
 type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
   this: T,
   current: T,
-  update: readonly State.Event<T>[] | undefined
+  update: readonly Model.Event<T>[] | undefined
 ) => R;
 
 type EffectCallback = (update: boolean | null) => void;

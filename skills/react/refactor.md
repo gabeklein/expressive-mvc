@@ -30,14 +30,14 @@ List the stateful *concerns*, not the hooks: a multi-step workflow, a settings d
 
 Headless - would exist without this UI: network operations, domain rules, cross-view coordination. Display-intrinsic: preview modes, confirmation checkboxes, selections driving one subtree. They go in different classes even when adjacent `useState` calls held them.
 
-## 3. Choose `State`, `Component`, or a plain FC
+## 3. Choose `Model`, `Component`, or a plain FC
 
-- Headless workflow -> `State`, provided via context.
+- Headless workflow -> `Model`, provided via context.
 - Display-intrinsic state -> `Component` owning that subtree, acquiring the workflow through an instruction.
 - Simple presentation -> plain function component.
 
 ```tsx
-export class TransferState extends State {
+export class TransferState extends Model {
   step: WizardStep = 'location';
   busy = false;
   result: GenerateResponse | null = null;
@@ -77,12 +77,12 @@ The forms, by role:
 | Thing | Form |
 |---|---|
 | App / route entrypoint | `Component` - owns construction, catch, fallback, implicit provide |
-| Headless region (query, pool, policy) | `State` field on that entrypoint |
+| Headless region (query, pool, policy) | `Model` field on that entrypoint |
 | Feature that paints | mounted `<Composer />` - never `new Composer()` on a parent |
 | Mount-only ancestor (scroll pin, focus trap) | `Component` without `render()` |
 | Chrome / token frame / zero-state strip | FC that `.get()`s |
 
-`new X()` on a parent is for States and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a State's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the State as a field on the controller that already exists and let sibling views `.get()` it.
+`new X()` on a parent is for Models and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a Model's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the Model as a field on the controller that already exists and let sibling views `.get()` it.
 
 **Anti-pattern - subcomponent overuse.** The sections in `render()` above are freestanding FCs, not PascalCase methods. Subcomponents (`<this.Header />`) are extension points for subclasses. Test: **would a subclass reasonably replace or wrap this renderer?** For ordinary scopes no - a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
 
@@ -141,10 +141,10 @@ Behavior parity does not exempt this step - parity constrains observable behavio
 
 ## 5. Split regions out of fat orchestrators
 
-When a page State still accumulates unrelated clusters after pools - draft fields, lookups, request state, navigation - each becomes its own State owned as a field. Ownership provides implicitly; views bind the region directly:
+When a page Model still accumulates unrelated clusters after pools - draft fields, lookups, request state, navigation - each becomes its own Model owned as a field. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
-class Composer extends State {        // headless region
+class Composer extends Model {        // headless region
   page = get(ComposePage);
   subject = '';
   attachments = has((file: File) => new Attachment({ file }));
@@ -172,7 +172,7 @@ An owned region needs no cross-controller sync - the parent holds and reads the 
 
 A feature region is unpluggable: it owns its pool, display state, and chrome - don't leave the pool or query on the page because the page syncs it. Test each pane, strip, or panel the page mounts: delete its import - does the feature leave whole, pool included? Judge clusters by interaction, not product framing - clusters that never read each other are unrelated even when the product calls them one surface; a shared wire or replica decides sync, not view ownership. Sibling features read each other thru optional context (`get(Other, false)`); siblings don't see each other's context, so the consumer mounts beneath the provider in JSX. Extraction moves concerns off the class, not ownership off the tree: regions stay fields on the entrypoint. Only a shell owning nothing - chrome between entrypoint and features - demotes to an FC (step 3).
 
-Same rule while building: a second concern appearing on a class is the moment it leaves. Bias one concern per State/Component; barrels are deliberate - the page after extraction, a pool owner, a shell that only mounts. Chrome counts: a resize handle's `height`/`resizing`/`beginDrag` parked on Composer fails like a stranded pool. Compose the add-on as a mounted wrapper - the sized thing reads the sizer:
+Same rule while building: a second concern appearing on a class is the moment it leaves. Bias one concern per Model/Component; barrels are deliberate - the page after extraction, a pool owner, a shell that only mounts. Chrome counts: a resize handle's `height`/`resizing`/`beginDrag` parked on Composer fails like a stranded pool. Compose the add-on as a mounted wrapper - the sized thing reads the sizer:
 
 ```tsx
 <Resize>                      {/* owns height, drag, the handle */}
@@ -268,7 +268,7 @@ Reactive fields are assigned directly - do not manufacture setters:
 
 ```tsx
 // Wrong: hook setters mechanically translated
-class TransferState extends State {
+class TransferState extends Model {
   username = '';
 
   setUsername(value: string) {
@@ -313,7 +313,7 @@ A calculation feeding a single view belongs in that view, next to its snapshot:
 
 ```tsx
 // Wrong: display-only value promoted to shared state
-class TransferState extends State {
+class TransferState extends Model {
   get selectedStepIndex() {
     return STEPS.indexOf(this.step);
   }
@@ -529,10 +529,10 @@ The checklist:
 - Is every `has((x) => new Foo({...}))` factory doing work `has(Foo)` wouldn't - transform, rename, multi-argument? *(default)*
 - Are opaque handles (unsubscribe fns, timers, snapshots) unmanaged rather than reactive fields? *(invariant)*
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
-- Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region States, each rendered feature unplugging by one import? *(default)*
+- Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region Models, each rendered feature unplugging by one import? *(default)*
 - Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
 - Is the app/route entrypoint a Component owning replica and regions as fields - `main` only mounting it, no bootstrap `<Component for>`? *(default)*
-- Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, regions held as State fields? *(invariant)*
+- Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, regions held as Model fields? *(invariant)*
 - Does every Component without chrome omit `render()` - no `return this.props.children`? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*

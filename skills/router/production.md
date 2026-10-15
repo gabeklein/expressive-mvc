@@ -1,7 +1,7 @@
 # Router production guide
 
 Companion to [router.md](router.md). The router owns matching, location,
-history, guards, and presentation settlement. Domain `State` owns data,
+history, guards, and presentation settlement. Domain `Model` owns data,
 mutations, caching, retry, and request cancellation.
 
 ## Choose the router
@@ -29,10 +29,10 @@ render(
 router.set(null);
 ```
 
-## Page data belongs to State
+## Page data belongs to Model
 
 No router loaders, actions, fetchers, cache, or revalidation APIs. A page
-`Component` or owned domain `State` reads the nearest Route; a reactive async
+`Component` or owned domain `Model` reads the nearest Route; a reactive async
 field suspends through the Route boundary:
 
 ```tsx
@@ -59,7 +59,7 @@ change recomputes from the new `match`. A zero-argument factory runs once.
 
 Navigation latest-wins guards router state and history, not application
 requests. Abort or generation-check expensive and side-effecting work in its
-owning State. Do not add an async router effect merely to relocate domain work.
+owning Model. Do not add an async router effect merely to relocate domain work.
 
 Use an entry guard for entry policy or redirect/not-found arbitration, not as a
 general loader:

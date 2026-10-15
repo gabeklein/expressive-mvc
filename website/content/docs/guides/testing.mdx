@@ -21,9 +21,9 @@ Samples here use vitest, but nothing is runner-specific - `bun test` and jest re
 
 <br />
 
-## Create with `State.new()`
+## Create with `Model.new()`
 
-Always use `State.new()` in tests, never `new State()`. Only `.new()` activates the instance - properties become reactive and lifecycle hooks run.
+Always use `Model.new()` in tests, never `new Model()`. Only `.new()` activates the instance - properties become reactive and lifecycle hooks run.
 
 ```ts
 const user = UserForm.new(); // empty state
@@ -95,7 +95,7 @@ One idiom, two jobs - it asserts the *shape* of a batched update, and it doubles
 Properties defined with `set(async () => ...)` have a wrinkle: reading one while the promise is pending doesn't return a promise - it **throws** one. That's the suspense mechanism, and it works in plain tests too. Catch the throw and await it:
 
 ```ts
-class Profile extends State {
+class Profile extends Model {
   user = set(async () => fetchUser(this.userId));
 }
 
@@ -113,7 +113,7 @@ The first read kicks off the factory and throws the in-flight promise; awaiting 
 If suspense is more ceremony than the test deserves, define the property with `set(factory, false)` instead - it stays `undefined` while pending rather than throwing:
 
 ```ts
-class Profile extends State {
+class Profile extends Model {
   user = set(async () => fetchUser(this.userId), false);
 }
 
@@ -145,7 +145,7 @@ Now the test decides when the "network" answers:
 test('resolves when the request does', async () => {
   const request = mockPromise<{ name: string }>();
 
-  class Profile extends State {
+  class Profile extends Model {
     user = set(() => request, false);
   }
 
@@ -263,16 +263,16 @@ test('total recomputes from items', async () => {
 For classes that declare `get(OtherState)`, compose the dependency as an owned child - the child finds it through the parent automatically:
 
 ```ts
-class Theme extends State {
+class Theme extends Model {
   color = 'blue';
 }
 
-class Panel extends State {
+class Panel extends Model {
   theme = get(Theme);
 }
 
 test('panel reads theme from parent', () => {
-  class App extends State {
+  class App extends Model {
     theme = new Theme();
     panel = new Panel();
   }
@@ -284,7 +284,7 @@ test('panel reads theme from parent', () => {
 
 ### Cleaning up globals
 
-A module-scope `State.new()` of a [`static global` class](/docs/guides/context#globals-and-the-root-context) registers the instance into the global root context. Without cleanup, a global created in one test file (or at module load) leaks into every test that follows. Reset the root between tests:
+A module-scope `Model.new()` of a [`static global` class](/docs/guides/context#globals-and-the-root-context) registers the instance into the global root context. Without cleanup, a global created in one test file (or at module load) leaks into every test that follows. Reset the root between tests:
 
 ```ts
 import { afterEach } from 'vitest';
@@ -293,7 +293,7 @@ import { Context } from '@expressive/mvc';
 afterEach(() => Context.root.pop());
 ```
 
-`pop()` removes every State registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch globals you won't miss it - the first time one does, you will.
+`pop()` removes every Model registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch globals you won't miss it - the first time one does, you will.
 
 <br />
 
@@ -302,7 +302,7 @@ afterEach(() => Context.root.pop());
 ```ts
 test('cleans up on destroy', () => {
   let cleaned = false;
-  class Timer extends State {
+  class Timer extends Model {
     new() {
       return () => {
         cleaned = true;
@@ -320,9 +320,9 @@ test('cleans up on destroy', () => {
 A write to a destroyed state doesn't throw - the value is stored without dispatch, so a late continuation runs to its end. Each such write is reported to `catch` handlers with kind `dead`, and unhandled it outputs nothing. That silence is right in production, but in tests a repeated late write usually means an interval or subscription outlived its owner. To make the run fail on one, escalate from a handler in your test setup:
 
 ```ts
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-State.on({
+Model.on({
   catch(error) {
     throw error;
   }
@@ -333,7 +333,7 @@ A handler's throw escapes uncaught, as does any report no handler takes. To asse
 
 ```ts
 test('reports a write after destroy', () => {
-  class Clock extends State {
+  class Clock extends Model {
     elapsed = 0;
   }
 
@@ -350,7 +350,7 @@ test('reports a write after destroy', () => {
 });
 ```
 
-`State.on` returns a function removing the handler. Kinds and the default for each are listed under [API: State](/docs/api/state#error-handling).
+`Model.on` returns a function removing the handler. Kinds and the default for each are listed under [API: Model](/docs/api/state#error-handling).
 
 <br />
 
@@ -393,7 +393,7 @@ test('refreshes on update', async () => {
 - **`act()`** - unless a component is actually mounted, there's no renderer to flush.
 - **`@testing-library/react`** - you're not rendering anything.
 - **`jsdom`** - same deal; state classes never touch the DOM on their own.
-- **Mocks for hooks** - State classes don't call hooks. A `use()` method only runs on the `State.use()` hook path, which `.new()` sidesteps entirely.
+- **Mocks for hooks** - Model classes don't call hooks. A `use()` method only runs on the `Model.use()` hook path, which `.new()` sidesteps entirely.
 
 Most of your logic tests end up as plain synchronous functions. That was the point of the classes all along.
 
@@ -401,5 +401,5 @@ Most of your logic tests end up as plain synchronous functions. That was the poi
 
 ## Next
 
-- [API: State](/docs/api/state) - every method on the State base class.
+- [API: Model](/docs/api/state) - every method on the Model base class.
 - [API: Instructions](/docs/api/instructions) - the full surface of `get`, `set`, `ref`, and `def`.

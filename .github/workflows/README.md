@@ -73,7 +73,7 @@ throwaway project outside the repo and executes the probes and consumer app in
 only consumer-shaped check of the built dist, since tests alias the `@expressive`
 scope onto sources. `native-check.ts` is its React Native counterpart: the same
 tarballs into a throwaway Expo app, asserting Metro resolves every published
-subpath for ios and android, `expo export` emits Hermes bytecode, and a `State`
+subpath for ios and android, `expo export` emits Hermes bytecode, and a `Model`
 subclass behaves the same whether Metro keeps native class fields
 (`caller.engine` is `hermes`) or downlevels them to assignment (`jsEngine: jsc`).
 Both sit in `ci:publish` so a failure blocks the publish. `native-check.ts`

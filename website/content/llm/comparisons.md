@@ -13,7 +13,7 @@ Distilled positioning against common React state solutions. The [site comparison
 | **Redux Toolkit** | Single store, slices, dispatched actions | Selector hooks | Reducers via dispatch | `createSelector`; thunks / RTK Query | Very mature, largest ecosystem |
 | **React Context** | Provider value | Whole-provider (every consumer) | `setState` at the provider | `useMemo` by hand | Built into React |
 
-Dimensions where Expressive is structurally different rather than incrementally different: models are plain classes that construct and test without React (`State.new()`, no render harness), context is first-class (`<Component for={Class}>`, `.get()` lookup between models), lifecycle is owned by the model (`new()` with cleanup, destruction cascades), and UI primitives can be built by inheritance (`Component` subclassing with typed props).
+Dimensions where Expressive is structurally different rather than incrementally different: models are plain classes that construct and test without React (`Model.new()`, no render harness), context is first-class (`<Component for={Class}>`, `.get()` lookup between models), lifecycle is owned by the model (`new()` with cleanup, destruction cascades), and UI primitives can be built by inheritance (`Component` subclassing with typed props).
 
 ## Closest relatives
 

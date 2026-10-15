@@ -1,6 +1,6 @@
 ---
 title: Arrays & Collections
-description: Reactive arrays and objects - copy-on-write, manual dispatch, child States, has() and map()
+description: Reactive arrays and objects - copy-on-write, manual dispatch, child Models, has() and map()
 ---
 
 Reactivity in Expressive is keyed to assignment. `this.items = [...]` dispatches an update; `this.items.push(item)` does not - the property still holds the same array, so as far as `===` change detection is concerned, nothing happened.
@@ -14,7 +14,7 @@ That's the trade for cheap, predictable updates, and there are a few good ways t
 The zero-machinery answer. Replace the collection instead of mutating it:
 
 ```ts
-class TodoList extends State {
+class TodoList extends Model {
   items: string[] = [];
 
   add(text: string) {
@@ -36,7 +36,7 @@ Every subscriber of `items` updates, once, at the next flush. For most lists thi
 If you'd rather mutate in place, tell the state about it yourself. `set(key)` dispatches an update event for a property without changing its value:
 
 ```ts
-class TodoList extends State {
+class TodoList extends Model {
   items: string[] = [];
 
   add(text: string) {
@@ -50,12 +50,12 @@ Anything subscribed to `items` re-runs. Granularity is still the whole property 
 
 <br />
 
-## Child States
+## Child Models
 
-When entries have identity and behavior of their own, make them States:
+When entries have identity and behavior of their own, make them Models:
 
 ```ts
-class Item extends State {
+class Item extends Model {
   text = '';
   done = false;
 
@@ -64,7 +64,7 @@ class Item extends State {
   }
 }
 
-class TodoList extends State {
+class TodoList extends Model {
   items = [Item.new({ text: 'Learn Expressive' })];
 
   add(text: string) {
@@ -75,7 +75,7 @@ class TodoList extends State {
 
 The list owns membership (copy-on-write for add/remove); each item owns its fields. A row component subscribing to one `Item` re-renders when *that item* changes, and the list doesn't. [Try it live](/examples/instructions/has).
 
-> Adding and removing still goes through reassignment here - the array itself is ordinary. The per-item reactivity comes from each entry being a State.
+> Adding and removing still goes through reassignment here - the array itself is ordinary. The per-item reactivity comes from each entry being a Model.
 
 <br />
 
@@ -84,9 +84,9 @@ The list owns membership (copy-on-write for add/remove); each item owns its fiel
 For reactivity *inside* the collection - this index changed, that member joined - declare the collection with `has()`:
 
 ```ts
-import { State, has } from '@expressive/mvc';
+import { Model, has } from '@expressive/mvc';
 
-class Game extends State {
+class Game extends Model {
   board = has<string>(Array(9).fill(''));
 
   play(index: number) {
@@ -97,7 +97,7 @@ class Game extends State {
 
 `has()` is a field instruction: it resolves when the hosting state activates, which adopts the collection in the same step. The field is read-only - there is no whole-collection reassignment to lose reactivity to, and no separate value sharing storage with it.
 
-The argument picks the mode. Nothing or an iterable makes an ordered **list** of values, addressed by index. A `State` class or a factory makes a **pool** of members it spawns and owns.
+The argument picks the mode. Nothing or an iterable makes an ordered **list** of values, addressed by index. A `Model` class or a factory makes a **pool** of members it spawns and owns.
 
 ### Lists
 
@@ -120,10 +120,10 @@ Replacing one index notifies that index. Inserting or removing mid-list notifies
 
 ### Pools
 
-When members are owned States, hand `has()` the class (or a factory) instead of values. There is no positional surface - `add(...args)` spawns a member and returns it, and the member itself is the identity for `has`, `delete`, and eviction:
+When members are owned Models, hand `has()` the class (or a factory) instead of values. There is no positional surface - `add(...args)` spawns a member and returns it, and the member itself is the identity for `has`, `delete`, and eviction:
 
 ```ts
-class TodoList extends State {
+class TodoList extends Model {
   todos = has(Item);
 
   protected new() {
@@ -142,7 +142,7 @@ class TodoList extends State {
 When members are keyed by one field, name it after the class and `add` takes just that value:
 
 ```ts
-class Roster extends State {
+class Roster extends Model {
   players = has(Player, 'id');
 
   join(id: string) {
@@ -154,7 +154,7 @@ class Roster extends State {
 A class pool also takes a ready-made member: `add(item)` with a lone instance of the class holds it instead of constructing. That's how a second pool tracks members of a first - say, a selection:
 
 ```ts
-class TodoList extends State {
+class TodoList extends Model {
   todos = has(Item);
   selected = has(Item);
 
@@ -167,19 +167,19 @@ class TodoList extends State {
 A factory gets the final say on what joins. Returning `undefined` or `null` adds nothing (and `add` hands that back), while returning an instance that already exists makes `add` a lookup-or-create:
 
 ```ts
-class Inbox extends State {
+class Inbox extends Model {
   messages = has((dto: MessageDto) =>
     dto.deleted ? undefined : new Message({ info: dto, id: dto.id })
   );
 }
 ```
 
-Ownership follows freshness: a member the pool instantiates, a factory constructs (`new Item()`), or one admitted before activation is owned, and is destroyed when deleted, cleared, or when the owner dies. An already-activated value (`Item.new()`, or a member of another pool) is a guest - held, never destroyed. Either way, a member that dies evicts itself, so a pool never serves a destroyed State.
+Ownership follows freshness: a member the pool instantiates, a factory constructs (`new Item()`), or one admitted before activation is owned, and is destroyed when deleted, cleared, or when the owner dies. An already-activated value (`Item.new()`, or a member of another pool) is a guest - held, never destroyed. Either way, a member that dies evicts itself, so a pool never serves a destroyed Model.
 
 Both modes share a read surface built over iteration - `map(fn)`, `filter(fn)`, `any(fn)`, `all(fn)`, `get(predicate)`:
 
 ```ts
-class TodoList extends State {
+class TodoList extends Model {
   todos = has(Item);
 
   get remaining() {
@@ -197,9 +197,9 @@ class TodoList extends State {
 When entries are addressed by name rather than position, use `map()`:
 
 ```ts
-import { State, map } from '@expressive/mvc';
+import { Model, map } from '@expressive/mvc';
 
-class Form extends State {
+class Form extends Model {
   values = map<string, string>();
 }
 
@@ -218,7 +218,7 @@ form.values.set('name', 'Ada'); // does not - the effect only read email
 Given a factory, a map spawns and owns its values instead, keyed by the factory's first argument:
 
 ```ts
-class Room extends State {
+class Room extends Model {
   people = map((id: string) => new Person({ id }));
 
   join(id: string) {
@@ -228,14 +228,14 @@ class Room extends State {
 }
 ```
 
-Ownership works exactly as it does for a pool - a fresh `State` is adopted and destroyed on delete, clear, or replacement; an already-activated one stays a guest.
+Ownership works exactly as it does for a pool - a fresh `Model` is adopted and destroyed on delete, clear, or replacement; an already-activated one stays a guest.
 
 ### Snapshots
 
-Both instructions expose a `get()` seam with no arguments, and State snapshots use it - the same way they do for `ref` and child states. A list snapshots to a plain array, a map to a `ReadonlyMap`, with nested values exported through their own `get()`:
+Both instructions expose a `get()` seam with no arguments, and Model snapshots use it - the same way they do for `ref` and child states. A list snapshots to a plain array, a map to a `ReadonlyMap`, with nested values exported through their own `get()`:
 
 ```ts
-class Example extends State {
+class Example extends Model {
   list = has([1, 2, 3]);
   keyed = map([['a', 1]]);
 }
@@ -251,21 +251,21 @@ snapshot.keyed.get('a'); // 1
 Neither instruction wraps nested plain arrays or objects:
 
 ```ts
-class Example extends State {
+class Example extends Model {
   keyed = map<string, { value: number }>();
 }
 
 model.keyed.get('a')!.value = 2; // not reactive by itself
 ```
 
-Nesting is what States are for - a child State, `has()`, or `map()` value keeps its own reactivity when reached through the collection:
+Nesting is what Models are for - a child Model, `has()`, or `map()` value keeps its own reactivity when reached through the collection:
 
 ```ts
-class Cell extends State {
+class Cell extends Model {
   value = '';
 }
 
-class Game extends State {
+class Game extends Model {
   cells = has(Cell);
   rows = map((id: string) => new Row(id));
 }

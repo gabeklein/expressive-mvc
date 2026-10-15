@@ -12,7 +12,7 @@ Forms are where state management accumulates the most junk - fields, validation,
 `set(initial, callback)` creates a writable property whose callback runs on every assignment. The callback can reject the update, accept it silently, or schedule follow-up work.
 
 ```tsx
-class LoginForm extends State {
+class LoginForm extends Model {
   email = set('', (value, previous) => {
     if (value.length > 120) throw false; // reject
   });
@@ -38,7 +38,7 @@ class LoginForm extends State {
 Two different jobs, two different tools. A callback **rejects a write** - the value never lands. A computed getter **reports whether what landed is acceptable** - and can drive an error message.
 
 ```tsx
-class SignupForm extends State {
+class SignupForm extends Model {
   // Reject: a hard cap that should never be stored.
   name = set('', (value) => {
     if (value.length > 50) throw false;
@@ -82,7 +82,7 @@ Every getter re-runs whenever a dependency changes, and `submit` reads `valid` l
 Return a cleanup function to cancel in-flight work when the value changes again:
 
 ```tsx
-class Search extends State {
+class Search extends Model {
   query = set('', (value) => {
     const timer = setTimeout(() => this.performSearch(value), 300);
     return () => clearTimeout(timer);
@@ -105,7 +105,7 @@ The same pattern works for abort controllers, observer subscriptions, or any res
 The callback receives the previous value too, so transitions are easy to detect:
 
 ```tsx
-class Field extends State {
+class Field extends Model {
   value = set('', (next, prev) => {
     if (next === '' && prev !== '') throw false; // prevent clearing
   });
@@ -121,7 +121,7 @@ Neither needs library machinery - both are ordinary state.
 **Touched** - mark fields on blur, and gate error display on it so pristine fields stay quiet:
 
 ```tsx
-class SignupForm extends State {
+class SignupForm extends Model {
   email = '';
   touched = {} as Record<string, boolean>;
 
@@ -156,7 +156,7 @@ Reassigning `touched` rather than mutating it is what dispatches the update - th
 **Dirty** - compare against a snapshot taken when the data arrived:
 
 ```tsx
-class ProfileForm extends State {
+class ProfileForm extends Model {
   name = '';
   email = '';
   saved = { name: '', email: '' };
@@ -185,9 +185,9 @@ class ProfileForm extends State {
 The `ref` instruction creates a mutable holder that does **not** trigger re-renders on change. It's the `useRef` equivalent, but declared on the class and wired into the state event stream.
 
 ```tsx
-import { State, ref } from '@expressive/mvc';
+import { Model, ref } from '@expressive/mvc';
 
-class VideoPlayer extends State {
+class VideoPlayer extends Model {
   video = ref<HTMLVideoElement>();
 
   play() {
@@ -226,7 +226,7 @@ Each `ref` object has:
 ### Ref with callback
 
 ```tsx
-class AutoFocus extends State {
+class AutoFocus extends Model {
   input = ref<HTMLInputElement>((el) => {
     el.focus();
     return () => el.blur(); // runs when replaced, including by null on unmount
@@ -247,7 +247,7 @@ node = ref<HTMLElement>((el) => {
 Pass `this` to create ref objects for every enumerable property on the state at once:
 
 ```tsx
-class Form extends State {
+class Form extends Model {
   name = '';
   email = '';
   refs = ref(this);
@@ -258,12 +258,12 @@ form.refs.name.current = 'Alice'; // updates form.name
 form.refs.email; // ref.Object<string>
 ```
 
-Useful for handing ref objects to uncontrolled inputs, or any API that expects `{ current: T }` shapes. Computed getters are included but read-only. It takes a State instance - usually `this`, though another state works too; a plain object throws.
+Useful for handing ref objects to uncontrolled inputs, or any API that expects `{ current: T }` shapes. Computed getters are included but read-only. It takes a Model instance - usually `this`, though another state works too; a plain object throws.
 
 ### Custom ref proxy
 
 ```tsx
-class Form extends State {
+class Form extends Model {
   name = '';
   email = '';
   inputs = ref(this, (key) => createInput(key));
@@ -279,9 +279,9 @@ The map function runs lazily once per key and its result is cached. This is the 
 Putting it together - validation, focus, submission state, all in one class:
 
 ```tsx
-import { State, set, ref } from '@expressive/mvc';
+import { Model, set, ref } from '@expressive/mvc';
 
-class ContactForm extends State {
+class ContactForm extends Model {
   name = set('', (v) => {
     if (v.length > 50) throw false;
   });

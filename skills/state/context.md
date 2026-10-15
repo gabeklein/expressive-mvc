@@ -1,6 +1,6 @@
-# Context - State Discovery & Ownership
+# Context - Model Discovery & Ownership
 
-Hierarchical registry through which State instances find each other. Every active State has a **home context** where its `state.get(Type)` lookups originate.
+Hierarchical registry through which Model instances find each other. Every active Model has a **home context** where its `state.get(Type)` lookups originate.
 
 ## Home Context
 
@@ -8,16 +8,16 @@ Recorded per instance (internal `LOOKUP` map); first explicit claim wins, and no
 
 | Activation path                              | Home becomes     |
 | -------------------------------------------- | ---------------- |
-| `State.new()`                                | `Context.root`   |
+| `Model.new()`                                | `Context.root`   |
 | `new Context(StateClass)`                    | That context     |
-| `new State()` then `new Context(instance)`   | That context     |
+| `new Model()` then `new Context(instance)`   | That context     |
 | `<Component for={StateClass}>`               | Component context |
 
-> A bare `State.new()` resolves its `get()` lookups against root either way, but only *registers* into root - becoming findable by others - when the class opts in with `static global`. Registering is what locks a global's home to root; a private instance only falls back to root, so the first explicit context to claim it later still becomes its home. See [Root Context](#root-context).
+> A bare `Model.new()` resolves its `get()` lookups against root either way, but only *registers* into root - becoming findable by others - when the class opts in with `static global`. Registering is what locks a global's home to root; a private instance only falls back to root, so the first explicit context to claim it later still becomes its home. See [Root Context](#root-context).
 
 ### Construct vs Activate
 
-To choose a home other than root, construct with `new State()` and place it in the same tick:
+To choose a home other than root, construct with `new Model()` and place it in the same tick:
 
 ```ts
 // .new() activates immediately - a global registers to root, home locked
@@ -34,10 +34,10 @@ Matters in tests and in code that prepares a state before placing it in a contex
 
 ### Child Inheritance
 
-State-typed fields join their parent's home context at activation - children follow the parent, not root:
+Model-typed fields join their parent's home context at activation - children follow the parent, not root:
 
 ```ts
-class Parent extends State {
+class Parent extends Model {
   child = new Child();
 }
 
@@ -51,38 +51,38 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 ## Root Context
 
-`Context.root` is the process-global registry; `Context.get(state)` falls back to it when a state has no recorded home. A State *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
+`Context.root` is the process-global registry; `Context.get(state)` falls back to it when a state has no recorded home. A Model *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
 
 ```ts
-class Flags extends State {
+class Flags extends Model {
   static readonly global = true;
 }
 Flags.new();
 Context.root.get(Flags); // the instance
 
-class Private extends State {}
+class Private extends Model {}
 Private.new();
 Context.root.get(Private, false); // undefined - private, not a global
 ```
 
 ### Declaring a global
 
-`static global` is `readonly`, typed `State.Global` - a boolean, or a resolver `(self) => boolean` evaluated at activation (after props apply) to decide per instance or environment.
+`static global` is `readonly`, typed `Model.Global` - a boolean, or a resolver `(self) => boolean` evaluated at activation (after props apply) to decide per instance or environment.
 
 | Declaration                                       | Meaning                                                        |
 | ------------------------------------------------- | -------------------------------------------------------------- |
 | *(none)*                                          | private - reads globals, isn't one                             |
 | `static readonly global = true`                   | global, **sealed** - subclasses inherit the type, can't opt out|
 | `static readonly global = false`                  | not global, a **lockout** - subclasses can't opt in            |
-| `static readonly global: State.Global = true`     | global, but subclasses may re-declare or opt out               |
-| `static readonly global: State.Global = self => …`| conditional - e.g. `() => typeof window !== 'undefined'`        |
+| `static readonly global: Model.Global = true`     | global, but subclasses may re-declare or opt out               |
+| `static readonly global: Model.Global = self => …`| conditional - e.g. `() => typeof window !== 'undefined'`        |
 
 Two rules keep a global deliberate:
 
 - **Re-declare on extend (runtime).** A subclass that would be global purely by inheriting `true` throws on activation; it must re-declare (`true` to keep, `false` to opt out). Checked only where the instance would actually register at root - a `<Component for>`-scoped one never trips it.
 - **Lockout (compile-time).** A bare-literal `false` makes TypeScript reject a subclass `= true` (`TS2417`). Best-effort: a subclass escapes with a resolver (`static global = (() => true) as any`) or a wide cast - the sanctioned "I'm overriding the vendor" move. A plain `any`-cast boolean cannot.
 
-A context-claimed State never consults `global` - an instance provided by `<Component for>` (or any explicit context) is unaffected by it.
+A context-claimed Model never consults `global` - an instance provided by `<Component for>` (or any explicit context) is unaffected by it.
 
 > **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Component for>`. See [Server render](../react/react.md#server-render-ssr--rsc).
 
@@ -147,7 +147,7 @@ child.pop(); // destroy child context
 When two implicit children share an ancestor type, both stay registered and `ctx.get(SharedAncestor)` returns `null` (ambiguous). Removing one heals it:
 
 ```ts
-class Parent extends State {
+class Parent extends Model {
   foo: Foo | undefined = new Foo();
   bar = new Bar(); // Bar extends Foo
 }
@@ -162,7 +162,7 @@ Unlike root - where shadowing a global throws and sibling contests evict permane
 
 ## Providing with Component
 
-Bare `Component` (not a subclass) given `for` provides one State to its children, in any host:
+Bare `Component` (not a subclass) given `for` provides one Model to its children, in any host:
 
 ```tsx
 <Component for={Session} name="Ada" is={(session) => …}>…</Component>  // constructed, owned
@@ -170,29 +170,29 @@ Bare `Component` (not a subclass) given `for` provides one State to its children
 ```
 
 - A class is constructed, owned and destroyed with the element; `is` receives it; its `mount()` runs with the element's, and a replacement class takes over the mount.
-- An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted like a field - `for={new X()}` in render gives a State that lives for one render.
-- Other attributes are typed from the provided State and assign to it on every render.
+- An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted like a field - `for={new X()}` in render gives a Model that lives for one render.
+- Other attributes are typed from the provided Model and assign to it on every render.
 - Changing `for` releases the previous item, then provides the next.
 - No suspense boundary unless `fallback` or `catch` is passed. Bare `<Component>` without `for` keeps `fallback = null`.
-- One item only - several belong to a parent State that owns them as fields (`class Root extends State { theme = new Theme(); router = new BrowserRouter() }`), where they resolve each other as siblings with `get()`. Nesting `<Component for>` elements works but is a smell: the inner State can `get` the outer, not the reverse.
+- One item only - several belong to a parent Model that owns them as fields (`class Root extends Model { theme = new Theme(); router = new BrowserRouter() }`), where they resolve each other as siblings with `get()`. Nesting `<Component for>` elements works but is a smell: the inner Model can `get` the outer, not the reverse.
 
 ## Ownership vs Context
 
-Context is where a State registers to be found; ownership is who constructed it. The two agree for a field child, and diverge whenever registration skips a level:
+Context is where a Model registers to be found; ownership is who constructed it. The two agree for a field child, and diverge whenever registration skips a level:
 
-- A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every State a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
+- A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every Model a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
 - Two siblings of one type are ambiguous to context (`get(Foo)` is `null`) but each has exactly one owner.
 - A host-mounted Component, `use()` instance or `<Component for>` is owned by the Component rendering it, with no field between them.
 
-`state.get(State)` reads the owner and `get(State, true)` lists what a State owns directly; neither consults context. Use a type to find a collaborator; use `State` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
+`state.get(Model)` reads the owner and `get(Model, true)` lists what a Model owns directly; neither consults context. Use a type to find a collaborator; use `Model` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
 
 ```ts
-class Node extends State {
-  parent = get(State, false);   // whoever constructed this Node
+class Node extends Model {
+  parent = get(Model, false);   // whoever constructed this Node
   nodes = has(Node);            // owned - die with this Node
 }
 
-class Scene extends State {
+class Scene extends Model {
   nodes = has(Node);
 }
 
@@ -203,7 +203,7 @@ const b = a.nodes.add();
 b.parent === a;                   // ownership, no type needed
 a.parent === scene;
 a.get(Scene) === scene;           // a type resolves its direct owner too
-scene.get(State, (node) => attach(node), true); // direct members only - a, not b
+scene.get(Model, (node) => attach(node), true); // direct members only - a, not b
 ```
 
 ## API Surface

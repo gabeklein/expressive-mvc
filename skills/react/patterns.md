@@ -98,7 +98,7 @@ Suspense fits load-once data the view cannot render without. Keep explicit `load
 State about a collection entry lives on the entry's class, spawned thru a `has` pool - not id-keyed records or `(id, value)` methods on the page. The factory takes the API payload (DTO in); the page keeps fetch, the pool, and selection *policy*:
 
 ```tsx
-import { State, Component, get, has, set } from '@expressive/mvc';
+import { Model, Component, get, has, set } from '@expressive/mvc';
 
 class Message extends Component {
   info = set<MessageDto>();   // payload stays one subobject - not exploded per key
@@ -204,7 +204,7 @@ class Attachment extends Component {
   render() { /* chip: name, progress, remove */ }
 }
 
-class Composer extends State {
+class Composer extends Model {
   subject = '';
   attachments = has((file: File) => new Attachment({ file }));
 
@@ -222,7 +222,7 @@ The owner coordinates readiness only. A method re-finding a chip by id to feed i
 
 ## Region Controllers
 
-When a page State accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own State owned as a field. Owned fields are States; painting features mount in `render()` as JSX. Unplug test, build-time bias, forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
+When a page Model accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own Model owned as a field. Owned fields are Models; painting features mount in `render()` as JSX. Unplug test, build-time bias, forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
@@ -296,11 +296,11 @@ Assign the working field the moment identity is created. Fresh ids threaded thru
 
 ## Host-Agnostic Model, View Adapter
 
-A class shared across environments (extension host + webview, server + client) stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`. The view-side module re-exports the class and registers `State.on()` once; every instance constructed after that import gets the wiring; hosts never importing the adapter never run it:
+A class shared across environments (extension host + webview, server + client) stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`. The view-side module re-exports the class and registers `Model.on()` once; every instance constructed after that import gets the wiring; hosts never importing the adapter never run it:
 
 ```ts
 // domain/session.ts - loads anywhere
-export class Session extends State {
+export class Session extends Model {
   status = 'idle';
   messages: MessageDto[] = [];
 }
@@ -312,7 +312,7 @@ Session.on({
   setup() {
     const onMessage = (event: MessageEvent<HostToView>) => {
       if (event.data?.type === 'state')
-        this.set(event.data.values as State.Assign<Session>);
+        this.set(event.data.values as Model.Assign<Session>);
     };
 
     window.addEventListener('message', onMessage);
@@ -327,9 +327,9 @@ Construction stays with the consumer - `session = new Session()` on the entrypoi
 ## Context Sharing
 
 ```tsx
-import { State, Component, get } from '@expressive/mvc';
+import { Model, Component, get } from '@expressive/mvc';
 
-class Theme extends State {
+class Theme extends Model {
   color = 'blue';
   toggle() {
     this.color = this.color === 'blue' ? 'red' : 'blue';
@@ -410,7 +410,7 @@ Pure presentation components (a `Metric`, a badge) may still take plain props - 
 The parent owns whether an optional child exists; the child asserts its requirements with `.get(true)` - `SettingsContent` / `SettingsEditor` in [react.md](react.md#required-values--presence-boundaries). Declare the gated field optional (`draft?: T`), not `| null`:
 
 ```tsx
-class SettingsState extends State {
+class SettingsState extends Model {
   draft?: SettingsLocation = undefined;
   saving = false;
 
@@ -455,9 +455,9 @@ class Cart extends Component {
 ## Debounced Search
 
 ```ts
-import { State, set } from '@expressive/mvc';
+import { Model, set } from '@expressive/mvc';
 
-class Search extends State {
+class Search extends Model {
   query = '';
   results: string[] = [];
 
@@ -476,9 +476,9 @@ class Search extends State {
 ## Async Effect - One Request in Flight
 
 ```ts
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Search extends State {
+class Search extends Model {
   query = '';
   results: string[] = [];
 
@@ -498,9 +498,9 @@ class Search extends State {
 ## Await a Pending Value
 
 ```ts
-import { State, set } from '@expressive/mvc';
+import { Model, set } from '@expressive/mvc';
 
-class Invite extends State {
+class Invite extends Model {
   link = set<string>();
   status = 'Not sent';
 
@@ -518,9 +518,9 @@ class Invite extends State {
 ## Downstream Collection
 
 ```tsx
-import { State, Component, get } from '@expressive/mvc';
+import { Model, Component, get } from '@expressive/mvc';
 
-class Tab extends State {
+class Tab extends Model {
   label = '';
   group = get(TabGroup);
 }
@@ -551,13 +551,13 @@ class TabGroup extends Component {
 Register what a Component constructs - rendered children, `use()` instances, pool members - without a type, and release each when it is destroyed:
 
 ```tsx
-import { State, Component } from '@expressive/mvc';
+import { Model, Component } from '@expressive/mvc';
 
 class Layer extends Component {}
 
 class Canvas extends Component {
   new() {
-    return this.get(State, (layer) => {
+    return this.get(Model, (layer) => {
       const id = register(layer);
       return () => unregister(id);
     }, true);
@@ -574,9 +574,9 @@ class Canvas extends Component {
 }
 ```
 
-Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(State)` - see [context.md](../state/context.md#ownership-vs-context).
+Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(Model)` - see [context.md](../state/context.md#ownership-vs-context).
 
-## Refactoring Hooks Into State
+## Refactoring Hooks Into Model
 
 Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in `mount()`, event handlers in methods.
 
@@ -602,9 +602,9 @@ function LayoutBadge() {
 
 ```tsx
 // After: width is the source field, compact is a getter, and resize belongs to Viewport.
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Viewport extends State {
+class Viewport extends Model {
   width = 0;
 
   get compact() {
@@ -632,9 +632,9 @@ function LayoutBadge() {
 ## Effects & Cleanup
 
 ```ts
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Timer extends State {
+class Timer extends Model {
   elapsed = 0;
 
   tick() {
@@ -648,7 +648,7 @@ class Timer extends State {
 }
 ```
 
-## Using State.get() with Computed Hook
+## Using Model.get() with Computed Hook
 
 ```tsx
 function OrderSummary() {

@@ -11,17 +11,17 @@ Low-level primitive for custom property behavior during initialization. Every ot
 ## Usage
 
 ```ts
-class MyState extends State {
+class MyState extends Model {
   custom = def((key, subject, state) => {
     // key: property name (string)
     // subject: the state instance
-    // state: the internal store (State.Values<T>)
+    // state: the internal store (Model.Values<T>)
     return { value: computedValue };
   });
 }
 ```
 
-The factory runs during instance initialization (via `State.on`), after the property's symbol placeholder is deleted.
+The factory runs during instance initialization (via `Model.on`), after the property's symbol placeholder is deleted.
 
 ## Return Values
 
@@ -60,18 +60,18 @@ custom = def<string>((key, subject) => ({
 ```ts
 function def<T>(factory: def.Factory<T>): T;
 
-type def.Factory<T, M extends State> = (
+type def.Factory<T, M extends Model> = (
   this: M,
-  key: Extract<State.Field<M>, string>,
+  key: Extract<Model.Field<M>, string>,
   thisArg: M,
-  state: State.Values<M>
+  state: Model.Values<M>
 ) => def.Config<T> | (() => void) | void;
 
-interface def.Config<T> extends State.Apply<T> {
+interface def.Config<T> extends Model.Apply<T> {
   destroy?: () => void;
 }
 ```
 
-## Child State (No Instruction Needed)
+## Child Model (No Instruction Needed)
 
 Nest states by direct assignment (`child = new ChildState()`) - auto-parented, activated, and destroyed with the parent. See [state.md](../state/state.md#child-states).
