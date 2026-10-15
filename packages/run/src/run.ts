@@ -108,7 +108,8 @@ declare namespace Runner {
   interface Options<T extends State = State> {
     /**
      * The topmost class whose methods are steps and hooks - classes above it stay plain.
-     * The instance must extend it. Default: every class below `State`.
+     * The instance must extend it. Default: the instance's own class only - a runner meant
+     * to be extended passes itself.
      */
     base?: abstract new (...args: any[]) => State;
     /** Keep `prior`/`patch` per entry; the unwind restores committed steps' fields. */
@@ -287,7 +288,7 @@ function run<T extends State>(self: T, options: Runner.Options<T> = {}): Runner<
   event(runner);
 
   const { _hooks: hooks } = control;
-  const top = base && Object.getPrototypeOf(base.prototype);
+  const top = Object.getPrototypeOf(base ? base.prototype : Object.getPrototypeOf(self));
 
   for (let proto = Object.getPrototypeOf(self); proto !== State.prototype && proto !== top; proto = Object.getPrototypeOf(proto))
     for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {

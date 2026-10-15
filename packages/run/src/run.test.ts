@@ -3105,7 +3105,7 @@ describe('hooks', () => {
     const order: string[] = [];
 
     class Parent extends State {
-      then = run(this);
+      then = run(this, { base: Parent });
 
       next() {}
 
@@ -4849,18 +4849,51 @@ describe('base', () => {
     afterShip() {}
   }
 
-  it('will wrap methods above State by default', () => {
+  it('will leave methods above the instance class plain by default', async () => {
     class Sync extends Feed {
       then = run(this);
 
-      async next() {}
+      async next() {
+        this.ship();
+      }
 
-      protected async ship() {}
+      protected async ship() {
+        this.items = this.load();
+      }
     }
 
     const sync = Sync.new();
 
-    expect(sync.load).toBeUndefined();
+    expect(sync.load()).toEqual(['a']);
+    expect(() => sync.exit()).toThrow('exit');
+
+    await sync.next();
+
+    expect(sync.items).toEqual(['a']);
+    expect(sync.then.record.map((entry) => entry.key)).toEqual(['next', 'ship']);
+  });
+
+  it('will wrap only a subclass own methods when extending a runner without base', async () => {
+    class Sync extends State {
+      then = run(this);
+
+      async next() {}
+
+      protected async pull() {}
+    }
+
+    class Paged extends Sync {
+      protected async page() {}
+    }
+
+    const paged = Paged.new() as any;
+
+    expect(paged.pull).toBeInstanceOf(Function);
+    expect(paged.page).toBeUndefined();
+
+    await paged.next();
+
+    expect(paged.then.record).toEqual([]);
   });
 
   it('will leave methods above base plain', async () => {

@@ -7,17 +7,16 @@ export class Feed extends State {
   items = has<Item>();
   cursor = '';
 
-  // above `base`, so a plain method - not a step: a step calls it inline, outside callers too
+  // on a parent class, so a plain method - not a step: a step calls it inline, outside callers too
   known(id: string) {
     return this.items.any((item) => item.id == id);
   }
 }
 
 // Sync already extends Feed, so it cannot extend Job - run(this) is the same runtime as a field.
-// `base: Sync` stops the step walk at Sync; without it Feed's methods would become steps too.
+// Only Sync's own methods are steps; a subclass of Sync would need `base: Sync` to keep them.
 export class Sync extends Feed {
   then = run(this, {
-    base: Sync,
     exit(outcome) {                       // a hook passed as an option, `this` the instance
       if (outcome.status != 'done') this.cursor = '';
     }
