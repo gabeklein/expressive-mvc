@@ -10,6 +10,7 @@ Two tiers. A **runnable** - a `Job`, or any State with `run(this)` - is atomic: 
 - Merge `main` into the trunk as it moves. Core fixes land on `main` as their own PRs - `fix/new-init` (`new()` read when activation reaches it, an own non-enumerable method counting; `Promise<void>` return) is the first; the trunk is based on it.
 - `packages/run/docs/` is the LLM-facing documentation of shipped behavior and the review surface for intent. A PR that pivots behavior updates the docs in the same PR. FEATURE.md stays the agenda. Root `skills/` will later be assembled per module from such folders.
 - `packages/run/examples/<case>/` holds the benchmark classes with their tests - the DX as a user writes it, no runtime internals. Standing exception to the adjacent-test rule, recorded in AGENTS.md.
+- Examples carry light learning comments - an exception to the no-comments rule - and together cover every shipped feature, mapped in [examples/README.md](packages/run/examples/README.md); a PR adding a feature extends an example.
 - The package is `private` until its first release; nothing is exported from a published entry.
 - Trunk commits carry no trailers.
 
@@ -59,7 +60,7 @@ Shipped behavior is documented in [packages/run/docs/](packages/run/docs/README.
 
 ## Benchmarks
 
-Two classes drive design and tests, both green: [SubmitOrder](packages/run/examples/order/order.ts) and [Agent](packages/run/examples/agent/agent.ts), each with mocked services.
+Two classes drive design and tests, both green: [SubmitOrder](packages/run/examples/order/order.ts) and [Agent](packages/run/examples/agent/agent.ts), each with mocked services. [Deploy](packages/run/examples/deploy/deploy.ts) and [Sync](packages/run/examples/sync/sync.ts) cover the rest ([examples/README.md](packages/run/examples/README.md)).
 
 ```ts
 class SubmitOrder extends Job {
@@ -147,7 +148,8 @@ class Agent extends Job {
   protected async tool(call: ToolCall) {
     let allowed = this.mode === 'yolo';
 
-    if (allowed || this.mode === 'auto' && safe(call)) this.exec(call);
+    if (allowed || this.mode === 'auto' && safe(call))
+      this.exec(call);
     else
       this.then(this.allow, this.deny, async (signal) => {
         await delay(MINUTE, { signal });

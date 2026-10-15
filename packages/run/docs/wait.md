@@ -64,7 +64,8 @@ A plain function among a wait's arguments - not a step - is a watcher. It starts
 protected async tool(call: ToolCall) {
   let allowed = this.mode === 'yolo';
 
-  if (allowed || this.mode === 'auto' && safe(call)) this.exec(call);
+  if (allowed || this.mode === 'auto' && safe(call))
+    this.exec(call);
   else
     this.then(this.allow, this.deny, async (signal) => {
       await delay(MINUTE, { signal });
