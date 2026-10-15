@@ -1,10 +1,10 @@
 import './App.css';
 
-import { State, Component, get, has } from '@expressive/mvc';
+import { Model, Component, get, has } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
-    <h1>Nested State</h1>
+    <h1>Nested Model</h1>
     <p>
       A state-typed field is state the parent <em>owns</em>: built with it,
       destroyed with it. <code>new Doc()</code> is the ownership form -{' '}
@@ -24,7 +24,7 @@ export default () => (
   </div>
 );
 
-class Doc extends State {
+class Doc extends Model {
   text = '';
 
   get words() {
@@ -34,7 +34,7 @@ class Doc extends State {
   }
 }
 
-class History extends State {
+class History extends Model {
   entries = has<string>();
 
   record(text: string) {

@@ -1,16 +1,28 @@
 import { Component } from '@expressive/mvc';
-import { State } from './adapter';
+import { Model } from './adapter';
 import * as React from 'react';
 
 import './element';
 import './jsx-runtime';
 
 import { Runtime } from './adapter';
+import { weak } from './runtime';
 import { ErrorBoundary, dedupe } from './boundary';
 
 // React detects class components by this brand (preact reads `prototype.render`).
 Object.defineProperty(Component.prototype, 'isReactComponent', {
   value: true
+});
+
+const FIBER = new WeakMap<Component, { deref(): unknown }>();
+
+Object.defineProperty(Component.prototype, '_reactInternals', {
+  get(this: Component) {
+    return FIBER.get(this)?.deref();
+  },
+  set(this: Component, fiber: object) {
+    FIBER.set(this, weak(fiber));
+  }
 });
 
 Object.assign(Runtime, {
@@ -28,16 +40,15 @@ Object.assign(Runtime, {
   ignore: [
     'updater',
     'refs',
-    '_reactInternals',
     '_reactInternalInstance'
   ]
 });
 
-/** @deprecated Import `State` from `@expressive/mvc`. This re-export will be removed. */
+/** @deprecated Import `{ Model }` from `@expressive/mvc`. This re-export will be removed. */
 export { State } from './adapter';
 
-/** @deprecated Import `{ State }` from `@expressive/mvc`. The default export will be removed. */
-export default State;
+/** @deprecated Import `{ Model }` from `@expressive/mvc`. The default export will be removed. */
+export default Model;
 
 /** @deprecated Import from `@expressive/mvc`. These re-exports will be removed. */
 export { Component, Context, def, get, ref, set, pending } from '@expressive/mvc';

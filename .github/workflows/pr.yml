@@ -33,11 +33,6 @@ jobs:
       - name: Dist is consumable
         run: bun .github/scripts/dist-check.ts
 
-      - name: Bundle size
-        if: github.base_ref == 'main' || github.event.pull_request.stack != null
-        continue-on-error: ${{ github.head_ref != 'changeset-release/main' }}
-        run: bun .github/scripts/size-limit.ts ${{ github.head_ref == 'changeset-release/main' && '--gate' || '' }}
-
       - name: Docs agree with code
         run: bun .github/scripts/docs-check.ts
 
@@ -47,6 +42,19 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
         run: bunx changeset status --since "origin/$BASE"
+
+  size:
+    if: github.base_ref == 'main' || github.event.pull_request.stack != null
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - run: bun run build
+
+      - name: Bundle size
+        run: bun .github/scripts/size-limit.ts --gate
 
   dist-smoke:
     if: >-

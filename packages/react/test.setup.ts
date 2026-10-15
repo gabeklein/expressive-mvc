@@ -1,9 +1,11 @@
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import type { ReactNode } from 'react';
 import type { RenderOptions } from '@testing-library/react';
 import { afterEach, describe, it } from 'vitest';
 import { injectIntoGlobalHook } from 'react-refresh/runtime';
 
-import '../mvc/test.setup';
+import { flushMicrotasks } from '../mvc/test.setup';
 
 if (!('__REACT_DEVTOOLS_GLOBAL_HOOK__' in window)) injectIntoGlobalHook(window);
 
@@ -63,7 +65,20 @@ export function revisions(write: () => void, selector = 'span') {
   return { commits, slow, reveal };
 }
 
-export { mockError, mockPromise, mockWarn, flushMicrotasks } from '../mvc/test.setup';
+export { mockError, mockPromise, mockWarn, flushMicrotasks, suspender } from '../mvc/test.setup';
+
+/** Force garbage collection until finalizers have had a turn to run. */
+export async function collect() {
+  setFlagsFromString('--expose-gc');
+
+  const gc: () => void = runInNewContext('gc');
+
+  for (let i = 0; i < 5; i++) {
+    gc();
+    await flushMicrotasks();
+  }
+}
+
 
 /** React behavior preact lacks - skipped when packages/preact runs this suite. */
 export const reactOnly = { describe, it };

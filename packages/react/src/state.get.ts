@@ -1,12 +1,12 @@
-import { State, Context } from '@expressive/mvc';
+import { Model, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
-import { Runtime, useFactory, useSettle, useSetup } from './runtime';
+import { Runtime, useFactory, useSettle, useSetup, useWeak } from './runtime';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
 
 declare module '@expressive/mvc' {
-  namespace State {
+  namespace Model {
     type ForceRefresh = {
       /** Request a refresh for current component. */
       (): void;
@@ -31,53 +31,54 @@ declare module '@expressive/mvc' {
       <T = void>(invoke: () => Promise<T>): Promise<T>;
     };
 
-    type GetFactory<T extends State, R> = (
+    type GetFactory<T extends Model, R> = (
       this: T,
       current: T,
       refresh: ForceRefresh
     ) => R;
 
-    type GetEffect<T extends State> = (
+    type GetEffect<T extends Model> = (
       this: T,
       current: T,
       refresh: ForceRefresh
     ) => null;
 
     /** Fetch instance of this class from context. */
-    function get<T extends State>(this: State.Extends<T>): T;
+    function get<T extends Model>(this: Model.Extends<T>): T;
 
     /** Fetch instance of this class optionally. */
-    function get<T extends State>(
-      this: State.Extends<T>,
+    function get<T extends Model>(
+      this: Model.Extends<T>,
       required: false
     ): T | undefined;
 
     /** Fetch instance of this class from context. */
-    function get<T extends State>(
-      this: State.Extends<T>,
+    function get<T extends Model>(
+      this: Model.Extends<T>,
       requireValues: true
     ): Required<T>;
 
-    function get<T extends State, R>(
-      this: State.Extends<T>,
+    function get<T extends Model, R>(
+      this: Model.Extends<T>,
       factory: GetFactory<T, Promise<R> | R>
     ): NoVoid<R>;
 
-    function get<T extends State>(
-      this: State.Extends<T>,
+    function get<T extends Model>(
+      this: Model.Extends<T>,
       factory: GetEffect<T>
     ): null;
   }
 }
 
-State.get = function get<T extends State>(
-  this: State.Extends<T>,
-  argument?: boolean | State.GetFactory<T, unknown>
+Model.get = function get<T extends Model>(
+  this: Model.Extends<T>,
+  argument?: boolean | Model.GetFactory<T, unknown>
 ) {
   const Type = this;
   const [tick, next] = Runtime.useState(0);
   const claim = useSettle(tick);
   const local = Context.get();
+  const dispatch = useWeak(next);
   const render = useFactory(() => {
     let unwatch: (() => void) | undefined;
     let mounted = false;
@@ -87,7 +88,7 @@ State.get = function get<T extends State>(
 
     function update() {
       pending = false;
-      next((x) => x + 1);
+      dispatch.deref()!((x) => x + 1);
     }
 
     function observed() {

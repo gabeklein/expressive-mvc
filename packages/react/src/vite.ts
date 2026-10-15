@@ -78,7 +78,7 @@ const browser = (id: string, notes: Record<string, string>, list: string) => `\
   const __before = import.meta.hot.data.expressive;
   const __classes = (import.meta.hot.data.expressive = { ${list} });
   for (const key in __before)
-    if (__classes[key] !== __before[key] && __classes[key]?.prototype instanceof __State) {
+    if (__classes[key] !== __before[key] && __classes[key]?.prototype instanceof __Model) {
       const note = __notes[key];
       if (note)
         try {
@@ -105,14 +105,14 @@ ${replace}
     if (!next) return;
     for (const key in __exports) {
       const after = next[key];
-      if (after !== __exports[key] && !(after?.prototype instanceof __State) && (typeof after != 'function' || !/^[A-Z]/.test(after.name)))
+      if (after !== __exports[key] && !(after?.prototype instanceof __Model) && (typeof after != 'function' || !/^[A-Z]/.test(after.name)))
         return import.meta.hot.invalidate(\`"\${key}" export cannot be hot-patched.\`);
     }
   });
 }`;
 
 /**
- * Bind a module's classes to `hot.accept`. A State class it could not patch
+ * Bind a module's classes to `hot.accept`. A Model class it could not patch
  * reloads the page; after an update, a changed component is left to React
  * Refresh and any other changed export invalidates importers.
  */
@@ -131,7 +131,7 @@ function inject(id: string, body: Node[], ssr = false) {
   const replace = ssr ? server(notes, list) : browser(key, notes, list);
 
   const lines = [
-    `import { State as __State } from '@expressive/mvc';`,
+    `import { Model as __Model } from '@expressive/mvc';`,
     `import { accept as __accept } from '@expressive/mvc/hot';`,
     patchClasses(key, classes),
     acceptUpdates(replace, record.join(', '))
@@ -140,7 +140,7 @@ function inject(id: string, body: Node[], ssr = false) {
   return `\n${lines.join('\n')}\n`;
 }
 
-/** Hot-patch State and Component classes in place during `vite` dev. */
+/** Hot-patch Model and Component classes in place during `vite` dev. */
 export default function expressive(): Plugin {
   let root = '';
   let runtime: Promise<string | null | undefined> | undefined;

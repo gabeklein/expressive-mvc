@@ -2,7 +2,10 @@ import { act, attach, call, clearCaught, detach, find, get, health, Instance, in
 import { journal as base } from './journal';
 import { label, resolve } from './types';
 
-export type { Health, Model, Node } from './inspect';
+export type { Health, ModelInfo, Node } from './inspect';
+
+/** @deprecated Renamed to `ModelInfo`. */
+export type { ModelInfo as Model } from './inspect';
 export type { Event, Frame, Level, Options, Query, Summary } from './journal';
 export type { Act } from './settle';
 export type { Select } from './serialize';

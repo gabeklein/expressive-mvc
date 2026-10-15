@@ -1,6 +1,6 @@
 import { Context } from '../context';
 import { event, listener, touch } from '../observable';
-import { State, parent } from '../state';
+import { Model, parent } from '../state';
 import { def } from './def';
 
 const LENGTH = Symbol('length');
@@ -21,12 +21,12 @@ declare namespace has {
 
 function has<T>(initial?: Iterable<T> | false | null): List<T>;
 
-function has<T extends State>(
-  Type: new (...args: State.Args<T>) => T
+function has<T extends Model>(
+  Type: new (...args: Model.Args<T>) => T
 ): Create<T>;
 
-function has<T extends State, K extends State.Field<T>>(
-  Type: new (...args: State.Args<T>) => T,
+function has<T extends Model, K extends Model.Field<T>>(
+  Type: new (...args: Model.Args<T>) => T,
   fromKey: K
 ): From<T, K>;
 
@@ -61,7 +61,7 @@ class List<T> {
     return touch(this, LENGTH, items<T>(this).length);
   }
 
-  get(): State.Export<T>[];
+  get(): Model.Export<T>[];
   get(index: number): T | undefined;
   get(start: number, end: number): T[];
   get(predicate: Predicate<T>): T | undefined;
@@ -172,12 +172,12 @@ class List<T> {
   }
 }
 
-interface Create<T extends State> extends Pool<T, State.Args<T>> {
-  add(...args: State.Args<T>): T;
+interface Create<T extends Model> extends Pool<T, Model.Args<T>> {
+  add(...args: Model.Args<T>): T;
   add(instance: T): T;
 }
 
-interface From<T extends State, K extends State.Field<T>>
+interface From<T extends Model, K extends Model.Field<T>>
   extends Pool<T, [from: T[K]]> {
   add(from: T[K]): T;
   add(instance: T): T;
@@ -185,10 +185,10 @@ interface From<T extends State, K extends State.Field<T>>
 
 class Pool<T, A extends unknown[] = unknown[], R = T> {
   constructor(make: Function, fromKey?: string) {
-    if (State.is(make)) {
-      const Type = make as unknown as State.Type;
+    if (Model.is(make)) {
+      const Type = make as unknown as Model.Type;
 
-      make = (...args: State.Args) =>
+      make = (...args: Model.Args) =>
         args.length == 1 && args[0] instanceof Type ? args[0] :
         fromKey ? new Type({ [fromKey]: args[0] }) :
         new Type(...args);
@@ -223,7 +223,7 @@ class Pool<T, A extends unknown[] = unknown[], R = T> {
     return made as R;
   }
 
-  get(): State.Export<T>[];
+  get(): Model.Export<T>[];
   get(predicate: Predicate<T>): T | undefined;
   get(predicate?: Predicate<T>): any {
     return predicate
@@ -302,7 +302,7 @@ function adopt(
   key: unknown,
   value: unknown
 ) {
-  if (!(value instanceof State)) return;
+  if (!(value instanceof Model)) return;
 
   const owner = parent(target as object);
   const fresh = parent(value, owner ?? null);

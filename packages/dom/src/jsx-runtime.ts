@@ -1,10 +1,10 @@
 import { Fragment, host } from '@expressive/mvc/jsx-runtime';
-import type { Component, State } from '@expressive/mvc';
+import type { Component, Model } from '@expressive/mvc';
 import type { JSX as Base } from '@expressive/mvc/jsx-runtime';
 
-import { childrenOf, isVNode, vnode } from './vnode';
-import type { Node, VNode } from './vnode';
-import type { Attributes as Loaded, Module } from './loader';
+import { childrenOf, isVNode, vnode } from './node/vnode';
+import type { Node, VNode } from './node/vnode';
+import type { Attributes as Loaded, Module } from './node/loader';
 
 type Words =
   | 'AnimationCancel' | 'AnimationEnd' | 'AnimationIteration' | 'AnimationStart'
@@ -79,15 +79,15 @@ declare module '@expressive/mvc/jsx-runtime' {
     node: Node;
     intrinsics: Intrinsics;
     element: () => PromiseLike<Module>;
-    elementClass: State;
+    elementClass: Model;
   }
 }
 
 declare module '@expressive/mvc' {
-  namespace State {
-    /** JSX attributes of a State with no `props` member: its settable fields, `is`, a boundary, and what `render` accepts. */
-    type Props<T extends State> =
-      & Component.StateProps<T>
+  namespace Model {
+    /** JSX attributes of a Model with no `props` member: its settable fields, `is`, a boundary, and what `render` accepts. */
+    type Props<T extends Model> =
+      & Component.ModelProps<T>
       & {
         is?: (instance: T) => void;
         /** Shown while this element's content is suspended or recovering. `false` opts out. */
@@ -138,20 +138,20 @@ export declare namespace JSX {
     | (() => PromiseLike<Module>)
     | (abstract new (...args: any[]) => ElementClass);
   /**
-   * Any State renders as a class element - one with `render` produces content,
+   * Any Model renders as a class element - one with `render` produces content,
    * one without passes children through and provides itself.
    */
-  interface ElementClass extends State { render?(props?: any): Component.Node }
+  interface ElementClass extends Model { render?(props?: any): Component.Node }
   /**
    * Empty, so a class element's attributes resolve from its instance type and
    * {@link LibraryManagedAttributes} picks `props` when declared, else derives
-   * them from the State.
+   * them from the Model.
    */
   interface ElementAttributesProperty {}
   type LibraryManagedAttributes<C, P> =
     C extends abstract new (...args: any[]) => infer I
       ? P extends { props: infer Q } ? Q
-      : I extends State ? State.Props<I>
+      : I extends Model ? Model.Props<I>
       : P
       : C extends () => PromiseLike<Module<infer T>>
       ? Loaded<T>

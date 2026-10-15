@@ -14,7 +14,7 @@ import './jsx-runtime';
 import type { JSX as DomJSX } from './jsx-runtime';
 import type { JSX } from '@expressive/mvc/jsx-runtime';
 import { jsxDEV } from './jsx-dev-runtime';
-import { isVNode } from './vnode';
+import { isVNode } from './node/vnode';
 
 describe('JSX runtime', () => {
   it('will register DOM element mechanics', () => {

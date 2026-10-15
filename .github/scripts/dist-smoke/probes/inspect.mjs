@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import '@expressive/inspect/install';
-import State from '@expressive/mvc';
+import Model from '@expressive/mvc';
 import { find, journal } from '@expressive/inspect';
 import { inspect } from '@expressive/inspect/bridge';
 import vite from '@expressive/inspect/vite';
 
-class Composer extends State {
+class Composer extends Model {
   draft = '';
   submit(text) { this.draft = text }
 }

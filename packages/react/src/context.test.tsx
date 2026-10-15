@@ -11,7 +11,8 @@ import {
 } from 'vitest';
 
 import { act, render, screen } from '@testing-library/react';
-import { Component, State, Context, get, set } from '.';
+import { Model } from '@expressive/mvc';
+import { Component, Context, get, set } from '.';
 import { flushMicrotasks, preactDiffers } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
@@ -28,10 +29,10 @@ afterEach(() => {
   expect(calls).toEqual([]);
 });
 
-class Foo extends State {
+class Foo extends Model {
   value?: string = undefined;
 }
-class Bar extends State {}
+class Bar extends Model {}
 class Baz extends Bar {}
 
 /** Renders a checker into `wrap`, running `assert` there and proving the checker rendered. */
@@ -45,7 +46,7 @@ function within(assert: () => void, wrap: (check: React.ReactNode) => React.Reac
 
 describe('Component for', () => {
   it('will apply unmanaged _ props alongside is', () => {
-    class Config extends State {
+    class Config extends Model {
       _mode = 'light';
     }
 
@@ -57,10 +58,10 @@ describe('Component for', () => {
   });
 
   it('will release the previous class and pass the next to the current is', () => {
-    class First extends State {}
-    class Second extends State {}
+    class First extends Model {}
+    class Second extends Model {}
 
-    const seen: State[] = [];
+    const seen: Model[] = [];
 
     const element = render(
       <Component for={First} is={(first) => seen.push(first)}>
@@ -82,7 +83,7 @@ describe('Component for', () => {
   it('will destroy from bottom-up', async () => {
     const didDestroy = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       protected new() {
         return () => didDestroy(this.constructor.name);
       }
@@ -107,7 +108,7 @@ describe('Component for', () => {
       const didMount = vi.fn();
       const didUnmount = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         mount() {
           didMount();
           return didUnmount;
@@ -132,7 +133,7 @@ describe('Component for', () => {
     it('will not call for an instance it is given', () => {
       const didMount = vi.fn();
 
-      class Guest extends State {
+      class Guest extends Model {
         mount() {
           didMount();
         }
@@ -155,14 +156,14 @@ describe('Component for', () => {
     it('will hand the mount to a replacement class', () => {
       const events: string[] = [];
 
-      class First extends State {
+      class First extends Model {
         mount() {
           events.push('mount first');
           return () => events.push('release first');
         }
       }
 
-      class Second extends State {
+      class Second extends Model {
         mount() {
           events.push('mount second');
           return () => events.push('release second');
@@ -196,13 +197,13 @@ describe('Component for', () => {
     it('will mount after descendants, as any parent does', () => {
       const order: string[] = [];
 
-      class Outer extends State {
+      class Outer extends Model {
         mount() {
           order.push('provided');
         }
       }
 
-      class Inner extends State {
+      class Inner extends Model {
         mount() {
           order.push('child');
         }
@@ -225,7 +226,7 @@ describe('Component for', () => {
 
   describe('suspense', () => {
     it('will render fallback prop', async () => {
-      class Foo extends State {
+      class Foo extends Model {
         value = set<string>();
       }
 
@@ -249,7 +250,7 @@ describe('Component for', () => {
     });
 
     preactDiffers('will take over from outer suspense when fallback is set', () => {
-      class Foo extends State {
+      class Foo extends Model {
         value = set<string>();
       }
 
@@ -283,7 +284,7 @@ describe('Component for', () => {
     const didCreate = vi.fn();
     const didDestroy = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       value = 'hello';
 
       protected new() {
@@ -394,11 +395,11 @@ describe('context', () => {
 });
 
 describe('get instruction', () => {
-  class Foo extends State {
+  class Foo extends Model {
     bar = get(Bar);
   }
 
-  class Bar extends State {
+  class Bar extends Model {
     value = 'bar';
   }
 
@@ -435,11 +436,11 @@ describe('get instruction', () => {
   });
 
   it('will attach before model init', () => {
-    class Parent extends State {
+    class Parent extends Model {
       foo = 'foo';
     }
 
-    class Child extends State {
+    class Child extends Model {
       parent = get(Parent);
 
       protected new() {
@@ -459,10 +460,10 @@ describe('get instruction', () => {
   });
 
   it('will compute immediately in context', () => {
-    class Foo extends State {
+    class Foo extends Model {
       value = 'foobar';
     }
-    class Bar extends State {
+    class Bar extends Model {
       foo = get(Foo);
     }
 
@@ -480,11 +481,11 @@ describe('get instruction', () => {
 
 describe('has instruction', () => {
   it('will notify parent', () => {
-    class Foo extends State {
+    class Foo extends Model {
       value = get(Bar, true, didGetBar);
     }
 
-    class Bar extends State {
+    class Bar extends Model {
       foo = get(Foo);
     }
 
@@ -505,11 +506,11 @@ describe('has instruction', () => {
   });
 
   it.skip('will notify parent of instance', () => {
-    class Foo extends State {
+    class Foo extends Model {
       value = get(Bar, true, didGetBar);
     }
 
-    class Bar extends State {
+    class Bar extends Model {
       foo = get(Foo);
     }
 
@@ -535,7 +536,7 @@ describe('suspense', () => {
   it('will apply fallback and resolve', async () => {
     let resolve!: (value: string) => void;
 
-    class Test extends State {
+    class Test extends Model {
       value = set(() => new Promise<string>((res) => (resolve = res)));
     }
 
@@ -566,7 +567,7 @@ describe('suspense', () => {
 
 describe('HMR', () => {
   it('will remount context if item removed or replaced', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 'foo';
     }
 
@@ -601,7 +602,7 @@ describe('HMR', () => {
 });
 
 describe('root global', () => {
-  class Global extends State {
+  class Global extends Model {
     static global = true;
     value = 'root';
   }

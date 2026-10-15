@@ -46,9 +46,9 @@ export class Timer extends Component {
   }
 }
 `,
-  'settings.ts': `import { State } from '@expressive/mvc';
+  'settings.ts': `import { Model } from '@expressive/mvc';
 
-export class Settings extends State {
+export class Settings extends Model {
   unit = 's';
 
   format(n: number) {
@@ -71,9 +71,9 @@ export class Clock extends Component {
   }
 }
 `,
-  'child.ts': `import { State } from '@expressive/mvc';
+  'child.ts': `import { Model } from '@expressive/mvc';
 
-export class Child extends State {
+export class Child extends Model {
   value = 1;
 
   label() {
@@ -95,9 +95,9 @@ export class Parent extends Component {
   }
 }
 `,
-  'row.ts': `import { State } from '@expressive/mvc';
+  'row.ts': `import { Model } from '@expressive/mvc';
 
-export class Row extends State {
+export class Row extends Model {
   n = 0;
 
   text() {
@@ -120,9 +120,9 @@ export class List extends Component {
   }
 }
 `,
-  'theme.ts': `import { State } from '@expressive/mvc';
+  'theme.ts': `import { Model } from '@expressive/mvc';
 
-export class Theme extends State {
+export class Theme extends Model {
   hue = 'red';
 
   get label() {
@@ -134,9 +134,9 @@ export class Theme extends State {
 
 export const Themed = () => <p id="themed">view {Theme.get().label}</p>;
 `,
-  'base.ts': `import { State } from '@expressive/mvc';
+  'base.ts': `import { Model } from '@expressive/mvc';
 
-export class Base extends State {
+export class Base extends Model {
   amount = 1;
 
   describe() {
@@ -180,9 +180,9 @@ export class Watcher extends Component {
   }
 }
 `,
-  'models/counter.ts': `import { State } from '@expressive/mvc';
+  'models/counter.ts': `import { Model } from '@expressive/mvc';
 
-export class Counter extends State {
+export class Counter extends Model {
   total = 1;
 
   show() {
@@ -343,13 +343,13 @@ export class Deck extends Component {
   }
 }
 `,
-  'folio.tsx': `import { State } from '@expressive/mvc';
+  'folio.tsx': `import { Model } from '@expressive/mvc';
 
-class Hits extends State {
+class Hits extends Model {
   count = 0;
 }
 
-export class Folio extends State {
+export class Folio extends Model {
   title = 'folio';
 
   Header() {
@@ -418,11 +418,11 @@ export class Stage extends Component {
   }
 }
 `,
-  'labels.ts': `import { State } from '@expressive/mvc';
+  'labels.ts': `import { Model } from '@expressive/mvc';
 
 export const PREFIX = 'note';
 
-export class Note extends State {
+export class Note extends Model {
   count = 1;
 }
 `,
@@ -915,7 +915,7 @@ async function run(mode: Mode) {
       const since = await relay('journal.seq');
       await edit(
         'child.ts',
-        'export class Child', 'export class Spare extends State {\n  on = true;\n}\n\nexport class Child',
+        'export class Child', 'export class Spare extends Model {\n  on = true;\n}\n\nexport class Child',
         "return 'tot ' + this.value;", "return 'add ' + this.value;"
       );
       await see('#child', 'add 8!');
@@ -927,7 +927,7 @@ async function run(mode: Mode) {
       const since = await relay('journal.seq');
       await edit(
         'child.ts',
-        'export class Spare extends State {\n  on = true;\n}\n\n', '',
+        'export class Spare extends Model {\n  on = true;\n}\n\n', '',
         "return 'add ' + this.value;", "return 'less ' + this.value;"
       );
       await see('#child', 'less 8!');
@@ -1010,7 +1010,7 @@ async function run(mode: Mode) {
     });
 
     if (mode == 'dom')
-      await scenario('plain State subcomponent takes an edit, its owner and slots kept (dom)', async () => {
+      await scenario('plain Model subcomponent takes an edit, its owner and slots kept (dom)', async () => {
         await browser.eval(`document.getElementById('folio').click()`);
         await see('#folio', 'folio head 1');
         await edit('folio.tsx', 'head {hits.count}', 'top {hits.count}');
@@ -1128,9 +1128,9 @@ async function server() {
   const results: boolean[] = [];
 
   write(dir, {
-    'base.ts': `import { State } from '@expressive/mvc';
+    'base.ts': `import { Model } from '@expressive/mvc';
 
-export class Base extends State {
+export class Base extends Model {
   a = 1;
 
   hello() {
@@ -1142,10 +1142,10 @@ export class Base extends State {
 `,
     'label.ts': `export const label = 'store';
 `,
-    'store.ts': `import { State } from '@expressive/mvc';
+    'store.ts': `import { Model } from '@expressive/mvc';
 import { limit } from './limit';
 
-export class Store extends State {
+export class Store extends Model {
   max = limit * 2;
   count = 0;
 

@@ -45,9 +45,9 @@ export function Comparison() {
 
 const ExprCode = code /*tsx*/`
   import React from 'react';
-  import { State } from '@expressive/mvc';
+  import { Model } from '@expressive/mvc';
 
-  class FooBarBaz extends State {
+  class FooBarBaz extends Model {
     foo = 0;
     bar = 'hello';
     baz = true;

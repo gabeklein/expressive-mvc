@@ -1,10 +1,10 @@
 /** @jsxRuntime classic */
 /** @jsx createElement */
 /** @jsxFrag Fragment */
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import { Fragment, createElement } from '@expressive/dom';
 
-class Card extends State {
+class Card extends Model {
   title = '';
 }
 

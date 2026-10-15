@@ -1,5 +1,5 @@
 import type React from 'react';
-import State, { ref } from '@expressive/react';
+import Model, { ref } from '@expressive/react';
 import ScrollOverflowControls from './ScrollOverflowControls';
 import code from './Snippet';
 
@@ -17,7 +17,7 @@ interface CompareProps {
 
 const LN = { codeblock: { 'data-line-numbers': true } } as const;
 
-class Control extends State {
+class Control extends Model {
   tab = 0;
   face = 0;
   canScrollTabsLeft = false;

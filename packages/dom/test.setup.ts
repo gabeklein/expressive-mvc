@@ -1,9 +1,9 @@
 import { afterEach, vi } from 'vitest';
-import type { Component, State } from '@expressive/mvc';
+import type { Component, Model } from '@expressive/mvc';
 
 import { mockPromise } from '../mvc/test.setup';
-import { render } from './src/render';
-import { vnode } from './src/vnode';
+import { render } from './src/render/render';
+import { vnode } from './src/node/vnode';
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -13,7 +13,7 @@ export { mockError, mockPromise, mockWarn, flushMicrotasks } from '../mvc/test.s
 
 export const until = <T>(assert: () => T) => vi.waitFor(assert, { interval: 1 });
 
-export function mount<T extends State>(
+export function mount<T extends Model>(
   Type: new (...args: any[]) => T,
   props?: object,
   root: HTMLElement = document.createElement('main')

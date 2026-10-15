@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, State } from '@expressive/mvc';
+import { Component, Model } from '@expressive/mvc';
 import { hot } from './hot';
-import { render, style } from './index';
-import { flushMicrotasks } from '../test.setup';
+import { render, style } from '../index';
+import { flushMicrotasks } from '../../test.setup';
 
 let count = 0;
 const module = () => `module-${count++}`;
@@ -15,11 +15,11 @@ function mount(node: Component.Node) {
   return root;
 }
 
-class Counter extends State {
+class Counter extends Model {
   value = 1;
 }
 
-class Other extends State {
+class Other extends Model {
   label = 'other';
 }
 
@@ -68,7 +68,7 @@ describe('hot', () => {
     const Before = version('before');
     const After = version('after');
 
-    class Host extends State {
+    class Host extends Model {
       view = Before;
     }
 
@@ -92,11 +92,11 @@ describe('hot', () => {
   it.each([
     ['whose order changed', () => <b>{Other.use().label}</b>, 'other'],
     ['no longer called', () => <b>after</b>, 'after']
-  ])('will replace State.use() slots %s', async (_, After, text) => {
+  ])('will replace Model.use() slots %s', async (_, After, text) => {
     const id = module();
     const destroyed = vi.fn();
 
-    class Tracked extends State {
+    class Tracked extends Model {
       new() {
         return destroyed;
       }
