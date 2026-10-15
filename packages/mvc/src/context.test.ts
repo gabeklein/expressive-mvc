@@ -1,8 +1,8 @@
 import { vi, describe, it, expect } from 'vitest';
 import { Context } from './context';
-import { State } from './state';
+import { Model } from './state';
 
-class Example extends State {}
+class Example extends Model {}
 class Example2 extends Example {}
 
 it('will add or create instance in context', () => {
@@ -26,9 +26,9 @@ it("will throw if context doesn't exist", () => {
   expect(() => new Context().get(Example)).toThrow('Could not find Example in context.');
 });
 
-it('will not create base State', () => {
+it('will not create base Model', () => {
   // @ts-expect-error
-  expect(() => new Context(State)).toThrow('Cannot create base State.');
+  expect(() => new Context(Model)).toThrow('Cannot create base Model.');
 });
 
 it('will access upstream controller', () => {
@@ -51,7 +51,7 @@ it('will return undefined if not required', () => {
 });
 
 it('will remove implicit children on pop', () => {
-  class Parent extends State {
+  class Parent extends Model {
     child = new Example();
   }
 
@@ -68,7 +68,7 @@ it('will remove implicit children on pop', () => {
 it('will not double-destroy when child pops before parent', () => {
   const destroyed = vi.fn();
 
-  class Test extends State {
+  class Test extends Model {
     protected new() {
       return destroyed;
     }
@@ -87,8 +87,8 @@ it('will not double-destroy when child pops before parent', () => {
 });
 
 it('will register children implicitly', () => {
-  class Foo extends State {}
-  class Bar extends State {
+  class Foo extends Model {}
+  class Bar extends Model {
     foo = new Foo();
   }
 
@@ -100,12 +100,12 @@ it('will register children implicitly', () => {
 });
 
 it('will drop implicit child when property is overwritten', () => {
-  class Foo extends State {}
+  class Foo extends Model {}
 
   const foo1 = new Foo();
   const foo2 = new Foo();
 
-  class Parent extends State {
+  class Parent extends Model {
     child: Foo = foo1;
   }
 
@@ -120,9 +120,9 @@ it('will drop implicit child when property is overwritten', () => {
 });
 
 it('will drop a child held before the parent joined context', async () => {
-  class Foo extends State {}
+  class Foo extends Model {}
 
-  class Parent extends State {
+  class Parent extends Model {
     child?: Foo = undefined;
   }
 
@@ -143,12 +143,12 @@ it('will drop a child held before the parent joined context', async () => {
 });
 
 it('will notify downstream subscriber when implicit child is replaced', () => {
-  class Foo extends State {}
+  class Foo extends Model {}
 
   const foo1 = new Foo();
   const foo2 = new Foo();
 
-  class Parent extends State {
+  class Parent extends Model {
     child: Foo = foo1;
   }
 
@@ -167,12 +167,12 @@ it('will notify downstream subscriber when implicit child is replaced', () => {
 });
 
 it('will not add stale implicit if property changes before context attaches', () => {
-  class Foo extends State {}
+  class Foo extends Model {}
 
   const foo1 = new Foo();
   const foo2 = new Foo();
 
-  class Parent extends State {
+  class Parent extends Model {
     child: Foo = foo1;
   }
 
@@ -186,10 +186,10 @@ it('will not add stale implicit if property changes before context attaches', ()
 });
 
 it('will collide implicit children with shared ancestor', () => {
-  class Foo extends State {}
+  class Foo extends Model {}
   class Bar extends Foo {}
 
-  class Parent extends State {
+  class Parent extends Model {
     foo = new Foo();
     bar = new Bar();
   }
@@ -201,10 +201,10 @@ it('will collide implicit children with shared ancestor', () => {
 });
 
 it('will uncollide when one implicit child is removed', () => {
-  class Foo extends State {}
+  class Foo extends Model {}
   class Bar extends Foo {}
 
-  class Parent extends State {
+  class Parent extends Model {
     foo: Foo | undefined = new Foo();
     bar = new Bar();
   }
@@ -220,7 +220,7 @@ it('will uncollide when one implicit child is removed', () => {
 });
 
 it('will clear consume and provide on pop', () => {
-  class Foo extends State {}
+  class Foo extends Model {}
 
   const parent = new Context();
   const child = parent.push();
@@ -240,7 +240,7 @@ it('will clear consume and provide on pop', () => {
 it('will pop child context', () => {
   let order = 0;
 
-  class Test extends State {
+  class Test extends Model {
     protected new() {
       return () => didDestroy(++order, this.constructor.name);
     }
@@ -261,27 +261,27 @@ it('will pop child context', () => {
 });
 
 describe('has method', () => {
-  class DownstreamState extends State {}
+  class DownstreamModel extends Model {}
 
   it('will call callback when type is added downstream', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    context.get(DownstreamState, cb, true);
-    context.push(DownstreamState);
+    context.get(DownstreamModel, cb, true);
+    context.push(DownstreamModel);
 
     expect(cb).toBeCalledTimes(1);
-    expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamState);
+    expect(cb.mock.calls[0][0]).toBeInstanceOf(DownstreamModel);
   });
 
   it('will clean up callback on cancel', () => {
     const context = new Context();
     const cb = vi.fn();
 
-    const cancel = context.get(DownstreamState, cb, true);
-    context.push(DownstreamState);
+    const cancel = context.get(DownstreamModel, cb, true);
+    context.push(DownstreamModel);
     cancel();
-    context.push(DownstreamState);
+    context.push(DownstreamModel);
 
     expect(cb).toBeCalledTimes(1);
   });
@@ -291,9 +291,9 @@ describe('has method', () => {
     const cleanup = vi.fn();
     const cb = vi.fn(() => cleanup);
 
-    context.get(DownstreamState, cb, true);
+    context.get(DownstreamModel, cb, true);
 
-    const child = context.push(DownstreamState);
+    const child = context.push(DownstreamModel);
 
     child.pop();
 
@@ -303,10 +303,10 @@ describe('has method', () => {
 
   it('will call callback for existing and new downstream states, flagged downstream', () => {
     const context = new Context();
-    const existing = [context.push(DownstreamState), context.push(DownstreamState)].map((child) => child.get(DownstreamState));
+    const existing = [context.push(DownstreamModel), context.push(DownstreamModel)].map((child) => child.get(DownstreamModel));
     const cb = vi.fn();
 
-    context.get(DownstreamState, cb, true);
+    context.get(DownstreamModel, cb, true);
 
     expect(cb).toBeCalledTimes(2);
     existing.forEach((state, i) => {
@@ -314,10 +314,10 @@ describe('has method', () => {
       expect(cb.mock.calls[i][1]).toBe(true);
     });
 
-    context.push(DownstreamState);
+    context.push(DownstreamModel);
 
     expect(cb).toBeCalledTimes(3);
-    expect(cb).toHaveBeenLastCalledWith(expect.any(DownstreamState), true);
+    expect(cb).toHaveBeenLastCalledWith(expect.any(DownstreamModel), true);
   });
 
   it('will notify has-subscriber for state created before context', () => {
@@ -325,9 +325,9 @@ describe('has method', () => {
     const child = parent.push();
     const cb = vi.fn();
 
-    parent.get(DownstreamState, cb, true);
+    parent.get(DownstreamModel, cb, true);
 
-    const state = DownstreamState.new();
+    const state = DownstreamModel.new();
 
     child.set(state);
 
@@ -337,7 +337,7 @@ describe('has method', () => {
 });
 
 describe('get callback (upstream subscription)', () => {
-  class Upstream extends State {}
+  class Upstream extends Model {}
 
   it('will call callback when type is added to parent, flagged upstream', () => {
     const parent = new Context();
@@ -410,7 +410,7 @@ describe('get callback (upstream subscription)', () => {
 });
 
 describe('context helper', () => {
-  class Test extends State {}
+  class Test extends Model {}
 
   it('will get context', () => {
     const test = new Test();
@@ -437,8 +437,8 @@ describe('context helper', () => {
 
 describe('set method', () => {
   it('will register multiple', () => {
-    class Foo extends State {}
-    class Bar extends State {}
+    class Foo extends Model {}
+    class Bar extends Model {}
 
     const foo = Foo.new();
     const bar = Bar.new();
@@ -471,8 +471,8 @@ describe('set method', () => {
   });
 
   it('will prefer explicit over implicit', () => {
-    class Foo extends State {}
-    class Bar extends State {
+    class Foo extends Model {}
+    class Bar extends Model {
       foo = new Foo();
     }
 
@@ -488,15 +488,15 @@ describe('set method', () => {
   });
 
   it('will keep child in context if still referenced by another parent', () => {
-    class Foo extends State {}
+    class Foo extends Model {}
 
     const shared = new Foo();
 
-    class ParentA extends State {
+    class ParentA extends Model {
       child: Foo | undefined = shared;
     }
 
-    class ParentB extends State {
+    class ParentB extends Model {
       child: Foo | undefined = shared;
     }
 
@@ -514,7 +514,7 @@ describe('set method', () => {
   });
 
   it('will destroy state created by layer', () => {
-    class Test extends State {
+    class Test extends Model {
       destroyed = vi.fn();
 
       new() {
@@ -541,11 +541,11 @@ describe('set method', () => {
     expect(test3.destroyed).toBeCalled();
   });
 
-  it('will throw on base State include', () => {
+  it('will throw on base Model include', () => {
     const context = new Context();
 
     // @ts-ignore
-    expect(() => context.set({ State })).toThrow('Cannot create base State.');
+    expect(() => context.set({ Model })).toThrow('Cannot create base Model.');
   });
 
   it.each([
@@ -553,11 +553,11 @@ describe('set method', () => {
     ['will throw on bad include property (no alias)', { [0]: { toString: () => 'Thing' } }, ' but got Thing.']
   ])('%s', (_, include, message) => {
     // @ts-ignore
-    expect(() => new Context().set(include)).toThrow('Context can only include an instance or class of State' + message);
+    expect(() => new Context().set(include)).toThrow('Context can only include an instance or class of Model' + message);
   });
 
   it('will remove implicit children when parent removed via set', () => {
-    class Parent extends State {
+    class Parent extends Model {
       child = new Example();
     }
 
@@ -573,7 +573,7 @@ describe('set method', () => {
   });
 
   it('will remove multiple implicit children when parent is removed', () => {
-    class Parent extends State {
+    class Parent extends Model {
       a = new Example();
       b = new Example2();
     }
@@ -590,8 +590,8 @@ describe('set method', () => {
   });
 
   it('will callback once per unique added', () => {
-    class Foo extends State {}
-    class Bar extends State {}
+    class Foo extends Model {}
+    class Bar extends Model {}
 
     const foo = Foo.new();
     const bar = Bar.new();
@@ -618,7 +618,7 @@ describe('set method', () => {
   });
 
   it('will ignore subsequent if callback', () => {
-    class Foo extends State {}
+    class Foo extends Model {}
 
     const cb = vi.fn();
     const context = new Context();
@@ -631,7 +631,7 @@ describe('set method', () => {
   });
 
   it('will remove and delete state of type absent', () => {
-    class Bar extends State {
+    class Bar extends Model {
       didDie = vi.fn();
 
       protected new() {
@@ -649,7 +649,7 @@ describe('set method', () => {
   });
 
   it('will replace owned instance when key changes', () => {
-    class Baz extends State {
+    class Baz extends Model {
       didDie = vi.fn();
 
       protected new() {
@@ -657,7 +657,7 @@ describe('set method', () => {
       }
     }
 
-    class Baz2 extends State {}
+    class Baz2 extends Model {}
 
     const context = new Context({ Baz });
     const baz = context.get(Baz);
@@ -670,7 +670,7 @@ describe('set method', () => {
   });
 
   it('will remove non-owned instance without destroying it', () => {
-    class Bar extends State {}
+    class Bar extends Model {}
 
     const bar = Bar.new();
     const context = new Context({ bar });
@@ -684,8 +684,8 @@ describe('set method', () => {
   });
 
   it('will set multiple types and cleanup all', () => {
-    class A extends State {}
-    class B extends State {}
+    class A extends Model {}
+    class B extends Model {}
 
     const ctx = new Context({ A, B });
 
@@ -699,9 +699,9 @@ describe('set method', () => {
   });
 
   it('will call forEach cleanup for each state removed or replaced', () => {
-    class Foo extends State {}
-    class Bar extends State {}
-    class Foo2 extends State {}
+    class Foo extends Model {}
+    class Bar extends Model {}
+    class Foo2 extends Model {}
 
     const didCleanup = vi.fn();
     const context = new Context();
@@ -718,7 +718,7 @@ describe('set method', () => {
   });
 
   it('will ignore a non-function returned by forEach', () => {
-    class Foo extends State {}
+    class Foo extends Model {}
 
     const context = new Context();
 
@@ -728,8 +728,8 @@ describe('set method', () => {
   });
 
   it('will tell forEach whether context owns the state', () => {
-    class Foo extends State {}
-    class Bar extends State {}
+    class Foo extends Model {}
+    class Bar extends Model {}
 
     const bar = Bar.new();
     const didCall = vi.fn();
@@ -749,7 +749,7 @@ describe('set method', () => {
   });
 
   it('will call forEach cleanup on pop', () => {
-    class Foo extends State {}
+    class Foo extends Model {}
 
     const cleanup = vi.fn();
     const parent = new Context();
@@ -762,7 +762,7 @@ describe('set method', () => {
   });
 
   it('will clean up subtype keys on delete', () => {
-    class Base extends State {}
+    class Base extends Model {}
     class Child extends Base {}
 
     const context = new Context({ Child });
@@ -779,7 +779,7 @@ describe('set method', () => {
 
 describe('ambiguous implicit entries', () => {
   it('will not call callback when two implicit entries of same type exist', () => {
-    class Base extends State {}
+    class Base extends Model {}
     class ChildA extends Base {}
     class ChildB extends Base {}
 
@@ -798,7 +798,7 @@ describe('ambiguous implicit entries', () => {
   });
 
   it('will throw on multiple explicit entries of same type in callback get', () => {
-    class Base extends State {}
+    class Base extends Model {}
 
     const ctx = new Context();
     const a = Base.new();
@@ -815,7 +815,7 @@ describe('ambiguous implicit entries', () => {
   });
 
   it('will ignore implicit when explicit already found in callback get', () => {
-    class Base extends State {}
+    class Base extends Model {}
 
     const ctx = new Context();
     const explicit = Base.new();
@@ -832,7 +832,7 @@ describe('ambiguous implicit entries', () => {
   });
 
   it('will deduplicate same state in callback get entries', () => {
-    class Base extends State {}
+    class Base extends Model {}
 
     const ctx = new Context();
     const a = Base.new();
@@ -850,7 +850,7 @@ describe('ambiguous implicit entries', () => {
 
 describe('add method listener lookup', () => {
   it('will deduplicate callbacks across context hierarchy in add', () => {
-    class Foo extends State {}
+    class Foo extends Model {}
     class Bar extends Foo {}
 
     const parent = new Context();
@@ -864,7 +864,7 @@ describe('add method listener lookup', () => {
   });
 
   it('will deduplicate callback in above path during add', () => {
-    class Foo extends State {}
+    class Foo extends Model {}
 
     const grandparent = new Context();
     const parent = grandparent.push();
@@ -880,8 +880,8 @@ describe('add method listener lookup', () => {
   });
 
   it('will skip child context without matching listener type in below path', () => {
-    class Foo extends State {}
-    class Bar extends State {}
+    class Foo extends Model {}
+    class Bar extends Model {}
 
     const parent = new Context();
     const child = parent.push();
@@ -894,7 +894,7 @@ describe('add method listener lookup', () => {
   });
 
   it('will deduplicate callback found in both above and below during add', () => {
-    class Foo extends State {}
+    class Foo extends Model {}
 
     const parent = new Context();
     const middle = parent.push();
@@ -985,8 +985,8 @@ it('will skip consumer if filter does not match downstream', () => {
 describe('root global', () => {
   const { root } = Context;
 
-  class Global extends State {
-    static readonly global: State.Global = true;
+  class Global extends Model {
+    static readonly global: Model.Global = true;
   }
 
   it('will register a global .new() instance in root, again once destroyed', () => {
@@ -1006,8 +1006,8 @@ describe('root global', () => {
   });
 
   it('will not register children of a private instance in root', () => {
-    class Child extends State {}
-    class Parent extends State {
+    class Child extends Model {}
+    class Parent extends Model {
       child = new Child();
     }
 
@@ -1020,11 +1020,11 @@ describe('root global', () => {
   });
 
   it('will register descendants of a global instance in root', () => {
-    class Grandchild extends State {}
-    class Child extends State {
+    class Grandchild extends Model {}
+    class Child extends Model {
       grandchild = new Grandchild();
     }
-    class Parent extends State {
+    class Parent extends Model {
       static readonly global = true;
       child = new Child();
     }
@@ -1040,8 +1040,8 @@ describe('root global', () => {
   });
 
   it('will register a child assigned after a global joins root', () => {
-    class Child extends State {}
-    class Parent extends State {
+    class Child extends Model {}
+    class Parent extends Model {
       static readonly global = true;
       child?: Child = undefined;
     }
@@ -1056,9 +1056,9 @@ describe('root global', () => {
   });
 
   it('will not register a late child of a private sibling of a global', () => {
-    class Child extends State {}
-    class Parent extends State {
-      static readonly global: State.Global<Parent> = (self) => self.shared;
+    class Child extends Model {}
+    class Parent extends Model {
+      static readonly global: Model.Global<Parent> = (self) => self.shared;
       shared = false;
       child?: Child = undefined;
     }
@@ -1076,11 +1076,11 @@ describe('root global', () => {
   });
 
   it('will provide children of a private instance where it is provided', () => {
-    class Grandchild extends State {}
-    class Child extends State {
+    class Grandchild extends Model {}
+    class Child extends Model {
       grandchild = new Grandchild();
     }
-    class Parent extends State {
+    class Parent extends Model {
       child = new Child();
     }
 
@@ -1134,8 +1134,8 @@ describe('root global', () => {
   it('will resolve global from a function at activation', () => {
     let allow = false;
 
-    class Conditional extends State {
-      static readonly global: State.Global = () => allow;
+    class Conditional extends Model {
+      static readonly global: Model.Global = () => allow;
     }
 
     const off = Conditional.new();
@@ -1150,9 +1150,9 @@ describe('root global', () => {
   });
 
   it('will pass the instance to a global resolver', () => {
-    class Instanced extends State {
+    class Instanced extends Model {
       persistent = true;
-      static readonly global: State.Global<Instanced> = (self) => self.persistent;
+      static readonly global: Model.Global<Instanced> = (self) => self.persistent;
     }
 
     const instance = Instanced.new();
@@ -1164,10 +1164,10 @@ describe('root global', () => {
 
   it('will enforce global inheritance through static types', () => {
     void function () {
-      class SealedGlobal extends State {
+      class SealedGlobal extends Model {
         static readonly global = true;
       }
-      class Floor extends State {
+      class Floor extends Model {
         static readonly global = false;
       }
 
@@ -1181,8 +1181,8 @@ describe('root global', () => {
         static readonly global = true;
       }
 
-      class Open extends State {
-        static readonly global: State.Global = true;
+      class Open extends Model {
+        static readonly global: Model.Global = true;
       }
       class Scoped extends Open {
         static readonly global = false;
@@ -1205,11 +1205,11 @@ describe('root global', () => {
     instance.set(null);
   });
 
-  it.each<[string, State.Global]>([
+  it.each<[string, Model.Global]>([
     ['will throw on duplicate global of same type', true],
     ['will throw on duplicate global from a resolver', () => true]
   ])('%s', (_, global) => {
-    class Multi extends State {
+    class Multi extends Model {
       static global = global;
     }
 
@@ -1222,8 +1222,8 @@ describe('root global', () => {
   });
 
   it('will throw if a subtype would hide a supertype global', () => {
-    class Base extends State {
-      static readonly global: State.Global = true;
+    class Base extends Model {
+      static readonly global: Model.Global = true;
     }
     class Sub extends Base {
       static readonly global = true;
@@ -1241,8 +1241,8 @@ describe('root global', () => {
   });
 
   it('will throw if a subtype global already resolves the type', () => {
-    class Base extends State {
-      static readonly global: State.Global = true;
+    class Base extends Model {
+      static readonly global: Model.Global = true;
     }
     class Sub extends Base {
       static readonly global = true;
@@ -1259,8 +1259,8 @@ describe('root global', () => {
   });
 
   it('will register a supertype after the subtype is destroyed', () => {
-    class Base extends State {
-      static readonly global: State.Global = true;
+    class Base extends Model {
+      static readonly global: Model.Global = true;
     }
     class Sub extends Base {
       static readonly global = true;
@@ -1276,7 +1276,7 @@ describe('root global', () => {
   });
 
   it('will preserve subtype entries on eviction', () => {
-    class Base extends State {}
+    class Base extends Model {}
     class SubA extends Base {
       static global = true;
     }
@@ -1300,7 +1300,7 @@ describe('root global', () => {
   });
 
   it('will register fresh sibling cleanly after ancestor eviction', () => {
-    class Base extends State {}
+    class Base extends Model {}
     class SubA extends Base {
       static global = true;
     }
@@ -1329,7 +1329,7 @@ describe('root global', () => {
   });
 
   it('will not auto-register state created under an explicit context', () => {
-    class Scoped extends State {}
+    class Scoped extends Model {}
 
     const ctx = new Context(Scoped);
 
@@ -1340,7 +1340,7 @@ describe('root global', () => {
   });
 
   it('will not apply global eviction to explicit add', () => {
-    class Base extends State {}
+    class Base extends Model {}
     class SubA extends Base {
       static global = true;
     }
@@ -1365,7 +1365,7 @@ describe('root global', () => {
   });
 
   it('will not evict explicit entries on implicit add', () => {
-    class Base extends State {}
+    class Base extends Model {}
     class Sub extends Base {}
 
     const a = new Sub();

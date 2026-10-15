@@ -175,7 +175,7 @@ cedes the path to the nearest scoped `none` Route:
 ```
 
 The router coordinates navigation, not application data. Keep fetching,
-mutations, caches, and request cancellation in the route/page State; async
+mutations, caches, and request cancellation in the route/page control; async
 fields suspend through the Route boundary.
 
 ## Generated navigation
@@ -202,7 +202,7 @@ class SideNav extends NavLinks {
 }
 ```
 
-These members are overridable reactive subcomponents bound to the live instance - the same model `Component` provides, via [render composition](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md#render-composition) and [subcomponents](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md#subcomponents).
+These members are overridable reactive subcomponents bound to the live instance - the same mechanism `Component` provides, via [subcomponents](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md#subcomponents).
 
 ## Runtime boundaries
 

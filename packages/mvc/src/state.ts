@@ -14,22 +14,22 @@ import {
 const define = Object.defineProperty;
 
 /** Register for all active states via string identifiers (usually unique). */
-const ID = new WeakMap<State, string>();
+const ID = new WeakMap<Model, string>();
 
 /** Internal state assigned to states. */
-const STORE = new WeakMap<State, Record<string | number | symbol, unknown>>();
+const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
-/** States under construction - added on `new`, removed when activated or released.
+/** Models under construction - added on `new`, removed when activated or released.
  *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
-const PENDING = new Set<State | (() => void)>();
+const PENDING = new Set<Model | (() => void)>();
 
-/** External lifecycle listeners for any given State class. */
-type Handler = State.On<any>;
+/** External lifecycle listeners for any given Model class. */
+type Handler = Model.On<any>;
 
-const SETUP = new WeakMap<State.Extends, Set<Handler>>();
+const SETUP = new WeakMap<Model.Extends, Set<Handler>>();
 
 /** Parent-child relationships. */
-const PARENT = new WeakMap<object, State | null>();
+const PARENT = new WeakMap<object, Model | null>();
 
 /** Reference bound instance methods, or their getter, to real one. */
 const UNBIND = new WeakMap<any, any>();
@@ -52,64 +52,64 @@ const STALE = new WeakSet<() => void>();
 /** Whether the deadline which drains `PENDING` is already queued for this tick. */
 let QUEUED = false;
 
-/** Global list each loaded copy of this module adds its `State` to, on first construction. */
+/** Global list each loaded copy of this module adds its `Model` to, on first construction. */
 const COPIES = Symbol.for('@expressive/mvc');
 
 let ANNOUNCED = false;
 
-/** Adopters for managed properties which have held a child State. */
-const ADOPT = new WeakMap<State, Map<unknown, (value: unknown) => void>>();
-const CHILDREN = new WeakMap<State, Set<(child: State) => void>>();
-const OWNS = new WeakMap<State, Set<State>>();
-const OWNED = new WeakMap<State, Set<(child: State) => void>>();
+/** Adopters for managed properties which have held a child Model. */
+const ADOPT = new WeakMap<Model, Map<unknown, (value: unknown) => void>>();
+const CHILDREN = new WeakMap<Model, Set<(child: Model) => void>>();
+const OWNS = new WeakMap<Model, Set<Model>>();
+const OWNED = new WeakMap<Model, Set<(child: Model) => void>>();
 
 type Overlay<T> = Record<string, unknown> & {
-  [K in State.Property<T>]?: T[K] extends (...args: infer A) => infer R
+  [K in Model.Property<T>]?: T[K] extends (...args: infer A) => infer R
   ? (this: T, ...args: A) => R
   : T[K];
 };
 
-declare namespace State {
-  /** Any type of State, using own class constructor as its identifier. */
-  type Extends<T extends State = State> = (abstract new (...args: any[]) => T) &
-    typeof State;
+declare namespace Model {
+  /** Any type of Model, using own class constructor as its identifier. */
+  type Extends<T extends Model = Model> = (abstract new (...args: any[]) => T) &
+    typeof Model;
 
-  /** A State constructor which may be instanciated. */
-  type Type<T extends State = State> = (new (...args: State.Args<T>) => T) &
-    Omit<typeof State, never>;
+  /** A Model constructor which may be instanciated. */
+  type Type<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
+    Omit<typeof Model, never>;
 
-  /** State constructor arguments */
-  type Args<T extends State = any> = (Args<T> | Init<T> | Overlay<T> | void)[];
+  /** Model constructor arguments */
+  type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | void)[];
 
   /**
-   * Value of `static global`. A boolean opts a State in or out of the
+   * Value of `static global`. A boolean opts a Model in or out of the
    * process-global root; a resolver decides at activation, receiving the
    * instance and returning whether it registers - use it to make the choice
    * conditional (e.g. per environment). A bare literal (`= true` / `= false`)
    * seals the choice for subclasses; widen a subclass's `static global` type to
-   * `State.Global` to permit a resolver or a later override.
+   * `Model.Global` to permit a resolver or a later override.
    */
-  type Global<T extends State = any> = boolean | ((self: T) => boolean);
+  type Global<T extends Model = any> = boolean | ((self: T) => boolean);
 
   /**
-   * State constructor callback - runs during activation, in argument order,
+   * Model constructor callback - runs during activation, in argument order,
    * before the `new()` lifecycle hook (so it may configure state `new()`
    * will observe). Returned function will run when state is destroyed.
    */
-  type Init<T extends State = State> = (
+  type Init<T extends Model = Model> = (
     this: T,
     thisArg: T
   ) => Promise<void> | (() => void) | Args<T> | Overlay<T> | void;
 
-  /** Lifecycle handlers for `State.on`, keyed by when they run. */
-  interface On<T extends State = State> {
+  /** Lifecycle handlers for `Model.on`, keyed by when they run. */
+  interface On<T extends Model = Model> {
     /**
      * Per-class setup, run once when the class is first bootstrapped - before
      * its members are classified and bound. Receives the class, so a handler
      * may inspect or reshape the prototype first. A handler registered on a
      * base class runs for each subclass too.
      */
-    type?(type: State.Extends<T>): void;
+    type?(type: Model.Extends<T>): void;
 
     /**
      * Per-instance, once constructed - before own values are observed and
@@ -132,7 +132,7 @@ declare namespace State {
     method?(this: T, key: string, fn: Function, self: T): void;
 
     /**
-     * Receives what an effect, refreshing getter or async initializer of this State
+     * Receives what an effect, refreshing getter or async initializer of this Model
      * or a subclass threw, a destroyed write, or an instance never activated - with
      * its `kind` (`effect`, `getter`, `setup`, `dead`, `unused`) and `key` where
      * one applies. Most-derived class first, last registered first, each once. Return the error
@@ -148,20 +148,20 @@ declare namespace State {
     [K in Property<T>]?: T[K];
   } & ThisType<T>;
 
-  /** Subset of `keyof T` not defined by base State. **/
-  type Property<T> = Exclude<keyof T, keyof State>;
+  /** Subset of `keyof T` not defined by base Model. **/
+  type Property<T> = Exclude<keyof T, keyof Model>;
 
   /** Managed subset of Property<T> - excludes unmanaged `_` keys. **/
   type Field<T> = Exclude<Property<T>, `_${string}`>;
 
   /** Any valid key for state, including but not limited to Field<T>. */
-  type Event<T = State> = Field<T> | number | symbol | (string & {});
+  type Event<T = Model> = Field<T> | number | symbol | (string & {});
 
   /** Any event signal dispatched to listeners, including lifecycle meta events. */
-  type Signal<T = State> = Event<T> | true | false | null;
+  type Signal<T = Model> = Event<T> | true | false | null;
 
-  /** Export/Import compatible value for a given property in a State. */
-  type Export<R> = R extends State
+  /** Export/Import compatible value for a given property in a Model. */
+  type Export<R> = R extends Model
     ? Values<R>
     : R extends { get(): infer T }
     ? T
@@ -178,7 +178,7 @@ declare namespace State {
   type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
 
   /** Value for a property applied by a state. */
-  type Value<T extends State, K extends State.Event<T>> = K extends keyof T
+  type Value<T extends Model, K extends Model.Event<T>> = K extends keyof T
     ? Export<T[K]>
     : unknown;
 
@@ -187,7 +187,7 @@ declare namespace State {
   /** Descriptor config for a managed property. */
   type Apply<T = any> = {
     value?: T;
-    get?: ((source: State) => T) | boolean;
+    get?: ((source: Model) => T) | boolean;
     set?: Setter<T> | boolean;
     enumerable?: boolean;
     // destroy?: () => void;
@@ -196,7 +196,7 @@ declare namespace State {
   /** Descriptor config for set() overload - enforces type when key is a known field. */
   type Define<T, K> = K extends Field<T> ? Apply<T[K] | Export<T[K]>> : Apply;
 
-  type OnEvent<T extends State> = (
+  type OnEvent<T extends Model> = (
     this: T,
     key: Signal<T>,
     source: T
@@ -218,11 +218,18 @@ declare namespace State {
    *
    * @returns A callback function which will be called when this effect is stale.
    */
-  type Effect<T> = (
+  type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
     this: T,
     current: T,
-    update: readonly State.Event<T>[] | undefined
-  ) => EffectCallback | Promise<void> | null | void;
+    update: readonly Model.Event<T>[] | undefined
+  ) => R;
+
+  /**
+   * Returned by `get(effect)`. Call to stop the effect. Await to stop it once it
+   * has run clean and receive that run's value - a sync run's output, or what its
+   * promise resolved to.
+   */
+  type Release<R = void> = (() => void) & PromiseLike<R>;
 
   /**
    * A callback function returned by effect. Will be called when effect is stale.
@@ -235,23 +242,23 @@ declare namespace State {
    * A list of keys updated, or events fired, since last update.
    * This may be awaited to get full list (same array) when update is settled.
    */
-  type Updated<T extends State> = readonly Event<T>[] &
+  type Updated<T extends Model> = readonly Event<T>[] &
     PromiseLike<readonly Event<T>[]>;
 }
 
-abstract class State {
+abstract class Model {
   /**
    * Whether an instance activated with no enclosing context registers itself
    * to the process-global root, where `get()` can resolve it from anywhere.
    * `false` (the default) keeps a context-less instance fully functional but
    * private - not injectable, though it can still read declared globals. Opt in
-   * with `static readonly global = true`; a resolver (see {@link State.Global})
+   * with `static readonly global = true`; a resolver (see {@link Model.Global})
    * makes the choice conditional. It must be declared per class - a subclass
    * that would inherit a global without its own declaration throws on
    * activation, so an accidental global (a forgotten `<Component for>`, an
    * extended global) cannot leak into the shared root.
    */
-  static readonly global: State.Global = false;
+  static readonly global: Model.Global = false;
 
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
@@ -259,13 +266,13 @@ abstract class State {
    **/
   declare is: this;
 
-  constructor(...args: State.Args) {
+  constructor(...args: Model.Args) {
     define(this, 'is', { value: this });
     init(this, args);
   }
 
   /**
-   * Optional lifecycle hook called during State initialization.
+   * Optional lifecycle hook called during Model initialization.
    * Can return a cleanup function to run when state is destroyed.
    *
    * It is recommended you protect this method.
@@ -277,17 +284,25 @@ abstract class State {
    *
    * @returns Object with all values from this state.
    **/
-  get(): State.Values<this>;
+  get(): Model.Values<this>;
 
   /**
    * Run a function to run automatically when accessed values change.
    *
    * @param effect Function to run, and whenever accessed values change.
    *               If effect returns a function, it will be called when a change occurs (syncronously),
-   *               effect is cancelled, or parent state is destroyed.
-   * @returns Function to cancel listener.
+   *               effect is cancelled, or parent state is destroyed. A returned promise
+   *               defers re-runs until it settles; its resolved value is treated the same way.
+   * @returns Function to cancel listener - awaited, cancels and yields the effect's value.
    */
-  get(effect: State.Effect<this>): () => void;
+  get(effect: Model.Effect<this>): Model.Release;
+
+  /**
+   * Run a function to run automatically when accessed values change, which
+   * produces a value - sync or async. Await the returned function to cancel the
+   * effect once a run completes and receive what it returned.
+   */
+  get<R>(effect: Model.Effect<this, Promise<R>>): Model.Release<R>;
 
   /**
    * Get value of a property. Will fetch underlying value from exotic values like ref.Object.
@@ -298,10 +313,10 @@ abstract class State {
    * @param required - If true, will throw an error if property is not available.
    * @returns Value of property.
    */
-  get<T extends State.Event<this>>(
+  get<T extends Model.Event<this>>(
     key: T,
     required?: boolean
-  ): State.Value<this, T>;
+  ): Model.Value<this, T>;
 
   /**
    * Check if state is destroyed.
@@ -319,72 +334,72 @@ abstract class State {
    */
   get(status: null, callback: () => void): () => void;
 
-  /** Fetch State of type from context. Throws if not found. */
-  get<T extends State>(type: State.Type<T>, required?: true): T;
+  /** Fetch Model of type from context. Throws if not found. */
+  get<T extends Model>(type: Model.Type<T>, required?: true): T;
 
-  /** Fetch a State from context. Undefined if not found. */
-  get<T extends State>(type: State.Type<T>, required: boolean): T | undefined;
+  /** Fetch a Model from context. Undefined if not found. */
+  get<T extends Model>(type: Model.Type<T>, required: boolean): T | undefined;
 
   /**
-   * Subscribe to State becoming available in context.
+   * Subscribe to Model becoming available in context.
    *
    * Will search both up and downstream by default.
-   * Normally you can ignore this because State you expect is rarely both.
+   * Normally you can ignore this because Model you expect is rarely both.
    *
-   * Specify downstream if you only want to watch for State in children, which can be useful if you expect multiple of the same State in different branches of the tree.
+   * Specify downstream if you only want to watch for Model in children, which can be useful if you expect multiple of the same Model in different branches of the tree.
    *
-   * @param type - Type of State to watch for.
-   * @param callback - Function to call when State is found. Will be called immediately if State is already available.
-   * @param downstream - If true, will only watch for State in children, if false will only for parents.
+   * @param type - Type of Model to watch for.
+   * @param callback - Function to call when Model is found. Will be called immediately if Model is already available.
+   * @param downstream - If true, will only watch for Model in children, if false will only for parents.
    * @returns Function to cancel listener.
    */
-  get<T extends State>(
-    type: State.Type<T>,
+  get<T extends Model>(
+    type: Model.Type<T>,
     callback: Context.Expect<T>,
     downstream?: boolean
   ): () => void;
 
-  // Owner overloads take `State` itself only - a subclass would otherwise match
-  // them in TypeScript's subtype pass, before the `State.Type<T>` overloads.
+  // Owner overloads take `Model` itself only - a subclass would otherwise match
+  // them in TypeScript's subtype pass, before the `Model.Type<T>` overloads.
 
-  /** Owner of this State. Throws if it has none. */
-  get<T extends typeof State>(
-    type: T & (typeof State extends T ? unknown : never),
+  /** Owner of this Model. Throws if it has none. */
+  get<T extends typeof Model>(
+    type: T & (typeof Model extends T ? unknown : never),
     required?: true
-  ): State;
+  ): Model;
 
-  /** Owner of this State. Undefined if it has none. */
-  get<T extends typeof State>(
-    type: T & (typeof State extends T ? unknown : never),
+  /** Owner of this Model. Undefined if it has none. */
+  get<T extends typeof Model>(
+    type: T & (typeof Model extends T ? unknown : never),
     required: boolean
-  ): State | undefined;
+  ): Model | undefined;
 
   /**
-   * Run a callback for each State this one owns - those owned now, then each
-   * one as it activates. Callback may return a function, called when that State
+   * Run a callback for each Model this one owns - those owned now, then each
+   * one as it activates. Callback may return a function, called when that Model
    * is destroyed.
    *
    * @returns Function to stop watching.
    */
-  get<T extends typeof State>(
-    type: T & (typeof State extends T ? unknown : never),
-    callback: (child: State) => void | (() => void),
+  get<T extends typeof Model>(
+    type: T & (typeof Model extends T ? unknown : never),
+    callback: (child: Model) => void | (() => void),
     downstream: true
   ): () => void;
 
   get(
-    arg1?: State.Effect<this> | State.Type | typeof State | string | null,
+    arg1?: Model.Effect<this> | Model.Type | typeof Model | string | null,
     arg2?: boolean | Context.Expect | (() => void),
     arg3?: boolean
   ) {
     const self = this.is;
 
     if (arg1 === undefined) return values(self);
-    if (arg1 === State)
+    if (arg1 === Model)
       return typeof arg2 == 'function'
-        ? owned(self, arg2 as (child: State) => void)
+        ? owned(self, arg2 as (child: Model) => void)
         : observed(this, arg1, owner(self, arg2 as boolean));
-    if (State.is(arg1))
+    if (Model.is(arg1))
       return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
@@ -397,7 +412,7 @@ abstract class State {
    *
    * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
    **/
-  set(): State.Updated<this>;
+  set(): Model.Updated<this>;
 
   /**
    * Merge argument with current state, updating one or more properties at once.
@@ -407,7 +422,7 @@ abstract class State {
    * @param silent - If true, listeners will not be notified. If state is destroyed, stores the update without reporting it.
    * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
    */
-  set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>;
+  set(assign?: Model.Assign<this>, silent?: boolean): Model.Updated<this>;
 
   /**
    * Call a function when update occurs.
@@ -422,7 +437,7 @@ abstract class State {
    * @param callback - Function to call when update occurs.
    * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
    */
-  set(callback: State.OnEvent<this>): () => boolean;
+  set(callback: Model.OnEvent<this>): () => boolean;
 
   /**
    * Push an update. This will not change the value of associated property.
@@ -438,7 +453,7 @@ abstract class State {
    * @param key - Property or event to dispatch.
    * @returns Promise resolves an array of keys updated.
    */
-  set(key: State.Event<this>): State.Updated<this>;
+  set(key: Model.Event<this>): Model.Updated<this>;
 
   /**
    * Declare an end to updates. This event is final - later writes are stored but never dispatched.
@@ -457,9 +472,9 @@ abstract class State {
    * @param callback - Function to call when event occurs.
    * @returns Function to remove listener.
    */
-  set<K extends State.Event<this>>(
+  set<K extends Model.Event<this>>(
     event: K | null,
-    callback: State.OnEvent<this>
+    callback: Model.OnEvent<this>
   ): () => boolean;
 
   /**
@@ -471,13 +486,13 @@ abstract class State {
    * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
    * @returns Promise resolves an array of keys updated.
    */
-  set<K extends State.Event<this>>(
+  set<K extends Model.Event<this>>(
     key: K,
-    config: State.Define<this, K>
-  ): State.Updated<this>;
+    config: Model.Define<this, K>
+  ): Model.Updated<this>;
 
   set(
-    arg1?: State.OnEvent<this> | State.Assign<this> | State.Event<this> | null,
+    arg1?: Model.OnEvent<this> | Model.Assign<this> | Model.Event<this> | null,
     arg2?: unknown
   ) {
     const self = this.is;
@@ -493,17 +508,17 @@ abstract class State {
       });
 
     if (typeof arg2 == 'function')
-      return callback(self, arg2, arg1 as State.Signal);
+      return callback(self, arg2, arg1 as Model.Signal);
 
     if (arg1 && typeof arg1 == 'object') assign(self, arg1, arg2 === true);
     else if (arg2) apply(self, arg1 as string, arg2);
     else event(self, arg1);
 
-    return queued(self) as State.Updated<this>;
+    return queued(self) as Model.Updated<this>;
   }
 
   /**
-   * Iterate over managed properties in this instance of State.
+   * Iterate over managed properties in this instance of Model.
    * Yeilds the key and current value for each property.
    */
   [Symbol.iterator](): Iterator<[string, unknown]> {
@@ -517,7 +532,7 @@ abstract class State {
    *
    * @param args - arguments sent to constructor
    */
-  static new<T extends State>(this: State.Type<T>, ...args: State.Args<T>): T {
+  static new<T extends Model>(this: Model.Type<T>, ...args: Model.Args<T>): T {
     const instance = new this(...args);
     event(instance);
     return instance;
@@ -529,7 +544,7 @@ abstract class State {
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends State.Extends>(this: T, maybe: unknown): maybe is T {
+  static is<T extends Model.Extends>(this: T, maybe: unknown): maybe is T {
     return (
       maybe === this ||
       (typeof maybe == 'function' && maybe.prototype instanceof this)
@@ -537,7 +552,7 @@ abstract class State {
   }
 
   /**
-   * Register a lifecycle handler for this State and its subclasses.
+   * Register a lifecycle handler for this Model and its subclasses.
    *
    * Hooks by cadence - `type` (per-class, at bootstrap), `setup` (per-instance,
    * before values are observed), `ready` (per-instance, after `new()`), and
@@ -546,17 +561,17 @@ abstract class State {
    *
    * @returns Function to remove the handler.
    */
-  static on<T extends State>(
-    this: State.Extends<T>,
-    setup: NonNullable<State.On<T>['setup']>
+  static on<T extends Model>(
+    this: Model.Extends<T>,
+    setup: NonNullable<Model.On<T>['setup']>
   ): () => boolean;
-  static on<T extends State>(
-    this: State.Extends<T>,
-    handler: State.On<T>
+  static on<T extends Model>(
+    this: Model.Extends<T>,
+    handler: Model.On<T>
   ): () => boolean;
-  static on<T extends State>(
-    this: State.Extends<T>,
-    handler: State.On<T> | NonNullable<State.On<T>['setup']>
+  static on<T extends Model>(
+    this: Model.Extends<T>,
+    handler: Model.On<T> | NonNullable<Model.On<T>['setup']>
   ) {
     if (typeof handler == 'function') handler = { setup: handler };
 
@@ -570,24 +585,24 @@ abstract class State {
   }
 }
 
-define(State.prototype, 'toString', {
+define(Model.prototype, 'toString', {
   value() {
     return ID.get(this.is);
   }
 });
 
-define(State, 'toString', {
+define(Model, 'toString', {
   value() {
     return this.name;
   }
 });
 
-function observed<T>(from: State, key: unknown, value: T): T {
-  return value instanceof State ? touch(from, key, value) : value;
+function observed<T>(from: Model, key: unknown, value: T): T {
+  return value instanceof Model ? touch(from, key, value) : value;
 }
 
 /** Register a user OnEvent callback, preserving `this` and `source`. */
-function callback<T extends State>(
+function callback<T extends Model>(
   self: T,
   cb: Function,
   select?: Observer.Signal | Set<Observer.Signal>
@@ -599,14 +614,14 @@ function callback<T extends State>(
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
-function init(state: State, ...args: State.Args) {
-  const T = state.constructor as State.Extends;
+function init(state: Model, ...args: Model.Args) {
+  const T = state.constructor as Model.Extends;
 
-  if (T === State) throw new Error('Cannot create base State.');
+  if (T === Model) throw new Error('Cannot create base Model.');
 
   if (!ANNOUNCED) {
     ANNOUNCED = true;
-    ((globalThis as { [COPIES]?: unknown[] })[COPIES] ||= []).push(State);
+    ((globalThis as { [COPIES]?: unknown[] })[COPIES] ||= []).push(Model);
   }
 
   const { before, after } = bootstrap(T);
@@ -634,7 +649,7 @@ function init(state: State, ...args: State.Args) {
   function register() {
     if (Context.get(state) !== Context.root) return;
 
-    const type = state.constructor as typeof State;
+    const type = state.constructor as typeof Model;
     const g = type.global;
 
     if (!(typeof g == 'function' ? g(state) : g)) return;
@@ -644,7 +659,7 @@ function init(state: State, ...args: State.Args) {
         `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
       );
 
-    for (let T: State.Extends = type; T !== State; T = Object.getPrototypeOf(T)) {
+    for (let T: Model.Extends = type; T !== Model; T = Object.getPrototypeOf(T)) {
       const found = Context.root.get(T, false);
 
       if (found && (T === type || found.constructor === T))
@@ -718,7 +733,7 @@ function init(state: State, ...args: State.Args) {
   PENDING.add(state);
 }
 
-function unmanaged(state: State, key: string, value: unknown) {
+function unmanaged(state: Model, key: string, value: unknown) {
   define(state, key, {
     configurable: true,
     enumerable: false,
@@ -730,20 +745,20 @@ function unmanaged(state: State, key: string, value: unknown) {
 /**
  * Apply instructions and inherited event listeners. Ensure class metadata is ready.
  *
- * @param T - State class to bootstrap.
+ * @param T - Model class to bootstrap.
  * @return Array of init functions to run on instance, in order of class hierarchy.
  */
-function bootstrap(T: State.Extends) {
-  const chain = [] as State.Extends[];
-  const before = new Set<State.Init>();
-  const after = new Set<State.Init>();
-  const onType = new Set<NonNullable<State.On['type']>>();
+function bootstrap(T: Model.Extends) {
+  const chain = [] as Model.Extends[];
+  const before = new Set<Model.Init>();
+  const after = new Set<Model.Init>();
+  const onType = new Set<NonNullable<Model.On['type']>>();
   let keys = new Map<string, (value: any) => void>();
   let getters = new Map<string, () => unknown>();
 
   while (true) {
     chain.unshift(T);
-    if (T === State) break;
+    if (T === Model) break;
     T = Object.getPrototypeOf(T);
   }
 
@@ -754,7 +769,7 @@ function bootstrap(T: State.Extends) {
       if (handler.type) onType.add(handler.type);
     }
 
-    if (type === State) continue;
+    if (type === Model) continue;
 
     if (METHODS.has(type)) {
       keys = METHODS.get(type)!;
@@ -778,7 +793,7 @@ function bootstrap(T: State.Extends) {
 
 /** Bind own configurable methods of a type and collect its reactive getters. */
 function classify(
-  type: State.Extends,
+  type: Model.Extends,
   keys: Map<string, (value: any) => void>,
   getters: Map<string, () => unknown>
 ) {
@@ -792,8 +807,8 @@ function classify(
     if (key[0] == '_' && (get || set)) {
       define(type.prototype, key, {
         ...desc,
-        get: get && function (this: State) { return get.call(this.is || this) },
-        set: set && function (this: State, value: unknown) { set.call(this.is || this, value) }
+        get: get && function (this: Model) { return get.call(this.is || this) },
+        set: set && function (this: Model, value: unknown) { set.call(this.is || this, value) }
       });
 
       continue;
@@ -809,7 +824,7 @@ function classify(
 
     if (typeof value !== 'function') continue;
 
-    function bind(this: State, original?: Function) {
+    function bind(this: Model, original?: Function) {
       const { is } = this;
 
       if (is.hasOwnProperty(key) && !original) return value as Function;
@@ -820,7 +835,7 @@ function classify(
       UNBIND.set(bound, fn);
       define(is, key, { value: bound, writable: true, configurable: true });
 
-      for (const handler of stages(is.constructor as State.Extends, 'method')) handler.call(is, key, bound, is);
+      for (const handler of stages(is.constructor as Model.Extends, 'method')) handler.call(is, key, bound, is);
 
       return bound;
     }
@@ -833,8 +848,8 @@ function classify(
 }
 
 /** Handlers of one stage along the class chain - ancestor first, in registration order, each once. */
-function stages<K extends 'method' | 'catch'>(T: State.Extends, key: K): Set<NonNullable<State.On[K]>> {
-  const found = T === State ? new Set<NonNullable<State.On[K]>>() : stages(Object.getPrototypeOf(T), key);
+function stages<K extends 'method' | 'catch'>(T: Model.Extends, key: K): Set<NonNullable<Model.On[K]>> {
+  const found = T === Model ? new Set<NonNullable<Model.On[K]>>() : stages(Object.getPrototypeOf(T), key);
 
   for (const handler of SETUP.get(T) || []) if (handler[key]) found.add(handler[key]!);
 
@@ -849,10 +864,12 @@ function stages<K extends 'method' | 'catch'>(T: State.Extends, key: K): Set<Non
  * reads of managed properties through it create subscriptions. Result is cached and
  * emits a keyed event when stale.
  */
-function compute(this: State, getter: (self: any) => unknown, key: string) {
+function compute(this: Model, getter: (self: any) => unknown, key: string) {
   const store = STORE.get(this)!;
   let reset: (() => void) | undefined;
   let isAsync: boolean;
+  let suspended = false;
+  let waiting: Promise<unknown> | undefined;
   let proxy: any;
 
   const connect = () => {
@@ -877,17 +894,32 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
   const run = (initial?: boolean) => {
     let next: unknown;
 
+    waiting = undefined;
+
     try {
       next = latest(getter).call(proxy, proxy);
     } catch (err) {
-      if (initial) {
+      if (err instanceof Promise) {
+        if (initial) {
+          suspended = true;
+          throw err;
+        }
+
+        const retry = () => {
+          if (waiting === err && observer(this) !== null) run();
+        };
+
+        waiting = err;
+        err.then(retry, retry);
+
+        if (suspended) return;
+      } else if (initial) {
         console.warn(`An exception was thrown while initializing ${this}.${key}.`);
         throw err;
-      }
-
-      if (!(err instanceof Promise)) report('getter', this, err, key);
+      } else report('getter', this, err, key);
     }
 
+    suspended = false;
     update(this, key, next, !isAsync);
   };
 
@@ -907,7 +939,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
 
         if (STALE.delete(run)) run();
 
-        return access(this, key, !proxy);
+        return access(this, key, suspended);
       }
     },
     true
@@ -919,15 +951,15 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
  * If the property already is managed, config will only accept value.
  * If the property does not exist, it will be created and made reactive.
  *
- * @param state - State to apply property to.
+ * @param state - Model to apply property to.
  * @param key - Property to define or update.
  * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
  * @param silent - If an update does occur, listeners will not be refreshed automatically.
  */
 function apply(
-  state: State,
+  state: Model,
   key: string,
-  config: State.Apply,
+  config: Model.Apply,
   silent?: boolean
 ) {
   const desc = Object.getOwnPropertyDescriptor(state, key);
@@ -946,7 +978,7 @@ function apply(
   define(state, key, {
     configurable: true,
     enumerable: config.enumerable !== false,
-    get(this: State) {
+    get(this: Model) {
       const value =
         typeof config.get == 'function'
           ? config.get(this)
@@ -978,14 +1010,14 @@ function apply(
   if ('value' in config) set(config.value, silent);
 }
 
-function provides(ctx: Context, value: State) {
+function provides(ctx: Context, value: Model) {
   while (ctx = ctx.parent!) {
-    const entries = ctx.provide.get(value.constructor as State.Extends);
+    const entries = ctx.provide.get(value.constructor as Model.Extends);
     if (entries) for (const [state] of entries) if (state === value) return true;
   }
 }
 
-function child(state: State) {
+function child(state: Model) {
   let cleanup: (() => void) | undefined;
   const ctx = Context.get(state);
 
@@ -999,7 +1031,7 @@ function child(state: State) {
   return (value: unknown) => {
     reset();
 
-    if (!(value instanceof State)) return;
+    if (!(value instanceof Model)) return;
 
     if (parent(value, state)) {
       const remove = join(state, value);
@@ -1020,32 +1052,32 @@ function child(state: State) {
 }
 
 /**
- * Pending States constructed after this one - in a parent, the products of
+ * Pending Models constructed after this one - in a parent, the products of
  * its own initializers, until the last one it kept.
  */
-function trailing(state: State) {
-  const rest: State[] = [];
+function trailing(state: Model) {
+  const rest: Model[] = [];
   let seen = false;
 
   for (const item of PENDING)
     if (!seen) seen = item === state;
-    else if (item instanceof State) rest.push(item);
+    else if (item instanceof Model) rest.push(item);
 
   return rest;
 }
 
 /**
- * Report States adopted by a parent - those already held, then each one
+ * Report Models adopted by a parent - those already held, then each one
  * claimed later. Returns a callback to stop watching.
  */
-function children(state: State, callback: (child: State) => void) {
+function children(state: Model, callback: (child: Model) => void) {
   const store = STORE.get(state)!;
   const keys = ADOPT.get(state);
 
   if (keys)
     for (const key of keys.keys()) {
       const value = store[key as string];
-      if (value instanceof State) callback(value);
+      if (value instanceof Model) callback(value);
     }
 
   let set = CHILDREN.get(state);
@@ -1057,7 +1089,7 @@ function children(state: State, callback: (child: State) => void) {
   return () => set!.delete(callback);
 }
 
-function owner(state: State, required?: boolean) {
+function owner(state: Model, required?: boolean) {
   const found = PARENT.get(state);
 
   if (found || required === false) return found || undefined;
@@ -1066,11 +1098,11 @@ function owner(state: State, required?: boolean) {
 }
 
 /**
- * Report States owned by this one - those active now, then each one as it
- * activates. A function returned by `callback` runs when that State is destroyed.
+ * Report Models owned by this one - those active now, then each one as it
+ * activates. A function returned by `callback` runs when that Model is destroyed.
  */
-function owned(state: State, callback: (child: State) => void | (() => void)) {
-  function each(child: State) {
+function owned(state: Model, callback: (child: Model) => void | (() => void)) {
+  function each(child: Model) {
     const done = callback(child);
     if (typeof done == 'function') listener(child, () => void done(), null);
   }
@@ -1089,7 +1121,7 @@ function owned(state: State, callback: (child: State) => void | (() => void)) {
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
 
-function values<T extends State>(state: T): State.Values<T> {
+function values<T extends Model>(state: T): Model.Values<T> {
   const values = {} as any;
   let notRecursive;
 
@@ -1118,7 +1150,7 @@ function values<T extends State>(state: T): State.Values<T> {
   return Object.freeze(values);
 }
 
-function access(state: State, property: string, required?: boolean) {
+function access(state: Model, property: string, required?: boolean) {
   const store = STORE.get(state)!;
 
   if (property in store || required === false) {
@@ -1154,7 +1186,7 @@ function access(state: State, property: string, required?: boolean) {
   });
 }
 
-function assign(state: State, data: State.Assign<State>, silent?: boolean) {
+function assign(state: Model, data: Model.Assign<Model>, silent?: boolean) {
   if (!silent && observer(state) !== null) event(state);
 
   const methods = METHODS.get(state.constructor)!;
@@ -1186,15 +1218,15 @@ function assign(state: State, data: State.Assign<State>, silent?: boolean) {
  * A destroyed state stores the write without dispatch, reports it unless `silent`, and returns `false`.
  */
 function update<T>(
-  state: State,
-  key: State.Event<T>,
+  state: Model,
+  key: Model.Event<T>,
   value: T,
   silent?: boolean,
   own?: boolean
 ) {
   const store = STORE.get(state)!;
 
-  if (value instanceof State) value = value.is as T;
+  if (value instanceof Model) value = value.is as T;
 
   if (observer(state) === null) {
     if (!silent) report('dead', state, new Error(`Tried to update ${state}.${String(key)} but state is destroyed.`), String(key));
@@ -1219,13 +1251,13 @@ function update<T>(
  * the end, a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught;
  * so does a handler's throw.
  */
-function report(kind: Parameters<NonNullable<State.On['catch']>>[1], owner: object | undefined, error: unknown, key?: string) {
-  const state = owner instanceof State ? owner : owner && PARENT.get(owner);
+function report(kind: Parameters<NonNullable<Model.On['catch']>>[1], owner: object | undefined, error: unknown, key?: string) {
+  const state = owner instanceof Model ? owner : owner && PARENT.get(owner);
 
   if (!state) return REPORT.error(error);
 
   try {
-    for (const handler of [...stages(state.constructor as State.Extends, 'catch')].reverse())
+    for (const handler of [...stages(state.constructor as Model.Extends, 'catch')].reverse())
       if ((error = handler.call(state, error, kind, key)) === undefined) return;
 
     if (kind == 'unused') console.warn(error);
@@ -1239,22 +1271,22 @@ REPORT.as = report;
 
 /**
  * Hand a value stored by an owning writer to that property's adopter,
- * creating one the first time a State is stored there. A property which has
- * held a State keeps its adopter, so a later non-State value releases the
+ * creating one the first time a Model is stored there. A property which has
+ * held a Model keeps its adopter, so a later non-Model value releases the
  * previous child.
  */
-function adopt(state: State, key: unknown, value: unknown) {
+function adopt(state: Model, key: unknown, value: unknown) {
   let keys = ADOPT.get(state);
 
   if (!keys) {
-    if (!(value instanceof State)) return;
+    if (!(value instanceof Model)) return;
     ADOPT.set(state, (keys = new Map()));
   }
 
   let claim = keys.get(key);
 
   if (!claim) {
-    if (!(value instanceof State)) return;
+    if (!(value instanceof Model)) return;
     keys.set(key, (claim = child(state)));
   }
 
@@ -1287,14 +1319,14 @@ function unbind(fn?: Function) {
  * only if unclaimed and returns whether the assignment applied - `true` means
  * this call freshly claimed it, `false` means it was already parented.
  */
-function parent(child: object): State | null | undefined;
-function parent(child: object, value: State | null): boolean;
-function parent(child: object, value?: State | null) {
-  if (arguments.length < 2) return PARENT.get(child as State);
-  if (PARENT.has(child as State)) return false;
-  PARENT.set(child as State, value ?? null);
+function parent(child: object): Model | null | undefined;
+function parent(child: object, value: Model | null): boolean;
+function parent(child: object, value?: Model | null) {
+  if (arguments.length < 2) return PARENT.get(child as Model);
+  if (PARENT.has(child as Model)) return false;
+  PARENT.set(child as Model, value ?? null);
   return true;
 }
 
 export type { Handler };
-export { adopt, event, unbind, State, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
+export { adopt, event, unbind, Model, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };

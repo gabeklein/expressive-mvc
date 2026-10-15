@@ -249,9 +249,9 @@ function Instructions() {
 }
 
 const InstructionsCode = code /*tsx*/`
-  import { State, get, has, ref, set } from '@expressive/mvc';
+  import { Model, get, has, ref, set } from '@expressive/mvc';
 
-  class Profile extends State {
+  class Profile extends Model {
     first = 'Ada';
     last = 'Lovelace';
 
@@ -340,11 +340,11 @@ function Computed() {
 }
 
 const GettersCode = code /*tsx*/`
-  import { State } from '@expressive/mvc';
+  import { Model } from '@expressive/mvc';
 
   type Item = { name: string; price: number; qty: number };
 
-  class Cart extends State {
+  class Cart extends Model {
     items = [] as Item[];
     taxRate = 0.0825;
 
@@ -490,7 +490,7 @@ function Globals() {
       title="Global state with no setup."
       to="/examples/composition/globals">
       <>
-        Declare a State <code>global</code>, create it once with{' '}
+        Declare a Model <code>global</code>, create it once with{' '}
         <code>.new()</code>, and any component can find it with{' '}
         <code>.get()</code> - app-wide session, theme, or
         viewport with no store, Provider, or prop drilling.
@@ -501,9 +501,9 @@ function Globals() {
 }
 
 const GlobalsCode = code /*tsx*/`
-  import { State } from '@expressive/mvc';
+  import { Model } from '@expressive/mvc';
 
-  class Session extends State {
+  class Session extends Model {
     static global = true;
 
     user: string | null = null;
@@ -530,7 +530,7 @@ function Testing() {
   return (
     <Tab title="Testable logic, without the DOM.">
       <>
-        State and components are plain instances - create with{' '}
+        <code>Model</code> and <code>Component</code> instances are plain objects - create with{' '}
         <code>.new()</code>, call methods, assert on properties.
         Test whole workflows with only <code>expect</code> -{" "}
         no <code>act()</code>, not even React.

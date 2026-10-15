@@ -4,12 +4,12 @@ Positioning for the adoption question: whether to render Expressive MVC with `@e
 
 ## What it is
 
-A browser renderer for MVC components with no React underneath. `State`, `Component`, instructions, context and `@expressive/router` are the same packages; what changes is the host. [Measured per import shape](https://expressive.dev/docs/guides/bundle-size/), gzip, including `@expressive/mvc`:
+A browser renderer for MVC components with no React underneath. `Model`, `Component`, instructions, context and `@expressive/router` are the same packages; what changes is the host. [Measured per import shape](https://expressive.dev/docs/guides/bundle-size/), gzip, including `@expressive/mvc`:
 
-- `Component` + `render` alone: ~16.6 kB
-- the renderer and all of mvc: ~17.6 kB
-- the same with the styling system: ~19.7 kB
-- the same with `@expressive/router`: ~23.9 kB
+- `Component` + `render` alone: ~16.8 kB
+- the renderer and all of mvc: ~17.8 kB
+- the same with the styling system: ~19.9 kB
+- the same with `@expressive/router`: ~24.1 kB
 
 These replace `react` + `react-dom`; they don't add to them. Every pull request checks them against budget; budgets are re-set each release.
 
@@ -21,12 +21,12 @@ dom is not a React clone. Where it differs, the difference is meant to be net-po
 
 | | dom | React adapter | Net |
 | --- | --- | --- | --- |
-| Hooks | None, beyond `State.use()` for owned state. It keeps one rule: top-level calls in stable order, enforced at runtime. Shared state is `State.get()` | Hooks available beside Expressive | Dependency arrays and stale closures have nothing to apply to. Positive, unless the app leans on hook libraries |
+| Hooks | None, beyond `Model.use()` for owned state. It keeps one rule: top-level calls in stable order, enforced at runtime. Shared state is `Model.get()` | Hooks available beside Expressive | Dependency arrays and stale closures have nothing to apply to. Positive, unless the app leans on hook libraries |
 | Update scope | A write re-renders only the scopes that read the field. A re-rendering scope re-renders its child components; there is no `memo` | Same subscription granularity, and `memo` is available | Same isolation without memoization discipline. The cost: no bailout, so an expensive subtree should read its own state rather than take it as props |
 | Props and events | Native listeners and event objects. React's `className`, `autoFocus` and `onDoubleClick` are accepted. `onChange` on a text field keeps its native commit timing; `onInput` fires per keystroke, on React too | Synthetic events | Platform semantics with no event layer, and React spellings still work. The cost: `onChange` on text fields |
 | Controlled inputs | `value`/`checked` are live properties only | Also mirrored to attributes | No attribute write per keystroke. The cost: `form.reset()` and `[value=…]` selectors behave differently |
 | Styling | Built in: `style` composes classes and declarations; `style(Component, map)` scopes rules to a component's output. Rules are injected at runtime; there is no build-time extraction | Bring your own | One styling system, with no third-party dependency, for ~2.1 kB |
-| Suspense | Every Component is a boundary unless `fallback = false`. A suspended boundary keeps its content mounted off-document, where it stays live, and reveals it at once. State created by a render that suspends is kept for the retry, on first mount and in a transition | Also a boundary per Component; a subtree that suspends on first mount is discarded and rebuilt, State included | State survives suspension, in the component that suspended and its siblings alike - a State may own its loading state and suspend in its own `render`, and is created and loaded once. On React the same component never resolves: each retry builds and loads a new State, so loading state has to live above the boundary. Positive. The cost: hidden content is detached, so it can't be measured while its fallback shows (React keeps it in the page with `display: none`). Note for both: the default fallback is `null`, so a suspending Component with no `fallback` renders blank rather than letting an outer fallback show |
+| Suspense | Every Component is a boundary unless `fallback = false`. A suspended boundary keeps its content mounted off-document, where it stays live, and reveals it at once. An instance created by a render that suspends is kept for the retry, on first mount and in a transition | Also a boundary per Component; a subtree that suspends on first mount is discarded and rebuilt, instances included | Instances survive suspension, in the component that suspended and its siblings alike - an instance may own its loading state and suspend in its own `render`, and is created and loaded once. On React the same component never resolves: each retry builds and loads a new instance, so loading state has to live above the boundary. Positive. The cost: hidden content is detached, so it can't be measured while its fallback shows (React keeps it in the page with `display: none`). Note for both: the default fallback is `null`, so a suspending Component with no `fallback` renders blank rather than letting an outer fallback show |
 | Nested boundaries | A boundary hidden inside another keeps its own state through the outer reveal | Rebuilt | State survives. An inner fallback still showing stays showing |
 | Transitions | `pending()` holds the screen; the scopes one transition updates commit together, and a newer transition supersedes a held one. There is no work-in-progress copy, and probed output is reused, so nothing renders twice | Renders the transition off-screen and commits it atomically | The same visible hold for route swaps, guards and page data. One documented gap: when a suspension surfaces inside content already on screen, content the transition updates in place shows its new state meanwhile, while new content waits off the page |
 | Tearing | Writes batch to a microtask, and each flush runs to completion without yielding | Concurrent rendering; the adapter guards against tearing | Urgent updates can't tear. Within a transition, the gap above can briefly show mixed versions |
@@ -53,6 +53,6 @@ Not yet measured: performance against other renderers, memory and listener leaks
 
 - A browser app built on Expressive primitives, with no React dependencies to carry.
 - Embeds and widgets, where a React runtime would otherwise be the largest dependency.
-- Teams that want no hooks beyond `State.use()`.
+- Teams that want no hooks beyond `Model.use()`.
 
-An Expressive codebase moves between the two hosts with its models unchanged. With imports from `@expressive/mvc`, the recommended path, state and provision import nothing host-specific - `<Component for>` is the same element on both hosts. The remaining port is small: `onChange` → `onInput` on text fields (equivalent on React), React event-type annotations dropped or inferred, and `Suspense` → a Component `fallback`.
+An Expressive codebase moves between the two hosts with its `Model` classes unchanged. With imports from `@expressive/mvc`, the recommended path, state and provision import nothing host-specific - `<Component for>` is the same element on both hosts. The remaining port is small: `onChange` → `onInput` on text fields (equivalent on React), React event-type annotations dropped or inferred, and `Suspense` → a Component `fallback`.

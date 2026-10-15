@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
-import { Component, Context, get, State, set } from '.';
+import { Model } from '@expressive/mvc';
+import { Component, Context, get, set } from '.';
 import { pending } from '@expressive/mvc';
 import * as Refresh from 'react-refresh/runtime';
 import {
@@ -15,19 +16,19 @@ import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { collect, mockPromise, flushMicrotasks, revisions, reactOnly } from '../test.setup';
 import { Runtime } from './runtime';
 
-function renderWith<T>(target: State.Type | State, hook: () => T) {
+function renderWith<T>(target: Model.Type | Model, hook: () => T) {
   return renderHook(hook, {
     wrapper: (props) => {
       const content = <Suspense fallback={null}>{props.children}</Suspense>;
 
-      return target instanceof State
+      return target instanceof Model
         ? <Component for={target}>{content}</Component>
         : <Component for={target}>{content}</Component>;
     }
   });
 }
 
-describe('State.get', () => {
+describe('Model.get', () => {
   let error: MockInstance<Console['error']>;
 
   beforeEach(() => {
@@ -43,7 +44,7 @@ describe('State.get', () => {
   });
 
   it('will fetch model', () => {
-    class Test extends State {}
+    class Test extends Model {}
 
     const test = Test.new();
     const hook = renderWith(test, () => Test.get());
@@ -52,7 +53,7 @@ describe('State.get', () => {
   });
 
   it('will refresh for values accessed', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 'foo';
     }
 
@@ -72,7 +73,7 @@ describe('State.get', () => {
   });
 
   reactOnly.it('will transition model subscriber dispatch', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 'a';
       urgent = 0;
     }
@@ -112,7 +113,7 @@ describe('State.get', () => {
   });
 
   it('will not update on death event', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 'foo';
     }
 
@@ -130,10 +131,10 @@ describe('State.get', () => {
   });
 
   it.each([
-    ['plain', (T: typeof State) => T.get()],
-    ['computed', (T: typeof State) => T.get((x) => x)]
+    ['plain', (T: typeof Model) => T.get()],
+    ['computed', (T: typeof Model) => T.get((x) => x)]
   ])('will throw if not found (%s)', (_, read) => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
     }
 
@@ -146,7 +147,7 @@ describe('State.get', () => {
   });
 
   it('will not throw if optional', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
     }
 
@@ -159,7 +160,7 @@ describe('State.get', () => {
   });
 
   it('will throw if expected value undefined', () => {
-    class Test extends State {
+    class Test extends Model {
       value?: number = undefined;
 
     }
@@ -172,7 +173,7 @@ describe('State.get', () => {
   });
 
   describe('over destroyed instance', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 'foo';
     }
 
@@ -225,7 +226,7 @@ describe('State.get', () => {
   });
 
   describe('computed', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 1;
       bar = 2;
     }
@@ -307,7 +308,7 @@ describe('State.get', () => {
     });
 
     it('will run initial callback syncronously', async () => {
-      class Parent extends State {
+      class Parent extends Model {
         values = [] as string[];
       }
 
@@ -349,7 +350,7 @@ describe('State.get', () => {
   });
 
   describe('force update', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 'bar';
     }
 
@@ -407,7 +408,7 @@ describe('State.get', () => {
   });
 
   describe('async', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 'bar';
     }
 
@@ -451,7 +452,7 @@ describe('State.get', () => {
     });
 
     it('will refresh and throw if async rejects', async () => {
-      class Test extends State {}
+      class Test extends Model {}
 
       const promise = mockPromise();
       const hook = renderWith(Test, () => {
@@ -473,19 +474,19 @@ describe('State.get', () => {
   });
 
   describe('reactive context', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 'foo';
     }
 
     /** Renders `Inner` under a `Component` providing `value`; `swap` re-renders with another. */
-    function mount(value: State, Inner: React.FC) {
+    function mount(value: Model, Inner: React.FC) {
       const view = render(
         <Component for={value}>
           <Inner />
         </Component>
       );
 
-      const swap = (next: State) =>
+      const swap = (next: Model) =>
         act(async () => {
           view.rerender(
             <Component for={next}>
@@ -528,7 +529,7 @@ describe('State.get', () => {
     });
 
     it.fails('will render null when instance is removed', async () => {
-      class Other extends State {}
+      class Other extends Model {}
 
       const { container, swap } = mount(Test.new(), () => Test.get(false)?.value ?? null);
 
@@ -555,11 +556,11 @@ describe('State.get', () => {
     });
 
     it('will track implicit replacement instance', async () => {
-      class Child extends State {
+      class Child extends Model {
         value = 'original';
       }
 
-      class Parent extends State {
+      class Parent extends Model {
         child = new Child();
       }
 
@@ -602,7 +603,7 @@ describe('State.get', () => {
       // #112: a computed returning a fresh value each read (~Router.match),
       // whose source is mutated during a sibling's mount (redirect-on-mount),
       // must stay subscribed so later updates still reach subscribers.
-      class Nav extends State {
+      class Nav extends Model {
         path = '/';
         get at() {
           const { path } = this;
@@ -659,11 +660,11 @@ describe('State.get', () => {
   });
 
   describe('get instruction', () => {
-    class Foo extends State {
+    class Foo extends Model {
       bar = get(Bar);
     }
 
-    class Bar extends State {
+    class Bar extends Model {
       value = 'bar';
     }
 
@@ -694,7 +695,7 @@ describe('State.get', () => {
     });
 
     it('will return undefined if instance not found', () => {
-      class Foo extends State {
+      class Foo extends Model {
         bar = get(Bar, false);
       }
 
@@ -704,7 +705,7 @@ describe('State.get', () => {
     });
 
     it('will throw if instance not found', () => {
-      class Foo extends State {
+      class Foo extends Model {
         bar = get(Bar);
 
       }
@@ -718,7 +719,7 @@ describe('State.get', () => {
 
   describe('strict mode', () => {
     it('will survive effect remount', async () => {
-      class Test extends State {
+      class Test extends Model {
         value = 'foo';
       }
 
@@ -755,7 +756,7 @@ describe('State.get', () => {
       it('will suspend if function is async', async () => {
         const promise = mockPromise<string>();
 
-        class Test extends State {
+        class Test extends Model {
           value = set(() => promise);
         }
 
@@ -772,7 +773,7 @@ describe('State.get', () => {
       it('will refresh and throw if async rejects', async () => {
         const promise = mockPromise();
 
-        class Test extends State {
+        class Test extends Model {
           value = set(() => promise);
         }
 
@@ -794,7 +795,7 @@ describe('State.get', () => {
 
     describe('placeholder', () => {
       it('will suspend if value not yet assigned', async () => {
-        class Test extends State {
+        class Test extends Model {
           foobar = set<string>();
         }
 
@@ -817,13 +818,13 @@ describe('State.get', () => {
   });
 });
 
-describe('State.get - computed dependency', () => {
+describe('Model.get - computed dependency', () => {
   // A component that observes BOTH a field and a computed getter derived from
   // that field used to refresh once, then freeze on its first-update value:
   // the field's change and the computed's recompute land in one dispatch tick,
   // and the batched queue dropped the second, same-tick refresh request.
   it('will refresh when observing a field and a computed derived from it', async () => {
-    class Test extends State {
+    class Test extends Model {
       n = 1;
       get double() {
         return this.n * 2;
@@ -852,18 +853,18 @@ describe('State.get - computed dependency', () => {
   });
 });
 
-describe('State.get - nested dependency', () => {
-  // Reading a nested reactive value through get() - a child State's field
+describe('Model.get - nested dependency', () => {
+  // Reading a nested reactive value through get() - a child Model's field
   // (or a map entry) - used to never refresh: the nested change fires with
   // the root's own events empty, and the refresh guard keyed on those events
   // (`if (changed.length)`, added by c0dffdbf) dropped it. Restored to
   // refresh on any observed change after the initial run.
   it('will refresh when observing a nested state field', async () => {
-    class Child extends State {
+    class Child extends Model {
       value = 0;
     }
 
-    class Parent extends State {
+    class Parent extends Model {
       child = new Child();
     }
 
@@ -885,8 +886,8 @@ describe('State.get - nested dependency', () => {
   });
 });
 
-reactOnly.describe('State.get - concurrent consistency', () => {
-  class Test extends State {
+reactOnly.describe('Model.get - concurrent consistency', () => {
+  class Test extends Model {
     revision = 1;
   }
 
@@ -931,8 +932,8 @@ reactOnly.describe('State.get - concurrent consistency', () => {
 // Runtime is stubbed with a hand-driven lifecycle (as in runtime.test.ts) so a
 // change can land strictly before vs. after commit - the ordering React itself
 // won't reproduce on demand.
-describe('State.get - pre-commit dispatch', () => {
-  class Test extends State {
+describe('Model.get - pre-commit dispatch', () => {
+  class Test extends Model {
     value = 0;
   }
 
@@ -1013,9 +1014,9 @@ describe('State.get - pre-commit dispatch', () => {
   });
 });
 
-reactOnly.describe('State.get - fast refresh', () => {
+reactOnly.describe('Model.get - fast refresh', () => {
   it('will keep subscription when effects re-run', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
     }
 
@@ -1047,11 +1048,11 @@ reactOnly.describe('State.get - fast refresh', () => {
 
 reactOnly.describe('abandoned render', () => {
   it('will not hold an abandoned render', async () => {
-    const live = new Set<State>();
+    const live = new Set<Model>();
 
-    class Parent extends State {}
+    class Parent extends Model {}
 
-    class Test extends State {
+    class Test extends Model {
       new() {
         live.add(this);
         return () => live.delete(this);

@@ -24,7 +24,7 @@ export function Benefits() {
             the tools that still earn their place.
           </Benefit>
           <Benefit title="Portable state" delay={100}>
-            Headless State classes don't depend on a component tree. Move them,
+            Headless Model classes don't depend on a component tree. Move them,
             test them, or use the framework-agnostic core.
           </Benefit>
           <Benefit title="No build-time magic" delay={150}>

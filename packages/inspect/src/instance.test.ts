@@ -1,15 +1,15 @@
-import { Context, State, get, has } from '@expressive/mvc';
+import { Context, Model, get, has } from '@expressive/mvc';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { flushMicrotasks } from '../test.setup';
 
 import { attach, find, Instance, instances, label, models, resolve, roots } from './index';
 
-class Child extends State {
+class Child extends Model {
   name = 'kid';
 }
 
-class Parent extends State {
+class Parent extends Model {
   child = new Child();
   kids = has(Child);
   title = 'root';
@@ -73,11 +73,11 @@ describe('Instance', () => {
   });
 
   it('will not treat a context reference as ownership', () => {
-    class Consumer extends State {
+    class Consumer extends Model {
       theme = get(Theme);
       own = new Child();
     }
-    class Theme extends State {
+    class Theme extends Model {
       static global = true;
       mode = 'dark';
     }
@@ -98,7 +98,7 @@ describe('Instance', () => {
   });
 
   it('will find deep descendants', () => {
-    class Grand extends State {
+    class Grand extends Model {
       parent = new Parent();
     }
     const grand = Grand.new();
@@ -146,7 +146,7 @@ describe('Instance', () => {
 
 describe('type labels', () => {
   const anonymous = () => {
-    const T = class extends State {
+    const T = class extends Model {
       value = 1;
     };
     Object.defineProperty(T, 'name', { value: 't' });
@@ -188,7 +188,7 @@ describe('type labels', () => {
     resolve({ [row.site]: 'FromSite' });
     expect(models()[0].type).toBe('FromSite');
 
-    const D = class extends State {
+    const D = class extends Model {
       static displayName = 'Display';
       value = 1;
     };

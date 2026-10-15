@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import { Component, get, ref } from '@expressive/react';
 import { BrowserRouter, Link, NavLinks, Route, Router } from '@expressive/router';
 
@@ -10,7 +10,7 @@ import styles from './Shell.module.css';
 
 import type { Directory } from '../pages';
 
-class Root extends State {
+class Root extends Model {
   theme = new Theme();
   router = new BrowserRouter();
 }

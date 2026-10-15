@@ -1,5 +1,29 @@
 # @expressive/mvc
 
+## 0.89.0
+
+### Minor Changes
+
+- [#532](https://github.com/gabeklein/expressive-mvc/pull/532) [`7b2e8a1`](https://github.com/gabeklein/expressive-mvc/commit/7b2e8a11030000ce005a7681b11047c9b75cda76) Effects understand promises. An effect that returns one is pending until it settles: tracked changes in flight no longer re-run it mid-flight, they accumulate into a single re-run afterwards. A suspense thrown after an `await` replays like a synchronous one, and a rejection reports like a synchronous throw. What a promise resolves to is a value only - cleanup and cancel stay with sync returns.
+
+  The function returned by `state.get(effect)` is now `State.Release<R>` - callable to stop the effect, awaitable to stop it once it settles and receive the latest run's value. A run in flight, queued or suspended is waited for. Only an async effect yields a value: `await state.get(async ($) => $.user)` reads a tracked value once, suspending until it is available. A sync effect resolves `undefined`.
+
+- [#528](https://github.com/gabeklein/expressive-mvc/pull/528) [`e37e87d`](https://github.com/gabeklein/expressive-mvc/commit/e37e87d8883eeec5e9477a18a52fe6103ccced87) Render composition is removed. A subclass `render()` now replaces its base's like any method override, on `Component` and on a rendered `State`, in every host. To keep a base's chrome around subclass content, render a subcomponent the subclass overrides (`<this.Body />`), or call `super.render(props)` from the override to wrap the base. `compose` is no longer exported from `@expressive/mvc/jsx-runtime`.
+
+  Migration: a subclass `render()` that relied on being wrapped by its base's render moves to a subcomponent the base renders; a base that read the subclass output from `props.children` renders that subcomponent instead.
+
+  `Route` keeps its behavior: a subclass `render()` is still the route's page, gated on match, guards and redirects, and run only when matched. `super.render()` inside it places the default content (`as` around `children`). A `Link` subclass `render()` still replaces the anchor.
+
+- [#526](https://github.com/gabeklein/expressive-mvc/pull/526) [`f503478`](https://github.com/gabeklein/expressive-mvc/commit/f503478d7a3bbb851c8aba3c9303a8899bfe658e) `State` is renamed `Model`. `State` remains exported as a deprecated alias of the same class, so `extends State`, `instanceof State`, `State.*` namespace types and adapter augmentations keep working; migrate with a find-and-replace. One exception: code that augments the class through `declare module '@expressive/mvc' { interface State { … } }` must augment `Model` instead - augmenting `State` declares a separate interface that shadows the alias's type. `Component.StateProps` is now `Component.ModelProps`, with `StateProps` kept as a deprecated alias.
+
+  `@expressive/react` and `@expressive/dom`: error messages and the hot-reload plugin's generated code refer to `Model`.
+
+### Patch Changes
+
+- [#533](https://github.com/gabeklein/expressive-mvc/pull/533) [`d194d33`](https://github.com/gabeklein/expressive-mvc/commit/d194d33695e39b133d8a3284819713b6460baeaa) A getter reading a pending value - a `set()` placeholder, an async factory, or another getter waiting on one - now suspends on first read instead of returning `undefined`, and no longer warns "An exception was thrown while initializing" while it waits. A getter whose refresh waits on a pending value now recomputes once it settles, rather than holding `undefined` until another dependency changes.
+
+- [#513](https://github.com/gabeklein/expressive-mvc/pull/513) [`94ec898`](https://github.com/gabeklein/expressive-mvc/commit/94ec8987c8030a2acd19bde38075877869d1599a) State subclasses with `this`-typed methods are assignable to their base again
+
 ## 0.88.0
 
 ### Minor Changes

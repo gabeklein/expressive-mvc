@@ -1,20 +1,20 @@
 # Expressive MVC - Component
 
-Runnable source (complete programs, served as HTML): [`props`](https://expressive.dev/examples/component/props), [`subcomponents`](https://expressive.dev/examples/component/subcomponents), [`lifecycle`](https://expressive.dev/examples/component/lifecycle), [`injection`](https://expressive.dev/examples/component/injection), [`headless`](https://expressive.dev/examples/component/headless), [`suspense`](https://expressive.dev/examples/component/suspense), [`boundary`](https://expressive.dev/examples/component/boundary), [`custom`](https://expressive.dev/examples/component/custom), plus [`extension`](https://expressive.dev/examples/composition/extension) for render composition.
+Runnable source (complete programs, served as HTML): [`props`](https://expressive.dev/examples/component/props), [`subcomponents`](https://expressive.dev/examples/component/subcomponents), [`lifecycle`](https://expressive.dev/examples/component/lifecycle), [`injection`](https://expressive.dev/examples/component/injection), [`headless`](https://expressive.dev/examples/component/headless), [`suspense`](https://expressive.dev/examples/component/suspense), [`boundary`](https://expressive.dev/examples/component/boundary), [`custom`](https://expressive.dev/examples/component/custom).
 
-`Component` extends `State` - a persistent class instance owning its rendering, lifecycle, and behavior.
+`Component` extends `Model` - a persistent class instance owning its rendering, lifecycle, and behavior.
 
-## When to use Component vs State vs function components
+## When to use Component vs Model vs function components
 
 - **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they own no persistent Expressive instance.
-- **State** is display-agnostic - data and logic, no render. Use with `State.use()` in FCs.
-- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form controls, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as `<Component for>` + ErrorBoundary + Suspense in `main`.
+- **Model** is display-agnostic - data and logic, no render. Use with `Model.use()` in FCs.
+- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form inputs, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as `<Component for>` + ErrorBoundary + Suspense in `main`.
 
 Premise: **the class tree is the app; rendering is a projection of it.** `App.new()` stands the UX up headless - every feature's status reads off the instance (`inbox.archive.open`, a pool's members, an import's progress) with no DOM. Keep that true: regions as fields rather than `<Component for>` elements, `has()` subtrees contributing to macro-state whether or not placed, render-less Components. Tests, devtools, and agents consume this surface as much as views do.
 
 Rule of thumb: use `Component` when state is intrinsic to display logic - usually meaning it defines `render()`. Intrinsic to *this* display concern, not the surface - a second concern (a resize handle beside send) is a second class, composed as a mounted wrapper, not more fields on the first.
 
-`render()` is optional: without one, a Component passes children through while placement, `mount()`, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controllers throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. A mount-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
+`render()` is optional: without one, a Component passes children through while placement, `mount()`, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controls throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. A mount-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
 
 Same rule as the pass-through demotion: a ref plus a DOM-sync reaction never earns the *paint's* instance - but that behavior, separated under its own name, earns its own:
 
@@ -47,11 +47,11 @@ class Stick extends Component {
 
 The fused class demotes because scroll-sync was incidental to its paint. `Stick` earns the instance as a feature: unplug is deleting one wrap, and `stick.on` reads off the tree.
 
-Use `State` for headless models/controllers, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `State` would suffice.
+Use `Model` for headless domain models/controls, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
 
 Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
 
-For one-shot feature builds and hook refactors, don't create `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form control is often clearer as `class Foo extends Component` - the state is intrinsic to the rendered unit. An app or route entrypoint stays a Component thru region extraction - regions become its fields; only chrome owning nothing demotes to an FC.
+For one-shot feature builds and hook refactors, don't create `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form input is often clearer as `class Foo extends Component` - the state is intrinsic to the rendered unit. An app or route entrypoint stays a Component thru region extraction - regions become its fields; only chrome owning nothing demotes to an FC.
 
 ## Basic Usage
 
@@ -86,11 +86,11 @@ const items = [first, second];
 <>{items}</>
 ```
 
-- The adapter exposes each instance as an element keyed by `key`, defaulting lazily to the State uid (`String(instance)`). Override the readonly `key` property for an application-defined identity.
+- The adapter exposes each instance as an element keyed by `key`, defaulting lazily to the instance uid (`String(instance)`). Override the readonly `key` property for an application-defined identity.
 - Mounting subscribes and provides context as usual; unmounting only detaches. The external owner destroys it with `instance.set(null)`.
 - One instance may appear beneath separate parents. Repeating it within one sibling collection repeats the key and intentionally produces the host's duplicate-key warning.
 
-When a render reads more than a value or two, destructure everything it reads from `this` at the top - the dependency-snapshot rule of `.get()` / `State.use()` ([react.md](react.md)). Rendering shares the hooks' subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
+When a render reads more than a value or two, destructure everything it reads from `this` at the top - the dependency-snapshot rule of `.get()` / `Model.use()` ([react.md](react.md)). Rendering shares the hooks' subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
 
 ```tsx
 render() {
@@ -174,71 +174,9 @@ class Accordion extends Toggle {
 
 Base owns behavior + structure, subclass fills in rendering: `<DarkModeSwitch />`, `<Accordion title="FAQ">...</Accordion>`.
 
-## Render Composition
-
-A subclass `render()` **composes** with the base instead of replacing it. Each `render()` up the prototype chain wraps the one below, base-outermost, with inner output passed as `props.children`. No `super.render()`.
-
-```tsx
-class Frame extends Component {
-  render(props = {} as { children?: ReactNode }) {
-    return (
-      <section className="frame">
-        <header>Frame</header>
-        {props.children}
-      </section>
-    );
-  }
-}
-
-class Page extends Frame {
-  body = 'Hello';
-
-  render() {
-    return <p>{this.body}</p>;
-  }
-}
-
-// <Page /> renders:
-// <section class="frame"><header>Frame</header><p>Hello</p></section>
-```
-
-Deeper levels nest the same way - each subclass becomes its parent's `children`. Every layer binds to the same live instance and reactive `this`. A base primitive owns shared chrome/suspense/context once; subclasses author only content.
+A subclass `render()` replaces the base's like any method - `super.render(props)` wraps it.
 
 Extend only when the subclass *is a kind of* the base (`Nav` is a `Link`). An add-on - resize, collapse, drag - wraps as a mounted Component (`<Resize>{children}</Resize>`): extending parks the add-on's fields on the subclass's every snapshot, and removing it means rewriting the class rather than dropping the wrap.
-
-`render` is sealed at bootstrap as the **single** composition seam - every other member (methods, getters, subcomponents, lifecycle hooks) overrides with standard replace semantics. Rationale: a reactive base's render is chrome *plus subscriptions and boundaries* the subclass needs, and override-with-`super.render()` makes every subclass remember the call - one forgotten `super` silently drops the base's boundaries. Composing lets the base own its chrome exactly once (see [design.md](../design.md)).
-
-**Footgun:** a wrapper render that never reads `props.children` silently drops everything below it - and since the `children` getter is lazy, the dropped layer never runs. A base meant to wrap subclasses must declare a `props` parameter and render `props.children`.
-
-### Letting a subclass replace the base (opt-out of wrapping)
-
-A base can *defer* to a subclass's render instead of wrapping it - for a leaf primitive (an `<a>`, an `<input>`) usable alone yet fully overridable. The base decides, not the subclass: it detects subclass content and returns it as-is.
-
-The signal is identity - composition synthesizes a fresh `children` getter, so when a subclass authored a render, the `children` the base receives differs from `this.props.children`:
-
-```tsx
-class Link extends Component {
-  to = '';
-
-  render({ children, ...rest } = {} as Link.Props) {
-    // A subclass authored its own render; it arrives as our `children`
-    // (base render is outer). Defer to it instead of wrapping in an anchor.
-    if (children !== this.props.children) return children;
-
-    return <a {...rest} href={this.to}>{children}</a>;
-  }
-}
-
-// <Link to="/x">hi</Link>      -> <a href="/x">hi</a>   (base renders)
-// class Nav extends Link { render() { return <a className="nav" .../> } }
-// <Nav to="/x">hi</Nav>        -> <a class="nav" .../>   (base defers)
-```
-
-Plain `<Link>` and render-less subclasses (`class Foo extends Link {}`) keep the anchor - their `children` *is* `this.props.children`.
-
-A subclass can't unilaterally refuse wrapping - that would turn legitimate wrapping into a runtime error and require knowing its ancestor's behavior. Keeping the choice in the base preserves "works standalone *and* overridable."
-
-**React hooks in a render layer.** Reactivity comes from `this`, so hooks are rarely needed, but allowed. The composed chain runs in a single host render, so all layers' hooks stack into one component - fine if the chain as a whole obeys the rules of hooks. A hook in a layer below a wrapper that *conditionally* renders `props.children` runs only sometimes and breaks them. When a layer needs isolated hooks/subscription/boundary, make it a PascalCase subcomponent (`<this.Panel />`) - each is its own component; render layers fold into one.
 
 ## Persistent Instance
 
@@ -274,7 +212,7 @@ class ChatRoom extends Component {
 
 ## Props
 
-State fields become optional JSX props, applied to the instance every render. A prop omitted on a later render resets to `undefined` - unmanaged `_` fields included.
+Model fields become optional JSX props, applied to the instance every render. A prop omitted on a later render resets to `undefined` - unmanaged `_` fields included.
 
 ```tsx
 class Greeting extends Component {
@@ -289,7 +227,7 @@ class Greeting extends Component {
 
 ### Render Props
 
-Extra props (beyond state fields) via a `render()` parameter:
+Extra props (beyond instance fields) via a `render()` parameter:
 
 ```tsx
 class Card extends Component {
@@ -303,7 +241,7 @@ class Card extends Component {
 <Card title="Hello" className="card" />;
 ```
 
-Non-optional render props become required JSX attributes. All props (state + render + special) are on `this.props`.
+Non-optional render props become required JSX attributes. All props (field + render + special) are on `this.props`.
 
 ### Special Props
 
@@ -477,7 +415,7 @@ function SidebarItems() {
 - `new()` - once after init, synchronously; runs during server render. Return cleanup for teardown.
 - `render(props)` - every render.
 - `mount()` - once when `<MyComponent />` commits, client only. Return cleanup for unmount. Not called for an instance placed as `{instance}` - the placing component does not own it (see [react.md](react.md)).
-- `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `State.on({ catch })`.
+- `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `Model.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
 `MyComponent.use()` throws - a Component is rendered (`<MyComponent />` or `{instance}`), not used. For a bare instance use `MyComponent.new()`.

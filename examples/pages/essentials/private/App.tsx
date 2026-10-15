@@ -1,7 +1,7 @@
 import './App.css';
 
 import Button from '@common/Button';
-import { Component, State, has } from '@expressive/mvc';
+import { Component, Model, has } from '@expressive/mvc';
 
 const server = createServer();
 
@@ -24,7 +24,7 @@ export default () => (
   </div>
 );
 
-class Session extends State {
+class Session extends Model {
   user = '';
   busy = false;
   notes = has<string>();

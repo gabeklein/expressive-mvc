@@ -1,42 +1,42 @@
 import { listener } from '../observable';
-import { PENDING, State, STORE, uid, apply } from '../state';
+import { PENDING, Model, STORE, uid, apply } from '../state';
 
 declare namespace def {
   /**
    * Property initializer, will run upon instance creation.
    * Optional returned callback will run when once upon first access.
    */
-  type Factory<T = any, M extends State = any> = (
+  type Factory<T = any, M extends Model = any> = (
     this: M,
-    key: Extract<State.Field<M>, string>,
+    key: Extract<Model.Field<M>, string>,
     thisArg: M,
-    state: State.Values<M>
+    state: Model.Values<M>
   ) => def.Config<T> | (() => void) | void;
 
-  interface Config<T = any> extends State.Apply<T> {
+  interface Config<T = any> extends Model.Apply<T> {
     destroy?: () => void;
   }
 }
 
-const APPLY = new Map<symbol, [def.Factory, State[]] | null>();
+const APPLY = new Map<symbol, [def.Factory, Model[]] | null>();
 const RESET = () => APPLY.clear();
 
 function def<T>(arg1: def.Factory<T>) {
   if (!PENDING.size || (PENDING.size == 1 && PENDING.has(RESET)))
     throw new Error(
-      'Instruction created with no State under construction.'
+      'Instruction created with no Model under construction.'
     );
 
   PENDING.add(RESET);
 
   const token = Symbol('field-' + uid());
 
-  APPLY.set(token, [arg1, [...PENDING].filter((x) => x instanceof State) as State[]]);
+  APPLY.set(token, [arg1, [...PENDING].filter((x) => x instanceof Model) as Model[]]);
 
   return token as T extends void ? unknown : T;
 }
 
-State.on({
+Model.on({
   setup(self) {
     const store = STORE.get(self)!;
 
@@ -46,7 +46,7 @@ State.on({
 
       if (entry === null)
         throw new Error(
-          `${self}.${key} has an instruction applied to another State.`
+          `${self}.${key} has an instruction applied to another Model.`
         );
 
       if (!entry) continue;
@@ -74,10 +74,10 @@ State.on({
 });
 
 /**
- * Drop pending States constructed after `self` and before the instruction -
+ * Drop pending Models constructed after `self` and before the instruction -
  * products of its own initializers, discarded when this token replaced them.
  */
-function discard(self: State, pending: State[]) {
+function discard(self: Model, pending: Model[]) {
   let seen = false;
 
   for (const item of pending)

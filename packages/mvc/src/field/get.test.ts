@@ -1,6 +1,6 @@
 import { vi, describe, it, expect } from 'vitest';
 import { Context } from '../context';
-import { State } from '../state';
+import { Model } from '../state';
 import { get } from './get';
 import { has } from './has';
 import { set } from './set';
@@ -11,8 +11,8 @@ it.todo('will suspend if necessary', () => {});
 
 describe('fetch mode', () => {
   it('will fetch sibling', () => {
-    class Sibling extends State {}
-    class Test extends State {
+    class Sibling extends Model {}
+    class Test extends Model {
       sibling = get(Sibling);
     }
 
@@ -25,8 +25,8 @@ describe('fetch mode', () => {
   });
 
   it('will fetch multiple', () => {
-    class Ambient extends State {}
-    class Test extends State {
+    class Ambient extends Model {}
+    class Test extends Model {
       ambient1 = get(Ambient);
       ambient2 = get(Ambient);
     }
@@ -41,12 +41,12 @@ describe('fetch mode', () => {
   });
 
   it('will allow overwrite', async () => {
-    class Foo extends State {
+    class Foo extends Model {
       bar = new Bar();
       value = 'foo';
     }
 
-    class Bar extends State {
+    class Bar extends Model {
       foo = get(Foo);
       value = 'foo';
     }
@@ -71,10 +71,10 @@ describe('fetch mode', () => {
   });
 
   it('will create parent-child relationship', () => {
-    class Foo extends State {
+    class Foo extends Model {
       child = new Bar();
     }
-    class Bar extends State {
+    class Bar extends Model {
       parent = get(Foo);
     }
 
@@ -86,8 +86,8 @@ describe('fetch mode', () => {
   });
 
   it('will throw if not found in context', () => {
-    class Parent extends State {}
-    class Child extends State {
+    class Parent extends Model {}
+    class Child extends Model {
       expects = get(Parent);
     }
 
@@ -98,7 +98,7 @@ describe('fetch mode', () => {
   });
 
   it('will skip self and descendants when looking up own type', () => {
-    class Node extends State {
+    class Node extends Model {
       parent = get(Node, false);
     }
 
@@ -119,7 +119,7 @@ describe('fetch mode', () => {
   });
 
   it('will throw on own type when required and no upstream', () => {
-    class Node extends State {
+    class Node extends Model {
       parent = get(Node);
     }
 
@@ -127,8 +127,8 @@ describe('fetch mode', () => {
   });
 
   it('will return undefined if required is false', () => {
-    class MaybeParent extends State {}
-    class StandAlone extends State {
+    class MaybeParent extends Model {}
+    class StandAlone extends Model {
       maybe = get(MaybeParent, false);
       self = get(StandAlone, false);
     }
@@ -142,11 +142,11 @@ describe('fetch mode', () => {
   });
 
   it('will not throw if has parent but not type-required', () => {
-    class Expected extends State {}
-    class Unexpected extends State {
+    class Expected extends Model {}
+    class Unexpected extends Model {
       child = new Adopted();
     }
-    class Adopted extends State {
+    class Adopted extends Model {
       expects = get(Expected, false);
     }
 
@@ -154,12 +154,12 @@ describe('fetch mode', () => {
   });
 
   it('will track recursively', async () => {
-    class Child extends State {
+    class Child extends Model {
       value = 'foo';
       parent = get(Parent);
     }
 
-    class Parent extends State {
+    class Parent extends Model {
       child = new Child();
       value = 'foo';
     }
@@ -182,12 +182,12 @@ describe('fetch mode', () => {
   });
 
   it('will inherit parent context', () => {
-    class Foo extends State {}
-    class Bar extends State {
+    class Foo extends Model {}
+    class Bar extends Model {
       baz = new Baz();
     }
 
-    class Baz extends State {
+    class Baz extends Model {
       foo = get(Foo);
     }
 
@@ -198,8 +198,8 @@ describe('fetch mode', () => {
   });
 
   it('will not be enumerable', () => {
-    class Ambient extends State {}
-    class Test extends State {
+    class Ambient extends Model {}
+    class Test extends Model {
       ambient = get(Ambient);
       foo = 'bar';
     }
@@ -213,11 +213,11 @@ describe('fetch mode', () => {
   });
 
   describe('siblings', () => {
-    class Peer extends State {}
-    class Required extends State {
+    class Peer extends Model {}
+    class Required extends Model {
       peer = get(Peer);
     }
-    class Optional extends State {
+    class Optional extends Model {
       peer = get(Peer, false);
     }
 
@@ -227,11 +227,11 @@ describe('fetch mode', () => {
       ['will resolve required sibling declared earlier', Required, true],
       ['will resolve required sibling declared later', Required, false]
     ])('%s within own parent', (_, Child, earlier) => {
-      class Earlier extends State {
+      class Earlier extends Model {
         peer = new Peer();
         child = new Child();
       }
-      class Later extends State {
+      class Later extends Model {
         child = new Child();
         peer = new Peer();
       }
@@ -241,7 +241,7 @@ describe('fetch mode', () => {
     });
 
     it('will keep own sibling when another arrives in context', () => {
-      class Parent extends State {
+      class Parent extends Model {
         child = new Required();
         peer = new Peer();
       }
@@ -261,10 +261,10 @@ describe('fetch mode', () => {
     it('will run callback for sibling declared later', () => {
       const callback = vi.fn();
 
-      class Child extends State {
+      class Child extends Model {
         peer = get(Peer, callback);
       }
-      class Parent extends State {
+      class Parent extends Model {
         child = new Child();
         peer = new Peer();
       }
@@ -277,7 +277,7 @@ describe('fetch mode', () => {
     });
 
     it('will resolve siblings within explicit context', () => {
-      class Parent extends State {
+      class Parent extends Model {
         child = new Required();
         peer = new Peer();
       }
@@ -290,10 +290,10 @@ describe('fetch mode', () => {
     });
 
     it('will resolve through an activating grandparent', () => {
-      class Middle extends State {
+      class Middle extends Model {
         child = new Required();
       }
-      class Parent extends State {
+      class Parent extends Model {
         middle = new Middle();
         peer = new Peer();
       }
@@ -304,7 +304,7 @@ describe('fetch mode', () => {
     });
 
     it('will throw if sibling never arrives', () => {
-      class Parent extends State {
+      class Parent extends Model {
         child = new Required();
         other = new Optional();
       }
@@ -315,7 +315,7 @@ describe('fetch mode', () => {
     });
 
     it('will not notify a destroyed child when a later parent activates', () => {
-      class Parent extends State {
+      class Parent extends Model {
         child = new Required();
         peer = new Peer();
       }
@@ -329,7 +329,7 @@ describe('fetch mode', () => {
     });
 
     it('will not notify a replaced child when sibling is reassigned', () => {
-      class Parent extends State {
+      class Parent extends Model {
         child = new Optional();
         peer = new Peer();
       }
@@ -345,11 +345,11 @@ describe('fetch mode', () => {
     });
 
     it('will prefer sibling over grandparent sibling', () => {
-      class Middle extends State {
+      class Middle extends Model {
         child = new Required();
         peer = new Peer();
       }
-      class Parent extends State {
+      class Parent extends Model {
         middle = new Middle();
         peer = new Peer();
       }
@@ -360,7 +360,7 @@ describe('fetch mode', () => {
     });
 
     it('will not resolve a sibling that was cleared', () => {
-      class Parent extends State {
+      class Parent extends Model {
         peer: Peer | null = new Peer();
         child?: Optional = undefined;
       }
@@ -374,11 +374,11 @@ describe('fetch mode', () => {
     });
 
     it('will resolve through context for a pool member', () => {
-      class Theme extends State {}
-      class Item extends State {
+      class Theme extends Model {}
+      class Item extends Model {
         theme = get(Theme);
       }
-      class Store extends State {
+      class Store extends Model {
         items = has(Item);
       }
 
@@ -389,10 +389,10 @@ describe('fetch mode', () => {
     });
 
     it('will not resolve to itself', () => {
-      class Node extends State {
+      class Node extends Model {
         peer = get(Node, false);
       }
-      class Parent extends State {
+      class Parent extends Model {
         a = new Node();
         b = new Node();
       }
@@ -404,17 +404,17 @@ describe('fetch mode', () => {
     });
 
     it('will resolve a sibling a subclass initializer replaced', () => {
-      class Workspace extends State {
+      class Workspace extends Model {
         git = 'host';
       }
       class HarnessWorkspace extends Workspace {
         git = 'harness';
       }
-      class Session extends State {
+      class Session extends Model {
         workspace = get(Workspace);
       }
       class HarnessSession extends Session {}
-      class Pairing extends State {
+      class Pairing extends Model {
         session = new Session();
         workspace = new Workspace();
       }
@@ -439,14 +439,14 @@ describe('fetch mode', () => {
 
   describe('ancestors', () => {
     it('will resolve grandparent without context', () => {
-      class Leaf extends State {
+      class Leaf extends Model {
         top = get(Top);
         mid = get(Mid);
       }
-      class Mid extends State {
+      class Mid extends Model {
         leaf = new Leaf();
       }
-      class Top extends State {
+      class Top extends Model {
         mid = new Mid();
       }
 
@@ -457,13 +457,13 @@ describe('fetch mode', () => {
     });
 
     it('will resolve owner of owner for a pool member', () => {
-      class Item extends State {
+      class Item extends Model {
         app = get(App);
       }
-      class Store extends State {
+      class Store extends Model {
         items = has(Item);
       }
-      class App extends State {
+      class App extends Model {
         store = new Store();
       }
 
@@ -474,17 +474,17 @@ describe('fetch mode', () => {
     });
 
     it('will prefer ancestor over context', () => {
-      class Leaf extends State {
+      class Leaf extends Model {
         top = get(Top);
       }
-      class Mid extends State {
+      class Mid extends Model {
         leaf = new Leaf();
       }
-      class Top extends State {
+      class Top extends Model {
         mid = new Mid();
       }
 
-      class Root extends State {
+      class Root extends Model {
         top = new Top();
       }
 
@@ -498,13 +498,13 @@ describe('fetch mode', () => {
     });
 
     it('will prefer ancestor over its sibling', () => {
-      class Leaf extends State {
+      class Leaf extends Model {
         top = get(Top);
       }
-      class Mid extends State {
+      class Mid extends Model {
         leaf = new Leaf();
       }
-      class Top extends State {
+      class Top extends Model {
         mid = new Mid();
         peer?: Top = undefined;
       }
@@ -516,14 +516,14 @@ describe('fetch mode', () => {
     });
 
     it('will prefer nearer sibling over ancestor', () => {
-      class Leaf extends State {
+      class Leaf extends Model {
         top = get(Top);
       }
-      class Mid extends State {
+      class Mid extends Model {
         leaf = new Leaf();
         top?: Top = undefined;
       }
-      class Top extends State {
+      class Top extends Model {
         mid?: Mid = undefined;
       }
 
@@ -540,14 +540,14 @@ describe('fetch mode', () => {
     });
 
     it('will prefer existing sibling over ancestor', () => {
-      class Leaf extends State {
+      class Leaf extends Model {
         top = get(Top);
       }
-      class Mid extends State {
+      class Mid extends Model {
         top = new Top();
         leaf = new Leaf();
       }
-      class Top extends State {
+      class Top extends Model {
         mid?: Mid = undefined;
       }
 
@@ -559,14 +559,14 @@ describe('fetch mode', () => {
     });
 
     it('will throw if no ancestor matches', () => {
-      class Other extends State {}
-      class Leaf extends State {
+      class Other extends Model {}
+      class Leaf extends Model {
         other = get(Other);
       }
-      class Mid extends State {
+      class Mid extends Model {
         leaf = new Leaf();
       }
-      class Top extends State {
+      class Top extends Model {
         mid = new Mid();
       }
 
@@ -577,13 +577,13 @@ describe('fetch mode', () => {
   });
 
   it('will not register upstream into own context', () => {
-    class Parent extends State {
+    class Parent extends Model {
       child = new Child();
     }
-    class Child extends State {
+    class Child extends Model {
       parent = get(Parent);
     }
-    class Stranger extends State {
+    class Stranger extends Model {
       parent = get(Parent, false);
     }
 
@@ -595,11 +595,11 @@ describe('fetch mode', () => {
 
   describe('subscription', () => {
     it('will update when implicit upstream is replaced', async () => {
-      class Peer extends State {}
-      class Parent extends State {
+      class Peer extends Model {}
+      class Parent extends Model {
         peer = new Peer();
       }
-      class Child extends State {
+      class Child extends Model {
         peer = get(Peer);
       }
 
@@ -624,8 +624,8 @@ describe('fetch mode', () => {
     });
 
     it('will update when upstream is added to ancestor context', async () => {
-      class Ambient extends State {}
-      class Child extends State {
+      class Ambient extends Model {}
+      class Child extends Model {
         ambient = get(Ambient, false);
       }
 
@@ -648,16 +648,16 @@ describe('fetch mode', () => {
     });
 
     it('will run callback when upstream is replaced', async () => {
-      class Remote extends State {
+      class Remote extends Model {
         value = 'initial';
       }
 
       const callback = vi.fn();
 
-      class Owner extends State {
+      class Owner extends Model {
         remote = new Remote();
       }
-      class Consumer extends State {
+      class Consumer extends Model {
         remote = get(Remote, callback);
       }
 
@@ -689,8 +689,8 @@ describe('fetch mode', () => {
 
   describe('downstream', () => {
     describe('multiple', () => {
-      class Child extends State {}
-      class Parent extends State {
+      class Child extends Model {}
+      class Parent extends Model {
         children = get(Child, true);
       }
 
@@ -705,7 +705,7 @@ describe('fetch mode', () => {
       });
 
       it('will not collect self through a consumer', () => {
-        class Node extends State {
+        class Node extends Model {
           peers = get(Node, true);
           up = get(Node, false);
         }
@@ -741,7 +741,7 @@ describe('fetch mode', () => {
 
       it('will not register superclass', () => {
         class Child2 extends Child {}
-        class Parent extends State {
+        class Parent extends Model {
           children = get(Child2, true);
         }
 
@@ -763,7 +763,7 @@ describe('fetch mode', () => {
       });
 
       it('will collect own type', async () => {
-        class Test extends State {
+        class Test extends Model {
           tests = get(Test, true);
         }
 
@@ -778,7 +778,7 @@ describe('fetch mode', () => {
       });
 
       it('will ignore redundant child', async () => {
-        class Parent extends State {
+        class Parent extends Model {
           children = get(Child, true, gotChild);
         }
 
@@ -811,7 +811,7 @@ describe('fetch mode', () => {
       });
 
       it('will collect implicit child added later', async () => {
-        class Wrapper extends State {
+        class Wrapper extends Model {
           child = new Child();
         }
 
@@ -825,11 +825,11 @@ describe('fetch mode', () => {
       });
 
       it('will register implicit', () => {
-        class Baz extends State {}
-        class Foo extends State {
+        class Baz extends Model {}
+        class Foo extends Model {
           bar = new Bar();
         }
-        class Bar extends State {
+        class Bar extends Model {
           baz = get(Baz, true, gotBaz);
         }
 
@@ -843,11 +843,11 @@ describe('fetch mode', () => {
       });
 
       it('will register for implicit', () => {
-        class Baz extends State {}
-        class Foo extends State {
+        class Baz extends Model {}
+        class Foo extends Model {
           baz = get(Baz, true);
         }
-        class Bar extends State {
+        class Bar extends Model {
           baz = new Baz();
         }
 
@@ -862,8 +862,8 @@ describe('fetch mode', () => {
 
     describe('single', () => {
       it('will get single downstream child until destroyed', () => {
-        class Child extends State {}
-        class Parent extends State {
+        class Child extends Model {}
+        class Parent extends Model {
           child = get(Child, true, false);
         }
 
@@ -883,8 +883,8 @@ describe('fetch mode', () => {
       });
 
       it('will ignore upstream matches in single downstream get', () => {
-        class Foo extends State {}
-        class Bar extends State {
+        class Foo extends Model {}
+        class Bar extends Model {
           child = get(Foo, true, false);
         }
 
@@ -907,10 +907,10 @@ describe('fetch mode', () => {
     it('will get owner and run callback with it', () => {
       const callback = vi.fn();
 
-      class Child extends State {
-        owner = get(State, callback);
+      class Child extends Model {
+        owner = get(Model, callback);
       }
-      class Parent extends State {
+      class Parent extends Model {
         child = new Child();
       }
 
@@ -920,10 +920,10 @@ describe('fetch mode', () => {
       expect(callback).toHaveBeenCalledWith(parent, parent.child);
     });
 
-    it('will get State a context was set up for', () => {
-      class Host extends State {}
-      class Child extends State {
-        owner = get(State);
+    it('will get Model a context was set up for', () => {
+      class Host extends Model {}
+      class Child extends Model {
+        owner = get(Model);
       }
 
       const host = Host.new();
@@ -935,28 +935,28 @@ describe('fetch mode', () => {
     });
 
     it('will be undefined if optional and none', () => {
-      class Child extends State {
-        owner = get(State, false);
+      class Child extends Model {
+        owner = get(Model, false);
       }
 
       expect(Child.new().owner).toBeUndefined();
     });
 
     it('will throw if none', () => {
-      class Child extends State {
-        owner = get(State);
+      class Child extends Model {
+        owner = get(Model);
       }
 
       expect(() => Child.new()).toThrow(/^Child-\w+ has no owner\.$/);
     });
 
-    it('will collect owned States', async () => {
-      class Child extends State {}
-      class Parent extends State {
+    it('will collect owned Models', async () => {
+      class Child extends Model {}
+      class Parent extends Model {
         child = new Child();
         guest?: Child = undefined;
         pool = has(Child);
-        owned = get(State, true);
+        owned = get(Model, true);
       }
 
       const parent = Parent.new();
@@ -976,11 +976,11 @@ describe('fetch mode', () => {
       expect(parent.owned).toEqual([parent.child]);
     });
 
-    it('will get single owned State', async () => {
-      class Child extends State {}
-      class Parent extends State {
+    it('will get single owned Model', async () => {
+      class Child extends Model {}
+      class Parent extends Model {
         child?: Child = undefined;
-        owned = get(State, true, false);
+        owned = get(Model, true, false);
       }
 
       const parent = Parent.new();
@@ -998,11 +998,11 @@ describe('fetch mode', () => {
       expect(parent.owned).toBeUndefined();
     });
 
-    it('will suspend until an owned State exists', async () => {
-      class Child extends State {}
-      class Parent extends State {
+    it('will suspend until an owned Model exists', async () => {
+      class Child extends Model {}
+      class Parent extends Model {
         child?: Child = undefined;
-        owned = get(State, true, true);
+        owned = get(Model, true, true);
       }
 
       const parent = Parent.new();
@@ -1019,13 +1019,13 @@ describe('fetch mode', () => {
 
 describe('lifecycle callbacks', () => {
   it('will run callback on upstream mount', () => {
-    class Remote extends State {
+    class Remote extends Model {
       value = 'foo';
     }
 
     const remoteCallback = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       remote = get(Remote, remoteCallback);
     }
 
@@ -1039,8 +1039,8 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will run callback on downstream mount', () => {
-    class Child extends State {}
-    class Parent extends State {
+    class Child extends Model {}
+    class Parent extends Model {
       children = get(Child, true, gotChild);
     }
 
@@ -1057,10 +1057,10 @@ describe('lifecycle callbacks', () => {
     const didRemove = vi.fn();
     const didAdd = vi.fn(() => didRemove);
 
-    class Child extends State {
+    class Child extends Model {
       value = 0;
     }
-    class Parent extends State {
+    class Parent extends Model {
       children = get(Child, true, didAdd);
     }
 
@@ -1082,8 +1082,8 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will not register if callback returns false', async () => {
-    class Child extends State {}
-    class Parent extends State {
+    class Child extends Model {}
+    class Parent extends Model {
       children = get(Child, true, hasChild);
     }
 
@@ -1104,13 +1104,13 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will not rerun upstream callback reactively', async () => {
-    class Remote extends State {
+    class Remote extends Model {
       value = 'foo';
     }
 
     const remoteCallback = vi.fn((remote: Remote) => void remote.value);
 
-    class Test extends State {
+    class Test extends Model {
       remote = get(Remote, remoteCallback);
     }
 
@@ -1126,12 +1126,12 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will run cleanup on state destruction', async () => {
-    class Remote extends State {}
+    class Remote extends Model {}
 
     const cleanup = vi.fn();
     const remoteCallback = vi.fn(() => cleanup);
 
-    class Test extends State {
+    class Test extends Model {
       remote = get(Remote, remoteCallback);
     }
 
@@ -1150,11 +1150,11 @@ describe('lifecycle callbacks', () => {
   it('will receive ready instance', async () => {
     const didSet = vi.fn();
 
-    class Child extends State {
+    class Child extends Model {
       value = set(undefined, didSet);
     }
 
-    class Parent extends State {
+    class Parent extends Model {
       children = get(Child, true, (child) => {
         child.value = 'Hello';
       });
@@ -1168,8 +1168,8 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will cleanup before destroying', async () => {
-    class Child extends State {}
-    class Parent extends State {
+    class Child extends Model {}
+    class Parent extends Model {
       children = get(Child, true, (child) => {
         didNotify();
         return () => {
@@ -1197,8 +1197,8 @@ describe('lifecycle callbacks', () => {
   });
 
   it('will cleanup effects before destroying', async () => {
-    class Child extends State {}
-    class Parent extends State {
+    class Child extends Model {}
+    class Parent extends Model {
       children = get(Child, true, () => {
         didNotify();
         this.get(() => {

@@ -45,9 +45,9 @@ registerRootComponent(() => <Text>{JSON.stringify(loaded)}</Text>);
 `;
 
 const FIELDS = `
-import State, { set } from '@expressive/mvc';
+import Model, { set } from '@expressive/mvc';
 
-export class Subject extends State {
+export class Subject extends Model {
   count = 0;
   label = set('untitled');
   nested = { deep: true };
@@ -145,7 +145,7 @@ try {
   if (!compiled)
     throw new Error('expo export emitted no Hermes bytecode for ios.');
 
-  // 3 - A State subclass behaves the same whichever way Metro compiles its
+  // 3 - A Model subclass behaves the same whichever way Metro compiles its
   // fields. Declaring engine 'hermes' keeps native fields ([[Define]]); every
   // other target, jsEngine 'jsc' included, downlevels them to assignment.
 

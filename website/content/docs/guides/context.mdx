@@ -3,12 +3,12 @@ title: Context and Sharing
 description: Component for, the get instruction, and upstream/downstream lookup
 ---
 
-Expressive has a built-in, type-safe context system, and the class itself is the key. No `createContext<T>()`, no default values, no prop drilling - any State provided in an ancestor can be looked up anywhere below it.
+Expressive has a built-in, type-safe context system, and the class itself is the key. No `createContext<T>()`, no default values, no prop drilling - any instance provided in an ancestor can be looked up anywhere below it.
 
 ```tsx
-import { State, Component } from '@expressive/mvc';
+import { Model, Component } from '@expressive/mvc';
 
-class Theme extends State {
+class Theme extends Model {
   color = 'blue';
   toggle() {
     this.color = this.color === 'blue' ? 'red' : 'blue';
@@ -40,7 +40,7 @@ function Header() {
 
 ## Providing with `<Component for>`
 
-The bare `Component` class - not a subclass - given a `for` attribute puts one State into context for its children.
+The bare `Component` class - not a subclass - given a `for` attribute puts one instance into context for its children.
 
 > **Good to know:** <br/>
 > `<Component for>` replaces `Provider`. `Provider` and `Consumer` were removed from `@expressive/react`; neither exists in `@expressive/dom`.
@@ -53,7 +53,7 @@ The bare `Component` class - not a subclass - given a `for` attribute puts one S
 </Component>
 ```
 
-The element constructs an instance, owns it, and destroys it on unmount. Its `mount()` runs with the element's. Other attributes are typed from the provided State and assigned to it on every render:
+The element constructs an instance, owns it, and destroys it on unmount. Its `mount()` runs with the element's. Other attributes are typed from the provided instance and assigned to it on every render:
 
 ```tsx
 <Component for={Theme} color="red">
@@ -65,7 +65,7 @@ Changing `for` to another class releases the previous instance and provides a ne
 
 ### Providing an existing instance
 
-Pass an instance only when something else owns it - for example, one a component created with `State.use()`:
+Pass an instance only when something else owns it - for example, one a component created with `Model.use()`:
 
 ```tsx
 function Page() {
@@ -81,12 +81,12 @@ function Page() {
 
 An instance passed in is **not** destroyed when the element unmounts, and its `mount()` is not called - its owner manages its lifetime.
 
-### Providing several states
+### Providing several instances
 
-One item per element. Several states belong to a parent State that owns them as fields:
+One item per element. Several instances belong to a parent instance that owns them as fields:
 
 ```tsx
-class Root extends State {
+class Root extends Model {
   theme = new Theme();
   auth = new AuthService();
   cart = new Cart();
@@ -97,7 +97,7 @@ class Root extends State {
 </Component>;
 ```
 
-Each field registers into the same context, so descendants find `Theme.get()`, `AuthService.get()` and `Cart.get()` directly, and the three can `get()` each other as siblings. Nesting `<Component for>` elements works, but the inner State can see the outer, not the reverse.
+Each field registers into the same context, so descendants find `Theme.get()`, `AuthService.get()` and `Cart.get()` directly, and the three can `get()` each other as siblings. Nesting `<Component for>` elements works, but the inner instance can see the outer, not the reverse.
 
 ### Creation callback
 
@@ -117,15 +117,15 @@ Each field registers into the same context, so descendants find `Theme.get()`, `
 </Component>
 ```
 
-`<Component for>` adds no boundary of its own. Pass `fallback` to wrap children in a Suspense boundary, so any async `set()` in the provided state shows it. Pass `catch` to handle errors thrown by children - see [error boundaries](/docs/guides/components#error-boundaries).
+`<Component for>` adds no boundary of its own. Pass `fallback` to wrap children in a Suspense boundary, so any async `set()` in the provided instance shows it. Pass `catch` to handle errors thrown by children - see [error boundaries](/docs/guides/components#error-boundaries).
 
 <br />
 
 ## Consuming from context
 
-### `State.get()`
+### `Model.get()`
 
-Inside a component, `State.get()` looks up an instance from context and subscribes to accessed properties:
+Inside a component, `Model.get()` looks up an instance from context and subscribes to accessed properties:
 
 ```tsx
 function ThemeToggle() {
@@ -138,7 +138,7 @@ function ThemeToggle() {
 }
 ```
 
-- Throws if the state isn't provided above.
+- Throws if the instance isn't provided above.
 - Re-renders only when accessed properties change.
 - Re-subscribes automatically if the provider is replaced upstream.
 
@@ -181,7 +181,7 @@ The factory receives a tracking proxy and a `refresh` function (see below).
 
 ### Effect mode
 
-Return `null` from the factory to run a side effect once, on first render, without subscribing - the factory never runs again and the component doesn't re-render for this state:
+Return `null` from the factory to run a side effect once, on first render, without subscribing - the factory never runs again and the component doesn't re-render for this instance:
 
 ```tsx
 AppState.get((app) => {
@@ -209,12 +209,12 @@ function DataView() {
 
 ## The `get` instruction
 
-Inside a State class, the `get` instruction declares a context dependency as a field:
+Inside a Model class, the `get` instruction declares a context dependency as a field:
 
 ```tsx
-import { State, get } from '@expressive/mvc';
+import { Model, get } from '@expressive/mvc';
 
-class Panel extends State {
+class Panel extends Model {
   theme = get(Theme); // required - throws if not in context
   maybe = get(OptionalSvc, false); // optional - T | undefined
 }
@@ -225,7 +225,7 @@ This is **dependency injection**: a class declares what it needs, and whoever pr
 ### Upstream with callback
 
 ```tsx
-class Panel extends State {
+class Panel extends Model {
   theme = get(Theme, (theme, self) => {
     console.log('found theme:', theme);
     return () => console.log('detached');
@@ -238,12 +238,12 @@ The callback runs once when the upstream is resolved. The optional returned func
 ### Downstream collection
 
 ```tsx
-class TabGroup extends State {
+class TabGroup extends Model {
   tabs = get(Tab, true); // readonly Tab[]
   active = 0;
 }
 
-class Tab extends State {
+class Tab extends Model {
   label = '';
   group = get(TabGroup);
 }
@@ -262,7 +262,7 @@ Pass `true` as the second argument to collect **downstream** instances of a type
 ### Downstream with callback
 
 ```tsx
-class Registry extends State {
+class Registry extends Model {
   items = get(Item, true, (item, self) => {
     console.log('registered:', item);
     return () => console.log('unregistered');
@@ -277,7 +277,7 @@ Return `false` from the callback to prevent registration. Return a function for 
 Sometimes you want a single child of a type, not an array:
 
 ```tsx
-class Container extends State {
+class Container extends Model {
   form = get(FormState, true, true); // required single - throws if missing
   draft = get(DraftState, true, false); // optional single - T | undefined
 }
@@ -287,7 +287,7 @@ class Container extends State {
 
 ## Reading context inline
 
-`Consumer` was removed. Read context with `State.get()` in a small function component - property reads subscribe as usual:
+`Consumer` was removed. Read context with `Model.get()` in a small function component - property reads subscribe as usual:
 
 ```tsx
 const Themed = () => {
@@ -300,13 +300,13 @@ const Themed = () => {
 
 ## Globals and the root context
 
-Not everything wants a `<Component for>`. Some state is genuinely global - the session, the viewport, app settings. Declare those with `static global` and call `State.new()` at module scope:
+Not everything wants a `<Component for>`. Some state is genuinely global - the session, the viewport, app settings. Declare those with `static global` and call `Model.new()` at module scope:
 
 ```ts
 // session.ts
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Session extends State {
+class Session extends Model {
   static global = true;
 
   user = 'gabe';
@@ -318,7 +318,7 @@ class Session extends State {
 export default Session.new();
 ```
 
-`State.new()` activates the instance against `Context.root`, the global registry every context ultimately inherits from - and because `Session` declares `static global`, it registers there too. Any component, anywhere, can now call `Session.get()` - nothing to provide:
+`Model.new()` activates the instance against `Context.root`, the global registry every context ultimately inherits from - and because `Session` declares `static global`, it registers there too. Any component, anywhere, can now call `Session.get()` - nothing to provide:
 
 ```tsx
 function Avatar() {
@@ -327,25 +327,25 @@ function Avatar() {
 }
 ```
 
-The declaration is the opt-in. Without it, a context-less `State.new()` instance is fully functional but private - it can read declared globals, but nothing can find *it*. And `static global` must be declared per class: a subclass of a global that doesn't redeclare it throws on activation, so an extended global can't leak into the shared root by accident.
+The declaration is the opt-in. Without it, a context-less `Model.new()` instance is fully functional but private - it can read declared globals, but nothing can find *it*. And `static global` must be declared per class: a subclass of a global that doesn't redeclare it throws on activation, so an extended global can't leak into the shared root by accident.
 
 A full app built this way (viewport, session, and theme as globals) is at [composition/globals](/examples/composition/globals).
 
 ### Homes are permanent
 
-Where a state activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A global's `State.new()` registers it at root, which claims it immediately and permanently; wrapping the instance in a context afterward won't move it. A private instance only *falls back* to root, so the first explicit context to claim it later still becomes its home.
+Where an instance activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A global's `Model.new()` registers it at root, which claims it immediately and permanently; wrapping the instance in a context afterward won't move it. A private instance only *falls back* to root, so the first explicit context to claim it later still becomes its home.
 
-The escape hatch is plain construction. `new State()` builds the instance without activating it, so the first explicit placement gets to claim it:
+The escape hatch is plain construction. `new Model()` builds the instance without activating it, so the first explicit placement gets to claim it:
 
 ```ts
 const cart = new Cart(); // constructed, not yet activated
 new Context(cart); // cart's home is this context
 ```
 
-Useful in tests, and in code that prepares a state before mounting it into a tree.
+Useful in tests, and in code that prepares an instance before mounting it into a tree.
 
 > **Good to know:** <br/>
-> A global may not shadow another. A second `State.new()` of the same global class throws, and so does a global subclass or supertype of one already in root - destroy the first (`set(null)`) before creating another. Two *different* subclasses of a shared global base don't throw; they collide only at the base, where both are evicted - `Base.get()` finds neither rather than one silently winning, while each subclass stays findable by its own type. Explicit registration (`<Component for>`, or `Context.root.add(state, true)`) bypasses both rules.
+> A global may not shadow another. A second `Model.new()` of the same global class throws, and so does a global subclass or supertype of one already in root - destroy the first (`set(null)`) before creating another. Two *different* subclasses of a shared global base don't throw; they collide only at the base, where both are evicted - `Base.get()` finds neither rather than one silently winning, while each subclass stays findable by its own type. Explicit registration (`<Component for>`, or `Context.root.add(state, true)`) bypasses both rules.
 
 That's the short version - constructor forms, `ctx.add`, eviction and subtype rules are all in [API: Utilities](/docs/api/utilities).
 
@@ -358,14 +358,14 @@ That's the short version - constructor forms, `ctx.add`, eviction and subtype ru
 Classes can compose by owning each other:
 
 ```tsx
-class Auth extends State {
+class Auth extends Model {
   /* ... */
 }
-class Api extends State {
+class Api extends Model {
   auth = get(Auth);
   // ...
 }
-class App extends State {
+class App extends Model {
   auth = new Auth();
   api = new Api();
 }
@@ -417,7 +417,7 @@ function FilterBar() {
 </Dashboard>;
 ```
 
-Use `State` for headless models like auth, theme, or an API service. Use `Component` when the class should exist in the tree: layouts, route shells, dashboards, wizards, tab groups, toast hosts. The container _is_ the context. ✨
+Use `Model` for headless domain models like auth, theme, or an API service. Use `Component` when the class should exist in the tree: layouts, route shells, dashboards, wizards, tab groups, toast hosts. The container _is_ the context. ✨
 
 <br />
 
