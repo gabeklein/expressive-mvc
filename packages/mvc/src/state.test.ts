@@ -1,5 +1,5 @@
 import { vi, expect, it, describe } from 'vitest';
-import { flushMicrotasks, mockError, mockUncaught, mockWarn } from '../test.setup';
+import { flushMicrotasks, mockError, mockPromise, mockUncaught, mockWarn } from '../test.setup';
 import { Context } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
@@ -4231,6 +4231,193 @@ describe('computed (getters)', () => {
 
       expect(didCompute).toBeCalledTimes(2);
       expect(test.value).toBe('BX');
+    });
+  });
+
+  describe('suspense', () => {
+    const warn = mockWarn();
+
+    class Test extends State {
+      data = set<number[]>();
+
+      get size() {
+        return this.data.length;
+      }
+
+      get total() {
+        return this.size * 10;
+      }
+    }
+
+    it.each([
+      ['will suspend while dependency is pending', 'size', 2],
+      ['will suspend while reading a pending getter', 'total', 20]
+    ] as const)('%s', async (_, key, expected) => {
+      const test = Test.new();
+      let suspense: unknown;
+
+      try {
+        void test[key];
+      } catch (err) {
+        suspense = err;
+      }
+
+      expect(suspense).toBeInstanceOf(Promise);
+      expect(() => test[key]).toThrow();
+
+      test.data = [1, 2];
+
+      await expect(suspense).resolves.toBe(expected);
+      expect(test[key]).toBe(expected);
+      expect(warn).not.toBeCalled();
+    });
+
+    it('will resolve a getter chain via effect', async () => {
+      const test = Test.new();
+      const didGet = vi.fn();
+
+      test.get(($) => didGet($.total));
+      test.data = [1, 2, 3];
+
+      await flushMicrotasks();
+      expect(didGet).toBeCalledTimes(1);
+      expect(didGet).toBeCalledWith(30);
+    });
+
+    it('will suspend until every dependency resolves', async () => {
+      class Test extends State {
+        a = set<number>();
+        b = set<number>();
+
+        get sum() {
+          return this.a + this.b;
+        }
+      }
+
+      const test = Test.new();
+      const didGet = vi.fn();
+
+      test.get(($) => didGet($.sum));
+      test.a = 1;
+
+      await flushMicrotasks();
+      expect(() => test.sum).toThrow();
+      expect(didGet).not.toBeCalled();
+
+      test.b = 2;
+
+      await flushMicrotasks();
+      expect(test.sum).toBe(3);
+      expect(didGet).toBeCalledTimes(1);
+      expect(didGet).toBeCalledWith(3);
+      expect(warn).not.toBeCalled();
+    });
+
+    it('will resolve a getter chain over async factory', async () => {
+      const pending = mockPromise<number[]>();
+
+      class Test extends State {
+        data = set(() => pending);
+
+        get size() {
+          return this.data.length;
+        }
+
+        get total() {
+          return this.size * 10;
+        }
+      }
+
+      const test = Test.new();
+      const didGet = vi.fn();
+
+      test.get(($) => didGet($.total));
+      pending.resolve([1, 2]);
+
+      await flushMicrotasks();
+      expect(didGet).toBeCalledTimes(1);
+      expect(didGet).toBeCalledWith(20);
+      expect(warn).not.toBeCalled();
+    });
+
+    it('will recompute once a refresh suspense resolves', async () => {
+      class Test extends State {
+        mode = 0;
+        later = set<string>();
+
+        get value() {
+          return this.mode ? this.later : 'ready';
+        }
+      }
+
+      const test = Test.new();
+
+      expect(test.value).toBe('ready');
+
+      test.mode = 1;
+      await expect(test).toHaveUpdated();
+
+      test.later = 'done';
+      await expect(test).toHaveUpdated();
+
+      expect(test.value).toBe('done');
+    });
+
+    it('will not recompute for a superseded suspense', async () => {
+      const getter = vi.fn();
+
+      class Test extends State {
+        mode = 0;
+        later = set<string>();
+
+        get value() {
+          getter();
+          return this.mode ? this.later : 'ready';
+        }
+      }
+
+      const test = Test.new();
+
+      void test.value;
+      test.mode = 1;
+      await expect(test).toHaveUpdated();
+
+      test.mode = 0;
+      await expect(test).toHaveUpdated();
+      expect(test.value).toBe('ready');
+
+      getter.mockClear();
+      test.later = 'done';
+      await flushMicrotasks();
+
+      expect(getter).not.toBeCalled();
+    });
+
+    it('will not recompute once destroyed', async () => {
+      const getter = vi.fn();
+
+      class Test extends State {
+        mode = 0;
+        later = set<string>();
+
+        get value() {
+          getter();
+          return this.mode ? this.later : 'ready';
+        }
+      }
+
+      const test = Test.new();
+
+      void test.value;
+      test.mode = 1;
+      await expect(test).toHaveUpdated();
+
+      getter.mockClear();
+      test.set(null);
+      test.later = 'done';
+      await flushMicrotasks();
+
+      expect(getter).not.toBeCalled();
     });
   });
 
