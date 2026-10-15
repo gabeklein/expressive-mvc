@@ -296,13 +296,16 @@ function watch<T extends object, R>(
     cleanup();
   }
 
-  function destroyed() {
-    if (!outcome) conclude(false, new Error(`${target} is destroyed.`));
+  function fail(reason: string) {
+    if (!outcome) conclude(false, new Error(`${target} ${reason}`));
   }
 
-  function resume() {
+  function stop(key: false | null) {
+    if (unset) unset(key);
+    unset = undefined;
     suspense?.();
     suspense = undefined;
+    reset = null;
   }
 
   function suspend(on: Promise<unknown>) {
@@ -368,7 +371,7 @@ function watch<T extends object, R>(
 
       if (observer(target) === null) {
         if (release) release(null);
-        destroyed();
+        fail('is destroyed.');
         return discard(output, null);
       }
 
@@ -426,11 +429,8 @@ function watch<T extends object, R>(
   const unlisten = listener(target, (key) => {
     if (key === true) invoke();
     else if (key === null) {
-      if (unset) unset(null);
-      unset = undefined;
-      resume();
-      reset = null;
-      destroyed();
+      stop(null);
+      fail('is destroyed.');
     } else if (!reset) {
       suspense?.(false);
       return reset;
@@ -438,14 +438,10 @@ function watch<T extends object, R>(
   });
 
   function cleanup() {
-    if (unset) unset(false);
-
-    unset = undefined;
-    resume();
-    reset = null;
+    stop(false);
     unlisten();
 
-    if (!outcome) conclude(false, new Error(`${target} effect was cancelled before it settled.`));
+    fail('effect was cancelled before it settled.');
   }
 
   cleanup.then = ((onFulfilled, onRejected) => {
