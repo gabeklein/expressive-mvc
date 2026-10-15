@@ -3,16 +3,17 @@ import { has, map } from '@expressive/mvc';
 
 import { childrenOf, isVNode } from '../node/vnode';
 import type { Key, Node as RenderNode, VNode } from '../node/vnode';
+import type { Appearance } from '../style/claim';
 import { attach } from './commits';
 import { patchProps } from './element';
-import { park, move } from './fiber';
-import type { Boundary, Renderable, Fiber, Appearance } from './fiber';
+import { move } from './fiber';
+import type { Boundary, Fiber, Renderable } from './fiber';
 import { same, track, untrack } from './hot';
 import { componentProps, mount, runFunction, runComponent, runCollection, unmountFiber } from './mount';
 import { passiveRender } from './render';
 import { claim as dequeue, settle as absorb } from './scheduler';
 import { observe } from './style';
-import { holding } from './suspense';
+import { gather } from './suspense';
 
 function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const detached = fiber.stash || fiber.staging;
@@ -54,12 +55,7 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
       next.push(fiber);
     }
   } catch (error) {
-    if (holding && error === holding.thrown) {
-      for (const fiber of next) if (!old.includes(fiber)) park(fiber);
-      if (holding.fiber) next.push(holding.fiber);
-      holding.fiber = undefined;
-    }
-
+    gather(error, next, old);
     owner.children = [...next, ...old.filter((child) => !child.dead && !next.includes(child))];
     throw error;
   }

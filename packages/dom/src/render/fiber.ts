@@ -1,14 +1,10 @@
 import { Context, State } from '@expressive/mvc';
 
 import type { Key, Node as RenderNode } from '../node/vnode';
-import type { AppearanceContext } from '../style/protocol';
+import type { Appearance, Claim } from '../style/claim';
 import type { Scope } from './adapter';
-import { fragment } from './commits';
-import type { Claim } from './style';
 
 type Container = Element | DocumentFragment;
-
-type Style = string | Record<string, unknown> | false | null | undefined | readonly Style[];
 
 type Kind = 'collection' | 'component' | 'element' | 'fragment' | 'function' | 'portal' | 'text';
 
@@ -70,16 +66,6 @@ interface Fiber {
   claimed?: Claim;
 }
 
-interface Appearance {
-  context?: AppearanceContext;
-  entries: Forwarded[];
-}
-
-interface Forwarded {
-  hops: number;
-  style: Style;
-}
-
 function range(kind: Kind, parent: globalThis.Node, before: globalThis.Node | null, context: Context): Fiber {
   const start = document.createComment(kind);
   const end = document.createComment(`/${kind}`);
@@ -101,10 +87,6 @@ function makeScope(kind: Scope['kind'], context: Context, update: (passive: bool
     useIndex: 0,
     uses: []
   };
-}
-
-function park(fiber: Fiber) {
-  move(fiber, fragment(), null);
 }
 
 function moveRange(start: globalThis.Node, end: globalThis.Node, target: globalThis.Node) {
@@ -141,5 +123,5 @@ function removeRange(start: globalThis.Node, end: globalThis.Node) {
   }
 }
 
-export { makeScope, move, moveRange, park, range, removeRange };
-export type { Appearance, Boundary, Container, Fiber, Placement, Renderable, Style };
+export { makeScope, move, moveRange, range, removeRange };
+export type { Boundary, Container, Fiber, Placement, Renderable };

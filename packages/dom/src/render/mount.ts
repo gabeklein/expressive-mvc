@@ -6,54 +6,30 @@ import { Fragment } from '@expressive/mvc/jsx-runtime';
 import { resolve } from '../node/loader';
 import { PORTAL, isVNode } from '../node/vnode';
 import type { Key, Node as RenderNode, VNode } from '../node/vnode';
-import { createAppearanceToken } from '../style/protocol';
+import { componentProps } from '../style/claim';
+import type { Appearance } from '../style/claim';
 import { call, commit, dispose, enter } from './adapter';
 import { inserted } from './commits';
 import { SVG, patchProps, applyRef } from './element';
-import { range, makeScope, park, removeRange } from './fiber';
-import type { Container, Boundary, Renderable, Placement, Fiber, Appearance } from './fiber';
+import { makeScope, range, removeRange } from './fiber';
+import type { Boundary, Container, Fiber, Placement, Renderable } from './fiber';
 import { latest, track, untrack } from './hot';
 import { reconcile, reconcilePortal, renderable, isCollection } from './reconcile';
 import { attempt, focusing, passiveRender } from './render';
 import { schedule, transition } from './scheduler';
 import { observe, consume } from './style';
-import { stashes, holding, unwait, isThenable } from './suspense';
+import { hold, hostOf, isThenable, unwait } from './suspense';
 
 function complete<T extends Fiber>(fiber: T, work: () => void): T {
   try {
     work();
   } catch (error) {
-    if (holding && error === holding.thrown) {
-      park(fiber);
-      holding.fiber = fiber;
-    } else unmountFiber(fiber);
+    if (!hold(fiber, error)) unmountFiber(fiber);
 
     throw error;
   }
 
   return fiber;
-}
-
-function componentProps(
-  type: unknown,
-  props: Record<string, any>,
-  appearance: Appearance | undefined
-) {
-  const context = appearance?.context;
-  if (!context || typeof type != 'function') return { appearance, props };
-
-  const value = context.resolve(props);
-  const entries = appearance!.entries;
-
-  if (!value) return { appearance: { entries }, props };
-
-  return {
-    appearance: {
-      context: value.context,
-      entries
-    },
-    props: { ...props, style: [createAppearanceToken(value), props.style] }
-  };
 }
 
 function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {
@@ -304,11 +280,7 @@ function target(into: unknown, parent: globalThis.Node): Container {
 
 function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const tag = value.type as string;
-  let host = parent;
-
-  for (let owner = stashes.get(host); owner; owner = stashes.get(host))
-    host = owner.end.parentNode!;
-
+  const host = hostOf(parent);
   const namespace = tag == 'svg' || host instanceof SVGElement && host.localName != 'foreignObject' ? SVG : undefined;
   const element = namespace
     ? document.createElementNS(SVG, tag)
