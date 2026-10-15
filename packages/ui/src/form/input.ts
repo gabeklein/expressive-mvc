@@ -1,8 +1,8 @@
-import { State, get, ref } from '@expressive/mvc';
+import { Model, get, ref } from '@expressive/mvc';
 
 import { Form } from './form';
 
-export type Ref<T extends State = any> = (input?: Input) => readonly [T, keyof T];
+export type Ref<T extends Model = any> = (input?: Input) => readonly [T, keyof T];
 
 export type Async<T> = T | Promise<T>;
 
@@ -10,7 +10,7 @@ export type Async<T> = T | Promise<T>;
  * Build a custom ref proxy keyed per field. `form.email` returns a binder that,
  * when attached to an Input, wires two-way reactivity between form and input.
  */
-export function input<T extends State>(from: T) {
+export function input<T extends Model>(from: T) {
   function bind(input: Input, key: keyof T) {
     input.name = key as string;
     from.get((current) => {
@@ -31,7 +31,7 @@ export function input<T extends State>(from: T) {
   return ref(from, forEach);
 }
 
-export class Input<T = any> extends State {
+export class Input<T = any> extends Model {
   name = '';
 
   disabled = false;

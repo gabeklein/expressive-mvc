@@ -1,4 +1,4 @@
-import State, { Component, ref } from '@expressive/mvc';
+import Model, { Component, ref } from '@expressive/mvc';
 
 let OPEN = 0;
 
@@ -26,7 +26,7 @@ abstract class Overlay extends Component {
     return OPEN;
   }
 
-  constructor(...args: State.Args) {
+  constructor(...args: Model.Args) {
     super(...args, () => {
       OPEN++;
 

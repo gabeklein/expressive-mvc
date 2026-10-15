@@ -1,4 +1,4 @@
-import { State, get } from '@expressive/mvc';
+import { Model, get } from '@expressive/mvc';
 
 import { Async, Input, input } from './input';
 
@@ -16,8 +16,8 @@ declare namespace Form {
   export { Input, Values };
 }
 
-class Form extends State {
-  constructor(...args: State.Args) {
+class Form extends Model {
+  constructor(...args: Model.Args) {
     super(...args, () => {
       const source = this.for as Record<string, any> | undefined;
 

@@ -1,4 +1,4 @@
-import State from '@expressive/mvc';
+import Model from '@expressive/mvc';
 
 declare namespace Action {
   type Handler = () => unknown;
@@ -12,7 +12,7 @@ declare namespace Action {
  * This is the state LFCP reimplemented three times with `useState` - in Button,
  * in Dialog's confirm prompt, and in ConfirmButton.
  */
-class Action extends State {
+class Action extends Model {
   pending = false;
   error?: Error = undefined;
 

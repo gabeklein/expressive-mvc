@@ -1,4 +1,4 @@
-import State from '@expressive/mvc';
+import Model from '@expressive/mvc';
 
 /**
  * Append-only paged data source. `more()` is re-entrant-safe, and the source
@@ -6,10 +6,10 @@ import State from '@expressive/mvc';
  *
  * Ported from LFCP's `results()` instruction, which achieved the same thing by
  * hanging `more`/`loading` off the array and wiring a custom `[Observable]`
- * hook. As a State the reactivity is ordinary and the exhaustion rule is
+ * hook. As a Model the reactivity is ordinary and the exhaustion rule is
  * explicit rather than encoded as `more === undefined`.
  */
-abstract class Source<T> extends State {
+abstract class Source<T> extends Model {
   data: T[] = [];
   loading = false;
   done = false;

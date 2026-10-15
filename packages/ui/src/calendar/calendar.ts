@@ -1,4 +1,4 @@
-import State, { set } from '@expressive/mvc';
+import Model, { set } from '@expressive/mvc';
 
 import {
   addDays,
@@ -37,7 +37,7 @@ declare namespace Calendar {
   type Bound = Date | boolean | undefined;
 }
 
-class Calendar extends State {
+class Calendar extends Model {
   static months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'

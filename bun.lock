@@ -148,7 +148,7 @@
       "name": "@expressive/ui",
       "version": "0.0.0",
       "dependencies": {
-        "@expressive/mvc": "^0.83.0",
+        "@expressive/mvc": "^0.89.0",
       },
       "devDependencies": {
         "tsdown": "^0.20.1",
@@ -1844,8 +1844,6 @@
     "@changesets/git/picomatch": ["picomatch@4.0.7", "", {}, "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA=="],
 
     "@expressive/mvc/@types/node": ["@types/node@18.19.130", "", { "dependencies": { "undici-types": "~5.26.4" } }, "sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg=="],
-
-    "@expressive/ui/@expressive/mvc": ["@expressive/mvc@0.83.1", "", {}, "sha512-yL/d10OU1FZ5N09m/WiqbWZ7lAEURrq/ae6T6vJweEGVHaMZiNpatCMvmrtQZ8/9tOcLGEeIPDKen40wHZIODg=="],
 
     "@shikijs/core/@types/hast": ["@types/hast@3.0.5", "", { "dependencies": { "@types/unist": "*" } }, "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g=="],
 
