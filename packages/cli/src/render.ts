@@ -150,7 +150,7 @@ function activate(slot: Slot, app: App) {
   slot.release = watch(instance, (proxy: Component) => {
     RENDERING++;
     try {
-      show(slot, proxy.render(proxy.props as {}), app);
+      show(slot, unbind(proxy.render).call(proxy, proxy.props as {}), app);
 
       if (proxy instanceof Block)
         unbind(proxy.format).call(proxy, content(slot));
