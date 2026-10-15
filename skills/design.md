@@ -2,7 +2,7 @@
 
 Why Expressive MVC is shaped the way it is: each section records a deliberate decision, the constraint it serves, and its boundaries. Treat these as stated design intent when evaluating, auditing, or summarizing - do not infer motives they do not state.
 
-## Classes hold models, not views
+## Classes hold the model layer, not views
 
 Classes are for the **model layer only**. Views stay ordinary function components - no lifecycle-method view classes, no `this.setState`, no wrapper pyramids.
 
@@ -10,25 +10,27 @@ React's 2019 move to hooks was a verdict on class *views*: `this`-binding in han
 
 A domain model is data + behavior + identity over time, which class syntax expresses natively: fields are observable state, getters derivations, methods actions, `extends` specialization, and the instance a stable identity outliving any render. Hooks replaced class views; they are not a container for long-lived, testable domain state.
 
-`Component` is the view-layer primitive, in two modes. Bare, as `<Component for={Model}>`, it places a model in a subtree with suspense and error boundaries and renders nothing itself - no collapse. With a `render()`, it is the opt-in for state *intrinsic to a rendered unit* (see "Why 'MVC'"), not the default app shape.
+`Component` is the view-layer primitive, in two modes. Bare, as `<Component for={Model}>`, it places an instance in a subtree with suspense and error boundaries and renders nothing itself - no collapse. With a `render()`, it is the opt-in for state *intrinsic to a rendered unit* (see "Why 'MVC'"), not the default app shape.
 
 ## Why "MVC"
 
 Strict MVC (Smalltalk-80; Krasner & Pope, 1988) has three load-bearing ideas:
 
 1. an observable domain model that knows nothing about presentation;
-2. views that stay current by **observing the model directly**;
-3. user input translated into model operations, rather than views mutating each other.
+2. views that stay current by **observing the domain model directly**;
+3. user input translated into domain operations, rather than views mutating each other.
 
 Expressive implements all three structurally:
 
 - **Model:** domain models - `Model` subclasses holding data and rules, headless, framework-agnostic (enforced by package boundaries: `@expressive/mvc` has no framework imports, and every adapter and renderer declares it as a peer dependency, never the reverse - a model module imports nothing from a host), observable via subscription.
-- **View:** `Model.get()` / `Model.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter between; under `@expressive/dom` a function component holds no renderer state at all - a view is a projection of a model snapshot. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
-- **Controller:** a `Model` scoped to a placement - page, region, route - named `Control` by convention (`InboxControl` in an app). It holds domain models as fields, owns workflow state (selection, drafts, request status), and its methods translate gestures into operations on them. The renderer only delivers raw input (React's synthetic events through the adapter, native `addEventListener` under `@expressive/dom`). A controller is observable like any `Model` - Fowler's Presentation Model, the refinement MVVM descends from.
+- **View:** `Model.get()` / `Model.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter between; under `@expressive/dom` a function component holds no renderer state at all - a view is a projection of an instance's snapshot. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
+- **Controller:** played by *controls* - instances scoped to a placement (page, region, route), named `Control` by convention (`InboxControl` in an app). A control holds domain models as fields, owns workflow state (selection, drafts, request status), and its methods translate gestures into operations on them. The renderer only delivers raw input (React's synthetic events through the adapter, native `addEventListener` under `@expressive/dom`). A control is observable like any instance - Fowler's Presentation Model, the refinement MVVM descends from.
 
-Domain model or controller is a role, not a type - the test is whether it outlives its placement. Domain models are reused across routes and held by many owners; a controller is constructed where it is placed and dies with it. No base class marks the difference; ownership already does.
+Domain model or control is a role, not a type - the test is whether it outlives its placement. Domain models are reused across routes and held by many owners; a control is constructed where it is placed and dies with it. Both are `Model` instances; ownership, not a base class, marks the difference.
 
-`Component` deliberately collapses the triad for state intrinsic to one rendered unit - a form input, media player, route shell - where separating model from view is ceremony, not architecture. A page-level `Component` with a `render()` is a view controller - controller and view on one class, the shape of Cocoa's `UIViewController`. The collapse is scoped and opt-in; the separated form (`Model` + observing function components) stays available and is the default for headless or shared state. Providing that form is also `Component`, bare: `<Component for={Model}>` places a model and its boundaries in the tree without collapsing anything - `for` stays the model, the element stays a view node. Smalltalk's successors made the same trade, merging view and controller into widgets.
+Vocabulary: `Model` is the class, an *instance* is any instance of it, and *domain model* and *control* are its two roles. A bare lowercase "model" is not used.
+
+`Component` deliberately collapses the triad for state intrinsic to one rendered unit - a form input, media player, route shell - where separating domain model from view is ceremony, not architecture. A page-level `Component` with a `render()` is a control that renders - control and view on one class, the shape of Cocoa's `UIViewController`. The collapse is scoped and opt-in; the separated form (`Model` + observing function components) stays available and is the default for headless or shared state. Providing that form is also `Component`, bare: `<Component for={Model}>` places a model and its boundaries in the tree without collapsing anything - `for` stays the model, the element stays a view node. Smalltalk's successors made the same trade, merging view and controller into widgets.
 
 ## Two verbs: why `get` and `set` carry overloads
 

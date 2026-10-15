@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controllers), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
@@ -37,7 +37,7 @@ The most common failure when adopting this library is translating hooks one-for-
 For every stateful concern, pick exactly one owner:
 
 - **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region Model fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
-- **`Model`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()` / `Model.use()`. Two roles: a *domain model* (`Cart`, `Message`, a pool row) outlives any one placement; a *controller* (`Control`, `<Feature>Control` in apps) is constructed where a page, region or route places it, holds domain models as fields, and translates gestures into operations on them.
+- **`Model`** - headless domain model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()` / `Model.use()`. Two roles: a *domain model* (`Cart`, `Message`, a pool row) outlives any one placement; a *control* (`Control`, `<Feature>Control` in apps) is constructed where a page, region or route places it, holds domain models as fields, and translates gestures into operations on them.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
 Concerns include the rows: UI state describing an entry in a collection - selection, status, progress - is its own `Model` or `Component` spawned in a `has` pool; actions about item belong on item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class; subsets are a second pool admitting the same members.
@@ -47,8 +47,8 @@ Counter-rules:
 - Do not create `FooState` plus `FooView` just because hooks were present. If the behavior and rendering are one unit, `class Foo extends Component` is the refactor.
 - Avoid `Component` where a provided `Model` suffices - Components carry React instance surface (`props`, `state`, `setState`, `forceUpdate`) that makes `.get()` IntelliSense noisier.
 - Prefer an FC over `Component` when state is zero or reducible and no boundary is wanted - a class holding only `get(...)` fields plus `render()` is an FC snapshotting `.get()`.
-- A render-less `Component` (children pass through while providing context and boundary placement) is only for cases where React tree placement is the feature: route controllers, progressive boundaries.
-- A provided Model implicitly provides its child Models - prefer `theme = new Theme()` on an existing owner over stacking `<Component for>` elements for every small controller.
+- A render-less `Component` (children pass through while providing context and boundary placement) is only for cases where React tree placement is the feature: route controls, progressive boundaries.
+- A provided Model implicitly provides its child Models - prefer `theme = new Theme()` on an existing owner over stacking `<Component for>` elements for every small control.
 
 ## Golden-Path Refactor Algorithm
 
@@ -69,7 +69,7 @@ Counter-rules:
 13. Split `render()` and long JSX at conditionals and non-interacting siblings into honestly-named local FCs - units you'd delete or move whole; one-op conditionals and formatted scalars stay inline. Consolidate scopes that share dependencies and hold no nested logic.
 14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
 
-For large apps, scope a one-shot conversion to route/page controllers and their domain pools; leave mature leaf widgets on hooks until parent domains stabilize.
+For large apps, scope a one-shot conversion to route/page controls and their domain pools; leave mature leaf widgets on hooks until parent domains stabilize.
 
 Write output in the conventions of [react/style.md](react/style.md). They are opinion, not semantics - but they exist to keep reactive dependencies auditable, and the golden path applies them by default.
 
@@ -315,7 +315,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 - [react/react.md](react/react.md) - use(), Model.use(), Model.get() (optional lookup, required values `get(true)`, computed selector), providing state, transparent writes, ForceRefresh, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
-- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
+- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controls, router bridge, host-agnostic domain model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 
 ### JSX
 
