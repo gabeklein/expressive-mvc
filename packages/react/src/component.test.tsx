@@ -5,7 +5,8 @@ import React, { Suspense } from 'react';
 
 import { collect, mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly, suspender } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
-import { Component, State, pending, set } from '.';
+import { Model } from '@expressive/mvc';
+import { Component, pending, set } from '.';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -428,8 +429,8 @@ describe('render method', () => {
     expect(screen).toHaveText('bar');
   });
 
-  it('will update when a State fetched via this.get changes', async () => {
-    class Auth extends State {
+  it('will update when a Model fetched via this.get changes', async () => {
+    class Auth extends Model {
       static readonly global = true;
       name = 'foo';
     }
@@ -719,7 +720,7 @@ describe('state props on rerender', () => {
     ['will own a fresh state passed as prop', false, true],
     ['will not own an active state passed as prop', true, false]
   ])('%s', (_, active, destroyed) => {
-    class Thing extends State {
+    class Thing extends Model {
       value = 'foo';
     }
 
@@ -1183,7 +1184,7 @@ describe('strict mode', () => {
     const didCreate = vi.fn();
     const didDestroy = vi.fn();
 
-    class Child extends State {
+    class Child extends Model {
       new() {
         didCreate();
         return didDestroy;
@@ -1318,7 +1319,7 @@ describe('strict mode', () => {
 });
 
 describe('for', () => {
-  class Session extends State {
+  class Session extends Model {
     name = 'none';
   }
 
@@ -1432,7 +1433,7 @@ describe('for', () => {
   });
 
   it('will type attributes from for', () => {
-    class Typed extends State {
+    class Typed extends Model {
       name = '';
       age = 0;
     }
@@ -1491,8 +1492,8 @@ describe('owner', () => {
 
     render(<Outer is={(o) => (outer = o)} />);
 
-    expect(outer.get(State, false)).toBeUndefined();
-    expect(inner.get(State)).toBe(outer);
+    expect(outer.get(Model, false)).toBeUndefined();
+    expect(inner.get(Model)).toBe(outer);
     expect(inner.get(Component)).toBe(outer);
   });
 
@@ -1512,7 +1513,7 @@ describe('owner', () => {
 
     render(<Outer is={(o) => (outer = o)} />);
 
-    outer.get(State, (child) => {
+    outer.get(Model, (child) => {
       owned(child);
       return dropped;
     }, true);
@@ -1527,10 +1528,10 @@ describe('owner', () => {
   });
 
   it('will be owned by Component providing it', () => {
-    let session!: State;
-    let host!: State;
+    let session!: Model;
+    let host!: Model;
 
-    class Session extends State {}
+    class Session extends Model {}
     class Host extends Component {
       render() {
         return <Component for={Session} is={(s) => (session = s)} />;
@@ -1539,15 +1540,15 @@ describe('owner', () => {
 
     render(<Host is={(h) => (host = h)} />);
 
-    const wrapper = session.get(State);
+    const wrapper = session.get(Model);
 
     expect(wrapper).toBeInstanceOf(Component);
-    expect(wrapper.get(State)).toBe(host);
+    expect(wrapper.get(Model)).toBe(host);
   });
 });
 
 reactOnly.describe('abandoned render', () => {
-  const live = new Set<State>();
+  const live = new Set<Model>();
 
   class Test extends Component {
     new() {
@@ -1556,7 +1557,7 @@ reactOnly.describe('abandoned render', () => {
     }
   }
 
-  class Provided extends State {
+  class Provided extends Model {
     new() {
       live.add(this);
       return () => live.delete(this);

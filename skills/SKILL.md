@@ -1,17 +1,17 @@
 ---
 name: expressive-mvc
-description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (State vs Component, has-pool domain rows, region controllers), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controllers), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
 
-Class-based reactive state for React. State classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
+Class-based reactive state for React. Model classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
 
 ## Packages
 
 | Package              | Status    | Description                                                       |
 | -------------------- | --------- | ----------------------------------------------------------------- |
-| `@expressive/mvc`    | Published | Framework-agnostic core. Primary import for State, Component, instructions. |
+| `@expressive/mvc`    | Published | Framework-agnostic core. Primary import for Model, Component, instructions. |
 | `@expressive/react`  | Published | React adapter. Supplies the host.                                 |
 | `@expressive/dom`    | Preview   | MVC-native client DOM renderer without a framework dependency.     |
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
@@ -24,11 +24,11 @@ Class-based reactive state for React. State classes define reactive properties, 
 npm install @expressive/mvc @expressive/react    # + @expressive/router for routing
 ```
 
-`@expressive/mvc` is a peer dependency - add it to `package.json` and import `State`, `Component` and every instruction from it, whatever the host. `@expressive/react` supplies the host: import it once from your entry module so it registers. Its re-exports of the core are deprecated and will be removed, as is the default export of `State` - adapter-augmented `State.*` types are invisible through the default alias, so import `{ State }` by name.
+`@expressive/mvc` is a peer dependency - add it to `package.json` and import `Model`, `Component` and every instruction from it, whatever the host. `@expressive/react` supplies the host: import it once from your entry module so it registers. Its re-exports of the core are deprecated and will be removed, as is the default export of `Model` - adapter-augmented `Model.*` types are invisible through the default alias, so import `{ Model }` by name.
 
 React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
 
-For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `State`, `Component` and instructions come from `@expressive/mvc`, while `render`, `Portal`, `style` and `macro` come from `@expressive/dom`. Its FC model, renderer API, portals, code splitting, and transition constraints are in [dom/dom.md](dom/dom.md).
+For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `Model`, `Component` and instructions come from `@expressive/mvc`, while `render`, `Portal`, `style` and `macro` come from `@expressive/dom`. Its FC model, renderer API, portals, code splitting, and transition constraints are in [dom/dom.md](dom/dom.md).
 
 ## Start With Ownership, Not APIs
 
@@ -36,19 +36,19 @@ The most common failure when adopting this library is translating hooks one-for-
 
 For every stateful concern, pick exactly one owner:
 
-- **`Component`** - state intrinsic to one display subtree: controls, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region State fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
-- **`State`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `State.get()` / `State.use()`.
+- **`Component`** - state intrinsic to one display subtree: controls, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region Model fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
+- **`Model`** - headless model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()` / `Model.use()`.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
-Concerns include the rows: UI state describing an entry in a collection - selection, status, progress - is its own `State` or `Component` spawned in a `has` pool; actions about item belong on item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class; subsets are a second pool admitting the same members.
+Concerns include the rows: UI state describing an entry in a collection - selection, status, progress - is its own `Model` or `Component` spawned in a `has` pool; actions about item belong on item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class; subsets are a second pool admitting the same members.
 
 Counter-rules:
 
 - Do not create `FooState` plus `FooView` just because hooks were present. If the behavior and rendering are one unit, `class Foo extends Component` is the refactor.
-- Avoid `Component` where a provided `State` suffices - Components carry React instance surface (`props`, `state`, `setState`, `forceUpdate`) that makes `.get()` IntelliSense noisier.
+- Avoid `Component` where a provided `Model` suffices - Components carry React instance surface (`props`, `state`, `setState`, `forceUpdate`) that makes `.get()` IntelliSense noisier.
 - Prefer an FC over `Component` when state is zero or reducible and no boundary is wanted - a class holding only `get(...)` fields plus `render()` is an FC snapshotting `.get()`.
 - A render-less `Component` (children pass through while providing context and boundary placement) is only for cases where React tree placement is the feature: route controllers, progressive boundaries.
-- A provided State implicitly provides its child States - prefer `theme = new Theme()` on an existing owner over stacking `<Component for>` elements for every small controller.
+- A provided Model implicitly provides its child Models - prefer `theme = new Theme()` on an existing owner over stacking `<Component for>` elements for every small controller.
 
 ## Golden-Path Refactor Algorithm
 
@@ -56,9 +56,9 @@ Counter-rules:
 
 1. Identify lifecycle and ownership boundaries before translating any hooks.
 2. Separate headless workflow state from display-intrinsic state.
-3. Choose `State`, `Component`, or a plain function component for each owner.
+3. Choose `Model`, `Component`, or a plain function component for each owner.
 4. Give every repeated UI entry own class in a `has` pool; actions about item belong on item.
-5. Split unrelated clusters remaining on page State to owned region States `composer = new Composer()`. Bias one concern per class - barrels are deliberate (page orchestrator, pool owner, mounting shell); shed a second concern the moment it appears, growing a feature or refactoring one alike.
+5. Split unrelated clusters remaining on page Model to owned region Models `composer = new Composer()`. Bias one concern per class - barrels are deliberate (page orchestrator, pool owner, mounting shell); shed a second concern the moment it appears, growing a feature or refactoring one alike.
 6. Provide classes directly `<Component for={AppState}>` never an instance if only to provide it; the entrypoint Component's own fields provide implicitly - `main` only mounts `<Inbox />`.
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
@@ -76,16 +76,16 @@ Write output in the conventions of [react/style.md](react/style.md). They are op
 ## Core API
 
 ```tsx
-import { State, Component, ref, def, get, has, map, pending, set } from '@expressive/mvc';
+import { Model, Component, ref, def, get, has, map, pending, set } from '@expressive/mvc';
 import '@expressive/react'; // once, in the entry module
 ```
 
-### State Class
+### Model Class
 
-Extend `State` to define reactive models. Use `State.new()` to construct a root instance - it constructs *and* activates, which plain `new` does not. Bare `new` is correct in one place: a class field on another State (`theme = new Theme()`), where the owner adopts and activates the child, and destroys it in turn.
+Extend `Model` to define reactive models. Use `Model.new()` to construct a root instance - it constructs *and* activates, which plain `new` does not. Bare `new` is correct in one place: a class field on another Model (`theme = new Theme()`), where the owner adopts and activates the child, and destroys it in turn.
 
 ```tsx
-class Counter extends State {
+class Counter extends Model {
   count = 0;
 
   increment() {
@@ -108,20 +108,20 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | Helper  | Use for                                                                                                | Reference                  |
 | ------- | ------------------------------------------------------------------------------------------------------ | -------------------------- |
 | `set()` | Defaults, placeholders (suspend until assigned), lazy/async factories (suspense), setter callbacks and validation | [field/set.md](field/set.md) |
-| `get()` | Context lookup between States - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
+| `get()` | Context lookup between Models - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
 | `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
-| `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `State` members and direct render    | [field/map.md](field/map.md) |
+| `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `Model` members and direct render    | [field/map.md](field/map.md) |
 | `has()` | Owned collections - an ordered list of values, or a pool of spawned members. Pools are for per-item UI state (selection, progress, row actions). Class first (`has(Row)`); factory when the seed isn't the init | [field/has.md](field/has.md) |
 | `def()` | Low-level custom property behavior                                                                      | [field/def.md](field/def.md) |
 
-For **computed values**, declare a normal class getter - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
+For **computed values**, declare a normal class getter - getters on a Model subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
 
 `pending(work)` is not a field helper but imports alongside them - it marks the updates `work` queues non-urgent and resolves once every reader has taken them. See [Transitions](react/component.md#transitions).
 
 Do not pass a bare promise to `set()`. Use `set(() => promise)` or `set(async () => value)` so work starts during activation/access instead of construction.
 
 ```tsx
-class UserProfile extends State {
+class UserProfile extends Model {
   userId = set<string>();
 
   user = set(async () => {
@@ -162,7 +162,7 @@ function Parent({ counter }: { counter: Counter }) {
 
 Static `.use()` and `.get()` are React hooks - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. They build green when misused and crash at runtime. (Instance method get is not a hook.)
 
-Use `State.use()` when the component should create and own the instance. Use `State.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
+Use `Model.use()` when the component should create and own the instance. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 
 ## The Dependency Snapshot
 
@@ -242,11 +242,11 @@ This gives the child a strong contract - no fallback values threaded through its
 
 ## Providing Context
 
-Pass the class: `<Component for={TransferState}>`. Pass an instance only when something else owns it (`<Component for={counter}>` after `Counter.use()`). One item per element - several belong to a parent State owning them as fields, which makes them siblings; nesting `<Component for>` is a smell (the outer cannot `get` the inner). `is`, attributes, boundaries: [state/context.md](state/context.md#providing-with-component).
+Pass the class: `<Component for={TransferState}>`. Pass an instance only when something else owns it (`<Component for={counter}>` after `Counter.use()`). One item per element - several belong to a parent Model owning them as fields, which makes them siblings; nesting `<Component for>` is a smell (the outer cannot `get` the inner). `is`, attributes, boundaries: [state/context.md](state/context.md#providing-with-component).
 
 ## Component Class
 
-A `Component` is a `State` that renders itself. It provides context automatically and supports suspense/error boundaries.
+A `Component` is a `Model` that renders itself. It provides context automatically and supports suspense/error boundaries.
 
 ```tsx
 class CounterView extends Component {
@@ -299,9 +299,9 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [react/refactor.md](react/refactor.md) - the refactor algorithm expanded: ownership triage, mechanical-setter and prop-drilling anti-patterns, single-consumer getters, dependency snapshots and conditional subscriptions, presence boundaries, restrained `is`, subcomponent overuse, extract-then-consolidate, review checklist
 - [react/style.md](react/style.md) - style profile: snapshot formatting, affirmative conditions, render fallthrough vs operational guards
 
-### State (core)
+### Model (core)
 
-- [state/state.md](state/state.md) - State class, instantiation, properties, methods, events, context
+- [state/state.md](state/state.md) - Model class, instantiation, properties, methods, events, context
 - [state/get.md](state/get.md) - Instance `.get()` method: read values, run effects, context lookup
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
 - [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense, when a derivation should stay local
@@ -313,7 +313,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### React
 
-- [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), providing state, transparent writes, ForceRefresh, Vite hot reload
+- [react/react.md](react/react.md) - use(), Model.use(), Model.get() (optional lookup, required values `get(true)`, computed selector), providing state, transparent writes, ForceRefresh, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 

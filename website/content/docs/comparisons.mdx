@@ -16,9 +16,9 @@ Say you want a reusable `useFooBarBaz` that a widget can own. Flip through:
 <Compare labels={['Expressive', 'Hooks', 'Zustand', 'Jotai', 'Redux', 'MobX']}>
 
 ```tsx
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class FooBarBaz extends State {
+class FooBarBaz extends Model {
   foo = 0;
   bar = 'hello';
   baz = true;
@@ -187,14 +187,14 @@ On the Expressive side, the destructure *is* the dependency list. Read a field, 
 
 ## Shared state
 
-Context is where store libraries quietly hand the problem back to you. In Expressive, your classes themselves are context keys - anything needing `Theme` just asks for it: another State via `get(Theme)`, a component via `Theme.get()`.
+Context is where store libraries quietly hand the problem back to you. In Expressive, your classes themselves are context keys - anything needing `Theme` just asks for it: another Model via `get(Theme)`, a component via `Theme.get()`.
 
 <Compare labels={['Expressive', 'React Context', 'Zustand', 'Jotai']}>
 
 ```tsx
-import { State, get } from '@expressive/mvc';
+import { Model, get } from '@expressive/mvc';
 
-class Theme extends State {
+class Theme extends Model {
   mode = 'light';
 
   toggle() {
@@ -202,7 +202,7 @@ class Theme extends State {
   }
 }
 
-class Panel extends State {
+class Panel extends Model {
   theme = get(Theme);
 
   get dark() {
@@ -333,7 +333,7 @@ Zustand is a great lightweight store. The differences that matter in practice:
 Redux introduces actions, reducers, selectors, and a dispatch indirection. Expressive collapses all four into methods:
 
 ```tsx
-class Counter extends State {
+class Counter extends Model {
   count = 0;
 
   increment() {
@@ -356,7 +356,7 @@ class Counter extends State {
 MobX is the closest relative - both use observable objects with automatic dependency tracking. Expressive is what you get when that idea is allowed to own the whole problem:
 
 - **No `observer()` wrapper.** Miss one in MobX and you get stale renders. Expressive tracks through `use()` and `get()` themselves.
-- **No `makeAutoObservable`.** Extending `State` is enough - and methods arrive pre-bound.
+- **No `makeAutoObservable`.** Extending `Model` is enough - and methods arrive pre-bound.
 - **Lifecycle, context, and Suspense are built in** - `new()`, class-keyed context, async `set()`. In MobX these are pieces you wire together yourself.
 
 If you like MobX, you'll feel at home here. Expressive is simply more opinionated about the parts MobX leaves as an exercise.

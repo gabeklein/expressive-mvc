@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, State, has } from '@expressive/mvc';
+import { Component, Model, has } from '@expressive/mvc';
 import { render } from '../index';
 import { flushMicrotasks, mockPromise, mount, place } from '../../test.setup';
 
@@ -73,9 +73,9 @@ describe('component', () => {
   });
 });
 
-describe('renderable State', () => {
-  it('will pass children through a State without render', () => {
-    class Bare extends State {}
+describe('renderable Model', () => {
+  it('will pass children through a Model without render', () => {
+    class Bare extends Model {}
     const root = document.createElement('main');
 
     render(<div><Bare>text</Bare><Bare /></div>, root);
@@ -83,9 +83,9 @@ describe('renderable State', () => {
   });
 
   it('will be owned by enclosing Component', () => {
-    let inner!: State;
+    let inner!: Model;
 
-    class Panel extends State {
+    class Panel extends Model {
       render() {
         return null;
       }
@@ -99,15 +99,15 @@ describe('renderable State', () => {
 
     const [outer] = mount(Outer);
 
-    expect(outer.get(State, false)).toBeUndefined();
-    expect(inner.get(State)).toBe(outer);
+    expect(outer.get(Model, false)).toBeUndefined();
+    expect(inner.get(Model)).toBe(outer);
   });
 
-  it('will render a State with a render method', async () => {
+  it('will render a Model with a render method', async () => {
     const lifecycle: string[] = [];
     let panel!: Panel;
 
-    class Panel extends State {
+    class Panel extends Model {
       label = 'idle';
       count = 0;
 
@@ -137,7 +137,7 @@ describe('renderable State', () => {
   });
 
   it('will apply props to fields, reset dropped ones and pass the rest to render', async () => {
-    class Panel extends State {
+    class Panel extends Model {
       label?: string = 'default';
 
       render(props: { children?: Component.Node }) {
@@ -165,8 +165,8 @@ describe('renderable State', () => {
     expect(root.textContent).toBe('none!');
   });
 
-  it('will pass children through and provide a State without render', async () => {
-    class Session extends State {
+  it('will pass children through and provide a Model without render', async () => {
+    class Session extends Model {
       name = 'Ada';
     }
 
@@ -201,8 +201,8 @@ describe('renderable State', () => {
     expect(session.get(null)).toBe(true);
   });
 
-  it('will render a client extension of a plain State', async () => {
-    class Session extends State {
+  it('will render a client extension of a plain Model', async () => {
+    class Session extends Model {
       user = 'anon';
     }
 
@@ -226,8 +226,8 @@ describe('renderable State', () => {
     expect(root.textContent).toBe('grace');
   });
 
-  it('will render a State instance inline', async () => {
-    class Panel extends State {
+  it('will render a Model instance inline', async () => {
+    class Panel extends Model {
       label = 'inline';
       render() {
         return <span>{this.label}</span>;
@@ -244,8 +244,8 @@ describe('renderable State', () => {
     expect(panel.get(null)).toBe(false);
   });
 
-  it('will own a boundary only when a State declares fallback or catch', async () => {
-    class Bare extends State {
+  it('will own a boundary only when a Model declares fallback or catch', async () => {
+    class Bare extends Model {
       broken = true;
       render() {
         if (this.broken) throw new Error('broken');
@@ -253,7 +253,7 @@ describe('renderable State', () => {
       }
     }
 
-    class Guarded extends State {
+    class Guarded extends Model {
       fallback = <i>guarded</i>;
       broken = true;
 
@@ -294,7 +294,7 @@ describe('renderable State', () => {
     const loaded = mockPromise<() => Component.Node>();
     const Lazy = () => loaded;
 
-    class Plain extends State {
+    class Plain extends Model {
       render() {
         return <Lazy />;
       }
@@ -308,12 +308,12 @@ describe('renderable State', () => {
     expect(root.textContent).toBe('ready');
   });
 
-  it('will keep a State which suspends itself', async () => {
+  it('will keep a Model which suspends itself', async () => {
     const loaded = mockPromise<void>();
     const created = vi.fn();
     let ready = false;
 
-    class Report extends State {
+    class Report extends Model {
       count = 1;
 
       new() {
@@ -341,7 +341,7 @@ describe('renderable State', () => {
   it('will prefer an element fallback over the member, used when placed', () => {
     const Lazy = () => new Promise<never>(() => {});
 
-    class Guarded extends State {
+    class Guarded extends Model {
       fallback: Component.Node = <i>member</i>;
 
       render() {
@@ -356,7 +356,7 @@ describe('renderable State', () => {
     expect(other.textContent).toBe('membermember');
 
     if (false) {
-      class Labelled extends State {
+      class Labelled extends Model {
         fallback = 'label' as const;
       }
 
@@ -369,7 +369,7 @@ describe('renderable State', () => {
     const caught = vi.fn();
     let plain!: Plain;
 
-    class Plain extends State {
+    class Plain extends Model {
       broken = true;
 
       render() {
@@ -405,7 +405,7 @@ describe('renderable State', () => {
       return <Lazy />;
     }
 
-    class Outer extends State {
+    class Outer extends Model {
       fallback = <i>outer</i>;
 
       render() {
@@ -422,7 +422,7 @@ describe('renderable State', () => {
     const First = ({ text }: { text: string }) => <b>{text}</b>;
     const Second = ({ text }: { text: string }) => <i>{text}</i>;
 
-    class Panel extends State {
+    class Panel extends Model {
       Badge = First;
 
       render() {
@@ -439,8 +439,8 @@ describe('renderable State', () => {
     expect(root.querySelector('i')?.textContent).toBe('x');
   });
 
-  it('will reconcile keyed renderable States', async () => {
-    class Item extends State {
+  it('will reconcile keyed renderable Models', async () => {
+    class Item extends Model {
       value = '';
       render() {
         return <li>{this.value}</li>;

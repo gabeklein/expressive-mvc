@@ -1,5 +1,5 @@
 import type React from 'react';
-import State, { ref } from '@expressive/react';
+import Model, { ref } from '@expressive/react';
 
 interface RevealProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ const OFFSET = {
   right: 'translate-x-8',
 };
 
-class Visibility extends State {
+class Visibility extends Model {
   shown = false;
 
   element = ref<HTMLDivElement>((el) => {

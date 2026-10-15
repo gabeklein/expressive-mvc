@@ -2,12 +2,12 @@
 
 Runnable source (complete programs, served as HTML): [`props`](https://expressive.dev/examples/component/props), [`subcomponents`](https://expressive.dev/examples/component/subcomponents), [`lifecycle`](https://expressive.dev/examples/component/lifecycle), [`injection`](https://expressive.dev/examples/component/injection), [`headless`](https://expressive.dev/examples/component/headless), [`suspense`](https://expressive.dev/examples/component/suspense), [`boundary`](https://expressive.dev/examples/component/boundary), [`custom`](https://expressive.dev/examples/component/custom).
 
-`Component` extends `State` - a persistent class instance owning its rendering, lifecycle, and behavior.
+`Component` extends `Model` - a persistent class instance owning its rendering, lifecycle, and behavior.
 
-## When to use Component vs State vs function components
+## When to use Component vs Model vs function components
 
 - **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they own no persistent Expressive instance.
-- **State** is display-agnostic - data and logic, no render. Use with `State.use()` in FCs.
+- **Model** is display-agnostic - data and logic, no render. Use with `Model.use()` in FCs.
 - **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form controls, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as `<Component for>` + ErrorBoundary + Suspense in `main`.
 
 Premise: **the class tree is the app; rendering is a projection of it.** `App.new()` stands the UX up headless - every feature's status reads off the instance (`inbox.archive.open`, a pool's members, an import's progress) with no DOM. Keep that true: regions as fields rather than `<Component for>` elements, `has()` subtrees contributing to macro-state whether or not placed, render-less Components. Tests, devtools, and agents consume this surface as much as views do.
@@ -47,7 +47,7 @@ class Stick extends Component {
 
 The fused class demotes because scroll-sync was incidental to its paint. `Stick` earns the instance as a feature: unplug is deleting one wrap, and `stick.on` reads off the tree.
 
-Use `State` for headless models/controllers, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `State` would suffice.
+Use `Model` for headless models/controllers, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
 
 Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
 
@@ -86,11 +86,11 @@ const items = [first, second];
 <>{items}</>
 ```
 
-- The adapter exposes each instance as an element keyed by `key`, defaulting lazily to the State uid (`String(instance)`). Override the readonly `key` property for an application-defined identity.
+- The adapter exposes each instance as an element keyed by `key`, defaulting lazily to the Model uid (`String(instance)`). Override the readonly `key` property for an application-defined identity.
 - Mounting subscribes and provides context as usual; unmounting only detaches. The external owner destroys it with `instance.set(null)`.
 - One instance may appear beneath separate parents. Repeating it within one sibling collection repeats the key and intentionally produces the host's duplicate-key warning.
 
-When a render reads more than a value or two, destructure everything it reads from `this` at the top - the dependency-snapshot rule of `.get()` / `State.use()` ([react.md](react.md)). Rendering shares the hooks' subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
+When a render reads more than a value or two, destructure everything it reads from `this` at the top - the dependency-snapshot rule of `.get()` / `Model.use()` ([react.md](react.md)). Rendering shares the hooks' subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
 
 ```tsx
 render() {
@@ -212,7 +212,7 @@ class ChatRoom extends Component {
 
 ## Props
 
-State fields become optional JSX props, applied to the instance every render. A prop omitted on a later render resets to `undefined` - unmanaged `_` fields included.
+Model fields become optional JSX props, applied to the instance every render. A prop omitted on a later render resets to `undefined` - unmanaged `_` fields included.
 
 ```tsx
 class Greeting extends Component {
@@ -415,7 +415,7 @@ function SidebarItems() {
 - `new()` - once after init, synchronously; runs during server render. Return cleanup for teardown.
 - `render(props)` - every render.
 - `mount()` - once when `<MyComponent />` commits, client only. Return cleanup for unmount. Not called for an instance placed as `{instance}` - the placing component does not own it (see [react.md](react.md)).
-- `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `State.on({ catch })`.
+- `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `Model.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
 `MyComponent.use()` throws - a Component is rendered (`<MyComponent />` or `{instance}`), not used. For a bare instance use `MyComponent.new()`.

@@ -21,14 +21,14 @@ import { withWorkspaceLinks } from './workspace-links';
  * re-sets budgets and the figures quoted in docs.
  *
  * 10 kB is the line the maintainer cares about: `react: typical app`, the site's
- * headline figure, crossed it at 10.14 kB in 2026-09 (State.on({ catch }), the error-report classes,
+ * headline figure, crossed it at 10.14 kB in 2026-09 (Model.on({ catch }), the error-report classes,
  * the copies registry) - further growth there needs a deliberate decision.
  */
 const CASES = [
   {
-    name: 'mvc: State only',
+    name: 'mvc: Model only',
     limit: 6640,
-    code: `import State from '@expressive/mvc'; console.log(State);`
+    code: `import Model from '@expressive/mvc'; console.log(Model);`
   },
   {
     name: 'mvc: everything',
@@ -36,15 +36,15 @@ const CASES = [
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
-    name: 'react: State only',
+    name: 'react: Model only',
     limit: 10810,
-    code: `import State from '@expressive/react'; console.log(State);`
+    code: `import Model from '@expressive/react'; console.log(Model);`
   },
   {
     name: 'react: typical app',
     limit: 11660,
-    code: `import State, { Component, get, set, ref, def } from '@expressive/react';
-           console.log(State, Component, get, set, ref, def);`
+    code: `import Model, { Component, get, set, ref, def } from '@expressive/react';
+           console.log(Model, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
@@ -54,9 +54,9 @@ const CASES = [
   {
     name: 'dom: renderer',
     limit: 18550,
-    code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
+    code: `import Model, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
            import { Fragment, Portal, createElement, render } from '@expressive/dom';
-           console.log(State, Component, Context, Fragment, Portal, createElement, def, get, has, map, pending, ref, render, set);`
+           console.log(Model, Component, Context, Fragment, Portal, createElement, def, get, has, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',

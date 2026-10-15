@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -13,7 +13,7 @@ import inspect from './index';
 
 const packages = fileURLToPath(new URL('../../../', import.meta.url));
 
-class Composer extends State {
+class Composer extends Model {
   draft = '';
 }
 

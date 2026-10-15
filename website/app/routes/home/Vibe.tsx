@@ -19,7 +19,7 @@ export function Vibe() {
 
         <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
           <Point title="Dense business logic" delay={0}>
-            State, derived values, async, and lifecycle live together.
+            Model, derived values, async, and lifecycle live together.
             Composition helps separate concerns into readable chunks.
           </Point>
           <Point title="Logic and state are addressable" delay={50}>

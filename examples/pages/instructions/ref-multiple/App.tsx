@@ -1,6 +1,6 @@
 import './App.css';
 
-import { State, Component, ref } from '@expressive/mvc';
+import { Model, Component, ref } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
@@ -22,7 +22,7 @@ export default () => (
   </div>
 );
 
-class Bands extends State {
+class Bands extends Model {
   bass = 40;
   mids = 65;
   treble = 30;
@@ -44,7 +44,7 @@ class Bands extends State {
   refs = ref(this);
 }
 
-type Band = Exclude<State.Field<Bands>, 'fader' | 'refs'>;
+type Band = Exclude<Model.Field<Bands>, 'fader' | 'refs'>;
 
 class Desk extends Component {
   bands = new Bands();

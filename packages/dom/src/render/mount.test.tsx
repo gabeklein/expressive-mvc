@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { Component, State } from '@expressive/mvc';
+import { Component, Model } from '@expressive/mvc';
 import { render } from '../index';
 import { flushMicrotasks, mount } from '../../test.setup';
 import { vnode } from '../node/vnode';
@@ -46,7 +46,7 @@ describe('mount', () => {
   });
 
   it('will reject unsupported render values and element types', () => {
-    class Bare extends State {}
+    class Bare extends Model {}
     const root = document.createElement('main');
 
     expect(() => render({} as never, root)).toThrow('Cannot render');

@@ -10,7 +10,7 @@ React's 2019 move to hooks was a verdict on class *views*: `this`-binding in han
 
 A domain model is data + behavior + identity over time, which class syntax expresses natively: fields are observable state, getters derivations, methods actions, `extends` specialization, and the instance a stable identity outliving any render. Hooks replaced class views; they are not a container for long-lived, testable domain state.
 
-`Component` is the view-layer primitive, in two modes. Bare, as `<Component for={State}>`, it places a model in a subtree with suspense and error boundaries and renders nothing itself - no collapse. With a `render()`, it is the opt-in for state *intrinsic to a rendered unit* (see "Why 'MVC'"), not the default app shape.
+`Component` is the view-layer primitive, in two modes. Bare, as `<Component for={Model}>`, it places a model in a subtree with suspense and error boundaries and renders nothing itself - no collapse. With a `render()`, it is the opt-in for state *intrinsic to a rendered unit* (see "Why 'MVC'"), not the default app shape.
 
 ## Why "MVC"
 
@@ -22,24 +22,24 @@ Strict MVC (Smalltalk-80; Krasner & Pope, 1988) has three load-bearing ideas:
 
 Expressive implements all three structurally:
 
-- **Model:** `State` - headless, framework-agnostic (enforced by package boundaries: `@expressive/mvc` has no framework imports, and every adapter and renderer declares it as a peer dependency, never the reverse - a model module imports nothing from a host), observable via subscription.
-- **View:** `State.get()` / `State.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter between; under `@expressive/dom` a function component holds no renderer state at all - a view is a projection of a model snapshot. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
+- **Model:** `Model` - headless, framework-agnostic (enforced by package boundaries: `@expressive/mvc` has no framework imports, and every adapter and renderer declares it as a peer dependency, never the reverse - a model module imports nothing from a host), observable via subscription.
+- **View:** `Model.get()` / `Model.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter between; under `@expressive/dom` a function component holds no renderer state at all - a view is a projection of a model snapshot. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
 - **Controller:** distributed, as in every surviving descendant (MVP, MVVM, Cocoa) - the renderer's event system interprets raw input (React's synthetic events through the adapter, native `addEventListener` under `@expressive/dom`); model methods (`increment()`, validated setters) translate gestures into model operations.
 
-`Component` deliberately collapses the triad for state intrinsic to one rendered unit - a form control, media player, route shell - where separating model from view is ceremony, not architecture. The collapse is scoped and opt-in; the separated form (`State` + observing function components) stays available and is the default for headless or shared state. Providing that form is also `Component`, bare: `<Component for={State}>` places a model and its boundaries in the tree without collapsing anything - the model stays the `for` State, the element stays a view node. Smalltalk's successors made the same trade, merging view and controller into widgets.
+`Component` deliberately collapses the triad for state intrinsic to one rendered unit - a form control, media player, route shell - where separating model from view is ceremony, not architecture. The collapse is scoped and opt-in; the separated form (`Model` + observing function components) stays available and is the default for headless or shared state. Providing that form is also `Component`, bare: `<Component for={Model}>` places a model and its boundaries in the tree without collapsing anything - the model stays the `for` Model, the element stays a view node. Smalltalk's successors made the same trade, merging view and controller into widgets.
 
 ## Two verbs: why `get` and `set` carry overloads
 
-A `State` subclass's instance namespace belongs to the **user's domain** - every library method on the prototype is a name a model loses (`state.status`, `state.watch`, `state.export`, `state.destroy` should remain domain properties). So the instance surface is two verbs rather than a dozen namespace-squatting methods:
+A `Model` subclass's instance namespace belongs to the **user's domain** - every library method on the prototype is a name a model loses (`state.status`, `state.watch`, `state.export`, `state.destroy` should remain domain properties). So the instance surface is two verbs rather than a dozen namespace-squatting methods:
 
 - `get` - read side: values, effects, context lookup, destruction status.
 - `set` - write side: assignment, events, listeners, destruction.
 
-Overloads dispatch on the **kind** of the first argument - property key, function, `null`, State class, plain object - not on subtle arity. Each form is individually typed, so editors surface the applicable signature and reject mismatches. Consequential forms are not shape-ambiguous: destruction is only ever explicit `set(null)`, and a wrong-kind argument is a compile error, not a silent behavior change. The trade: `get`/`set` are less self-describing than dedicated names, so every overload is enumerated in [state/get.md](state/get.md) and [state/set.md](state/set.md). The alternative would have cost the model author's own vocabulary.
+Overloads dispatch on the **kind** of the first argument - property key, function, `null`, Model class, plain object - not on subtle arity. Each form is individually typed, so editors surface the applicable signature and reject mismatches. Consequential forms are not shape-ambiguous: destruction is only ever explicit `set(null)`, and a wrong-kind argument is a compile error, not a silent behavior change. The trade: `get`/`set` are less self-describing than dedicated names, so every overload is enumerated in [state/get.md](state/get.md) and [state/set.md](state/set.md). The alternative would have cost the model author's own vocabulary.
 
 ## Render overrides like any method
 
-`render()` follows standard JavaScript replace semantics on `State` and `Component` alike, in every host. A base that wants to keep its chrome while subclasses supply content exposes a subcomponent extension point and renders it (`<this.Body />`); a subclass that replaces `render` owns the output and calls `super.render(props)` to wrap the base.
+`render()` follows standard JavaScript replace semantics on `Model` and `Component` alike, in every host. A base that wants to keep its chrome while subclasses supply content exposes a subcomponent extension point and renders it (`<this.Body />`); a subclass that replaces `render` owns the output and calls `super.render(props)` to wrap the base.
 
 Reason: implicit render composition made one member behave unlike every other, hid the direction of wrapping, and needed per-instance machinery hot reload had to invalidate. Boundaries, suspense and context are established by the host frame regardless of what `render` returns, so a forgotten `super` drops chrome, not function. A base whose frame is load-bearing guards it itself - `Route` gates a subclass `render` as its page.
 
@@ -49,7 +49,7 @@ A PascalCase member on a `Component` becomes a reactive subcomponent - mirroring
 
 ## Lifecycle hooks are typed members, not name magic
 
-`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void)` on `State` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the adapter's `State` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most models need none - `new()` exists for setup-with-cleanup and should not be added ritually.
+`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void)` on `Model` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the adapter's `Model` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most models need none - `new()` exists for setup-with-cleanup and should not be added ritually.
 
 ## Writes are transparent; `is` is bounded
 

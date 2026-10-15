@@ -4,7 +4,7 @@ import { Context } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
 import { set } from './field/set';
-import { State, update } from './state';
+import { Model, update } from './state';
 import { event, listener, watch } from './observable';
 
 import { has } from './field/has';
@@ -12,21 +12,21 @@ import { map } from './field/map';
 
 const DESTROYED = /but state is destroyed/;
 
-class Basic extends State {
+class Basic extends Model {
   foo = 'foo';
 }
 
-class Counter extends State {
+class Counter extends Model {
   foo = 0;
 }
 
-it('will not create base State', () => {
+it('will not create base Model', () => {
   // @ts-expect-error
-  expect(() => State.new()).toThrow('Cannot create base State.');
+  expect(() => Model.new()).toThrow('Cannot create base Model.');
 });
 
-it('will not create abstract State', () => {
-  abstract class Subject extends State {}
+it('will not create abstract Model', () => {
+  abstract class Subject extends Model {}
 
   void function create() {
     // No runtime error but typescript should complain.
@@ -36,7 +36,7 @@ it('will not create abstract State', () => {
 });
 
 it('will update on assignment', async () => {
-  class Subject extends State {
+  class Subject extends Model {
     value = 1;
 
     setValue(to: number) {
@@ -64,7 +64,7 @@ it('will not ignore function properties', async () => {
   const mockFunction = vi.fn();
   const mockFunction2 = vi.fn();
 
-  class Test extends State {
+  class Test extends Model {
     fn = mockFunction;
   }
 
@@ -85,7 +85,7 @@ it('will not ignore function properties', async () => {
 });
 
 it('will iterate over properties', () => {
-  class Test extends State {
+  class Test extends Model {
     foo = 1;
     bar = 2;
     baz = 3;
@@ -102,8 +102,8 @@ it('will iterate over properties', () => {
 });
 
 it('will destroy children before self', () => {
-  class Nested extends State {}
-  class Test extends State {
+  class Nested extends Model {}
+  class Test extends Model {
     nested = new Nested();
   }
 
@@ -122,8 +122,8 @@ it('will destroy children before self', () => {
 });
 
 it('will destroy owned child when replaced or cleared', () => {
-  class Child extends State {}
-  class Parent extends State {
+  class Child extends Model {}
+  class Parent extends Model {
     child: Child | null = new Child();
   }
 
@@ -145,14 +145,14 @@ it('will destroy owned child when replaced or cleared', () => {
 it('will adopt child from set factory', () => {
   const created = vi.fn();
 
-  class Child extends State {
+  class Child extends Model {
     value = 1;
     protected new() {
       created();
     }
   }
 
-  class Parent extends State {
+  class Parent extends Model {
     child = set(() => new Child());
   }
 
@@ -168,11 +168,11 @@ it('will adopt child from set factory', () => {
 });
 
 it('will adopt child assigned after undefined', () => {
-  class Child extends State {
+  class Child extends Model {
     value = 1;
   }
 
-  class Parent extends State {
+  class Parent extends Model {
     child?: Child = undefined;
   }
 
@@ -190,11 +190,11 @@ it('will adopt child assigned after undefined', () => {
 });
 
 it('will not own active child from set factory', () => {
-  class Child extends State {}
+  class Child extends Model {}
 
   const held = Child.new();
 
-  class Parent extends State {
+  class Parent extends Model {
     child = set(() => held);
   }
 
@@ -209,8 +209,8 @@ it('will not own active child from set factory', () => {
 });
 
 it('will not re-provide a guest already provided above', () => {
-  class Foo extends State {}
-  class Holder extends State {
+  class Foo extends Model {}
+  class Holder extends Model {
     foo = set(() => this.get(Foo));
   }
 
@@ -234,11 +234,11 @@ it('will not re-provide a guest already provided above', () => {
 });
 
 it('will provide a guest when ancestors hold others of its type', () => {
-  class Foo extends State {}
+  class Foo extends Model {}
 
   const foo = Foo.new();
 
-  class Holder extends State {
+  class Holder extends Model {
     foo = set(() => foo);
   }
 
@@ -250,13 +250,13 @@ it('will provide a guest when ancestors hold others of its type', () => {
 });
 
 it('will not adopt child derived by getter', () => {
-  class Child extends State {
+  class Child extends Model {
     value = 1;
   }
 
   const held = Child.new();
 
-  class Parent extends State {
+  class Parent extends Model {
     get child() {
       return held;
     }
@@ -272,11 +272,11 @@ it('will not adopt child derived by getter', () => {
 });
 
 it('will not destroy non-owned child when replaced', () => {
-  class Child extends State {
+  class Child extends Model {
     value = 1;
   }
 
-  class Parent extends State {
+  class Parent extends Model {
     child = new Child();
   }
 
@@ -290,8 +290,8 @@ it('will not destroy non-owned child when replaced', () => {
 });
 
 it('will not update when assigning same child instance', () => {
-  class Child extends State {}
-  class Parent extends State {
+  class Child extends Model {}
+  class Parent extends Model {
     child: Child = new Child();
   }
 
@@ -306,7 +306,7 @@ it('will not update when assigning same child instance', () => {
 });
 
 it('will store a child read through a subscriber as itself', async () => {
-  class Child extends State {
+  class Child extends Model {
     value = 1;
 
     get double() {
@@ -314,7 +314,7 @@ it('will store a child read through a subscriber as itself', async () => {
     }
   }
 
-  class Parent extends State {
+  class Parent extends Model {
     a = new Child();
     active?: Child = this.a;
   }
@@ -346,8 +346,8 @@ it('will store a child read through a subscriber as itself', async () => {
 });
 
 it('will destroy parent after child property cleared', () => {
-  class Child extends State {}
-  class Parent extends State {
+  class Child extends Model {}
+  class Parent extends Model {
     child: Child | null = new Child();
   }
 
@@ -361,7 +361,7 @@ it('will destroy parent after child property cleared', () => {
 
 describe('methods', () => {
   it('will auto bind', async () => {
-    class FooBar extends State {
+    class FooBar extends Model {
       method() {
         return String(this);
       }
@@ -374,7 +374,7 @@ describe('methods', () => {
   });
 
   it('will bind to the instance, not a proxy', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 0;
 
       whoami() {
@@ -398,7 +398,7 @@ describe('methods', () => {
   it('will call new() with the instance', () => {
     let inside!: Test;
 
-    class Test extends State {
+    class Test extends Model {
       protected new() {
         inside = this;
       }
@@ -410,7 +410,7 @@ describe('methods', () => {
   });
 
   it('will allow overwrite', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 'foo';
 
       method() {
@@ -430,7 +430,7 @@ describe('methods', () => {
   });
 
   it('will not break super calls', () => {
-    class Test extends State {
+    class Test extends Model {
       action() {
         return 'Foo ';
       }
@@ -457,7 +457,7 @@ describe('methods', () => {
   });
 
   it('will ignore setter-only accessors', () => {
-    class Test extends State {
+    class Test extends Model {
       values: number[] = [];
 
       set latest(value: number) {
@@ -474,7 +474,7 @@ describe('methods', () => {
 });
 
 describe('subscriber', () => {
-  class Subject extends State {
+  class Subject extends Model {
     value = 1;
     value2 = 2;
   }
@@ -501,7 +501,7 @@ describe('subscriber', () => {
   });
 
   it('will not obstruct set-behavior', () => {
-    class Test extends State {
+    class Test extends Model {
       didSet = vi.fn();
       value = set('foo', this.didSet);
     }
@@ -520,10 +520,10 @@ describe('subscriber', () => {
 });
 
 describe('string coercion', () => {
-  class Test extends State {}
+  class Test extends Model {}
 
   it('will output class name and a unique 6 character ID', () => {
-    class FooBar extends State {}
+    class FooBar extends Model {}
 
     expect(String(Test.new())).not.toBe(String(Test.new()));
     expect(String(FooBar.new())).toMatch(/^FooBar-\w{6}/);
@@ -543,7 +543,7 @@ describe('string coercion', () => {
 
 describe('get method', () => {
   describe('export', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 'foo';
       bar = 'bar';
       baz = 'baz';
@@ -561,7 +561,7 @@ describe('get method', () => {
     // includes 'bar' after access (verified under raw node 22). Skipped pending
     // a decision: is this a latent lib bug or is the test obsolete?
     it.skip('will ignore getters', () => {
-      class Test extends State {
+      class Test extends Model {
         foo = 'foo';
 
         get bar() {
@@ -580,13 +580,13 @@ describe('get method', () => {
     });
 
     it('will export values recursively', () => {
-      class Nested extends State {
+      class Nested extends Model {
         foo = 1;
         bar = 2;
         baz = 3;
       }
 
-      class Test extends State {
+      class Test extends Model {
         foo = 'foo';
         bar = 'bar';
         baz = 'baz';
@@ -599,7 +599,7 @@ describe('get method', () => {
 
       expect(exported.nested).not.toBeInstanceOf(Nested);
 
-      const nested: State.Values<Nested> = exported.nested;
+      const nested: Model.Values<Nested> = exported.nested;
 
       expect(exported).toEqual({
         foo: 'foo',
@@ -616,11 +616,11 @@ describe('get method', () => {
     });
 
     it('will defer to get method exporting properties', () => {
-      class Bar extends State {
+      class Bar extends Model {
         foo = 'foo';
       }
 
-      class Test extends State {
+      class Test extends Model {
         foo = { get: () => 3 };
         bar = ref<boolean>();
         baz = new Bar();
@@ -643,12 +643,12 @@ describe('get method', () => {
     });
 
     it('will export infinite loop', () => {
-      class Parent extends State {
+      class Parent extends Model {
         child = new Child();
         foo = 'foo';
       }
 
-      class Child extends State {
+      class Child extends Model {
         parent = get(Parent);
         bar = 'bar';
       }
@@ -668,7 +668,7 @@ describe('get method', () => {
     });
 
     it('will get ref value', () => {
-      class Test extends State {
+      class Test extends Model {
         foo = ref<string>();
       }
 
@@ -685,7 +685,7 @@ describe('get method', () => {
       ['will throw suspense if not yet available', () => set<string>(), undefined],
       ['will suspend if undefined in strict mode', () => undefined, true]
     ])('%s', async (_, initial, strict) => {
-      class Test extends State {
+      class Test extends Model {
         foo?: string = initial();
       }
 
@@ -707,7 +707,7 @@ describe('get method', () => {
     });
 
     it('will read undefined for pending value after destroyed', () => {
-      class Test extends State {
+      class Test extends Model {
         foo = set(() => new Promise<string>(() => {}), true);
       }
 
@@ -719,7 +719,7 @@ describe('get method', () => {
     });
 
     it('will get unbound method', () => {
-      class Test extends State {
+      class Test extends Model {
         value = 'foo';
 
         method() {
@@ -737,8 +737,8 @@ describe('get method', () => {
   });
 
   describe('context', () => {
-    class Foo extends State {}
-    class Bar extends State {}
+    class Foo extends Model {}
+    class Bar extends Model {}
 
     it('will get from parent context', () => {
       const bar = new Bar();
@@ -759,7 +759,7 @@ describe('get method', () => {
     });
 
     it('will type fetched state by its class', () => {
-      class Baz extends State {
+      class Baz extends Model {
         value = 1;
       }
 
@@ -840,7 +840,7 @@ describe('get method', () => {
     });
 
     it('will subscribe effect to fields read from fetched state', async () => {
-      class Auth extends State {
+      class Auth extends Model {
         name = 'foo';
         other = 0;
       }
@@ -869,10 +869,10 @@ describe('get method', () => {
   });
 
   describe('owner', () => {
-    class Child extends State {}
+    class Child extends Model {}
 
     it('will get owner of a field or late assignment', () => {
-      class Parent extends State {
+      class Parent extends Model {
         child = new Child();
         late?: Child = undefined;
       }
@@ -881,12 +881,12 @@ describe('get method', () => {
 
       parent.late = new Child();
 
-      expect(parent.child.get(State)).toBe(parent);
-      expect(parent.late.get(State)).toBe(parent);
+      expect(parent.child.get(Model)).toBe(parent);
+      expect(parent.late.get(Model)).toBe(parent);
     });
 
     it('will get owner of pool and map members', () => {
-      class Parent extends State {
+      class Parent extends Model {
         pool = has(Child);
         keyed = map<string, Child>();
       }
@@ -896,12 +896,12 @@ describe('get method', () => {
 
       parent.keyed.set('a', new Child());
 
-      expect(member.get(State)).toBe(parent);
-      expect(parent.keyed.get('a')!.get(State)).toBe(parent);
+      expect(member.get(Model)).toBe(parent);
+      expect(parent.keyed.get('a')!.get(Model)).toBe(parent);
     });
 
-    it('will not get holder of an active State', () => {
-      class Parent extends State {
+    it('will not get holder of an active Model', () => {
+      class Parent extends Model {
         child?: Child = undefined;
       }
 
@@ -910,16 +910,16 @@ describe('get method', () => {
 
       parent.child = child;
 
-      expect(child.get(State, false)).toBeUndefined();
+      expect(child.get(Model, false)).toBeUndefined();
     });
 
-    it('will get State a context was set up for', () => {
+    it('will get Model a context was set up for', () => {
       const host = Child.new();
       const child = new Child();
 
       new Context(host).push(child);
 
-      expect(child.get(State)).toBe(host);
+      expect(child.get(Model)).toBe(host);
     });
 
     it('will skip context set up for itself', () => {
@@ -928,29 +928,29 @@ describe('get method', () => {
 
       new Context(host).push().push(child);
 
-      expect(host.get(State, false)).toBeUndefined();
-      expect(child.get(State)).toBe(host);
+      expect(host.get(Model, false)).toBeUndefined();
+      expect(child.get(Model)).toBe(host);
     });
 
-    it('will not get from context of several States', () => {
+    it('will not get from context of several Models', () => {
       const a = Child.new();
       const b = Child.new();
       const child = new Child();
 
       new Context({ a, b }).push(child);
 
-      expect(child.get(State, false)).toBeUndefined();
+      expect(child.get(Model, false)).toBeUndefined();
     });
 
     it('will throw if none', () => {
       const child = Child.new();
 
-      expect(() => child.get(State)).toThrow(`${child} has no owner.`);
-      expect(child.get(State, false)).toBeUndefined();
+      expect(() => child.get(Model)).toThrow(`${child} has no owner.`);
+      expect(child.get(Model, false)).toBeUndefined();
     });
 
-    it('will report owned States', () => {
-      class Parent extends State {
+    it('will report owned Models', () => {
+      class Parent extends Model {
         child = new Child();
         guest?: Child = undefined;
         pool = has(Child);
@@ -961,7 +961,7 @@ describe('get method', () => {
       const callback = vi.fn();
 
       parent.guest = Child.new();
-      parent.get(State, callback, true);
+      parent.get(Model, callback, true);
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(parent.child);
@@ -974,19 +974,19 @@ describe('get method', () => {
       expect(callback).toHaveBeenNthCalledWith(3, parent.late);
     });
 
-    it('will report States hosted by context', () => {
+    it('will report Models hosted by context', () => {
       const host = Child.new();
       const child = new Child();
       const callback = vi.fn();
 
-      host.get(State, callback, true);
+      host.get(Model, callback, true);
       new Context(host).push(child);
 
       expect(callback).toHaveBeenCalledWith(child);
     });
 
-    it('will run cleanup when owned State is destroyed', () => {
-      class Parent extends State {
+    it('will run cleanup when owned Model is destroyed', () => {
+      class Parent extends Model {
         pool = has(Child);
       }
 
@@ -995,24 +995,24 @@ describe('get method', () => {
       const cleanup = vi.fn();
       const callback = vi.fn();
 
-      parent.get(State, () => cleanup, true);
+      parent.get(Model, () => cleanup, true);
       parent.pool.delete(member);
 
       expect(cleanup).toHaveBeenCalledTimes(1);
 
-      parent.get(State, callback, true);
+      parent.get(Model, callback, true);
 
       expect(callback).not.toHaveBeenCalled();
     });
 
     it('will stop reporting when cancelled', () => {
-      class Parent extends State {
+      class Parent extends Model {
         pool = has(Child);
       }
 
       const parent = Parent.new();
       const callback = vi.fn();
-      const stop = parent.get(State, callback, true);
+      const stop = parent.get(Model, callback, true);
 
       stop();
       parent.pool.add();
@@ -1021,26 +1021,26 @@ describe('get method', () => {
     });
 
     it('will report direct children only', () => {
-      class Middle extends State {
+      class Middle extends Model {
         child = new Child();
       }
-      class Root extends State {
+      class Root extends Model {
         middle = new Middle();
       }
 
       const root = Root.new();
       const callback = vi.fn();
 
-      root.get(State, callback, true);
+      root.get(Model, callback, true);
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(root.middle);
-      expect(root.middle.child.get(State)).toBe(root.middle);
-      expect(root.middle.child.get(State).get(State)).toBe(root);
+      expect(root.middle.child.get(Model)).toBe(root.middle);
+      expect(root.middle.child.get(Model).get(Model)).toBe(root);
     });
 
     it('will keep owner once activated', () => {
-      class Parent extends State {
+      class Parent extends Model {
         child?: Child = undefined;
       }
 
@@ -1053,13 +1053,13 @@ describe('get method', () => {
 
       new Context(b).push(child);
 
-      expect(child.get(State)).toBe(a);
+      expect(child.get(Model)).toBe(a);
       expect(a.child).toBe(child);
       expect(b.child).toBe(child);
     });
 
     it('will not get holder of a pool guest', () => {
-      class Parent extends State {
+      class Parent extends Model {
         pool = has(Child);
       }
 
@@ -1071,15 +1071,15 @@ describe('get method', () => {
 
       holder.pool.add(member);
       holder.pool.add(Child.new());
-      holder.get(State, callback, true);
+      holder.get(Model, callback, true);
 
-      expect(member.get(State)).toBe(owner);
+      expect(member.get(Model)).toBe(owner);
       expect(holder.pool.size).toBe(2);
       expect(callback).not.toHaveBeenCalled();
     });
 
     it('will run cleanup when owner is destroyed', () => {
-      class Parent extends State {
+      class Parent extends Model {
         child = new Child();
         pool = has(Child);
       }
@@ -1088,7 +1088,7 @@ describe('get method', () => {
       const cleanup = vi.fn();
 
       parent.pool.add();
-      parent.get(State, (child) => () => cleanup(child), true);
+      parent.get(Model, (child) => () => cleanup(child), true);
       parent.set(null);
 
       expect(cleanup).toHaveBeenCalledTimes(2);
@@ -1096,7 +1096,7 @@ describe('get method', () => {
     });
 
     it('will subscribe effect to fields read from owner', async () => {
-      class Parent extends State {
+      class Parent extends Model {
         value = 0;
         child = new Child();
       }
@@ -1105,7 +1105,7 @@ describe('get method', () => {
       const effect = vi.fn();
 
       parent.child.get((self) => {
-        effect((self.get(State) as Parent).value);
+        effect((self.get(Model) as Parent).value);
       });
 
       parent.value = 1;
@@ -1116,7 +1116,7 @@ describe('get method', () => {
   });
 
   it('will return and callback whether state is destroyed', () => {
-    class Test extends State {}
+    class Test extends Model {}
 
     const test = Test.new();
     const cb = vi.fn();
@@ -1133,7 +1133,7 @@ describe('get method', () => {
   });
 
   describe('effect', () => {
-    class Test extends State {
+    class Test extends Model {
       value1 = 1;
       value2 = 2;
       value3 = 3;
@@ -1172,7 +1172,7 @@ describe('get method', () => {
     it('will not call twice if set up during init', () => {
       const didUpdate = vi.fn();
 
-      class Control extends State {
+      class Control extends Model {
         value = 'foo';
 
         protected new() {
@@ -1212,11 +1212,11 @@ describe('get method', () => {
     });
 
     it('will update for nested values', async () => {
-      class Child extends State {
+      class Child extends Model {
         value = 'foo';
       }
 
-      class Test extends State {
+      class Test extends Model {
         child = new Child();
       }
 
@@ -1234,11 +1234,11 @@ describe('get method', () => {
     });
 
     it('will update when assigned through proxy or nested proxy', async () => {
-      class Child extends State {
+      class Child extends Model {
         value = 'foo';
       }
 
-      class Test extends State {
+      class Test extends Model {
         value = 'foo';
         child = new Child();
       }
@@ -1273,18 +1273,18 @@ describe('get method', () => {
     });
 
     it('will subscribe deeply', async () => {
-      class Parent extends State {
+      class Parent extends Model {
         value = 'foo';
         empty = undefined;
         child = new Child();
       }
 
-      class Child extends State {
+      class Child extends Model {
         value = 'foo';
         grandchild = new GrandChild();
       }
 
-      class GrandChild extends State {
+      class GrandChild extends Model {
         value = 'bar';
       }
 
@@ -1323,11 +1323,11 @@ describe('get method', () => {
     });
 
     it('will subscribe if value starts undefined', async () => {
-      class Child extends State {
+      class Child extends Model {
         value = 'foo';
       }
 
-      class Parent extends State {
+      class Parent extends Model {
         value = 'foo';
         child?: Child = undefined;
       }
@@ -1368,11 +1368,11 @@ describe('get method', () => {
     });
 
     it('will not update for removed children', async () => {
-      class Nested extends State {
+      class Nested extends Model {
         value = 1;
       }
 
-      class Test extends State {
+      class Test extends Model {
         nested = new Nested();
       }
 
@@ -1397,7 +1397,7 @@ describe('get method', () => {
     });
 
     it('will bind to state called upon', () => {
-      class Test extends State {}
+      class Test extends Model {}
 
       function testEffect(this: Test) {
         didCreate(this);
@@ -1411,7 +1411,7 @@ describe('get method', () => {
       expect(didCreate).toBeCalledWith(test);
     });
 
-    it('will work without State.new', async () => {
+    it('will work without Model.new', async () => {
       const test = new Test();
       const cb = vi.fn();
 
@@ -1425,7 +1425,7 @@ describe('get method', () => {
     });
 
     it('will not subscribe from method', async () => {
-      class Test extends State {
+      class Test extends Model {
         foo = 1;
         bar = 2;
 
@@ -1456,10 +1456,10 @@ describe('get method', () => {
     it('will subscribe method passed directly', async () => {
       const didInvoke = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         foo = 1;
 
-        constructor(...args: State.Args) {
+        constructor(...args: Model.Args) {
           super(args, () => {
             this.get(this.action);
           });
@@ -1482,7 +1482,7 @@ describe('get method', () => {
 
     describe('return value', () => {
       it('will callback on next update', async () => {
-        class Test extends State {
+        class Test extends Model {
           value1 = 1;
         }
 
@@ -1595,7 +1595,7 @@ describe('get method', () => {
       });
 
       it('will await a value not yet set', async () => {
-        class Session extends State {
+        class Session extends Model {
           token = set<string>();
         }
 
@@ -1608,7 +1608,7 @@ describe('get method', () => {
       });
 
       it('will await several projections together', async () => {
-        class Session extends State {
+        class Session extends Model {
           user = set<string>();
           role = 'guest';
         }
@@ -1626,7 +1626,7 @@ describe('get method', () => {
     });
 
     describe('suspense', () => {
-      class Test extends State {
+      class Test extends Model {
         value = set<string>();
         other = 'foo';
       }
@@ -1680,7 +1680,7 @@ describe('get method', () => {
 
     describe('before ready', () => {
       it('will watch computed value', async () => {
-        class Test extends State {
+        class Test extends Model {
           value1 = 2;
 
           get value2() {
@@ -1702,7 +1702,7 @@ describe('get method', () => {
       });
 
       it('will remove listener on callback', async () => {
-        class Test extends State {
+        class Test extends Model {
           value = 1;
           done = this.get((state) => {
             cb(state.value);
@@ -1732,7 +1732,7 @@ describe('get method', () => {
 
 describe('set method', () => {
   describe('event', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 'foo';
     }
 
@@ -1763,7 +1763,7 @@ describe('set method', () => {
     });
 
     it('will assign a value to ref', async () => {
-      class Test extends State {
+      class Test extends Model {
         foo = ref<string>();
       }
 
@@ -1777,7 +1777,7 @@ describe('set method', () => {
     });
 
     it('will bypass setter when updating value', async () => {
-      class Test extends State {
+      class Test extends Model {
         foo = set(1, () => {
           throw Error('setter should not run');
         });
@@ -1809,7 +1809,7 @@ describe('set method', () => {
         expect(Object.keys(test)).not.toContain('bar');
       }]
     ])('%s', (_, config, check) => {
-      class Test extends State {
+      class Test extends Model {
         foo = 'foo';
       }
 
@@ -1826,11 +1826,11 @@ describe('set method', () => {
     });
 
     it('will register child state via descriptor', async () => {
-      class Child extends State {
+      class Child extends Model {
         value = 'hello';
       }
 
-      class Parent extends State {
+      class Parent extends Model {
         foo = 'foo';
       }
 
@@ -1853,11 +1853,11 @@ describe('set method', () => {
     });
 
     it('will replace child state via descriptor', async () => {
-      class Child extends State {
+      class Child extends Model {
         value = 'hello';
       }
 
-      class Parent extends State {
+      class Parent extends Model {
         foo = 'foo';
       }
 
@@ -1881,7 +1881,7 @@ describe('set method', () => {
     });
 
     it('will add property to tracking', async () => {
-      class Test extends State {
+      class Test extends Model {
         foo = 'foo';
       }
 
@@ -1933,7 +1933,7 @@ describe('set method', () => {
     });
 
     it('will no-op when applying empty config to already-defined property', async () => {
-      class Subject extends State {
+      class Subject extends Model {
         foo = 'bar';
       }
 
@@ -1962,7 +1962,7 @@ describe('set method', () => {
     it('will initialize from set({}) when created with new', () => {
       const didSetFoo = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         foo = set<string>(undefined, didSetFoo);
       }
 
@@ -2005,7 +2005,7 @@ describe('set method', () => {
 
   describe('listener', () => {
     it('will call listener on update', async () => {
-      class Test extends State {
+      class Test extends Model {
         foo = 'foo';
         bar = 'bar';
       }
@@ -2083,7 +2083,7 @@ describe('set method', () => {
   describe('effect', () => {
     mockError();
 
-    class Test extends State {
+    class Test extends Model {
       foo = 0;
       bar = 1;
       baz = 2;
@@ -2139,8 +2139,8 @@ describe('set method', () => {
       expect(caught).toEqual([oops]);
     });
 
-    it('will not activate State prematurely', () => {
-      class Test extends State {
+    it('will not activate Model prematurely', () => {
+      class Test extends Model {
         foo = 0;
 
         constructor() {
@@ -2165,7 +2165,7 @@ describe('set method', () => {
       const warn = mockWarn();
 
       it('will store an update without dispatch and report it to catch', () => {
-        class Test extends State {
+        class Test extends Model {
           foo = 0;
         }
 
@@ -2190,11 +2190,11 @@ describe('set method', () => {
         expect(handler.mock.contexts[0]).toBe(test);
       });
 
-      it.each<[string, (test: State & { foo: number }) => void]>([
+      it.each<[string, (test: Model & { foo: number }) => void]>([
         ['will report set with config', (test) => test.set('foo', { value: 1 })],
         ['will store and report assign', (test) => test.set({ foo: 1 })]
       ])('%s', (_, write) => {
-        class Test extends State {
+        class Test extends Model {
           foo = 0;
         }
 
@@ -2210,7 +2210,7 @@ describe('set method', () => {
       });
 
       it('will let a continuation that writes after teardown run to completion', async () => {
-        class Loop extends State {
+        class Loop extends Model {
           again = true;
         }
 
@@ -2238,7 +2238,7 @@ describe('set method', () => {
       });
 
       it('will store a write a catch handler takes', async () => {
-        class Test extends State {
+        class Test extends Model {
           foo = 0;
         }
 
@@ -2258,7 +2258,7 @@ describe('set method', () => {
       });
 
       it('will store a silent assign without a report', () => {
-        class Test extends State {
+        class Test extends Model {
           foo = 0;
         }
 
@@ -2305,7 +2305,7 @@ describe('set method', () => {
       ['will merge object into state', false],
       ['will merge object silently', true]
     ])('%s', async (_, silent) => {
-      class Test extends State {
+      class Test extends Model {
         foo = 'foo';
         bar = 'bar';
       }
@@ -2322,7 +2322,7 @@ describe('set method', () => {
     });
 
     it('will merge methods into state', async () => {
-      class Test extends State {
+      class Test extends Model {
         foo = 'foo';
 
         method() {
@@ -2350,7 +2350,7 @@ describe('set method', () => {
     });
 
     it('will keep subclass assignable to base with this-typed method', () => {
-      class Parent extends State {
+      class Parent extends Model {
         self(): this {
           return this;
         }
@@ -2366,7 +2366,7 @@ describe('set method', () => {
     });
 
     it('will keep subclass assignable to base with generic this-typed method', () => {
-      class Parent extends State {
+      class Parent extends Model {
         foo = 'foo';
 
         pick<K extends keyof this>(key: K): this[K] {
@@ -2384,7 +2384,7 @@ describe('set method', () => {
     });
 
     it('will keep subclass assignable to base with this-typed field', () => {
-      class Parent extends State {
+      class Parent extends Model {
         values: Partial<this> = {};
 
         update(values: Partial<this>) {
@@ -2411,7 +2411,7 @@ describe('set method', () => {
     });
 
     it('will assign from inside method', () => {
-      class Test extends State {
+      class Test extends Model {
         foo = 'foo';
 
         method() {
@@ -2429,7 +2429,7 @@ describe('set method', () => {
     });
 
     it('will ignore a key matching a read-only computed', async () => {
-      class Test extends State {
+      class Test extends Model {
         source = 'foo';
         get value() {
           return this.source;
@@ -2448,7 +2448,7 @@ describe('set method', () => {
     });
 
     it('will leave a computed to derive when its name also arrives as data', async () => {
-      class Test extends State {
+      class Test extends Model {
         source = 'foo';
         get value() {
           return this.source.toUpperCase();
@@ -2468,7 +2468,7 @@ describe('set method', () => {
   it('will trigger normal setters', async () => {
     let observed: string | null = null;
 
-    class Test extends State {
+    class Test extends Model {
       value = 'foo';
 
       get foo() {
@@ -2494,7 +2494,7 @@ describe('set method', () => {
 
 describe('unmanaged keys', () => {
   it('will not manage or enumerate _ keys', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       _handle = 'foo';
     }
@@ -2514,7 +2514,7 @@ describe('unmanaged keys', () => {
   });
 
   it('will write _ keys thru a subscriber', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       _effect = 'foo';
       _computed = 0;
@@ -2541,7 +2541,7 @@ describe('unmanaged keys', () => {
   });
 
   it('will ignore overlay onto a getter-only _ accessor', () => {
-    class Test extends State {
+    class Test extends Model {
       get _fixed() {
         return 'foo';
       }
@@ -2553,8 +2553,8 @@ describe('unmanaged keys', () => {
     expect(test._fixed).toBe('foo');
   });
 
-  it('will run _ accessors against a non-State receiver', () => {
-    class Test extends State {
+  it('will run _ accessors against a non-Model receiver', () => {
+    class Test extends Model {
       get _self(): unknown {
         return this;
       }
@@ -2576,7 +2576,7 @@ describe('unmanaged keys', () => {
   });
 
   it('will accept _ keys from overlay', async () => {
-    class Test extends State {
+    class Test extends Model {
       _config = 'foo';
     }
 
@@ -2590,7 +2590,7 @@ describe('unmanaged keys', () => {
   });
 
   it('will write _ keys after destroy', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       _handle: string | null = 'foo';
     }
@@ -2606,7 +2606,7 @@ describe('unmanaged keys', () => {
   it('will not compute _ getters', () => {
     const getter = vi.fn(() => 'foo');
 
-    class Test extends State {
+    class Test extends Model {
       get _derived() {
         return getter();
       }
@@ -2621,7 +2621,7 @@ describe('unmanaged keys', () => {
   });
 
   it('will bind _ accessors to the instance', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       #secret = 10;
 
@@ -2654,7 +2654,7 @@ describe('unmanaged keys', () => {
   });
 
   it('will not subscribe thru _ accessors', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
 
       get _value() {
@@ -2679,7 +2679,7 @@ describe('unmanaged keys', () => {
   it('will bind setter-only _ accessors', () => {
     let written: unknown;
 
-    class Test extends State {
+    class Test extends Model {
       set _sink(value: number) {
         written = this;
       }
@@ -2693,18 +2693,18 @@ describe('unmanaged keys', () => {
   });
 
   it('will exclude _ keys from field types', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       _handle = 'foo';
     }
 
-    const values: State.Values<Test> = { value: 1 };
-    const assign: State.Assign<Test> = { _handle: 'bar' };
+    const values: Model.Values<Test> = { value: 1 };
+    const assign: Model.Assign<Test> = { _handle: 'bar' };
 
-    const property: State.Property<Test> = '_handle';
+    const property: Model.Property<Test> = '_handle';
 
     // @ts-expect-error - _ keys are not fields
-    const field: State.Field<Test> = '_handle';
+    const field: Model.Field<Test> = '_handle';
 
     expect([values, assign, property, field]).toBeDefined();
   });
@@ -2714,7 +2714,7 @@ describe('new method', () => {
   it('will ignore instance-property new', () => {
     const didCreate = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       new = didCreate;
     }
 
@@ -2727,7 +2727,7 @@ describe('new method', () => {
     const didDestroy = vi.fn();
     const didCreate = vi.fn(() => didDestroy);
 
-    class Test extends State {
+    class Test extends Model {
       protected new() {
         return didCreate();
       }
@@ -2745,7 +2745,7 @@ describe('new method', () => {
 });
 
 describe('new method (static)', () => {
-  class Test extends State {}
+  class Test extends Model {}
 
   it('will call argument as lifecycle', () => {
     const didDestroy = vi.fn();
@@ -2768,7 +2768,7 @@ describe('new method (static)', () => {
     ['will process nested arrays from init before later args', [() => [{ foo: 1 }], { foo: 2 }], { foo: 2, bar: 0, baz: 0 }],
     ['will prefer later assignments', [{ foo: 3 }, { foo: 4, bar: 5 }, () => ({ bar: 6 })], { foo: 4, bar: 6, baz: 0 }]
   ])('%s', (_, args, expected) => {
-    class Test extends State {
+    class Test extends Model {
       foo = 0;
       bar = 0;
       baz = 0;
@@ -2778,7 +2778,7 @@ describe('new method (static)', () => {
   });
 
   it('will apply all arguments', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 0;
       bar = 1;
     }
@@ -2799,14 +2799,14 @@ describe('new method (static)', () => {
   });
 
   it('will flatten inherited arguments', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 0;
       bar = 1;
       baz = 2;
     }
 
     class Test2 extends Test {
-      constructor(...args: State.Args) {
+      constructor(...args: Model.Args) {
         super(args, { baz: 3 });
       }
     }
@@ -2822,7 +2822,7 @@ describe('new method (static)', () => {
     const order: number[] = [];
     const invoke = (n: number) => () => void order.push(n);
 
-    class Test extends State {
+    class Test extends Model {
       value = 0;
     }
 
@@ -2869,7 +2869,7 @@ describe('new method (static)', () => {
   // TODO: fix. This fails despite error intercept.
   it('will let a rejected initializer escape', async () => {
     const caught = mockUncaught();
-    const expects = new Error('State callback rejected.');
+    const expects = new Error('Model callback rejected.');
 
     const init = vi.fn(() => Promise.reject(expects));
     const test = Test.new(init);
@@ -2882,7 +2882,7 @@ describe('new method (static)', () => {
   });
 
   it('will inject both properties and methods', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
 
       method() {
@@ -2916,7 +2916,7 @@ describe('new method (static)', () => {
   });
 
   it('will ignore non-applicable properties', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
 
       method() {
@@ -2945,7 +2945,7 @@ describe('new method (static)', () => {
 describe('activation', () => {
   // e.g. React element internals like `_owner`, installed before activation
   it('will ignore non-configurable own value properties', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
     }
 
@@ -2965,7 +2965,7 @@ describe('activation', () => {
   it('will not release effects when an enclosing effect reruns', async () => {
     const didUpdate = vi.fn();
 
-    class Child extends State {
+    class Child extends Model {
       value = 0;
 
       new() {
@@ -2973,7 +2973,7 @@ describe('activation', () => {
       }
     }
 
-    class Parent extends State {
+    class Parent extends Model {
       tick = 0;
     }
 
@@ -3001,13 +3001,13 @@ describe('activation', () => {
   it('will release effects on a foreign state when destroyed', async () => {
     const didUpdate = vi.fn();
 
-    class Foreign extends State {
+    class Foreign extends Model {
       value = 0;
     }
 
     const foreign = Foreign.new();
 
-    class Test extends State {
+    class Test extends Model {
       new() {
         foreign.get((self) => void didUpdate(self.value));
       }
@@ -3029,7 +3029,7 @@ describe('activation', () => {
   it('will release a state which never activated', () => {
     const didInit = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       value = 1;
 
       protected new() {
@@ -3047,7 +3047,7 @@ describe('activation', () => {
     const warn = mockWarn();
 
     it('will warn if never activated', async () => {
-      class Test extends State {
+      class Test extends Model {
         value = 1;
       }
 
@@ -3061,10 +3061,10 @@ describe('activation', () => {
     });
 
     it('will still warn for unrelated state constructed alongside', async () => {
-      class Child extends State {}
-      class Other extends State {}
+      class Child extends Model {}
+      class Other extends Model {}
 
-      class Parent extends State {
+      class Parent extends Model {
         child = new Child();
       }
 
@@ -3079,7 +3079,7 @@ describe('activation', () => {
       expect(warn).toBeCalledWith(expect.objectContaining({ message: `${other} was constructed but never activated.` }));
     });
 
-    class Child extends State {
+    class Child extends Model {
       value = 1;
     }
 
@@ -3088,14 +3088,14 @@ describe('activation', () => {
       ['will not warn if placed in a context', () => new Context(new Child())],
       ['will not warn if released', () => new Child().set(null)],
       ['will not warn if adopted by an owner', () => {
-        class Parent extends State {
+        class Parent extends Model {
           child = new Child();
         }
 
         Parent.new();
       }],
       ['will not warn for base child a subclass overwrote', () => {
-        class Base extends State {
+        class Base extends Model {
           child = new Child();
         }
 
@@ -3106,7 +3106,7 @@ describe('activation', () => {
         expect(Sub.new().child).toBeInstanceOf(Child);
       }],
       ['will not warn for a child a subclass instruction replaced', () => {
-        class Base extends State {
+        class Base extends Model {
           child = new Child();
         }
 
@@ -3114,7 +3114,7 @@ describe('activation', () => {
           child = get(Child) as any;
         }
 
-        class Root extends State {
+        class Root extends Model {
           child = new Child();
           sub = new Sub();
         }
@@ -3124,7 +3124,7 @@ describe('activation', () => {
         expect(root.sub.child).toBe(root.child);
       }],
       ['will not warn for a child replaced by ref or set', () => {
-        class Base extends State {
+        class Base extends Model {
           a = new Child();
           b = new Child();
         }
@@ -3137,7 +3137,7 @@ describe('activation', () => {
         expect(Sub.new().b).toBeInstanceOf(Child);
       }],
       ['will not warn for overwritten child of an adopted child', () => {
-        class Base extends State {
+        class Base extends Model {
           leaf = new Child();
         }
 
@@ -3145,7 +3145,7 @@ describe('activation', () => {
           leaf = new Child();
         }
 
-        class Parent extends State {
+        class Parent extends Model {
           child = new Sub();
         }
 
@@ -3161,13 +3161,13 @@ describe('activation', () => {
 });
 
 it('will check class lineage with static is', () => {
-  class Test extends State {}
+  class Test extends Model {}
   class Test2 extends Test {}
-  class NotATest extends State {}
+  class NotATest extends Model {}
 
   expect(Test.is(Test2)).toBe(true);
   expect(Test.is(Test)).toBe(true);
-  expect(State.is(NotATest)).toBe(true);
+  expect(Model.is(NotATest)).toBe(true);
   expect(Test.is(NotATest)).toBe(false);
 });
 
@@ -3175,7 +3175,7 @@ describe('on method (static)', () => {
   it('will run a bare function at setup', () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       new() { order.push('new'); }
     }
@@ -3192,7 +3192,7 @@ describe('on method (static)', () => {
   });
 
   it('will type a method handler beside the bare function overload', () => {
-    class Test extends State {
+    class Test extends Model {
       foo() {}
     }
 
@@ -3209,11 +3209,11 @@ describe('on method (static)', () => {
     expect(keys).toEqual(['FOO', 'function', 'true']);
   });
 
-  it.each<[string, (cleanup: () => void) => State.On]>([
+  it.each<[string, (cleanup: () => void) => Model.On]>([
     ['will run setup cleanup on destroy', (cleanup) => ({ setup: () => cleanup })],
     ['will run ready cleanup on destroy', (cleanup) => ({ ready: () => cleanup })]
   ])('%s', (_, handler) => {
-    class Test extends State {}
+    class Test extends Model {}
 
     const cleanup = vi.fn();
 
@@ -3229,7 +3229,7 @@ describe('on method (static)', () => {
   });
 
   it('will run callback for inherited classes', () => {
-    class Test extends State {}
+    class Test extends Model {}
     class Test2 extends Test {}
 
     const createTest = vi.fn();
@@ -3245,7 +3245,7 @@ describe('on method (static)', () => {
   });
 
   it('will run callbacks in ancestor-first order', () => {
-    class A extends State {
+    class A extends Model {
       value = 1;
     }
     class B extends A {}
@@ -3265,7 +3265,7 @@ describe('on method (static)', () => {
   it('will run handlers above an anonymous class', () => {
     const order: string[] = [];
 
-    class A extends State {}
+    class A extends Model {}
 
     A.on({ setup: () => void order.push('A') });
 
@@ -3286,7 +3286,7 @@ describe('on method (static)', () => {
   });
 
   it('will register multiple callbacks and remove one', () => {
-    class Test extends State {}
+    class Test extends Model {}
 
     const cb1 = vi.fn();
     const cb2 = vi.fn();
@@ -3306,7 +3306,7 @@ describe('on type stage (static)', () => {
   it('will run once per class, reaching subclasses', () => {
     const seen: string[] = [];
 
-    class Base extends State {}
+    class Base extends Model {}
     class Sub extends Base {}
 
     Base.on({ type: (type) => void seen.push(type.name) });
@@ -3319,7 +3319,7 @@ describe('on type stage (static)', () => {
   });
 
   it('will let a handler reshape members before binding', () => {
-    class Test extends State {
+    class Test extends Model {
       foo() { return 'method'; }
     }
 
@@ -3343,7 +3343,7 @@ describe('on type stage (static)', () => {
 
 describe('on combined stages (static)', () => {
   it('will run a function once per stage however often it is registered', () => {
-    class Base extends State {
+    class Base extends Model {
       foo = 0;
 
       method() {}
@@ -3373,7 +3373,7 @@ describe('on combined stages (static)', () => {
   it('will hook multiple stages from one handler object', () => {
     const order: string[] = [];
 
-    class Test extends State {}
+    class Test extends Model {}
 
     Test.on({
       type: () => void order.push('type'),
@@ -3389,7 +3389,7 @@ describe('on combined stages (static)', () => {
 });
 
 it('will reactively bind configurable methods but leave non-configurable ones', () => {
-  class Test extends State {
+  class Test extends Model {
     foo() { return 'content'; }
     method() {}
   }
@@ -3411,7 +3411,7 @@ it('will reactively bind configurable methods but leave non-configurable ones', 
 });
 
 describe('enumerable prototype members', () => {
-  class Test extends State {
+  class Test extends Model {
     foo = 1;
   }
 
@@ -3444,7 +3444,7 @@ describe('on setup / ready stages (static)', () => {
   it('will run setup before own values and ready after the instance new()', () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       new() { order.push('new'); }
     }
@@ -3461,7 +3461,7 @@ describe('on setup / ready stages (static)', () => {
 
 describe('on method stage (static)', () => {
   it('will run on first access with key and bound function', () => {
-    class Test extends State {
+    class Test extends Model {
       foo() {
         return this;
       }
@@ -3486,7 +3486,7 @@ describe('on method stage (static)', () => {
   });
 
   it('will run on replacement by assignment before first read, or through set', () => {
-    class Test extends State {
+    class Test extends Model {
       foo() {
         return 'before';
       }
@@ -3510,7 +3510,7 @@ describe('on method stage (static)', () => {
   });
 
   it.fails('will bind and observe a replacement assigned after first read', () => {
-    class Test extends State {
+    class Test extends Model {
       foo(): unknown {
         return 'before';
       }
@@ -3534,7 +3534,7 @@ describe('on method stage (static)', () => {
   });
 
   it('will run base then subclass handlers, once each', () => {
-    class Base extends State {
+    class Base extends Model {
       foo() {}
     }
 
@@ -3558,7 +3558,7 @@ describe('on method stage (static)', () => {
   });
 
   it('will run for a handler registered after bootstrap', () => {
-    class Test extends State {
+    class Test extends Model {
       foo() {}
     }
 
@@ -3576,7 +3576,7 @@ describe('on method stage (static)', () => {
   });
 
   it('will let a handler read the method', () => {
-    class Test extends State {
+    class Test extends Model {
       foo() {}
     }
 
@@ -3598,11 +3598,11 @@ describe('on catch stage (static)', () => {
   const warn = mockWarn();
   const error = mockError();
 
-  const fresh = () => class Test extends State {
+  const fresh = () => class Test extends Model {
     foo = 0;
   };
 
-  function deadWrite(test: State & { foo: number }) {
+  function deadWrite(test: Model & { foo: number }) {
     test.set(null);
     test.foo = 1;
   }
@@ -3683,7 +3683,7 @@ describe('on catch stage (static)', () => {
 
     const base = vi.fn((issue: unknown) => issue);
     const replaced = new Error('replaced');
-    const stopBase = State.on({ catch: base });
+    const stopBase = Model.on({ catch: base });
     const stop = Test.on({ catch: () => replaced });
     const caught = mockUncaught();
     const test = Test.new();
@@ -3698,11 +3698,11 @@ describe('on catch stage (static)', () => {
     expect(warn).not.toBeCalled();
   });
 
-  it('will reach a handler registered on State itself', () => {
+  it('will reach a handler registered on Model itself', () => {
     const Test = fresh();
 
     const handler = vi.fn();
-    const stop = State.on({ catch: handler });
+    const stop = Model.on({ catch: handler });
     const test = Test.new();
 
     deadWrite(test);
@@ -3714,7 +3714,7 @@ describe('on catch stage (static)', () => {
   it('will not reach handlers of an unrelated class', async () => {
     const Test = fresh();
 
-    class Other extends State {}
+    class Other extends Model {}
 
     const handler = vi.fn();
 
@@ -3733,7 +3733,7 @@ describe('on catch stage (static)', () => {
   });
 
   it('will escape uncaught when rethrown at an async site', async () => {
-    class Test extends State {}
+    class Test extends Model {}
 
     Test.on({
       catch(issue) {
@@ -3752,7 +3752,7 @@ describe('on catch stage (static)', () => {
   it('will hand over what a refreshing getter threw', async () => {
     const oops = new Error('oops');
 
-    class Test extends State {
+    class Test extends Model {
       foo = 0;
       fail = false;
 
@@ -3796,7 +3796,7 @@ describe('on catch stage (static)', () => {
   });
 
   it('will attribute an effect error to the owner of a collection', async () => {
-    class Test extends State {
+    class Test extends Model {
       list = has<number>();
     }
 
@@ -3819,11 +3819,11 @@ describe('on catch stage (static)', () => {
   });
 
   it('will escape a report a handler rethrew without reaching the writer', async () => {
-    class Target extends State {
+    class Target extends Model {
       foo = 0;
     }
 
-    class Source extends State {
+    class Source extends Model {
       value = 0;
     }
 
@@ -3869,7 +3869,7 @@ describe('on catch stage (static)', () => {
     expect(caught).toEqual([]);
   });
 
-  it('will let an effect error with no owning State escape', async () => {
+  it('will let an effect error with no owning Model escape', async () => {
     const caught = mockUncaught();
     const subject = {};
     const oops = new Error('oops');
@@ -3896,7 +3896,7 @@ describe('computed (getters)', () => {
     ['will read last value after destroy', true, 4],
     ['will read undefined if never evaluated before destroy', false, undefined]
   ])('%s', (_, evaluate, expected) => {
-    class Test extends State {
+    class Test extends Model {
       source = 2;
       get value() {
         return this.source * 2;
@@ -3912,7 +3912,7 @@ describe('computed (getters)', () => {
   });
 
   it('will be enumerable and read-only', () => {
-    class Test extends State {
+    class Test extends Model {
       source = 'hello';
       get value() {
         return this.source;
@@ -3928,7 +3928,7 @@ describe('computed (getters)', () => {
   });
 
   it('will reevaluate when inputs change', async () => {
-    class Subject extends State {
+    class Subject extends Model {
       seconds = 0;
 
       get minutes() {
@@ -3956,7 +3956,7 @@ describe('computed (getters)', () => {
   it.todo("will not update if output doesn't change", async () => {
     const didCompute = vi.fn();
 
-    class Subject extends State {
+    class Subject extends Model {
       value = 1;
 
       get computed() {
@@ -3983,11 +3983,11 @@ describe('computed (getters)', () => {
   });
 
   it('will trigger when nested inputs change', async () => {
-    class Child extends State {
+    class Child extends Model {
       value = 'foo';
     }
 
-    class Subject extends State {
+    class Subject extends Model {
       child = new Child();
       get nested() {
         return this.child.value;
@@ -4013,7 +4013,7 @@ describe('computed (getters)', () => {
   it('will compute early if value is accessed', async () => {
     const didCompute = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       number = 0;
       get plusOne() {
         const value = this.number + 1;
@@ -4052,11 +4052,11 @@ describe('computed (getters)', () => {
     const exec = vi.fn();
     const emit = vi.fn();
 
-    class Inner extends State {
+    class Inner extends Model {
       value = 1;
     }
 
-    class Test extends State {
+    class Test extends Model {
       a = 1;
       b = 1;
 
@@ -4098,7 +4098,7 @@ describe('computed (getters)', () => {
   it('will be evaluated in order', async () => {
     let didCompute: string[] = [];
 
-    class Ordered extends State {
+    class Ordered extends Model {
       X = 1;
 
       get A() {
@@ -4142,11 +4142,11 @@ describe('computed (getters)', () => {
   });
 
   it('will keep nested dependencies when read before refresh', async () => {
-    class Inner extends State {
+    class Inner extends Model {
       value = 1;
     }
 
-    class Test extends State {
+    class Test extends Model {
       inner = new Inner();
 
       get double() {
@@ -4171,7 +4171,7 @@ describe('computed (getters)', () => {
   });
 
   it('will use overridden getter from subclass, composing with super', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 1;
       get bar() {
         return 1 + this.foo;
@@ -4205,7 +4205,7 @@ describe('computed (getters)', () => {
     it('will not subscribe to values accessed via this.is', async () => {
       const didCompute = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         tracked = 'A';
         untracked = 'X';
 
@@ -4237,7 +4237,7 @@ describe('computed (getters)', () => {
   describe('suspense', () => {
     const warn = mockWarn();
 
-    class Test extends State {
+    class Test extends Model {
       data = set<number[]>();
 
       get size() {
@@ -4285,7 +4285,7 @@ describe('computed (getters)', () => {
     });
 
     it('will suspend until every dependency resolves', async () => {
-      class Test extends State {
+      class Test extends Model {
         a = set<number>();
         b = set<number>();
 
@@ -4316,7 +4316,7 @@ describe('computed (getters)', () => {
     it('will resolve a getter chain over async factory', async () => {
       const pending = mockPromise<number[]>();
 
-      class Test extends State {
+      class Test extends Model {
         data = set(() => pending);
 
         get size() {
@@ -4341,7 +4341,7 @@ describe('computed (getters)', () => {
     });
 
     it('will recompute once a refresh suspense resolves', async () => {
-      class Test extends State {
+      class Test extends Model {
         mode = 0;
         later = set<string>();
 
@@ -4366,7 +4366,7 @@ describe('computed (getters)', () => {
     it('will not recompute for a superseded suspense', async () => {
       const getter = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         mode = 0;
         later = set<string>();
 
@@ -4396,7 +4396,7 @@ describe('computed (getters)', () => {
     it('will not recompute once destroyed', async () => {
       const getter = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         mode = 0;
         later = set<string>();
 
@@ -4426,7 +4426,7 @@ describe('computed (getters)', () => {
     const warn = mockWarn();
 
     it('will warn if throws', () => {
-      class Subject extends State {
+      class Subject extends Model {
         get never() {
           throw new Error();
         }
@@ -4441,7 +4441,7 @@ describe('computed (getters)', () => {
     });
 
     it('will not report a suspense thrown while refreshing', async () => {
-      class Test extends State {
+      class Test extends Model {
         mode = 0;
         later = set<string>();
 
@@ -4463,7 +4463,7 @@ describe('computed (getters)', () => {
     });
 
     it('will escape if throws on update', async () => {
-      class Test extends State {
+      class Test extends Model {
         shouldFail = false;
 
         get value(): undefined {
@@ -4487,7 +4487,7 @@ describe('computed (getters)', () => {
   });
 
   it('will stay subscribed after read during update', async () => {
-    class Test extends State {
+    class Test extends Model {
       input = 1;
       get value() {
         return this.input + 1;
@@ -4518,7 +4518,7 @@ describe('computed (getters)', () => {
 
   describe('circular', () => {
     it('will access own previous value', async () => {
-      class Test extends State {
+      class Test extends Model {
         multiplier = 0;
         previous: number | undefined | null = null;
 
@@ -4553,7 +4553,7 @@ describe('computed (getters)', () => {
       const didGetOldValue = vi.fn();
       const didGetNewValue = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         input = 1;
         get value(): number {
           const { input, value } = this;
@@ -4585,7 +4585,7 @@ describe('computed (getters)', () => {
     });
 
     it('will export cycle not involving root', () => {
-      class Node extends State {
+      class Node extends Model {
         name = 'x';
         link?: Node = undefined;
       }
@@ -4596,7 +4596,7 @@ describe('computed (getters)', () => {
       a.link = b;
       b.link = a;
 
-      class Root extends State {
+      class Root extends Model {
         child = a;
       }
 

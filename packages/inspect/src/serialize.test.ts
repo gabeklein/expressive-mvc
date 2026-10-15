@@ -1,13 +1,13 @@
-import { State, has, map } from '@expressive/mvc';
+import { Model, has, map } from '@expressive/mvc';
 import { describe, expect, it } from 'vitest';
 
 import { entries, parsePath, serialize, walk } from './serialize';
 
-class Child extends State {
+class Child extends Model {
   name = 'kid';
 }
 
-class Parent extends State {
+class Parent extends Model {
   child = new Child();
   kids = has(Child);
   lookup = map<string, number>();
@@ -28,7 +28,7 @@ describe('parsePath', () => {
 
 describe('walk', () => {
   it('will read stored values without accessors', () => {
-    class Lazy extends State {
+    class Lazy extends Model {
       value = 1;
     }
     const lazy = Lazy.new();
@@ -48,7 +48,7 @@ describe('walk', () => {
   });
 
   it('will read unmanaged _ keys without accessors', () => {
-    class Holder extends State {
+    class Holder extends Model {
       _handle = 'foo';
 
       get _derived() {

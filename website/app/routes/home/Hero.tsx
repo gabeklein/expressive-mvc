@@ -1,4 +1,4 @@
-import State, { Component, get, ref } from '@expressive/react';
+import Model, { Component, get, ref } from '@expressive/react';
 import type { CSSProperties } from 'react';
 
 declare const __LIB_VERSION__: string;
@@ -73,7 +73,7 @@ export function Hero() {
 const btn =
   'inline-flex items-center justify-center rounded-full text-sm font-medium py-2.5 px-5 no-underline transition-[opacity,background-color] duration-200';
 
-class Parallax extends State {
+class Parallax extends Model {
   layer = ref<HTMLDivElement>((el) => {
     let frame = 0;
 
@@ -133,7 +133,7 @@ const traceTimeline = [
 
 const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
 
-class UpdateTrace extends State {
+class UpdateTrace extends Model {
   root = ref<HTMLDivElement>();
   private run = { current: 0 };
 
@@ -263,7 +263,7 @@ type CounterExampleProps = {
   comment: string;
 };
 
-class TypedComment extends State {
+class TypedComment extends Model {
   clicked = false;
   value = '';
   private comment = '';
@@ -318,7 +318,7 @@ class TypedComment extends State {
 
 function CounterExample({ compact, count, comment }: CounterExampleProps) {
   const imports =
-    "import React from 'react';\n    import { State } from '@expressive/mvc';\n\n    ";
+    "import React from 'react';\n    import { Model } from '@expressive/mvc';\n\n    ";
   const increment = compact
     ? 'increment() { this.count++; }'
     : 'increment() {\n        this.count++;\n      }';
@@ -327,7 +327,7 @@ function CounterExample({ compact, count, comment }: CounterExampleProps) {
     : "{ count, increment }";
 
   const Example = code /*tsx*/`
-    ${imports}class Counter extends State {
+    ${imports}class Counter extends Model {
       count = ${count};
 
       ${comment}

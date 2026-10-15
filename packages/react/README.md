@@ -17,14 +17,14 @@ The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-m
 npm install @expressive/mvc @expressive/react
 ```
 
-`@expressive/mvc` is a peer dependency: import `State`, `Component` and instructions from it, and import `@expressive/react` once from your entry so the host registers. Provide a State to a subtree with `<Component for={State}>` - `Provider` and `Consumer` were removed. The adapter's re-exports of the core are deprecated.
+`@expressive/mvc` is a peer dependency: import `Model`, `Component` and instructions from it, and import `@expressive/react` once from your entry so the host registers. Provide a Model to a subtree with `<Component for={Model}>` - `Provider` and `Consumer` were removed. The adapter's re-exports of the core are deprecated.
 
 Works on React DOM, and on React Native and Expo - the adapter imports only `react` and `react/jsx-runtime`, so there is nothing renderer-specific to port. Exercised on an iOS simulator and an Android emulator in both Debug and Release builds, and gated per release on Metro resolution and a Hermes build (Expo SDK 57, React Native 0.86). Under Jest, add `@expressive` to `transformIgnorePatterns`.
 
 ```tsx
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Counter extends State {
+class Counter extends Model {
   count = 0;
   increment = () => this.count++;
   decrement = () => this.count--;
@@ -45,7 +45,7 @@ function CounterWidget() {
 
 ## Component
 
-`Component` is a `State` that owns its own rendering - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form controls, layout shells, route controllers, media players.
+`Component` is a `Model` that owns its own rendering - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form controls, layout shells, route controllers, media players.
 
 ```tsx
 import { Component } from '@expressive/mvc';
@@ -60,7 +60,7 @@ class Counter extends Component {
 <Counter />;
 ```
 
-Anything read through `this` in `render()` is reactive; the instance survives across renders, so refs, sockets, and Maps held on `this` persist. State fields also become optional JSX props (`<Counter count={5} />`).
+Anything read through `this` in `render()` is reactive; the instance survives across renders, so refs, sockets, and Maps held on `this` persist. Model fields also become optional JSX props (`<Counter count={5} />`).
 
 ### Subcomponents
 
@@ -129,7 +129,7 @@ It works the same whether the consumer is part of the Component's own render or 
 
 ### Props
 
-State fields become optional JSX props, **merged onto the instance every render** - passing `count={5}` is the same as assigning `this.count = 5`. Extra props beyond fields are read through a parameter on `render`:
+Model fields become optional JSX props, **merged onto the instance every render** - passing `count={5}` is the same as assigning `this.count = 5`. Extra props beyond fields are read through a parameter on `render`:
 
 ```tsx
 class Greeting extends Component {
@@ -168,12 +168,12 @@ class Profile extends Component {
 
 ## Shared state via context
 
-Provide a model once; descendants read it with `State.get()` - no props, no selectors.
+Provide a model once; descendants read it with `Model.get()` - no props, no selectors.
 
 ```tsx
 import { Component } from '@expressive/mvc';
 
-class Session extends State {
+class Session extends Model {
   user = 'guest';
 }
 
@@ -193,9 +193,9 @@ function Profile() {
 
 **At a glance**
 
-- **`State.use()`** - create an instance bound to a component's lifecycle.
-- **`State.get()`** - read shared state from context, no prop drilling.
-- **`<Component for={State}>`** - explicit hierarchical dependency injection.
+- **`Model.use()`** - create an instance bound to a component's lifecycle.
+- **`Model.get()`** - read shared state from context, no prop drilling.
+- **`<Component for={Model}>`** - explicit hierarchical dependency injection.
 - **`Component`** - smart controls and shells whose behavior lives in the tree.
 - **Suspense & error boundaries** - async values suspend; `catch()` handles child errors.
 

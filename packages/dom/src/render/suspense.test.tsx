@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, State, pending, set } from '@expressive/mvc';
+import { Component, Model, pending, set } from '@expressive/mvc';
 import { Portal, render } from '../index';
 import { flushMicrotasks, html, lazy, mockPromise, mount, place, track, until } from '../../test.setup';
 
@@ -33,7 +33,7 @@ describe('suspense and recovery', () => {
         ? Promise.reject(new Error('chunk'))
         : Promise.resolve(() => <b>ready</b>);
 
-    class Page extends State {
+    class Page extends Model {
       fallback = <i>wait</i>;
 
       catch(error: Error) {
@@ -74,7 +74,7 @@ describe('suspense and recovery', () => {
   });
 
   it.each([
-    ['Component for', { for: class Session extends State {} }],
+    ['Component for', { for: class Session extends Model {} }],
     ['bare Component', {}]
   ])('will let %s own a loader fallback', async (_, props) => {
     const [Lazy, loaded] = lazy();
@@ -121,7 +121,7 @@ describe('suspense and recovery', () => {
   it('will keep hidden content live until it reveals', async () => {
     const [Lazy, loaded] = lazy();
 
-    class Label extends State {
+    class Label extends Model {
       text = 'before';
     }
 
@@ -209,7 +209,7 @@ describe('suspense and recovery', () => {
   it('will retry a transition which suspends from empty content', async () => {
     const [Lazy, loaded] = lazy();
 
-    class Flag extends State {
+    class Flag extends Model {
       on = false;
     }
 
@@ -240,7 +240,7 @@ describe('suspense and recovery', () => {
     expect(settled()).toBe(true);
   });
 
-  describe('a transition revealing State that loads', () => {
+  describe('a transition revealing Model that loads', () => {
     let root: HTMLElement;
     let lives: string[];
 
@@ -248,7 +248,7 @@ describe('suspense and recovery', () => {
       const loaded = mockPromise<string>();
       lives = [];
 
-      class Data extends State {
+      class Data extends Model {
         value = set(() => loaded);
 
         protected new() {
@@ -283,7 +283,7 @@ describe('suspense and recovery', () => {
       return root;
     }
 
-    it('will keep a State.use() instance and commit once it loads', async () => {
+    it('will keep a Model.use() instance and commit once it loads', async () => {
       const { loaded, lives, Data } = setup();
       const root = await reveal(() => <b>{Data.use().value}</b>);
 
@@ -295,10 +295,10 @@ describe('suspense and recovery', () => {
       expect(lives).toEqual(['new', 'mount: ready']);
     });
 
-    it('will keep a State element and commit once it loads', async () => {
+    it('will keep a Model element and commit once it loads', async () => {
       const { loaded, lives, Data } = setup();
 
-      class Panel extends State {
+      class Panel extends Model {
         data = new Data();
 
         mount() {
@@ -338,7 +338,7 @@ describe('suspense and recovery', () => {
     const [Lazy, loaded] = lazy();
     const mounted: string[] = [];
 
-    class Tab extends State {
+    class Tab extends Model {
       mount() {
         mounted.push(root.textContent!);
       }
@@ -396,7 +396,7 @@ describe('suspense and recovery', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const mounted = vi.fn();
 
-    class Tab extends State {
+    class Tab extends Model {
       mount = mounted;
 
       render() {
@@ -408,7 +408,7 @@ describe('suspense and recovery', () => {
       throw new Error('boom');
     };
 
-    class Panel extends State {
+    class Panel extends Model {
       render() {
         return <><Tab /><Boom /></>;
       }
@@ -437,7 +437,7 @@ describe('suspense and recovery', () => {
     let open = false;
     gate.then(() => (open = true));
 
-    class Nav extends State {
+    class Nav extends Model {
       page = 'a';
     }
 
@@ -477,7 +477,7 @@ describe('suspense and recovery', () => {
   it('will hold a sibling swap when the incoming scope suspends below its render', async () => {
     const [Lazy, loaded] = lazy();
 
-    class Nav extends State {
+    class Nav extends Model {
       page = 'a';
     }
 
@@ -519,11 +519,11 @@ describe('suspense and recovery', () => {
     const seen: string[] = [];
     const connected = () => !!document.querySelector('#chart');
 
-    class Nav extends State {
+    class Nav extends Model {
       page = 'a';
     }
 
-    class Probe extends State {
+    class Probe extends Model {
       mount() {
         seen.push(`use ${connected()}`);
       }
@@ -567,7 +567,7 @@ describe('suspense and recovery', () => {
     const mounted = vi.fn();
     const attached = vi.fn();
 
-    class Nav extends State {
+    class Nav extends Model {
       page = 'a';
     }
 
@@ -614,7 +614,7 @@ describe('suspense and recovery', () => {
   });
 
   describe('superseded and abandoned transitions', () => {
-    class Nav extends State {
+    class Nav extends Model {
       page = 'a';
       show = true;
     }
@@ -713,7 +713,7 @@ describe('suspense and recovery', () => {
     let open = false;
     gate.then(() => (open = true));
 
-    class Nav extends State {
+    class Nav extends Model {
       page = 'a';
     }
 
@@ -748,7 +748,7 @@ describe('suspense and recovery', () => {
   it('will recover an error thrown while probing a transition', async () => {
     const caught = vi.fn();
 
-    class Flag extends State {
+    class Flag extends Model {
       on = false;
     }
 
@@ -779,7 +779,7 @@ describe('suspense and recovery', () => {
   it('will retry a caught error once, then wait for an update', async () => {
     const caught = vi.fn();
 
-    class Flag extends State {
+    class Flag extends Model {
       broken = true;
     }
 
@@ -816,7 +816,7 @@ describe('suspense and recovery', () => {
   it('will return to the nearest boundary after a caught error', async () => {
     const loaded = mockPromise<void>();
 
-    class Mode extends State {
+    class Mode extends Model {
       stage = 0;
     }
 
@@ -1310,7 +1310,7 @@ describe('suspense and recovery', () => {
   it.fails('will not render a child its parent removes in the same transition', async () => {
     const seen: unknown[] = [];
 
-    class Parent extends State {
+    class Parent extends Model {
       value?: { id: number } = { id: 1 };
 
       render() {
@@ -1352,8 +1352,8 @@ describe('suspense and recovery', () => {
       expect(load).toBeCalledTimes(1);
     });
 
-    it('will render a resolved State class', async () => {
-      class Counter extends State {
+    it('will render a resolved Model class', async () => {
+      class Counter extends Model {
         count = 0;
 
         render() {
@@ -1373,7 +1373,7 @@ describe('suspense and recovery', () => {
       const caught: string[] = [];
       const Page = () => Promise.resolve({} as { default: () => null });
 
-      class App extends State {
+      class App extends Model {
         fallback = <i>wait</i>;
 
         catch(error: Error) {
@@ -1394,20 +1394,20 @@ describe('suspense and recovery', () => {
     });
 
     it('will type attributes from the resolved component', () => {
-      class Settings extends State {
+      class Settings extends Model {
         theme = 'dark';
       }
 
       const Fn = (props: { size: number }) => props.size;
       const Lazy = () => Promise.resolve({ default: Fn });
-      const LazyState = () => Promise.resolve(Settings);
+      const LazyModel = () => Promise.resolve(Settings);
       const Arity = (_props: { id: number }) => Promise.resolve(Fn);
 
       void (() => [
         <Lazy size={1} />,
-        <LazyState theme="light" />,
+        <LazyModel theme="light" />,
         // @ts-expect-error
-        <LazyState theme={1} />,
+        <LazyModel theme={1} />,
         // @ts-expect-error
         <Arity id={1} />,
         // @ts-expect-error

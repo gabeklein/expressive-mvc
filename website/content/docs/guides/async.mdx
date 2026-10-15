@@ -12,7 +12,7 @@ Async data is a first-class citizen in Expressive. You don't need a query librar
 Pass an async function to `set()` and the property becomes a promise-backed value. Accessing it before resolution throws a Suspense-compatible promise; accessing it after resolution returns the value.
 
 ```tsx
-class UserProfile extends State {
+class UserProfile extends Model {
   user = set(async () => {
     const res = await fetch('/api/user');
     return res.json();
@@ -42,9 +42,9 @@ Pass `false` to make it non-blocking - the property returns `undefined` while pe
 avatar = set(async () => fetchAvatar(), false); // User['avatar'] | undefined
 ```
 
-> A `Component` gives you the boundary for free: set its `fallback` and any pending property in `render()` is covered, no `<Suspense>` wrapper needed. Details in [Components](/docs/guides/components#suspense). For a headless-State version of this pattern, see [essentials/async](/examples/essentials/async).
+> A `Component` gives you the boundary for free: set its `fallback` and any pending property in `render()` is covered, no `<Suspense>` wrapper needed. Details in [Components](/docs/guides/components#suspense). For a headless-Model version of this pattern, see [essentials/async](/examples/essentials/async).
 >
-> Whichever boundary catches, the pending value must be owned **above** it. A boundary rebuilds the subtree it retries, so a State created below it is constructed again on every retry and requests again - a silent loop.
+> Whichever boundary catches, the pending value must be owned **above** it. A boundary rebuilds the subtree it retries, so a Model created below it is constructed again on every retry and requests again - a silent loop.
 
 <br />
 
@@ -53,7 +53,7 @@ avatar = set(async () => fetchAvatar(), false); // User['avatar'] | undefined
 A `set<T>()` with no argument is a **required** property - initially undefined, and reading it throws Suspense until something assigns a value:
 
 ```tsx
-class Session extends State {
+class Session extends Model {
   userId = set<string>(); // suspends until set
   user = set(async () => {
     const res = await fetch(`/api/users/${this.userId}`);
@@ -74,7 +74,7 @@ The async `user` factory reads `this.userId`. If `userId` hasn't been assigned, 
 Pass a factory, not a raw Promise:
 
 ```tsx
-class Config extends State {
+class Config extends Model {
   data = set(() => fetchConfig());
 }
 ```
@@ -88,7 +88,7 @@ A promise built in a field initializer would start before the state is activated
 For mutations, async methods work exactly as you'd expect:
 
 ```tsx
-class LoginForm extends State {
+class LoginForm extends Model {
   email = '';
   password = '';
   submitting = false;
@@ -117,7 +117,7 @@ No `useCallback`, no dependency arrays, no stale closures. The method reads live
 Factory-backed properties are **read-only** - assigning to `this.posts` throws (`Feed.posts is read-only.`). To refresh, either make the property writable by pairing the factory with a callback:
 
 ```tsx
-class Feed extends State {
+class Feed extends Model {
   posts = set(
     async () => fetch('/api/posts').then((r) => r.json()),
     (posts) => console.log('posts arrived:', posts.length)
@@ -147,7 +147,7 @@ Either way, subscribers update as normal. If you want the factory itself to re-r
 An async factory that throws propagates the error to the nearest React error boundary (or `Component.catch()`):
 
 ```tsx
-class UserProfile extends State {
+class UserProfile extends Model {
   data = set(async () => {
     const res = await fetch('/api/user');
     if (!res.ok) throw new Error('Failed to load user');
@@ -176,7 +176,7 @@ class Profile extends Component {
 
 The full `catch()` and `fallback` semantics live in [Components](/docs/guides/components#error-boundaries).
 
-A rejection nobody renders is different. An async `new()`, or a constructor callback returning a promise, has no reader for its failure to reach - the state is still created, and the rejection goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-stateon) with kind `setup`. Unhandled, it escapes uncaught. The same goes for an async method that keeps writing after its state is destroyed: those writes are stored, reported with kind `dead`, and unhandled, output nothing.
+A rejection nobody renders is different. An async `new()`, or a constructor callback returning a promise, has no reader for its failure to reach - the state is still created, and the rejection goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-modelon) with kind `setup`. Unhandled, it escapes uncaught. The same goes for an async method that keeps writing after its state is destroyed: those writes are stored, reported with kind `dead`, and unhandled, output nothing.
 
 <br />
 
@@ -185,7 +185,7 @@ A rejection nobody renders is different. An async `new()`, or a constructor call
 A base class can encapsulate a loading pattern that subclasses specialize:
 
 ```tsx
-abstract class Query<T> extends State {
+abstract class Query<T> extends Model {
   abstract load(): Promise<T>;
 
   data = set(() => this.load());
@@ -227,7 +227,7 @@ While paused, updates to other tracked properties don't re-trigger it - the effe
 The `set` callback form can manage async work that needs to cancel on re-triggering:
 
 ```tsx
-class Search extends State {
+class Search extends Model {
   query = set('', (value) => {
     const timer = setTimeout(() => this.run(value), 300);
     return () => clearTimeout(timer); // runs before next update
@@ -254,7 +254,7 @@ The bridge is the class `use()` method. It runs on every render of the hosting c
 ```tsx
 import { useQuery } from '@tanstack/react-query';
 
-class Todos extends State {
+class Todos extends Model {
   items: Todo[] = [];
   pending = false;
   filter: 'all' | 'open' = 'all';

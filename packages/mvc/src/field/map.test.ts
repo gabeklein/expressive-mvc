@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import { State } from '../state';
+import { Model } from '../state';
 import { fires } from '../../test.setup';
 import { get } from './get';
 import { map } from './map';
@@ -42,7 +42,7 @@ describe('factory', () => {
   });
 
   it('will treat falsy initial as empty', () => {
-    class Test extends State {
+    class Test extends Model {
       items = map<string, number>(null);
     }
 
@@ -125,7 +125,7 @@ describe('iteration', () => {
 });
 
 describe('create', () => {
-  class Item extends State {
+  class Item extends Model {
     value = 0;
   }
 
@@ -254,20 +254,20 @@ describe('transforms', () => {
 });
 
 describe('adoption', () => {
-  class Item extends State {
+  class Item extends Model {
     value = 0;
   }
 
-  class Owner extends State {
+  class Owner extends Model {
     items = map<string, Item>();
     spawn = map((key: string) => new Item());
   }
 
-  class Member extends State {
+  class Member extends Model {
     owner = get(Parent);
   }
 
-  class Parent extends State {
+  class Parent extends Model {
     members = map((key: string) => new Member());
     guests = map<string, Member>();
   }
@@ -332,7 +332,7 @@ describe('adoption', () => {
   it('will activate fresh state on store', () => {
     const ready = vi.fn();
 
-    class Entry extends State {
+    class Entry extends Model {
       protected new() {
         ready();
       }
@@ -364,11 +364,11 @@ describe('adoption', () => {
   });
 
   it('will adopt entries present at activation', () => {
-    class Member extends State {
+    class Member extends Model {
       owner = get(Owner);
     }
 
-    class Owner extends State {
+    class Owner extends Model {
       members = map([['a', new Member()]]);
     }
 
@@ -419,7 +419,7 @@ describe('subscriptions', () => {
   });
 
   it('will track nested observable values', async () => {
-    class Counter extends State {
+    class Counter extends Model {
       count = 0;
     }
 

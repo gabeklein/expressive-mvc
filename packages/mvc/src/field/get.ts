@@ -1,24 +1,24 @@
 import { capture, listener, observer } from '../observable';
 import { Context } from '../context';
-import { State, children, owned, parent, STORE, update } from '../state';
+import { Model, children, owned, parent, STORE, update } from '../state';
 import { def } from './def';
 
 declare namespace get {
   type Callback<T = any> = (
     state: T,
-    subject: State
+    subject: Model
   ) => void | boolean | (() => void);
 }
 
 /**
- * Fetches upstream State from context with optional lifecycle callback.
+ * Fetches upstream Model from context with optional lifecycle callback.
  * Callback runs on mount and can return cleanup function for unmount.
  *
- * @param Type - Type of State to fetch.
+ * @param Type - Type of Model to fetch.
  * @param callback - Optional lifecycle callback, receives (state, subject). Can return cleanup function.
  */
-function get<T extends State>(
-  Type: State.Extends<T>,
+function get<T extends Model>(
+  Type: Model.Extends<T>,
   callback?: get.Callback<T>
 ): T;
 
@@ -30,67 +30,67 @@ function get<T extends State>(
  * @param Type - Type of controller compatible with this class.
  * @param required - If false, property may be undefined. Otherwise will throw.
  */
-function get<T extends State>(
-  Type: State.Extends<T>,
+function get<T extends Model>(
+  Type: Model.Extends<T>,
   required: false
 ): T | undefined;
 
 /**
- * Collects downstream States, accumulating all instances of specified type
- * for which this is an ancestor. Returns an array that updates as States
+ * Collects downstream Models, accumulating all instances of specified type
+ * for which this is an ancestor. Returns an array that updates as Models
  * are added or removed. Callback runs on each registration and can return
  * cleanup or false to prevent registration.
  *
- * @param Type - Type of State to collect.
+ * @param Type - Type of Model to collect.
  * @param downstream - Must be true to enable downstream mode.
  * @param callback - Optional lifecycle callback, receives (state, subject). May return false to prevent registration.
  */
-function get<T extends State>(
-  Type: State.Extends<T>,
+function get<T extends Model>(
+  Type: Model.Extends<T>,
   downstream: true,
   callback?: get.Callback<T>
 ): T[];
 
 /**
- * Fetches a single downstream State of specified type.
+ * Fetches a single downstream Model of specified type.
  * Updates when a matching child appears or is removed.
  * Throws if not found.
  *
- * @param Type - Type of State to fetch.
+ * @param Type - Type of Model to fetch.
  * @param downstream - Must be true to enable downstream mode.
  * @param required - Throw if no match found.
  */
-function get<T extends State>(
-  Type: State.Extends<T>,
+function get<T extends Model>(
+  Type: Model.Extends<T>,
   downstream: true,
   single: true
 ): T;
 
 /**
- * Fetches a single downstream State of specified type.
+ * Fetches a single downstream Model of specified type.
  * Updates when a matching child appears or is removed.
  * Returns undefined if not found.
  *
- * @param Type - Type of State to fetch.
+ * @param Type - Type of Model to fetch.
  * @param downstream - Must be true to enable downstream mode.
  * @param required - If false, returns undefined if no match found.
  */
-function get<T extends State>(
-  Type: State.Extends<T>,
+function get<T extends Model>(
+  Type: Model.Extends<T>,
   downstream: true,
   required: false
 ): T | undefined;
 
-function get<T extends State>(
-  Type: State.Extends<T>,
+function get<T extends Model>(
+  Type: Model.Extends<T>,
   arg1?: get.Callback<T> | boolean,
   arg2?: get.Callback<T> | boolean
 ) {
   return arg1 === true ? below(Type, arg2) : above(Type, arg1);
 }
 
-function above<T extends State>(
-  Type: State.Extends<T>,
+function above<T extends Model>(
+  Type: Model.Extends<T>,
   argument: get.Callback<T> | boolean | undefined
 ) {
   return def<T>((key, subject) => {
@@ -115,7 +115,7 @@ function above<T extends State>(
       return {};
     }
 
-    if (Type === State) {
+    if (Type === Model) {
       if (argument === false) return { get: false, enumerable: false };
       throw new Error(`${subject} has no owner.`);
     }
@@ -124,7 +124,7 @@ function above<T extends State>(
     let depth = Infinity;
     let level = 0;
 
-    for (let p: State | null | undefined = hasParent; p; p = parent(p), level++) {
+    for (let p: Model | null | undefined = hasParent; p; p = parent(p), level++) {
       const at = level;
 
       if (p instanceof Type) {
@@ -161,10 +161,10 @@ function above<T extends State>(
       const missing = () =>
         new Error(`Required ${Type} not found in context for ${subject}.`);
 
-      let activating: State | undefined;
+      let activating: Model | undefined;
 
       for (
-        let p: State | null | undefined = hasParent;
+        let p: Model | null | undefined = hasParent;
         p && !observer(p)!.ready;
         p = parent(p)
       )
@@ -185,15 +185,15 @@ function above<T extends State>(
   });
 }
 
-function below<T extends State>(
-  Type: State.Extends<T>,
+function below<T extends Model>(
+  Type: Model.Extends<T>,
   arg: get.Callback<T> | boolean | undefined
 ) {
   return def<T[]>((key, subject) => {
     const context = Context.get(subject);
     const watch = (callback: (state: T) => (() => void) | void) =>
-      Type === State
-        ? owned(subject, callback as (state: State) => (() => void) | void)
+      Type === Model
+        ? owned(subject, callback as (state: Model) => (() => void) | void)
         : context.get(Type, callback, true);
 
     if (typeof arg == 'boolean') {
@@ -213,7 +213,7 @@ function below<T extends State>(
       };
     }
 
-    const applied = new Set<State>();
+    const applied = new Set<Model>();
 
     watch(
       (state) => {

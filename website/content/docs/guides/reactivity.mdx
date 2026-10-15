@@ -13,9 +13,9 @@ This guide explains how that works, so you can trust it. If you'd rather poke at
 
 Whenever you read a property inside a **tracking context**, you subscribe to it. A tracking context is one of:
 
-- A React component calling `State.use()` or `State.get()`.
+- A React component calling `Model.use()` or `Model.get()`.
 - An effect passed to `state.get(effect)`.
-- A computed: a class getter on a State subclass.
+- A computed: a class getter on a Model subclass.
 
 Reads through a **tracking proxy** subscribe. Reads through the plain instance do not.
 
@@ -39,7 +39,7 @@ A few more things tracking handles for you:
 
 ### React components
 
-A component's tracking context comes from `State.use()` or `State.get()`. Destructuring is the usual way to read tracked values:
+A component's tracking context comes from `Model.use()` or `Model.get()`. Destructuring is the usual way to read tracked values:
 
 ```tsx
 function CartView() {
@@ -62,14 +62,14 @@ The component re-renders when a tracked property changes, and _only_ then. A sib
 A computed is a property derived from other properties. Use a normal class getter:
 
 ```ts
-class Cart extends State {
+class Cart extends Model {
   items: Item[] = [];
   get total() { return this.items.reduce((s, i) => s + i.price * i.qty, 0); }
   get count() { return this.items.reduce((s, i) => s + i.qty, 0); }
 }
 ```
 
-A getter on a State subclass is automatically reactive. `this` inside the getter is a tracking proxy, so any managed property you read subscribes the computed to it.
+A getter on a Model subclass is automatically reactive. `this` inside the getter is a tracking proxy, so any managed property you read subscribes the computed to it.
 
 - Computed values are **enumerable and read-only** - they're considered data.
 - They're evaluated **lazily** - deferred until something reads them or until the next flush. The result is cached; it only recomputes when a dependency changed.
@@ -80,7 +80,7 @@ A getter on a State subclass is automatically reactive. `this` inside the getter
 - Subclasses can override a getter; `super.foo` composes with the parent's, and dependencies from both are picked up.
 
 ```ts
-class Stats extends State {
+class Stats extends Model {
   values: number[] = [];
   get count() { return this.values.length; }
   get sum() { return this.values.reduce((a, b) => a + b, 0); }
@@ -96,7 +96,7 @@ Not every accessor gets promoted. A getter stays a plain JS accessor (no trackin
 
 - it has a paired setter: `get foo() {}` + `set foo(v) {}`
 - it was installed via `Object.defineProperty` on the prototype - descriptors made that way default to `configurable: false`
-- it lives on the base `State` class itself
+- it lives on the base `Model` class itself
 - its name starts with `_` - see [unmanaged properties](/docs/guides/state-classes#unmanaged-properties); it also runs against the real instance, so it can read `#private` fields
 
 The paired-setter case is also the opt-out: use get/set pairs for native accessor semantics, a bare getter for derived data.
@@ -106,7 +106,7 @@ The paired-setter case is also the opt-out: use get/set pairs for native accesso
 A computed that throws gets complained about, loudly:
 
 - On the **first** compute, a warning names the property, and the error is rethrown to whoever read it.
-- On a **recompute** (a dependency changed), the error goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-stateon) with kind `getter` and the property's key - unhandled, it escapes uncaught. The value becomes `undefined`; readers don't throw. A pending value read during a recompute isn't reported, but leaves the value `undefined` the same way.
+- On a **recompute** (a dependency changed), the error goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-modelon) with kind `getter` and the property's key - unhandled, it escapes uncaught. The value becomes `undefined`; readers don't throw. A pending value read during a recompute isn't reported, but leaves the value `undefined` the same way.
 
 <br />
 
@@ -145,7 +145,7 @@ The effect runs immediately, then re-runs whenever a tracked property changes. I
 A common pattern is to register an effect during initialization:
 
 ```ts
-class Session extends State {
+class Session extends Model {
   userId = set<string>();
   activity: string[] = [];
 
@@ -193,7 +193,7 @@ Underneath, everything above is one event stream. Property updates are just the 
 Dispatching a key that isn't a property is a custom event. Pair `set(event)` with `set(event, callback)`:
 
 ```ts
-class Uploader extends State {
+class Uploader extends Model {
   progress = 0;
 
   finish() {
@@ -244,7 +244,7 @@ Equal values are discarded. Writing `this.count = this.count` does nothing.
 When a tracked read hits a property that hasn't resolved yet (an unset `set<T>()` placeholder, a pending async factory), it throws a **suspense-compatible Promise**. React catches it and shows the nearest `<Suspense>` fallback. When the value resolves, the read retries.
 
 ```ts
-class UserProfile extends State {
+class UserProfile extends Model {
   userId = set<string>(); // required - throws until assigned
   user = set(async () => {
     const res = await fetch(`/api/users/${this.userId}`);

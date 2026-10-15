@@ -5,7 +5,7 @@ import { set } from './field/set';
 import { def } from './field/def';
 import { vi, describe, it, expect } from 'vitest';
 import { mockError, mockPromise, mockUncaught, flushMicrotasks } from '../test.setup';
-import { State } from './state';
+import { Model } from './state';
 
 describe('effect', () => {
   it('will remove listener on cleanup', () => {
@@ -23,7 +23,7 @@ describe('effect', () => {
   });
 
   it('will not accumulate listeners across re-runs', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 0;
       bar = 0;
     }
@@ -52,11 +52,11 @@ describe('effect', () => {
   });
 
   it('will not accumulate child listeners across re-runs', async () => {
-    class Child extends State {
+    class Child extends Model {
       value = 0;
     }
 
-    class Test extends State {
+    class Test extends Model {
       child = new Child();
       foo = 0;
     }
@@ -91,7 +91,7 @@ describe('effect', () => {
   });
 
   it('will not accumulate listeners across computed re-runs', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 0;
 
       get double() {
@@ -126,7 +126,7 @@ describe('effect', () => {
   });
 
   it('will release listeners of a suspended attempt', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 0;
     }
 
@@ -159,7 +159,7 @@ describe('effect', () => {
     let shouldSuspend = true;
     const pending = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       value = 1;
     }
 
@@ -182,7 +182,7 @@ describe('effect', () => {
   it('will run after properties', () => {
     const cb = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       property = def((_key, _state, state) => {
         this.get(() => cb(state));
       });
@@ -197,7 +197,7 @@ describe('effect', () => {
   });
 
   it('will enforce values if required', () => {
-    class Test extends State {
+    class Test extends Model {
       property?: string = undefined;
     }
 
@@ -216,7 +216,7 @@ describe('effect', () => {
   });
 
   it('will not enforce required for value-less touch', () => {
-    class Test extends State {
+    class Test extends Model {
       property = 'value';
     }
 
@@ -245,7 +245,7 @@ describe('effect', () => {
   });
 
   it('will still get events after silent ones', async () => {
-    class Test extends State {
+    class Test extends Model {
       value1 = 1;
       value2 = 2;
     }
@@ -269,13 +269,13 @@ describe('effect', () => {
   });
 
   it('will pass changed keys to callback', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 1;
       bar = 2;
     }
 
     const test = Test.new();
-    const calls = [] as Array<readonly State.Signal[] | undefined>;
+    const calls = [] as Array<readonly Model.Signal[] | undefined>;
 
     watch(test, ($, changed) => {
       calls.push(changed);
@@ -300,7 +300,7 @@ describe('effect', () => {
   });
 
   it('will cleanup nested effects', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 1;
       bar = 2;
     }
@@ -338,7 +338,7 @@ describe('effect', () => {
   });
 
   it('will call cleanup before re-running effect', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
     }
 
@@ -364,7 +364,7 @@ describe('effect', () => {
   });
 
   it('will ignore circular update', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 1;
       bar?: number = undefined;
     }
@@ -398,7 +398,7 @@ describe('effect', () => {
   });
 
   it('will override circular update', async () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 1;
       bar?: number = undefined;
     }
@@ -419,7 +419,7 @@ describe('effect', () => {
   });
 
   describe('async', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       other = 1;
     }
@@ -734,7 +734,7 @@ describe('effect', () => {
     });
 
     it('will release nested effects before a re-run', async () => {
-      class Other extends State {
+      class Other extends Model {
         value = 1;
       }
 
@@ -763,7 +763,7 @@ describe('effect', () => {
   });
 
   describe('then', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
     }
 
@@ -912,7 +912,7 @@ describe('effect', () => {
     });
 
     it('will release nested effects', async () => {
-      class Nested extends State {
+      class Nested extends Model {
         value = 1;
       }
 
@@ -1063,7 +1063,7 @@ describe('effect', () => {
   describe('destroyed', () => {
     const error = mockError();
 
-    class Test extends State {
+    class Test extends Model {
       done = false;
       foo = 1;
     }
@@ -1158,7 +1158,7 @@ describe('effect', () => {
 
 describe('suspense', () => {
   it('will reject if state destroyed before resolved', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = set<never>();
     }
 
@@ -1181,7 +1181,7 @@ describe('errors', () => {
   mockError();
 
   it('will throw sync error to the console', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
     }
 
@@ -1195,7 +1195,7 @@ describe('errors', () => {
   });
 
   it('will let an unhandled effect error escape uncaught', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
     }
 
@@ -1341,7 +1341,7 @@ describe('observable', () => {
     });
 
     it('will name the state which was destroyed', () => {
-      class Test extends State {
+      class Test extends Model {
         foo = 1;
       }
 
@@ -1356,7 +1356,7 @@ describe('observable', () => {
   });
 
   describe('proxy', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = 'foo';
     }
 

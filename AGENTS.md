@@ -65,7 +65,7 @@ await expect(state).not.toHaveUpdated();
 - `mockPromise<T>()` - controllable promise with `.resolve()` / `.reject()`
 - `mockWarn()` / `mockError()` - spy on console, auto-clear between tests
 
-`packages/mvc/test.setup.ts` defines `toJSON` on `State.prototype` so tracking
+`packages/mvc/test.setup.ts` defines `toJSON` on `Model.prototype` so tracking
 proxies print their managed values in assertion diffs rather than internals. A
 spy that silences `console.error` must be scoped with `beforeEach`/`afterEach`,
 restored (not cleared), and asserted empty - an unexpected React warning is a
@@ -102,7 +102,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 - **Always ask before adding new public surface.** Do not introduce new exported
   functions, methods, types, or fields (anything reachable from a package's
   public entry, including additions to shared registries like `Runtime` or the
-  `Component`/`State` interfaces) without first confirming with the user.
+  `Component`/`Model` interfaces) without first confirming with the user.
   Prefer reusing or reshaping existing surface; when new surface seems needed,
   propose it and wait for a decision.
 
@@ -143,4 +143,4 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 - `@expressive/router` is strictly client-side - no SSR or server coupling. Its roadmap priority is stability over features: `to`, `as`, `none`, `fallback`, `redirect`, the protected `children` getter, `Component.catch`, `Link`, and `BrowserRouter` form a de facto compatibility contract consumed by downstream tooling, so treat changes to them as breaking and design new seams once, carefully.
 - `@expressive/mvc` and `@expressive/router` declare `"sideEffects": false`, so a bundler may drop any module a consumer does not import from. Import must therefore mutate nothing outside the module - no registry writes, global patching, or feature probes at module scope. Anything that must run belongs behind a call. (`@expressive/react` opts specific files back in via a glob - see its `package.json`.)
 - Event dispatch is batched via `queueMicrotask()` - not synchronous.
-- `State.new()` constructs + activates; plain `new State()` doesn't dispatch ready.
+- `Model.new()` constructs + activates; plain `new Model()` doesn't dispatch ready.

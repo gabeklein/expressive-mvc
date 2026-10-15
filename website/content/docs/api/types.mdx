@@ -1,58 +1,58 @@
 ---
 title: Types
-description: TypeScript type aliases on the State namespace
+description: TypeScript type aliases on the Model namespace
 ---
 
-Most public types are namespaced on `State`; component prop types are namespaced on `Component`. Import them from `@expressive/mvc`:
+Most public types are namespaced on `Model`; component prop types are namespaced on `Component`. Import them from `@expressive/mvc`:
 
 ```ts
-import type { State } from '@expressive/mvc';
+import type { Model } from '@expressive/mvc';
 ```
 
 <br />
 
 ## Class shape
 
-### `State.Extends<T>`
+### `Model.Extends<T>`
 
-Abstract or concrete constructor of a State. Use for parameters that accept any class in the hierarchy.
+Abstract or concrete constructor of a Model. Use for parameters that accept any class in the hierarchy.
 
 ```ts
-function lookup<T extends State>(Type: State.Extends<T>): T | undefined;
+function lookup<T extends Model>(Type: Model.Extends<T>): T | undefined;
 ```
 
-### `State.Type<T>`
+### `Model.Type<T>`
 
 Concrete (instantiable) constructor. Use when `new` is required.
 
 ```ts
-function create<T extends State>(Type: State.Type<T>): T;
+function create<T extends Model>(Type: Model.Type<T>): T;
 ```
 
 <br />
 
 ## Field introspection
 
-### `State.Property<T>`
+### `Model.Property<T>`
 
-Keys of `T` excluding inherited `State` members (`get`, `set`, `is`, etc.). This includes [unmanaged](/docs/guides/state-classes#unmanaged-properties) `_` keys, so it's the key set for overlays like `State.Assign<T>` and component props.
+Keys of `T` excluding inherited `Model` members (`get`, `set`, `is`, etc.). This includes [unmanaged](/docs/guides/state-classes#unmanaged-properties) `_` keys, so it's the key set for overlays like `Model.Assign<T>` and component props.
 
-### `State.Field<T>`
+### `Model.Field<T>`
 
-Managed keys only - `State.Property<T>` without `_` keys. Snapshots (`State.Values<T>`), `ref` proxies and instruction keys use this.
+Managed keys only - `Model.Property<T>` without `_` keys. Snapshots (`Model.Values<T>`), `ref` proxies and instruction keys use this.
 
 ```ts
-class MyState extends State {
+class MyModel extends Model {
   foo = 1;
   bar = 'hello';
   _handle = null;
 }
 
-type Properties = State.Property<MyState>; // 'foo' | 'bar' | '_handle'
-type Fields = State.Field<MyState>; // 'foo' | 'bar'
+type Properties = Model.Property<MyModel>; // 'foo' | 'bar' | '_handle'
+type Fields = Model.Field<MyModel>; // 'foo' | 'bar'
 ```
 
-### `State.Event<T>`
+### `Model.Event<T>`
 
 Any valid event key - includes fields, numbers, symbols, and arbitrary strings for custom events.
 
@@ -60,7 +60,7 @@ Any valid event key - includes fields, numbers, symbols, and arbitrary strings f
 type Event<T> = Field<T> | number | symbol | (string & {});
 ```
 
-### `State.Signal<T>`
+### `Model.Signal<T>`
 
 All event signals dispatched to listeners, including lifecycle meta events.
 
@@ -78,7 +78,7 @@ Meaning of special values:
 
 ## Values and snapshots
 
-### `State.Values<T>`
+### `Model.Values<T>`
 
 All fields with exotic values (child states, refs, etc.) unwrapped to their inner type.
 
@@ -86,7 +86,7 @@ All fields with exotic values (child states, refs, etc.) unwrapped to their inne
 type Values<T> = { [P in Field<T>]: Export<T[P]> };
 ```
 
-### `State.Partial<T>`
+### `Model.Partial<T>`
 
 Object compatible with `Values<T>` - every key optional, Export-unwrapped.
 
@@ -94,18 +94,18 @@ Object compatible with `Values<T>` - every key optional, Export-unwrapped.
 type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
 ```
 
-Not currently used by any public signature - `set(assign)` takes [`State.Assign<T>`](#stateassignt), which preserves declared field types rather than unwrapping them.
+Not currently used by any public signature - `set(assign)` takes [`Model.Assign<T>`](#modelassignt), which preserves declared field types rather than unwrapping them.
 
-### `State.Value<T, K>`
+### `Model.Value<T, K>`
 
 Single-property lookup type with `Export<>` unwrapping.
 
-### `State.Export<R>`
+### `Model.Export<R>`
 
-If `R` is itself a State, recursively exports `Values<R>`. Otherwise, if `R` has a `.get(): T` method, extracts `T`. Otherwise returns `R`. Drives child-state and ref unwrapping in snapshots.
+If `R` is itself a Model, recursively exports `Values<R>`. Otherwise, if `R` has a `.get(): T` method, extracts `T`. Otherwise returns `R`. Drives child-state and ref unwrapping in snapshots.
 
 ```ts
-type Export<R> = R extends State
+type Export<R> = R extends Model
   ? Values<R>
   : R extends { get(): infer T }
   ? T
@@ -116,9 +116,9 @@ type Export<R> = R extends State
 
 ## Constructor args
 
-### `State.Args<T>`
+### `Model.Args<T>`
 
-Union type accepted by `State.new()` and `State.use()`:
+Union type accepted by `Model.new()` and `Model.use()`:
 
 ```ts
 type Args<T> = (Args<T> | Init<T> | Assign<T> | void)[];
@@ -126,9 +126,9 @@ type Args<T> = (Args<T> | Init<T> | Assign<T> | void)[];
 
 Arrays are flattened recursively at runtime.
 
-### `State.Init<T>`
+### `Model.Init<T>`
 
-A lifecycle callback passed to `State.new()`. Can return cleanup, object (assign), or array (recurse).
+A lifecycle callback passed to `Model.new()`. Can return cleanup, object (assign), or array (recurse).
 
 ```ts
 type Init<T> = (
@@ -137,13 +137,13 @@ type Init<T> = (
 ) => Promise<void> | (() => void) | Args<T> | Assign<T> | void;
 ```
 
-### `State.On<T>`
+### `Model.On<T>`
 
-Handler object accepted by `State.on()` - hooks lifecycle by stage.
+Handler object accepted by `Model.on()` - hooks lifecycle by stage.
 
 ```ts
 interface On<T> {
-  type?(type: State.Extends<T>): void;
+  type?(type: Model.Extends<T>): void;
   pre?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
   new?(this: T, self: T): void | (() => void);
   bind?(this: T, key: string, fn: Function, self: T): void;
@@ -156,9 +156,9 @@ interface On<T> {
 }
 ```
 
-Stage timing is covered under [`State.on`](/docs/api/state#stateonhandler); `catch` kinds under [Error handling](/docs/api/state#error-handling).
+Stage timing is covered under [`Model.on`](/docs/api/state#modelonhandler); `catch` kinds under [Error handling](/docs/api/state#error-handling).
 
-### `State.Global<T>`
+### `Model.Global<T>`
 
 Value of `static global`. A boolean opts a class in or out of the global root; a resolver decides per instance at activation.
 
@@ -166,9 +166,9 @@ Value of `static global`. A boolean opts a class in or out of the global root; a
 type Global<T> = boolean | ((self: T) => boolean);
 ```
 
-A bare literal (`static readonly global = true`) seals the choice for subclasses - widen a subclass's `static global` to `State.Global` to allow a resolver or a later override. See [root context and globals](/docs/api/utilities#root-context-and-globals).
+A bare literal (`static readonly global = true`) seals the choice for subclasses - widen a subclass's `static global` to `Model.Global` to allow a resolver or a later override. See [root context and globals](/docs/api/utilities#root-context-and-globals).
 
-### `State.Assign<T>`
+### `Model.Assign<T>`
 
 Object overlay type. Maps each field to its value type, preserving method `this`.
 
@@ -186,7 +186,7 @@ type Assign<T> = Record<string, unknown> & {
 
 ## Callbacks
 
-### `State.OnEvent<T>`
+### `Model.OnEvent<T>`
 
 ```ts
 type OnEvent<T> = (
@@ -198,7 +198,7 @@ type OnEvent<T> = (
 
 Return a function for a deduped settle callback. Return `null` to auto-unsubscribe.
 
-### `State.Effect<T>`
+### `Model.Effect<T>`
 
 ```ts
 type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
@@ -210,7 +210,7 @@ type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
 type EffectCallback = (update: boolean | null) => void;
 ```
 
-### `State.Release<R>`
+### `Model.Release<R>`
 
 ```ts
 type Release<R = void> = (() => void) & PromiseLike<R>;
@@ -218,7 +218,7 @@ type Release<R = void> = (() => void) & PromiseLike<R>;
 
 Returned by `get(effect)`. Call to stop the effect; await to stop it once it settles and receive the latest run's value. A sync effect returns its cleanup, so only an async effect resolves a value.
 
-### `State.Setter<T>`
+### `Model.Setter<T>`
 
 ```ts
 type Setter<T> = (value: T, previous: T) => T | void;
@@ -228,20 +228,20 @@ type Setter<T> = (value: T, previous: T) => T | void;
 
 ## Descriptors
 
-### `State.Apply<T>`
+### `Model.Apply<T>`
 
 Property descriptor config for `set(key, config)` and `def` factories:
 
 ```ts
 type Apply<T> = {
   value?: T;
-  get?: ((source: State) => T) | boolean;
+  get?: ((source: Model) => T) | boolean;
   set?: Setter<T> | boolean;
   enumerable?: boolean;
 };
 ```
 
-### `State.Define<T, K>`
+### `Model.Define<T, K>`
 
 Type-safe variant of `Apply` used by `set(key, config)` - enforces `T[K]` when `K` is a known field.
 
@@ -249,7 +249,7 @@ Type-safe variant of `Apply` used by `set(key, config)` - enforces `T[K]` when `
 
 ## Updated
 
-### `State.Updated<T>`
+### `Model.Updated<T>`
 
 ```ts
 type Updated<T> = readonly Event<T>[] & PromiseLike<readonly Event<T>[]>;
@@ -267,7 +267,7 @@ Returned by `set()` - a synchronously readable array of keys updated, awaitable 
 interface ref.Object<T> {
   (value: T | null): void;
   current: T;
-  is: State;
+  is: Model;
   key: string;
   get(): T | null;
   get(callback: (v: T) => void): () => void;
@@ -279,11 +279,11 @@ interface ref.Object<T> {
 Produced by `ref(this)` and `ref(this, mapFn)` respectively.
 
 ```ts
-type ref.Proxy<T extends State> =
-  { [P in State.Field<T>]-?: ref.Object<T[P]> } & { get(): T };
+type ref.Proxy<T extends Model> =
+  { [P in Model.Field<T>]-?: ref.Object<T[P]> } & { get(): T };
 
-type ref.CustomProxy<T extends State, R> =
-  { [P in State.Field<T>]-?: R } & { get(): T };
+type ref.CustomProxy<T extends Model, R> =
+  { [P in Model.Field<T>]-?: R } & { get(): T };
 ```
 
 <br />
@@ -294,6 +294,6 @@ type ref.CustomProxy<T extends State, R> =
 
 The full JSX prop type for a `Component` subclass. Combines:
 
-- State fields (optional)
+- Model fields (optional)
 - `render(props)` declared props (optional or required as declared), or `children` when `render` declares none
 - `is`, `fallback` and `catch` special props

@@ -1,4 +1,4 @@
-import State, { Component, get, has, map, ref, set } from '@expressive/react';
+import Model, { Component, get, has, map, ref, set } from '@expressive/react';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -36,7 +36,7 @@ catch (thrown) {
 
 const drain = () => new Promise(resolve => queueMicrotask(() => resolve(null)));
 
-class Counter extends State {
+class Counter extends Model {
   count = 0;
   step = 1;
 
@@ -49,29 +49,29 @@ class Counter extends State {
   };
 }
 
-class Session extends State {
+class Session extends Model {
   user = 'ada';
 }
 
-class Async extends State {
+class Async extends Model {
   value = set(() => Promise.resolve('resolved'));
 }
 
-class Refs extends State {
+class Refs extends Model {
   node = ref<View>();
 }
 
-class Cell extends State {
+class Cell extends Model {
   constructor(public id = 0) {
     super();
   }
 }
 
-class Grid extends State {
+class Grid extends Model {
   cells = map(() => new Cell());
 }
 
-class Flagged extends State {
+class Flagged extends Model {
   active = has();
 }
 
@@ -174,7 +174,7 @@ const CHECKS: [string, (report: Report) => Promise<void>][] = [
     const session = Session.new();
     let found: Session | undefined;
 
-    class Consumer extends State {
+    class Consumer extends Model {
       session = get(Session);
     }
 

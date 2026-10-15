@@ -1,7 +1,7 @@
 # Computed Values - Reactive Getters
 
 ```ts
-class Cart extends State {
+class Cart extends Model {
   items: Item[] = [];
 
   get total() {
@@ -10,11 +10,11 @@ class Cart extends State {
 }
 ```
 
-A getter on a State subclass is auto-promoted to a memoized, dependency-tracked property.
+A getter on a Model subclass is auto-promoted to a memoized, dependency-tracked property.
 
 ## How It Works
 
-At bootstrap State walks the prototype for class-syntax getters (`configurable: true`, no paired setter) and installs each on the instance as a managed property:
+At bootstrap Model walks the prototype for class-syntax getters (`configurable: true`, no paired setter) and installs each on the instance as a managed property:
 
 - First read runs the getter under a tracking proxy; managed reads through `this` subscribe.
 - The result is cached; later reads skip the getter.
@@ -47,7 +47,7 @@ get value() {
 Getters compose like any class member - override or extend a parent's:
 
 ```ts
-class Base extends State {
+class Base extends Model {
   count = 1;
   get total() {
     return this.count;
@@ -69,7 +69,7 @@ class Extra extends Base {
 A getter overrides a base *getter*. Swapping kinds across the boundary is a TypeScript error - getter over base field `TS2611`, field over base getter `TS2610` - though the runtime resolves either (the getter wins and tracks). The errors are not suppressible on the subclass; the escape is on whichever side you control:
 
 ```ts
-class Cart extends State {
+class Cart extends Model {
   rate = 0.1;
   total = 0;
 }
@@ -88,7 +88,7 @@ class TaxedCart extends Cart {
 A computed can read its own previous value without looping:
 
 ```ts
-class History extends State {
+class History extends Model {
   input = '';
   previous: string | undefined;
   get tracked() {
@@ -105,7 +105,7 @@ First access sees `undefined`; later ones see the prior cached value.
 Interdependent getters cascade in declaration order:
 
 ```ts
-class Stats extends State {
+class Stats extends Model {
   values: number[] = [];
   get count() { return this.values.length; }
   get sum() { return this.values.reduce((a, b) => a + b, 0); }
@@ -120,7 +120,7 @@ Reading `average` computes and caches `count` and `sum` first. When `values` cha
 A getter reading a pending `set()` property (placeholder, async factory) throws its suspense Promise; subscribers retry once upstream resolves:
 
 ```ts
-class Profile extends State {
+class Profile extends Model {
   userId = set<string>();
   user = set(async () => fetch(`/api/users/${this.userId}`).then((r) => r.json()));
   get displayName() {
@@ -147,6 +147,6 @@ A getter stays a plain JS accessor (not promoted) when:
 
 - It has a paired setter: `get foo() {} set foo(v) {}`.
 - It is defined via `Object.defineProperty(Class.prototype, 'foo', { get })` rather than class syntax (such descriptors default to `configurable: false`).
-- It is on base `State` itself (`get` / `set` instance methods).
+- It is on base `Model` itself (`get` / `set` instance methods).
 
 Paired get/set for native accessor semantics without memoization, `set()` for managed slots that take input, a getter for derived data.

@@ -9,10 +9,10 @@ description: Install, write your first state class, and learn how the pieces fit
 npm install @expressive/mvc @expressive/react
 ```
 
-`@expressive/mvc` is the framework-agnostic core and a peer dependency of the adapter, so install both. `State`, `Component`, and every instruction are named exports of the core:
+`@expressive/mvc` is the framework-agnostic core and a peer dependency of the adapter, so install both. `Model`, `Component`, and every instruction are named exports of the core:
 
 ```ts
-import { State, Component, get, set, ref } from '@expressive/mvc';
+import { Model, Component, get, set, ref } from '@expressive/mvc';
 ```
 
 `@expressive/react` supplies the host. Import it once, for its side effect, in your entry module:
@@ -22,7 +22,7 @@ import { State, Component, get, set, ref } from '@expressive/mvc';
 import '@expressive/react';
 ```
 
-Its re-exports of the core, and its default export of `State`, are deprecated - import from `@expressive/mvc` by name. Routing is a separate package, `@expressive/router`.
+Its re-exports of the core, and its default export of `Model`, are deprecated - import from `@expressive/mvc` by name. Routing is a separate package, `@expressive/router`.
 
 > Working with an agent? `npx skills add gabeklein/expressive-mvc` teaches it the whole API in one shot.
 
@@ -59,7 +59,7 @@ import expressive from '@expressive/react/vite';
 export default defineConfig({ plugins: [react(), expressive()] });
 ```
 
-Editing a `State` or `Component` class then patches it in place - instances keep their values and re-render with the new methods, getters, `render`, and subcomponents, while React Refresh keeps your function components. Changing a field, the constructor, or `new()` reloads the page, as does editing a module that declares a class with `#private` members. The class must be a top-level `class X` (or `let X = class`) - a `const` binding cannot be patched. Dev server only; production builds are untouched.
+Editing a `Model` or `Component` class then patches it in place - instances keep their values and re-render with the new methods, getters, `render`, and subcomponents, while React Refresh keeps your function components. Changing a field, the constructor, or `new()` reloads the page, as does editing a module that declares a class with `#private` members. The class must be a top-level `class X` (or `let X = class`) - a `const` binding cannot be patched. Dev server only; production builds are untouched.
 
 <br />
 
@@ -68,7 +68,7 @@ Editing a `State` or `Component` class then patches it in place - instances keep
 Ultimately, the workflow is pretty simple.
 
 1. Create a class. Fill it with the values, getters, and methods you'll need.
-2. Extend `State` (or any derivative, for that matter), making it reactive.
+2. Extend `Model` (or any derivative, for that matter), making it reactive.
 3. Within a component, call `use()` as you would any other hook.
 4. Destructure out the values the component needs, subscribing to them.
 5. Update those values on demand. Your component will sync automagically. ✨
@@ -76,7 +76,7 @@ Ultimately, the workflow is pretty simple.
 Start with a bare minimum:
 
 ```tsx
-class Counter extends State {
+class Counter extends Model {
   count = 0;
 
   increment() {
@@ -122,7 +122,7 @@ Here's that same idea running for real - edit it if you like:
 A todo list with a computed value, local persistence, and a dash of validation - all in one class:
 
 ```tsx
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
 interface Todo {
   id: number;
@@ -130,7 +130,7 @@ interface Todo {
   done: boolean;
 }
 
-class TodoApp extends State {
+class TodoApp extends Model {
   items: Todo[] = [];
   draft = '';
   nextId = 1;
@@ -206,7 +206,7 @@ function TodoList() {
 
 ## The `is` property
 
-After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every State exposes `is`, a loop-back to the instance itself. Prefer destructuring it first, aliased to the state's concept:
+After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every Model exposes `is`, a loop-back to the instance itself. Prefer destructuring it first, aliased to the state's concept:
 
 ```tsx
 const { is: todo, draft } = TodoApp.use();
@@ -223,7 +223,7 @@ If you've used React hooks, you're used to state living *inside* components. Exp
 
 ```tsx
 // The brain - data, derived values, and behavior
-class SearchPage extends State {
+class SearchPage extends Model {
   query = '';
   results: string[] = [];
   loading = false;
@@ -264,20 +264,20 @@ function SearchView() {
 Because state is a portable object, we can modify it from anywhere - and more crucially, *whenever*. That makes the async stuff pretty low maintenance: you write the business logic, the class handles dispatch. It also means:
 
 - **Testability** - `SearchPage.new()` outside of React, call methods, assert results. No renderer required.
-- **Reusability** - one State can power multiple views (sidebar, modal, full page).
+- **Reusability** - one Model can power multiple views (sidebar, modal, full page).
 - **TypeScript** - the class *is* the type. Every destructure is fully inferred.
 - **Navigability** - a feature's data and behavior live in one file, not smeared across several hook calls.
 
 <br />
 
-## When to create a State class
+## When to create a Model class
 
 You don't need a class for every component. Good signals you should reach for one:
 
 - Three or more related pieces of state.
 - An effect that syncs two or more state values.
 - A handler that touches more than one state value.
-- State shared between components.
+- Model shared between components.
 - A custom hook that returns an object.
 - Async logic - fetching, polling, websockets.
 - Props being passed down mostly to support state sharing.
@@ -287,9 +287,9 @@ For single booleans, form field focus, or throwaway UI state, `useState` is stil
 When it does, choose the class shape by ownership:
 
 - **`Component`** when the state is intrinsic to one rendered unit - a shell, tab panel, form control, media player, editor surface.
-- **`State`** when the state is display-agnostic, shared across components, or worth testing as a model without rendering.
+- **`Model`** when the state is display-agnostic, shared across components, or worth testing as a model without rendering.
 
-Don't reach for `Component` just because a class is contextual - `State` handles headless controllers fine, and child States of anything provided are available to descendants automatically.
+Don't reach for `Component` just because a class is contextual - `Model` handles headless controllers fine, and child Models of anything provided are available to descendants automatically.
 
 And avoid splitting into `FooState` plus `FooView` by default. If the behavior only exists for `Foo`'s own UI, `class Foo extends Component` is usually clearer.
 
@@ -298,6 +298,6 @@ And avoid splitting into `FooState` plus `FooView` by default. If the behavior o
 ## Next steps
 
 - [Why Classes?](/docs/why-classes) - the organizational case for moving state out of components.
-- [State Classes](/docs/guides/state-classes) - fields, methods, and lifecycle.
+- [Model Classes](/docs/guides/state-classes) - fields, methods, and lifecycle.
 - [Reactivity](/docs/guides/reactivity) - how tracking, computed values, and batching work.
 - [Components](/docs/guides/components) - the `Component` class, which lets state render itself.

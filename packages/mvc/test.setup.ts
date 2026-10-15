@@ -1,5 +1,5 @@
 import { afterAll, afterEach, expect, vi, type MockInstance } from 'vitest';
-import { Context, State } from './src';
+import { Context, Model } from './src';
 import { listener, watch } from './src/observable';
 
 interface CustomMatchers<R = unknown> {
@@ -19,7 +19,7 @@ declare module 'vitest' {
 
 expect.extend({ toHaveUpdated, toHaveText });
 
-Object.defineProperty(State.prototype, 'toJSON', {
+Object.defineProperty(Model.prototype, 'toJSON', {
   value: function (this: object) {
     const output: Record<string, unknown> = {};
 
@@ -77,10 +77,10 @@ async function toHaveUpdated(
   received: unknown,
   ...keys: (string | symbol | number)[]
 ) {
-  if (!(received instanceof State))
+  if (!(received instanceof Model))
     return {
       pass: false,
-      message: () => `Expected State but got ${received}.`
+      message: () => `Expected Model but got ${received}.`
     };
 
   // Eagerly collect keys and detect flush, before any await.

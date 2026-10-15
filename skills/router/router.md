@@ -6,7 +6,7 @@ boundary.
 
 Runnable source: the [`router`](https://expressive.dev/examples/router/overview) section - [`overview`](https://expressive.dev/examples/router/overview), [`params`](https://expressive.dev/examples/router/params), [`query`](https://expressive.dev/examples/router/query), [`guards`](https://expressive.dev/examples/router/guards), [`transitions`](https://expressive.dev/examples/router/transitions), [`nav`](https://expressive.dev/examples/router/nav). Complete programs, served as HTML.
 
-Routes are nested JSX, matched lexically from the tree (no config); navigation state is a reactive `Router` State any component can read or drive.
+Routes are nested JSX, matched lexically from the tree (no config); navigation state is a reactive `Router` Model any component can read or drive.
 
 ```bash
 npm install @expressive/router @expressive/mvc @expressive/react react
@@ -18,7 +18,7 @@ import { Route, Link, NavLinks, Redirect, Router, BrowserRouter } from '@express
 
 ## Mental model
 
-- **`Router`** - the navigation State: current `path`, reactive `query`/`hash`, derived `url`, and an in-memory history stack. Headless; touches no browser globals, so it runs and tests anywhere. It is also the memory-router substrate.
+- **`Router`** - the navigation Model: current `path`, reactive `query`/`hash`, derived `url`, and an in-memory history stack. Headless; touches no browser globals, so it runs and tests anywhere. It is also the memory-router substrate.
 - **`BrowserRouter`** - binds the core to `window.location`/`history`, syncing `path`/`query`/`hash` on navigation (`goto`, `popstate`, `hashchange`, external `pushState`/`replaceState`).
 - **`Route`** - a `Component` that matches part of the URL and renders a page. Routes nest to mirror the URL hierarchy. Each `Route` is a scoped facade over the active `Router` (`path`, `match`, `query`, `goto`, `resolve`).
 - **`Link` / `NavLinks` / `Redirect`** - navigation UI built on `Route`. They resolve against the nearest `Route` and throw outside one - render shared navigation inside a layout (`<Route as={Frame}>`), not beside Routes under the `Router`.

@@ -17,7 +17,7 @@ Three or more yeses justify a deeper ownership audit - a heuristic, not an adopt
 Then decide the shape:
 
 - Intrinsic to display logic - `Component`.
-- Headless model/controller state - `State`, even when contextual.
+- Headless model/controller state - `Model`, even when contextual.
 - React tree placement is the feature (Boundary, Route) - `Component`, even with little UI.
 - Trivial and local - leave as hooks.
 
@@ -59,7 +59,7 @@ function UserSettings() {
 
 ```tsx
 // After - cohesive state class, testable independently
-class UserSettings extends State {
+class UserSettings extends Model {
   name = '';
   email = '';
   saving = false;
@@ -105,7 +105,7 @@ const AppContext = createContext<{
 
 ```tsx
 // After - consumers only re-render for fields they access
-class AppState extends State {
+class AppState extends Model {
   user = set<User>();
   theme: 'light' | 'dark' = 'light';
   notifications = set<Notification[]>([]);
@@ -127,7 +127,7 @@ function ThemeToggle() {
 
 ## Migration Strategy
 
-1. **Start small** - one complex component; decide whether its behavior belongs in a `Component` or a display-agnostic `State`.
+1. **Start small** - one complex component; decide whether its behavior belongs in a `Component` or a display-agnostic `Model`.
 2. **Coexist** - works alongside existing hooks; no need to migrate everything.
 3. **Bottom-up when coexisting** - leaf components first, then shared state. A one-shot conversion inverts this: route/page controllers, then domain pools, then mature leaf widgets (see the refactor guide).
 4. **Test independently** - state classes test without React; use this to raise coverage.

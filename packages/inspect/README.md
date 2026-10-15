@@ -19,11 +19,11 @@ npm install --save-dev @expressive/inspect
 ## Install into the app
 
 ```ts
-// first import of the app entry, before any State is constructed
+// first import of the app entry, before any Model is constructed
 import '@expressive/inspect/install';
 ```
 
-Attaches to every `State` and publishes `globalThis.__EXPRESSIVE_INSPECT__`. For a shipped build, call `attach()` behind your own dev flag instead of the side-effect import.
+Attaches to every `Model` and publishes `globalThis.__EXPRESSIVE_INSPECT__`. For a shipped build, call `attach()` behind your own dev flag instead of the side-effect import.
 
 ## In process
 

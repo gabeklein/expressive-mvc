@@ -1,4 +1,4 @@
-import { Context, State } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import { Fragment } from '@expressive/mvc/jsx-runtime';
 
 import { isVNode, PORTAL } from '../node/vnode';
@@ -46,7 +46,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
   if (typeof value.type != 'function')
     throw new Error(`Cannot render ${String(value.type)}.`);
 
-  if (value.type.prototype instanceof State)
+  if (value.type.prototype instanceof Model)
     return mountOwnedComponent(value, parent, before, context, boundary, appearance);
 
   return mountFunction(value, parent, before, context, boundary, appearance);

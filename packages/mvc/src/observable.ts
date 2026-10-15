@@ -248,7 +248,7 @@ function emit(o: Observer, key: Observer.Signal, subject: object): void {
  * Create a side-effect which will update whenever values accessed change.
  * Callback is called immediately and whenever values are stale.
  *
- * @param target - Instance of State to observe.
+ * @param target - Instance of Model to observe.
  * @param callback - Function to invoke when values change.
  * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
  */
