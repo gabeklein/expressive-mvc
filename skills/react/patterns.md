@@ -222,7 +222,7 @@ The owner coordinates readiness only. A method re-finding a chip by id to feed i
 
 ## Region Controls
 
-When a page Model accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own Model owned as a field. Owned fields are Models; painting features mount in `render()` as JSX. Unplug test, build-time bias, forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
+When a page control accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into a region control owned as a field. Owned fields are Models; painting features mount in `render()` as JSX. Unplug test, build-time bias, forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
@@ -281,7 +281,7 @@ class ComposePage extends Component {
 
   mount() {
     return this.get(($) => {
-      void $.urlThreadId;  // declare the trigger - legitimate in instance effects, never in renders
+      void $.urlThreadId;  // declare the trigger - legitimate in get() effects, never in renders
       this.syncRoute();
     });
   }
@@ -296,7 +296,7 @@ class ComposePage extends Component {
 
 Assign the working field the moment identity is created. Fresh ids threaded thru arguments, or a shadow field remembering the last route, mean the working field is still a mirror.
 
-## Host-Agnostic Model, View Adapter
+## Host-Agnostic Domain Model, View Adapter
 
 A class shared across environments (extension host + webview, server + client) stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`. The view-side module re-exports the class and registers `Model.on()` once; every instance constructed after that import gets the wiring; hosts never importing the adapter never run it:
 

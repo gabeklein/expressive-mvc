@@ -82,7 +82,7 @@ The forms, by role:
 | Mount-only ancestor (scroll pin, focus trap) | `Component` without `render()` |
 | Chrome / token frame / zero-state strip | FC that `.get()`s |
 
-`new X()` on a parent is for Models and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a Model's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the Model as a field on the control that already exists and let sibling views `.get()` it.
+`new X()` on a parent is for Models and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a Model's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the instance as a field on the control that already exists and let sibling views `.get()` it.
 
 **Anti-pattern - subcomponent overuse.** The sections in `render()` above are freestanding FCs, not PascalCase methods. Subcomponents (`<this.Header />`) are extension points for subclasses. Test: **would a subclass reasonably replace or wrap this renderer?** For ordinary scopes no - a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
 
@@ -141,7 +141,7 @@ Behavior parity does not exempt this step - parity constrains observable behavio
 
 ## 5. Split regions out of fat orchestrators
 
-When a page Model still accumulates unrelated clusters after pools - draft fields, lookups, request state, navigation - each becomes its own Model owned as a field. Ownership provides implicitly; views bind the region directly:
+When a page control still accumulates unrelated clusters after pools - draft fields, lookups, request state, navigation - each becomes a region control owned as a field. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class Composer extends Model {        // headless region
@@ -529,10 +529,10 @@ The checklist:
 - Is every `has((x) => new Foo({...}))` factory doing work `has(Foo)` wouldn't - transform, rename, multi-argument? *(default)*
 - Are opaque handles (unsubscribe fns, timers, snapshots) unmanaged rather than reactive fields? *(invariant)*
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
-- Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region Models, each rendered feature unplugging by one import? *(default)*
+- Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region controls, each rendered feature unplugging by one import? *(default)*
 - Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
 - Is the app/route entrypoint a Component owning replica and regions as fields - `main` only mounting it, no bootstrap `<Component for>`? *(default)*
-- Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, regions held as Model fields? *(invariant)*
+- Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, region controls held as fields? *(invariant)*
 - Does every Component without chrome omit `render()` - no `return this.props.children`? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*

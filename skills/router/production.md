@@ -59,7 +59,7 @@ change recomputes from the new `match`. A zero-argument factory runs once.
 
 Navigation latest-wins guards router state and history, not application
 requests. Abort or generation-check expensive and side-effecting work in its
-owning Model. Do not add an async router effect merely to relocate domain work.
+owning instance. Do not add an async router effect merely to relocate domain work.
 
 Use an entry guard for entry policy or redirect/not-found arbitration, not as a
 general loader:

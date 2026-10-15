@@ -24,7 +24,7 @@ const counter = Counter.new(); // creates AND activates
 const counter = Counter.new({ count: 10 }); // with initial values
 ```
 
-> `new Counter()` constructs without activating. Use `Counter.new()` for a root instance. Bare `new` is correct for a child Model declared on another Model (the parent adopts and activates it), or to defer activation deliberately.
+> `new Counter()` constructs without activating. Use `Counter.new()` for a root instance. Bare `new` is correct for a child instance declared on another instance (the parent adopts and activates it), or to defer activation deliberately.
 
 ## Properties & Reactivity
 
@@ -132,7 +132,7 @@ state.get((current) => {
 });
 ```
 
-## Child Models
+## Child Instances
 
 Nest by direct assignment. Children are auto-parented, activated, and destroyed with the parent.
 
@@ -255,7 +255,7 @@ All events batch and flush via `queueMicrotask()`.
 
 ## Context
 
-Every active Model has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It registers into root (findable by others) only with `static global`; a global's home locks to root at activation, while a private instance's stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
+Every active instance has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It registers into root (findable by others) only with `static global`; a global's home locks to root at activation, while a private instance's stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
 
 Primarily consumed via the [`get` instruction](../field/get.md) and [`<Component for>`](context.md#providing-with-component).
 

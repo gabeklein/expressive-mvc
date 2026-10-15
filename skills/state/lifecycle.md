@@ -2,14 +2,14 @@
 
 ## Lifecycle Phases
 
-| Phase        | Trigger             | What Happens                                                                  | Model Ready? |
+| Phase        | Trigger             | What Happens                                                                  |    Ready?    |
 | ------------ | ------------------- | ----------------------------------------------------------------------------- | :----------: |
 | Construction | `new MyModel()`     | Listeners registered, nothing activated. Home context claimable.              |      NO      |
 | Activation   | `Model.new()`       | Properties managed, constructor args run, `new()` hook runs; a global's home locks to root | YES |
 | Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run                        |     YES      |
 | Destruction  | `state.set(null)`   | Children destroyed first, listeners called, dispatch stops                    |  DESTROYED   |
 
-> Use `Model.new()` for a root instance. Bare `new` constructs without activating: use it for a child Model declared on another Model, which adopts and activates it, or to wrap an instance in `new Context(state)` before activation ([context.md](context.md)). Either way it must activate before the end of the tick - one that does not warns; `set(null)` releases an instance you decide against.
+> Use `Model.new()` for a root instance. Bare `new` constructs without activating: use it for a child instance declared on another instance, which adopts and activates it, or to wrap an instance in `new Context(state)` before activation ([context.md](context.md)). Either way it must activate before the end of the tick - one that does not warns; `set(null)` releases an instance you decide against.
 
 ## The `new()` Hook
 
@@ -117,7 +117,7 @@ Cleanup functions receive a signal:
 | -------- | -------------------------------------- |
 | `true`   | Effect re-running (dependency changed) |
 | `false`  | Effect cancelled (manual unsubscribe)  |
-| `null`   | Model destroyed                        |
+| `null`   | Instance destroyed                     |
 
 ### Suspense in effects
 

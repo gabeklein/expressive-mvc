@@ -86,7 +86,7 @@ const items = [first, second];
 <>{items}</>
 ```
 
-- The adapter exposes each instance as an element keyed by `key`, defaulting lazily to the Model uid (`String(instance)`). Override the readonly `key` property for an application-defined identity.
+- The adapter exposes each instance as an element keyed by `key`, defaulting lazily to the instance uid (`String(instance)`). Override the readonly `key` property for an application-defined identity.
 - Mounting subscribes and provides context as usual; unmounting only detaches. The external owner destroys it with `instance.set(null)`.
 - One instance may appear beneath separate parents. Repeating it within one sibling collection repeats the key and intentionally produces the host's duplicate-key warning.
 

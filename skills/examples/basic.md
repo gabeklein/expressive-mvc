@@ -34,7 +34,7 @@ function CounterApp() {
 
 ## Todo List (owned collection)
 
-Each entry is its own Model in a `has` pool - `done` and `toggle` live on the item, not as `(id, value)` methods on the list:
+Each entry is its own instance in a `has` pool - `done` and `toggle` live on the item, not as `(id, value)` methods on the list:
 
 ```tsx
 import { Model, has } from '@expressive/mvc';

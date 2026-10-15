@@ -151,10 +151,10 @@ class Viewport extends Model {
 | `{instance}`                  | no      | no        |
 | `Model.new()`                 | no host | no        |
 
-`<Component for={Model}>` runs the provided Model's `mount()` with its own commit:
+`<Component for={Model}>` runs the provided instance's `mount()` with its own commit:
 
 - Like any parent, it mounts *after* its descendants (React commits bottom-up) - a descendant should react to a provided instance by subscription, not read it imperatively in its own `mount()`.
-- Replacing `for` with another class unmounts and destroys the previous Model, then mounts the new one.
+- Replacing `for` with another class unmounts and destroys the previous instance, then mounts the new one.
 
 The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. A hook firing once per observer is not a lifecycle - to react to an instance a component does not own, subscribe with `Model.get()` or an event.
 
@@ -372,7 +372,7 @@ Do not alias `is` merely because something will be written - writes never need t
 
 ## Providing state
 
-`<Component for={AppState}>` provides one Model to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); `mount()` timing in [mount() method](#mount-method). For a render-prop read, write an FC calling `AppState.get()`.
+`<Component for={AppState}>` provides one instance to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); `mount()` timing in [mount() method](#mount-method). For a render-prop read, write an FC calling `AppState.get()`.
 
 `Provider` was removed - replace `<Provider for={X}>` with `<Component for={X}>`.
 

@@ -6,7 +6,7 @@ Runnable source: [`get`](https://expressive.dev/examples/instructions/get) (upst
 import { get } from '@expressive/mvc';
 ```
 
-Fetches another Model from the context hierarchy, upstream or downstream.
+Fetches another instance from the context hierarchy, upstream or downstream.
 
 ## Overloads
 
@@ -70,7 +70,7 @@ class Parent extends Model {
 }
 ```
 
-`Model` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect the Models this one owns directly - not grandchildren, not context descendants; callbacks and the single forms work as for other types. The owner never changes after activation, so `get(Model)` is a stable reference, not a subscription.
+`Model` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect the instances this one owns directly - not grandchildren, not context descendants; callbacks and the single forms work as for other types. The owner never changes after activation, so `get(Model)` is a stable reference, not a subscription.
 
 ## Type Signatures
 

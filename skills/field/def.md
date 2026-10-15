@@ -72,6 +72,6 @@ interface def.Config<T> extends Model.Apply<T> {
 }
 ```
 
-## Child Model (No Instruction Needed)
+## Child Instance (No Instruction Needed)
 
-Nest instances by direct assignment (`child = new ChildModel()`) - auto-parented, activated, and destroyed with the parent. See [state.md](../state/state.md#child-models).
+Nest instances by direct assignment (`child = new ChildModel()`) - auto-parented, activated, and destroyed with the parent. See [state.md](../state/state.md#child-instances).

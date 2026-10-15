@@ -57,7 +57,7 @@ const stop = state.get((current, update) => {
 
 - Only reads via the `current` proxy subscribe - not via `this` or method calls.
 - Nested child instance properties track deeply (`current.child.value`); replacing a child re-subscribes to the new one.
-- `current.get(Type)` and `current.get(Model)` track the same way - reads off the fetched Model subscribe.
+- `current.get(Type)` and `current.get(Model)` track the same way - reads off the fetched instance subscribe.
 - Simultaneous updates to several tracked properties produce one re-run.
 
 **Effect return value:**
@@ -117,7 +117,7 @@ get<T extends Model>(type: Model.Type<T>, required?: true): T
 get<T extends Model>(type: Model.Type<T>, required: boolean): T | undefined
 ```
 
-Fetches a Model of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
+Fetches an instance of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
 
 ```ts
 const parent = child.get(ParentModel);
@@ -130,7 +130,7 @@ const maybe = child.get(ParentModel, false);
 get<T extends Model>(type: Model.Type<T>, callback: Context.Expect<T>, downstream?: boolean): () => void
 ```
 
-Fires `callback` when a Model of that type becomes available - immediately if already present. Searches both directions by default; `downstream: true` watches only children, `false` only parents.
+Fires `callback` when an instance of that type becomes available - immediately if already present. Searches both directions by default; `downstream: true` watches only children, `false` only parents.
 
 ### Owner
 
@@ -140,11 +140,11 @@ get(type: typeof Model, required: boolean): Model | undefined
 get(type: typeof Model, callback: (child: Model) => void | (() => void), downstream: true): () => void
 ```
 
-`Model` is never in context - `get(Model)` reads ownership instead. An instance's owner is the Model that constructed it into a field, `has()` pool or `map()`; failing that, the Model its nearest enclosing context was set up for - the Component rendering a host-mounted Component, `use()` instance or `<Provider>`. `<Component for={X}>` owns X. A root, or an instance already active when something held it, has none. Missing throws `"{state} has no owner."`; `false` returns `undefined`.
+`Model` is never in context - `get(Model)` reads ownership instead. An instance's owner is the instance that constructed it into a field, `has()` pool or `map()`; failing that, the instance its nearest enclosing context was set up for - the Component rendering a host-mounted Component, `use()` instance or `<Provider>`. `<Component for={X}>` owns X. A root, or an instance already active when something held it, has none. Missing throws `"{state} has no owner."`; `false` returns `undefined`.
 
-Ownership is fixed at activation: later holders, context pushes and field moves do not change it, and the value is not reactive. Context is where a Model registers to be found; ownership is who constructed it - see [context.md](context.md#ownership-vs-context).
+Ownership is fixed at activation: later holders, context pushes and field moves do not change it, and the value is not reactive. Context is where an instance registers to be found; ownership is who constructed it - see [context.md](context.md#ownership-vs-context).
 
-With a callback and `true`, runs per owned Model - direct children only, not their descendants - current ones, then each as it activates. A returned function runs when that Model is destroyed, including with its owner. Returns a stop function.
+With a callback and `true`, runs per owned instance - direct children only, not their descendants - current ones, then each as it activates. A returned function runs when that instance is destroyed, including with its owner. Returns a stop function.
 
 ```ts
 const owner = child.get(Model);

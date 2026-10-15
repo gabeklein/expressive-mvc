@@ -6,7 +6,7 @@ boundary.
 
 Runnable source: the [`router`](https://expressive.dev/examples/router/overview) section - [`overview`](https://expressive.dev/examples/router/overview), [`params`](https://expressive.dev/examples/router/params), [`query`](https://expressive.dev/examples/router/query), [`guards`](https://expressive.dev/examples/router/guards), [`transitions`](https://expressive.dev/examples/router/transitions), [`nav`](https://expressive.dev/examples/router/nav). Complete programs, served as HTML.
 
-Routes are nested JSX, matched lexically from the tree (no config); navigation state is a reactive `Router` Model any component can read or drive.
+Routes are nested JSX, matched lexically from the tree (no config); navigation state is a reactive `Router` instance any component can read or drive.
 
 ```bash
 npm install @expressive/router @expressive/mvc @expressive/react react
