@@ -44,7 +44,7 @@ Two halves, deliberately separable:
 ### Renderer-specific learnings
 
 - **`capture` is load-bearing**: a `watch` created inside another `watch`'s callback registers with the parent effect and dies on its re-render. The reconciler wraps child mounting in `capture()` since slot teardown is owned by the renderer, not the parent effect.
-- `get(Type)` (instruction) is the context pattern that works in fields; `this.get(Type)` resolves during construction, before the instance is registered.
+- `get(Type)` (instruction) is the context pattern that works in fields; `this.get(Type)` in a field resolves during construction, before the instance is registered (same under dom).
 - Suspense promises must be rethrown as settle-only derivatives (`err.then(noop, noop)`) so instance destruction doesn't leak an unhandled rejection through `watch`'s retry.
 
 ### Turnkey components
