@@ -38,10 +38,11 @@ state.get('method'); // unbound method
 ### Tracked effect
 
 ```ts
-get(effect: State.Effect<this>): () => void
+get(effect: State.Effect<this>): State.Release
+get<R>(effect: State.Effect<this, Promise<R>>): State.Release<R>
 ```
 
-Runs `effect` immediately, then again whenever accessed properties change. Returns an unsubscribe function.
+Runs `effect` immediately, then again whenever accessed properties change. Returns an unsubscribe function, also awaitable (see **Await the release**).
 
 ```ts
 const stop = state.get((current, update) => {
@@ -63,11 +64,25 @@ const stop = state.get((current, update) => {
 
 - `(event) => void` - cleanup, called with `true` (about to re-run), `false` (cancelled via `stop()`), or `null` (state destroyed)
 - `null` - cancel the effect (one-shot)
-- `Promise<void>` - ignored
+- `Promise` - the run is pending until it settles; the resolved value is a value only, never a cleanup or cancel
 
-**Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
+**Async effects:** tracked changes during a pending run do not re-run it - they accumulate, and one re-run follows settlement with every changed key in `update`. An async effect does not see intermediate states; sync effects remain the per-event tool. A rejection is reported like a sync throw (`catch` handlers, then uncaught); the effect then stays idle until cancelled. Cancel or destroy while pending: no re-run.
+
+**Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) - synchronously or after an `await` - pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
 
 **Before ready:** effects registered in constructors wait for activation before first run.
+
+**Await the release:** `await state.get(effect)` cancels the effect once it settles and yields the latest clean run - a one-shot read of tracked state that suspends until it can complete. Only an async effect yields a value; a sync one resolves `undefined`, its cleanup called with `false`.
+
+- idle - resolves at once with the latest run
+- run in flight, queued, or suspended - waits for it; a change arriving meanwhile re-runs first
+
+```ts
+const user = await state.get(async ($) => $.user);
+const total = await state.get(async ($) => (await fetch($.url)).json());
+```
+
+Rejects if the state is destroyed before any clean run, or a run throws a non-suspense error (which then skips `catch` handlers). Calling the release by hand before it settles rejects a promise already attached, silent otherwise. Returning the release from an `async` function unwraps and cancels it - TS does not flag this.
 
 To watch a specific property or event, use [`set(event, callback)`](set.md).
 
@@ -139,11 +154,13 @@ const stop = scene.get(State, (node) => attach(node), true);
 ## Type Signatures
 
 ```ts
-type Effect<T> = (
+type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
   this: T,
   current: T,
   update: readonly State.Event<T>[] | undefined
-) => EffectCallback | Promise<void> | null | void;
+) => R;
 
 type EffectCallback = (update: boolean | null) => void;
+
+type Release<R = void> = (() => void) & PromiseLike<R>;
 ```

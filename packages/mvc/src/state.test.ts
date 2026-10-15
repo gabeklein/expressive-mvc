@@ -1581,13 +1581,47 @@ describe('get method', () => {
         expect(cleanup).toBeCalledTimes(1);
       });
 
-      // TODO: should this complain?
-      it('will void return value and ignore returned promise', () => {
+      it('will resolve release with return value', async () => {
         const state = Test.new();
+        const stop = state.get(() => {});
 
-        // @ts-expect-error
-        expect(() => state.get(() => 'foobar')).not.toThrow();
-        expect(() => state.get(async () => {})).not.toThrow();
+        stop();
+
+        const sync: void = await state.get(() => {});
+        const value: number = await state.get(async () => 1);
+        const none: void = await state.get(async () => {});
+
+        expect([sync, value, none]).toEqual([undefined, 1, undefined]);
+      });
+
+      it('will await a value not yet set', async () => {
+        class Session extends State {
+          token = set<string>();
+        }
+
+        const session = Session.new();
+        const token = session.get(async ($) => $.token);
+
+        session.token = 'abc';
+
+        await expect(token).resolves.toBe('abc');
+      });
+
+      it('will await several projections together', async () => {
+        class Session extends State {
+          user = set<string>();
+          role = 'guest';
+        }
+
+        const session = Session.new();
+        const both = Promise.all([
+          session.get(async ($) => $.user),
+          session.get(async ($) => $.role)
+        ]);
+
+        session.user = 'ada';
+
+        await expect(both).resolves.toEqual(['ada', 'guest']);
       });
     });
 
@@ -1670,7 +1704,9 @@ describe('get method', () => {
       it('will remove listener on callback', async () => {
         class Test extends State {
           value = 1;
-          done = this.get((state) => cb(state.value));
+          done = this.get((state) => {
+            cb(state.value);
+          });
         }
 
         const cb = vi.fn();

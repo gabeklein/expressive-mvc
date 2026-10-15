@@ -218,11 +218,18 @@ declare namespace State {
    *
    * @returns A callback function which will be called when this effect is stale.
    */
-  type Effect<T> = (
+  type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
     this: T,
     current: T,
     update: readonly State.Event<T>[] | undefined
-  ) => EffectCallback | Promise<void> | null | void;
+  ) => R;
+
+  /**
+   * Returned by `get(effect)`. Call to stop the effect. Await to stop it once it
+   * has run clean and receive that run's value - a sync run's output, or what its
+   * promise resolved to.
+   */
+  type Release<R = void> = (() => void) & PromiseLike<R>;
 
   /**
    * A callback function returned by effect. Will be called when effect is stale.
@@ -284,10 +291,18 @@ abstract class State {
    *
    * @param effect Function to run, and whenever accessed values change.
    *               If effect returns a function, it will be called when a change occurs (syncronously),
-   *               effect is cancelled, or parent state is destroyed.
-   * @returns Function to cancel listener.
+   *               effect is cancelled, or parent state is destroyed. A returned promise
+   *               defers re-runs until it settles; its resolved value is treated the same way.
+   * @returns Function to cancel listener - awaited, cancels and yields the effect's value.
    */
-  get(effect: State.Effect<this>): () => void;
+  get(effect: State.Effect<this>): State.Release;
+
+  /**
+   * Run a function to run automatically when accessed values change, which
+   * produces a value - sync or async. Await the returned function to cancel the
+   * effect once a run completes and receive what it returned.
+   */
+  get<R>(effect: State.Effect<this, Promise<R>>): State.Release<R>;
 
   /**
    * Get value of a property. Will fetch underlying value from exotic values like ref.Object.

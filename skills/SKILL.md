@@ -315,7 +315,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 - [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), providing state, transparent writes, ForceRefresh, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
-- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, effects
+- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 
 ### JSX
 

@@ -418,6 +418,648 @@ describe('effect', () => {
     expect(test.bar).toBe(3);
   });
 
+  describe('async', () => {
+    class Test extends State {
+      value = 1;
+      other = 1;
+    }
+
+    it('will wait for a pending run before re-running', async () => {
+      const test = Test.new();
+      const pending = mockPromise<void>();
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return pending;
+      });
+
+      watch(test, effect);
+
+      expect(effect).toBeCalledTimes(1);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+
+      pending.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will re-run once with every key changed while pending', async () => {
+      const test = Test.new();
+      const pending = mockPromise<void>();
+      const effect = vi.fn(($: Test, update: readonly (string | number | symbol)[]) => {
+        void $.value;
+        void $.other;
+        return update.length ? undefined : pending;
+      });
+
+      watch(test, effect);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      test.other = 2;
+      await expect(test).toHaveUpdated();
+
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+
+      pending.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenLastCalledWith(expect.anything(), ['value', 'other']);
+    });
+
+    it('will not re-run when nothing changed while pending', async () => {
+      const test = Test.new();
+      const pending = mockPromise<void>();
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return pending;
+      });
+
+      watch(test, effect);
+
+      pending.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(1);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will not use a resolved function as cleanup', async () => {
+      const test = Test.new();
+      const resolved = vi.fn();
+
+      watch(test, async ($) => {
+        void $.value;
+        return resolved;
+      });
+
+      await flushMicrotasks();
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(resolved).not.toBeCalled();
+    });
+
+    it('will not cancel when resolved to null', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => {
+        void $.value;
+        return null;
+      });
+
+      watch(test, effect);
+      await flushMicrotasks();
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will not re-run when cancelled while pending', async () => {
+      const test = Test.new();
+      const pending = mockPromise<() => void>();
+      const cleanup = vi.fn();
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return pending;
+      });
+
+      const done = watch(test, effect);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      done();
+
+      pending.resolve(cleanup);
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(1);
+      expect(cleanup).not.toBeCalled();
+    });
+
+    it('will not re-run when destroyed while pending', async () => {
+      const test = Test.new();
+      const pending = mockPromise<() => void>();
+      const cleanup = vi.fn();
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return pending;
+      });
+
+      watch(test, effect);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      test.set(null);
+
+      pending.resolve(cleanup);
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(1);
+      expect(cleanup).not.toBeCalled();
+    });
+
+    it('will not call a function resolved after destroying within run', async () => {
+      const test = Test.new();
+      const resolved = vi.fn();
+
+      watch(test, async () => {
+        test.set(null);
+        return resolved;
+      });
+
+      await flushMicrotasks();
+
+      expect(resolved).not.toBeCalled();
+    });
+
+    it('will ignore a rejection after destroying within run', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+
+      watch(test, async () => {
+        test.set(null);
+        throw new Error('late');
+      });
+
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+    });
+
+    it('will ignore a rejection after cancel', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const pending = mockPromise<void>();
+
+      const done = watch(test, () => pending);
+
+      done();
+
+      pending.reject(new Error('late'));
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+    });
+
+    it('will replay a suspense thrown after await', async () => {
+      const test = Test.new();
+      const suspense = mockPromise<void>();
+      let attempt = 0;
+      const effect = vi.fn(async ($: Test) => {
+        void $.value;
+        await 0;
+        if (!attempt++) throw suspense;
+      });
+
+      let output: Promise<void> | undefined;
+
+      watch(test, ($) => (output = effect($)));
+
+      await expect(output).rejects.toBe(suspense);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+
+      suspense.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(2);
+
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(3);
+    });
+
+    it('will not replay a suspense after cancel', async () => {
+      const test = Test.new();
+      const suspense = mockPromise<void>();
+      const effect = vi.fn(async () => {
+        await 0;
+        throw suspense;
+      });
+
+      const done = watch(test, effect);
+
+      await flushMicrotasks();
+      done();
+
+      suspense.resolve();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(1);
+    });
+
+    it('will surface a rejection as an effect error', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const expected = new Error('async error');
+
+      let output: Promise<void> | undefined;
+
+      watch(test, () => (output = Promise.reject(expected)));
+
+      await expect(output).rejects.toBe(expected);
+      await flushMicrotasks();
+
+      expect(caught).toEqual([expected]);
+    });
+
+    it('will pass a rejection to catch handlers', async () => {
+      class Catching extends Test {
+        static handler = vi.fn(() => undefined);
+
+        static {
+          this.on({ catch: this.handler });
+        }
+      }
+
+      const test = Catching.new();
+      const caught = mockUncaught();
+      const expected = new Error('async error');
+      const effect = vi.fn(($: Test) => {
+        void $.value;
+        return Promise.reject(expected);
+      });
+
+      watch(test, effect);
+      await flushMicrotasks();
+
+      expect(Catching.handler).toBeCalledWith(expected, 'effect', undefined);
+      expect(caught).toEqual([]);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+    });
+
+    it('will track reads made after await', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => {
+        void $.value;
+        await 0;
+        void $.other;
+      });
+
+      watch(test, effect);
+      await flushMicrotasks();
+
+      test.other = 2;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will release nested effects before a re-run', async () => {
+      class Other extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const other = Other.new();
+      const inner = vi.fn(($: Other) => void $.value);
+
+      watch(test, async ($) => {
+        void $.value;
+        watch(other, inner);
+      });
+
+      await flushMicrotasks();
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      expect(inner).toBeCalledTimes(2);
+
+      other.value = 2;
+      await expect(other).toHaveUpdated();
+
+      expect(inner).toBeCalledTimes(3);
+    });
+  });
+
+  describe('then', () => {
+    class Test extends State {
+      value = 1;
+    }
+
+    it('will resolve undefined for a sync run', async () => {
+      const test = Test.new();
+      const effect = vi.fn(($: Test) => void $.value);
+      const stop = watch(test, effect);
+
+      await expect(stop).resolves.toBeUndefined();
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+    });
+
+    it('will resolve undefined for a one-shot null', async () => {
+      const test = Test.new();
+
+      await expect(watch(test, () => null)).resolves.toBeUndefined();
+    });
+
+    it('will run sync cleanup once when awaited', async () => {
+      const test = Test.new();
+      const cleanup = vi.fn();
+      const stop = watch(test, () => cleanup);
+
+      await expect(stop).resolves.toBeUndefined();
+      await expect(stop).resolves.toBeUndefined();
+
+      stop();
+
+      expect(cleanup).toBeCalledTimes(1);
+      expect(cleanup).toBeCalledWith(false);
+    });
+
+    it('will resolve with the latest run', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => $.value);
+      const stop = watch(test, effect);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      await expect(stop).resolves.toBe(3);
+      expect(effect).toBeCalledTimes(3);
+    });
+
+    it('will wait for a run queued when awaited', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => $.value);
+      const stop = watch(test, effect);
+
+      await flushMicrotasks();
+
+      test.value = 2;
+
+      await expect(stop).resolves.toBe(2);
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will not call a function resolved by an async run', async () => {
+      const test = Test.new();
+      const resolved = vi.fn();
+      const stop = watch(test, async ($) => {
+        void $.value;
+        return resolved;
+      });
+
+      await expect(stop).resolves.toBe(resolved);
+
+      stop();
+
+      expect(resolved).not.toBeCalled();
+    });
+
+    it('will resolve after a suspended first run replays', async () => {
+      const test = Test.new();
+      const suspense = mockPromise<void>();
+      let attempt = 0;
+      const effect = vi.fn(async ($: Test) => {
+        if (!attempt++) throw suspense;
+        return $.value;
+      });
+
+      const stop = watch(test, effect);
+      const value = stop.then((value) => value);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      suspense.resolve();
+
+      await expect(value).resolves.toBe(2);
+
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will resolve with value of an async run', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => {
+        const { value } = $;
+        await 0;
+        return value + 1;
+      });
+
+      await expect(watch(test, effect)).resolves.toBe(2);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(1);
+    });
+
+    it('will re-run for a change while awaited and resolve with it', async () => {
+      const test = Test.new();
+      const pending = mockPromise<void>();
+      const effect = vi.fn(async ($: Test) => {
+        const { value } = $;
+        await pending;
+        return value;
+      });
+
+      const stop = watch(test, effect);
+      const value = stop.then();
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+
+      pending.resolve();
+
+      await expect(value).resolves.toBe(2);
+
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will release nested effects', async () => {
+      class Nested extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const nested = Nested.new();
+      const inner = vi.fn(($: Nested) => void $.value);
+
+      await test.get(($) => {
+        void $.value;
+        watch(nested, inner);
+      });
+
+      nested.value = 2;
+      await expect(nested).toHaveUpdated();
+
+      expect(inner).toBeCalledTimes(1);
+    });
+
+    it('will resolve with the latest run after destroy', async () => {
+      const test = Test.new();
+      const stop = watch(test, async ($: Test) => $.value);
+
+      await flushMicrotasks();
+      test.set(null);
+
+      await expect(stop).resolves.toBe(1);
+    });
+
+    it('will wait for a replay when suspended after a clean run', async () => {
+      const test = Test.new();
+      const suspense = mockPromise<void>();
+      let gate: Promise<void> | undefined;
+
+      const stop = watch(test, async ($: Test) => {
+        const { value } = $;
+        if (gate) throw gate;
+        return value;
+      });
+
+      await flushMicrotasks();
+
+      gate = suspense;
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      const value = stop.then();
+
+      gate = undefined;
+      suspense.resolve();
+
+      await expect(value).resolves.toBe(2);
+    });
+
+    it('will reject a later awaiter with an earlier rejection', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const expected = new Error('async error');
+      const stop = watch(test, async () => {
+        throw expected;
+      });
+
+      await flushMicrotasks();
+
+      expect(caught).toEqual([expected]);
+      await expect(stop.then()).rejects.toBe(expected);
+    });
+
+    it('will reject if destroyed before a clean run', async () => {
+      const test = Test.new();
+      const pending = mockPromise<void>();
+      const stop = watch(test, () => pending);
+      const value = stop.then();
+
+      test.set(null);
+
+      await expect(value).rejects.toThrow('is destroyed');
+    });
+
+    it('will reject if first run destroys subject', async () => {
+      const test = Test.new();
+
+      await expect(watch(test, () => test.set(null)).then()).rejects.toThrow('is destroyed');
+    });
+
+    it('will reject if cancelled by hand while awaited', async () => {
+      const test = Test.new();
+      const stop = watch(test, () => mockPromise<void>());
+      const value = stop.then();
+
+      stop();
+
+      await expect(value).rejects.toThrow('cancelled before it settled');
+    });
+
+    it('will not reject if cancelled by hand without then', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const stop = watch(test, () => mockPromise<void>());
+
+      stop();
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+
+      await expect(stop.then()).rejects.toThrow('cancelled before it settled');
+    });
+
+    it('will reject with an async run error', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const expected = new Error('async error');
+      const cleanup = vi.fn();
+      const stop = watch(test, async () => {
+        watch(test, () => cleanup);
+        throw expected;
+      });
+
+      await expect(stop.then()).rejects.toBe(expected);
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+      expect(cleanup).toBeCalledWith(false);
+    });
+
+    it('will reject with a sync error on replay', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const expected = new Error('sync error');
+      const suspense = mockPromise<void>();
+      let attempt = 0;
+
+      const stop = watch(test, () => {
+        if (!attempt++) throw suspense;
+        throw expected;
+      });
+      const value = stop.then();
+
+      suspense.resolve();
+
+      await expect(value).rejects.toBe(expected);
+      await flushMicrotasks();
+
+      expect(caught).toEqual([]);
+    });
+  });
+
   describe('destroyed', () => {
     const error = mockError();
 
@@ -443,8 +1085,8 @@ describe('effect', () => {
         test.done = true;
         await expect(test).toHaveUpdated();
       }],
-      ['will run cleanup when first run terminates subject', true, (test, effect) => test.get(effect)],
-      ['will run cleanup when uncaptured effect terminates subject', true, (test, effect) => watch(test, effect, false)]
+      ['will run cleanup when first run terminates subject', true, (test, effect) => void test.get(effect)],
+      ['will run cleanup when uncaptured effect terminates subject', true, (test, effect) => void watch(test, effect, false)]
     ])('%s', async (_, done, run) => {
       const test = Test.new({ done });
       const didCleanup = vi.fn();
