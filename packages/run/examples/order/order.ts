@@ -39,10 +39,22 @@ export class SubmitOrder extends Job {
   protected async ship(chargeId: string) {
     const booking = await courier.book(this.cart, chargeId);
 
-    this.tracking = booking.id;
+    if (booking) {
+      this.tracking = booking.id;
 
-    // a returned inline step is the undo, typed void so ship stays Promise<void>
-    return this.then(() => courier.cancel(booking.id));
+      // a returned inline step is the undo, typed void so ship stays Promise<void>
+      return this.then(() => courier.cancel(booking.id));
+    }
+
+    // no courier free: fail forward - unwind what committed after reserve (pay is refunded,
+    // receipt dropped), keep the hold, and backorder; the run does not fail
+    this.then.back(this.reserve, 'no courier');
+    this.backorder();
+  }
+
+  protected async backorder() {
+    await mail.send(this.cart.email, `https://orders.test/${this.cart.id}/backorder`);
+    this.end();
   }
 
   protected async receipt(url: string) {
@@ -55,11 +67,11 @@ export class SubmitOrder extends Job {
 
   // its return types `await order`
   protected end() {
-    return { orderId: this.charge!.id, tracking: this.tracking };
+    return { orderId: this.charge?.id, tracking: this.tracking };
   }
 
-  // after the unwind, before the run rejects - writes here are in no entry, so they survive rewind
-  protected back(error: unknown) {
-    this.notice = `Order ${this.cart.id} was not placed: ${(error as Error).message}`;
+  // after any unwind - given back()'s reason, else the error; writes here are in no entry, so they survive rewind
+  protected back(reason: unknown) {
+    this.notice = `Order ${this.cart.id} was not placed: ${reason instanceof Error ? reason.message : reason}`;
   }
 }

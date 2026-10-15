@@ -1,6 +1,6 @@
 # Examples
 
-Four classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo, `rewind`; [agent](agent/agent.ts) - a long-lived instance on the light journal: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry, watchers, `commit`, undo by group and by wait, hooks, `exit`; [sync](sync/sync.ts) - `run(this, options)` on a class that cannot extend `Job`: steps from its own class only, a hook as an option. Shipped behavior is documented in [docs/](../docs/README.md).
+Four classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo, `rewind`, failing forward with `back`; [agent](agent/agent.ts) - a long-lived instance on the light journal: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry, watchers, `commit`, undo by group and by wait, hooks, `exit`; [sync](sync/sync.ts) - `run(this, options)` on a class that cannot extend `Job`: steps from its own class only, a hook as an option. Shipped behavior is documented in [docs/](../docs/README.md).
 
 A PR adding a feature extends an example and this table.
 
@@ -47,7 +47,8 @@ A PR adding a feature extends an example and this table.
 | `this.then.commit()` | `Deploy.migrate`; deploy test `will ask before reverting a failed rollout` |
 | collection rollback - `has` list | `Agent.turn` (`draft`), `Agent.exec` (retry); agent tests `will keep what a failing turn committed`, `will not repeat what a retried tool wrote` |
 | irreversible - pool deletion | `Deploy.retire`; deploy test `will stop unwinding at the retired release` |
-| `back(error)` | `SubmitOrder.back` |
+| `this.then.back(step, reason)` - unwind what committed after a step, discard what it scheduled, continue | `SubmitOrder.ship`; order test `will refund and backorder when no courier is free` |
+| `back(reason)` - after any unwind: `back()`'s reason, else the error | `SubmitOrder.back`; order tests `will unwind what succeeded when a step fails`, `will refund and backorder when no courier is free` |
 
 ## Wait
 

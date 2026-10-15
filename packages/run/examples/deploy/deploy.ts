@@ -93,7 +93,7 @@ export class Deploy extends Job {
       },
       async (signal) => {
         await delay(HOUR, { signal });
-        return this.abort('nobody approved');
+        this.abort('nobody approved');
       }
     );
   }

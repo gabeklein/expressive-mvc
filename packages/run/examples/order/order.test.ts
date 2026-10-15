@@ -25,7 +25,7 @@ it('will run every step to end', async () => {
 });
 
 it('will ship and send the receipt together', async () => {
-  const booked = mockPromise<{ id: string }>();
+  const booked = mockPromise<{ id: string } | undefined>();
 
   vi.spyOn(courier, 'book').mockReturnValue(booked);
   vi.spyOn(mail, 'send');
@@ -144,7 +144,7 @@ it('will cancel the booking when the receipt fails', async () => {
 });
 
 it('will undo an order stopped mid-shipment', async () => {
-  const booked = mockPromise<{ id: string }>();
+  const booked = mockPromise<{ id: string } | undefined>();
 
   vi.spyOn(courier, 'book').mockReturnValue(booked);
   vi.spyOn(courier, 'cancel');
@@ -165,4 +165,34 @@ it('will undo an order stopped mid-shipment', async () => {
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(order.charge).toBeUndefined();
   expect(order.notice).toBe(`Order c1 was not placed: ${order} was stopped.`);
+});
+
+it('will refund and backorder when no courier is free', async () => {
+  vi.spyOn(courier, 'book').mockResolvedValue(undefined);
+  vi.spyOn(stripe, 'refund');
+  vi.spyOn(inventory, 'release');
+  vi.spyOn(mail, 'send');
+
+  const order = SubmitOrder.new({ cart });
+
+  // back() is not a failure: the run ends through backorder's end
+  expect(await order.next()).toEqual({ orderId: undefined, tracking: '' });
+  expect(order.then.status).toBe('idle');
+  expect(stripe.refund).toHaveBeenCalledWith('ch_42');
+  expect(inventory.release).not.toHaveBeenCalled();
+  expect(mail.send).toHaveBeenCalledWith('a@b.c', 'https://orders.test/c1/backorder');
+  // rewind put pay's charge back; the back hook got the reason
+  expect(order.charge).toBeUndefined();
+  expect(order.notice).toBe('Order c1 was not placed: no courier');
+  expect(order.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+    ['next#1', undefined],
+    ['reserve#1', undefined],
+    ['pay#1', true],
+    ['ship#1', undefined],
+    ['receipt#1', true],
+    ['back#1', undefined],
+    ['backorder#1', undefined],
+    ['end#2', undefined]
+  ]);
+  expect(order.then.record.find((entry) => entry.key == 'back')).toMatchObject({ to: 'reserve#1', reason: 'no courier' });
 });
