@@ -1,4 +1,4 @@
-import State, { Component, get, ref, set } from '@expressive/react';
+import Model, { Component, get, ref, set } from '@expressive/react';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Playground from '@/components/Playground';
@@ -45,7 +45,7 @@ const themeTimeline = [
 
 const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
 
-class ThemeTrace extends State {
+class ThemeTrace extends Model {
   root = ref<HTMLDivElement>();
   private run = { current: 0 };
 
@@ -154,9 +154,9 @@ class ThemeControl extends Component {
 function ExprCode({ mode }: { mode: Mode }) {
   const Example = code /*tsx*/`
     import React from 'react';
-    import { Component, State } from '@expressive/mvc';
+    import { Component, Model } from '@expressive/mvc';
 
-    class Theme extends State {
+    class Theme extends Model {
       mode = '${mode}';
 
       toggle() {

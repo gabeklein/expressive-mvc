@@ -1,4 +1,4 @@
-import { Component, Context, State, unbind } from '@expressive/mvc';
+import { Component, Context, Model, unbind } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 
 import { resolve } from '../node/loader';
@@ -198,7 +198,7 @@ function unmountComponent(fiber: Fiber) {
 }
 
 function renderable(value: unknown): value is Renderable {
-  return value instanceof State && typeof (value as Renderable).render == 'function';
+  return value instanceof Model && typeof (value as Renderable).render == 'function';
 }
 
 function merge(previous: Record<string, any>, next: Record<string, any>) {

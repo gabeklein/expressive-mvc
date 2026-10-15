@@ -1,4 +1,4 @@
-import State, { Component as StateComponent, get, ref } from '@expressive/react';
+import Model, { Component as ModelComponent, get, ref } from '@expressive/react';
 import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
 
@@ -8,10 +8,10 @@ export function ComponentSection() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
         <div className="lg:-translate-y-6">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Component is renderable State.
+            Component is renderable Model.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
-            <code>Component</code> extends <code>State</code> for self-contained{" "}
+            <code>Component</code> extends <code>Model</code> for self-contained{" "}
             (<a href="#molecules" className="underline-offset-2 underline">or extensible</a>) display logic.
             It's renderable in JSX. Fields drive getters and <code>render()</code>{' '} method directly -
             destructure <code>this</code> as you would use hook.
@@ -34,7 +34,7 @@ type TipField = 'bill' | 'tipPercent';
 type TipStep = `${TipField}-input` | `${TipField}-field` |
   'tip' | 'total' | 'destructure' | 'jsx';
 
-class TipTrace extends State {
+class TipTrace extends Model {
   root = ref<HTMLDivElement>();
   private run = { current: 0 };
 
@@ -79,7 +79,7 @@ class TipTrace extends State {
   }
 }
 
-class TipDemo extends StateComponent {
+class TipDemo extends ModelComponent {
   bill = 50;
   tipPercent = 18;
   touched = false;
@@ -100,7 +100,7 @@ class TipDemo extends StateComponent {
   }
 }
 
-class TipCalculator extends StateComponent {
+class TipCalculator extends ModelComponent {
   demo = get(TipDemo);
 
   bill = 50;

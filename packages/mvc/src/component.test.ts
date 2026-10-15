@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
-import { State, event } from './state';
+import { Model, event } from './state';
 
 it('will default fallback to null and accept it as prop', () => {
   expect(Component.new().fallback).toBe(null);
@@ -91,7 +91,7 @@ it('will accept _ keys as props', async () => {
 });
 
 describe('twin construction', () => {
-  class Child extends State {}
+  class Child extends Model {}
 
   class Foo extends Component {
     child = new Child();
@@ -202,7 +202,7 @@ describe('render', () => {
 });
 
 describe('leading function argument', () => {
-  it('will run as init callback (State semantics)', () => {
+  it('will run as init callback (Model semantics)', () => {
     class Test extends Component {
       value = '';
     }
@@ -252,7 +252,7 @@ describe('props (static types)', () => {
   });
 
   it('will accept writable fields and callbacks only', () => {
-    const props: Component.StateProps<Test>[] = [
+    const props: Component.ModelProps<Test>[] = [
       { value: 1, onClick: () => {}, pair: 2, method() {} },
       // @ts-expect-error - get-only accessor is not a settable prop
       { computed: 4 },
@@ -265,7 +265,7 @@ describe('props (static types)', () => {
 });
 
 describe('for', () => {
-  class Session extends State {
+  class Session extends Model {
     name = 'none';
   }
 
@@ -348,7 +348,7 @@ describe('for', () => {
   it('will mount only a class it constructed', () => {
     const cleanup = vi.fn();
 
-    class Owned extends State {
+    class Owned extends Model {
       mount() {
         return cleanup;
       }
@@ -368,7 +368,7 @@ describe('for', () => {
   it('will hand mount to the next class when for changes', async () => {
     const log: string[] = [];
 
-    const tracked = (name: string) => class extends State {
+    const tracked = (name: string) => class extends Model {
       mount() {
         log.push(name + ':mount');
         return () => log.push(name + ':unmount');
@@ -405,7 +405,7 @@ describe('for', () => {
   it('will keep a mount defined before it provides', () => {
     const order: string[] = [];
 
-    class Owned extends State {
+    class Owned extends Model {
       mount() {
         order.push('owned');
         return () => order.push('owned:done');

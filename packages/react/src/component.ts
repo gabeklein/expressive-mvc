@@ -24,7 +24,7 @@ declare module '@expressive/mvc' {
      */
     mount?(): (() => void) | void;
 
-    /** @deprecated Only to satisfy host JSX. Use `this.get(State)` instead. */
+    /** @deprecated Only to satisfy host JSX. Use `this.get(Model)` instead. */
     readonly context: Context;
     /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
     readonly state: {};

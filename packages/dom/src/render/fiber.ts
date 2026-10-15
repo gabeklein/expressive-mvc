@@ -1,4 +1,4 @@
-import { Context, State } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 
 import type { Key, Node as RenderNode } from '../node/vnode';
 import type { Appearance, Claim } from '../style/claim';
@@ -16,7 +16,7 @@ interface Boundary {
   waiting?: Set<Fiber>;
 }
 
-interface Renderable extends State {
+interface Renderable extends Model {
   props?: Record<string, any>;
   key?: Key;
   fallback?: RenderNode | false;

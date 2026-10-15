@@ -1,6 +1,6 @@
 import { Context } from './context';
 import { set } from './field/set';
-import { State, adopt, trailing } from './state';
+import { Model, adopt, trailing } from './state';
 
 import type { Host } from './jsx-runtime';
 
@@ -19,14 +19,14 @@ type Acceptable<T> = {
   >;
 }[keyof T];
 
-type ForProps<T extends State> = {
+type ForProps<T extends Model> = {
   children?: Component.Node;
   fallback?: Component.Node | false;
   catch?: (error: Error, instance: Component) => Promise<void> | void;
 } & (
-  | { for: State.Extends<T>; is?: (instance: T) => void }
+  | { for: Model.Extends<T>; is?: (instance: T) => void }
   | { for: T | undefined; is?: never }
-) & { [K in Exclude<keyof T, keyof State> & Acceptable<T>]?: T[K] };
+) & { [K in Exclude<keyof T, keyof Model> & Acceptable<T>]?: T[K] };
 
 declare namespace Component {
   /**
@@ -63,9 +63,12 @@ declare namespace Component {
     catch?(error: Error, instance: T): Promise<void> | void;
   }
 
-  type StateProps<T extends State> = {
+  type ModelProps<T extends Model> = {
     [K in Exclude<keyof T, keyof Component> & Acceptable<T>]?: T[K];
   };
+
+  /** @deprecated Renamed to `ModelProps`. */
+  type StateProps<T extends Model> = ModelProps<T>;
 
   type RenderProps<T> = [T] extends [(props: infer P) => any]
     ? [keyof NonNullable<P>] extends [never]
@@ -74,19 +77,19 @@ declare namespace Component {
     : { children?: Component.Node };
 
   type Props<T extends Component<any>> =
-    & StateProps<T>
+    & ModelProps<T>
     & BaseProps<T>
     & RenderProps<T['render']>;
 }
 
-class Component<P = unknown> extends State {
+class Component<P = unknown> extends Model {
   /**
    * All JSX attributes passed to this component.
    * Includes state-derived props, render props, and built-in props like `is` and `fallback`.
    *
    * Will incorperate extra props you declare as props parameter in `render` method.
    */
-  declare readonly props: [P] extends [State] ? ForProps<P> : Component.Props<this>;
+  declare readonly props: [P] extends [Model] ? ForProps<P> : Component.Props<this>;
 
   /** Stable identity used when this instance is rendered in a collection. */
   declare readonly key: string;
@@ -196,7 +199,7 @@ Component.on({
 
 function provide(self: Component<any>) {
   let input: unknown;
-  let target: State | undefined;
+  let target: Model | undefined;
   let owned: { mount?(): unknown } | undefined;
   let mounted = false;
   let release: unknown;
@@ -233,8 +236,8 @@ function provide(self: Component<any>) {
       input = next;
       unmount();
 
-      if (State.is(next)) {
-        adopt(self, 'for', (target = new (next as State.Type)(rest)));
+      if (Model.is(next)) {
+        adopt(self, 'for', (target = new (next as Model.Type)(rest)));
         owned = target as typeof owned;
         is?.(target);
         if (mounted) release = owned!.mount?.();
@@ -242,7 +245,7 @@ function provide(self: Component<any>) {
       }
 
       owned = undefined;
-      adopt(self, 'for', (target = next instanceof State ? next : undefined));
+      adopt(self, 'for', (target = next instanceof Model ? next : undefined));
     }
 
     target?.set(rest);

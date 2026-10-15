@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, State } from '@expressive/mvc';
+import { Component, Model } from '@expressive/mvc';
 import { Fragment } from '../index';
 import { flushMicrotasks, mount } from '../../test.setup';
 
@@ -10,7 +10,7 @@ function Pair({ value }: { value: string }) {
 
 describe('reconcile', () => {
   it('will render a child once when its parent re-renders it', async () => {
-    class Count extends State {
+    class Count extends Model {
       value = 0;
     }
 

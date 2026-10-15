@@ -1,6 +1,6 @@
 import './App.css';
 
-import { State, Component } from '@expressive/mvc';
+import { Model, Component } from '@expressive/mvc';
 import { Link, Route, Router } from '@expressive/router';
 
 const DOCS = ['charter', 'ledger'];
@@ -24,7 +24,7 @@ export default () => (
   </div>
 );
 
-class Session extends State {
+class Session extends Model {
   user: string | null = null;
 
   toggle() {

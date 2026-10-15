@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, State } from '@expressive/mvc';
+import { Component, Model } from '@expressive/mvc';
 import { Portal, render } from '../index';
 import { flushMicrotasks, mockPromise, mount } from '../../test.setup';
 
@@ -14,7 +14,7 @@ describe('Portal', () => {
     second.className = 'second';
     document.body.append(first, second);
 
-    class Modal extends State {
+    class Modal extends Model {
       message = 'open';
       target = '#first';
 
@@ -48,7 +48,7 @@ describe('Portal', () => {
     const loaded = mockPromise<() => Component.Node>();
     const Lazy = () => loaded;
 
-    class Page extends State {
+    class Page extends Model {
       fallback = <i>wait</i>;
 
       render() {

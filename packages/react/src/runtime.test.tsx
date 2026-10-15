@@ -2,7 +2,8 @@ import { act, render } from '@testing-library/react';
 import { Activity, ReactNode, Suspense, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Component, pending, State } from '.';
+import { Model } from '@expressive/mvc';
+import { Component, pending } from '.';
 import { mockPromise, reactOnly } from '../test.setup';
 import { Runtime, useHook } from './runtime';
 
@@ -142,7 +143,7 @@ it('will advance revision on reset', () => {
 });
 
 reactOnly.describe('pending', () => {
-  class Data extends State {
+  class Data extends Model {
     value = 'a';
   }
 
@@ -384,9 +385,10 @@ describe('useReap', () => {
     vi.resetModules();
     vi.stubGlobal('FinalizationRegistry', undefined);
 
-    const { State } = await import('.');
+    await import('.');
+    const { Model } = await import('@expressive/mvc');
 
-    class Test extends State {
+    class Test extends Model {
       value = 'foo';
     }
 

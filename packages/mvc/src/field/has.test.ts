@@ -1,17 +1,17 @@
 import { vi, describe, it, expect } from 'vitest';
-import { State } from '../state';
+import { Model } from '../state';
 import { fires } from '../../test.setup';
 import { get } from './get';
 import { has } from './has';
 
 function reactive<T>(initial?: Iterable<T> | false | null): has.List<T>;
 
-function reactive<T extends State>(
-  Type: new (...args: State.Args<T>) => T
+function reactive<T extends Model>(
+  Type: new (...args: Model.Args<T>) => T
 ): has.Create<T>;
 
-function reactive<T extends State, K extends State.Field<T>>(
-  Type: new (...args: State.Args<T>) => T,
+function reactive<T extends Model, K extends Model.Field<T>>(
+  Type: new (...args: Model.Args<T>) => T,
   fromKey: K
 ): has.From<T, K>;
 
@@ -52,7 +52,7 @@ describe('factory', () => {
   });
 
   it('will throw if assigned', () => {
-    class Host extends State {
+    class Host extends Model {
       value = has<number>();
     }
 
@@ -65,7 +65,7 @@ describe('factory', () => {
   });
 
   it('will clear when owner is destroyed', () => {
-    class Host extends State {
+    class Host extends Model {
       value = has([1, 2, 3]);
     }
 
@@ -229,7 +229,7 @@ describe('subscriptions', () => {
 });
 
 describe('pool', () => {
-  class Item extends State {
+  class Item extends Model {
     value = 0;
   }
 
@@ -396,7 +396,7 @@ describe('pool', () => {
 });
 
 describe('pool lookup', () => {
-  class Item extends State {
+  class Item extends Model {
     id = '';
   }
 
@@ -439,7 +439,7 @@ describe('pool lookup', () => {
 });
 
 describe('pool key', () => {
-  class Cell extends State {
+  class Cell extends Model {
     at = '';
     color = 'white';
   }
@@ -461,12 +461,12 @@ describe('pool key', () => {
   });
 
   it('will own member spawned through key, typed as has.From', () => {
-    class Member extends State {
+    class Member extends Model {
       id = '';
       owner = get(Owner);
     }
 
-    class Owner extends State {
+    class Owner extends Model {
       members = has(Member, 'id');
     }
 
@@ -480,11 +480,11 @@ describe('pool key', () => {
 });
 
 describe('pool adoption', () => {
-  class Member extends State {
+  class Member extends Model {
     owner = get(Owner);
   }
 
-  class Owner extends State {
+  class Owner extends Model {
     members = has(Member);
   }
 
@@ -508,9 +508,9 @@ describe('pool adoption', () => {
   });
 
   it('will not destroy guest with owner', () => {
-    class Guest extends State {}
+    class Guest extends Model {}
 
-    class Host extends State {
+    class Host extends Model {
       members = has((value?: Guest) => value || new Guest());
     }
 
@@ -524,9 +524,9 @@ describe('pool adoption', () => {
   });
 
   it('will hold a member of one pool in another', () => {
-    class Thing extends State {}
+    class Thing extends Model {}
 
-    class Store extends State {
+    class Store extends Model {
       items = has(Thing);
       selected = has(Thing);
     }
@@ -547,9 +547,9 @@ describe('pool adoption', () => {
   });
 
   it('will own instances injected into pool', () => {
-    class Thing extends State {}
+    class Thing extends Model {}
 
-    class Store extends State {
+    class Store extends Model {
       items = has(Thing);
     }
 
@@ -565,7 +565,7 @@ describe('pool adoption', () => {
 
 describe('pool snapshot', () => {
   it('will return snapshot array with no args', () => {
-    class Item extends State {
+    class Item extends Model {
       value = 0;
     }
 
@@ -582,7 +582,7 @@ describe('pool snapshot', () => {
 });
 
 describe('pool subscriptions', () => {
-  class Item extends State {
+  class Item extends Model {
     value = 0;
   }
 

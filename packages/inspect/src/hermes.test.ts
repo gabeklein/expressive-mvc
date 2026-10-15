@@ -11,9 +11,9 @@ afterEach(() => {
 });
 
 it('will run without FinalizationRegistry or WeakRef', async () => {
-  const { State } = await import('@expressive/mvc');
+  const { Model } = await import('@expressive/mvc');
   const { attach, detach, models } = await import('./index');
-  class Thing extends State {
+  class Thing extends Model {
     value = 1;
   }
   attach();

@@ -1,6 +1,6 @@
 import './App.css';
 
-import { State, Component } from '@expressive/mvc';
+import { Model, Component } from '@expressive/mvc';
 import { Route, Router } from '@expressive/router';
 
 export default () => (
@@ -19,7 +19,7 @@ export default () => (
   </div>
 );
 
-class Application extends State {
+class Application extends Model {
   name = '';
   email = '';
   agreed = false;

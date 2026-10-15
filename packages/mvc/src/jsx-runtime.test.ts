@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { State } from './state';
+import { Model } from './state';
 
 import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './jsx-runtime';
 import { pending } from './dispatch';
@@ -83,7 +83,7 @@ describe('runtime', () => {
   });
 
   it('will settle headless once subscribers have replayed', async () => {
-    class Subject extends State {
+    class Subject extends Model {
       value = 0;
     }
 

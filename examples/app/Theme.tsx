@@ -1,4 +1,4 @@
-import State from '@expressive/react';
+import Model from '@expressive/react';
 import { Moon, Sun, SunMoon } from 'lucide-react';
 
 import styles from './Theme.module.css';
@@ -12,10 +12,10 @@ const next: Record<Mode, Mode> = {
   dark: 'system'
 };
 
-export default class Theme extends State {
+export default class Theme extends Model {
   mode: Mode;
 
-  constructor(...args: State.Args){
+  constructor(...args: Model.Args){
     super(args, () => {
       this.apply(document.documentElement);
     })

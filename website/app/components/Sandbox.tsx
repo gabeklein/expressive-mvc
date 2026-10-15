@@ -5,7 +5,7 @@ import {
   SandpackProvider,
   useSandpack,
 } from '@codesandbox/sandpack-react';
-import State, { ref, set } from '@expressive/react';
+import Model, { ref, set } from '@expressive/react';
 import { Columns2, PanelLeftOpen, Rows2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type {
@@ -27,7 +27,7 @@ import { intellisense } from './sandbox/intellisense';
 
 declare const __SANDBOX_DEPS__: Record<string, string>;
 
-class Panes extends State {
+class Panes extends Model {
   mode: 'preview' | 'code' = 'preview';
   stacked = false;
   ratio = 50;
@@ -433,7 +433,7 @@ function Switcher({
   );
 }
 
-class MediaQuery extends State {
+class MediaQuery extends Model {
   matches = false;
 
   query = set('', (value) => {

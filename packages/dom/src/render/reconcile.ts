@@ -1,4 +1,4 @@
-import { Context, State } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 
 import { childrenOf, isVNode } from '../node/vnode';
 import type { Key, Node as RenderNode, VNode } from '../node/vnode';
@@ -100,7 +100,7 @@ function compatible(fiber: Fiber, value: RenderNode) {
 }
 
 function source(value: RenderNode): RenderNode {
-  if (value instanceof State) return value.is;
+  if (value instanceof Model) return value.is;
 
   while (isCollection(value) && isCollection(Object.getPrototypeOf(value)))
     value = Object.getPrototypeOf(value);
