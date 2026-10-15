@@ -4297,6 +4297,126 @@ describe('commit', () => {
   });
 });
 
+describe('signal', () => {
+  const aborted = (signal: AbortSignal) =>
+    new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
+
+  it('will abort the signal of a step in flight on stop', async () => {
+    const attempt = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      async next() {
+        this.then.retry({ attempts: 3 });
+        attempt();
+        this.value = 1;
+        await aborted(this.then.signal);
+        this.later();
+      }
+
+      later() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.then.stop();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(attempt).toHaveBeenCalledTimes(1);
+    expect(test.value).toBe(0);
+    expect(test.then.status).toBe('stopped');
+    expect(test.then.error).toBeUndefined();
+    expect(test.then.record).toEqual([]);
+  });
+
+  it('will abort the signal of a step in flight on an outside end', async () => {
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.slow();
+      }
+
+      async slow() {
+        this.value = 1;
+        await aborted(this.then.signal);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.then.end('early');
+
+    expect(await result).toBe('early');
+    expect(test.value).toBe(0);
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'end']);
+  });
+
+  it('will abort the signal of a step in flight when another fails', async () => {
+    let signal!: AbortSignal;
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.slow(), this.fail());
+      }
+
+      async slow() {
+        signal = this.then.signal;
+        await aborted(signal);
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(signal.aborted).toBe(true);
+    expect(test.then.error).toEqual(new Error('boom'));
+  });
+
+  it('will abort the signal once its step settles', async () => {
+    const seen: boolean[] = [];
+    let signal!: AbortSignal;
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        signal = this.then.signal;
+        seen.push(signal.aborted);
+        this.second();
+      }
+
+      async second() {
+        seen.push(signal.aborted, this.then.signal === signal);
+      }
+    }
+
+    await Test.new().next();
+    expect(seen).toEqual([false, true, false]);
+  });
+
+  it('will throw if signal is read outside a step', () => {
+    class Test extends State {
+      then = run(this);
+    }
+
+    expect(() => Test.new().then.signal).toThrow('signal must be read inside a step.');
+  });
+});
+
 describe('failures', () => {
   it('will reject when a step throws synchronously', async () => {
     class Test extends State {

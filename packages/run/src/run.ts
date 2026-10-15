@@ -189,6 +189,11 @@ declare namespace Runner {
     retry(config: Runner.Retry): void;
     /** Inside a step: a point of no return - the step is not retried, restored or unwound. */
     commit(): void;
+    /**
+     * Inside a step: its `AbortSignal` - aborted on `stop()`, an outside `end`, a failure elsewhere,
+     * and once the step settles. A step rejecting with its reason is not a failure.
+     */
+    readonly signal: AbortSignal;
 
     [Symbol.iterator](): Iterator<Runner.Entry>;
   }
@@ -250,6 +255,11 @@ function run<T extends State>(self: T, options: Runner.Options = {}): Runner<T> 
     stop: { value: (options?: Runner.Stop) => control.stop(options) },
     retry: { value: () => outside('retry') },
     commit: { value: () => outside('commit') },
+    signal: {
+      get() {
+        throw new Error('signal must be read inside a step.');
+      }
+    },
     [Symbol.iterator]: {
       value(this: Runner.Controller) {
         return this.record[Symbol.iterator]();
@@ -436,6 +446,9 @@ class Control extends State {
     if (!run || run._halted || run._ending) return;
 
     run.release();
+
+    for (const frame of run.flight()) frame._abort.abort();
+
     run.end(run.node('end', value === undefined ? [] : [value]));
   }
 
@@ -621,7 +634,7 @@ class Run extends State {
         } catch (error) {
           let irreversible = [...frame._lost];
           let fixed = irreversible.length || frame._committed;
-          let retry = !frame._settled && !fixed && frame._retry && attempt < frame._retry.attempts;
+          let retry = !frame._settled && !fixed && !frame._abort.signal.aborted && frame._retry && attempt < frame._retry.attempts;
 
           if (fixed)
             this.record.push({ ...frame.journal(), error, ...irreversible.length && { irreversible }, ...frame._retry && { attempt } });
@@ -637,7 +650,7 @@ class Run extends State {
 
           await new Promise((resolve) => (delay ? setTimeout(resolve, delay) : resolve(0)));
 
-          if (this._halted) throw error;
+          if (frame._abort.signal.aborted) throw error;
 
           Object.assign(frame, { _items: [], _wrote: new Set(), _prior: {}, _violation: undefined, _late: undefined });
           frame._armed++;
@@ -648,7 +661,9 @@ class Run extends State {
       if (!frame._lost.size && !frame._committed) this.restore(frame._prior, frame.touched());
       if (undo) throw error;
 
-      this.halt('failed', error);
+      const { signal } = frame._abort;
+
+      if (!signal.aborted || error !== signal.reason) this.halt('failed', error);
     } finally {
       this.frames.delete(frame);
       control.active = this.flight().at(-1)?.key;
@@ -1022,6 +1037,7 @@ class Frame extends State {
       then: { value: view },
       end: { value: (value?: unknown) => this.issue('end', value === undefined ? [] : [value]) },
       retry: { value: (config: Runner.Retry) => void (this._retry = config) },
+      signal: { get: () => this._abort.signal },
       commit: {
         value: () => {
           if (this._settled) throw new Error(`${this.key} has settled; commit cannot run.`);
