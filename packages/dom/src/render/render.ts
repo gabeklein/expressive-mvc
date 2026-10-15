@@ -8,7 +8,7 @@ import type { Container, Fiber } from './fiber';
 import { unmountFiber } from './mount';
 import { reconcile } from './reconcile';
 import { consume, renderedAppearance } from './style';
-import { unwait, settle, suspend } from './suspense';
+import { settle, suspend, unwait } from './suspense';
 
 const roots = new WeakMap<Container, () => void>();
 const focusing: Element[] = [];
@@ -103,4 +103,3 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
 }
 
 export { attempt, depth, focusing, pass, passiveRender, render };
-export type { Container };
