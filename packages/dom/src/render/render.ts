@@ -5,7 +5,7 @@ import { Fragment } from '@expressive/mvc/jsx-runtime';
 
 import { call, commit, dispose, enter } from './adapter';
 import { latest, same, track, untrack } from './hot';
-import { resolve } from './loader';
+import { resolve } from '../node/loader';
 import type { Scope } from './adapter';
 import {
   appearanceRoot,
@@ -13,13 +13,13 @@ import {
   createAppearanceToken,
   emitClass,
   enterAppearance
-} from './appearance-protocol';
-import type { AppearanceContext, ResolvedAppearance } from './appearance-protocol';
+} from '../style/protocol';
+import type { AppearanceContext, ResolvedAppearance } from '../style/protocol';
 import { attach, batched, fragment, inserted } from './commits';
-import { applyDeclarations } from './declarations';
+import { applyDeclarations } from '../style/declarations';
 import { afterFlush, claim as dequeue, release, schedule, settle as absorb, transition } from './scheduler';
-import { PORTAL, childrenOf, isVNode } from './vnode';
-import type { Key, Node as RenderNode, VNode } from './vnode';
+import { PORTAL, childrenOf, isVNode } from '../node/vnode';
+import type { Key, Node as RenderNode, VNode } from '../node/vnode';
 
 type Container = Element | DocumentFragment;
 type Kind = 'collection' | 'component' | 'element' | 'fragment' | 'function' | 'portal' | 'text';

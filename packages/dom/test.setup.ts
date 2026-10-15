@@ -2,8 +2,8 @@ import { afterEach, vi } from 'vitest';
 import type { Component, State } from '@expressive/mvc';
 
 import { mockPromise } from '../mvc/test.setup';
-import { render } from './src/render';
-import { vnode } from './src/vnode';
+import { render } from './src/render/render';
+import { vnode } from './src/node/vnode';
 
 afterEach(() => {
   document.body.replaceChildren();

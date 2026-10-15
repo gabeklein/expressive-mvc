@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';
-import { mockError, mockPromise } from '../test.setup';
+import { mockError, mockPromise } from '../../test.setup';
 
 const error = mockError();
 

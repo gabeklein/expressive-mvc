@@ -2,9 +2,9 @@ import { Fragment, host } from '@expressive/mvc/jsx-runtime';
 import type { Component, State } from '@expressive/mvc';
 import type { JSX as Base } from '@expressive/mvc/jsx-runtime';
 
-import { childrenOf, isVNode, vnode } from './vnode';
-import type { Node, VNode } from './vnode';
-import type { Attributes as Loaded, Module } from './loader';
+import { childrenOf, isVNode, vnode } from './node/vnode';
+import type { Node, VNode } from './node/vnode';
+import type { Attributes as Loaded, Module } from './node/loader';
 
 type Words =
   | 'AnimationCancel' | 'AnimationEnd' | 'AnimationIteration' | 'AnimationStart'

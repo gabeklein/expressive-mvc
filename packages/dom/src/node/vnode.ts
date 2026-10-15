@@ -1,6 +1,6 @@
 import { Fragment as FRAGMENT } from '@expressive/mvc/jsx-runtime';
 import type { has, map } from '@expressive/mvc';
-import type { JSX as Runtime } from './jsx-runtime';
+import type { JSX as Runtime } from '../jsx-runtime';
 
 const VNODE = Symbol('@expressive/dom.vnode');
 const PORTAL = Symbol('@expressive/dom.portal');

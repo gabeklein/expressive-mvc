@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State, pending, set } from '@expressive/mvc';
-import { Portal, render } from './index';
-import { flushMicrotasks, html, lazy, mockPromise, mount, place, track, until } from '../test.setup';
+import { Portal, render } from '../index';
+import { flushMicrotasks, html, lazy, mockPromise, mount, place, track, until } from '../../test.setup';
 
 describe('suspense and recovery', () => {
   it('will show a Component fallback until a loaded view resolves', async () => {
