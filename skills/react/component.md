@@ -1,6 +1,6 @@
 # Expressive MVC - Component
 
-Runnable source (complete programs, served as HTML): [`props`](https://expressive.dev/examples/component/props), [`subcomponents`](https://expressive.dev/examples/component/subcomponents), [`lifecycle`](https://expressive.dev/examples/component/lifecycle), [`injection`](https://expressive.dev/examples/component/injection), [`headless`](https://expressive.dev/examples/component/headless), [`suspense`](https://expressive.dev/examples/component/suspense), [`boundary`](https://expressive.dev/examples/component/boundary), [`custom`](https://expressive.dev/examples/component/custom), plus [`extension`](https://expressive.dev/examples/composition/extension) for render composition.
+Runnable source (complete programs, served as HTML): [`props`](https://expressive.dev/examples/component/props), [`subcomponents`](https://expressive.dev/examples/component/subcomponents), [`lifecycle`](https://expressive.dev/examples/component/lifecycle), [`injection`](https://expressive.dev/examples/component/injection), [`headless`](https://expressive.dev/examples/component/headless), [`suspense`](https://expressive.dev/examples/component/suspense), [`boundary`](https://expressive.dev/examples/component/boundary), [`custom`](https://expressive.dev/examples/component/custom).
 
 `Component` extends `State` - a persistent class instance owning its rendering, lifecycle, and behavior.
 
@@ -174,71 +174,9 @@ class Accordion extends Toggle {
 
 Base owns behavior + structure, subclass fills in rendering: `<DarkModeSwitch />`, `<Accordion title="FAQ">...</Accordion>`.
 
-## Render Composition
-
-A subclass `render()` **composes** with the base instead of replacing it. Each `render()` up the prototype chain wraps the one below, base-outermost, with inner output passed as `props.children`. No `super.render()`.
-
-```tsx
-class Frame extends Component {
-  render(props = {} as { children?: ReactNode }) {
-    return (
-      <section className="frame">
-        <header>Frame</header>
-        {props.children}
-      </section>
-    );
-  }
-}
-
-class Page extends Frame {
-  body = 'Hello';
-
-  render() {
-    return <p>{this.body}</p>;
-  }
-}
-
-// <Page /> renders:
-// <section class="frame"><header>Frame</header><p>Hello</p></section>
-```
-
-Deeper levels nest the same way - each subclass becomes its parent's `children`. Every layer binds to the same live instance and reactive `this`. A base primitive owns shared chrome/suspense/context once; subclasses author only content.
+A subclass `render()` replaces the base's like any method - `super.render(props)` wraps it.
 
 Extend only when the subclass *is a kind of* the base (`Nav` is a `Link`). An add-on - resize, collapse, drag - wraps as a mounted Component (`<Resize>{children}</Resize>`): extending parks the add-on's fields on the subclass's every snapshot, and removing it means rewriting the class rather than dropping the wrap.
-
-`render` is sealed at bootstrap as the **single** composition seam - every other member (methods, getters, subcomponents, lifecycle hooks) overrides with standard replace semantics. Rationale: a reactive base's render is chrome *plus subscriptions and boundaries* the subclass needs, and override-with-`super.render()` makes every subclass remember the call - one forgotten `super` silently drops the base's boundaries. Composing lets the base own its chrome exactly once (see [design.md](../design.md)).
-
-**Footgun:** a wrapper render that never reads `props.children` silently drops everything below it - and since the `children` getter is lazy, the dropped layer never runs. A base meant to wrap subclasses must declare a `props` parameter and render `props.children`.
-
-### Letting a subclass replace the base (opt-out of wrapping)
-
-A base can *defer* to a subclass's render instead of wrapping it - for a leaf primitive (an `<a>`, an `<input>`) usable alone yet fully overridable. The base decides, not the subclass: it detects subclass content and returns it as-is.
-
-The signal is identity - composition synthesizes a fresh `children` getter, so when a subclass authored a render, the `children` the base receives differs from `this.props.children`:
-
-```tsx
-class Link extends Component {
-  to = '';
-
-  render({ children, ...rest } = {} as Link.Props) {
-    // A subclass authored its own render; it arrives as our `children`
-    // (base render is outer). Defer to it instead of wrapping in an anchor.
-    if (children !== this.props.children) return children;
-
-    return <a {...rest} href={this.to}>{children}</a>;
-  }
-}
-
-// <Link to="/x">hi</Link>      -> <a href="/x">hi</a>   (base renders)
-// class Nav extends Link { render() { return <a className="nav" .../> } }
-// <Nav to="/x">hi</Nav>        -> <a class="nav" .../>   (base defers)
-```
-
-Plain `<Link>` and render-less subclasses (`class Foo extends Link {}`) keep the anchor - their `children` *is* `this.props.children`.
-
-A subclass can't unilaterally refuse wrapping - that would turn legitimate wrapping into a runtime error and require knowing its ancestor's behavior. Keeping the choice in the base preserves "works standalone *and* overridable."
-
-**React hooks in a render layer.** Reactivity comes from `this`, so hooks are rarely needed, but allowed. The composed chain runs in a single host render, so all layers' hooks stack into one component - fine if the chain as a whole obeys the rules of hooks. A hook in a layer below a wrapper that *conditionally* renders `props.children` runs only sometimes and breaks them. When a layer needs isolated hooks/subscription/boundary, make it a PascalCase subcomponent (`<this.Panel />`) - each is its own component; render layers fold into one.
 
 ## Persistent Instance
 

@@ -135,13 +135,15 @@ function createFrame(from: Component, context: Context, children: unknown) {
 function render(from: Component, context: Context) {
   const { createElement, dedupe } = Runtime;
   const attempt = dedupe?.(from, context);
-  const { is: owner, render } = from;
+  const { is: owner } = from;
+  // Read before bootstrap shadows an instance `render` with this host.
+  const own = Object.prototype.hasOwnProperty.call(owner, 'render') && owner.render;
   const teardown = () => {
     attempt?.remove();
     context.pop();
   };
 
-  const Render = () => render.call(from, from.props);
+  const Render = () => (own || Object.getPrototypeOf(owner).render).call(from, from.props);
   const Component = () => {
     from = useWatch(from, () => {
       const release = owner.mount?.();

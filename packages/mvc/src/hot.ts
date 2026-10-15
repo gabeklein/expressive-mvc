@@ -1,4 +1,3 @@
-import { rechain } from './component';
 import { event } from './observable';
 import {
   State,
@@ -241,7 +240,6 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
   const output: Record<string, unknown> = { ...classes };
   const refresh = new Set<State>();
   const replace: Replaced[] = [];
-  let patched = false;
 
   track();
 
@@ -262,7 +260,6 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
 
     try {
       for (const state of patch(prev.type as State.Extends, type, prev.own)) refresh.add(state);
-      patched = true;
       known[name] = { ...next, type: prev.type };
       output[name] = prev.type;
     } catch (error) {
@@ -271,8 +268,6 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
       known[name] = next;
     }
   }
-
-  if (patched) rechain();
 
   for (const state of refresh) event(state, REFRESH);
 

@@ -742,8 +742,8 @@ describe('state props on rerender', () => {
   });
 });
 
-describe('render chain', () => {
-  it('will stay reactive across composed levels', async () => {
+describe('render override', () => {
+  it('will stay reactive through super.render', async () => {
     class Frame extends Component {
       title = 'Base';
 
@@ -761,7 +761,7 @@ describe('render chain', () => {
       body = 'Hello';
 
       render() {
-        return <p>{this.body}</p>;
+        return super.render({ children: <p>{this.body}</p> });
       }
     }
 
@@ -771,14 +771,36 @@ describe('render chain', () => {
     expect(screen).toHaveText('Base');
     expect(screen).toHaveText('Hello');
 
-    // Both the super's and the subclass's reactive reads drive updates.
     await act(async () => {
       instance.title = 'Updated';
-      instance.body = 'World';
     });
 
     expect(screen).toHaveText('Updated');
+
+    await act(async () => {
+      instance.body = 'World';
+    });
+
     expect(screen).toHaveText('World');
+  });
+
+  it('will replace base render in a subclass', () => {
+    class Frame extends Component {
+      render() {
+        return <article>frame</article>;
+      }
+    }
+
+    class Page extends Frame {
+      render() {
+        return <p>page</p>;
+      }
+    }
+
+    render(<Page />);
+
+    expect(screen).toHaveText('page');
+    expect(screen).not.toHaveText('frame');
   });
 });
 

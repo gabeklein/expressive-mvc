@@ -272,7 +272,7 @@ Both `match`/`active` are **lazy**: a `Link` whose render reads neither stays in
 
 #### Active links by subclassing
 
-There is no `NavLink` - extend `Link` and read `active`/`match` to express activeness however the host wants (a `className` on web, a `style` on native). A subclass that authors its own `render` **fully replaces** the base anchor rather than nesting inside it (see render composition in the Component skill): the base detects subclass-authored content and defers. `route` and `go` are `protected` so the subclass can wire its own anchor.
+There is no `NavLink` - extend `Link` and read `active`/`match` to express activeness however the host wants (a `className` on web, a `style` on native). A subclass that authors its own `render` replaces the base anchor. `route` and `go` are `protected` so the subclass can wire its own anchor.
 
 > **Publishing a host-agnostic package** (built on `@expressive/mvc`, no adapter): annotate every overridden `render` as `: Component.Node`. Unannotated, the `.d.ts` emitter bakes the adapter-less fallback type in, and the subclass fails JSX checks for consumers. Invisible inside a monorepo that maps to source.
 
@@ -352,6 +352,8 @@ Omit `super.children` and caller-passed children (e.g. a `<Route none>`) are dro
 - **Own scope only.** Outside walks - sibling `as` arbitration, a parent recursing into this element's JSX - see only the JSX, like class-field `to` below.
 - A contributed `none` turns a leaf into a see-through scope (prefix match).
 - Contribute in `children`, never `render()` - matching reads it without rendering.
+
+A subclass `render()` is the route's page: Route keeps its frame - arbitration, guards, redirects, match gate - and runs the page only when matched. `super.render()` places the default content (`as` around `children`).
 
 ## Lexical matching - the limits
 

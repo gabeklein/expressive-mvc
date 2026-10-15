@@ -292,7 +292,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ### Design intent
 
-- [design.md](design.md) - why the library is shaped this way: classes hold models not views, the "MVC" mapping, the two-verb `get`/`set` surface, render composition as a designated seam, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental.** For positioning against alternatives (Zustand, Jotai, MobX, Redux Toolkit, plain Context), see [expressive.dev/llm/comparisons.md](https://expressive.dev/llm/comparisons.md).
+- [design.md](design.md) - why the library is shaped this way: classes hold models not views, the "MVC" mapping, the two-verb `get`/`set` surface, render as an ordinary override, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental.** For positioning against alternatives (Zustand, Jotai, MobX, Redux Toolkit, plain Context), see [expressive.dev/llm/comparisons.md](https://expressive.dev/llm/comparisons.md).
 
 ### Golden path
 
@@ -314,7 +314,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 ### React
 
 - [react/react.md](react/react.md) - use(), State.use(), State.get() (optional lookup, required values `get(true)`, computed selector), providing state, transparent writes, ForceRefresh, Vite hot reload
-- [react/component.md](react/component.md) - Component class, props, children, render composition, subcomponent extension points, error boundaries
+- [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controllers, router bridge, host-agnostic model + view adapter, presence boundary, contextual children, debounce, effects
 
 ### JSX

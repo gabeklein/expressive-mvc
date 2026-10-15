@@ -138,7 +138,7 @@ This guide finds candidates, not the conversion. Once a migration is approved, f
 
 ## Design Questions
 
-Do not infer intent or turn unfamiliar syntax into a fit finding. [The recorded design decisions](../design.md) cover classes, the MVC name, `get`/`set`, render composition, and lifecycle hooks. Adoption arguments and head-to-head positioning belong in the website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md) pages.
+Do not infer intent or turn unfamiliar syntax into a fit finding. [The recorded design decisions](../design.md) cover classes, the MVC name, `get`/`set`, render overrides, and lifecycle hooks. Adoption arguments and head-to-head positioning belong in the website-only [why](https://expressive.dev/llm/why.md) and [comparisons](https://expressive.dev/llm/comparisons.md) pages.
 
 ## Red Flags (when NOT to recommend)
 
