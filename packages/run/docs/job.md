@@ -1,12 +1,12 @@
 # Job - The Contract
 
 ```ts
-class Job extends State {
+class Job extends Model {
   readonly then = run(this, { base: Job, rewind: this.constructor.rewind });
 }
 ```
 
-`Job` is a `State` with `then = run(this, { base: Job })` built in - every subclass's methods are steps - and its hooks declared as optional members - subclasses get autocomplete, `override` catches a misspelling, a signature is checked by declaration. None is required.
+`Job` is a `Model` with `then = run(this, { base: Job })` built in - every subclass's methods are steps - and its hooks declared as optional members - subclasses get autocomplete, `override` catches a misspelling, a signature is checked by declaration. None is required.
 
 | member | visibility | when it runs |
 | --- | --- | --- |
@@ -37,7 +37,7 @@ class SubmitOrder extends Job {
 
 ## Escape hatch: `run(this, options)`
 
-For a class that cannot extend `Job` - it already extends another `State` or a `Component`. The same runtime without the base class: the field holds the `Runner`. Hooks are found by name, `back` and `exit` included, and unchecked - or passed as options, typed. Prefer `Job` otherwise.
+For a class that cannot extend `Job` - it already extends another `Model` or a `Component`. The same runtime without the base class: the field holds the `Runner`. Hooks are found by name, `back` and `exit` included, and unchecked - or passed as options, typed. Prefer `Job` otherwise.
 
 ```ts
 class Sync extends Remote {

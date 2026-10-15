@@ -1,12 +1,12 @@
-# `Job` - Runnable State
+# `Job` - Runnable Model
 
 ```ts
 import { Job } from '@expressive/run';
 ```
 
-A `Job` is a `State` whose methods are steps: a step schedules the next by calling it, fields carry data between steps. `next(...args)` is the entry - called from outside, it starts a run; awaiting an idle instance starts it too, only if `next` takes no arguments (an optional one needs a default - [runs.md](runs.md#awaiting-the-instance---start-or-join)). `then` is the controller - status, journal, result - so the instance itself is awaitable, typed by `end`. `Job` declares the contract - `next`, `end`, hooks - as optional members ([job.md](job.md)).
+A `Job` is a `Model` whose methods are steps: a step schedules the next by calling it, fields carry data between steps. `next(...args)` is the entry - called from outside, it starts a run; awaiting an idle instance starts it too, only if `next` takes no arguments (an optional one needs a default - [runs.md](runs.md#awaiting-the-instance---start-or-join)). `then` is the controller - status, journal, result - so the instance itself is awaitable, typed by `end`. `Job` declares the contract - `next`, `end`, hooks - as optional members ([job.md](job.md)).
 
-Inputs are fields - `X.new({ cart })` assigns them as any State's constructor does - or `next`'s arguments. `new()` stays mvc's setup hook; nothing starts on its own.
+Inputs are fields - `X.new({ cart })` assigns them as any Model's constructor does - or `next`'s arguments. `new()` stays mvc's setup hook; nothing starts on its own.
 
 ```ts
 class SubmitOrder extends Job {
@@ -60,7 +60,7 @@ order.then.status;                    // 'idle' - reactive
 const { orderId } = await order;      // runs next(), typed by end()
 ```
 
-`Job` is the canonical form. The escape hatch, for a class that cannot extend `Job` - it already extends another `State` or a `Component` - is `then = run(this)`: the same runtime - steps from the instance's class only, the parent's methods plain; hooks found by name, or passed as options ([job.md](job.md#escape-hatch-runthis-options)).
+`Job` is the canonical form. The escape hatch, for a class that cannot extend `Job` - it already extends another `Model` or a `Component` - is `then = run(this)`: the same runtime - steps from the instance's class only, the parent's methods plain; hooks found by name, or passed as options ([job.md](job.md#escape-hatch-runthis-options)).
 
 ```ts
 class Sync extends Remote {

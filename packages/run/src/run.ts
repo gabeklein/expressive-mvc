@@ -1,4 +1,4 @@
-import { get, has, map, State, unbind } from '@expressive/mvc';
+import { get, has, map, Model, unbind } from '@expressive/mvc';
 import { event, listener, touch } from '@expressive/mvc/observable';
 
 type Collection = has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>;
@@ -45,7 +45,7 @@ declare namespace Runner {
 
   type Result<T> = (T & { end: unknown })['end'] extends (...args: infer A) => infer R
     ? Awaited<R> extends void ? A[0] : Awaited<R>
-    : State.Values<T>;
+    : Model.Values<T>;
 
   /** A planned item: a step, a parallel group (`group`), or a wait (`answers`). */
   interface Node {
@@ -114,13 +114,13 @@ declare namespace Runner {
     | { status: 'failed'; error: unknown }
     | { status: 'stopped'; error: unknown };
 
-  interface Options<T extends State = State> {
+  interface Options<T extends Model = Model> {
     /**
      * The topmost class whose methods are steps and hooks - classes above it stay plain.
      * The instance must extend it. Default: the instance's own class only - a runner meant
      * to be extended passes itself.
      */
-    base?: abstract new (...args: any[]) => State;
+    base?: abstract new (...args: any[]) => Model;
     /** Keep `prior`/`patch` per entry; the unwind restores committed steps' fields. */
     rewind?: boolean;
     /** Before each step, after the class's `before`. */
@@ -143,7 +143,7 @@ declare namespace Runner {
     error: unknown;
   }
 
-  interface Controller<T extends State = State> {
+  interface Controller<T extends Model = Model> {
     /**
      * Inside a step: call `each` per item - a function issuing a step, or a step itself -
      * and run the tokens as one parallel group.
@@ -226,7 +226,7 @@ declare namespace Runner {
     [Symbol.iterator](): Iterator<Runner.Entry>;
   }
 
-  interface Thenable<T extends State = State> {
+  interface Thenable<T extends Model = Model> {
     /** Idle, runs `next()` - rejecting if it takes arguments; then settles once the active run and every queued one have, with the last one's result. */
     <R1 = Runner.Result<T>, R2 = never>(
       onfulfilled?: ((value: Runner.Result<T>) => R1 | PromiseLike<R1>) | null,
@@ -241,14 +241,14 @@ declare namespace Runner {
  * The controller, and a thenable - so the instance with it as `then`. Awaiting it joins the
  * active run; idle, it runs `next()`, or rejects if `next` takes arguments.
  */
-type Runner<T extends State = State> = Runner.Controller<T> & Runner.Thenable<T>;
+type Runner<T extends Model = Model> = Runner.Controller<T> & Runner.Thenable<T>;
 
 /**
- * Make this State runnable: its methods become steps, each scheduling the next, and the
+ * Make this Model runnable: its methods become steps, each scheduling the next, and the
  * returned Runner is the controller - status, journal, result. `next()` starts a run.
  * `_`-prefixed methods are helpers; `before`/`after`-prefixed ones, `back` and `exit` are hooks.
  */
-function run<T extends State>(self: T, options: Runner.Options<T> = {}): Runner<T> {
+function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<T> {
   const { base } = options;
 
   if (base && !(self instanceof base)) throw new Error(`${self} does not extend ${base.name}.`);
@@ -305,7 +305,7 @@ function run<T extends State>(self: T, options: Runner.Options<T> = {}): Runner<
   const { _hooks: hooks } = control;
   const top = Object.getPrototypeOf(base ? base.prototype : Object.getPrototypeOf(self));
 
-  for (let proto = Object.getPrototypeOf(self); proto !== State.prototype && proto !== top; proto = Object.getPrototypeOf(proto))
+  for (let proto = Object.getPrototypeOf(self); proto !== Model.prototype && proto !== top; proto = Object.getPrototypeOf(proto))
     for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
       let method = desc.get && unbind(desc.get) !== desc.get;
       let skip = !method || key == 'new' || key[0] == '_' || Object.hasOwn(self, key);
@@ -353,10 +353,10 @@ function run<T extends State>(self: T, options: Runner.Options<T> = {}): Runner<
 }
 
 /**
- * A runnable State: its methods are steps, `next()` starts a run and `await job` joins it,
+ * A runnable Model: its methods are steps, `next()` starts a run and `await job` joins it,
  * resolving with the result of `end`. The members below are the contract - each optional.
  */
-class Job extends State {
+class Job extends Model {
   /** Keep `prior`/`patch` per entry and restore committed steps' fields on unwind. */
   declare static readonly rewind?: boolean;
 
@@ -382,7 +382,7 @@ class Job extends State {
   protected exit?(outcome: Runner.Outcome): void;
 }
 
-class Control extends State {
+class Control extends Model {
   status: Runner.Status = 'idle';
   active: string | undefined = undefined;
   runs = 0;
@@ -390,7 +390,7 @@ class Control extends State {
   queue = has<Ticket>();
   run = new Run();
 
-  _self!: State;
+  _self!: Model;
   _runner!: object;
   _rewind?: boolean = undefined;
   _steps = new Map<string, Function>();
@@ -514,7 +514,7 @@ class Control extends State {
   }
 }
 
-class Run extends State {
+class Run extends Model {
   control = get(Control);
   record = has<Runner.Entry>();
   frames = has(Frame);
@@ -1054,13 +1054,13 @@ class Run extends State {
   }
 }
 
-class Frame extends State {
+class Frame extends Model {
   run = get(Run);
   id = '';
   key = '';
   args: unknown[] = [];
 
-  _proxy!: State;
+  _proxy!: Model;
   _view?: Runner.Controller = undefined;
   _refs = new Map<string, Function>();
   _abort = new AbortController();
@@ -1353,7 +1353,7 @@ class Frame extends State {
   }
 }
 
-class Wait extends State {
+class Wait extends Model {
   run = get(Run);
   id = '';
   step = '';
@@ -1454,7 +1454,7 @@ function lost({ value, raw }: Held, signal: unknown) {
 }
 
 function dead(value: unknown) {
-  return value instanceof State && value.get(null);
+  return value instanceof Model && value.get(null);
 }
 
 function revert({ value, raw }: Held) {

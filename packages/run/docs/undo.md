@@ -209,7 +209,7 @@ A turn failing mid-step loses its own pushes; with rewind, a failing run leaves 
 
 ### Irreversible
 
-Some changes cannot be put back: a pool member removed - by `delete`, `clear` or its own destruction - and a map value that was destroyed when removed or replaced (an owned `State`). A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`. Detected in both modes - it governs retry and where the unwind stops.
+Some changes cannot be put back: a pool member removed - by `delete`, `clear` or its own destruction - and a map value that was destroyed when removed or replaced (an owned `Model`). A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`. Detected in both modes - it governs retry and where the unwind stops.
 
 - The unwind stops at the first irreversible entry, newest first. Entries after it are undone; it and every entry before it stay applied, without `undone`; it gets `halted: true`; `error` stays the original failure. `console.warn` names it once: `<instance> stopped unwinding at drop#1: items cannot be restored.`
 - A failing step that made one keeps its writes - fields included - and is journaled with `error` and `irreversible`, so the unwind halts there and nothing before it is undone.

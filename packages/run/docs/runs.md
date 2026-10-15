@@ -64,7 +64,7 @@ await agent;                                      // idle - rejects; await agent
 A `set` factory returning the instance resolves to the result, suspending until then:
 
 ```ts
-class Checkout extends State {
+class Checkout extends Model {
   receipt = set(async () => SubmitOrder.new({ cart }));
 }
 ```

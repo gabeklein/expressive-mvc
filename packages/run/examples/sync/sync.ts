@@ -1,9 +1,9 @@
-import { has, State } from '@expressive/mvc';
+import { has, Model } from '@expressive/mvc';
 import { run } from '@expressive/run';
 
 import { api, type Item } from './services';
 
-export class Feed extends State {
+export class Feed extends Model {
   items = has<Item>();
   cursor = '';
 

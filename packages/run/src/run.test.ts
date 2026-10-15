@@ -1,4 +1,4 @@
-import { has, map, set, State } from '@expressive/mvc';
+import { has, map, set, Model } from '@expressive/mvc';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockPromise, mockUncaught, mockWarn } from '../test.setup';
@@ -8,7 +8,7 @@ describe('steps', () => {
   it('will run steps from next through to end', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(seed: number) {
@@ -50,7 +50,7 @@ describe('steps', () => {
   });
 
   it('will not touch the prototype', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {}
@@ -68,7 +68,7 @@ describe('steps', () => {
   });
 
   it('will not wrap new or getters', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 2;
       ready = false;
@@ -96,7 +96,7 @@ describe('steps', () => {
     const work = mockPromise();
     const second = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -129,7 +129,7 @@ describe('steps', () => {
   it('will run steps in sequence, each through what it schedules', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -160,7 +160,7 @@ describe('steps', () => {
   it('will not run a step awaited inside a step', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -183,7 +183,7 @@ describe('steps', () => {
   });
 
   it('will loop by calling next inside a step', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       count = 0;
 
@@ -205,7 +205,7 @@ describe('steps', () => {
   });
 
   it('will record which fields each step wrote', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       a = 0;
       b = '';
@@ -230,7 +230,7 @@ describe('steps', () => {
   });
 
   it('will record prior and patch with rewind', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       a = 0;
       b = '';
@@ -256,10 +256,10 @@ describe('steps', () => {
     ]);
   });
 
-  it('will bind State methods to the instance', async () => {
+  it('will bind Model methods to the instance', async () => {
     let values: Record<string, unknown> | undefined;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 1;
 
@@ -282,7 +282,7 @@ describe('steps', () => {
   it('will run helpers on the instance', async () => {
     let self: unknown;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -304,7 +304,7 @@ describe('steps', () => {
   });
 
   it('will not journal writes of a helper', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
       label = '';
@@ -329,7 +329,7 @@ describe('steps', () => {
     const fn = () => 1;
     let seen: unknown;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       fn = fn;
 
@@ -343,7 +343,7 @@ describe('steps', () => {
   });
 
   it('will accept writes from outside', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       mode = 'ask';
 
@@ -367,7 +367,7 @@ describe('steps', () => {
   });
 
   it('will type the result from end', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -389,7 +389,7 @@ describe('steps', () => {
   });
 
   it('will type the result from a protected end', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       protected async next() {
@@ -408,7 +408,7 @@ describe('steps', () => {
   });
 
   it('will type the result from an async end', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       protected async next() {
@@ -427,7 +427,7 @@ describe('steps', () => {
   });
 
   it('will type the result from the argument of an async end', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       protected async next() {
@@ -452,7 +452,7 @@ describe('groups', () => {
     const a = mockPromise();
     const b = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -500,7 +500,7 @@ describe('groups', () => {
   it('will join each member through what it schedules', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -534,7 +534,7 @@ describe('groups', () => {
   it('will attribute writes to their own step', async () => {
     const a = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       x = 0;
       y = 0;
@@ -567,7 +567,7 @@ describe('groups', () => {
   it('will map items to a group', async () => {
     const seen: unknown[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(items: string[]) {
@@ -586,7 +586,7 @@ describe('groups', () => {
   it('will map items through a step with its index', async () => {
     const seen: unknown[][] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(items: string[]) {
@@ -603,7 +603,7 @@ describe('groups', () => {
   });
 
   it('will fail if a step calls then as a thenable', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -617,7 +617,7 @@ describe('groups', () => {
   it('will map an iterable to a group', async () => {
     const seen: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = new Set(['a', 'b']);
 
@@ -635,7 +635,7 @@ describe('groups', () => {
   });
 
   it('will fail if a step awaits its own run', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -647,7 +647,7 @@ describe('groups', () => {
   });
 
   it('will fail if a group holds what the step did not call', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -659,7 +659,7 @@ describe('groups', () => {
   });
 
   it('will not take an array of tokens as a group', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -674,7 +674,7 @@ describe('groups', () => {
   });
 
   it('will group a single token', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -693,7 +693,7 @@ describe('groups', () => {
   });
 
   it('will throw if a group is made outside a step', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
     }
 
@@ -705,7 +705,7 @@ describe('inline', () => {
   it('will run a function as a step in its place in the plan', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -740,7 +740,7 @@ describe('inline', () => {
   });
 
   it('will run a function with its own proxy as a full step', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -765,7 +765,7 @@ describe('inline', () => {
   });
 
   it('will give an arrow the settled proxy of its step', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -784,7 +784,7 @@ describe('inline', () => {
     const work = mockPromise();
     let signal!: AbortSignal;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -812,7 +812,7 @@ describe('inline', () => {
   it('will run a returned function as the undo', async () => {
     const refund = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -846,7 +846,7 @@ describe('inline', () => {
   });
 
   it('will fail if the function returns a value', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -862,7 +862,7 @@ describe('end', () => {
   it('will run end after everything else scheduled', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -889,7 +889,7 @@ describe('end', () => {
   });
 
   it('will resolve with the argument when end returns nothing', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -905,7 +905,7 @@ describe('end', () => {
   });
 
   it('will end with public values when nothing is left', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       count = 0;
 
@@ -918,7 +918,7 @@ describe('end', () => {
   });
 
   it('will end from the controller', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       count = 0;
 
@@ -932,7 +932,7 @@ describe('end', () => {
   });
 
   it('will end from the controller with a value', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -952,7 +952,7 @@ describe('end', () => {
   });
 
   it('will fail if end schedules a step', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -970,7 +970,7 @@ describe('end', () => {
   });
 
   it('will fail if end is scheduled twice', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -985,7 +985,7 @@ describe('end', () => {
   });
 
   it('will do nothing if ended from outside while idle', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
     }
 
@@ -1002,7 +1002,7 @@ describe('end', () => {
     const more = mockPromise();
     const later = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -1046,7 +1046,7 @@ describe('end', () => {
   });
 
   it('will end from outside with the value, else a dump', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       count = 1;
 
@@ -1080,7 +1080,7 @@ describe('end', () => {
   it('will fail if a step in flight fails after an outside end', async () => {
     const work = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -1102,7 +1102,7 @@ describe('end', () => {
 
 describe('runs', () => {
   it('will repeat with a record each and fields kept', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       count = 0;
 
@@ -1126,7 +1126,7 @@ describe('runs', () => {
     const work = mockPromise();
     const queues: unknown[][][] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       seen: string[] = [];
 
@@ -1158,7 +1158,7 @@ describe('runs', () => {
   it('will await the instance through the queue', async () => {
     const work = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next(value?: string) {
@@ -1188,7 +1188,7 @@ describe('runs', () => {
   it('will start a run when awaited idle', async () => {
     const next = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(value = 'x') {
@@ -1207,7 +1207,7 @@ describe('runs', () => {
   });
 
   it('will reject an idle await when next takes arguments', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(prompt: string) {
@@ -1225,7 +1225,7 @@ describe('runs', () => {
   });
 
   it('will join a run when next takes arguments', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(prompt: string) {
@@ -1241,7 +1241,7 @@ describe('runs', () => {
   });
 
   it('will start on idle await when next has defaults', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(x = 1) {
@@ -1253,7 +1253,7 @@ describe('runs', () => {
   });
 
   it('will not start on idle await when next has an optional parameter', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(x?: number) {
@@ -1267,7 +1267,7 @@ describe('runs', () => {
   });
 
   it('will reject the instance when the last run failed', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(fail?: boolean) {
@@ -1291,7 +1291,7 @@ describe('runs', () => {
   });
 
   it('will reset error and status on the next run', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(fail: boolean) {
@@ -1312,7 +1312,7 @@ describe('runs', () => {
   it('will be observed through the instance', async () => {
     const seen: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -1341,7 +1341,7 @@ describe('runs', () => {
   });
 
   it('will not expose a step outside unless a wait accepts it', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       second() {}
@@ -1356,7 +1356,7 @@ describe('runs', () => {
 
 describe('then', () => {
   it('will await the instance', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       protected new() {
@@ -1380,7 +1380,7 @@ describe('then', () => {
   });
 
   it('will type the result from end through the instance', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       protected new() {
@@ -1406,7 +1406,7 @@ describe('then', () => {
     const seen: string[] = [];
     let view: unknown;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -1430,7 +1430,7 @@ describe('then', () => {
   });
 
   it('will resolve a set factory to the result', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       protected new() {
@@ -1442,7 +1442,7 @@ describe('then', () => {
       }
     }
 
-    class Other extends State {
+    class Other extends Model {
       value = set(async () => Test.new());
     }
 
@@ -1456,7 +1456,7 @@ describe('then', () => {
   });
 
   it('will export then as a field and exclude it from the dump', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       count = 1;
 
@@ -1471,7 +1471,7 @@ describe('then', () => {
   });
 
   it('will spread to a snapshot and iterate its record', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -1506,7 +1506,7 @@ describe('stop', () => {
     const work = mockPromise();
     const later = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -1540,7 +1540,7 @@ describe('stop', () => {
   it('will reject queued runs', async () => {
     const work = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -1565,7 +1565,7 @@ describe('stop', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       value = 0;
 
@@ -1596,7 +1596,7 @@ describe('stop', () => {
   it('will stop from inside a step', async () => {
     const later = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -1619,7 +1619,7 @@ describe('stop', () => {
   it('will stop when the instance is destroyed', async () => {
     const work = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -1638,7 +1638,7 @@ describe('stop', () => {
   });
 
   it('will not stop when idle', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
     }
 
@@ -1651,7 +1651,7 @@ describe('stop', () => {
   it('will not resolve when stopped during end', async () => {
     const work = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -1674,7 +1674,7 @@ describe('stop', () => {
   });
 
   it('will run again after a stop', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -1694,7 +1694,7 @@ describe('stop', () => {
     const back = vi.fn();
     const exit = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -1731,7 +1731,7 @@ describe('stop', () => {
     const work = mockPromise();
     const reason = { code: 499 };
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -1754,7 +1754,7 @@ describe('stop', () => {
   it('will not set a cause without a reason', async () => {
     const work = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -1777,7 +1777,7 @@ describe('stop', () => {
 
 describe('wait', () => {
   it('will park until a listed step answers', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       answer = '';
 
@@ -1820,7 +1820,7 @@ describe('wait', () => {
   it('will run what follows a wait after its answer', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -1851,7 +1851,7 @@ describe('wait', () => {
   });
 
   it('will answer the oldest wait first', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       answers: string[] = [];
 
@@ -1889,7 +1889,7 @@ describe('wait', () => {
   });
 
   it('will expose a step only while a wait accepts it', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -1921,7 +1921,7 @@ describe('wait', () => {
   });
 
   it('will schedule a waited-for step from inside a step', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       count = 0;
 
@@ -1938,7 +1938,7 @@ describe('wait', () => {
   });
 
   it('will answer the wait opened with the same first argument', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       answers: string[] = [];
 
@@ -1976,7 +1976,7 @@ describe('wait', () => {
     const work = mockPromise();
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2020,7 +2020,7 @@ describe('wait', () => {
   it('will reject an answer if the run stops first', async () => {
     const work = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2052,7 +2052,7 @@ describe('wait', () => {
   });
 
   it('will reject an answer if its step fails', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2074,7 +2074,7 @@ describe('wait', () => {
   });
 
   it('will not answer a wait with a step it does not list', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2096,7 +2096,7 @@ describe('wait', () => {
   });
 
   it('will fail if next or end answers a wait', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(end: boolean) {
@@ -2114,7 +2114,7 @@ describe('wait', () => {
   });
 
   it('will not wait on a step of another instance', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(other?: Test) {
@@ -2132,7 +2132,7 @@ describe('wait', () => {
   it('will warn once if undo closures are held', async () => {
     const warn = mockWarn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2162,7 +2162,7 @@ describe('wait', () => {
   });
 
   it('will release waits on stop', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2189,7 +2189,7 @@ describe('wait', () => {
   it('will answer its own wait through a settled step', async () => {
     const calls = new Map<string, () => unknown>();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       answers: string[] = [];
 
@@ -2228,7 +2228,7 @@ describe('wait', () => {
   it('will route a settled step call as an outside call', async () => {
     let poke!: () => unknown;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       answer = '';
 
@@ -2258,7 +2258,7 @@ describe('wait', () => {
   it('will bind a settled step call to its run', async () => {
     let poke!: () => unknown;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2290,7 +2290,7 @@ describe('wait', () => {
   it('will not journal writes through a settled step', async () => {
     let write!: () => void;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -2315,7 +2315,7 @@ describe('wait', () => {
   });
 
   it('will not have wait on the runner', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
     }
 
@@ -2343,7 +2343,7 @@ describe('watchers', () => {
   it('will answer a wait from a watcher', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       answer = '';
 
@@ -2382,7 +2382,7 @@ describe('watchers', () => {
     let signal!: AbortSignal;
     const lost = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2412,7 +2412,7 @@ describe('watchers', () => {
   it('will leave the wait open if a watcher settles without answering', async () => {
     const nudge = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2439,7 +2439,7 @@ describe('watchers', () => {
     const work = mockPromise();
     const watcher = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2472,7 +2472,7 @@ describe('watchers', () => {
   });
 
   it('will call a watcher function on the step which opened the wait', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2500,7 +2500,7 @@ describe('watchers', () => {
   it('will answer each wait from its own watcher', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2527,7 +2527,7 @@ describe('watchers', () => {
   });
 
   it('will fail the run if a watcher throws before the wait closes', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -2553,7 +2553,7 @@ describe('watchers', () => {
     const gate = mockPromise();
     const late = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(first: boolean) {
@@ -2595,7 +2595,7 @@ describe('watchers', () => {
   it('will abort watchers when the run stops', async () => {
     let signal!: AbortSignal;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2616,7 +2616,7 @@ describe('watchers', () => {
   });
 
   it('will fail if tokens are mixed with step references', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2651,7 +2651,7 @@ describe('retry', () => {
   it('will try again and journal failed attempts', async () => {
     let tries = 0;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -2674,7 +2674,7 @@ describe('retry', () => {
   });
 
   it('will fail after the last attempt', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -2698,7 +2698,7 @@ describe('retry', () => {
     const backoff = vi.fn((attempt: number) => attempt * 100);
     let tries = 0;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -2728,7 +2728,7 @@ describe('retry', () => {
 
     let tries = 0;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2752,7 +2752,7 @@ describe('retry', () => {
   it('will not retry a broken rule', async () => {
     let tries = 0;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -2774,7 +2774,7 @@ describe('retry', () => {
     const order: string[] = [];
     let tries = 0;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -2802,7 +2802,7 @@ describe('hooks', () => {
   it('will call hooks around each step', async () => {
     const order: unknown[][] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -2849,7 +2849,7 @@ describe('hooks', () => {
   });
 
   it('will not wrap hooks as steps', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {}
@@ -2868,7 +2868,7 @@ describe('hooks', () => {
   });
 
   it('will fail when a hook throws', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {}
@@ -2882,7 +2882,7 @@ describe('hooks', () => {
   });
 
   it('will throw if a hook has no step', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       afterShip() {}
@@ -2894,7 +2894,7 @@ describe('hooks', () => {
   it('will call back once the unwind completes', async () => {
     const order: unknown[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -2927,9 +2927,9 @@ describe('hooks', () => {
 
     const back = vi.fn();
 
-    class Item extends State {}
+    class Item extends Model {}
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has(Item);
 
@@ -2959,7 +2959,7 @@ describe('hooks', () => {
     const work = mockPromise();
     const back = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -2986,7 +2986,7 @@ describe('hooks', () => {
     const work = mockPromise();
     const back = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3009,7 +3009,7 @@ describe('hooks', () => {
   });
 
   it('will replace the error when back throws', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3028,7 +3028,7 @@ describe('hooks', () => {
   });
 
   it('will not wrap back as a step', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {}
@@ -3048,7 +3048,7 @@ describe('hooks', () => {
   it('will call exit last when a run ends', async () => {
     const order: unknown[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3075,7 +3075,7 @@ describe('hooks', () => {
   it('will call exit after back when a run fails', async () => {
     const order: unknown[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3099,7 +3099,7 @@ describe('hooks', () => {
     const exit = vi.fn();
     const work = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3126,7 +3126,7 @@ describe('hooks', () => {
   it('will reject a finished run when exit throws', async () => {
     const queued = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       runs = 0;
 
@@ -3150,7 +3150,7 @@ describe('hooks', () => {
   });
 
   it('will replace the error when exit throws', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3169,7 +3169,7 @@ describe('hooks', () => {
   });
 
   it('will not wrap exit as a step', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {}
@@ -3189,7 +3189,7 @@ describe('hooks', () => {
   it('will call an overridden hook once', async () => {
     const order: string[] = [];
 
-    class Parent extends State {
+    class Parent extends Model {
       then = run(this, { base: Parent });
 
       next() {}
@@ -3212,7 +3212,7 @@ describe('hooks', () => {
   it('will call hooks passed as options', async () => {
     const order: unknown[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       value = 0;
 
       then = run(this, {
@@ -3257,7 +3257,7 @@ describe('hooks', () => {
   it('will call class hooks before option hooks', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, {
         before: () => void order.push('option before'),
         after: () => void order.push('option after'),
@@ -3313,7 +3313,7 @@ describe('hooks', () => {
   it('will fail when an option hook throws', async () => {
     const before = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, {
         before() {
           throw new Error('hook');
@@ -3334,7 +3334,7 @@ describe('hooks', () => {
   it('will call option exit when the class exit throws', async () => {
     const exit = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { exit });
 
       next() {}
@@ -3352,7 +3352,7 @@ describe('hooks', () => {
   });
 
   it('will check hook options by signature', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 0;
 
       then = run(this, {
@@ -3380,7 +3380,7 @@ describe('hooks', () => {
 
     run(Test.new(), {
       exit(outcome) {
-        expectTypeOf(outcome).toEqualTypeOf<Runner.Outcome<State.Values<Test>>>();
+        expectTypeOf(outcome).toEqualTypeOf<Runner.Outcome<Model.Values<Test>>>();
       }
     });
 
@@ -3392,7 +3392,7 @@ describe('undo', () => {
   it('will run undos in reverse and keep committed writes', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       a = 0;
       b = 0;
@@ -3429,7 +3429,7 @@ describe('undo', () => {
   it('will unwind every step in reverse and restore fields with rewind', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       a = 0;
       b = 0;
@@ -3464,7 +3464,7 @@ describe('undo', () => {
   });
 
   it('will not roll back writes of a helper', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       value = 0;
       count = 0;
@@ -3495,7 +3495,7 @@ describe('undo', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       value = 0;
 
@@ -3529,7 +3529,7 @@ describe('undo', () => {
   it('will unwind through a returned step', async () => {
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -3561,7 +3561,7 @@ describe('undo', () => {
   it('will stop unwinding where an undo throws', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -3589,7 +3589,7 @@ describe('undo', () => {
   });
 
   it('will throw if an undo schedules a step', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -3617,7 +3617,7 @@ describe('undo tokens', () => {
     const order: string[] = [];
     const refund = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3659,7 +3659,7 @@ describe('undo tokens', () => {
   it('will park the unwind on a returned wait', async () => {
     const charge = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       charged = false;
 
@@ -3715,7 +3715,7 @@ describe('undo tokens', () => {
   });
 
   it('will continue the unwind after an answer which does nothing', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       value = 0;
 
@@ -3749,7 +3749,7 @@ describe('undo tokens', () => {
   });
 
   it('will not let an unwind answer schedule', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3782,7 +3782,7 @@ describe('undo tokens', () => {
   it('will not call hooks for an unwind answer', async () => {
     const before = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3815,7 +3815,7 @@ describe('undo tokens', () => {
   it('will halt a parked unwind on stop', async () => {
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       value = 0;
 
@@ -3870,7 +3870,7 @@ describe('undo tokens', () => {
 
     const refund = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3907,7 +3907,7 @@ describe('undo tokens', () => {
   });
 
   it('will fail the undo if a watcher of its wait throws', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -3956,12 +3956,12 @@ describe('undo tokens', () => {
 });
 
 describe('collections', () => {
-  class Item extends State {
+  class Item extends Model {
     name = '';
   }
 
   it('will roll back list push, put, pop and set', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       items = has(['a', 'b', 'c']);
 
@@ -3992,7 +3992,7 @@ describe('collections', () => {
   });
 
   it('will record nothing for a read without change', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has(['a']);
       count = 0;
@@ -4009,7 +4009,7 @@ describe('collections', () => {
   });
 
   it('will journal a collection in its export form', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       items = has(Item);
 
@@ -4029,7 +4029,7 @@ describe('collections', () => {
   });
 
   it('will not capture writes outside a step proxy', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has<string>();
 
@@ -4047,7 +4047,7 @@ describe('collections', () => {
   it('will restore a list before a retry', async () => {
     let tries = 0;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has<string>();
 
@@ -4069,7 +4069,7 @@ describe('collections', () => {
   it('will attribute a change to every parallel step reading the list', async () => {
     const gate = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       items = has(['a']);
 
@@ -4112,7 +4112,7 @@ describe('collections', () => {
     const first = mockPromise();
     const second = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       items = has(['a']);
 
@@ -4149,7 +4149,7 @@ describe('collections', () => {
   });
 
   it('will roll back a map', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       values = map([['a', 1], ['b', 2], ['c', 3]]);
 
@@ -4175,10 +4175,10 @@ describe('collections', () => {
     });
   });
 
-  it('will restore a guest State removed from a map', async () => {
+  it('will restore a guest Model removed from a map', async () => {
     const guest = Item.new({ name: 'guest' });
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       values = map<string, Item>([['a', guest]]);
 
@@ -4200,7 +4200,7 @@ describe('collections', () => {
   });
 
   it('will remove pool members added by a failed run', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       items = has(Item);
 
@@ -4233,7 +4233,7 @@ describe('collections', () => {
   it('will destroy a member a failing step added', async () => {
     let added!: Item;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has(Item);
 
@@ -4252,14 +4252,14 @@ describe('collections', () => {
 });
 
 describe('irreversible', () => {
-  class Item extends State {
+  class Item extends Model {
     name = '';
   }
 
   it('will stop the unwind at a removed pool member', async () => {
     const warn = mockWarn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has(Item);
       value = 0;
@@ -4301,7 +4301,7 @@ describe('irreversible', () => {
   it('will unwind steps after an irreversible one', async () => {
     mockWarn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       items = has(Item);
       value = 0;
@@ -4343,7 +4343,7 @@ describe('irreversible', () => {
   it('will be reversible with an undo of its own', async () => {
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       items = has(Item);
       values = map((key: string) => new Item({ name: key }));
@@ -4379,7 +4379,7 @@ describe('irreversible', () => {
   it('will be irreversible when a map evicts an owned value', async () => {
     mockWarn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       values = map<string, Item>();
 
@@ -4409,7 +4409,7 @@ describe('irreversible', () => {
 
     const attempt = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has(Item);
       value = 0;
@@ -4450,7 +4450,7 @@ describe('irreversible', () => {
   it('will keep the writes of a failing irreversible step', async () => {
     const warn = mockWarn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has(Item);
       value = 0;
@@ -4489,7 +4489,7 @@ describe('commit', () => {
     const refund = vi.fn();
     const recall = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       charged = false;
       notified = false;
@@ -4535,7 +4535,7 @@ describe('commit', () => {
   it('will not retry or restore a step failing after commit', async () => {
     const attempt = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -4559,7 +4559,7 @@ describe('commit', () => {
   });
 
   it('will throw if commit is called outside a step', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
     }
 
@@ -4567,7 +4567,7 @@ describe('commit', () => {
   });
 
   it('will throw if commit is called after its step settled', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -4587,7 +4587,7 @@ describe('back', () => {
   it('will unwind and end normally', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       a = 0;
       b = 0;
@@ -4632,7 +4632,7 @@ describe('back', () => {
   it('will unwind what committed after a step', async () => {
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       a = 0;
       b = 0;
@@ -4678,7 +4678,7 @@ describe('back', () => {
   });
 
   it('will leave fields of unwound steps without rewind', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -4706,7 +4706,7 @@ describe('back', () => {
   it('will call a step again after back', async () => {
     const refund = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       charged = '';
 
@@ -4747,7 +4747,7 @@ describe('back', () => {
   it('will discard what unwound steps scheduled', async () => {
     const receipt = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -4782,7 +4782,7 @@ describe('back', () => {
   it('will unwind steps scheduled before back and run those after', async () => {
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -4823,7 +4823,7 @@ describe('back', () => {
     const signals: AbortSignal[] = [];
     const recall = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -4871,7 +4871,7 @@ describe('back', () => {
   });
 
   it('will release a wait opened by a step it unwinds', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -4900,7 +4900,7 @@ describe('back', () => {
   it('will call back with its reason, and with the error on failure', async () => {
     const order: unknown[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, {
         back: (reason) => void order.push(['option', reason])
       });
@@ -4937,7 +4937,7 @@ describe('back', () => {
   });
 
   it('will end with an end scheduled after back', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -4963,7 +4963,7 @@ describe('back', () => {
   });
 
   it('will fail if end is scheduled twice across back', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -4987,7 +4987,7 @@ describe('back', () => {
   });
 
   it('will fail if to has no committed entry', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5008,7 +5008,7 @@ describe('back', () => {
   });
 
   it('will not unwind the step calling back', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5024,7 +5024,7 @@ describe('back', () => {
   });
 
   it('will throw if to is not a step', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next(step?: unknown) {
@@ -5043,7 +5043,7 @@ describe('back', () => {
     await expect(test.next('call')).rejects.toThrow(message);
     await expect(test.next(() => {})).rejects.toThrow(message);
 
-    class End extends State {
+    class End extends Model {
       then = run(this);
 
       next() {
@@ -5057,7 +5057,7 @@ describe('back', () => {
   });
 
   it('will throw if back is called outside a step', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
     }
 
@@ -5065,7 +5065,7 @@ describe('back', () => {
   });
 
   it('will not group or return a back token', async () => {
-    class Grouped extends State {
+    class Grouped extends Model {
       then = run(this);
 
       next() {
@@ -5077,7 +5077,7 @@ describe('back', () => {
 
     await expect(Grouped.new().next()).rejects.toThrow('back() cannot be grouped.');
 
-    class Returned extends State {
+    class Returned extends Model {
       then = run(this);
 
       next() {
@@ -5092,7 +5092,7 @@ describe('back', () => {
     const refund = vi.fn();
     const recall = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5140,9 +5140,9 @@ describe('back', () => {
   it('will halt at an irreversible step and continue the run', async () => {
     const warn = mockWarn();
 
-    class Item extends State {}
+    class Item extends Model {}
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has(Item);
 
@@ -5181,7 +5181,7 @@ describe('back', () => {
   it('will wait for an outside call to retry', async () => {
     const refund = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       card = '';
       tracking = '';
@@ -5232,7 +5232,7 @@ describe('back', () => {
   it('will not unwind entries a back already undid', async () => {
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5263,7 +5263,7 @@ describe('back', () => {
   it('will run backs from parallel steps one at a time', async () => {
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5295,7 +5295,7 @@ describe('back', () => {
   it('will fail when an undo throws and stop unwinding there', async () => {
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5329,7 +5329,7 @@ describe('back', () => {
   });
 
   it('will fail when the back hook throws', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5354,7 +5354,7 @@ describe('back', () => {
   it('will halt a parked unwind on stop', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5395,7 +5395,7 @@ describe('back', () => {
     const refunded = mockPromise();
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5439,7 +5439,7 @@ describe('back', () => {
   it('will hand a parked unwind to the failure unwind', async () => {
     const order: string[] = [];
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5480,7 +5480,7 @@ describe('back', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5520,7 +5520,7 @@ describe('back', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5558,7 +5558,7 @@ describe('back', () => {
   it('will halt an unwind at an answer which commits', async () => {
     const undo = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { rewind: true });
       value = 0;
 
@@ -5605,7 +5605,7 @@ describe('back', () => {
   it('will not leave an answer promise rejecting unhandled', async () => {
     const caught = mockUncaught();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5636,7 +5636,7 @@ describe('signal', () => {
   it('will abort the signal of a step in flight on stop', async () => {
     const attempt = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -5666,7 +5666,7 @@ describe('signal', () => {
   });
 
   it('will abort the signal of a step in flight on an outside end', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -5694,7 +5694,7 @@ describe('signal', () => {
   it('will abort the signal of a step in flight when another fails', async () => {
     let signal!: AbortSignal;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5722,7 +5722,7 @@ describe('signal', () => {
     const seen: boolean[] = [];
     let signal!: AbortSignal;
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -5741,7 +5741,7 @@ describe('signal', () => {
   });
 
   it('will throw if signal is read outside a step', () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
     }
 
@@ -5751,7 +5751,7 @@ describe('signal', () => {
 
 describe('failures', () => {
   it('will reject when a step throws synchronously', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5769,7 +5769,7 @@ describe('failures', () => {
   it('will reject when a step rejects and discard what it scheduled', async () => {
     const next = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -5787,7 +5787,7 @@ describe('failures', () => {
   });
 
   it('will reject when a step returns a value', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -5799,7 +5799,7 @@ describe('failures', () => {
   });
 
   it('will reject when a step writes after scheduling', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -5818,7 +5818,7 @@ describe('failures', () => {
   });
 
   it('will not guard writes of a helper after scheduling', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       value = 0;
 
@@ -5843,7 +5843,7 @@ describe('failures', () => {
   });
 
   it('will reject when a step keeps working after scheduling', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       async next() {
@@ -5860,7 +5860,7 @@ describe('failures', () => {
   it('will throw if a step is called after its caller settled', async () => {
     let late: () => unknown = () => {};
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5877,7 +5877,7 @@ describe('failures', () => {
   it('will throw if a settled step schedules through then', async () => {
     let late: () => unknown = () => {};
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5892,7 +5892,7 @@ describe('failures', () => {
   it('will throw uncaught when nobody awaits a failed run', async () => {
     const caught = mockUncaught();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       protected new() {
@@ -5913,7 +5913,7 @@ describe('failures', () => {
   it('will not throw uncaught when awaited before the rethrow', async () => {
     const caught = mockUncaught();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5933,7 +5933,7 @@ describe('failures', () => {
   it('will not throw uncaught when stopped', async () => {
     const caught = mockUncaught();
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
 
       next() {
@@ -5948,7 +5948,7 @@ describe('failures', () => {
   });
 
   it('will keep a list field through a run', async () => {
-    class Test extends State {
+    class Test extends Model {
       then = run(this);
       items = has<string>();
 
@@ -5966,7 +5966,7 @@ describe('failures', () => {
 });
 
 describe('base', () => {
-  class Feed extends State {
+  class Feed extends Model {
     items: string[] = [];
 
     load() {
@@ -6005,7 +6005,7 @@ describe('base', () => {
   });
 
   it('will wrap only a subclass own methods when extending a runner without base', async () => {
-    class Sync extends State {
+    class Sync extends Model {
       then = run(this);
 
       async next() {}
@@ -6081,9 +6081,9 @@ describe('base', () => {
     expect(paged.then.record.map((entry) => entry.key)).toEqual(['next', 'pull', 'page']);
   });
 
-  it('will accept State as base', async () => {
-    class Test extends State {
-      then = run(this, { base: State });
+  it('will accept Model as base', async () => {
+    class Test extends Model {
+      then = run(this, { base: Model });
 
       async next() {
         this.step();
@@ -6099,9 +6099,9 @@ describe('base', () => {
   });
 
   it('will throw if not an instance of base', () => {
-    class Other extends State {}
+    class Other extends Model {}
 
-    class Test extends State {
+    class Test extends Model {
       then = run(this, { base: Other });
     }
 
@@ -6144,7 +6144,7 @@ describe('Job', () => {
 
     const result = await Test.new();
 
-    expectTypeOf(result).toEqualTypeOf<State.Values<Test>>();
+    expectTypeOf(result).toEqualTypeOf<Model.Values<Test>>();
     expect(result).toEqual({ value: 1 });
   });
 

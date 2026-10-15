@@ -1,7 +1,7 @@
 {
   "name": "@expressive/run",
   "version": "0.0.0",
-  "description": "Durable, resumable runs built from Expressive MVC State classes.",
+  "description": "Durable, resumable runs built from Expressive MVC Model classes.",
   "keywords": [
     "expressive",
     "mvc",

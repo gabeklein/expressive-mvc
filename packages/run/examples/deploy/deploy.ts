@@ -1,9 +1,9 @@
-import { has, map, State } from '@expressive/mvc';
+import { has, map, Model } from '@expressive/mvc';
 import { Job, type Runner } from '@expressive/run';
 
 import { chat, ci, db, delay, fleet, git, HOUR, MINUTE, pager, registry, SECOND } from './services';
 
-export class Release extends State {
+export class Release extends Model {
   version = '';
 }
 
