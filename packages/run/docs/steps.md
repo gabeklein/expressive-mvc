@@ -122,6 +122,8 @@ Inside a step, `this.then`:
 - tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
+Its members, in a step: `then.end(value?)` ([end](#end-joins)), `then.back(step, reason?)` ([undo.md](undo.md#back)), `then.retry(...)` ([retry.md](retry.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)).
+
 Every form returns a token typed `void`; returned from a step, it is the step's undo ([undo.md](undo.md#a-returned-token)).
 
 Outside a step, `then(f, r)` is the thenable ([runs.md](runs.md#awaiting-the-instance---start-or-join)); `then(steps)` throws `then(steps) must be called inside a step.`
@@ -201,6 +203,8 @@ Each settled step is one journal entry (`record` on the [runner](runner.md)):
   undo: { id: 'refund#1', key: 'refund', args: ['ch_42'] }
 }
 ```
+
+A `back` token is journaled as its own entry - `to`, `reason` ([undo.md](undo.md#back)).
 
 Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `attempt`, `error` - retries ([retry.md](retry.md)); `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit).
 

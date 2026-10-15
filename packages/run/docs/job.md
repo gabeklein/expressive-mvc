@@ -15,7 +15,7 @@ class Job extends State {
 | `end(value?)` | `protected` | last in a run; its return types `await job`, else its argument, else the values dump ([steps.md](steps.md#end-joins)) |
 | `before(step, args, skip)` | `protected` | before each step ([hooks.md](hooks.md)) |
 | `after(step, entry, skip)` | `protected` | after each step commits ([hooks.md](hooks.md)) |
-| `back(error)` | `protected` | once an unwind completes, before the run rejects ([hooks.md](hooks.md#back)) |
+| `back(reason)` | `protected` | once an unwind completes - after `then.back(step, reason)`, or a failure before the run rejects ([hooks.md](hooks.md#back)) |
 | `exit(outcome)` | `protected` | once per run on every outcome - done, failed, stopped - last before it settles ([hooks.md](hooks.md#exit)) |
 | `static rewind` | `static readonly` | `true`: entries keep `prior`/`patch` and the unwind restores committed steps' fields ([undo.md](undo.md#rewind)) |
 

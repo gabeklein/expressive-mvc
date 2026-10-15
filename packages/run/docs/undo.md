@@ -1,6 +1,6 @@
 # Undo - All or Nothing
 
-A step registers its own undo by what it returns. On failure the run unwinds every committed step in reverse, running each undo, so a half-done plan leaves nothing behind that an undo can take back.
+A step registers its own undo by what it returns. On failure the run unwinds every committed step in reverse, running each undo, so a half-done plan leaves nothing behind that an undo can take back. [`this.then.back(step)`](#back) runs the same unwind on command, over what committed after `step`, and the run goes on.
 
 Every step is atomic: one that throws, is aborted or retried has its own writes restored - fields and [collections](#collections). Once a step settles, its fields stay through an unwind unless the class opts into [rewind](#rewind).
 
@@ -66,6 +66,7 @@ protected async pay() {
 - While parked: status `waiting`, `then.waiting` lists it with the step that returned it, answering steps are present; the run does not reject.
 - The answer runs as an undo frame: journaled with `wake`, no hooks, cannot schedule (`… is failed; more cannot run.`). Its call's Promise settles when it completes.
 - Any answer completes the entry's compensation - `keep` doing nothing included: the unwind continues, restoring the entry's `prior` with [rewind](#rewind).
+- An answer calling [`this.then.commit()`](#commit) declines: the unwind halts at the entry - `halted: true`, its writes kept, nothing before it undone.
 - An answer that throws, or a watcher throwing before an answer, fails the undo as any undo throwing does.
 - `stop()` halts the unwind there: the entry gets `halted: true`, it and every entry before it stay applied; status and `error` stay the failure's.
 
@@ -78,7 +79,7 @@ A step that throws, breaks a rule, or returns anything but an undo fails the run
 3. Every committed entry, newest first: its undo runs if it has one (closure, or the returned token - a step with its journaled args, an inline step, a group's members, a wait's answer); `undone: true`. With [rewind](#rewind), its `prior` values are then restored and every entry reached is `undone: true`, those without an undo included.
 4. An undo that throws: `undone: 'failed'`, `error` replaced by what it threw, the unwind stops there.
 5. An `irreversible` or `committed` entry stops the unwind: it gets `halted: true` ([Collections](#collections), [Commit](#commit)). So does `stop()` while the unwind is parked on a [returned wait](#a-returned-wait).
-6. `back(error)` runs, if declared ([hooks.md](hooks.md#back)); a throw from it replaces `error`.
+6. `back(error)` runs, if declared ([hooks.md](hooks.md#back)) - `reason` is the error; a throw from it replaces `error`.
 7. `exit({ status: 'failed', error })` runs, if declared ([hooks.md](hooks.md#exit)); a throw from it replaces `error`.
 8. The run rejects with `error`.
 
@@ -101,7 +102,43 @@ agent.then.record.map((e) => [e.id, e.undone]);
 // [['next#1', undefined]] - no undo to run
 ```
 
+Steps 3-5 are the unwind [`back`](#back) runs. Entries a `back` already undid are skipped.
+
 Undo frames cannot schedule: a step called from an undo throws (`… is failed; next cannot run.`), which fails that undo. `stop({ undo: true })` unwinds the same way with status `stopped` ([runs.md](runs.md#stop)). Hooks do not run for undos.
+
+## Back
+
+`this.then.back(step, reason?)` inside a step goes back to just after `step`'s latest committed entry and carries on - fail forward, or retry with new input:
+
+```ts
+protected async ship(chargeId: string) {
+  const booking = await courier.book(this.cart, chargeId);
+
+  if (booking) {
+    this.tracking = booking.id;
+    return this.then(() => courier.cancel(booking.id));
+  }
+
+  this.then.back(this.reserve, 'no courier');   // pay refunded, receipt dropped, the hold stays
+  this.backorder();                             // runs after the unwind
+}
+```
+
+It is a token in the plan, like a step call. When the plan reaches it:
+
+1. Pending items scheduled by entries committed after `step`'s - transitively - are discarded; their open waits released; in-flight ones aborted, then unwound once they settle and commit.
+2. Those entries unwind, newest first, as on failure: undos run, `prior` restored with [rewind](#rewind) (left as they are by default), `undone` marked. `step`'s entry stays. An irreversible or committed entry halts it there - `halted: true` - and the run still continues.
+3. The entry `{ id: 'back#1', key: 'back', args: [], next: [], wrote: [], to: 'reserve#1', reason: 'no courier' }` is journaled - `to` the entry kept, `reason` when given. Discarded items are not journaled.
+4. `back(reason)` runs ([hooks.md](hooks.md#back)).
+5. What the calling step scheduled after `back()` runs; nothing else, and the plan drains to `end`, or the values dump. The run does not fail.
+
+- The calling step has not committed when it calls `back` - its own writes stay, and it is never a target: `this.then.back(this.ship)` from `ship` targets an earlier `ship`. Steps it scheduled before `back()` have run by then and are unwound.
+- Retry is a call after it - `this.then.back(this.reserve); this.pay(card2);` - or a wait for one: `this.then.back(this.reserve); this.then(this.pay);` parks until `order.pay(card2)` from outside.
+- `end` scheduled by an unwound entry is discarded; one scheduled after `back()` replaces it.
+- `step` is a step reference. A call, string or nothing throws `back() takes a step to go back to; stop({ undo: true }) unwinds the whole run.`; `step` without a committed entry fails the run - `back() found no committed reserve.`
+- An undo throwing fails the run, `undone: 'failed'`; the failure unwind stops there. A throw from `back` fails the run.
+- Backs from parallel steps run one at a time. `stop()`, a failure or an outside `end` during one stops it; a failure's unwind takes up what is left.
+- Not groupable (`back() cannot be grouped.`), not an undo - returned, it fails the run as any value.
 
 ## Rewind
 

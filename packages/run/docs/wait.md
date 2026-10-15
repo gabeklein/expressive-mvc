@@ -41,7 +41,7 @@ const Approve = ({ call }: { call: ToolCall }) => {
 
 A bare `if (agent.allow)` with no call to it inside trips TS2774 - the type says it is always defined.
 
-Called from outside, an answering step answers one wait: the one whose opening step's first argument is `===` its own first argument, else the oldest accepting it. It runs in that wait's place, the wait closes, and presence updates for every step it accepted. Its call returns a Promise which resolves (`undefined`) once that step and everything it scheduled have completed - not the whole run - and rejects with the run's error if the run fails or stops first. Awaiting it counts as awaiting the run for [unawaited failures](runs.md#unawaited-failures).
+Called from outside, an answering step answers one wait: the one whose opening step's first argument is `===` its own first argument, else the oldest accepting it. It runs in that wait's place, the wait closes, and presence updates for every step it accepted. Its call returns a Promise which resolves (`undefined`) once that step and everything it scheduled have completed - not the whole run - and rejects with the run's error if the run fails or stops first. Awaiting it counts as awaiting the run for [unawaited failures](runs.md#unawaited-failures). Left unawaited, its rejection is not reported on its own - the run reports the failure.
 
 ```ts
 const reply = agent.next('write notes, write docs');

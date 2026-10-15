@@ -22,7 +22,7 @@ A per-step hook without its step throws when the instance is created: `afterShip
 then = run(this, {
   before(step, args, skip) {},
   after(step, entry, skip) {},
-  back(error) {},
+  back(reason) {},
   exit(outcome) {}
 });
 ```
@@ -34,12 +34,12 @@ With both, the class's runs first: `before` → option `before` → `before<Step
 ## `back`
 
 ```ts
-protected back(error: unknown) {
-  this.notice = `Order ${this.cart.id} was not placed: ${(error as Error).message}`;
+protected back(reason: unknown) {
+  this.notice = `Order ${this.cart.id} was not placed: ${reason instanceof Error ? reason.message : reason}`;
 }
 ```
 
-Runs once after an unwind completes - halted at an irreversible entry or not - before the run rejects. `error` is what the run rejects with: the failure, an undo's throw, or the `'Stopped'` error. Runs for a failure and `stop({ undo: true })`; not for `stop()`. Raw instance as `this`, writes unjournaled, return ignored. A throw from it replaces `error` and the run rejects with that.
+Runs once after each unwind completes - halted at an irreversible entry or not. After [`this.then.back(step, reason)`](undo.md#back), `reason` is its second argument (else `undefined`) and the run continues; a throw from it fails the run. After a failure or `stop({ undo: true })` - not `stop()` - it runs before the run rejects, and `reason` is what the run rejects with: the failure, an undo's throw, or the `'Stopped'` error; a throw from it replaces that. Raw instance as `this`, writes unjournaled, return ignored.
 
 ## `exit`
 

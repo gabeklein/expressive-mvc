@@ -79,8 +79,8 @@ Journal after a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receip
 - [runs.md](runs.md) - `next`, repeating, the queue, awaiting, `end` from outside, `stop`, steering
 - [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called - from outside or by a watcher; answering steps are present only while waited for
 - [retry.md](retry.md) - per-step retry with backoff
-- [hooks.md](hooks.md) - `before`/`after`, per step or for all; `back` after an unwind; `exit` on every outcome; hooks as `run()` options
-- [undo.md](undo.md) - undo closures, returned tokens - a step, inline step, group or wait - the unwind on failure; `rewind`; `commit()`
+- [hooks.md](hooks.md) - `before`/`after`, per step or for all; `back(reason)` after an unwind; `exit` on every outcome; hooks as `run()` options
+- [undo.md](undo.md) - undo closures, returned tokens - a step, inline step, group or wait - the unwind on failure; `then.back(step)` - the same unwind on command; `rewind`; `commit()`
 - [runner.md](runner.md) - the controller: members, reactivity, snapshot
 
 ## Conventions
