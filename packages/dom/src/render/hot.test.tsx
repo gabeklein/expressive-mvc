@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Component, State } from '@expressive/mvc';
 import { hot } from './hot';
-import { render, style } from './index';
-import { flushMicrotasks } from '../test.setup';
+import { render, style } from '../index';
+import { flushMicrotasks } from '../../test.setup';
 
 let count = 0;
 const module = () => `module-${count++}`;

@@ -1,4 +1,4 @@
-import type { JSX } from './jsx-runtime';
+import type { JSX } from '../jsx-runtime';
 import type { ComponentType, Node } from './vnode';
 import { vnode } from './vnode';
 

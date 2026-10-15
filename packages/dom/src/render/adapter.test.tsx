@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { State, Component } from '@expressive/mvc';
-import { render } from './index';
+import { render } from '../index';
 import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
 import * as hot from '@expressive/mvc/hot';
-import { flushMicrotasks, mockPromise, mount, place } from '../test.setup';
+import { flushMicrotasks, mockPromise, mount, place } from '../../test.setup';
 
 describe('MVC adapter', () => {
   it('will update when a State fetched via this.get changes', async () => {
