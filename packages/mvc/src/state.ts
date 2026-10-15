@@ -848,6 +848,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
   let reset: (() => void) | undefined;
   let isAsync: boolean;
   let suspended = false;
+  let waiting: Promise<unknown> | undefined;
   let proxy: any;
 
   const connect = () => {
@@ -872,16 +873,29 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
   const run = (initial?: boolean) => {
     let next: unknown;
 
+    waiting = undefined;
+
     try {
       next = latest(getter).call(proxy, proxy);
     } catch (err) {
-      if (initial) {
-        if (suspended = err instanceof Promise) throw err;
+      if (err instanceof Promise) {
+        if (initial) {
+          suspended = true;
+          throw err;
+        }
+
+        const retry = () => {
+          if (waiting === err && observer(this) !== null) run();
+        };
+
+        waiting = err;
+        err.then(retry, retry);
+
+        if (suspended) return;
+      } else if (initial) {
         console.warn(`An exception was thrown while initializing ${this}.${key}.`);
         throw err;
-      }
-
-      if (!(err instanceof Promise)) report('getter', this, err, key);
+      } else report('getter', this, err, key);
     }
 
     suspended = false;

@@ -134,7 +134,8 @@ class Profile extends State {
 ## Errors
 
 - **Initial** compute: `console.warn` `An exception was thrown while initializing {state}.{key}.`, then rethrown to the caller. A suspense rethrows without the warning.
-- **Later** compute (after a dependency change): reported with kind `getter` and its key - unhandled, it escapes uncaught ([lifecycle.md](lifecycle.md#error-handling)). A suspense (a pending value read during refresh) is not reported. Either way the value becomes `undefined`; the read does not throw.
+- **Later** compute (after a dependency change): reported with kind `getter` and its key - unhandled, it escapes uncaught ([lifecycle.md](lifecycle.md#error-handling)). The value becomes `undefined`; the read does not throw.
+- **Suspense** during refresh (a pending value read): not reported. A getter holding a value becomes `undefined`; one that never produced a value stays suspended. Either way it recomputes once the pending value settles.
 
 ## When to Promote a Derivation
 
