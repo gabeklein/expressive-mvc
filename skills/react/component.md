@@ -1,6 +1,6 @@
 # Expressive MVC - Component
 
-Runnable source (complete programs, served as HTML): [`props`](https://expressive.dev/examples/component/props), [`subcomponents`](https://expressive.dev/examples/component/subcomponents), [`lifecycle`](https://expressive.dev/examples/component/lifecycle), [`injection`](https://expressive.dev/examples/component/injection), [`headless`](https://expressive.dev/examples/component/headless), [`suspense`](https://expressive.dev/examples/component/suspense), [`boundary`](https://expressive.dev/examples/component/boundary), [`custom`](https://expressive.dev/examples/component/custom), plus [`extension`](https://expressive.dev/examples/composition/extension) for base chrome with subclass content.
+Runnable source (complete programs, served as HTML): [`props`](https://expressive.dev/examples/component/props), [`subcomponents`](https://expressive.dev/examples/component/subcomponents), [`lifecycle`](https://expressive.dev/examples/component/lifecycle), [`injection`](https://expressive.dev/examples/component/injection), [`headless`](https://expressive.dev/examples/component/headless), [`suspense`](https://expressive.dev/examples/component/suspense), [`boundary`](https://expressive.dev/examples/component/boundary), [`custom`](https://expressive.dev/examples/component/custom).
 
 `Component` extends `State` - a persistent class instance owning its rendering, lifecycle, and behavior.
 
@@ -174,39 +174,7 @@ class Accordion extends Toggle {
 
 Base owns behavior + structure, subclass fills in rendering: `<DarkModeSwitch />`, `<Accordion title="FAQ">...</Accordion>`.
 
-## Extending a Base
-
-`render()` overrides like any method - a subclass render replaces the base's. To keep base chrome and let subclasses supply content, expose the content as a subcomponent and render it from the base:
-
-```tsx
-class Frame extends Component {
-  Body(): ReactNode {
-    return this.props.children;
-  }
-
-  render() {
-    return (
-      <section className="frame">
-        <header>Frame</header>
-        <this.Body />
-      </section>
-    );
-  }
-}
-
-class Page extends Frame {
-  body = 'Hello';
-
-  Body() {
-    return <p>{this.body}</p>;
-  }
-}
-
-// <Page /> renders:
-// <section class="frame"><header>Frame</header><p>Hello</p></section>
-```
-
-The base owns chrome, suspense and context once; subclasses override `Body`. Overriding `render` replaces the chrome - call `super.render(props)` to wrap it instead.
+A subclass `render()` replaces the base's like any method - `super.render(props)` wraps it.
 
 Extend only when the subclass *is a kind of* the base (`Nav` is a `Link`). An add-on - resize, collapse, drag - wraps as a mounted Component (`<Resize>{children}</Resize>`): extending parks the add-on's fields on the subclass's every snapshot, and removing it means rewriting the class rather than dropping the wrap.
 

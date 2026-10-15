@@ -266,28 +266,18 @@ function frame(this: Route): Component.Node {
     if (router.rejected === router.path) return null;
   }
 
-  const { render, own } = page(self);
+  let T = self.constructor as typeof Route;
+  let desc: PropertyDescriptor | undefined;
 
-  if (matched) return render.call(this);
+  while (!(desc = Object.getOwnPropertyDescriptor(T.prototype, 'render')))
+    T = Object.getPrototypeOf(T);
 
-  if (own) return null;
+  if (matched) return unbind(desc.get || desc.value).call(this);
+  if (T !== Route) return null;
 
   const { children } = this;
 
   return allRoutes(children) ? children : null;
-}
-
-/** The page render of a Route's class, and whether a subclass defines it. */
-function page(self: Route) {
-  for (let T = self.constructor as typeof Route; ; T = Object.getPrototypeOf(T)) {
-    const desc = Object.getOwnPropertyDescriptor(T.prototype, 'render');
-
-    if (desc)
-      return {
-        render: unbind(desc.get || desc.value) as (this: Route) => Component.Node,
-        own: T !== Route
-      };
-  }
 }
 
 const GUARD = new WeakMap<Route, { redirect: Function; space: string; to?: string; promise?: Promise<string | undefined> }>();

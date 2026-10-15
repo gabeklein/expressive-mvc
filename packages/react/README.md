@@ -62,36 +62,6 @@ class Counter extends Component {
 
 Anything read through `this` in `render()` is reactive; the instance survives across renders, so refs, sockets, and Maps held on `this` persist. State fields also become optional JSX props (`<Counter count={5} />`).
 
-### Extending a base
-
-`render()` overrides like any method - a subclass render replaces the base's (`super.render(props)` wraps it). To keep base chrome around subclass content, render a subcomponent the subclass overrides:
-
-```tsx
-class Frame extends Component {
-  Body(): React.ReactNode {
-    return this.props.children;
-  }
-
-  render() {
-    return (
-      <section className="frame">
-        <header>Frame</header>
-        <this.Body />
-      </section>
-    );
-  }
-}
-
-class Page extends Frame {
-  body = 'Hello';
-  Body() {
-    return <p>{this.body}</p>;
-  }
-}
-
-// <Page /> -> <section class="frame"><header>Frame</header><p>Hello</p></section>
-```
-
 ### Subcomponents
 
 PascalCase members become their own reactive React components scoped to the live instance. They read the parent's reactive `this` directly - no props plumbing - yet each is an isolated component with its own hooks and boundary. Subclasses override them to customize pieces without touching behavior.
@@ -123,6 +93,8 @@ class DarkModeSwitch extends Toggle {
 ```
 
 The base owns behavior and structure; subclasses author only the rendering. Override a subcomponent as a **method** when it takes no props, or as an **arrow field** when you want its props type inferred from the base - which is how `@expressive/router`'s [`NavLinks`](https://github.com/gabeklein/expressive-mvc/blob/main/packages/router/README.md#generated-navigation) exposes its overridable `Item` / `List` / `Group` members.
+
+A subclass `render()` replaces the base's like any method - `super.render(props)` wraps it.
 
 ### Self-providing context
 

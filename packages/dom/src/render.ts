@@ -363,7 +363,10 @@ function mountComponent(
   fiber.owned = owned;
   fiber.appearance = appearance;
   fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
-  fiber.render = () => enter(fiber.scope!, () => draw(fiber.value as Renderable, fiber.props!));
+  fiber.render = () => enter(fiber.scope!, () => {
+    const { render } = fiber.value as Renderable;
+    return render ? unbind(render).call(fiber.value, fiber.props) : fiber.props!.children ?? null;
+  });
   probing(fiber);
 
   let first = true;
@@ -933,10 +936,6 @@ function source(value: RenderNode): RenderNode {
     value = Object.getPrototypeOf(value);
 
   return value;
-}
-
-function draw(state: Renderable, props: Record<string, any>): RenderNode {
-  return state.render ? unbind(state.render).call(state, props) : props.children ?? null;
 }
 
 function renderable(value: unknown): value is Renderable {

@@ -102,53 +102,9 @@ class Accordion extends Toggle {
 
 > The base owns the toggle logic and structure; subclasses just say what each state looks like. Both work immediately as `<DarkModeSwitch />` or `<Accordion title="FAQ">...</Accordion>`. This is how teams DRY up UI patterns into organizational primitives - build once, extend everywhere.
 
+A subclass `render()` replaces the base's like any method override; call `super.render(props)` to wrap it instead.
+
 <br />
-
-## Extending a base
-
-`render()` overrides like any other method: a subclass render replaces the base's. To keep the base's chrome while subclasses supply the content, expose that content as a [subcomponent](#subcomponents) and render it from the base:
-
-```tsx
-class Frame extends Component {
-  Body(): ReactNode {
-    return this.props.children;
-  }
-
-  render() {
-    return (
-      <section className="frame">
-        <header>Frame</header>
-        <this.Body />
-      </section>
-    );
-  }
-}
-
-class Page extends Frame {
-  body = 'Hello';
-
-  Body() {
-    return <p>{this.body}</p>;
-  }
-}
-
-<Page />;
-```
-
-`<Page />` renders the `Frame` chrome with the `Page` content in the slot:
-
-```html
-<section class="frame">
-  <header>Frame</header>
-  <p>Hello</p>
-</section>
-```
-
-The base owns the chrome, suspense and context once; subclasses override only `Body`. Each subcomponent is its own component, so it gets its own subscriptions and can use hooks freely. Here it is in action:
-
-<Playground of="composition/extension" />
-
-A subclass that overrides `render()` itself takes over the whole output. Call `super.render(props)` to wrap the base instead of replacing it.
 
 ## Persistent identity
 
@@ -328,6 +284,8 @@ Key behaviors:
 Subcomponents are **extension points**, not a general decomposition tool. Ask whether a subclass would reasonably replace or wrap that renderer - `Toggle.Active`, a grid's `Row`, chrome a theme variant swaps. If not, pull the busy section into a plain function component calling `Dashboard.get()` instead; it keeps dependencies local without the override machinery. [See them in action](/examples/component/subcomponents).
 
 <br />
+
+<Playground of="component/subcomponents" />
 
 ## Suspense
 
