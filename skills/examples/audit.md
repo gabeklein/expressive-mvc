@@ -17,7 +17,7 @@ Three or more yeses justify a deeper ownership audit - a heuristic, not an adopt
 Then decide the shape:
 
 - Intrinsic to display logic - `Component`.
-- Headless domain model/control state - `Model`, even when contextual.
+- Headless state - `Model`, even when contextual.
 - React tree placement is the feature (Boundary, Route) - `Component`, even with little UI.
 - Trivial and local - leave as hooks.
 

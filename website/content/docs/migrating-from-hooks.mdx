@@ -60,7 +60,7 @@ Before moving code, choose the destination:
 
 - **`Component`** for state intrinsic to display logic. Usually that means defining `render()`.
 - **`Component` without `render()`** when React tree placement is the point. It passes children through while still providing context and Suspense/ErrorBoundary placement.
-- **`Model`** for headless domain models and controls, even when they are contextual.
+- **`Model`** for headless state and logic, even when it is contextual.
 - **Hooks** for trivial local UI state.
 
 Don't create `UserFormState` plus `UserFormView` just because hooks were present. If the form's state, handlers, validation, lifecycle, and JSX are a single reusable control, `class UserForm extends Component` may be the cleanest migration.

@@ -28,7 +28,7 @@ Expressive implements all three structurally:
 
 Domain model or control is a role, not a type - the test is whether it outlives its placement. Domain models are reused across routes and held by many owners; a control is constructed where it is placed and dies with it. Both are `Model` instances; ownership, not a base class, marks the difference.
 
-Vocabulary: `Model` is the class, an *instance* is any instance of it, and *domain model* and *control* are its two roles. A bare lowercase "model" is not used.
+Vocabulary: `Model` is the class, an *instance* is any instance of it, and *domain model* and *control* are its two roles. A bare lowercase "model" is not used; *state* stays the plain word for what instances hold.
 
 `Component` deliberately collapses the triad for state intrinsic to one rendered unit - a form input, media player, route shell - where separating domain model from view is ceremony, not architecture. A page-level `Component` with a `render()` is a control that renders - control and view on one class, the shape of Cocoa's `UIViewController`. The collapse is scoped and opt-in; the separated form (`Model` + observing function components) stays available and is the default for headless or shared state. Providing that form is also `Component`, bare: `<Component for={Model}>` places an instance and its boundaries in the tree without collapsing anything - `for` stays the instance, the element stays a view node. Smalltalk's successors made the same trade, merging view and controller into widgets.
 

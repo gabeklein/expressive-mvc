@@ -36,7 +36,7 @@ Use **`Component`** when state is intrinsic to display logic. Form inputs, media
 Usually a Component defines `render()`. Without one, children pass through while the instance still provides context, runs `mount()`, and places its Suspense and error boundaries - useful for route controls, progressive `Boundary` wrappers, and mount-only ancestors like a focus trap. Don't write `render() { return this.props.children; }` - just omit it.
 
 > **Good to know:** <br/>
-> Don't use Component just because something is contextual. Components carry React-facing properties (`props`, `state`, `setState`...), which makes `.get()` IntelliSense noisier. Headless domain models and controls should stay `Model`.
+> Don't use Component just because something is contextual. Components carry React-facing properties (`props`, `state`, `setState`...), which makes `.get()` IntelliSense noisier. Headless state should stay in a `Model`.
 
 The real payoff is reusability through inheritance. You build a Component once - lifecycle, reactivity, and error handling baked in - then extend and fill in the blanks.
 
