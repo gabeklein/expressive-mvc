@@ -16,7 +16,7 @@ packages/react  - React adapter (@expressive/react)
 packages/preact - Preact adapter (@expressive/preact)
 packages/router - Router built on Component (@expressive/router)
 packages/inspect - In-page inspector for agents and devtools (@expressive/inspect)
-packages/run    - Durable, resumable runs as State classes (@expressive/run, unreleased - see FEATURE.md on feat/run)
+packages/run    - Durable, resumable runs as Model classes (@expressive/run, unreleased - see FEATURE.md on feat/run)
 skills/         - API reference docs (also published as skills.sh skill)
 examples/       - Playground of crawlable example pages (see examples/AGENTS.md)
 website/        - Docs site
