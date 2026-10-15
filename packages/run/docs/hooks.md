@@ -39,7 +39,7 @@ protected back(reason: unknown) {
 }
 ```
 
-Runs once after each unwind completes - halted at an irreversible entry or not. After [`this.then.back(step, reason)`](undo.md#back), `reason` is its second argument (else `undefined`) and the run continues; a throw from it fails the run. After a failure or `stop({ undo: true })` - not `stop()` - it runs before the run rejects, and `reason` is what the run rejects with: the failure, an undo's throw, or the `'Stopped'` error; a throw from it replaces that. Raw instance as `this`, writes unjournaled, return ignored.
+Runs once after each unwind completes - halted at an irreversible entry or not. After [`this.then.back(step, reason)`](undo.md#back), `reason` is its second argument (else `undefined`) and the run continues; a throw from it fails the run. After a failure or `stop(true)` - not `stop()` - it runs before the run rejects, and `reason` is what the run rejects with: the failure, an undo's throw, or the `'Stopped'` error; a throw from it replaces that. Raw instance as `this`, writes unjournaled, return ignored.
 
 ## `exit`
 
@@ -58,7 +58,7 @@ type Outcome<R = unknown> =
   | { status: 'stopped'; error: unknown };
 ```
 
-`result` is the run's result; `error` is what the run rejects with - the failure, an undo's or `back`'s throw, or the `'Stopped'` error. Runs for `stop()` with or without `undo`; not for queued runs dropped by `stop()` - they never started. Raw instance as `this`, writes unjournaled, return ignored.
+`result` is the run's result; `error` is what the run rejects with - the failure, an undo's or `back`'s throw, or the `'Stopped'` error, carrying `stop`'s reason as `cause`. Runs for `stop()` with or without `undo`; not for queued runs dropped by `stop()` - they never started. Raw instance as `this`, writes unjournaled, return ignored.
 
 A throw from it replaces `error`, as `back`'s does: the run rejects with it. On a `done` run, the result is dropped - status `failed`, `error` set, nothing unwound.
 

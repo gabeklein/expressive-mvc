@@ -84,14 +84,16 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 
 ## Stop
 
-`then.stop()` - or `this.then.stop()` in a step - cancels the active run, rejecting it and the queue:
+`then.stop(undo?, reason?)` - or `this.then.stop()` in a step - cancels the active run, rejecting it and the queue:
 
 - status `stopped` at once; pending steps are discarded; open waits are released;
 - in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - their entries are recorded, what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
 - queued runs are dropped: `queue` empties, each queued Promise rejects with an error named `'Stopped'`;
 - once in-flight steps have settled, the run's Promise rejects with that error.
 
-`stop({ undo: true })` also unwinds the run as a failure would ([undo.md](undo.md)), `back` included; an undo or `back` that throws sets `error` and the run rejects with it. During an unwind parked on a [returned wait](undo.md#a-returned-wait), `stop()` halts the unwind there. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
+`reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. `back` and `exit` see the same error; `then.error` stays unset.
+
+`stop(true)` also unwinds the run as a failure would ([undo.md](undo.md)), `back` included; an undo or `back` that throws sets `error` and the run rejects with it. During an unwind parked on a [returned wait](undo.md#a-returned-wait), `stop()` halts the unwind there. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 
 `exit` runs last for every stopped run ([hooks.md](hooks.md#exit)). A stopped run is not rethrown uncaught.
 

@@ -133,11 +133,6 @@ declare namespace Runner {
     exit?: (this: T, outcome: Runner.Outcome<Runner.Result<T>>) => void;
   }
 
-  interface Stop {
-    /** Unwind the current run as a failure would. */
-    undo?: boolean;
-  }
-
   interface Snapshot {
     status: Status;
     active: string | undefined;
@@ -206,8 +201,12 @@ declare namespace Runner {
      * value, else the value, else a dump of its public values.
      */
     end(value?: unknown): void;
-    /** Cancel: discard pending steps and queued runs; in-flight steps settle and commit. */
-    stop(options?: Runner.Stop): void;
+    /**
+     * Cancel: discard pending steps and queued runs; in-flight steps settle and commit.
+     * `undo` - also unwind the run as a failure would. `reason` - the `cause` of the `'Stopped'`
+     * error the run and queue reject with, and its message when a string.
+     */
+    stop(undo?: boolean, reason?: unknown): void;
     /** At the top of a step: try it again on throw. */
     retry(config: Runner.Retry): void;
     /** Inside a step: a point of no return - the step is not retried, restored or unwound. */
@@ -285,7 +284,7 @@ function run<T extends State>(self: T, options: Runner.Options<T> = {}): Runner<
     on: { value: self },
     get: { value: () => Object.fromEntries(KEYS.map((key) => [key, read[key]()])) },
     end: { value: (value?: unknown) => control.conclude(value) },
-    stop: { value: (options?: Runner.Stop) => control.stop(options) },
+    stop: { value: (undo?: boolean, reason?: unknown) => control.stop(undo, reason) },
     retry: { value: () => outside('retry') },
     commit: { value: () => outside('commit') },
     back: { value: () => outside('back') },
@@ -498,19 +497,20 @@ class Control extends State {
     run.end(run.node('end', value === undefined ? [] : [value]));
   }
 
-  stop(options: Runner.Stop = {}) {
+  stop(undo?: boolean, reason?: unknown) {
     const { _current: current, queue } = this;
 
     if (!current) return;
 
-    const stopped = Object.assign(new Error(`${this._self} was stopped.`), { name: 'Stopped' });
+    const message = typeof reason == 'string' ? reason : `${this._self} was stopped.`;
+    const stopped = Object.assign(new Error(message, reason === undefined ? undefined : { cause: reason }), { name: 'Stopped' });
 
     for (const ticket of queue) ticket.reject(stopped);
 
     queue.clear();
     current._stopped = stopped;
     current.release();
-    current.halt('stopped', undefined, options.undo);
+    current.halt('stopped', undefined, undo);
   }
 }
 
@@ -1218,7 +1218,7 @@ class Frame extends State {
     const { run } = this;
     const key = this.keyOf(step);
 
-    if (!key || key == 'end') throw new Error('back() takes a step to go back to; stop({ undo: true }) unwinds the whole run.');
+    if (!key || key == 'end') throw new Error('back() takes a step to go back to; stop(true) unwinds the whole run.');
 
     const token = this.issue('back', []);
 

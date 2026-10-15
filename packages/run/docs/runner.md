@@ -13,7 +13,7 @@
 | `error` | what failed the run, or what its last undo threw |
 | `on` | the instance |
 | `end(value?)` | in a step: end the run once everything else has settled ([steps.md](steps.md#end-joins)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |
-| `stop({ undo? })` | cancel ([runs.md](runs.md#stop)) |
+| `stop(undo?, reason?)` | cancel ([runs.md](runs.md#stop)) |
 | `retry({ attempts, backoff? })` | in a step: retry it ([retry.md](retry.md)) |
 | `commit()` | in a step: a point of no return ([undo.md](undo.md#commit)) |
 | `back(step, reason?)` | in a step: unwind what committed after `step`, then continue ([undo.md](undo.md#back)) |

@@ -104,7 +104,7 @@ agent.then.record.map((e) => [e.id, e.undone]);
 
 Steps 3-5 are the unwind [`back`](#back) runs. Entries a `back` already undid are skipped.
 
-Undo frames cannot schedule: a step called from an undo throws (`… is failed; next cannot run.`), which fails that undo. `stop({ undo: true })` unwinds the same way with status `stopped` ([runs.md](runs.md#stop)). Hooks do not run for undos.
+Undo frames cannot schedule: a step called from an undo throws (`… is failed; next cannot run.`), which fails that undo. `stop(true)` unwinds the same way with status `stopped` ([runs.md](runs.md#stop)). Hooks do not run for undos.
 
 ## Back
 
@@ -135,7 +135,7 @@ It is a token in the plan, like a step call. When the plan reaches it:
 - The calling step has not committed when it calls `back` - its own writes stay, and it is never a target: `this.then.back(this.ship)` from `ship` targets an earlier `ship`. Steps it scheduled before `back()` have run by then and are unwound.
 - Retry is a call after it - `this.then.back(this.reserve); this.pay(card2);` - or a wait for one: `this.then.back(this.reserve); this.then(this.pay);` parks until `order.pay(card2)` from outside.
 - `end` scheduled by an unwound entry is discarded; one scheduled after `back()` replaces it.
-- `step` is a step reference. A call, string or nothing throws `back() takes a step to go back to; stop({ undo: true }) unwinds the whole run.`; `step` without a committed entry fails the run - `back() found no committed reserve.`
+- `step` is a step reference. A call, string or nothing throws `back() takes a step to go back to; stop(true) unwinds the whole run.`; `step` without a committed entry fails the run - `back() found no committed reserve.`
 - An undo throwing fails the run, `undone: 'failed'`; the failure unwind stops there. A throw from `back` fails the run.
 - Backs from parallel steps run one at a time. `stop()`, a failure or an outside `end` during one stops it; a failure's unwind takes up what is left.
 - Not groupable (`back() cannot be grouped.`), not an undo - returned, it fails the run as any value.

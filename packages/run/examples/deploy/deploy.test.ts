@@ -122,7 +122,7 @@ it('will abort the test suite when stopped', async () => {
   expect(test.mock.calls[0][1].signal.aborted).toBe(true);
   expect(test).toHaveBeenCalledTimes(1);
   expect(deploy.report).toBe(`1.2.0 stopped: ${deploy} was stopped.`);
-  // a plain stop does not unwind - stop({ undo: true }) would
+  // a plain stop does not unwind - stop(true) would
   expect(deploy.then.record.find((entry) => entry.key == 'build')!.undone).toBeUndefined();
 });
 
@@ -136,8 +136,11 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   const release = deploy.next();
 
   await untilGate(deploy);
-  await expect(deploy.abort('error rate')).rejects.toThrow('canary rejected: error rate');
-  await expect(release).rejects.toThrow('canary rejected: error rate');
+  const stopped = { name: 'Stopped', message: 'canary rejected: error rate', cause: 'canary rejected: error rate' };
+
+  // the answer's own Promise settles with the run it stopped
+  await expect(deploy.abort('error rate')).rejects.toMatchObject(stopped);
+  await expect(release).rejects.toMatchObject(stopped);
 
   expect(fleet.uninstall).toHaveBeenCalledWith('web-1');
   expect(fleet.uninstall).toHaveBeenCalledWith('web-4');
@@ -145,9 +148,8 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   expect(registry.unpublish).toHaveBeenCalledWith('app-1.2.0.tgz');
   expect(git.untag).toHaveBeenCalledWith('1.2.0');
   expect(db.migrate).not.toHaveBeenCalled();
-  expect(deploy.then.status).toBe('failed');
-  expect(deploy.then.error).toEqual(new Error('canary rejected: error rate'));
-  expect(deploy.report).toBe('1.2.0 failed: canary rejected: error rate');
+  expect(deploy.then.status).toBe('stopped');
+  expect(deploy.report).toBe('1.2.0 stopped: canary rejected: error rate');
   // light journal: only entries with an undo are marked
   expect(deploy.then.record.map((entry) => [entry.key, entry.undone])).toEqual([
     ['next', undefined],
@@ -156,7 +158,8 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
     ['canary', undefined],
     ['install', true],
     ['install', true],
-    ['gate', undefined]
+    ['gate', undefined],
+    ['abort', undefined]
   ]);
 });
 
@@ -165,7 +168,7 @@ it('will nudge on-call, then abort a gate nobody answers', async () => {
   vi.spyOn(pager, 'nudge');
 
   const deploy = create();
-  const failed = expect(deploy.next()).rejects.toThrow('canary rejected: nobody approved');
+  const failed = expect(deploy.next()).rejects.toMatchObject({ name: 'Stopped', message: 'canary rejected: nobody approved' });
 
   await vi.advanceTimersByTimeAsync(15 * MINUTE);
   expect(pager.nudge).toHaveBeenCalledWith('1.2.0 awaits approval');

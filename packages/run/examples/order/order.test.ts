@@ -154,7 +154,7 @@ it('will undo an order stopped mid-shipment', async () => {
   const result = order.next();
 
   await vi.waitFor(() => expect(order.then.active).toBe('ship'));
-  order.then.stop({ undo: true });
+  order.then.stop(true);
   expect(order.then.status).toBe('stopped');
 
   // a step in flight settles and commits first, then the unwind takes it back too

@@ -104,8 +104,8 @@ export class Deploy extends Job {
   }
 
   async abort(reason: string) {
-    // an answer that throws fails the run - everything committed unwinds, newest first
-    throw new Error(`canary rejected: ${reason}`);
+    // cancel and unwind everything committed, newest first - the reason becomes the Stopped error's message and cause
+    this.then.stop(true, `canary rejected: ${reason}`);
   }
 
   protected async migrate() {

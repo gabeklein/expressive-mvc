@@ -1584,7 +1584,7 @@ describe('stop', () => {
     const result = test.next();
 
     await flushMicrotasks();
-    test.then.stop({ undo: true });
+    test.then.stop(true);
     work.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
@@ -1687,6 +1687,91 @@ describe('stop', () => {
     await expect(test.next()).rejects.toMatchObject({ name: 'Stopped' });
     await expect(test.next()).rejects.toMatchObject({ name: 'Stopped' });
     expect(test.then.runs).toBe(2);
+  });
+
+  it('will carry a reason to the run, queue, back and exit', async () => {
+    const work = mockPromise();
+    const back = vi.fn();
+    const exit = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        await work;
+      }
+
+      protected back(reason: unknown) {
+        back(reason);
+      }
+
+      exit(outcome: Runner.Outcome) {
+        exit(outcome);
+      }
+    }
+
+    const test = Test.new();
+    const first = test.next();
+    const second = test.next();
+
+    test.then.stop(true, 'cancelled by user');
+    work.resolve();
+
+    const stopped = { name: 'Stopped', message: 'cancelled by user', cause: 'cancelled by user' };
+
+    await expect(second).rejects.toMatchObject(stopped);
+    await expect(first).rejects.toMatchObject(stopped);
+    await expect(first).rejects.toBe(await second.catch((error) => error));
+    expect(back.mock.calls[0][0]).toMatchObject(stopped);
+    expect(exit.mock.calls[0][0]).toMatchObject({ status: 'stopped', error: stopped });
+    expect(test.then.error).toBeUndefined();
+  });
+
+  it('will carry a reason without undo', async () => {
+    const work = mockPromise();
+    const reason = { code: 499 };
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        await work;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    test.then.stop(false, reason);
+    work.resolve();
+
+    const error = await result.catch((error) => error);
+
+    expect(error).toMatchObject({ name: 'Stopped', message: `${test} was stopped.` });
+    expect(error.cause).toBe(reason);
+  });
+
+  it('will not set a cause without a reason', async () => {
+    const work = mockPromise();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        await work;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    test.then.stop();
+    work.resolve();
+
+    const error = await result.catch((error) => error);
+
+    expect(error.message).toBe(`${test} was stopped.`);
+    expect('cause' in error).toBe(false);
   });
 });
 
@@ -2889,7 +2974,7 @@ describe('hooks', () => {
     const test = Test.new();
     const result = test.next();
 
-    test.then.stop({ undo: true });
+    test.then.stop(true);
     work.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
@@ -4951,7 +5036,7 @@ describe('back', () => {
 
     const test = Test.new();
 
-    const message = 'back() takes a step to go back to; stop({ undo: true }) unwinds the whole run.';
+    const message = 'back() takes a step to go back to; stop(true) unwinds the whole run.';
 
     await expect(test.next()).rejects.toThrow(message);
     await expect(test.next('first')).rejects.toThrow(message);
@@ -5382,7 +5467,7 @@ describe('back', () => {
     const result = test.next();
 
     await vi.waitFor(() => expect(test.refund).toBeDefined());
-    test.then.stop({ undo: true });
+    test.then.stop(true);
 
     await vi.waitFor(() => expect(test.refund).toBeDefined());
     await test.refund();
