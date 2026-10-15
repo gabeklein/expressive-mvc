@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Component, Context, State, get, set } from '@expressive/mvc';
+import { Component, Context, Model, get, set } from '@expressive/mvc';
 
 import { flushMicrotasks, mockPromise } from '../test.setup';
 import { jsx } from './jsx-runtime';
@@ -575,7 +575,7 @@ describe('output', () => {
   });
 
   it('will render within a provided context', () => {
-    class Config extends State {
+    class Config extends Model {
       mode = 'test';
     }
 
