@@ -186,6 +186,19 @@ await agent.next('now the tests');      // the next - messages persist, then.run
 
 Order opts into `rewind` - a failure puts every field back. Agent stays light and exercises what Order does not: a run per turn on one instance, a queue, park and wake by outside call (`allow`/`deny`) or a timeout watcher, steering (`agent.mode = 'yolo'` before the next `tool`), a failing turn keeping what earlier steps pushed to `messages` while its own `draft` chunks are dropped, `stop()` mid-turn aborting the model call through `this.then.signal`, and the journal as transcript.
 
+A UI dogfood lives in the examples playground: [run/checkout](examples/pages/run/checkout/App.tsx) - cart → reserve → pay → approval wait with a timeout watcher → ship ∥ receipt → end, a decline going `back` to `reserve` and waiting on `pay` for another card, `stop(true)` - rendered on React and dom, with a Playwright spec.
+
+## Crawler (benchmark, not built)
+
+A shopping UX scanning several sites at once, deduping products into one live list, driven by a user or an agent through an abstracted browser. Needs it adds:
+
+- **Group concurrency limit** - `this.then(items, step, { limit })`: at most `limit` members in flight, the rest queued in order.
+- **allSettled-style groups** - a branch giving up (site down, blocked) does not fail the run; the group completes with what succeeded. First case for the held recovery item, scoped to groups.
+- **Parallel writes to a shared collection** - branches pushing into one `has`/`map` while siblings retry. The per-frame collection attribution bug (Open: a retry restores the capture shared with siblings, undoing their changes) is now the top fix.
+- **Driving the run mid-flight** - outside calls adding branches (a new site, a refined query) - the handler half of nesting; cancelling one branch needs a branch handle.
+- **Journal growth** - thousands of entries per run: a cap, compaction, or a keep-failures-only option.
+- **Shared browser-context pool** - jobs drawing from a bounded set of contexts: the cross-job lock generalized to a semaphore.
+
 ## Plan
 
 In order; stop and reassess after 2 if the journal is ugly.
