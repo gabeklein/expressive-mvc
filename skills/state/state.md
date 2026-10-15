@@ -4,7 +4,7 @@
 import { Model } from '@expressive/mvc';
 ```
 
-`@expressive/mvc` - framework-agnostic reactive state built on classes.
+`@expressive/mvc` - framework-agnostic reactive state built on classes. `State` is a deprecated alias of `Model`.
 
 ## Creating Model
 
@@ -138,7 +138,7 @@ Nest by direct assignment. Children are auto-parented, activated, and destroyed 
 
 ```ts
 class Parent extends Model {
-  child = new ChildState(); // parented and activated when Parent initializes
+  child = new ChildModel(); // parented and activated when Parent initializes
 }
 ```
 
@@ -179,7 +179,7 @@ Type guard - true if the argument is this class or a subclass.
 
 ```ts
 Counter.is(SubCounter); // true
-Counter.is(OtherState); // false
+Counter.is(OtherModel); // false
 ```
 
 ### `Model.on()`

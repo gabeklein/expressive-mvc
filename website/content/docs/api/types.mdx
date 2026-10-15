@@ -42,14 +42,14 @@ Keys of `T` excluding inherited `Model` members (`get`, `set`, `is`, etc.). This
 Managed keys only - `Model.Property<T>` without `_` keys. Snapshots (`Model.Values<T>`), `ref` proxies and instruction keys use this.
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   foo = 1;
   bar = 'hello';
   _handle = null;
 }
 
-type Properties = Model.Property<MyState>; // 'foo' | 'bar' | '_handle'
-type Fields = Model.Field<MyState>; // 'foo' | 'bar'
+type Properties = Model.Property<MyModel>; // 'foo' | 'bar' | '_handle'
+type Fields = Model.Field<MyModel>; // 'foo' | 'bar'
 ```
 
 ### `Model.Event<T>`
@@ -94,7 +94,7 @@ Object compatible with `Values<T>` - every key optional, Export-unwrapped.
 type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
 ```
 
-Not currently used by any public signature - `set(assign)` takes [`Model.Assign<T>`](#stateassignt), which preserves declared field types rather than unwrapping them.
+Not currently used by any public signature - `set(assign)` takes [`Model.Assign<T>`](#modelassignt), which preserves declared field types rather than unwrapping them.
 
 ### `Model.Value<T, K>`
 
@@ -156,7 +156,7 @@ interface On<T> {
 }
 ```
 
-Stage timing is covered under [`Model.on`](/docs/api/state#stateonhandler); `catch` kinds under [Error handling](/docs/api/state#error-handling).
+Stage timing is covered under [`Model.on`](/docs/api/state#modelonhandler); `catch` kinds under [Error handling](/docs/api/state#error-handling).
 
 ### `Model.Global<T>`
 

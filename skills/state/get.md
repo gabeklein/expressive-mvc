@@ -120,8 +120,8 @@ get<T extends Model>(type: Model.Type<T>, required: boolean): T | undefined
 Fetches a Model of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
 
 ```ts
-const parent = child.get(ParentState);
-const maybe = child.get(ParentState, false);
+const parent = child.get(ParentModel);
+const maybe = child.get(ParentModel, false);
 ```
 
 ### Subscribe to context

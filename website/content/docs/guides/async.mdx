@@ -176,7 +176,7 @@ class Profile extends Component {
 
 The full `catch()` and `fallback` semantics live in [Components](/docs/guides/components#error-boundaries).
 
-A rejection nobody renders is different. An async `new()`, or a constructor callback returning a promise, has no reader for its failure to reach - the state is still created, and the rejection goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-stateon) with kind `setup`. Unhandled, it escapes uncaught. The same goes for an async method that keeps writing after its state is destroyed: those writes are stored, reported with kind `dead`, and unhandled, output nothing.
+A rejection nobody renders is different. An async `new()`, or a constructor callback returning a promise, has no reader for its failure to reach - the state is still created, and the rejection goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-modelon) with kind `setup`. Unhandled, it escapes uncaught. The same goes for an async method that keeps writing after its state is destroyed: those writes are stored, reported with kind `dead`, and unhandled, output nothing.
 
 <br />
 

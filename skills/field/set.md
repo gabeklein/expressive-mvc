@@ -15,7 +15,7 @@ All `set()` forms are **non-enumerable** - hidden from `Object.keys()`, spread, 
 ### Placeholder (Suspense)
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   data = set<string>();
   logged = set<string>(undefined, (next, prev) => {
     console.log('assigned:', next);
@@ -28,7 +28,7 @@ Required, initially undefined. Reading before assignment throws a suspense-compa
 ### Default Value
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   name = set('default');
 }
 ```
@@ -38,7 +38,7 @@ Writable; unlike `name = 'default'`, hidden from `Object.keys()` and `ref(this)`
 ### Default Value with Callback
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   name = set('default', (next, prev) => {
     if (next.length < 3) throw false; // reject update
   });
@@ -63,7 +63,7 @@ Callback runs on every assignment:
 ### Factory
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   config = set(() => loadConfig()); // lazy, read-only
   api = set(async () => fetchData()); // async, suspends until resolved
   data = set(() => fetchData(), true); // eager, runs immediately
@@ -84,7 +84,7 @@ Suspense via factory fits load-once data a view cannot render without. Keep expl
 ### Factory with Callback
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   config = set(
     () => loadDefaults(),
     (next, prev) => {
@@ -99,7 +99,7 @@ Writable. Callback runs on factory resolution and on manual assignment.
 ### Computed (Reactive)
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   first = 'John';
   last = 'Doe';
   full = set(self => `${self.first} ${self.last}`); // re-runs when first/last change
@@ -115,7 +115,7 @@ The instruction equivalent of a getter. A function **declaring a parameter** rou
 ### Direct Promises Are Not Supported
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   data = set(somePromise); // TypeError at init
 }
 ```

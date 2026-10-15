@@ -151,7 +151,7 @@ Defines or updates a managed property from a descriptor. On an already-managed p
 state.set('foo', { value: 'bar' }); // update value (bypasses setter)
 state.set('bar', { value: 'hello', set: false }); // read-only property
 state.set('baz', { value: 'hidden', enumerable: false }); // non-enumerable property
-state.set('child', { value: new ChildState() }); // registers child state
+state.set('child', { value: new ChildModel() }); // registers child state
 ```
 
 | Field        | Meaning                                                       |

@@ -4,7 +4,7 @@
 
 | Phase        | Trigger             | What Happens                                                                  | Model Ready? |
 | ------------ | ------------------- | ----------------------------------------------------------------------------- | :----------: |
-| Construction | `new MyState()`     | Listeners registered, nothing activated. Home context claimable.              |      NO      |
+| Construction | `new MyModel()`     | Listeners registered, nothing activated. Home context claimable.              |      NO      |
 | Activation   | `Model.new()`       | Properties managed, constructor args run, `new()` hook runs; a global's home locks to root | YES |
 | Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run                        |     YES      |
 | Destruction  | `state.set(null)`   | Children destroyed first, listeners called, dispatch stops                    |  DESTROYED   |
@@ -132,7 +132,7 @@ state.get((current) => {
 
 ## Error Handling
 
-An instance failing out of turn - not at a call that could catch it - reaches the `catch` stage of [Model.on()](state.md#stateon) on its class chain, as what was thrown, with its `kind` and `key` where one applies. Unhandled: a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught (fails a test run, crashes a Node process).
+An instance failing out of turn - not at a call that could catch it - reaches the `catch` stage of [Model.on()](state.md#modelon) on its class chain, as what was thrown, with its `kind` and `key` where one applies. Unhandled: a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught (fails a test run, crashes a Node process).
 
 | `kind`      | `error`                       | When                                                                   |
 | ----------- | ----------------------------- | ---------------------------------------------------------------------- |

@@ -13,11 +13,11 @@ Holds a mutable value (like React's `useRef`). Writes join the state event strea
 ### Basic Ref
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   element = ref<HTMLDivElement>();
 }
 
-const { is: state } = MyState.use();
+const { is: state } = MyModel.use();
 
 state.element.current; // HTMLDivElement | null
 state.element.current = div; // set via .current
@@ -28,7 +28,7 @@ Returns a `ref.Object<T>` - both a callable function and an object with `.curren
 ### Ref with Callback
 
 ```ts
-class MyState extends Model {
+class MyModel extends Model {
   node = ref<HTMLElement>((el) => {
     console.log('element attached:', el);
     return (next) => console.log('replaced with:', next);

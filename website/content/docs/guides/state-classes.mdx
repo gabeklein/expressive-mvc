@@ -182,7 +182,7 @@ A Model has four phases:
 
 | Phase        | Trigger             | What happens                                                        |
 | ------------ | ------------------- | ------------------------------------------------------------------- |
-| Construction | `new MyState()`     | Fields are set to their initial values, no reactivity yet           |
+| Construction | `new MyModel()`     | Fields are set to their initial values, no reactivity yet           |
 | Activation   | `Model.new()`       | Properties become managed, constructor args run, `new()` hook fires |
 | Operation    | Property assignment | Batched updates flush via microtask, effects re-run                 |
 | Destruction  | `state.set(null)`   | Children destroyed first, listeners notified, dispatch stops        |
@@ -291,7 +291,7 @@ Use `use()` for every-render bridging. For one-shot setup, prefer `new()`.
 state.set(null);
 ```
 
-This is automatic in React - `Model.use()` destroys on unmount, and so does `<Component for={MyState}>` for the instance it constructs. You rarely call it yourself. When destruction runs:
+This is automatic in React - `Model.use()` destroys on unmount, and so does `<Component for={MyModel}>` for the instance it constructs. You rarely call it yourself. When destruction runs:
 
 1. **Children are destroyed first**, inner-to-outer.
 2. **Listeners are notified** with a `null` signal.
@@ -299,7 +299,7 @@ This is automatic in React - `Model.use()` destroys on unmount, and so does `<Co
 4. **The `new()` hook's returned cleanup** is called.
 5. **Dispatch stops** - no further events or effects.
 
-A write that lands afterward - a late fetch, a timer nobody cleared - is stored without notifying anyone, so the code that made it runs to its end. Each such write is reported to [`catch` handlers](#class-level-setup-with-stateon) with kind `dead`; unhandled, it outputs nothing. One late completion is harmless; repeated late writes mean work outlived its owner, so cancel it in a cleanup rather than guarding writes. Subscribing to a destroyed state still throws.
+A write that lands afterward - a late fetch, a timer nobody cleared - is stored without notifying anyone, so the code that made it runs to its end. Each such write is reported to [`catch` handlers](#class-level-setup-with-modelon) with kind `dead`; unhandled, it outputs nothing. One late completion is harmless; repeated late writes mean work outlived its owner, so cancel it in a cleanup rather than guarding writes. Subscribing to a destroyed state still throws.
 
 <br />
 
@@ -339,7 +339,7 @@ function UserStreet() {
 
 ## Constructor arguments
 
-Beyond initial values and callbacks, `.new()` / `.use()` accepts arrays of arguments (flattened). A callback may return a cleanup, an object to assign, more arguments, or a promise - a rejected promise is reported to [`catch` handlers](#class-level-setup-with-stateon) with kind `setup` and, unhandled, escapes uncaught. All are applied in order during activation:
+Beyond initial values and callbacks, `.new()` / `.use()` accepts arrays of arguments (flattened). A callback may return a cleanup, an object to assign, more arguments, or a promise - a rejected promise is reported to [`catch` handlers](#class-level-setup-with-modelon) with kind `setup` and, unhandled, escapes uncaught. All are applied in order during activation:
 
 ```ts
 const t = Test.new(

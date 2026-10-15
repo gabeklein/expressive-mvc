@@ -14,8 +14,8 @@ Fetches another Model from the context hierarchy, upstream or downstream.
 
 ```ts
 class Child extends Model {
-  parent = get(ParentState);          // nearest instance; throws if not found
-  maybe = get(ParentState, false);    // T | undefined; never throws
+  parent = get(ParentModel);          // nearest instance; throws if not found
+  maybe = get(ParentModel, false);    // T | undefined; never throws
 }
 ```
 
@@ -23,7 +23,7 @@ class Child extends Model {
 
 ```ts
 class Child extends Model {
-  parent = get(ParentState, (parent, self) => {
+  parent = get(ParentModel, (parent, self) => {
     console.log('found:', parent);
     return () => console.log('detached');
   });
@@ -36,8 +36,8 @@ Receives `(state, subject)`. Runs when the upstream resolves, and again when it 
 
 ```ts
 class Parent extends Model {
-  children = get(ChildState, true);
-  tracked = get(ChildState, true, (child, self) => {
+  children = get(ChildModel, true);
+  tracked = get(ChildModel, true, (child, self) => {
     console.log('registered:', child);
     return () => console.log('removed');
   });
@@ -50,8 +50,8 @@ class Parent extends Model {
 
 ```ts
 class Parent extends Model {
-  child = get(ChildState, true, true);   // throws if not found
-  maybe = get(ChildState, true, false);  // T | undefined
+  child = get(ChildModel, true, true);   // throws if not found
+  maybe = get(ChildModel, true, false);  // T | undefined
 }
 ```
 

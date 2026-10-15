@@ -9,6 +9,8 @@ description: The base Model class - every method, static, and lifecycle hook
 import { Model } from '@expressive/mvc';
 ```
 
+`Model` was named `State` before; `State` remains exported as a deprecated alias of the same class.
+
 Methods marked <small>(React)</small> exist once the adapter is loaded - import `'@expressive/react'` once in your entry.
 
 <br />
@@ -169,14 +171,14 @@ state.get(null, () => console.log('destroyed')); // register callback
 ### `get(Type, required?)` - context lookup
 
 ```ts
-const parent = child.get(ParentState); // throws if not found
-const maybe = child.get(ParentState, false); // undefined if not found
+const parent = child.get(ParentModel); // throws if not found
+const maybe = child.get(ParentModel, false); // undefined if not found
 ```
 
 ### `get(Type, callback, downstream?)` - subscribe to context availability
 
 ```ts
-state.get(ParentState, (parent, downstream) => {
+state.get(ParentModel, (parent, downstream) => {
   return () => {
     /* cleanup */
   };
@@ -319,7 +321,7 @@ Return semantics match `set(callback)`: return a function to run once at settle 
 state.set('foo', { value: 'bar' });
 state.set('bar', { value: 'x', set: false }); // read-only
 state.set('baz', { value: 'y', enumerable: false }); // non-enumerable
-state.set('child', { value: new ChildState() }); // registers child
+state.set('child', { value: new ChildModel() }); // registers child
 ```
 
 Creates or updates a managed property. If it already exists with a reactive getter/setter, only `value` is accepted.
