@@ -268,7 +268,7 @@ abstract class Model {
 
   constructor(...args: Model.Args) {
     define(this, 'is', { value: this });
-    init(this, args);
+    init(this, args, this.new);
   }
 
   /**
@@ -625,12 +625,6 @@ function init(state: Model, ...args: Model.Args) {
   }
 
   const { before, after } = bootstrap(T);
-  const hook = () => {
-    const own = Object.getOwnPropertyDescriptor(state, 'new');
-    const fn = own ? !own.enumerable && own.value : Reflect.get(T.prototype, 'new', state);
-
-    return typeof fn == 'function' ? fn.call(state, state) : undefined;
-  };
 
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
@@ -685,7 +679,7 @@ function init(state: Model, ...args: Model.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const queue = [...before, observe, ...args, hook, ...after, register];
+    const queue = [...before, observe, ...args, ...after, register];
 
     capture((release) => {
       listener(state, () => release(null), null);

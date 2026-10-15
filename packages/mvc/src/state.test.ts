@@ -409,6 +409,25 @@ describe('methods', () => {
     expect(inside).toBe(test.is);
   });
 
+  it('will run an async new()', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {
+      value = 0;
+
+      protected async new() {
+        await done;
+        this.value = 1;
+      }
+    }
+
+    const test = Test.new();
+
+    done.resolve();
+
+    await expect(test).toHaveUpdated('value');
+  });
+
   it('will allow overwrite', () => {
     class Test extends Model {
       foo = 'foo';
@@ -3338,82 +3357,6 @@ describe('on type stage (static)', () => {
 
     expect(test.foo as unknown).toBe('claimed');
     expect(typeof foo.set).toBe('function');
-  });
-
-  it('will run new as the prototype defines it when activation reaches it', () => {
-    const seen: string[] = [];
-
-    class Test extends Model {
-      protected new() {
-        seen.push('new');
-      }
-    }
-
-    const test = new Test();
-
-    Object.defineProperty(Test.prototype, 'new', {
-      configurable: true,
-      writable: true,
-      value() {
-        seen.push('wrapped');
-      }
-    });
-
-    test.set({});
-
-    expect(seen).toEqual(['wrapped']);
-  });
-
-  it('will run an own non-enumerable new as the instance defines it', () => {
-    const seen: string[] = [];
-
-    class Test extends Model {
-      protected new() {
-        seen.push('new');
-      }
-    }
-
-    const test = new Test();
-
-    Object.defineProperty(test, 'new', {
-      configurable: true,
-      value() {
-        seen.push('own');
-      }
-    });
-
-    test.set({});
-
-    expect(seen).toEqual(['own']);
-  });
-
-  it('will let a handler wrap new before the first instance runs it', () => {
-    const seen: string[] = [];
-
-    class Test extends Model {
-      protected new() {
-        seen.push('new');
-      }
-    }
-
-    Test.on({
-      type: (type) => {
-        const { value } = Object.getOwnPropertyDescriptor(type.prototype, 'new')!;
-
-        Object.defineProperty(type.prototype, 'new', {
-          configurable: true,
-          writable: true,
-          value(this: Test) {
-            seen.push('wrapped');
-            value.call(this);
-          }
-        });
-      }
-    });
-
-    Test.new();
-
-    expect(seen).toEqual(['wrapped', 'new']);
   });
 });
 
