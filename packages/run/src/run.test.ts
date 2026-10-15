@@ -764,12 +764,14 @@ describe('inline', () => {
     ]);
   });
 
-  it('will give an arrow the settled proxy of its step', async () => {
+  it('will journal the writes of an arrow as its own', async () => {
     class Test extends Model {
       then = run(this);
+      value = 0;
 
       next() {
         this.then(() => {
+          this.value = 1;
           this.later();
         });
       }
@@ -777,7 +779,196 @@ describe('inline', () => {
       later() {}
     }
 
+    const test = Test.new();
+
+    await test.next();
+    expect(test.value).toBe(1);
+    expect(test.then.record.map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
+      ['next#1', [], ['then#1']],
+      ['then#1', ['value'], ['later#1']],
+      ['later#1', [], []]
+    ]);
+  });
+
+  it('will restore the writes of an arrow that throws', async () => {
+    class Test extends Model {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.then(async () => {
+          this.value = 1;
+          throw new Error('boom');
+        });
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.value).toBe(0);
+  });
+
+  it('will give an arrow its own controller', async () => {
+    let signal!: AbortSignal;
+
+    class Test extends Model {
+      then = run(this);
+
+      next() {
+        this.then(() => {
+          signal = this.then.signal;
+          this.then(this.a(), this.b());
+        });
+      }
+
+      a() {}
+      b() {}
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(signal.aborted).toBe(true);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'then#1', 'a#1', 'b#1']);
+    expect(test.then.record[1].next).toMatchObject([{ key: 'then', group: [{ id: 'a#1' }, { id: 'b#1' }] }]);
+  });
+
+  it('will attribute a nested arrow to its own frame', async () => {
+    class Test extends Model {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.then(() => {
+          this.then(() => {
+            this.value = 2;
+          });
+        });
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record.map((entry) => [entry.id, entry.wrote])).toEqual([
+      ['next#1', []],
+      ['then#1', []],
+      ['then#2', ['value']]
+    ]);
+  });
+
+  it('will attribute an arrow beside a step in flight', async () => {
+    const slow = mockPromise();
+
+    class Test extends Model {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.then(
+          this.load(),
+          this.then(async () => {
+            this.value = 1;
+            slow.resolve();
+          })
+        );
+      }
+
+      async load() {
+        await slow;
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record.find((entry) => entry.id == 'then#1')!.wrote).toEqual(['value']);
+  });
+
+  it('will not attribute arrows in flight together', async () => {
+    const both = mockPromise();
+    let ran = 0;
+
+    class Test extends Model {
+      then = run(this);
+      value = 0;
+
+      next() {
+        const arrow = async () => {
+          if (++ran == 2) both.resolve();
+
+          await both;
+          this.value++;
+        };
+
+        this.then(this.then(arrow), this.then(arrow));
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.value).toBe(2);
+    expect(test.then.record.filter((entry) => entry.key == 'then').map((entry) => entry.wrote)).toEqual([[], []]);
+  });
+
+  it('will not schedule from arrows in flight together', async () => {
+    const both = mockPromise();
+    let ran = 0;
+
+    class Test extends Model {
+      then = run(this);
+
+      next() {
+        const arrow = async () => {
+          if (++ran == 2) both.resolve();
+
+          await both;
+          this.later();
+        };
+
+        this.then(this.then(arrow), this.then(arrow));
+      }
+
+      later() {}
+    }
+
     await expect(Test.new().next()).rejects.toThrow('next has settled; later cannot run.');
+  });
+
+  it('will keep a watcher an outside call beside an arrow', async () => {
+    const work = mockPromise();
+
+    class Test extends Model {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.then(
+          this.then(this.allow, async () => {
+            await work;
+            this.allow();
+          }),
+          this.then(() => {
+            this.value = 1;
+            work.resolve();
+          })
+        );
+      }
+
+      allow() {}
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.value).toBe(1);
+    expect(test.then.record.map((entry) => [entry.id, entry.wrote])).toEqual([
+      ['next#1', []],
+      ['then#1', []],
+      ['allow#1', []]
+    ]);
   });
 
   it('will abort the signal when the run stops', async () => {

@@ -526,6 +526,7 @@ class Run extends Model {
   _held = new Map<string, Map<string, Held>>();
   _captures = new Map<Collection, Held>();
   _inline = new Map<string, Function>();
+  _owner = new Map<string, Frame>();
   _watchers = new Map<string, Function[]>();
   _backs = new Map<string, Back>();
   _parent = new Map<string, string>();
@@ -741,7 +742,7 @@ class Run extends Model {
     const { id, key, args } = node;
     const inline = this._inline.get(id);
     const fn = inline || control._steps.get(key) || (() => {});
-    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo });
+    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id) });
     const input = inline ? [frame._abort.signal] : args;
     const hooks = !undo;
 
@@ -1087,6 +1088,7 @@ class Frame extends Model {
   args: unknown[] = [];
 
   _proxy!: Model;
+  _owner?: Frame = undefined;
   _view?: Runner.Controller = undefined;
   _refs = new Map<string, Function>();
   _abort = new AbortController();
@@ -1113,6 +1115,9 @@ class Frame extends Model {
 
     this._proxy = new Proxy(self, {
       get: (target, prop) => {
+        const live = this._settled && this.live();
+
+        if (live) return Reflect.get(live._proxy, prop);
         if (_steps.has(prop as string)) return this.ref(prop as string);
 
         const value = Reflect.get(target, prop, target);
@@ -1131,7 +1136,11 @@ class Frame extends Model {
       set: (target, prop, value) => {
         const key = String(prop);
 
-        if (this._settled) return Reflect.set(target, prop, value, target);
+        if (this._settled) {
+          const live = this.live();
+
+          return live ? Reflect.set(live._proxy, prop, value) : Reflect.set(target, prop, value, target);
+        }
 
         if (!this._wrote.has(key)) {
           this._prior[key] = Reflect.get(target, prop, target);
@@ -1149,6 +1158,22 @@ class Frame extends Model {
       this.leave();
       this._left();
     };
+  }
+
+  live() {
+    const { run } = this;
+
+    if (run.waits.any((wait) => wait._from === this)) return;
+
+    const live = run.flight().filter((frame) => frame.within(this));
+
+    return live.length == 1 ? live[0] : undefined;
+  }
+
+  within(owner: Frame) {
+    for (let at = this._owner; at; at = at._owner) if (at === owner) return true;
+
+    return false;
   }
 
   ref(key: string) {
@@ -1282,6 +1307,7 @@ class Frame extends Model {
     const token = this.issue('then', []);
 
     this.run._inline.set(token.id, fn);
+    this.run._owner.set(token.id, this);
 
     return token;
   }

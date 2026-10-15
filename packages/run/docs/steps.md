@@ -83,7 +83,9 @@ protected async pay() {
 
 Like any step it returns nothing or its undo - an arrow returning `fetch(…)` fails the run.
 
-A `function` gets the inline step's own proxy as `this` - its writes are in its entry, its step calls schedule. An arrow's `this` is the enclosing step's proxy, settled by the time it runs: its writes are unmanaged and its step calls are [settled calls](#calls-after-a-step-settles).
+An arrow and a `function` are equivalent: a `function` gets the inline step's own proxy as `this`; an arrow's `this` is the enclosing step's settled proxy, which hands writes, step calls, collection reads and `this.then` to the inline step in flight - its writes are in its entry and restored on throw, its step calls schedule, `this.then.signal` is its own. Nested arrows resolve to the innermost.
+
+The hand-off needs exactly one inline step of that step in flight, and no wait that step opened still open. Two inline arrows of one step running at once - a group of them - see the settled proxy as is: writes unmanaged, step calls [settled calls](#calls-after-a-step-settles). Use `function`, or a method step, there. While the step's wait is open, its proxy stays its [watchers'](wait.md#watchers). Anything else calling through it meanwhile - a timer, a lost watcher - lands in the inline step.
 
 Returned, an inline step is the step's undo ([undo.md](undo.md#a-returned-token)), typed `void` so the step stays `Promise<void>`:
 
@@ -109,7 +111,7 @@ protected async turn() {
 
 Aborted on `stop()`, on an outside [`end`](runs.md#end-from-outside), when the run fails elsewhere, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not retried, no entry. A different error thrown after the abort fails the run as usual.
 
-Inline steps and watchers receive their signal as a parameter: an arrow's `this` is the enclosing step's settled proxy, whose signal is already aborted. Outside a step, `then.signal` throws `signal must be read inside a step.`
+Inline steps and watchers also receive their signal as a parameter - a watcher's `this.then.signal` is the settled step's, already aborted. Outside a step, `then.signal` throws `signal must be read inside a step.`
 
 ## `then` by argument
 
@@ -167,7 +169,7 @@ A sync side effect after scheduling - a mailer call - is invisible to the guard.
 
 ## Calls after a step settles
 
-A step called through the proxy of a step that has settled - from a timer, a watcher, an arrow - is an outside call: nothing is buffered. It answers an open wait accepting it - one the settled step opened first, else as any outside call ([wait.md](wait.md#answering-steps)) - or throws `next has settled; second cannot run.` It is bound to its run: once that run ends, every call through it throws. Writes through a settled proxy are unmanaged - in no entry, not restored.
+A step called through the proxy of a step that has settled - from a timer, a watcher - is an outside call: nothing is buffered. It answers an open wait accepting it - one the settled step opened first, else as any outside call ([wait.md](wait.md#answering-steps)) - or throws `next has settled; second cannot run.` It is bound to its run: once that run ends, every call through it throws. Writes through a settled proxy are unmanaged - in no entry, not restored. An [inline arrow](#inline-steps) in flight takes both over.
 
 ## Helpers
 
