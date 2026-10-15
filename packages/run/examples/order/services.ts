@@ -31,6 +31,9 @@ export const stripe = {
 export const courier = {
   async book(cart: Cart, chargeId: string): Promise<{ id: string }> {
     return { id: `trk_${cart.id}_${chargeId}` };
+  },
+  async cancel(tracking: string): Promise<void> {
+    void tracking;
   }
 };
 

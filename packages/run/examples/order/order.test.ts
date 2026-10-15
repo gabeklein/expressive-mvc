@@ -11,6 +11,7 @@ afterEach(() => vi.restoreAllMocks());
 it('will run every step to end', async () => {
   const order = SubmitOrder.new({ cart });
 
+  // awaiting an idle Job runs next(); the result is typed by end()
   expect(await order).toEqual({ orderId: 'ch_42', tracking: 'trk_c1_ch_42' });
   expect(order.then.status).toBe('idle');
   expect(order.then.record.map((entry) => entry.id)).toEqual([
@@ -71,6 +72,40 @@ it('will expose progress as fields', async () => {
   expect(seen.at(-1)).toBe('step:undefined');
 });
 
+it('will keep what each step changed with rewind', async () => {
+  const order = SubmitOrder.new({ cart });
+
+  await order;
+
+  const pay = order.then.record.find((entry) => entry.key == 'pay')!;
+
+  // rewind journals values - default Jobs keep only `wrote`
+  expect(pay.wrote).toEqual(['charge']);
+  expect(pay.prior).toEqual({ charge: undefined });
+  expect(pay.patch).toEqual({ charge: { id: 'ch_42', receiptUrl: 'https://receipts.test/42' } });
+});
+
+it('will snapshot and iterate the runner', async () => {
+  const order = SubmitOrder.new({ cart });
+
+  await order;
+
+  const ids: string[] = [];
+
+  for (const entry of order.then) ids.push(entry.id);
+
+  expect(ids).toEqual(['next#1', 'reserve#1', 'pay#1', 'ship#1', 'receipt#1', 'end#1']);
+  expect({ ...order.then }).toEqual({
+    status: 'idle',
+    active: undefined,
+    record: order.then.record,
+    queue: [],
+    waiting: [],
+    runs: 1,
+    error: undefined
+  });
+});
+
 it('will unwind what succeeded when a step fails', async () => {
   vi.spyOn(courier, 'book').mockRejectedValue(new Error('no couriers'));
   vi.spyOn(stripe, 'refund');
@@ -84,10 +119,50 @@ it('will unwind what succeeded when a step fails', async () => {
   expect(inventory.release).toHaveBeenCalledWith('hold_sku');
   expect(order.charge).toBeUndefined();
   expect(order.notice).toBe('Order c1 was not placed: no couriers');
+  // with rewind every entry reached is undone - receipt has no undo, its prior is restored
   expect(order.then.record.map((entry) => [entry.id, entry.undo && (entry.undo == 'closure' ? 'closure' : entry.undo.key), entry.undone])).toEqual([
     ['next#1', undefined, true],
     ['reserve#1', 'closure', true],
     ['pay#1', 'refund', true],
     ['receipt#1', undefined, true]
   ]);
+});
+
+it('will cancel the booking when the receipt fails', async () => {
+  vi.spyOn(mail, 'send').mockRejectedValue(new Error('mailbox full'));
+  vi.spyOn(courier, 'cancel');
+  vi.spyOn(stripe, 'refund');
+
+  const order = SubmitOrder.new({ cart });
+
+  await expect(order.next()).rejects.toThrow('mailbox full');
+  // ship committed beside the failing receipt, so its inline undo ran
+  expect(courier.cancel).toHaveBeenCalledWith('trk_c1_ch_42');
+  expect(stripe.refund).toHaveBeenCalledWith('ch_42');
+  expect(order.tracking).toBe('');
+  expect(order.then.record.find((entry) => entry.key == 'ship')!.undo).toMatchObject({ key: 'then' });
+});
+
+it('will undo an order stopped mid-shipment', async () => {
+  const booked = mockPromise<{ id: string }>();
+
+  vi.spyOn(courier, 'book').mockReturnValue(booked);
+  vi.spyOn(courier, 'cancel');
+  vi.spyOn(stripe, 'refund');
+
+  const order = SubmitOrder.new({ cart });
+  const result = order.next();
+
+  await vi.waitFor(() => expect(order.then.active).toBe('ship'));
+  order.then.stop({ undo: true });
+  expect(order.then.status).toBe('stopped');
+
+  // a step in flight settles and commits first, then the unwind takes it back too
+  booked.resolve({ id: 'trk_1' });
+
+  await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+  expect(courier.cancel).toHaveBeenCalledWith('trk_1');
+  expect(stripe.refund).toHaveBeenCalledWith('ch_42');
+  expect(order.charge).toBeUndefined();
+  expect(order.notice).toBe(`Order c1 was not placed: ${order} was stopped.`);
 });
