@@ -2,11 +2,11 @@
 
 ```ts
 class Job extends State {
-  readonly then = run(this);
+  readonly then = run(this, { base: Job, rewind: this.constructor.rewind });
 }
 ```
 
-`Job` is a `State` with `then = run(this)` built in and its hooks declared as optional members - subclasses get autocomplete, `override` catches a misspelling, a signature is checked by declaration. None is required.
+`Job` is a `State` with `then = run(this, { base: Job })` built in - every subclass's methods are steps - and its hooks declared as optional members - subclasses get autocomplete, `override` catches a misspelling, a signature is checked by declaration. None is required.
 
 | member | visibility | when it runs |
 | --- | --- | --- |
@@ -35,12 +35,28 @@ class SubmitOrder extends Job {
 | --- | --- |
 | `rewind` | keep `prior`/`patch` per entry; the unwind restores committed steps' fields ([undo.md](undo.md#rewind)) |
 
-## Escape hatch: `run(this)`
+## Escape hatch: `run(this, options)`
 
-For a class that cannot extend `Job` - it already extends another `State` or a `Component`. The same runtime without the base class: the field holds the `Runner`. Hooks are found by name, `back` and `exit` included; nothing is declared, so signatures are unchecked. Options are the second argument. Prefer `Job` otherwise.
+For a class that cannot extend `Job` - it already extends another `State` or a `Component`. The same runtime without the base class: the field holds the `Runner`. Hooks are found by name, `back` and `exit` included, and unchecked - or passed as options, typed. Prefer `Job` otherwise.
 
 ```ts
 class Sync extends Remote {
-  then = run(this, { rewind: true });
+  then = run(this, {
+    base: Sync,
+    rewind: true,
+    exit(outcome) {
+      if (outcome.status != 'done') this.cursor = '';
+    }
+  });
 }
 ```
+
+`Runner.Options<T>`:
+
+| option | |
+| --- | --- |
+| `base` | topmost class whose methods are steps and hooks - classes above it stay plain. Default: every class below `State`. The instance must extend it, else `run` throws `<instance> does not extend <base>.` |
+| `rewind` | as `static rewind` above |
+| `before`, `after`, `back`, `exit` | hooks typed against the instance, raw instance as `this`; each runs after the class's same-named hook ([hooks.md](hooks.md#hooks-as-options)) |
+
+Without `base`, every method between the class and `State` is a step - `Remote`'s included: from outside they read `undefined`, and a step calling one schedules it instead of running it. Pass the class itself as `base` when it extends a class with methods. `Job` passes `base: Job`.

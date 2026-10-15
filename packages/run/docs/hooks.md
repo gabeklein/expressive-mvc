@@ -1,6 +1,6 @@
 # Hooks - Before, After, Back, Exit
 
-Methods named `before`/`after`, or those followed by an uppercase letter (`beforeShip`), `back` and `exit`, are hooks: never wrapped, never scheduled - from outside they are plain methods. `beforehand` is a step.
+Methods named `before`/`after`, or those followed by an uppercase letter (`beforeShip`), `back` and `exit`, are hooks - found from the class up to `base` ([job.md](job.md#escape-hatch-runthis-options)): never wrapped, never scheduled - from outside they are plain methods. `beforehand` is a step.
 
 ```ts
 protected before(key: string, args: unknown[], skip: boolean) {}
@@ -14,7 +14,22 @@ Order around each step: `before` → `before<Step>` → step → `after<Step>` �
 
 Hooks are `protected` by convention ([README.md](README.md#conventions)) and synchronous. Hooks run with the raw instance as `this`: their writes are in no entry and do not count as step work; their return is ignored and not awaited. A hook that throws fails the run. Hooks fire for `next`, `end`, steps answering a wait and inline steps (key `then`); not per retry, and not for undos - an answer to a [returned wait](undo.md#a-returned-wait) included.
 
-A per-step hook without its step throws when the instance is created: `afterShip has no step ship.` On a `Job`, `before`/`after`/`back`/`exit` are declared - `override` checks their signatures ([job.md](job.md)); per-step hooks and `run(this)` classes are unchecked.
+A per-step hook without its step throws when the instance is created: `afterShip has no step ship.` On a `Job`, `before`/`after`/`back`/`exit` are declared - `override` checks their signatures ([job.md](job.md)); per-step hooks and `run(this)` class hooks are unchecked - [options](#hooks-as-options) are typed.
+
+## Hooks as options
+
+```ts
+then = run(this, {
+  before(step, args, skip) {},
+  after(step, entry, skip) {},
+  back(error) {},
+  exit(outcome) {}
+});
+```
+
+`before`, `after`, `back` and `exit` may be passed to `run(this, options)` - typed against the instance: a wrong signature fails to compile, `exit`'s `result` is typed by `end`. Raw instance as `this`; same rules as the class hooks. No per-step option hooks.
+
+With both, the class's runs first: `before` → option `before` → `before<Step>` → step → `after<Step>` → `after` → option `after`; `back` → option `back`; `exit` → option `exit`. A throw from `before`/`after` fails the run and skips the rest; `back` and `exit` each run - a throw from either replaces `error`.
 
 ## `back`
 
