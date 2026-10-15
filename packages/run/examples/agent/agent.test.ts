@@ -1,9 +1,12 @@
 import { afterEach, expect, it, vi } from 'vitest';
 
 import { Agent } from './agent';
-import { MINUTE, model, tools, type ToolCall } from './services';
+import { delay, MINUTE, model, tools, type Message, type ToolCall } from './services';
 
-afterEach(() => void vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 it('will run a turn to end', async () => {
   const agent = Agent.new({ mode: 'yolo' });
@@ -156,15 +159,45 @@ it('will queue a prompt sent mid-turn', async () => {
 
 it('will keep what a failing turn committed', async () => {
   const agent = Agent.new({ mode: 'yolo' });
+  const { create } = model;
 
-  await agent.next('write notes');
+  vi.spyOn(model, 'create')
+    .mockImplementationOnce(create)
+    .mockImplementationOnce(async (_, { onChunk } = {}) => {
+      onChunk?.('Writing');
+      throw new Error('overloaded');
+    });
 
-  vi.spyOn(model, 'create').mockRejectedValueOnce(new Error('overloaded'));
+  await expect(agent.next('write notes')).rejects.toThrow('overloaded');
+  expect([...agent.messages].map((message) => message.content)).toEqual(['write notes', '', 'call_1_0: write notes ok']);
+  expect(agent.draft.size).toBe(0);
+  expect(agent.then.record.map((entry) => [entry.id, entry.wrote, entry.undone])).toEqual([
+    ['next#1', ['messages'], undefined],
+    ['turn#1', ['messages'], undefined],
+    ['tool#1', [], undefined],
+    ['exec#1', ['messages'], undefined]
+  ]);
+});
 
-  await expect(agent.next('write tests')).rejects.toThrow('overloaded');
-  expect(agent.messages.size).toBe(5);
-  expect(agent.messages.get(-1)).toEqual({ role: 'user', content: 'write tests' });
-  expect(agent.then.record.map((entry) => [entry.id, entry.wrote, entry.undone])).toEqual([['next#1', ['messages'], undefined]]);
+it('will abort the model call when stopped mid-turn', async () => {
+  const agent = Agent.new({ mode: 'yolo' });
+  const create = vi.spyOn(model, 'create').mockImplementationOnce(async (_, { signal, onChunk } = {}) => {
+    onChunk?.('Writing');
+    await delay(MINUTE, { signal: signal! });
+
+    return { role: 'assistant', content: 'late' } as Message;
+  });
+
+  const reply = agent.next('write notes');
+
+  await vi.waitFor(() => expect(agent.draft.get()).toEqual(['Writing']));
+  agent.then.stop();
+
+  await expect(reply).rejects.toMatchObject({ name: 'Stopped' });
+  expect(create.mock.calls[0][1]!.signal!.aborted).toBe(true);
+  expect(agent.draft.size).toBe(0);
+  expect([...agent.messages].map((message) => message.content)).toEqual(['write notes']);
+  expect(agent.then.record.map((entry) => entry.id)).toEqual(['next#1']);
 });
 
 it('will not repeat what a retried tool wrote', async () => {

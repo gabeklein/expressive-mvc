@@ -30,12 +30,22 @@ export const delay = (ms: number, { signal }: { signal: AbortSignal }) =>
     });
   });
 
+export interface Stream {
+  signal?: AbortSignal;
+  onChunk?(chunk: string): void;
+}
+
 export const model = {
-  async create(messages: Iterable<Message>): Promise<Message> {
+  async create(messages: Iterable<Message>, { signal, onChunk }: Stream = {}): Promise<Message> {
     const list = [...messages];
     const last = list[list.length - 1];
 
-    if (last.role == 'tool') return { role: 'assistant', content: 'done' };
+    signal?.throwIfAborted();
+
+    if (last.role == 'tool') {
+      onChunk?.('done');
+      return { role: 'assistant', content: 'done' };
+    }
 
     const calls = last.content.split(', ').map((task, index) => {
       const [name, input] = task.split(' ');

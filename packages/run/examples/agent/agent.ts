@@ -6,6 +6,7 @@ import { delay, MINUTE, model, result, safe, toolCalls, tools, user, type Messag
 export class Agent extends Job {
   mode: 'ask' | 'auto' | 'yolo' = 'ask';
   messages = has<Message>();
+  draft = has<string>();
 
   async next(prompt: string) {
     this.messages.push(user(prompt));
@@ -13,8 +14,12 @@ export class Agent extends Job {
   }
 
   protected async turn() {
-    const reply = await model.create(this.messages);
+    const reply = await model.create(this.messages, {
+      signal: this.then.signal,
+      onChunk: (chunk) => this.draft.push(chunk)
+    });
 
+    this.draft.clear();
     this.messages.push(reply);
 
     const calls = toolCalls(reply);
