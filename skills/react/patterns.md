@@ -220,9 +220,9 @@ class Composer extends Model {
 
 The owner coordinates readiness only. A method re-finding a chip by id to feed it progress belongs on the chip.
 
-## Region Controllers
+## Region Controls
 
-When a page Model accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into its own Model owned as a field. Owned fields are Models; painting features mount in `render()` as JSX. Unplug test, build-time bias, forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
+When a page control accumulates unrelated clusters - draft fields plus lookups plus request state plus navigation - split each into a region control owned as a field. Owned fields are Models; painting features mount in `render()` as JSX. Unplug test, build-time bias, forms table: [refactor.md](refactor.md) steps 3/5. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class ComposePage extends Component {
@@ -250,6 +250,8 @@ function Footer() {
 
 The page remains orchestrator - route identity, session, request dispatch, page-level errors. Split when the second cluster appears, not as late cleanup.
 
+Name a control `Control`, or `<Feature>Control` once an app has several - two classes sharing a name make `@expressive/inspect` label lookups throw.
+
 Children of a region `.get()` the region, never the page above it and back down. Facts they repeat become getters on the region; nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope.
 
 ## Bridging an Existing Router
@@ -270,7 +272,7 @@ function InboxRoute() {
 }
 ```
 
-Route params are props, not always working identity. When leaving a route must not clear the model, keep the working field separate and soft-sync with a reaction:
+Route params are props, not always working identity. When leaving a route must not clear the control, keep the working field separate and soft-sync with a reaction:
 
 ```tsx
 class ComposePage extends Component {
@@ -279,7 +281,7 @@ class ComposePage extends Component {
 
   mount() {
     return this.get(($) => {
-      void $.urlThreadId;  // declare the trigger - legitimate in model effects, never in renders
+      void $.urlThreadId;  // declare the trigger - legitimate in get() effects, never in renders
       this.syncRoute();
     });
   }
@@ -294,7 +296,7 @@ class ComposePage extends Component {
 
 Assign the working field the moment identity is created. Fresh ids threaded thru arguments, or a shadow field remembering the last route, mean the working field is still a mirror.
 
-## Host-Agnostic Model, View Adapter
+## Host-Agnostic Domain Model, View Adapter
 
 A class shared across environments (extension host + webview, server + client) stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`. The view-side module re-exports the class and registers `Model.on()` once; every instance constructed after that import gets the wiring; hosts never importing the adapter never run it:
 
@@ -371,7 +373,7 @@ function App() {
 
 ## Contextual Children (No Prop Drilling)
 
-Children of a provided state declare their own dependencies with `.get()` - don't thread state values and callbacks through props:
+Children of a provided instance declare their own dependencies with `.get()` - don't thread state values and callbacks through props:
 
 ```tsx
 // Before: parent unpacks state and drills it down
@@ -576,7 +578,7 @@ class Canvas extends Component {
 
 Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(Model)` - see [context.md](../state/context.md#ownership-vs-context).
 
-## Refactoring Hooks Into Model
+## Refactoring Hooks Into a Model
 
 Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in `mount()`, event handlers in methods.
 

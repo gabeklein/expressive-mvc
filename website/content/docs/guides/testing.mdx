@@ -260,7 +260,7 @@ test('total recomputes from items', async () => {
 
 ## Testing context dependencies
 
-For classes that declare `get(OtherModel)`, compose the dependency as an owned child - the child finds it through the parent automatically:
+For classes that declare `get(Theme)`, compose the dependency as an owned child - the child finds it through the parent automatically:
 
 ```ts
 class Theme extends Model {
@@ -293,7 +293,7 @@ import { Context } from '@expressive/mvc';
 afterEach(() => Context.root.pop());
 ```
 
-`pop()` removes every Model registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch globals you won't miss it - the first time one does, you will.
+`pop()` removes every instance registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch globals you won't miss it - the first time one does, you will.
 
 <br />
 
@@ -317,7 +317,7 @@ test('cleans up on destroy', () => {
 });
 ```
 
-A write to a destroyed state doesn't throw - the value is stored without dispatch, so a late continuation runs to its end. Each such write is reported to `catch` handlers with kind `dead`, and unhandled it outputs nothing. That silence is right in production, but in tests a repeated late write usually means an interval or subscription outlived its owner. To make the run fail on one, escalate from a handler in your test setup:
+A write to a destroyed instance doesn't throw - the value is stored without dispatch, so a late continuation runs to its end. Each such write is reported to `catch` handlers with kind `dead`, and unhandled it outputs nothing. That silence is right in production, but in tests a repeated late write usually means an interval or subscription outlived its owner. To make the run fail on one, escalate from a handler in your test setup:
 
 ```ts
 import { Model } from '@expressive/mvc';
@@ -392,7 +392,7 @@ test('refreshes on update', async () => {
 
 - **`act()`** - unless a component is actually mounted, there's no renderer to flush.
 - **`@testing-library/react`** - you're not rendering anything.
-- **`jsdom`** - same deal; state classes never touch the DOM on their own.
+- **`jsdom`** - same deal; `Model` classes never touch the DOM on their own.
 - **Mocks for hooks** - Model classes don't call hooks. A `use()` method only runs on the `Model.use()` hook path, which `.new()` sidesteps entirely.
 
 Most of your logic tests end up as plain synchronous functions. That was the point of the classes all along.

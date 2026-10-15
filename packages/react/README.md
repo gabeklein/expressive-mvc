@@ -17,7 +17,7 @@ The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-m
 npm install @expressive/mvc @expressive/react
 ```
 
-`@expressive/mvc` is a peer dependency: import `Model`, `Component` and instructions from it, and import `@expressive/react` once from your entry so the host registers. Provide a Model to a subtree with `<Component for={Model}>` - `Provider` and `Consumer` were removed. The adapter's re-exports of the core are deprecated.
+`@expressive/mvc` is a peer dependency: import `Model`, `Component` and instructions from it, and import `@expressive/react` once from your entry so the host registers. Provide an instance to a subtree with `<Component for={Model}>` - `Provider` and `Consumer` were removed. The adapter's re-exports of the core are deprecated.
 
 Works on React DOM, and on React Native and Expo - the adapter imports only `react` and `react/jsx-runtime`, so there is nothing renderer-specific to port. Exercised on an iOS simulator and an Android emulator in both Debug and Release builds, and gated per release on Metro resolution and a Hermes build (Expo SDK 57, React Native 0.86). Under Jest, add `@expressive` to `transformIgnorePatterns`.
 
@@ -45,7 +45,7 @@ function CounterWidget() {
 
 ## Component
 
-`Component` is a `Model` that owns its own rendering - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form controls, layout shells, route controllers, media players.
+`Component` is a `Model` usable in JSX - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form inputs, layout shells, route controls, media players.
 
 ```tsx
 import { Component } from '@expressive/mvc';
@@ -168,7 +168,7 @@ class Profile extends Component {
 
 ## Shared state via context
 
-Provide a model once; descendants read it with `Model.get()` - no props, no selectors.
+Provide an instance once; descendants read it with `Model.get()` - no props, no selectors.
 
 ```tsx
 import { Component } from '@expressive/mvc';
@@ -196,7 +196,7 @@ function Profile() {
 - **`Model.use()`** - create an instance bound to a component's lifecycle.
 - **`Model.get()`** - read shared state from context, no prop drilling.
 - **`<Component for={Model}>`** - explicit hierarchical dependency injection.
-- **`Component`** - smart controls and shells whose behavior lives in the tree.
+- **`Component`** - smart widgets and shells whose behavior lives in the tree.
 - **Suspense & error boundaries** - async values suspend; `catch()` handles child errors.
 
 Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**

@@ -11,7 +11,7 @@
 
 ---
 
-The core of [Expressive MVC](https://github.com/gabeklein/expressive-mvc): reactive primitives built around plain classes, with no framework dependency. Provides the `Model` model, instructions, context, and the renderer-agnostic `Component` that adapters like [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) build on.
+The core of [Expressive MVC](https://github.com/gabeklein/expressive-mvc): reactive primitives built around plain classes, with no framework dependency. Provides the `Model` class, instructions, context, and the renderer-agnostic `Component` that adapters like [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) build on.
 
 > **Building a React app?** Install [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) alongside this package - the adapter declares `@expressive/mvc` as a peer dependency, so both belong in your `package.json`. Import `Model`, `Component`, and every instruction from this package, and import the adapter once from your entry so the host registers. The same holds for [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom), the renderer without React.
 
@@ -47,7 +47,7 @@ counter.get(({ count }) => {
 counter.increment();           // -> "count is 1"
 ```
 
-Models run and test anywhere - no renderer required.
+Instances run and test anywhere - no renderer required.
 
 ## Instructions
 
@@ -89,7 +89,7 @@ timer.set(null);             // destroy - runs cleanup, freezes state
 
 ## Context & composition
 
-Models find each other through context, and compose by holding one another:
+Instances find each other through context, and compose by holding one another:
 
 ```ts
 import { Model, get } from '@expressive/mvc';
@@ -100,7 +100,7 @@ class Session extends Model {
 
 class Profile extends Model {
   session = get(Session);    // injected from the nearest provider
-  address = new Address();   // nested state - its changes bubble up
+  address = new Address();   // nested instance - its changes bubble up
 }
 ```
 
@@ -130,7 +130,7 @@ off();                                                // stop listening
 }
 ```
 
-`Component` - a `Model` that renders - lives here as the agnostic base. For using it in an app (rendering, props, subcomponents, suspense), see **[`@expressive/react`](https://www.npmjs.com/package/@expressive/react)**.
+`Component` - a `Model` usable in JSX - lives here as the agnostic base. For using it in an app (rendering, props, subcomponents, suspense), see **[`@expressive/react`](https://www.npmjs.com/package/@expressive/react)**.
 
 ---
 

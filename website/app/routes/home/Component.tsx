@@ -8,7 +8,7 @@ export function ComponentSection() {
       <div className="mx-auto max-w-(--content-width) py-16 md:py-24 grid gap-12 lg:grid-cols-[2fr_3fr] lg:items-center">
         <div className="lg:-translate-y-6">
           <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Component is renderable Model.
+            Component is a Model with a view.
           </h2>
           <p className="text-fd-muted-foreground text-lg mb-4">
             <code>Component</code> extends <code>Model</code> for self-contained{" "}

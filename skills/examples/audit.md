@@ -17,7 +17,7 @@ Three or more yeses justify a deeper ownership audit - a heuristic, not an adopt
 Then decide the shape:
 
 - Intrinsic to display logic - `Component`.
-- Headless model/controller state - `Model`, even when contextual.
+- Headless state - `Model`, even when contextual.
 - React tree placement is the feature (Boundary, Route) - `Component`, even with little UI.
 - Trivial and local - leave as hooks.
 
@@ -129,8 +129,8 @@ function ThemeToggle() {
 
 1. **Start small** - one complex component; decide whether its behavior belongs in a `Component` or a display-agnostic `Model`.
 2. **Coexist** - works alongside existing hooks; no need to migrate everything.
-3. **Bottom-up when coexisting** - leaf components first, then shared state. A one-shot conversion inverts this: route/page controllers, then domain pools, then mature leaf widgets (see the refactor guide).
-4. **Test independently** - state classes test without React; use this to raise coverage.
+3. **Bottom-up when coexisting** - leaf components first, then shared state. A one-shot conversion inverts this: route/page controls, then domain pools, then mature leaf widgets (see the refactor guide).
+4. **Test independently** - `Model` classes test without React; use this to raise coverage.
 
 ## After Selection
 

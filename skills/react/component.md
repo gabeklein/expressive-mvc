@@ -8,13 +8,13 @@ Runnable source (complete programs, served as HTML): [`props`](https://expressiv
 
 - **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they own no persistent Expressive instance.
 - **Model** is display-agnostic - data and logic, no render. Use with `Model.use()` in FCs.
-- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form controls, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as `<Component for>` + ErrorBoundary + Suspense in `main`.
+- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form inputs, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as `<Component for>` + ErrorBoundary + Suspense in `main`.
 
 Premise: **the class tree is the app; rendering is a projection of it.** `App.new()` stands the UX up headless - every feature's status reads off the instance (`inbox.archive.open`, a pool's members, an import's progress) with no DOM. Keep that true: regions as fields rather than `<Component for>` elements, `has()` subtrees contributing to macro-state whether or not placed, render-less Components. Tests, devtools, and agents consume this surface as much as views do.
 
 Rule of thumb: use `Component` when state is intrinsic to display logic - usually meaning it defines `render()`. Intrinsic to *this* display concern, not the surface - a second concern (a resize handle beside send) is a second class, composed as a mounted wrapper, not more fields on the first.
 
-`render()` is optional: without one, a Component passes children through while placement, `mount()`, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controllers throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. A mount-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
+`render()` is optional: without one, a Component passes children through while placement, `mount()`, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controls throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. A mount-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
 
 Same rule as the pass-through demotion: a ref plus a DOM-sync reaction never earns the *paint's* instance - but that behavior, separated under its own name, earns its own:
 
@@ -47,11 +47,11 @@ class Stick extends Component {
 
 The fused class demotes because scroll-sync was incidental to its paint. `Stick` earns the instance as a feature: unplug is deleting one wrap, and `stick.on` reads off the tree.
 
-Use `Model` for headless models/controllers, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
+Use `Model` for headless domain models/controls, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
 
 Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
 
-For one-shot feature builds and hook refactors, don't create `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form control is often clearer as `class Foo extends Component` - the state is intrinsic to the rendered unit. An app or route entrypoint stays a Component thru region extraction - regions become its fields; only chrome owning nothing demotes to an FC.
+For one-shot feature builds and hook refactors, don't create `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form input is often clearer as `class Foo extends Component` - the state is intrinsic to the rendered unit. An app or route entrypoint stays a Component thru region extraction - regions become its fields; only chrome owning nothing demotes to an FC.
 
 ## Basic Usage
 
@@ -86,7 +86,7 @@ const items = [first, second];
 <>{items}</>
 ```
 
-- The adapter exposes each instance as an element keyed by `key`, defaulting lazily to the Model uid (`String(instance)`). Override the readonly `key` property for an application-defined identity.
+- The adapter exposes each instance as an element keyed by `key`, defaulting lazily to the instance uid (`String(instance)`). Override the readonly `key` property for an application-defined identity.
 - Mounting subscribes and provides context as usual; unmounting only detaches. The external owner destroys it with `instance.set(null)`.
 - One instance may appear beneath separate parents. Repeating it within one sibling collection repeats the key and intentionally produces the host's duplicate-key warning.
 
@@ -227,7 +227,7 @@ class Greeting extends Component {
 
 ### Render Props
 
-Extra props (beyond state fields) via a `render()` parameter:
+Extra props (beyond instance fields) via a `render()` parameter:
 
 ```tsx
 class Card extends Component {
@@ -241,7 +241,7 @@ class Card extends Component {
 <Card title="Hello" className="card" />;
 ```
 
-Non-optional render props become required JSX attributes. All props (state + render + special) are on `this.props`.
+Non-optional render props become required JSX attributes. All props (field + render + special) are on `this.props`.
 
 ### Special Props
 

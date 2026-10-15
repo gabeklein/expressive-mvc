@@ -14,7 +14,7 @@ import { Model, Component } from '@expressive/mvc';
 
 ## `Model.use(...args)`
 
-Creates a state instance scoped to a React component.
+Creates an instance scoped to a React component.
 
 ```tsx
 function CounterView() {
@@ -76,7 +76,7 @@ class Nav extends Model {
 
 ## `Model.get()`
 
-Fetches a state instance from context and subscribes to accessed properties.
+Fetches an instance from context and subscribes to accessed properties.
 
 ```tsx
 function Profile() {
@@ -85,7 +85,7 @@ function Profile() {
 }
 ```
 
-- Throws `Could not find UserProfile in context.` if the state is not provided above.
+- Throws `Could not find UserProfile in context.` if the instance is not provided above.
 - Re-subscribes (and refreshes) if the upstream instance is replaced.
 
 ### Optional lookup
@@ -154,7 +154,7 @@ Given a promise (or async function), it refreshes now and again when the promise
 
 ## Providing context
 
-Hooks read what an ancestor provides. Provide a Model with the bare `Component` class:
+Hooks read what an ancestor provides. Provide an instance with the bare `Component` class:
 
 ```tsx
 <Component for={Theme} color="dark">
@@ -164,11 +164,11 @@ Hooks read what an ancestor provides. Provide a Model with the bare `Component` 
 
 - A class is constructed and owned by the element, destroyed on unmount; `is` receives it.
 - An instance - say one from `Model.use()` - is provided as-is and never destroyed by the element.
-- Other attributes are typed from the Model and assigned to it on every render.
+- Other attributes are typed from the instance and assigned to it on every render.
 - `fallback` adds a Suspense boundary and `catch` an error boundary; without them it adds none.
-- One Model per element - several belong to a parent Model owning them as fields.
+- One instance per element - several belong to a parent instance owning them as fields.
 
-`Provider` was removed in favor of `<Component for>`. Its record form (`for={{ theme: Theme, auth: Auth }}`) has no equivalent - compose a parent Model instead. Details in the [Context guide](/docs/guides/context#providing-with-component-for).
+`Provider` was removed in favor of `<Component for>`. Its record form (`for={{ theme: Theme, auth: Auth }}`) has no equivalent - compose a parent `Model` class instead. Details in the [Context guide](/docs/guides/context#providing-with-component-for).
 
 <br />
 

@@ -6,18 +6,18 @@ Runnable source: [`ref`](https://expressive.dev/examples/instructions/ref) and [
 import { ref } from '@expressive/mvc';
 ```
 
-Holds a mutable value (like React's `useRef`). Writes join the state event stream; the property stays non-enumerable.
+Holds a mutable value (like React's `useRef`). Writes join the instance event stream; the property stays non-enumerable.
 
 ## Overloads
 
 ### Basic Ref
 
 ```ts
-class MyModel extends Model {
+class Panel extends Model {
   element = ref<HTMLDivElement>();
 }
 
-const { is: state } = MyModel.use();
+const { is: state } = Panel.use();
 
 state.element.current; // HTMLDivElement | null
 state.element.current = div; // set via .current
@@ -28,7 +28,7 @@ Returns a `ref.Object<T>` - both a callable function and an object with `.curren
 ### Ref with Callback
 
 ```ts
-class MyModel extends Model {
+class Panel extends Model {
   node = ref<HTMLElement>((el) => {
     console.log('element attached:', el);
     return (next) => console.log('replaced with:', next);
@@ -58,7 +58,7 @@ form.refs.name.current; // current value of form.name
 form.refs.name.current = 'new'; // updates form.name
 ```
 
-A ref object for every enumerable property, each with `.current` (get/set), `.get()` (value or subscribe), `.is` (parent state), and `.key` (property name).
+A ref object for every enumerable property, each with `.current` (get/set), `.get()` (value or subscribe), `.is` (parent instance), and `.key` (property name).
 
 - Computed getters (`get foo() { ... }`) are included, read-only.
 - `set(...)` properties are excluded (non-enumerable).
@@ -81,8 +81,8 @@ The map function runs lazily on first access per key; its result is cached.
 ```ts
 interface ref.Object<T> {
   current: T;           // get/set the value
-  is: Model;            // parent state instance
-  key: string;          // property name on state
+  is: Model;            // parent instance
+  key: string;          // property name on instance
   get(): T | null;      // retrieve current value
   get(cb: (v: T) => void): () => void; // subscribe to changes
 }
@@ -104,6 +104,6 @@ type ref.CustomProxy<T, R> = { [P in Model.Field<T>]-?: R } & { get(): T };
 ## Behavior
 
 - Ref values are exported by `state.get()` (snapshots).
-- `.current` is imperative: reading it does **not** subscribe, even inside a render or effect. For a reactive read, subscribe with `field.get(callback)` or read the field through the state's tracking proxy (`state.foo`).
+- `.current` is imperative: reading it does **not** subscribe, even inside a render or effect. For a reactive read, subscribe with `field.get(callback)` or read the field through the instance's tracking proxy (`state.foo`).
 - Writing `.current` dispatches an event for the property key.
 - Callback cleanup resets nested effects (same capture semantics as `set` callbacks).

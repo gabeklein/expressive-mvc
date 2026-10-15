@@ -231,7 +231,7 @@ React interprets the designation with `startTransition`, so a suspending subscri
 
 The return value is a promise, resolving once every reader has **absorbed** the update - for React, once it commits; for a plain effect, once its replay returns. A reader which does not claim absorption resolves on replay instead of holding. Scheduling and settlement are independent: an adapter without concurrent deferral may still claim through its commit. Every reader is waited on, so this doubles as a barrier with no host at all.
 
-An effect which suspends by throwing a promise holds settlement through its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and remain squashed into that retry. Fulfillment and rejection both retry through MVC dispatch. Cancelling the effect or destroying its state releases the hold and prevents the settled promise from reviving it.
+An effect which suspends by throwing a promise holds settlement through its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and remain squashed into that retry. Fulfillment and rejection both retry through MVC dispatch. Cancelling the effect or destroying its instance releases the hold and prevents the settled promise from reviving it.
 
 - The scope is synchronous. Writes after an `await` or in a later callback need their own `pending()` call.
 - An exception from the callback propagates synchronously; updates queued before it threw still dispatch.
@@ -279,7 +279,7 @@ Model auto-binds methods on first access, so you can destructure and pass them a
 
 ## `Context`
 
-The hierarchical registry behind `<Component for>` and the `get` instruction. Every active Model has a **home context**, assigned at activation, which decides where its `state.get(Type)` lookups originate.
+The hierarchical registry behind `<Component for>` and the `get` instruction. Every active instance has a **home context**, assigned at activation, which decides where its `state.get(Type)` lookups originate.
 
 ```ts
 import { Context } from '@expressive/mvc';
@@ -287,7 +287,7 @@ import { Context } from '@expressive/mvc';
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
 
-const child = ctx.push({ ChildModel });
+const child = ctx.push({ PageControl });
 child.pop();
 ```
 
@@ -324,7 +324,7 @@ Context.root;                         // global registry
 
 ### Home context
 
-A state's home is recorded once, at activation, and is permanent.
+An instance's home is recorded once, at activation, and is permanent.
 
 | Activation path                            | Home becomes     |
 | ------------------------------------------ | ---------------- |
@@ -333,7 +333,7 @@ A state's home is recorded once, at activation, and is permanent.
 | `new Model()` then `new Context(instance)` | that context     |
 | `<Component for={StateClass}>`             | its context      |
 
-> First-wins: once a state has a home, no later context can transfer ownership.
+> First-wins: once an instance has a home, no later context can transfer ownership.
 
 > A bare `Model.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when the class declares [`static global`](#root-context-and-globals).
 
@@ -343,16 +343,16 @@ The escape hatch for "create now, place later" is the difference between `new Mo
 
 ```ts
 // .new() activates immediately - home is root, locked
-const a = MyModel.new();
+const a = FormState.new();
 new Context(a); // does NOT change a's home
 
-// new MyModel() constructs without the activation event -
+// new FormState() constructs without the activation event -
 // the first explicit Context claims it before init runs
-const b = new MyModel();
+const b = new FormState();
 new Context(b); // b's home is this context
 ```
 
-This matters in tests, and in any code which prepares a state before placing it in a context tree. (A plain-constructed instance can also be activated directly - `await state.set()` with no arguments does it.)
+This matters in tests, and in any code which prepares an instance before placing it in a context tree. (A plain-constructed instance can also be activated directly - `await state.set()` with no arguments does it.)
 
 ### Child inheritance
 
@@ -371,7 +371,7 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 ### Root context and globals
 
-`Context.root` is a regular `Context` instance serving as the global registry. A state activated by `Model.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no provider - when the class declares `static global`:
+`Context.root` is a regular `Context` instance serving as the global registry. An instance activated by `Model.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no provider - when the class declares `static global`:
 
 ```ts
 class Theme extends Model {

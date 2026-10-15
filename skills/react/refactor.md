@@ -4,7 +4,7 @@ Read in full before converting hook-based React code. The common failure is tran
 
 Examples follow the conventions in [style.md](style.md).
 
-**Large apps:** convert route/page controllers and their domain pools first; leave mature leaf widgets (inputs, menus) on hooks until the parent domain is stable. Coexistence is fine mid-migration.
+**Large apps:** convert route/page controls and their domain pools first; leave mature leaf widgets (inputs, menus) on hooks until the parent domain is stable. Coexistence is fine mid-migration.
 
 ## Ambiguity defaults
 
@@ -13,10 +13,10 @@ A one-shot conversion cannot ask. Proceed on these defaults, declare deviations 
 | Ambiguity | Default |
 |---|---|
 | "No redesigns" / parity scope | Observable behavior and public contracts; internal structure is the task |
-| Does leaving a route clear its model? | Keep model alive; soft-sync working identity from params |
+| Does leaving a route clear its control? | Keep control alive; soft-sync working identity from params |
 | Selection across refetch | Durable key + re-find getter; member references only in pools stable between fetches |
 | Loading UX for user-initiated ops | Explicit loading/error fields; suspense for load-once data |
-| File layout | Colocate feature folder once a route has model classes; existing convention wins |
+| File layout | Colocate feature folder once a route has `Model` classes; existing convention wins |
 | Verification gate | Currently-green checks only - a check broken at base is not yours to fix; report what was exercised |
 | Bug or dead branch found at base | Preserve behavior and note it; drop only provably dead code, and say so |
 | Routing | Bridge the existing router (step 7); adopting `@expressive/router` needs explicit go-ahead, never part of a conversion |
@@ -82,7 +82,7 @@ The forms, by role:
 | Mount-only ancestor (scroll pin, focus trap) | `Component` without `render()` |
 | Chrome / token frame / zero-state strip | FC that `.get()`s |
 
-`new X()` on a parent is for Models and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a Model's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the Model as a field on the controller that already exists and let sibling views `.get()` it.
+`new X()` on a parent is for Models and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a Model's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the instance as a field on the control that already exists and let sibling views `.get()` it.
 
 **Anti-pattern - subcomponent overuse.** The sections in `render()` above are freestanding FCs, not PascalCase methods. Subcomponents (`<this.Header />`) are extension points for subclasses. Test: **would a subclass reasonably replace or wrap this renderer?** For ordinary scopes no - a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
 
@@ -141,7 +141,7 @@ Behavior parity does not exempt this step - parity constrains observable behavio
 
 ## 5. Split regions out of fat orchestrators
 
-When a page Model still accumulates unrelated clusters after pools - draft fields, lookups, request state, navigation - each becomes its own Model owned as a field. Ownership provides implicitly; views bind the region directly:
+When a page control still accumulates unrelated clusters after pools - draft fields, lookups, request state, navigation - each becomes a region control owned as a field. Ownership provides implicitly; views bind the region directly:
 
 ```tsx
 class Composer extends Model {        // headless region
@@ -168,7 +168,7 @@ const { is: composer, subject } = Composer.get();
 const { canSend, send } = ComposePage.get();
 ```
 
-An owned region needs no cross-controller sync - the parent holds and reads the instance. Split when the second cluster appears, not as late cleanup.
+An owned region needs no cross-control sync - the parent holds and reads the instance. Split when the second cluster appears, not as late cleanup.
 
 A feature region is unpluggable: it owns its pool, display state, and chrome - don't leave the pool or query on the page because the page syncs it. Test each pane, strip, or panel the page mounts: delete its import - does the feature leave whole, pool included? Judge clusters by interaction, not product framing - clusters that never read each other are unrelated even when the product calls them one surface; a shared wire or replica decides sync, not view ownership. Sibling features read each other thru optional context (`get(Other, false)`); siblings don't see each other's context, so the consumer mounts beneath the provider in JSX. Extraction moves concerns off the class, not ownership off the tree: regions stay fields on the entrypoint. Only a shell owning nothing - chrome between entrypoint and features - demotes to an FC (step 3).
 
@@ -237,7 +237,7 @@ class Workspace extends Component {
   async send() {
     let sid = this.sessionId;
     if (!sid) {
-      sid = createId();               // threaded through locals; the model
+      sid = createId();               // threaded through locals; the control
       this.navigate(`/s/${sid}`);     // learns its own id via prop round-trip
     }
     await api.send(sid, this.body);
@@ -297,7 +297,7 @@ Audit rule: **delete any method whose body is only `this.field = value`** - voca
 
 ## 8. Getters: shared and semantic only
 
-A derived value earns a getter on shared state when it has multiple consumers, domain or workflow meaning, cost enough to merit memoized tracking, a place in the state's deliberate API, or introspection value (debugging, devtools):
+A derived value earns a getter on shared state when it has multiple consumers, domain or workflow meaning, cost enough to merit memoized tracking, a place in the instance's deliberate API, or introspection value (debugging, devtools):
 
 ```tsx
 get hasBlocking() {        // read by notices, actions, and header
@@ -358,7 +358,7 @@ function ReviewActions() {
 
 Pure presentation components (a `Metric`, a `StatusCallout`) may still take plain props - context replaces drilled *state*, not every value.
 
-`.get()` the nearest real parent. When Composer owns the form, its controls call `Composer.get()` - reaching over to `ComposePage.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'sending'`) become parent getters (`get sending()`); nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope - `config`, not `sendOptions`. Only the parent holds `get(ComposePage)`. The entrypoint is not exempt: token and frame chrome reads its own snapshot (`Frame` `.get()`s `theme`) - don't snapshot `this` at the root only to drill `style`.
+`.get()` the nearest real parent. When Composer owns the form, its inputs call `Composer.get()` - reaching over to `ComposePage.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'sending'`) become parent getters (`get sending()`); nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope - `config`, not `sendOptions`. Only the parent holds `get(ComposePage)`. The entrypoint is not exempt: token and frame chrome reads its own snapshot (`Frame` `.get()`s `theme`) - don't snapshot `this` at the root only to drill `style`.
 
 ## 10. Destructure an exact dependency snapshot
 
@@ -511,7 +511,7 @@ Same when section chrome wraps one Component - `open`/`onToggle` read from the p
 
 Independent siblings that never interact (recipient field, attachment picker) split into local FCs in the same module, each snapshotting what it needs - independent *features* split; one-op chrome like a lone send button stays. A layout-only row with no state inlines into `render()`.
 
-The line/depth threshold alone is never grounds for a finding. To fail a branch, name the concrete cost: a conditional subscription, multiple independent decisions in one branch, independent controls funneled thru one snapshot, mixed ownership, a duplicated dependency snapshot, or navigation a well-named scope would materially improve. "A separate component would be slightly nicer" is polish, not a defect.
+The line/depth threshold alone is never grounds for a finding. To fail a branch, name the concrete cost: a conditional subscription, multiple independent decisions in one branch, independent inputs funneled thru one snapshot, mixed ownership, a duplicated dependency snapshot, or navigation a well-named scope would materially improve. "A separate component would be slightly nicer" is polish, not a defect.
 
 ## 14. Audit with this checklist
 
@@ -529,10 +529,10 @@ The checklist:
 - Is every `has((x) => new Foo({...}))` factory doing work `has(Foo)` wouldn't - transform, rename, multi-argument? *(default)*
 - Are opaque handles (unsubscribe fns, timers, snapshots) unmanaged rather than reactive fields? *(invariant)*
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
-- Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region Models, each rendered feature unplugging by one import? *(default)*
+- Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region controls, each rendered feature unplugging by one import? *(default)*
 - Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
 - Is the app/route entrypoint a Component owning replica and regions as fields - `main` only mounting it, no bootstrap `<Component for>`? *(default)*
-- Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, regions held as Model fields? *(invariant)*
+- Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, region controls held as fields? *(invariant)*
 - Does every Component without chrome omit `render()` - no `return this.props.children`? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*

@@ -1,6 +1,6 @@
 # Inspect
 
-`@expressive/inspect` - in-process inspector over live Model: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
+`@expressive/inspect` - in-process inspector over live instances: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
 
 ## Install
 
@@ -38,13 +38,13 @@ await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
 await composer.act(work, { until: { 'Composer.status': 'sent' }, timeout: 3000, record: { paths: [] } })
 ```
 
-Ownership is mvc's (`get(Model)`): a Model constructed into a field, `has` pool, or `map`, or mounted by a host, is that owner's child; a `get(Type)` reference or an already-active instance assigned in is not. One `Instance` per state - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
+Ownership is mvc's (`get(Model)`): an instance constructed into a field, `has` pool, or `map`, or mounted by a host, is that owner's child; a `get(Type)` reference or an already-active instance assigned in is not. One `Instance` per instance - `find` returns the same object each time; a held reference keeps working after destruction, with `alive` false and `until` set.
 
 `act` records values for its window whatever the journal level, and returns every frame produced, downstream ones included. It settles once a macrotask passes with no new recorded frame - so timer and promise chains finish - capped at `timeout` (default 1s), with a warning that frames may be incomplete.
 
 - `until` - what to wait for first, for work that waits on I/O, where quiet arrives before the change does. Unmet within `timeout`, `act` throws - the error names what never arrived and carries `frames` and `pending`.
   - `{ 'Chat.status': 'ready' }` - each address holds that value, compared as `get` returns it - past its caps (depth 2, 240-char strings) a value never matches, so compare a leaf. Precise everywhere: a loading write doesn't count, a value the step already awaited is met at once, and it reads current values, so the journal's filters don't apply. Prefer it.
-  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). An address naming no Model throws right away. So does a `_` key - unmanaged, it emits no frames; use the value form. Under an app's recording filters, the addresses join the window's recording. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself never counts; use the value form there.
+  - `'Chat.status'` or a list - each address sees a frame after the step's synchronous writes, so a loading flag it sets doesn't count. The address resolves once, after the step, to the instance `get` would read - label (first instance), id, or owner path (`Sidebar.control.value`). An address naming no instance throws right away. So does a `_` key - unmanaged, it emits no frames; use the value form. Under an app's recording filters, the addresses join the window's recording. On the bridge the step runs remotely, so activity counts from when it resolves - a step that awaits the change itself never counts; use the value form there.
 - `record` - filters for this window instead of the journal's (`{ types: [], paths: [], keys: [] }` records everything); the journal's recording is restored after. Filtered-out events don't count as activity - narrow to exclude a poller or animation loop rather than raising the timeout.
 
 ## Orphans
@@ -67,12 +67,12 @@ Check before trusting what inspect shows:
 inspect.health() // { orphans, collected, copies, caught: { Destroyed, Inactive, Getter, Init, Effect } } - also on the bridge and relay
 ```
 
-- `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only Models from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it. Counted only where inspect is loaded; a bundle that never imports it goes unseen.
+- `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only instances from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it. Counted only where inspect is loaded; a bundle that never imports it goes unseen.
 - `caught` - reports by `kind`, handled or not ([Model.on()](state/state.md#modelon)). Inspect's `catch` joins each class as its first instance activates, ahead of app handlers registered before then, and passes each report on - behavior is unchanged. A handler registered on that class afterward runs first; one that handles or replaces a report hides the original. `journal.clear()` zeroes the counts - clear per test to assert on one test's reports.
 
 ## Addresses (across a boundary)
 
-`Type.path` or `Type-id.path`. `Type` is the label (first live instance); the path steps through child Models, `Map`s, arrays, objects.
+`Type.path` or `Type-id.path`. `Type` is the label (first live instance); the path steps through child instances, `Map`s, arrays, objects.
 
 ```ts
 inspect.models()                 // flat list with parent ids
@@ -83,9 +83,9 @@ inspect.set('Composer.draft', 'x')
 await inspect.call('Composer.submit', 'x')
 ```
 
-Reads come from stored values, never accessors - no getter, factory, or suspense fires. An unmanaged `_` key reads only when addressed by name; whole-state views omit it. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested Models serialize to `{ $ref, $type }` - follow one with `get(`${$ref}.key`)`; caps: strings 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
+Reads come from stored values, never accessors - no getter, factory, or suspense fires. An unmanaged `_` key reads only when addressed by name; whole-instance views omit it. `absent` lists declared keys with no stored value: lazy `set(factory)`, pending async, uncomputed getters. Nested instances serialize to `{ $ref, $type }` - follow one with `get(`${$ref}.key`)`; caps: strings 240 chars, arrays 24, keys 40, depth 2. Query, do not dump.
 
-A selection reads several keys as one snapshot - one synchronous pass, so no write lands between them, unlike separate `get`s over the bridge or relay. `true` takes a value as `get` would; an object picks keys and descends through Models (keeping `$ref`), `Map`s and objects, applying to each element of a list (capped at 24). Relay: `["get", "Sidebar", { "status": true }]`.
+A selection reads several keys as one snapshot - one synchronous pass, so no write lands between them, unlike separate `get`s over the bridge or relay. `true` takes a value as `get` would; an object picks keys and descends through instances (keeping `$ref`), `Map`s and objects, applying to each element of a list (capped at 24). Relay: `["get", "Sidebar", { "status": true }]`.
 
 ## Labels and minified builds
 
@@ -159,11 +159,11 @@ await api.journal.record({ level: 'keys', types: ['Composer'] }); // labels, not
 
 For an app in an iframe, pass that frame: `inspect(page.frame({ name }))`, or a locator such as `inspect(page.frameLocator('iframe[title="App"]').locator('body'))` - the helper accepts `Locator.evaluate`'s element-first arity. A missing global throws one line naming the install import - that is the install-order check.
 
-Drive input through the UI; assert on the model. Reserve DOM assertions for presentation the model does not express.
+Drive input through the UI; assert on the instance. Reserve DOM assertions for presentation the instance does not express.
 
 ## Failure journal
 
-Record from the first Model in any browser a driver controls - the app turns it on, so nothing is missed before a test attaches. The Vite plugin covers the dev server only; e2e against a built app (`vite preview`, a production build) needs the inspector in that build. Gate it on a flag the bundler folds, so a production build drops inspect entirely:
+Record from the first instance in any browser a driver controls - the app turns it on, so nothing is missed before a test attaches. The Vite plugin covers the dev server only; e2e against a built app (`vite preview`, a production build) needs the inspector in that build. Gate it on a flag the bundler folds, so a production build drops inspect entirely:
 
 ```ts
 // debug.ts - first import of the app entry; CI builds with `vite build --mode e2e`
@@ -282,8 +282,8 @@ For what the developer does in the browser, read back with a cursor: `journal.se
 What to reach for, in order:
 
 1. **Observe** - `models`, `tree`, `get`, `journal.*`. Most questions end here.
-2. **Act through the model** - `call("Type.method", ...)` runs the app's own logic; the way to reproduce what a user did.
-3. **Force a state** - `set("Type.key", value)` bypasses the model; for setting up a repro, sparingly.
+2. **Act through the instance** - `call("Type.method", ...)` runs the app's own logic; the way to reproduce what a user did.
+3. **Force a state** - `set("Type.key", value)` bypasses the instance's methods; for setting up a repro, sparingly.
 
 The relay reaches only the inspector's own members - no `eval`, no property walks beyond them. Arbitrary JS belongs to a driver's `evaluate`, granted by whoever runs the harness.
 

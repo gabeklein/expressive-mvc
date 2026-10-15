@@ -31,12 +31,12 @@ Properties read via `this` in `render()` are tracked. When one changes, the comp
 
 Use **`Model` + `.use()`** when you want headless logic separated from rendering - the most common pattern. The component stays dumb, the class handles the smarts.
 
-Use **`Component`** when state is intrinsic to display logic. Form controls, media players, data grids, app and route entrypoints - things where behavior and rendering move together. A hook-heavy route shell or tab panel doesn't need to become `FooState` plus `FooView`; when the rendered thing owns the behavior, make the rendered thing the class.
+Use **`Component`** when state is intrinsic to display logic. Form inputs, media players, data grids, app and route entrypoints - things where behavior and rendering move together. A hook-heavy route shell or tab panel doesn't need to become `FooState` plus `FooView`; when the rendered thing owns the behavior, make the rendered thing the class.
 
-Usually a Component defines `render()`. Without one, children pass through while the instance still provides context, runs `mount()`, and places its Suspense and error boundaries - useful for route controllers, progressive `Boundary` wrappers, and mount-only ancestors like a focus trap. Don't write `render() { return this.props.children; }` - just omit it.
+Usually a Component defines `render()`. Without one, children pass through while the instance still provides context, runs `mount()`, and places its Suspense and error boundaries - useful for route controls, progressive `Boundary` wrappers, and mount-only ancestors like a focus trap. Don't write `render() { return this.props.children; }` - just omit it.
 
 > **Good to know:** <br/>
-> Don't use Component just because something is contextual. Components carry React-facing properties (`props`, `state`, `setState`...), which makes `.get()` IntelliSense noisier. Headless models should stay `Model`.
+> Don't use Component just because something is contextual. Components carry React-facing properties (`props`, `state`, `setState`...), which makes `.get()` IntelliSense noisier. Headless state should stay in a `Model`.
 
 The real payoff is reusability through inheritance. You build a Component once - lifecycle, reactivity, and error handling baked in - then extend and fill in the blanks.
 

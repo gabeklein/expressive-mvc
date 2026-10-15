@@ -6,7 +6,7 @@ import { Model } from '@expressive/mvc';
 
 `@expressive/mvc` - framework-agnostic reactive state built on classes. `State` is a deprecated alias of `Model`.
 
-## Creating Model
+## Creating a Model
 
 ```ts
 class Counter extends Model {
@@ -24,7 +24,7 @@ const counter = Counter.new(); // creates AND activates
 const counter = Counter.new({ count: 10 }); // with initial values
 ```
 
-> `new Counter()` constructs without activating. Use `Counter.new()` for a root instance. Bare `new` is correct for a child Model declared on another Model (the parent adopts and activates it), or to defer activation deliberately.
+> `new Counter()` constructs without activating. Use `Counter.new()` for a root instance. Bare `new` is correct for a child instance declared on another instance (the parent adopts and activates it), or to defer activation deliberately.
 
 ## Properties & Reactivity
 
@@ -53,9 +53,9 @@ await pending(() => {
 
 `pending(work)` runs `work` now, marks the updates it queues non-urgent, and resolves once every reader has absorbed them - see [Transitions](../react/component.md#transitions). Under React that waits for presentation, so a replacement that suspends holds the current screen instead of falling back. A free function, not a method: settlement comes from whichever readers the writes touch, each replaying through the scheduler it subscribed with.
 
-- **No host registered:** no priority applies, but the promise still resolves once every subscriber has replayed - how headless code waits out a whole cascade, not just the first flush. Contrast `state.set()`, which resolves on the next flush of *that* state ([set.md](set.md)).
+- **No host registered:** no priority applies, but the promise still resolves once every subscriber has replayed - how headless code waits out a whole cascade, not just the first flush. Contrast `state.set()`, which resolves on the next flush of *that* instance ([set.md](set.md)).
 - **Nesting:** a nested call settles its own consequences and joins the outer call.
-- **Suspending effect:** if an effect throws a promise, settlement waits for its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and squash into that retry. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its state releases the hold and prevents revival.
+- **Suspending effect:** if an effect throws a promise, settlement waits for its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and squash into that retry. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its instance releases the hold and prevents revival.
 - **Errors:** an exception from `work` propagates synchronously; updates queued before it still dispatch. The promise never rejects - a reader throwing during replay is reported with kind `effect` ([lifecycle.md](lifecycle.md#error-handling)), never to the writer, so no catch is needed.
 
 `pending()` with no arguments is the reader half. Inside a replay carrying pending work it returns a release callback, and settlement waits on that instead of on the replay returning - how the React adapter holds until commit. A hand-written `watch` effect can do the same; elsewhere it returns `undefined`.
@@ -123,7 +123,7 @@ const Component = () => {
 };
 ```
 
-Also for silent reads inside effects, or to guarantee the unwrapped instance: `state.is` is the instance whether or not `state` is a proxy. Idempotent (`state.is.is` is safe). Each tracked read of a child state returns a fresh proxy, so compare and store through `is`: `panel.is === active?.is`, `this.active = panel.is`.
+Also for silent reads inside effects, or to guarantee the unwrapped instance: `state.is` is the instance whether or not `state` is a proxy. Idempotent (`state.is.is` is safe). Each tracked read of a child instance returns a fresh proxy, so compare and store through `is`: `panel.is === active?.is`, `this.active = panel.is`.
 
 ```ts
 state.get((current) => {
@@ -132,13 +132,13 @@ state.get((current) => {
 });
 ```
 
-## Child Models
+## Child Instances
 
 Nest by direct assignment. Children are auto-parented, activated, and destroyed with the parent.
 
 ```ts
 class Parent extends Model {
-  child = new ChildModel(); // parented and activated when Parent initializes
+  child = new Child(); // parented and activated when Parent initializes
 }
 ```
 
@@ -156,7 +156,7 @@ increment(); // `this` is bound
 
 - Overwriting works: `test.method = () => 'bar'`.
 - `super` calls work across inheritance chains.
-- Methods never subscribe: what a method reads is untracked, whether it is called from an effect, a render, or a getter. To derive from another state, read its fields or getters - `thread.cwd()` inside a getter goes stale; a `get cwd()` does not.
+- Methods never subscribe: what a method reads is untracked, whether it is called from an effect, a render, or a getter. To derive from another instance, read its fields or getters - `thread.cwd()` inside a getter goes stale; a `get cwd()` does not.
 - `this` inside a method is the instance, never a tracking proxy (`this === this.is`) - safe as a `Map`/`Set` key or for identity comparison, however the method was reached, including off a proxy handed to an effect or render. The `new()` hook has the same guarantee ([lifecycle.md](lifecycle.md#the-new-hook)).
 
 ## Static Methods
@@ -179,7 +179,7 @@ Type guard - true if the argument is this class or a subclass.
 
 ```ts
 Counter.is(SubCounter); // true
-Counter.is(OtherModel); // false
+Counter.is(Timer); // false
 ```
 
 ### `Model.on()`
@@ -255,7 +255,7 @@ All events batch and flush via `queueMicrotask()`.
 
 ## Context
 
-Every active Model has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It registers into root (findable by others) only with `static global`; a global's home locks to root at activation, while a private instance's stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
+Every active instance has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It registers into root (findable by others) only with `static global`; a global's home locks to root at activation, while a private instance's stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
 
 Primarily consumed via the [`get` instruction](../field/get.md) and [`<Component for>`](context.md#providing-with-component).
 

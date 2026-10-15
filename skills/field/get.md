@@ -6,7 +6,7 @@ Runnable source: [`get`](https://expressive.dev/examples/instructions/get) (upst
 import { get } from '@expressive/mvc';
 ```
 
-Fetches another Model from the context hierarchy, upstream or downstream.
+Fetches another instance from the context hierarchy, upstream or downstream.
 
 ## Overloads
 
@@ -14,8 +14,8 @@ Fetches another Model from the context hierarchy, upstream or downstream.
 
 ```ts
 class Child extends Model {
-  parent = get(ParentModel);          // nearest instance; throws if not found
-  maybe = get(ParentModel, false);    // T | undefined; never throws
+  parent = get(Parent);          // nearest instance; throws if not found
+  maybe = get(Parent, false);    // T | undefined; never throws
 }
 ```
 
@@ -23,7 +23,7 @@ class Child extends Model {
 
 ```ts
 class Child extends Model {
-  parent = get(ParentModel, (parent, self) => {
+  parent = get(Parent, (parent, self) => {
     console.log('found:', parent);
     return () => console.log('detached');
   });
@@ -36,8 +36,8 @@ Receives `(state, subject)`. Runs when the upstream resolves, and again when it 
 
 ```ts
 class Parent extends Model {
-  children = get(ChildModel, true);
-  tracked = get(ChildModel, true, (child, self) => {
+  children = get(Child, true);
+  tracked = get(Child, true, (child, self) => {
     console.log('registered:', child);
     return () => console.log('removed');
   });
@@ -50,8 +50,8 @@ class Parent extends Model {
 
 ```ts
 class Parent extends Model {
-  child = get(ChildModel, true, true);   // throws if not found
-  maybe = get(ChildModel, true, false);  // T | undefined
+  child = get(Child, true, true);   // throws if not found
+  maybe = get(Child, true, false);  // T | undefined
 }
 ```
 
@@ -70,7 +70,7 @@ class Parent extends Model {
 }
 ```
 
-`Model` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect the Models this one owns directly - not grandchildren, not context descendants; callbacks and the single forms work as for other types. The owner never changes after activation, so `get(Model)` is a stable reference, not a subscription.
+`Model` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect the instances this one owns directly - not grandchildren, not context descendants; callbacks and the single forms work as for other types. The owner never changes after activation, so `get(Model)` is a stable reference, not a subscription.
 
 ## Type Signatures
 

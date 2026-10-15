@@ -1,6 +1,6 @@
-# Context - Model Discovery & Ownership
+# Context - Instance Discovery & Ownership
 
-Hierarchical registry through which Model instances find each other. Every active Model has a **home context** where its `state.get(Type)` lookups originate.
+Hierarchical registry through which Model instances find each other. Every active instance has a **home context** where its `state.get(Type)` lookups originate.
 
 ## Home Context
 
@@ -24,13 +24,13 @@ To choose a home other than root, construct with `new Model()` and place it in t
 const a = MyGlobal.new();
 new Context(a); // does NOT change a's home
 
-// new MyModel() constructs without activating
+// new FormState() constructs without activating
 // - the first explicit Context claims it before init runs
-const b = new MyModel();
+const b = new FormState();
 new Context(b); // b's home is this context
 ```
 
-Matters in tests and in code that prepares a state before placing it in a context tree. Placement is an ordering constraint, not a deferral - an instance not activated by the end of the tick warns. Release one you no longer want with `set(null)`.
+Matters in tests and in code that prepares an instance before placing it in a context tree. Placement is an ordering constraint, not a deferral - an instance not activated by the end of the tick warns. Release one you no longer want with `set(null)`.
 
 ### Child Inheritance
 
@@ -51,7 +51,7 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 ## Root Context
 
-`Context.root` is the process-global registry; `Context.get(state)` falls back to it when a state has no recorded home. A Model *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
+`Context.root` is the process-global registry; `Context.get(state)` falls back to it when an instance has no recorded home. An instance *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
 
 ```ts
 class Flags extends Model {
@@ -82,7 +82,7 @@ Two rules keep a global deliberate:
 - **Re-declare on extend (runtime).** A subclass that would be global purely by inheriting `true` throws on activation; it must re-declare (`true` to keep, `false` to opt out). Checked only where the instance would actually register at root - a `<Component for>`-scoped one never trips it.
 - **Lockout (compile-time).** A bare-literal `false` makes TypeScript reject a subclass `= true` (`TS2417`). Best-effort: a subclass escapes with a resolver (`static global = (() => true) as any`) or a wide cast - the sanctioned "I'm overriding the vendor" move. A plain `any`-cast boolean cannot.
 
-A context-claimed Model never consults `global` - an instance provided by `<Component for>` (or any explicit context) is unaffected by it.
+A context-claimed instance never consults `global` - an instance provided by `<Component for>` (or any explicit context) is unaffected by it.
 
 > **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Component for>`. See [Server render](../react/react.md#server-render-ssr--rsc).
 
@@ -136,7 +136,7 @@ import { Context } from '@expressive/mvc';
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
 
-const child = ctx.push({ ChildModel });
+const child = ctx.push({ PageControl });
 child.pop(); // destroy child context
 ```
 
@@ -162,7 +162,7 @@ Unlike root - where shadowing a global throws and sibling contests evict permane
 
 ## Providing with Component
 
-Bare `Component` (not a subclass) given `for` provides one Model to its children, in any host:
+Bare `Component` (not a subclass) given `for` provides one instance to its children, in any host:
 
 ```tsx
 <Component for={Session} name="Ada" is={(session) => …}>…</Component>  // constructed, owned
@@ -170,21 +170,21 @@ Bare `Component` (not a subclass) given `for` provides one Model to its children
 ```
 
 - A class is constructed, owned and destroyed with the element; `is` receives it; its `mount()` runs with the element's, and a replacement class takes over the mount.
-- An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted like a field - `for={new X()}` in render gives a Model that lives for one render.
-- Other attributes are typed from the provided Model and assign to it on every render.
+- An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted like a field - `for={new X()}` in render gives an instance that lives for one render.
+- Other attributes are typed from the provided instance and assign to it on every render.
 - Changing `for` releases the previous item, then provides the next.
 - No suspense boundary unless `fallback` or `catch` is passed. Bare `<Component>` without `for` keeps `fallback = null`.
-- One item only - several belong to a parent Model that owns them as fields (`class Root extends Model { theme = new Theme(); router = new BrowserRouter() }`), where they resolve each other as siblings with `get()`. Nesting `<Component for>` elements works but is a smell: the inner Model can `get` the outer, not the reverse.
+- One item only - several belong to a parent instance that owns them as fields (`class Root extends Model { theme = new Theme(); router = new BrowserRouter() }`), where they resolve each other as siblings with `get()`. Nesting `<Component for>` elements works but is a smell: the inner instance can `get` the outer, not the reverse.
 
 ## Ownership vs Context
 
-Context is where a Model registers to be found; ownership is who constructed it. The two agree for a field child, and diverge whenever registration skips a level:
+Context is where an instance registers to be found; ownership is who constructed it. The two agree for a field child, and diverge whenever registration skips a level:
 
-- A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every Model a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
+- A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every instance a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
 - Two siblings of one type are ambiguous to context (`get(Foo)` is `null`) but each has exactly one owner.
 - A host-mounted Component, `use()` instance or `<Component for>` is owned by the Component rendering it, with no field between them.
 
-`state.get(Model)` reads the owner and `get(Model, true)` lists what a Model owns directly; neither consults context. Use a type to find a collaborator; use `Model` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
+`state.get(Model)` reads the owner and `get(Model, true)` lists what an instance owns directly; neither consults context. Use a type to find a collaborator; use `Model` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
 
 ```ts
 class Node extends Model {
@@ -211,16 +211,16 @@ scene.get(Model, (node) => attach(node), true); // direct members only - a, not 
 ```ts
 new Context();                         // empty
 new Context(parentContext);            // child of parent
-new Context(StateClass);               // create + register a state
+new Context(StateClass);               // create + register an instance
 new Context(stateInstance);            // register existing instance
-new Context({ a: A, b: B });           // multi-state
+new Context({ a: A, b: B });           // multi-instance
 
 ctx.get(Type);                         // upstream lookup, throws if missing
 ctx.get(Type, false);                  // optional, returns undefined
 ctx.get(Type, callback);               // watch, upstream and downstream
 ctx.get(Type, callback, true);         // downstream only
 ctx.get(Type, callback, false);        // upstream only
-ctx.add(state, explicit?);             // register a state
+ctx.add(state, explicit?);             // register an instance
 ctx.set(inputs, forEach?);             // register multiple
 ctx.push(inputs?);                     // create child context
 ctx.pop();                             // destroy this and descendants

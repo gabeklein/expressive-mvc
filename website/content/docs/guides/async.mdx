@@ -44,7 +44,7 @@ avatar = set(async () => fetchAvatar(), false); // User['avatar'] | undefined
 
 > A `Component` gives you the boundary for free: set its `fallback` and any pending property in `render()` is covered, no `<Suspense>` wrapper needed. Details in [Components](/docs/guides/components#suspense). For a headless-Model version of this pattern, see [essentials/async](/examples/essentials/async).
 >
-> Whichever boundary catches, the pending value must be owned **above** it. A boundary rebuilds the subtree it retries, so a Model created below it is constructed again on every retry and requests again - a silent loop.
+> Whichever boundary catches, the pending value must be owned **above** it. A boundary rebuilds the subtree it retries, so an instance created below it is constructed again on every retry and requests again - a silent loop.
 
 <br />
 
@@ -65,7 +65,7 @@ class Session extends Model {
 The async `user` factory reads `this.userId`. If `userId` hasn't been assigned, the factory itself suspends - and the cascade resolves automatically when `userId` arrives. You describe a dependency graph ("user depends on userId") and the library handles the timing. ✨
 
 > **Good to know:** <br/>
-> If the state is destroyed while something still awaits a pending property, that promise **rejects** (`Session-K3Q9ZB is destroyed.`) rather than hang forever. Anything awaiting a suspense throw should expect that.
+> If the instance is destroyed while something still awaits a pending property, that promise **rejects** (`Session-K3Q9ZB is destroyed.`) rather than hang forever. Anything awaiting a suspense throw should expect that.
 
 <br />
 
@@ -79,7 +79,7 @@ class Config extends Model {
 }
 ```
 
-A promise built in a field initializer would start before the state is activated - in React StrictMode or other abandoned constructions, that work continues with no live instance to receive it. So `set()` refuses outright: handing it a Promise throws a `TypeError` at init (*"Direct promises are not supported... Use `set(() => promise)` instead."*). With a factory, work doesn't start until the instance is live.
+A promise built in a field initializer would start before the instance is activated - in React StrictMode or other abandoned constructions, that work continues with no live instance to receive it. So `set()` refuses outright: handing it a Promise throws a `TypeError` at init (*"Direct promises are not supported... Use `set(() => promise)` instead."*). With a factory, work doesn't start until the instance is live.
 
 <br />
 
@@ -138,7 +138,7 @@ async refresh() {
 }
 ```
 
-Either way, subscribers update as normal. If you want the factory itself to re-run from scratch, destroy and recreate the state - or build the refresh semantic into a regular async method, like the `Query` base below.
+Either way, subscribers update as normal. If you want the factory itself to re-run from scratch, destroy and recreate the instance - or build the refresh semantic into a regular async method, like the `Query` base below.
 
 <br />
 
@@ -176,7 +176,7 @@ class Profile extends Component {
 
 The full `catch()` and `fallback` semantics live in [Components](/docs/guides/components#error-boundaries).
 
-A rejection nobody renders is different. An async `new()`, or a constructor callback returning a promise, has no reader for its failure to reach - the state is still created, and the rejection goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-modelon) with kind `setup`. Unhandled, it escapes uncaught. The same goes for an async method that keeps writing after its state is destroyed: those writes are stored, reported with kind `dead`, and unhandled, output nothing.
+A rejection nobody renders is different. An async `new()`, or a constructor callback returning a promise, has no reader for its failure to reach - the instance is still created, and the rejection goes to the class's [`catch` handlers](/docs/guides/state-classes#class-level-setup-with-modelon) with kind `setup`. Unhandled, it escapes uncaught. The same goes for an async method that keeps writing after its instance is destroyed: those writes are stored, reported with kind `dead`, and unhandled, output nothing.
 
 <br />
 
@@ -247,9 +247,9 @@ The callback returns a cleanup function, called before the next update (or on de
 
 ## With a query library
 
-Expressive and a server-cache library are not rivals - they own different things. TanStack Query (or SWR) owns the server cache: request dedupe, retries, background refresh, invalidation. The model owns what the view actually works with: filters, selection, derived values, actions.
+Expressive and a server-cache library are not rivals - they own different things. TanStack Query (or SWR) owns the server cache: request dedupe, retries, background refresh, invalidation. The control owns what the view actually works with: filters, selection, derived values, actions.
 
-The bridge is the class `use()` method. It runs on every render of the hosting component, so hooks are legal inside it - the query lives *in the model*, and components never see the query library at all:
+The bridge is the class `use()` method. It runs on every render of the hosting component, so hooks are legal inside it - the query lives *in the control*, and components never see the query library at all:
 
 ```tsx
 import { useQuery } from '@tanstack/react-query';

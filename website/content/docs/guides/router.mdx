@@ -71,7 +71,7 @@ layout or section fallback.
 
 ## Read the matched route
 
-A page reads its nearest `Route` like any contextual Model:
+A page reads its nearest `Route` like any contextual instance:
 
 ```tsx
 import { Route } from '@expressive/router';
@@ -257,10 +257,10 @@ the address first, because the browser owns those operations.
 A rejected lazy import is an error, not a suspension. Handle it with
 `Component.catch` on a `Route` subclass or an ancestor Component boundary.
 
-## Keep page data in MVC Model
+## Keep page data in the page control
 
 The router does not own loaders, mutations, a cache, or revalidation. Put those
-in the route/page Model and let its async fields suspend through the Route:
+in the route/page control and let its async fields suspend through the Route:
 
 ```tsx
 class ProjectPage extends Component {
@@ -283,7 +283,7 @@ class ProjectPage extends Component {
 
 The navigation layer prevents stale router commits; it does not abort domain
 requests. If an operation has side effects or consumes significant resources,
-the owning Model should use `AbortController` or its own generation check.
+the owning instance should use `AbortController` or its own generation check.
 
 ## Browser, server, and native boundaries
 
@@ -294,7 +294,7 @@ the owning Model should use `AbortController` or its own generation check.
 - Server rendering is safe from shared global router state, but request-path
   routing, redirects, loader serialization, and hydration are not a supported
   SSR routing system today.
-- On React Native, use `Router` and render navigation controls from native host
+- On React Native, use `Router` and render navigation UI from native host
   components that call `goto`. `BrowserRouter`, `Link`, and `NavLinks` are
   DOM-facing.
 - A Component may own its own `Router` as a field. Routes it renders match that

@@ -10,7 +10,7 @@
 
 ---
 
-Query the live model graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay - a base layer for agents, devtools, and test helpers.
+Query the live instance graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay - a base layer for agents, devtools, and test helpers.
 
 ```bash
 npm install --save-dev @expressive/inspect

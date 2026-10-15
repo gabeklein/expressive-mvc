@@ -187,7 +187,7 @@ On the Expressive side, the destructure *is* the dependency list. Read a field, 
 
 ## Shared state
 
-Context is where store libraries quietly hand the problem back to you. In Expressive, your classes themselves are context keys - anything needing `Theme` just asks for it: another Model via `get(Theme)`, a component via `Theme.get()`.
+Context is where store libraries quietly hand the problem back to you. In Expressive, your classes themselves are context keys - anything needing `Theme` just asks for it: another instance via `get(Theme)`, a component via `Theme.get()`.
 
 <Compare labels={['Expressive', 'React Context', 'Zustand', 'Jotai']}>
 
@@ -381,7 +381,7 @@ export const faq = {
       name: 'How is Expressive MVC different from MobX?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'MobX is the closest relative - both use tracked reactivity with direct mutation. Expressive is more opinionated about what MobX leaves as an exercise: context between models, lifecycle with cleanup, async values that integrate with Suspense, and component binding are built in rather than userland conventions.',
+        text: 'MobX is the closest relative - both use tracked reactivity with direct mutation. Expressive is more opinionated about what MobX leaves as an exercise: context between instances, lifecycle with cleanup, async values that integrate with Suspense, and component binding are built in rather than userland conventions.',
       },
     },
     {
