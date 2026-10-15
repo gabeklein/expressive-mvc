@@ -42,7 +42,6 @@ For a class that cannot extend `Job` - it already extends another `State` or a `
 ```ts
 class Sync extends Remote {
   then = run(this, {
-    base: Sync,
     rewind: true,
     exit(outcome) {
       if (outcome.status != 'done') this.cursor = '';
@@ -55,8 +54,8 @@ class Sync extends Remote {
 
 | option | |
 | --- | --- |
-| `base` | topmost class whose methods are steps and hooks - classes above it stay plain. Default: every class below `State`. The instance must extend it, else `run` throws `<instance> does not extend <base>.` |
+| `base` | opt into an extensible runner - the topmost class whose methods are steps and hooks, walked from the most-derived class; classes above it stay plain. Default: the most-derived class only. The instance must extend it, else `run` throws `<instance> does not extend <base>.` |
 | `rewind` | as `static rewind` above |
 | `before`, `after`, `back`, `exit` | hooks typed against the instance, raw instance as `this`; each runs after the class's same-named hook ([hooks.md](hooks.md#hooks-as-options)) |
 
-Without `base`, every method between the class and `State` is a step - `Remote`'s included: from outside they read `undefined`, and a step calling one schedules it instead of running it. Pass the class itself as `base` when it extends a class with methods. `Job` passes `base: Job`.
+Without `base`, only the most-derived class's methods are steps and hooks - `Remote`'s stay plain, callable inline from a step and from outside. A subclass of `Sync` would get only its own methods as steps: a runner meant to be extended passes itself, `run(this, { base: Sync })`. `Job` passes `base: Job`.

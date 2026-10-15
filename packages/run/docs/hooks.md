@@ -1,6 +1,6 @@
 # Hooks - Before, After, Back, Exit
 
-Methods named `before`/`after`, or those followed by an uppercase letter (`beforeShip`), `back` and `exit`, are hooks - found from the class up to `base` ([job.md](job.md#escape-hatch-runthis-options)): never wrapped, never scheduled - from outside they are plain methods. `beforehand` is a step.
+Methods named `before`/`after`, or those followed by an uppercase letter (`beforeShip`), `back` and `exit`, are hooks - found on the same classes as steps: up to `base`, else the most-derived class only ([job.md](job.md#escape-hatch-runthis-options)): never wrapped, never scheduled - from outside they are plain methods. `beforehand` is a step.
 
 ```ts
 protected before(key: string, args: unknown[], skip: boolean) {}
