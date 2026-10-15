@@ -14,7 +14,7 @@ Premise: **the class tree is the app; rendering is a projection of it.** `App.ne
 
 Rule of thumb: use `Component` when state is intrinsic to display logic - usually meaning it defines `render()`. Intrinsic to *this* display concern, not the surface - a second concern (a resize handle beside send) is a second class, composed as a mounted wrapper, not more fields on the first.
 
-`render()` is optional: without one, a Component passes children through while placement, `mount()`, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controllers throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. A mount-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
+`render()` is optional: without one, a Component passes children through while placement, `mount()`, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controls throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. A mount-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
 
 Same rule as the pass-through demotion: a ref plus a DOM-sync reaction never earns the *paint's* instance - but that behavior, separated under its own name, earns its own:
 
@@ -47,7 +47,7 @@ class Stick extends Component {
 
 The fused class demotes because scroll-sync was incidental to its paint. `Stick` earns the instance as a feature: unplug is deleting one wrap, and `stick.on` reads off the tree.
 
-Use `Model` for headless models/controllers, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
+Use `Model` for headless domain models/controls, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
 
 Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
 
@@ -227,7 +227,7 @@ class Greeting extends Component {
 
 ### Render Props
 
-Extra props (beyond model fields) via a `render()` parameter:
+Extra props (beyond instance fields) via a `render()` parameter:
 
 ```tsx
 class Card extends Component {
@@ -241,7 +241,7 @@ class Card extends Component {
 <Card title="Hello" className="card" />;
 ```
 
-Non-optional render props become required JSX attributes. All props (model + render + special) are on `this.props`.
+Non-optional render props become required JSX attributes. All props (field + render + special) are on `this.props`.
 
 ### Special Props
 

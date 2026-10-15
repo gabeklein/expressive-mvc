@@ -14,7 +14,7 @@ Low-level primitive for custom property behavior during initialization. Every ot
 class MyModel extends Model {
   custom = def((key, subject, state) => {
     // key: property name (string)
-    // subject: the model instance
+    // subject: the instance
     // state: the internal store (Model.Values<T>)
     return { value: computedValue };
   });
@@ -74,4 +74,4 @@ interface def.Config<T> extends Model.Apply<T> {
 
 ## Child Model (No Instruction Needed)
 
-Nest models by direct assignment (`child = new ChildModel()`) - auto-parented, activated, and destroyed with the parent. See [state.md](../state/state.md#child-models).
+Nest instances by direct assignment (`child = new ChildModel()`) - auto-parented, activated, and destroyed with the parent. See [state.md](../state/state.md#child-models).

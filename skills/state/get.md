@@ -10,7 +10,7 @@ Instance method for reading values, running effects, checking status, and fetchi
 get(): Model.Values<this>
 ```
 
-Returns a frozen plain object of all managed values - including non-enumerable `set()` / `ref` fields; lazy factories and computeds appear once computed. Recursively exports child models; exotic values (ref, etc.) unwrap via their `.get()`. Circular references (parent/child loops) return the same exported object.
+Returns a frozen plain object of all managed values - including non-enumerable `set()` / `ref` fields; lazy factories and computeds appear once computed. Recursively exports child instances; exotic values (ref, etc.) unwrap via their `.get()`. Circular references (parent/child loops) return the same exported object.
 
 ```ts
 const values = state.get();
@@ -46,7 +46,7 @@ Runs `effect` immediately, then again whenever accessed properties change. Retur
 
 ```ts
 const stop = state.get((current, update) => {
-  // `this` = model instance
+  // `this` = instance
   // `current` = tracking proxy - reads create subscriptions
   // `update` = readonly array of changed keys (empty on first run, undefined before ready)
   console.log(current.count);
@@ -56,13 +56,13 @@ const stop = state.get((current, update) => {
 **Tracking:**
 
 - Only reads via the `current` proxy subscribe - not via `this` or method calls.
-- Nested child model properties track deeply (`current.child.value`); replacing a child re-subscribes to the new one.
+- Nested child instance properties track deeply (`current.child.value`); replacing a child re-subscribes to the new one.
 - `current.get(Type)` and `current.get(Model)` track the same way - reads off the fetched Model subscribe.
 - Simultaneous updates to several tracked properties produce one re-run.
 
 **Effect return value:**
 
-- `(event) => void` - cleanup, called with `true` (about to re-run), `false` (cancelled via `stop()`), or `null` (model destroyed)
+- `(event) => void` - cleanup, called with `true` (about to re-run), `false` (cancelled via `stop()`), or `null` (instance destroyed)
 - `null` - cancel the effect (one-shot)
 - `Promise` - the run is pending until it settles; the resolved value is a value only, never a cleanup or cancel
 

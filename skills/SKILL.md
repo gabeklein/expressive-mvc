@@ -82,7 +82,7 @@ import '@expressive/react'; // once, in the entry module
 
 ### Model Class
 
-Extend `Model` to define reactive models. Use `Model.new()` to construct a root instance - it constructs *and* activates, which plain `new` does not. Bare `new` is correct in one place: a class field on another Model (`theme = new Theme()`), where the owner adopts and activates the child, and destroys it in turn.
+Extend `Model` to define reactive classes. Use `Model.new()` to construct a root instance - it constructs *and* activates, which plain `new` does not. Bare `new` is correct in one place: a class field on another Model (`theme = new Theme()`), where the owner adopts and activates the child, and destroys it in turn.
 
 ```tsx
 class Counter extends Model {
@@ -279,7 +279,7 @@ Every broad rule here has a locality constraint. Apply both halves. When auditin
 | Rule                                                        | Counter-rule                                                                                                                        |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Reactive fields are assigned directly                       | Keep a method when the write validates, normalizes, coordinates fields, or triggers behavior. Delete methods whose body is only `this.x = value`. |
-| Derived values become getters                               | Only when shared by multiple consumers, semantic to the domain, expensive, or a deliberate part of the model's API/introspection surface. Single-consumer display derivations live in the consuming component - but judge meaning, not reference counts. |
+| Derived values become getters                               | Only when shared by multiple consumers, semantic to the domain, expensive, or a deliberate part of the instance's API/introspection surface. Single-consumer display derivations live in the consuming component - but judge meaning, not reference counts. |
 | Contextual components read via `.get()`                     | Pure presentation components may still take plain props. Context replaces drilled *state*, not every value.                          |
 | PascalCase subcomponents compose renders                    | Only for genuine extension points a subclass would replace or wrap. Implementation scopes are freestanding FCs using `.get()`.        |
 | Extract long conditional JSX (~10+ lines or ~5+ levels)     | Keep branches together when they share dependencies, read locally, and contain no nested logic.                                      |
@@ -292,7 +292,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ### Design intent
 
-- [design.md](design.md) - why the library is shaped this way: classes hold models not views, the "MVC" mapping, the two-verb `get`/`set` surface, render as an ordinary override, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental.** For positioning against alternatives (Zustand, Jotai, MobX, Redux Toolkit, plain Context), see [expressive.dev/llm/comparisons.md](https://expressive.dev/llm/comparisons.md).
+- [design.md](design.md) - why the library is shaped this way: classes hold the model layer not views, the "MVC" mapping, the two-verb `get`/`set` surface, render as an ordinary override, typed lifecycle hooks, transparent writes. **Read before characterizing a design choice as accidental.** For positioning against alternatives (Zustand, Jotai, MobX, Redux Toolkit, plain Context), see [expressive.dev/llm/comparisons.md](https://expressive.dev/llm/comparisons.md).
 
 ### Golden path
 

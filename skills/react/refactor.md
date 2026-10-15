@@ -4,7 +4,7 @@ Read in full before converting hook-based React code. The common failure is tran
 
 Examples follow the conventions in [style.md](style.md).
 
-**Large apps:** convert route/page controllers and their domain pools first; leave mature leaf widgets (inputs, menus) on hooks until the parent domain is stable. Coexistence is fine mid-migration.
+**Large apps:** convert route/page controls and their domain pools first; leave mature leaf widgets (inputs, menus) on hooks until the parent domain is stable. Coexistence is fine mid-migration.
 
 ## Ambiguity defaults
 
@@ -13,10 +13,10 @@ A one-shot conversion cannot ask. Proceed on these defaults, declare deviations 
 | Ambiguity | Default |
 |---|---|
 | "No redesigns" / parity scope | Observable behavior and public contracts; internal structure is the task |
-| Does leaving a route clear its model? | Keep model alive; soft-sync working identity from params |
+| Does leaving a route clear its control? | Keep control alive; soft-sync working identity from params |
 | Selection across refetch | Durable key + re-find getter; member references only in pools stable between fetches |
 | Loading UX for user-initiated ops | Explicit loading/error fields; suspense for load-once data |
-| File layout | Colocate feature folder once a route has model classes; existing convention wins |
+| File layout | Colocate feature folder once a route has `Model` classes; existing convention wins |
 | Verification gate | Currently-green checks only - a check broken at base is not yours to fix; report what was exercised |
 | Bug or dead branch found at base | Preserve behavior and note it; drop only provably dead code, and say so |
 | Routing | Bridge the existing router (step 7); adopting `@expressive/router` needs explicit go-ahead, never part of a conversion |
@@ -82,7 +82,7 @@ The forms, by role:
 | Mount-only ancestor (scroll pin, focus trap) | `Component` without `render()` |
 | Chrome / token frame / zero-state strip | FC that `.get()`s |
 
-`new X()` on a parent is for Models and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a Model's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the Model as a field on the controller that already exists and let sibling views `.get()` it.
+`new X()` on a parent is for Models and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a Model's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the Model as a field on the control that already exists and let sibling views `.get()` it.
 
 **Anti-pattern - subcomponent overuse.** The sections in `render()` above are freestanding FCs, not PascalCase methods. Subcomponents (`<this.Header />`) are extension points for subclasses. Test: **would a subclass reasonably replace or wrap this renderer?** For ordinary scopes no - a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
 
@@ -168,7 +168,7 @@ const { is: composer, subject } = Composer.get();
 const { canSend, send } = ComposePage.get();
 ```
 
-An owned region needs no cross-controller sync - the parent holds and reads the instance. Split when the second cluster appears, not as late cleanup.
+An owned region needs no cross-control sync - the parent holds and reads the instance. Split when the second cluster appears, not as late cleanup.
 
 A feature region is unpluggable: it owns its pool, display state, and chrome - don't leave the pool or query on the page because the page syncs it. Test each pane, strip, or panel the page mounts: delete its import - does the feature leave whole, pool included? Judge clusters by interaction, not product framing - clusters that never read each other are unrelated even when the product calls them one surface; a shared wire or replica decides sync, not view ownership. Sibling features read each other thru optional context (`get(Other, false)`); siblings don't see each other's context, so the consumer mounts beneath the provider in JSX. Extraction moves concerns off the class, not ownership off the tree: regions stay fields on the entrypoint. Only a shell owning nothing - chrome between entrypoint and features - demotes to an FC (step 3).
 
@@ -237,7 +237,7 @@ class Workspace extends Component {
   async send() {
     let sid = this.sessionId;
     if (!sid) {
-      sid = createId();               // threaded through locals; the model
+      sid = createId();               // threaded through locals; the control
       this.navigate(`/s/${sid}`);     // learns its own id via prop round-trip
     }
     await api.send(sid, this.body);
@@ -297,7 +297,7 @@ Audit rule: **delete any method whose body is only `this.field = value`** - voca
 
 ## 8. Getters: shared and semantic only
 
-A derived value earns a getter on shared state when it has multiple consumers, domain or workflow meaning, cost enough to merit memoized tracking, a place in the model's deliberate API, or introspection value (debugging, devtools):
+A derived value earns a getter on shared state when it has multiple consumers, domain or workflow meaning, cost enough to merit memoized tracking, a place in the instance's deliberate API, or introspection value (debugging, devtools):
 
 ```tsx
 get hasBlocking() {        // read by notices, actions, and header

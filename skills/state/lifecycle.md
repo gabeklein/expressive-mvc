@@ -24,15 +24,15 @@ class Timer extends Model {
 }
 ```
 
-- Runs once, after all properties and child models are set up.
+- Runs once, after all properties and child instances are set up.
 - Return nothing, or `() => void` to run on destruction.
 - `this` is the instance, not a tracking proxy - closures made here (a listener, an interval) capture it and may use it as a `Map`/`Set` key.
 
 `new()` is a typed optional member of `Model` (`protected new?(): void | (() => void)`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. Adapter hooks reached only through `Model.use()` - `use()` and `mount()` on a plain `Model` - are declared on the `UseModel` interface instead, which a class satisfies structurally: optional and unadvertised on never-rendered Models, at the cost of a looser check than a declared override.
 
-> **`new()` runs on the server.** It is part of activation, so it fires wherever the model is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook: `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for a model some component owns.
+> **`new()` runs on the server.** It is part of activation, so it fires wherever the instance is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook: `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for an instance some component owns.
 
-> **`new()` is for consumers and own-state.** Avoid it in reusable models meant to be subclassed: it's a public method, so a subclass defining its own `new()` silently replaces yours. For internal init in a shippable base class, pass a trailing init callback to `super` - same phase as `new()`, but can't be clobbered:
+> **`new()` is for consumers and own-state.** Avoid it in reusable classes meant to be subclassed: it's a public method, so a subclass defining its own `new()` silently replaces yours. For internal init in a shippable base class, pass a trailing init callback to `super` - same phase as `new()`, but can't be clobbered:
 >
 > ```ts
 > class Route extends Component {
@@ -53,7 +53,7 @@ class Timer extends Model {
 `Model.new()` accepts `Model.Args`, processed in order during activation:
 
 - `function` - called with `this` as the instance; may return a cleanup function, an object to assign, an array to process, or a Promise
-- `object` - assigned to model properties
+- `object` - assigned to instance properties
 - `array` - flattened and re-processed
 - `Promise` (returned by a callback) - a rejection is reported with kind `setup` ([Error Handling](#error-handling))
 
@@ -73,7 +73,7 @@ const test = Test.new(
 
 `state.set(null)` triggers, in order:
 
-1. **Children destroyed first** - owned child models, recursively
+1. **Children destroyed first** - owned child instances, recursively
 2. **Listeners notified** - destruction event dispatched
 3. **Effect cleanups run** - called with `null`
 4. **`new()` cleanup called**
@@ -103,7 +103,7 @@ Writes where the new value `===` the previous are skipped.
 
 ## Effect Lifecycle
 
-1. Effect receives a tracking proxy of the model
+1. Effect receives a tracking proxy of the instance
 2. Reads on the proxy are tracked
 3. Only tracked properties trigger re-runs
 4. Re-runs queue asynchronously
@@ -136,10 +136,10 @@ An instance failing out of turn - not at a call that could catch it - reaches th
 
 | `kind`      | `error`                       | When                                                                   |
 | ----------- | ----------------------------- | ---------------------------------------------------------------------- |
-| `dead` | `Error` (`Tried to update {state}.{key} but state is destroyed.`) | write to a destroyed model - stored without dispatch; unhandled, no output |
+| `dead` | `Error` (`Tried to update {state}.{key} but state is destroyed.`) | write to a destroyed instance - stored without dispatch; unhandled, no output |
 | `unused`  | `Error` (`{state} was constructed but never activated.`) | constructed, never activated in that tick                              |
 | `getter`    | what the getter threw; `key`  | getter threw while refreshing - value becomes `undefined`              |
-| `setup`      | the rejection                 | async initializer or `new()` rejected - model still created            |
+| `setup`      | the rejection                 | async initializer or `new()` rejected - instance still created            |
 | `effect`    | what was thrown               | effect or listener threw during a flush - collections resolve to their owner |
 
 `catch` is class-level policy. `Component.catch()` is a separate per-instance boundary for child render errors - a Component's own effect errors reach `Model.on({ catch })`, not its boundary.
@@ -176,7 +176,7 @@ stop();
 
 Other failures:
 
-- **Reading uninitialized required values** - throws a Suspense-compatible error (Promise with Error properties) that resolves when the value is assigned, or rejects if the model is destroyed first.
+- **Reading uninitialized required values** - throws a Suspense-compatible error (Promise with Error properties) that resolves when the value is assigned, or rejects if the instance is destroyed first.
 - **Circular updates** - an effect updating a property it reads does not re-trigger in the same cycle; the update lands in the next batch.
 
 ## Hot Patching

@@ -30,7 +30,7 @@ const b = new MyModel();
 new Context(b); // b's home is this context
 ```
 
-Matters in tests and in code that prepares a model before placing it in a context tree. Placement is an ordering constraint, not a deferral - an instance not activated by the end of the tick warns. Release one you no longer want with `set(null)`.
+Matters in tests and in code that prepares an instance before placing it in a context tree. Placement is an ordering constraint, not a deferral - an instance not activated by the end of the tick warns. Release one you no longer want with `set(null)`.
 
 ### Child Inheritance
 
@@ -51,7 +51,7 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 ## Root Context
 
-`Context.root` is the process-global registry; `Context.get(state)` falls back to it when a model has no recorded home. A Model *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
+`Context.root` is the process-global registry; `Context.get(state)` falls back to it when an instance has no recorded home. A Model *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
 
 ```ts
 class Flags extends Model {
@@ -211,16 +211,16 @@ scene.get(Model, (node) => attach(node), true); // direct members only - a, not 
 ```ts
 new Context();                         // empty
 new Context(parentContext);            // child of parent
-new Context(StateClass);               // create + register a model
+new Context(StateClass);               // create + register an instance
 new Context(stateInstance);            // register existing instance
-new Context({ a: A, b: B });           // multi-model
+new Context({ a: A, b: B });           // multi-instance
 
 ctx.get(Type);                         // upstream lookup, throws if missing
 ctx.get(Type, false);                  // optional, returns undefined
 ctx.get(Type, callback);               // watch, upstream and downstream
 ctx.get(Type, callback, true);         // downstream only
 ctx.get(Type, callback, false);        // upstream only
-ctx.add(state, explicit?);             // register a model
+ctx.add(state, explicit?);             // register an instance
 ctx.set(inputs, forEach?);             // register multiple
 ctx.push(inputs?);                     // create child context
 ctx.pop();                             // destroy this and descendants

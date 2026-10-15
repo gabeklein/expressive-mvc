@@ -272,7 +272,7 @@ function InboxRoute() {
 }
 ```
 
-Route params are props, not always working identity. When leaving a route must not clear the model, keep the working field separate and soft-sync with a reaction:
+Route params are props, not always working identity. When leaving a route must not clear the control, keep the working field separate and soft-sync with a reaction:
 
 ```tsx
 class ComposePage extends Component {
@@ -281,7 +281,7 @@ class ComposePage extends Component {
 
   mount() {
     return this.get(($) => {
-      void $.urlThreadId;  // declare the trigger - legitimate in model effects, never in renders
+      void $.urlThreadId;  // declare the trigger - legitimate in instance effects, never in renders
       this.syncRoute();
     });
   }
@@ -373,7 +373,7 @@ function App() {
 
 ## Contextual Children (No Prop Drilling)
 
-Children of a provided model declare their own dependencies with `.get()` - don't thread state values and callbacks through props:
+Children of a provided instance declare their own dependencies with `.get()` - don't thread state values and callbacks through props:
 
 ```tsx
 // Before: parent unpacks state and drills it down

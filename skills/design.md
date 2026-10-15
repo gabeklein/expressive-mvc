@@ -34,12 +34,12 @@ Vocabulary: `Model` is the class, an *instance* is any instance of it, and *doma
 
 ## Two verbs: why `get` and `set` carry overloads
 
-A `Model` subclass's instance namespace belongs to the **user's domain** - every library method on the prototype is a name a model loses (`state.status`, `state.watch`, `state.export`, `state.destroy` should remain domain properties). So the instance surface is two verbs rather than a dozen namespace-squatting methods:
+A `Model` subclass's instance namespace belongs to the **user's domain** - every library method on the prototype is a name an instance loses (`state.status`, `state.watch`, `state.export`, `state.destroy` should remain domain properties). So the instance surface is two verbs rather than a dozen namespace-squatting methods:
 
 - `get` - read side: values, effects, context lookup, destruction status.
 - `set` - write side: assignment, events, listeners, destruction.
 
-Overloads dispatch on the **kind** of the first argument - property key, function, `null`, Model class, plain object - not on subtle arity. Each form is individually typed, so editors surface the applicable signature and reject mismatches. Consequential forms are not shape-ambiguous: destruction is only ever explicit `set(null)`, and a wrong-kind argument is a compile error, not a silent behavior change. The trade: `get`/`set` are less self-describing than dedicated names, so every overload is enumerated in [state/get.md](state/get.md) and [state/set.md](state/set.md). The alternative would have cost the model author's own vocabulary.
+Overloads dispatch on the **kind** of the first argument - property key, function, `null`, Model class, plain object - not on subtle arity. Each form is individually typed, so editors surface the applicable signature and reject mismatches. Consequential forms are not shape-ambiguous: destruction is only ever explicit `set(null)`, and a wrong-kind argument is a compile error, not a silent behavior change. The trade: `get`/`set` are less self-describing than dedicated names, so every overload is enumerated in [state/get.md](state/get.md) and [state/set.md](state/set.md). The alternative would have cost the author's own vocabulary.
 
 ## Render overrides like any method
 
@@ -53,7 +53,7 @@ A PascalCase member on a `Component` becomes a reactive subcomponent - mirroring
 
 ## Lifecycle hooks are typed members, not name magic
 
-`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void)` on `Model` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the adapter's `Model` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most models need none - `new()` exists for setup-with-cleanup and should not be added ritually.
+`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void)` on `Model` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the adapter's `Model` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most classes need none - `new()` exists for setup-with-cleanup and should not be added ritually.
 
 ## Writes are transparent; `is` is bounded
 
@@ -61,9 +61,9 @@ Subscription proxies pass assignments through to the instance, so components rea
 
 ## Concurrent validation is separate from presentation
 
-The React adapter does not store model values in `useSyncExternalStore` - external-store updates are blocking and would forfeit deferred rendering. Subscriber dispatch publishes through ordinary `useState`, so `pending()` updates keep host priority and may retain prior content while a replacement suspends.
+The React adapter does not store instance values in `useSyncExternalStore` - external-store updates are blocking and would forfeit deferred rendering. Subscriber dispatch publishes through ordinary `useState`, so `pending()` updates keep host priority and may retain prior content while a replacement suspends.
 
-Each subscription exposes a scalar revision to `useSyncExternalStore` for pre-commit validation. A write invalidating a subscriber advances its revision; a yielded render attempt then fails React's consistency check and restarts rather than committing mixed model revisions. A racing write costs that attempt its time-slicing, never consistency.
+Each subscription exposes a scalar revision to `useSyncExternalStore` for pre-commit validation. A write invalidating a subscriber advances its revision; a yielded render attempt then fails React's consistency check and restarts rather than committing mixed instance revisions. A racing write costs that attempt its time-slicing, never consistency.
 
 The supported floor is React 16.14 (for `react/jsx-runtime`). Validation runs on 18+. Hosts without `useSyncExternalStore` (React 16.14-17, preact) do not yield mid-render, so a write cannot interleave and validation is skipped. Verification is browser-level, not inferred: the acceptance harness drives a real concurrent root, with a negative control that tears on every run once the validation call is removed.
 
