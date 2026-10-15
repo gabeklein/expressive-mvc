@@ -1,8 +1,9 @@
 import { act, render } from '@testing-library/react';
 import { Activity, ReactNode, Suspense, useState } from 'react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Component, pending, State } from '.';
+import { Model } from '@expressive/mvc';
+import { Component, pending } from '.';
 import { mockPromise, reactOnly } from '../test.setup';
 import { Runtime, useHook } from './runtime';
 
@@ -142,7 +143,7 @@ it('will advance revision on reset', () => {
 });
 
 reactOnly.describe('pending', () => {
-  class Data extends State {
+  class Data extends Model {
     value = 'a';
   }
 
@@ -372,5 +373,40 @@ reactOnly.describe('pending', () => {
     });
 
     expect(settled()).toBe(true);
+  });
+});
+
+describe('useReap', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('will not reap without FinalizationRegistry', async () => {
+    vi.resetModules();
+    vi.stubGlobal('FinalizationRegistry', undefined);
+
+    await import('.');
+    const { Model } = await import('@expressive/mvc');
+
+    class Test extends Model {
+      value = 'foo';
+    }
+
+    const Child = () => <>{Test.use().value}</>;
+    const element = render(<Child />);
+
+    expect(element.container.textContent).toBe('foo');
+    element.unmount();
+  });
+
+  it('will hold fiber without WeakRef', () => {
+    const instance = new Component();
+    const fiber = {};
+
+    vi.stubGlobal('WeakRef', undefined);
+    Reflect.set(instance, '_reactInternals', fiber);
+    vi.unstubAllGlobals();
+
+    expect(Reflect.get(instance, '_reactInternals')).toBe(fiber);
   });
 });

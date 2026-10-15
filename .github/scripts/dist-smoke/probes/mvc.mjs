@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import State from '@expressive/mvc';
+import Model from '@expressive/mvc';
 
-class Store extends State {
+class Store extends Model {
   count = 0;
   get double() { return this.count * 2 }
 }
@@ -21,4 +21,4 @@ assert.deepEqual(seen, [0, 2]);
 
 store.set(null);
 
-console.log('mvc: State round-trip ok');
+console.log('mvc: Model round-trip ok');

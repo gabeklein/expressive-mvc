@@ -73,12 +73,7 @@ export class Link extends Component {
     this.route.goto(this.to, this.replace);
   };
 
-  /**
-   * A subclass that authors its own render overrides the default anchor wrapping.
-   */
   render({ children, to, replace, ...rest } = {} as Link.Props): Component.Node {
-    if (children !== this.props.children) return children;
-
     return (
       <a {...rest} href={this.href} onClick={this.go}>
         {children}

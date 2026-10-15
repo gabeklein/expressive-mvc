@@ -1,0 +1,16 @@
+.container input {
+  width: 100%;
+  max-width: 20rem;
+  padding: var(--s2) var(--s3);
+  font: inherit;
+}
+
+.tally {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.results {
+  padding-left: var(--s5);
+  min-height: 8rem;
+}

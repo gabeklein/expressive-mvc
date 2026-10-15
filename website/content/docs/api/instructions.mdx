@@ -17,7 +17,7 @@ All instructions return a symbol at definition time that the library resolves in
 
 The most versatile instruction. Handles default values, placeholders, lazy/async factories, validation callbacks, and reactive computed values.
 
-For reactive computed values, a normal class getter usually reads best - getters on a State subclass are auto-promoted to memoized, dependency-tracked properties. See [Reactive computed (getters)](#reactive-computed-getters) below, and [`set(compute)`](#setcompute---reactive-computed) for the instruction equivalent.
+For reactive computed values, a normal class getter usually reads best - getters on a Model subclass are auto-promoted to memoized, dependency-tracked properties. See [Reactive computed (getters)](#reactive-computed-getters) below, and [`set(compute)`](#setcompute---reactive-computed) for the instruction equivalent.
 
 ### Property descriptor policy
 
@@ -113,7 +113,7 @@ Makes the property writable. Callback runs on factory resolution and subsequent 
 ### `set(compute)` - reactive computed
 
 ```ts
-class Person extends State {
+class Person extends Model {
   first = 'John';
   last = 'Doe';
   full = set((self) => `${self.first} ${self.last}`);
@@ -130,7 +130,7 @@ The instruction equivalent of a getter. Unlike a zero-arg factory (which runs on
 ### Reactive computed (getters)
 
 ```ts
-class Cart extends State {
+class Cart extends Model {
   items = set<Item[]>([]);
   get total() {
     return this.items.reduce((s, i) => s + i.price, 0);
@@ -138,7 +138,7 @@ class Cart extends State {
 }
 ```
 
-A getter declared on a State subclass is auto-promoted to a reactive computed property. Enumerable, read-only. Re-runs when tracked dependencies change.
+A getter declared on a Model subclass is auto-promoted to a reactive computed property. Enumerable, read-only. Re-runs when tracked dependencies change.
 
 - `this` is a tracking proxy when the getter runs in a subscriber context - reads create subscriptions.
 - To opt out of tracking for a single read, use `this.is.ownProp`.
@@ -162,12 +162,12 @@ Use a factory (`set(() => promise)` or `set(async () => value)`) so async work s
 
 ## `get`
 
-Context lookup. Fetches another State from the ambient context hierarchy.
+Context lookup. Fetches another instance from the ambient context hierarchy.
 
 ### `get(Type)` - required upstream
 
 ```ts
-parent = get(ParentState);
+parent = get(Parent);
 ```
 
 Throws `"Required {Type} not found in context for {subject}."` if missing.
@@ -181,7 +181,7 @@ maybe = get(OptionalSvc, false); // T | undefined
 ### `get(Type, callback)` - upstream with lifecycle
 
 ```ts
-parent = get(ParentState, (parent, self) => {
+parent = get(Parent, (parent, self) => {
   console.log('attached:', parent);
   return () => console.log('detached');
 });
@@ -220,22 +220,22 @@ form = get(FormState, true, true);
 form = get(FormState, true, false); // T | undefined
 ```
 
-### `get(State)` - owner
+### `get(Model)` - owner
 
 ```ts
-owner = get(State); // the State which owns this one
-maybe = get(State, false); // undefined at the root
-owned = get(State, true); // every State this one owns
+owner = get(Model); // the Model which owns this one
+maybe = get(Model, false); // undefined at the root
+owned = get(Model, true); // every Model this one owns
 ```
 
-`State` reads ownership instead of context - see [`state.get(State)`](/docs/api/state). Downstream forms collect owned States rather than context descendants.
+`Model` reads ownership instead of context - see [`state.get(Model)`](/docs/api/state). Downstream forms collect owned instances rather than context descendants.
 
 ### Behavior notes
 
 - All `get()` properties are **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)`.
 - Upstream lookups walk ancestors by depth: each ancestor, then siblings under it, then the next ancestor up. The nearest match wins, and an ancestor beats a sibling at its own level. If nothing in the ownership chain matches, the lookup walks the context hierarchy.
 - Siblings under one parent resolve each other regardless of field order - a required lookup waits for the parent to finish activating before throwing.
-- A state does not resolve itself.
+- An instance does not resolve itself.
 - Upstream callbacks are not reactive - the upstream's own value changes do not re-run them.
 - Downstream collections ignore redundant registrations of the same instance.
 - Downstream callbacks run their cleanup before either side is destroyed.
@@ -278,7 +278,7 @@ node = ref<HTMLElement>((el) => {
 ### `ref(this)` - ref proxy
 
 ```ts
-class Form extends State {
+class Form extends Model {
   name = '';
   email = '';
   refs = ref(this);
@@ -289,7 +289,7 @@ form.refs.name.current; // current value of form.name
 form.refs.name.current = 'new'; // updates form.name
 ```
 
-Creates ref objects for every enumerable property. Takes a State instance - normally `this`, though another state works too; a plain object throws.
+Creates ref objects for every enumerable property. Takes a Model instance - normally `this`, though another instance works too; a plain object throws.
 
 - Reactive computed getters are included (read-only).
 - Factory-based properties (`set(() => ...)`) are excluded (non-enumerable).
@@ -297,13 +297,13 @@ Creates ref objects for every enumerable property. Takes a State instance - norm
 ### `ref(this, mapFn)` - custom ref proxy
 
 ```ts
-class Form extends State {
+class Form extends Model {
   name = '';
   inputs = ref(this, (key) => createInput(key));
 }
 ```
 
-Map function runs lazily once per key, with the state as `this` and second argument; return value is cached.
+Map function runs lazily once per key, with the instance as `this` and second argument; return value is cached.
 
 ### `ref.Object<T>` shape
 
@@ -311,7 +311,7 @@ Map function runs lazily once per key, with the state as `this` and second argum
 interface ref.Object<T> {
   (value: T | null): void;
   current: T;
-  is: State;
+  is: Model;
   key: string;
   get(): T | null;
   get(callback: (value: T) => void): () => void;
@@ -352,24 +352,24 @@ The factory runs during activation and can return:
 | ------------ | ------------------------------------------ | ------------------------------------------ |
 | `value`      | `T`                                        | Initial value                              |
 | `enumerable` | `boolean`                                  | Appear in `Object.keys()` (default `true`) |
-| `get`        | `(source: State) => T \| true \| false`    | Custom getter, or suspense/optional flag   |
+| `get`        | `(source: Model) => T \| true \| false`    | Custom getter, or suspense/optional flag   |
 | `set`        | `(next: T, prev: T) => void \| T \| false` | Custom setter, or `false` for read-only    |
 | `destroy`    | `() => void`                               | Cleanup on destruction                     |
 
 Setter callbacks behave like `set()` callbacks: throw `false` to reject, throw `true` to accept silently, return a value to transform.
 
-> Nesting states needs no instruction at all. `child = new ChildState()` is auto-parented, activated, and destroyed with its parent.
+> Nesting instances needs no instruction at all. `child = new Child()` is auto-parented, activated, and destroyed with its parent.
 
 <br />
 
 ## `has`
 
-An owned reactive collection - an ordered list of values, or a pool of members the state spawns.
+An owned reactive collection - an ordered list of values, or a pool of members the instance spawns.
 
 ```ts
-import { State, has } from '@expressive/mvc';
+import { Model, has } from '@expressive/mvc';
 
-class Game extends State {
+class Game extends Model {
   board = has<string>(Array(9).fill(''));
 
   play(index: number) {
@@ -378,9 +378,9 @@ class Game extends State {
 }
 ```
 
-`has()` is a proper instruction: the field resolves when the hosting state activates, which adopts the collection in the same step. It is not usable standalone, and the field is read-only - assigning over it throws.
+`has()` is a proper instruction: the field resolves when the hosting instance activates, which adopts the collection in the same step. It is not usable standalone, and the field is read-only - assigning over it throws.
 
-The argument selects one of two modes. Nothing, a falsy value (`null`/`false`, for conditional init), or an iterable makes an ordered list (`has.List<T>`) addressed by index. A `State` class or a factory makes a pool (`has.Pool`) whose members are spawned through `add(...args)` - which forwards its arguments to the constructor exactly as `Type.new()` accepts them (or to the factory's own parameters) and returns the member.
+The argument selects one of two modes. Nothing, a falsy value (`null`/`false`, for conditional init), or an iterable makes an ordered list (`has.List<T>`) addressed by index. A `Model` class or a factory makes a pool (`has.Pool`) whose members are spawned through `add(...args)` - which forwards its arguments to the constructor exactly as `Type.new()` accepts them (or to the factory's own parameters) and returns the member.
 
 | call                       | type             | insert                                              |
 | -------------------------- | ---------------- | --------------------------------------------------- |
@@ -392,7 +392,7 @@ The argument selects one of two modes. Nothing, a falsy value (`null`/`false`, f
 A class-mode pool also admits a ready-made member: `add(instance)` with a lone instance of the class (or a subclass) holds that value instead of constructing, so one field both spawns and injects. More than one argument always constructs. A factory pool never admits - route instances through the factory body instead (`has((item?: Item) => item || new Item())`).
 
 ```ts
-class Store extends State {
+class Store extends Model {
   items = has(Item);
   selected = has(Item);
 }
@@ -405,7 +405,7 @@ store.selected.add(item);           // admits active member - guest
 A factory returning `undefined` or `null` adds nothing, and `add` returns that value - so a factory can decide *whether* to add, and returning an existing instance makes `add` a lookup-or-create:
 
 ```ts
-class Inbox extends State {
+class Inbox extends Model {
   messages = has((dto: MessageDto) =>
     dto.deleted ? undefined : new Message({ info: dto, id: dto.id })
   );
@@ -417,7 +417,7 @@ Members stay typed `T`; only `add`'s return widens to include the miss.
 A pool takes no initial argument, so seed it from the `new()` hook, which runs once the field has resolved:
 
 ```ts
-class Board extends State {
+class Board extends Model {
   columns = has(Column);
 
   protected new() {
@@ -426,27 +426,27 @@ class Board extends State {
 }
 ```
 
-Ownership follows freshness: a fresh (never-activated) `State` member - one the pool instantiates, a `new Item()` the factory constructs, or one admitted directly - is owned and destroyed when deleted, cleared, or when the owner dies, while an already-activated value (`Item.new()`) stays a guest, held but never destroyed. Fresh members are parented to the hosting state and activate inside its context; a member that dies evicts itself.
+Ownership follows freshness: a fresh (never-activated) `Model` member - one the pool instantiates, a `new Item()` the factory constructs, or one admitted directly - is owned and destroyed when deleted, cleared, or when the owner dies, while an already-activated value (`Item.new()`) stays a guest, held but never destroyed. Fresh members are parented to the hosting instance and activate inside its context; a member that dies evicts itself.
 
 - Lists are positional: `get(index)` (negative counts from the end), `get(start, end)`, `get(predicate)`, `set(index, value)`, `put(index, ...values)`, `push`, `pop(index?, count?)`.
 - Pools address the member itself: `add`, `has(value)`, `delete(value)` - no index reads, no `push`. Repeat `add` of a present value is a no-op.
 - List events are positional - replacing one index notifies that index; insert/remove notifies shifted indices plus length. Pool events are by value, plus shape.
 - `size` and iteration track length (list) or shape (pool); `map(fn)`, `filter(fn)`, `any(fn)`, `all(fn)` track what they visit.
 - `get()` with no arguments returns a shallow snapshot array.
-- Shallow - nested State, `map()`, and `has()` values keep their own reactivity when accessed through the collection.
+- Shallow - nested Model, `map()`, and `has()` values keep their own reactivity when accessed through the collection.
 
 ```ts
 function has<T>(initial?: Iterable<T> | false | null): has.List<T>;
-function has<T extends State>(Type: new (...args: State.Args<T>) => T): has.Create<T>;
-function has<T extends State, K extends State.Field<T>>(Type: new (...args: State.Args<T>) => T, fromKey: K): has.From<T, K>;
+function has<T extends Model>(Type: new (...args: Model.Args<T>) => T): has.Create<T>;
+function has<T extends Model, K extends Model.Field<T>>(Type: new (...args: Model.Args<T>) => T, fromKey: K): has.From<T, K>;
 function has<R, A extends unknown[]>(make: (...args: A) => R): has.Pool<Exclude<R, null | undefined>, A, R>;
 
-interface has.Create<T extends State> extends has.Pool<T, State.Args<T>> {
-  add(...args: State.Args<T>): T; // spawn
+interface has.Create<T extends Model> extends has.Pool<T, Model.Args<T>> {
+  add(...args: Model.Args<T>): T; // spawn
   add(instance: T): T;            // admit
 }
 
-interface has.From<T extends State, K extends State.Field<T>> extends has.Pool<T, [from: T[K]]> {
+interface has.From<T extends Model, K extends Model.Field<T>> extends has.Pool<T, [from: T[K]]> {
   add(from: T[K]): T;             // spawn
   add(instance: T): T;            // admit
 }
@@ -463,9 +463,9 @@ interface has.From<T extends State, K extends State.Field<T>> extends has.Pool<T
 Keyed reactivity for `Map`.
 
 ```ts
-import { State, map } from '@expressive/mvc';
+import { Model, map } from '@expressive/mvc';
 
-class Catalog extends State {
+class Catalog extends Model {
   products = map<string, Product>();
 
   add(product: Product) {
@@ -474,14 +474,14 @@ class Catalog extends State {
 }
 ```
 
-`map()` is a proper instruction: the field resolves when the hosting state activates, which adopts the map in the same step. It is not usable standalone.
+`map()` is a proper instruction: the field resolves when the hosting instance activates, which adopts the map in the same step. It is not usable standalone.
 
 The argument selects one of two modes. With no argument, a falsy value, or an iterable of entries, it is a plain keyed map (`map.Insert<K, V>`, extending native `Map`) - you name and insert everything via `set(key, value)`. With a factory function, it is a keyed spawning map (`map.Create<A, V>`, keyed by the factory's first parameter): `set(key, ...rest)` invokes the factory with those arguments and stores the result at `key`, replacing (and destroying, if owned) any previous value.
 
-Ownership follows freshness in both modes, however a value arrives: a fresh (never-activated) `State` - handed to `set`, constructed by a factory, or in initial entries - is owned and destroyed when its entry is deleted, cleared, or replaced, while an already-activated value (`Item.new()`) stays a guest. In a spawning map, a value the factory merely passes through from its arguments is a guest too (`(key, value?) => value || new Item()` is the guest-admitting pattern). Every map is adopted by its hosting state when the instruction resolves: fresh members are parented to the owner, activate inside its context, and are destroyed with it - already-activated values keep guest status. The field is read-only, and a `State` value that dies evicts itself from the map. `keys(fn)`, `values(fn)`, and `entries(fn)` return reusable iterables of transformed results - a fresh pass over live entries per iteration, tracking like their plain forms; `throw false` in the callback skips an entry.
+Ownership follows freshness in both modes, however a value arrives: a fresh (never-activated) `Model` - handed to `set`, constructed by a factory, or in initial entries - is owned and destroyed when its entry is deleted, cleared, or replaced, while an already-activated value (`Item.new()`) stays a guest. In a spawning map, a value the factory merely passes through from its arguments is a guest too (`(key, value?) => value || new Item()` is the guest-admitting pattern). Every map is adopted by its hosting instance when the instruction resolves: fresh members are parented to the owner, activate inside its context, and are destroyed with it - already-activated values keep guest status. The field is read-only, and a `Model` value that dies evicts itself from the map. `keys(fn)`, `values(fn)`, and `entries(fn)` return reusable iterables of transformed results - a fresh pass over live entries per iteration, tracking like their plain forms; `throw false` in the callback skips an entry.
 
 ```ts
-class Cart extends State {
+class Cart extends Model {
   items = map((id: string) => new Line(id));
 
   add(id: string) {
@@ -496,7 +496,7 @@ class Cart extends State {
 - `values()`, `entries()`, `forEach()`, and `for...of` also track visited values.
 - `set`, `delete`, and `clear` notify affected keys; adding or removing keys also notifies shape.
 - `get()` with no key returns a shallow `ReadonlyMap` snapshot.
-- Shallow - nested State, `map()`, and `has()` values keep their own reactivity when accessed through the map.
+- Shallow - nested Model, `map()`, and `has()` values keep their own reactivity when accessed through the map.
 
 ```ts
 function map<K, V>(entries?: Iterable<readonly [K, V]> | false | null): map.Insert<K, V>;
@@ -504,7 +504,7 @@ function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map
 
 // runtime class: reactive native Map subclass - reads, removal, iteration, transforms
 class map.Managed<K, V> extends Map<K, V> {
-  get(): ReadonlyMap<K, State.Export<V>>;
+  get(): ReadonlyMap<K, Model.Export<V>>;
   get(key: K): V | undefined;
   set(key: K, ...rest: unknown[]): this;
   // has, delete, clear, keys/values/entries (with optional fn), forEach, size

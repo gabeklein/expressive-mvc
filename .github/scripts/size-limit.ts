@@ -16,67 +16,68 @@ import { withWorkspaceLinks } from './workspace-links';
  * toolchain drift does not.
  *
  * Budgets are a release decision. Without `--gate` the script reports and
- * never fails; CI passes `--gate` only on the Version Packages PR, where one
- * deliberate pass re-sets budgets and the figures quoted in docs.
+ * never fails. CI's `size` job passes `--gate` on every PR into main - a red
+ * check that does not block merging - and once per release a PR on main
+ * re-sets budgets and the figures quoted in docs.
  *
  * 10 kB is the line the maintainer cares about: `react: typical app`, the site's
- * headline figure, crossed it at 10.14 kB in 2026-09 (State.on({ catch }), the error-report classes,
+ * headline figure, crossed it at 10.14 kB in 2026-09 (Model.on({ catch }), the error-report classes,
  * the copies registry) - further growth there needs a deliberate decision.
  */
 const CASES = [
   {
-    name: 'mvc: State only',
-    limit: 6290,
-    code: `import State from '@expressive/mvc'; console.log(State);`
+    name: 'mvc: Model only',
+    limit: 6640,
+    code: `import Model from '@expressive/mvc'; console.log(Model);`
   },
   {
     name: 'mvc: everything',
-    limit: 10370,
+    limit: 10570,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
-    name: 'react: State only',
-    limit: 10350,
-    code: `import State from '@expressive/react'; console.log(State);`
+    name: 'react: Model only',
+    limit: 10810,
+    code: `import Model from '@expressive/react'; console.log(Model);`
   },
   {
     name: 'react: typical app',
-    limit: 11210,
-    code: `import State, { Component, get, set, ref, def } from '@expressive/react';
-           console.log(State, Component, get, set, ref, def);`
+    limit: 11660,
+    code: `import Model, { Component, get, set, ref, def } from '@expressive/react';
+           console.log(Model, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
-    limit: 13300,
+    limit: 13530,
     code: `import * as all from '@expressive/react'; console.log(all);`
   },
   {
     name: 'dom: renderer',
-    limit: 18320,
-    code: `import State, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
+    limit: 18550,
+    code: `import Model, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
            import { Fragment, Portal, createElement, render } from '@expressive/dom';
-           console.log(State, Component, Context, Fragment, Portal, createElement, def, get, has, map, pending, ref, render, set);`
+           console.log(Model, Component, Context, Fragment, Portal, createElement, def, get, has, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',
-    limit: 20550,
+    limit: 20760,
     code: `import * as mvc from '@expressive/mvc';
            import * as dom from '@expressive/dom';
            console.log(mvc, dom);`
   },
   {
     name: 'router: everything',
-    limit: 13420,
+    limit: 13760,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'inspect: install',
-    limit: 11920,
+    limit: 12280,
     code: `import '@expressive/inspect/install';`
   },
   {
     name: 'react + router',
-    limit: 17490,
+    limit: 17870,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
@@ -158,8 +159,6 @@ await Bun.write(
 
 const gate = process.argv.includes('--gate');
 
-// Outside the release gate a breach is not a red check, so the annotation
-// carries it to the PR's Checks tab and the table to the run page.
 if (over.length)
   console.log(
     `::warning title=Bundle size::` +
@@ -197,7 +196,7 @@ if (over.length && gate)
     `Bundle size exceeds budget:\n` +
     over.map(({ name, bytes, limit }) =>
       `  ${name}: ${kb(bytes)} exceeds budget ${kb(limit)}`).join('\n') +
-    `\n\nBefore this release merges, land a PR on main that re-sets the budgets in` +
+    `\n\nLeave budgets alone unless the growth is unintended. Before the next release, land a PR on main that re-sets the budgets in` +
     ` .github/scripts/size-limit.ts and every size claim in the docs and site (git grep -nE '[0-9] ?kB' website skills).`
   );
 

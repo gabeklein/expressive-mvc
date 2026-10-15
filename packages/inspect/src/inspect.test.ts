@@ -1,14 +1,14 @@
-import { Context, State, has, map, set } from '@expressive/mvc';
+import { Context, Model, has, map, set } from '@expressive/mvc';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushMicrotasks, mockUncaught, mockWarn } from '../test.setup';
 import { act, attach, call, detach, find, get, health, journal, models, set as assign, tree } from './index';
 
-class Child extends State {
+class Child extends Model {
   name = 'kid';
 }
 
-class Parent extends State {
+class Parent extends Model {
   child = new Child();
   kids = has(Child);
   lookup = map<string, Child>();
@@ -99,7 +99,7 @@ describe('models', () => {
   });
 
   it('will credit a shared child to its owner, not a later holder', () => {
-    class Twin extends State {
+    class Twin extends Model {
       shared = new Child();
       numbers = has([1, 2]);
       names = map<string, string>();
@@ -122,7 +122,7 @@ describe('models', () => {
   });
 
   it('will nest a hosted instance under its host, not a guest under its holder', () => {
-    class Holder extends State {
+    class Holder extends Model {
       held?: Child = undefined;
     }
     const holder = Holder.new();
@@ -169,7 +169,7 @@ describe('get', () => {
 describe('get with a selection', () => {
   beforeEach(() => void attach());
 
-  it('will pick keys and follow a child State, keeping refs', () => {
+  it('will pick keys and follow a child Model, keeping refs', () => {
     const parent = Parent.new();
 
     expect(get('Parent', { title: true, child: { name: true } })).toEqual({
@@ -186,7 +186,7 @@ describe('get with a selection', () => {
   });
 
   it('will apply to each element of a list, capped as get is', () => {
-    class Table extends State {
+    class Table extends Model {
       rows = Array.from({ length: 30 }, (_, id) => ({ id, title: `row ${id}`, extra: { big: true } }));
       few = [{ id: 1, title: 'one' }];
     }
@@ -228,7 +228,7 @@ describe('labels shared by several classes', () => {
   beforeEach(() => void attach());
 
   const declare = () =>
-    class Control extends State {
+    class Control extends Model {
       value = 0;
     };
 
@@ -258,11 +258,11 @@ describe('labels shared by several classes', () => {
 describe('act until an address', () => {
   beforeEach(() => void attach());
 
-  class Part extends State {
+  class Part extends Model {
     value = 0;
   }
 
-  class Holder extends State {
+  class Holder extends Model {
     part = new Part();
   }
 
@@ -303,11 +303,11 @@ describe('act until an address', () => {
     await expect(failed).rejects.toMatchObject({ pending: ['Part.value'], frames: [expect.objectContaining({})] });
   });
 
-  it('will throw for an address that names no State', async () => {
+  it('will throw for an address that names no Model', async () => {
     Holder.new();
 
-    await expect(act(() => {}, { until: 'Missing.value' })).rejects.toThrow('until Missing.value: Missing names no State.');
-    await expect(act(() => {}, { until: 'Holder.part.value.x' })).rejects.toThrow('Holder.part.value names no State.');
+    await expect(act(() => {}, { until: 'Missing.value' })).rejects.toThrow('until Missing.value: Missing names no Model.');
+    await expect(act(() => {}, { until: 'Holder.part.value.x' })).rejects.toThrow('Holder.part.value names no Model.');
   });
 
   it('will throw for an unmanaged _ key', async () => {
@@ -361,13 +361,13 @@ describe('health', () => {
   const COPIES = Symbol.for('@expressive/mvc');
   const list = () => (globalThis as unknown as Record<symbol, unknown[]>)[COPIES];
 
-  class Note extends State {
+  class Note extends Model {
     text = '';
   }
 
   it('will count caught reports by case and pass them on', () => {
     const app = vi.fn((error: unknown) => error);
-    const stop = State.on({ catch: app });
+    const stop = Model.on({ catch: app });
     const note = Note.new();
 
     note.set(null);
@@ -406,12 +406,12 @@ describe('health', () => {
   });
 
   it('will see a report before an app handler takes it, marked handled', () => {
-    class Dropped extends State {
+    class Dropped extends Model {
       text = '';
     }
 
     journal.record({ level: 'keys' });
-    const stop = State.on({ catch: (error, kind) => (kind == 'dead' ? undefined : error) });
+    const stop = Model.on({ catch: (error, kind) => (kind == 'dead' ? undefined : error) });
     const dropped = Dropped.new();
 
     dropped.set(null);
@@ -428,7 +428,7 @@ describe('health', () => {
     const warn = mockWarn();
     const stop = attach();
 
-    class Gone extends State {
+    class Gone extends Model {
       text = '';
     }
 
@@ -448,7 +448,7 @@ describe('health', () => {
     mockWarn();
     journal.record({ level: 'keys' });
 
-    class Idle extends State {}
+    class Idle extends Model {}
 
     new Idle();
     await flushMicrotasks();
@@ -461,7 +461,7 @@ describe('health', () => {
     const caught = mockUncaught();
     journal.record({ level: 'keys' });
 
-    class Thrower extends State {
+    class Thrower extends Model {
       value = 0;
     }
 
@@ -484,7 +484,7 @@ describe('health', () => {
     const caught = mockUncaught();
     journal.record({ level: 'keys' });
 
-    class Replaced extends State {
+    class Replaced extends Model {
       text = '';
     }
 

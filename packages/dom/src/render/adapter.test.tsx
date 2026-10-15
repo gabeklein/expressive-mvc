@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { State, Component } from '@expressive/mvc';
-import { render } from './index';
+import { Model, Component } from '@expressive/mvc';
+import { render } from '../index';
 import { Context } from '@expressive/mvc';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
 import * as hot from '@expressive/mvc/hot';
-import { flushMicrotasks, mockPromise, mount, place } from '../test.setup';
+import { flushMicrotasks, mockPromise, mount, place } from '../../test.setup';
 
 describe('MVC adapter', () => {
-  it('will update when a State fetched via this.get changes', async () => {
-    class Auth extends State {
+  it('will update when a Model fetched via this.get changes', async () => {
+    class Auth extends Model {
       static readonly global = true;
       name = 'foo';
     }
@@ -78,11 +78,11 @@ describe('MVC adapter', () => {
     expect(cleanup).toHaveBeenCalledOnce();
   });
 
-  it('will own State.use within a stable function-component slot', async () => {
+  it('will own Model.use within a stable function-component slot', async () => {
     const lifecycle: string[] = [];
     let local!: Local;
 
-    class Local extends State {
+    class Local extends Model {
       value = 0;
       count = 0;
 
@@ -128,8 +128,8 @@ describe('MVC adapter', () => {
     expect(local.get(null)).toBe(true);
   });
 
-  it('will provide a State.use instance to descendants', async () => {
-    class Session extends State {
+  it('will provide a Model.use instance to descendants', async () => {
+    class Session extends Model {
       name = 'Ada';
     }
 
@@ -156,10 +156,10 @@ describe('MVC adapter', () => {
     expect(root.textContent).toBe('Gracenone');
   });
 
-  it('will call a State use method on every render', async () => {
+  it('will call a Model use method on every render', async () => {
     const calls: number[] = [];
 
-    class Selection extends State {
+    class Selection extends Model {
       selected = 0;
 
       use(selected: number) {
@@ -188,7 +188,7 @@ describe('MVC adapter', () => {
   });
 
   it('will pass context through functions', async () => {
-    class Session extends State {
+    class Session extends Model {
       name = 'Ada';
     }
 
@@ -215,7 +215,7 @@ describe('MVC adapter', () => {
   });
 
   it('will reject render APIs outside their valid scope', () => {
-    class Value extends State {}
+    class Value extends Model {}
     class View extends Component {
       render() {
         Value.use();
@@ -232,13 +232,13 @@ describe('MVC adapter', () => {
   });
 
   it('will support optional, required and selected context snapshots', async () => {
-    class Missing extends State {}
-    class Source extends State {
+    class Missing extends Model {}
+    class Source extends Model {
       value = 1;
       pending?: string;
     }
 
-    let refresh!: State.ForceRefresh;
+    let refresh!: Model.ForceRefresh;
     let renders = 0;
 
     function View() {
@@ -284,9 +284,9 @@ describe('MVC adapter', () => {
     required.set(null);
   });
 
-  it('will enforce stable State.use order', () => {
-    class First extends State {}
-    class Second extends State {}
+  it('will enforce stable Model.use order', () => {
+    class First extends Model {}
+    class Second extends Model {}
     const context = new Context(Context.root);
     const scope: Scope = {
       active: true,
@@ -351,7 +351,7 @@ describe('MVC adapter', () => {
   });
 
   it('will leave capitalized methods callable outside render', () => {
-    class Store extends State {
+    class Store extends Model {
       Parse(text: string) {
         return text.toUpperCase();
       }
@@ -362,7 +362,7 @@ describe('MVC adapter', () => {
   });
 
   it('will track the owner of a subcomponent rendered elsewhere', async () => {
-    class Row extends State {
+    class Row extends Model {
       label = 'a';
 
       Cell() {
@@ -391,7 +391,7 @@ describe('MVC adapter', () => {
   });
 
   it('will not treat subcomponents of different owners as one', async () => {
-    class Row extends State {
+    class Row extends Model {
       label: string;
 
       constructor(label: string) {
@@ -430,12 +430,12 @@ describe('MVC adapter', () => {
     expect(root.textContent).toBe('plain');
   });
 
-  it('will mount State.use after suspended content commits', async () => {
+  it('will mount Model.use after suspended content commits', async () => {
     const waiting = mockPromise<void>();
     const lifecycle: string[] = [];
     let ready = false;
 
-    class Local extends State {
+    class Local extends Model {
       mount() {
         lifecycle.push('mount');
         return () => lifecycle.push('unmount');
@@ -518,7 +518,7 @@ describe('hot patch', () => {
 });
 
 describe('Component for', () => {
-  class Session extends State {
+  class Session extends Model {
     name = 'none';
   }
 
@@ -529,7 +529,7 @@ describe('Component for', () => {
   it('will construct, provide and forward props to a class', async () => {
     let session!: Session;
 
-    class App extends State {
+    class App extends Model {
       value = 'Ada';
 
       render() {
@@ -555,7 +555,7 @@ describe('Component for', () => {
   it('will not add a suspense boundary', () => {
     const gate = mockPromise<void>();
 
-    class Wait extends State {
+    class Wait extends Model {
       ready = false;
 
       render() {
@@ -579,7 +579,7 @@ describe('Component for', () => {
   });
 
   it('will type attributes from for', () => {
-    class Typed extends State {
+    class Typed extends Model {
       name = '';
       age = 0;
     }

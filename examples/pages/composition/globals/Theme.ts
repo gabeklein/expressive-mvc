@@ -1,6 +1,6 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-export class Theme extends State {
+export class Theme extends Model {
   // Global by nature: there is only one document to paint.
   static global = true;
 

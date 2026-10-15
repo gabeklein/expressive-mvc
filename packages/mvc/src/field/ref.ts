@@ -1,13 +1,13 @@
 import { listener, capture } from '../observable';
-import { State, update } from '../state';
+import { Model, update } from '../state';
 import { def } from './def';
 
 const { defineProperty, defineProperties } = Object;
 
 declare namespace ref {
-  type Map<T extends State, R> = (
+  type Map<T extends Model, R> = (
     this: T,
-    key: State.Field<T> & string,
+    key: Model.Field<T> & string,
     state: T
   ) => R;
 
@@ -23,8 +23,8 @@ declare namespace ref {
     /** Current value held by this reference. */
     current: T;
 
-    /** State instance this reference belongs to. */
-    is: State;
+    /** Model instance this reference belongs to. */
+    is: Model;
 
     /** Key of property on state this reference belongs to. */
     key: string;
@@ -42,11 +42,11 @@ declare namespace ref {
   }
 
   /** Object with references to all managed values of `T`. */
-  type Proxy<T extends State> = { [P in State.Field<T>]-?: Object<T[P]> } & {
+  type Proxy<T extends Model> = { [P in Model.Field<T>]-?: Object<T[P]> } & {
     get(): T;
   };
 
-  type CustomProxy<T extends State, R> = { [P in State.Field<T>]-?: R } & {
+  type CustomProxy<T extends Model, R> = { [P in Model.Field<T>]-?: R } & {
     get(): T;
   };
 }
@@ -61,7 +61,7 @@ declare namespace ref {
  *
  * @param state - Source state from which to reference values.
  */
-function ref<T extends State>(state: T): ref.Proxy<T>;
+function ref<T extends Model>(state: T): ref.Proxy<T>;
 
 /**
  * Creates an object with values based on managed values.
@@ -73,7 +73,7 @@ function ref<T extends State>(state: T): ref.Proxy<T>;
  * @param state - Source state from which to reference values.
  * @param map - Function producing the placeholder value for any given property.
  */
-function ref<T extends State, R>(
+function ref<T extends Model, R>(
   state: T,
   map: ref.Map<T, R>
 ): ref.CustomProxy<T, R>;
@@ -102,22 +102,22 @@ function ref<T>(
   ignoreNull: boolean
 ): ref.Object<T>;
 
-function ref<T extends State>(
+function ref<T extends Model>(
   arg?: ref.Callback<T> | T,
   arg2?: ref.Map<T, any> | boolean
 ) {
-  if (arg instanceof State)
+  if (arg instanceof Model)
     return proxy(arg, arg2 as ref.Map<T, any> | undefined);
 
   if (typeof arg == 'object')
     throw new Error(
-      'ref instruction requires a State instance, got a plain object'
+      'ref instruction requires a Model instance, got a plain object'
     );
 
   return property(arg, arg2 as boolean | undefined);
 }
 
-function defaultMap(this: State, key: string) {
+function defaultMap(this: Model, key: string) {
   const source = this as any as Record<string, any>;
   const set = (x: any) => (source[key] = x);
   const get = (cb?: (value: any) => void) =>
@@ -133,7 +133,7 @@ function defaultMap(this: State, key: string) {
   return set;
 }
 
-function proxy(target: State, map: ref.Map<any, any> = defaultMap) {
+function proxy(target: Model, map: ref.Map<any, any> = defaultMap) {
   return def((_key, _subject) => {
     const value = {} as Record<string, any>;
     const source = target as any as Record<string, any>;

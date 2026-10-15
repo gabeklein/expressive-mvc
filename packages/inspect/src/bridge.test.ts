@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { mockWarn } from '../test.setup';
@@ -6,7 +6,7 @@ import { mockWarn } from '../test.setup';
 import { attach, inspect as local, journal } from './index';
 import { inspect, type Evaluates } from './bridge';
 
-class Composer extends State {
+class Composer extends Model {
   draft = '';
 
   submit(text: string) {

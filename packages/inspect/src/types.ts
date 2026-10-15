@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
 export interface TypeInfo {
   /** Opaque, stable for the life of the process. */
@@ -9,12 +9,12 @@ export interface TypeInfo {
   site: string;
 }
 
-const info = new Map<typeof State, TypeInfo>();
-const labels = new Map<typeof State, string>();
+const info = new Map<typeof Model, TypeInfo>();
+const labels = new Map<typeof Model, string>();
 const names = new Map<string, string>();
 let count = 0;
 
-function register(Type: typeof State): TypeInfo {
+function register(Type: typeof Model): TypeInfo {
   let row = info.get(Type);
   if (!row) {
     const site = String(new Error().stack).split('\n').slice(1, 16).join('\n');
@@ -23,13 +23,13 @@ function register(Type: typeof State): TypeInfo {
   return row;
 }
 
-export function seen(Type: typeof State): TypeInfo {
+export function seen(Type: typeof Model): TypeInfo {
   const row = register(Type);
   row.type = labelOf(Type);
   return { ...row };
 }
 
-export function labelOf(Type: typeof State): string {
+export function labelOf(Type: typeof Model): string {
   const row = register(Type);
   const explicit = labels.get(Type) ?? (Type as { displayName?: string }).displayName;
   if (explicit) return explicit;
@@ -38,7 +38,7 @@ export function labelOf(Type: typeof State): string {
   return Type.name.length > 2 ? Type.name : row.typeId;
 }
 
-export function label(Type: typeof State, name: string): void {
+export function label(Type: typeof Model, name: string): void {
   labels.set(Type, name);
 }
 

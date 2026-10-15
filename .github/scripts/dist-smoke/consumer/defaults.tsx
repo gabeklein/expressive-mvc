@@ -1,8 +1,8 @@
 /** @jsxRuntime classic */
 import * as React from '@expressive/dom';
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Card extends State {
+class Card extends Model {
   title = '';
 }
 

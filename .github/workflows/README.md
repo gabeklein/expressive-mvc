@@ -11,14 +11,9 @@ under `.github/scripts` invoke it directly; only workspace-wide commands are
 install in the `setup` action doubles as the internal-dependency desync guard -
 a workspace version that falls outside a sibling's range cannot reach main.
 
-Non-blocking signals: `changeset status` (a preview of which packages would
-bump) and bundle size - the step summary and a warning annotation when a shape
-exceeds its budget. Budgets are re-set once per release, not per feature: on
-the Version Packages PR (`changeset-release/main`) the size step runs with
-`--gate` and fails `verify` while any shape is over. The fix is its own PR on
-`main` re-setting the budgets and the figures in `bundle-size.mdx`; the release
-PR picks it up when changesets refreshes the branch. `build:site` measures for
-the site's headline figure and never fails on budget.
+Non-blocking signal: `changeset status` (a preview of which packages would
+bump). `build:site` measures bundle size for the site's headline figure and
+never fails on budget.
 
 Beside `verify`, one run per push also holds:
 
@@ -28,14 +23,19 @@ Beside `verify`, one run per push also holds:
 - `native` - calls `native.yml` for a PR labeled `react-native`.
 - `hot` - `hot-probe.ts`, the hot-reload gauntlet in Chrome on React and dom.
   Not yet a required check.
+- `size` - `size-limit.ts --gate`: fails while any import shape exceeds its
+  budget, with the table in the step summary. Not a required check - growth
+  shows red on the PR that caused it without blocking the merge. Budgets are
+  re-set once per release, not per feature: a PR on `main` re-sets them and
+  every size claim in the docs, before the Version Packages PR merges.
 
 `verify` and `e2e` are required checks, matched by job name - renaming either
 job needs the branch protection updated with it.
 
 `verify` runs for a PR into any branch, so a PR into a trunk (a long-lived
 feature branch, see AGENTS.md) is checked without naming the trunk here. Its
-release-facing signals - bundle size and the changeset reminder - and the
-other jobs run only for PRs into `main` and stacks.
+release-facing signal - the changeset reminder - `size`, and the other jobs run
+only for PRs into `main` and stacks.
 
 A PR in a GitHub stack runs as if it targets the stack's base. `verify` runs on
 each layer; the others run only on the top one (`stack.position ==
@@ -45,6 +45,13 @@ outside a stack, runs only `verify`: create stacks with `gh stack`.
 
 `verify` typechecks from scratch. Restored incremental build info re-checks
 only changed files, in an order that can surface type cycles a clean run does not.
+
+## major.yml (pull requests)
+
+`major` - `major-check.ts`: fails while the PR would publish a major without
+the `major` label - a changeset it adds or edits bumping a package `major`, or
+a package version crossing a major against the base (the Version Packages PR).
+Re-runs on label changes, so applying the label is the sign-off.
 
 ## release.yml (push -> main)
 
@@ -66,7 +73,7 @@ throwaway project outside the repo and executes the probes and consumer app in
 only consumer-shaped check of the built dist, since tests alias the `@expressive`
 scope onto sources. `native-check.ts` is its React Native counterpart: the same
 tarballs into a throwaway Expo app, asserting Metro resolves every published
-subpath for ios and android, `expo export` emits Hermes bytecode, and a `State`
+subpath for ios and android, `expo export` emits Hermes bytecode, and a `Model`
 subclass behaves the same whether Metro keeps native class fields
 (`caller.engine` is `hermes`) or downlevels them to assignment (`jsEngine: jsc`).
 Both sit in `ci:publish` so a failure blocks the publish. `native-check.ts`

@@ -1,6 +1,6 @@
 import * as appearance from './appearance';
-import { registerEmitter } from './appearance-protocol';
-import type { Block } from './appearance-protocol';
+import { registerEmitter } from './protocol';
+import type { Block } from './protocol';
 import { applyDeclarations } from './declarations';
 import type { Declaration } from './declarations';
 

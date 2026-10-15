@@ -1,13 +1,14 @@
 import React, { Suspense } from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { Component, State, get, set } from '.';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Model } from '@expressive/mvc';
+import { Component, get, set } from '.';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { flushMicrotasks, mockPromise, reactOnly } from '../test.setup';
+import { collect, flushMicrotasks, mockPromise, reactOnly, suspender } from '../test.setup';
 import { pending } from '@expressive/mvc';
 import * as Refresh from 'react-refresh/runtime';
 
-describe('State.use', () => {
-  class Test extends State {
+describe('Model.use', () => {
+  class Test extends Model {
     value = 'foo';
   }
 
@@ -72,11 +73,11 @@ describe('State.use', () => {
     });
 
     it('will update when assigned through nested proxy', async () => {
-      class Child extends State {
+      class Child extends Model {
         value = 'foo';
       }
 
-      class Parent extends State {
+      class Parent extends Model {
         child = new Child();
       }
 
@@ -146,7 +147,7 @@ describe('State.use', () => {
     it('will call if exists', () => {
       const didCreate = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         protected new() {
           didCreate();
         }
@@ -167,7 +168,7 @@ describe('State.use', () => {
       const didMount = vi.fn();
       const didUnmount = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         mount() {
           didMount();
           return didUnmount;
@@ -187,10 +188,10 @@ describe('State.use', () => {
     });
 
     it('will ignore a non-function returned by mount', () => {
-      class Test extends State {
+      class Test extends Model {
         value = 'x';
 
-        // a plain State is only structurally checked against UseState, where
+        // a plain Model is only structurally checked against UseModel, where
         // TypeScript's void-permissive return rule lets this through
         mount() {
           return this.value as any;
@@ -205,7 +206,7 @@ describe('State.use', () => {
     it('will not call for an instance no component owns', () => {
       const didMount = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         mount() {
           didMount();
         }
@@ -221,7 +222,7 @@ describe('State.use', () => {
     it('will call every render with arguments', () => {
       const didUse = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         use(foo: string, bar: number) {
           didUse(foo, bar);
         }
@@ -238,7 +239,7 @@ describe('State.use', () => {
     it('will divert arguments from constructor', () => {
       const didUse = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         value = 0;
       }
 
@@ -258,7 +259,7 @@ describe('State.use', () => {
     });
 
     it('will enforce signature', () => {
-      class Test extends State {
+      class Test extends Model {
         use(foo: string, bar: number) {}
       }
 
@@ -287,8 +288,8 @@ describe('State.use', () => {
         expect(effect).not.toBeCalled();
       });
 
-      class Test extends State {
-        constructor(...args: State.Args) {
+      class Test extends Model {
+        constructor(...args: Model.Args) {
           super(args);
           this.get(effect);
         }
@@ -304,7 +305,7 @@ describe('State.use', () => {
   });
 
   describe('props argument', () => {
-    class Test extends State {
+    class Test extends Model {
       foo?: string = undefined;
       bar?: string = undefined;
     }
@@ -347,7 +348,7 @@ describe('State.use', () => {
     });
 
     it('will apply props over (untracked) arrow functions', () => {
-      class Test extends State {
+      class Test extends Model {
         foobar = () => 'Hello world!';
       }
 
@@ -365,7 +366,7 @@ describe('State.use', () => {
     });
 
     it('will apply props over methods', () => {
-      class Test extends State {
+      class Test extends Model {
         foobar() {
           return 'Hello world!';
         }
@@ -400,7 +401,7 @@ describe('State.use', () => {
     it('will trigger set instruction', () => {
       const cb = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         foo = set('foo', cb);
       }
 
@@ -415,11 +416,11 @@ describe('State.use', () => {
 
   describe('context', () => {
     it('will attach before model init', () => {
-      class Ambient extends State {
+      class Ambient extends Model {
         foo = 'foo';
       }
 
-      class Test extends State {
+      class Test extends Model {
         ambient = get(Ambient);
 
         protected new() {
@@ -448,7 +449,7 @@ describe('State.use', () => {
       const didRender = vi.fn();
       let instance!: Test;
 
-      class Test extends State {
+      class Test extends Model {
         value = 'foo';
 
         protected new() {
@@ -489,7 +490,7 @@ describe('State.use', () => {
 
   reactOnly.describe('fast refresh', () => {
     it('will keep instance when effects re-run', async () => {
-      class Test extends State {
+      class Test extends Model {
         value = 1;
       }
 
@@ -525,11 +526,11 @@ describe('State.use', () => {
 
 describe('owner', () => {
   it('will walk owners up to the root Component', () => {
-    let outer!: State;
-    let inner!: State;
-    let used!: State;
+    let outer!: Model;
+    let inner!: Model;
+    let used!: Model;
 
-    class Used extends State {}
+    class Used extends Model {}
     class Inner extends Component {
       render() {
         return <Leaf />;
@@ -548,16 +549,16 @@ describe('owner', () => {
 
     render(<Outer is={(o) => (outer = o)} />);
 
-    expect(used.get(State)).toBe(inner);
-    expect(used.get(State).get(State)).toBe(outer);
-    expect(outer.get(State, false)).toBeUndefined();
+    expect(used.get(Model)).toBe(inner);
+    expect(used.get(Model).get(Model)).toBe(outer);
+    expect(outer.get(Model, false)).toBeUndefined();
   });
 
   it('will not be owned by use() of a parent function', () => {
-    let outer!: State;
-    let inner!: State;
+    let outer!: Model;
+    let inner!: Model;
 
-    class Used extends State {}
+    class Used extends Model {}
 
     function Outer() {
       outer = Used.use().is;
@@ -572,6 +573,99 @@ describe('owner', () => {
     render(<Outer />);
 
     expect(outer).not.toBe(inner);
-    expect(inner.get(State, false)).toBeUndefined();
+    expect(inner.get(Model, false)).toBeUndefined();
+  });
+});
+
+reactOnly.describe('abandoned render', () => {
+  const live = new Set<Model>();
+
+  class Test extends Model {
+    new() {
+      live.add(this);
+      return () => live.delete(this);
+    }
+  }
+
+  const Child = () => {
+    Test.use();
+    return null;
+  };
+
+  beforeEach(() => live.clear());
+
+  it('will destroy attempts superseded by a commit', async () => {
+    const { Wait, resolve } = suspender();
+
+    render(
+      <Suspense fallback={null}>
+        <Child />
+        <Wait />
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+    await act(collect);
+
+    expect(live.size).toBe(1);
+  });
+
+  it('will destroy a first mount removed while suspended', async () => {
+    const { Wait } = suspender();
+    const element = render(
+      <Suspense fallback={null}>
+        <Child />
+        <Wait />
+      </Suspense>
+    );
+
+    element.rerender(null);
+    await act(collect);
+
+    expect(live.size).toBe(0);
+  });
+
+  it('will destroy a dropped transition render', async () => {
+    const { Wait } = suspender();
+    let show!: (shown: boolean) => void;
+
+    const App = () => {
+      const [shown, setShown] = React.useState(false);
+      show = setShown;
+
+      return (
+        <Suspense fallback={null}>
+          {shown && <><Child /><Wait /></>}
+        </Suspense>
+      );
+    };
+
+    render(<App />);
+
+    await act(async () => React.startTransition(() => show(true)));
+    await act(async () => React.startTransition(() => show(false)));
+    await act(collect);
+
+    expect(live.size).toBe(0);
+  });
+
+  it('will keep an instance hidden by Activity', async () => {
+    const element = render(
+      <React.Activity mode="hidden">
+        <Child />
+      </React.Activity>
+    );
+
+    await act(collect);
+    expect(live.size).toBe(1);
+
+    element.rerender(
+      <React.Activity mode="visible">
+        <Child />
+      </React.Activity>
+    );
+
+    await act(collect);
+    expect(live.size).toBe(1);
   });
 });

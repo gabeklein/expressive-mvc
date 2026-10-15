@@ -273,7 +273,7 @@ describe('discarded render (issue #118)', () => {
     const didDestroy = vi.fn();
 
     class Parent extends Component {}
-    class Model extends Component {
+    class Subject extends Component {
       protected new() {
         return () => didDestroy();
       }
@@ -289,14 +289,14 @@ describe('discarded render (issue #118)', () => {
       element = render(
         <Parent>
           <React.Suspense fallback={null}>
-            <Model />
+            <Subject />
             <Sibling />
           </React.Suspense>
         </Parent>
       );
     });
 
-    // Redirect: tree unmounts while still suspended. Model never mounted,
+    // Redirect: tree unmounts while still suspended. Subject never mounted,
     // so its own unmount cleanup never runs - Parent's pop must reach it.
     await act(async () => { element.unmount(); });
 
@@ -304,13 +304,13 @@ describe('discarded render (issue #118)', () => {
   });
 
   it('will not accumulate listeners across retries', async () => {
-    class Model extends Component {}
+    class Subject extends Component {}
 
-    let instance!: Model;
+    let instance!: Subject;
     await act(async () => {
       render(
         <React.Suspense fallback={null}>
-          <Model is={(c: Model) => { instance = c; }} />
+          <Subject is={(c: Subject) => { instance = c; }} />
         </React.Suspense>
       );
     });
@@ -320,7 +320,7 @@ describe('discarded render (issue #118)', () => {
     await act(async () => {
       render(
         <React.Suspense fallback={<span>loading</span>}>
-          <Model is={(c: Model) => { instance = c; }} />
+          <Subject is={(c: Subject) => { instance = c; }} />
           <Sibling />
         </React.Suspense>
       );
@@ -333,10 +333,10 @@ describe('discarded render (issue #118)', () => {
   });
 
   it('will supersede stale attempts, leaving one live instance at commit', async () => {
-    const disposed = new Set<Model>();
-    const made: Model[] = [];
+    const disposed = new Set<Subject>();
+    const made: Subject[] = [];
 
-    class Model extends Component {
+    class Subject extends Component {
       protected new() {
         made.push(this);
         return () => disposed.add(this);
@@ -349,7 +349,7 @@ describe('discarded render (issue #118)', () => {
     await act(async () => {
       element = render(
         <React.Suspense fallback={null}>
-          <Model />
+          <Subject />
           <Sibling />
         </React.Suspense>
       );
@@ -365,23 +365,23 @@ describe('discarded render (issue #118)', () => {
   });
 
   it('will not supersede siblings of the same class', async () => {
-    const disposed = new Set<Model>();
+    const disposed = new Set<Subject>();
 
-    class Model extends Component {
+    class Subject extends Component {
       protected new() {
         return () => disposed.add(this);
       }
     }
 
-    const all: Model[] = [];
-    const keep = (c: Model) => { all.push(c); };
+    const all: Subject[] = [];
+    const keep = (c: Subject) => { all.push(c); };
     const { pending, Sibling } = retries();
 
     await act(async () => {
       render(
         <React.Suspense fallback={null}>
-          <Model is={keep} />
-          <Model is={keep} />
+          <Subject is={keep} />
+          <Subject is={keep} />
           <Sibling />
         </React.Suspense>
       );

@@ -10,7 +10,7 @@
 
 ---
 
-Query the live model graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay - a base layer for agents, devtools, and test helpers.
+Query the live instance graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay - a base layer for agents, devtools, and test helpers.
 
 ```bash
 npm install --save-dev @expressive/inspect
@@ -19,11 +19,11 @@ npm install --save-dev @expressive/inspect
 ## Install into the app
 
 ```ts
-// first import of the app entry, before any State is constructed
+// first import of the app entry, before any Model is constructed
 import '@expressive/inspect/install';
 ```
 
-Attaches to every `State` and publishes `globalThis.__EXPRESSIVE_INSPECT__`. For a shipped build, call `attach()` behind your own dev flag instead of the side-effect import.
+Attaches to every `Model` and publishes `globalThis.__EXPRESSIVE_INSPECT__`. For a shipped build, call `attach()` behind your own dev flag instead of the side-effect import.
 
 ## In process
 

@@ -17,7 +17,7 @@ async function locate(remote: Remote, target: string) {
     throw new Error(`until ${target}: _ keys are unmanaged and emit no events - wait on a value instead.`);
   const found = (await remote.get(target.slice(0, dot))) as { $ref?: string } | undefined;
 
-  if (!found?.$ref) throw new Error(`until ${target}: ${target.slice(0, dot)} names no State.`);
+  if (!found?.$ref) throw new Error(`until ${target}: ${target.slice(0, dot)} names no Model.`);
 
   return `${found.$ref}.${target.slice(dot + 1)}`;
 }

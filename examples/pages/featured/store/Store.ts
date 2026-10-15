@@ -1,8 +1,8 @@
-import { map, State } from '@expressive/mvc';
+import { map, Model } from '@expressive/mvc';
 
 import { Line } from './Line';
 
-export class Cart extends State {
+export class Cart extends Model {
   items = map((id: string) => new Line(id));
 
   receipt?: { count: number; total: number };

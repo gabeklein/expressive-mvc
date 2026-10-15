@@ -16,7 +16,7 @@ The initial `0.1` release is a usable, tested browser renderer for dogfooding, n
 ```
 
 ```tsx
-import { State, Component, pending } from '@expressive/mvc';
+import { Model, Component, pending } from '@expressive/mvc';
 import { Portal, render } from '@expressive/dom';
 ```
 
@@ -31,7 +31,7 @@ unmount();
 
 Classic JSX (`"jsx": "react"`, or a toolchain without an automatic runtime) uses `createElement(type, props, ...children)` and `Fragment` from the package root - set `jsxFactory: "createElement"` and `jsxFragmentFactory: "Fragment"`, or `import * as React from '@expressive/dom'` under tool defaults (the root also exports the `JSX` namespace type). Attribute typing matches the automatic runtime. `Fragment` also serves keyed fragments: `<Fragment key={id}>…</Fragment>`.
 
-Supported output: intrinsic HTML/SVG elements, fragments, strings/numbers/bigints, FCs, `State` classes and instances with `render` (`Component` included), `State` classes without one, `has.List` / `has.Pool`, `map.Managed`, portals, arrays, and empty boolean/null/undefined values. Keys preserve DOM ranges across reorder.
+Supported output: intrinsic HTML/SVG elements, fragments, strings/numbers/bigints, FCs, `Model` classes and instances with `render` (`Component` included), `Model` classes without one, `has.List` / `has.Pool`, `map.Managed`, portals, arrays, and empty boolean/null/undefined values. Keys preserve DOM ranges across reorder.
 
 Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClickCapture`) with native event objects and propagation. There is no synthetic event layer: `onChange` on a text field fires on commit - use `onInput` per keystroke. Names are native event names; `onDoubleClick` is also accepted for `onDblClick`. `event.currentTarget` is typed as the element; `event.target` is not, since it may be a descendant.
 
@@ -146,14 +146,14 @@ function Total() {
 }
 ```
 
-`State.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it.
+`Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it.
 
-`State.use()` creates an MVC-owned State in an FC slot. Calls must remain top-level and in stable order. The instance persists across renders, receives `use(...args)` each render when defined, runs `mount()` after its first DOM commit, and is destroyed on unmount. `State.use()` in `Component.render()` is an error—put owned state on the Component as a field. The instance is provided to the FC's output: descendants resolve it with `State.get()`, siblings do not.
+`Model.use()` creates an MVC-owned instance in an FC slot. Calls must remain top-level and in stable order. The instance persists across renders, receives `use(...args)` each render when defined, runs `mount()` after its first DOM commit, and is destroyed on unmount. `Model.use()` in `Component.render()` is an error—put owned state on the Component as a field. The instance is provided to the FC's output: descendants resolve it with `Model.get()`, siblings do not.
 
-Any `State` class renders as an element. With `render(props)` it produces content like a Component: attributes assign matching fields (a dropped attribute resets its field to `undefined`), `is` receives the instance after fields apply, `render` receives the attributes, `mount()` runs after first commit, and the instance is destroyed on unmount. Without `render` it passes `children` through. Either way the instance is in context for its subtree - `<Session name="x">…</Session>` provides like `<Component for={Session} name="x">`. A client class may extend a server State and add `render`; the server class stays host-free. An instance with `render` also renders inline. A PascalCase method rendered as an element (`<this.Label />`, or passed on and rendered elsewhere) is a subcomponent tracking its owner; called directly it stays a plain method. A PascalCase function field is plain data and renders as an ordinary FC. Render layers compose up the prototype chain, as on a Component. Component-only: `this.props`. Host-read members are reserved on any rendered State - `render`, `fallback`, `catch`, `key`, `mount`, `use`; a field or method by one of these names opts into that behavior.
+Any `Model` class renders as an element. With `render(props)` it produces content like a Component: attributes assign matching fields (a dropped attribute resets its field to `undefined`), `is` receives the instance after fields apply, `render` receives the attributes, `mount()` runs after first commit, and the instance is destroyed on unmount. Without `render` it passes `children` through. Either way the instance is in context for its subtree - `<Session name="x">…</Session>` provides like `<Component for={Session} name="x">`. A client class may extend a server Model and add `render`; the server class stays host-free. An instance with `render` also renders inline. A PascalCase method rendered as an element (`<this.Label />`, or passed on and rendered elsewhere) is a subcomponent tracking its owner; called directly it stays a plain method. A PascalCase function field is plain data and renders as an ordinary FC. `render` overrides like any method, as on a Component. Component-only: `this.props`. Host-read members are reserved on any rendered instance - `render`, `fallback`, `catch`, `key`, `mount`, `use`; a field or method by one of these names opts into that behavior.
 
 ```tsx
-class Selection extends State {
+class Selection extends Model {
   selected = '';
 
   use(selected: string) {
@@ -167,23 +167,23 @@ function Row({ id }: { id: string }) {
 }
 ```
 
-`<Component for>` ([context.md](../state/context.md#providing-with-component)), State elements, `State.use()`, implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
+`<Component for>` ([context.md](../state/context.md#providing-with-component)), Model elements, `Model.use()`, implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
 
 ## Code splitting, boundaries, transitions
 
-A function component returning a promise renders what it resolves to - a module's default export or a component itself (function, State or Component class): `const Settings = () => import('./Settings')`. Its first render suspends on the load; later renders and placements reuse the result without calling it again. Attributes pass to, and are typed from, the loaded component. It takes no parameters - props never change what loads. Declare it at module scope - one created per render loads every render. There is no `lazy`. A failed load rejects to the nearest `catch`; the next render after recovery loads again. A Component supplies a suspense boundary unless `fallback = false`. A State element has one only when it declares `fallback` or `catch`, or receives either as an attribute - `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence over the member and still passes through to a field of that name. The boundary exists from mount: a placement mounted with neither attribute nor member never gains one, though a present `fallback` or `catch` may change. The attribute types narrow to a declared member's type, so a mismatch fails at the element. Function components never own a boundary; `fallback` on them is an ordinary prop. A placed instance (`{page}`) uses its members. `<Component fallback={…}>` adds one explicitly, with or without `for`. With no boundary above, a suspension throws from `render()` - give the root one: `render(<App fallback={null} />, el)`. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders.
+A function component returning a promise renders what it resolves to - a module's default export or a component itself (function, Model or Component class): `const Settings = () => import('./Settings')`. Its first render suspends on the load; later renders and placements reuse the result without calling it again. Attributes pass to, and are typed from, the loaded component. It takes no parameters - props never change what loads. Declare it at module scope - one created per render loads every render. There is no `lazy`. A failed load rejects to the nearest `catch`; the next render after recovery loads again. A Component supplies a suspense boundary unless `fallback = false`. A Model element has one only when it declares `fallback` or `catch`, or receives either as an attribute - `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence over the member and still passes through to a field of that name. The boundary exists from mount: a placement mounted with neither attribute nor member never gains one, though a present `fallback` or `catch` may change. The attribute types narrow to a declared member's type, so a mismatch fails at the element. Function components never own a boundary; `fallback` on them is an ordinary prop. A placed instance (`{page}`) uses its members. `<Component fallback={…}>` adds one explicitly, with or without `for`. With no boundary above, a suspension throws from `render()` - give the root one: `render(<App fallback={null} />, el)`. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders.
 
-Suspending destroys nothing. Instances below a boundary - including one that suspends itself - keep their state and retry in place, so a State may own its loading and error state and suspend in its own `render`. This holds on first mount and in a transition: new content a `pending()` update reveals waits off the page with the State it created - `State.use()` slots, State elements, owned children - while the current screen holds, then commits with it. That State is created once, `mount()` runs after it reaches the page, and it is destroyed only if a later render drops its position. A boundary for plain content is an empty State:
+Suspending destroys nothing. Instances below a boundary - including one that suspends itself - keep their state and retry in place, so an instance may own its loading and error state and suspend in its own `render`. This holds on first mount and in a transition: new content a `pending()` update reveals waits off the page with the instance it created - `Model.use()` slots, Model elements, owned children - while the current screen holds, then commits with it. That instance is created once, `mount()` runs after it reaches the page, and it is destroyed only if a later render drops its position. A boundary for plain content is an empty Model:
 
 ```tsx
-class Boundary extends State {}
+class Boundary extends Model {}
 
 <Boundary fallback={<Spinner />}>
   <Report />
 </Boundary>;
 ```
 
-`catch(error, instance)` - member or attribute - handles render failures and retries after it completes (lifecycle failures go to `State.on({ catch })` instead); until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
+`catch(error, instance)` - member or attribute - handles render failures and retries after it completes (lifecycle failures go to `Model.on({ catch })` instead); until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
 
 ```tsx
 const Settings = () => import('./Settings');
@@ -224,9 +224,9 @@ import expressive from '@expressive/dom/vite';
 export default defineConfig({ plugins: [expressive()] });
 ```
 
-Editing a `State` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members. Dev server only. A class must be top-level `class X` or `let X = class`; `export default X;` exports a snapshot, so prefer `export default class X` or `export { X as default }`.
+Editing a `Model` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members. Dev server only. A class must be top-level `class X` or `let X = class`; `export default X;` exports a snapshot, so prefer `export default class X` or `export { X as default }`.
 
-A top-level function component (`function View()`, `const View = () => …`, PascalCase) re-renders in place with its `State.use()` instances kept; if its `State.use()` calls change order, the slots from the first change on are recreated. An anonymous `export default` is not refreshed - the module reloads.
+A top-level function component (`function View()`, `const View = () => …`, PascalCase) re-renders in place with its `Model.use()` instances kept; if its `Model.use()` calls change order, the slots from the first change on are recreated. An anonymous `export default` is not refreshed - the module reloads.
 
 ## Boundaries
 

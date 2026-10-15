@@ -3,7 +3,8 @@ import { afterEach, beforeEach, expect, it, describe, vi, type MockInstance } fr
 import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, revisions } from '../test.setup';
-import { Component, State, get, has, map } from '.';
+import { Model } from '@expressive/mvc';
+import { Component, get, has, map } from '.';
 import { pending } from '@expressive/mvc';
 
 let error: MockInstance<Console['error']>;
@@ -229,7 +230,7 @@ describe('instance element', () => {
   });
 
   it('will resolve provided context from spawned member', async () => {
-    class Theme extends State {
+    class Theme extends Model {
       color = '';
     }
 
@@ -280,7 +281,7 @@ describe('instance element', () => {
       }
     }
 
-    class Owner extends State {
+    class Owner extends Model {
       item = new Item({ value: 'a' });
     }
 
@@ -412,7 +413,7 @@ describe('instance element', () => {
   });
 
   it('will resolve ancestor provided at placement', async () => {
-    class Theme extends State {
+    class Theme extends Model {
       color = '';
     }
 

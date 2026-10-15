@@ -1,7 +1,7 @@
 import { parseAst } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
 import expressive from './vite';
 
@@ -33,8 +33,8 @@ async function run(code: string, { locals, replace = {}, before, ssr = false, da
   const location = ssr ? undefined : { reload: vi.fn() };
   const accept = (_id: string, classes: Record<string, unknown>) => ({ ...classes, ...replace });
 
-  new Function('hot', 'location', '__accept', '__State', ...Object.keys(locals), body)(
-    hot, location, accept, State, ...Object.values(locals)
+  new Function('hot', 'location', '__accept', '__Model', ...Object.keys(locals), body)(
+    hot, location, accept, Model, ...Object.values(locals)
   );
 
   return { hot, location: location! };
@@ -130,7 +130,7 @@ describe('exports', () => {
 });
 
 describe('update', () => {
-  class Store extends State {}
+  class Store extends Model {}
   class Plain {}
   const App = () => null;
   const source = 'export class Store {}\nclass Local {}\nclass Plain {}\nexport const App = () => null;\nexport let value = 1;';
@@ -145,7 +145,7 @@ describe('update', () => {
 
   it('will keep patched classes', async () => {
     const { hot, location } = await run(source, {
-      locals: { Store: class Store extends State {}, Local: Store, Plain, App, value: 1 },
+      locals: { Store: class Store extends Model {}, Local: Store, Plain, App, value: 1 },
       replace: { Store },
       before: { Store, Local: Store, Plain: class Plain {} }
     });
@@ -156,13 +156,13 @@ describe('update', () => {
 
   it('will announce and reload for a class it could not patch', async () => {
     const announce = vi.fn();
-    class Local extends State {}
+    class Local extends Model {}
 
     addEventListener('expressive:reload', announce);
 
     const { location } = await run(source, {
       locals: { Store, Local, Plain, App, value: 1 },
-      before: { Store, Local: class Local extends State {}, Plain }
+      before: { Store, Local: class Local extends Model {}, Plain }
     });
 
     removeEventListener('expressive:reload', announce);
@@ -177,7 +177,7 @@ describe('update', () => {
     addEventListener('expressive:reload', announce);
 
     const { hot } = await run(source, {
-      locals: { Store, Local: class Local extends State {}, Plain, App, value: 1 },
+      locals: { Store, Local: class Local extends Model {}, Plain, App, value: 1 },
       before: { Store, Local: Store, Plain },
       ssr: true
     });
@@ -202,7 +202,7 @@ describe('update', () => {
 
   it.each([
     ['will pass without next exports', undefined],
-    ['will leave a changed State class to the reload', { Store: class Store extends State {}, App, value: 1 }],
+    ['will leave a changed Model class to the reload', { Store: class Store extends Model {}, App, value: 1 }],
     ['will pass a changed component', { Store, App: () => null, value: 1 }]
   ])('%s', async (_, next) => {
     const { hot } = await run(source, { locals });
@@ -222,14 +222,14 @@ describe('update', () => {
 });
 
 describe('private members', () => {
-  class Vault extends State {}
+  class Vault extends Model {}
   const source = 'export class Vault { #key = 1; }\nclass Open {}';
   const flag = 'expressive:private:/src/app.js:Vault';
   const note =
     '[expressive] Vault (/src/app.js) declares #private members, so edits to its module will trigger a full reload. Use _ properties instead to keep HMR.';
 
   const degrade = (options: Partial<Run> = {}) =>
-    run(source, { locals: { Vault, Open: Vault }, before: { Vault: class Vault extends State {}, Open: Vault }, ...options });
+    run(source, { locals: { Vault, Open: Vault }, before: { Vault: class Vault extends Model {}, Open: Vault }, ...options });
 
   const load = () => run(source, { locals: { Vault, Open: Vault } });
 
