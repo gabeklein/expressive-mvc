@@ -288,7 +288,12 @@ function watch<T extends object, R>(
   function conclude(ok: boolean, value: unknown) {
     if (outcome) return;
     outcome = { ok, value };
-    if (settle) settle();
+    if (awaiting) finish();
+  }
+
+  function finish() {
+    settle!();
+    cleanup();
   }
 
   function destroyed() {
@@ -323,7 +328,7 @@ function watch<T extends object, R>(
     let ignore: boolean = true;
 
     function onUpdate() {
-      events = [...new Set([...events, ...o.events])];
+      events = queued ? [...new Set([...events, ...o.events])] : [...o.events];
 
       if (reset === null) return null;
       if (pending) {
@@ -352,7 +357,6 @@ function watch<T extends object, R>(
         if (release) release(key);
       };
       conclude(true, output);
-      if (awaiting) cleanup();
     }
 
     function run(release?: (update?: boolean | null) => void) {
@@ -402,8 +406,7 @@ function watch<T extends object, R>(
           queued = false;
           conclude(false, err);
 
-          if (awaiting) cleanup();
-          else REPORT.as('effect', target, err);
+          if (!awaiting) REPORT.as('effect', target, err);
         }
       );
     }
@@ -416,8 +419,7 @@ function watch<T extends object, R>(
 
       conclude(false, err);
 
-      if (awaiting) cleanup();
-      else throw err;
+      if (!awaiting) throw err;
     }
   }
 
@@ -446,23 +448,17 @@ function watch<T extends object, R>(
     if (!outcome) conclude(false, new Error(`${target} effect was cancelled before it settled.`));
   }
 
-  cleanup.then = <F, J>(
-    onFulfilled?: ((value: Awaited<R>) => F | PromiseLike<F>) | null,
-    onRejected?: ((reason: unknown) => J | PromiseLike<J>) | null
-  ) => {
+  cleanup.then = ((onFulfilled, onRejected) => {
     if (!awaiting) {
       awaiting = new Promise<Awaited<R>>((resolve, reject) => {
         settle = () => (outcome!.ok ? resolve(outcome!.value as Awaited<R>) : reject(outcome!.value));
       });
 
-      if (outcome) {
-        settle!();
-        cleanup();
-      }
+      if (outcome) finish();
     }
 
     return awaiting.then(onFulfilled, onRejected);
-  };
+  }) as PromiseLike<Awaited<R>>['then'];
 
   if (EffectContext && argument !== false) EffectContext.add(cleanup);
 
