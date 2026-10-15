@@ -13,7 +13,7 @@ const PAGES: { [cursor: string]: Page } = {
 };
 
 export const api = {
-  async page(cursor: string, { signal }: { signal: AbortSignal }): Promise<Page> {
+  async page(cursor: string, { signal }: { token: string; signal: AbortSignal }): Promise<Page> {
     signal.throwIfAborted();
     return PAGES[cursor];
   },

@@ -30,6 +30,8 @@ A PR adding a feature extends an example and this table.
 | loop - a step scheduling itself | `Agent.turn`, `Sync.pull` |
 | loop - a plain `for` scheduling serially | `Deploy.rollout` |
 | inline step `this.then(async (signal) => …)` | `Sync.pull` |
+| inline arrow - its writes in its own entry | `Sync.pull` (`acked`); sync test `will pull every page and end with its values` |
+| a pending `set<T>()` read waits | `Sync.token`; sync test `will wait for a token before pulling` |
 | inline step returned as a `void`-typed undo | `SubmitOrder.ship` |
 | `_` helper - computes, the step assigns | `Deploy._spread`, `Deploy.canary` |
 | `end` typing the result | `SubmitOrder.end`, `Agent.end`, `Deploy.end` |

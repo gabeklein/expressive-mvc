@@ -6,11 +6,16 @@ import { Sync } from './sync';
 afterEach(() => vi.restoreAllMocks());
 
 it('will pull every page and end with its values', async () => {
-  const sync = Sync.new();
+  const sync = Sync.new({ token: 't1' });
 
   // awaiting an idle instance runs next(); without end the result is the values, then excluded
-  expect(await sync).toEqual({ items: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], cursor: 'p2' });
-  expect(sync.then.record.map((entry) => entry.id)).toEqual(['next#1', 'pull#1', 'pull#2', 'then#1']);
+  expect(await sync).toEqual({ items: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], cursor: 'p2', token: 't1', acked: 'p2' });
+  expect(sync.then.record.map((entry) => [entry.id, entry.wrote])).toEqual([
+    ['next#1', []],
+    ['pull#1', ['cursor', 'items']],
+    ['pull#2', ['cursor', 'items']],
+    ['then#1', ['acked']]
+  ]);
 
   // Feed's method stayed plain: pull called it inline, and it reads from outside
   expect(sync.known('b')).toBe(true);
@@ -19,7 +24,7 @@ it('will pull every page and end with its values', async () => {
 it('will ack once the last page is in', async () => {
   vi.spyOn(api, 'ack');
 
-  await Sync.new();
+  await Sync.new({ token: 't1' });
 
   expect(api.ack).toHaveBeenCalledWith('p2', { signal: expect.any(AbortSignal) });
 });
@@ -32,11 +37,28 @@ it('will start over after a failed sync', async () => {
     return page(cursor, options);
   });
 
-  const sync = Sync.new();
+  const sync = Sync.new({ token: 't1' });
 
   await expect(sync.next()).rejects.toThrow('offline');
 
   // the light journal keeps the first page; the exit option forgot the cursor
   expect(sync.items.get()).toEqual([{ id: 'a' }, { id: 'b' }]);
   expect(sync.cursor).toBe('');
+});
+
+it('will wait for a token before pulling', async () => {
+  const sync = Sync.new();
+  const done = sync.next();
+
+  await new Promise((resolve) => setTimeout(resolve));
+
+  // pull read the pending token: no entry yet, still running
+  expect(sync.then.status).toBe('running');
+  expect(sync.then.active).toBe('pull');
+  expect(sync.then.record.map((entry) => entry.id)).toEqual(['next#1']);
+
+  sync.token = 't1';
+
+  await done;
+  expect(sync.then.record.map((entry) => entry.id)).toEqual(['next#1', 'pull#1', 'pull#2', 'then#1']);
 });

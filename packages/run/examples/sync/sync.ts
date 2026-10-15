@@ -1,4 +1,4 @@
-import { has, Model } from '@expressive/mvc';
+import { has, Model, set } from '@expressive/mvc';
 import { run } from '@expressive/run';
 
 import { api, type Item } from './services';
@@ -16,6 +16,9 @@ export class Feed extends Model {
 // Sync already extends Feed, so it cannot extend Job - run(this) is the same runtime as a field.
 // Only Sync's own methods are steps; a subclass of Sync would need `base: Sync` to keep them.
 export class Sync extends Feed {
+  token = set<string>();                  // pending until assigned - a step reading it waits
+  acked = '';
+
   then = run(this, {
     exit(outcome) {                       // a hook passed as an option, `this` the instance
       if (outcome.status != 'done') this.cursor = '';
@@ -27,7 +30,7 @@ export class Sync extends Feed {
   }
 
   protected async pull() {
-    const page = await api.page(this.cursor, { signal: this.then.signal });
+    const page = await api.page(this.cursor, { token: this.token, signal: this.then.signal });
     let more = page.next !== undefined;
 
     this.items.push(...page.items.filter((item) => !this.known(item.id)));
@@ -38,6 +41,7 @@ export class Sync extends Feed {
     else
       this.then(async (signal) => {       // an inline step, journaled then#1 and given its own signal
         await api.ack(this.cursor, { signal });
+        this.acked = this.cursor;         // an arrow's writes are the inline step's - in then#1's wrote
       });
   }
 
