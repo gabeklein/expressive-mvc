@@ -1593,6 +1593,36 @@ describe('get method', () => {
 
         expect([sync, value, none]).toEqual([undefined, 1, undefined]);
       });
+
+      it('will await a value not yet set', async () => {
+        class Session extends State {
+          token = set<string>();
+        }
+
+        const session = Session.new();
+        const token = session.get(async ($) => $.token);
+
+        session.token = 'abc';
+
+        await expect(token).resolves.toBe('abc');
+      });
+
+      it('will await several projections together', async () => {
+        class Session extends State {
+          user = set<string>();
+          role = 'guest';
+        }
+
+        const session = Session.new();
+        const both = Promise.all([
+          session.get(async ($) => $.user),
+          session.get(async ($) => $.role)
+        ]);
+
+        session.user = 'ada';
+
+        await expect(both).resolves.toEqual(['ada', 'guest']);
+      });
     });
 
     describe('suspense', () => {

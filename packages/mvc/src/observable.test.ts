@@ -714,6 +714,52 @@ describe('effect', () => {
 
       expect(effect).toBeCalledTimes(1);
     });
+
+    it('will track reads made after await', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => {
+        void $.value;
+        await 0;
+        void $.other;
+      });
+
+      watch(test, effect);
+      await flushMicrotasks();
+
+      test.other = 2;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will release nested effects before a re-run', async () => {
+      class Other extends State {
+        value = 1;
+      }
+
+      const test = Test.new();
+      const other = Other.new();
+      const inner = vi.fn(($: Other) => void $.value);
+
+      watch(test, async ($) => {
+        void $.value;
+        watch(other, inner);
+      });
+
+      await flushMicrotasks();
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      expect(inner).toBeCalledTimes(2);
+
+      other.value = 2;
+      await expect(other).toHaveUpdated();
+
+      expect(inner).toBeCalledTimes(3);
+    });
   });
 
   describe('then', () => {
@@ -883,6 +929,56 @@ describe('effect', () => {
       await expect(nested).toHaveUpdated();
 
       expect(inner).toBeCalledTimes(1);
+    });
+
+    it('will resolve with the latest run after destroy', async () => {
+      const test = Test.new();
+      const stop = watch(test, async ($: Test) => $.value);
+
+      await flushMicrotasks();
+      test.set(null);
+
+      await expect(stop).resolves.toBe(1);
+    });
+
+    it('will wait for a replay when suspended after a clean run', async () => {
+      const test = Test.new();
+      const suspense = mockPromise<void>();
+      let gate: Promise<void> | undefined;
+
+      const stop = watch(test, async ($: Test) => {
+        const { value } = $;
+        if (gate) throw gate;
+        return value;
+      });
+
+      await flushMicrotasks();
+
+      gate = suspense;
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      const value = stop.then();
+
+      gate = undefined;
+      suspense.resolve();
+
+      await expect(value).resolves.toBe(2);
+    });
+
+    it('will reject a later awaiter with an earlier rejection', async () => {
+      const test = Test.new();
+      const caught = mockUncaught();
+      const expected = new Error('async error');
+      const stop = watch(test, async () => {
+        throw expected;
+      });
+
+      await flushMicrotasks();
+
+      expect(caught).toEqual([expected]);
+      await expect(stop.then()).rejects.toBe(expected);
     });
 
     it('will reject if destroyed before a clean run', async () => {
