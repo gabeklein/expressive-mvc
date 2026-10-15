@@ -1,7 +1,7 @@
 {
   "name": "@expressive/react",
   "version": "0.89.0",
-  "description": "Class-based reactive state for React. Define models as plain classes; components update when the values they read change.",
+  "description": "Class-based reactive state for React. Define domain models and controls as plain classes; components update when the values they read change.",
   "keywords": [
     "expressive",
     "mvc",
