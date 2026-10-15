@@ -4198,6 +4198,57 @@ describe('computed (getters)', () => {
     });
   });
 
+  describe('suspense', () => {
+    const warn = mockWarn();
+
+    class Test extends State {
+      data = set<number[]>();
+
+      get size() {
+        return this.data.length;
+      }
+
+      get total() {
+        return this.size * 10;
+      }
+    }
+
+    it.each([
+      ['will suspend while dependency is pending', 'size', 2],
+      ['will suspend while reading a pending getter', 'total', 20]
+    ] as const)('%s', async (_, key, expected) => {
+      const test = Test.new();
+      let suspense: unknown;
+
+      try {
+        void test[key];
+      } catch (err) {
+        suspense = err;
+      }
+
+      expect(suspense).toBeInstanceOf(Promise);
+      expect(() => test[key]).toThrow();
+
+      test.data = [1, 2];
+
+      await expect(suspense).resolves.toBe(expected);
+      expect(test[key]).toBe(expected);
+      expect(warn).not.toBeCalled();
+    });
+
+    it('will resolve a getter chain via effect', async () => {
+      const test = Test.new();
+      const didGet = vi.fn();
+
+      test.get(($) => didGet($.total));
+      test.data = [1, 2, 3];
+
+      await flushMicrotasks();
+      expect(didGet).toBeCalledTimes(1);
+      expect(didGet).toBeCalledWith(30);
+    });
+  });
+
   describe('failures', () => {
     const error = mockError();
     const warn = mockWarn();

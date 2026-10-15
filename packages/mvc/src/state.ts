@@ -847,6 +847,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
   const store = STORE.get(this)!;
   let reset: (() => void) | undefined;
   let isAsync: boolean;
+  let suspended = false;
   let proxy: any;
 
   const connect = () => {
@@ -875,6 +876,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
       next = latest(getter).call(proxy, proxy);
     } catch (err) {
       if (initial) {
+        if (suspended = err instanceof Promise) throw err;
         console.warn(`An exception was thrown while initializing ${this}.${key}.`);
         throw err;
       }
@@ -882,6 +884,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
       if (!(err instanceof Promise)) report('getter', this, err, key);
     }
 
+    suspended = false;
     update(this, key, next, !isAsync);
   };
 
@@ -901,7 +904,7 @@ function compute(this: State, getter: (self: any) => unknown, key: string) {
 
         if (STALE.delete(run)) run();
 
-        return access(this, key, !proxy);
+        return access(this, key, suspended);
       }
     },
     true
