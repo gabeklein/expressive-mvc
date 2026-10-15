@@ -178,7 +178,7 @@ Silent reads are for when you need a value at a point in time, but a change to i
 
 ## Lifecycle
 
-A Model has four phases:
+An instance has four phases:
 
 | Phase        | Trigger             | What happens                                                        |
 | ------------ | ------------------- | ------------------------------------------------------------------- |
@@ -305,7 +305,7 @@ A write that lands afterward - a late fetch, a timer nobody cleared - is stored 
 
 ## Child instances
 
-Assign a Model to a field and it becomes a managed child:
+Assign an instance to a field and it becomes a managed child:
 
 ```ts
 class Address extends Model {

@@ -1,6 +1,6 @@
 ---
 title: Arrays & Collections
-description: Reactive arrays and objects - copy-on-write, manual dispatch, child Models, has() and map()
+description: Reactive arrays and objects - copy-on-write, manual dispatch, child instances, has() and map()
 ---
 
 Reactivity in Expressive is keyed to assignment. `this.items = [...]` dispatches an update; `this.items.push(item)` does not - the property still holds the same array, so as far as `===` change detection is concerned, nothing happened.
@@ -50,9 +50,9 @@ Anything subscribed to `items` re-runs. Granularity is still the whole property 
 
 <br />
 
-## Child Models
+## Child instances
 
-When entries have identity and behavior of their own, make them Models:
+When entries have identity and behavior of their own, make them Model instances:
 
 ```ts
 class Item extends Model {
@@ -75,7 +75,7 @@ class TodoList extends Model {
 
 The list owns membership (copy-on-write for add/remove); each item owns its fields. A row component subscribing to one `Item` re-renders when *that item* changes, and the list doesn't. [Try it live](/examples/instructions/has).
 
-> Adding and removing still goes through reassignment here - the array itself is ordinary. The per-item reactivity comes from each entry being a Model.
+> Adding and removing still goes through reassignment here - the array itself is ordinary. The per-item reactivity comes from each entry being an instance.
 
 <br />
 
@@ -120,7 +120,7 @@ Replacing one index notifies that index. Inserting or removing mid-list notifies
 
 ### Pools
 
-When members are owned Models, hand `has()` the class (or a factory) instead of values. There is no positional surface - `add(...args)` spawns a member and returns it, and the member itself is the identity for `has`, `delete`, and eviction:
+When members are owned instances, hand `has()` the class (or a factory) instead of values. There is no positional surface - `add(...args)` spawns a member and returns it, and the member itself is the identity for `has`, `delete`, and eviction:
 
 ```ts
 class TodoList extends Model {
@@ -174,7 +174,7 @@ class Inbox extends Model {
 }
 ```
 
-Ownership follows freshness: a member the pool instantiates, a factory constructs (`new Item()`), or one admitted before activation is owned, and is destroyed when deleted, cleared, or when the owner dies. An already-activated value (`Item.new()`, or a member of another pool) is a guest - held, never destroyed. Either way, a member that dies evicts itself, so a pool never serves a destroyed Model.
+Ownership follows freshness: a member the pool instantiates, a factory constructs (`new Item()`), or one admitted before activation is owned, and is destroyed when deleted, cleared, or when the owner dies. An already-activated value (`Item.new()`, or a member of another pool) is a guest - held, never destroyed. Either way, a member that dies evicts itself, so a pool never serves a destroyed instance.
 
 Both modes share a read surface built over iteration - `map(fn)`, `filter(fn)`, `any(fn)`, `all(fn)`, `get(predicate)`:
 
@@ -258,7 +258,7 @@ class Example extends Model {
 model.keyed.get('a')!.value = 2; // not reactive by itself
 ```
 
-Nesting is what Models are for - a child Model, `has()`, or `map()` value keeps its own reactivity when reached through the collection:
+Nesting is what instances are for - a child instance, `has()`, or `map()` value keeps its own reactivity when reached through the collection:
 
 ```ts
 class Cell extends Model {

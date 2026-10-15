@@ -162,7 +162,7 @@ Use a factory (`set(() => promise)` or `set(async () => value)`) so async work s
 
 ## `get`
 
-Context lookup. Fetches another Model from the ambient context hierarchy.
+Context lookup. Fetches another instance from the ambient context hierarchy.
 
 ### `get(Type)` - required upstream
 
@@ -228,7 +228,7 @@ maybe = get(Model, false); // undefined at the root
 owned = get(Model, true); // every Model this one owns
 ```
 
-`Model` reads ownership instead of context - see [`state.get(Model)`](/docs/api/state). Downstream forms collect owned Models rather than context descendants.
+`Model` reads ownership instead of context - see [`state.get(Model)`](/docs/api/state). Downstream forms collect owned instances rather than context descendants.
 
 ### Behavior notes
 

@@ -153,7 +153,7 @@ const stop = state.get((current, changed) => {
 });
 ```
 
-- `current` - tracking proxy. Reads create subscriptions, including reads off a Model fetched with `current.get(Type)` or `current.get(Model)`.
+- `current` - tracking proxy. Reads create subscriptions, including reads off an instance fetched with `current.get(Type)` or `current.get(Model)`.
 - `changed` - readonly array of keys changed since last run (empty on first run, `undefined` if the instance wasn't ready).
 - Return a cleanup function, `null` (cancel), or `void`.
 - Cleanup receives `true` (about to re-run), `false` (cancelled), or `null` (instance destroyed).
@@ -200,7 +200,7 @@ const stop = parent.get(Model, (child) => {
 }, true); // each Model this one owns, now and later
 ```
 
-`Model` itself is never in context, so passing it reads ownership instead. The owner is the Model that constructed this one into a field, `has()` pool or `map()` - or, failing that, the Model its nearest enclosing context was set up for, such as the Component rendering it. A root, or an instance which was already active when assigned, has no owner.
+`Model` itself is never in context, so passing it reads ownership instead. The owner is the instance that constructed this one into a field, `has()` pool or `map()` - or, failing that, the instance its nearest enclosing context was set up for, such as the Component rendering it. A root, or an instance which was already active when assigned, has no owner.
 
 <br />
 

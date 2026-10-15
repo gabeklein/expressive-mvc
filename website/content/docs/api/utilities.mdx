@@ -279,7 +279,7 @@ Model auto-binds methods on first access, so you can destructure and pass them a
 
 ## `Context`
 
-The hierarchical registry behind `<Component for>` and the `get` instruction. Every active Model has a **home context**, assigned at activation, which decides where its `state.get(Type)` lookups originate.
+The hierarchical registry behind `<Component for>` and the `get` instruction. Every active instance has a **home context**, assigned at activation, which decides where its `state.get(Type)` lookups originate.
 
 ```ts
 import { Context } from '@expressive/mvc';

@@ -206,7 +206,7 @@ function TodoList() {
 
 ## The `is` property
 
-After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every Model exposes `is`, a loop-back to the instance itself. Prefer destructuring it first, aliased to the instance's concept:
+After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every instance exposes `is`, a loop-back to itself. Prefer destructuring it first, aliased to the instance's concept:
 
 ```tsx
 const { is: todo, draft } = TodoApp.use();
@@ -264,7 +264,7 @@ function SearchView() {
 Because state is a portable object, we can modify it from anywhere - and more crucially, *whenever*. That makes the async stuff pretty low maintenance: you write the business logic, the class handles dispatch. It also means:
 
 - **Testability** - `SearchPage.new()` outside of React, call methods, assert results. No renderer required.
-- **Reusability** - one Model can power multiple views (sidebar, modal, full page).
+- **Reusability** - one `Model` class can power multiple views (sidebar, modal, full page).
 - **TypeScript** - the class *is* the type. Every destructure is fully inferred.
 - **Navigability** - a feature's data and behavior live in one file, not smeared across several hook calls.
 
@@ -289,7 +289,7 @@ When it does, choose the class shape by ownership:
 - **`Component`** when the state is intrinsic to one rendered unit - a shell, tab panel, form input, media player, editor surface.
 - **`Model`** when the state is display-agnostic, shared across components, or worth testing without rendering.
 
-Don't reach for `Component` just because a class is contextual - `Model` handles headless controls fine, and child Models of anything provided are available to descendants automatically.
+Don't reach for `Component` just because a class is contextual - `Model` handles headless controls fine, and child instances of anything provided are available to descendants automatically.
 
 And avoid splitting into `FooState` plus `FooView` by default. If the behavior only exists for `Foo`'s own UI, `class Foo extends Component` is usually clearer.
 

@@ -187,7 +187,7 @@ On the Expressive side, the destructure *is* the dependency list. Read a field, 
 
 ## Shared state
 
-Context is where store libraries quietly hand the problem back to you. In Expressive, your classes themselves are context keys - anything needing `Theme` just asks for it: another Model via `get(Theme)`, a component via `Theme.get()`.
+Context is where store libraries quietly hand the problem back to you. In Expressive, your classes themselves are context keys - anything needing `Theme` just asks for it: another instance via `get(Theme)`, a component via `Theme.get()`.
 
 <Compare labels={['Expressive', 'React Context', 'Zustand', 'Jotai']}>
 

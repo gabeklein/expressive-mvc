@@ -3,7 +3,7 @@ title: Context and Sharing
 description: Component for, the get instruction, and upstream/downstream lookup
 ---
 
-Expressive has a built-in, type-safe context system, and the class itself is the key. No `createContext<T>()`, no default values, no prop drilling - any Model provided in an ancestor can be looked up anywhere below it.
+Expressive has a built-in, type-safe context system, and the class itself is the key. No `createContext<T>()`, no default values, no prop drilling - any instance provided in an ancestor can be looked up anywhere below it.
 
 ```tsx
 import { Model, Component } from '@expressive/mvc';
@@ -40,7 +40,7 @@ function Header() {
 
 ## Providing with `<Component for>`
 
-The bare `Component` class - not a subclass - given a `for` attribute puts one Model into context for its children.
+The bare `Component` class - not a subclass - given a `for` attribute puts one instance into context for its children.
 
 > **Good to know:** <br/>
 > `<Component for>` replaces `Provider`. `Provider` and `Consumer` were removed from `@expressive/react`; neither exists in `@expressive/dom`.
@@ -53,7 +53,7 @@ The bare `Component` class - not a subclass - given a `for` attribute puts one M
 </Component>
 ```
 
-The element constructs an instance, owns it, and destroys it on unmount. Its `mount()` runs with the element's. Other attributes are typed from the provided Model and assigned to it on every render:
+The element constructs an instance, owns it, and destroys it on unmount. Its `mount()` runs with the element's. Other attributes are typed from the provided instance and assigned to it on every render:
 
 ```tsx
 <Component for={Theme} color="red">
@@ -83,7 +83,7 @@ An instance passed in is **not** destroyed when the element unmounts, and its `m
 
 ### Providing several instances
 
-One item per element. Several instances belong to a parent Model that owns them as fields:
+One item per element. Several instances belong to a parent instance that owns them as fields:
 
 ```tsx
 class Root extends Model {
@@ -97,7 +97,7 @@ class Root extends Model {
 </Component>;
 ```
 
-Each field registers into the same context, so descendants find `Theme.get()`, `AuthService.get()` and `Cart.get()` directly, and the three can `get()` each other as siblings. Nesting `<Component for>` elements works, but the inner Model can see the outer, not the reverse.
+Each field registers into the same context, so descendants find `Theme.get()`, `AuthService.get()` and `Cart.get()` directly, and the three can `get()` each other as siblings. Nesting `<Component for>` elements works, but the inner instance can see the outer, not the reverse.
 
 ### Creation callback
 

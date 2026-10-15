@@ -196,9 +196,9 @@ const items = [Item.new({ label: 'First' }), Item.new({ label: 'Second' })];
 
 <br />
 
-## Providing a Model: `<Component for>`
+## Providing an instance: `<Component for>`
 
-The bare `Component` class - not a subclass - with a `for` attribute provides one Model to its children. This replaces the removed `Provider`.
+The bare `Component` class - not a subclass - with a `for` attribute provides one instance to its children. This replaces the removed `Provider`.
 
 ```tsx
 <Component for={Session} name="Ada" is={(session) => session.load()}>
@@ -212,9 +212,9 @@ The bare `Component` class - not a subclass - with a `for` attribute provides on
 | `is`       | Called with each instance the element constructs; class only                               |
 | `fallback` | Wraps children in a Suspense boundary; without it, `<Component for>` adds none              |
 | `catch`    | Error boundary for children, `(error, instance)`                                            |
-| `[field]`  | Typed from the provided Model; assigned to it on every render                               |
+| `[field]`  | Typed from the provided instance; assigned to it on every render                               |
 
-A provided class's `mount()` runs with the element's; an instance passed in is never mounted or destroyed by it. Changing `for` releases the previous item and provides the next. One Model per element - compose several as fields of a parent Model. See [Context](/docs/guides/context#providing-with-component-for).
+A provided class's `mount()` runs with the element's; an instance passed in is never mounted or destroyed by it. Changing `for` releases the previous item and provides the next. One instance per element - compose several as fields of a parent instance. See [Context](/docs/guides/context#providing-with-component-for).
 
 <br />
 

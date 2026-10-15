@@ -247,7 +247,7 @@ function Header() {
 
 The class _is_ the context key. No manual `createContext`, no default values, no `Provider.Consumer` render props.
 
-Child Models of one provided are too. You do not need a `<Component for>` per control - one element provides one Model, so gather several as fields of a parent:
+Child instances of one provided are too. You do not need a `<Component for>` per control - one element provides one instance, so gather several as fields of a parent:
 
 ```tsx
 class Control extends Model {

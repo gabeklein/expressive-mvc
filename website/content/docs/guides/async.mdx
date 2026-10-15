@@ -44,7 +44,7 @@ avatar = set(async () => fetchAvatar(), false); // User['avatar'] | undefined
 
 > A `Component` gives you the boundary for free: set its `fallback` and any pending property in `render()` is covered, no `<Suspense>` wrapper needed. Details in [Components](/docs/guides/components#suspense). For a headless-Model version of this pattern, see [essentials/async](/examples/essentials/async).
 >
-> Whichever boundary catches, the pending value must be owned **above** it. A boundary rebuilds the subtree it retries, so a Model created below it is constructed again on every retry and requests again - a silent loop.
+> Whichever boundary catches, the pending value must be owned **above** it. A boundary rebuilds the subtree it retries, so an instance created below it is constructed again on every retry and requests again - a silent loop.
 
 <br />
 
