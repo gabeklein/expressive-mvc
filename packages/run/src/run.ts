@@ -1536,4 +1536,5 @@ function revert({ value, raw }: Held) {
   }
 }
 
-export { Job, run, Runner };
+export { Job, run };
+export type { Runner };
