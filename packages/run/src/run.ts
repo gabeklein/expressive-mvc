@@ -31,6 +31,11 @@ interface Undo {
   from: Frame;
 }
 
+interface Back {
+  key: string;
+  reason: unknown;
+}
+
 const HOOK = /^(before|after)([A-Z]|$)/;
 const KEYS = ['status', 'active', 'record', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
@@ -80,6 +85,10 @@ declare namespace Runner {
     committed?: true;
     /** The unwind stopped at this entry; it and every entry before it stay applied. */
     halted?: true;
+    /** A `back` entry: id of the entry it went back to, which stays. */
+    to?: string;
+    /** A `back` entry: the reason given to `back`. */
+    reason?: unknown;
   }
 
   interface Wait {
@@ -119,7 +128,7 @@ declare namespace Runner {
     /** After each step commits, after the class's `after`. */
     after?: (this: T, step: string, entry: Runner.Entry, skip: boolean) => void;
     /** Once an unwind completes, after the class's `back`. A throw replaces the error. */
-    back?: (this: T, error: unknown) => void;
+    back?: (this: T, reason: unknown) => void;
     /** Once per run on every outcome, after the class's `exit`. A throw rejects the run with it. */
     exit?: (this: T, outcome: Runner.Outcome<Runner.Result<T>>) => void;
   }
@@ -204,6 +213,12 @@ declare namespace Runner {
     /** Inside a step: a point of no return - the step is not retried, restored or unwound. */
     commit(): void;
     /**
+     * Inside a step: unwind every entry committed after `step`'s latest, newest first, discard
+     * what they scheduled, then call the `back` hook with `reason`. What this step schedules
+     * after it runs next.
+     */
+    back(step: (...args: any[]) => unknown, reason?: unknown): void;
+    /**
      * Inside a step: its `AbortSignal` - aborted on `stop()`, an outside `end`, a failure elsewhere,
      * and once the step settles. A step rejecting with its reason is not a failure.
      */
@@ -273,6 +288,7 @@ function run<T extends State>(self: T, options: Runner.Options<T> = {}): Runner<
     stop: { value: (options?: Runner.Stop) => control.stop(options) },
     retry: { value: () => outside('retry') },
     commit: { value: () => outside('commit') },
+    back: { value: () => outside('back') },
     signal: {
       get() {
         throw new Error('signal must be read inside a step.');
@@ -360,8 +376,8 @@ class Job extends State {
   /** After each step commits, once per step. `skip` is true when the step is replayed. */
   protected after?(step: string, entry: Runner.Entry, skip: boolean): void;
 
-  /** Once an unwind completes, halted or not, before the run rejects with `error`. A throw replaces it. */
-  protected back?(error: unknown): void;
+  /** Once an unwind completes, halted or not: given `reason` from `then.back()`, else the error the run rejects with. */
+  protected back?(reason: unknown): void;
 
   /** Once per run on every outcome, last before the run settles. A throw rejects the run with it. */
   protected exit?(outcome: Runner.Outcome): void;
@@ -511,6 +527,12 @@ class Run extends State {
   _captures = new Map<Collection, Held>();
   _inline = new Map<string, Function>();
   _watchers = new Map<string, Function[]>();
+  _backs = new Map<string, Back>();
+  _parent = new Map<string, string>();
+  _dropped = new Set<string>();
+  _kept = new Set<string>();
+  _spent = new Set<string>();
+  _backing?: Promise<void> = undefined;
   _drained: (() => void)[] = [];
   _end?: Runner.Node = undefined;
   _halted?: 'failed' | 'stopped' = undefined;
@@ -566,8 +588,21 @@ class Run extends State {
     return this.frames.filter((frame) => !frame._undo);
   }
 
+  stale() {
+    return !!(this._halted || this._ending);
+  }
+
+  dropped(id: string) {
+    for (let at: string | undefined = id; at; at = this._parent.get(at)) {
+      if (this._kept.has(at)) return false;
+      if (this._dropped.has(at)) return true;
+    }
+
+    return false;
+  }
+
   async exec(item: Runner.Node, from?: Frame): Promise<void> {
-    if (this._halted || this._ending) return;
+    if (this.stale() || this.dropped(item.id)) return;
 
     if (item.group) {
       await Promise.all(item.group.map((member) => this.exec(member, from)));
@@ -582,7 +617,77 @@ class Run extends State {
         answer.done();
       }
     }
+    else if (item.key == 'back') await this.back(item, from!);
     else if (item.key != 'end') await this.descend(await this.invoke(item));
+  }
+
+  back(item: Runner.Node, from: Frame) {
+    const prior = this._backing;
+
+    return (this._backing = (async () => {
+      await prior;
+      await this.retreat(item, from);
+    })());
+  }
+
+  async retreat(item: Runner.Node, from: Frame) {
+    if (this.stale() || this.dropped(item.id)) return;
+
+    const { record } = this;
+    const { key, reason } = this._backs.get(item.id)!;
+    const entries = record.get() as Runner.Entry[];
+    const live = (entry: Runner.Entry) => entry.id != from.id && !('error' in entry) && !this._spent.has(entry.id);
+    const at = entries.findLastIndex((entry) => entry.key == key && live(entry));
+
+    if (at < 0) return this.halt('failed', new Error(`back() found no committed ${key}.`));
+
+    const ids = new Set(entries.slice(at + 1).filter(live).map((entry) => entry.id));
+
+    for (const id of ids) {
+      this._dropped.add(id);
+      this._kept.delete(id);
+    }
+
+    this._kept.add(from.id);
+
+    if (this._end && this.dropped(this._end.id)) this._end = undefined;
+
+    for (const wait of this.waits.filter((wait) => !wait._undo && this.dropped(wait.id))) this.waits.delete(wait);
+
+    const flying = this.flight().filter((frame) => this.dropped(frame.id));
+
+    for (const frame of flying) {
+      frame._abort.abort();
+      ids.add(frame.id);
+    }
+
+    await Promise.all(flying.map((frame) => frame._gone));
+
+    if (this.stale()) return;
+
+    const failed = await this.unwind(ids);
+
+    if (failed) return this.halt('failed', failed.cause);
+    if (this.stale()) return;
+
+    const entry: Runner.Entry = { id: item.id, key: 'back', args: [], next: [], wrote: [], to: entries[at].id };
+
+    if (reason !== undefined) entry.reason = reason;
+
+    this._spent.add(item.id);
+    record.push(entry);
+
+    const thrown = this.fire('back', reason);
+
+    if (thrown) return this.halt('failed', thrown.cause);
+
+    const rest = from._items.slice(from._items.indexOf(item) + 1);
+
+    for (const end of rest.filter((each) => each.key == 'end')) {
+      if (this._end) return this.halt('failed', new Error('end was scheduled twice.'));
+
+      this._end = end;
+    }
   }
 
   async descend(frame?: Frame) {
@@ -617,9 +722,12 @@ class Run extends State {
 
     const answer = { done: () => (this._halted && !wait._undo ? _ticket.promise.catch(fail) : done()), fail } as Answer;
 
+    const node = this.node(key, args);
+
     wait._answer = answer;
+    this._parent.set(node.id, wait.id);
     this.waits.delete(wait);
-    answer.frame = this.invoke(this.node(key, args), wait.id, wait._undo);
+    answer.frame = this.invoke(node, wait.id, wait._undo);
 
     return handle(_ticket, answered);
   }
@@ -706,6 +814,7 @@ class Run extends State {
 
     await this.drain();
 
+    if (this._backing) await this._backing;
     if (this._halted) return;
     if (!item) return this.finish(dump(this.control));
 
@@ -765,6 +874,8 @@ class Run extends State {
   async finalize(undo: boolean) {
     await this.drain();
 
+    if (this._backing) await this._backing;
+
     if (undo) {
       const failed = await this.unwind();
 
@@ -797,7 +908,7 @@ class Run extends State {
     this.control.advance();
   }
 
-  async unwind() {
+  async unwind(ids?: Set<string>) {
     const { control, record } = this;
     const { _rewind: rewind } = control;
     const entries = record.get() as Runner.Entry[];
@@ -805,6 +916,10 @@ class Run extends State {
     for (let i = entries.length - 1; i >= 0; i--) {
       const entry = entries[i];
       const undo = this._undo.get(entry.id);
+
+      if (ids ? !ids.has(entry.id) : this._spent.has(entry.id)) continue;
+      if (ids && this.stale()) return;
+      if (entry.undone == 'failed') break;
 
       if (entry.irreversible || entry.committed) {
         entry.halted = true;
@@ -821,6 +936,8 @@ class Run extends State {
       try {
         let done = !undo || (await this.undo(entry, undo.how, undo.from));
 
+        if (!done && ids && this.stale()) return;
+
         if (!done) {
           entry.halted = true;
           break;
@@ -828,6 +945,8 @@ class Run extends State {
 
         if (rewind) this.restore(entry.prior!, this._held.get(entry.id)!);
         if (undo || rewind) entry.undone = true;
+
+        this._spent.add(entry.id);
       } catch (cause) {
         entry.undone = 'failed';
         return { cause };
@@ -839,13 +958,17 @@ class Run extends State {
 
   fire(key: string, arg: unknown) {
     const { control } = this;
+    let thrown: { cause: unknown } | undefined;
 
     for (const hook of control._hooks.get(key) || [])
       try {
         hook.call(control._self, arg);
       } catch (cause) {
         this.blame(cause);
+        thrown = { cause };
       }
+
+    return thrown;
   }
 
   blame(cause: unknown) {
@@ -882,8 +1005,10 @@ class Run extends State {
 
     if (!answer) return false;
 
+    let frame: Frame | undefined;
+
     try {
-      await answer.frame;
+      frame = await answer.frame;
     } catch (error) {
       answer.fail(error);
       throw error;
@@ -891,7 +1016,7 @@ class Run extends State {
 
     answer.done();
 
-    return true;
+    return !frame!._committed;
   }
 
   capture(key: string, value: Collection) {
@@ -954,6 +1079,8 @@ class Frame extends State {
   _armed = 0;
   _settled?: boolean = undefined;
   _result?: unknown = undefined;
+  _left!: () => void;
+  _gone = new Promise<void>((resolve) => (this._left = resolve));
 
   protected new() {
     const { _self: self, _steps, _runner } = this.run.control;
@@ -994,6 +1121,7 @@ class Frame extends State {
     return () => {
       this._abort.abort();
       this.leave();
+      this._left();
     };
   }
 
@@ -1073,6 +1201,7 @@ class Frame extends State {
       end: { value: (value?: unknown) => this.issue('end', value === undefined ? [] : [value]) },
       retry: { value: (config: Runner.Retry) => void (this._retry = config) },
       signal: { get: () => this._abort.signal },
+      back: { value: (step?: unknown, reason?: unknown) => this.back(step, reason) },
       commit: {
         value: () => {
           if (this._settled) throw new Error(`${this.key} has settled; commit cannot run.`);
@@ -1085,9 +1214,23 @@ class Frame extends State {
     return (this._view = view as unknown as Runner.Controller);
   }
 
+  back(step: unknown, reason: unknown) {
+    const { run } = this;
+    const key = this.keyOf(step);
+
+    if (!key || key == 'end') throw new Error('back() takes a step to go back to; stop({ undo: true }) unwinds the whole run.');
+
+    const token = this.issue('back', []);
+
+    run._backs.set(token.id, { key, reason });
+
+    return token;
+  }
+
   group(members: unknown[]) {
     for (const member of members)
       if (!this._items.includes(member as Runner.Node)) throw new Error(`then() takes steps called by ${this.key}.`);
+      else if ((member as Runner.Node).key == 'back') throw new Error('back() cannot be grouped.');
 
     const group = { ...this.run.node('then', []), group: members as Runner.Node[] };
 
@@ -1123,7 +1266,7 @@ class Frame extends State {
     if (_late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
 
     let undo: Function | Runner.Node | undefined;
-    let token = items.includes(out as Runner.Node);
+    let token = items.includes(out as Runner.Node) && (out as Runner.Node).key != 'back';
 
     if (key == 'end') {
       if (items.length) throw new Error(`end cannot schedule ${items[0].key}.`);
@@ -1137,12 +1280,15 @@ class Frame extends State {
     }
     else if (out !== undefined) throw new Error(`${key} returned a value; a step returns nothing, or its undo.`);
 
-    for (const item of items)
-      if (item.key == 'end') {
-        if (run._end) throw new Error('end was scheduled twice.');
+    for (const item of items) {
+      if (item.key == 'back') break;
+      if (item.key != 'end') continue;
+      if (run._end) throw new Error('end was scheduled twice.');
 
-        run._end = item;
-      }
+      run._end = item;
+    }
+
+    adopt(run._parent, items, id);
 
     const entry: Runner.Entry = { ...this.journal(), next: items };
 
@@ -1156,6 +1302,7 @@ class Frame extends State {
     else if (_lost.size) entry.irreversible = [..._lost];
 
     if (run.control._rewind) run._held.set(id, this.touched());
+    if (this._undo) run._spent.add(id);
 
     run.record.push(entry);
 
@@ -1275,6 +1422,14 @@ function handle<T>(ticket: Ticket, out: Promise<T>) {
       return Promise.prototype.then.apply(this, args);
     }
   });
+}
+
+function adopt(parents: Map<string, string>, items: Runner.Node[], parent: string) {
+  for (const item of items) {
+    parents.set(item.id, parent);
+
+    if (item.group) adopt(parents, item.group, item.id);
+  }
 }
 
 function capital(key: string) {

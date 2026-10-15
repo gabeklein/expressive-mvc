@@ -4498,6 +4498,1052 @@ describe('commit', () => {
   });
 });
 
+describe('back', () => {
+  it('will unwind and end normally', async () => {
+    const order: string[] = [];
+
+    class Test extends State {
+      then = run(this);
+      a = 0;
+      b = 0;
+
+      next() {
+        this.a = 1;
+        this.first();
+
+        return () => void order.push('undo next');
+      }
+
+      first() {
+        this.b = 1;
+        this.second();
+
+        return () => void order.push('undo first');
+      }
+
+      second() {
+        this.then.back(this.next, 'changed my mind');
+      }
+
+      back(reason: unknown) {
+        order.push(`back ${reason}`);
+      }
+    }
+
+    const test = Test.new();
+
+    expect(await test.next()).toEqual({ a: 1, b: 1 });
+    expect(order).toEqual(['undo first', 'back changed my mind']);
+    expect(test.then.status).toBe('idle');
+    expect(test.then.error).toBeUndefined();
+    expect(test.then.record).toEqual([
+      { id: 'next#1', key: 'next', args: [], wrote: ['a'], next: [{ id: 'first#1', key: 'first', args: [] }], undo: 'closure' },
+      { id: 'first#1', key: 'first', args: [], wrote: ['b'], next: [{ id: 'second#1', key: 'second', args: [] }], undo: 'closure', undone: true },
+      { id: 'second#1', key: 'second', args: [], wrote: [], next: [{ id: 'back#1', key: 'back', args: [] }] },
+      { id: 'back#1', key: 'back', args: [], wrote: [], next: [], to: 'next#1', reason: 'changed my mind' }
+    ]);
+  });
+
+  it('will unwind what committed after a step', async () => {
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this, { rewind: true });
+      a = 0;
+      b = 0;
+
+      next() {
+        this.first();
+
+        return () => undo('next');
+      }
+
+      first() {
+        this.a = 1;
+        this.second();
+
+        return () => undo('first');
+      }
+
+      second() {
+        this.b = 1;
+        this.third();
+
+        return () => undo('second');
+      }
+
+      third() {
+        this.then.back(this.first);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(undo.mock.calls).toEqual([['second']]);
+    expect(test.get()).toMatchObject({ a: 1, b: 0 });
+    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+      ['next#1', undefined],
+      ['first#1', undefined],
+      ['second#1', true],
+      ['third#1', undefined],
+      ['back#1', undefined]
+    ]);
+    expect(test.then.record[4]).toEqual({ id: 'back#1', key: 'back', args: [], next: [], wrote: [], to: 'first#1' });
+  });
+
+  it('will leave fields of unwound steps without rewind', async () => {
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.first();
+      }
+
+      first() {
+        this.value = 1;
+        this.second();
+      }
+
+      second() {
+        this.then.back(this.next);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.value).toBe(1);
+    expect(test.then.record.map((entry) => entry.undone)).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
+  it('will call a step again after back', async () => {
+    const refund = vi.fn();
+
+    class Test extends State {
+      then = run(this, { rewind: true });
+      charged = '';
+
+      next() {
+        this.pay('card1');
+      }
+
+      pay(card: string) {
+        this.charged = card;
+        this.ship();
+
+        return () => refund(card);
+      }
+
+      ship() {
+        if (this.charged != 'card1') return;
+
+        this.then.back(this.next);
+        this.pay('card2');
+      }
+    }
+
+    const test = Test.new();
+
+    expect(await test.next()).toEqual({ charged: 'card2' });
+    expect(refund.mock.calls).toEqual([['card1']]);
+    expect(test.then.record.map((entry) => [entry.id, entry.args, entry.undone])).toEqual([
+      ['next#1', [], undefined],
+      ['pay#1', ['card1'], true],
+      ['ship#1', [], undefined],
+      ['back#1', [], undefined],
+      ['pay#2', ['card2'], undefined],
+      ['ship#2', [], undefined]
+    ]);
+    expect(test.then.record[3]).toMatchObject({ to: 'next#1' });
+  });
+
+  it('will discard what unwound steps scheduled', async () => {
+    const receipt = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.pay();
+        this.more();
+      }
+
+      pay() {
+        this.ship();
+        this.receipt();
+        this.then.end();
+      }
+
+      ship() {
+        this.then.back(this.next);
+      }
+
+      receipt() {
+        receipt();
+      }
+
+      more() {}
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(receipt).not.toHaveBeenCalled();
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'pay#1', 'ship#1', 'back#1', 'more#1']);
+  });
+
+  it('will unwind steps scheduled before back and run those after', async () => {
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+      }
+
+      first() {
+        this.early();
+        this.then.back(this.next);
+        this.later();
+      }
+
+      early() {
+        return () => undo('early');
+      }
+
+      later() {
+        this.then.end('done');
+      }
+    }
+
+    const test = Test.new();
+
+    expect(await test.next()).toBe('done');
+    expect(undo).toHaveBeenCalledWith('early');
+    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+      ['next#1', undefined],
+      ['first#1', undefined],
+      ['early#1', true],
+      ['back#1', undefined],
+      ['later#1', undefined],
+      ['end#1', undefined]
+    ]);
+  });
+
+  it('will abort and unwind a parallel step it discards', async () => {
+    const mailed = mockPromise();
+    const signals: AbortSignal[] = [];
+    const recall = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.pay();
+      }
+
+      pay() {
+        this.then(this.ship(), this.receipt(), this.notify());
+      }
+
+      async ship() {
+        await Promise.resolve();
+        this.then.back(this.next);
+      }
+
+      async receipt() {
+        signals.push(this.then.signal);
+        await mailed;
+
+        return recall;
+      }
+
+      async notify() {
+        const { signal } = this.then;
+
+        await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(signals[0]?.aborted).toBe(true));
+    mailed.resolve();
+
+    await result;
+    expect(recall).toHaveBeenCalled();
+    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+      ['next#1', undefined],
+      ['pay#1', undefined],
+      ['ship#1', undefined],
+      ['receipt#1', true],
+      ['back#1', undefined]
+    ]);
+  });
+
+  it('will release a wait opened by a step it unwinds', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.ask(), this.cancel());
+      }
+
+      ask() {
+        this.then(this.answer);
+      }
+
+      async cancel() {
+        await Promise.resolve();
+        this.then.back(this.next);
+      }
+
+      answer() {}
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.answer).toBeUndefined();
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'cancel#1', 'back#1']);
+  });
+
+  it('will call back with its reason, and with the error on failure', async () => {
+    const order: unknown[] = [];
+
+    class Test extends State {
+      then = run(this, {
+        back: (reason) => void order.push(['option', reason])
+      });
+
+      next(fail: boolean) {
+        this.first(fail);
+      }
+
+      first(fail: boolean) {
+        this.then.back(this.next, 'retreat');
+        this.second(fail);
+      }
+
+      second(fail: boolean) {
+        order.push('second');
+
+        if (fail) throw new Error('boom');
+      }
+
+      back(reason: unknown) {
+        order.push(['back', reason]);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next(false);
+    expect(order).toEqual([['back', 'retreat'], ['option', 'retreat'], 'second']);
+
+    order.length = 0;
+
+    await expect(test.next(true)).rejects.toThrow('boom');
+    expect(order).toEqual([['back', 'retreat'], ['option', 'retreat'], 'second', ['back', new Error('boom')], ['option', new Error('boom')]]);
+  });
+
+  it('will end with an end scheduled after back', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.pay();
+      }
+
+      pay() {
+        this.first();
+        this.end('first');
+      }
+
+      first() {
+        this.then.back(this.next);
+        this.end('second');
+      }
+
+      end(value: string) {
+        return value;
+      }
+    }
+
+    expect(await Test.new().next()).toBe('second');
+  });
+
+  it('will fail if end is scheduled twice across back', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+        this.end();
+      }
+
+      first() {
+        this.second();
+      }
+
+      second() {
+        this.then.back(this.next);
+        this.end();
+      }
+
+      end() {}
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('end was scheduled twice.');
+  });
+
+  it('will fail if to has no committed entry', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+      }
+
+      first() {
+        this.then.back(this.second);
+      }
+
+      second() {}
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('back() found no committed second.');
+    expect(test.then.status).toBe('failed');
+  });
+
+  it('will not unwind the step calling back', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+      }
+
+      first() {
+        this.then.back(this.first);
+      }
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('back() found no committed first.');
+  });
+
+  it('will throw if to is not a step', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next(step?: unknown) {
+        this.then.back(step === 'call' ? (this.first() as never) : (step as () => void));
+      }
+
+      first() {}
+    }
+
+    const test = Test.new();
+
+    const message = 'back() takes a step to go back to; stop({ undo: true }) unwinds the whole run.';
+
+    await expect(test.next()).rejects.toThrow(message);
+    await expect(test.next('first')).rejects.toThrow(message);
+    await expect(test.next('call')).rejects.toThrow(message);
+    await expect(test.next(() => {})).rejects.toThrow(message);
+
+    class End extends State {
+      then = run(this);
+
+      next() {
+        this.then.back(this.end);
+      }
+
+      end() {}
+    }
+
+    await expect(End.new().next()).rejects.toThrow(message);
+  });
+
+  it('will throw if back is called outside a step', () => {
+    class Test extends State {
+      then = run(this);
+    }
+
+    expect(() => Test.new().then.back(() => {})).toThrow('back must be called inside a step.');
+  });
+
+  it('will not group or return a back token', async () => {
+    class Grouped extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.then.back(this.next) as never, this.first());
+      }
+
+      first() {}
+    }
+
+    await expect(Grouped.new().next()).rejects.toThrow('back() cannot be grouped.');
+
+    class Returned extends State {
+      then = run(this);
+
+      next() {
+        return this.then.back(this.next);
+      }
+    }
+
+    await expect(Returned.new().next()).rejects.toThrow('next returned a value; a step returns nothing, or its undo.');
+  });
+
+  it('will halt at a committed step and continue the run', async () => {
+    const refund = vi.fn();
+    const recall = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.pay('card1');
+      }
+
+      pay(card: string) {
+        this.then.commit();
+        this.notify(card);
+
+        return refund;
+      }
+
+      notify(card: string) {
+        this.ship(card);
+
+        return recall;
+      }
+
+      ship(card: string) {
+        if (card != 'card1') return;
+
+        this.then.back(this.next);
+        this.pay('card2');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(recall).toHaveBeenCalledTimes(1);
+    expect(refund).not.toHaveBeenCalled();
+    expect(test.then.record.map((entry) => [entry.id, entry.halted, entry.undone])).toEqual([
+      ['next#1', undefined, undefined],
+      ['pay#1', true, undefined],
+      ['notify#1', undefined, true],
+      ['ship#1', undefined, undefined],
+      ['back#1', undefined, undefined],
+      ['pay#2', undefined, undefined],
+      ['notify#2', undefined, undefined],
+      ['ship#2', undefined, undefined]
+    ]);
+  });
+
+  it('will halt at an irreversible step and continue the run', async () => {
+    const warn = mockWarn();
+
+    class Item extends State {}
+
+    class Test extends State {
+      then = run(this);
+      items = has(Item);
+
+      protected new() {
+        this.items.add({});
+      }
+
+      next() {
+        this.drop();
+      }
+
+      drop() {
+        this.items.clear();
+        this.first();
+      }
+
+      first() {
+        this.then.back(this.next);
+        this.then.end('kept going');
+      }
+    }
+
+    const test = Test.new();
+
+    expect(await test.next()).toBe('kept going');
+    expect(warn).toHaveBeenCalledWith(`${test} stopped unwinding at drop#1: items cannot be restored.`);
+    expect(test.then.record.map((entry) => [entry.id, entry.halted])).toEqual([
+      ['next#1', undefined],
+      ['drop#1', true],
+      ['first#1', undefined],
+      ['back#1', undefined],
+      ['end#1', undefined]
+    ]);
+  });
+
+  it('will wait for an outside call to retry', async () => {
+    const refund = vi.fn();
+
+    class Test extends State {
+      then = run(this, { rewind: true });
+      card = '';
+      tracking = '';
+
+      next() {
+        this.pay('card1');
+      }
+
+      pay(card: string) {
+        this.card = card;
+        this.ship();
+
+        return () => refund(card);
+      }
+
+      ship() {
+        let declined = this.card == 'card1';
+
+        if (declined) {
+          this.then.back(this.next, 'declined');
+          this.then(this.pay);
+        }
+        else this.tracking = `trk_${this.card}`;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.pay).toBeDefined());
+    expect(refund).toHaveBeenCalledWith('card1');
+    expect(test.card).toBe('');
+    expect(test.then.waiting).toEqual([{ id: 'wait#1', step: 'ship', args: [], answers: ['pay'] }]);
+
+    await test.pay('card2');
+
+    expect(await result).toEqual({ card: 'card2', tracking: 'trk_card2' });
+    expect(test.then.record.map((entry) => [entry.id, entry.wake, entry.undone])).toEqual([
+      ['next#1', undefined, undefined],
+      ['pay#1', undefined, true],
+      ['ship#1', undefined, undefined],
+      ['back#1', undefined, undefined],
+      ['pay#2', 'wait#1', undefined],
+      ['ship#2', undefined, undefined]
+    ]);
+  });
+
+  it('will not unwind entries a back already undid', async () => {
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+      }
+
+      first() {
+        this.then.back(this.next);
+        this.second();
+
+        return () => undo('first');
+      }
+
+      second() {
+        this.then.back(this.next);
+        this.third();
+      }
+
+      third() {
+        throw new Error('boom');
+      }
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('boom');
+    expect(undo).toHaveBeenCalledTimes(1);
+  });
+
+  it('will run backs from parallel steps one at a time', async () => {
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+      }
+
+      first() {
+        this.then(this.left(), this.right());
+
+        return () => undo('first');
+      }
+
+      async left() {
+        this.then.back(this.next);
+      }
+
+      async right() {
+        this.then.back(this.next);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'first', 'left', 'right', 'back']);
+  });
+
+  it('will fail when an undo throws and stop unwinding there', async () => {
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+
+        return () => undo('next');
+      }
+
+      first() {
+        this.second();
+
+        return () => {
+          throw new Error('undo');
+        };
+      }
+
+      second() {
+        this.then.back(this.next);
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('undo');
+    expect(undo).not.toHaveBeenCalled();
+    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+      ['next#1', undefined],
+      ['first#1', 'failed'],
+      ['second#1', undefined]
+    ]);
+  });
+
+  it('will fail when the back hook throws', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+      }
+
+      first() {
+        this.then.back(this.next, 'once');
+      }
+
+      back(reason: unknown) {
+        if (reason == 'once') throw new Error('hook');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('hook');
+    expect(test.then.status).toBe('failed');
+  });
+
+  it('will halt a parked unwind on stop', async () => {
+    const order: string[] = [];
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+
+        return () => void order.push('undo next');
+      }
+
+      first() {
+        this.second();
+
+        return this.then(this.refund);
+      }
+
+      second() {
+        this.then.back(this.next);
+      }
+
+      refund() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.refund).toBeDefined());
+    test.then.stop();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(order).toEqual([]);
+    expect(test.then.record.map((entry) => [entry.id, entry.halted, entry.undone])).toEqual([
+      ['next#1', undefined, undefined],
+      ['first#1', undefined, undefined],
+      ['second#1', undefined, undefined]
+    ]);
+  });
+
+  it('will stop unwinding between undos when stopped', async () => {
+    const refunded = mockPromise();
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.zero();
+      }
+
+      zero() {
+        this.first();
+
+        return undo;
+      }
+
+      first() {
+        this.second();
+
+        return () => refunded;
+      }
+
+      second() {
+        this.then.back(this.next);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.record.at(-1)?.id).toBe('second#1'));
+    test.then.stop();
+    refunded.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(undo).not.toHaveBeenCalled();
+    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+      ['next#1', undefined],
+      ['zero#1', undefined],
+      ['first#1', true],
+      ['second#1', undefined]
+    ]);
+  });
+
+  it('will hand a parked unwind to the failure unwind', async () => {
+    const order: string[] = [];
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+
+        return () => void order.push('undo next');
+      }
+
+      first() {
+        this.second();
+
+        return this.then(this.refund);
+      }
+
+      second() {
+        this.then.back(this.next);
+      }
+
+      refund() {
+        order.push('refund');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.refund).toBeDefined());
+    test.then.stop({ undo: true });
+
+    await vi.waitFor(() => expect(test.refund).toBeDefined());
+    await test.refund();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(order).toEqual(['refund', 'undo next']);
+  });
+
+  it('will stop unwinding when ended from outside', async () => {
+    const work = mockPromise();
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+
+        return undo;
+      }
+
+      first() {
+        this.then(this.slow(), this.quick());
+      }
+
+      async slow() {
+        await work;
+      }
+
+      async quick() {
+        await Promise.resolve();
+        this.then.back(this.next);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.record.at(-1)?.id).toBe('quick#1'));
+    await flushMicrotasks();
+    test.then.end('early');
+    work.resolve();
+
+    expect(await result).toBe('early');
+    expect(undo).not.toHaveBeenCalled();
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'first#1', 'quick#1', 'slow#1', 'end#1']);
+  });
+
+  it('will stop unwinding when a discarded step fails', async () => {
+    const work = mockPromise();
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.first();
+
+        return undo;
+      }
+
+      first() {
+        this.then(this.slow(), this.quick());
+      }
+
+      async slow() {
+        await work;
+        throw new Error('boom');
+      }
+
+      async quick() {
+        await Promise.resolve();
+        this.then.back(this.next);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.record.at(-1)?.id).toBe('quick#1'));
+    await flushMicrotasks();
+    work.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(undo).toHaveBeenCalledTimes(1);
+  });
+
+  it('will halt an unwind at an answer which commits', async () => {
+    const undo = vi.fn();
+
+    class Test extends State {
+      then = run(this, { rewind: true });
+      value = 0;
+
+      next() {
+        this.first();
+
+        return undo;
+      }
+
+      first() {
+        this.value = 1;
+        this.fail();
+
+        return this.then(this.refund, this.keep);
+      }
+
+      fail() {
+        throw new Error('boom');
+      }
+
+      refund() {}
+
+      keep() {
+        this.then.commit();
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.keep).toBeDefined());
+    await test.keep();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(undo).not.toHaveBeenCalled();
+    expect(test.value).toBe(1);
+    expect(test.then.record.map((entry) => [entry.id, entry.halted, entry.committed])).toEqual([
+      ['next#1', undefined, undefined],
+      ['first#1', true, undefined],
+      ['keep#1', undefined, true]
+    ]);
+  });
+
+  it('will not leave an answer promise rejecting unhandled', async () => {
+    const caught = mockUncaught();
+
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.abort);
+      }
+
+      abort() {
+        throw new Error('abort');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.abort).toBeDefined());
+    test.abort();
+
+    await expect(result).rejects.toThrow('abort');
+    await flushMicrotasks();
+    expect(caught).toEqual([]);
+  });
+});
+
 describe('signal', () => {
   const aborted = (signal: AbortSignal) =>
     new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
