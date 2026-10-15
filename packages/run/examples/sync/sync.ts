@@ -6,11 +6,22 @@ import { api, type Item } from './services';
 export class Feed extends State {
   items = has<Item>();
   cursor = '';
+
+  // above `base`, so a plain method - not a step: a step calls it inline, outside callers too
+  known(id: string) {
+    return this.items.any((item) => item.id == id);
+  }
 }
 
-// Sync already extends Feed, so it cannot extend Job - run(this) is the same runtime as a field
+// Sync already extends Feed, so it cannot extend Job - run(this) is the same runtime as a field.
+// `base: Sync` stops the step walk at Sync; without it Feed's methods would become steps too.
 export class Sync extends Feed {
-  then = run(this);
+  then = run(this, {
+    base: Sync,
+    exit(outcome) {                       // a hook passed as an option, `this` the instance
+      if (outcome.status != 'done') this.cursor = '';
+    }
+  });
 
   async next() {
     this.pull();
@@ -20,7 +31,7 @@ export class Sync extends Feed {
     const page = await api.page(this.cursor, { signal: this.then.signal });
     let more = page.next !== undefined;
 
-    this.items.push(...page.items);
+    this.items.push(...page.items.filter((item) => !this.known(item.id)));
     this.cursor = page.next || this.cursor;
 
     if (more)

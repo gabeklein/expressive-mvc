@@ -1,6 +1,6 @@
 # Examples
 
-Four classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo, `rewind`; [agent](agent/agent.ts) - a long-lived instance on the light journal: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry, watchers, `commit`, undo by group and by wait, hooks, `exit`; [sync](sync/sync.ts) - `run(this)` on a class that cannot extend `Job`. Shipped behavior is documented in [docs/](../docs/README.md).
+Four classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo, `rewind`; [agent](agent/agent.ts) - a long-lived instance on the light journal: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry, watchers, `commit`, undo by group and by wait, hooks, `exit`; [sync](sync/sync.ts) - `run(this, options)` on a class that cannot extend `Job`: `base`, a hook as an option. Shipped behavior is documented in [docs/](../docs/README.md).
 
 A PR adding a feature extends an example and this table.
 
@@ -68,6 +68,7 @@ A PR adding a feature extends an example and this table.
 | `before` / `after` | `Deploy.before`, `Deploy.after` |
 | `before<Step>` / `after<Step>` with `skip` | `Deploy.beforeUpgrade`, `Deploy.afterUpgrade` |
 | `exit(outcome)` | `Deploy.exit` |
+| hook as an option - `run(this, { exit })` | `Sync`; sync test `will start over after a failed sync` |
 | `this.then.signal`, aborted by `stop()` | `Agent.turn`, `Deploy.test`, `Sync.pull` |
 
 ## Runner surface
@@ -86,6 +87,6 @@ A PR adding a feature extends an example and this table.
 
 | recipe | where |
 | --- | --- |
-| `run(this)` on a class that cannot extend `Job` | `Sync` |
+| `run(this, { base })` on a class that cannot extend `Job` - methods above `base` stay plain | `Sync`, `Feed.known`; sync test `will pull every page and end with its values` |
 | steering mailbox - a `has()` list pulled by the loop | `Agent.steers`, `Agent.turn`; agent test `will pull steering sent mid-turn before ending` |
 | steering by field - an outside write read by the next step | `Agent.tool` (`mode`); agent test `will steer later tool calls by writing mode` |

@@ -9,7 +9,7 @@ export interface Page {
 
 const PAGES: { [cursor: string]: Page } = {
   '': { items: [{ id: 'a' }, { id: 'b' }], next: 'p2' },
-  p2: { items: [{ id: 'c' }] }
+  p2: { items: [{ id: 'b' }, { id: 'c' }] }
 };
 
 export const api = {
