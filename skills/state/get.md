@@ -82,7 +82,7 @@ const user = await state.get(async ($) => $.user);
 const total = await state.get(async ($) => (await fetch($.url)).json());
 ```
 
-Rejects if the state is destroyed before any clean run, or a run throws a non-suspense error (which then skips `catch` handlers). Calling the release by hand before it settles rejects a promise already attached, silent otherwise. Returning the release from an `async` function unwraps and cancels it - TS does not flag this.
+Rejects if the instance is destroyed before any clean run, or a run throws a non-suspense error (which then skips `catch` handlers). Calling the release by hand before it settles rejects a promise already attached, silent otherwise. Returning the release from an `async` function unwraps and cancels it - TS does not flag this.
 
 To watch a specific property or event, use [`set(event, callback)`](set.md).
 
