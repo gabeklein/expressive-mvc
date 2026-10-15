@@ -4056,6 +4056,106 @@ describe('irreversible', () => {
   });
 });
 
+describe('commit', () => {
+  it('will stop the unwind at a committed step', async () => {
+    const warn = mockWarn();
+    const refund = vi.fn();
+    const recall = vi.fn();
+
+    class Test extends State {
+      then = run(this, { rewind: true });
+      charged = false;
+      notified = false;
+
+      next() {
+        this.pay();
+      }
+
+      protected async pay() {
+        this.then.commit();
+        this.charged = true;
+        this.notify();
+
+        return refund;
+      }
+
+      protected async notify() {
+        this.notified = true;
+        this.ship();
+
+        return recall;
+      }
+
+      protected async ship() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(recall).toHaveBeenCalled();
+    expect(refund).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    expect(test.get()).toMatchObject({ charged: true, notified: false });
+    expect(test.then.record.map((entry) => [entry.key, entry.committed, entry.halted, entry.undone])).toEqual([
+      ['next', undefined, undefined, undefined],
+      ['pay', true, true, undefined],
+      ['notify', undefined, undefined, true]
+    ]);
+  });
+
+  it('will not retry or restore a step failing after commit', async () => {
+    const attempt = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+      value = 0;
+
+      next() {
+        this.then.retry({ attempts: 3 });
+        attempt();
+        this.value = 1;
+        this.then.commit();
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(attempt).toHaveBeenCalledTimes(1);
+    expect(test.value).toBe(1);
+    expect(test.then.record).toEqual([
+      { id: 'next#1', key: 'next', args: [], next: [], wrote: ['value'], committed: true, error: new Error('boom'), attempt: 1, halted: true }
+    ]);
+  });
+
+  it('will throw if commit is called outside a step', () => {
+    class Test extends State {
+      then = run(this);
+    }
+
+    expect(() => Test.new().then.commit()).toThrow('commit must be called inside a step.');
+  });
+
+  it('will throw if commit is called after its step settled', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {
+        this.then(this.reply, async () => {
+          this.then.commit();
+        });
+      }
+
+      reply() {}
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('next has settled; commit cannot run.');
+  });
+});
+
 describe('failures', () => {
   it('will reject when a step throws synchronously', async () => {
     class Test extends State {

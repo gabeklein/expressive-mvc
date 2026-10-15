@@ -76,6 +76,8 @@ declare namespace Runner {
     error?: unknown;
     /** Collections changed in a way no restore can undo - the unwind stops here. */
     irreversible?: string[];
+    /** The step called `then.commit()` - not retried, not restored, the unwind stops here. */
+    committed?: true;
     /** The unwind stopped at this entry; it and every entry before it stay applied. */
     halted?: true;
   }
@@ -179,6 +181,8 @@ declare namespace Runner {
     stop(options?: Runner.Stop): void;
     /** At the top of a step: try it again on throw. */
     retry(config: Runner.Retry): void;
+    /** Inside a step: a point of no return - the step is not retried, restored or unwound. */
+    commit(): void;
 
     [Symbol.iterator](): Iterator<Runner.Entry>;
   }
@@ -239,6 +243,7 @@ function run<T extends State>(self: T, options: Runner.Options = {}): Runner<T> 
     end: { value: (value?: unknown) => control.conclude(value) },
     stop: { value: (options?: Runner.Stop) => control.stop(options) },
     retry: { value: () => outside('retry') },
+    commit: { value: () => outside('commit') },
     [Symbol.iterator]: {
       value(this: Runner.Controller) {
         return this.record[Symbol.iterator]();
@@ -606,9 +611,12 @@ class Run extends State {
           return frame;
         } catch (error) {
           let irreversible = [...frame._lost];
-          let retry = !frame._settled && !irreversible.length && frame._retry && attempt < frame._retry.attempts;
+          let fixed = irreversible.length || frame._committed;
+          let retry = !frame._settled && !fixed && frame._retry && attempt < frame._retry.attempts;
 
-          if (irreversible.length) this.record.push({ ...frame.journal(), error, irreversible, ...frame._retry && { attempt } });
+          if (fixed)
+            this.record.push({ ...frame.journal(), error, ...irreversible.length && { irreversible }, ...frame._retry && { attempt } });
+
           if (!retry) throw error;
 
           this.restore(frame._prior, frame.touched());
@@ -628,7 +636,7 @@ class Run extends State {
     } catch (error) {
       frame._settled = true;
 
-      if (!frame._lost.size) this.restore(frame._prior, frame.touched());
+      if (!frame._lost.size && !frame._committed) this.restore(frame._prior, frame.touched());
       if (undo) throw error;
 
       this.halt('failed', error);
@@ -722,10 +730,13 @@ class Run extends State {
       const entry = entries[i];
       const undo = this._undo.get(entry.id);
 
-      if (entry.irreversible) {
+      if (entry.irreversible || entry.committed) {
         entry.halted = true;
         event(record, i);
-        console.warn(`${control._self} stopped unwinding at ${entry.id}: ${entry.irreversible.join(', ')} cannot be restored.`);
+
+        if (entry.irreversible)
+          console.warn(`${control._self} stopped unwinding at ${entry.id}: ${entry.irreversible.join(', ')} cannot be restored.`);
+
         break;
       }
 
@@ -858,6 +869,7 @@ class Frame extends State {
   _wake?: string = undefined;
   _undo?: boolean = undefined;
   _retry?: Runner.Retry = undefined;
+  _committed?: boolean = undefined;
   _violation?: string = undefined;
   _late?: boolean = undefined;
   _armed = 0;
@@ -980,7 +992,14 @@ class Frame extends State {
     Object.defineProperties(view, {
       then: { value: view },
       end: { value: (value?: unknown) => this.issue('end', value === undefined ? [] : [value]) },
-      retry: { value: (config: Runner.Retry) => void (this._retry = config) }
+      retry: { value: (config: Runner.Retry) => void (this._retry = config) },
+      commit: {
+        value: () => {
+          if (this._settled) throw new Error(`${this.key} has settled; commit cannot run.`);
+
+          this._committed = true;
+        }
+      }
     });
 
     return (this._view = view as unknown as Runner.Controller);
@@ -1064,9 +1083,11 @@ class Frame extends State {
   }
 
   journal(): Runner.Entry {
-    const { run, id, key, args, _wrote, _prior, _held, _changed } = this;
+    const { run, id, key, args, _wrote, _prior, _held, _changed, _committed } = this;
     const wrote = [...new Set([..._wrote, ..._changed])];
     const entry: Runner.Entry = { id, key, args, next: [], wrote };
+
+    if (_committed) entry.committed = true;
 
     if (run.control._rewind) {
       const values = run.control._self.get() as Record<string, unknown>;
