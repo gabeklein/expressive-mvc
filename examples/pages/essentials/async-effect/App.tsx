@@ -42,7 +42,12 @@ class Search extends Component {
   protected new() {
     this.get(async ({ query }) => {
       this.lookups++;
-      this.results = await lookup(query);
+
+      await new Promise((done) => setTimeout(done, 600));
+
+      const match = query.toLowerCase();
+
+      this.results = NAMES.filter((name) => name.toLowerCase().includes(match)).slice(0, 5);
     });
   }
 
@@ -68,12 +73,4 @@ class Search extends Component {
       </>
     );
   }
-}
-
-async function lookup(query: string) {
-  await new Promise((done) => setTimeout(done, 600));
-
-  const match = query.toLowerCase();
-
-  return NAMES.filter((name) => name.toLowerCase().includes(match)).slice(0, 5);
 }

@@ -21,11 +21,14 @@ export default () => (
 );
 
 class Invite extends Component {
+  // No value until assigned - reading `link` before then suspends.
   link = set<string>();
   status = 'Not sent';
 
   protected new() {
-    const timer = setTimeout(() => (this.link = 'https://expressive.dev/join/7f3a'), 2000);
+    const timer = setTimeout(() => {
+      this.link = 'https://expressive.dev/join/7f3a';
+    }, 2000);
 
     return () => clearTimeout(timer);
   }
