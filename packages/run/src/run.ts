@@ -99,6 +99,12 @@ declare namespace Runner {
     backoff?(attempt: number): number;
   }
 
+  /** How a run ended, given to `exit`. `error` is what the run rejects with. */
+  type Outcome<R = unknown> =
+    | { status: 'done'; result: R }
+    | { status: 'failed'; error: unknown }
+    | { status: 'stopped'; error: unknown };
+
   interface Options {
     /** Keep `prior`/`patch` per entry; the unwind restores committed steps' fields. */
     rewind?: boolean;
@@ -207,7 +213,7 @@ type Runner<T extends State = State> = Runner.Controller<T> & Runner.Thenable<T>
 /**
  * Make this State runnable: its methods become steps, each scheduling the next, and the
  * returned Runner is the controller - status, journal, result. `next()` starts a run.
- * `_`-prefixed methods are helpers; `before`/`after`-prefixed ones and `back` are hooks.
+ * `_`-prefixed methods are helpers; `before`/`after`-prefixed ones, `back` and `exit` are hooks.
  */
 function run<T extends State>(self: T, options: Runner.Options = {}): Runner<T> {
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
@@ -258,7 +264,7 @@ function run<T extends State>(self: T, options: Runner.Options = {}): Runner<T> 
   for (let proto = Object.getPrototypeOf(self); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
     for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
       let method = desc.get && unbind(desc.get) !== desc.get;
-      let skip = !method || key == 'new' || key == 'back' || key[0] == '_' || Object.hasOwn(self, key);
+      let skip = !method || key == 'new' || key == 'back' || key == 'exit' || key[0] == '_' || Object.hasOwn(self, key);
 
       if (skip) continue;
 
@@ -321,6 +327,9 @@ class Job extends State {
 
   /** Once an unwind completes, halted or not, before the run rejects with `error`. A throw replaces it. */
   protected back?(error: unknown): void;
+
+  /** Once per run on every outcome, last before the run settles. A throw rejects the run with it. */
+  protected exit?(outcome: Runner.Outcome): void;
 }
 
 class Control extends State {
@@ -666,10 +675,19 @@ class Run extends State {
   }
 
   finish(value: unknown) {
+    const { control } = this;
+
+    this.fire('exit', { status: 'done', result: value });
+
+    if (this._error !== undefined) {
+      control.status = 'failed';
+      return this.reject();
+    }
+
     this.close();
-    this.control.status = 'idle';
+    control.status = 'idle';
     this._ticket.resolve(value);
-    this.control.advance();
+    control.advance();
   }
 
   close() {
@@ -705,13 +723,24 @@ class Run extends State {
 
     if (undo) {
       await this.unwind();
-      this.back();
+      this.fire('back', this.reason());
     }
 
+    this.fire('exit', { status: this._halted, error: this.reason() });
+    this.reject();
+  }
+
+  reason() {
+    const { _error: error } = this;
+
+    return error === undefined ? this._stopped : error;
+  }
+
+  reject() {
     const { _error: error, _ticket } = this;
 
     this.close();
-    _ticket.reject(error === undefined ? this._stopped : error);
+    _ticket.reject(this.reason());
 
     if (error !== undefined)
       queueMicrotask(() => queueMicrotask(() => {
@@ -763,11 +792,11 @@ class Run extends State {
     }
   }
 
-  back() {
-    const { control, _error: error, _stopped } = this;
+  fire(key: string, arg: unknown) {
+    const { control } = this;
 
     try {
-      hook(control._self, 'back', error === undefined ? _stopped : error);
+      hook(control._self, key, arg);
     } catch (cause) {
       this._error = cause;
       control.error = cause;

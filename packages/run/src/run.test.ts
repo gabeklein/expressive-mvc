@@ -2959,6 +2959,147 @@ describe('hooks', () => {
     await test.next();
     expect(test.then.record.map((entry) => entry.key)).toEqual(['next']);
   });
+
+  it('will call exit last when a run ends', async () => {
+    const order: unknown[] = [];
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        this.end('ok');
+      }
+
+      end(value: string) {
+        order.push('end');
+        return value;
+      }
+
+      exit(outcome: Runner.Outcome) {
+        order.push(['exit', outcome]);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next().then((result) => void order.push(['resolved', result]));
+    expect(order).toEqual(['end', ['exit', { status: 'done', result: 'ok' }], ['resolved', 'ok']]);
+    expect(test.then.status).toBe('idle');
+  });
+
+  it('will call exit after back when a run fails', async () => {
+    const order: unknown[] = [];
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        throw new Error('boom');
+      }
+
+      back() {
+        order.push('back');
+      }
+
+      exit(outcome: Runner.Outcome) {
+        order.push(['exit', outcome]);
+      }
+    }
+
+    await Test.new().next().catch((error: Error) => void order.push(['rejected', error.message]));
+    expect(order).toEqual(['back', ['exit', { status: 'failed', error: new Error('boom') }], ['rejected', 'boom']]);
+  });
+
+  it('will call exit once when a run is stopped', async () => {
+    const exit = vi.fn();
+    const work = mockPromise();
+
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        await work;
+        this.then.end();
+      }
+
+      exit(outcome: Runner.Outcome) {
+        exit(outcome);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    test.then.stop();
+    work.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(exit).toHaveBeenCalledTimes(1);
+    expect(exit.mock.calls[0][0]).toMatchObject({ status: 'stopped', error: { name: 'Stopped' } });
+  });
+
+  it('will reject a finished run when exit throws', async () => {
+    const queued = vi.fn();
+
+    class Test extends State {
+      then = run(this);
+      runs = 0;
+
+      next() {
+        this.runs++;
+      }
+
+      exit() {
+        if (this.runs == 1) throw new Error('exit');
+        queued();
+      }
+    }
+
+    const test = Test.new();
+    const first = test.next();
+    const second = test.next();
+
+    await expect(first).rejects.toThrow('exit');
+    await second;
+    expect(queued).toHaveBeenCalled();
+  });
+
+  it('will replace the error when exit throws', async () => {
+    class Test extends State {
+      then = run(this);
+
+      async next() {
+        throw new Error('boom');
+      }
+
+      exit() {
+        throw new Error('exit');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('exit');
+    expect(test.then.status).toBe('failed');
+  });
+
+  it('will not wrap exit as a step', async () => {
+    class Test extends State {
+      then = run(this);
+
+      next() {}
+
+      exit() {
+        return this;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.exit()).toBe(test);
+    await test.next();
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next']);
+  });
 });
 
 describe('undo', () => {
@@ -4496,6 +4637,27 @@ describe('Job', () => {
       ['before', 'fail'],
       ['back', 'boom']
     ]);
+  });
+
+  it('will type exit by the result of end', async () => {
+    const outcomes: Runner.Outcome<{ n: number }>[] = [];
+
+    class Test extends Job {
+      async next() {
+        this.end();
+      }
+
+      protected end() {
+        return { n: 1 };
+      }
+
+      protected override exit(outcome: Runner.Outcome<{ n: number }>) {
+        outcomes.push(outcome);
+      }
+    }
+
+    await Test.new();
+    expect(outcomes).toEqual([{ status: 'done', result: { n: 1 } }]);
   });
 
   it('will check hooks by declaration', () => {
