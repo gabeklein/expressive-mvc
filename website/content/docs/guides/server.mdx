@@ -9,15 +9,15 @@ Expressive components are **client components**. They render fine on the server 
 
 ## 'use client'
 
-In an App Router project, a file that defines or uses a State class is client code. `@expressive/react` registers the React host as an import side effect, and it must be loaded in the client bundle - a module evaluates once, so importing it beside your classes is harmless and keeps every client entry covered:
+In an App Router project, a file that defines or uses a Model class is client code. `@expressive/react` registers the React host as an import side effect, and it must be loaded in the client bundle - a module evaluates once, so importing it beside your classes is harmless and keeps every client entry covered:
 
 ```tsx
 'use client';
 
 import '@expressive/react';
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Panel extends State {
+class Panel extends Model {
   open = false;
 }
 
@@ -27,7 +27,7 @@ export function Sidebar() {
 }
 ```
 
-Server components compose these normally - fetch on the server, pass serializable props down, and let the model take over from there. As with any client component, give the client the same inputs the server rendered with, and hydration lines up.
+Server components compose these normally - fetch on the server, pass serializable props down, and let the instance take over from there. As with any client component, give the client the same inputs the server rendered with, and hydration lines up.
 
 <br />
 

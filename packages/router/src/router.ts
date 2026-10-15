@@ -1,4 +1,4 @@
-import { Component, map, pending, set, State } from '@expressive/mvc';
+import { Component, map, pending, set, Model } from '@expressive/mvc';
 
 import type { Route } from './route';
 import {
@@ -18,7 +18,7 @@ import {
  * per-request `path`/`query` can't bleed across requests; provide a `Router`
  * per-request (`<Component for={Router} path={…}>`) to render a specific path there.
  */
-const clientOnly: State.Global = () => typeof window !== 'undefined';
+const clientOnly: Model.Global = () => typeof window !== 'undefined';
 
 interface Navigation {
   navigating: boolean;

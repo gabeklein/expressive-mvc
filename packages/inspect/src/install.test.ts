@@ -6,16 +6,16 @@ beforeEach(() => {
 });
 
 async function load() {
-  const { State } = await import('@expressive/mvc');
+  const { Model } = await import('@expressive/mvc');
   const index = await import('./index');
   await import('./install');
-  return { State, ...index };
+  return { Model, ...index };
 }
 
 it('will attach and publish a global', async () => {
-  const { State, inspect, journal } = await load();
+  const { Model, inspect, journal } = await load();
 
-  class Thing extends State {
+  class Thing extends Model {
     value = 1;
   }
 
@@ -27,9 +27,9 @@ it('will attach and publish a global', async () => {
 
 it('will record from boot as a preset global asks', async () => {
   globalThis.__EXPRESSIVE_INSPECT__ = { record: { level: 'values' } } as never;
-  const { State, inspect, journal } = await load();
+  const { Model, inspect, journal } = await load();
 
-  class Booting extends State {
+  class Booting extends Model {
     value = 1;
   }
 

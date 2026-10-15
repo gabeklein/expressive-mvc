@@ -31,9 +31,9 @@ npm install @expressive/mvc @expressive/react
 ## Quick start
 
 ```tsx
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Counter extends State {
+class Counter extends Model {
   count = 0;
 
   increment() {
@@ -68,7 +68,7 @@ Continue with [Getting Started](https://expressive.dev/docs/getting-started/), e
 
 | Package | Description |
 | --- | --- |
-| [`@expressive/mvc`](https://www.npmjs.com/package/@expressive/mvc) | Framework-agnostic reactive core and component model: `State`, `Component`, instructions, context. A peer dependency of every adapter - install it alongside one. |
+| [`@expressive/mvc`](https://www.npmjs.com/package/@expressive/mvc) | Framework-agnostic reactive core: `Model`, `Component`, instructions, context. A peer dependency of every adapter - install it alongside one. |
 | [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) | React adapter. Registers the host - import it once from the entry. Also covers React Native and Expo. |
 | [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom) | MVC-native browser renderer with no React underneath - same core and router, native events, built-in styling. Early `0.x`; expect change. |
 | [`@expressive/router`](https://www.npmjs.com/package/@expressive/router) | Host-agnostic router built on Expressive components, for the React adapter and the DOM renderer alike. |

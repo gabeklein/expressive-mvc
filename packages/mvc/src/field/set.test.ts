@@ -1,6 +1,6 @@
 import { vi, describe, it, expect } from 'vitest';
 import { mockPromise, mockWarn, flushMicrotasks } from '../../test.setup';
-import { State } from '../state';
+import { Model } from '../state';
 import { set } from './set';
 
 const warn = mockWarn();
@@ -16,7 +16,7 @@ function attempt(fn: () => unknown): Promise<unknown> {
 
 describe('property descriptors', () => {
   it('will not be enumerable', () => {
-    class Test extends State {
+    class Test extends Model {
       value = set('foo');
       factory = set(() => 'foo');
     }
@@ -28,7 +28,7 @@ describe('property descriptors', () => {
     ['will be read-only with factory', () => set(() => 'foo')],
     ['will be read-only with required factory', () => set(() => 'foo', true)]
   ])('%s', (_, field) => {
-    class Test extends State {
+    class Test extends Model {
       value = field();
     }
 
@@ -47,7 +47,7 @@ describe('property descriptors', () => {
   ])('%s', (_, field, called) => {
     const callback = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       value = field(callback);
     }
 
@@ -61,7 +61,7 @@ describe('property descriptors', () => {
 });
 
 describe('placeholder', () => {
-  class Test extends State {
+  class Test extends Model {
     foobar = set<string>();
   }
 
@@ -118,7 +118,7 @@ describe('placeholder', () => {
 
 describe('callback', () => {
   it('will invoke callback on property assign', async () => {
-    class Subject extends State {
+    class Subject extends Model {
       test = set<number>(1, (value) => {
         didAssign(value + 1);
       });
@@ -139,7 +139,7 @@ describe('callback', () => {
   it.skip('will invoke callback on set assignment', async () => {
     const didAssign = vi.fn();
 
-    class Subject extends State {
+    class Subject extends Model {
       test = set<number>(1, didAssign);
     }
 
@@ -151,7 +151,7 @@ describe('callback', () => {
   });
 
   it('will invoke return-callback on overwrite', async () => {
-    class Subject extends State {
+    class Subject extends Model {
       test = set<number>(1, () => {
         return () => {
           callback(true);
@@ -173,7 +173,7 @@ describe('callback', () => {
   });
 
   it('will assign a default value', async () => {
-    class Subject extends State {
+    class Subject extends Model {
       test = set('foo', (value) => {
         callback(value);
       });
@@ -190,7 +190,7 @@ describe('callback', () => {
   });
 
   it('will ignore effect promise', () => {
-    class Subject extends State {
+    class Subject extends Model {
       property = set<any>(undefined, async () => {});
     }
 
@@ -200,7 +200,7 @@ describe('callback', () => {
   });
 
   it('will not suspend own property access', () => {
-    class Subject extends State {
+    class Subject extends Model {
       property = set<string>(undefined, (_, previous) => {
         propertyWas = previous;
       });
@@ -217,7 +217,7 @@ describe('callback', () => {
   });
 
   it('will reset nested effects', async () => {
-    class Subject extends State {
+    class Subject extends Model {
       name = 'World';
 
       hello = set('Hello', async (value) => {
@@ -250,7 +250,7 @@ describe('callback', () => {
 
 describe('intercept', () => {
   it('will prevent update if callback returns false', async () => {
-    class Subject extends State {
+    class Subject extends Model {
       test = set('foo', (value) => {
         callback(value);
         throw false;
@@ -269,7 +269,7 @@ describe('intercept', () => {
   });
 
   it('will rethrow real errors from callback', () => {
-    class Subject extends State {
+    class Subject extends Model {
       test = set('foo', () => {
         throw new Error('bad value');
       });
@@ -288,7 +288,7 @@ describe('factory', () => {
   it('will throw for a direct Promise initializer', () => {
     const pending = mockPromise<string>();
 
-    class Test extends State {
+    class Test extends Model {
       // @ts-expect-error
       value = set(pending);
     }
@@ -304,7 +304,7 @@ describe('factory', () => {
   ])('%s', async (_, settle) => {
     const pending = mockPromise<string>();
 
-    class Test extends State {
+    class Test extends Model {
       value = set(() => pending);
     }
 
@@ -326,7 +326,7 @@ describe('factory', () => {
   ])('%s', (_, required) => {
     const factory = vi.fn(() => 'Hello World');
 
-    class Test extends State {
+    class Test extends Model {
       value = set(factory, required as boolean);
     }
 
@@ -340,7 +340,7 @@ describe('factory', () => {
   it('will bind factory function to self', () => {
     const seen = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       value = set(this.method);
 
       method() {
@@ -356,7 +356,7 @@ describe('factory', () => {
   });
 
   it('will warn and rethrow error from factory', () => {
-    class Test extends State {
+    class Test extends Model {
       memoized = set(this.failToGetSomething);
 
       failToGetSomething() {
@@ -377,7 +377,7 @@ describe('factory', () => {
 
 describe('compute', () => {
   it('will recompute when dependency updates', async () => {
-    class Test extends State {
+    class Test extends Model {
       first = 'John';
       last = 'Doe';
       full = set((self: Test) => `${self.first} ${self.last}`);
@@ -396,7 +396,7 @@ describe('compute', () => {
   it('will receive instance as this and argument', () => {
     const seen = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       double = set(function (this: Test, self: Test) {
         seen(this === self);
@@ -411,7 +411,7 @@ describe('compute', () => {
   });
 
   it('will be enumerable like a getter', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       double = set((self: Test) => self.value * 2);
     }
@@ -426,7 +426,7 @@ describe('compute', () => {
   });
 
   it('will be read-only', () => {
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       double = set((self: Test) => self.value * 2);
     }
@@ -441,7 +441,7 @@ describe('compute', () => {
   it('will not recompute for unrelated update', async () => {
     const factory = vi.fn((self: Test) => self.value * 2);
 
-    class Test extends State {
+    class Test extends Model {
       value = 1;
       other = 'foo';
       double = set(factory);
@@ -458,7 +458,7 @@ describe('compute', () => {
   });
 
   it('will allow subclass to refine type via declare', () => {
-    class Base extends State {
+    class Base extends Model {
       source = 1;
       derived = set((self: Base) => self.source as unknown);
     }
@@ -477,7 +477,7 @@ describe('suspense', () => {
   it('will throw suspense-promise resembling an error', () => {
     const promise = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       value = set(() => promise);
     }
 
@@ -495,7 +495,7 @@ describe('suspense', () => {
       return this.value + ' world!';
     });
 
-    class Test extends State {
+    class Test extends Model {
       value = set<string>();
       greet = set(didEvaluate);
     }
@@ -516,7 +516,7 @@ describe('suspense', () => {
       return this.value + ' world!';
     });
 
-    class Test extends State {
+    class Test extends Model {
       value = set(() => promise);
       greet = set(didEvaluate);
     }
@@ -533,7 +533,7 @@ describe('suspense', () => {
   });
 
   it('will resolve when factory does', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = set(async () => 'foobar');
     }
 
@@ -547,7 +547,7 @@ describe('suspense', () => {
   });
 
   it('will not suspend where already resolved', async () => {
-    class Test extends State {
+    class Test extends Model {
       greet = set(async () => 'Hello');
       name = set(async () => 'World');
 
@@ -565,7 +565,7 @@ describe('suspense', () => {
     const promise = mockPromise<string>();
     const cb = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       value = set(() => promise, false);
     }
 
@@ -588,7 +588,7 @@ describe('suspense', () => {
     const name = mockPromise<string>();
     const didEvaluate = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       greet = set(async ? async () => greet : () => greet);
       name = set(() => name);
       value = set(() => {
@@ -615,11 +615,11 @@ describe('suspense', () => {
     const promise = mockPromise<string>();
     const didUpdate = mockPromise<string>();
 
-    class Child extends State {
+    class Child extends Model {
       value = set(() => promise);
     }
 
-    class Test extends State {
+    class Test extends Model {
       child = new Child();
 
       childValue = set(() => {
@@ -645,7 +645,7 @@ describe('suspense', () => {
   it('will return undefined on nested suspense', async () => {
     const promise = mockPromise<string>();
 
-    class Test extends State {
+    class Test extends Model {
       asyncValue = set(() => promise);
 
       value = set(() => `Hello ${this.asyncValue}`, false);
@@ -671,7 +671,7 @@ describe('suspense', () => {
       return `OK I'm unblocked.`;
     });
 
-    class Test extends State {
+    class Test extends Model {
       message = set(compute);
     }
 
@@ -708,7 +708,7 @@ describe('suspense', () => {
     const promise = mockPromise<number>();
     const promise2 = mockPromise<number>();
 
-    class Test extends State {
+    class Test extends Model {
       a = set(() => promise);
       b = set(() => promise2);
 
@@ -754,7 +754,7 @@ describe('suspense', () => {
   it('will refresh and throw if async rejects', async () => {
     const promise = mockPromise();
 
-    class Test extends State {
+    class Test extends Model {
       value = set(() => promise);
     }
 
@@ -785,7 +785,7 @@ describe('factory with callback overload', () => {
     const callback = vi.fn();
     const factory = vi.fn(() => 'computed');
 
-    class Test extends State {
+    class Test extends Model {
       value = set(factory, callback);
     }
 
@@ -800,7 +800,7 @@ describe('factory with callback overload', () => {
   it('will callback after async factory resolves', async () => {
     const callback = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       value = set(async () => 'asyncValue', callback);
     }
 
@@ -815,7 +815,7 @@ describe('factory with callback overload', () => {
   it('will callback if set before factory run', () => {
     const callback = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       value = set(async () => 'something', callback);
     }
 
@@ -834,7 +834,7 @@ describe('factory with callback overload', () => {
 it('will support Promise objects as factory return', async () => {
   const resolve = new Promise<string>((resolve) => setTimeout(() => resolve('foobar')));
 
-  class Test extends State {
+  class Test extends Model {
     value = set(() => resolve);
   }
 

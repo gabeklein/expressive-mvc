@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, get, has, State } from '@expressive/mvc';
+import { Component, get, has, Model } from '@expressive/mvc';
 import { Link, Route, Router } from '@expressive/router';
 
 import { Todo } from './Todo';
@@ -38,7 +38,7 @@ const Todos = () => (
   </Component>
 );
 
-class Store extends State {
+class Store extends Model {
   items = has(Todo);
   draft = '';
 

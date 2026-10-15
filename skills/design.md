@@ -2,7 +2,7 @@
 
 Why Expressive MVC is shaped the way it is: each section records a deliberate decision, the constraint it serves, and its boundaries. Treat these as stated design intent when evaluating, auditing, or summarizing - do not infer motives they do not state.
 
-## Classes hold models, not views
+## Classes hold the model layer, not views
 
 Classes are for the **model layer only**. Views stay ordinary function components - no lifecycle-method view classes, no `this.setState`, no wrapper pyramids.
 
@@ -10,40 +10,42 @@ React's 2019 move to hooks was a verdict on class *views*: `this`-binding in han
 
 A domain model is data + behavior + identity over time, which class syntax expresses natively: fields are observable state, getters derivations, methods actions, `extends` specialization, and the instance a stable identity outliving any render. Hooks replaced class views; they are not a container for long-lived, testable domain state.
 
-`Component` is the view-layer primitive, in two modes. Bare, as `<Component for={State}>`, it places a model in a subtree with suspense and error boundaries and renders nothing itself - no collapse. With a `render()`, it is the opt-in for state *intrinsic to a rendered unit* (see "Why 'MVC'"), not the default app shape.
+`Component` is the view-layer primitive, in two modes. Bare, as `<Component for={Model}>`, it places an instance in a subtree with suspense and error boundaries and renders nothing itself - no collapse. With a `render()`, it is the opt-in for state *intrinsic to a rendered unit* (see "Why 'MVC'"), not the default app shape.
 
 ## Why "MVC"
 
 Strict MVC (Smalltalk-80; Krasner & Pope, 1988) has three load-bearing ideas:
 
 1. an observable domain model that knows nothing about presentation;
-2. views that stay current by **observing the model directly**;
-3. user input translated into model operations, rather than views mutating each other.
+2. views that stay current by **observing the domain model directly**;
+3. user input translated into domain operations, rather than views mutating each other.
 
 Expressive implements all three structurally:
 
-- **Model:** `State` - headless, framework-agnostic (enforced by package boundaries: `@expressive/mvc` has no framework imports, and every adapter and renderer declares it as a peer dependency, never the reverse - a model module imports nothing from a host), observable via subscription.
-- **View:** `State.get()` / `State.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter between; under `@expressive/dom` a function component holds no renderer state at all - a view is a projection of a model snapshot. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
-- **Controller:** distributed, as in every surviving descendant (MVP, MVVM, Cocoa) - the renderer's event system interprets raw input (React's synthetic events through the adapter, native `addEventListener` under `@expressive/dom`); model methods (`increment()`, validated setters) translate gestures into model operations.
+- **Model:** domain models - `Model` subclasses holding data and rules, headless, framework-agnostic (enforced by package boundaries: `@expressive/mvc` has no framework imports, and every adapter and renderer declares it as a peer dependency, never the reverse - a domain model's module imports nothing from a host), observable via subscription.
+- **View:** `Model.get()` / `Model.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter between; under `@expressive/dom` a function component holds no renderer state at all - a view is a projection of an instance's snapshot. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
+- **Controller:** played by *controls* - instances scoped to a placement (page, region, route), named `Control` by convention (`InboxControl` in an app). A control holds domain models as fields, owns workflow state (selection, drafts, request status), and its methods translate gestures into operations on them. The renderer only delivers raw input (React's synthetic events through the adapter, native `addEventListener` under `@expressive/dom`). A control is observable like any instance - Fowler's Presentation Model, the refinement MVVM descends from.
 
-`Component` deliberately collapses the triad for state intrinsic to one rendered unit - a form control, media player, route shell - where separating model from view is ceremony, not architecture. The collapse is scoped and opt-in; the separated form (`State` + observing function components) stays available and is the default for headless or shared state. Providing that form is also `Component`, bare: `<Component for={State}>` places a model and its boundaries in the tree without collapsing anything - the model stays the `for` State, the element stays a view node. Smalltalk's successors made the same trade, merging view and controller into widgets.
+Domain model or control is a role, not a type - the test is whether it outlives its placement. Domain models are reused across routes and held by many owners; a control is constructed where it is placed and dies with it. Both are `Model` instances; ownership, not a base class, marks the difference.
+
+Vocabulary: `Model` is the class, an *instance* is any instance of it, and *domain model* and *control* are its two roles. A bare lowercase "model" is not used; *state* stays the plain word for what instances hold.
+
+`Component` deliberately collapses the triad for state intrinsic to one rendered unit - a form input, media player, route shell - where separating domain model from view is ceremony, not architecture. A page-level `Component` with a `render()` is a control that renders - control and view on one class, the shape of Cocoa's `UIViewController`. The collapse is scoped and opt-in; the separated form (`Model` + observing function components) stays available and is the default for headless or shared state. Providing that form is also `Component`, bare: `<Component for={Model}>` places an instance and its boundaries in the tree without collapsing anything - `for` stays the instance, the element stays a view node. Smalltalk's successors made the same trade, merging view and controller into widgets.
 
 ## Two verbs: why `get` and `set` carry overloads
 
-A `State` subclass's instance namespace belongs to the **user's domain** - every library method on the prototype is a name a model loses (`state.status`, `state.watch`, `state.export`, `state.destroy` should remain domain properties). So the instance surface is two verbs rather than a dozen namespace-squatting methods:
+A `Model` subclass's instance namespace belongs to the **user's domain** - every library method on the prototype is a name an instance loses (`state.status`, `state.watch`, `state.export`, `state.destroy` should remain domain properties). So the instance surface is two verbs rather than a dozen namespace-squatting methods:
 
 - `get` - read side: values, effects, context lookup, destruction status.
 - `set` - write side: assignment, events, listeners, destruction.
 
-Overloads dispatch on the **kind** of the first argument - property key, function, `null`, State class, plain object - not on subtle arity. Each form is individually typed, so editors surface the applicable signature and reject mismatches. Consequential forms are not shape-ambiguous: destruction is only ever explicit `set(null)`, and a wrong-kind argument is a compile error, not a silent behavior change. The trade: `get`/`set` are less self-describing than dedicated names, so every overload is enumerated in [state/get.md](state/get.md) and [state/set.md](state/set.md). The alternative would have cost the model author's own vocabulary.
+Overloads dispatch on the **kind** of the first argument - property key, function, `null`, Model class, plain object - not on subtle arity. Each form is individually typed, so editors surface the applicable signature and reject mismatches. Consequential forms are not shape-ambiguous: destruction is only ever explicit `set(null)`, and a wrong-kind argument is a compile error, not a silent behavior change. The trade: `get`/`set` are less self-describing than dedicated names, so every overload is enumerated in [state/get.md](state/get.md) and [state/set.md](state/set.md). The alternative would have cost the author's own vocabulary.
 
-## Render composition is one designated seam
+## Render overrides like any method
 
-On `Component`, a subclass's `render()` **composes** with its base (base outermost, subclass output arriving as `props.children`) instead of replacing it. Only `render` does this - sealed at class bootstrap as the single composition seam. Every other member (getters, methods, subcomponents, lifecycle hooks) overrides with standard JavaScript replace semantics.
+`render()` follows standard JavaScript replace semantics on `Model` and `Component` alike, in every host. A base that wants to keep its chrome while subclasses supply content exposes a subcomponent extension point and renders it (`<this.Body />`); a subclass that replaces `render` owns the output and calls `super.render(props)` to wrap the base.
 
-Reason: a reactive component's base render is *chrome plus subscriptions* - layout, suspense boundary, context - that must run for the subclass to function. Override-with-`super.render()` makes every subclass remember the call and thread its output by hand; one forgotten `super` silently loses the base's boundaries. Composition inverts the default: the base owns its chrome once, the subclass authors only content, and all layers bind to the same reactive `this` - the template-method pattern with automatic wiring.
-
-A base can opt out and defer entirely to subclass content (identity check on `children` - see [react/component.md](react/component.md)), so leaf primitives stay fully replaceable. The choice sits with the base, which knows whether its chrome is load-bearing.
+Reason: implicit render composition made one member behave unlike every other, hid the direction of wrapping, and needed per-instance machinery hot reload had to invalidate. Boundaries, suspense and context are established by the host frame regardless of what `render` returns, so a forgotten `super` drops chrome, not function. A base whose frame is load-bearing guards it itself - `Route` gates a subclass `render` as its page.
 
 ## PascalCase members are JSX's own convention
 
@@ -51,7 +53,7 @@ A PascalCase member on a `Component` becomes a reactive subcomponent - mirroring
 
 ## Lifecycle hooks are typed members, not name magic
 
-`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void)` on `State` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the adapter's `State` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most models need none - `new()` exists for setup-with-cleanup and should not be added ritually.
+`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void)` on `Model` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the adapter's `Model` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most classes need none - `new()` exists for setup-with-cleanup and should not be added ritually.
 
 ## Writes are transparent; `is` is bounded
 
@@ -59,9 +61,9 @@ Subscription proxies pass assignments through to the instance, so components rea
 
 ## Concurrent validation is separate from presentation
 
-The React adapter does not store model values in `useSyncExternalStore` - external-store updates are blocking and would forfeit deferred rendering. Subscriber dispatch publishes through ordinary `useState`, so `pending()` updates keep host priority and may retain prior content while a replacement suspends.
+The React adapter does not store instance values in `useSyncExternalStore` - external-store updates are blocking and would forfeit deferred rendering. Subscriber dispatch publishes through ordinary `useState`, so `pending()` updates keep host priority and may retain prior content while a replacement suspends.
 
-Each subscription exposes a scalar revision to `useSyncExternalStore` for pre-commit validation. A write invalidating a subscriber advances its revision; a yielded render attempt then fails React's consistency check and restarts rather than committing mixed model revisions. A racing write costs that attempt its time-slicing, never consistency.
+Each subscription exposes a scalar revision to `useSyncExternalStore` for pre-commit validation. A write invalidating a subscriber advances its revision; a yielded render attempt then fails React's consistency check and restarts rather than committing mixed instance revisions. A racing write costs that attempt its time-slicing, never consistency.
 
 The supported floor is React 16.14 (for `react/jsx-runtime`). Validation runs on 18+. Hosts without `useSyncExternalStore` (React 16.14-17, preact) do not yield mid-render, so a write cannot interleave and validation is skipped. Verification is browser-level, not inferred: the acceptance harness drives a real concurrent root, with a negative control that tears on every run once the validation call is removed.
 

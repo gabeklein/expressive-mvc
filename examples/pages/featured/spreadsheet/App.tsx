@@ -1,6 +1,6 @@
 import './App.css';
 
-import { State, Component, get, map } from '@expressive/mvc';
+import { Model, Component, get, map } from '@expressive/mvc';
 
 const COLS = ['A', 'B', 'C', 'D'];
 const ROWS = [1, 2, 3, 4, 5];
@@ -56,7 +56,7 @@ export default class Sheet extends Component {
 // substitutes each referenced cell's value (read through the map by key,
 // which subscribes to that key alone) and evaluates the arithmetic - so a
 // cell recomputes only when a cell it references changes, and it cascades.
-class Cell extends State {
+class Cell extends Model {
   sheet = get(Sheet);
   input = '';
 

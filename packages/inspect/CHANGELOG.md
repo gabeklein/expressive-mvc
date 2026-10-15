@@ -1,5 +1,16 @@
 # @expressive/inspect
 
+## 0.5.0
+
+### Minor Changes
+
+- [#526](https://github.com/gabeklein/expressive-mvc/pull/526) [`f503478`](https://github.com/gabeklein/expressive-mvc/commit/f503478d7a3bbb851c8aba3c9303a8899bfe658e) The `Model` type describing an inspected instance is renamed `ModelInfo`, freeing `Model` for the core class. `Model` remains as a deprecated alias.
+
+### Patch Changes
+
+- Updated dependencies [[`7b2e8a1`](https://github.com/gabeklein/expressive-mvc/commit/7b2e8a11030000ce005a7681b11047c9b75cda76), [`d194d33`](https://github.com/gabeklein/expressive-mvc/commit/d194d33695e39b133d8a3284819713b6460baeaa), [`e37e87d`](https://github.com/gabeklein/expressive-mvc/commit/e37e87d8883eeec5e9477a18a52fe6103ccced87), [`94ec898`](https://github.com/gabeklein/expressive-mvc/commit/94ec8987c8030a2acd19bde38075877869d1599a), [`f503478`](https://github.com/gabeklein/expressive-mvc/commit/f503478d7a3bbb851c8aba3c9303a8899bfe658e)]:
+  - @expressive/mvc@0.89.0
+
 ## 0.4.0
 
 ### Minor Changes

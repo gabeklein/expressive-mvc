@@ -763,6 +763,22 @@ describe('extends', () => {
     expect(ran).toBe(1);
   });
 
+  it('will place default content through super.render()', async () => {
+    class Shell extends Route {
+      to = 'shell/*';
+      render() {
+        return <main>{super.render()}</main> as any;
+      }
+    }
+
+    location('/elsewhere');
+    const view = render(<Route><Shell><Route to="inner" as={text('inner')} /></Shell></Route>);
+    expect(view.container.textContent).toBe('');
+
+    await visit('/shell/inner');
+    expect(view.container.querySelector('main')?.textContent).toBe('inner');
+  });
+
   it('will let a subclass own nested routes under its mount path', async () => {
     class Profile extends Route {
       to = 'profile/*';

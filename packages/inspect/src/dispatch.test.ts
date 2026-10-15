@@ -1,10 +1,10 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { attach, inspect } from './index';
 import { dispatch } from './dispatch';
 
-class Composer extends State {
+class Composer extends Model {
   draft = '';
 }
 

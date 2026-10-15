@@ -1,6 +1,6 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-export class Control extends State {
+export class Control extends Model {
   // Properties set starting values; assignments dispatch updates.
   agent = 'Bond';
   remaining = 30;

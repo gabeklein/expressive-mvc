@@ -1,10 +1,10 @@
 import { vi, describe, it, expect } from 'vitest';
-import { State } from '../state';
+import { Model } from '../state';
 import { def } from './def';
 
 describe('instruction', () => {
   it('will run on create', () => {
-    class Test extends State {
+    class Test extends Model {
       property = def((key) => {
         didApply(key);
       });
@@ -18,7 +18,7 @@ describe('instruction', () => {
   });
 
   it('will skip enumerable properties inherited from prototype', () => {
-    class Test extends State {
+    class Test extends Model {
       property = def(() => ({ value: 'hello' }));
     }
 
@@ -37,7 +37,7 @@ describe('instruction', () => {
 
   describe('symbol', () => {
     it('will use unique symbol as placeholder', async () => {
-      class Test extends State {
+      class Test extends Model {
         value = def(() => ({ value: 1 })) as unknown;
       }
 
@@ -53,7 +53,7 @@ describe('instruction', () => {
     });
 
     it('will be deleted prior to instruction', () => {
-      class Test extends State {
+      class Test extends Model {
         value = def(() => {
           expect('value' in this).toBe(false);
         });
@@ -65,7 +65,7 @@ describe('instruction', () => {
     it('will ignore normal symbol', () => {
       const symbol = Symbol('hello');
 
-      class Test extends State {
+      class Test extends Model {
         value = symbol;
       }
 
@@ -75,9 +75,9 @@ describe('instruction', () => {
 
   describe('getter', () => {
     it('will run upon access', () => {
-      const mockAccess = vi.fn((_subscriber: State) => 'foobar');
+      const mockAccess = vi.fn((_subscriber: Model) => 'foobar');
 
-      class Test extends State {
+      class Test extends Model {
         property = def(() => ({ get: mockAccess }));
       }
 
@@ -91,7 +91,7 @@ describe('instruction', () => {
     it('will pass subscriber if within one', () => {
       const didGetValue = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         property = def(() => ({ get: didGetValue }));
       }
 
@@ -105,7 +105,7 @@ describe('instruction', () => {
     });
 
     it('will not throw suspense if get (required) is false', async () => {
-      class Test extends State {
+      class Test extends Model {
         value = def(() => ({ get: false }));
       }
 
@@ -123,7 +123,7 @@ describe('instruction', () => {
   describe('setter', () => {
     describe('boolean', () => {
       it('will reject update if false', () => {
-        class Test extends State {
+        class Test extends Model {
           value = def(() => ({ set: false }));
         }
 
@@ -140,7 +140,7 @@ describe('instruction', () => {
           if (value == 'ignore') throw false;
         });
 
-        class Test extends State {
+        class Test extends Model {
           property = def(() => ({
             value: 'foobar',
             set: setValue
@@ -163,7 +163,7 @@ describe('instruction', () => {
       });
 
       it('will update silently if callback throws true', async () => {
-        class Test extends State {
+        class Test extends Model {
           property = def(() => ({
             value: 'foo',
             set: () => {
@@ -182,7 +182,7 @@ describe('instruction', () => {
       });
 
       it('will not update twice on reassignment', () => {
-        class Test extends State {
+        class Test extends Model {
           property = def<string>(() => ({
             value: 'foobar',
             set: (value) => value + '!'
@@ -211,7 +211,7 @@ describe('instruction', () => {
     ])('%s', (_, config) => {
       const done = vi.fn();
 
-      class Test extends State {
+      class Test extends Model {
         property = def(() => config(done) as any);
       }
 
@@ -226,7 +226,7 @@ describe('instruction', () => {
 
 describe('unmanaged keys', () => {
   it('will throw if applied to _ key', () => {
-    class Test extends State {
+    class Test extends Model {
       _property = def(() => ({ value: 'hello' }));
     }
 
@@ -238,28 +238,28 @@ describe('reuse', () => {
   it('will throw if instruction already applied elsewhere', () => {
     let stolen: any;
 
-    class Source extends State {
+    class Source extends Model {
       value: any = (stolen = def(() => ({ value: 42 })));
     }
 
     expect(Source.new().value).toBe(42);
 
-    class Thief extends State {
+    class Thief extends Model {
       value: any = stolen;
     }
 
     expect(() => Thief.new()).toThrowError(
-      /has an instruction applied to another State/
+      /has an instruction applied to another Model/
     );
   });
 
   it('will throw outside or after a construction', () => {
-    class Test extends State {
+    class Test extends Model {
       value: any = def(() => ({ value: 1 }));
     }
 
-    expect(() => def(() => ({ value: 1 }))).toThrowError(/no State under construction/);
+    expect(() => def(() => ({ value: 1 }))).toThrowError(/no Model under construction/);
     expect(Test.new().value).toBe(1);
-    expect(() => def(() => ({ value: 2 }))).toThrowError(/no State under construction/);
+    expect(() => def(() => ({ value: 2 }))).toThrowError(/no Model under construction/);
   });
 });

@@ -1,10 +1,10 @@
 import { vi, describe, it, expect, afterEach } from 'vitest';
-import { State } from '../state';
+import { Model } from '../state';
 import { ref } from './ref';
 import { set } from './set';
 
 describe('property', () => {
-  class Subject extends State {
+  class Subject extends Model {
     ref = ref<string>();
   }
 
@@ -54,7 +54,7 @@ describe('property', () => {
   it('will invoke callback on assignment or call', async () => {
     const didTrigger = vi.fn();
 
-    class Subject extends State {
+    class Subject extends Model {
       ref = ref<string>(didTrigger);
     }
 
@@ -71,7 +71,7 @@ describe('property', () => {
   });
 
   it('will invoke return-callback on overwrite', async () => {
-    class Subject extends State {
+    class Subject extends Model {
       ref = ref<number>(() => didTrigger);
     }
 
@@ -94,7 +94,7 @@ describe('property', () => {
   ])('%s', (_, ignore, called) => {
     const callback = vi.fn();
 
-    class Subject extends State {
+    class Subject extends Model {
       ref = ref<string | null>(callback, ignore);
     }
 
@@ -108,7 +108,7 @@ describe('property', () => {
   });
 
   it('will reset nested effects', async () => {
-    class Subject extends State {
+    class Subject extends Model {
       name = 'World';
 
       hello = ref((value) => {
@@ -165,7 +165,7 @@ describe('property', () => {
 });
 
 describe('proxy', () => {
-  class Subject extends State {
+  class Subject extends Model {
     foo = 'foo';
     bar = 'bar';
 
@@ -230,7 +230,7 @@ describe('proxy', () => {
 
 describe('set instruction', () => {
   it('will include reactive computed properties', () => {
-    class Subject extends State {
+    class Subject extends Model {
       source = 'foo';
       ref = ref(this);
       get foo() {
@@ -245,7 +245,7 @@ describe('set instruction', () => {
   });
 
   it('will not include factory-based properties', () => {
-    class Subject extends State {
+    class Subject extends Model {
       ref = ref(this);
       foo = set(() => 'foo');
     }
@@ -256,7 +256,7 @@ describe('set instruction', () => {
   });
 
   it('will not allow writing to reactive computed via ref', () => {
-    class Subject extends State {
+    class Subject extends Model {
       source = 'foo';
       ref = ref(this);
       get foo() {
@@ -275,7 +275,7 @@ describe('set instruction', () => {
 describe('mapped', () => {
   const generateRef = vi.fn((key: any) => key as string);
 
-  class Test extends State {
+  class Test extends Model {
     foo = 'foo';
     bar = 'bar';
 
@@ -307,8 +307,8 @@ describe('mapped', () => {
     expect(generateRef).toBeCalledTimes(1);
   });
 
-  it('will throw if object is not a State', () => {
-    class Test extends State {
+  it('will throw if object is not a Model', () => {
+    class Test extends Model {
       foo = 'foo';
       bar = 'bar';
 
@@ -317,12 +317,12 @@ describe('mapped', () => {
     }
 
     expect(() => Test.new()).toThrow(
-      `ref instruction requires a State instance, got a plain object`
+      `ref instruction requires a Model instance, got a plain object`
     );
   });
 
   it('will include undefined properties', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = undefined;
       fields = ref(this);
     }
@@ -337,7 +337,7 @@ describe('mapped', () => {
       return [this, state];
     });
 
-    class Test extends State {
+    class Test extends Model {
       foo = 'foo';
       fields = ref(this, spy);
     }
@@ -349,11 +349,11 @@ describe('mapped', () => {
   });
 
   it('will proxy a different state instance', async () => {
-    class Source extends State {
+    class Source extends Model {
       value = 'hello';
     }
 
-    class Consumer extends State {
+    class Consumer extends Model {
       source = new Source();
       refs = ref(this.source);
     }
@@ -369,13 +369,13 @@ describe('mapped', () => {
   });
 
   it('will map a different state instance', () => {
-    class Source extends State {
+    class Source extends Model {
       foo = 'bar';
     }
 
     const spy = vi.fn((key: string) => `mapped-${key}`);
 
-    class Consumer extends State {
+    class Consumer extends Model {
       source = new Source();
       mapped = ref(this.source, spy);
     }
@@ -387,7 +387,7 @@ describe('mapped', () => {
   });
 
   it.skip('will not break on recursive', () => {
-    class Test extends State {
+    class Test extends Model {
       foo = ref<boolean>();
       bar = ref(this);
     }

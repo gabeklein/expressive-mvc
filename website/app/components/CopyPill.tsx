@@ -1,6 +1,6 @@
-import State from '@expressive/react';
+import Model from '@expressive/react';
 
-class Copy extends State {
+class Copy extends Model {
   copied = false;
 
   copy(command: string) {

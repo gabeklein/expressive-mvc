@@ -1,15 +1,15 @@
-# State - Core Class
+# Model - Core Class
 
 ```ts
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 ```
 
-`@expressive/mvc` - framework-agnostic reactive state built on classes.
+`@expressive/mvc` - framework-agnostic reactive state built on classes. `State` is a deprecated alias of `Model`.
 
-## Creating State
+## Creating a Model
 
 ```ts
-class Counter extends State {
+class Counter extends Model {
   count = 0;
   increment() {
     this.count++;
@@ -24,14 +24,14 @@ const counter = Counter.new(); // creates AND activates
 const counter = Counter.new({ count: 10 }); // with initial values
 ```
 
-> `new Counter()` constructs without activating. Use `Counter.new()` for a root instance. Bare `new` is correct for a child State declared on another State (the parent adopts and activates it), or to defer activation deliberately.
+> `new Counter()` constructs without activating. Use `Counter.new()` for a root instance. Bare `new` is correct for a child instance declared on another instance (the parent adopts and activates it), or to defer activation deliberately.
 
 ## Properties & Reactivity
 
 Assign class fields normally. Any property write queues a batched update.
 
 ```ts
-class App extends State {
+class App extends Model {
   name = 'World';
   count = 0;
 }
@@ -53,9 +53,9 @@ await pending(() => {
 
 `pending(work)` runs `work` now, marks the updates it queues non-urgent, and resolves once every reader has absorbed them - see [Transitions](../react/component.md#transitions). Under React that waits for presentation, so a replacement that suspends holds the current screen instead of falling back. A free function, not a method: settlement comes from whichever readers the writes touch, each replaying through the scheduler it subscribed with.
 
-- **No host registered:** no priority applies, but the promise still resolves once every subscriber has replayed - how headless code waits out a whole cascade, not just the first flush. Contrast `state.set()`, which resolves on the next flush of *that* state ([set.md](set.md)).
+- **No host registered:** no priority applies, but the promise still resolves once every subscriber has replayed - how headless code waits out a whole cascade, not just the first flush. Contrast `state.set()`, which resolves on the next flush of *that* instance ([set.md](set.md)).
 - **Nesting:** a nested call settles its own consequences and joins the outer call.
-- **Suspending effect:** if an effect throws a promise, settlement waits for its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and squash into that retry. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its state releases the hold and prevents revival.
+- **Suspending effect:** if an effect throws a promise, settlement waits for its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and squash into that retry. Fulfillment and rejection both retry through MVC dispatch; cancelling the effect or destroying its instance releases the hold and prevents revival.
 - **Errors:** an exception from `work` propagates synchronously; updates queued before it still dispatch. The promise never rejects - a reader throwing during replay is reported with kind `effect` ([lifecycle.md](lifecycle.md#error-handling)), never to the writer, so no catch is needed.
 
 `pending()` with no arguments is the reader half. Inside a replay carrying pending work it returns a release callback, and settlement waits on that instead of on the replay returning - how the React adapter holds until commit. A hand-written `watch` effect can do the same; elsewhere it returns `undefined`.
@@ -85,10 +85,10 @@ for (const [key, value] of state) {
 
 ### Unmanaged Instance Data
 
-A `_` prefix opts a class field out of management - handles, config, soft-private values. Writes never notify and never throw after destroy, and land on the instance from any context - effect, computed, or render. The field is non-enumerable, so it is absent from `get()`, `Object.keys()`, iteration, `ref(this)`, and `State.Values`. Overlays still assign it: constructor args, `set({ ... })`, and Component props - an omitted prop resets to `undefined`, as for managed props. An overlay onto a getter-only `_` accessor is ignored. The sweep runs at activation - a `_` key first assigned later (e.g. in `new()`) is enumerable; declare it as a field.
+A `_` prefix opts a class field out of management - handles, config, soft-private values. Writes never notify and never throw after destroy, and land on the instance from any context - effect, computed, or render. The field is non-enumerable, so it is absent from `get()`, `Object.keys()`, iteration, `ref(this)`, and `Model.Values`. Overlays still assign it: constructor args, `set({ ... })`, and Component props - an omitted prop resets to `undefined`, as for managed props. An overlay onto a getter-only `_` accessor is ignored. The sweep runs at activation - a `_` key first assigned later (e.g. in `new()`) is enumerable; declare it as a field.
 
 ```ts
-class Job extends State {
+class Job extends Model {
   progress = 0;                              // reactive
   _unwatch: (() => void) | null = null;      // unmanaged
 }
@@ -97,7 +97,7 @@ class Job extends State {
 `#private` is for logic only. Computeds and effects run against the tracking subject, not the instance, so `this.#x` there throws. Methods and `_` accessors are bound to the instance - a `_` getter is the bridge from `#private` to reactive code:
 
 ```ts
-class Session extends State {
+class Session extends Model {
   user = '';
   #token = '';
 
@@ -123,7 +123,7 @@ const Component = () => {
 };
 ```
 
-Also for silent reads inside effects, or to guarantee the unwrapped instance: `state.is` is the instance whether or not `state` is a proxy. Idempotent (`state.is.is` is safe). Each tracked read of a child state returns a fresh proxy, so compare and store through `is`: `panel.is === active?.is`, `this.active = panel.is`.
+Also for silent reads inside effects, or to guarantee the unwrapped instance: `state.is` is the instance whether or not `state` is a proxy. Idempotent (`state.is.is` is safe). Each tracked read of a child instance returns a fresh proxy, so compare and store through `is`: `panel.is === active?.is`, `this.active = panel.is`.
 
 ```ts
 state.get((current) => {
@@ -132,13 +132,13 @@ state.get((current) => {
 });
 ```
 
-## Child States
+## Child Instances
 
 Nest by direct assignment. Children are auto-parented, activated, and destroyed with the parent.
 
 ```ts
-class Parent extends State {
-  child = new ChildState(); // parented and activated when Parent initializes
+class Parent extends Model {
+  child = new Child(); // parented and activated when Parent initializes
 }
 ```
 
@@ -156,14 +156,14 @@ increment(); // `this` is bound
 
 - Overwriting works: `test.method = () => 'bar'`.
 - `super` calls work across inheritance chains.
-- Methods never subscribe: what a method reads is untracked, whether it is called from an effect, a render, or a getter. To derive from another state, read its fields or getters - `thread.cwd()` inside a getter goes stale; a `get cwd()` does not.
+- Methods never subscribe: what a method reads is untracked, whether it is called from an effect, a render, or a getter. To derive from another instance, read its fields or getters - `thread.cwd()` inside a getter goes stale; a `get cwd()` does not.
 - `this` inside a method is the instance, never a tracking proxy (`this === this.is`) - safe as a `Map`/`Set` key or for identity comparison, however the method was reached, including off a proxy handed to an effect or render. The `new()` hook has the same guarantee ([lifecycle.md](lifecycle.md#the-new-hook)).
 
 ## Static Methods
 
-### `State.new()`
+### `Model.new()`
 
-Creates and activates an instance. Takes `State.Args` - objects (initial values) and callbacks (lifecycle), processed in order; return handling in [Constructor Arguments](lifecycle.md#constructor-arguments).
+Creates and activates an instance. Takes `Model.Args` - objects (initial values) and callbacks (lifecycle), processed in order; return handling in [Constructor Arguments](lifecycle.md#constructor-arguments).
 
 ```ts
 const test = Test.new(
@@ -173,16 +173,16 @@ const test = Test.new(
 );
 ```
 
-### `State.is()`
+### `Model.is()`
 
 Type guard - true if the argument is this class or a subclass.
 
 ```ts
 Counter.is(SubCounter); // true
-Counter.is(OtherState); // false
+Counter.is(Timer); // false
 ```
 
-### `State.on()`
+### `Model.on()`
 
 Registers lifecycle handlers, keyed by stage, for every instance of this class or its subclasses. Returns an unsubscribe function. A function alone is a `setup` handler - `Counter.on((self) => …)`.
 
@@ -206,7 +206,7 @@ const stop = Counter.on({
 - `catch(error, kind, key?)` runs when an instance fails out of turn - `kind` is where in its lifecycle: `setup` (async construction), `effect` or `getter` (an update), `dead` (a write after teardown), `unused` (never activated) - [lifecycle.md](lifecycle.md#error-handling). `this` is the instance - like nested `catch` blocks: most-derived class first, last registered first; one registered on several classes runs once, at the outermost. Return the error (or another) to pass it on; return nothing to handle it; throw to escape uncaught at once. Passed off the end, a destroyed write outputs nothing, `unused` warns, and anything else escapes uncaught.
 
 ```ts
-State.on({
+Model.on({
   catch(error, kind) {
     record(error); // observe
     if (kind != 'unused') return error; // pass on - unhandled, it throws
@@ -216,7 +216,7 @@ State.on({
 
 `on()` is the mix-in for environment-specific activation of a shared class. The domain module stays fields-only - no `window`, DOM, or host APIs at module scope or in `new()`; an adapter module re-exports the class and registers `on()` once, so every instance constructed after that import gets the wiring, and environments that never import the adapter never run it. Don't subclass (`class ViewSession extends Session`) and don't construct in the adapter - the consumer owns the instance. Recipe: [patterns.md](../react/patterns.md).
 
-## Constructor Args (`State.Args`)
+## Constructor Args (`Model.Args`)
 
 ```ts
 type Args<T> = (Args<T> | Init<T> | Assign<T> | void)[];
@@ -226,7 +226,7 @@ Nested arrays (flattened at runtime), objects (assigned), and callbacks (lifecyc
 
 ## Observable / Event System
 
-State extends Observable, also usable standalone:
+Model extends Observable, also usable standalone:
 
 ```ts
 import { listener, watch, event, observer, touch } from '@expressive/mvc/observable';
@@ -255,7 +255,7 @@ All events batch and flush via `queueMicrotask()`.
 
 ## Context
 
-Every active State has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It registers into root (findable by others) only with `static global`; a global's home locks to root at activation, while a private instance's stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
+Every active instance has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It registers into root (findable by others) only with `static global`; a global's home locks to root at activation, while a private instance's stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
 
 Primarily consumed via the [`get` instruction](../field/get.md) and [`<Component for>`](context.md#providing-with-component).
 

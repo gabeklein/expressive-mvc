@@ -1,5 +1,19 @@
 # @expressive/router
 
+## 0.9.3
+
+### Patch Changes
+
+- [#528](https://github.com/gabeklein/expressive-mvc/pull/528) [`e37e87d`](https://github.com/gabeklein/expressive-mvc/commit/e37e87d8883eeec5e9477a18a52fe6103ccced87) Render composition is removed. A subclass `render()` now replaces its base's like any method override, on `Component` and on a rendered `State`, in every host. To keep a base's chrome around subclass content, render a subcomponent the subclass overrides (`<this.Body />`), or call `super.render(props)` from the override to wrap the base. `compose` is no longer exported from `@expressive/mvc/jsx-runtime`.
+
+  Migration: a subclass `render()` that relied on being wrapped by its base's render moves to a subcomponent the base renders; a base that read the subclass output from `props.children` renders that subcomponent instead.
+
+  `Route` keeps its behavior: a subclass `render()` is still the route's page, gated on match, guards and redirects, and run only when matched. `super.render()` inside it places the default content (`as` around `children`). A `Link` subclass `render()` still replaces the anchor.
+
+- [#517](https://github.com/gabeklein/expressive-mvc/pull/517) [`2198ffc`](https://github.com/gabeklein/expressive-mvc/commit/2198ffc2f338f90d3c5e40ad5b3c6a6394555350) `BrowserRouter` instances share one `history.pushState` / `replaceState` patch, removed with the last of them. Previously each wrapped the current methods and restored its own capture on teardown, so destroying a router other than the most recent dropped the live router's wrapper - it then missed external `pushState` and `replaceState` calls.
+- Updated dependencies [[`7b2e8a1`](https://github.com/gabeklein/expressive-mvc/commit/7b2e8a11030000ce005a7681b11047c9b75cda76), [`d194d33`](https://github.com/gabeklein/expressive-mvc/commit/d194d33695e39b133d8a3284819713b6460baeaa), [`e37e87d`](https://github.com/gabeklein/expressive-mvc/commit/e37e87d8883eeec5e9477a18a52fe6103ccced87), [`94ec898`](https://github.com/gabeklein/expressive-mvc/commit/94ec8987c8030a2acd19bde38075877869d1599a), [`f503478`](https://github.com/gabeklein/expressive-mvc/commit/f503478d7a3bbb851c8aba3c9303a8899bfe658e)]:
+  - @expressive/mvc@0.89.0
+
 ## 0.9.2
 
 ### Patch Changes

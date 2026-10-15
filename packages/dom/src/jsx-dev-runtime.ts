@@ -1,7 +1,7 @@
 import { Fragment } from '@expressive/mvc/jsx-runtime';
 
-import { vnode } from './vnode';
-import type { VNode } from './vnode';
+import { vnode } from './node/vnode';
+import type { VNode } from './node/vnode';
 
 function jsxDEV(
   type: VNode['type'],
@@ -15,5 +15,5 @@ function jsxDEV(
 }
 
 export { Fragment, jsxDEV };
-export { hot } from './hot';
+export { hot } from './render/hot';
 export type { JSX } from '@expressive/mvc/jsx-runtime';

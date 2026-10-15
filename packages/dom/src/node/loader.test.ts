@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { lazy, mockPromise } from '../test.setup';
+import { lazy, mockPromise } from '../../test.setup';
 import { resolve } from './loader';
 import { isVNode } from './vnode';
 

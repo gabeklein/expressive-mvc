@@ -1,9 +1,9 @@
-import State from '@expressive/react';
+import Model from '@expressive/react';
 
 // One window 'hashchange' listener for the whole page. Owns the current
 // #slug and scrolls to a section whose id matches it - so deep-links and
 // in-page anchors resolve on fresh load, past the webfont layout shift.
-export class Hash extends State {
+export class Hash extends Model {
   static global = true;
 
   active = '';

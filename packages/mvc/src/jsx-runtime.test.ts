@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { State } from './state';
+import { Model } from './state';
 
 import { childrenOf, Fragment, host, isElement, jsx, jsxs, propsOf, typeOf } from './jsx-runtime';
 import { pending } from './dispatch';
@@ -83,11 +83,11 @@ describe('runtime', () => {
   });
 
   it('will settle headless once subscribers have replayed', async () => {
-    class Model extends State {
+    class Subject extends Model {
       value = 0;
     }
 
-    const model = Model.new();
+    const model = Subject.new();
     const seen: number[] = [];
 
     model.get(({ value }) => void seen.push(value));
@@ -125,7 +125,7 @@ describe('introspection', () => {
 describe('jsx-runtime module', () => {
   it('will carry transform contract, host seams and render setup', () => {
     expect(Object.keys(entry).sort()).toEqual([
-      'Fragment', 'childrenOf', 'compose', 'host', 'isElement',
+      'Fragment', 'childrenOf', 'host', 'isElement',
       'jsx', 'jsxDEV', 'jsxs', 'propsOf', 'typeOf'
     ]);
   });
