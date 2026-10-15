@@ -81,9 +81,9 @@ function Page() {
 
 An instance passed in is **not** destroyed when the element unmounts, and its `mount()` is not called - its owner manages its lifetime.
 
-### Providing several models
+### Providing several instances
 
-One item per element. Several models belong to a parent Model that owns them as fields:
+One item per element. Several instances belong to a parent Model that owns them as fields:
 
 ```tsx
 class Root extends Model {
@@ -117,7 +117,7 @@ Each field registers into the same context, so descendants find `Theme.get()`, `
 </Component>
 ```
 
-`<Component for>` adds no boundary of its own. Pass `fallback` to wrap children in a Suspense boundary, so any async `set()` in the provided model shows it. Pass `catch` to handle errors thrown by children - see [error boundaries](/docs/guides/components#error-boundaries).
+`<Component for>` adds no boundary of its own. Pass `fallback` to wrap children in a Suspense boundary, so any async `set()` in the provided instance shows it. Pass `catch` to handle errors thrown by children - see [error boundaries](/docs/guides/components#error-boundaries).
 
 <br />
 
@@ -138,7 +138,7 @@ function ThemeToggle() {
 }
 ```
 
-- Throws if the model isn't provided above.
+- Throws if the instance isn't provided above.
 - Re-renders only when accessed properties change.
 - Re-subscribes automatically if the provider is replaced upstream.
 
@@ -181,7 +181,7 @@ The factory receives a tracking proxy and a `refresh` function (see below).
 
 ### Effect mode
 
-Return `null` from the factory to run a side effect once, on first render, without subscribing - the factory never runs again and the component doesn't re-render for this model:
+Return `null` from the factory to run a side effect once, on first render, without subscribing - the factory never runs again and the component doesn't re-render for this instance:
 
 ```tsx
 AppState.get((app) => {
@@ -333,7 +333,7 @@ A full app built this way (viewport, session, and theme as globals) is at [compo
 
 ### Homes are permanent
 
-Where a model activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A global's `Model.new()` registers it at root, which claims it immediately and permanently; wrapping the instance in a context afterward won't move it. A private instance only *falls back* to root, so the first explicit context to claim it later still becomes its home.
+Where an instance activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A global's `Model.new()` registers it at root, which claims it immediately and permanently; wrapping the instance in a context afterward won't move it. A private instance only *falls back* to root, so the first explicit context to claim it later still becomes its home.
 
 The escape hatch is plain construction. `new Model()` builds the instance without activating it, so the first explicit placement gets to claim it:
 
@@ -342,7 +342,7 @@ const cart = new Cart(); // constructed, not yet activated
 new Context(cart); // cart's home is this context
 ```
 
-Useful in tests, and in code that prepares a model before mounting it into a tree.
+Useful in tests, and in code that prepares an instance before mounting it into a tree.
 
 > **Good to know:** <br/>
 > A global may not shadow another. A second `Model.new()` of the same global class throws, and so does a global subclass or supertype of one already in root - destroy the first (`set(null)`) before creating another. Two *different* subclasses of a shared global base don't throw; they collide only at the base, where both are evicted - `Base.get()` finds neither rather than one silently winning, while each subclass stays findable by its own type. Explicit registration (`<Component for>`, or `Context.root.add(state, true)`) bypasses both rules.
@@ -417,7 +417,7 @@ function FilterBar() {
 </Dashboard>;
 ```
 
-Use `Model` for headless models like auth, theme, or an API service. Use `Component` when the class should exist in the tree: layouts, route shells, dashboards, wizards, tab groups, toast hosts. The container _is_ the context. ✨
+Use `Model` for headless domain models like auth, theme, or an API service. Use `Component` when the class should exist in the tree: layouts, route shells, dashboards, wizards, tab groups, toast hosts. The container _is_ the context. ✨
 
 <br />
 

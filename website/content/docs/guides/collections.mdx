@@ -33,7 +33,7 @@ Every subscriber of `items` updates, once, at the next flush. For most lists thi
 
 ## Announcing a mutation
 
-If you'd rather mutate in place, tell the model about it yourself. `set(key)` dispatches an update event for a property without changing its value:
+If you'd rather mutate in place, tell the instance about it yourself. `set(key)` dispatches an update event for a property without changing its value:
 
 ```ts
 class TodoList extends Model {
@@ -95,7 +95,7 @@ class Game extends Model {
 }
 ```
 
-`has()` is a field instruction: it resolves when the hosting model activates, which adopts the collection in the same step. The field is read-only - there is no whole-collection reassignment to lose reactivity to, and no separate value sharing storage with it.
+`has()` is a field instruction: it resolves when the hosting instance activates, which adopts the collection in the same step. The field is read-only - there is no whole-collection reassignment to lose reactivity to, and no separate value sharing storage with it.
 
 The argument picks the mode. Nothing or an iterable makes an ordered **list** of values, addressed by index. A `Model` class or a factory makes a **pool** of members it spawns and owns.
 
@@ -232,7 +232,7 @@ Ownership works exactly as it does for a pool - a fresh `Model` is adopted and d
 
 ### Snapshots
 
-Both instructions expose a `get()` seam with no arguments, and Model snapshots use it - the same way they do for `ref` and child models. A list snapshots to a plain array, a map to a `ReadonlyMap`, with nested values exported through their own `get()`:
+Both instructions expose a `get()` seam with no arguments, and Model snapshots use it - the same way they do for `ref` and child instances. A list snapshots to a plain array, a map to a `ReadonlyMap`, with nested values exported through their own `get()`:
 
 ```ts
 class Example extends Model {

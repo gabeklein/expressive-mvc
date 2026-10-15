@@ -11,9 +11,9 @@ Expressive is designed to coexist with hooks. You do not need to rewrite anythin
 
 Don't migrate hooks. **Migrate ownership.**
 
-A "feature" is a unit of behavior - a form, a wizard, a search page, a shopping cart, a chat thread. When you identify one, ask whether that behavior is a model or a component.
+A "feature" is a unit of behavior - a form, a wizard, a search page, a shopping cart, a chat thread. When you identify one, ask whether that behavior is a `Model` or a component.
 
-If the state is headless, testable without rendering, or useful as a model, extract it into a `Model` class. If the state is intrinsic to display logic - a shell, local router, tab panel, menu, editor surface, media player, form input, or toast host - put it directly on a `Component`.
+If the state is headless, testable without rendering, or useful as a domain model, extract it into a `Model` class. If the state is intrinsic to display logic - a shell, local router, tab panel, menu, editor surface, media player, form input, or toast host - put it directly on a `Component`.
 
 This is deliberately bottom-up. You don't need buy-in from the whole team before you start. You don't need a migration epic. You don't need to touch routing, build config, or tests. You just rewrite the next feature you're already working on.
 
@@ -60,7 +60,7 @@ Before moving code, choose the destination:
 
 - **`Component`** for state intrinsic to display logic. Usually that means defining `render()`.
 - **`Component` without `render()`** when React tree placement is the point. It passes children through while still providing context and Suspense/ErrorBoundary placement.
-- **`Model`** for headless models/controllers, even when they are contextual.
+- **`Model`** for headless domain models and controls, even when they are contextual.
 - **Hooks** for trivial local UI state.
 
 Don't create `UserFormState` plus `UserFormView` just because hooks were present. If the form's state, handlers, validation, lifecycle, and JSX are a single reusable control, `class UserForm extends Component` may be the cleanest migration.
@@ -194,7 +194,7 @@ Run the component, test the behavior, and delete the old hook calls. If somethin
 
 ## Step 5 - Share without Provider stacks
 
-Use `<Component for>` to introduce a headless model or an app/root state at a boundary:
+Use `<Component for>` to introduce a headless instance or an app/root state at a boundary:
 
 ```tsx
 // Before
@@ -247,7 +247,7 @@ function Header() {
 
 The class _is_ the context key. No manual `createContext`, no default values, no `Provider.Consumer` render props.
 
-Child Models of one provided are too. You do not need a `<Component for>` per controller - one element provides one Model, so gather several as fields of a parent:
+Child Models of one provided are too. You do not need a `<Component for>` per control - one element provides one Model, so gather several as fields of a parent:
 
 ```tsx
 class Control extends Model {

@@ -231,7 +231,7 @@ React interprets the designation with `startTransition`, so a suspending subscri
 
 The return value is a promise, resolving once every reader has **absorbed** the update - for React, once it commits; for a plain effect, once its replay returns. A reader which does not claim absorption resolves on replay instead of holding. Scheduling and settlement are independent: an adapter without concurrent deferral may still claim through its commit. Every reader is waited on, so this doubles as a barrier with no host at all.
 
-An effect which suspends by throwing a promise holds settlement through its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and remain squashed into that retry. Fulfillment and rejection both retry through MVC dispatch. Cancelling the effect or destroying its model releases the hold and prevents the settled promise from reviving it.
+An effect which suspends by throwing a promise holds settlement through its retry and any downstream updates the retry causes. Pending updates arriving meanwhile join the same hold and remain squashed into that retry. Fulfillment and rejection both retry through MVC dispatch. Cancelling the effect or destroying its instance releases the hold and prevents the settled promise from reviving it.
 
 - The scope is synchronous. Writes after an `await` or in a later callback need their own `pending()` call.
 - An exception from the callback propagates synchronously; updates queued before it threw still dispatch.
@@ -324,7 +324,7 @@ Context.root;                         // global registry
 
 ### Home context
 
-A model's home is recorded once, at activation, and is permanent.
+An instance's home is recorded once, at activation, and is permanent.
 
 | Activation path                            | Home becomes     |
 | ------------------------------------------ | ---------------- |
@@ -333,7 +333,7 @@ A model's home is recorded once, at activation, and is permanent.
 | `new Model()` then `new Context(instance)` | that context     |
 | `<Component for={StateClass}>`             | its context      |
 
-> First-wins: once a model has a home, no later context can transfer ownership.
+> First-wins: once an instance has a home, no later context can transfer ownership.
 
 > A bare `Model.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when the class declares [`static global`](#root-context-and-globals).
 
@@ -352,7 +352,7 @@ const b = new MyModel();
 new Context(b); // b's home is this context
 ```
 
-This matters in tests, and in any code which prepares a model before placing it in a context tree. (A plain-constructed instance can also be activated directly - `await state.set()` with no arguments does it.)
+This matters in tests, and in any code which prepares an instance before placing it in a context tree. (A plain-constructed instance can also be activated directly - `await state.set()` with no arguments does it.)
 
 ### Child inheritance
 
@@ -371,7 +371,7 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 ### Root context and globals
 
-`Context.root` is a regular `Context` instance serving as the global registry. A model activated by `Model.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no provider - when the class declares `static global`:
+`Context.root` is a regular `Context` instance serving as the global registry. An instance activated by `Model.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no provider - when the class declares `static global`:
 
 ```ts
 class Theme extends Model {

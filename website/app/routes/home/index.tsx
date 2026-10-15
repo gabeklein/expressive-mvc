@@ -51,7 +51,7 @@ const schema = {
       url: 'https://expressive.dev',
       logo: 'https://expressive.dev/brand/icon-512.png',
       description:
-        'Class-based reactive state management for React. Define models as plain classes; components update when the values they read change.',
+        'Class-based reactive state management for React. Define domain models and controls as plain classes; components update when the values they read change.',
       sameAs: [
         'https://github.com/gabeklein/expressive-mvc',
         'https://www.npmjs.com/package/@expressive/react',

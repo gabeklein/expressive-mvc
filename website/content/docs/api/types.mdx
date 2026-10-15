@@ -80,7 +80,7 @@ Meaning of special values:
 
 ### `Model.Values<T>`
 
-All fields with exotic values (child models, refs, etc.) unwrapped to their inner type.
+All fields with exotic values (child instances, refs, etc.) unwrapped to their inner type.
 
 ```ts
 type Values<T> = { [P in Field<T>]: Export<T[P]> };
@@ -102,7 +102,7 @@ Single-property lookup type with `Export<>` unwrapping.
 
 ### `Model.Export<R>`
 
-If `R` is itself a Model, recursively exports `Values<R>`. Otherwise, if `R` has a `.get(): T` method, extracts `T`. Otherwise returns `R`. Drives child-model and ref unwrapping in snapshots.
+If `R` is itself a Model, recursively exports `Values<R>`. Otherwise, if `R` has a `.get(): T` method, extracts `T`. Otherwise returns `R`. Drives child-instance and ref unwrapping in snapshots.
 
 ```ts
 type Export<R> = R extends Model

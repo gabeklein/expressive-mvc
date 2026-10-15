@@ -6,9 +6,9 @@ The argument for adopting Expressive MVC, stated concretely. Companion to [compa
 
 Hook-based components are context-sensitive: understanding one line requires reconstructing call order (Rules of Hooks), dependency arrays, and which render's closure a callback captured. That reconstruction is re-paid on every read - by reviewers, by new hires, and by LLMs, which pay for it in tokens and in comprehension errors (the classic agent failure modes: a stale-closure bug introduced by an edit, a dependency array that no longer matches the effect body).
 
-Expressive models read linearly. A class field is state, a getter is a derived value, a method is an action - position in the file carries no hidden semantics, and there is nothing equivalent to hook ordering to violate. In components, the destructuring statement *is* the dependency declaration: `const { user, total } = Cart.get()` names exactly what this view depends on, in place, checked by TypeScript. There are no dependency arrays anywhere in the system, so there is nothing to desynchronize.
+Expressive `Model` classes read linearly. A class field is state, a getter is a derived value, a method is an action - position in the file carries no hidden semantics, and there is nothing equivalent to hook ordering to violate. In components, the destructuring statement *is* the dependency declaration: `const { user, total } = Cart.get()` names exactly what this view depends on, in place, checked by TypeScript. There are no dependency arrays anywhere in the system, so there is nothing to desynchronize.
 
-The same properties that make the code cheap to read make it cheap to edit: state logic lives in named classes discoverable by name, a model method can change without touching any view, and a view can change without understanding the model's internals. Diffs stay local to the concern that changed.
+The same properties that make the code cheap to read make it cheap to edit: state logic lives in named classes discoverable by name, a domain model method can change without touching any view, and a view can change without understanding the domain model's internals. Diffs stay local to the concern that changed.
 
 ## Apps that read as business logic - what, not how
 
@@ -20,14 +20,14 @@ The payoff compounds with codebase size: repeated logic collapses into shared ba
 
 A component that accumulates fetches, derived values, handlers, and effects is unambiguous developer friction: slow to review, prone to merge conflicts, a re-render blast radius that grows with every added concern, and - increasingly relevant - an oversized context window cost for any agent asked to modify it safely.
 
-Expressive's answer is mechanical rather than aspirational. State and behavior hoist into a model class; the component shrinks to a projection that subscribes to exactly the fields it reads. Because any component anywhere in the tree can subscribe to a model at the same cost (`Cart.get()`), there is no gravitational pull to keep logic in one giant component "where the state already is." The [refactoring guide](react/refactor.md) documents the extraction as a step-by-step algorithm - ownership triage, dependency snapshots, review checklist - precisely so that agents can execute it without judgment calls.
+Expressive's answer is mechanical rather than aspirational. State and behavior hoist into a `Model` class; the component shrinks to a projection that subscribes to exactly the fields it reads. Because any component anywhere in the tree can subscribe to a domain model at the same cost (`Cart.get()`), there is no gravitational pull to keep logic in one giant component "where the state already is." The [refactoring guide](react/refactor.md) documents the extraction as a step-by-step algorithm - ownership triage, dependency snapshots, review checklist - precisely so that agents can execute it without judgment calls.
 
 ## A standard library, not a stack
 
 Teams reach for third-party packages to fill React's gaps, and each dependency imports opinions, API churn, and lockfile weight along with its feature. Expressive covers the everyday core of that list with primitives:
 
 - **Async data with Suspense** - `set(fetchUser)` makes a field that suspends until resolved and integrates error boundaries; the common data-fetching case ships without a query library.
-- **Shared/global state** - models in context (`<Component for={Class}>`, `.get()` lookup, module-scope singletons) replace store libraries for app state.
+- **Shared/global state** - instances in context (`<Component for={Class}>`, `.get()` lookup, module-scope singletons) replace store libraries for app state.
 - **Reactive collections** - `map()` and `has()` give keyed collections and object pools with per-entry reactivity, the cases that otherwise motivate normalization helpers.
 - **Form and widget state** - `Component` binds props, state, and rendering into one testable unit for form inputs and stateful widgets.
 

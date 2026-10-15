@@ -14,7 +14,7 @@ import { Model, Component } from '@expressive/mvc';
 
 ## `Model.use(...args)`
 
-Creates a model instance scoped to a React component.
+Creates an instance scoped to a React component.
 
 ```tsx
 function CounterView() {
@@ -76,7 +76,7 @@ class Nav extends Model {
 
 ## `Model.get()`
 
-Fetches a model instance from context and subscribes to accessed properties.
+Fetches an instance from context and subscribes to accessed properties.
 
 ```tsx
 function Profile() {
@@ -85,7 +85,7 @@ function Profile() {
 }
 ```
 
-- Throws `Could not find UserProfile in context.` if the model is not provided above.
+- Throws `Could not find UserProfile in context.` if the instance is not provided above.
 - Re-subscribes (and refreshes) if the upstream instance is replaced.
 
 ### Optional lookup

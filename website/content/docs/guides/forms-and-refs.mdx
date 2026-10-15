@@ -220,8 +220,8 @@ Each `ref` object has:
 
 - `.current` - the held value (get/set)
 - `.get()` - read the current value, or pass a callback to subscribe to changes
-- `.is` - the parent model instance
-- `.key` - the property name on the model
+- `.is` - the parent instance
+- `.key` - the property name on the instance
 
 ### Ref with callback
 
@@ -244,7 +244,7 @@ node = ref<HTMLElement>((el) => {
 
 ### Ref proxy
 
-Pass `this` to create ref objects for every enumerable property on the model at once:
+Pass `this` to create ref objects for every enumerable property on the instance at once:
 
 ```tsx
 class Form extends Model {
@@ -258,7 +258,7 @@ form.refs.name.current = 'Alice'; // updates form.name
 form.refs.email; // ref.Object<string>
 ```
 
-Useful for handing ref objects to uncontrolled inputs, or any API that expects `{ current: T }` shapes. Computed getters are included but read-only. It takes a Model instance - usually `this`, though another model works too; a plain object throws.
+Useful for handing ref objects to uncontrolled inputs, or any API that expects `{ current: T }` shapes. Computed getters are included but read-only. It takes a Model instance - usually `this`, though another instance works too; a plain object throws.
 
 ### Custom ref proxy
 
@@ -362,5 +362,5 @@ function Contact() {
 
 ## Next
 
-- [Testing](/docs/guides/testing) - test model classes without rendering.
+- [Testing](/docs/guides/testing) - test `Model` classes without rendering.
 - [API: Instructions](/docs/api/instructions) - every `set` and `ref` overload.

@@ -6,20 +6,20 @@ Distilled positioning against common React state solutions. The [site comparison
 
 | | Mental model | Re-render granularity | Writes | Derived + async | Maturity |
 | --- | --- | --- | --- | --- | --- |
-| **Expressive** | Class models: fields observable, getters computed, methods actions | Per-field: destructuring is the subscription, nested included | Direct assignment through subscription proxies | Auto-memoized getters; `set(async)` integrates Suspense | Pre-1.0, small community, single primary maintainer |
+| **Expressive** | `Model` classes: fields observable, getters computed, methods actions | Per-field: destructuring is the subscription, nested included | Direct assignment through subscription proxies | Auto-memoized getters; `set(async)` integrates Suspense | Pre-1.0, small community, single primary maintainer |
 | **Zustand** | Store hook created by `create()` | Selector functions per consumer | `set()` merge inside actions | Manual selectors; async by convention | Very large adoption, mature |
 | **Jotai** | Bottom-up atoms | Per-atom | Atom setters | Derived atoms; async atoms + Suspense | Large adoption, mature |
 | **MobX** | Observable objects/classes | Tracked reads via `observer` HOC | Direct mutation (in actions) | `computed`; async via `flow` | Very mature, large adoption |
 | **Redux Toolkit** | Single store, slices, dispatched actions | Selector hooks | Reducers via dispatch | `createSelector`; thunks / RTK Query | Very mature, largest ecosystem |
 | **React Context** | Provider value | Whole-provider (every consumer) | `setState` at the provider | `useMemo` by hand | Built into React |
 
-Dimensions where Expressive is structurally different rather than incrementally different: models are plain classes that construct and test without React (`Model.new()`, no render harness), context is first-class (`<Component for={Class}>`, `.get()` lookup between models), lifecycle is owned by the model (`new()` with cleanup, destruction cascades), and UI primitives can be built by inheritance (`Component` subclassing with typed props).
+Dimensions where Expressive is structurally different rather than incrementally different: `Model` classes construct and test without React (`Model.new()`, no render harness), context is first-class (`<Component for={Class}>`, `.get()` lookup between instances), lifecycle is owned by the instance (`new()` with cleanup, destruction cascades), and UI primitives can be built by inheritance (`Component` subclassing with typed props).
 
 ## Closest relatives
 
-MobX and Valtio are the nearest kin - proxy/tracked reactivity with direct mutation. The honest framing: Expressive is more opinionated about the parts they leave as an exercise. MobX leaves ownership, context wiring, async/Suspense integration, and component binding to userland conventions; Valtio provides the proxy but no model structure at all. Expressive prescribes all of it - which is the value if you want the prescription and overhead if you don't.
+MobX and Valtio are the nearest kin - proxy/tracked reactivity with direct mutation. The honest framing: Expressive is more opinionated about the parts they leave as an exercise. MobX leaves ownership, context wiring, async/Suspense integration, and component binding to userland conventions; Valtio provides the proxy but no domain model structure at all. Expressive prescribes all of it - which is the value if you want the prescription and overhead if you don't.
 
-This is also the sparsely populated side of the field. The selector/atom/reducer family keeps adding entrants, while tracked observable models in React are essentially MobX alone. Expressive is a second serious entry on that side - not another flux derivative.
+This is also the sparsely populated side of the field. The selector/atom/reducer family keeps adding entrants, while tracked observable domain models in React are essentially MobX alone. Expressive is a second serious entry on that side - not another flux derivative.
 
 ## When to prefer the alternative
 

@@ -31,7 +31,7 @@ The rule is pretty simple: if the read goes through the proxy, it's tracked. Met
 
 A few more things tracking handles for you:
 
-- Nested child-model reads track deeply (`current.child.value`).
+- Nested child-instance reads track deeply (`current.child.value`).
 - Replacing a child re-subscribes to the new one automatically.
 - Several tracked properties changing in one batch means one re-run, not several.
 
@@ -125,15 +125,15 @@ The effect runs immediately, then re-runs whenever a tracked property changes. I
 
 ### What the effect callback receives
 
-- `current` - a tracking proxy of the model. Reads subscribe.
-- `changed` - a readonly array of keys changed since the last run. Empty on the first run - or `undefined` when that first run was deferred, because the effect was registered before the model was ready. (Registering effects during construction is fine; they simply wait for activation.)
+- `current` - a tracking proxy of the instance. Reads subscribe.
+- `changed` - a readonly array of keys changed since the last run. Empty on the first run - or `undefined` when that first run was deferred, because the effect was registered before the instance was ready. (Registering effects during construction is fine; they simply wait for activation.)
 
 ### What the effect can return
 
 - **`() => void`** - a cleanup function. Called on re-run, unsubscribe, or destruction. Its argument tells you which:
   - `true` - about to re-run (a dependency changed)
   - `false` - manually cancelled (someone called the returned `stop`)
-  - `null` - model destroyed
+  - `null` - instance destroyed
 - **`null`** - cancel the effect after one run.
 - **`Promise<void>`** - ignored.
 - **`void`** - no cleanup.
@@ -157,7 +157,7 @@ class Session extends Model {
 }
 ```
 
-Returning the unsubscribe function from `new()` ties the effect's lifetime to the model's lifetime.
+Returning the unsubscribe function from `new()` ties the effect's lifetime to the instance's lifetime.
 
 <br />
 

@@ -530,7 +530,7 @@ function Testing() {
   return (
     <Tab title="Testable logic, without the DOM.">
       <>
-        Models and components are plain instances - create with{' '}
+        Domain models and controls are plain instances - create with{' '}
         <code>.new()</code>, call methods, assert on properties.
         Test whole workflows with only <code>expect</code> -{" "}
         no <code>act()</code>, not even React.

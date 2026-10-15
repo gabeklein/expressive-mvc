@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Install, write your first model class, and learn how the pieces fit together
+description: Install, write your first Model class, and learn how the pieces fit together
 ---
 
 ## Install
@@ -30,7 +30,7 @@ Its re-exports of the core, and its default export of `Model`, are deprecated - 
 
 React **16.14 or newer** — interacts with `react/jsx-runtime`. React and `@expressive/mvc` are peer dependencies; nothing else is required.
 
-On **React 18+** the adapter will validate model revisions before each commit, so a concurrent render that yields mid-work can never commit a tree mixing two revisions of one model. React 16 and 17 do not yield mid-render, so nothing to validate — behavior is equivalent - no interleaving to protect against. See [Concurrent rendering](/docs/guides/concurrent) for the full contract.
+On **React 18+** the adapter will validate instance revisions before each commit, so a concurrent render that yields mid-work can never commit a tree mixing two revisions of one instance. React 16 and 17 do not yield mid-render, so nothing to validate — behavior is equivalent - no interleaving to protect against. See [Concurrent rendering](/docs/guides/concurrent) for the full contract.
 
 ### Size
 
@@ -63,7 +63,7 @@ Editing a `Model` or `Component` class then patches it in place - instances keep
 
 <br />
 
-## Your first model
+## Your first `Model`
 
 Ultimately, the workflow is pretty simple.
 
@@ -206,7 +206,7 @@ function TodoList() {
 
 ## The `is` property
 
-After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every Model exposes `is`, a loop-back to the instance itself. Prefer destructuring it first, aliased to the model's concept:
+After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every Model exposes `is`, a loop-back to the instance itself. Prefer destructuring it first, aliased to the instance's concept:
 
 ```tsx
 const { is: todo, draft } = TodoApp.use();
@@ -287,9 +287,9 @@ For single booleans, form field focus, or throwaway UI state, `useState` is stil
 When it does, choose the class shape by ownership:
 
 - **`Component`** when the state is intrinsic to one rendered unit - a shell, tab panel, form input, media player, editor surface.
-- **`Model`** when the state is display-agnostic, shared across components, or worth testing as a model without rendering.
+- **`Model`** when the state is display-agnostic, shared across components, or worth testing without rendering.
 
-Don't reach for `Component` just because a class is contextual - `Model` handles headless controllers fine, and child Models of anything provided are available to descendants automatically.
+Don't reach for `Component` just because a class is contextual - `Model` handles headless controls fine, and child Models of anything provided are available to descendants automatically.
 
 And avoid splitting into `FooState` plus `FooView` by default. If the behavior only exists for `Foo`'s own UI, `class Foo extends Component` is usually clearer.
 
