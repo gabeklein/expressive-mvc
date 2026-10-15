@@ -473,6 +473,48 @@ class Search extends State {
 }
 ```
 
+## Async Effect - One Request in Flight
+
+```ts
+import { State } from '@expressive/mvc';
+
+class Search extends State {
+  query = '';
+  results: string[] = [];
+
+  protected new() {
+    this.get(async ({ query }) => {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      this.results = await res.json();
+    });
+  }
+}
+```
+
+- A returned promise holds the effect: changes in flight queue one re-run with the latest values after it settles - no overlap, no stale `results`.
+- Destructure the trigger; reads after `await` subscribe too.
+- Needs per-keystroke timing control (delay, not just serialization)? Use Debounced Search above.
+
+## Await a Pending Value
+
+```ts
+import { State, set } from '@expressive/mvc';
+
+class Invite extends State {
+  link = set<string>();
+  status = 'Not sent';
+
+  async send() {
+    const link = await this.get(async ($) => $.link);
+    this.status = `Sent ${link}`;
+  }
+}
+```
+
+- Awaiting an effect's release stops it and yields the latest run - waits for a pending field, resolves at once when set.
+- Async effect only; a sync effect's return is a cleanup, so awaiting one yields `undefined`.
+- Several at once: `await Promise.all([a.get(async ($) => $.x), b.get(async ($) => $.y)])`.
+
 ## Downstream Collection
 
 ```tsx
