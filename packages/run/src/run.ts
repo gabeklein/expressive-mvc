@@ -105,7 +105,12 @@ declare namespace Runner {
     | { status: 'failed'; error: unknown }
     | { status: 'stopped'; error: unknown };
 
-  interface Options {
+  interface Options<T extends State = State> {
+    /**
+     * The topmost class whose methods are steps and hooks - classes above it stay plain.
+     * The instance must extend it. Default: every class below `State`.
+     */
+    base?: abstract new (...args: any[]) => State;
     /** Keep `prior`/`patch` per entry; the unwind restores committed steps' fields. */
     rewind?: boolean;
   }
@@ -220,7 +225,11 @@ type Runner<T extends State = State> = Runner.Controller<T> & Runner.Thenable<T>
  * returned Runner is the controller - status, journal, result. `next()` starts a run.
  * `_`-prefixed methods are helpers; `before`/`after`-prefixed ones, `back` and `exit` are hooks.
  */
-function run<T extends State>(self: T, options: Runner.Options = {}): Runner<T> {
+function run<T extends State>(self: T, options: Runner.Options<T> = {}): Runner<T> {
+  const { base } = options;
+
+  if (base && !(self instanceof base)) throw new Error(`${self} does not extend ${base.name}.`);
+
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
     if (onfulfilled && typeof onfulfilled == 'object') throw new Error('then(steps) must be called inside a step.');
 
@@ -269,17 +278,18 @@ function run<T extends State>(self: T, options: Runner.Options = {}): Runner<T> 
 
   event(runner);
 
-  const hooks: string[] = [];
+  const { _hooks: hooks } = control;
+  const top = base && Object.getPrototypeOf(base.prototype);
 
-  for (let proto = Object.getPrototypeOf(self); proto !== State.prototype; proto = Object.getPrototypeOf(proto))
+  for (let proto = Object.getPrototypeOf(self); proto !== State.prototype && proto !== top; proto = Object.getPrototypeOf(proto))
     for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
       let method = desc.get && unbind(desc.get) !== desc.get;
-      let skip = !method || key == 'new' || key == 'back' || key == 'exit' || key[0] == '_' || Object.hasOwn(self, key);
+      let skip = !method || key == 'new' || key[0] == '_' || Object.hasOwn(self, key);
 
       if (skip) continue;
 
-      if (HOOK.test(key)) {
-        hooks.push(key);
+      if (HOOK.test(key) || key == 'back' || key == 'exit') {
+        if (!hooks.has(key)) hooks.set(key, [unbind(desc.get!)]);
         continue;
       }
 
@@ -301,8 +311,8 @@ function run<T extends State>(self: T, options: Runner.Options = {}): Runner<T> 
       );
     }
 
-  for (const hook of hooks) {
-    const target = hook.replace(HOOK, (_, __, first: string) => first.toLowerCase());
+  for (const hook of hooks.keys()) {
+    const target = HOOK.test(hook) && hook.replace(HOOK, (_, __, first: string) => first.toLowerCase());
 
     if (target && !control._steps.has(target)) throw new Error(`${hook} has no step ${target}.`);
   }
@@ -321,7 +331,7 @@ class Job extends State {
   declare static readonly rewind?: boolean;
 
   /** The controller - status, journal, queue, waits; awaiting the instance awaits it. */
-  readonly then = run(this, this.constructor as typeof Job);
+  readonly then = run(this, { base: Job, rewind: (this.constructor as typeof Job).rewind });
 
   /** The entry: starts a run, or queues one while a run is active. Settles with its run. */
   next?(...args: any[]): unknown;
@@ -354,6 +364,7 @@ class Control extends State {
   _runner!: object;
   _rewind?: boolean = undefined;
   _steps = new Map<string, Function>();
+  _hooks = new Map<string, Function[]>();
   _current?: Run = undefined;
 
   protected new() {
@@ -379,6 +390,10 @@ class Control extends State {
 
   accepts(key: string) {
     return !!this._current?.accepts(key);
+  }
+
+  hook(key: string, ...args: unknown[]) {
+    for (const hook of this._hooks.get(key) || []) hook.apply(this._self, args);
   }
 
   start(args: unknown[]) {
@@ -600,7 +615,6 @@ class Run extends State {
 
   async invoke(node: Runner.Node, wake?: string, undo?: boolean): Promise<Frame | undefined> {
     const { control } = this;
-    const { _self: self } = control;
     const { id, key, args } = node;
     const inline = this._inline.get(id);
     const fn = inline || control._steps.get(key) || (() => {});
@@ -612,8 +626,8 @@ class Run extends State {
 
     try {
       if (hooks) {
-        hook(self, 'before', key, args, false);
-        hook(self, `before${capital(key)}`, false, ...args);
+        control.hook('before', key, args, false);
+        control.hook(`before${capital(key)}`, false, ...args);
       }
 
       let out: unknown;
@@ -626,8 +640,8 @@ class Run extends State {
           const entry = frame.commit(out, attempt);
 
           if (hooks) {
-            hook(self, `after${capital(key)}`, false, entry);
-            hook(self, 'after', key, entry, false);
+            control.hook(`after${capital(key)}`, false, entry);
+            control.hook('after', key, entry, false);
           }
 
           return frame;
@@ -810,12 +824,13 @@ class Run extends State {
   fire(key: string, arg: unknown) {
     const { control } = this;
 
-    try {
-      hook(control._self, key, arg);
-    } catch (cause) {
-      this._error = cause;
-      control.error = cause;
-    }
+    for (const hook of control._hooks.get(key) || [])
+      try {
+        hook.call(control._self, arg);
+      } catch (cause) {
+        this._error = cause;
+        control.error = cause;
+      }
   }
 
   async undo(entry: Runner.Entry, how: Function | Runner.Node, from: Frame): Promise<boolean> {
@@ -1240,10 +1255,6 @@ function handle<T>(ticket: Ticket, out: Promise<T>) {
       return Promise.prototype.then.apply(this, args);
     }
   });
-}
-
-function hook(self: State, key: string, ...args: unknown[]) {
-  (self as any)[key]?.(...args);
 }
 
 function capital(key: string) {

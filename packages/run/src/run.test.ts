@@ -3100,6 +3100,30 @@ describe('hooks', () => {
     await test.next();
     expect(test.then.record.map((entry) => entry.key)).toEqual(['next']);
   });
+
+  it('will call an overridden hook once', async () => {
+    const order: string[] = [];
+
+    class Parent extends State {
+      then = run(this);
+
+      next() {}
+
+      protected exit() {
+        order.push('parent');
+      }
+    }
+
+    class Child extends Parent {
+      protected exit() {
+        order.push('child');
+      }
+    }
+
+    await Child.new().next();
+    expect(order).toEqual(['child']);
+  });
+
 });
 
 describe('undo', () => {
@@ -4633,6 +4657,117 @@ describe('failures', () => {
   });
 });
 
+describe('base', () => {
+  class Feed extends State {
+    items: string[] = [];
+
+    load() {
+      return ['a'];
+    }
+
+    exit() {
+      throw new Error('exit');
+    }
+
+    afterShip() {}
+  }
+
+  it('will wrap methods above State by default', () => {
+    class Sync extends Feed {
+      then = run(this);
+
+      async next() {}
+
+      protected async ship() {}
+    }
+
+    const sync = Sync.new();
+
+    expect(sync.load).toBeUndefined();
+  });
+
+  it('will leave methods above base plain', async () => {
+    class Sync extends Feed {
+      then = run(this, { base: Sync });
+
+      async next() {
+        this.pull();
+      }
+
+      protected async pull() {
+        this.items = this.load();
+      }
+    }
+
+    const sync = Sync.new();
+
+    expect(sync.load()).toEqual(['a']);
+    expect(() => sync.exit()).toThrow('exit');
+
+    await sync.next();
+
+    expect(sync.items).toEqual(['a']);
+    expect(sync.then.status).toBe('idle');
+    expect(sync.then.record.map((entry) => entry.key)).toEqual(['next', 'pull']);
+  });
+
+  it('will wrap methods of a subclass of base', async () => {
+    class Sync extends Feed {
+      then = run(this, { base: Sync });
+
+      async next() {
+        this.pull();
+      }
+
+      protected async pull() {}
+    }
+
+    class Paged extends Sync {
+      protected async pull() {
+        this.page();
+      }
+
+      protected async page() {
+        this.items = this.load();
+      }
+    }
+
+    const paged = Paged.new();
+
+    await paged.next();
+
+    expect(paged.items).toEqual(['a']);
+    expect(paged.then.record.map((entry) => entry.key)).toEqual(['next', 'pull', 'page']);
+  });
+
+  it('will accept State as base', async () => {
+    class Test extends State {
+      then = run(this, { base: State });
+
+      async next() {
+        this.step();
+      }
+
+      protected async step() {}
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'step']);
+  });
+
+  it('will throw if not an instance of base', () => {
+    class Other extends State {}
+
+    class Test extends State {
+      then = run(this, { base: Other });
+    }
+
+    expect(() => Test.new()).toThrow(/^Test-\w+ does not extend Other\.$/);
+  });
+});
+
 describe('Job', () => {
   it('will run and type the result from end', async () => {
     class Test extends Job {
@@ -4686,6 +4821,33 @@ describe('Job', () => {
     expectTypeOf(test.next).parameters.toEqualTypeOf<[prompt: string]>();
     await test.next('hi');
     expect(test.prompt).toBe('hi');
+  });
+
+  it('will collect steps through intermediate classes', async () => {
+    class B extends Job {
+      async next() {
+        this.first();
+      }
+
+      protected async first() {
+        this.second();
+      }
+
+      protected async second() {}
+    }
+
+    class C extends B {
+      protected async second() {
+        this.third();
+      }
+
+      protected async third() {}
+    }
+
+    const test = C.new();
+
+    await test.next();
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'first', 'second', 'third']);
   });
 
   it('will rewind when the class opts in', async () => {
