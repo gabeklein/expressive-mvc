@@ -10,6 +10,8 @@ Inputs are fields - `X.new({ cart })` assigns them as any State's constructor do
 
 ```ts
 class SubmitOrder extends Job {
+  static readonly rewind = true;
+
   cart!: Cart;
   charge?: Charge = undefined;
   tracking = '';
@@ -70,15 +72,15 @@ class Sync extends Remote {
 }
 ```
 
-Journal after a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1 → end#1`. A `courier.book` failure unwinds every committed step: `receipt` (prior restored), `refund('ch_42')`, `inventory.release('hold_sku')`, `next`.
+Journal after a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1 → end#1`. A `courier.book` failure unwinds every committed step: `receipt` (prior restored), `refund('ch_42')`, `inventory.release('hold_sku')`, `next`. Restoring committed fields is `rewind`'s; by default the unwind runs undos and a failing step restores only its own writes ([undo.md](undo.md#rewind)).
 
 - [job.md](job.md) - the contract: members, visibility, when each runs; the `run(this)` escape hatch
-- [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, inline steps, the first-call rule, calls after a step settles, helpers, `end`, what a step may return
-- [runs.md](runs.md) - `next`, repeating, the queue, awaiting, `end` from outside, `stop`
+- [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, inline steps, the step signal, the first-call rule, calls after a step settles, helpers, `end`, what a step may return
+- [runs.md](runs.md) - `next`, repeating, the queue, awaiting, `end` from outside, `stop`, steering
 - [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called - from outside or by a watcher; answering steps are present only while waited for
 - [retry.md](retry.md) - per-step retry with backoff
-- [hooks.md](hooks.md) - `before`/`after`, per step or for all; `back` after an unwind
-- [undo.md](undo.md) - undo closures, returned tokens - a step, inline step, group or wait - the unwind on failure
+- [hooks.md](hooks.md) - `before`/`after`, per step or for all; `back` after an unwind; `exit` on every outcome
+- [undo.md](undo.md) - undo closures, returned tokens - a step, inline step, group or wait - the unwind on failure; `rewind`; `commit()`
 - [runner.md](runner.md) - the controller: members, reactivity, snapshot
 
 ## Conventions

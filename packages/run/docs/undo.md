@@ -1,6 +1,8 @@
 # Undo - All or Nothing
 
-A step registers its own undo by what it returns. On failure the run unwinds every committed step in reverse, so a half-done plan leaves nothing behind.
+A step registers its own undo by what it returns. On failure the run unwinds every committed step in reverse, running each undo, so a half-done plan leaves nothing behind that an undo can take back.
+
+Every step is atomic: one that throws, is aborted or retried has its own writes restored - fields and [collections](#collections). Once a step settles, its fields stay through an unwind unless the class opts into [rewind](#rewind).
 
 ## A closure
 
@@ -63,7 +65,7 @@ protected async pay() {
 
 - While parked: status `waiting`, `then.waiting` lists it with the step that returned it, answering steps are present; the run does not reject.
 - The answer runs as an undo frame: journaled with `wake`, no hooks, cannot schedule (`… is failed; more cannot run.`). Its call's Promise settles when it completes.
-- Any answer completes the entry's compensation - `keep` doing nothing included: the unwind continues, restoring the entry's `prior`.
+- Any answer completes the entry's compensation - `keep` doing nothing included: the unwind continues, restoring the entry's `prior` with [rewind](#rewind).
 - An answer that throws, or a watcher throwing before an answer, fails the undo as any undo throwing does.
 - `stop()` halts the unwind there: the entry gets `halted: true`, it and every entry before it stay applied; status and `error` stay the failure's.
 
@@ -71,22 +73,50 @@ protected async pay() {
 
 A step that throws, breaks a rule, or returns anything but an undo fails the run:
 
-1. Status `failed`, `error` set; pending steps are discarded, open waits released; the failing step's own writes are restored to its `prior`, unless it is [irreversible](#irreversible).
+1. Status `failed`, `error` set; pending steps are discarded, open waits released, in-flight steps' [signals](steps.md#the-step-signal) aborted; the failing step's own writes are restored, unless it is [irreversible](#irreversible) or [committed](#commit).
 2. Steps still in flight - parallel members - settle; their commits are recorded.
-3. Every committed entry, newest first: its undo runs if it has one (closure, or the returned token - a step with its journaled args, an inline step, a group's members, a wait's answer), then its `prior` values are restored; `undone: true`. Entries without an undo are restored too.
+3. Every committed entry, newest first: its undo runs if it has one (closure, or the returned token - a step with its journaled args, an inline step, a group's members, a wait's answer); `undone: true`. With [rewind](#rewind), its `prior` values are then restored and every entry reached is `undone: true`, those without an undo included.
 4. An undo that throws: `undone: 'failed'`, `error` replaced by what it threw, the unwind stops there.
-5. An `irreversible` entry stops the unwind: it gets `halted: true` ([Collections](#collections)). So does `stop()` while the unwind is parked on a [returned wait](#a-returned-wait).
+5. An `irreversible` or `committed` entry stops the unwind: it gets `halted: true` ([Collections](#collections), [Commit](#commit)). So does `stop()` while the unwind is parked on a [returned wait](#a-returned-wait).
 6. `back(error)` runs, if declared ([hooks.md](hooks.md#back)); a throw from it replaces `error`.
-7. The run rejects with `error`.
+7. `exit({ status: 'failed', error })` runs, if declared ([hooks.md](hooks.md#exit)); a throw from it replaces `error`.
+8. The run rejects with `error`.
 
 ```ts
-vi.spyOn(courier, 'book').mockRejectedValue(new Error('no couriers'));
+class Agent extends Job {
+  messages = has<Message>();
 
-const order = SubmitOrder.new({ cart });
+  async next(prompt: string) {
+    this.messages.push(user(prompt));
+    this.turn();
+  }
+}
+
+vi.spyOn(model, 'create').mockRejectedValueOnce(new Error('overloaded'));
+
+await expect(agent.next('write tests')).rejects.toThrow('overloaded');
+
+agent.messages.get(-1);                // { role: 'user', content: 'write tests' } - next's push kept
+agent.then.record.map((e) => [e.id, e.undone]);
+// [['next#1', undefined]] - no undo to run
+```
+
+Undo frames cannot schedule: a step called from an undo throws (`… is failed; next cannot run.`), which fails that undo. `stop({ undo: true })` unwinds the same way with status `stopped` ([runs.md](runs.md#stop)). Hooks do not run for undos.
+
+## Rewind
+
+`static readonly rewind = true` on a `Job` - `run(this, { rewind: true })` on the escape hatch - makes the unwind restore settled steps' fields too: all or nothing, as far as the unwind gets.
+
+```ts
+class SubmitOrder extends Job {
+  static readonly rewind = true;
+  // ...
+}
+
+vi.spyOn(courier, 'book').mockRejectedValue(new Error('no couriers'));
 
 await expect(order.next()).rejects.toThrow('no couriers');
 
-order.then.status;                     // 'failed'
 order.charge;                          // undefined - pay's prior restored
 order.then.record.map((e) => [e.id, e.undone]);
 // [['next#1', true], ['reserve#1', true], ['pay#1', true], ['receipt#1', true]]
@@ -94,29 +124,55 @@ order.then.record.map((e) => [e.id, e.undone]);
 
 Here `refund('ch_42')` ran, then `release('hold_sku')`.
 
-Undo frames cannot schedule: a step called from an undo throws (`… is failed; next cannot run.`), which fails that undo. `stop({ undo: true })` unwinds the same way with status `stopped` ([runs.md](runs.md#stop)). Hooks do not run for undos.
+| | default | `rewind` |
+| --- | --- | --- |
+| entry | `wrote: ['charge']` | `wrote`, plus `prior` / `patch` values ([runner.md](runner.md#entry)) |
+| failing, aborted or retried step | own writes restored | same |
+| settled step on unwind | undo runs; fields stay | undo runs, then `prior` restored |
+| `undone: true` | entries whose undo ran | every entry reached |
+
+The default holds no values past a step's commit - for a long-lived instance whose fields are the product, such as a transcript. Rewind holds every entry's `prior`/`patch` for the run.
+
+## Commit
+
+`this.then.commit()` inside a step is a deliberate point of no return - a charge captured, a message sent. Once it is called, the step is treated as [irreversible](#irreversible):
+
+- it is not retried;
+- if it throws after `commit()`, its own writes stay; its failing try is journaled with `committed: true` and `error`;
+- the unwind stops at its entry - `halted: true` - without running its undo or anything before it. No warning: the stop is deliberate.
+
+```ts
+protected async pay() {
+  this.charge = await stripe.capture(this.intent);
+  this.then.commit();
+
+  this.ship(this.charge.id);
+}
+```
+
+Entry: `committed: true`. Outside a step, `then.commit()` throws `commit must be called inside a step.`; through a settled step's proxy, `pay has settled; commit cannot run.`
 
 ## Collections
 
 A `has` list, `has` pool or `map` read by a step through `this` is captured: its contents as of that read, held while the step is in flight. Mutating it in place - `this.messages.push(x)` - is then part of the step:
 
-- The entry gains the field: `prior` and `patch` in export form (`collection.get()`). A read without a change records nothing.
+- The entry's `wrote` lists the field; with [rewind](#rewind), `prior` and `patch` hold it in export form (`collection.get()`). A read without a change records nothing.
 - A change from anywhere while the step is in flight counts - another step's, an outside call's. Parallel steps reading one collection share the earliest capture, and a change is in every such step's entry.
-- Rollback, and a retry's restore, return it to the capture: a list is refilled in order; pool members the step added are deleted - destroyed when owned; map keys the step added are deleted, changed or removed ones set back.
+- Restoring - a failing, aborted or retried step, or a committed one under [rewind](#rewind) - returns it to the capture: a list is refilled in order; pool members the step added are deleted - destroyed when owned; map keys the step added are deleted, changed or removed ones set back.
 - Reads through `this.is` and `_` helpers are not captured.
 
 ```ts
 async next(prompt: string) {
-  this.messages.push(user(prompt));    // prior: { messages: [] }, patch: { messages: [{ role: 'user', … }] }
+  this.messages.push(user(prompt));    // wrote: ['messages']
   this.turn();
 }
 ```
 
-A failing turn leaves `messages` as it was before `next`.
+A turn failing mid-step loses its own pushes; with rewind, a failing run leaves `messages` as it was before `next`.
 
 ### Irreversible
 
-Some changes cannot be put back: a pool member removed - by `delete`, `clear` or its own destruction - and a map value that was destroyed when removed or replaced (an owned `State`). A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`.
+Some changes cannot be put back: a pool member removed - by `delete`, `clear` or its own destruction - and a map value that was destroyed when removed or replaced (an owned `State`). A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`. Detected in both modes - it governs retry and where the unwind stops.
 
 - The unwind stops at the first irreversible entry, newest first. Entries after it are undone; it and every entry before it stay applied, without `undone`; it gets `halted: true`; `error` stays the original failure. `console.warn` names it once: `<instance> stopped unwinding at drop#1: items cannot be restored.`
 - A failing step that made one keeps its writes - fields included - and is journaled with `error` and `irreversible`, so the unwind halts there and nothing before it is undone.

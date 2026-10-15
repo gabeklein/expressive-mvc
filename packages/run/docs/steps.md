@@ -1,6 +1,6 @@
 # Steps - A Body Is a Plan
 
-Every method on the class, bases included, is a step - `protected async` by convention ([README.md](README.md#conventions)) - wrapped as an own non-enumerable property of the instance, the prototype untouched. Not steps: `new`, getters, `_`-prefixed helpers, and `before`/`after` hooks ([hooks.md](hooks.md)). A step runs with a proxy as `this`: writes through it are the entry's `patch`, with `prior` values recorded; reads pass through.
+Every method on the class, bases included, is a step - `protected async` by convention ([README.md](README.md#conventions)) - wrapped as an own non-enumerable property of the instance, the prototype untouched. Not steps: `new`, getters, `_`-prefixed helpers, and `before`/`after` hooks ([hooks.md](hooks.md)). A step runs with a proxy as `this`: writes through it are listed in the entry's `wrote` - and restored if the step fails; reads pass through.
 
 `next` is the entry ([runs.md](runs.md)). Inside a step, `this.next(x)` is an ordinary step call - how a loop repeats.
 
@@ -69,7 +69,7 @@ Members must be tokens this step issued (`then() takes steps called by next.`). 
 
 ## Inline steps
 
-`this.then(fn)` with one plain function is an anonymous step: journaled `then#n` (key `then`, `args: []`) and run in its place in the plan as a full step - its own entry, write guard, return guard, hooks with key `then`. It receives an `AbortSignal`, aborted when the run stops, so a `fetch` or timer ends early. Not durable - the function lives in memory.
+`this.then(fn)` with one plain function is an anonymous step: journaled `then#n` (key `then`, `args: []`) and run in its place in the plan as a full step - its own entry, write guard, return guard, hooks with key `then`. It receives its [signal](#the-step-signal), so a `fetch` or timer ends early. Not durable - the function lives in memory.
 
 ```ts
 protected async pay() {
@@ -83,13 +83,33 @@ protected async pay() {
 
 Like any step it returns nothing or its undo - an arrow returning `fetch(…)` fails the run.
 
-A `function` gets the inline step's own proxy as `this` - its writes are in its `patch`, its step calls schedule. An arrow's `this` is the enclosing step's proxy, settled by the time it runs: its writes are unmanaged and its step calls are [settled calls](#calls-after-a-step-settles).
+A `function` gets the inline step's own proxy as `this` - its writes are in its entry, its step calls schedule. An arrow's `this` is the enclosing step's proxy, settled by the time it runs: its writes are unmanaged and its step calls are [settled calls](#calls-after-a-step-settles).
 
 Returned, an inline step is the step's undo ([undo.md](undo.md#a-returned-token)), typed `void` so the step stays `Promise<void>`:
 
 ```ts
 return this.then(() => stripe.refund(this.charge!.id));
 ```
+
+## The step signal
+
+`this.then.signal` is the step's own `AbortSignal` - each step's proxy names its own frame, so parallel members get their own. Pass it to the call the step awaits:
+
+```ts
+protected async turn() {
+  const reply = await model.create(this.messages, {
+    signal: this.then.signal,
+    onChunk: (chunk) => this.draft.push(chunk)
+  });
+
+  this.draft.clear();
+  this.messages.push(reply);
+}
+```
+
+Aborted on `stop()`, on an outside [`end`](runs.md#end-from-outside), when the run fails elsewhere, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not retried, no entry. A different error thrown after the abort fails the run as usual.
+
+Inline steps and watchers receive their signal as a parameter: an arrow's `this` is the enclosing step's settled proxy, whose signal is already aborted. Outside a step, `then.signal` throws `signal must be read inside a step.`
 
 ## `then` by argument
 
@@ -106,7 +126,7 @@ Every form returns a token typed `void`; returned from a step, it is the step's 
 
 Outside a step, `then(f, r)` is the thenable ([runs.md](runs.md#awaiting-the-instance---start-or-join)); `then(steps)` throws `then(steps) must be called inside a step.`
 
-Writes are attributed per frame with members in flight: each member's `patch` holds its own writes. `active` names the latest member invoked.
+Writes are attributed per frame with members in flight: each member's entry lists its own writes. `active` names the latest member invoked.
 
 ## The first step call ends the step's work
 
@@ -124,15 +144,15 @@ A sync side effect after scheduling - a mailer call - is invisible to the guard.
 
 ## Calls after a step settles
 
-A step called through the proxy of a step that has settled - from a timer, a watcher, an arrow - is an outside call: nothing is buffered. It answers an open wait accepting it - one the settled step opened first, else as any outside call ([wait.md](wait.md#answering-steps)) - or throws `next has settled; second cannot run.` It is bound to its run: once that run ends, every call through it throws. Writes through a settled proxy are unmanaged - in no `patch`, not rolled back.
+A step called through the proxy of a step that has settled - from a timer, a watcher, an arrow - is an outside call: nothing is buffered. It answers an open wait accepting it - one the settled step opened first, else as any outside call ([wait.md](wait.md#answering-steps)) - or throws `next has settled; second cannot run.` It is bound to its run: once that run ends, every call through it throws. Writes through a settled proxy are unmanaged - in no entry, not restored.
 
 ## Helpers
 
-A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no `patch` or `prior`, pass the write guard, and are not rolled back on failure; a step it calls is an outside call. A helper computes; the step assigns.
+A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no entry, pass the write guard, and are not restored on failure; a step it calls is an outside call. A helper computes; the step assigns.
 
 ```ts
 protected async first() {
-  this.value = this._double(2);        // patch: { value: 4 }
+  this.value = this._double(2);        // wrote: ['value']
 }
 
 _double(n: number) {
@@ -170,8 +190,7 @@ Each settled step is one journal entry (`record` on the [runner](runner.md)):
   id: 'pay#1',                         // key#count, counted per run
   key: 'pay',
   args: [],
-  prior: { charge: undefined },        // values before the step's first write to each
-  patch: { charge: { id: 'ch_42', … } },
+  wrote: ['charge'],                   // fields written, collections changed in place included
   next: [                              // what it scheduled
     { id: 'then#1', key: 'then', args: [], group: [
       { id: 'ship#1', key: 'ship', args: ['ch_42'] },
@@ -183,8 +202,13 @@ Each settled step is one journal entry (`record` on the [runner](runner.md)):
 }
 ```
 
-Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `attempt`, `error` - retries ([retry.md](retry.md)); `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)).
+Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `attempt`, `error` - retries ([retry.md](retry.md)); `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit).
 
-A `has`/`map` collection the step read through `this` and changed in place is in `prior` and `patch` too, in export form ([undo.md](undo.md#collections)).
+With [`rewind`](undo.md#rewind), an entry also keeps values - `prior` before the step's first write to each field, `patch` as it left them; a collection changed in place in export form ([undo.md](undo.md#collections)):
 
-Writes from outside the run, through `this.is`, in helpers, or in hooks are in no patch.
+```ts
+prior: { charge: undefined },
+patch: { charge: { id: 'ch_42', … } },
+```
+
+Writes from outside the run, through `this.is`, in helpers, or in hooks are in no entry.

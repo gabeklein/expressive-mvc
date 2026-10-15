@@ -1,4 +1,4 @@
-# Runs - `next`, Repeat, Queue, Stop
+# Runs - `next`, Repeat, Queue, Stop, Steering
 
 ## `next` starts a run
 
@@ -76,7 +76,7 @@ Named `run`, the controller is the thenable: `await x.run`.
 `then.end(value?)` from outside ends the active run without undoing anything:
 
 - pending steps are discarded - not journaled; open waits are released;
-- in-flight steps settle and commit - what they schedule never runs;
+- in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
 - then `end` runs with `value` - the class's `end` if declared, else the result is `value`, else the dump - and the run resolves with the result as a normal end;
 - the queue proceeds - the next queued run starts.
 
@@ -87,14 +87,44 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 `then.stop()` - or `this.then.stop()` in a step - cancels the active run, rejecting it and the queue:
 
 - status `stopped` at once; pending steps are discarded; open waits are released;
-- in-flight steps settle and commit - their entries are recorded, what they schedule never runs;
+- in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - their entries are recorded, what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
 - queued runs are dropped: `queue` empties, each queued Promise rejects with an error named `'Stopped'`;
 - once in-flight steps have settled, the run's Promise rejects with that error.
 
 `stop({ undo: true })` also unwinds the run as a failure would ([undo.md](undo.md)), `back` included; an undo or `back` that throws sets `error` and the run rejects with it. During an unwind parked on a [returned wait](undo.md#a-returned-wait), `stop()` halts the unwind there. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 
-A stopped run is not rethrown uncaught.
+`exit` runs last for every stopped run ([hooks.md](hooks.md#exit)). A stopped run is not rethrown uncaught.
 
 ## Unawaited failures
 
 A failed run nobody awaited - neither `next()`'s Promise nor the instance - rethrows uncaught two microtasks after rejecting. `await` it, or `.then` it, before then - or let it surface.
+
+## Steering - a mailbox
+
+A field written from outside steers whichever step reads it next ([runner.md](runner.md#steering)). For input meant to reach a run in progress without starting another, keep a `has()` list as a mailbox and let the loop pull from it - opinionated recipe, not API:
+
+```ts
+class Agent extends Job {
+  messages = has<Message>();
+  inbox = has<string>();
+
+  async next(prompt: string) {
+    this.messages.push(user(prompt));
+    this.turn();
+  }
+
+  protected async turn() {
+    const reply = await model.create(this.messages, { signal: this.then.signal });
+    const notes = this.inbox.pop(0, this.inbox.size);
+
+    this.messages.push(reply, ...notes.map(user));
+
+    if (toolCalls(reply).length || notes.length) this.turn();
+    else this.end(reply);
+  }
+}
+
+agent.inbox.push('use pnpm, not npm');  // read at the end of the current turn
+```
+
+The outside push is unmanaged; the pull happens inside a step, so it is in that step's entry and restored with it if the step fails. `next()` mid-run queues a whole run instead ([Queue](#queue)).

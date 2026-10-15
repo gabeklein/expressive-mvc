@@ -77,7 +77,7 @@ protected async tool(call: ToolCall) {
 - A watcher that settles without answering leaves the wait open - a nudge (`await delay(DAY, { signal }); alerts.notify(…)`), not a decision. A repeating nudge loops on `!signal.aborted`.
 - A watcher that throws before the wait closes fails the run. What a watcher throws after its wait closed is discarded.
 - `end`, `stop` and a failure close every open wait and abort its watchers.
-- Writes in a watcher are unmanaged, like a `_` helper's - in no `patch`, not rolled back. The watcher waits and decides; the answer acts.
+- Writes in a watcher are unmanaged, like a `_` helper's - in no entry, not restored. The watcher waits and decides; the answer acts.
 - A `function` watcher is called with the opening step's proxy as `this`, as an arrow sees it.
 - Watchers are in-process: a timer dies with the process and is not journaled.
 - Tokens mixed with step references fail the run: `then() takes called steps or step references, not both.`
