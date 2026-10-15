@@ -766,7 +766,10 @@ class Run extends State {
     await this.drain();
 
     if (undo) {
-      await this.unwind();
+      const failed = await this.unwind();
+
+      if (failed) this.blame(failed.cause);
+
       this.fire('back', this.reason());
     }
 
@@ -827,9 +830,7 @@ class Run extends State {
         if (undo || rewind) entry.undone = true;
       } catch (cause) {
         entry.undone = 'failed';
-        this._error = cause;
-        control.error = cause;
-        break;
+        return { cause };
       } finally {
         event(record, i);
       }
@@ -843,9 +844,13 @@ class Run extends State {
       try {
         hook.call(control._self, arg);
       } catch (cause) {
-        this._error = cause;
-        control.error = cause;
+        this.blame(cause);
       }
+  }
+
+  blame(cause: unknown) {
+    this._error = cause;
+    this.control.error = cause;
   }
 
   async undo(entry: Runner.Entry, how: Function | Runner.Node, from: Frame): Promise<boolean> {
