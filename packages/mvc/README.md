@@ -47,7 +47,7 @@ counter.get(({ count }) => {
 counter.increment();           // -> "count is 1"
 ```
 
-Models run and test anywhere - no renderer required.
+Instances run and test anywhere - no renderer required.
 
 ## Instructions
 
@@ -89,7 +89,7 @@ timer.set(null);             // destroy - runs cleanup, freezes state
 
 ## Context & composition
 
-Models find each other through context, and compose by holding one another:
+Instances find each other through context, and compose by holding one another:
 
 ```ts
 import { Model, get } from '@expressive/mvc';
@@ -100,7 +100,7 @@ class Session extends Model {
 
 class Profile extends Model {
   session = get(Session);    // injected from the nearest provider
-  address = new Address();   // nested model - its changes bubble up
+  address = new Address();   // nested instance - its changes bubble up
 }
 ```
 

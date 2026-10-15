@@ -175,7 +175,7 @@ cedes the path to the nearest scoped `none` Route:
 ```
 
 The router coordinates navigation, not application data. Keep fetching,
-mutations, caches, and request cancellation in the route/page model; async
+mutations, caches, and request cancellation in the route/page control; async
 fields suspend through the Route boundary.
 
 ## Generated navigation
