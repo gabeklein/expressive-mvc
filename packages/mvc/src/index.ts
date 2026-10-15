@@ -5,12 +5,15 @@ export { map } from './field/map';
 export { set } from './field/set';
 export { ref } from './field/ref';
 
-import { State } from './state';
+import { Model } from './state';
 
-export { State, unbind } from './state';
+export { Model, unbind } from './state';
 
-/** @deprecated Import `{ State }` as a named export. Adapter-augmented `State.*` types are not visible through the default alias. */
-export default State;
+/** @deprecated Renamed to `Model`. */
+export { Model as State } from './state';
+
+/** @deprecated Import `{ Model }` as a named export. Adapter-augmented `Model.*` types are not visible through the default alias. */
+export default Model;
 export { Context } from './context';
 export { Component } from './component';
 export { pending } from './dispatch';

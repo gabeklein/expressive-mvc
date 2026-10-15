@@ -1,6 +1,6 @@
 import './App.css';
 
-import { Component, State } from '@expressive/mvc';
+import { Component, Model } from '@expressive/mvc';
 
 const SHELF = [
   { name: 'Espresso', price: 3 },
@@ -13,7 +13,7 @@ export default () => (
     <h1>Context</h1>
     <p>
       <code>{'<Component for>'}</code> puts state in context - a class it constructs
-      and will destroy, or an instance it leaves alone. A State's own child states
+      and will destroy, or an instance it leaves alone. A Model's own child states
       come along: the shop owns its cart, so one element provides both. Anything
       below finds either by class with <code>.get()</code>, which is the difference
       between joining state and creating it.
@@ -36,7 +36,7 @@ export default () => (
   </div>
 );
 
-class Cart extends State {
+class Cart extends Model {
   count = 0;
   total = 0;
 
@@ -46,7 +46,7 @@ class Cart extends State {
   }
 }
 
-class Shop extends State {
+class Shop extends Model {
   barista = 'Ada';
   cart = new Cart();
 }

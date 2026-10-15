@@ -1,6 +1,6 @@
 import './App.css';
 
-import { State, Component, get, has } from '@expressive/mvc';
+import { Model, Component, get, has } from '@expressive/mvc';
 
 export default () => (
   <div className="container">
@@ -23,7 +23,7 @@ export default () => (
   </div>
 );
 
-class Poll extends State {
+class Poll extends Model {
   candidates = get(Candidate, true, (candidate) => !candidate.writeIn);
   choice = '';
 }

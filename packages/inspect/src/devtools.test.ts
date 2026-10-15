@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { inspect } from './bridge';
@@ -6,7 +6,7 @@ import { devtools, type Target } from './devtools';
 import { dispatch } from './dispatch';
 import { attach, inspect as local } from './index';
 
-class Composer extends State {
+class Composer extends Model {
   draft = '';
 }
 

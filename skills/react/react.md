@@ -1,15 +1,15 @@
 # Expressive MVC - React
 
-`@expressive/react` connects State to React with hooks, components, and context.
+`@expressive/react` connects Model to React with hooks, components, and context.
 
-- Core State API (properties, reactivity, lifecycle, events): `../state/`.
+- Core Model API (properties, reactivity, lifecycle, events): `../state/`.
 - Instructions and reactive helpers (`get`, `set`, `ref`, `map`, `has`, `def`): `../field/*.md`.
 - Examples and patterns: `patterns.md`.
 
 ## Exports
 
 ```ts
-export { State, State as default }; // deprecated - import { State } from @expressive/mvc
+export { Model, Model as default }; // deprecated - import { Model } from @expressive/mvc
 export { Context, def, get, ref, set, pending }; // deprecated re-exports of @expressive/mvc
 export { has, map }; // deprecated - import from @expressive/mvc
 export { Component }; // deprecated re-export of @expressive/mvc
@@ -18,7 +18,7 @@ export { Component }; // deprecated re-export of @expressive/mvc
 ## Quick Start
 
 ```tsx
-import { State, Component, get, set, ref } from '@expressive/mvc';
+import { Model, Component, get, set, ref } from '@expressive/mvc';
 import '@expressive/react'; // once, in the entry module
 
 class Counter extends Component {
@@ -37,12 +37,12 @@ class Counter extends Component {
 
 ---
 
-## State.use() - Local Component State
+## Model.use() - Local Component State
 
-Creates an instance scoped to the component's lifecycle and subscribes to it. Added to base State by the React adapter.
+Creates an instance scoped to the component's lifecycle and subscribes to it. Added to base Model by the React adapter.
 
 ```tsx
-class Counter extends State {
+class Counter extends Model {
   count = 0;
   increment() {
     this.count++;
@@ -65,11 +65,11 @@ function App() {
 
 ### Constructor arguments
 
-Same arguments as `State.new()` - objects, callbacks:
+Same arguments as `Model.new()` - objects, callbacks:
 
 ```tsx
-const state = MyState.use({ count: 10 });
-const state = MyState.use((self) => {
+const state = Counter.use({ count: 10 });
+const state = Counter.use((self) => {
   /* init, runs once */
 });
 ```
@@ -79,7 +79,7 @@ const state = MyState.use((self) => {
 Define `use()` on the class to intercept arguments. Called every render, so it can also encapsulate hooks.
 
 ```tsx
-class Search extends State {
+class Search extends Model {
   query = '';
   results: string[] = [];
 
@@ -107,7 +107,7 @@ This bridges router hooks (`useParams`, `useLocation`, `useNavigate`); the alter
 When `use()` is defined, its parameter types become the static `.use()` argument types, and arguments go to the method instead of the constructor:
 
 ```tsx
-class Greeter extends State {
+class Greeter extends Model {
   greeting = '';
 
   use(props: { name: string }) {
@@ -126,7 +126,7 @@ function App({ name }: { name: string }) {
 Client-only effects. Called once when the host component commits; the returned function runs on unmount.
 
 ```tsx
-class Viewport extends State {
+class Viewport extends Model {
   width = 0;
 
   mount() {
@@ -143,20 +143,20 @@ class Viewport extends State {
 
 | Reaching an instance          | Owns it | `mount()` |
 | ----------------------------- | ------- | --------- |
-| `State.use()`                 | yes     | yes       |
+| `Model.use()`                 | yes     | yes       |
 | `<Component />`               | yes     | yes       |
-| `<Component for={State}>`     | yes     | yes       |
+| `<Component for={Model}>`     | yes     | yes       |
 | `<Component for={instance}>`  | no      | no        |
-| `State.get()`                 | no      | no        |
+| `Model.get()`                 | no      | no        |
 | `{instance}`                  | no      | no        |
-| `State.new()`                 | no host | no        |
+| `Model.new()`                 | no host | no        |
 
-`<Component for={State}>` runs the provided State's `mount()` with its own commit:
+`<Component for={Model}>` runs the provided instance's `mount()` with its own commit:
 
-- Like any parent, it mounts *after* its descendants (React commits bottom-up) - a descendant should react to provided state by subscription, not read it imperatively in its own `mount()`.
-- Replacing `for` with another class unmounts and destroys the previous State, then mounts the new one.
+- Like any parent, it mounts *after* its descendants (React commits bottom-up) - a descendant should react to a provided instance by subscription, not read it imperatively in its own `mount()`.
+- Replacing `for` with another class unmounts and destroys the previous instance, then mounts the new one.
 
-The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. A hook firing once per observer is not a lifecycle - to react to an instance a component does not own, subscribe with `State.get()` or an event.
+The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. A hook firing once per observer is not a lifecycle - to react to an instance a component does not own, subscribe with `Model.get()` or an event.
 
 `mount()` never runs during server render.
 
@@ -207,15 +207,15 @@ import expressive from '@expressive/react/vite';
 export default defineConfig({ plugins: [react(), expressive()] });
 ```
 
-Editing a `State` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render` and subcomponents. React Refresh keeps function components. A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). Dev server only.
+Editing a `Model` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render` and subcomponents. React Refresh keeps function components. A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). Dev server only.
 
 A class must be top-level `class X` or `let X = class` - a `const` binding cannot be patched. `export default X;` exports a snapshot, so its importers are not checked for staleness - prefer `export default class X` or `export { X as default }`; likewise an anonymous `export default`.
 
 ---
 
-## State.get() - Context Hook
+## Model.get() - Context Hook
 
-Fetches an instance from context (provided by a `Component` or `<Component for>`) and independently subscribes to accessed properties. Available on all State.
+Fetches an instance from context (provided by a `Component` or `<Component for>`) and independently subscribes to accessed properties. Available on every Model.
 
 ```tsx
 function Profile() {
@@ -358,11 +358,11 @@ Do not alias `is` merely because something will be written - writes never need t
 
 ## Component Class
 
-`Component` extends `State` and works directly as a React component - full details in `./component.md`.
+`Component` extends `Model` and works directly as a React component - full details in `./component.md`.
 
-- State fields become optional JSX props, applied every render.
+- Model fields become optional JSX props, applied every render.
 - `render()` controls output; without it, children pass through a context provider.
-- Instances are provided to context for child access via `State.get()`.
+- Instances are provided to context for child access via `Model.get()`.
 - Built-in suspense (`fallback` property/prop) and error boundaries (`catch()` method).
 - PascalCase methods become reactive subcomponents.
 - Special props: `is` (creation callback), `ref` (instance ref), `fallback` (suspense UI, or `false` to defer to an ancestor boundary).
@@ -372,7 +372,7 @@ Do not alias `is` merely because something will be written - writes never need t
 
 ## Providing state
 
-`<Component for={AppState}>` provides one State to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); `mount()` timing in [mount() method](#mount-method). For a render-prop read, write an FC calling `AppState.get()`.
+`<Component for={AppState}>` provides one instance to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); `mount()` timing in [mount() method](#mount-method). For a render-prop read, write an FC calling `AppState.get()`.
 
 `Provider` was removed - replace `<Provider for={X}>` with `<Component for={X}>`.
 

@@ -1,10 +1,10 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
 // Most async work has the same shape - we wait for a response, get
 // something back, sometimes get an error. Query handles that scaffolding
 // so any specific endpoint only plugs in the part that's actually different.
 
-export abstract class Query extends State {
+export abstract class Query extends Model {
   // Three flags covering the lifecycle of a request.
   // A component reading any of these refreshes when it changes.
   response?: any = undefined;

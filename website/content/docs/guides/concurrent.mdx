@@ -3,17 +3,17 @@ title: Concurrent Rendering
 description: How Expressive stays consistent under React 18+ concurrent rendering, and how to defer updates with pending()
 ---
 
-Concurrent React can pause a render, run other work, and resume — or throw the attempt away and start over. That is what makes `startTransition` and Suspense useful, and it is also what makes external mutable state dangerous: if a model changes while React is halfway through reading it, the finished frame can contain values from two different points in time. Nothing throws. The screen is simply, briefly, wrong.
+Concurrent React can pause a render, run other work, and resume — or throw the attempt away and start over. That is what makes `startTransition` and Suspense useful, and it is also what makes external mutable state dangerous: if an instance changes while React is halfway through reading it, the finished frame can contain values from two different points in time. Nothing throws. The screen is simply, briefly, wrong.
 
 Expressive holds state in mutable class instances, so this applies to it directly. Two separate guarantees are needed, and they are handled by two separate mechanisms.
 
 ## Consistency: one commit, one revision
 
-Every subscription carries a revision number, which React reads through `useSyncExternalStore` before it commits. Any write that invalidates a subscriber advances that subscriber's revision. If a render attempt yielded partway through and the model moved underneath it, React's own pre-commit check fails and the attempt is re-rendered instead of committed.
+Every subscription carries a revision number, which React reads through `useSyncExternalStore` before it commits. Any write that invalidates a subscriber advances that subscriber's revision. If a render attempt yielded partway through and the instance moved underneath it, React's own pre-commit check fails and the attempt is re-rendered instead of committed.
 
 The result is the guarantee you want, stated plainly:
 
-> A committed React tree never mixes values from two revisions of one model.
+> A committed React tree never mixes values from two revisions of one instance.
 
 Nothing is required of you to get this. There is no provider to add, no selector to write, no equality function to tune.
 
@@ -40,7 +40,7 @@ this.busy = true;
 pending(() => { app.page = 'settings' }).then(() => { this.busy = false });
 ```
 
-The promise never rejects. An exception from the callback propagates synchronously, and a reader that throws while taking the update is reported to `catch` handlers with kind `effect`, never to the writer. Without a renderer the promise still resolves once every subscriber has replayed — a way for headless code to wait out a whole cascade of updates, where `await state.set()` waits only for that one state's next flush.
+The promise never rejects. An exception from the callback propagates synchronously, and a reader that throws while taking the update is reported to `catch` handlers with kind `effect`, never to the writer. Without a renderer the promise still resolves once every subscriber has replayed — a way for headless code to wait out a whole cascade of updates, where `await state.set()` waits only for that one instance's next flush.
 
 Where the flag is read matters. `busy` is written urgently, so its readers re-render while the deferred work is in flight. A component that reads `busy` *and* rebuilds the deferred content suspends, replacing the screen the deferral meant to keep. Read the flag from a sibling of that content, or from a wrapper receiving it as `children` — both leave its element untouched, so it holds.
 

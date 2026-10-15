@@ -1,18 +1,18 @@
 # `state.set()` - Write & Listen
 
-Instance method for writing values, dispatching events, listening to updates, destroying state, and defining properties - every write-side operation on one verb, dispatched on the first argument's kind, each form individually typed (see [design.md](../design.md)).
+Instance method for writing values, dispatching events, listening to updates, destroying the instance, and defining properties - every write-side operation on one verb, dispatched on the first argument's kind, each form individually typed (see [design.md](../design.md)).
 
 ## Overloads
 
 ### Await pending flush
 
 ```ts
-set(): State.Updated<this>
+set(): Model.Updated<this>
 ```
 
-Returns a promise-like array of keys updated in the current batch, resolving when the flush completes - an empty array if no update is outstanding. Also activates a state created with `new` (not `State.new()`).
+Returns a promise-like array of keys updated in the current batch, resolving when the flush completes - an empty array if no update is outstanding. Also activates an instance created with `new` (not `Model.new()`).
 
-This is one state's next flush. To wait on the whole cascade a write sets off - every subscriber, including readers of other states - use `pending(work)` ([state.md](state.md#presentation-transitions)).
+This is one instance's next flush. To wait on the whole cascade a write sets off - every subscriber, including readers of other instances - use `pending(work)` ([state.md](state.md#presentation-transitions)).
 
 ```ts
 const updated = await state.set();
@@ -22,12 +22,12 @@ const updated = await state.set();
 ### Merge values
 
 ```ts
-set(assign?: State.Assign<this>, silent?: boolean): State.Updated<this>
+set(assign?: Model.Assign<this>, silent?: boolean): Model.Updated<this>
 ```
 
-Merges an object into state. Only known properties and methods apply; unknown keys and `is` are ignored.
+Merges an object into the instance. Only known properties and methods apply; unknown keys and `is` are ignored.
 
-So `set(values)` is the wire-snapshot ingest: a host payload may be a superset - extra keys drop, missing keys stay untouched. `undefined` / `null` present in the bag *do* write, so don't pad. On a subclassable class the ingest call is `this.set(msg.values as State.Assign<Session>)` (cast below); never hand-roll an `apply()`/`pick` loop over declared fields.
+So `set(values)` is the wire-snapshot ingest: a host payload may be a superset - extra keys drop, missing keys stay untouched. `undefined` / `null` present in the bag *do* write, so don't pad. On a subclassable class the ingest call is `this.set(msg.values as Model.Assign<Session>)` (cast below); never hand-roll an `apply()`/`pick` loop over declared fields.
 
 ```ts
 state.set({ count: 5 }); // merge, triggers events
@@ -58,7 +58,7 @@ state.set({ kount: 5 });    // type-checks - unknown key, ignored at runtime
 `this.set({ field }, ...)` inside a **subclassable class** fails to type-check:
 
 ```ts
-class Base extends State {
+class Base extends Model {
   path = '/';
   go() {
     this.set({ path: '/x' }, true);
@@ -80,7 +80,7 @@ A TypeScript limitation (mapped types over polymorphic `this`), not an mvc bug. 
 ### Listen to updates
 
 ```ts
-set(callback: State.OnEvent<this>): () => boolean
+set(callback: Model.OnEvent<this>): () => boolean
 ```
 
 Fires synchronously for every assignment that changes a value and every explicit event dispatch, with `(key, source)` - key a string, number, or symbol. Returns unsubscribe (`true` if removed, `false` if already inactive).
@@ -97,7 +97,7 @@ const stop = state.set((key, source) => {
 ### Dispatch event
 
 ```ts
-set(key: State.Event<this>): State.Updated<this>
+set(key: Model.Event<this>): Model.Updated<this>
 ```
 
 Dispatches an event without changing any value - for internal changes (e.g. array mutation) or custom events.
@@ -115,7 +115,7 @@ state.set(42); // number event
 set(status: null): void
 ```
 
-Terminates the state: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, dispatch stops. Afterward, assignment is stored without dispatch and reported to `catch` handlers with kind `dead`; unhandled, it outputs nothing. Silent `set(assign, true)` stores without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
+Terminates the instance: children destroyed first (inner-to-outer), listeners notified with `null`, cleanups run, dispatch stops. Afterward, assignment is stored without dispatch and reported to `catch` handlers with kind `dead`; unhandled, it outputs nothing. Silent `set(assign, true)` stores without a report. Full order: [lifecycle.md](lifecycle.md#destruction).
 
 ```ts
 state.set(null);
@@ -124,7 +124,7 @@ state.set(null);
 ### Listen to specific event
 
 ```ts
-set<K extends State.Event<this>>(event: K | null, callback: State.OnEvent<this>): () => boolean
+set<K extends Model.Event<this>>(event: K | null, callback: Model.OnEvent<this>): () => boolean
 ```
 
 Callback for one property key or event; `null` listens for destruction. Return `null` from the callback to unsubscribe after the first call.
@@ -142,7 +142,7 @@ state.set(null, (key, source) => {
 ### Define property (descriptor)
 
 ```ts
-set<K extends State.Event<this>>(key: K, config: State.Define<this, K>): State.Updated<this>
+set<K extends Model.Event<this>>(key: K, config: Model.Define<this, K>): Model.Updated<this>
 ```
 
 Defines or updates a managed property from a descriptor. On an already-managed property only `value` is accepted (other fields throw); a missing property is created fully reactive and trackable.
@@ -151,7 +151,7 @@ Defines or updates a managed property from a descriptor. On an already-managed p
 state.set('foo', { value: 'bar' }); // update value (bypasses setter)
 state.set('bar', { value: 'hello', set: false }); // read-only property
 state.set('baz', { value: 'hidden', enumerable: false }); // non-enumerable property
-state.set('child', { value: new ChildState() }); // registers child state
+state.set('child', { value: new Child() }); // registers child instance
 ```
 
 | Field        | Meaning                                                       |
@@ -164,7 +164,7 @@ state.set('child', { value: new ChildState() }); // registers child state
 ## Type Signatures
 
 ```ts
-type OnEvent<T extends State> = (
+type OnEvent<T extends Model> = (
   this: T,
   key: Signal<T>,
   source: T
@@ -176,12 +176,12 @@ type Assign<T> = Record<string, unknown> & {
     : T[K];
 };
 
-type Updated<T extends State> = readonly Event<T>[] &
+type Updated<T extends Model> = readonly Event<T>[] &
   PromiseLike<readonly Event<T>[]>;
 
 type Apply<T = any> = {
   value?: T;
-  get?: ((source: State) => T) | boolean;
+  get?: ((source: Model) => T) | boolean;
   set?: Setter<T> | boolean;
   enumerable?: boolean;
 };

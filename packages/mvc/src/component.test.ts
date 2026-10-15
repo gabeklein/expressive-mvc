@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockWarn } from '../test.setup';
-import { Component, compose } from './component';
+import { Component } from './component';
 import { Context } from './context';
-import { State, event } from './state';
+import { Model, event } from './state';
 
 it('will default fallback to null and accept it as prop', () => {
   expect(Component.new().fallback).toBe(null);
@@ -91,7 +91,7 @@ it('will accept _ keys as props', async () => {
 });
 
 describe('twin construction', () => {
-  class Child extends State {}
+  class Child extends Model {}
 
   class Foo extends Component {
     child = new Child();
@@ -146,30 +146,34 @@ it('will ignore Context passed as constructor argument', () => {
   expect(Object.keys(foo.get())).not.toContain('0');
 });
 
-describe('render chain', () => {
-  it('will nest three levels inner to outer', () => {
-    class A extends Component {
-      render(props = {} as { children?: unknown }): Component.Node {
-        return { a: props.children };
-      }
-    }
+describe('render', () => {
+  it('will pass children through by default', () => {
+    const test = Component.new({ children: 'content' });
 
-    class B extends A {
-      render(props = {} as { children?: unknown }): Component.Node {
-        return { b: props.children };
-      }
-    }
-
-    class C extends B {
-      render(): Component.Node {
-        return 'leaf';
-      }
-    }
-
-    expect(C.new({}).render()).toEqual({ a: { b: 'leaf' } });
+    expect(test.render()).toBe('content');
+    expect(test.render({ children: 'given' })).toBe('given');
   });
 
-  it('will bind each composed layer to live instance state', () => {
+  it('will replace base render in a subclass', () => {
+    const base = vi.fn(() => 'base');
+
+    class Frame extends Component {
+      render(): Component.Node {
+        return base();
+      }
+    }
+
+    class Page extends Frame {
+      render(): Component.Node {
+        return 'page';
+      }
+    }
+
+    expect(Page.new({}).render()).toBe('page');
+    expect(base).not.toHaveBeenCalled();
+  });
+
+  it('will reach base render through super', () => {
     class Frame extends Component {
       title = 'Base';
 
@@ -182,7 +186,7 @@ describe('render chain', () => {
       body = 'Hello';
 
       render(): Component.Node {
-        return this.body;
+        return super.render({ children: this.body });
       }
     }
 
@@ -195,65 +199,10 @@ describe('render chain', () => {
 
     expect(page.render()).toEqual(['Updated', 'World']);
   });
-
-  it('will drop derived content if wrapper omits children', () => {
-    const inner = vi.fn(() => 'never seen');
-
-    class Shell extends Component {
-      render(): Component.Node {
-        return 'shell only';
-      }
-    }
-
-    class Lost extends Shell {
-      render(): Component.Node {
-        return inner();
-      }
-    }
-
-    expect(Lost.new({}).render()).toBe('shell only');
-    expect(inner).not.toHaveBeenCalled();
-  });
-
-  it('will preserve identity for single-level override', () => {
-    class Solo extends Component {
-      render(): Component.Node {
-        return 'just me';
-      }
-    }
-
-    expect(Solo.new({}).render()).toBe('just me');
-  });
-
-  it('lets a base defer to a subclass render via children identity', () => {
-    class Base extends Component {
-      render(props = {} as { children?: unknown }): Component.Node {
-        if (props.children !== this.props.children)
-          return props.children;
-
-        return ['base', props.children];
-      }
-    }
-
-    class Override extends Base {
-      render(): Component.Node {
-        return 'replaced';
-      }
-    }
-
-    class Passthrough extends Base {}
-
-    expect(Override.new({}).render()).toBe('replaced');
-
-    const base = Base.new({ children: 'x' });
-    const pass = Passthrough.new({ children: 'y' });
-    expect(base.render(base.props)).toEqual(['base', 'x']);
-    expect(pass.render(pass.props)).toEqual(['base', 'y']);
-  });
 });
 
 describe('leading function argument', () => {
-  it('will run as init callback (State semantics)', () => {
+  it('will run as init callback (Model semantics)', () => {
     class Test extends Component {
       value = '';
     }
@@ -303,7 +252,7 @@ describe('props (static types)', () => {
   });
 
   it('will accept writable fields and callbacks only', () => {
-    const props: Component.StateProps<Test>[] = [
+    const props: Component.ModelProps<Test>[] = [
       { value: 1, onClick: () => {}, pair: 2, method() {} },
       // @ts-expect-error - get-only accessor is not a settable prop
       { computed: 4 },
@@ -315,43 +264,8 @@ describe('props (static types)', () => {
   });
 });
 
-describe('composed', () => {
-  it.each([
-    ['will compose render layers of a State', false],
-    ['will compose a render sealed by the host', true]
-  ])('%s', (_, sealed) => {
-    class Frame extends State {
-      render(props?: { children?: unknown }) {
-        return `[${props?.children}]`;
-      }
-    }
-
-    if (sealed)
-      Frame.on({
-        type({ prototype }) {
-          const desc = Object.getOwnPropertyDescriptor(prototype, 'render')!;
-          Object.defineProperty(prototype, 'render', { ...desc, configurable: false });
-        }
-      });
-
-    class Page extends Frame {
-      render() {
-        return 'page';
-      }
-    }
-
-    expect(compose.call(Page.new(), {})).toBe('[page]');
-  });
-
-  it('will pass children through for a State without render', () => {
-    class Bare extends State {}
-
-    expect(compose.call(Bare.new(), { children: 'c' })).toBe('c');
-  });
-});
-
 describe('for', () => {
-  class Session extends State {
+  class Session extends Model {
     name = 'none';
   }
 
@@ -434,7 +348,7 @@ describe('for', () => {
   it('will mount only a class it constructed', () => {
     const cleanup = vi.fn();
 
-    class Owned extends State {
+    class Owned extends Model {
       mount() {
         return cleanup;
       }
@@ -454,7 +368,7 @@ describe('for', () => {
   it('will hand mount to the next class when for changes', async () => {
     const log: string[] = [];
 
-    const tracked = (name: string) => class extends State {
+    const tracked = (name: string) => class extends Model {
       mount() {
         log.push(name + ':mount');
         return () => log.push(name + ':unmount');
@@ -491,7 +405,7 @@ describe('for', () => {
   it('will keep a mount defined before it provides', () => {
     const order: string[] = [];
 
-    class Owned extends State {
+    class Owned extends Model {
       mount() {
         order.push('owned');
         return () => order.push('owned:done');

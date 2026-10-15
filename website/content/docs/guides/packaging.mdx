@@ -5,9 +5,9 @@ description: Version alignment, building libraries on Expressive, and the one-co
 
 ## One core per app
 
-`@expressive/mvc` holds module state: the context registry, prototype brands, and the JSX host registration all live in the loaded module. Two copies of the core in one application are two disconnected worlds - a `<Component for>` in one and a `State.get()` resolving through the other do not see each other. The classic symptom is `Could not find X in context.` from a component that visibly sits under the right provider.
+`@expressive/mvc` holds module state: the context registry, prototype brands, and the JSX host registration all live in the loaded module. Two copies of the core in one application are two disconnected worlds - a `<Component for>` in one and a `Model.get()` resolving through the other do not see each other. The classic symptom is `Could not find X in context.` from a component that visibly sits under the right provider.
 
-The packages are shaped to make one copy the default outcome: `@expressive/react`, `@expressive/router`, `@expressive/dom` and `@expressive/inspect` declare `@expressive/mvc` as a **peer dependency**, so the core is installed once, by the app, and every adapter resolves that copy. A React app installs both, and imports `State`, `Component` and the instructions from the core:
+The packages are shaped to make one copy the default outcome: `@expressive/react`, `@expressive/router`, `@expressive/dom` and `@expressive/inspect` declare `@expressive/mvc` as a **peer dependency**, so the core is installed once, by the app, and every adapter resolves that copy. A React app installs both, and imports `Model`, `Component` and the instructions from the core:
 
 ```bash
 npm install @expressive/mvc @expressive/react
@@ -27,13 +27,13 @@ More than one version listed means something pinned or bounded the core apart fr
 
 A component library or shared package built on Expressive should **not** bundle it:
 
-- Declare `@expressive/mvc` as a **peerDependency** (with a devDependency copy for local development), the same way you already treat `react`. Add `@expressive/react` as a peer too only when your package relies on the React host - State and Component classes themselves need only the core.
+- Declare `@expressive/mvc` as a **peerDependency** (with a devDependency copy for local development), the same way you already treat `react`. Add `@expressive/react` as a peer too only when your package relies on the React host - Model and Component classes themselves need only the core.
 - Mark `@expressive/*` external in your build, so your dist imports it rather than inlining a private copy - an inlined copy is the two-worlds problem above, shipped on purpose.
 - Keep the peer range wide (`^` on the minor you develop against, pre-1.0) and move it deliberately: pre-1.0 minors are the breaking channel.
 
-Consumers of your library install `@expressive/mvc` and their host adapter themselves - the same contract as `react` itself. What that costs them: the React adapter has an irreducible floor of about 10.2 kB gzip (measured, budgeted in CI - see [Bundle size](/docs/guides/bundle-size)), paid once per application regardless of how many libraries share it.
+Consumers of your library install `@expressive/mvc` and their host adapter themselves - the same contract as `react` itself. What that costs them: the React adapter has an irreducible floor of about 10.3 kB gzip (measured, budgeted in CI - see [Bundle size](/docs/guides/bundle-size)), paid once per application regardless of how many libraries share it.
 
-State classes your library exports are ordinary exports. Subclassing, providing, and `get()`-ing them works across package boundaries because everyone resolves the same core - which is the point of the rules above.
+Model classes your library exports are ordinary exports. Subclassing, providing, and `get()`-ing them works across package boundaries because everyone resolves the same core - which is the point of the rules above.
 
 <br />
 
@@ -56,4 +56,4 @@ Beyond its main entry, `@expressive/mvc` publishes a few subpaths: `@expressive/
 ## Next
 
 - [Bundle size](/docs/guides/bundle-size) - measured cost per import shape, and what tree-shakes.
-- [Getting started](/docs/getting-started) - installation and first model.
+- [Getting started](/docs/getting-started) - installation and first `Model`.

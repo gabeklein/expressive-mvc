@@ -1,7 +1,6 @@
-import { rechain } from './component';
 import { event } from './observable';
 import {
-  State,
+  Model,
   GETTERS,
   LATEST,
   METHODS,
@@ -25,9 +24,9 @@ interface Replaced {
   /** Local declaration name of the class. */
   name: string;
   /** Class live instances belong to. */
-  prev: State.Extends;
+  prev: Model.Extends;
   /** Class that took its place. */
-  next: State.Extends;
+  next: Model.Extends;
 }
 
 const define = Object.defineProperty;
@@ -36,10 +35,10 @@ const define = Object.defineProperty;
 const PAST = new WeakSet<Function>();
 
 /** Live instances, tracked once hot patching is enabled. */
-let LIVE: Set<WeakRef<State>> | undefined;
+let LIVE: Set<WeakRef<Model>> | undefined;
 
 /** Bootstrapped subclasses of each class, tracked once hot patching is enabled. */
-const SUBCLASSES = new WeakMap<Function, Set<State.Extends>>();
+const SUBCLASSES = new WeakMap<Function, Set<Model.Extends>>();
 
 const MODULES = new Map<string, Record<string, Entry>>();
 const LISTENERS = new Set<(event: Replaced) => void>();
@@ -52,7 +51,7 @@ function track() {
 
   LIVE = new Set();
 
-  State.on({
+  Model.on({
     type(type) {
       const parent = Object.getPrototypeOf(type);
       let children = SUBCLASSES.get(parent);
@@ -71,7 +70,7 @@ function track() {
  * Move the members of `next` onto `prev`, which keeps its identity. Returns the
  * live instances of `prev`, each needing a refresh.
  */
-function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[] {
+function patch(prev: Model.Extends, next: Model.Extends, own: Handler[]): Model[] {
   const proto = prev.prototype;
   const incoming = Object.getOwnPropertyDescriptors(next.prototype);
   const keys = METHODS.get(prev);
@@ -132,17 +131,17 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
   }
 
   if (keys) {
-    for (let T: State.Extends = prev; ; T = Object.getPrototypeOf(T)) {
+    for (let T: Model.Extends = prev; ; T = Object.getPrototypeOf(T)) {
       for (const handler of SETUP.get(T) || [])
         if (handler.type) handler.type(prev);
 
-      if (T === State) break;
+      if (T === Model) break;
     }
 
     classify(prev, keys, getters!);
   }
 
-  const live: State[] = [];
+  const live: Model[] = [];
 
   for (const ref of LIVE!) {
     const state = ref.deref();
@@ -151,7 +150,7 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
     else if (state instanceof prev) live.push(state);
   }
 
-  const descendants = new Set([prev, ...live.map((state) => state.constructor as State.Extends)]);
+  const descendants = new Set([prev, ...live.map((state) => state.constructor as Model.Extends)]);
 
   for (const type of descendants) for (const child of SUBCLASSES.get(type) || []) descendants.add(child);
 
@@ -190,12 +189,12 @@ function patch(prev: State.Extends, next: State.Extends, own: Handler[]): State[
 }
 
 /** Lifecycle handlers registered on a class itself. */
-function handlers(type: State.Extends): Handler[] {
+function handlers(type: Model.Extends): Handler[] {
   return [...(SETUP.get(type) || [])];
 }
 
-function isState(value: unknown): value is State.Extends {
-  return typeof value == 'function' && value.prototype instanceof State;
+function isModel(value: unknown): value is Model.Extends {
+  return typeof value == 'function' && value.prototype instanceof Model;
 }
 
 /** What a patch cannot carry: class source less its members, and member kinds. */
@@ -214,7 +213,7 @@ function describe(type: Function): Entry {
 
   shape = shape.replace(/\s+/g, ' ').replace(/__vite_ssr_import_\d+__/g, '__vite_ssr_import__');
 
-  return { type, shape, kinds, own: handlers(type as State.Extends) };
+  return { type, shape, kinds, own: handlers(type as Model.Extends) };
 }
 
 function compatible(prev: Entry, next: Entry) {
@@ -228,7 +227,7 @@ function compatible(prev: Entry, next: Entry) {
 }
 
 /**
- * Keep a module's State classes stable across runs. A class seen before is
+ * Keep a module's Model classes stable across runs. A class seen before is
  * patched with its replacement and returned in its place, refreshing live
  * instances; one whose shape or parent changed is returned as-is, and
  * reported to `replaced` listeners before `accept` returns.
@@ -239,14 +238,13 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
   if (!known) MODULES.set(id, (known = {}));
 
   const output: Record<string, unknown> = { ...classes };
-  const refresh = new Set<State>();
+  const refresh = new Set<Model>();
   const replace: Replaced[] = [];
-  let patched = false;
 
   track();
 
   for (const [name, type] of Object.entries(classes)) {
-    if (!isState(type)) continue;
+    if (!isModel(type)) continue;
 
     const prev = known[name];
 
@@ -255,24 +253,21 @@ function accept<T extends Record<string, unknown>>(id: string, classes: T): T {
     const next = describe(type);
 
     if (!prev || !compatible(prev, next)) {
-      if (prev) replace.push({ id, name, prev: prev.type as State.Extends, next: type });
+      if (prev) replace.push({ id, name, prev: prev.type as Model.Extends, next: type });
       known[name] = next;
       continue;
     }
 
     try {
-      for (const state of patch(prev.type as State.Extends, type, prev.own)) refresh.add(state);
-      patched = true;
+      for (const state of patch(prev.type as Model.Extends, type, prev.own)) refresh.add(state);
       known[name] = { ...next, type: prev.type };
       output[name] = prev.type;
     } catch (error) {
       console.error(error);
-      replace.push({ id, name, prev: prev.type as State.Extends, next: type });
+      replace.push({ id, name, prev: prev.type as Model.Extends, next: type });
       known[name] = next;
     }
   }
-
-  if (patched) rechain();
 
   for (const state of refresh) event(state, REFRESH);
 

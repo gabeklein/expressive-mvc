@@ -1,1 +1,1 @@
-export default ['nested', 'context', 'concerns', 'extension', 'globals'];
+export default ['nested', 'context', 'concerns', 'globals'];

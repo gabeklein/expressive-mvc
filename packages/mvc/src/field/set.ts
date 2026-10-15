@@ -1,5 +1,5 @@
 import { listener, capture, observer } from '../observable';
-import { access, compute, event, State, update } from '../state';
+import { access, compute, event, Model, update } from '../state';
 import { def } from './def';
 
 declare namespace set {
@@ -104,7 +104,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       return;
     }
 
-    const config: State.Apply = {
+    const config: Model.Apply = {
       enumerable: false,
       set: false
     };

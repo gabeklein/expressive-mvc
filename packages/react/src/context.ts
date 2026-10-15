@@ -1,4 +1,4 @@
-import { State, Context, Component } from '@expressive/mvc';
+import { Model, Context, Component } from '@expressive/mvc';
 import { Runtime } from './runtime';
 
 let shared: any;
@@ -27,7 +27,7 @@ Object.defineProperty(Component, 'contextType', { configurable: true, get: Layer
 
 const _get = Context.get;
 
-Context.get = (state?: State) => {
+Context.get = (state?: Model) => {
   if (!state)
     try {
       return useAmbient();

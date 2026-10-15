@@ -1,5 +1,5 @@
-import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot } from './appearance-protocol';
-import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from './appearance-protocol';
+import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot } from './protocol';
+import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from './protocol';
 
 type StyleMap = Record<string, unknown>;
 

@@ -1,5 +1,28 @@
 # @expressive/react
 
+## 0.90.0
+
+### Minor Changes
+
+- [#461](https://github.com/gabeklein/expressive-mvc/pull/461) [`c2c689c`](https://github.com/gabeklein/expressive-mvc/commit/c2c689ce867bbebe8572f95697840db1d67ccc90) `Provider` is removed. Use `<Component for={…}>`, which provides one State per element; compose a parent State in place of `for={{ … }}`.
+
+- [#528](https://github.com/gabeklein/expressive-mvc/pull/528) [`e37e87d`](https://github.com/gabeklein/expressive-mvc/commit/e37e87d8883eeec5e9477a18a52fe6103ccced87) Render composition is removed. A subclass `render()` now replaces its base's like any method override, on `Component` and on a rendered `State`, in every host. To keep a base's chrome around subclass content, render a subcomponent the subclass overrides (`<this.Body />`), or call `super.render(props)` from the override to wrap the base. `compose` is no longer exported from `@expressive/mvc/jsx-runtime`.
+
+  Migration: a subclass `render()` that relied on being wrapped by its base's render moves to a subcomponent the base renders; a base that read the subclass output from `props.children` renders that subcomponent instead.
+
+  `Route` keeps its behavior: a subclass `render()` is still the route's page, gated on match, guards and redirects, and run only when matched. `super.render()` inside it places the default content (`as` around `children`). A `Link` subclass `render()` still replaces the anchor.
+
+### Patch Changes
+
+- [#442](https://github.com/gabeklein/expressive-mvc/pull/442) [`6f1d16f`](https://github.com/gabeklein/expressive-mvc/commit/6f1d16f5ac5b92595afa52e898d7690a6ce429c7) Destroy instances created by a render React discards before committing - a suspended first mount, a subtree removed while suspended, a dropped transition. `State.use()`, `<Component />` and `<Component for={Type}>` previously left these activated and held in context indefinitely, with any `new()` effects still running. They are now destroyed once React releases the attempt (via `FinalizationRegistry`, so at garbage collection; runtimes without it keep the previous behavior). Instances React retains uncommitted, such as under a hidden `<Activity>`, are kept.
+
+- [#526](https://github.com/gabeklein/expressive-mvc/pull/526) [`f503478`](https://github.com/gabeklein/expressive-mvc/commit/f503478d7a3bbb851c8aba3c9303a8899bfe658e) `State` is renamed `Model`. `State` remains exported as a deprecated alias of the same class, so `extends State`, `instanceof State`, `State.*` namespace types and adapter augmentations keep working; migrate with a find-and-replace. One exception: code that augments the class through `declare module '@expressive/mvc' { interface State { … } }` must augment `Model` instead - augmenting `State` declares a separate interface that shadows the alias's type. `Component.StateProps` is now `Component.ModelProps`, with `StateProps` kept as a deprecated alias.
+
+  `@expressive/react` and `@expressive/dom`: error messages and the hot-reload plugin's generated code refer to `Model`.
+
+- Updated dependencies [[`7b2e8a1`](https://github.com/gabeklein/expressive-mvc/commit/7b2e8a11030000ce005a7681b11047c9b75cda76), [`d194d33`](https://github.com/gabeklein/expressive-mvc/commit/d194d33695e39b133d8a3284819713b6460baeaa), [`e37e87d`](https://github.com/gabeklein/expressive-mvc/commit/e37e87d8883eeec5e9477a18a52fe6103ccced87), [`94ec898`](https://github.com/gabeklein/expressive-mvc/commit/94ec8987c8030a2acd19bde38075877869d1599a), [`f503478`](https://github.com/gabeklein/expressive-mvc/commit/f503478d7a3bbb851c8aba3c9303a8899bfe658e)]:
+  - @expressive/mvc@0.89.0
+
 ## 0.89.0
 
 ### Minor Changes

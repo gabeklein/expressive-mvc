@@ -1,19 +1,19 @@
-import { Component, Context, State, unbind } from '@expressive/mvc';
+import { Component, Context, Model, unbind } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 
 import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';
 
-interface UseState extends State {
+interface UseModel extends Model {
   use?(...props: any[]): Promise<void> | void;
   mount?(): (() => void) | void;
 }
 
 interface UseSlot {
-  Type: State.Type;
+  Type: Model.Type;
   context: Context;
-  instance: UseState;
-  proxy: State;
+  instance: UseModel;
+  proxy: Model;
   release: () => void;
   mounted?: true;
   cleanup?: (() => void) | void;
@@ -49,7 +49,7 @@ function enter<T>(scope: Scope, render: () => T): T {
 
     if (scope.kind == 'function' && scope.useIndex !== scope.uses.length) {
       if (!scope.hot)
-        throw new Error('State.use() calls must keep the same order on every function-component render.');
+        throw new Error('Model.use() calls must keep the same order on every function-component render.');
 
       truncate(scope, scope.useIndex);
     }
@@ -72,7 +72,7 @@ function dispose(scope: Scope) {
   truncate(scope, 0);
 }
 
-/** Destroy the `State.use()` slots of a scope from `index` on. */
+/** Destroy the `Model.use()` slots of a scope from `index` on. */
 function truncate(scope: Scope, index: number) {
   for (let i = scope.uses.length - 1; i >= index; i--) {
     const slot = scope.uses[i];
@@ -96,7 +96,7 @@ function commit(scope: Scope) {
 
 function requireScope(): Scope {
   if (!current)
-    throw new Error('State.get() and State.use() may only run while @expressive/dom is rendering.');
+    throw new Error('Model.get() and Model.use() may only run while @expressive/dom is rendering.');
 
   return current;
 }
@@ -124,37 +124,37 @@ function tracked<T extends object>(target: T, required?: boolean): T {
 type NoVoid<T> = T extends undefined | void ? null : T;
 
 declare module '@expressive/mvc' {
-  interface UseState extends State {
+  interface UseModel extends Model {
     use?(...props: any[]): Promise<void> | void;
     mount?(): (() => void) | void;
   }
 
-  namespace State {
+  namespace Model {
     type ForceRefresh = {
       (): void;
       <T = void>(waitFor: Promise<T>): Promise<T>;
       <T = void>(invoke: () => Promise<T>): Promise<T>;
     };
 
-    type GetFactory<T extends State, R> = (
+    type GetFactory<T extends Model, R> = (
       this: T,
       current: T,
       refresh: ForceRefresh
     ) => R;
 
-    type UseArgs<T extends State> = T extends { use(...props: infer P): any }
+    type UseArgs<T extends Model> = T extends { use(...props: infer P): any }
       ? P
-      : State.Args<T>;
+      : Model.Args<T>;
 
-    function get<T extends State>(this: State.Extends<T>): T;
-    function get<T extends State>(this: State.Extends<T>, required: false): T | undefined;
-    function get<T extends State>(this: State.Extends<T>, required: true): Required<T>;
-    function get<T extends State, R>(
-      this: State.Extends<T>,
+    function get<T extends Model>(this: Model.Extends<T>): T;
+    function get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
+    function get<T extends Model>(this: Model.Extends<T>, required: true): Required<T>;
+    function get<T extends Model, R>(
+      this: Model.Extends<T>,
       factory: GetFactory<T, R>
     ): NoVoid<R>;
-    function use<T extends UseState>(
-      this: State.Type<T>,
+    function use<T extends UseModel>(
+      this: Model.Type<T>,
       ...args: UseArgs<T>
     ): T;
   }
@@ -168,9 +168,9 @@ declare module '@expressive/mvc' {
   }
 }
 
-(State as any).get = function get<T extends State>(
-  this: State.Extends<T>,
-  argument?: boolean | State.GetFactory<T, unknown>
+(Model as any).get = function get<T extends Model>(
+  this: Model.Extends<T>,
+  argument?: boolean | Model.GetFactory<T, unknown>
 ) {
   const scope = requireScope();
   const instance = scope.childContext.get(this, argument === false ? false : true);
@@ -185,26 +185,26 @@ declare module '@expressive/mvc' {
     if (typeof action == 'function') action = action();
     schedule(scope);
     return action instanceof Promise ? action.finally(() => schedule(scope)) : undefined;
-  }) as State.ForceRefresh;
+  }) as Model.ForceRefresh;
 
   return argument.call(proxy, proxy, refresh) ?? null;
 };
 
-(State as any).use = function use<T extends UseState>(
-  this: State.Type<T>,
-  ...args: State.UseArgs<T>
+(Model as any).use = function use<T extends UseModel>(
+  this: Model.Type<T>,
+  ...args: Model.UseArgs<T>
 ) {
   const scope = requireScope();
 
   if (scope.kind != 'function')
-    throw new Error('State.use() is only available at the top level of a function component.');
+    throw new Error('Model.use() is only available at the top level of a function component.');
 
   const index = scope.useIndex++;
   let slot = scope.uses[index] as UseSlot | undefined;
 
   if (slot && slot.Type !== this) {
     if (!scope.hot)
-      throw new Error('State.use() calls must keep the same order on every function-component render.');
+      throw new Error('Model.use() calls must keep the same order on every function-component render.');
 
     truncate(scope, index);
     slot = undefined;
@@ -213,12 +213,12 @@ declare module '@expressive/mvc' {
   if (!slot) {
     let instance!: T;
     const assign = (value: unknown) =>
-      typeof value == 'object' && value && instance.set(value as State.Assign<T>);
+      typeof value == 'object' && value && instance.set(value as Model.Assign<T>);
     let apply: (...values: any[]) => unknown = (...values) =>
       Promise.all(values.flat().map(assign));
 
     instance = new (this as any)((self: T) => {
-      const own = self as T & UseState;
+      const own = self as T & UseModel;
 
       if (typeof own.use == 'function') {
         apply = own.use.bind(own);
@@ -264,9 +264,9 @@ Object.defineProperty(Component, 'use', {
   }
 });
 
-const OWNERS = new WeakMap<Function, { owner: State; key: string }>();
+const OWNERS = new WeakMap<Function, { owner: Model; key: string }>();
 
-State.on({
+Model.on({
   method(key, fn, owner) {
     if (/^[A-Z]/.test(key)) OWNERS.set(fn, { owner, key });
   }

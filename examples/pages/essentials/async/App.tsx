@@ -3,7 +3,7 @@ import './App.css';
 import { Control } from './Control';
 
 const App = () => {
-  // Control is a State, separating concerns of this component.
+  // Control is a Model, separating concerns of this component.
   // This focuses on presentation, while Control focuses on behavior.
   const { agent, dead, getNewAgent, remaining } = Control.use();
 

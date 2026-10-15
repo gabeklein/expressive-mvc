@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
 import { parsePath, serialize } from './serialize';
 import { labelOf, seen } from './types';
@@ -179,13 +179,13 @@ function matches(event: Event, query: Query) {
 }
 
 /** Filters OR together; none set records everything. Without a key only type-level filters apply. */
-export function wants(state: State, key?: string): boolean {
+export function wants(state: Model, key?: string): boolean {
   if (config.level === 'off') return false;
 
   const { types, paths, keys } = config;
   if (!types.length && !paths.length && !keys.length) return true;
 
-  const Type = state.constructor as typeof State;
+  const Type = state.constructor as typeof Model;
   const label = labelOf(Type);
   if (types.includes(label)) return true;
   if (key !== undefined && keys.includes(key)) return true;
@@ -203,13 +203,13 @@ export function recordsCalls(): boolean {
 }
 
 
-export function note(state: State, key: unknown, store: Map<string, unknown>): void {
+export function note(state: Model, key: unknown, store: Map<string, unknown>): void {
   const name = String(key);
   if (!wants(state, name)) return;
 
   const event: Event = {
     id: String(state),
-    type: labelOf(state.constructor as typeof State),
+    type: labelOf(state.constructor as typeof Model),
     key: name,
     kind: typeof key === 'string' && store.has(key) ? 'update' : 'event'
   };
@@ -220,15 +220,15 @@ export function note(state: State, key: unknown, store: Map<string, unknown>): v
   push(event);
 }
 
-export function noteCall(state: State, key: string, args: unknown[]): void {
+export function noteCall(state: Model, key: string, args: unknown[]): void {
   if (!recordsCalls() || !wants(state, key)) return;
 
-  const event: Event = { id: String(state), type: labelOf(state.constructor as typeof State), key, kind: 'call' };
+  const event: Event = { id: String(state), type: labelOf(state.constructor as typeof Model), key, kind: 'call' };
   if (config.level === 'values') event.args = args.map((arg) => serialize(arg, 1));
   push(event);
 }
 
-export function noteCaught(state: State, error: unknown, kind: string, key?: string): { handled: boolean } | undefined {
+export function noteCaught(state: Model, error: unknown, kind: string, key?: string): { handled: boolean } | undefined {
   if (!wants(state, key)) return;
   const value = {
     case: kind,
@@ -236,17 +236,17 @@ export function noteCaught(state: State, error: unknown, kind: string, key?: str
     stack: error instanceof Error ? error.stack : undefined,
     handled: true
   };
-  push({ id: String(state), type: labelOf(state.constructor as typeof State), key: key ?? '', kind: 'caught', value });
+  push({ id: String(state), type: labelOf(state.constructor as typeof Model), key: key ?? '', kind: 'caught', value });
   return value;
 }
 
-export function notePatch(state: State): void {
-  if (wants(state)) push({ id: String(state), type: labelOf(state.constructor as typeof State), key: 'patch', kind: 'hot' });
+export function notePatch(state: Model): void {
+  if (wants(state)) push({ id: String(state), type: labelOf(state.constructor as typeof Model), key: 'patch', kind: 'hot' });
 }
 
-export function noteDestroy(state: State): void {
+export function noteDestroy(state: Model): void {
   if (!wants(state)) return;
-  push({ id: String(state), type: labelOf(state.constructor as typeof State), key: '', kind: 'destroy' });
+  push({ id: String(state), type: labelOf(state.constructor as typeof Model), key: '', kind: 'destroy' });
 }
 
 function push(event: Event) {
