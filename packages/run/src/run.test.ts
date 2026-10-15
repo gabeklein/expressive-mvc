@@ -3124,6 +3124,183 @@ describe('hooks', () => {
     expect(order).toEqual(['child']);
   });
 
+  it('will call hooks passed as options', async () => {
+    const order: unknown[] = [];
+
+    class Test extends State {
+      value = 0;
+
+      then = run(this, {
+        before(step, args, skip) {
+          this.value++;
+          order.push(['before', step, args, skip]);
+        },
+        after(step, entry, skip) {
+          order.push(['after', step, entry.id, skip]);
+        },
+        back(error) {
+          order.push(['back', (error as Error).message]);
+        },
+        exit(outcome) {
+          order.push(['exit', outcome.status, this === test]);
+        }
+      });
+
+      async next() {
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(order).toEqual([
+      ['before', 'next', [], false],
+      ['after', 'next', 'next#1', false],
+      ['before', 'fail', [], false],
+      ['back', 'boom'],
+      ['exit', 'failed', true]
+    ]);
+    expect(test.value).toBe(2);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[]]);
+  });
+
+  it('will call class hooks before option hooks', async () => {
+    const order: string[] = [];
+
+    class Test extends State {
+      then = run(this, {
+        before: () => void order.push('option before'),
+        after: () => void order.push('option after'),
+        back: () => void order.push('option back'),
+        exit: () => void order.push('option exit')
+      });
+
+      async next() {
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected before() {
+        order.push('before');
+      }
+
+      protected beforeFail() {
+        order.push('beforeFail');
+      }
+
+      protected after() {
+        order.push('after');
+      }
+
+      protected back() {
+        order.push('back');
+      }
+
+      protected exit() {
+        order.push('exit');
+      }
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('boom');
+    expect(order).toEqual([
+      'before',
+      'option before',
+      'after',
+      'option after',
+      'before',
+      'option before',
+      'beforeFail',
+      'back',
+      'option back',
+      'exit',
+      'option exit'
+    ]);
+  });
+
+  it('will fail when an option hook throws', async () => {
+    const before = vi.fn();
+
+    class Test extends State {
+      then = run(this, {
+        before() {
+          throw new Error('hook');
+        }
+      });
+
+      next() {}
+
+      protected beforeNext() {
+        before();
+      }
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('hook');
+    expect(before).not.toHaveBeenCalled();
+  });
+
+  it('will call option exit when the class exit throws', async () => {
+    const exit = vi.fn();
+
+    class Test extends State {
+      then = run(this, { exit });
+
+      next() {}
+
+      exit() {
+        throw new Error('exit');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('exit');
+    expect(exit).toHaveBeenCalledWith({ status: 'done', result: {} });
+    expect(test.then.status).toBe('failed');
+  });
+
+  it('will check hook options by signature', () => {
+    class Test extends State {
+      value = 0;
+
+      then = run(this, {
+        // @ts-expect-error
+        before(step: number) {
+          void step;
+        },
+        // @ts-expect-error
+        back(error: unknown, more: number) {
+          void error, more;
+        },
+        exit(outcome) {
+          expectTypeOf(outcome.status).toEqualTypeOf<'done' | 'failed' | 'stopped'>();
+          this.value++;
+        }
+      });
+
+      next() {}
+    }
+
+    run(Test.new(), {
+      // @ts-expect-error
+      bakc() {}
+    });
+
+    run(Test.new(), {
+      exit(outcome) {
+        expectTypeOf(outcome).toEqualTypeOf<Runner.Outcome<State.Values<Test>>>();
+      }
+    });
+
+    expect(Test.new().then.status).toBe('idle');
+  });
 });
 
 describe('undo', () => {

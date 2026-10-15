@@ -113,6 +113,14 @@ declare namespace Runner {
     base?: abstract new (...args: any[]) => State;
     /** Keep `prior`/`patch` per entry; the unwind restores committed steps' fields. */
     rewind?: boolean;
+    /** Before each step, after the class's `before`. */
+    before?: (this: T, step: string, args: unknown[], skip: boolean) => void;
+    /** After each step commits, after the class's `after`. */
+    after?: (this: T, step: string, entry: Runner.Entry, skip: boolean) => void;
+    /** Once an unwind completes, after the class's `back`. A throw replaces the error. */
+    back?: (this: T, error: unknown) => void;
+    /** Once per run on every outcome, after the class's `exit`. A throw rejects the run with it. */
+    exit?: (this: T, outcome: Runner.Outcome<Runner.Result<T>>) => void;
   }
 
   interface Stop {
@@ -310,6 +318,12 @@ function run<T extends State>(self: T, options: Runner.Options<T> = {}): Runner<
             }
       );
     }
+
+  for (const key of ['before', 'after', 'back', 'exit'] as const) {
+    const hook = options[key];
+
+    if (hook) hooks.set(key, [...(hooks.get(key) || []), hook]);
+  }
 
   for (const hook of hooks.keys()) {
     const target = HOOK.test(hook) && hook.replace(HOOK, (_, __, first: string) => first.toLowerCase());
