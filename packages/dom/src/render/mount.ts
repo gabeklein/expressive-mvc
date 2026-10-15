@@ -6,12 +6,13 @@ import { Fragment } from '@expressive/mvc/jsx-runtime';
 import { resolve } from '../node/loader';
 import { PORTAL, isVNode } from '../node/vnode';
 import type { Key, Node as RenderNode, VNode } from '../node/vnode';
-import { createAppearanceToken } from '../style/protocol';
+import { componentProps } from '../style/claim';
+import type { Appearance } from '../style/claim';
 import { call, commit, dispose, enter } from './adapter';
 import { inserted } from './commits';
 import { SVG, patchProps, applyRef } from './element';
 import { makeScope, range, removeRange } from './fiber';
-import type { Container, Boundary, Renderable, Placement, Fiber, Appearance } from './fiber';
+import type { Boundary, Container, Fiber, Placement, Renderable } from './fiber';
 import { latest, track, untrack } from './hot';
 import { reconcile, reconcilePortal, renderable, isCollection } from './reconcile';
 import { attempt, focusing, passiveRender } from './render';
@@ -29,28 +30,6 @@ function complete<T extends Fiber>(fiber: T, work: () => void): T {
   }
 
   return fiber;
-}
-
-function componentProps(
-  type: unknown,
-  props: Record<string, any>,
-  appearance: Appearance | undefined
-) {
-  const context = appearance?.context;
-  if (!context || typeof type != 'function') return { appearance, props };
-
-  const value = context.resolve(props);
-  const entries = appearance!.entries;
-
-  if (!value) return { appearance: { entries }, props };
-
-  return {
-    appearance: {
-      context: value.context,
-      entries
-    },
-    props: { ...props, style: [createAppearanceToken(value), props.style] }
-  };
 }
 
 function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {

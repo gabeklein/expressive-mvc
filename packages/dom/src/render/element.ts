@@ -1,9 +1,10 @@
 import { inserted } from './commits';
-import type { Fiber, Appearance } from './fiber';
+import { applyClaim, claim } from '../style/claim';
+import type { Appearance } from '../style/claim';
+import type { Fiber } from './fiber';
 import { unmountFiber } from './mount';
 import { reconcileChildren } from './reconcile';
 import { afterFlush } from './scheduler';
-import { claim, applyClaim } from './style';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const CONTROLS = ['checked', 'value'];

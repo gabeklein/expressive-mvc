@@ -3,10 +3,11 @@ import { has, map } from '@expressive/mvc';
 
 import { childrenOf, isVNode } from '../node/vnode';
 import type { Key, Node as RenderNode, VNode } from '../node/vnode';
+import type { Appearance } from '../style/claim';
 import { attach } from './commits';
 import { patchProps } from './element';
 import { move } from './fiber';
-import type { Boundary, Renderable, Fiber, Appearance } from './fiber';
+import type { Boundary, Fiber, Renderable } from './fiber';
 import { same, track, untrack } from './hot';
 import { componentProps, mount, runFunction, runComponent, runCollection, unmountFiber } from './mount';
 import { passiveRender } from './render';
