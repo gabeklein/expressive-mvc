@@ -218,7 +218,7 @@ declare namespace State {
    *
    * @returns A callback function which will be called when this effect is stale.
    */
-  type Effect<T, R = EffectCallback | Promise<EffectCallback | null | void> | null | void> = (
+  type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
     this: T,
     current: T,
     update: readonly State.Event<T>[] | undefined
@@ -302,7 +302,7 @@ abstract class State {
    * produces a value - sync or async. Await the returned function to cancel the
    * effect once a run completes and receive what it returned.
    */
-  get<R>(effect: State.Effect<this, R>): State.Release<Awaited<R>>;
+  get<R>(effect: State.Effect<this, Promise<R>>): State.Release<R>;
 
   /**
    * Get value of a property. Will fetch underlying value from exotic values like ref.Object.
@@ -388,7 +388,7 @@ abstract class State {
   ): () => void;
 
   get(
-    arg1?: State.Effect<this, unknown> | State.Type | typeof State | string | null,
+    arg1?: State.Effect<this> | State.Type | typeof State | string | null,
     arg2?: boolean | Context.Expect | (() => void),
     arg3?: boolean
   ) {

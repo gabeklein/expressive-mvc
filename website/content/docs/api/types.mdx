@@ -201,7 +201,7 @@ Return a function for a deduped settle callback. Return `null` to auto-unsubscri
 ### `State.Effect<T>`
 
 ```ts
-type Effect<T, R = EffectCallback | Promise<EffectCallback | null | void> | null | void> = (
+type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
   this: T,
   current: T,
   update: readonly Event<T>[] | undefined
@@ -216,7 +216,7 @@ type EffectCallback = (update: boolean | null) => void;
 type Release<R = void> = (() => void) & PromiseLike<R>;
 ```
 
-Returned by `get(effect)`. Call to stop the effect; await to stop it once a run completes clean and receive that run's value.
+Returned by `get(effect)`. Call to stop the effect; await to stop it once it settles and receive the latest run's value. A sync effect returns its cleanup, so only an async effect resolves a value.
 
 ### `State.Setter<T>`
 

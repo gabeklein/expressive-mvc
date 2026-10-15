@@ -497,26 +497,24 @@ describe('effect', () => {
       expect(effect).toBeCalledTimes(2);
     });
 
-    it('will use a resolved function as cleanup', async () => {
+    it('will not use a resolved function as cleanup', async () => {
       const test = Test.new();
-      const cleanup = vi.fn();
+      const resolved = vi.fn();
 
       watch(test, async ($) => {
         void $.value;
-        return cleanup;
+        return resolved;
       });
 
       await flushMicrotasks();
 
-      expect(cleanup).not.toBeCalled();
-
       test.value = 2;
       await expect(test).toHaveUpdated();
 
-      expect(cleanup).toBeCalledWith(true);
+      expect(resolved).not.toBeCalled();
     });
 
-    it('will cancel when resolved to null', async () => {
+    it('will not cancel when resolved to null', async () => {
       const test = Test.new();
       const effect = vi.fn(async ($: Test) => {
         void $.value;
@@ -529,7 +527,7 @@ describe('effect', () => {
       test.value = 2;
       await expect(test).toHaveUpdated();
 
-      expect(effect).toBeCalledTimes(1);
+      expect(effect).toBeCalledTimes(2);
     });
 
     it('will not re-run when cancelled while pending', async () => {
@@ -552,7 +550,7 @@ describe('effect', () => {
       await flushMicrotasks();
 
       expect(effect).toBeCalledTimes(1);
-      expect(cleanup).toBeCalledWith(false);
+      expect(cleanup).not.toBeCalled();
     });
 
     it('will not re-run when destroyed while pending', async () => {
@@ -575,21 +573,21 @@ describe('effect', () => {
       await flushMicrotasks();
 
       expect(effect).toBeCalledTimes(1);
-      expect(cleanup).toBeCalledWith(null);
+      expect(cleanup).not.toBeCalled();
     });
 
-    it('will release a cleanup resolved after destroying within run', async () => {
+    it('will not call a function resolved after destroying within run', async () => {
       const test = Test.new();
-      const cleanup = vi.fn();
+      const resolved = vi.fn();
 
       watch(test, async () => {
         test.set(null);
-        return cleanup;
+        return resolved;
       });
 
       await flushMicrotasks();
 
-      expect(cleanup).toBeCalledWith(null);
+      expect(resolved).not.toBeCalled();
     });
 
     it('will ignore a rejection after destroying within run', async () => {
@@ -723,12 +721,12 @@ describe('effect', () => {
       value = 1;
     }
 
-    it('will resolve with output of a completed sync run', async () => {
+    it('will resolve undefined for a sync run', async () => {
       const test = Test.new();
-      const effect = vi.fn(($: Test) => $.value * 2);
+      const effect = vi.fn(($: Test) => void $.value);
       const stop = watch(test, effect);
 
-      await expect(stop).resolves.toBe(2);
+      await expect(stop).resolves.toBeUndefined();
 
       test.value = 2;
       await expect(test).toHaveUpdated();
@@ -736,19 +734,19 @@ describe('effect', () => {
       expect(effect).toBeCalledTimes(1);
     });
 
-    it('will resolve with a one-shot null', async () => {
+    it('will resolve undefined for a one-shot null', async () => {
       const test = Test.new();
 
-      await expect(watch(test, () => null)).resolves.toBe(null);
+      await expect(watch(test, () => null)).resolves.toBeUndefined();
     });
 
-    it('will resolve once and cancel once', async () => {
+    it('will run sync cleanup once when awaited', async () => {
       const test = Test.new();
       const cleanup = vi.fn();
       const stop = watch(test, () => cleanup);
 
-      await expect(stop).resolves.toBe(cleanup);
-      await expect(stop).resolves.toBe(cleanup);
+      await expect(stop).resolves.toBeUndefined();
+      await expect(stop).resolves.toBeUndefined();
 
       stop();
 
@@ -756,11 +754,56 @@ describe('effect', () => {
       expect(cleanup).toBeCalledWith(false);
     });
 
+    it('will resolve with the latest run', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => $.value);
+      const stop = watch(test, effect);
+
+      test.value = 2;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+      await flushMicrotasks();
+
+      await expect(stop).resolves.toBe(3);
+      expect(effect).toBeCalledTimes(3);
+    });
+
+    it('will wait for a run queued when awaited', async () => {
+      const test = Test.new();
+      const effect = vi.fn(async ($: Test) => $.value);
+      const stop = watch(test, effect);
+
+      await flushMicrotasks();
+
+      test.value = 2;
+
+      await expect(stop).resolves.toBe(2);
+      expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will not call a function resolved by an async run', async () => {
+      const test = Test.new();
+      const resolved = vi.fn();
+      const stop = watch(test, async ($) => {
+        void $.value;
+        return resolved;
+      });
+
+      await expect(stop).resolves.toBe(resolved);
+
+      stop();
+
+      expect(resolved).not.toBeCalled();
+    });
+
     it('will resolve after a suspended first run replays', async () => {
       const test = Test.new();
       const suspense = mockPromise<void>();
       let attempt = 0;
-      const effect = vi.fn(($: Test) => {
+      const effect = vi.fn(async ($: Test) => {
         if (!attempt++) throw suspense;
         return $.value;
       });
@@ -797,12 +840,13 @@ describe('effect', () => {
       expect(effect).toBeCalledTimes(1);
     });
 
-    it('will not re-run for a change while awaited', async () => {
+    it('will re-run for a change while awaited and resolve with it', async () => {
       const test = Test.new();
-      const pending = mockPromise<string>();
-      const effect = vi.fn(($: Test) => {
-        void $.value;
-        return pending;
+      const pending = mockPromise<void>();
+      const effect = vi.fn(async ($: Test) => {
+        const { value } = $;
+        await pending;
+        return value;
       });
 
       const stop = watch(test, effect);
@@ -811,11 +855,14 @@ describe('effect', () => {
       test.value = 2;
       await expect(test).toHaveUpdated();
 
-      pending.resolve('done');
+      pending.resolve();
 
-      await expect(value).resolves.toBe('done');
+      await expect(value).resolves.toBe(2);
 
-      expect(effect).toBeCalledTimes(1);
+      test.value = 3;
+      await expect(test).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
     });
 
     it('will release nested effects', async () => {

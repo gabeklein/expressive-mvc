@@ -39,7 +39,7 @@ state.get('method'); // unbound method
 
 ```ts
 get(effect: State.Effect<this>): State.Release
-get<R>(effect: State.Effect<this, R>): State.Release<Awaited<R>>
+get<R>(effect: State.Effect<this, Promise<R>>): State.Release<R>
 ```
 
 Runs `effect` immediately, then again whenever accessed properties change. Returns an unsubscribe function, also awaitable (see **Await the release**).
@@ -64,26 +64,25 @@ const stop = state.get((current, update) => {
 
 - `(event) => void` - cleanup, called with `true` (about to re-run), `false` (cancelled via `stop()`), or `null` (state destroyed)
 - `null` - cancel the effect (one-shot)
-- `Promise` - the run is pending until it settles; the resolved value is treated as above (function → cleanup, `null` → cancel)
+- `Promise` - the run is pending until it settles; the resolved value is a value only, never a cleanup or cancel
 
-**Async effects:** tracked changes during a pending run do not re-run it - they accumulate, and one re-run follows settlement with every changed key in `update`. An async effect does not see intermediate states; sync effects remain the per-event tool. A rejection is reported like a sync throw (`catch` handlers, then uncaught); the effect then stays idle until cancelled. Cancel or destroy while pending: no re-run, a cleanup the run resolves to is called with `false` / `null`.
+**Async effects:** tracked changes during a pending run do not re-run it - they accumulate, and one re-run follows settlement with every changed key in `update`. An async effect does not see intermediate states; sync effects remain the per-event tool. A rejection is reported like a sync throw (`catch` handlers, then uncaught); the effect then stays idle until cancelled. Cancel or destroy while pending: no re-run.
 
 **Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) - synchronously or after an `await` - pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
 
 **Before ready:** effects registered in constructors wait for activation before first run.
 
-**Await the release:** `await state.get(effect)` cancels the effect and yields the value of its first clean run - a one-shot read of tracked state that suspends until it can complete.
+**Await the release:** `await state.get(effect)` cancels the effect once it settles and yields the latest clean run - a one-shot read of tracked state that suspends until it can complete. Only an async effect yields a value; a sync one resolves `undefined`, its cleanup called with `false`.
 
-- sync run already done - resolves at once with its output
-- first run suspended - resolves after the replay that completes
-- async run - resolves with what the promise resolves to; tracked changes in flight do not re-run it
+- idle - resolves at once with the latest run
+- run in flight, queued, or suspended - waits for it; a change arriving meanwhile re-runs first
 
 ```ts
-const user = await state.get(($) => $.user);
+const user = await state.get(async ($) => $.user);
 const total = await state.get(async ($) => (await fetch($.url)).json());
 ```
 
-Rejects if the state is destroyed first, or the run throws a non-suspense error (which then skips `catch` handlers). Calling the release by hand before it settles rejects a promise already attached, silent otherwise. Returning the release from an `async` function unwraps and cancels it - TS does not flag this.
+Rejects if the state is destroyed before any clean run, or a run throws a non-suspense error (which then skips `catch` handlers). Calling the release by hand before it settles rejects a promise already attached, silent otherwise. Returning the release from an `async` function unwraps and cancels it - TS does not flag this.
 
 To watch a specific property or event, use [`set(event, callback)`](set.md).
 
@@ -155,7 +154,7 @@ const stop = scene.get(State, (node) => attach(node), true);
 ## Type Signatures
 
 ```ts
-type Effect<T, R = EffectCallback | Promise<EffectCallback | null | void> | null | void> = (
+type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
   this: T,
   current: T,
   update: readonly State.Event<T>[] | undefined

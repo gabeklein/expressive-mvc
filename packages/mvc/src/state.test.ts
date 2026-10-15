@@ -1587,11 +1587,11 @@ describe('get method', () => {
 
         stop();
 
-        const value: string = await state.get(() => 'foobar');
-        const async: number = await state.get(async () => 1);
+        const sync: void = await state.get(() => {});
+        const value: number = await state.get(async () => 1);
         const none: void = await state.get(async () => {});
 
-        expect([value, async, none]).toEqual(['foobar', 1, undefined]);
+        expect([sync, value, none]).toEqual([undefined, 1, undefined]);
       });
     });
 

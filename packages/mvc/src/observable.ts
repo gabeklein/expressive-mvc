@@ -14,9 +14,9 @@ declare namespace Observer {
 
   type EffectCleanup = (update: boolean | null) => void;
 
-  type EffectOutput = EffectCleanup | Promise<EffectCleanup | null | void> | null | void;
+  type EffectOutput = EffectCleanup | null | void;
 
-  type Effect<T extends object, R = EffectOutput> = (
+  type Effect<T extends object, R = EffectOutput | Promise<void>> = (
     this: T,
     proxy: T,
     changed: readonly Event[]
@@ -254,24 +254,24 @@ function emit(o: Observer, key: Observer.Signal, subject: object): void {
  */
 function watch<T extends object, R = void>(
   target: T,
-  callback: Observer.Effect<Required<T>, R | Observer.EffectOutput>,
+  callback: Observer.Effect<Required<T>, Observer.EffectOutput | Promise<R>>,
   requireValues: true,
   transition?: (work: () => void) => void
-): Observer.Release<Awaited<R>>;
+): Observer.Release<R>;
 
 function watch<T extends object, R = void>(
   target: T,
-  callback: Observer.Effect<T, R | Observer.EffectOutput>,
+  callback: Observer.Effect<T, Observer.EffectOutput | Promise<R>>,
   recursive?: boolean,
   transition?: (work: () => void) => void
-): Observer.Release<Awaited<R>>;
+): Observer.Release<R>;
 
 function watch<T extends object, R>(
   target: T,
   callback: Observer.Effect<T, unknown>,
   argument?: boolean,
   transition?: (work: () => void) => void
-): Observer.Release<Awaited<R>> {
+): Observer.Release<R> {
   const o = observer(target, true);
   let events: readonly Observer.Event[] = [];
   let unset: ((update: boolean | null) => void) | undefined;
@@ -282,22 +282,27 @@ function watch<T extends object, R>(
   let pending = false;
   let suspense: ReturnType<typeof hold>;
   let outcome: { ok: boolean; value: unknown } | undefined;
-  let awaiting: Promise<Awaited<R>> | undefined;
+  let awaiting: Promise<R> | undefined;
   let settle: (() => void) | undefined;
 
   function conclude(ok: boolean, value: unknown) {
-    if (outcome) return;
     outcome = { ok, value };
-    if (awaiting) finish();
+    if (!ok || !queued) finish();
   }
 
   function finish() {
-    settle!();
+    const done = awaiting && settle;
+
+    if (!done) return;
+
+    settle = undefined;
+    done();
     cleanup();
   }
 
   function fail(reason: string) {
-    if (!outcome) conclude(false, new Error(`${target} ${reason}`));
+    if (!outcome) outcome = { ok: false, value: new Error(`${target} ${reason}`) };
+    finish();
   }
 
   function stop(key: false | null) {
@@ -306,6 +311,7 @@ function watch<T extends object, R>(
     suspense?.();
     suspense = undefined;
     reset = null;
+    pending = queued = false;
   }
 
   function suspend(on: Promise<unknown>) {
@@ -317,11 +323,6 @@ function watch<T extends object, R>(
       suspended(invoke);
     };
     on.then(replay, replay);
-  }
-
-  function discard(output: unknown, key: boolean | null) {
-    if (output instanceof Promise) output.then((value) => discard(value, key), () => {});
-    else if (typeof output == 'function') output(key);
   }
 
   function invoke() {
@@ -359,7 +360,6 @@ function watch<T extends object, R>(
         if (typeof output == 'function') output(key);
         if (release) release(key);
       };
-      conclude(true, output);
     }
 
     function run(release?: (update?: boolean | null) => void) {
@@ -371,8 +371,9 @@ function watch<T extends object, R>(
 
       if (observer(target) === null) {
         if (release) release(null);
-        fail('is destroyed.');
-        return discard(output, null);
+        if (output instanceof Promise) output.catch(() => {});
+        else if (typeof output == 'function') output(null);
+        return fail('is destroyed.');
       }
 
       if (previous && argument === false && !current.watching.size)
@@ -384,7 +385,10 @@ function watch<T extends object, R>(
 
       events = [];
 
-      if (!(output instanceof Promise)) return apply(output, release);
+      if (!(output instanceof Promise)) {
+        apply(output, release);
+        return conclude(true, undefined);
+      }
 
       pending = true;
       reset = invoke;
@@ -394,9 +398,10 @@ function watch<T extends object, R>(
         (value) => {
           pending = false;
 
-          if (reset === null) return discard(value, observer(target) === null ? null : false);
+          if (reset === null) return;
 
-          apply(value, release);
+          apply(undefined, release);
+          conclude(true, value);
 
           if (queued) onUpdate();
         },
@@ -446,15 +451,15 @@ function watch<T extends object, R>(
 
   cleanup.then = ((onFulfilled, onRejected) => {
     if (!awaiting) {
-      awaiting = new Promise<Awaited<R>>((resolve, reject) => {
-        settle = () => (outcome!.ok ? resolve(outcome!.value as Awaited<R>) : reject(outcome!.value));
+      awaiting = new Promise<R>((resolve, reject) => {
+        settle = () => (outcome!.ok ? resolve(outcome!.value as R) : reject(outcome!.value));
       });
 
-      if (outcome) finish();
+      if (outcome && !pending && !queued && !suspense) finish();
     }
 
     return awaiting.then(onFulfilled, onRejected);
-  }) as PromiseLike<Awaited<R>>['then'];
+  }) as PromiseLike<R>['then'];
 
   if (EffectContext && argument !== false) EffectContext.add(cleanup);
 
