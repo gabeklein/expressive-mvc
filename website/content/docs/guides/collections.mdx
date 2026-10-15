@@ -235,12 +235,12 @@ Ownership works exactly as it does for a pool - a fresh `State` is adopted and d
 Both instructions expose a `get()` seam with no arguments, and State snapshots use it - the same way they do for `ref` and child states. A list snapshots to a plain array, a map to a `ReadonlyMap`, with nested values exported through their own `get()`:
 
 ```ts
-class Model extends State {
+class Example extends State {
   list = has([1, 2, 3]);
   keyed = map([['a', 1]]);
 }
 
-const snapshot = Model.new().get();
+const snapshot = Example.new().get();
 
 snapshot.list; // [1, 2, 3]
 snapshot.keyed.get('a'); // 1
@@ -251,7 +251,7 @@ snapshot.keyed.get('a'); // 1
 Neither instruction wraps nested plain arrays or objects:
 
 ```ts
-class Model extends State {
+class Example extends State {
   keyed = map<string, { value: number }>();
 }
 

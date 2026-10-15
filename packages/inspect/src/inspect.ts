@@ -8,7 +8,7 @@ import { bracket } from './bracket';
 import { tick, unreached, unsettled, type Act } from './settle';
 import { forget, seen, type TypeInfo } from './types';
 
-export interface Model extends TypeInfo {
+export interface ModelInfo extends TypeInfo {
   id: string;
   parent?: string;
   /** Keys with a stored value. */
@@ -241,7 +241,7 @@ export class Instance {
     return select ? project(value, select) : serialize(value);
   }
 
-  model(): Model {
+  model(): ModelInfo {
     return describe(this.state, ownership());
   }
 
@@ -396,7 +396,7 @@ export function roots(): Instance[] {
   return instances().filter((instance) => !parents.has(instance.state));
 }
 
-export function models(): Model[] {
+export function models(): ModelInfo[] {
   const parents = ownership();
   return [...mainline()].map((state) => describe(state, parents));
 }
@@ -517,12 +517,12 @@ function mounts(state: State) {
   });
 }
 
-function describe(state: State, parents: Map<State, State>): Model {
+function describe(state: State, parents: Map<State, State>): ModelInfo {
   const stored = entries(state);
   const declared = Object.entries(Object.getOwnPropertyDescriptors(state))
     .filter(([, desc]) => typeof desc.get === 'function')
     .map(([key]) => key);
-  const model: Model = {
+  const model: ModelInfo = {
     id: String(state),
     ...seen(state.constructor as typeof State),
     keys: [...stored.keys()],

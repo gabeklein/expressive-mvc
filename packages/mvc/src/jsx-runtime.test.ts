@@ -83,11 +83,11 @@ describe('runtime', () => {
   });
 
   it('will settle headless once subscribers have replayed', async () => {
-    class Model extends State {
+    class Subject extends State {
       value = 0;
     }
 
-    const model = Model.new();
+    const model = Subject.new();
     const seen: number[] = [];
 
     model.get(({ value }) => void seen.push(value));

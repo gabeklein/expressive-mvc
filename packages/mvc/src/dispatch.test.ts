@@ -209,12 +209,12 @@ describe('dispatch', () => {
   });
 
   it('will only upgrade inseparable watchers to urgent', async () => {
-    class Model extends State {
+    class Subject extends State {
       deferred = 0;
       urgent = 0;
     }
 
-    const model = Model.new();
+    const model = Subject.new();
     const priorities: string[] = [];
     let transitioning = false;
     const host = (work: () => void) => {
@@ -240,12 +240,12 @@ describe('dispatch', () => {
   });
 
   it('will squash final state and transition cascading watchers', async () => {
-    class Model extends State {
+    class Subject extends State {
       source = 0;
       derived = 0;
     }
 
-    const model = Model.new();
+    const model = Subject.new();
     const values: string[] = [];
     let transitioning = false;
     const host = (work: () => void) => {
