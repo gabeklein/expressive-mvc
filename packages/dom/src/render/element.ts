@@ -1,10 +1,15 @@
-import { inserted } from './commits';
+import { Context } from '@expressive/mvc';
+
+import type { VNode } from '../node/vnode';
 import { applyClaim, claim } from '../style/claim';
 import type { Appearance } from '../style/claim';
-import type { Fiber } from './fiber';
-import { unmountFiber } from './mount';
+import { inserted } from './commits';
+import type { Boundary, Fiber } from './fiber';
+import { complete, unmountFiber } from './mount';
 import { reconcileChildren } from './reconcile';
+import { focusing } from './render';
 import { afterFlush } from './scheduler';
+import { hostOf } from './suspense';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const CONTROLS = ['checked', 'value'];
@@ -12,6 +17,35 @@ const ENUMERATED = ['contentEditable', 'contenteditable', 'draggable', 'spellche
 const ALIASES: Record<string, string> = { autoFocus: 'autofocus', contentEditable: 'contenteditable', htmlFor: 'for' };
 const controlled = new WeakMap<Element, Fiber>();
 const restoring = new WeakSet<Document>();
+
+function mountElement(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
+  const tag = value.type as string;
+  const host = hostOf(parent);
+  const namespace = tag == 'svg' || host instanceof SVGElement && host.localName != 'foreignObject' ? SVG : undefined;
+  const element = namespace
+    ? document.createElementNS(SVG, tag)
+    : document.createElement(tag);
+  const fiber: Fiber = {
+    kind: 'element',
+    key: value.key,
+    type: tag,
+    props: {},
+    context,
+    boundary,
+    start: element,
+    end: element,
+    children: [],
+    events: new Map()
+  };
+
+  parent.insertBefore(element, before);
+  complete(fiber, () => {
+    patchProps(fiber, value.props, appearance);
+  });
+
+  if (value.props.autofocus || value.props.autoFocus) focusing.push(element);
+  return fiber;
+}
 
 function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appearance) {
   const element = fiber.start as Element;
@@ -174,4 +208,12 @@ function applyRef(ref: unknown, value: Element | null) {
   else if (ref && typeof ref == 'object' && 'current' in ref) (ref as { current: Element | null }).current = value;
 }
 
-export { SVG, applyRef, patchProps };
+function unmountElement(fiber: Fiber) {
+  applyRef(fiber.props?.ref, null);
+  for (const [id, listener] of fiber.events!) {
+    const [name, capture] = id.split(':');
+    (fiber.start as Element).removeEventListener(name, listener, capture === 'true');
+  }
+}
+
+export { mountElement, patchProps, unmountElement };

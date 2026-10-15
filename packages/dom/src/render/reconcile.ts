@@ -1,18 +1,17 @@
-import { Component, Context, State } from '@expressive/mvc';
-import { has, map } from '@expressive/mvc';
+import { Context, State } from '@expressive/mvc';
 
 import { childrenOf, isVNode } from '../node/vnode';
 import type { Key, Node as RenderNode, VNode } from '../node/vnode';
 import type { Appearance } from '../style/claim';
+import { isCollection, patchCollection } from './collection';
 import { attach } from './commits';
+import { patchComponent, patchFunction, renderable } from './component';
 import { patchProps } from './element';
 import { move } from './fiber';
-import type { Boundary, Fiber, Renderable } from './fiber';
-import { same, track, untrack } from './hot';
-import { componentProps, mount, runFunction, runComponent, runCollection, unmountFiber } from './mount';
-import { passiveRender } from './render';
-import { claim as dequeue, settle as absorb } from './scheduler';
-import { observe } from './style';
+import type { Boundary, Fiber } from './fiber';
+import { same } from './hot';
+import { mount, patchFragment, patchText, unmountFiber } from './mount';
+import { patchPortal } from './portal';
 import { gather } from './suspense';
 
 function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
@@ -20,10 +19,6 @@ function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?:
 
   if (detached) reconcileChildren(fiber, detached, null, value, context, boundary, appearance);
   else reconcileChildren(fiber, fiber.end.parentNode!, fiber.end, value, context, boundary, appearance);
-}
-
-function reconcilePortal(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
-  reconcileChildren(fiber, fiber.portalEnd!.parentNode!, fiber.portalEnd!, value, context, boundary, appearance);
 }
 
 function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: globalThis.Node | null, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
@@ -81,64 +76,16 @@ function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Nod
 
   if (old.ownBoundary) old.ownBoundary.parent = boundary;
   old.boundary = old.ownBoundary || boundary;
-  if (old.kind == 'collection') {
-    if (old.appearance !== appearance) {
-      old.appearance = appearance;
-      runCollection(old, passiveRender);
-    }
-    return old;
-  }
 
-  if (old.kind == 'text') {
-    const next = String(value);
-    if (old.start.nodeValue !== next) old.start.nodeValue = next;
-    old.value = value;
-  } else if (old.kind == 'element') {
-    patchProps(old, (value as VNode).props, appearance);
-  } else if (old.kind == 'fragment') {
-    old.context = context;
-    old.appearance = appearance;
-    reconcile(old, (value as VNode).props.children, context, old.boundary, appearance);
-  } else if (old.kind == 'function') {
-    const vnode = value as VNode;
-    const resolved = componentProps(vnode.type, vnode.props, appearance);
-    if (old.type !== vnode.type) {
-      untrack(old.type as Function, old.scope!);
-      old.type = vnode.type;
-      old.scope!.hot = true;
-      track(old.type as Function, old.scope!);
-    }
-    old.appearance = resolved.appearance;
-    old.props = observe(resolved.props);
-    rerun(old, () => runFunction(old, passiveRender));
-  } else if (old.kind == 'component') {
-    const resolved = isVNode(value)
-      ? componentProps(value.type, value.props, appearance)
-      : { appearance, props: old.props! };
-    old.appearance = resolved.appearance;
-    const props = isVNode(value) ? observe(resolved.props) : resolved.props;
-    if (isVNode(value) && props !== old.props) {
-      const instance = old.instance!;
-      if (passiveRender) old.applied = true;
-      if (instance instanceof Component) (instance as any).props = props;
-      else instance.set(merge(old.props!, props) as never);
-    }
-    old.props = props;
-    rerun(old, () => runComponent(old, passiveRender));
-  } else {
-    old.appearance = appearance;
-    const vnode = value as VNode;
-    old.props = vnode.props;
-    reconcilePortal(old, vnode.props.children, context, old.boundary, appearance);
-  }
+  if (old.kind == 'collection') patchCollection(old, appearance);
+  else if (old.kind == 'text') patchText(old, value);
+  else if (old.kind == 'element') patchProps(old, (value as VNode).props, appearance);
+  else if (old.kind == 'fragment') patchFragment(old, value as VNode, context, appearance);
+  else if (old.kind == 'function') patchFunction(old, value as VNode, appearance);
+  else if (old.kind == 'component') patchComponent(old, value, appearance);
+  else patchPortal(old, value as VNode, context, appearance);
 
   return old;
-}
-
-function rerun(fiber: Fiber, run: () => void) {
-  dequeue(fiber.scope!);
-  run();
-  absorb(fiber.scope!);
 }
 
 function compatible(fiber: Fiber, value: RenderNode) {
@@ -161,23 +108,9 @@ function source(value: RenderNode): RenderNode {
   return value;
 }
 
-function renderable(value: unknown): value is Renderable {
-  return value instanceof State && typeof (value as Renderable).render == 'function';
-}
-
-function merge(previous: Record<string, any>, next: Record<string, any>) {
-  const output: Record<string, any> = {};
-  for (const key in previous) output[key] = undefined;
-  return { ...output, ...next };
-}
-
-function isCollection(value: unknown): value is has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown> {
-  return value instanceof has.List || value instanceof has.Pool || value instanceof map.Managed;
-}
-
 function keyOf(value: RenderNode): Key {
   if (renderable(value)) return value.key;
   return isVNode(value) ? value.key : undefined;
 }
 
-export { isCollection, reconcile, reconcileChildren, reconcilePortal, renderable };
+export { reconcile, reconcileChildren };
