@@ -45,7 +45,7 @@ function CounterWidget() {
 
 ## Component
 
-`Component` is a `Model` that owns its own rendering - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form inputs, layout shells, route controls, media players.
+`Component` is a `Model` with a view - a persistent class instance with lifecycle, context, suspense, and error handling baked in. Reach for it when state is intrinsic to a rendered unit: form inputs, layout shells, route controls, media players.
 
 ```tsx
 import { Component } from '@expressive/mvc';

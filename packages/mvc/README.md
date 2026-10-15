@@ -130,7 +130,7 @@ off();                                                // stop listening
 }
 ```
 
-`Component` - a `Model` that renders - lives here as the agnostic base. For using it in an app (rendering, props, subcomponents, suspense), see **[`@expressive/react`](https://www.npmjs.com/package/@expressive/react)**.
+`Component` - a `Model` with a view - lives here as the agnostic base. For using it in an app (rendering, props, subcomponents, suspense), see **[`@expressive/react`](https://www.npmjs.com/package/@expressive/react)**.
 
 ---
 

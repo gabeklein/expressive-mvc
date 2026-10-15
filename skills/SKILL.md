@@ -246,7 +246,7 @@ Pass the class: `<Component for={TransferState}>`. Pass an instance only when so
 
 ## Component Class
 
-A `Component` is a `Model` that renders itself. It provides context automatically and supports suspense/error boundaries.
+A `Component` is a `Model` with a view. It provides context automatically and supports suspense/error boundaries.
 
 ```tsx
 class CounterView extends Component {
