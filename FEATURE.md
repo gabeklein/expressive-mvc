@@ -7,7 +7,7 @@ Two tiers. A **runnable** - a `Job`, or any Model with `run(this)` - is atomic: 
 ## Workflow
 
 - `feat/run` is the trunk. Each step lands as its own PR into it, small enough to hand-review; the trunk merges to `main` when release-ready.
-- Merge `main` into the trunk as it moves. Core fixes land on `main` as their own PRs - `fix/new-init` (`new()` read when activation reaches it, an own non-enumerable method counting; `Promise<void>` return) is the first; the trunk is based on it.
+- Merge `main` into the trunk as it moves. Run depends only on published mvc behavior.
 - `packages/run/docs/` is the LLM-facing documentation of shipped behavior and the review surface for intent. A PR that pivots behavior updates the docs in the same PR. FEATURE.md stays the agenda. Root `skills/` will later be assembled per module from such folders.
 - `packages/run/examples/<case>/` holds the benchmark classes with their tests - the DX as a user writes it, no runtime internals. Standing exception to the adjacent-test rule, recorded in AGENTS.md.
 - Examples carry light learning comments - an exception to the no-comments rule - and together cover every shipped feature, mapped in [examples/README.md](packages/run/examples/README.md); a PR adding a feature extends an example.
