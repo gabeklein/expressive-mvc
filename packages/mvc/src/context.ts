@@ -1,17 +1,17 @@
 import { listener } from "./observable";
-import { event, State, uid } from "./state";
+import { event, Model, uid } from "./state";
 
-const LOOKUP = new WeakMap<State, Context>();
-const HELD = new WeakMap<State, Map<State, Set<() => void>>>();
-const HOST = new WeakMap<Context, State>();
+const LOOKUP = new WeakMap<Model, Context>();
+const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
+const HOST = new WeakMap<Context, Model>();
 let ROOT: Context;
 
-type Accept<T extends State = State> =
+type Accept<T extends Model = Model> =
   | T
-  | State.Type<T>
-  | Record<string | number, T | State.Type<T>>;
+  | Model.Type<T>
+  | Record<string | number, T | Model.Type<T>>;
 
-type Expect<T extends State = State> = (
+type Expect<T extends Model = Model> = (
   state: T,
   downstream: boolean,
 ) => (() => void) | void;
@@ -25,8 +25,8 @@ class Context {
     return ROOT ??= new Context();
   }
 
-  /** Get the context for a State. Adapters may override to provide framework context. */
-  static get(state?: State): Context {
+  /** Get the context for a Model. Adapters may override to provide framework context. */
+  static get(state?: Model): Context {
     return state && LOOKUP.get(state.is) || Context.root;
   }
 
@@ -34,12 +34,12 @@ class Context {
   public parent?: Context;
   public scope = new Set<Context>();
   public consume = new Map<
-    State.Extends,
+    Model.Extends,
     Set<[Expect, boolean | undefined]> | null
   >();
-  public provide = new Map<State.Extends, Set<[State, boolean]> | null>();
+  public provide = new Map<Model.Extends, Set<[Model, boolean]> | null>();
 
-  protected inputs: Record<string | number, State | State.Extends> = {};
+  protected inputs: Record<string | number, Model | Model.Extends> = {};
 
   private cleanup = new Map<string | number | Function, () => void>();
 
@@ -58,19 +58,19 @@ class Context {
       if (accept(ctx) !== false) for (const c of ctx.scope) queue.push(c);
   }
 
-  private register<T extends State>(
-    type: State.Extends<T>,
+  private register<T extends Model>(
+    type: Model.Extends<T>,
     value: [Expect<T>, boolean | undefined],
     asConsumer: true,
   ): () => void;
 
-  private register<T extends State>(
-    type: State.Extends<T>,
+  private register<T extends Model>(
+    type: Model.Extends<T>,
     value: [T, boolean],
     asConsumer?: false,
   ): () => void;
 
-  private register(type: State.Extends, value: any, asConsumer?: boolean) {
+  private register(type: Model.Extends, value: any, asConsumer?: boolean) {
     const mode = asConsumer ? "consume" : "provide";
     let set = this[mode].get(type) as Set<any>;
     if (!set) this[mode].set(type, (set = new Set()));
@@ -85,34 +85,34 @@ class Context {
   }
 
   /** Find specified type upstream. Throws if not found. */
-  public get<T extends State>(Type: State.Extends<T>, required?: true): T;
+  public get<T extends Model>(Type: Model.Extends<T>, required?: true): T;
 
   /** Find specified type upstream. Returns undefined if not found. */
-  public get<T extends State>(
-    Type: State.Extends<T>,
+  public get<T extends Model>(
+    Type: Model.Extends<T>,
     required?: boolean,
   ): T | undefined;
 
   /** Subscribe to a type becoming available in context. */
-  public get<T extends State>(
-    Type: State.Extends<T>,
+  public get<T extends Model>(
+    Type: Model.Extends<T>,
     callback: Expect<T>,
     downstream?: boolean,
   ): () => void;
 
-  /** Lookup excluding a specific instance (used by State.prototype.get for upstream-of-self semantics). */
-  public get<T extends State>(
-    Type: State.Extends<T>,
+  /** Lookup excluding a specific instance (used by Model.prototype.get for upstream-of-self semantics). */
+  public get<T extends Model>(
+    Type: Model.Extends<T>,
     arg: boolean | Expect<T> | undefined,
     downstream: boolean | undefined,
-    skip: State,
+    skip: Model,
   ): T | undefined | (() => void);
 
-  public get<T extends State>(
-    Type: State.Extends<T>,
+  public get<T extends Model>(
+    Type: Model.Extends<T>,
     arg?: boolean | Expect<T>,
     downstream?: boolean,
-    skip?: State,
+    skip?: Model,
   ) {
     let found: T | null | undefined;
     let priority = false;
@@ -160,26 +160,26 @@ class Context {
   }
 
   /**
-   * Register one or more States to this context.
+   * Register one or more Models to this context.
    *
-   * Context will add or remove States as needed to keep with provided input.
+   * Context will add or remove Models as needed to keep with provided input.
    *
-   * @param inputs State, State class, or map of States / State classes to register.
-   * @param forEach Optional callback to run for each State registered. Receives
-   *   whether this context created the State - and so will destroy it - as
+   * @param inputs Model, Model class, or map of Models / Model classes to register.
+   * @param forEach Optional callback to run for each Model registered. Receives
+   *   whether this context created the Model - and so will destroy it - as
    *   opposed to it having been provided already active. May return a callback
    *   to run before that entry is dropped.
    */
-  public set<T extends State>(
+  public set<T extends Model>(
     inputs: Accept<T>,
     forEach?: (state: T, owned: boolean) => (() => void) | void,
   ) {
     const init = new Set<() => void>();
     const { cleanup } = this;
 
-    const single = typeof inputs == "function" || inputs instanceof State;
+    const single = typeof inputs == "function" || inputs instanceof Model;
 
-    if (typeof inputs == "function" || inputs instanceof State)
+    if (typeof inputs == "function" || inputs instanceof Model)
       inputs = { [0]: inputs };
 
     for (const K of Object.keys({ ...this.inputs, ...inputs })) {
@@ -197,16 +197,16 @@ class Context {
 
       // a class is constructed here - and so destroyed here; an instance is
       // adopted as-is and outlives this context
-      const owned = State.is(V);
+      const owned = Model.is(V);
 
-      if (!(owned || V instanceof State)) {
+      if (!(owned || V instanceof Model)) {
         const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
         throw new Error(
-          `Context can only include an instance or class of State but got ${as}.`,
+          `Context can only include an instance or class of Model but got ${as}.`,
         );
       }
 
-      const state = owned ? new (V as State.Type)() : V.is;
+      const state = owned ? new (V as Model.Type)() : V.is;
       const remove = this.add(state, true);
 
       if (single && this !== ROOT) HOST.set(this, state);
@@ -229,12 +229,12 @@ class Context {
     return this;
   }
 
-  add(I: State, explicit = false) {
+  add(I: Model, explicit = false) {
     const { cleanup, provide } = this;
     const root = this === Context.root;
-    const TT: State.Extends[] = [];
+    const TT: Model.Extends[] = [];
 
-    function conflict(T: State.Extends) {
+    function conflict(T: Model.Extends) {
       const entries = provide.get(T);
       if (entries)
         for (const entry of entries)
@@ -242,8 +242,8 @@ class Context {
     }
 
     for (
-      let T = I.constructor as State.Extends;
-      T !== State;
+      let T = I.constructor as Model.Extends;
+      T !== Model;
       T = Object.getPrototypeOf(T)
     )
       if (explicit || !root || !conflict(T)) TT.push(T);
@@ -306,9 +306,9 @@ class Context {
   }
 
   /**
-   * Create a child context, optionally registering one or more States to it.
+   * Create a child context, optionally registering one or more Models to it.
    *
-   * @param inputs State, State class, or map of States / State classes to register.
+   * @param inputs Model, Model class, or map of Models / Model classes to register.
    */
   public push(inputs?: Accept) {
     const next = new Context(this);
@@ -317,9 +317,9 @@ class Context {
   }
 
   /**
-   * Remove all States from this context.
+   * Remove all Models from this context.
    *
-   * Will also run any cleanup callbacks registered when States were added.
+   * Will also run any cleanup callbacks registered when Models were added.
    */
   public pop() {
     this.inputs = {};
@@ -345,7 +345,7 @@ Object.defineProperty(Context.prototype, "toString", {
  * Add `value` to the context `state` was added to. A context-less `state` holds
  * it instead - every context adding `state` later adds its held children too.
  */
-function join(state: State, value: State): () => void {
+function join(state: Model, value: Model): () => void {
   const ctx = LOOKUP.get(state.is);
 
   if (ctx) return ctx.add(value);
@@ -364,8 +364,8 @@ function join(state: State, value: State): () => void {
   };
 }
 
-/** The State a host mounted `state` under - the one its nearest enclosing context was set up for. */
-function host(state: State) {
+/** The Model a host mounted `state` under - the one its nearest enclosing context was set up for. */
+function host(state: Model) {
   for (let ctx = LOOKUP.get(state); ctx; ctx = ctx.parent) {
     const found = HOST.get(ctx);
     if (found && found !== state) return found;

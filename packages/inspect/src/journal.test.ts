@@ -1,11 +1,11 @@
-import { State, unbind } from '@expressive/mvc';
+import { Model, unbind } from '@expressive/mvc';
 import * as hot from '@expressive/mvc/hot';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockWarn } from '../test.setup';
 import { act, attach, journal, models, type Options } from './index';
 
-class Composer extends State {
+class Composer extends Model {
   draft = '';
   rows = 1;
 
@@ -15,7 +15,7 @@ class Composer extends State {
   }
 }
 
-class Other extends State {
+class Other extends Model {
   value = 0;
 }
 
@@ -144,7 +144,7 @@ describe('journal', () => {
   });
 
   it('will keep this for a replaced method called unbound', () => {
-    class Test extends State {
+    class Test extends Model {
       self(): unknown {
         return undefined;
       }
@@ -158,7 +158,7 @@ describe('journal', () => {
   });
 
   it('will not record calls of a class bootstrapped before attach', () => {
-    class Early extends State {
+    class Early extends Model {
       go() {}
     }
 
@@ -171,7 +171,7 @@ describe('journal', () => {
   });
 
   it('will record a super call once', () => {
-    class Base extends State {
+    class Base extends Model {
       go() {
         return 1;
       }
@@ -189,7 +189,7 @@ describe('journal', () => {
   });
 
   it('will not record render', () => {
-    class View extends State {
+    class View extends Model {
       render() {
         return null;
       }
@@ -226,7 +226,7 @@ describe('journal', () => {
   });
 
   it('will link frames scheduled by a flush through cause', async () => {
-    class Reactor extends State {
+    class Reactor extends Model {
       input = 0;
       output = 0;
 
@@ -363,7 +363,7 @@ describe('journal', () => {
   });
 
   it('will act until an unmanaged _ key holds a value', async () => {
-    class Job extends State {
+    class Job extends Model {
       _handle: string | null = 'running';
     }
 
@@ -455,7 +455,7 @@ describe('hot', () => {
   });
 
   const version = (step: number, extra?: boolean) => {
-    class Counter extends State {
+    class Counter extends Model {
       value = 0;
       bump() {
         this.value += step;
@@ -519,10 +519,10 @@ describe('hot', () => {
   it('will drop a recorded method a patch removed', async () => {
     journal.record({ level: 'keys', calls: true });
 
-    const Before = class Counter extends State {
+    const Before = class Counter extends Model {
       gone() {}
     };
-    const After = class Counter extends State {};
+    const After = class Counter extends Model {};
 
     hot.accept(id, { Counter: Before });
 

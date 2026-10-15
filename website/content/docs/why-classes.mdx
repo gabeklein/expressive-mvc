@@ -13,10 +13,10 @@ That trade-off works beautifully for small components. It falls apart as feature
 
 Here's a moderately complex feature - a user settings form with fetch, dirty-checking, and save - written both ways. Flip between them:
 
-<Compare labels={['State class', 'Hooks']}>
+<Compare labels={['Model class', 'Hooks']}>
 
 ```tsx
-class UserSettings extends State {
+class UserSettings extends Model {
   name = '';
   email = '';
   saving = false;
@@ -164,7 +164,7 @@ Every computed value and every effect tracks its own dependencies, based on what
 
 ### Testability without a renderer
 
-State classes are plain objects. Test them directly:
+Model classes are plain objects. Test them directly:
 
 ```ts
 test('marks form dirty after edit', async () => {
@@ -198,7 +198,7 @@ In a hook-heavy codebase, features are spread across hook calls, custom hooks, c
 
 In a class-heavy codebase, a feature is one class. Open it, read it, understand it. The hierarchy is the class hierarchy. The data flow is method calls. Every tool you already have for reading code - outline views, go-to-definition, find-references - works exactly the way you expect.
 
-This is also why classes are unusually friendly to agents. A State class is a self-contained unit with an explicit shape. An AI reading a hook-based component has to reconstruct the data model from execution order; an AI reading a State class just reads the class.
+This is also why classes are unusually friendly to agents. A Model class is a self-contained unit with an explicit shape. An AI reading a hook-based component has to reconstruct the data model from execution order; an AI reading a Model class just reads the class.
 
 <br />
 
@@ -207,8 +207,8 @@ This is also why classes are unusually friendly to agents. A State class is a se
 To be honest about the trade-off:
 
 - **`this`** - you have to use it. If your team has a strict "functional only" rule, Expressive isn't for you.
-- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~10.7 kB gzip for a typical app, ~12.7 kB with every export used ([measured and CI-gated](/docs/guides/bundle-size)). Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
-- **An adapter floor you cannot tree-shake** - the React adapter works by patching things it does not own at import: `Component.prototype`, `contextType`, `isReactComponent`, the host runtime registry. Cross-package prototype patches cannot be shaken away, so importing `@expressive/react` at all costs ~9.9 kB before your first field. The headless core does shake properly (~6.0 kB for `State` alone, ~9.9 kB for all of it).
+- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~11.2 kB gzip for a typical app, ~13.0 kB with every export used ([measured and CI-gated](/docs/guides/bundle-size)). Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
+- **An adapter floor you cannot tree-shake** - the React adapter works by patching things it does not own at import: `Component.prototype`, `contextType`, `isReactComponent`, the host runtime registry. Cross-package prototype patches cannot be shaken away, so importing `@expressive/react` at all costs ~10.3 kB before your first field. The headless core does shake properly (~6.4 kB for `Model` alone, ~10.1 kB for all of it).
 - **Familiarity for new hires** - engineers used to Redux or Zustand will need a brief ramp-up on classes and instructions.
 
 Expressive does not try to replace hooks wholesale. It coexists. Use `useState` where it's fine; reach for a class where the complexity justifies it.
@@ -237,7 +237,7 @@ export const faq = {
       name: 'Are Expressive MVC classes React class components?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'No. A State class is a headless model - no render method, no setState, no lifecycle-method views. Components subscribe to it through hooks like State.use() and State.get(), re-rendering only when values they actually read change.',
+        text: 'No. A Model class is headless - no render method, no setState, no lifecycle-method views. Components subscribe to it through hooks like Model.use() and Model.get(), re-rendering only when values they actually read change.',
       },
     },
     {
@@ -245,7 +245,7 @@ export const faq = {
       name: 'Is Expressive MVC really MVC?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'It implements the load-bearing ideas of the original Smalltalk pattern: an observable model that knows nothing about presentation, views that stay current by observing the model directly, and input translated into model operations. The controller role is distributed exactly as in MVP, MVVM, and Cocoa.',
+        text: 'It implements the load-bearing ideas of the original Smalltalk pattern: an observable domain model that knows nothing about presentation, views that stay current by observing it directly, and input translated into domain operations. Controls - instances scoped to a page or region - play the Controller role, translating input into domain operations: the Presentation Model refinement MVVM descends from.',
       },
     },
   ],

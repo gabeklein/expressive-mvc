@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
-import { Component, State } from '.';
+import { Model } from '@expressive/mvc';
+import { Component } from '.';
 
 function onServer<T>(fn: () => T): T {
   const saved = (globalThis as any).window;
@@ -16,7 +17,7 @@ function onServer<T>(fn: () => T): T {
 describe('server render', () => {
   it('will run new() and render state', () => {
     let ran = false;
-    class Store extends State {
+    class Store extends Model {
       value = 5;
       protected new() {
         ran = true;
@@ -30,7 +31,7 @@ describe('server render', () => {
   });
 
   it('will isolate provided state per request', () => {
-    class Session extends State {
+    class Session extends Model {
       user = 'anon';
     }
     const Show = () => <b>{Session.get().user}</b>;
@@ -54,7 +55,7 @@ describe('server render', () => {
   });
 
   it('will share a declared global across requests', () => {
-    class Flags extends State {
+    class Flags extends Model {
       static global = true;
       enabled = false;
     }

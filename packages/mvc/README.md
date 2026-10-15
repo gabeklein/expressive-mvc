@@ -11,9 +11,9 @@
 
 ---
 
-The core of [Expressive MVC](https://github.com/gabeklein/expressive-mvc): reactive primitives built around plain classes, with no framework dependency. Provides the `State` model, instructions, context, and the renderer-agnostic `Component` that adapters like [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) build on.
+The core of [Expressive MVC](https://github.com/gabeklein/expressive-mvc): reactive primitives built around plain classes, with no framework dependency. Provides the `Model` class, instructions, context, and the renderer-agnostic `Component` that adapters like [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) build on.
 
-> **Building a React app?** Install [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) alongside this package - the adapter declares `@expressive/mvc` as a peer dependency, so both belong in your `package.json`. Import `State`, `Component`, and every instruction from this package, and import the adapter once from your entry so the host registers. The same holds for [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom), the renderer without React.
+> **Building a React app?** Install [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) alongside this package - the adapter declares `@expressive/mvc` as a peer dependency, so both belong in your `package.json`. Import `Model`, `Component`, and every instruction from this package, and import the adapter once from your entry so the host registers. The same holds for [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom), the renderer without React.
 
 Installed alone, it serves host-agnostic code - a shared domain package, a Node service, or a new adapter:
 
@@ -21,14 +21,14 @@ Installed alone, it serves host-agnostic code - a shared domain package, a Node 
 npm install @expressive/mvc
 ```
 
-## State
+## Model
 
-A `State` is a class whose fields are reactive - read to subscribe, assign to update. Getters are cached computed values.
+A `Model` is a class whose fields are reactive - read to subscribe, assign to update. Getters are cached computed values.
 
 ```ts
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Counter extends State {
+class Counter extends Model {
   count = 0;
   increment = () => this.count++;
 
@@ -47,7 +47,7 @@ counter.get(({ count }) => {
 counter.increment();           // -> "count is 1"
 ```
 
-Models run and test anywhere - no renderer required.
+Instances run and test anywhere - no renderer required.
 
 ## Instructions
 
@@ -57,14 +57,14 @@ Field initializers that change how a property behaves:
 |---|---|
 | `ref()` | a mutable reference (e.g. a DOM node) that's still reactive |
 | `set()` | computed values, smart setters, side-effects on assignment |
-| `get()` | dependency injection - pull another `State` from context |
+| `get()` | dependency injection - pull another `Model` from context |
 | `map()` | a shallow-reactive Map |
 | `has()` | an owned reactive collection - an ordered list or a spawned pool |
 
 ```ts
-import { State, set, has, map } from '@expressive/mvc';
+import { Model, set, has, map } from '@expressive/mvc';
 
-class Cart extends State {
+class Cart extends Model {
   items = has<Item>();                      // reactive collection
   products = map<string, Product>();        // reactive keyed collection
   coupon = set('', code => apply(code));    // side-effect on assignment
@@ -74,7 +74,7 @@ class Cart extends State {
 ## Lifecycle
 
 ```ts
-class Timer extends State {
+class Timer extends Model {
   seconds = 0;
 
   new() {                              // runs once on activation
@@ -89,22 +89,22 @@ timer.set(null);             // destroy - runs cleanup, freezes state
 
 ## Context & composition
 
-States find each other through context, and compose by holding one another:
+Instances find each other through context, and compose by holding one another:
 
 ```ts
-import { State, get } from '@expressive/mvc';
+import { Model, get } from '@expressive/mvc';
 
-class Session extends State {
+class Session extends Model {
   user = 'guest';
 }
 
-class Profile extends State {
+class Profile extends Model {
   session = get(Session);    // injected from the nearest provider
-  address = new Address();   // nested state - its changes bubble up
+  address = new Address();   // nested instance - its changes bubble up
 }
 ```
 
-An adapter (e.g. [`@expressive/react`](https://www.npmjs.com/package/@expressive/react)) supplies the provider that places a `State` in a tree; `get()` pulls it back out.
+An adapter (e.g. [`@expressive/react`](https://www.npmjs.com/package/@expressive/react)) supplies the provider that places a `Model` in a tree; `get()` pulls it back out.
 
 ## Events
 
@@ -130,7 +130,7 @@ off();                                                // stop listening
 }
 ```
 
-`Component` - a `State` that renders - lives here as the agnostic base. For using it in an app (rendering, props, subcomponents, suspense), see **[`@expressive/react`](https://www.npmjs.com/package/@expressive/react)**.
+`Component` - a `Model` usable in JSX - lives here as the agnostic base. For using it in an app (rendering, props, subcomponents, suspense), see **[`@expressive/react`](https://www.npmjs.com/package/@expressive/react)**.
 
 ---
 

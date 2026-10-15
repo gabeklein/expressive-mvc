@@ -1,4 +1,4 @@
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
 const MAX_STRING = 240;
 const MAX_ARRAY = 24;
@@ -13,8 +13,8 @@ export function parsePath(raw: string): Address {
   return { target: trimmed.slice(0, dot), path: trimmed.slice(dot + 1) };
 }
 
-/** Raw stored entries of a State - never reads through accessors. */
-export function entries(state: State): Map<string, unknown> {
+/** Raw stored entries of a Model - never reads through accessors. */
+export function entries(state: Model): Map<string, unknown> {
   return new Map(state);
 }
 
@@ -24,7 +24,7 @@ export function walk(value: unknown, path?: string): unknown {
   let cur: unknown = value;
   for (const part of path.split('.')) {
     if (cur == null || typeof cur !== 'object') return undefined;
-    if (cur instanceof State)
+    if (cur instanceof Model)
       cur = part[0] == '_' ? Object.getOwnPropertyDescriptor(cur, part)?.get?.() : entries(cur).get(part);
     else if (cur instanceof Map) cur = cur.get(part);
     else cur = (cur as Record<string, unknown>)[part];
@@ -32,18 +32,18 @@ export function walk(value: unknown, path?: string): unknown {
   return cur;
 }
 
-export function ref(state: State) {
+export function ref(state: Model) {
   return { $ref: String(state), $type: state.constructor.name };
 }
 
 /** `true` takes a value as `serialize` would; an object picks keys and descends, applying to each element of a list. */
 export type Select = true | { [key: string]: Select };
 
-/** Only the selected keys, read in one synchronous pass - a consistent snapshot. States keep their `$ref`. */
+/** Only the selected keys, read in one synchronous pass - a consistent snapshot. Models keep their `$ref`. */
 export function project(value: unknown, select: Select): unknown {
   if (select === true || value == null || typeof value !== 'object') return serialize(value);
 
-  const items = value instanceof State ? undefined : list(value);
+  const items = value instanceof Model ? undefined : list(value);
 
   if (items) {
     const out = items.slice(0, MAX_ARRAY).map((row) => project(row, select));
@@ -51,14 +51,14 @@ export function project(value: unknown, select: Select): unknown {
     return out;
   }
 
-  const out: Record<string, unknown> = value instanceof State ? ref(value) : {};
+  const out: Record<string, unknown> = value instanceof Model ? ref(value) : {};
   for (const key in select) out[key] = project(walk(value, key), select[key]);
   return out;
 }
 
-/** JSON-safe, size-capped view. Nested States collapse to `$ref`. */
+/** JSON-safe, size-capped view. Nested Models collapse to `$ref`. */
 export function serialize(value: unknown, depth = 2): unknown {
-  if (value instanceof State) {
+  if (value instanceof Model) {
     const out: Record<string, unknown> = ref(value);
     for (const [key, child] of [...entries(value)].slice(0, MAX_KEYS))
       out[key] = write(child, depth - 1);
@@ -74,7 +74,7 @@ function write(value: unknown, depth: number): unknown {
     return value.length > MAX_STRING ? `${value.slice(0, MAX_STRING - 1)}…` : value;
   if (typeof value === 'bigint') return `${value}n`;
   if (typeof value !== 'object') return undefined;
-  if (value instanceof State) return ref(value);
+  if (value instanceof Model) return ref(value);
   if (value instanceof Date) return value.toISOString();
   if (value instanceof Error) return { name: value.name, message: value.message };
   if (typeof (value as PromiseLike<unknown>).then === 'function') return '(pending)';

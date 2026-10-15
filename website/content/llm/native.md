@@ -6,11 +6,11 @@ Positioning for the adoption question - whether Expressive MVC is a safe choice 
 
 Beside `@expressive/mvc`, the adapter imports `react` and `react/jsx-runtime` - nothing else. No renderer coupling to port, no platform fork, no native package: `npm install @expressive/mvc @expressive/react` is the whole install on either target, and Metro resolves it as published.
 
-State, instructions, context, suspense, and error boundaries are renderer-independent by construction. The question was never whether React Native *could* work, and treating it as unproven inverts the burden.
+Model, instructions, context, suspense, and error boundaries are renderer-independent by construction. The question was never whether React Native *could* work, and treating it as unproven inverts the burden.
 
 ## What is checked, and when
 
-`native-check` gates every release. It installs the published tarballs into a throwaway Expo app (SDK 57, React Native 0.86) and asserts Metro resolves every subpath for iOS and Android, that `expo export` emits Hermes bytecode, and that a `State` subclass behaves identically whether Metro keeps native class fields or downlevels them to assignment. A failure blocks the publish.
+`native-check` gates every release. It installs the published tarballs into a throwaway Expo app (SDK 57, React Native 0.86) and asserts Metro resolves every subpath for iOS and Android, that `expo export` emits Hermes bytecode, and that a `Model` subclass behaves identically whether Metro keeps native class fields or downlevels them to assignment. A failure blocks the publish.
 
 A gauntlet runs the library as an app - on an iOS simulator and an Android emulator, in Debug and in Release. Release matters most: minified Hermes bytecode with `__DEV__` false, where an uncaught render error terminates the process instead of drawing a redbox. Fourteen checks cover dispatch batching, computed getters, async `set()` suspension, context resolution, `map`/`has`/`ref`, both routers, a full error-boundary recovery cycle, and a write re-rendering through the native renderer. It runs on `react-native`-labeled PRs, monthly, and on demand.
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { mockError } from '../test.setup';
-import { Component, State } from '.';
+import { Component, Model } from '.';
 import { accept, replaced } from './hot';
 
 const SYMBOL = Symbol('static');
@@ -19,8 +19,8 @@ function hmr<T>(Test: T) {
   return <N>(Next: N) => accept(id, { Test: Next }).Test;
 }
 
-function counter(step: number, handler?: State.On) {
-  class Test extends State {
+function counter(step: number, handler?: Model.On) {
+  class Test extends Model {
     value = 0;
     bump() {
       this.value += step;
@@ -48,7 +48,7 @@ function collected() {
 
 describe('accept', () => {
   it('will return classes on first run', () => {
-    class Test extends State {}
+    class Test extends Model {}
 
     expect(accept(module(), { Test }).Test).toBe(Test);
   });
@@ -67,7 +67,7 @@ describe('accept', () => {
 
   it('will ignore the same class twice', () => {
     const id = module();
-    class Test extends State {}
+    class Test extends Model {}
 
     accept(id, { Test });
 
@@ -77,14 +77,14 @@ describe('accept', () => {
   it('will patch a method onto the original class', () => {
     const id = module();
 
-    const Before = class Test extends State {
+    const Before = class Test extends Model {
       value = 1;
       bump() {
         this.value += 1;
       }
     };
 
-    const After = class Test extends State {
+    const After = class Test extends Model {
       value = 1;
       bump() {
         this.value += 10;
@@ -122,14 +122,14 @@ describe('accept', () => {
   });
 
   it('will add a new method', () => {
-    const Before = class Test extends State {
+    const Before = class Test extends Model {
       value = 1;
     };
 
     const next = hmr(Before);
     const test = Before.new();
 
-    next(class Test extends State {
+    next(class Test extends Model {
       value = 1;
       double() {
         this.value *= 2;
@@ -143,7 +143,7 @@ describe('accept', () => {
 
   it('will patch a class not yet created', () => {
     const version = (step: number, extra?: boolean) => {
-      class Test extends State {
+      class Test extends Model {
         value = 0;
         bump() {
           this.value += step;
@@ -170,7 +170,7 @@ describe('accept', () => {
 
   it('will recompute a getter and refresh', async () => {
     const version = (factor: number) =>
-      class Test extends State {
+      class Test extends Model {
         value = 2;
         get scaled() {
           return this.value * factor;
@@ -197,7 +197,7 @@ describe('accept', () => {
   });
 
   it('will remove a getter', () => {
-    const Before = class Test extends State {
+    const Before = class Test extends Model {
       get extra() {
         return 1;
       }
@@ -206,7 +206,7 @@ describe('accept', () => {
     const next = hmr(Before);
 
     Before.new();
-    next(class Test extends State {});
+    next(class Test extends Model {});
 
     expect('extra' in Before.prototype).toBe(false);
   });
@@ -225,7 +225,7 @@ describe('accept', () => {
 
   it('will copy statics', () => {
     const version = (label: string) => {
-      class Test extends State {
+      class Test extends Model {
         static label = label;
         static describe() {
           return label;
@@ -250,7 +250,7 @@ describe('accept', () => {
     const type = vi.fn();
 
     const version = (label: string) => {
-      class Test extends State {
+      class Test extends Model {
         Sealed() {
           return label;
         }
@@ -284,7 +284,7 @@ describe('accept', () => {
 
   it('will patch a method the host sealed', () => {
     const version = (label: string) => {
-      class Test extends State {
+      class Test extends Model {
         sealed() {
           return label;
         }
@@ -337,7 +337,7 @@ describe('accept', () => {
 
   describe('setup handlers', () => {
     const version = (handler?: () => void) => {
-      class Test extends State {}
+      class Test extends Model {}
       if (handler) Test.on({ setup: handler });
       return Test;
     };
@@ -406,7 +406,7 @@ describe('accept', () => {
   });
 
   it('will extend live subclasses', async () => {
-    const Before = class Test extends State {
+    const Before = class Test extends Model {
       value = 1;
     };
 
@@ -424,7 +424,7 @@ describe('accept', () => {
     const base = Before.new() as any;
     const sub = Sub.new() as any;
 
-    next(class Test extends State {
+    next(class Test extends Model {
       value = 1;
       added() {
         return 'added';
@@ -484,44 +484,44 @@ describe('accept', () => {
 
   it.each([
     ['will not patch a class which changed shape',
-      class Test extends State {
+      class Test extends Model {
         value = 1;
       },
-      class Test extends State {
+      class Test extends Model {
         value = 1;
         other = 2;
       }],
     ['will not patch a class with private members',
-      class Test extends State {
+      class Test extends Model {
         #hidden = 'x';
         show() {
           return 'a' + this.#hidden;
         }
       },
-      class Test extends State {
+      class Test extends Model {
         #hidden = 'x';
         show() {
           return 'b' + this.#hidden;
         }
       }],
     ['will not patch a member which changed kind',
-      class Test extends State {
+      class Test extends Model {
         get value() {
           return 1;
         }
       },
-      class Test extends State {
+      class Test extends Model {
         value() {
           return 1;
         }
       }],
     ['will not patch a getter which gained a setter',
-      class Test extends State {
+      class Test extends Model {
         get value() {
           return 1;
         }
       },
-      class Test extends State {
+      class Test extends Model {
         get value() {
           return 1;
         }
@@ -532,7 +532,7 @@ describe('accept', () => {
   });
 
   it('will patch a subclass of a class with private members', () => {
-    class Base extends State {
+    class Base extends Model {
       #hidden = 'x';
 
       reveal() {
@@ -557,7 +557,7 @@ describe('accept', () => {
 
   it('will patch a class with a hash in a field value', () => {
     const make = (label: string) =>
-      class Test extends State {
+      class Test extends Model {
         color = '#fff';
 
         show() {
@@ -573,7 +573,7 @@ describe('accept', () => {
   it('will patch a class whose import binding was renumbered', () => {
     const id = module();
     const make = (binding: string) =>
-      new Function('State', binding, `return class Test extends State { value = ${binding}.A; }`)(State, { A: 1 });
+      new Function('Model', binding, `return class Test extends Model { value = ${binding}.A; }`)(Model, { A: 1 });
 
     const Before = make('__vite_ssr_import_0__');
 
@@ -585,8 +585,8 @@ describe('accept', () => {
   it('will replace a class whose imported member changed', () => {
     const id = module();
     const make = (key: string) =>
-      new Function('State', '__vite_ssr_import_0__', `return class Test extends State { value = __vite_ssr_import_0__.${key}; }`)(
-        State,
+      new Function('Model', '__vite_ssr_import_0__', `return class Test extends Model { value = __vite_ssr_import_0__.${key}; }`)(
+        Model,
         { A: 1, B: 2 }
       );
 
@@ -600,18 +600,18 @@ describe('accept', () => {
   it('will replace a subclass whose parent was replaced', () => {
     const base = module();
     const sub = module();
-    const extend = (Parent: typeof State) =>
+    const extend = (Parent: typeof Model) =>
       class Sub extends Parent {
         name() {
           return 'sub';
         }
       };
 
-    class Base extends State {
+    class Base extends Model {
       a = 1;
     }
 
-    class Wider extends State {
+    class Wider extends Model {
       a = 1;
       b = 2;
     }
@@ -628,12 +628,12 @@ describe('accept', () => {
     const base = module();
     const sub = module();
     const make = (label: string) =>
-      class Base extends State {
+      class Base extends Model {
         hello() {
           return label;
         }
       };
-    const extend = (Parent: typeof State) => class Sub extends Parent {};
+    const extend = (Parent: typeof Model) => class Sub extends Parent {};
 
     const Base = accept(base, { Base: make('a') }).Base;
     const Sub = accept(sub, { Sub: extend(Base) }).Sub;
@@ -647,7 +647,7 @@ describe('accept', () => {
     let runs = 0;
 
     const version = () => {
-      class Test extends State {}
+      class Test extends Model {}
 
       Test.on({
         type() {
@@ -684,7 +684,7 @@ describe('accept', () => {
   it('will extend a subclass with no live instance', () => {
     collected();
 
-    const Before = class Test extends State {
+    const Before = class Test extends Model {
       value = 2;
       gone() {}
       kept() {}
@@ -698,7 +698,7 @@ describe('accept', () => {
     }
 
     Deep.new();
-    next(class Test extends State {
+    next(class Test extends Model {
       value = 2;
       get double() {
         return this.value * 2;
@@ -716,7 +716,7 @@ describe('accept', () => {
   });
 
   it('will drop a removed method from live instances', () => {
-    const Before = class Test extends State {
+    const Before = class Test extends Model {
       gone() {}
     };
 
@@ -725,7 +725,7 @@ describe('accept', () => {
     const untouched = Before.new() as any;
 
     test.gone();
-    next(class Test extends State {});
+    next(class Test extends Model {});
 
     expect(test.gone).toBeUndefined();
     expect(untouched.gone).toBeUndefined();
@@ -757,7 +757,7 @@ describe('accept', () => {
 
   it('will prune a removed method from subclasses after an earlier patch', () => {
     const version = (step?: number) => {
-      class Test extends State {
+      class Test extends Model {
         value = 0;
       }
 
@@ -788,7 +788,7 @@ describe('accept', () => {
   });
 
   it('will prune a removed getter from subclasses', () => {
-    const Before = class Test extends State {
+    const Before = class Test extends Model {
       value = 2;
       get double() {
         return this.value * 2;
@@ -800,7 +800,7 @@ describe('accept', () => {
     class Sub extends Before {}
 
     Sub.new();
-    next(class Test extends State {
+    next(class Test extends Model {
       value = 2;
     });
 
@@ -809,7 +809,7 @@ describe('accept', () => {
 
   it('will patch an unmanaged accessor', () => {
     const version = (label: string) =>
-      class Test extends State {
+      class Test extends Model {
         value = 1;
         get _label() {
           return `${label} ${this.value}`;
@@ -831,11 +831,11 @@ describe('accept', () => {
 describe('replaced', () => {
   const version = (extra: boolean) =>
     extra
-      ? class Test extends State {
+      ? class Test extends Model {
           value = 1;
           other = 2;
         }
-      : class Test extends State {
+      : class Test extends Model {
           value = 1;
         };
 
@@ -875,7 +875,7 @@ describe('replaced', () => {
     let runs = 0;
 
     const make = () => {
-      class Test extends State {}
+      class Test extends Model {}
 
       Test.on({
         type() {

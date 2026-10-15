@@ -4,7 +4,8 @@ import { StrictMode, Suspense } from 'preact/compat';
 import { expect, it, describe, vi } from 'vitest';
 
 import { flushMicrotasks, mockPromise } from '../test.setup';
-import { Component, pending, State } from '.';
+import { Model } from '@expressive/mvc';
+import { Component, pending } from '.';
 
 describe('Component', () => {
   it('will expose a base render for class detection', () => {
@@ -74,7 +75,7 @@ describe('Component for', () => {
     const didMount = vi.fn();
     const didUnmount = vi.fn();
 
-    class Test extends State {
+    class Test extends Model {
       mount() {
         didMount();
         return didUnmount;
@@ -96,7 +97,7 @@ describe('Component for', () => {
   });
 
   it('will settle when pending work falls back without a scheduler', async () => {
-    class Test extends State {
+    class Test extends Model {
       value = 'a';
     }
 

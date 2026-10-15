@@ -3,12 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockError, mockPromise, mockUncaught } from '../test.setup';
 import { watch } from './observable';
 import { enqueue, hold, pending } from './dispatch';
-import { State } from './state';
+import { Model } from './state';
 
 describe('dispatch', () => {
   mockError();
 
-  class Test extends State {
+  class Test extends Model {
     value = 1;
   }
 
@@ -209,12 +209,12 @@ describe('dispatch', () => {
   });
 
   it('will only upgrade inseparable watchers to urgent', async () => {
-    class Model extends State {
+    class Subject extends Model {
       deferred = 0;
       urgent = 0;
     }
 
-    const model = Model.new();
+    const model = Subject.new();
     const priorities: string[] = [];
     let transitioning = false;
     const host = (work: () => void) => {
@@ -240,12 +240,12 @@ describe('dispatch', () => {
   });
 
   it('will squash final state and transition cascading watchers', async () => {
-    class Model extends State {
+    class Subject extends Model {
       source = 0;
       derived = 0;
     }
 
-    const model = Model.new();
+    const model = Subject.new();
     const values: string[] = [];
     let transitioning = false;
     const host = (work: () => void) => {
@@ -627,7 +627,7 @@ describe('dispatch', () => {
   });
 });
 
-describe('without State', () => {
+describe('without Model', () => {
   it('will let a handler error escape as thrown', async () => {
     vi.resetModules();
 

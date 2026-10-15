@@ -1,6 +1,6 @@
 import { Context } from '../context';
 import { event, listener, touch } from '../observable';
-import { State, parent } from '../state';
+import { Model, parent } from '../state';
 import { def } from './def';
 
 const SHAPE = Symbol('shape');
@@ -65,7 +65,7 @@ class Managed<K, V> extends Map<K, V> {
     return touch(this, SHAPE, MAP_SIZE.call(source(this)));
   }
 
-  get(): ReadonlyMap<K, State.Export<V>>;
+  get(): ReadonlyMap<K, Model.Export<V>>;
   get(key: K): V | undefined;
   get(key?: K): unknown {
     const target = source(this);
@@ -205,7 +205,7 @@ function store<K, V>(target: Managed<K, V>, key: K, value: V) {
 
   MAP.set.call(target, key, value);
 
-  if (value instanceof State) {
+  if (value instanceof Model) {
     const owner = parent(target);
     const fresh = parent(value, owner ?? null);
     const evict = listener(value, () => void target.delete(key), null);

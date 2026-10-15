@@ -86,7 +86,7 @@ const browser = (id: string, notes: Record<string, string>, list: string) => `\
   const __before = import.meta.hot.data.expressive;
   const __classes = (import.meta.hot.data.expressive = { ${list} });
   for (const key in __before)
-    if (__classes[key] !== __before[key] && __classes[key]?.prototype instanceof __State) {
+    if (__classes[key] !== __before[key] && __classes[key]?.prototype instanceof __Model) {
       const note = __notes[key];
       if (note)
         try {
@@ -113,7 +113,7 @@ ${replace}
     if (!next) return;
     for (const key in __exports) {
       const after = next[key];
-      if (after !== __exports[key] && !(after?.prototype instanceof __State) && !${JSON.stringify(refresh)}.includes(key))
+      if (after !== __exports[key] && !(after?.prototype instanceof __Model) && !${JSON.stringify(refresh)}.includes(key))
         return import.meta.hot.invalidate(\`"\${key}" export cannot be hot-patched.\`);
     }
   });
@@ -121,7 +121,7 @@ ${replace}
 
 /**
  * Bind a module's classes to `hot.accept` and its function components to dom's
- * refresh. A State class it could not patch reloads the page; after an update,
+ * refresh. A Model class it could not patch reloads the page; after an update,
  * a changed component re-renders in place and any other changed export
  * invalidates importers.
  */
@@ -140,7 +140,7 @@ function inject(id: string, body: Node[], ssr = false) {
   );
   const replace = ssr ? server(notes, list) : browser(key, notes, list);
   const lines = [
-    `import { State as __State } from '@expressive/mvc';`,
+    `import { Model as __Model } from '@expressive/mvc';`,
     classes.length && `import { accept as __accept } from '@expressive/mvc/hot';`,
     components.length && `import { hot as __refresh } from '@expressive/dom/jsx-dev-runtime';`,
     classes.length && patchClasses(key, classes),

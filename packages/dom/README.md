@@ -6,7 +6,7 @@
 
 ---
 
-`@expressive/dom` renders Expressive MVC without React or Preact. Function components are renderer-stateless: they project props and MVC snapshots into DOM, while `State.get()` and `State.use()` supply dependency tracking and owned state.
+`@expressive/dom` renders Expressive MVC without React or Preact. Function components are renderer-stateless: they project props and MVC snapshots into DOM, while `Model.get()` and `Model.use()` supply dependency tracking and owned state.
 
 ```bash
 npm install @expressive/mvc @expressive/dom
@@ -22,10 +22,10 @@ npm install @expressive/mvc @expressive/dom
 ```
 
 ```tsx
-import { State, Component } from '@expressive/mvc';
+import { Model, Component } from '@expressive/mvc';
 import { render } from '@expressive/dom';
 
-class Counter extends State {
+class Counter extends Model {
   count = 0;
   increment() {
     this.count++;
@@ -68,7 +68,7 @@ Global maps use `macro(map)` and can live in side-effect imports. Register macro
 
 Inline style always beats classes; among classes, a caller's rule beats the callee's, and a rule carried through more component `style` props wins - independent of render order. `false`, `null`, and `undefined` omit an entry; `0` remains a macro argument.
 
-`Component` retains the React adapter's model: fields read by `render()` are dependencies, owned instances mount and clean up with the DOM range, and an externally activated instance can be placed directly without transferring ownership.
+`Component` retains the React adapter's semantics: fields read by `render()` are dependencies, owned instances mount and clean up with the DOM range, and an externally activated instance can be placed directly without transferring ownership.
 
 The first release includes keyed reconciliation, native events, refs, SVG, `<Component for>` providers, direct `has` / `map` collection rendering, portals, lazy components, error and suspense fallbacks, generated component appearance rules, and retention of committed content while `pending()` work suspends. It deliberately excludes standalone hooks, synthetic events, memo wrappers, SSR, hydration, and build-time style extraction.
 

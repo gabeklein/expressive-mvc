@@ -1,6 +1,6 @@
 import './App.css';
 
-import { State, Component, get } from '@expressive/mvc';
+import { Model, Component, get } from '@expressive/mvc';
 
 const TAGS = ['all', 'math', 'code'];
 
@@ -28,12 +28,12 @@ export default () => (
   </div>
 );
 
-class Query extends State {
+class Query extends Model {
   text = '';
   tag = 'all';
 }
 
-class Catalog extends State {
+class Catalog extends Model {
   books = [
     { title: 'Analysis I', tag: 'math' },
     { title: 'Structure and Interpretation', tag: 'code' },
@@ -52,7 +52,7 @@ class Catalog extends State {
   }
 }
 
-class Selection extends State {
+class Selection extends Model {
   title: string | null = null;
 }
 

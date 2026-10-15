@@ -5,9 +5,9 @@ Working examples of the fundamentals.
 ## Counter (minimal)
 
 ```tsx
-import { State } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
-class Counter extends State {
+class Counter extends Model {
   count = 0;
 
   increment() {
@@ -34,12 +34,12 @@ function CounterApp() {
 
 ## Todo List (owned collection)
 
-Each entry is its own State in a `has` pool - `done` and `toggle` live on the item, not as `(id, value)` methods on the list:
+Each entry is its own instance in a `has` pool - `done` and `toggle` live on the item, not as `(id, value)` methods on the list:
 
 ```tsx
-import { State, has } from '@expressive/mvc';
+import { Model, has } from '@expressive/mvc';
 
-class TodoItem extends State {
+class TodoItem extends Model {
   text = '';
   done = false;
 
@@ -48,7 +48,7 @@ class TodoItem extends State {
   }
 }
 
-class TodoState extends State {
+class TodoState extends Model {
   items = has(TodoItem);
   input = '';
 
@@ -97,7 +97,7 @@ Rows that paint themselves become `Component` members placed as `{state.items}` 
 ## Async Data (with Suspense)
 
 ```tsx
-import { State, Component, set } from '@expressive/mvc';
+import { Model, Component, set } from '@expressive/mvc';
 
 interface User {
   id: number;
@@ -105,7 +105,7 @@ interface User {
   email: string;
 }
 
-class UserProfile extends State {
+class UserProfile extends Model {
   userId = set<number>();
   user = set(async () => {
     const res = await fetch(`/api/users/${this.userId}`);
@@ -135,9 +135,9 @@ function App() {
 ## Shared Context (parent/child communication)
 
 ```tsx
-import { State, Component, get } from '@expressive/mvc';
+import { Model, Component, get } from '@expressive/mvc';
 
-class Theme extends State {
+class Theme extends Model {
   mode: 'light' | 'dark' = 'light';
 
   toggle() {
@@ -145,7 +145,7 @@ class Theme extends State {
   }
 }
 
-class Panel extends State {
+class Panel extends Model {
   theme = get(Theme);
   expanded = false;
 
@@ -233,9 +233,9 @@ Explicit `loading` keeps previous results visible during refresh - the deliberat
 ## Form Validation (setter callbacks)
 
 ```tsx
-import { State, set } from '@expressive/mvc';
+import { Model, set } from '@expressive/mvc';
 
-class SignupForm extends State {
+class SignupForm extends Model {
   name = '';
   email = set('', (value) => {
     if (value && !value.includes('@')) throw false; // reject - value stays unchanged

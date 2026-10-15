@@ -3,13 +3,13 @@
 Runnable source: [`map`](https://expressive.dev/examples/instructions/map) and [`map-insert`](https://expressive.dev/examples/instructions/map-insert) - complete programs, served as HTML.
 
 ```ts
-import { State, map } from '@expressive/mvc';
+import { Model, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 ```
 
-A reactive `Map`. Reads subscribe in active `watch()` / `State.get()` effects; writes notify only the changed key, plus collection shape when entries are added or removed.
+A reactive `Map`. Reads subscribe in active `watch()` / `Model.get()` effects; writes notify only the changed key, plus collection shape when entries are added or removed.
 
-A field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves during activation of the hosting state, which adopts the map in the same step. Not usable standalone.
+A field instruction like `set()`, `get()`, `ref()`, and `def()`: it resolves during activation of the hosting instance, which adopts the map in the same step. Not usable standalone.
 
 The argument selects the mode:
 
@@ -23,7 +23,7 @@ The argument selects the mode:
 ## Insert
 
 ```ts
-class Store extends State {
+class Store extends Model {
   products = map<string, Product>();
 
   add(product: Product) {
@@ -44,7 +44,7 @@ store.products.set('sku_456', product); // does not rerun an effect that only re
 Iteration is reactive: `size`, `keys()`, `values()`, `entries()`, `forEach()`, and `for...of` subscribe to shape; value iteration also subscribes to each value it reads.
 
 ```ts
-class Store extends State {
+class Store extends Model {
   products = map([
     ['a', { name: 'Hat' }],
     ['b', { name: 'Socks' }]
@@ -66,7 +66,7 @@ products.set('c', { name: 'Bag' }); // reruns because shape changed
 `set(key, ...rest)` invokes the factory with exactly those arguments and stores the result at `key`; an occupied key is replaced (the previous value destroyed if owned). No direct insertion - every entry passes through the factory.
 
 ```ts
-class Cart extends State {
+class Cart extends Model {
   items = map((id: string) => new Line(id));
 }
 
@@ -81,7 +81,7 @@ cart.items.set('sku_123');            // respawns, destroying previous Line
 Extra `set` arguments flow through after the key:
 
 ```ts
-class Board extends State {
+class Board extends Model {
   cells = map((at: string, color: string) => new Cell(at, color));
 }
 
@@ -91,7 +91,7 @@ board.cells.set('a1', 'black');
 A value the factory constructs fresh is owned; an already-activated value it returns is a guest:
 
 ```ts
-class Basket extends State {
+class Basket extends Model {
   items = map((id: string, item?: Item) => item || new Item());
 }
 
@@ -101,20 +101,20 @@ basket.items.set('b', Item.new());   // already activated - guest
 
 ## Ownership
 
-Ownership follows freshness, in both modes and however a value arrives. A fresh (never-activated) `State` - a `new Item()` handed to `set`, constructed by a factory, or in initial entries - is adopted and owned; the map destroys it when its entry is deleted, cleared, or replaced. An already-activated value (`Item.new()`) is a guest - its parent is settled, so it is held but never destroyed. Non-State values are never owned.
+Ownership follows freshness, in both modes and however a value arrives. A fresh (never-activated) `Model` - a `new Item()` handed to `set`, constructed by a factory, or in initial entries - is adopted and owned; the map destroys it when its entry is deleted, cleared, or replaced. An already-activated value (`Item.new()`) is a guest - its parent is settled, so it is held but never destroyed. Non-Model values are never owned.
 
-The hosting state adopts every map at activation, so a usable map always has an owner. The field is read-only - assigning over it throws. Fresh `State` values are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members. Owned members die with the owner. `value.get(State)` is the owner without naming its type ([get.md](get.md#owner)).
+The hosting instance adopts every map at activation, so a usable map always has an owner. The field is read-only - assigning over it throws. Fresh `Model` values are parented to the owner and activate inside its context: `get(Owner)` resolves directly, and providers above the owner resolve from members. Owned members die with the owner. `value.get(Model)` is the owner without naming its type ([get.md](get.md#owner)).
 
 Destruction is an eviction concern, separate from context: `delete` destroys the owned entry it removes, `clear` does so for every entry, and the owner dying is a `clear`. So `map.Managed` can be constructed without an owner (`new map.Managed()`, chiefly for testing) - no context to parent fresh values into, but it still owns and destroys them on eviction; guests behave as usual.
 
-A `State` value that dies evicts itself - owned or guest - so a map never serves destroyed entries, and `member.set(null)` is a complete removal on its own.
+A `Model` value that dies evicts itself - owned or guest - so a map never serves destroyed entries, and `member.set(null)` is a complete removal on its own.
 
 ```ts
-class Member extends State {
+class Member extends Model {
   owner = get(Owner);
 }
 
-class Owner extends State {
+class Owner extends Model {
   members = map((key: string) => new Member());
 }
 
@@ -129,7 +129,7 @@ owner.set(null);                                 // member destroyed with owner
 `keys(fn)`, `values(fn)`, and `entries(fn)` return a **reusable iterable** of transformed results - each iteration is a fresh pass over the live map, so it never exhausts (a repeat consumer, like a renderer verifying keys, sees the full sequence again). Tracking matches the plain iterators. Throw `false` in the callback to skip an entry; real errors propagate.
 
 ```ts
-class Cart extends State {
+class Cart extends Model {
   items = map((id: string) => new Line(id));
 
   get subtotals() {
@@ -145,10 +145,10 @@ const rows = cart.items.values((line, id) => `${id}: ${line.qty}`);
 
 ## Snapshots
 
-`get()` with no key returns a shallow `ReadonlyMap` snapshot; nested values with a `.get()` method export through it, matching State snapshots.
+`get()` with no key returns a shallow `ReadonlyMap` snapshot; nested values with a `.get()` method export through it, matching Model snapshots.
 
 ```ts
-class Store extends State {
+class Store extends Model {
   products = map([['a', Product.new()]]);
 }
 
@@ -167,7 +167,7 @@ function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map
 // Declares reads, removal, and iteration; the public shapes below narrow set.
 declare class Managed<K, V> extends Map<K, V> {
   readonly size: number;
-  get(): ReadonlyMap<K, State.Export<V>>;
+  get(): ReadonlyMap<K, Model.Export<V>>;
   get(key: K): V | undefined;
   has(key: K): boolean;
   delete(key: K): boolean;
@@ -204,4 +204,4 @@ In `@expressive/react` a map renders directly - `<ul>{this.items}</ul>` - throug
 - `delete(key)` and `clear()` notify removed keys and shape.
 - `keys()` tracks shape only - changing an existing value does not notify key iteration.
 - `values()`, `entries()`, `forEach()`, and `for...of` track shape and each visited value; the `fn` transforms track the same as their plain forms.
-- Reactivity is shallow. Nested State, `map()`, and `has()` values keep their own reactivity when accessed through the map.
+- Reactivity is shallow. Nested Model, `map()`, and `has()` values keep their own reactivity when accessed through the map.

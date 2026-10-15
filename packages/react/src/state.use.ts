@@ -1,16 +1,16 @@
-import { State, Context } from '@expressive/mvc';
-import type { UseState } from '@expressive/mvc';
+import { Model, Context } from '@expressive/mvc';
+import type { UseModel } from '@expressive/mvc';
 import { useFactory, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
-  interface UseState extends State {
+  interface UseModel extends Model {
     /**
-     * Optional hook called when State.use() is invoked within a React component.
+     * Optional hook called when Model.use() is invoked within a React component.
      *
      * This is called *every render* of the component, and will intercept
-     * arguments which would otherwise be passed into the State constructor.
+     * arguments which would otherwise be passed into the Model constructor.
      *
-     * @param props Arguments passed to State.use().
+     * @param props Arguments passed to Model.use().
      */
     use?(...props: any[]): Promise<void> | void;
 
@@ -20,7 +20,7 @@ declare module '@expressive/mvc' {
      *
      * Not called during server render, nor for an instance merely observed or
      * placed: `.get()` and `{instance}` reach one a component does not own, and
-     * `State.new()` has no component at all.
+     * `Model.new()` has no component at all.
      *
      * Client-only effects belong here - setup which must accompany the instance
      * itself belongs in `new()`.
@@ -28,36 +28,36 @@ declare module '@expressive/mvc' {
     mount?(): (() => void) | void;
   }
 
-  namespace State {
-    type UseArgs<T extends State> = T extends {
+  namespace Model {
+    type UseArgs<T extends Model> = T extends {
       use(...props: infer P): any;
     }
       ? P
-      : State.Args<T>;
+      : Model.Args<T>;
 
     /**
-     * Create and manage instance of this State within React component.
+     * Create and manage instance of this Model within React component.
      *
      * @param args Arguments to pass to constructor or `use` method (if defined).
-     * @returns Managed instance of this State.
+     * @returns Managed instance of this Model.
      */
-    function use<T extends UseState>(
-      this: State.Type<T>,
+    function use<T extends UseModel>(
+      this: Model.Type<T>,
       ...args: UseArgs<T>
     ): T;
   }
 }
 
-State.use = function use<T extends State>(
-  this: State.Type<T>,
-  ...args: State.UseArgs<T>
+Model.use = function use<T extends Model>(
+  this: Model.Type<T>,
+  ...args: Model.UseArgs<T>
 ) {
   const outer = Context.get();
   const render = useFactory(() => {
     const add = (arg: unknown) =>
-      typeof arg == 'object' && instance.set(arg as State.Assign<T>);
+      typeof arg == 'object' && instance.set(arg as Model.Assign<T>);
 
-    let use = (...args: State.Args<T>) => Promise.all(args.flat().map(add));
+    let use = (...args: Model.Args<T>) => Promise.all(args.flat().map(add));
 
     const instance = new this((x) => {
       if ('use' in x && typeof x.use == 'function') {
@@ -68,10 +68,14 @@ State.use = function use<T extends State>(
     });
 
     const context = outer.push(instance);
+    const teardown = () => {
+      context.pop();
+      instance.set(null);
+    };
 
     let ready = false;
 
-    return (args: State.Args<T>) => {
+    return (args: Model.Args<T>) => {
       if (ready) {
         ready = false;
         Promise.resolve(use(...args)).finally(() => {
@@ -81,15 +85,8 @@ State.use = function use<T extends State>(
 
       return useWatch(instance, () => {
         ready = true;
-
-        const release = (instance as UseState).mount?.();
-
-        return () => {
-          if (typeof release == 'function') release();
-          context.pop();
-          instance.set(null);
-        };
-      });
+        return (instance as UseModel).mount?.();
+      }, teardown);
     };
   });
 

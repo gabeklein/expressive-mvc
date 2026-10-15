@@ -1,4 +1,4 @@
-import { Component, Context, State } from '@expressive/mvc';
+import { Component, Context, Model } from '@expressive/mvc';
 import { host } from '@expressive/mvc/jsx-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -16,7 +16,7 @@ host({
   Fragment: null
 });
 
-class Widget extends State {
+class Widget extends Model {
   value = 1;
   mounted = 0;
 
@@ -26,25 +26,25 @@ class Widget extends State {
   }
 }
 
-class Plain extends State {
+class Plain extends Model {
   value = 1;
 }
 
-class Owner extends State {
+class Owner extends Model {
   child = new Plain();
 }
 
-class Scoped extends State {
+class Scoped extends Model {
   static global = true;
   value = 1;
 }
 
-class Global extends State {
+class Global extends Model {
   static global = true;
   value = 1;
 }
 
-class Resolved extends State {
+class Resolved extends Model {
   static global = (self: Resolved) => self.value > 0;
   value = 1;
 }
@@ -119,7 +119,7 @@ describe('orphans under a host', () => {
   it('will ride along with a young owner without claiming', async () => {
     const early = Plain.new();
     await flushMicrotasks();
-    class Late extends State {
+    class Late extends Model {
       taken = early;
     }
     const late = Late.new();
@@ -130,7 +130,7 @@ describe('orphans under a host', () => {
   });
 
   it('will not loop on cyclic ownership', async () => {
-    class Loop extends State {
+    class Loop extends Model {
       other?: Loop = undefined;
     }
     const a = Loop.new();
