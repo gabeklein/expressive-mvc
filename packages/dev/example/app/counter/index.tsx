@@ -6,7 +6,14 @@ import Remote, { Tap } from "./remote";
 function Tapper(props: { label: string }) {
   const tap = Tap.use();
 
-  return <button onClick={() => tap.tap()}>{props.label} {tap.taps}</button>;
+  return (
+    <p>
+      <button onClick={() => tap.tap()}>{props.label} {tap.taps}</button>
+      <button onClick={() => tap.log.clear()}>Clear {props.label}</button>
+      <button onClick={() => tap.restart()}>Restart {props.label}</button>
+      <small>{props.label} since clear: {tap.log.count}</small>
+    </p>
+  );
 }
 
 export class Page extends Component {

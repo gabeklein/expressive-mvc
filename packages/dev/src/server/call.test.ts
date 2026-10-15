@@ -195,7 +195,7 @@ describe("seat dispatch", () => {
     const { status, body } = await tab().pull();
 
     expect(status).toBe(200);
-    expect(body).toEqual({ values: { total: expect.any(Number) }, version: expect.stringMatching(/^[\w-]+:\d+$/) });
+    expect(body).toEqual({ frame: { "Tally-A": { patch: { total: expect.any(Number) }, version: expect.stringMatching(/^[\w-]+:\d+$/) } } });
   });
 
   it("will reply 400 to a pull or method call without a twin id", async () => {
@@ -209,26 +209,26 @@ describe("seat dispatch", () => {
 
   it("will reply 304 to a pull that holds the current version, else only what changed", async () => {
     const { pull, call } = tab();
-    const { version } = (await pull()).body;
+    const { version } = (await pull()).body.frame["Tally-A"];
 
     expect((await pull("Tally-A", "/tally", version)).status).toBe(304);
 
     await call("default.add", "[1]", { "x-expressive-twin": "Tally-A" });
 
-    expect((await pull("Tally-A", "/tally", version)).body.values).toEqual({ total: expect.any(Number) });
+    expect((await pull("Tally-A", "/tally", version)).body.frame["Tally-A"].patch).toEqual({ total: expect.any(Number) });
   });
 
   it("will reply to a method call with its value and a frame of every twin it moved", async () => {
     const { pull, call } = tab();
-    const tally = (await pull("Tally-A")).body;
-    const visits = (await pull("Visits-B", "/")).body;
+    const tally = (await pull("Tally-A")).body.frame["Tally-A"];
+    const visits = (await pull("Visits-B", "/")).body.frame["Visits-B"];
     const { body } = await call("default.add", "[2]", { "x-expressive-twin": "Tally-A", "if-none-match": tally.version });
 
     expect(body).toEqual({
-      value: tally.values.total + 2,
+      value: tally.patch.total + 2,
       frame: {
-        "Tally-A": { patch: { total: tally.values.total + 2 }, version: expect.any(String) },
-        "Visits-B": { patch: { count: visits.values.count + 1 }, version: expect.any(String) },
+        "Tally-A": { patch: { total: tally.patch.total + 2 }, version: expect.any(String) },
+        "Visits-B": { patch: { count: visits.patch.count + 1 }, version: expect.any(String) },
       },
     });
 
@@ -249,7 +249,7 @@ describe("seat dispatch", () => {
 
   it("will patch a method call with changes the caller missed", async () => {
     const mine = tab();
-    const { version } = (await mine.pull()).body;
+    const { version } = (await mine.pull()).body.frame["Tally-A"];
     const other = (await tab().call("default.add", "[3]", { "x-expressive-twin": "Tally-Z" })).body;
     const { body } = await mine.call("default.noop", "[]", { "x-expressive-twin": "Tally-A", "if-none-match": version });
 
@@ -263,7 +263,7 @@ describe("seat dispatch", () => {
 
   it("will frame a plain call's changes to the twins the tab holds", async () => {
     const { pull, call } = tab();
-    const { values, version } = (await pull()).body;
+    const { patch: values, version } = (await pull()).body.frame["Tally-A"];
 
     expect((await call("bump")).body).toEqual({ frame: { "Tally-A": { patch: { total: values.total + 1 }, version: expect.not.stringMatching(version) } } });
     expect((await tab().call("bump")).body).toEqual({ frame: {} });
@@ -351,20 +351,20 @@ describe("pool dispatch", () => {
   it("will build a twin's own instance under the route it names, and catch it up", async () => {
     const { pull, call } = tab();
 
-    expect(await pull("Cart-A")).toEqual({ status: 200, body: { values: { items: 0 }, version: expect.any(String) } });
+    expect(await pull("Cart-A")).toEqual({ status: 200, body: { frame: { "Cart-A": { patch: { items: 0 }, version: expect.any(String) } } } });
     expect(await call("Cart-A")).toEqual({ status: 200, body: { value: "shop", frame: { "Cart-A": { patch: { items: 1 }, version: expect.any(String) } } } });
   });
 
   it("will give each twin its own instance, kept across pulls", async () => {
     const { pull, call } = tab();
-    const { version } = (await pull("Cart-A")).body;
+    const { version } = (await pull("Cart-A")).body.frame["Cart-A"];
     await pull("Cart-B");
 
     const { body } = await call("Cart-A");
 
     expect(Object.keys(body.frame)).toEqual(["Cart-A"]);
     expect((await pull("Cart-A", "/shop/42", { "if-none-match": body.frame["Cart-A"].version })).status).toBe(304);
-    expect((await pull("Cart-A", "/shop/42", { "if-none-match": version })).body.values).toEqual({ items: 1 });
+    expect((await pull("Cart-A", "/shop/42", { "if-none-match": version })).body.frame["Cart-A"].patch).toEqual({ items: 1 });
   });
 
   it("will run the gates above the route on every request", async () => {
@@ -413,7 +413,7 @@ describe("pool dispatch", () => {
 
     expect(await call("Cart-A", "/shop#Cart.add", "/shop/42", b)).toEqual({ status: 409, body: { message: "This twin's context was replaced - its instance is gone." } });
     expect(instance.get(null)).toBe(true);
-    expect((await pull("Cart-A", "/shop/42", b)).body.values).toEqual({ items: 0 });
+    expect((await pull("Cart-A", "/shop/42", b)).body.frame["Cart-A"].patch).toEqual({ items: 0 });
   });
 
   it("will refuse a twin whose seat ended", async () => {
@@ -436,8 +436,81 @@ describe("pool dispatch", () => {
   });
 });
 
+describe("child dispatch", () => {
+  class Line extends State {
+    qty = 1;
+    async bump(by: number) { return (this.qty += by); }
+  }
+
+  class Order extends State {
+    static ttl = 60;
+    line?: Line = new Line();
+    async drop() { this.line = undefined; }
+  }
+
+  class Basket extends State {
+    line?: Line = undefined;
+    async fill() { this.line = new Line(); }
+  }
+
+  const SHAPE = { fields: ["line"], children: { line: { fields: ["qty"] } } };
+  const seats: Seats = async pattern => (pattern.join("/") === "order" ? (Order as any) : undefined);
+  const endpoints: Endpoint[] = [
+    {
+      pattern: ["order"],
+      exports: async () => ({
+        calls: {},
+        classes: {},
+        seat: { ...SHAPE, methods: { "default.drop": "drop", "default.line.bump": "line.bump" } },
+        pool: { "/order#Basket": { Type: Basket, ...SHAPE, methods: { "/order#Basket.fill": "fill", "/order#Basket.line.bump": "line.bump" } } },
+      }),
+    },
+  ];
+
+  function tab() {
+    const id = crypto.randomUUID();
+
+    return (name: string | undefined, extra: Record<string, string>, args = "[]") =>
+      send(endpoints, request("/order", name, args, "application/json", { "x-expressive-connection": id, ...extra }), true, seats);
+  }
+
+  install();
+
+  it("will call a seat's child method by its path, framing the child under its own key", async () => {
+    const as = tab();
+    const pulled = await as(undefined, { "x-expressive-get": "default", "x-expressive-twin": "Order-A" });
+
+    expect(pulled.body.frame).toEqual({
+      "Order-A": { patch: { line: { $child: expect.any(String) } }, version: expect.any(String) },
+      "Order-A.line": { patch: { qty: 1 }, version: expect.any(String) },
+    });
+
+    const { body } = await as("default.line.bump", { "x-expressive-twin": "Order-A", "if-none-match": pulled.body.frame["Order-A"].version }, "[2]");
+
+    expect(body).toEqual({ value: 3, frame: { "Order-A.line": { patch: { qty: 3 }, version: expect.any(String) } } });
+  });
+
+  it("will call a pooled twin's child method by its path", async () => {
+    const as = tab();
+    const twin = { "x-expressive-twin": "Basket-A" };
+
+    await as(undefined, { "x-expressive-get": "/order#Basket", ...twin });
+    expect((await as("/order#Basket.fill", twin)).body.frame["Basket-A.line"]).toEqual({ patch: { qty: 1 }, version: expect.any(String) });
+    expect((await as("/order#Basket.line.bump", twin, "[1]")).body.value).toBe(2);
+  });
+
+  it("will fail a child method whose child is not set", async () => {
+    const as = tab();
+    const twin = { "x-expressive-twin": "Order-A" };
+
+    await as("default.drop", twin);
+
+    expect(await as("default.line.bump", twin, "[1]")).toEqual({ status: 500, body: { message: expect.stringMatching(/^line is not set on Order-/), stack: expect.any(String) } });
+  });
+});
+
 describe("walk", () => {
-  const at = (...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
+  const at =(...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
 
   it("will take each segment's pattern from the folder that claims it, else the segment itself", () => {
     const list = [at("blog"), at("blog", ":slug"), at("blog", "new")];

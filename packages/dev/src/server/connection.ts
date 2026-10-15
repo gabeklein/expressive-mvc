@@ -1,15 +1,27 @@
 import { randomBytes } from "node:crypto";
-import type { State } from "@expressive/mvc";
+import { State } from "@expressive/mvc";
 
-import { changedSince, snapshot, versionOf, watch } from "./version";
+import { changedSince, snapshot, track, versionOf, watch } from "./version";
+
+export interface Shape {
+  fields: string[];
+  children?: Record<string, Shape>;
+}
 
 interface Held {
   address: string;
   instance: State;
-  fields: string[];
-  seen?: string;
-  stop: () => void;
+  shape: Shape;
+  seen: Map<string, string>;
+  watching: Map<string, { instance: State; stop(): void }>;
   pool?: Pool;
+}
+
+interface Entry {
+  key: string;
+  path: string;
+  instance: State;
+  shape: Shape;
 }
 
 export interface Pool {
@@ -114,10 +126,13 @@ function announce(connection: Connection): void {
 export function staleOf(connection: Connection): Record<string, string[]> {
   const stale: Record<string, string[]> = {};
 
-  for (const [twin, { instance, seen, fields }] of connection.twins) {
-    const keys = changedSince(instance, seen, fields);
-    if (keys.length) stale[twin] = keys;
-  }
+  for (const [twin, held] of connection.twins)
+    for (const { key, path, instance, shape } of entriesOf(twin, held)) {
+      const seen = held.seen.get(path);
+      const keys = seen ? changedSince(instance, seen, shape.fields) : [];
+
+      if (keys.length) stale[key] = keys;
+    }
 
   return stale;
 }
@@ -125,7 +140,10 @@ export function staleOf(connection: Connection): Record<string, string[]> {
 export function checksum(connection: Connection): number {
   let sum = 0;
 
-  for (const [twin, { seen }] of connection.twins) if (seen) sum = (sum ^ fnv(`${twin}@${seen}`)) >>> 0;
+  for (const [twin, { seen }] of connection.twins) {
+    const root = seen.get("");
+    if (root) sum = (sum ^ fnv(`${twin}@${root}`)) >>> 0;
+  }
 
   return sum;
 }
@@ -148,51 +166,111 @@ export function release(connection: Connection, twins: unknown): void {
   for (const twin of twins.split(",")) {
     const held = connection.twins.get(twin);
 
-    held?.stop();
+    if (held) unwatch(held);
     held?.pool?.drop();
     connection.twins.delete(twin);
   }
 }
 
-export function hold(connection: Connection, twin: string, address: string, instance: State, fields: string[], seen?: string, pool?: Pool): void {
+export function hold(connection: Connection, twin: string, address: string, instance: State, shape: Shape, seen?: string, pool?: Pool): void {
   const held = connection.twins.get(twin);
+  const kept = seen && held?.instance === instance ? held.seen : new Map<string, string>();
 
-  held?.stop();
-  connection.twins.set(twin, { address, instance, fields, seen, pool, stop: watch(instance, () => announce(connection)) });
+  if (held) unwatch(held);
+  if (seen) kept.set("", seen);
+
+  connection.twins.set(twin, { address, instance, shape, seen: kept, watching: new Map(), pool });
+  follow(connection, twin);
 }
 
 export function renew(connection: Connection, address: string, instance: State): void {
-  for (const held of connection.twins.values()) {
+  for (const [twin, held] of connection.twins) {
     if (held.pool || held.address !== address || held.instance === instance) continue;
 
-    held.stop();
     held.instance = instance;
-    held.stop = watch(instance, () => announce(connection));
+    follow(connection, twin);
   }
 }
 
-export function catchUp(connection: Connection, twin: string): { values: Record<string, unknown>; version: string } {
+export function catchUp(connection: Connection, twin: string): Frame {
   const held = connection.twins.get(twin)!;
-  const { instance, fields } = held;
+  const frame: Frame = {};
 
-  snapshot(instance, fields);
+  follow(connection, twin);
 
-  const values = snapshot(instance, changedSince(instance, held.seen, fields));
-  held.seen = versionOf(instance);
+  for (const { key, path, instance, shape } of entriesOf(twin, held)) {
+    snapshot(instance, shape.fields);
 
-  return { values, version: held.seen };
+    const seen = held.seen.get(path);
+    const version = versionOf(instance);
+
+    if (version === seen) continue;
+
+    frame[key] = { patch: patchOf(instance, shape, changedSince(instance, seen, shape.fields)), version };
+    held.seen.set(path, version);
+  }
+
+  return frame;
 }
 
 export function frameOf(connection: Connection): Frame {
   const frame: Frame = {};
 
-  for (const [twin, held] of connection.twins) {
-    snapshot(held.instance, held.fields);
-    if (versionOf(held.instance) === held.seen) continue;
-
-    const { values, version } = catchUp(connection, twin);
-    frame[twin] = { patch: values, version };
-  }
+  for (const twin of connection.twins.keys()) Object.assign(frame, catchUp(connection, twin));
 
   return frame;
+}
+
+function entriesOf(twin: string, held: Held): Entry[] {
+  const entries: Entry[] = [];
+
+  (function walk(path: string, instance: State, shape: Shape) {
+    entries.push({ key: path ? `${twin}.${path}` : twin, path, instance, shape });
+
+    for (const [field, child] of Object.entries(shape.children ?? {})) {
+      const value = (instance as any)[field];
+      if (value instanceof State) walk(path ? `${path}.${field}` : field, value, child);
+    }
+  })("", held.instance, held.shape);
+
+  return entries;
+}
+
+function follow(connection: Connection, twin: string): void {
+  const held = connection.twins.get(twin)!;
+  const live = new Set<string>();
+
+  for (const { path, instance } of entriesOf(twin, held)) {
+    live.add(path);
+    if (held.watching.get(path)?.instance === instance) continue;
+
+    held.watching.get(path)?.stop();
+    track(instance);
+    held.watching.set(path, { instance, stop: watch(instance, () => announce(connection)) });
+  }
+
+  for (const [path, { stop }] of held.watching)
+    if (!live.has(path)) {
+      stop();
+      held.watching.delete(path);
+      held.seen.delete(path);
+    }
+}
+
+function unwatch(held: Held): void {
+  held.watching.forEach(({ stop }) => stop());
+  held.watching.clear();
+}
+
+function patchOf(instance: State, shape: Shape, keys: string[]): Record<string, unknown> {
+  const patch = snapshot(instance, keys);
+
+  for (const field of keys) {
+    if (!shape.children?.[field]) continue;
+
+    const child = patch[field];
+    patch[field] = child instanceof State ? { $child: versionOf(child).split(":")[0] } : null;
+  }
+
+  return patch;
 }

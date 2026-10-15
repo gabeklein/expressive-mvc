@@ -9,6 +9,8 @@ class Tally extends State {
   total = 0;
 }
 
+const TOTAL = { fields: ["total"] };
+
 function tracked() {
   const tally = Tally.new();
   track(tally);
@@ -60,8 +62,8 @@ describe("connection", () => {
   it("will release the twins named", () => {
     const connection = connect(crypto.randomUUID())!;
 
-    hold(connection, "A", "/tally", tracked(), ["total"]);
-    hold(connection, "B", "/tally", tracked(), ["total"]);
+    hold(connection, "A", "/tally", tracked(), TOTAL);
+    hold(connection, "B", "/tally", tracked(), TOTAL);
     release(connection, undefined);
     release(connection, "A,C");
 
@@ -71,23 +73,23 @@ describe("connection", () => {
   it("will catch a twin up from its seen version", async () => {
     const connection = connect(crypto.randomUUID())!;
     const tally = tracked();
-    hold(connection, "A", "/tally", tally, ["total"]);
+    hold(connection, "A", "/tally", tally, TOTAL);
 
-    expect(catchUp(connection, "A").values).toEqual({ total: 0 });
-    expect(catchUp(connection, "A").values).toEqual({});
+    expect(catchUp(connection, "A")).toEqual({ A: { patch: { total: 0 }, version: expect.any(String) } });
+    expect(catchUp(connection, "A")).toEqual({});
 
     tally.total = 2;
     await tally.set();
 
-    expect(catchUp(connection, "A").values).toEqual({ total: 2 });
+    expect(catchUp(connection, "A").A.patch).toEqual({ total: 2 });
   });
 
   it("will frame only the twins past their seen version", async () => {
     const connection = connect(crypto.randomUUID())!;
     const b = tracked();
 
-    hold(connection, "A", "/a", tracked(), ["total"]);
-    hold(connection, "B", "/b", b, ["total"]);
+    hold(connection, "A", "/a", tracked(), TOTAL);
+    hold(connection, "B", "/b", b, TOTAL);
     catchUp(connection, "A");
     catchUp(connection, "B");
 
@@ -102,9 +104,9 @@ describe("connection", () => {
     const connection = connect(crypto.randomUUID())!;
     const next = tracked();
 
-    hold(connection, "A", "/a", tracked(), ["total"]);
-    hold(connection, "B", "/a", tracked(), ["total"]);
-    hold(connection, "C", "/c", tracked(), ["total"]);
+    hold(connection, "A", "/a", tracked(), TOTAL);
+    hold(connection, "B", "/a", tracked(), TOTAL);
+    hold(connection, "C", "/c", tracked(), TOTAL);
     frameOf(connection);
 
     renew(connection, "/a", next);
@@ -125,9 +127,9 @@ describe("connection", () => {
 
     const cart = tracked();
 
-    hold(connection, "A", "/a", cart, ["total"], undefined, { id: "/a#Cart", drop: drops.A, current: () => true });
-    hold(connection, "B", "/a", tracked(), ["total"], undefined, { id: "/a#Cart", drop: drops.B, current: () => true });
-    hold(connection, "S", "/a", seat, ["total"]);
+    hold(connection, "A", "/a", cart, TOTAL, undefined, { id: "/a#Cart", drop: drops.A, current: () => true });
+    hold(connection, "B", "/a", tracked(), TOTAL, undefined, { id: "/a#Cart", drop: drops.B, current: () => true });
+    hold(connection, "S", "/a", seat, TOTAL);
 
     renew(connection, "/a", tracked());
     expect(connection.twins.get("A")!.instance).toBe(cart);
@@ -140,6 +142,109 @@ describe("connection", () => {
     vi.advanceTimersByTime(300_000);
     expect(drops.B).toHaveBeenCalledOnce();
     expect(connection.twins.size).toBe(0);
+  });
+
+  describe("children", () => {
+    class Line extends State {
+      qty = 1;
+    }
+
+    class Cart extends State {
+      items = 0;
+      line?: Line = undefined;
+    }
+
+    class Shop extends State {
+      name = "shop";
+      cart?: Cart = new Cart();
+    }
+
+    const SHAPE = { fields: ["name", "cart"], children: { cart: { fields: ["items", "line"], children: { line: { fields: ["qty"] } } } } };
+    const tick = () => new Promise(resolve => setTimeout(resolve));
+
+    function held() {
+      const connection = connect(crypto.randomUUID())!;
+      const shop = Shop.new();
+
+      track(shop);
+      hold(connection, "A", "/shop", shop, SHAPE);
+
+      return { connection, shop };
+    }
+
+    it("will catch a child up under its path, marking it in its owner's patch", () => {
+      const { connection, shop } = held();
+      const frame = catchUp(connection, "A");
+      const generation = frame["A.cart"].version.split(":")[0];
+
+      expect(frame).toEqual({
+        A: { patch: { name: "shop", cart: { $child: generation } }, version: expect.any(String) },
+        "A.cart": { patch: { items: 0, line: null }, version: expect.any(String) },
+      });
+      expect(shop.cart).toBeInstanceOf(Cart);
+    });
+
+    it("will patch only the child that changed, and a grandchild once it exists", async () => {
+      const { connection, shop } = held();
+      catchUp(connection, "A");
+
+      shop.cart!.items = 2;
+      await shop.cart!.set();
+      expect(frameOf(connection)).toEqual({ "A.cart": { patch: { items: 2 }, version: expect.any(String) } });
+
+      shop.cart!.line = new Line();
+      await shop.cart!.set();
+      const frame = frameOf(connection);
+
+      expect(Object.keys(frame)).toEqual(["A.cart", "A.cart.line"]);
+      expect(frame["A.cart.line"].patch).toEqual({ qty: 1 });
+    });
+
+    it("will send a replaced child whole, and a removed one as null", async () => {
+      const { connection, shop } = held();
+      const first = catchUp(connection, "A")["A.cart"].version;
+
+      shop.cart = new Cart();
+      await shop.set();
+      const replaced = frameOf(connection);
+
+      expect(replaced.A.patch.cart).toEqual({ $child: replaced["A.cart"].version.split(":")[0] });
+      expect(replaced["A.cart"].version.split(":")[0]).not.toBe(first.split(":")[0]);
+      expect(replaced["A.cart"].patch).toEqual({ items: 0, line: null });
+
+      shop.cart = undefined;
+      await shop.set();
+      expect(frameOf(connection)).toEqual({ A: { patch: { cart: null }, version: expect.any(String) } });
+    });
+
+    it("will catch every child up again when held without a version", () => {
+      const { connection, shop } = held();
+      const { version } = catchUp(connection, "A").A;
+
+      hold(connection, "A", "/shop", shop, SHAPE, version);
+      expect(catchUp(connection, "A")).toEqual({});
+
+      hold(connection, "A", "/shop", shop, SHAPE);
+      expect(Object.keys(catchUp(connection, "A"))).toEqual(["A", "A.cart"]);
+    });
+
+    it("will announce a child's stale keys under its path, and stop once released", async () => {
+      const { connection, shop } = held();
+      const events: [string, any][] = [];
+
+      listen(connection, (event, data) => events.push([event, data]));
+      catchUp(connection, "A");
+      await tick();
+
+      shop.cart!.items = 3;
+      await tick();
+      expect(events.slice(1)).toEqual([["stale", { "A.cart": ["items"] }]]);
+
+      release(connection, "A");
+      shop.cart!.items = 4;
+      await tick();
+      expect(events).toHaveLength(2);
+    });
   });
 
   describe("stream", () => {
@@ -162,7 +267,7 @@ describe("connection", () => {
       const { connection, events } = streamed();
       const tally = tracked();
 
-      hold(connection, "A", "/a", tally, ["total"]);
+      hold(connection, "A", "/a", tally, TOTAL);
       catchUp(connection, "A");
       await tick();
 
@@ -177,7 +282,7 @@ describe("connection", () => {
       const { connection, events } = streamed();
       const tally = tracked();
 
-      hold(connection, "A", "/a", tally, ["total"]);
+      hold(connection, "A", "/a", tally, TOTAL);
       catchUp(connection, "A");
       begin(connection);
       begin(connection);
@@ -207,8 +312,8 @@ describe("connection", () => {
       const b = tracked();
       const next = tracked();
 
-      hold(connection, "A", "/a", a, ["total"]);
-      hold(connection, "B", "/b", b, ["total"]);
+      hold(connection, "A", "/a", a, TOTAL);
+      hold(connection, "B", "/b", b, TOTAL);
       catchUp(connection, "A");
       catchUp(connection, "B");
       release(connection, "A");
@@ -230,8 +335,8 @@ describe("connection", () => {
       vi.useFakeTimers();
       const { connection, events, close } = streamed();
 
-      hold(connection, "A", "/a", tracked(), ["total"]);
-      hold(connection, "B", "/b", tracked(), ["total"]);
+      hold(connection, "A", "/a", tracked(), TOTAL);
+      hold(connection, "B", "/b", tracked(), TOTAL);
       catchUp(connection, "A");
 
       vi.advanceTimersByTime(15_000);

@@ -21,6 +21,14 @@ export interface Twin {
   name: string;
   methods: string[];
   fields: string[];
+  children?: Record<string, Twin>;
+}
+
+interface Pending {
+  field: string;
+  type: string;
+  module: Module;
+  owner: string;
 }
 
 export interface SidecarScan {
@@ -162,25 +170,69 @@ export async function scanTwin(source: string, path: string, sources: Sources, n
 
   if (!isClass(value)) return { state: false, problems: [] };
 
-  const twin: Twin = { name: name === "default" ? value.id?.name ?? "default" : name, methods: [], fields: [] };
   const problems: string[] = [];
-  const seen = new Set<string>();
-  let at: Found | Base | undefined = { cls: value, module };
-
-  while (at && "cls" in at) {
-    collect(at.cls, twin, seen, problems);
-    at = await baseOf(at, sources, problems);
-  }
-
-  const state = !!at?.library;
+  const { twin, end } = await twinOf({ cls: value, module }, name === "default" ? value.id?.name ?? "default" : name, sources, problems, []);
+  const state = !!end?.library;
 
   if (name !== "default") return state ? { twin, state, problems } : { state, problems: [] };
-  if (at?.global) problems.push(`${at.owner} extends ${at.global}, which is neither declared nor imported in ${module.file}.`);
+  if (end?.global) problems.push(`${end.owner} extends ${end.global}, which is neither declared nor imported in ${module.file}.`);
 
   return { twin, state, problems };
 }
 
-function collect(cls: ESTree.Class, twin: Twin, seen: Set<string>, problems: string[]): void {
+async function twinOf(found: Found, name: string, sources: Sources, problems: string[], stack: ESTree.Class[]): Promise<{ twin: Twin; end?: Base }> {
+  const twin: Twin = { name, methods: [], fields: [] };
+  const seen = new Set<string>();
+  const pending: Pending[] = [];
+  let at: Found | Base | undefined = found;
+
+  while (at && "cls" in at) {
+    collect(at.cls, at.module, twin, seen, pending, problems);
+    at = await baseOf(at, sources, problems);
+  }
+
+  if (at?.library)
+    for (const field of pending) await childOf(field, twin, sources, problems, [...stack, found.cls]);
+
+  return { twin, end: at };
+}
+
+async function childOf({ field, type, module, owner }: Pending, twin: Twin, sources: Sources, problems: string[], stack: ESTree.Class[]): Promise<void> {
+  const found = await classNamed(type, module, sources);
+
+  if (!found) return;
+  if (stack.includes(found.cls)) return void problems.push(`${owner}.${field} holds a ${type}, which holds itself - a twin's children cannot recurse.`);
+
+  const own: string[] = [];
+  const child = await twinOf(found, type, sources, own, stack);
+
+  if (!child.end?.library) return;
+
+  problems.push(...own);
+  (twin.children ??= {})[field] = child.twin;
+}
+
+async function classNamed(name: string, module: Module, sources: Sources): Promise<Found | undefined> {
+  const local = module.locals.get(name);
+
+  if (isClass(local)) return { cls: local, module };
+
+  const imported = module.imports.get(name);
+
+  if (!imported || LIBRARY.test(imported.from)) return;
+
+  const file = await sources.resolve(imported.from, module.file);
+
+  if (!file) return;
+
+  const typed = declarations(file, sources);
+  const next = moduleOf(typed, sources.read(typed));
+  const exported = next.exports.get(imported.name);
+
+  return isClass(exported) ? { cls: exported, module: next } : undefined;
+}
+
+function collect(cls: ESTree.Class, module: Module, twin: Twin, seen: Set<string>, pending: Pending[], problems: string[]): void {
   const owner = cls.id?.name ?? twin.name;
 
   for (const member of cls.body.body) {
@@ -197,11 +249,53 @@ function collect(cls: ESTree.Class, twin: Twin, seen: Set<string>, problems: str
 
     if (hidden) continue;
 
+    if (member.type === "PropertyDefinition") {
+      if (isReference(member.value, module)) {
+        problems.push(`${owner}.${name} is a public reference - get() fields do not cross yet; declare it protected or private.`);
+        continue;
+      }
+
+      const type = childType(member);
+      if (type) pending.push({ field: name, type, module, owner });
+    }
+
     if (member.type !== "MethodDefinition" || member.kind === "get") twin.fields.push(name);
     else if (member.kind !== "method") continue;
     else if (isAsync(member.value)) twin.methods.push(name);
     else problems.push(`${owner}.${name}() is not async - every call to it crosses the wire.`);
   }
+}
+
+function isReference(value: Value, module: Module): boolean {
+  if (value?.type !== "CallExpression" || value.callee.type !== "Identifier") return false;
+
+  const imported = module.imports.get(value.callee.name);
+
+  return !!imported && imported.name === "get" && LIBRARY.test(imported.from);
+}
+
+function childType(member: ESTree.PropertyDefinition): string | undefined {
+  const { value } = member;
+
+  if (value?.type === "NewExpression" && value.callee.type === "Identifier") return value.callee.name;
+
+  if (value?.type === "CallExpression" && value.callee.type === "MemberExpression") {
+    const { object, property } = value.callee;
+    if (object.type === "Identifier" && property.type === "Identifier" && property.name === "new") return object.name;
+  }
+
+  if (value && !(value.type === "Identifier" && value.name === "undefined")) return;
+
+  return typeName(member.typeAnnotation?.typeAnnotation);
+}
+
+function typeName(type: ESTree.TSType | undefined): string | undefined {
+  if (type?.type === "TSTypeReference") return type.typeName.type === "Identifier" ? type.typeName.name : undefined;
+  if (type?.type !== "TSUnionType") return;
+
+  const named = type.types.filter(member => member.type !== "TSUndefinedKeyword" && member.type !== "TSNullKeyword");
+
+  return named.length === 1 ? typeName(named[0]) : undefined;
 }
 
 function isAsync(fn: ESTree.Function): boolean {

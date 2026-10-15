@@ -198,6 +198,62 @@ describe("twin scan", () => {
     expect(await twin(`export async function add() {}`)).toEqual({ state: false, problems: [] });
   });
 
+  it("will scan an owned child by its initializer or declared type, with its own members and children", async () => {
+    const { twin: scanned, problems } = await twin(`${HEAD}
+      import { Line } from "./line";
+      class Cart extends State {
+        items = 0;
+        last = new Line();
+        async add() {}
+        protected secret = 1;
+      }
+      export default class Shop extends State {
+        cart = new Cart();
+        spare?: Cart = undefined;
+        made = Cart.new();
+        stamp: Date = new Date();
+        label = "shop";
+      }
+    `, { "/app/line.ts": `${HEAD} export class Line extends State { qty = 1; async bump() {} }` });
+
+    const cart = { name: "Cart", methods: ["add"], fields: ["items", "last"], children: { last: { name: "Line", methods: ["bump"], fields: ["qty"] } } };
+
+    expect(problems).toEqual([]);
+    expect(scanned).toEqual({
+      name: "Shop",
+      methods: [],
+      fields: ["cart", "spare", "made", "stamp", "label"],
+      children: { cart, spare: cart, made: cart },
+    });
+  });
+
+  it("will leave a field plain when its class is not a State", async () => {
+    const { twin: scanned } = await twin(`${HEAD}
+      class Point { x = 0; }
+      export default class Shop extends State { at = new Point(); when?: Date; other?: Cart | Point; }
+    `);
+
+    expect(scanned).toEqual({ name: "Shop", methods: [], fields: ["at", "when", "other"] });
+  });
+
+  it("will refuse a public reference and a child that holds itself", async () => {
+    const { problems } = await twin(`
+      import { State, get } from "@expressive/mvc";
+      class Node extends State { next?: Node; }
+      class Session extends State {}
+      export default class Shop extends State {
+        session = get(Session);
+        protected kept = get(Session);
+        node = new Node();
+      }
+    `);
+
+    expect(problems).toEqual([
+      "Shop.session is a public reference - get() fields do not cross yet; declare it protected or private.",
+      "Node.next holds a Node, which holds itself - a twin's children cannot recurse.",
+    ]);
+  });
+
   it("will scan a named class as a State class when its bases reach an Expressive one", async () => {
     const source = `${HEAD}
       export class Cart extends State { items = 0; async add() {} }

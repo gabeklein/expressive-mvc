@@ -12,6 +12,8 @@ interface Tracker {
 const trackers = new WeakMap<State, Tracker>();
 
 export function track(instance: State): void {
+  if (trackers.has(instance)) return;
+
   const tracker: Tracker = { generation: randomBytes(6).toString("base64url"), counter: 0, dirty: false, keys: new Map(), watchers: new Set() };
   const settle = () => {
     tracker.dirty = false;
