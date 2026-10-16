@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { State } from "@expressive/mvc";
+import { set, State } from "@expressive/mvc";
 
 import { begin, catchUp, checksum, connect, end, frameOf, hold, listen, release, renew, twinOf } from "./connection";
 import { track } from "./version";
@@ -142,6 +142,42 @@ describe("connection", () => {
     vi.advanceTimersByTime(300_000);
     expect(drops.B).toHaveBeenCalledOnce();
     expect(connection.twins.size).toBe(0);
+  });
+
+  it("will send a pending field as pending, then its value once it lands", async () => {
+    class User extends State {
+      name = set<string>();
+      get greeting() { return "hi " + this.name; }
+    }
+
+    const connection = connect(crypto.randomUUID())!;
+    const user = User.new();
+    const events: [string, any][] = [];
+
+    hold(connection, "U", "/user", user, { fields: ["name", "greeting"] });
+    listen(connection, (event, data) => events.push([event, data]));
+
+    expect(catchUp(connection, "U").U.patch).toEqual({ name: { $pending: true }, greeting: { $pending: true } });
+
+    user.name = "ada";
+    await user.set();
+    await new Promise(resolve => setTimeout(resolve));
+
+    expect(events.slice(1).every(([event, stale]) => event === "stale" && stale.U)).toBe(true);
+    expect(events.length).toBeGreaterThan(1);
+    expect(catchUp(connection, "U").U.patch).toEqual({ name: "ada", greeting: "hi ada" });
+  });
+
+  it("will mark a pending child field as pending", () => {
+    class Cart extends State {}
+    class Shop extends State {
+      cart = set<Cart>();
+    }
+
+    const connection = connect(crypto.randomUUID())!;
+    hold(connection, "S", "/shop", Shop.new(), { fields: ["cart"], children: { cart: { fields: [] } } });
+
+    expect(catchUp(connection, "S")).toEqual({ S: { patch: { cart: { $pending: true } }, version: expect.any(String) } });
   });
 
   describe("children", () => {
