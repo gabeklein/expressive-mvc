@@ -18,5 +18,5 @@
       "@expressive/*": ["../*/src"]
     }
   },
-  "exclude": ["node_modules", "dist", "vitest.config.ts", "reference"]
+  "exclude": ["node_modules", "dist", "vitest.config.ts"]
 }
