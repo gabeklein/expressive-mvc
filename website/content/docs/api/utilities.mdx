@@ -120,7 +120,7 @@ function listener<T extends object>(
 Signal values:
 
 - `string | number | symbol` - a property updated, or a custom event fired.
-- `true` - the instance is ready (activation).
+- `true` - the instance is activated. `state.get(true, cb)` waits further, for any async setup to resolve.
 - `false` - a batch of updates has settled.
 - `null` - the instance is destroyed; listeners are cleared after this.
 

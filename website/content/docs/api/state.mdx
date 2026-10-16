@@ -168,6 +168,14 @@ state.get(null); // true if destroyed
 state.get(null, () => console.log('destroyed')); // register callback
 ```
 
+### `get(true, callback)` - ready
+
+```ts
+state.get(true, () => console.log('ready'));
+```
+
+Runs once the instance is activated and any async setup - an `async new()`, a setup step returning a promise - has resolved; at once if it already has, never if setup rejects. Returns unsubscribe.
+
 ### `get(Type, required?)` - context lookup
 
 ```ts

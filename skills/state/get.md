@@ -110,6 +110,18 @@ Runs `callback` on destruction. Returns unsubscribe.
 const stop = state.get(null, () => console.log('destroyed'));
 ```
 
+### Ready callback
+
+```ts
+get(status: true, callback: () => void): () => void
+```
+
+Runs `callback` once the instance is ready - activated, with any async setup (an `async new()`, a setup step returning a promise) resolved. Called at once if already ready; never if setup rejects. Returns unsubscribe.
+
+```ts
+seat.get(true, () => admit(request));
+```
+
 ### Fetch from context
 
 ```ts
