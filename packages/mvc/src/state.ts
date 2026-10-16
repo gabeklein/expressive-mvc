@@ -679,22 +679,32 @@ function init(state: Model, ...args: Model.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const queue = [...before, observe, ...args, ...after, register];
+    const waits: Promise<unknown>[] = [];
 
-    capture((release) => {
+    const run = (queue: unknown[]) => capture((release) => {
       listener(state, () => release(null), null);
 
       for (let i = 0; i < queue.length; i++) {
         const arg = queue[i];
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
-        if (out instanceof Promise)
+        if (out instanceof Promise) {
+          waits.push(out);
           out.catch((err) => report('setup', state, err));
+        }
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);
       }
     });
+
+    run([...before, observe, ...args, () => {
+      if (!waits.length) return [...after, register];
+
+      Promise.all(waits).then(() => observer(state) !== null && run([...after]), () => {});
+
+      return [register];
+    }]);
 
     if (owns) {
       owns.add(state);

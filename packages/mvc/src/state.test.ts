@@ -3476,6 +3476,94 @@ describe('on setup / ready stages (static)', () => {
     expect(order).toEqual(['setup', 'new', 'ready']);
   });
 
+  it('will run ready once an async new() resolves', async () => {
+    const done = mockPromise();
+    const order: string[] = [];
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+        order.push('new');
+      }
+    }
+
+    Test.on({ ready: () => void order.push('ready') });
+    Test.new();
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(order).toEqual(['new', 'ready']);
+  });
+
+  it('will not run ready if an async new() rejects, handing the rejection to catch', async () => {
+    const ready = vi.fn();
+    const handler = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        throw new Error('failed');
+      }
+    }
+
+    Test.on({ ready, catch: handler });
+    Test.new();
+
+    await flushMicrotasks();
+    expect(ready).not.toBeCalled();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+  });
+
+  it('will not run ready if destroyed before an async new() resolves', async () => {
+    const done = mockPromise();
+    const ready = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ ready });
+    Test.new().set(null);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(ready).not.toBeCalled();
+  });
+
+  it('will release effects a deferred ready creates when destroyed', async () => {
+    const done = mockPromise();
+    const seen = vi.fn();
+
+    class Other extends Model {
+      value = 0;
+    }
+
+    const other = Other.new();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ ready: () => void other.get(($) => seen($.value)) });
+
+    const test = Test.new();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(seen).toBeCalledTimes(1);
+
+    test.set(null);
+    other.value = 1;
+    await flushMicrotasks();
+    expect(seen).toBeCalledTimes(1);
+  });
+
 });
 
 describe('on method stage (static)', () => {
