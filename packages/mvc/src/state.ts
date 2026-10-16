@@ -19,6 +19,9 @@ const ID = new WeakMap<Model, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
+/** Instances whose setup has settled (`true`), or callbacks waiting for it. */
+const READY = new WeakMap<Model, Set<() => void> | true>();
+
 /** Models under construction - added on `new`, removed when activated or released.
  *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
 const PENDING = new Set<Model | (() => void)>();
@@ -334,6 +337,15 @@ abstract class Model {
    */
   get(status: null, callback: () => void): () => void;
 
+  /**
+   * Callback once state is ready - activated, with any async setup (such as an
+   * async `new()`) resolved. Called at once if already ready; never if setup fails.
+   *
+   * @param callback - Function to call when state is ready.
+   * @returns Function to cancel listener.
+   */
+  get(status: true, callback: () => void): () => void;
+
   /** Fetch Model of type from context. Throws if not found. */
   get<T extends Model>(type: Model.Type<T>, required?: true): T;
 
@@ -388,7 +400,7 @@ abstract class Model {
   ): () => void;
 
   get(
-    arg1?: Model.Effect<this> | Model.Type | typeof Model | string | null,
+    arg1?: Model.Effect<this> | Model.Type | typeof Model | string | true | null,
     arg2?: boolean | Context.Expect | (() => void),
     arg3?: boolean
   ) {
@@ -404,7 +416,7 @@ abstract class Model {
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
-    return access(self, arg1, arg2);
+    return access(self, arg1 as string, arg2);
   }
 
   /**
@@ -607,7 +619,31 @@ function callback<T extends Model>(
   cb: Function,
   select?: Observer.Signal | Set<Observer.Signal>
 ) {
-  return listener(self, (key) => cb.call(self, key, self), select);
+  if (select !== true) return listener(self, (key) => cb.call(self, key, self), select);
+
+  observer(self, true);
+
+  const run = () => cb.call(self, true, self);
+  let waiting = READY.get(self);
+
+  if (waiting === true) {
+    run();
+    return () => false;
+  }
+
+  if (!waiting) READY.set(self, (waiting = new Set()));
+
+  waiting.add(run);
+
+  return () => waiting.delete(run);
+}
+
+function ready(state: Model) {
+  const waiting = READY.get(state);
+
+  READY.set(state, true);
+
+  if (waiting instanceof Set) waiting.forEach((run) => run());
 }
 
 /**
@@ -699,9 +735,14 @@ function init(state: Model, ...args: Model.Args) {
     });
 
     run([...before, observe, ...args, () => {
-      if (!waits.length) return [...after, register];
+      if (!waits.length) return [...after, register, () => void ready(state)];
 
-      Promise.all(waits).then(() => observer(state) !== null && run([...after]), () => {});
+      Promise.all(waits).then(() => {
+        if (observer(state) === null) return;
+
+        run([...after]);
+        ready(state);
+      }, () => {});
 
       return [register];
     }]);
