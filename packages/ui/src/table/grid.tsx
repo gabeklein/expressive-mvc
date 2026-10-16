@@ -1,5 +1,5 @@
 import { Component } from '@expressive/mvc';
-import { Fragment, childrenOf, propsOf, typeOf } from '@expressive/mvc/runtime';
+import { Fragment, childrenOf, propsOf, typeOf } from '@expressive/mvc/jsx-runtime';
 
 import { Column, type CellSlot, type Field, type HeadSlot } from './column';
 
@@ -117,7 +117,7 @@ function resolve<T>(children: Component.Node): Field<T>[] {
   for (const node of flatten(children)) {
     const type = typeOf(node);
 
-    if (typeof type != 'function' || !(type.prototype instanceof Column))
+    if (type !== Column && !(typeof type == 'function' && type.prototype instanceof Column))
       continue;
 
     const props = propsOf(node) as Partial<Field<T>>;
