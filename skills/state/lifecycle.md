@@ -26,6 +26,7 @@ class Timer extends Model {
 
 - Runs once, after all properties and child instances are set up.
 - Return nothing, or `() => void` to run on destruction.
+- `async new()` is allowed: its rejection reports to `catch` as `setup`, and `on({ ready })` handlers wait for it to resolve (skipped on rejection or an earlier destroy). Its cleanup cannot be returned - a promise's value is ignored.
 - `this` is the instance, not a tracking proxy - closures made here (a listener, an interval) capture it and may use it as a `Map`/`Set` key.
 
 `new()` is a typed optional member of `Model` (`protected new?(): void | (() => void) | Promise<void>`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. Adapter hooks reached only through `Model.use()` - `use()` and `mount()` on a plain `Model` - are declared on the `UseModel` interface instead, which a class satisfies structurally: optional and unadvertised on never-rendered Models, at the cost of a looser check than a declared override.
