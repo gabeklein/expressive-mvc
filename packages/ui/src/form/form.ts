@@ -40,7 +40,7 @@ class Form extends Model {
       }, true);
 
       this.get(Form, (f) => {
-        if (f === this || f.parent !== this) return;
+        if (f.parent !== this) return;
 
         this.nested.add(f);
         f.get(null, () => {
