@@ -50,14 +50,6 @@ export function addYears(from: Date, count: number) {
   return addMonths(from, count * 12);
 }
 
-export function setMonth(from: Date, month: number) {
-  return addMonths(from, month - from.getMonth());
-}
-
-export function setYear(from: Date, year: number) {
-  return addYears(from, year - from.getFullYear());
-}
-
 export function isSameDay(a: Date, b: Date) {
   return startOfDay(a).getTime() === startOfDay(b).getTime();
 }

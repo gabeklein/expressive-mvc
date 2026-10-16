@@ -8,8 +8,6 @@ import {
   endOfWeek,
   isSameDay,
   isSameMonth,
-  setMonth,
-  setYear,
   startOfDay,
   startOfMonth,
   startOfWeek
@@ -44,34 +42,34 @@ class Calendar extends Model {
   ];
 
   selected?: Date = undefined;
-  focus = set(() => new Date(this.selected || new Date()));
+  focus = set(
+    () => new Date(this.selected || new Date()),
+    () => {}
+  );
 
   min: Calendar.Bound = undefined;
   max: Calendar.Bound = undefined;
 
-  /**
-   * `false` when the step would cross a bound - LFCP returned `undefined` here,
-   * which a set-factory now reads as suspend.
-   */
-  backMonth = set((): false | (() => void) => {
+  /** `false` when the step would cross a bound. */
+  get backMonth(): false | (() => void) {
     const prev = addMonths(this.focus, -1);
     const floor = bound(this.min);
 
     if (floor && startOfMonth(prev) < startOfMonth(floor)) return false;
 
     return () => (this.focus = prev);
-  });
+  }
 
-  nextMonth = set((): false | (() => void) => {
+  get nextMonth(): false | (() => void) {
     const next = addMonths(this.focus, 1);
     const ceil = bound(this.max);
 
     if (ceil && startOfMonth(next) > ceil) return false;
 
     return () => (this.focus = next);
-  });
+  }
 
-  days = set((): Calendar.Day[] => {
+  get days(): Calendar.Day[] {
     const { focus, selected } = this;
     const floor = bound(this.min);
     const ceil = bound(this.max);
@@ -96,15 +94,15 @@ class Calendar extends Model {
     }
 
     return days;
-  });
+  }
 
-  months = set((): Calendar.Option[] => {
+  get months(): Calendar.Option[] {
     const floor = bound(this.min);
     const ceil = bound(this.max);
     const year = this.focus.getFullYear();
 
     return Calendar.months.map((label, value) => {
-      const date = setMonth(setYear(new Date(), year), value);
+      const date = new Date(year, value);
 
       return {
         value,
@@ -113,9 +111,9 @@ class Calendar extends Model {
           (floor && date < startOfMonth(floor)) || (ceil && date > ceil) || false
       };
     });
-  });
+  }
 
-  years = set((): Calendar.Option[] => {
+  get years(): Calendar.Option[] {
     const start = bound(this.min) || addYears(new Date(), -20);
     const end = bound(this.max) || addYears(new Date(), 20);
     const from = start.getFullYear();
@@ -126,7 +124,7 @@ class Calendar extends Model {
       label: String(from + i),
       disabled: false
     }));
-  });
+  }
 
   select(date: Date) {
     this.selected = date;
