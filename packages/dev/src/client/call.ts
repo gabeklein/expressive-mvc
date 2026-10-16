@@ -31,7 +31,7 @@ type Patch = { patch: Record<string, unknown>; version: string };
 export function runtime(Base: typeof State, def: typeof instruction, Context: typeof Contexts, Route: State.Type<Routed>) {
   const classes = new Map<string, ErrorConstructor>();
   const versions = new WeakMap<State, string>();
-  const pending = new WeakMap<State, State.Apply[]>();
+  const waiting = new WeakMap<State, Map<string, State.Apply>>();
   const meta = new WeakMap<State, Meta>();
   const shapes = new WeakMap<State, Shape>();
   const kids = new WeakMap<State, Map<string, { generation: string; child: State }>>();
@@ -212,7 +212,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
         },
       };
 
-      pending.get(twin)!.push(config);
+      waiting.get(twin)!.set(key, config);
 
       return config;
     });
@@ -221,13 +221,16 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
   function sync(twin: State, values: Record<string, unknown>, version: string): void {
     const [generation, counter] = version.split(":");
     const [held, at] = versions.get(twin)?.split(":") ?? [];
-    const configs = held === generation ? undefined : pending.get(twin);
+    const whole = held !== generation;
 
-    if (!configs && Number(counter) < Number(at)) return;
+    if (!whole && Number(counter) < Number(at)) return;
 
     const { fields, children } = shapes.get(twin)!;
 
-    if (configs) values = Object.fromEntries(fields.map(field => [field, values[field]]));
+    if (whole) values = Object.fromEntries(fields.map(field => [field, values[field]]));
+
+    values = Object.fromEntries(Object.entries(values).filter(([, value]) => !isPending(value)));
+
     if (children) values = nest(twin, values, children);
 
     versions.set(twin, version);
@@ -239,7 +242,20 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
       syncing = false;
     }
 
-    configs?.splice(0).forEach(config => (config.get = false));
+    const unset = waiting.get(twin)!;
+
+    for (const field of Object.keys(values)) {
+      const config = unset.get(field);
+
+      if (!config) continue;
+
+      config.get = false;
+      unset.delete(field);
+    }
+  }
+
+  function isPending(value: unknown): boolean {
+    return (value as { $pending?: unknown } | null)?.$pending === true;
   }
 
   function since(twin: State): Record<string, string> {
@@ -300,7 +316,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
         constructor(root: State) {
           super();
 
-          pending.set(this, []);
+          waiting.set(this, new Map());
           shapes.set(this, definition);
           roots.set(this, root);
 
@@ -379,7 +395,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
 
           const id = `${name}-${uid()}`;
 
-          pending.set(this, []);
+          waiting.set(this, new Map());
           meta.set(this, { id, name, pattern, pool });
           shapes.set(this, { fields, children });
           twins.set(id, new WeakRef(this));
