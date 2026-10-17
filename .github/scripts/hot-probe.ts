@@ -343,7 +343,7 @@ export class Deck extends Component {
   }
 }
 `,
-  'folio.tsx': `import { Model } from '@expressive/mvc';
+  'folio.tsx': `import { Component, Model } from '@expressive/mvc';
 
 class Hits extends Model {
   count = 0;
@@ -358,9 +358,13 @@ export class Folio extends Model {
 
     return <h3 id="folio" onClick={() => hits.count++}>{title} head {hits.count}</h3>;
   }
+}
+
+export class Shelf extends Component {
+  folio = new Folio();
 
   render() {
-    return <this.Header />;
+    return <this.folio.Header />;
   }
 }
 `,
@@ -482,7 +486,7 @@ import { Vault } from './vault';
 import { Deck } from './deck';
 import { Guard } from './guard';
 import { Stage } from './stage';
-${badge ? "import { Wrapper } from './badge';\nimport { Folio } from './folio';\n" : ''}
+${badge ? "import { Wrapper } from './badge';\nimport { Shelf } from './folio';\n" : ''}
 export const App = () => (
   <Component for={Settings}>
   <Component for={Theme}>
@@ -505,7 +509,7 @@ export const App = () => (
     <Deck />
     <Guard />
     <Stage />
-    ${badge ? '<Wrapper /><Folio />' : ''}
+    ${badge ? '<Wrapper /><Shelf />' : ''}
   </Component>
   </Component>
 );

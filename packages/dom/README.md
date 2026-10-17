@@ -6,7 +6,7 @@
 
 ---
 
-`@expressive/dom` renders Expressive MVC without React or Preact. Function components are renderer-stateless: they project props and MVC snapshots into DOM, while `Model.get()` supplies dependency tracking. Owned state lives on classes - a Component field, a Model element, or `<Component for>`.
+`@expressive/dom` renders Expressive MVC without React or Preact. Function components are renderer-stateless: they project props and MVC snapshots into DOM, while `Model.get()` supplies dependency tracking. Owned state lives on classes - a Component field or `<Component for>`.
 
 ```bash
 npm install @expressive/mvc @expressive/dom
