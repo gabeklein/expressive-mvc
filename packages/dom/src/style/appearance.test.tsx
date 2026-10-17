@@ -5,7 +5,7 @@ import { macro, render, style } from '../index';
 import * as hot from '@expressive/mvc/hot';
 import { flushMicrotasks, mount } from '../../test.setup';
 import { createAppearanceRoute, createStyleScope, resolveAppearance } from './appearance';
-import { applyDeclarations } from './declarations';
+import { applyDeclarations } from '../dom/declarations';
 
 function place(node: Component.Node) {
   const root = document.body.appendChild(document.createElement('main'));

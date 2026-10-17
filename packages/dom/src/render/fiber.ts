@@ -3,8 +3,10 @@ import { Context, Model } from '@expressive/mvc';
 import type { Key, Node as RenderNode } from '../node/vnode';
 import type { Appearance, Claim } from '../style/claim';
 import type { Scope } from './adapter';
+import { host } from './host';
+import type { HostNode } from './host';
 
-type Container = Element | DocumentFragment;
+type Container = HostNode;
 
 type Kind = 'collection' | 'component' | 'element' | 'fragment' | 'function' | 'portal' | 'text';
 
@@ -37,8 +39,8 @@ interface Fiber {
   context: Context;
   boundary?: Boundary;
   ownBoundary?: Boundary;
-  start: globalThis.Node;
-  end: globalThis.Node;
+  start: HostNode;
+  end: HostNode;
   children: Fiber[];
   scope?: Scope;
   cleanup?: (() => void) | void;
@@ -46,32 +48,31 @@ interface Fiber {
   childContext?: Context;
   instance?: Renderable;
   owned?: boolean;
-  events?: Map<string, EventListener>;
-  portalStart?: globalThis.Node;
-  portalEnd?: globalThis.Node;
+  portalStart?: HostNode;
+  portalEnd?: HostNode;
   portalContainer?: Container;
   suspended?: Set<() => void>;
   applied?: boolean;
   retried?: boolean;
-  portals?: [Fiber, DocumentFragment][];
+  portals?: [Fiber, HostNode][];
   dead?: boolean;
   waitingOn?: Boundary;
   recovering?: object;
-  stash?: DocumentFragment;
+  stash?: HostNode;
   placeholder?: Fiber;
-  staging?: DocumentFragment;
+  staging?: HostNode;
   render?: () => RenderNode;
   appearance?: Appearance;
   consumed?: boolean;
   claimed?: Claim;
 }
 
-function range(kind: Kind, parent: globalThis.Node, before: globalThis.Node | null, context: Context): Fiber {
-  const start = document.createComment(kind);
-  const end = document.createComment(`/${kind}`);
+function range(kind: Kind, parent: HostNode, before: HostNode | null, context: Context): Fiber {
+  const start = host.marker(kind);
+  const end = host.marker(`/${kind}`);
 
-  parent.insertBefore(start, before);
-  parent.insertBefore(end, before);
+  host.insert(parent, start, before);
+  host.insert(parent, end, before);
 
   return { kind, context, start, end, children: [] };
 }
@@ -89,35 +90,35 @@ function makeScope(kind: Scope['kind'], context: Context, update: (passive: bool
   };
 }
 
-function moveRange(start: globalThis.Node, end: globalThis.Node, target: globalThis.Node) {
-  let node: globalThis.Node | null = start;
+function moveRange(start: HostNode, end: HostNode, target: HostNode) {
+  let node: HostNode | null = start;
 
   while (node) {
-    const next: globalThis.Node | null = node.nextSibling;
-    target.appendChild(node);
+    const next: HostNode | null = host.next(node);
+    host.insert(target, node, null);
     if (node === end) break;
     node = next;
   }
 }
 
-function move(fiber: Fiber, parent: globalThis.Node, before: globalThis.Node | null) {
-  if (fiber.start.parentNode === parent && fiber.end.nextSibling === before) return;
+function move(fiber: Fiber, parent: HostNode, before: HostNode | null) {
+  if (host.parent(fiber.start) === parent && host.next(fiber.end) === before) return;
 
-  let node: globalThis.Node | null = fiber.start;
+  let node: HostNode | null = fiber.start;
   while (node) {
-    const next: globalThis.Node | null = node.nextSibling;
-    parent.insertBefore(node, before);
+    const next: HostNode | null = host.next(node);
+    host.insert(parent, node, before);
     if (node === fiber.end) break;
     node = next;
   }
 }
 
-function removeRange(start: globalThis.Node, end: globalThis.Node) {
+function removeRange(start: HostNode, end: HostNode) {
   let node = start;
 
   while (true) {
-    const next = node.nextSibling;
-    (node as ChildNode).remove();
+    const next = host.next(node);
+    host.remove(node);
     if (node === end) break;
     node = next!;
   }

@@ -16,8 +16,9 @@ import { attempt, passiveRender } from './render';
 import { claim as dequeue, schedule, settle as absorb, transition } from './scheduler';
 import { consume, observe } from './style';
 import { isThenable } from './suspense';
+import type { HostNode } from './host';
 
-function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
+function mountFunction(value: VNode, parent: HostNode, before: HostNode | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const fiber = range('function', parent, before, context);
   const resolved = componentProps(value.type, value.props, appearance);
   fiber.key = value.key;
@@ -40,8 +41,8 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
 
 function mountOwnedComponent(
   value: VNode,
-  parent: globalThis.Node,
-  before: globalThis.Node | null,
+  parent: HostNode,
+  before: HostNode | null,
   context: Context,
   boundary?: Boundary,
   appearance?: Appearance
@@ -58,8 +59,8 @@ function mountOwnedComponent(
 
 function mountComponent(
   instance: Renderable,
-  parent: globalThis.Node,
-  before: globalThis.Node | null,
+  parent: HostNode,
+  before: HostNode | null,
   context: Context,
   inherited?: Boundary,
   appearance?: Appearance,

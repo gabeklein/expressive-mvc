@@ -4,6 +4,7 @@ import type { Node as RenderNode } from '../node/vnode';
 import { appearanceRoot } from '../style/protocol';
 import { attach, batched, fragment } from './commits';
 import { range } from './fiber';
+import { host } from './host';
 import type { Container, Fiber } from './fiber';
 import { unmountFiber } from './mount';
 import { reconcile } from './reconcile';
@@ -11,13 +12,12 @@ import { consume, renderedAppearance } from './style';
 import { settle, suspend, unwait } from './suspense';
 
 const roots = new WeakMap<Container, () => void>();
-const focusing: Element[] = [];
 let passiveRender = false;
 let depth = 0;
 
 function render(node: RenderNode, container: Container): () => void {
   roots.get(container)?.();
-  container.replaceChildren();
+  host.clear(container);
 
   const context = new Context(Context.root);
   const fiber = range('fragment', container, null, context);
@@ -54,14 +54,9 @@ function pass<T>(work: () => T): T {
   } finally {
     if (!--depth) {
       settle();
-      focus();
+      host.flush?.();
     }
   }
-}
-
-function focus() {
-  for (const element of focusing.splice(0))
-    if (element.isConnected) (element as HTMLElement).focus();
 }
 
 function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true | PromiseLike<unknown> | void {
@@ -82,7 +77,7 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
       reconcile(fiber, output, scope.childContext, fiber.boundary, renderedAppearance(fiber));
 
       if (fiber.staging) {
-        fiber.end.parentNode!.insertBefore(fiber.staging, fiber.end);
+        host.insert(host.parent(fiber.end)!, fiber.staging, fiber.end);
         attach(fiber.staging);
         fiber.staging = undefined;
       }
@@ -102,4 +97,4 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
   }
 }
 
-export { attempt, depth, focusing, pass, passiveRender, render };
+export { attempt, depth, pass, passiveRender, render };

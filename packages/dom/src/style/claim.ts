@@ -1,6 +1,5 @@
-import { applyDeclarations } from './declarations';
-import { appearanceToken, createAppearanceToken, emitClass } from './protocol';
-import type { AppearanceContext, ResolvedAppearance } from './protocol';
+import { appearanceToken, createAppearanceToken } from './protocol';
+import type { AppearanceContext, Block, ResolvedAppearance } from './protocol';
 
 type Style = string | Record<string, unknown> | false | null | undefined | readonly Style[];
 
@@ -25,8 +24,13 @@ interface Collected {
   tokens: Carried[];
 }
 
+interface Placed {
+  block: Block;
+  depth: number;
+}
+
 interface Claim {
-  className: string;
+  classes: (string | Placed)[];
   context?: AppearanceContext;
   declarations: Record<string, unknown>;
 }
@@ -75,7 +79,6 @@ function door(value: Style) {
 }
 
 function claim(
-  element: Element,
   appearance: Appearance | undefined,
   resolved: ResolvedAppearance | undefined,
   className: unknown,
@@ -93,10 +96,12 @@ function claim(
   for (let index = entries.length - 1; index >= 0; index--)
     collect(entries[index].style, collected, entries[index].hops);
 
+  const classes: (string | Placed)[] = [...collected.classes];
+
   for (const { appearance, doors } of collected.tokens) {
     for (const block of appearance.blocks || [])
-      collected.classes.push(emitClass(block, doors, element.ownerDocument));
-    if (appearance.classes) collected.classes.push(...appearance.classes);
+      classes.push({ block, depth: doors });
+    if (appearance.classes) classes.push(...appearance.classes);
     if (appearance.context && doors >= reach) {
       context = appearance.context;
       reach = doors;
@@ -104,21 +109,10 @@ function claim(
   }
 
   return {
-    className: [...new Set(collected.classes)].join(' '),
+    classes,
     context,
     declarations: collected.declarations
   };
-}
-
-function applyClaim(element: Element, before: Claim | undefined, after: Claim) {
-  const previous = before || { className: '', declarations: {} };
-
-  if (previous.className !== after.className) {
-    if (after.className) element.setAttribute('class', after.className);
-    else element.removeAttribute('class');
-  }
-
-  applyDeclarations((element as HTMLElement).style, after.declarations, previous.declarations);
 }
 
 function collect(value: Style, collected: Collected, doors: number) {
@@ -157,5 +151,5 @@ function appendClasses(classes: string[], value: unknown) {
   if (typeof value == 'string') classes.push(...value.split(/\s+/).filter(Boolean));
 }
 
-export { applyClaim, claim, componentProps, door };
-export type { Appearance, Claim, Style };
+export { claim, componentProps, door };
+export type { Appearance, Claim, Placed, Style };

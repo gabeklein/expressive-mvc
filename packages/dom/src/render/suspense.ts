@@ -1,5 +1,7 @@
 import { fragment } from './commits';
 import { move, moveRange, range } from './fiber';
+import { host } from './host';
+import type { HostNode } from './host';
 import type { Boundary, Fiber } from './fiber';
 import { unmountFiber } from './mount';
 import { reconcile } from './reconcile';
@@ -7,7 +9,7 @@ import { depth, pass } from './render';
 import { release, schedule, transition } from './scheduler';
 
 const dirty = new Set<Boundary>();
-const stashes = new WeakMap<globalThis.Node, Fiber>();
+const stashes = new WeakMap<HostNode, Fiber>();
 let holding: { thrown: unknown; fiber?: Fiber } | undefined;
 let settling = false;
 
@@ -31,13 +33,13 @@ function gather(error: unknown, next: Fiber[], old: Fiber[]) {
   holding.fiber = undefined;
 }
 
-function hostOf(parent: globalThis.Node) {
-  let host = parent;
+function hostOf(parent: HostNode) {
+  let found = parent;
 
-  for (let owner = stashes.get(host); owner; owner = stashes.get(host))
-    host = owner.end.parentNode!;
+  for (let owner = stashes.get(found); owner; owner = stashes.get(found))
+    found = host.parent(owner.end)!;
 
-  return host;
+  return found;
 }
 
 function wait(fiber: Fiber, boundary: Boundary) {
@@ -78,12 +80,12 @@ function settle() {
 }
 
 function hide(owner: Fiber, boundary: Boundary) {
-  const stash = document.createDocumentFragment();
+  const stash = host.fragment();
 
   for (const child of owner.children) move(child, stash, null);
 
   owner.portals = portals(owner, []).map((portal) => {
-    const content = document.createDocumentFragment();
+    const content = host.fragment();
     moveRange(portal.portalStart!, portal.portalEnd!, content);
     return [portal, content];
   });
@@ -91,7 +93,7 @@ function hide(owner: Fiber, boundary: Boundary) {
   stashes.set(stash, owner);
 
   const context = owner.childContext!;
-  const placeholder = range('fragment', owner.end.parentNode!, owner.end, context);
+  const placeholder = range('fragment', host.parent(owner.end)!, owner.end, context);
 
   owner.stash = stash;
   owner.placeholder = placeholder;
@@ -100,10 +102,10 @@ function hide(owner: Fiber, boundary: Boundary) {
 
 function reveal(owner: Fiber) {
   unmountFiber(owner.placeholder!);
-  owner.end.parentNode!.insertBefore(owner.stash!, owner.end);
+  host.insert(host.parent(owner.end)!, owner.stash!, owner.end);
 
   for (const [portal, content] of owner.portals!)
-    if (!portal.dead) portal.portalContainer!.append(content);
+    if (!portal.dead) host.insert(portal.portalContainer!, content, null);
 
   owner.portals = undefined;
   owner.placeholder = undefined;
