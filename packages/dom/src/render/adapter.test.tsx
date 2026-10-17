@@ -346,7 +346,7 @@ describe('Component for', () => {
   it('will construct, provide and forward props to a class', async () => {
     let session!: Session;
 
-    class App extends Model {
+    class App extends Component {
       value = 'Ada';
 
       render() {
@@ -372,7 +372,8 @@ describe('Component for', () => {
   it('will not add a suspense boundary', () => {
     const gate = mockPromise<void>();
 
-    class Wait extends Model {
+    class Wait extends Component {
+      fallback = false as const;
       ready = false;
 
       render() {
