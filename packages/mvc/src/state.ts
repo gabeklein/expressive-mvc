@@ -324,20 +324,20 @@ abstract class Model {
   /**
    * Check a lifecycle moment - `true` whether state is ready, `null` whether it is destroyed.
    *
-   * @param lifecycle - `true` for ready, `null` for destroyed.
+   * @param status - `true` for ready, `null` for destroyed.
    */
-  get(lifecycle: true | null): boolean;
+  get(status: true | null): boolean;
 
   /**
    * Callback at a lifecycle moment - `true` once ready (activated, with any async setup
    * such as an async `new()` resolved; at once if already, never if setup fails), or
    * `null` when destroyed.
    *
-   * @param lifecycle - `true` for ready, `null` for destroy.
+   * @param status - `true` for ready, `null` for destroy.
    * @param callback - Function to call.
    * @returns Function to cancel listener.
    */
-  get(lifecycle: true | null, callback: () => void): () => void;
+  get(status: true | null, callback: () => void): () => void;
 
   /** Fetch Model of type from context. Throws if not found. */
   get<T extends Model>(type: Model.Type<T>, required?: true): T;
@@ -647,6 +647,31 @@ function settle(state: Model, callbacks = READY.get(state) as Set<Function> | un
     });
 }
 
+function register(state: Model) {
+  if (Context.get(state) !== Context.root) return;
+
+  const type = state.constructor as typeof Model;
+  const g = type.global;
+
+  if (!(typeof g == 'function' ? g(state) : g)) return;
+
+  if (!Object.prototype.hasOwnProperty.call(type, 'global'))
+    throw new Error(
+      `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
+    );
+
+  for (let T: Model.Extends = type; T !== Model; T = Object.getPrototypeOf(T)) {
+    const found = Context.root.get(T, false);
+
+    if (found && (T === type || found.constructor === T))
+      throw new Error(
+        `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+      );
+  }
+
+  return Context.root.add(state);
+}
+
 /**
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
@@ -675,31 +700,6 @@ function init(state: Model, ...args: Model.Args) {
       if (key[0] == '_') unmanaged(state, key, desc.value);
       else apply(state, key, desc, true);
     }
-  }
-
-  function register() {
-    if (Context.get(state) !== Context.root) return;
-
-    const type = state.constructor as typeof Model;
-    const g = type.global;
-
-    if (!(typeof g == 'function' ? g(state) : g)) return;
-
-    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
-      throw new Error(
-        `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
-      );
-
-    for (let T: Model.Extends = type; T !== Model; T = Object.getPrototypeOf(T)) {
-      const found = Context.root.get(T, false);
-
-      if (found && (T === type || found.constructor === T))
-        throw new Error(
-          `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
-        );
-    }
-
-    return Context.root.add(state);
   }
 
   listener(state, (key) => {

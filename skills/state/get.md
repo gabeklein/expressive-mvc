@@ -89,8 +89,8 @@ To watch a specific property or event, use [`set(event, callback)`](set.md).
 ### Lifecycle
 
 ```ts
-get(lifecycle: true | null): boolean
-get(lifecycle: true | null, callback: () => void): () => void
+get(status: true | null): boolean
+get(status: true | null, callback: () => void): () => void
 ```
 
 `true` is ready - activated, with any async setup (an `async new()`, a setup step returning a promise) resolved. `null` is destroyed. Without a callback, whether it has happened; with one, runs `callback` when it does - at once if ready already, never if setup rejects. Returns unsubscribe.
