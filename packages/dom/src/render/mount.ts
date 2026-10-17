@@ -47,7 +47,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
   if (typeof value.type != 'function')
     throw new Error(`Cannot render ${String(value.type)}.`);
 
-  if (value.type.prototype instanceof Component)
+  if (value.type === Component || value.type.prototype instanceof Component)
     return mountOwnedComponent(value, parent, before, context, boundary, appearance);
 
   if (value.type.prototype instanceof Model) notRenderable(value.type);

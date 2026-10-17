@@ -79,7 +79,7 @@ declare module '@expressive/mvc/jsx-runtime' {
     node: Node;
     intrinsics: Intrinsics;
     element: () => PromiseLike<Module>;
-    elementClass: Model;
+    elementClass: Model & { render(props?: any): Component.Node };
   }
 }
 
@@ -137,7 +137,7 @@ export declare namespace JSX {
     | ((props: any) => Component.Node)
     | (() => PromiseLike<Module>)
     | (abstract new (...args: any[]) => ElementClass);
-  interface ElementClass extends Component<any> {}
+  interface ElementClass extends Model { render(props?: any): Component.Node }
   /**
    * Empty, so a class element's attributes resolve from its instance type and
    * {@link LibraryManagedAttributes} picks `props` when declared, else derives
