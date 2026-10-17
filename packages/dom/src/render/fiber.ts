@@ -76,16 +76,12 @@ function range(kind: Kind, parent: globalThis.Node, before: globalThis.Node | nu
   return { kind, context, start, end, children: [] };
 }
 
-function makeScope(kind: Scope['kind'], context: Context, update: (passive: boolean) => void): Scope {
+function makeScope(context: Context, update: (passive: boolean) => void): Scope {
   return {
     active: true,
-    childContext: context,
     context,
-    kind,
     subscriptions: [],
-    update,
-    useIndex: 0,
-    uses: []
+    update
   };
 }
 

@@ -351,10 +351,10 @@ class Hits extends Model {
 
 export class Folio extends Model {
   title = 'folio';
+  hits = new Hits();
 
   Header() {
-    const { title } = this;
-    const hits = Hits.use();
+    const { title, hits } = this;
 
     return <h3 id="folio" onClick={() => hits.count++}>{title} head {hits.count}</h3>;
   }
@@ -1010,7 +1010,7 @@ async function run(mode: Mode) {
     });
 
     if (mode == 'dom')
-      await scenario('plain Model subcomponent takes an edit, its owner and slots kept (dom)', async () => {
+      await scenario('plain Model subcomponent takes an edit, its owner and child kept (dom)', async () => {
         await browser.eval(`document.getElementById('folio').click()`);
         await see('#folio', 'folio head 1');
         await edit('folio.tsx', 'head {hits.count}', 'top {hits.count}');

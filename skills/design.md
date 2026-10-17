@@ -23,7 +23,7 @@ Strict MVC (Smalltalk-80; Krasner & Pope, 1988) has three load-bearing ideas:
 Expressive implements all three structurally:
 
 - **Model:** domain models - `Model` subclasses holding data and rules, headless, framework-agnostic (enforced by package boundaries: `@expressive/mvc` has no framework imports, and every adapter and renderer declares it as a peer dependency, never the reverse - a domain model's module imports nothing from a host), observable via subscription.
-- **View:** `Model.get()` / `Model.use()` subscribe a component to exactly the fields it reads, with no dispatcher or presenter between; under `@expressive/dom` a function component holds no renderer state at all - a view is a projection of an instance's snapshot. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
+- **View:** `Model.get()` (and on React `Model.use()`) subscribes a component to exactly the fields it reads, with no dispatcher or presenter between; under `@expressive/dom` a function component holds no renderer state at all - a view is a projection of an instance's snapshot. The name follows the original pattern, not request-routed web "MVC" (the unrelated Model 2 pattern).
 - **Controller:** played by *controls* - instances scoped to a placement (page, region, route), named `Control` by convention (`InboxControl` in an app). A control holds domain models as fields, owns workflow state (selection, drafts, request status), and its methods translate gestures into operations on them. The renderer only delivers raw input (React's synthetic events through the adapter, native `addEventListener` under `@expressive/dom`). A control is observable like any instance - Fowler's Presentation Model, the refinement MVVM descends from.
 
 Domain model or control is a role, not a type - the test is whether it outlives its placement. Domain models are reused across routes and held by many owners; a control is constructed where it is placed and dies with it. Both are `Model` instances; ownership, not a base class, marks the difference.
@@ -53,7 +53,7 @@ A PascalCase member on a `Component` becomes a reactive subcomponent - mirroring
 
 ## Lifecycle hooks are typed members, not name magic
 
-`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void)` on `Model` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the adapter's `Model` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most classes need none - `new()` exists for setup-with-cleanup and should not be added ritually.
+`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void)` on `Model` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the React adapter's `Model` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most classes need none - `new()` exists for setup-with-cleanup and should not be added ritually.
 
 ## Writes are transparent; `is` is bounded
 

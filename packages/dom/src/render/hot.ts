@@ -58,10 +58,7 @@ function hot(id: string, components: Record<string, unknown>) {
 
     family.current = type;
 
-    for (const scope of family.scopes) {
-      scope.hot = true;
-      schedule(scope);
-    }
+    for (const scope of family.scopes) schedule(scope);
   }
 }
 

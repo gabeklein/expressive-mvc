@@ -255,10 +255,6 @@ describe('suspense and recovery', () => {
           lives.push('new');
           return () => lives.push('gone');
         }
-
-        mount() {
-          lives.push(`mount: ${root.textContent}`);
-        }
       }
 
       return { loaded, lives, Data };
@@ -282,18 +278,6 @@ describe('suspense and recovery', () => {
 
       return root;
     }
-
-    it('will keep a Model.use() instance and commit once it loads', async () => {
-      const { loaded, lives, Data } = setup();
-      const root = await reveal(() => <b>{Data.use().value}</b>);
-
-      expect(root.textContent).toBe('closed');
-
-      loaded.resolve('ready');
-      await until(() => expect(root.textContent).toBe('ready'));
-
-      expect(lives).toEqual(['new', 'mount: ready']);
-    });
 
     it('will keep a Model element and commit once it loads', async () => {
       const { loaded, lives, Data } = setup();
@@ -322,7 +306,20 @@ describe('suspense and recovery', () => {
 
     it('will hold new markup around it off the page until it loads', async () => {
       const { loaded, lives, Data } = setup();
-      const root = await reveal(() => <b>{Data.use().value}</b>, true);
+
+      class Panel extends Model {
+        data = new Data();
+
+        mount() {
+          lives.push(`panel mount: ${root.textContent}`);
+        }
+
+        render() {
+          return <b>{this.data.value}</b>;
+        }
+      }
+
+      const root = await reveal(() => <Panel />, true);
 
       expect(root.textContent).toBe('closed');
       expect(root.querySelector('section')).toBeNull();
@@ -330,7 +327,7 @@ describe('suspense and recovery', () => {
       loaded.resolve('ready');
       await until(() => expect(html(root)).toBe('<section><h2>title</h2><b>ready</b></section>'));
 
-      expect(lives).toEqual(['new', 'mount: titleready']);
+      expect(lives).toEqual(['new', 'panel mount: titleready']);
     });
   });
 
@@ -523,12 +520,6 @@ describe('suspense and recovery', () => {
       page = 'a';
     }
 
-    class Probe extends Model {
-      mount() {
-        seen.push(`use ${connected()}`);
-      }
-    }
-
     class Chart extends Component {
       mount() {
         seen.push(`mount ${connected()}`);
@@ -540,7 +531,6 @@ describe('suspense and recovery', () => {
     }
 
     function Page() {
-      Probe.use();
       return <section><Chart /></section>;
     }
 
@@ -559,7 +549,7 @@ describe('suspense and recovery', () => {
     const [app] = mount(App, {}, document.body.appendChild(document.createElement('main')));
 
     pending(() => (app.nav.page = 'b'));
-    await until(() => expect(seen).toEqual(['ref true', 'mount true', 'use true']));
+    await until(() => expect(seen).toEqual(['ref true', 'mount true']));
   });
 
   it('will not mount staged content dropped before it is inserted', async () => {
