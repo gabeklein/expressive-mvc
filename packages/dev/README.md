@@ -46,7 +46,7 @@ anything below them can wait or fail.
 
 JSX compiles against `@expressive/dev`'s runtime, which is `@expressive/dom`'s. Set
 `"jsxImportSource": "@expressive/dev"` in the app's tsconfig; the types carry dom's `State`
-augmentation (`State.use()` and friends), so nothing else is needed.
+augmentation (`State.get()` and friends), so nothing else is needed.
 
 ## Server
 
@@ -102,21 +102,22 @@ fails its first call in dev and the built service at startup.
 
 ### Server State
 
-Inside a call, `X.use()` gets or creates the instance of `X` at the call's location - the
-sidecar's folder - and `X.get()` finds the nearest one at that location or above. Both throw outside
-a call. `/blog/a` and `/blog/b` hold separate instances, every visitor to a location shares one, and
-a `use()` further down shadows one above. `get()` finds nothing until a `use()` has made it. An
-instance lives while a call uses it, then `static ttl` seconds (300 by default); `set(null)` ends
-it at once.
+Server State is a folder's `default` class - its seat, built at the call's location - and the
+children it owns. Inside a call, `X.get()` finds the nearest seat or owned child at that location
+or above; it throws outside a call. `/blog/a` and `/blog/b` hold separate seats, every visitor to a
+location shares one, and a seat further down shadows one above. A seat lives while a call holds it,
+then `static ttl` seconds (300 by default); `set(null)` ends it at once, with its children. A child
+created lazily (`draft = set(() => new Draft())`) is found once its owner has read it - reach it
+through the owner (`Tally.get().draft`).
 
 ```ts
-class Tally extends State {
+export default class Tally extends State {
   static ttl = 3600;
   total = 0;
 }
 
 export async function add(by: number) {
-  return (Tally.use().total += by);
+  return (Tally.get().total += by);
 }
 ```
 
@@ -171,9 +172,10 @@ assigning a twin field throws. Changes made elsewhere - another tab, a timer on 
 on a stream the tab opens with its first twin: the server names what went stale and the twin pulls
 it.
 
-A remote module may also export State classes. Each is a twin built per use: every `Cart.use()` in a
-component, or `Cart.new()` anywhere, gets a server instance of its own, alive while the client holds
-the twin. Build twins through those two - not a raw `new Cart()`. It is built under the component's nearest route, so its `get()` fields reach the seats
+A remote module may also export State classes. Each is a twin built per construction: every one a
+Component owns as a field (`cart = new Cart()`), or `Cart.new()` anywhere, gets a server instance of
+its own, alive while the client holds the twin. Build twins through those two - not a standalone
+`new Cart()`. It is built under the component's nearest route, so its `get()` fields reach the seats
 above it and every `key()` above it runs on each call; off any route it has no seat above it.
 
 ```ts
