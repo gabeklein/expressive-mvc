@@ -164,6 +164,8 @@ class Row extends Component {
 <Row id={id} selected={id == current} />
 ```
 
+Any `Model` class renders as an element. With `render(props)` it produces content like a Component: attributes assign matching fields (a dropped attribute resets its field to `undefined`), `is` receives the instance after fields apply, `render` receives the attributes, `mount()` runs after first commit, and the instance is destroyed on unmount. Without `render` it passes `children` through. Either way the instance is in context for its subtree - `<Session name="x">…</Session>` provides like `<Component for={Session} name="x">`. A client class may extend a server Model and add `render`; the server class stays host-free. An instance with `render` also renders inline. A PascalCase method rendered as an element (`<this.Label />`, or passed on and rendered elsewhere) is a subcomponent tracking its owner; called directly it stays a plain method. A PascalCase function field is plain data and renders as an ordinary FC. `render` overrides like any method, as on a Component. Component-only: `this.props`. Host-read members are reserved on any rendered instance - `render`, `fallback`, `catch`, `key`, `mount`; a field or method by one of these names opts into that behavior.
+
 `<Component for>` ([context.md](../state/context.md#providing-with-component)), Model elements, implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
 
 ## Code splitting, boundaries, transitions
