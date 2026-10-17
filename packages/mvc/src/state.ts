@@ -322,29 +322,22 @@ abstract class Model {
   ): Model.Value<this, T>;
 
   /**
-   * Check if state is destroyed.
+   * Check a lifecycle moment - `true` whether state is ready, `null` whether it is destroyed.
    *
-   * @param status - `null` to check if state is destroyed.
-   * @returns `true` if state is destroyed, `false` otherwise.
+   * @param lifecycle - `true` for ready, `null` for destroyed.
    */
-  get(status: null): boolean;
+  get(lifecycle: true | null): boolean;
 
   /**
-   * Callback when state is to be destroyed.
+   * Callback at a lifecycle moment - `true` once ready (activated, with any async setup
+   * such as an async `new()` resolved; at once if already, never if setup fails), or
+   * `null` when destroyed.
    *
-   * @param callback - Function to call when state is destroyed.
+   * @param lifecycle - `true` for ready, `null` for destroy.
+   * @param callback - Function to call.
    * @returns Function to cancel listener.
    */
-  get(status: null, callback: () => void): () => void;
-
-  /**
-   * Callback once state is ready - activated, with any async setup (such as an
-   * async `new()`) resolved. Called at once if already ready; never if setup fails.
-   *
-   * @param callback - Function to call when state is ready.
-   * @returns Function to cancel listener.
-   */
-  get(status: true, callback: () => void): () => void;
+  get(lifecycle: true | null, callback: () => void): () => void;
 
   /** Fetch Model of type from context. Throws if not found. */
   get<T extends Model>(type: Model.Type<T>, required?: true): T;
@@ -414,7 +407,7 @@ abstract class Model {
     if (Model.is(arg1))
       return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
-    if (arg1 === true) return ready(self, arg2 as Function);
+    if (arg1 === true) return arg2 ? ready(self, arg2 as Function) : READY.get(self) === true;
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1 as string, arg2);
@@ -624,40 +617,34 @@ function callback<T extends Model>(
 }
 
 function ready(state: Model, cb: Function) {
-  let waiting = READY.get(state);
+  const waiting = READY.get(state);
 
   if (waiting === true) {
-    start(state, [cb]);
+    settle(state, new Set([cb]));
     return () => false;
   }
 
-  if (!waiting) READY.set(state, (waiting = new Set()));
+  const callbacks = (waiting || new Set<Function>()).add(cb);
 
-  const callbacks = waiting.add(cb);
+  READY.set(state, callbacks);
 
   return () => callbacks.delete(cb);
 }
 
-function settle(state: Model) {
-  const waiting = READY.get(state) as Set<Function> | undefined;
-
+function settle(state: Model, callbacks = READY.get(state) as Set<Function> | undefined) {
   READY.set(state, true);
 
-  if (!waiting) return;
+  if (callbacks)
+    capture((release) => {
+      listener(state, () => release(null), null);
 
-  start(state, waiting);
-  waiting.clear();
-}
+      for (const cb of callbacks) {
+        callbacks.delete(cb);
 
-function start(state: Model, callbacks: Iterable<Function>) {
-  capture((release) => {
-    listener(state, () => release(null), null);
-
-    for (const cb of callbacks) {
-      const out = cb.call(state, state);
-      if (typeof out == 'function') listener(state, out, null);
-    }
-  });
+        const out = cb.call(state, state);
+        if (typeof out == 'function') listener(state, out, null);
+      }
+    });
 }
 
 /**
@@ -731,9 +718,8 @@ function init(state: Model, ...args: Model.Args) {
 
     const waits: Promise<unknown>[] = [];
     const queue = [...before, observe, ...args, () => {
-      if (!waits.length) return void settle(state);
-
-      Promise.all(waits).then(() => observer(state) !== null && settle(state), () => {});
+      if (!waits.length) settle(state);
+      else Promise.all(waits).then(() => observer(state) !== null && settle(state), () => {});
     }, register];
 
     for (const handler of after) ready(state, handler);

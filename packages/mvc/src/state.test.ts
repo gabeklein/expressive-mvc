@@ -3601,10 +3601,12 @@ describe('on setup / ready stages (static)', () => {
 
     await flushMicrotasks();
     expect(ready).not.toBeCalled();
+    expect(test.get(true)).toBe(false);
 
     done.resolve();
     await flushMicrotasks();
     expect(ready).toBeCalledTimes(2);
+    expect(test.get(true)).toBe(true);
     expect(failed).not.toBeCalled();
   });
 

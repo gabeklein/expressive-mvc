@@ -161,20 +161,16 @@ const stop = state.get((current, changed) => {
 
 > To watch a single property or event instead of tracking reads, use `set(event, callback)` below.
 
-### `get(null)` / `get(null, callback)` - destruction
+### `get(null)` / `get(true)` - lifecycle
 
 ```ts
 state.get(null); // true if destroyed
 state.get(null, () => console.log('destroyed')); // register callback
+state.get(true); // true if ready
+state.get(true, () => console.log('ready')); // register callback
 ```
 
-### `get(true, callback)` - ready
-
-```ts
-state.get(true, () => console.log('ready'));
-```
-
-Runs once the instance is activated and any async setup - an `async new()`, a setup step returning a promise - has resolved; at once if it already has, never if setup rejects. Returns unsubscribe.
+Ready means activated, with any async setup - an `async new()`, a setup step returning a promise - resolved. A ready callback runs at once if the instance already is, never if setup rejects. Both return unsubscribe.
 
 ### `get(Type, required?)` - context lookup
 
