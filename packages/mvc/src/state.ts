@@ -19,8 +19,8 @@ const ID = new WeakMap<Model, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
-/** Instances whose setup has settled (`true`), or callbacks waiting for it. */
-const READY = new WeakMap<Model, Set<Function> | true>();
+/** Ready callbacks of instances not yet settled - opened at activation, closed once setup resolves. */
+const WAITING = new WeakMap<Model, Set<() => void>>();
 
 /** Models under construction - added on `new`, removed when activated or released.
  *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
@@ -407,7 +407,7 @@ abstract class Model {
     if (Model.is(arg1))
       return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
-    if (arg1 === true) return arg2 ? ready(self, arg2 as Function) : READY.get(self) === true;
+    if (arg1 === true) return arg2 ? ready(self, arg2 as Function) : !PENDING.has(self) && !WAITING.has(self);
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1 as string, arg2);
@@ -617,34 +617,36 @@ function callback<T extends Model>(
 }
 
 function ready(state: Model, cb: Function) {
-  const waiting = READY.get(state);
+  const run = () => capture((release) => {
+    listener(state, () => release(null), null);
 
-  if (waiting === true) {
-    settle(state, new Set([cb]));
+    const out = cb.call(state, state);
+    if (typeof out == 'function') listener(state, out, null);
+  });
+
+  let waiting = WAITING.get(state);
+
+  if (!waiting && !PENDING.has(state)) {
+    run();
     return () => false;
   }
 
-  const callbacks = (waiting || new Set<Function>()).add(cb);
+  if (!waiting) WAITING.set(state, (waiting = new Set()));
 
-  READY.set(state, callbacks);
+  const callbacks = waiting.add(run);
 
-  return () => callbacks.delete(cb);
+  return () => callbacks.delete(run);
 }
 
-function settle(state: Model, callbacks = READY.get(state) as Set<Function> | undefined) {
-  READY.set(state, true);
+function settle(state: Model) {
+  const waiting = WAITING.get(state)!;
 
-  if (callbacks)
-    capture((release) => {
-      listener(state, () => release(null), null);
+  WAITING.delete(state);
 
-      for (const cb of callbacks) {
-        callbacks.delete(cb);
-
-        const out = cb.call(state, state);
-        if (typeof out == 'function') listener(state, out, null);
-      }
-    });
+  for (const run of waiting) {
+    waiting.delete(run);
+    run();
+  }
 }
 
 function register(state: Model) {
@@ -672,6 +674,17 @@ function register(state: Model) {
   return Context.root.add(state);
 }
 
+function observe(state: Model) {
+  for (const key in state) {
+    const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
+
+    if (!('value' in desc) || !desc.configurable) continue;
+
+    if (key[0] == '_') unmanaged(state, key, desc.value);
+    else apply(state, key, desc, true);
+  }
+}
+
 /**
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
@@ -691,23 +704,13 @@ function init(state: Model, ...args: Model.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
-  function observe() {
-    for (const key in state) {
-      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
-
-      if (!('value' in desc) || !desc.configurable) continue;
-
-      if (key[0] == '_') unmanaged(state, key, desc.value);
-      else apply(state, key, desc, true);
-    }
-  }
-
   listener(state, (key) => {
     const rest = trailing(state);
 
     PENDING.delete(state);
 
     if (key === null) return null;
+    if (!WAITING.has(state)) WAITING.set(state, new Set());
 
     if (!PARENT.has(state)) parent(state, host(state) || null);
 

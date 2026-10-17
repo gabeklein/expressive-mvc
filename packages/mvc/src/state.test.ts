@@ -3628,6 +3628,17 @@ describe('on setup / ready stages (static)', () => {
     expect(ready).not.toBeCalled();
   });
 
+  it('will call get(true) subscribed by a ready callback at once', () => {
+    const inner = vi.fn();
+
+    class Test extends Model {}
+
+    Test.on({ ready: (self) => void self.get(true, inner) });
+    Test.new();
+
+    expect(inner).toBeCalledTimes(1);
+  });
+
   it('will ignore cancelling get(true) after it was called', () => {
     class Test extends Model {}
 
