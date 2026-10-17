@@ -20,7 +20,7 @@ const ID = new WeakMap<Model, string>();
 const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
 /** Instances whose setup has settled (`true`), or callbacks waiting for it. */
-const READY = new WeakMap<Model, Set<() => void> | true>();
+const READY = new WeakMap<Model, Set<Function> | true>();
 
 /** Models under construction - added on `new`, removed when activated or released.
  *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
@@ -414,6 +414,7 @@ abstract class Model {
     if (Model.is(arg1))
       return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
+    if (arg1 === true) return ready(self, arg2 as Function);
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1 as string, arg2);
@@ -619,31 +620,44 @@ function callback<T extends Model>(
   cb: Function,
   select?: Observer.Signal | Set<Observer.Signal>
 ) {
-  if (select !== true) return listener(self, (key) => cb.call(self, key, self), select);
+  return listener(self, (key) => cb.call(self, key, self), select);
+}
 
-  observer(self, true);
-
-  const run = () => cb.call(self, true, self);
-  let waiting = READY.get(self);
+function ready(state: Model, cb: Function) {
+  let waiting = READY.get(state);
 
   if (waiting === true) {
-    run();
+    start(state, [cb]);
     return () => false;
   }
 
-  if (!waiting) READY.set(self, (waiting = new Set()));
+  if (!waiting) READY.set(state, (waiting = new Set()));
 
-  waiting.add(run);
+  const callbacks = waiting.add(cb);
 
-  return () => waiting.delete(run);
+  return () => callbacks.delete(cb);
 }
 
-function ready(state: Model) {
-  const waiting = READY.get(state);
+function settle(state: Model) {
+  const waiting = READY.get(state) as Set<Function> | undefined;
 
   READY.set(state, true);
 
-  if (waiting instanceof Set) waiting.forEach((run) => run());
+  if (!waiting) return;
+
+  start(state, waiting);
+  waiting.clear();
+}
+
+function start(state: Model, callbacks: Iterable<Function>) {
+  capture((release) => {
+    listener(state, () => release(null), null);
+
+    for (const cb of callbacks) {
+      const out = cb.call(state, state);
+      if (typeof out == 'function') listener(state, out, null);
+    }
+  });
 }
 
 /**
@@ -716,8 +730,15 @@ function init(state: Model, ...args: Model.Args) {
     if (owns) listener(state, () => void owns.delete(state), null);
 
     const waits: Promise<unknown>[] = [];
+    const queue = [...before, observe, ...args, () => {
+      if (!waits.length) return void settle(state);
 
-    const run = (queue: unknown[]) => capture((release) => {
+      Promise.all(waits).then(() => observer(state) !== null && settle(state), () => {});
+    }, register];
+
+    for (const handler of after) ready(state, handler);
+
+    capture((release) => {
       listener(state, () => release(null), null);
 
       for (let i = 0; i < queue.length; i++) {
@@ -733,19 +754,6 @@ function init(state: Model, ...args: Model.Args) {
         else if (typeof out == 'object') assign(state, out, true);
       }
     });
-
-    run([...before, observe, ...args, () => {
-      if (!waits.length) return [...after, register, () => void ready(state)];
-
-      Promise.all(waits).then(() => {
-        if (observer(state) === null) return;
-
-        run([...after]);
-        ready(state);
-      }, () => {});
-
-      return [register];
-    }]);
 
     if (owns) {
       owns.add(state);

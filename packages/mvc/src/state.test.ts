@@ -3596,7 +3596,7 @@ describe('on setup / ready stages (static)', () => {
     const test = Test.new();
 
     test.get(true, ready);
-    test.get(true, ready);
+    test.get(true, () => ready());
     Fails.new().get(true, failed);
 
     await flushMicrotasks();
@@ -3624,6 +3624,18 @@ describe('on setup / ready stages (static)', () => {
     done.resolve();
     await flushMicrotasks();
     expect(ready).not.toBeCalled();
+  });
+
+  it('will ignore cancelling get(true) after it was called', () => {
+    class Test extends Model {}
+
+    const test = new Test();
+    const ready = vi.fn();
+    const stop = test.get(true, ready);
+
+    event(test);
+    expect(ready).toBeCalledTimes(1);
+    expect(stop()).toBe(false);
   });
 
   it('will release effects a deferred ready creates when destroyed', async () => {
