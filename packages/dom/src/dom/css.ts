@@ -1,4 +1,4 @@
-import type { macro, style } from './stylesheet';
+import type { macro, style } from '../style/stylesheet';
 
 const unitless = new Map<string, boolean>();
 

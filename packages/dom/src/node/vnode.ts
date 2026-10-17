@@ -1,6 +1,6 @@
 import { Fragment as FRAGMENT } from '@expressive/mvc/jsx-runtime';
 import type { has, map } from '@expressive/mvc';
-import type { JSX as Runtime } from '../jsx-runtime';
+import type { JSX as Runtime } from './jsx-runtime';
 
 const VNODE = Symbol('@expressive/dom.vnode');
 const PORTAL = Symbol('@expressive/dom.portal');
@@ -90,7 +90,7 @@ function childrenOf(value: unknown): Node[] {
 }
 
 const Fragment = FRAGMENT as unknown as (props: { children?: Node }) => Node;
-const Portal = PORTAL as unknown as (props: { into: Element | DocumentFragment | string; children?: Node }) => Node;
+const Portal = PORTAL as unknown as (props: { into: object | string; children?: Node }) => Node;
 
 export {
   VNODE,

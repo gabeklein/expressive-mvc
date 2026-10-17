@@ -10,6 +10,8 @@ import { patchProps } from './element';
 import { move } from './fiber';
 import type { Boundary, Fiber } from './fiber';
 import { same } from './hot';
+import { host } from './host';
+import type { HostNode } from './host';
 import { mount, patchFragment, patchText, unmountFiber } from './mount';
 import { patchPortal } from './portal';
 import { gather } from './suspense';
@@ -18,10 +20,10 @@ function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?:
   const detached = fiber.stash || fiber.staging;
 
   if (detached) reconcileChildren(fiber, detached, null, value, context, boundary, appearance);
-  else reconcileChildren(fiber, fiber.end.parentNode!, fiber.end, value, context, boundary, appearance);
+  else reconcileChildren(fiber, host.parent(fiber.end)!, fiber.end, value, context, boundary, appearance);
 }
 
-function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: globalThis.Node | null, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
+function reconcileChildren(owner: Fiber, parent: HostNode, before: HostNode | null, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const values = childrenOf(value);
   const old = owner.children;
   const keyed = new Map<Key, Fiber>();
@@ -61,17 +63,17 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
   let anchor = before;
   for (let index = next.length - 1; index >= 0; index--) {
     const child = next[index];
-    const root = child.start.getRootNode();
+    const root = host.root(child.start);
 
     move(child, parent, anchor);
     anchor = child.start;
-    if (child.start.getRootNode() !== root) attach(root);
+    if (host.root(child.start) !== root) attach(root);
   }
 
   owner.children = next;
 }
 
-function patch(old: Fiber | undefined, value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {
+function patch(old: Fiber | undefined, value: RenderNode, parent: HostNode, before: HostNode | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {
   if (!old || !compatible(old, value)) return mount(value, parent, old?.start || before, context, boundary, appearance);
 
   if (old.ownBoundary) old.ownBoundary.parent = boundary;

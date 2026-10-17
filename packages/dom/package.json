@@ -19,6 +19,7 @@
   "sideEffects": [
     "./src/*.ts",
     "./src/render/adapter.ts",
+    "./src/dom/index.ts",
     "./dist/index.js",
     "./dist/jsx-runtime.js",
     "./dist/jsx-dev-runtime.js"
