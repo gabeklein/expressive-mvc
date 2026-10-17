@@ -1,4 +1,4 @@
-import { Component, Context, Model, unbind } from '@expressive/mvc';
+import { Component, Context, unbind } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 
 import { resolve } from '../node/loader';
@@ -47,13 +47,11 @@ function mountOwnedComponent(
   appearance?: Appearance
 ) {
   const resolved = componentProps(value.type, value.props, appearance);
-  const Type = value.type as new (...args: unknown[]) => Renderable;
+  const Type = value.type as new (props: unknown) => Renderable;
   const props = observe(resolved.props);
-  const instance: Renderable = new Type(props,
-    Type.prototype instanceof Component ? undefined : () => void props.is?.(instance)
-  );
+  const instance = new Type(props);
 
-  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props);
+  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props as Renderable["props"]);
 }
 
 function mountComponent(
@@ -97,8 +95,7 @@ function mountComponent(
   fiber.appearance = appearance;
   fiber.scope = makeScope(childContext, (passive) => run(fiber, passive));
   fiber.render = () => enter(fiber.scope!, () => {
-    const { render } = fiber.value as Renderable;
-    return render ? unbind(render).call(fiber.value, fiber.props) : fiber.props!.children ?? null;
+    return unbind((fiber.value as Renderable).render).call(fiber.value, fiber.props);
   });
   probing(fiber);
 
@@ -170,8 +167,7 @@ function patchComponent(fiber: Fiber, value: RenderNode, appearance?: Appearance
   if (isVNode(value) && props !== fiber.props) {
     const instance = fiber.instance!;
     if (passiveRender) fiber.applied = true;
-    if (instance instanceof Component) (instance as any).props = props;
-    else instance.set(merge(fiber.props!, props) as never);
+    (instance as any).props = props;
   }
   fiber.props = props;
   rerun(fiber, () => run(fiber, passiveRender));
@@ -190,13 +186,7 @@ function unmountComponent(fiber: Fiber) {
 }
 
 function renderable(value: unknown): value is Renderable {
-  return value instanceof Model && typeof (value as Renderable).render == 'function';
-}
-
-function merge(previous: Record<string, any>, next: Record<string, any>) {
-  const output: Record<string, any> = {};
-  for (const key in previous) output[key] = undefined;
-  return { ...output, ...next };
+  return value instanceof Component;
 }
 
 export { mountComponent, mountFunction, mountOwnedComponent, patchComponent, patchFunction, renderable, unmountComponent };
