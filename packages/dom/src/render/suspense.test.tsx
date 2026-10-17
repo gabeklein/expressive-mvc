@@ -33,7 +33,7 @@ describe('suspense and recovery', () => {
         ? Promise.reject(new Error('chunk'))
         : Promise.resolve(() => <b>ready</b>);
 
-    class Page extends Model {
+    class Page extends Component {
       fallback = <i>wait</i>;
 
       catch(error: Error) {
@@ -240,7 +240,7 @@ describe('suspense and recovery', () => {
     expect(settled()).toBe(true);
   });
 
-  describe('a transition revealing Model that loads', () => {
+  describe('a transition revealing a Model that loads', () => {
     let root: HTMLElement;
     let lives: string[];
 
@@ -279,10 +279,10 @@ describe('suspense and recovery', () => {
       return root;
     }
 
-    it('will keep a Model element and commit once it loads', async () => {
+    it('will keep a Component owning it and commit once it loads', async () => {
       const { loaded, lives, Data } = setup();
 
-      class Panel extends Model {
+      class Panel extends Component {
         data = new Data();
 
         mount() {
@@ -307,7 +307,7 @@ describe('suspense and recovery', () => {
     it('will hold new markup around it off the page until it loads', async () => {
       const { loaded, lives, Data } = setup();
 
-      class Panel extends Model {
+      class Panel extends Component {
         data = new Data();
 
         mount() {
@@ -335,7 +335,7 @@ describe('suspense and recovery', () => {
     const [Lazy, loaded] = lazy();
     const mounted: string[] = [];
 
-    class Tab extends Model {
+    class Tab extends Component {
       mount() {
         mounted.push(root.textContent!);
       }
@@ -393,7 +393,7 @@ describe('suspense and recovery', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const mounted = vi.fn();
 
-    class Tab extends Model {
+    class Tab extends Component {
       mount = mounted;
 
       render() {
@@ -405,7 +405,7 @@ describe('suspense and recovery', () => {
       throw new Error('boom');
     };
 
-    class Panel extends Model {
+    class Panel extends Component {
       render() {
         return <><Tab /><Boom /></>;
       }
@@ -1300,7 +1300,7 @@ describe('suspense and recovery', () => {
   it.fails('will not render a child its parent removes in the same transition', async () => {
     const seen: unknown[] = [];
 
-    class Parent extends Model {
+    class Parent extends Component {
       value?: { id: number } = { id: 1 };
 
       render() {
@@ -1342,8 +1342,8 @@ describe('suspense and recovery', () => {
       expect(load).toBeCalledTimes(1);
     });
 
-    it('will render a resolved Model class', async () => {
-      class Counter extends Model {
+    it('will render a resolved Component class', async () => {
+      class Counter extends Component {
         count = 0;
 
         render() {
@@ -1363,7 +1363,7 @@ describe('suspense and recovery', () => {
       const caught: string[] = [];
       const Page = () => Promise.resolve({} as { default: () => null });
 
-      class App extends Model {
+      class App extends Component {
         fallback = <i>wait</i>;
 
         catch(error: Error) {
