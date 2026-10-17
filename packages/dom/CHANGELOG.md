@@ -1,5 +1,11 @@
 # @expressive/dom
 
+## 0.4.1
+
+### Patch Changes
+
+- [#541](https://github.com/gabeklein/expressive-mvc/pull/541) [`b819639`](https://github.com/gabeklein/expressive-mvc/commit/b819639acaf63127d56d65f05c54b394e46c9cb1) The value an `is` callback returns on a plain Model element is now ignored, as it already was for a Component. An arrow like `is={(value) => (held = value)}` returned the instance, which was assigned back onto itself - throwing "read-only" on a `map` or other read-only field.
+
 ## 0.4.0
 
 ### Minor Changes
