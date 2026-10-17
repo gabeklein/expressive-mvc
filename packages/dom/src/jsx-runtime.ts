@@ -137,11 +137,7 @@ export declare namespace JSX {
     | ((props: any) => Component.Node)
     | (() => PromiseLike<Module>)
     | (abstract new (...args: any[]) => ElementClass);
-  /**
-   * Any Model renders as a class element - one with `render` produces content,
-   * one without passes children through and provides itself.
-   */
-  interface ElementClass extends Model { render?(props?: any): Component.Node }
+  interface ElementClass extends Component<any> {}
   /**
    * Empty, so a class element's attributes resolve from its instance type and
    * {@link LibraryManagedAttributes} picks `props` when declared, else derives
