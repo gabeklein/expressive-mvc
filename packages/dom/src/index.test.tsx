@@ -3,13 +3,13 @@
 /** @jsxFrag Fragment */
 import { describe, expect, it } from 'vitest';
 
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 import { Fragment, createElement, render } from './index';
 import { flushMicrotasks } from '../test.setup';
 
 describe('classic JSX', () => {
-  it('will render elements, fragments and Model classes', async () => {
-    class Card extends Model {
+  it('will render elements, fragments and Component classes', async () => {
+    class Card extends Component {
       title = '';
 
       render() {
@@ -38,7 +38,7 @@ describe('classic JSX', () => {
   });
 
   it('will type attributes like the automatic runtime', () => {
-    class Card extends Model {
+    class Card extends Component {
       title = '';
     }
 
