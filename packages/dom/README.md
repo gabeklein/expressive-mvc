@@ -6,7 +6,7 @@
 
 ---
 
-`@expressive/dom` renders Expressive MVC without React or Preact. Function components are renderer-stateless: they project props and MVC snapshots into DOM, while `Model.get()` and `Model.use()` supply dependency tracking and owned state.
+`@expressive/dom` renders Expressive MVC without React or Preact. Function components are renderer-stateless: they project props and MVC snapshots into DOM, while `Model.get()` supplies dependency tracking. Owned state lives on classes - a Component field, a Model element, or `<Component for>`.
 
 ```bash
 npm install @expressive/mvc @expressive/dom
@@ -33,11 +33,14 @@ class Counter extends Model {
 }
 
 function Count() {
-  const { count, increment } = Counter.use();
+  const { count, increment } = Counter.get();
   return <button onClick={increment}>{count}</button>;
 }
 
-const unmount = render(<Count />, document.getElementById('app')!);
+const unmount = render(
+  <Component for={Counter}><Count /></Component>,
+  document.getElementById('app')!
+);
 ```
 
 `style` recursively composes conditional class tokens and inline declarations. Strings become classes; objects merge left-to-right and render inline. Use `className` for a browser-specific class outside the composition. The `class` attribute spelling and CSS declaration strings are not supported.
