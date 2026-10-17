@@ -6,7 +6,7 @@ import { isVNode } from '../node/vnode';
 import type { Key, Node as RenderNode, VNode } from '../node/vnode';
 import { componentProps } from '../style/claim';
 import type { Appearance } from '../style/claim';
-import { call, commit, enter } from './adapter';
+import { call, enter } from './adapter';
 import { inserted } from './commits';
 import { makeScope, range } from './fiber';
 import type { Boundary, Fiber, Placement, Renderable } from './fiber';
@@ -25,7 +25,7 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   fiber.props = observe(resolved.props);
   fiber.boundary = boundary;
   fiber.appearance = resolved.appearance;
-  fiber.scope = makeScope('function', context, (passive) => runFunction(fiber, passive));
+  fiber.scope = makeScope(context, (passive) => run(fiber, passive));
   fiber.render = () => enter(fiber.scope!, () => {
     const type = latest(fiber.type as Function);
     return resolve(type, fiber.props!, () => call(type, fiber.props));
@@ -34,7 +34,7 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   probing(fiber);
 
   return complete(fiber, () => {
-    runFunction(fiber, passiveRender);
+    run(fiber, passiveRender);
   });
 }
 
@@ -95,7 +95,7 @@ function mountComponent(
   fiber.props = props;
   fiber.owned = owned;
   fiber.appearance = appearance;
-  fiber.scope = makeScope('component', childContext, (passive) => runComponent(fiber, passive));
+  fiber.scope = makeScope(childContext, (passive) => run(fiber, passive));
   fiber.render = () => enter(fiber.scope!, () => {
     const { render } = fiber.value as Renderable;
     return render ? unbind(render).call(fiber.value, fiber.props) : fiber.props!.children ?? null;
@@ -121,7 +121,7 @@ function mountComponent(
   Object.defineProperty(fiber, 'value', { get: () => proxy });
   try {
     complete(fiber, () => {
-      runComponent(fiber, passiveRender);
+      run(fiber, passiveRender);
     });
   } finally {
     if (owned && !fiber.dead) inserted(fiber, () => (fiber.cleanup = instance.mount?.()));
@@ -130,14 +130,7 @@ function mountComponent(
   return fiber;
 }
 
-function runFunction(fiber: Fiber, passive: boolean) {
-  const result = attempt(fiber, passive, fiber.render!);
-
-  if (result === true) inserted(fiber, () => commit(fiber.scope!));
-  else return result;
-}
-
-function runComponent(fiber: Fiber, passive: boolean) {
+function run(fiber: Fiber, passive: boolean) {
   const result = attempt(fiber, passive, fiber.render!);
 
   if (result !== true) return result;
@@ -161,12 +154,11 @@ function patchFunction(fiber: Fiber, value: VNode, appearance?: Appearance) {
   if (fiber.type !== value.type) {
     untrack(fiber.type as Function, fiber.scope!);
     fiber.type = value.type;
-    fiber.scope!.hot = true;
     track(fiber.type as Function, fiber.scope!);
   }
   fiber.appearance = resolved.appearance;
   fiber.props = observe(resolved.props);
-  rerun(fiber, () => runFunction(fiber, passiveRender));
+  rerun(fiber, () => run(fiber, passiveRender));
 }
 
 function patchComponent(fiber: Fiber, value: RenderNode, appearance?: Appearance) {
@@ -182,7 +174,7 @@ function patchComponent(fiber: Fiber, value: RenderNode, appearance?: Appearance
     else instance.set(merge(fiber.props!, props) as never);
   }
   fiber.props = props;
-  rerun(fiber, () => runComponent(fiber, passiveRender));
+  rerun(fiber, () => run(fiber, passiveRender));
 }
 
 function rerun(fiber: Fiber, run: () => void) {
