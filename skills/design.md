@@ -53,7 +53,7 @@ A PascalCase member on a `Component` becomes a reactive subcomponent - mirroring
 
 ## Lifecycle hooks are typed members, not name magic
 
-`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void)` on `Model` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the adapter's `Model` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most classes need none - `new()` exists for setup-with-cleanup and should not be added ritually.
+`new()`, `use()`, and `catch()` are optional members on the class types - `protected new?(): void | (() => void) | Promise<void>` on `Model` in `@expressive/mvc`, `catch?()` on `Component`, `use?()` via the adapter's `Model` augmentation. Editors autocomplete them, signatures are checked, and `override` flags a misspelling against the base declaration. They are optional because most classes need none - `new()` exists for setup-with-cleanup and should not be added ritually.
 
 ## Writes are transparent; `is` is bounded
 

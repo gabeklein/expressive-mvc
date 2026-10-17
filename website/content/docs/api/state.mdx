@@ -80,7 +80,7 @@ Activation is a queue: `setup` handlers, then own fields become managed, then co
 
 - `type` - runs once when the class first bootstraps, before its members are classified and bound. Receives the class itself, so a handler can inspect or reshape the prototype first. Registered on a base class, it runs for each subclass too.
 - `setup` - per-instance, before properties are observed and before `new()`. May return a cleanup, further constructor args, or an object of values to assign.
-- `ready` - per-instance, after the instance's `new()` - own values are observed and constructor args applied by then. May return a cleanup.
+- `ready` - per-instance, after the instance's `new()` - own values are observed and constructor args applied by then. May return a cleanup. When `new()` is async, or any earlier step returns a promise, `ready` waits for it to resolve, after context registration; a rejection (reported to `catch` as `setup`) or a destroy first skips it.
 - `method(key, fn, self)` - each time a method is bound to an instance: first read, an assigned replacement, the rebind after a hot patch. `fn` is the bound function. A handler registered later misses existing bindings. Meant for tooling.
 - `catch(error, kind, key?)` - see [Error handling](#error-handling).
 
@@ -161,12 +161,16 @@ const stop = state.get((current, changed) => {
 
 > To watch a single property or event instead of tracking reads, use `set(event, callback)` below.
 
-### `get(null)` / `get(null, callback)` - destruction
+### `get(null)` / `get(true)` - lifecycle
 
 ```ts
 state.get(null); // true if destroyed
 state.get(null, () => console.log('destroyed')); // register callback
+state.get(true); // true if ready
+state.get(true, () => console.log('ready')); // register callback
 ```
+
+Ready means activated, with any async setup - an `async new()`, a setup step returning a promise - resolved. A ready callback runs at once if the instance already is, never if setup rejects. Both return unsubscribe.
 
 ### `get(Type, required?)` - context lookup
 

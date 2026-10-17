@@ -19,6 +19,9 @@ const ID = new WeakMap<Model, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
+/** Ready callbacks of instances not yet settled - opened at activation, closed once setup resolves. */
+const WAITING = new WeakMap<Model, Set<() => void>>();
+
 /** Models under construction - added on `new`, removed when activated or released.
  *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
 const PENDING = new Set<Model | (() => void)>();
@@ -277,7 +280,7 @@ abstract class Model {
    *
    * It is recommended you protect this method.
    */
-  protected new?(): void | (() => void);
+  protected new?(): void | (() => void) | Promise<void>;
 
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
@@ -319,20 +322,22 @@ abstract class Model {
   ): Model.Value<this, T>;
 
   /**
-   * Check if state is destroyed.
+   * Check a lifecycle moment - `true` whether state is ready, `null` whether it is destroyed.
    *
-   * @param status - `null` to check if state is destroyed.
-   * @returns `true` if state is destroyed, `false` otherwise.
+   * @param status - `true` for ready, `null` for destroyed.
    */
-  get(status: null): boolean;
+  get(status: true | null): boolean;
 
   /**
-   * Callback when state is to be destroyed.
+   * Callback at a lifecycle moment - `true` once ready (activated, with any async setup
+   * such as an async `new()` resolved; at once if already, never if setup fails), or
+   * `null` when destroyed.
    *
-   * @param callback - Function to call when state is destroyed.
+   * @param status - `true` for ready, `null` for destroy.
+   * @param callback - Function to call.
    * @returns Function to cancel listener.
    */
-  get(status: null, callback: () => void): () => void;
+  get(status: true | null, callback: () => void): () => void;
 
   /** Fetch Model of type from context. Throws if not found. */
   get<T extends Model>(type: Model.Type<T>, required?: true): T;
@@ -388,7 +393,7 @@ abstract class Model {
   ): () => void;
 
   get(
-    arg1?: Model.Effect<this> | Model.Type | typeof Model | string | null,
+    arg1?: Model.Effect<this> | Model.Type | typeof Model | string | true | null,
     arg2?: boolean | Context.Expect | (() => void),
     arg3?: boolean
   ) {
@@ -402,9 +407,10 @@ abstract class Model {
     if (Model.is(arg1))
       return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
+    if (arg1 === true) return arg2 ? ready(self, arg2 as Function) : !PENDING.has(self) && !WAITING.has(self);
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
-    return access(self, arg1, arg2);
+    return access(self, arg1 as string, arg2);
   }
 
   /**
@@ -610,6 +616,75 @@ function callback<T extends Model>(
   return listener(self, (key) => cb.call(self, key, self), select);
 }
 
+function ready(state: Model, cb: Function) {
+  const run = () => capture((release) => {
+    listener(state, () => release(null), null);
+
+    const out = cb.call(state, state);
+    if (typeof out == 'function') listener(state, out, null);
+  });
+
+  let waiting = WAITING.get(state);
+
+  if (!waiting && !PENDING.has(state)) {
+    run();
+    return () => false;
+  }
+
+  if (!waiting) WAITING.set(state, (waiting = new Set()));
+
+  const callbacks = waiting.add(run);
+
+  return () => callbacks.delete(run);
+}
+
+function settle(state: Model) {
+  const waiting = WAITING.get(state)!;
+
+  WAITING.delete(state);
+
+  for (const run of waiting) {
+    waiting.delete(run);
+    run();
+  }
+}
+
+function register(state: Model) {
+  if (Context.get(state) !== Context.root) return;
+
+  const type = state.constructor as typeof Model;
+  const g = type.global;
+
+  if (!(typeof g == 'function' ? g(state) : g)) return;
+
+  if (!Object.prototype.hasOwnProperty.call(type, 'global'))
+    throw new Error(
+      `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
+    );
+
+  for (let T: Model.Extends = type; T !== Model; T = Object.getPrototypeOf(T)) {
+    const found = Context.root.get(T, false);
+
+    if (found && (T === type || found.constructor === T))
+      throw new Error(
+        `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+      );
+  }
+
+  return Context.root.add(state);
+}
+
+function observe(state: Model) {
+  for (const key in state) {
+    const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
+
+    if (!('value' in desc) || !desc.configurable) continue;
+
+    if (key[0] == '_') unmanaged(state, key, desc.value);
+    else apply(state, key, desc, true);
+  }
+}
+
 /**
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
@@ -629,48 +704,13 @@ function init(state: Model, ...args: Model.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
-  function observe() {
-    for (const key in state) {
-      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
-
-      if (!('value' in desc) || !desc.configurable) continue;
-
-      if (key[0] == '_') unmanaged(state, key, desc.value);
-      else apply(state, key, desc, true);
-    }
-  }
-
-  function register() {
-    if (Context.get(state) !== Context.root) return;
-
-    const type = state.constructor as typeof Model;
-    const g = type.global;
-
-    if (!(typeof g == 'function' ? g(state) : g)) return;
-
-    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
-      throw new Error(
-        `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
-      );
-
-    for (let T: Model.Extends = type; T !== Model; T = Object.getPrototypeOf(T)) {
-      const found = Context.root.get(T, false);
-
-      if (found && (T === type || found.constructor === T))
-        throw new Error(
-          `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
-        );
-    }
-
-    return Context.root.add(state);
-  }
-
   listener(state, (key) => {
     const rest = trailing(state);
 
     PENDING.delete(state);
 
     if (key === null) return null;
+    if (!WAITING.has(state)) WAITING.set(state, new Set());
 
     if (!PARENT.has(state)) parent(state, host(state) || null);
 
@@ -679,7 +719,13 @@ function init(state: Model, ...args: Model.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const queue = [...before, observe, ...args, ...after, register];
+    const waits: Promise<unknown>[] = [];
+    const queue = [...before, observe, ...args, () => {
+      if (!waits.length) settle(state);
+      else Promise.all(waits).then(() => observer(state) !== null && settle(state), () => {});
+    }, register];
+
+    for (const handler of after) ready(state, handler);
 
     capture((release) => {
       listener(state, () => release(null), null);
@@ -688,8 +734,10 @@ function init(state: Model, ...args: Model.Args) {
         const arg = queue[i];
         const out = typeof arg == 'function' ? arg.call(state, state) : arg;
 
-        if (out instanceof Promise)
+        if (out instanceof Promise) {
+          waits.push(out);
           out.catch((err) => report('setup', state, err));
+        }
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (typeof out == 'object') assign(state, out, true);

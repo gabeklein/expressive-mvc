@@ -86,28 +86,19 @@ Rejects if the instance is destroyed before any clean run, or a run throws a non
 
 To watch a specific property or event, use [`set(event, callback)`](set.md).
 
-### Check destroyed
+### Lifecycle
 
 ```ts
-get(status: null): boolean
+get(status: true | null): boolean
+get(status: true | null, callback: () => void): () => void
 ```
 
-`true` if destroyed.
+`true` is ready - activated, with any async setup (an `async new()`, a setup step returning a promise) resolved. `null` is destroyed. Without a callback, whether it has happened; with one, runs `callback` when it does - at once if ready already, never if setup rejects. Returns unsubscribe.
 
 ```ts
 if (state.get(null)) console.log('state is dead');
-```
-
-### Destroy callback
-
-```ts
-get(status: null, callback: () => void): () => void
-```
-
-Runs `callback` on destruction. Returns unsubscribe.
-
-```ts
 const stop = state.get(null, () => console.log('destroyed'));
+seat.get(true, () => admit(request));
 ```
 
 ### Fetch from context
