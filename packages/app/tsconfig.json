@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "esnext",
+    "useDefineForClassFields": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@expressive/app",
+    "lib": ["ES2023", "DOM"],
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "strict": true,
+    "types": [],
+    "paths": {
+      "@expressive/jsx": ["../jsx/src"],
+      "@expressive/jsx/*": ["../jsx/src/*"],
+      "@expressive/mvc/*": ["../mvc/src/*"],
+      "@expressive/mvc": ["../mvc/src"]
+    }
+  },
+  "include": ["src"]
+}
