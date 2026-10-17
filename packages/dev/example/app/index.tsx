@@ -1,9 +1,5 @@
-import { State, type Component } from "@expressive/mvc";
+import { Component } from "@expressive/mvc";
 import { Link } from "@expressive/dev";
-
-class Counter extends State {
-  count = 0;
-}
 
 export function Layout(props: { children?: Component.Node }) {
   return (
@@ -20,15 +16,19 @@ export function Layout(props: { children?: Component.Node }) {
   );
 }
 
-export function Page() {
-  const { count, is } = Counter.use();
+export class Page extends Component {
+  count = 0;
 
-  return (
-    <>
-      <h1>Home</h1>
-      <button onClick={() => is.count++}>Clicked {count} times</button>
-    </>
-  );
+  render() {
+    const { count, is } = this;
+
+    return (
+      <>
+        <h1>Home</h1>
+        <button onClick={() => is.count++}>Clicked {count} times</button>
+      </>
+    );
+  }
 }
 
 export function Loading() {
