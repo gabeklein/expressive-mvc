@@ -12,7 +12,6 @@ interface Layer {
   context: Context;
   parent?: Layer;
   children: Map<string, Layer>;
-  states: Map<Owned, Entry>;
   seat?: Entry;
   calls: number;
   pooled: number;
@@ -50,8 +49,12 @@ function frame(): Frame {
 }
 
 function newLayer(prefix: string, parent?: Layer): Layer {
-  const context = parent ? parent.context.push() : Context.root.push();
-  return { prefix, context, parent, children: new Map(), states: new Map(), calls: 0, pooled: 0 };
+  const context = parent ? scope(parent).push() : Context.root.push();
+  return { prefix, context, parent, children: new Map(), calls: 0, pooled: 0 };
+}
+
+function scope(layer: Layer): Context {
+  return layer.seat ? layer.seat.context : layer.context;
 }
 
 function root(): Layer {
@@ -96,13 +99,15 @@ function enter(parent: Layer, segment?: string, Seat?: Seat): Layer {
 }
 
 function seat(layer: Layer, Seat: Seat) {
-  const entry = layer.states.get(Seat) ?? create(Seat, layer);
+  if (layer.seat?.Type !== Seat) {
+    if (layer.seat) evict(layer, true);
+    layer.seat = create(Seat, layer);
+  }
 
-  layer.seat = entry;
-  hold(frame().held, entry);
+  hold(frame().held, layer.seat);
 }
 
-const isEmpty = (layer: Layer) => !layer.calls && !layer.pooled && !layer.states.size && !layer.children.size;
+const isEmpty = (layer: Layer) => !layer.calls && !layer.pooled && !layer.seat && !layer.children.size;
 
 function prune(layer: Layer) {
   let at = layer;
@@ -115,28 +120,22 @@ function prune(layer: Layer) {
 }
 
 function drop(entry: Entry) {
-  const { layer } = entry;
-  if (layer.states.get(entry.Type) !== entry) return;
-
-  if (layer.seat === entry) return evict(layer);
-
-  discard(entry);
-  prune(layer);
+  if (entry.layer.seat === entry) evict(entry.layer);
 }
 
-function discard(entry: Entry) {
-  entry.layer.states.delete(entry.Type);
-  clearTimeout(entry.timer);
-  entry.remove();
-  entry.context.pop();
-}
+function evict(layer: Layer, keep = false) {
+  const entry = layer.seat;
 
-function evict(layer: Layer) {
   layer.seat = undefined;
-  layer.children.forEach(evict);
-  layer.states.forEach(discard);
+  layer.children.forEach(child => evict(child));
 
-  if (!layer.parent) return;
+  if (entry) {
+    clearTimeout(entry.timer);
+    entry.remove();
+    entry.context.pop();
+  }
+
+  if (keep || !layer.parent) return;
 
   layer.context.pop();
   layer.parent.children.delete(layer.prefix);
@@ -186,7 +185,6 @@ function create(Type: Owned, layer: Layer): Entry {
   const remove = layer.context.add(instance, true);
   const entry: Entry = { Type, layer, context, instance, remove, refs: 0 };
 
-  layer.states.set(Type, entry);
   track(instance);
   instance.set(null, () => drop(entry));
 
@@ -194,20 +192,9 @@ function create(Type: Owned, layer: Layer): Entry {
 }
 
 function hold(held: Set<Entry>, entry: Entry) {
-  if (held.has(entry)) return;
-
   held.add(entry);
   entry.refs++;
   clearTimeout(entry.timer);
-}
-
-function use(this: Owned) {
-  const { layer, held } = frame();
-  const entry = layer.states.get(this) ?? create(this, layer);
-
-  hold(held, entry);
-
-  return entry.instance;
 }
 
 let detached: Context | undefined;
@@ -223,7 +210,7 @@ function detachedContext(): Context {
 
 export function construct(Type: State.Type, off = false): { instance: State; drop(): void; current(): boolean } {
   const layer = off ? undefined : frame().layer;
-  const context = (layer ? layer.context : detachedContext()).push();
+  const context = (layer ? scope(layer) : detachedContext()).push();
   let instance!: State;
 
   context.set({ 0: Type }, state => { instance = state; });
@@ -249,11 +236,11 @@ export function seated(): State | undefined {
 }
 
 function get(this: typeof State, required?: boolean) {
-  return frame().layer.context.get(this, required !== false);
+  return scope(frame().layer).get(this, required !== false);
 }
 
 export function install() {
-  Object.assign(State, { use, get });
+  Object.assign(State, { get });
 }
 
 function parseCookies(header = ""): Record<string, string> {
