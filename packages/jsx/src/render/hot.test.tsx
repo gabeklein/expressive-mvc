@@ -1,0 +1,169 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import { Component, Model } from '@expressive/mvc';
+import { hot } from './hot';
+import { render, style } from '../index';
+import { flushMicrotasks } from '../../test.setup';
+
+let count = 0;
+const module = () => `module-${count++}`;
+
+function mount(node: Component.Node) {
+  const root = document.createElement('main');
+  document.body.append(root);
+  render(node, root);
+  return root;
+}
+
+class Counter extends Model {
+  value = 1;
+}
+
+class Other extends Model {
+  label = 'other';
+}
+
+describe('hot', () => {
+  it('will refresh a component in place', async () => {
+    const id = module();
+    const instances = new Set<Counter>();
+
+    const Before = () => {
+      const counter = Counter.use();
+      instances.add(counter.is);
+      return <b>before {counter.value}</b>;
+    };
+
+    const After = () => {
+      const counter = Counter.use();
+      instances.add(counter.is);
+      return <b>after {counter.value}</b>;
+    };
+
+    hot(id, { View: Before });
+
+    const root = mount(<Before />);
+    const [instance] = instances;
+
+    instance.value = 2;
+    await flushMicrotasks();
+
+    hot(id, { View: After });
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('after 2');
+    expect(instances.size).toBe(1);
+  });
+
+  it('will keep a component a parent renders anew', async () => {
+    const id = module();
+    const mounted = vi.fn();
+
+    const version = (label: string) => () => {
+      Counter.use();
+      mounted();
+      return <b>{label}</b>;
+    };
+
+    const Before = version('before');
+    const After = version('after');
+
+    class Host extends Model {
+      view = Before;
+    }
+
+    hot(id, { View: Before });
+
+    const host = Host.new();
+    const Parent = () => {
+      const View = Host.get().view;
+      return <View />;
+    };
+
+    const root = mount(<Component for={host}><Parent /></Component>);
+
+    hot(id, { View: After });
+    host.view = After;
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('after');
+  });
+
+  it.each([
+    ['whose order changed', () => <b>{Other.use().label}</b>, 'other'],
+    ['no longer called', () => <b>after</b>, 'after']
+  ])('will replace Model.use() slots %s', async (_, After, text) => {
+    const id = module();
+    const destroyed = vi.fn();
+
+    class Tracked extends Model {
+      new() {
+        return destroyed;
+      }
+    }
+
+    const Before = () => {
+      Tracked.use();
+      return <b>before</b>;
+    };
+
+    hot(id, { View: Before });
+
+    const root = mount(<Before />);
+
+    hot(id, { View: After });
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe(text);
+    expect(destroyed).toHaveBeenCalled();
+  });
+
+  it('will not refresh an unmounted component', async () => {
+    const id = module();
+    const rendered = vi.fn();
+
+    const Before = () => <b>before</b>;
+    const After = () => {
+      rendered();
+      return <b>after</b>;
+    };
+
+    hot(id, { View: Before });
+
+    const root = document.createElement('main');
+
+    render(<Before />, root)();
+    hot(id, { View: After });
+    await flushMicrotasks();
+
+    expect(rendered).not.toHaveBeenCalled();
+  });
+
+  it('will ignore values which are not functions', () => {
+    expect(() => hot(module(), { View: 1 })).not.toThrow();
+  });
+
+  it('will style a component by its latest version', async () => {
+    const id = module();
+
+    const version = (color: string) => {
+      const View = () => <div />;
+      style(View, { color });
+      return View;
+    };
+
+    const Before = version('red');
+
+    hot(id, { View: Before });
+
+    const node = mount(<Before />).querySelector('div')!;
+
+    hot(id, { View: version('blue') });
+    await flushMicrotasks();
+
+    const { sheet } = document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!;
+    const rule = [...sheet!.cssRules].find((rule) => rule.cssText.startsWith(`.${node.className}`))!;
+
+    expect(rule.cssText).toContain('blue');
+  });
+});
