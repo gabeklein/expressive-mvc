@@ -1,6 +1,7 @@
 import { capture, listener, observer } from '../observable';
 import { Context } from '../context';
-import { Model, children, owned, parent, STORE, update } from '../state';
+import { Model, children, local, owned, parent, STORE, update } from '../state';
+import type { Got, Keyed } from '../state';
 import { def } from './def';
 
 declare namespace get {
@@ -81,12 +82,42 @@ function get<T extends Model>(
   required: false
 ): T | undefined;
 
+/**
+ * Fetches through `Type.get(...args)` once this Model is ready, with this Model
+ * as origin. Applies where the first argument is neither boolean nor function -
+ * a key for a class overriding static `get`.
+ *
+ * @param Type - Class to fetch from.
+ * @param args - Arguments for `Type.get`.
+ */
+function get<C extends Model.Extends>(
+  Type: C,
+  ...args: Keyed<C>
+): Got<C>;
+
 function get<T extends Model>(
   Type: Model.Extends<T>,
-  arg1?: get.Callback<T> | boolean,
-  arg2?: get.Callback<T> | boolean
-) {
-  return arg1 === true ? below(Type, arg2) : above(Type, arg1);
+  arg1?: any,
+  ...args: any[]
+): any {
+  if (arg1 === true) return below(Type, args[0]);
+  if (arg1 === undefined || typeof arg1 == 'boolean' || typeof arg1 == 'function')
+    return above(Type, arg1);
+  return keyed(Type, [arg1, ...args]);
+}
+
+function keyed(Type: Model.Extends, args: unknown[]) {
+  return def((key, subject) => {
+    listener(subject, () => {
+      update(subject, key, local(subject, Type, () => (Type.get as Function)(...args)));
+      return null;
+    }, true);
+
+    return {
+      get: true,
+      enumerable: false
+    };
+  });
 }
 
 function above<T extends Model>(

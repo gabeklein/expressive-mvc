@@ -105,7 +105,7 @@ class Context {
     Type: Model.Extends<T>,
     arg: boolean | Expect<T> | undefined,
     downstream: boolean | undefined,
-    skip: Model,
+    skip?: Model,
   ): T | undefined | (() => void);
 
   public get<T extends Model>(

@@ -5,6 +5,7 @@ import { get } from './field/get';
 import { ref } from './field/ref';
 import { set } from './field/set';
 import { Model, update } from './state';
+import { getter, provide } from './getter';
 import { event, listener, watch } from './observable';
 
 import { has } from './field/has';
@@ -865,6 +866,100 @@ describe('get method', () => {
       auth.name = 'baz';
       await expect(auth).toHaveUpdated();
       expect(effect).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('static get', () => {
+    class Foo extends Model {}
+
+    class Bar extends Model {
+      static readonly global = true;
+      value = 'bar';
+    }
+
+    class Record extends Model {
+      id = 0;
+
+      static get<T extends Record>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return getter(this, (context) => {
+          const found = context.get(this, id !== false);
+          return found?.id === id ? found : undefined;
+        }) as T;
+      }
+    }
+
+    class User extends Record {
+      name = 'user';
+    }
+
+    it('will get from root', () => {
+      const bar = Bar.new();
+
+      expect(Bar.get()).toBe(bar);
+      expect(Bar.get(false)).toBe(bar);
+      expect(Bar.get(true)).toBe(bar);
+
+      bar.set(null);
+    });
+
+    it('will throw if not found', () => {
+      expect(() => Foo.get()).toThrow('Could not find Foo in context.');
+    });
+
+    it('will return undefined if optional', () => {
+      expect(Foo.get(false)).toBeUndefined();
+    });
+
+    it('will pass required values to provider', () => {
+      const provider = vi.fn<getter.Provider>(() => undefined);
+      const done = provide(provider);
+
+      Foo.get(false);
+      Foo.get(true);
+      done();
+
+      expect(provider.mock.calls.map((call) => call[3])).toEqual([false, true]);
+    });
+
+    it('will route instance form through override', () => {
+      const user = User.new({ id: 5 });
+      const foo = Foo.new();
+
+      new Context({ user, foo });
+
+      const found: User = foo.get(User, 5);
+
+      expect(found).toBe(user);
+      expect(foo.get(User, 6)).toBeUndefined();
+    });
+
+    it('will type an override', () => {
+      const lookup = () => {
+        const user: User = User.get(5);
+        // @ts-expect-error - key is a number
+        User.get('5');
+        return user;
+      };
+
+      expect(lookup).toThrow('Could not find User in context.');
+    });
+
+    it('will subscribe through override from tracking proxy', async () => {
+      const user = User.new({ id: 5 });
+      const foo = Foo.new();
+      const effect = vi.fn();
+
+      new Context({ user, foo });
+
+      foo.get((self) => {
+        effect(self.get(User, 5).name);
+      });
+
+      user.name = 'other';
+      await expect(user).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenLastCalledWith('other');
     });
   });
 

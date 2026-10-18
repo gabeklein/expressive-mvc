@@ -37,6 +37,10 @@
       "types": "./dist/observable.d.ts",
       "default": "./dist/observable.js"
     },
+    "./getter": {
+      "types": "./dist/getter.d.ts",
+      "default": "./dist/getter.js"
+    },
     "./hot": {
       "types": "./dist/hot.d.ts",
       "default": "./dist/hot.js"

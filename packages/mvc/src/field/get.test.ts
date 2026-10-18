@@ -1,6 +1,7 @@
 import { vi, describe, it, expect } from 'vitest';
 import { Context } from '../context';
 import { Model } from '../state';
+import { getter } from '../getter';
 import { get } from './get';
 import { has } from './has';
 import { set } from './set';
@@ -1014,6 +1015,73 @@ describe('fetch mode', () => {
       await expect(parent).toHaveUpdated('owned');
       expect(parent.owned).toBe(parent.child);
     });
+  });
+});
+
+describe('key mode', () => {
+  class Record extends Model {
+    id = 0;
+
+    static get<T extends Record>(this: Model.Extends<T>, id?: T['id'] | false): T {
+      return getter(this, (context) => {
+        const found = context.get(this, false);
+        return found?.id === id ? found : undefined;
+      }) as T;
+    }
+  }
+
+  class User extends Record {
+    name = 'user';
+  }
+
+  it('will fetch through override with owner as origin', () => {
+    const lookup = vi.spyOn(User, 'get');
+
+    class Test extends Model {
+      user = get(User, 5);
+    }
+
+    const user = User.new({ id: 5 });
+    const context = new Context({ user, Test });
+    const test = context.get(Test);
+    const found: User = test.user;
+
+    expect(found).toBe(user);
+    expect(lookup).toBeCalledWith(5);
+  });
+
+  it('will pass further arguments', () => {
+    const fetch = vi.fn();
+
+    class Lookup extends Model {
+      key = '';
+      extra = 0;
+
+      static get<T extends Lookup>(
+        this: Model.Extends<T>,
+        key?: T['key'] | false,
+        extra?: T['extra']
+      ): T {
+        return getter(this, () => fetch(key, extra));
+      }
+    }
+
+    class Test extends Model {
+      found = get(Lookup, 'key', 1);
+    }
+
+    Test.new();
+
+    expect(fetch).toBeCalledWith('key', 1);
+  });
+
+  it('will reject a key of the wrong type', () => {
+    class Test extends Model {
+      // @ts-expect-error - key is a number
+      user = get(User, 'x');
+    }
+
+    expect(Test).toBeDefined();
   });
 });
 
