@@ -146,7 +146,7 @@ function Total() {
 }
 ```
 
-`Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it.
+`Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent; outside render it reads the root context, untracked. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it.
 
 `Model.use()` creates an MVC-owned instance in an FC slot. Calls must remain top-level and in stable order. The instance persists across renders, receives `use(...args)` each render when defined, runs `mount()` after its first DOM commit, and is destroyed on unmount. `Model.use()` in `Component.render()` is an error—put owned state on the Component as a field. The instance is provided to the FC's output: descendants resolve it with `Model.get()`, siblings do not.
 

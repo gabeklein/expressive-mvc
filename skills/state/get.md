@@ -115,13 +115,15 @@ const stop = state.get(null, () => console.log('destroyed'));
 ```ts
 get<T extends Model>(type: Model.Type<T>, required?: true): T
 get<T extends Model>(type: Model.Type<T>, required: boolean): T | undefined
+get<C extends Model.Extends>(type: C, key, ...rest): instance of C // forwarded to C.get
 ```
 
-Fetches an instance of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
+Calls `Type.get(...args)` with this instance as origin: the lookup searches this instance's context, skipping itself, and a tracking proxy subscribes to the result. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead. A class overriding static `get` receives its own arguments ([Static get](#static-get)).
 
 ```ts
 const parent = child.get(Parent);
 const maybe = child.get(Parent, false);
+const user = session.get(User, 5); // User.get(5) from session's context
 ```
 
 ### Subscribe to context
@@ -150,6 +152,42 @@ With a callback and `true`, runs per owned instance - direct children only, not 
 const owner = child.get(Model);
 const stop = scene.get(Model, (node) => attach(node), true);
 ```
+
+## Static get
+
+```ts
+Model.get(): T                  // required; throws if not in context
+Model.get(false): T | undefined // optional
+Model.get(true): Required<T>    // throws if an accessed value is undefined
+```
+
+Context lookup from wherever it is called. Inside a host render (React, dom) the host supplies context and subscribes to reads; elsewhere it reads the root context, untracked. Function arguments are not accepted.
+
+### Overriding
+
+Override with one signature. Call `getter(this, lookup)` once, synchronously - it resolves context and tracking for every call form. `this` is the class; `lookup(context, from?)` returns the result, `from` being the calling instance for the instance and instruction forms.
+
+```ts
+import { getter } from '@expressive/mvc/getter';
+
+class User extends Model {
+  id = 0;
+
+  static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | false): T {
+    return getter(this, (context) => context.get(Directory).find(id) as T);
+  }
+}
+
+User.get(5);             // in render: tracked
+session.get(User, 5);    // from session's context
+class Order extends Model {
+  buyer = get(User, 5);  // from the owner's context, once ready
+}
+```
+
+Type the key from `T` (`T['id']`) or accept booleans - the static side must stay assignable to base `get`. Through `state.get(Type, ...)` and the `get(Type, ...)` instruction, arguments type against the base, not a narrowed override.
+
+Hosts register with `provide(provider)` from the same subpath - `provider(Type, lookup, next, requireValues)` runs `lookup` against its context, or returns `next()` where not active. Returns an unregister function.
 
 ## Type Signatures
 
