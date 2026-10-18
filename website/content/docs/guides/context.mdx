@@ -156,54 +156,25 @@ const profile = UserProfile.get(true); // Required<UserProfile>
 
 With `true`, reading a property that is currently `undefined` throws an Error (`UserProfile-XXXXXX.name is required in this context.`). That surfaces at the nearest **error boundary** - not Suspense - so use it where a missing value would be a bug, not a loading state.
 
-### Computed selector
+### Deriving values
 
-Pass a factory to derive a value from context. The component only re-renders when the derived value changes (compared by `===`):
+`Model.get` takes no function. Destructure what the component renders and derive inline, or declare a getter on the Model so the derivation is memoized and shared:
 
 ```tsx
 function CartSummary() {
-  const summary = Cart.get((cart) => ({
-    total: cart.total,
-    count: cart.count,
-    empty: cart.items.length === 0
-  }));
+  const { items, total } = Cart.get();
 
-  if (summary.empty) return <p>Cart is empty</p>;
-  return (
-    <p>
-      {summary.count} items - ${summary.total}
-    </p>
-  );
+  if (items.length) return <p>{items.length} items - ${total}</p>;
+
+  return <p>Cart is empty</p>;
 }
 ```
 
-The factory receives a tracking proxy and a `refresh` function (see below).
+Side effects belong in the Model - `mount()`, or an instance effect with `state.get(effect)`.
 
-### Effect mode
+### Custom lookup
 
-Return `null` from the factory to run a side effect once, on first render, without subscribing - the factory never runs again and the component doesn't re-render for this instance:
-
-```tsx
-AppState.get((app) => {
-  analytics.track('page', app.page);
-  return null;
-});
-```
-
-### ForceRefresh
-
-The second argument to a factory is a `refresh` function. Call it to force the component to re-render, pass it a promise to re-render after resolution, or pass it an async function to re-render before and after:
-
-```tsx
-function DataView() {
-  const data = DataService.get((svc, refresh) => {
-    const reload = () => refresh(svc.fetch());
-    return { items: svc.items, reload };
-  });
-
-  return <button onClick={data.reload}>Reload</button>;
-}
-```
+A class may override static `get` with its own arguments - `User.get(id)` - and keep context and render tracking. See the [Model.get reference](/docs/api/state#overriding-get) for the `getter` contract.
 
 <br />
 

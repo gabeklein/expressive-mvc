@@ -115,9 +115,27 @@ A getter that throws on its _first_ read throws to the reader instead. `Componen
 
 Create an instance scoped to a React component. Covered in [Hooks](/docs/api/hooks).
 
-### `Model.get(...)` <small>(React)</small>
+### `Model.get(...)`
 
-Look up an instance from React context. Covered in [Hooks](/docs/api/hooks).
+Look up an instance from context - `get()` required, `get(false)` optional, `get(true)` with required values. In a React or dom render it reads the host's context and subscribes to what the component reads ([Hooks](/docs/api/hooks)); elsewhere it reads the root context, untracked.
+
+#### Overriding `get`
+
+A subclass may override static `get` with one signature of its own. It calls `getter(this, lookup)` from `@expressive/mvc/getter` exactly once, synchronously; `lookup(context, from?)` returns the result.
+
+```ts
+import { getter } from '@expressive/mvc/getter';
+
+class User extends Model {
+  id = 0;
+
+  static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | false): T {
+    return getter(this, (context) => context.get(Directory).find(id) as T);
+  }
+}
+```
+
+`User.get(5)` in a component keeps context and tracking. `session.get(User, 5)` and the instruction `get(User, 5)` route through the same override from that instance's context.
 
 <br />
 
@@ -173,6 +191,7 @@ state.get(null, () => console.log('destroyed')); // register callback
 ```ts
 const parent = child.get(Parent); // throws if not found
 const maybe = child.get(Parent, false); // undefined if not found
+const user = session.get(User, 5); // User.get(5), from session's context
 ```
 
 ### `get(Type, callback, downstream?)` - subscribe to context availability
