@@ -1,4 +1,5 @@
 import { Component, Context, Model, unbind } from '@expressive/mvc';
+import { provide } from '@expressive/mvc/getter';
 import { watch } from '@expressive/mvc/observable';
 
 import { schedule, transition, unschedule } from './scheduler';
@@ -33,14 +34,17 @@ interface Scope extends Schedulable {
 
 let current: Scope | undefined;
 let collecting: (() => void)[] | undefined;
+let memo: Map<Model, Model>[] | undefined;
 
 function enter<T>(scope: Scope, render: () => T): T {
   const parent = current;
   const releases = collecting;
+  const cached = memo;
   const next: (() => void)[] = [];
 
   current = scope;
   collecting = next;
+  memo = [new Map(), new Map()];
   scope.childContext = scope.context;
   scope.useIndex = 0;
 
@@ -59,6 +63,7 @@ function enter<T>(scope: Scope, render: () => T): T {
     scope.hot = undefined;
     current = parent;
     collecting = releases;
+    memo = cached;
     scope.subscriptions.forEach((release) => release());
     scope.subscriptions = next;
   }
@@ -96,7 +101,7 @@ function commit(scope: Scope) {
 
 function requireScope(): Scope {
   if (!current)
-    throw new Error('Model.get() and Model.use() may only run while @expressive/dom is rendering.');
+    throw new Error('Model.use() may only run while @expressive/dom is rendering.');
 
   return current;
 }
@@ -121,8 +126,6 @@ function tracked<T extends object>(target: T, required?: boolean): T {
   return proxy;
 }
 
-type NoVoid<T> = T extends undefined | void ? null : T;
-
 declare module '@expressive/mvc' {
   interface UseModel extends Model {
     use?(...props: any[]): Promise<void> | void;
@@ -130,29 +133,10 @@ declare module '@expressive/mvc' {
   }
 
   namespace Model {
-    type ForceRefresh = {
-      (): void;
-      <T = void>(waitFor: Promise<T>): Promise<T>;
-      <T = void>(invoke: () => Promise<T>): Promise<T>;
-    };
-
-    type GetFactory<T extends Model, R> = (
-      this: T,
-      current: T,
-      refresh: ForceRefresh
-    ) => R;
-
     type UseArgs<T extends Model> = T extends { use(...props: infer P): any }
       ? P
       : Model.Args<T>;
 
-    function get<T extends Model>(this: Model.Extends<T>): T;
-    function get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
-    function get<T extends Model>(this: Model.Extends<T>, required: true): Required<T>;
-    function get<T extends Model, R>(
-      this: Model.Extends<T>,
-      factory: GetFactory<T, R>
-    ): NoVoid<R>;
     function use<T extends UseModel>(
       this: Model.Type<T>,
       ...args: UseArgs<T>
@@ -168,27 +152,20 @@ declare module '@expressive/mvc' {
   }
 }
 
-(Model as any).get = function get<T extends Model>(
-  this: Model.Extends<T>,
-  argument?: boolean | Model.GetFactory<T, unknown>
-) {
-  const scope = requireScope();
-  const instance = scope.childContext.get(this, argument === false ? false : true);
+provide((_Type, lookup, next, requireValues) => {
+  if (!current) return next();
 
-  if (!instance) return undefined;
+  const found = lookup(current.childContext);
 
-  const proxy = tracked(instance, argument === true);
+  if (!(found instanceof Model)) return found;
 
-  if (typeof argument != 'function') return proxy;
+  const cache = memo![requireValues ? 1 : 0];
+  let proxy = cache.get(found);
 
-  const refresh = ((action?: Promise<unknown> | (() => Promise<unknown>)) => {
-    if (typeof action == 'function') action = action();
-    schedule(scope);
-    return action instanceof Promise ? action.finally(() => schedule(scope)) : undefined;
-  }) as Model.ForceRefresh;
+  if (!proxy) cache.set(found, (proxy = tracked(found, requireValues)));
 
-  return argument.call(proxy, proxy, refresh) ?? null;
-};
+  return proxy;
+});
 
 (Model as any).use = function use<T extends UseModel>(
   this: Model.Type<T>,

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Model, Component } from '@expressive/mvc';
 import { render } from '../index';
 import { Context } from '@expressive/mvc';
+import { getter } from '@expressive/mvc/getter';
 import { commit, dispose, enter } from './adapter';
 import type { Scope } from './adapter';
 import * as hot from '@expressive/mvc/hot';
@@ -193,7 +194,8 @@ describe('MVC adapter', () => {
     }
 
     function Name() {
-      return Session.get((value) => <span>{value.name}</span>);
+      const { name } = Session.get();
+      return <span>{name}</span>;
     }
 
     let session!: Session;
@@ -223,7 +225,8 @@ describe('MVC adapter', () => {
       }
     }
 
-    expect(() => Value.get()).toThrow('may only run while @expressive/dom is rendering');
+    expect(() => Value.get()).toThrow('Could not find Value in context.');
+    expect(Value.get(false)).toBeUndefined();
     expect(() => Value.use()).toThrow('may only run while @expressive/dom is rendering');
     expect(() => (View as any).use()).toThrow('render it instead of calling use()');
     expect(() => render(<View />, document.createElement('main'))).toThrow(
@@ -231,25 +234,17 @@ describe('MVC adapter', () => {
     );
   });
 
-  it('will support optional, required and selected context snapshots', async () => {
+  it('will support optional and required context lookups', async () => {
     class Missing extends Model {}
     class Source extends Model {
       value = 1;
       pending?: string;
     }
 
-    let refresh!: Model.ForceRefresh;
-    let renders = 0;
-
     function View() {
-      renders++;
       const missing = Missing.get(false);
-      const selected = Source.get(({ value }, force) => {
-        refresh = force;
-        return value * 2;
-      });
-      const empty = Source.get(() => undefined);
-      return <span>{String(missing)}:{selected}:{String(empty)}</span>;
+      const { value } = Source.get();
+      return <span>{String(missing)}:{value}</span>;
     }
 
     const source = Source.new();
@@ -259,13 +254,7 @@ describe('MVC adapter', () => {
       root
     );
 
-    expect(root.textContent).toBe('undefined:2:null');
-    refresh();
-    await flushMicrotasks();
-    await refresh(Promise.resolve());
-    await refresh(() => Promise.resolve());
-    await flushMicrotasks();
-    expect(renders).toBeGreaterThan(1);
+    expect(root.textContent).toBe('undefined:1');
 
     release();
     source.set(null);
@@ -282,6 +271,102 @@ describe('MVC adapter', () => {
       document.createElement('main')
     )).toThrow();
     required.set(null);
+  });
+
+  it('will return one tracked proxy per instance in a render', () => {
+    class Source extends Model {
+      value = 1;
+    }
+
+    const proxies: Source[] = [];
+
+    function View() {
+      proxies.push(Source.get(), Source.get(), Source.get(true));
+      return null;
+    }
+
+    const source = Source.new();
+    const release = render(
+      <Component for={source}><View /></Component>,
+      document.createElement('main')
+    );
+
+    const [first, second, required] = proxies;
+
+    expect(first).toBe(second);
+    expect(first).not.toBe(source);
+    expect(required).not.toBe(first);
+    expect(required.is).toBe(source);
+
+    release();
+    source.set(null);
+  });
+
+  it('will track an override and follow a changed key', async () => {
+    class Item extends Model {
+      id = 0;
+      label = '';
+
+      static get<T extends Item>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return getter(this, (context) => {
+          const { a, b } = context.get(Store);
+          return [a, b].find((item) => item.id === id) as T;
+        });
+      }
+    }
+
+    class Store extends Model {
+      a = new Item({ id: 1, label: 'one' });
+      b = new Item({ id: 2, label: 'two' });
+    }
+
+    class Picker extends Model {
+      selected = 1;
+    }
+
+    const renders = vi.fn();
+
+    function View() {
+      renders();
+      const { selected } = Picker.get();
+      const { label } = Item.get(selected);
+      return <span>{label}</span>;
+    }
+
+    const store = Store.new();
+    const picker = Picker.new();
+    const root = document.createElement('main');
+    const release = render(
+      <Component for={store}>
+        <Component for={picker}>
+          <View />
+        </Component>
+      </Component>,
+      root
+    );
+
+    expect(root.textContent).toBe('one');
+
+    store.a.label = 'uno';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('uno');
+
+    picker.selected = 2;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('two');
+    expect(renders).toBeCalledTimes(3);
+
+    store.a.label = 'one';
+    await flushMicrotasks();
+    expect(renders).toBeCalledTimes(3);
+
+    store.b.label = 'dos';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('dos');
+
+    release();
+    store.set(null);
+    picker.set(null);
   });
 
   it('will enforce stable Model.use order', () => {
