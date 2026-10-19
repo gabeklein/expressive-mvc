@@ -13,6 +13,8 @@ import type { Boundary, Fiber } from './fiber';
 import { untrack } from './hot';
 import { mountPortal, unmountPortal } from './portal';
 import { reconcile } from './reconcile';
+import { host } from './host';
+import type { HostNode } from './host';
 import { hold, unwait } from './suspense';
 
 function complete<T extends Fiber>(fiber: T, work: () => void): T {
@@ -27,10 +29,10 @@ function complete<T extends Fiber>(fiber: T, work: () => void): T {
   return fiber;
 }
 
-function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {
+function mount(value: RenderNode, parent: HostNode, before: HostNode | null, context: Context, boundary?: Boundary, appearance?: Appearance): Fiber {
   if (typeof value == 'string' || typeof value == 'number' || typeof value == 'bigint') {
-    const text = document.createTextNode(String(value));
-    parent.insertBefore(text, before);
+    const text = host.text(String(value));
+    host.insert(parent, text, before);
     return { kind: 'text', value, context, start: text, end: text, children: [] };
   }
 
@@ -52,7 +54,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
   return mountFunction(value, parent, before, context, boundary, appearance);
 }
 
-function mountFragment(value: VNode, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
+function mountFragment(value: VNode, parent: HostNode, before: HostNode | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const fiber = range('fragment', parent, before, context);
   fiber.key = value.key;
   fiber.type = Fragment;
@@ -64,8 +66,7 @@ function mountFragment(value: VNode, parent: globalThis.Node, before: globalThis
 }
 
 function patchText(fiber: Fiber, value: RenderNode) {
-  const next = String(value);
-  if (fiber.start.nodeValue !== next) fiber.start.nodeValue = next;
+  if (fiber.value !== value) host.setText(fiber.start, String(value));
   fiber.value = value;
 }
 

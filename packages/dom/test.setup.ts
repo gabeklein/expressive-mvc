@@ -1,3 +1,4 @@
+import './src/dom';
 import { afterEach, vi } from 'vitest';
 import type { Component, Model } from '@expressive/mvc';
 
@@ -6,7 +7,7 @@ import { render } from './src/render/render';
 import { vnode } from './src/node/vnode';
 
 afterEach(() => {
-  document.body.replaceChildren();
+  globalThis.document?.body.replaceChildren();
 });
 
 export { mockError, mockPromise, mockWarn, flushMicrotasks } from '../mvc/test.setup';

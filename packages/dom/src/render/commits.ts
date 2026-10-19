@@ -1,11 +1,14 @@
+import { host } from './host';
+import type { HostNode } from './host';
+
 interface Placed {
-  start: Node;
+  start: HostNode;
   dead?: boolean;
 }
 
 type Entry = [Placed, () => unknown];
 
-const DETACHED = new WeakMap<Node, Entry[]>();
+const DETACHED = new WeakMap<HostNode, Entry[]>();
 
 let batch: Entry[] | undefined;
 
@@ -16,13 +19,13 @@ function inserted(fiber: Placed, run: () => unknown) {
 
 /** A fragment whose commits wait until it attaches. */
 function fragment() {
-  const root = document.createDocumentFragment();
+  const root = host.fragment();
 
   DETACHED.set(root, []);
   return root;
 }
 
-function attach(root: Node) {
+function attach(root: HostNode) {
   const held = DETACHED.get(root);
 
   DETACHED.delete(root);
@@ -50,7 +53,7 @@ function enqueue(entry: Entry) {
 
 function deliver(entry: Entry) {
   const [fiber, run] = entry;
-  const held = DETACHED.get(fiber.start.getRootNode());
+  const held = DETACHED.get(host.root(fiber.start));
 
   if (held) held.push(entry);
   else if (!fiber.dead) run();

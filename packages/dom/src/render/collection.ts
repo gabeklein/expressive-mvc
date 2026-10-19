@@ -7,8 +7,9 @@ import type { Boundary, Fiber } from './fiber';
 import { complete } from './mount';
 import { attempt, passiveRender } from './render';
 import { schedule, transition } from './scheduler';
+import type { HostNode } from './host';
 
-function mountCollection(value: has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>, parent: globalThis.Node, before: globalThis.Node | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
+function mountCollection(value: has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>, parent: HostNode, before: HostNode | null, context: Context, boundary?: Boundary, appearance?: Appearance) {
   const fiber = range('collection', parent, before, context);
   fiber.source = value;
   fiber.value = value;
