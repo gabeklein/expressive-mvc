@@ -125,6 +125,8 @@ declare namespace Runner {
     committed?: true;
     /** The unwind stopped at this entry; it and every entry before it stay applied. */
     halted?: true;
+    /** An `end` the runtime added - the plan drained without one. */
+    implicit?: true;
     /** A `back` entry: id of the entry it went back to, which stays. */
     to?: string;
     /** A `back` entry: the reason given to `back`. A halted entry: the reason given to `stop()` while the unwind was parked here. */
@@ -1091,7 +1093,13 @@ class Run extends Model {
 
     if (this._backing) await this._backing;
     if (this._halted) return;
-    if (!item) return this.finish(dump(this.control));
+    if (!item) {
+      const { id } = this.node('end', []);
+
+      this.record.push({ id, key: 'end', args: [], next: [], wrote: [], implicit: true });
+
+      return this.finish(dump(this.control));
+    }
 
     const frame = await this.invoke(item);
 

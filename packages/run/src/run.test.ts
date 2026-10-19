@@ -201,7 +201,7 @@ describe('steps', () => {
 
     await test.next(3);
     expect(test.count).toBe(3);
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'next#2', 'next#3', 'next#4']);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'next#2', 'next#3', 'next#4', 'end#1']);
   });
 
   it('will record which fields each step wrote', async () => {
@@ -225,7 +225,7 @@ describe('steps', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([['a'], ['b', 'a']]);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([['a'], ['b', 'a'], []]);
     expect(test.then.record.some((entry) => 'prior' in entry || 'patch' in entry)).toBe(false);
   });
 
@@ -252,7 +252,8 @@ describe('steps', () => {
     await test.next();
     expect(test.then.record.map(({ prior, patch }) => [prior, patch])).toEqual([
       [{ a: 0 }, { a: 1 }],
-      [{ b: '', a: 1 }, { b: 'x', a: 3 }]
+      [{ b: '', a: 1 }, { b: 'x', a: 3 }],
+      [undefined, undefined]
     ]);
   });
 
@@ -560,7 +561,8 @@ describe('groups', () => {
     expect(test.then.record.map((entry) => [entry.key, entry.wrote])).toEqual([
       ['next', []],
       ['b', ['y']],
-      ['a', ['x']]
+      ['a', ['x']],
+      ['end', []]
     ]);
   });
 
@@ -731,7 +733,7 @@ describe('inline', () => {
 
     await test.next();
     expect(order).toEqual(['before:next', 'before:a', 'a', 'before:then', 'inline', 'before:b', 'b']);
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'then#1', 'b#1']);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'then#1', 'b#1', 'end#1']);
     expect(test.then.record[0].next).toEqual([
       { id: 'a#1', key: 'a', args: [] },
       { id: 'then#1', key: 'then', args: [] },
@@ -760,7 +762,8 @@ describe('inline', () => {
     expect(test.then.record.map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
       ['next#1', [], ['then#1']],
       ['then#1', ['value'], ['later#1']],
-      ['later#1', [], []]
+      ['later#1', [], []],
+      ['end#1', [], []]
     ]);
   });
 
@@ -786,7 +789,8 @@ describe('inline', () => {
     expect(test.then.record.map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
       ['next#1', [], ['then#1']],
       ['then#1', ['value'], ['later#1']],
-      ['later#1', [], []]
+      ['later#1', [], []],
+      ['end#1', [], []]
     ]);
   });
 
@@ -830,7 +834,7 @@ describe('inline', () => {
 
     await test.next();
     expect(signal.aborted).toBe(true);
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'then#1', 'a#1', 'b#1']);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'then#1', 'a#1', 'b#1', 'end#1']);
     expect(test.then.record[1].next).toMatchObject([{ key: 'then', group: [{ id: 'a#1' }, { id: 'b#1' }] }]);
   });
 
@@ -854,7 +858,8 @@ describe('inline', () => {
     expect(test.then.record.map((entry) => [entry.id, entry.wrote])).toEqual([
       ['next#1', []],
       ['then#1', []],
-      ['then#2', ['value']]
+      ['then#2', ['value']],
+      ['end#1', []]
     ]);
   });
 
@@ -967,7 +972,8 @@ describe('inline', () => {
     expect(test.then.record.map((entry) => [entry.id, entry.wrote])).toEqual([
       ['next#1', []],
       ['then#1', []],
-      ['allow#1', []]
+      ['allow#1', []],
+      ['end#1', []]
     ]);
   });
 
@@ -1106,6 +1112,22 @@ describe('end', () => {
     }
 
     expect(await Test.new().next()).toEqual({ count: 1 });
+  });
+
+  it('will journal an implicit end', async () => {
+    const after = vi.fn();
+
+    class Test extends Model {
+      then = run(this, { after });
+
+      next() {}
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record.at(-1)).toEqual({ id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true });
+    expect(after.mock.calls.map(([key]) => key)).toEqual(['next']);
   });
 
   it('will end from the controller', async () => {
@@ -1309,7 +1331,8 @@ describe('runs', () => {
     expect(test.then.runs).toBe(2);
     expect(test.then.status).toBe('idle');
     expect(test.then.record).toEqual([
-      { id: 'next#1', key: 'next', args: [2], wrote: ['count'], next: [] }
+      { id: 'next#1', key: 'next', args: [2], wrote: ['count'], next: [] },
+      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
     ]);
   });
 
@@ -1688,7 +1711,7 @@ describe('then', () => {
       error: undefined
     });
     expect(test.then.get()).toEqual(snapshot);
-    expect([...test.then].map((entry) => entry.id)).toEqual(['next#1', 'a#1']);
+    expect([...test.then].map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'end#1']);
   });
 });
 
@@ -2003,7 +2026,7 @@ describe('wait', () => {
     expect(test.then.status).toBe('running');
 
     expect(await result).toEqual({ answer: 'yes' });
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'reply#1', 'thanks#1', 'later#1']);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'reply#1', 'thanks#1', 'later#1', 'end#1']);
     expect(test.then.record[1].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['reply', 'skip'] }]);
     expect(test.then.record[2]).toMatchObject({ wake: 'wait#1', wrote: ['answer'] });
   });
@@ -2502,7 +2525,7 @@ describe('wait', () => {
     await result;
 
     expect(test.value).toBe(1);
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], []]);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], [], []]);
   });
 
   it('will not have wait on the runner', () => {
@@ -2563,7 +2586,8 @@ describe('watchers', () => {
     expect(await result).toEqual({ answer: 'timeout' });
     expect(test.then.record.map((entry) => [entry.id, entry.wake])).toEqual([
       ['next#1', undefined],
-      ['deny#1', 'wait#1']
+      ['deny#1', 'wait#1'],
+      ['end#1', undefined]
     ]);
     expect(test.then.record[0].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['allow', 'deny'] }]);
   });
@@ -3595,7 +3619,8 @@ describe('catch', () => {
       },
       expect.objectContaining({ id: 'a#1', undo: 'closure', undone: true }),
       { id: 'a1#1', key: 'a1', args: [], next: [], wrote: [], error: new Error('boom') },
-      expect.objectContaining({ id: 'b#1' })
+      expect.objectContaining({ id: 'b#1' }),
+      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
     ]);
   });
 
@@ -3626,7 +3651,7 @@ describe('catch', () => {
     await test.next();
     expect(seen.mock.calls).toEqual([['x', new Error('x is down'), 0], ['after']]);
     expect(test.then.record[0].next[0]).toEqual({ id: 'scan#1', key: 'scan', args: ['x'], rescue: 'fallback' });
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'scan#1', 'fallback#1', 'after1#1']);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'scan#1', 'fallback#1', 'after1#1', 'end#1']);
   });
 
   it('will count retries of a step re-run from its own catch', async () => {
@@ -3660,7 +3685,8 @@ describe('catch', () => {
       ['scan#1', undefined, 'a is down'],
       ['visit#2', 1, undefined],
       ['scan#2', undefined, 'a is down'],
-      ['visit#3', 2, 'give up']
+      ['visit#3', 2, 'give up'],
+      ['end#1', undefined, undefined]
     ]);
   });
 
@@ -3736,7 +3762,7 @@ describe('catch', () => {
 
     expect(await test.next()).toEqual({ value: 'down' });
     expect(test.then.record[0].next).toEqual([{ id: 'scan#1', key: 'scan', args: [], rescue: 'then' }]);
-    expect(test.then.record.at(-1)).toMatchObject({ id: 'then#1', key: 'then', args: [], wrote: ['value'] });
+    expect(test.then.record.at(-2)).toMatchObject({ id: 'then#1', key: 'then', args: [], wrote: ['value'] });
   });
 
   it('will settle a mapped group with what succeeded', async () => {
@@ -3974,7 +4000,10 @@ describe('suspense', () => {
     await result;
     expect(tries).toBe(2);
     expect(test.total).toBe(6);
-    expect(test.then.record).toEqual([{ id: 'next#1', key: 'next', args: [], wrote: ['total'], next: [] }]);
+    expect(test.then.record).toEqual([
+      { id: 'next#1', key: 'next', args: [], wrote: ['total'], next: [] },
+      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
+    ]);
   });
 
   it('will restore writes and drop tokens of a suspended try', async () => {
@@ -4014,7 +4043,8 @@ describe('suspense', () => {
     expect(test.then.record.map(({ id, wrote, next }) => [id, wrote, next.map((node) => node.id)])).toEqual([
       ['next#1', [], ['quote#1']],
       ['quote#1', ['note'], ['report#2']],
-      ['report#2', [], []]
+      ['report#2', [], []],
+      ['end#1', [], []]
     ]);
   });
 
@@ -4125,7 +4155,8 @@ describe('suspense', () => {
     expect(retries).toEqual([0, 0, 1]);
     expect(test.then.record.slice(1)).toEqual([
       { id: 'flaky#1', key: 'flaky', args: [], wrote: [], next: [], error: new Error('flaky') },
-      { id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], retry: 1 }
+      { id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], retry: 1 },
+      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
     ]);
   });
 
@@ -4153,7 +4184,8 @@ describe('suspense', () => {
     expect(tries).toBe(2);
     expect(test.then.record.slice(1).map(({ retry, error }) => [retry, error])).toEqual([
       [undefined, new Error('gone')],
-      [1, undefined]
+      [1, undefined],
+      [undefined, undefined]
     ]);
   });
 
@@ -4338,7 +4370,7 @@ describe('hooks', () => {
       ['after', 'ship', 'ship#1', false]
     ]);
     expect(test.value).toBe(2);
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], []]);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], [], []]);
   });
 
   it('will not wrap hooks as steps', async () => {
@@ -4535,7 +4567,7 @@ describe('hooks', () => {
 
     expect(test.back()).toBe(test);
     await test.next();
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next']);
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'end']);
   });
 
   it('will call exit last when a run ends', async () => {
@@ -4708,7 +4740,7 @@ describe('hooks', () => {
 
     expect(test.exit()).toBe(test);
     await test.next();
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next']);
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'end']);
   });
 
   it('will call an overridden hook once', async () => {
@@ -5655,7 +5687,7 @@ describe('collections', () => {
 
     await test.next();
     expect(test.items.get()).toEqual(['try 2']);
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], [], ['items']]);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], [], ['items'], []]);
   });
 
   it('will attribute a change only to the step making it', async () => {
@@ -6621,7 +6653,8 @@ describe('back', () => {
       { id: 'next#1', key: 'next', args: [], wrote: ['a'], next: [{ id: 'first#1', key: 'first', args: [] }], undo: 'closure' },
       { id: 'first#1', key: 'first', args: [], wrote: ['b'], next: [{ id: 'second#1', key: 'second', args: [] }], undo: 'closure', undone: true },
       { id: 'second#1', key: 'second', args: [], wrote: [], next: [{ id: 'back#1', key: 'back', args: [] }] },
-      { id: 'back#1', key: 'back', args: [], wrote: [], next: [], to: 'next#1', reason: 'changed my mind' }
+      { id: 'back#1', key: 'back', args: [], wrote: [], next: [], to: 'next#1', reason: 'changed my mind' },
+      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
     ]);
   });
 
@@ -6668,7 +6701,8 @@ describe('back', () => {
       ['first#1', undefined],
       ['second#1', true],
       ['third#1', undefined],
-      ['back#1', undefined]
+      ['back#1', undefined],
+      ['end#1', undefined]
     ]);
     expect(test.then.record[4]).toEqual({ id: 'back#1', key: 'back', args: [], next: [], wrote: [], to: 'first#1' });
   });
@@ -6696,7 +6730,7 @@ describe('back', () => {
 
     await test.next();
     expect(test.value).toBe(1);
-    expect(test.then.record.map((entry) => entry.undone)).toEqual([undefined, undefined, undefined, undefined]);
+    expect(test.then.record.map((entry) => entry.undone)).toEqual([undefined, undefined, undefined, undefined, undefined]);
   });
 
   it('will call a step again after back', async () => {
@@ -6735,7 +6769,8 @@ describe('back', () => {
       ['ship#1', [], undefined],
       ['back#1', [], undefined],
       ['pay#2', ['card2'], undefined],
-      ['ship#2', [], undefined]
+      ['ship#2', [], undefined],
+      ['end#1', [], undefined]
     ]);
     expect(test.then.record[3]).toMatchObject({ to: 'next#1' });
   });
@@ -6772,7 +6807,7 @@ describe('back', () => {
 
     await test.next();
     expect(receipt).not.toHaveBeenCalled();
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'pay#1', 'ship#1', 'back#1', 'more#1']);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'pay#1', 'ship#1', 'back#1', 'more#1', 'end#2']);
   });
 
   it('will unwind steps scheduled before back and run those after', async () => {
@@ -6862,7 +6897,8 @@ describe('back', () => {
       ['pay#1', undefined],
       ['ship#1', undefined],
       ['receipt#1', true],
-      ['back#1', undefined]
+      ['back#1', undefined],
+      ['end#1', undefined]
     ]);
   });
 
@@ -6890,7 +6926,7 @@ describe('back', () => {
 
     await test.next();
     expect(test.answer).toBeUndefined();
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'cancel#1', 'back#1']);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'cancel#1', 'back#1', 'end#1']);
   });
 
   it('will call back with its reason, and with the error on failure', async () => {
@@ -7129,7 +7165,8 @@ describe('back', () => {
       ['back#1', undefined, undefined],
       ['pay#2', undefined, undefined],
       ['notify#2', undefined, undefined],
-      ['ship#2', undefined, undefined]
+      ['ship#2', undefined, undefined],
+      ['end#1', undefined, undefined]
     ]);
   });
 
@@ -7221,7 +7258,8 @@ describe('back', () => {
       ['ship#1', undefined, undefined],
       ['back#1', undefined, undefined],
       ['pay#2', 'wait#1', undefined],
-      ['ship#2', undefined, undefined]
+      ['ship#2', undefined, undefined],
+      ['end#1', undefined, undefined]
     ]);
   });
 
@@ -7285,7 +7323,7 @@ describe('back', () => {
 
     await test.next();
     expect(undo).toHaveBeenCalledTimes(1);
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'first', 'left', 'right', 'back']);
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'first', 'left', 'right', 'back', 'end']);
   });
 
   it('will fail when an undo throws and stop unwinding there', async () => {
@@ -8004,7 +8042,7 @@ describe('base', () => {
     await sync.next();
 
     expect(sync.items).toEqual(['a']);
-    expect(sync.then.record.map((entry) => entry.key)).toEqual(['next', 'ship']);
+    expect(sync.then.record.map((entry) => entry.key)).toEqual(['next', 'ship', 'end']);
   });
 
   it('will wrap only a subclass own methods when extending a runner without base', async () => {
@@ -8052,7 +8090,7 @@ describe('base', () => {
 
     expect(sync.items).toEqual(['a']);
     expect(sync.then.status).toBe('idle');
-    expect(sync.then.record.map((entry) => entry.key)).toEqual(['next', 'pull']);
+    expect(sync.then.record.map((entry) => entry.key)).toEqual(['next', 'pull', 'end']);
   });
 
   it('will wrap methods of a subclass of base', async () => {
@@ -8081,7 +8119,7 @@ describe('base', () => {
     await paged.next();
 
     expect(paged.items).toEqual(['a']);
-    expect(paged.then.record.map((entry) => entry.key)).toEqual(['next', 'pull', 'page']);
+    expect(paged.then.record.map((entry) => entry.key)).toEqual(['next', 'pull', 'page', 'end']);
   });
 
   it('will accept Model as base', async () => {
@@ -8098,7 +8136,7 @@ describe('base', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'step']);
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'step', 'end']);
   });
 
   it('will throw if not an instance of base', () => {
@@ -8191,7 +8229,7 @@ describe('Job', () => {
     const test = C.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'first', 'second', 'third']);
+    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'first', 'second', 'third', 'end']);
   });
 
   it('will rewind when the class opts in', async () => {
