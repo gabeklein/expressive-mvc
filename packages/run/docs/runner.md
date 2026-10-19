@@ -14,11 +14,12 @@
 | `on` | the instance |
 | `end(value?)` | in a step: end the run once everything else has settled ([steps.md](steps.md#end-joins)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |
 | `stop(undo?, reason?)` | cancel ([runs.md](runs.md#stop)) |
-| `retry({ attempts, backoff? })` | in a step: retry it ([retry.md](retry.md)) |
 | `commit()` | in a step: a point of no return ([undo.md](undo.md#commit)) |
 | `slot({ max?, after?, key? })` | in a step: wait for a free slot, then run what follows holding it ([slot.md](slot.md)) |
 | `back(step, reason?)` | in a step: unwind what committed after `step`, then continue ([undo.md](undo.md#back)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
+| `attempt` | in a step: `0`, or how many times it was re-run from its own catch ([catch.md](catch.md#attempt)) |
+| `caught` | in a catch handler: the error it handles ([catch.md](catch.md)) |
 | `then(...tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
 | `then(fn)` | in a step: an inline step ([steps.md](steps.md#inline-steps)) |
 | `then(...steps, ...watchers)` | in a step: a wait answered by one of these steps ([wait.md](wait.md)) |
@@ -33,7 +34,7 @@ A [`back`](undo.md#back) is an entry of its own: `{ id: 'back#1', key: 'back', a
 
 `wrote` names the fields the step wrote, collections changed in place included - no values. With [`rewind`](undo.md#rewind), each entry also carries `prior` and `patch` - values before and after - for the unwind to restore. See [steps.md](steps.md#entry).
 
-`retry`, `commit`, `back`, `slot` and `signal` outside a step throw.
+`commit`, `back`, `slot`, `signal`, `attempt` and `caught` outside a step throw.
 
 `status`, `active`, `record`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them. The Runner iterates `record`:
 

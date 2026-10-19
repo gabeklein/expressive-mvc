@@ -52,6 +52,7 @@ it('will release through the gate', async () => {
     'next',
     'build',
     'test',
+    'suite',
     'canary',
     'install',
     'install',
@@ -99,11 +100,16 @@ it('will retry a flaky test suite with backoff', async () => {
   await vi.advanceTimersByTimeAsync(2 * SECOND);
   expect(test).toHaveBeenCalledTimes(3);
 
-  // each failed try is its own entry; the one that commits carries its attempt
-  expect(deploy.then.record.filter((entry) => entry.key == 'test').map((entry) => [entry.attempt, (entry.error as Error)?.message])).toEqual([
-    [1, 'flaky'],
-    [2, 'flaky'],
-    [3, undefined]
+  // each failed suite is its own entry with its error; each re-run of test carries its attempt
+  const tries = deploy.then.record.filter((entry) => entry.key == 'test' || entry.key == 'suite');
+
+  expect(tries.map((entry) => [entry.id, entry.attempt, (entry.error as Error)?.message])).toEqual([
+    ['test#1', undefined, undefined],
+    ['suite#1', undefined, 'flaky'],
+    ['test#2', 1, undefined],
+    ['suite#2', undefined, 'flaky'],
+    ['test#3', 2, undefined],
+    ['suite#3', undefined, undefined]
   ]);
   expect(deploy.then.status).toBe('waiting');
 
@@ -115,7 +121,7 @@ it('will abort the test suite when stopped', async () => {
   const deploy = create();
   const release = deploy.next();
 
-  await vi.waitFor(() => expect(deploy.then.active).toBe('test'));
+  await vi.waitFor(() => expect(deploy.then.active).toBe('suite'));
   deploy.then.stop();
 
   await expect(release).rejects.toMatchObject({ name: 'Stopped' });
@@ -155,6 +161,7 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
     ['next', undefined],
     ['build', true],
     ['test', undefined],
+    ['suite', undefined],
     ['canary', undefined],
     ['install', true],
     ['install', true],

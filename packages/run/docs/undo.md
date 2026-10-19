@@ -2,7 +2,7 @@
 
 A step registers its own undo by what it returns. On failure the run unwinds every committed step in reverse, running each undo, so a half-done plan leaves nothing behind that an undo can take back. [`this.then.back(step)`](#back) runs the same unwind on command, over what committed after `step`, and the run goes on.
 
-Every step is atomic: one that throws, is aborted or retried has its own writes restored - fields and [collections](#collections). Once a step settles, its fields stay through an unwind unless the class opts into [rewind](#rewind).
+Every step is atomic: one that throws or is aborted has its own writes restored - fields and [collections](#collections). Once a step settles, its fields stay through an unwind unless the class opts into [rewind](#rewind).
 
 ## A closure
 
@@ -41,7 +41,7 @@ protected async refund(chargeId: string) {
 
 Entry: `undo: { id: 'refund#1', key: 'refund', args: ['ch_42'] }`, `next` without it. `end` never registers an undo - its return is the result.
 
-Any token kind works - each is typed `void`, so the step stays `Promise<void>`:
+Any token kind works - each is typed `Promise<void>`, so the step stays `Promise<void>`:
 
 - an inline step - `return this.then(() => stripe.refund(id))` - runs its function, given an `AbortSignal`; not durable ([steps.md](steps.md#inline-steps));
 - a group - `return this.then(this.refund(id), this.notify(id))` - runs its members concurrently;
@@ -108,7 +108,7 @@ Undo frames cannot schedule: a step called from an undo throws (`… is failed; 
 
 ## Back
 
-`this.then.back(step, reason?)` inside a step goes back to just after `step`'s latest committed entry and carries on - fail forward, or retry with new input:
+`this.then.back(step, reason?)` inside a step goes back to just after `step`'s latest committed entry and carries on - fail forward, or try again with new input:
 
 ```ts
 protected async ship(chargeId: string) {
@@ -164,7 +164,7 @@ Here `refund('ch_42')` ran, then `release('hold_sku')`.
 | | default | `rewind` |
 | --- | --- | --- |
 | entry | `wrote: ['charge']` | `wrote`, plus `prior` / `patch` values ([runner.md](runner.md#entry)) |
-| failing, aborted or retried step | own writes restored | same |
+| failing or aborted step | own writes restored | same |
 | settled step on unwind | undo runs; fields stay | undo runs, then `prior` restored |
 | `undone: true` | entries whose undo ran | every entry reached |
 
@@ -174,7 +174,7 @@ The default holds no values past a step's commit - for a long-lived instance who
 
 `this.then.commit()` inside a step is a deliberate point of no return - a charge captured, a message sent. Once it is called, the step is treated as [irreversible](#irreversible):
 
-- it is not retried;
+- its failure is not [caught](catch.md);
 - if it throws after `commit()`, its own writes stay; its failing try is journaled with `committed: true` and `error`;
 - the unwind stops at its entry - `halted: true` - without running its undo or anything before it. No warning: the stop is deliberate.
 
@@ -194,7 +194,7 @@ Entry: `committed: true`. Outside a step, `then.commit()` throws `commit must be
 A `has` list, `has` pool or `map` read by a step through `this` comes back wrapped for that step. Its mutators - list `push`, `put`, `pop`, `set`, `clear`; pool `add`, `delete`, `clear`; map `set`, `delete`, `clear` - record an inverse for the step, then forward to the collection. Reads forward untouched. Mutating it in place - `this.messages.push(x)` - is then part of the step:
 
 - The entry's `wrote` lists the field when the step changed it; a read, or a call changing nothing, records nothing. With [rewind](#rewind), `prior` holds the collection's export (`collection.get()`) at the step's first change, `patch` its export at commit - both whole collections, siblings' changes included.
-- Attribution is per step: parallel steps changing one collection each record their own changes. Restoring a step - failing, aborted or retried, or committed under [rewind](#rewind) - replays its own inverses, newest first; siblings' changes stay, committed or not.
+- Attribution is per step: parallel steps changing one collection each record their own changes. Restoring a step - failing or aborted, or committed and unwound under [rewind](#rewind) or a [caught branch](catch.md) - replays its own inverses, newest first; siblings' changes stay, committed or not.
 - An inverse finds what the step left by identity: a pushed or put value is removed at the nearest equal item to where it went; a `set` is put back where its value now is; a popped or cleared value goes back at its old index; a pool member the step added is deleted - destroyed when owned; a map key the step added is deleted, a changed or removed one set back. A value a sibling already removed or replaced is skipped.
 - A change through the wrapper after the step's first token fails the run, as a field write does (`next wrote items after scheduling later.`).
 - Changes not through a step's wrapper are unmanaged - from outside, through `this.is`, in `_` helpers, or through a wrapper kept after its step settled. A kept wrapper hands a change to the step's [inline arrow](steps.md#inline-steps) in flight, as the step's proxy does.
@@ -210,11 +210,11 @@ A turn failing mid-step loses its own pushes; with rewind, a failing run leaves 
 
 ### Irreversible
 
-Some changes cannot be put back: a pool member removed by `delete` or `clear`, and a map value destroyed when removed or replaced (an owned `Model`) - unless the step added it itself. Detected per step, through its wrapper; a member destroyed directly is unmanaged. A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`. Detected in both modes - it governs retry and where the unwind stops.
+Some changes cannot be put back: a pool member removed by `delete` or `clear`, and a map value destroyed when removed or replaced (an owned `Model`) - unless the step added it itself. Detected per step, through its wrapper; a member destroyed directly is unmanaged. A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`. Detected in both modes - it governs [catch](catch.md) and where the unwind stops.
 
 - The unwind stops at the first irreversible entry, newest first. Entries after it are undone; it and every entry before it stay applied, without `undone`; it gets `halted: true`; `error` stays the original failure. `console.warn` names it once: `<instance> stopped unwinding at drop#1: items cannot be restored.`
 - A failing step that made one keeps its writes - fields included - and is journaled with `error` and `irreversible`, so the unwind halts there and nothing before it is undone.
-- An irreversible step is not retried ([retry.md](retry.md)).
+- An irreversible step's failure is not caught ([catch.md](catch.md)).
 - A step returning an undo - closure or token - is reversible: the unwind runs its undo, then restores what can be restored.
 
 A map restores through its own `set(key, value)`: a factory map (`map((key) => …)`) passes the old value to its factory, so only keys the step added are restored exactly.

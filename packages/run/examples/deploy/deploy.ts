@@ -54,10 +54,15 @@ export class Deploy extends Job {
   }
 
   protected async test() {
-    // on a throw, try again after 1s then 2s; a stopped run is not retried
-    this.then.retry({ attempts: 3, backoff: (attempt) => attempt * SECOND });
+    // a retry waits 1s, then 2s - a slot without max is a plain delay
+    this.then.slot({ after: this.then.attempt * SECOND });
 
-    // stop() aborts the suite through the step's own signal
+    // a failed suite runs test again in its place - attempt counts the re-runs - three tries in all
+    this.suite().catch(this.then.attempt < 2 ? this.test : undefined);
+  }
+
+  protected async suite() {
+    // stop() aborts the suite through the step's own signal - an abort is no failure, so not caught
     await ci.test(this.artifact, { signal: this.then.signal });
   }
 

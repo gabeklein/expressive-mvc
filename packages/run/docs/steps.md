@@ -87,7 +87,7 @@ An arrow and a `function` are equivalent: a `function` gets the inline step's ow
 
 The hand-off needs exactly one inline step of that step in flight, and no wait that step opened still open. Two inline arrows of one step running at once - a group of them - see the settled proxy as is: writes unmanaged, step calls [settled calls](#calls-after-a-step-settles). Use `function`, or a method step, there. While the step's wait is open, its proxy stays its [watchers'](wait.md#watchers). Anything else calling through it meanwhile - a timer, a lost watcher - lands in the inline step.
 
-Returned, an inline step is the step's undo ([undo.md](undo.md#a-returned-token)), typed `void` so the step stays `Promise<void>`:
+Returned, an inline step is the step's undo ([undo.md](undo.md#a-returned-token)), typed `Promise<void>` as a step call is, so the step stays `Promise<void>`:
 
 ```ts
 return this.then(() => stripe.refund(this.charge!.id));
@@ -109,7 +109,7 @@ protected async turn() {
 }
 ```
 
-Aborted on `stop()`, on an outside [`end`](runs.md#end-from-outside), when the run fails elsewhere, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not retried, no entry. A different error thrown after the abort fails the run as usual.
+Aborted on `stop()`, on an outside [`end`](runs.md#end-from-outside), when the run fails elsewhere, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not caught, no entry. A different error thrown after the abort fails the run as usual.
 
 Inline steps and watchers also receive their signal as a parameter - a watcher's `this.then.signal` is the settled step's, already aborted. Outside a step, `then.signal` throws `signal must be read inside a step.`
 
@@ -124,9 +124,11 @@ Inside a step, `this.then`:
 - tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
-Its members, in a step: `then.end(value?)` ([end](#end-joins)), `then.back(step, reason?)` ([undo.md](undo.md#back)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.retry(...)` ([retry.md](retry.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)).
+Its members, in a step: `then.end(value?)` ([end](#end-joins)), `then.back(step, reason?)` ([undo.md](undo.md#back)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.attempt` and `then.caught` ([catch.md](catch.md)).
 
-Every form returns a token typed `void`; returned from a step, it is the step's undo ([undo.md](undo.md#a-returned-token)).
+Every token takes `.catch(handler?)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
+
+Every form returns a token typed `Promise<void>`, as a step call is - not awaitable, `.catch` typed; returned from a step, it is the step's undo ([undo.md](undo.md#a-returned-token)). `then.slot()` is typed `void`.
 
 Outside a step, `then(f, r)` is the thenable ([runs.md](runs.md#awaiting-the-instance---start-or-join)); `then(steps)` throws `then(steps) must be called inside a step.`
 
@@ -134,7 +136,7 @@ Writes are attributed per frame with members in flight: each member's entry list
 
 ## Pending values
 
-A step reading a pending value - an unset `set<T>()`, an async factory, a getter over one - waits for it instead of failing. mvc throws a suspense Promise; the step's try ends there: its writes are restored, its tokens dropped, then it runs again from the top once the Promise resolves. No entry for the suspended try, no hooks refired, not counted against [`retry`](retry.md) - though token ids it issued stay counted (`report#2` commits). Status stays `running`, `active` names the step.
+A step reading a pending value - an unset `set<T>()`, an async factory, a getter over one - waits for it instead of failing. mvc throws a suspense Promise; the step's try ends there: its writes are restored, its tokens dropped, then it runs again from the top once the Promise resolves. No entry for the suspended try, no hooks refired, no [`attempt`](catch.md#attempt) counted - though token ids it issued stay counted (`report#2` commits). Status stays `running`, `active` names the step.
 
 ```ts
 class Checkout extends Job {
@@ -148,7 +150,7 @@ class Checkout extends Job {
 }
 ```
 
-- A rejection is the try's error - retried if configured, else the run fails with it.
+- A rejection is the try's error - [caught](catch.md) if its branch is, else the run fails with it.
 - `stop()` or an outside `end` while waiting aborts the step as for its [signal](#the-step-signal) - writes restored, no entry, no new failure.
 - A step past [`commit()`](undo.md#commit), or with an irreversible change, cannot start over: the Promise fails it as any throw. So does one thrown from an `after` hook.
 - Any thrown `Promise` counts, not only mvc's.
@@ -229,7 +231,7 @@ Each settled step is one journal entry (`record` on the [runner](runner.md)):
 
 A `back` token is journaled as its own entry - `to`, `reason` ([undo.md](undo.md#back)).
 
-Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `attempt`, `error` - retries ([retry.md](retry.md)); `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit).
+Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `error` - a caught failure ([catch.md](catch.md)), or a failing step that kept its writes; `attempt` - a re-run from its own catch; `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit).
 
 With [`rewind`](undo.md#rewind), an entry also keeps values - `prior` before the step's first write to each field, `patch` as it left them; a collection changed in place in export form ([undo.md](undo.md#collections)):
 

@@ -2513,7 +2513,7 @@ describe('wait', () => {
     const test = Test.new();
 
     expect('wait' in test.then).toBe(false);
-    expect(() => test.then.retry({ attempts: 2 })).toThrow('retry must be called inside a step.');
+    expect('retry' in test.then).toBe(false);
   });
 });
 
@@ -3319,70 +3319,165 @@ describe('slot', () => {
   });
 });
 
-describe('retry', () => {
+describe('catch', () => {
   afterEach(() => void vi.useRealTimers());
 
-  it('will try again and journal failed attempts', async () => {
-    let tries = 0;
+  it('will unwind a caught branch and continue', async () => {
+    const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
+      static readonly rewind = true;
+
       value = 0;
 
-      next() {
-        this.then.retry({ attempts: 3 });
-        this.value = ++tries;
-
-        if (tries < 3) throw new Error(`try ${tries}`);
+      async next() {
+        this.a().catch();
+        this.b();
       }
+
+      protected async a() {
+        this.value = 1;
+        this.a1();
+
+        return undo;
+      }
+
+      protected async a1() {
+        this.value = 2;
+        throw new Error('boom');
+      }
+
+      protected async b() {}
     }
 
     const test = Test.new();
 
-    expect(await test.next()).toEqual({ value: 3 });
+    expect(await test.next()).toEqual({ value: 0 });
+    expect(undo).toHaveBeenCalledTimes(1);
     expect(test.then.record).toEqual([
-      { id: 'next#1', key: 'next', args: [], wrote: [], next: [], attempt: 1, error: new Error('try 1') },
-      { id: 'next#1', key: 'next', args: [], wrote: [], next: [], attempt: 2, error: new Error('try 2') },
-      { id: 'next#1', key: 'next', args: [], wrote: ['value'], next: [], attempt: 3 }
+      {
+        id: 'next#1',
+        key: 'next',
+        args: [],
+        wrote: [],
+        prior: {},
+        patch: {},
+        next: [
+          { id: 'a#1', key: 'a', args: [], rescue: true },
+          { id: 'b#1', key: 'b', args: [] }
+        ]
+      },
+      expect.objectContaining({ id: 'a#1', undo: 'closure', undone: true }),
+      { id: 'a1#1', key: 'a1', args: [], next: [], wrote: [], error: new Error('boom') },
+      expect.objectContaining({ id: 'b#1' })
     ]);
   });
 
-  it('will fail after the last attempt', async () => {
-    class Test extends Model {
-      then = run(this);
-      value = 0;
+  it('will run a step in the caught branch\'s place with its args', async () => {
+    const seen = vi.fn();
 
-      next() {
-        this.then.retry({ attempts: 2 });
-        this.value++;
-        throw new Error('nope');
+    class Test extends Job {
+      async next() {
+        this.scan('x').catch(this.fallback);
+        this.after1();
+      }
+
+      protected async scan(site: string) {
+        throw new Error(`${site} is down`);
+      }
+
+      protected async fallback(site: string) {
+        seen(site, this.then.caught, this.then.attempt);
+      }
+
+      protected async after1() {
+        seen('after');
       }
     }
 
     const test = Test.new();
 
-    await expect(test.next()).rejects.toThrow('nope');
-    expect(test.value).toBe(0);
-    expect(test.then.record).toHaveLength(1);
+    await test.next();
+    expect(seen.mock.calls).toEqual([['x', new Error('x is down'), 0], ['after']]);
+    expect(test.then.record[0].next[0]).toEqual({ id: 'scan#1', key: 'scan', args: ['x'], rescue: 'fallback' });
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'scan#1', 'fallback#1', 'after1#1']);
   });
 
-  it('will back off between attempts', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout'] });
+  it('will count attempts of a step re-run from its own catch', async () => {
+    const attempts: number[] = [];
 
-    const backoff = vi.fn((attempt: number) => attempt * 100);
+    class Test extends Job {
+      async next() {
+        this.then(['a'], (site) => this.visit(site).catch());
+      }
+
+      protected async visit(site: string) {
+        attempts.push(this.then.attempt);
+
+        if (this.then.attempt == 2) throw new Error('give up');
+
+        this.scan(site).catch(this.visit);
+      }
+
+      protected async scan(site: string) {
+        throw new Error(`${site} is down`);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(attempts).toEqual([0, 1, 2]);
+    expect(test.then.record.map(({ id, attempt, error }) => [id, attempt, (error as Error)?.message])).toEqual([
+      ['next#1', undefined, undefined],
+      ['visit#1', undefined, undefined],
+      ['scan#1', undefined, 'a is down'],
+      ['visit#2', 1, undefined],
+      ['scan#2', undefined, 'a is down'],
+      ['visit#3', 2, 'give up']
+    ]);
+  });
+
+  it('will count a step caught by itself as a first repeat', async () => {
+    const attempts: number[] = [];
+
+    class Test extends Job {
+      async next() {
+        this.scan().catch(this.scan);
+      }
+
+      protected async scan() {
+        attempts.push(this.then.attempt);
+        throw new Error('down');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('down');
+    expect(attempts).toEqual([0, 1]);
+  });
+
+  it('will back off a retry with a slot', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
     let tries = 0;
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
-        this.then.retry({ attempts: 3, backoff });
+        this.then.slot({ after: 100 * this.then.attempt });
+        this.scan().catch(this.then.attempt < 2 ? this.next : undefined);
+      }
 
+      protected async scan() {
         if (++tries < 3) throw new Error('later');
       }
     }
 
     const result = Test.new().next();
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(tries).toBe(1);
 
     await vi.advanceTimersByTimeAsync(99);
     expect(tries).toBe(1);
@@ -3392,83 +3487,235 @@ describe('retry', () => {
 
     await vi.advanceTimersByTimeAsync(200);
     expect(tries).toBe(3);
-    expect(backoff.mock.calls).toEqual([[1], [2]]);
 
     await result;
   });
 
-  it('will not try again once stopped', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout'] });
+  it('will run a function in the caught branch\'s place given the error', async () => {
+    class Test extends Job {
+      value = '';
 
-    let tries = 0;
+      async next() {
+        this.scan().catch((error: Error) => {
+          this.value = error.message;
+        });
+      }
 
-    class Test extends Model {
-      then = run(this);
+      protected async scan() {
+        throw new Error('down');
+      }
+    }
 
-      next() {
-        this.then.retry({ attempts: 3, backoff: () => 100 });
-        tries++;
-        throw new Error('later');
+    const test = Test.new();
+
+    expect(await test.next()).toEqual({ value: 'down' });
+    expect(test.then.record[0].next).toEqual([{ id: 'scan#1', key: 'scan', args: [], rescue: 'then' }]);
+    expect(test.then.record.at(-1)).toMatchObject({ id: 'then#1', key: 'then', args: [], wrote: ['value'] });
+  });
+
+  it('will settle a mapped group with what succeeded', async () => {
+    class Test extends Job {
+      found = has<string>();
+
+      async next() {
+        this.then(['a', 'b', 'c'], (site) => this.visit(site).catch());
+      }
+
+      protected async visit(site: string) {
+        this.found.push(site);
+        await Promise.resolve();
+
+        if (site == 'b') throw new Error('blocked');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.found.get()).toEqual(['a', 'c']);
+  });
+
+  it('will catch a group token', async () => {
+    const gate = mockPromise();
+    const after = vi.fn();
+
+    class Test extends Job {
+      static readonly rewind = true;
+
+      value = 0;
+
+      async next() {
+        this.then(this.a(), this.b(), this.c()).catch();
+        this.d();
+      }
+
+      protected async a() {
+        this.value = 1;
+      }
+
+      protected async b() {
+        await gate;
+        throw new Error('b');
+      }
+
+      protected async c() {
+        await gate;
+        await Promise.resolve();
+        throw new Error('c');
+      }
+
+      protected async d() {
+        after(this.value);
       }
     }
 
     const test = Test.new();
     const result = test.next();
 
-    await vi.advanceTimersByTimeAsync(0);
-    test.then.stop();
-    await vi.advanceTimersByTimeAsync(100);
+    await flushMicrotasks();
+    gate.resolve();
 
-    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
-    expect(tries).toBe(1);
+    await result;
+    expect(after).toHaveBeenCalledWith(0);
+    expect(test.then.record.filter((entry) => entry.error).map((entry) => entry.id)).toEqual(['b#1', 'c#1']);
   });
 
-  it('will not retry a broken rule', async () => {
-    let tries = 0;
+  it('will catch an answer or watcher of a caught wait', async () => {
+    class Test extends Job {
+      async next() {
+        this.then(this.answer).catch();
+        this.then(this.answer, async () => {
+          throw new Error('watcher');
+        }).catch();
+      }
 
-    class Test extends Model {
-      then = run(this);
+      async answer() {
+        throw new Error('answer');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    await test.answer();
+
+    await result;
+    expect(test.then.status).toBe('idle');
+  });
+
+  it('will fail the run when a caught branch\'s undo throws', async () => {
+    class Test extends Job {
+      async next() {
+        this.a().catch();
+      }
+
+      protected async a() {
+        this.b();
+
+        return () => {
+          throw new Error('undo');
+        };
+      }
+
+      protected async b() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('undo');
+    expect(test.then.record[1]).toMatchObject({ id: 'a#1', undone: 'failed' });
+  });
+
+  it('will not run a handler once the run stops', async () => {
+    const gate = mockPromise();
+    const handler = vi.fn();
+
+    class Test extends Job {
+      async next() {
+        this.a().catch(handler);
+      }
+
+      protected async a() {
+        this.b();
+
+        return () => gate;
+      }
+
+      protected async b() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.then.stop();
+    gate.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('will not catch a broken rule', async () => {
+    class Test extends Job {
       value = 0;
 
-      next() {
-        this.then.retry({ attempts: 3 });
-        tries++;
-        this.a();
+      async next() {
+        this.a().catch();
+      }
+
+      protected async a() {
+        this.b();
         this.value = 1;
       }
 
-      a() {}
+      protected async b() {}
     }
 
-    await expect(Test.new().next()).rejects.toThrow('next wrote value after scheduling a.');
-    expect(tries).toBe(1);
+    await expect(Test.new().next()).rejects.toThrow('a wrote value after scheduling b.');
   });
 
-  it('will not fire hooks on retry', async () => {
-    const order: string[] = [];
-    let tries = 0;
+  it('will not catch back, slot or end', async () => {
+    const errors: unknown[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
-      next() {
-        this.then.retry({ attempts: 2 });
-        order.push('next');
-
-        if (++tries < 2) throw new Error('again');
-      }
-
-      before(key: string) {
-        order.push(`before:${key}`);
-      }
-
-      after(key: string) {
-        order.push(`after:${key}`);
+    class Test extends Job {
+      async next() {
+        for (const token of [() => this.then.back(this.next), () => this.then.slot(), () => this.then.end()])
+          try {
+            (token() as unknown as Promise<void>).catch();
+          } catch (error) {
+            errors.push(error);
+          }
       }
     }
 
-    await Test.new().next();
-    expect(order).toEqual(['before:next', 'next', 'next', 'after:next']);
+    await Test.new().next().catch(() => {});
+    expect(errors).toEqual([new Error('back() cannot be caught.'), new Error('slot() cannot be caught.'), new Error('end() cannot be caught.')]);
+  });
+
+  it('will throw for a handler not a function', async () => {
+    class Test extends Job {
+      async next() {
+        this.a().catch('a' as never);
+      }
+
+      protected async a() {}
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('catch() takes a step, a function or nothing.');
+  });
+
+  it('will throw attempt and caught outside a step', () => {
+    class Test extends Job {}
+
+    const test = Test.new();
+
+    expect(() => test.then.attempt).toThrow('attempt must be read inside a step.');
+    expect(() => test.then.caught).toThrow('caught must be read inside a step.');
   });
 });
 
@@ -3627,17 +3874,18 @@ describe('suspense', () => {
 
   it('will not count a suspended try as an attempt', async () => {
     const pending = mockPromise();
-    let tries = 0;
+    const attempts: number[] = [];
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
+      async next() {
+        this.flaky().catch(this.flaky);
+      }
 
-      next() {
-        this.then.retry({ attempts: 2 });
-        tries++;
+      protected async flaky() {
+        attempts.push(this.then.attempt);
 
-        if (tries == 1) throw pending;
-        if (tries == 2) throw new Error('flaky');
+        if (attempts.length == 1) throw pending;
+        if (attempts.length == 2) throw new Error('flaky');
       }
     }
 
@@ -3648,23 +3896,23 @@ describe('suspense', () => {
     pending.resolve();
 
     await result;
-    expect(tries).toBe(3);
-    expect(test.then.record).toEqual([
-      { id: 'next#1', key: 'next', args: [], wrote: [], next: [], attempt: 1, error: new Error('flaky') },
-      { id: 'next#1', key: 'next', args: [], wrote: [], next: [], attempt: 2 }
+    expect(attempts).toEqual([0, 0, 1]);
+    expect(test.then.record.slice(1)).toEqual([
+      { id: 'flaky#1', key: 'flaky', args: [], wrote: [], next: [], error: new Error('flaky') },
+      { id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], attempt: 1 }
     ]);
   });
 
-  it('will retry a rejected pending value as a failed attempt', async () => {
+  it('will catch a rejected pending value', async () => {
     const pending = mockPromise();
     let tries = 0;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
+      async next() {
+        this.flaky().catch(this.flaky);
+      }
 
-      next() {
-        this.then.retry({ attempts: 2 });
-
+      protected async flaky() {
         if (++tries == 1) throw pending;
       }
     }
@@ -3677,9 +3925,9 @@ describe('suspense', () => {
 
     await result;
     expect(tries).toBe(2);
-    expect(test.then.record.map(({ attempt, error }) => [attempt, error])).toEqual([
-      [1, new Error('gone')],
-      [2, undefined]
+    expect(test.then.record.slice(1).map(({ attempt, error }) => [attempt, error])).toEqual([
+      [undefined, new Error('gone')],
+      [1, undefined]
     ]);
   });
 
@@ -5066,12 +5314,14 @@ describe('collections', () => {
   it('will restore a list before a retry', async () => {
     let tries = 0;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has<string>();
 
-      next() {
-        this.then.retry({ attempts: 2 });
+      async next() {
+        this.push().catch(this.push);
+      }
+
+      protected async push() {
         this.items.push(`try ${++tries}`);
 
         if (tries < 2) throw new Error('flaky');
@@ -5082,7 +5332,7 @@ describe('collections', () => {
 
     await test.next();
     expect(test.items.get()).toEqual(['try 2']);
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], ['items']]);
+    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], [], ['items']]);
   });
 
   it('will attribute a change only to the step making it', async () => {
@@ -5169,11 +5419,10 @@ describe('collections', () => {
       items = has<string>();
 
       next() {
-        this.then(this.flaky(), this.steady());
+        this.then(this.flaky().catch(this.flaky), this.steady());
       }
 
       protected async flaky() {
-        this.then.retry({ attempts: 2 });
         this.items.push(`flaky ${++tries}`);
         await Promise.resolve();
 
@@ -5825,7 +6074,7 @@ describe('irreversible', () => {
     expect(test.then.record[0]).toMatchObject({ irreversible: ['values'], halted: true });
   });
 
-  it('will not retry an irreversible step', async () => {
+  it('will not catch an irreversible step', async () => {
     mockWarn();
 
     const attempt = vi.fn();
@@ -5840,7 +6089,10 @@ describe('irreversible', () => {
       }
 
       next() {
-        this.then.retry({ attempts: 3 });
+        this.drop().catch(this.drop);
+      }
+
+      protected async drop() {
         attempt();
         this.value = 1;
         this.items.clear();
@@ -5853,19 +6105,16 @@ describe('irreversible', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(test.value).toBe(1);
-    expect(test.then.record).toEqual([
-      {
-        id: 'next#1',
-        key: 'next',
-        args: [],
-        wrote: ['value', 'items'],
-        next: [],
-        error: new Error('boom'),
-        irreversible: ['items'],
-        attempt: 1,
-        halted: true
-      }
-    ]);
+    expect(test.then.record[1]).toEqual({
+      id: 'drop#1',
+      key: 'drop',
+      args: [],
+      wrote: ['value', 'items'],
+      next: [],
+      error: new Error('boom'),
+      irreversible: ['items'],
+      halted: true
+    });
   });
 
   it('will keep the writes of a failing irreversible step', async () => {
@@ -5953,7 +6202,7 @@ describe('commit', () => {
     ]);
   });
 
-  it('will not retry or restore a step failing after commit', async () => {
+  it('will not catch or restore a step failing after commit', async () => {
     const attempt = vi.fn();
 
     class Test extends Model {
@@ -5961,7 +6210,10 @@ describe('commit', () => {
       value = 0;
 
       next() {
-        this.then.retry({ attempts: 3 });
+        this.pay().catch(this.pay);
+      }
+
+      protected async pay() {
         attempt();
         this.value = 1;
         this.then.commit();
@@ -5974,9 +6226,9 @@ describe('commit', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(test.value).toBe(1);
-    expect(test.then.record).toEqual([
-      { id: 'next#1', key: 'next', args: [], next: [], wrote: ['value'], committed: true, error: new Error('boom'), attempt: 1, halted: true }
-    ]);
+    expect(test.then.record[1]).toEqual(
+      { id: 'pay#1', key: 'pay', args: [], next: [], wrote: ['value'], committed: true, error: new Error('boom'), halted: true }
+    );
   });
 
   it('will throw if commit is called outside a step', () => {
@@ -7062,7 +7314,6 @@ describe('signal', () => {
       value = 0;
 
       async next() {
-        this.then.retry({ attempts: 3 });
         attempt();
         this.value = 1;
         await aborted(this.then.signal);

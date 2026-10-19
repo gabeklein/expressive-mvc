@@ -49,8 +49,9 @@ export class Agent extends Job {
     let allowed = this.mode === 'yolo';
 
     // else park until allow or deny answers - the watcher denies after a minute
+    // a throw from exec runs it once more in its place - its own pushes undone first, so nothing repeats
     if (allowed || this.mode === 'auto' && safe(call))
-      this.exec(call);
+      this.exec(call).catch(this.exec);
     else
       this.then(this.allow, this.deny, async (signal) => {
         await delay(MINUTE, { signal });
@@ -59,14 +60,12 @@ export class Agent extends Job {
   }
 
   protected async exec(call: ToolCall) {
-    // a throw runs this step again; its pushes are restored first, so nothing repeats
-    this.then.retry({ attempts: 2 });
     this.messages.push(result(call, await tools.run(call)));
   }
 
   // answering steps: public, and defined on the instance only while a wait accepts them
   async allow(call: ToolCall) {
-    this.exec(call);
+    this.exec(call).catch(this.exec);
   }
 
   async deny(call: ToolCall) {

@@ -23,7 +23,7 @@ class Crawl extends Job {
   - none - the enclosing group's: the nearest mapped or variadic group above the step, else the job instance's;
   - an object - typically a shared Model instance - one queue for every step using it, across groups and jobs: `max: 1` is a mutex, a pool size a semaphore;
   - any other value - one queue per value, across this job's groups and runs.
-- A slot reached under a slot its own lineage holds in the same queue re-enters it: it waits `after`, takes no second slot, so a nested slot cannot deadlock.
+- A slot reached under a slot its own lineage holds in the same queue re-enters it: it waits `after`, takes no second slot, so a nested slot - or a [catch](catch.md) handler re-running its issuer, which keeps the slot through its `after` - cannot deadlock.
 - `stop()`, an outside `end` or a failure releases the run's held slots and cancels its waiting ones; a [`back`](undo.md#back) cancels waiting slots it discards.
 
 The token is journaled in the step's `next` - `{ id: 'slot#1', key: 'slot', args: [] }`; options are not journaled. A write after it fails the run as after any token. It cannot be grouped (`slot() cannot be grouped.`) or returned as an undo. Outside a step, `then.slot()` throws `slot must be called inside a step.`
