@@ -7131,27 +7131,35 @@ describe('back', () => {
     ]);
   });
 
-  it('will fail when the back hook throws', async () => {
+  it('will fail when the back hook throws, calling it once for that unwind', async () => {
+    const reasons: unknown[] = [];
+
     class Test extends Model {
       then = run(this);
 
-      next() {
-        this.first();
+      next(reason: string) {
+        this.first(reason);
       }
 
-      first() {
-        this.then.back(this.next, 'once');
+      first(reason: string) {
+        this.then.back(this.next, reason);
       }
 
       back(reason: unknown) {
+        reasons.push(reason);
+
         if (reason == 'once') throw new Error('hook');
       }
     }
 
     const test = Test.new();
 
-    await expect(test.next()).rejects.toThrow('hook');
+    await expect(test.next('once')).rejects.toThrow('hook');
     expect(test.then.status).toBe('failed');
+    expect(reasons).toEqual(['once']);
+
+    await test.next('again');
+    expect(reasons).toEqual(['once', 'again']);
   });
 
   it('will halt a parked unwind on stop', async () => {

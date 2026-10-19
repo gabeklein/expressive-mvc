@@ -596,6 +596,7 @@ class Run extends Model {
   _error?: unknown = undefined;
   _stopped?: Error = undefined;
   _warned?: boolean = undefined;
+  _backed?: boolean = undefined;
 
   protected new() {
     const { control } = this;
@@ -820,7 +821,10 @@ class Run extends Model {
 
     const thrown = this.fire('back', reason);
 
-    if (thrown) return this.halt('failed', thrown.cause);
+    if (thrown) {
+      this._backed = true;
+      return this.halt('failed', thrown.cause);
+    }
 
     const rest = from._items.slice(from._items.indexOf(item) + 1);
 
@@ -1127,8 +1131,7 @@ class Run extends Model {
       const failed = await this.unwind();
 
       if (failed) this.blame(failed.cause);
-
-      this.fire('back', this.reason());
+      if (!this._backed) this.fire('back', this.reason());
     }
 
     this.exit({ status: this._halted!, error: this.reason() });
