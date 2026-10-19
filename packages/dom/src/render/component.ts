@@ -68,17 +68,14 @@ function mountComponent(
   const fiber = range('component', parent, before, context);
   const childContext = context.push(instance);
   const element = (owned ? props : {}) as Placement;
-  const fallback = element.fallback !== undefined ? element.fallback : instance.fallback;
+  const { fallback } = instance;
   const ownBoundary: Boundary | undefined = fallback !== undefined && fallback !== false || element.catch || instance.catch
     ? {
         catch: element.catch || instance.catch ? (error) => {
           const handler = owned && (fiber.props as Placement).catch;
           return (handler || instance.catch)!.call(instance, error, instance);
         } : undefined,
-        fallback: () => {
-          const placed = owned ? (fiber.props as Placement).fallback : undefined;
-          return placed !== undefined ? placed : instance.fallback;
-        },
+        fallback: () => instance.fallback,
         owner: fiber,
         parent: inherited
       }
