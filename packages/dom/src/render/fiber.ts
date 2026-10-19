@@ -16,9 +16,7 @@ interface Boundary {
   waiting?: Set<Fiber>;
 }
 
-type Renderable = Component<any>;
-
-type Placement = Pick<Renderable, 'fallback' | 'catch'>;
+type Placement = Pick<Component, 'fallback' | 'catch'>;
 
 interface Fiber {
   kind: Kind;
@@ -37,7 +35,7 @@ interface Fiber {
   cleanup?: (() => void) | void;
   release?: () => void;
   childContext?: Context;
-  instance?: Renderable;
+  instance?: Component;
   owned?: boolean;
   events?: Map<string, EventListener>;
   portalStart?: globalThis.Node;
@@ -113,4 +111,4 @@ function removeRange(start: globalThis.Node, end: globalThis.Node) {
 }
 
 export { makeScope, move, moveRange, range, removeRange };
-export type { Boundary, Container, Fiber, Placement, Renderable };
+export type { Boundary, Container, Fiber, Placement };

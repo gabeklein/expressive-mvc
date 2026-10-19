@@ -9,7 +9,7 @@ import type { Appearance } from '../style/claim';
 import { call, enter } from './adapter';
 import { inserted } from './commits';
 import { makeScope, range } from './fiber';
-import type { Boundary, Fiber, Placement, Renderable } from './fiber';
+import type { Boundary, Fiber, Placement } from './fiber';
 import { latest, track, untrack } from './hot';
 import { complete } from './mount';
 import { attempt, passiveRender } from './render';
@@ -47,7 +47,7 @@ function mountOwnedComponent(
   appearance?: Appearance
 ) {
   const resolved = componentProps(value.type, value.props, appearance);
-  const Type = value.type as new (props: unknown) => Renderable;
+  const Type = value.type as new (props: unknown) => Component;
   const props = observe(resolved.props);
   const instance = new Type(props);
 
@@ -55,7 +55,7 @@ function mountOwnedComponent(
 }
 
 function mountComponent(
-  instance: Renderable,
+  instance: Component,
   parent: globalThis.Node,
   before: globalThis.Node | null,
   context: Context,
@@ -95,7 +95,7 @@ function mountComponent(
   fiber.appearance = appearance;
   fiber.scope = makeScope(childContext, (passive) => run(fiber, passive));
   fiber.render = () => enter(fiber.scope!, () => {
-    return unbind((fiber.value as Renderable).render).call(fiber.value, fiber.props);
+    return unbind((fiber.value as Component).render).call(fiber.value, fiber.props);
   });
   probing(fiber);
 
@@ -185,7 +185,7 @@ function unmountComponent(fiber: Fiber) {
   if (fiber.owned && !fiber.instance!.get(null)) fiber.instance!.set(null);
 }
 
-function renderable(value: unknown): value is Renderable {
+function renderable(value: unknown): value is Component {
   return value instanceof Component;
 }
 
