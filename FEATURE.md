@@ -188,16 +188,17 @@ Order opts into `rewind` - a failure puts every field back. Agent stays light an
 
 A UI dogfood lives in the examples playground: [run/checkout](examples/pages/run/checkout/App.tsx) - cart → reserve → pay → approval wait with a timeout watcher → ship ∥ receipt → end, a decline going `back` to `reserve` and waiting on `pay` for another card, `stop(true)` - rendered on React and dom, with a Playwright spec.
 
-## Crawler (benchmark, not built)
+## Crawler (benchmark)
 
-A shopping UX scanning several sites at once, deduping products into one live list, driven by a user or an agent through an abstracted browser. Needs it adds:
+A shopping UX scanning several sites at once, deduping products into one live list, driven by a user or an agent through an abstracted browser.
 
-- **Group concurrency limit** - `this.then(items, step, { limit })`: at most `limit` members in flight, the rest queued in order.
-- **allSettled-style groups** - a branch giving up (site down, blocked) does not fail the run; the group completes with what succeeded. First case for the held recovery item, scoped to groups.
-- **Parallel writes to a shared collection** - branches pushing into one `has`/`map` while siblings retry. The per-frame collection attribution bug (Open: a retry restores the capture shared with siblings, undoing their changes) is now the top fix.
-- **Driving the run mid-flight** - outside calls adding branches (a new site, a refined query) - the handler half of nesting; cancelling one branch needs a branch handle.
-- **Journal growth** - thousands of entries per run: a cap, compaction, or a keep-failures-only option.
-- **Shared browser-context pool** - jobs drawing from a bounded set of contexts: the cross-job lock generalized to a semaphore.
+Principle: imperative seams that read tracked values when they run, over declarative config fixed before a run starts - a limit or a backoff may change live from a UI. Build blocks, not opinions. Agreed shape:
+
+- **Per-frame collection attribution** - the correctness fix, first. A step reading a `has`/`map` through its proxy gets a per-frame wrapper: its mutators record an inverse for that frame, then forward to the collection; reads forward untouched. Rollback of a frame replays only its own inverses, newest first - parallel siblings untouched. A mutation through the wrapper after the frame's first token fails the run, as a field write does. Mutations not through a frame's wrapper (outside, `this.is`, helpers) are unmanaged. Irreversibility (a pool member removed, an owned map value destroyed) is detected per frame. Replaces the shared snapshot capture.
+- **`this.then.slot({ max, after, key })`** - a plan token completing once a FIFO slot is free under `max` and `after` ms have passed since it was reached; what the frame schedules after it runs behind it and holds the slot until done. Scope: the enclosing group, else the job instance; `key` shares one queue across groups and jobs - a mutex at `max: 1`, a semaphore for a browser-context pool. `max` may be a function, re-read live. Covers the group concurrency limit, the cross-job lock and the shared context pool; `slot({ after })` alone is a delay.
+- **`.catch(handler?)` on tokens, `this.then.attempt`** - branch-local recovery: a caught branch failing has its committed descendants unwound and the run continues - `.catch()` skips it (allSettled groups: `this.then(sites, (site) => this.visit(site).catch())`), `.catch(this.step)` runs a step in its place with the failed token's args, `.catch(fn)` an inline step given the error. `this.then.attempt` counts a step re-run from its own catch. Replaces `this.then.retry`: retry is `.catch(this.step)` behind `this.then.attempt`, backoff is `slot({ after })`.
+- **Driving the run mid-flight, concurrency of parallel branches** - user construction, no new API: a mailbox `has()` pulled by a loop, handler steps answering waits, a `skipped` set checked at a step's top to drop a branch. Signals stay an engine detail.
+- **Journal growth** - held, design only, not built in this pass: the default keeps only what unwinding needs (undo registry; a step's prior while in flight); each committed entry is handed to the `after(step, entry)` hook so a user builds their own flat log; `record` retention becomes opt-in (and implied by `rewind`).
 
 ## Plan
 
@@ -219,6 +220,11 @@ In order; stop and reassess after 2 if the journal is ugly.
 - [x] **Compensation and waits** - variadic groups, inline steps, watchers with `AbortSignal`, settled-proxy calls as outside calls, undo by any token kind (group, inline, wait parking the unwind). Agent tool approval times out by watcher.
 - [x] **Lessons from agent-focus** - light journal (`wrote`) by default, `static readonly rewind` opt-in (the first `static readonly` option); `this.then.commit()`; `exit(outcome)`; `this.then.signal`. Agent streams a `draft` and aborts its model call on `stop()`.
 - [x] **`this.then.back(step, reason?)`** - commanded unwind through the failure path's unwind; `back(reason)` hook; an answer's `commit()` declines a returned wait. Order fails forward to a backorder.
+- [ ] **Crawler blocks** - in order:
+  - [ ] **Per-frame collection attribution** - wrapper per frame, inverse log, write guard over collections; snapshot capture removed.
+  - [ ] **`this.then.slot({ max, after, key })`** - group, instance and keyed queues; live `max`.
+  - [ ] **`.catch(handler?)` on tokens, `this.then.attempt`** - branch unwind, handler in place; `this.then.retry` removed.
+  - [ ] **Crawl example** - slot, catch and attempt together.
 - [ ] **Steering entries** - outside writes journaled as their own entries, distinct from a step's patch, so a steer is visible in the trace.
 - [ ] **`this.then.sleep(ms)`** - in-process, warning like a wait when closure undos are held. Not built in step 2.
 
@@ -235,7 +241,7 @@ Learned from agent-focus (porting an ACP client: one long step awaiting `session
 - **Steering mailbox** - a `has()` list pulled by the loop; shipped as a docs recipe ([runs.md](packages/run/docs/runs.md#steering---a-mailbox)), no API.
 - **Step timeout** - via `this.then.signal`: an option aborting a step after `ms`, or `AbortSignal.any([this.then.signal, AbortSignal.timeout(ms)])` as a recipe.
 - **Outside `fail(error)`** - fail the active run from outside (a transport error), unwinding as a step failure would; today only `stop(true)`.
-- **Cross-job lock** - two jobs sharing one resource (a session) serialize; a lock token or a shared queue.
+- **Cross-job lock** - two jobs sharing one resource (a session) serialize - planned as `slot({ key, max: 1 })` ([Crawler](#crawler-benchmark)).
 - **Interrupted-on-restart marker** - the job tier marks a run found in flight at load as interrupted rather than replaying a step with side effects.
 - **Child jobs** - held design below.
 
