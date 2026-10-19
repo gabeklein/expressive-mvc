@@ -2836,6 +2836,489 @@ describe('watchers', () => {
   });
 });
 
+describe('slot', () => {
+  afterEach(() => void vi.useRealTimers());
+
+  const gates = (...keys: string[]) => new Map(keys.map((key) => [key, mockPromise()]));
+
+  it('will run a group at most max at a time, in order', async () => {
+    const work = gates('a', 'b', 'c', 'd');
+    const started: string[] = [];
+
+    class Test extends Job {
+      async next() {
+        this.then(['a', 'b', 'c', 'd'], this.visit);
+      }
+
+      protected async visit(site: string) {
+        this.then.slot({ max: 2 });
+        this.scan(site);
+      }
+
+      protected async scan(site: string) {
+        started.push(site);
+        await work.get(site);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(started).toEqual(['a', 'b']);
+
+    work.get('b')!.resolve();
+    await flushMicrotasks();
+    expect(started).toEqual(['a', 'b', 'c']);
+
+    work.get('a')!.resolve();
+    await flushMicrotasks();
+    expect(started).toEqual(['a', 'b', 'c', 'd']);
+
+    work.get('c')!.resolve();
+    work.get('d')!.resolve();
+    await result;
+    expect(test.then.record[1].next).toEqual([
+      { id: 'slot#1', key: 'slot', args: [] },
+      { id: 'scan#1', key: 'scan', args: ['a'] }
+    ]);
+  });
+
+  it('will follow a max read live', async () => {
+    const work = gates('a', 'b', 'c');
+    const started: string[] = [];
+
+    class Test extends Job {
+      limit = 1;
+
+      async next() {
+        this.then(['a', 'b', 'c'], this.visit);
+      }
+
+      protected async visit(site: string) {
+        this.then.slot({ max: () => this.limit });
+        this.scan(site);
+      }
+
+      protected async scan(site: string) {
+        started.push(site);
+        await work.get(site);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(started).toEqual(['a']);
+
+    test.limit = 2;
+    await flushMicrotasks();
+    expect(started).toEqual(['a', 'b']);
+
+    test.limit = 1;
+    work.get('a')!.resolve();
+    await flushMicrotasks();
+    expect(started).toEqual(['a', 'b']);
+
+    work.get('b')!.resolve();
+    await flushMicrotasks();
+    expect(started).toEqual(['a', 'b', 'c']);
+
+    work.get('c')!.resolve();
+    await result;
+  });
+
+  it('will wait after ms before taking a slot', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    const scan = vi.fn();
+
+    class Test extends Job {
+      async next() {
+        this.then.slot({ after: 1000 });
+        this.scan();
+      }
+
+      protected async scan() {
+        scan();
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.advanceTimersByTimeAsync(999);
+    expect(scan).not.toHaveBeenCalled();
+    expect(test.then.status).toBe('running');
+
+    await vi.advanceTimersByTimeAsync(1);
+    await result;
+    expect(scan).toHaveBeenCalledTimes(1);
+  });
+
+  it('will share a keyed slot across jobs', async () => {
+    const lock = {};
+    const work = gates('one', 'two');
+    const started: string[] = [];
+
+    class Test extends Job {
+      name = '';
+
+      async next() {
+        this.then.slot({ key: lock, max: 1 });
+        this.work();
+      }
+
+      protected async work() {
+        started.push(this.name);
+        await work.get(this.name);
+      }
+    }
+
+    const one = Test.new({ name: 'one' });
+    const two = Test.new({ name: 'two' });
+    const done = Promise.all([one.next(), two.next()]);
+
+    await flushMicrotasks();
+    expect(started).toEqual(['one']);
+
+    work.get('one')!.resolve();
+    await flushMicrotasks();
+    expect(started).toEqual(['one', 'two']);
+
+    work.get('two')!.resolve();
+    await done;
+  });
+
+  it('will share a primitive key across groups of one job', async () => {
+    const work = gates('x', 'y');
+    const started: string[] = [];
+
+    class Test extends Job {
+      async next() {
+        this.then(this.one(), this.two());
+      }
+
+      protected async one() {
+        this.then(['x'], this.work);
+      }
+
+      protected async two() {
+        this.then(['y'], this.work);
+      }
+
+      protected async work(name: string) {
+        this.then.slot({ key: 'db', max: 1 });
+        this.query(name);
+      }
+
+      protected async query(name: string) {
+        started.push(name);
+        await work.get(name);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(started).toEqual(['x']);
+
+    work.get('x')!.resolve();
+    await flushMicrotasks();
+    expect(started).toEqual(['x', 'y']);
+
+    work.get('y')!.resolve();
+    await result;
+  });
+
+  it('will slot a step outside any group on the job', async () => {
+    const order: string[] = [];
+
+    class Test extends Job {
+      async next() {
+        this.then.slot({ max: 1 });
+        this.a();
+        this.b();
+      }
+
+      protected async a() {
+        this.then.slot({ max: 1 });
+        order.push('a');
+      }
+
+      protected async b() {
+        order.push('b');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(order).toEqual(['a', 'b']);
+    expect(test.then.record[0].next.map((node) => node.id)).toEqual(['slot#1', 'a#1', 'b#1']);
+  });
+
+  it('will re-enter a slot held above it', async () => {
+    const done = vi.fn();
+
+    class Test extends Job {
+      async next() {
+        this.then(['a', 'b'], this.visit);
+      }
+
+      protected async visit(site: string) {
+        this.then.slot({ max: 1 });
+        this.inner(site);
+      }
+
+      protected async inner(site: string) {
+        this.then.slot({ max: 1 });
+        this.finish(site);
+      }
+
+      protected async finish(site: string) {
+        done(site);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(done.mock.calls).toEqual([['a'], ['b']]);
+  });
+
+  it('will release slots when a run fails', async () => {
+    const lock = {};
+    const gate = mockPromise();
+    const work = vi.fn();
+
+    class Failing extends Job {
+      async next() {
+        this.then.slot({ key: lock, max: 1 });
+        this.fail();
+        this.then.slot({ key: lock, max: 1 });
+        this.never();
+      }
+
+      protected async fail() {
+        await gate;
+        throw new Error('boom');
+      }
+
+      protected async never() {
+        work('never');
+      }
+    }
+
+    class Other extends Job {
+      async next() {
+        this.then.slot({ key: lock, max: 1 });
+        this.work();
+      }
+
+      protected async work() {
+        work('other');
+      }
+    }
+
+    const failing = Failing.new();
+    const other = Other.new();
+    const failed = failing.next();
+
+    await flushMicrotasks();
+
+    const waiting = other.next();
+
+    await flushMicrotasks();
+    expect(work).not.toHaveBeenCalled();
+
+    gate.reject(new Error('boom'));
+
+    await waiting;
+    await expect(failed).rejects.toThrow('boom');
+    expect(work.mock.calls).toEqual([['other']]);
+  });
+
+  it('will release held and pending slots when stopped', async () => {
+    const lock = {};
+    const gate = mockPromise();
+    const work = vi.fn();
+
+    class Holder extends Job {
+      async next() {
+        this.then(['a', 'b'], this.visit);
+      }
+
+      protected async visit(site: string) {
+        this.then.slot({ key: lock, max: 1 });
+        this.hold(site);
+      }
+
+      protected async hold(site: string) {
+        work(site);
+        await gate;
+      }
+    }
+
+    class Other extends Job {
+      async next() {
+        this.then.slot({ key: lock, max: 1 });
+        this.work();
+      }
+
+      protected async work() {
+        work('other');
+      }
+    }
+
+    const holder = Holder.new();
+    const other = Other.new();
+    const stopped = holder.next();
+
+    await flushMicrotasks();
+
+    const waiting = other.next();
+
+    await flushMicrotasks();
+    expect(work.mock.calls).toEqual([['a']]);
+
+    holder.then.stop();
+    await waiting;
+    expect(work.mock.calls).toEqual([['a'], ['other']]);
+
+    gate.resolve();
+    await expect(stopped).rejects.toThrow('was stopped');
+    expect(work.mock.calls).toEqual([['a'], ['other']]);
+  });
+
+  it('will release slots when ended from outside', async () => {
+    const lock = {};
+    const gate = mockPromise();
+
+    class Test extends Job {
+      async next() {
+        this.then.slot({ key: lock, max: 1 });
+        this.hold();
+      }
+
+      protected async hold() {
+        await gate;
+      }
+    }
+
+    const one = Test.new();
+    const two = Test.new();
+    const ended = one.next();
+
+    await flushMicrotasks();
+
+    const waiting = two.next();
+
+    one.then.end('early');
+    gate.resolve();
+
+    expect(await ended).toBe('early');
+    await waiting;
+  });
+
+  it('will cancel a slot whose step a back discards', async () => {
+    const never = vi.fn();
+
+    class Test extends Job {
+      async next() {
+        this.then(this.first(), this.second());
+      }
+
+      protected async first() {
+        this.then.slot({ max: 0 });
+        this.never();
+      }
+
+      protected async second() {
+        this.then(this.waiter(), this.third());
+      }
+
+      protected async waiter() {
+        this.then.slot({ max: 0, key: 'other' });
+        this.never();
+      }
+
+      protected async third() {
+        this.then.back(this.first, 'reset');
+      }
+
+      protected async never() {
+        never();
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(test.then.record.at(-1)).toMatchObject({ key: 'back', to: 'first#1' });
+    expect(test.then.status).toBe('running');
+
+    test.then.stop();
+    await expect(result).rejects.toThrow('was stopped');
+    expect(never).not.toHaveBeenCalled();
+  });
+
+  it('will not reach a slot after a failure', async () => {
+    const never = vi.fn();
+
+    class Test extends Job {
+      async next() {
+        this.then(this.fail(), this.slow());
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async slow() {
+        await Promise.resolve();
+        this.then.slot();
+        this.never();
+      }
+
+      protected async never() {
+        never();
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(never).not.toHaveBeenCalled();
+  });
+
+  it('will not group or return a slot', async () => {
+    class Grouped extends Job {
+      async next() {
+        this.then(this.then.slot() as never);
+      }
+    }
+
+    class Returned extends Job {
+      async next() {
+        return this.then.slot() as never;
+      }
+    }
+
+    await expect(Grouped.new().next()).rejects.toThrow('slot() cannot be grouped.');
+    await expect(Returned.new().next()).rejects.toThrow('next returned a value; a step returns nothing, or its undo.');
+  });
+
+  it('will throw outside a step', () => {
+    class Test extends Job {}
+
+    expect(() => Test.new().then.slot()).toThrow('slot must be called inside a step.');
+  });
+});
+
 describe('retry', () => {
   afterEach(() => void vi.useRealTimers());
 

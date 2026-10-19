@@ -34,9 +34,27 @@ interface Back {
   reason: unknown;
 }
 
+interface Gate {
+  held: Set<Hold>;
+  queue: Waiter[];
+}
+
+interface Hold {
+  run: Run;
+  from: string;
+}
+
+interface Waiter {
+  hold: Hold;
+  max(): number;
+  grant(): void;
+}
+
 const HOOK = /^(before|after)([A-Z]|$)/;
 const KEYS = ['status', 'active', 'record', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
+const GATES = new WeakMap<object, Gate>();
+const INERT = ['back', 'slot'];
 
 declare namespace Runner {
   type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'failed';
@@ -97,6 +115,15 @@ declare namespace Runner {
     args: unknown[];
     /** Keys of the steps which may answer it. */
     answers: string[];
+  }
+
+  interface Slot {
+    /** Slots held at once - a number, or a function re-read when a slot frees and when the job updates. Default: no limit. */
+    max?: number | (() => number);
+    /** Milliseconds from reaching the slot before it queues. */
+    after?: number;
+    /** Share the queue: an object across groups and jobs, any other value across this job. Default: the enclosing group's, else the job's. */
+    key?: unknown;
   }
 
   interface Retry {
@@ -210,6 +237,11 @@ declare namespace Runner {
     /** Inside a step: a point of no return - the step is not retried, restored or unwound. */
     commit(): void;
     /**
+     * Inside a step: wait at this point in the plan for a free slot in a FIFO queue, `after` ms
+     * from reaching it. What this step schedules after it runs holding the slot, until done.
+     */
+    slot(options?: Runner.Slot): void;
+    /**
      * Inside a step: unwind every entry committed after `step`'s latest, newest first, discard
      * what they scheduled, then call the `back` hook with `reason`. What this step schedules
      * after it runs next.
@@ -286,6 +318,7 @@ function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<
     retry: { value: () => outside('retry') },
     commit: { value: () => outside('commit') },
     back: { value: () => outside('back') },
+    slot: { value: () => outside('slot') },
     signal: {
       get() {
         throw new Error('signal must be read inside a step.');
@@ -393,6 +426,7 @@ class Control extends Model {
   _rewind?: boolean = undefined;
   _steps = new Map<string, Function>();
   _hooks = new Map<string, Function[]>();
+  _gates = new Map<unknown, Gate>();
   _current?: Run = undefined;
 
   protected new() {
@@ -527,6 +561,11 @@ class Run extends Model {
   _watchers = new Map<string, Function[]>();
   _backs = new Map<string, Back>();
   _parent = new Map<string, string>();
+  _slots = new Map<string, Runner.Slot>();
+  _gates = new Map<string, Gate>();
+  _groups = new Set<string>();
+  _pending = new Map<string, () => void>();
+  _holding = new Set<() => void>();
   _dropped = new Set<string>();
   _kept = new Set<string>();
   _spent = new Set<string>();
@@ -590,12 +629,20 @@ class Run extends Model {
   }
 
   dropped(id: string) {
-    for (let at: string | undefined = id; at; at = this._parent.get(at)) {
+    for (const at of this.line(id)) {
       if (this._kept.has(at)) return false;
       if (this._dropped.has(at)) return true;
     }
 
     return false;
+  }
+
+  line(id: string) {
+    const ids: string[] = [];
+
+    for (let at: string | undefined = id; at; at = this._parent.get(at)) ids.push(at);
+
+    return ids;
   }
 
   async exec(item: Runner.Node, from?: Frame): Promise<void> {
@@ -650,6 +697,7 @@ class Run extends Model {
     if (this._end && this.dropped(this._end.id)) this._end = undefined;
 
     for (const wait of this.waits.filter((wait) => !wait._undo && this.dropped(wait.id))) this.waits.delete(wait);
+    for (const [id, cancel] of this._pending) if (this.dropped(id)) cancel();
 
     const flying = this.flight().filter((frame) => this.dropped(frame.id));
 
@@ -688,7 +736,97 @@ class Run extends Model {
   }
 
   async descend(frame?: Frame) {
-    if (frame) for (const child of frame._items) await this.exec(child, frame);
+    if (frame) await this.sequence(frame._items, frame);
+  }
+
+  async sequence(items: Runner.Node[], from: Frame): Promise<void> {
+    for (const [index, item] of items.entries()) {
+      if (item.key != 'slot') {
+        await this.exec(item, from);
+        continue;
+      }
+
+      const release = await this.acquire(item, from);
+
+      if (!release) return;
+
+      try {
+        await this.sequence(items.slice(index + 1), from);
+      } finally {
+        release();
+      }
+
+      return;
+    }
+  }
+
+  acquire(item: Runner.Node, from: Frame) {
+    if (this.stale() || this.dropped(item.id)) return;
+
+    const { id } = item;
+    const { max = Infinity, after = 0, key } = this._slots.get(id)!;
+    const gate = this.gate(from, key);
+    const line = this.line(from.id);
+    const hold: Hold = { run: this, from: from.id };
+    const inside = [...gate.held].some((each) => each.run === this && line.includes(each.from));
+    const self = this.control._self;
+
+    return new Promise<(() => void) | undefined>((resolve) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let quiet: (() => void) | undefined;
+
+      const finish = (release?: () => void) => {
+        clearTimeout(timer);
+        quiet?.();
+        this._pending.delete(id);
+        resolve(release);
+      };
+
+      const release = () => {
+        if (!gate.held.delete(hold)) return;
+
+        this._holding.delete(release);
+        pump(gate);
+      };
+
+      const waiter: Waiter = {
+        hold,
+        max: typeof max == 'function' ? max : () => max,
+        grant: () => {
+          this._holding.add(release);
+          finish(release);
+        }
+      };
+
+      const join = () => {
+        if (inside) return finish(() => {});
+
+        gate.queue.push(waiter);
+
+        if (typeof max == 'function') quiet = listener(self, (key) => void (signal(key) && pump(gate)));
+
+        pump(gate);
+      };
+
+      this._pending.set(id, () => {
+        gate.queue = gate.queue.filter((each) => each !== waiter);
+        finish();
+      });
+
+      if (after > 0) timer = setTimeout(join, after);
+      else join();
+    });
+  }
+
+  gate(from: Frame, key: unknown) {
+    const { control } = this;
+
+    if (key instanceof Object) return gate(GATES, key);
+    if (key !== undefined) return gate(control._gates, key);
+
+    const group = this.line(from.id).find((id) => this._groups.has(id));
+
+    return group ? gate(this._gates, group) : gate(control._gates, control);
   }
 
   park(item: Runner.Node, from: Frame, undo?: boolean) {
@@ -731,6 +869,9 @@ class Run extends Model {
 
   release() {
     this.waits.clear();
+
+    for (const cancel of this._pending.values()) cancel();
+    for (const release of this._holding) release();
   }
 
   async invoke(node: Runner.Node, wake?: string, undo?: boolean): Promise<Frame | undefined> {
@@ -1237,6 +1378,7 @@ class Frame extends Model {
       retry: { value: (config: Runner.Retry) => void (this._retry = config) },
       signal: { get: () => this._abort.signal },
       back: { value: (step?: unknown, reason?: unknown) => this.back(step, reason) },
+      slot: { value: (options: Runner.Slot = {}) => this.slot(options) },
       commit: {
         value: () => {
           if (this._settled) throw new Error(`${this.key} has settled; commit cannot run.`);
@@ -1262,12 +1404,22 @@ class Frame extends Model {
     return token;
   }
 
+  slot(options: Runner.Slot) {
+    const token = this.issue('slot', []);
+
+    this.run._slots.set(token.id, options);
+
+    return token;
+  }
+
   group(members: unknown[]) {
-    for (const member of members)
-      if (!this._items.includes(member as Runner.Node)) throw new Error(`then() takes steps called by ${this.key}.`);
-      else if ((member as Runner.Node).key == 'back') throw new Error('back() cannot be grouped.');
+    for (const member of members as Runner.Node[])
+      if (!this._items.includes(member)) throw new Error(`then() takes steps called by ${this.key}.`);
+      else if (INERT.includes(member.key)) throw new Error(`${member.key}() cannot be grouped.`);
 
     const group = { ...this.run.node('then', []), group: members as Runner.Node[] };
+
+    this.run._groups.add(group.id);
 
     this._items = this._items.filter((item) => !members.includes(item));
     this._items.push(group);
@@ -1302,7 +1454,7 @@ class Frame extends Model {
     if (_late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
 
     let undo: Function | Runner.Node | undefined;
-    let token = items.includes(out as Runner.Node) && (out as Runner.Node).key != 'back';
+    let token = items.includes(out as Runner.Node) && !INERT.includes((out as Runner.Node).key);
 
     if (key == 'end') {
       if (items.length) throw new Error(`end cannot schedule ${items[0].key}.`);
@@ -1481,6 +1633,22 @@ function handle<T>(ticket: Ticket, out: Promise<T>) {
       return Promise.prototype.then.apply(this, args);
     }
   });
+}
+
+function gate<K>(gates: { get(key: K): Gate | undefined; set(key: K, gate: Gate): unknown }, key: K) {
+  let gate = gates.get(key);
+
+  if (!gate) gates.set(key, (gate = { held: new Set(), queue: [] }));
+
+  return gate;
+}
+
+function pump(gate: Gate) {
+  for (let next = gate.queue[0]; next && gate.held.size < next.max(); next = gate.queue[0]) {
+    gate.queue.shift();
+    gate.held.add(next.hold);
+    next.grant();
+  }
 }
 
 function adopt(parents: Map<string, string>, items: Runner.Node[], parent: string) {

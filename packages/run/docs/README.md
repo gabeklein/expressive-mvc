@@ -78,6 +78,7 @@ Journal after a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receip
 - [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, inline steps, the step signal, pending values, the first-call rule, calls after a step settles, helpers, `end`, what a step may return
 - [runs.md](runs.md) - `next`, repeating, the queue, awaiting, `end` from outside, `stop`, steering
 - [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called - from outside or by a watcher; answering steps are present only while waited for
+- [slot.md](slot.md) - `this.then.slot({ max, after, key })`: concurrency per group, job or shared key; a delay
 - [retry.md](retry.md) - per-step retry with backoff
 - [hooks.md](hooks.md) - `before`/`after`, per step or for all; `back(reason)` after an unwind; `exit` on every outcome; hooks as `run()` options
 - [undo.md](undo.md) - undo closures, returned tokens - a step, inline step, group or wait - the unwind on failure; `then.back(step)` - the same unwind on command; `rewind`; `commit()`

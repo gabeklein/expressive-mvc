@@ -16,6 +16,7 @@
 | `stop(undo?, reason?)` | cancel ([runs.md](runs.md#stop)) |
 | `retry({ attempts, backoff? })` | in a step: retry it ([retry.md](retry.md)) |
 | `commit()` | in a step: a point of no return ([undo.md](undo.md#commit)) |
+| `slot({ max?, after?, key? })` | in a step: wait for a free slot, then run what follows holding it ([slot.md](slot.md)) |
 | `back(step, reason?)` | in a step: unwind what committed after `step`, then continue ([undo.md](undo.md#back)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
 | `then(...tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
@@ -32,7 +33,7 @@ A [`back`](undo.md#back) is an entry of its own: `{ id: 'back#1', key: 'back', a
 
 `wrote` names the fields the step wrote, collections changed in place included - no values. With [`rewind`](undo.md#rewind), each entry also carries `prior` and `patch` - values before and after - for the unwind to restore. See [steps.md](steps.md#entry).
 
-`retry`, `commit`, `back` and `signal` outside a step throw.
+`retry`, `commit`, `back`, `slot` and `signal` outside a step throw.
 
 `status`, `active`, `record`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them. The Runner iterates `record`:
 
