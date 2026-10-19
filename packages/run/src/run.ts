@@ -171,7 +171,7 @@ declare namespace Runner {
     after?: (this: T, step: string, entry: Runner.Entry, skip: boolean) => void;
     /** Once an unwind completes, after the class's `back`. A throw replaces the error. */
     back?: (this: T, reason: unknown) => void;
-    /** Once per run on every outcome, after the class's `exit`. A throw rejects the run with it. */
+    /** Once per run on every outcome, after the class's `exit`. A throw is reported uncaught; the outcome stands. */
     exit?: (this: T, outcome: Runner.Outcome<Runner.Result<T>>) => void;
   }
 
@@ -425,7 +425,7 @@ class Job extends Model {
   /** Once an unwind completes, halted or not: given `reason` from `then.back()`, else the error the run rejects with. */
   protected back?(reason: unknown): void;
 
-  /** Once per run on every outcome, last before the run settles. A throw rejects the run with it. */
+  /** Once per run on every outcome, last before the run settles. A throw is reported uncaught; the outcome stands. */
   protected exit?(outcome: Runner.Outcome): void;
 }
 
@@ -1083,13 +1083,7 @@ class Run extends Model {
   finish(value: unknown) {
     const { control } = this;
 
-    this.fire('exit', { status: 'done', result: value });
-
-    if (this._error !== undefined) {
-      control.status = 'failed';
-      return this.reject();
-    }
-
+    this.exit({ status: 'done', result: value });
     this.close();
     control.status = 'idle';
     this._ticket.resolve(value);
@@ -1137,7 +1131,7 @@ class Run extends Model {
       this.fire('back', this.reason());
     }
 
-    this.fire('exit', { status: this._halted, error: this.reason() });
+    this.exit({ status: this._halted!, error: this.reason() });
     this.reject();
   }
 
@@ -1226,6 +1220,19 @@ class Run extends Model {
       }
 
     return thrown;
+  }
+
+  exit(outcome: Runner.Outcome) {
+    const { control } = this;
+
+    for (const hook of control._hooks.get('exit') || [])
+      try {
+        hook.call(control._self, outcome);
+      } catch (cause) {
+        queueMicrotask(() => {
+          throw cause;
+        });
+      }
   }
 
   blame(cause: unknown) {

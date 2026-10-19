@@ -4485,7 +4485,8 @@ describe('hooks', () => {
     expect(exit.mock.calls[0][0]).toMatchObject({ status: 'stopped', error: { name: 'Stopped' } });
   });
 
-  it('will reject a finished run when exit throws', async () => {
+  it('will resolve a finished run when exit throws, reporting it', async () => {
+    const caught = mockUncaught();
     const queued = vi.fn();
 
     class Test extends Model {
@@ -4506,12 +4507,17 @@ describe('hooks', () => {
     const first = test.next();
     const second = test.next();
 
-    await expect(first).rejects.toThrow('exit');
+    expect(await first).toEqual({ runs: 1 });
     await second;
+    await flushMicrotasks();
     expect(queued).toHaveBeenCalled();
+    expect(test.then.error).toBeUndefined();
+    expect(caught).toEqual([new Error('exit')]);
   });
 
-  it('will replace the error when exit throws', async () => {
+  it('will keep the error when exit throws', async () => {
+    const caught = mockUncaught();
+
     class Test extends Model {
       then = run(this);
 
@@ -4526,8 +4532,34 @@ describe('hooks', () => {
 
     const test = Test.new();
 
-    await expect(test.next()).rejects.toThrow('exit');
+    await expect(test.next()).rejects.toThrow('boom');
+    await flushMicrotasks();
     expect(test.then.status).toBe('failed');
+    expect(test.then.error).toEqual(new Error('boom'));
+    expect(caught).toEqual([new Error('exit')]);
+  });
+
+  it('will keep a stop when exit throws', async () => {
+    const caught = mockUncaught();
+
+    class Test extends Model {
+      then = run(this);
+
+      async next() {
+        this.then.stop();
+      }
+
+      exit() {
+        throw new Error('exit');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toMatchObject({ name: 'Stopped' });
+    await flushMicrotasks();
+    expect(test.then.status).toBe('stopped');
+    expect(caught).toEqual([new Error('exit')]);
   });
 
   it('will not wrap exit as a step', async () => {
@@ -4694,6 +4726,7 @@ describe('hooks', () => {
   });
 
   it('will call option exit when the class exit throws', async () => {
+    const caught = mockUncaught();
     const exit = vi.fn();
 
     class Test extends Model {
@@ -4708,9 +4741,11 @@ describe('hooks', () => {
 
     const test = Test.new();
 
-    await expect(test.next()).rejects.toThrow('exit');
+    expect(await test.next()).toEqual({});
+    await flushMicrotasks();
     expect(exit).toHaveBeenCalledWith({ status: 'done', result: {} });
-    expect(test.then.status).toBe('failed');
+    expect(test.then.status).toBe('idle');
+    expect(caught).toEqual([new Error('exit')]);
   });
 
   it('will check hook options by signature', () => {
