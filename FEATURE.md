@@ -64,7 +64,7 @@ Shipped behavior is documented in [packages/run/docs/](packages/run/docs/README.
 
 ## Benchmarks
 
-Two classes drive design and tests, both green: [SubmitOrder](packages/run/examples/order/order.ts) and [Agent](packages/run/examples/agent/agent.ts), each with mocked services. [Deploy](packages/run/examples/deploy/deploy.ts) and [Sync](packages/run/examples/sync/sync.ts) cover the rest ([examples/README.md](packages/run/examples/README.md)).
+Two classes drive design and tests, both green: [SubmitOrder](packages/run/examples/order/order.ts) and [Agent](packages/run/examples/agent/agent.ts), each with mocked services. [Deploy](packages/run/examples/deploy/deploy.ts), [Sync](packages/run/examples/sync/sync.ts) and [Crawl](packages/run/examples/crawl/crawl.ts) cover the rest ([examples/README.md](packages/run/examples/README.md)).
 
 ```ts
 class SubmitOrder extends Job {
@@ -224,7 +224,7 @@ In order; stop and reassess after 2 if the journal is ugly.
   - [x] **Per-frame collection attribution** - wrapper per frame, inverse log, write guard over collections; snapshot capture removed.
   - [x] **`this.then.slot({ max, after, key })`** - group, instance and keyed queues; live `max`.
   - [x] **`.catch(handler?)` on tokens, `this.then.attempt`** - branch unwind, handler in place; `this.then.retry` removed.
-  - [ ] **Crawl example** - slot, catch and attempt together.
+  - [x] **Crawl example** - slot, catch and attempt together.
 - [ ] **Steering entries** - outside writes journaled as their own entries, distinct from a step's patch, so a steer is visible in the trace.
 - [ ] **`this.then.sleep(ms)`** - in-process, warning like a wait when closure undos are held. `slot({ after })` is the in-process delay meanwhile, without the warning; the durable form waits for the job tier.
 
