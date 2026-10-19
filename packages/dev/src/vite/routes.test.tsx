@@ -121,7 +121,7 @@ describe("app/ routing (codegen)", () => {
     const out = await generate({ "index.tsx": PAGE, "tally/index.tsx": PAGE, "tally/remote.ts": SCOPE });
 
     expect(out).toContain('import TallyRemote from "../app/tally/remote.ts";');
-    expect(out).toContain("const TallyRemoted = props => <TallyRemote>{props.children}</TallyRemote>;");
+    expect(out).toContain("const TallyRemoted = props => <Component for={TallyRemote}>{props.children}</Component>;");
     expect(out).toMatch(/<Route to="tally" as=\{TallyRemoted\}>\s*<Route as=\{Tally\} \/>/);
   });
 
@@ -129,7 +129,7 @@ describe("app/ routing (codegen)", () => {
     const out = await generate({ "index.tsx": PAGE, "tally/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}`, "tally/remote/index.ts": SCOPE });
 
     expect(out).toContain('import TallyRemote from "../app/tally/remote/index.ts";');
-    expect(out).toContain("const TallyRemoted = props => <TallyRemote><TallyScoped {...props} /></TallyRemote>;");
+    expect(out).toContain("const TallyRemoted = props => <Component for={TallyRemote}><TallyScoped {...props} /></Component>;");
     expect(out).toContain('<Route to="tally" as={TallyRemoted}>');
   });
 
@@ -174,7 +174,7 @@ describe("app/ routing (codegen)", () => {
 
   it("a module with a default loads on first entry", async () => {
     const out = await generate({ "index.tsx": PAGE, "(account).tsx": `${PAGE}\n${SCOPE}` });
-    expect(out).toContain('const AccountScope = () => import("../app/(account).tsx").then(m => m.default);');
+    expect(out).toContain('const AccountScope = () => import("../app/(account).tsx").then(m => props => <Component for={m.default}>{props.children}</Component>);');
     expect(out).toContain('const Account = () => import("../app/(account).tsx").then(m => m.Page);');
   });
 
@@ -202,7 +202,7 @@ describe("app/ routing (codegen)", () => {
       "account/settings/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}`,
       "void/index.tsx": `${LAYOUT}\n${SCOPE}`,
     });
-    const wrappers = out.split("\n").filter(line => line.includes("props =>")).map(line => line.split(" ")[1]);
+    const wrappers = out.split("\n").filter(line => line.includes(" = props =>")).map(line => line.split(" ")[1]);
 
     expect(wrappers).toEqual(["AccountSettingsScoped", "AccountScoped", "RootScoped"]);
   });
@@ -328,7 +328,7 @@ describe("app/ routing (scope)", () => {
     }
 
     const Shell = (props: { children?: any }) => <div data-shell>{Session.get().user}:{props.children}</div>;
-    const Scoped = (props: { children?: any }) => <Session><Shell {...props} /></Session>;
+    const Scoped = (props: { children?: any }) => <Component for={Session}><Shell {...props} /></Component>;
     const Account = () => <span>{Session.get().user}</span>;
     const Home = () => <span>home</span>;
 
@@ -360,7 +360,7 @@ describe("app/ routing (scope)", () => {
       user = "ada";
     }
 
-    const Scope = () => Promise.resolve({ default: Session }).then(m => m.default);
+    const Scope = () => Promise.resolve({ default: Session }).then(m => (props: { children?: any }) => <Component for={m.default}>{props.children}</Component>);
     const Account = () => <span>{Session.get().user}</span>;
 
     const Tree = () => (
