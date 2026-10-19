@@ -49,9 +49,11 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
   const wrappers = collectWrappers(root);
   const tree = emitNode(root, true, 2, "null").join("\n");
   const pageImports = root.exports.has("NotFound") ? "{ Route, Router }" : "{ NotFound, Route, Router }";
+  const provides = [...loaders, ...wrappers].some(line => line.includes("<Component for="));
 
   return [
     `import ${pageImports} from "@expressive/dev";`,
+    ...(provides ? ['import { Component } from "@expressive/mvc";'] : []),
     "",
     ...imports,
     ...(loaders.length ? ["", ...loaders] : []),
@@ -191,9 +193,7 @@ function collectImports(root: RouteNode, outDir: string) {
 
     if (node.file && roles.length) {
       const spec = JSON.stringify(importRel(outDir, node.file));
-      const lazy = node !== root && !node.alias.Loading && !node.alias.Catch;
-
-      if (lazy) loaders.push(...roles.map(role => loaderFor(node, role, spec)));
+      if (lazy(node)) loaders.push(...roles.map(role => loaderFor(node, role, spec)));
       else imports.push(importFor(node, roles, spec));
     }
 
@@ -205,10 +205,15 @@ function collectImports(root: RouteNode, outDir: string) {
   return { imports, loaders };
 }
 
+const isRoot = (node: RouteNode): boolean => !node.name;
+const lazy = (node: RouteNode): boolean => !isRoot(node) && !node.alias.Loading && !node.alias.Catch;
+
 function loaderFor(node: RouteNode, role: Role, spec: string): string {
-  const load = role === "default" && !node.classDefault
-    ? `route => import(${spec}).then(m => m.default(route))`
-    : `() => import(${spec}).then(m => m.${role})`;
+  const load = role !== "default"
+    ? `() => import(${spec}).then(m => m.${role})`
+    : node.classDefault
+      ? `() => import(${spec}).then(m => props => <Component for={m.default}>{props.children}</Component>)`
+      : `route => import(${spec}).then(m => m.default(route))`;
 
   return `const ${node.alias[role]} = ${load};`;
 }
@@ -226,7 +231,13 @@ const renders = (node: RouteNode): boolean => !!node.alias.Page || node.children
 function scopedOf(node: RouteNode): string | undefined {
   const { Layout, default: def } = node.alias;
 
-  if (node.classDefault && def && Layout) return def + "d";
+  if (node.classDefault && def && (Layout || !lazy(node))) return def + "d";
+}
+
+function provide(node: RouteNode, alias: string, content: string): string {
+  return lazy(node)
+    ? `<${alias}>${content}</${alias}>`
+    : `<Component for={${alias}}>${content}</Component>`;
 }
 
 function wrapperOf(node: RouteNode): string | undefined {
@@ -247,13 +258,14 @@ function collectWrappers(root: RouteNode): string[] {
     const scope = node.classDefault ? def : undefined;
     const scoped = scopedOf(node);
 
-    if (scoped) wrappers.push(`const ${scoped} = props => <${scope}><${Layout} {...props} /></${scope}>;`);
+    if (scoped)
+      wrappers.push(`const ${scoped} = props => ${provide(node, scope!, Layout ? `<${Layout} {...props} />` : "{props.children}")};`);
 
     if (node.twin) {
       const inner = scoped ?? scope ?? Layout;
       const content = inner ? `<${inner} {...props} />` : "{props.children}";
 
-      wrappers.push(`const ${node.twin}d = props => <${node.twin}>${content}</${node.twin}>;`);
+      wrappers.push(`const ${node.twin}d = props => <Component for={${node.twin}}>${content}</Component>;`);
     }
   })(root);
 
