@@ -224,8 +224,8 @@ it('will retry a tool, keeping what the tool pushed from outside', async () => {
     'call_1_0: write notes ok',
     'done'
   ]);
-  // the failed try is its own entry with its error; the re-run carries attempt 1
-  expect(agent.then.record.filter((entry) => entry.key == 'exec').map((entry) => [entry.attempt, (entry.error as Error)?.message])).toEqual([
+  // the failed try is its own entry with its error; the re-run carries retry 1
+  expect(agent.then.record.filter((entry) => entry.key == 'exec').map((entry) => [entry.retry, (entry.error as Error)?.message])).toEqual([
     [undefined, 'timeout'],
     [1, undefined]
   ]);

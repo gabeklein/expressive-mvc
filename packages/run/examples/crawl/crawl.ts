@@ -27,12 +27,12 @@ export class Crawl extends Job {
     // a re-run waits 1s, 2s, then 4s first; it holds the slot of the visit it repeats
     this.then.slot({
       max: () => this.limit,
-      after: this.then.attempt && SECOND * 2 ** (this.then.attempt - 1)
+      after: this.then.retry && SECOND * 2 ** (this.then.retry - 1)
     });
 
-    // a failed scan runs visit again in its place, attempt counting up; after three retries, skip -
+    // a failed scan runs visit again in its place, retry counting up; after three, skip -
     // the group settles with the sites that answered
-    this.scan(site).catch(this.then.attempt < 3 ? this.visit : this.skip);
+    this.scan(site).catch(this.then.retry < 3 ? this.visit : this.skip);
   }
 
   protected async scan(site: string) {

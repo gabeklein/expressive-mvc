@@ -15,8 +15,8 @@ async next(query: string) {
 }
 
 protected async visit(site: string) {
-  this.then.slot({ max: () => this.limit, after: this.then.attempt && 1000 * 2 ** (this.then.attempt - 1) });
-  this.scan(site).catch(this.then.attempt < 3 ? this.visit : this.skip);
+  this.then.slot({ max: () => this.limit, after: this.then.retry && 1000 * 2 ** (this.then.retry - 1) });
+  this.scan(site).catch(this.then.retry < 3 ? this.visit : this.skip);
 }
 
 protected async skip(site: string) {
@@ -32,15 +32,15 @@ protected async skip(site: string) {
 - Nested catches: the nearest enclosing caught token takes a failure; one in a handler belongs to the branch around it. A second failure in a branch already failing is journaled and absorbed.
 - A wait's branch is its answer and the answer's subtree; a watcher throwing is caught there too.
 
-## Attempt
+## Retry
 
-`this.then.attempt` is `0`, or one more than the step it re-runs:
+`this.then.retry` counts re-runs - `0` on a step's first run, so `!this.then.retry` means it has not failed:
 
-- a handler that is the issuing step - `.catch(this.visit)` inside `visit` - counts on from the issuer: `visit` at attempt 2 schedules a handler at attempt 3;
-- a handler that is the caught step itself - `this.scan(x).catch(this.scan)` - is attempt 1; its own failure is not caught, so it runs once more at most;
+- a handler that is the issuing step - `.catch(this.visit)` inside `visit` - counts on from the issuer: `visit` at retry 2 schedules a handler at retry 3;
+- a handler that is the caught step itself - `this.scan(x).catch(this.scan)` - is retry 1; its own failure is not caught, so it runs once more at most;
 - any other handler, and any other step, is `0`.
 
-An entry past attempt 0 carries `attempt`. Backoff is a [slot](slot.md) with `after` read from `attempt`; a handler running in place of a branch under a slot it holds re-enters that slot, so `max` is not exceeded and nothing deadlocks. A step waiting on a [pending value](steps.md#pending-values) is not re-run: the wait uses no attempt.
+An entry past 0 carries `retry`. Backoff is a [slot](slot.md) with `after` read from `retry`; a handler running in place of a branch under a slot it holds re-enters that slot, so `max` is not exceeded and nothing deadlocks. A step waiting on a [pending value](steps.md#pending-values) is not re-run: the wait counts no retry.
 
 ## Not caught
 
@@ -50,4 +50,4 @@ An entry past attempt 0 carries `attempt`. Backoff is a [slot](slot.md) with `af
 - A hook's throw, an undo's throw, and any failure while the run is stopping or ending.
 - A token returned as an undo ignores its catch.
 
-`back`, `slot` and `end` tokens throw `back() cannot be caught.`; a handler that is not a function throws `catch() takes a step, a function or nothing.` Outside a step, `then.attempt` and `then.caught` throw `attempt must be read inside a step.`
+`back`, `slot` and `end` tokens throw `back() cannot be caught.`; a handler that is not a function throws `catch() takes a step, a function or nothing.` Outside a step, `then.retry` and `then.caught` throw - `retry must be read inside a step.`

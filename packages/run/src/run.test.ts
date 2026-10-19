@@ -2513,7 +2513,6 @@ describe('wait', () => {
     const test = Test.new();
 
     expect('wait' in test.then).toBe(false);
-    expect('retry' in test.then).toBe(false);
   });
 });
 
@@ -3389,7 +3388,7 @@ describe('catch', () => {
       }
 
       protected async fallback(site: string) {
-        seen(site, this.then.caught, this.then.attempt);
+        seen(site, this.then.caught, this.then.retry);
       }
 
       protected async after1() {
@@ -3405,8 +3404,8 @@ describe('catch', () => {
     expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'scan#1', 'fallback#1', 'after1#1']);
   });
 
-  it('will count attempts of a step re-run from its own catch', async () => {
-    const attempts: number[] = [];
+  it('will count retries of a step re-run from its own catch', async () => {
+    const retries: number[] = [];
 
     class Test extends Job {
       async next() {
@@ -3414,9 +3413,9 @@ describe('catch', () => {
       }
 
       protected async visit(site: string) {
-        attempts.push(this.then.attempt);
+        retries.push(this.then.retry);
 
-        if (this.then.attempt == 2) throw new Error('give up');
+        if (this.then.retry == 2) throw new Error('give up');
 
         this.scan(site).catch(this.visit);
       }
@@ -3429,8 +3428,8 @@ describe('catch', () => {
     const test = Test.new();
 
     await test.next();
-    expect(attempts).toEqual([0, 1, 2]);
-    expect(test.then.record.map(({ id, attempt, error }) => [id, attempt, (error as Error)?.message])).toEqual([
+    expect(retries).toEqual([0, 1, 2]);
+    expect(test.then.record.map(({ id, retry, error }) => [id, retry, (error as Error)?.message])).toEqual([
       ['next#1', undefined, undefined],
       ['visit#1', undefined, undefined],
       ['scan#1', undefined, 'a is down'],
@@ -3441,7 +3440,7 @@ describe('catch', () => {
   });
 
   it('will count a step caught by itself as a first repeat', async () => {
-    const attempts: number[] = [];
+    const retries: number[] = [];
 
     class Test extends Job {
       async next() {
@@ -3449,7 +3448,7 @@ describe('catch', () => {
       }
 
       protected async scan() {
-        attempts.push(this.then.attempt);
+        retries.push(this.then.retry);
         throw new Error('down');
       }
     }
@@ -3457,7 +3456,7 @@ describe('catch', () => {
     const test = Test.new();
 
     await expect(test.next()).rejects.toThrow('down');
-    expect(attempts).toEqual([0, 1]);
+    expect(retries).toEqual([0, 1]);
   });
 
   it('will back off a retry with a slot', async () => {
@@ -3467,8 +3466,8 @@ describe('catch', () => {
 
     class Test extends Job {
       async next() {
-        this.then.slot({ after: 100 * this.then.attempt });
-        this.scan().catch(this.then.attempt < 2 ? this.next : undefined);
+        this.then.slot({ after: 100 * this.then.retry });
+        this.scan().catch(this.then.retry < 2 ? this.next : undefined);
       }
 
       protected async scan() {
@@ -3711,12 +3710,12 @@ describe('catch', () => {
     await expect(Test.new().next()).rejects.toThrow('catch() takes a step, a function or nothing.');
   });
 
-  it('will throw attempt and caught outside a step', () => {
+  it('will throw retry and caught outside a step', () => {
     class Test extends Job {}
 
     const test = Test.new();
 
-    expect(() => test.then.attempt).toThrow('attempt must be read inside a step.');
+    expect(() => test.then.retry).toThrow('retry must be read inside a step.');
     expect(() => test.then.caught).toThrow('caught must be read inside a step.');
   });
 });
@@ -3874,9 +3873,9 @@ describe('suspense', () => {
     expect(test.then.record).toEqual([]);
   });
 
-  it('will not count a suspended try as an attempt', async () => {
+  it('will not count a suspended try as a retry', async () => {
     const pending = mockPromise();
-    const attempts: number[] = [];
+    const retries: number[] = [];
 
     class Test extends Job {
       async next() {
@@ -3884,10 +3883,10 @@ describe('suspense', () => {
       }
 
       protected async flaky() {
-        attempts.push(this.then.attempt);
+        retries.push(this.then.retry);
 
-        if (attempts.length == 1) throw pending;
-        if (attempts.length == 2) throw new Error('flaky');
+        if (retries.length == 1) throw pending;
+        if (retries.length == 2) throw new Error('flaky');
       }
     }
 
@@ -3898,10 +3897,10 @@ describe('suspense', () => {
     pending.resolve();
 
     await result;
-    expect(attempts).toEqual([0, 0, 1]);
+    expect(retries).toEqual([0, 0, 1]);
     expect(test.then.record.slice(1)).toEqual([
       { id: 'flaky#1', key: 'flaky', args: [], wrote: [], next: [], error: new Error('flaky') },
-      { id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], attempt: 1 }
+      { id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], retry: 1 }
     ]);
   });
 
@@ -3927,7 +3926,7 @@ describe('suspense', () => {
 
     await result;
     expect(tries).toBe(2);
-    expect(test.then.record.slice(1).map(({ attempt, error }) => [attempt, error])).toEqual([
+    expect(test.then.record.slice(1).map(({ retry, error }) => [retry, error])).toEqual([
       [undefined, new Error('gone')],
       [1, undefined]
     ]);

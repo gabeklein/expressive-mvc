@@ -44,7 +44,7 @@ interface Branch {
 }
 
 interface Lineage {
-  attempt: number;
+  retry: number;
   caught: unknown;
 }
 
@@ -116,7 +116,7 @@ declare namespace Runner {
     /** Id of the wait this step answered. */
     wake?: string;
     /** How many times the step was re-run from its own `.catch`, when past the first. */
-    attempt?: number;
+    retry?: number;
     /** What the step threw - a caught failure, or one which kept its writes. */
     error?: unknown;
     /** Collections changed in a way no restore can undo - the unwind stops here. */
@@ -268,7 +268,7 @@ declare namespace Runner {
      */
     readonly signal: AbortSignal;
     /** Inside a step: 0, or one more than the step it re-runs from that step's own `.catch`. */
-    readonly attempt: number;
+    readonly retry: number;
     /** Inside a `.catch` handler: what the caught branch threw; else `undefined`. */
     readonly caught: unknown;
 
@@ -338,7 +338,7 @@ function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<
     back: { value: () => outside('back') },
     slot: { value: () => outside('slot') },
     signal: { get: () => outside('signal', 'read') },
-    attempt: { get: () => outside('attempt', 'read') },
+    retry: { get: () => outside('retry', 'read') },
     caught: { get: () => outside('caught', 'read') },
     [Symbol.iterator]: {
       value(this: Runner.Controller) {
@@ -721,10 +721,10 @@ class Run extends Model {
     const { key, fn } = rescue;
     const { cause } = branch.failed;
     const node = this.node(key || 'then', key ? item.args : []);
-    const repeats = key == item.key ? 0 : key == from.key ? from._attempt : -1;
+    const repeats = key == item.key ? 0 : key == from.key ? from._retry : -1;
 
     this._parent.set(node.id, this._parent.get(item.id)!);
-    this._lineage.set(node.id, { attempt: repeats + 1, caught: cause });
+    this._lineage.set(node.id, { retry: repeats + 1, caught: cause });
 
     if (!key) {
       this._inline.set(node.id, fn);
@@ -973,7 +973,7 @@ class Run extends Model {
     const inline = this._inline.get(id);
     const lineage = this._lineage.get(id);
     const fn = inline || control._steps.get(key) || (() => {});
-    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), ...lineage && { _attempt: lineage.attempt, _caught: lineage.caught } });
+    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), ...lineage && { _retry: lineage.retry, _caught: lineage.caught } });
     const input = inline ? [lineage ? lineage.caught : frame._abort.signal] : args;
     const hooks = !undo;
     let body = false;
@@ -1032,7 +1032,7 @@ class Run extends Model {
       if (signal.aborted && error === signal.reason) return;
 
       if (body && !fixed && this.caught(error, id))
-        this.record.push({ id, key, args, next: [], wrote: [], error, ...frame._attempt && { attempt: frame._attempt } });
+        this.record.push({ id, key, args, next: [], wrote: [], error, ...frame._retry && { retry: frame._retry } });
       else this.halt('failed', error);
     } finally {
       this.frames.delete(frame);
@@ -1302,7 +1302,7 @@ class Frame extends Model {
   _lost = new Set<string>();
   _wake?: string = undefined;
   _undo?: boolean = undefined;
-  _attempt = 0;
+  _retry = 0;
   _caught?: unknown = undefined;
   _committed?: boolean = undefined;
   _violation?: string = undefined;
@@ -1463,7 +1463,7 @@ class Frame extends Model {
       then: { value: view },
       end: { value: (value?: unknown) => this.issue('end', value === undefined ? [] : [value]) },
       signal: { get: () => this._abort.signal },
-      attempt: { get: () => this._attempt },
+      retry: { get: () => this._retry },
       caught: { get: () => this._caught },
       back: { value: (step?: unknown, reason?: unknown) => this.back(step, reason) },
       slot: { value: (options: Runner.Slot = {}) => this.slot(options) },
@@ -1582,7 +1582,7 @@ class Frame extends Model {
     const entry: Runner.Entry = { ...this.journal(), next: items };
 
     if (_wake) entry.wake = _wake;
-    if (this._attempt) entry.attempt = this._attempt;
+    if (this._retry) entry.retry = this._retry;
 
     if (undo) {
       entry.undo = typeof undo == 'function' ? 'closure' : undo;

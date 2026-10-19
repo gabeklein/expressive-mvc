@@ -1,6 +1,6 @@
 # Examples
 
-Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo, `rewind`, failing forward with `back`; [agent](agent/agent.ts) - a long-lived instance on the light journal: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undo by group and by wait, hooks, `exit`; [crawl](crawl/crawl.ts) - many branches at once: `slot` with a live limit, `.catch` and `attempt`, parallel writes to one `map`; [sync](sync/sync.ts) - `run(this, options)` on a class that cannot extend `Job`: steps from its own class only, a hook as an option. Shipped behavior is documented in [docs/](../docs/README.md).
+Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo, `rewind`, failing forward with `back`; [agent](agent/agent.ts) - a long-lived instance on the light journal: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undo by group and by wait, hooks, `exit`; [crawl](crawl/crawl.ts) - many branches at once: `slot` with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - `run(this, options)` on a class that cannot extend `Job`: steps from its own class only, a hook as an option. Shipped behavior is documented in [docs/](../docs/README.md).
 
 A PR adding a feature extends an example and this table.
 
@@ -71,7 +71,7 @@ A PR adding a feature extends an example and this table.
 | `this.then.slot({ max })` - a group's concurrency, `max` read live | `Crawl.visit`; crawl test `will scan at most limit sites at once, following a limit changed mid-run` |
 | `this.then.slot({ after })` - backoff, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
 | `.catch()` - skip a failing branch | `Crawl.next` (`report`); crawl test `will end even when the report fails` |
-| `.catch(this.step)` - retry by re-running the issuing step, `this.then.attempt` | `Deploy.test`, `Crawl.visit`; deploy test `will retry a flaky test suite with backoff` |
+| `.catch(this.step)` - retry by re-running the issuing step, `this.then.retry` | `Deploy.test`, `Crawl.visit`; deploy test `will retry a flaky test suite with backoff` |
 | `.catch(this.step)` - the caught step itself, once | `Agent.tool`, `Agent.allow`; agent test `will retry a tool, keeping what the tool pushed from outside` |
 | `.catch(this.other)` with `this.then.caught` - a group settling with what succeeded | `Crawl.skip`; crawl test `will skip a site after three retries` |
 

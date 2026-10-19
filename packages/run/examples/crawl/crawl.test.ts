@@ -88,8 +88,8 @@ it('will retry a failing site with backoff, keeping what other sites found', asy
   await vi.advanceTimersByTimeAsync(SECOND);
   expect((await found).map((item) => item.sku)).toEqual(['b-sku', 'a-sku']);
 
-  // the failed scan is journaled with its error; visit's re-run carries attempt 1
-  expect(crawl.then.record.filter((entry) => entry.error || entry.attempt).map((entry) => [entry.id, entry.attempt])).toEqual([
+  // the failed scan is journaled with its error; visit's re-run carries retry 1
+  expect(crawl.then.record.filter((entry) => entry.error || entry.retry).map((entry) => [entry.id, entry.retry])).toEqual([
     ['scan#1', undefined],
     ['visit#3', 1]
   ]);

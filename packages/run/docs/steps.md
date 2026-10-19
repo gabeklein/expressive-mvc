@@ -124,7 +124,7 @@ Inside a step, `this.then`:
 - tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
-Its members, in a step: `then.end(value?)` ([end](#end-joins)), `then.back(step, reason?)` ([undo.md](undo.md#back)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.attempt` and `then.caught` ([catch.md](catch.md)).
+Its members, in a step: `then.end(value?)` ([end](#end-joins)), `then.back(step, reason?)` ([undo.md](undo.md#back)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retry` and `then.caught` ([catch.md](catch.md)).
 
 Every token takes `.catch(handler?)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
 
@@ -136,7 +136,7 @@ Writes are attributed per frame with members in flight: each member's entry list
 
 ## Pending values
 
-A step reading a pending value - an unset `set<T>()`, an async factory, a getter over one - waits for it instead of failing. mvc throws a suspense Promise; the step's try ends there: its writes are restored, its tokens dropped, then it runs again from the top once the Promise resolves. No entry for the suspended try, no hooks refired, no [`attempt`](catch.md#attempt) counted - though token ids it issued stay counted (`report#2` commits). Status stays `running`, `active` names the step.
+A step reading a pending value - an unset `set<T>()`, an async factory, a getter over one - waits for it instead of failing. mvc throws a suspense Promise; the step's try ends there: its writes are restored, its tokens dropped, then it runs again from the top once the Promise resolves. No entry for the suspended try, no hooks refired, no [`retry`](catch.md#retry) counted - though token ids it issued stay counted (`report#2` commits). Status stays `running`, `active` names the step.
 
 ```ts
 class Checkout extends Job {
@@ -231,7 +231,7 @@ Each settled step is one journal entry (`record` on the [runner](runner.md)):
 
 A `back` token is journaled as its own entry - `to`, `reason` ([undo.md](undo.md#back)).
 
-Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `error` - a caught failure ([catch.md](catch.md)), or a failing step that kept its writes; `attempt` - a re-run from its own catch; `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit).
+Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `error` - a caught failure ([catch.md](catch.md)), or a failing step that kept its writes; `retry` - a re-run from its own catch; `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit).
 
 With [`rewind`](undo.md#rewind), an entry also keeps values - `prior` before the step's first write to each field, `patch` as it left them; a collection changed in place in export form ([undo.md](undo.md#collections)):
 

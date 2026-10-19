@@ -18,7 +18,7 @@
 | `slot({ max?, after?, key? })` | in a step: wait for a free slot, then run what follows holding it ([slot.md](slot.md)) |
 | `back(step, reason?)` | in a step: unwind what committed after `step`, then continue ([undo.md](undo.md#back)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
-| `attempt` | in a step: `0`, or how many times it was re-run from its own catch ([catch.md](catch.md#attempt)) |
+| `retry` | in a step: `0`, or how many times it was re-run from its own catch ([catch.md](catch.md#retry)) |
 | `caught` | in a catch handler: the error it handles ([catch.md](catch.md)) |
 | `then(...tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
 | `then(fn)` | in a step: an inline step ([steps.md](steps.md#inline-steps)) |
@@ -27,14 +27,14 @@
 ## Entry
 
 ```ts
-{ id, key, args, next, wrote, undo?, undone?, wake?, attempt?, error?, irreversible?, committed?, halted? }
+{ id, key, args, next, wrote, undo?, undone?, wake?, retry?, error?, irreversible?, committed?, halted? }
 ```
 
 A [`back`](undo.md#back) is an entry of its own: `{ id: 'back#1', key: 'back', args: [], next: [], wrote: [], to, reason? }` - `to` the id of the entry it went back to.
 
 `wrote` names the fields the step wrote, collections changed in place included - no values. With [`rewind`](undo.md#rewind), each entry also carries `prior` and `patch` - values before and after - for the unwind to restore. See [steps.md](steps.md#entry).
 
-`commit`, `back`, `slot`, `signal`, `attempt` and `caught` outside a step throw.
+`commit`, `back`, `slot`, `signal`, `retry` and `caught` outside a step throw.
 
 `status`, `active`, `record`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them. The Runner iterates `record`:
 

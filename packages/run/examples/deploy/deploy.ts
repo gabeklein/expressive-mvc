@@ -55,10 +55,10 @@ export class Deploy extends Job {
 
   protected async test() {
     // a retry waits 1s, then 2s - a slot without max is a plain delay
-    this.then.slot({ after: this.then.attempt * SECOND });
+    this.then.slot({ after: this.then.retry * SECOND });
 
-    // a failed suite runs test again in its place - attempt counts the re-runs - three tries in all
-    this.suite().catch(this.then.attempt < 2 ? this.test : undefined);
+    // a failed suite runs test again in its place - retry counts the re-runs - three tries in all
+    this.suite().catch(this.then.retry < 2 ? this.test : undefined);
   }
 
   protected async suite() {
