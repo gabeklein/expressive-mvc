@@ -2928,6 +2928,137 @@ describe('slot', () => {
     await result;
   });
 
+  it('will follow a max tracked on another Model', async () => {
+    const work = gates('a', 'b', 'c');
+    const started: string[] = [];
+    const reads = vi.fn();
+
+    class Settings extends Model {
+      limit = 1;
+    }
+
+    class Test extends Job {
+      settings = new Settings();
+
+      async next() {
+        this.then(['a', 'b', 'c'], this.visit);
+      }
+
+      protected async visit(site: string) {
+        this.then.slot({ max: ($) => (reads(), $.settings.limit) });
+        this.scan(site);
+      }
+
+      protected async scan(site: string) {
+        started.push(site);
+        await work.get(site);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(started).toEqual(['a']);
+
+    test.settings.limit = 3;
+    await flushMicrotasks();
+    expect(started).toEqual(['a', 'b', 'c']);
+
+    reads.mockClear();
+    test.settings.limit = 4;
+    await flushMicrotasks();
+    expect(reads).not.toHaveBeenCalled();
+
+    for (const gate of work.values()) gate.resolve();
+    await result;
+  });
+
+  it('will stop tracking max once nothing waits', async () => {
+    const work = gates('a', 'b');
+    const reads = vi.fn();
+
+    class Settings extends Model {
+      limit = 1;
+    }
+
+    const settings = Settings.new();
+
+    class Test extends Job {
+      settings = settings;
+
+      async next() {
+        this.then(['a', 'b'], this.visit);
+      }
+
+      protected async visit(site: string) {
+        this.then.slot({
+          max: ($) => {
+            reads(site);
+            return $.settings.limit;
+          }
+        });
+        this.scan(site);
+      }
+
+      protected async scan(site: string) {
+        await work.get(site);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(reads.mock.calls).toEqual([['a'], ['b']]);
+
+    settings.limit = 0.5;
+    await flushMicrotasks();
+    expect(reads.mock.calls).toEqual([['a'], ['b'], ['b']]);
+
+    work.get('a')!.resolve();
+    await flushMicrotasks();
+    reads.mockClear();
+
+    settings.limit = 2;
+    await flushMicrotasks();
+    expect(reads).not.toHaveBeenCalled();
+
+    work.get('b')!.resolve();
+    await result;
+
+    settings.limit = 3;
+    await flushMicrotasks();
+    expect(reads).not.toHaveBeenCalled();
+    expect(test.then.status).toBe('idle');
+  });
+
+  it('will stop tracking max when the run stops', async () => {
+    const reads = vi.fn();
+
+    class Test extends Job {
+      limit = 0;
+
+      async next() {
+        this.then.slot({ max: ($) => (reads(), $.limit) });
+        this.next();
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(reads).toHaveBeenCalledTimes(1);
+
+    test.then.stop();
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+
+    test.limit = 1;
+    await flushMicrotasks();
+    expect(reads).toHaveBeenCalledTimes(1);
+  });
+
   it('will wait after ms before taking a slot', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 

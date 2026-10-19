@@ -23,10 +23,10 @@ export class Crawl extends Job {
   }
 
   protected async visit(site: string) {
-    // at most `limit` sites at once - a function, so a UI raising or lowering it mid-run takes effect
-    // a re-run waits 1s, 2s, then 4s first; it holds the slot of the visit it repeats
+    // at most `limit` sites at once - read through `$`, so a UI raising or lowering it mid-run takes effect
+    // a re-run waits 1s, 2s, then 4s first, then queues behind the sites already waiting
     this.then.slot({
-      max: () => this.limit,
+      max: ($) => $.limit,
       after: this.then.retry && SECOND * 2 ** (this.then.retry - 1)
     });
 

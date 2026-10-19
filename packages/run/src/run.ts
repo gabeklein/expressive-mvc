@@ -141,9 +141,13 @@ declare namespace Runner {
     answers: string[];
   }
 
-  interface Slot {
-    /** Slots held at once - a number, or a function re-read when a slot frees and when the job updates. Default: no limit. */
-    max?: number | (() => number);
+  interface Slot<T = any> {
+    /**
+     * Slots held at once. Default: no limit. A function taking `$` - the job's tracking proxy - is
+     * re-read when anything it read through `$` changes, other Models included; one taking nothing,
+     * when a slot frees and when the job updates.
+     */
+    max?: number | (($: T) => number);
     /** Milliseconds from reaching the slot before it queues. */
     after?: number;
     /** Share the queue: an object across groups and jobs, any other value across this job. Default: the enclosing group's, else the job's. */
@@ -255,7 +259,7 @@ declare namespace Runner {
      * Inside a step: wait at this point in the plan for a free slot in a FIFO queue, `after` ms
      * from reaching it. What this step schedules after it runs holding the slot, until done.
      */
-    slot(options?: Runner.Slot): void;
+    slot(options?: Runner.Slot<T>): void;
     /**
      * Inside a step: unwind every entry committed after `step`'s latest, newest first, discard
      * what they scheduled, then call the `back` hook with `reason`. What this step schedules
@@ -878,8 +882,11 @@ class Run extends Model {
     return new Promise<(() => void) | undefined>((resolve) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
       let quiet: (() => void) | undefined;
+      let limit = 0;
+      let over = false;
 
       const finish = (release?: () => void) => {
+        over = true;
         clearTimeout(timer);
         quiet?.();
         this._pending.delete(id);
@@ -895,7 +902,7 @@ class Run extends Model {
 
       const waiter: Waiter = {
         hold,
-        max: typeof max == 'function' ? max : () => max,
+        max: typeof max != 'function' ? () => max : max.length ? () => limit : (max as () => number),
         grant: () => {
           this._holding.set(release, from.id);
           finish(release);
@@ -905,10 +912,17 @@ class Run extends Model {
       const join = () => {
         if (inside) return finish(() => {});
 
+        if (typeof max == 'function')
+          quiet = max.length
+            ? self.get(($) => {
+                limit = max($);
+                pump(gate);
+
+                return over ? null : undefined;
+              })
+            : listener(self, (key) => void (signal(key) && pump(gate)));
+
         gate.queue.push(waiter);
-
-        if (typeof max == 'function') quiet = listener(self, (key) => void (signal(key) && pump(gate)));
-
         pump(gate);
       };
 
