@@ -29,7 +29,7 @@ then = run(this, {
 
 `before`, `after`, `back` and `exit` may be passed to `run(this, options)` - typed against the instance: a wrong signature fails to compile, `exit`'s `result` is typed by `end`. Raw instance as `this`; same rules as the class hooks. No per-step option hooks.
 
-With both, the class's runs first: `before` → option `before` → `before<Step>` → step → `after<Step>` → `after` → option `after`; `back` → option `back`; `exit` → option `exit`. A throw from `before`/`after` fails the run and skips the rest; `back` and `exit` each run - a throw from either replaces `error`.
+With both, the class's runs first: `before` → option `before` → `before<Step>` → step → `after<Step>` → `after` → option `after`; `back` → option `back`; `exit` → option `exit`. A throw from `before`/`after` fails the run and skips the rest; `back` and `exit` each run when the other throws - a throw from `back` replaces `error`, one from `exit` is [reported](#exit).
 
 ## `back`
 
@@ -39,7 +39,7 @@ protected back(reason: unknown) {
 }
 ```
 
-Runs once after each unwind completes - halted at an irreversible entry or not. After [`this.then.back(step, reason)`](undo.md#back), `reason` is its second argument (else `undefined`) and the run continues; a throw from it fails the run. After a failure or `stop(true)` - not `stop()` - it runs before the run rejects, and `reason` is what the run rejects with: the failure, an undo's throw, or the `'Stopped'` error; a throw from it replaces that. Raw instance as `this`, writes unjournaled, return ignored.
+Runs once after each unwind completes - halted at an irreversible entry or not. After [`this.then.back(step, reason)`](undo.md#back), `reason` is its second argument (else `undefined`) and the run continues; a throw from it fails the run, and that failure's unwind does not call `back` again. After a failure or `stop(true)` - not `stop()` - it runs before the run rejects, and `reason` is what the run rejects with: the failure, an undo's throw, or the `'Stopped'` error; a throw from it replaces that. Raw instance as `this`, writes unjournaled, return ignored.
 
 ## `exit`
 
@@ -54,13 +54,13 @@ Runs once per run, on every terminal outcome - last, after `end`, the unwind and
 ```ts
 type Outcome<R = unknown> =
   | { status: 'done'; result: R }
-  | { status: 'failed'; error: unknown }
+  | { status: 'failed'; error: unknown; stopped?: unknown }
   | { status: 'stopped'; error: unknown };
 ```
 
-`result` is the run's result; `error` is what the run rejects with - the failure, an undo's or `back`'s throw, or the `'Stopped'` error, carrying `stop`'s reason as `cause`. Runs for `stop()` with or without `undo`; not for queued runs dropped by `stop()` - they never started. Raw instance as `this`, writes unjournaled, return ignored.
+`result` is the run's result; `error` is what the run rejects with - the failure, an undo's or `back`'s throw, or the `'Stopped'` error, carrying `stop`'s reason as `cause`. `stopped` - present when `stop(undo, reason)` came while the failure unwound: `reason`, else `undefined` ([undo.md](undo.md#a-returned-wait)). Runs for `stop()` with or without `undo`; not for queued runs dropped by `stop()` - they never started. Raw instance as `this`, writes unjournaled, return ignored.
 
-A throw from it replaces `error`, as `back`'s does: the run rejects with it. On a `done` run, the result is dropped - status `failed`, `error` set, nothing unwound.
+A throw from it does not change the outcome - status, result and rejection stand. It is rethrown uncaught on a microtask, as an unawaited failure is. Class and option `exit` each run when the other throws.
 
 Not `finally` - the instance is a thenable, so that name would read as `Promise.prototype.finally`. On a `Job`, declare it `exit(outcome: Runner.Outcome<R>)` to type `result` - the declaration takes `Runner.Outcome`, so any `R` checks.
 

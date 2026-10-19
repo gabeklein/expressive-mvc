@@ -35,7 +35,7 @@ A PR adding a feature extends an example and this table.
 | inline step returned as a `void`-typed undo | `SubmitOrder.ship` |
 | `_` helper - computes, the step assigns | `Deploy._spread`, `Deploy.canary` |
 | `end` typing the result | `SubmitOrder.end`, `Agent.end`, `Deploy.end` |
-| implicit end - the plan drains, the values dump | `Sync`, sync test `will pull every page and end with its values` |
+| implicit end - the plan drains, the values dump, journaled `implicit: true` | `Sync`, sync test `will pull every page and end with its values` |
 
 ## Undo
 
@@ -68,10 +68,10 @@ A PR adding a feature extends an example and this table.
 
 | feature | where |
 | --- | --- |
-| `this.then.slot({ max })` - a group's concurrency, `max` read live | `Crawl.visit`; crawl test `will scan at most limit sites at once, following a limit changed mid-run` |
+| `this.then.slot({ max })` - a group's concurrency, `max: ($) => $.limit` tracked live | `Crawl.visit`; crawl test `will scan at most limit sites at once, following a limit changed mid-run` |
 | `this.then.slot({ after })` - backoff, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
 | `.catch()` - skip a failing branch | `Crawl.next` (`report`); crawl test `will end even when the report fails` |
-| `.catch(this.step)` - retry by re-running the issuing step, `this.then.retry` | `Deploy.test`, `Crawl.visit`; deploy test `will retry a flaky test suite with backoff` |
+| `.catch(this.step)` - retry by re-running the issuing step, `this.then.retry`; the re-run queues for its slot again | `Deploy.test`, `Crawl.visit`; deploy test `will retry a flaky test suite with backoff` |
 | `.catch(this.step)` - the caught step itself, once | `Agent.tool`, `Agent.allow`; agent test `will retry a tool, keeping what the tool pushed from outside` |
 | `.catch(this.other)` with `this.then.caught` - a group settling with what succeeded | `Crawl.skip`; crawl test `will skip a site after three retries` |
 

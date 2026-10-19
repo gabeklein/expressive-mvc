@@ -68,7 +68,7 @@ protected async pay() {
 - Any answer completes the entry's compensation - `keep` doing nothing included: the unwind continues, restoring the entry's `prior` with [rewind](#rewind).
 - An answer calling [`this.then.commit()`](#commit) declines: the unwind halts at the entry - `halted: true`, its writes kept, nothing before it undone.
 - An answer that throws, or a watcher throwing before an answer, fails the undo as any undo throwing does.
-- `stop()` halts the unwind there: the entry gets `halted: true`, it and every entry before it stay applied; status and `error` stay the failure's.
+- `stop()` halts the unwind there: the entry gets `halted: true`, it and every entry before it stay applied; status and `error` stay the failure's, and the run rejects with it. `stop(undo, reason)` records `reason` on the entry and in `exit`'s outcome - `{ status: 'failed', error, stopped: reason }`; the error is not touched.
 
 ## The unwind
 
@@ -80,7 +80,7 @@ A step that throws, breaks a rule, or returns anything but an undo fails the run
 4. An undo that throws: `undone: 'failed'`, `error` replaced by what it threw, the unwind stops there.
 5. An `irreversible` or `committed` entry stops the unwind: it gets `halted: true` ([Collections](#collections), [Commit](#commit)). So does `stop()` while the unwind is parked on a [returned wait](#a-returned-wait).
 6. `back(reason)` runs with `error`, if declared ([hooks.md](hooks.md#back)); a throw from it replaces `error`.
-7. `exit({ status: 'failed', error })` runs, if declared ([hooks.md](hooks.md#exit)); a throw from it replaces `error`.
+7. `exit({ status: 'failed', error })` runs, if declared ([hooks.md](hooks.md#exit)); a throw from it is reported uncaught, `error` unchanged.
 8. The run rejects with `error`.
 
 ```ts

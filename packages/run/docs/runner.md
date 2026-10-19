@@ -27,10 +27,12 @@
 ## Entry
 
 ```ts
-{ id, key, args, next, wrote, undo?, undone?, wake?, retry?, error?, irreversible?, committed?, halted? }
+{ id, key, args, next, wrote, undo?, undone?, wake?, retry?, error?, irreversible?, committed?, halted?, reason? }
 ```
 
-A [`back`](undo.md#back) is an entry of its own: `{ id: 'back#1', key: 'back', args: [], next: [], wrote: [], to, reason? }` - `to` the id of the entry it went back to.
+A [`back`](undo.md#back) is an entry of its own: `{ id: 'back#1', key: 'back', args: [], next: [], wrote: [], to, reason? }` - `to` the id of the entry it went back to. A halted entry carries `reason` when `stop(undo, reason)` halted a parked unwind there ([undo.md](undo.md#a-returned-wait)).
+
+A run that drains without `end` journals one last: `{ id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }` - every finished run's record ends with `end`.
 
 `wrote` names the fields the step wrote, collections changed in place included - no values. With [`rewind`](undo.md#rewind), each entry also carries `prior` and `patch` - values before and after - for the unwind to restore. See [steps.md](steps.md#entry).
 

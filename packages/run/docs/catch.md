@@ -15,7 +15,7 @@ async next(query: string) {
 }
 
 protected async visit(site: string) {
-  this.then.slot({ max: () => this.limit, after: this.then.retry && 1000 * 2 ** (this.then.retry - 1) });
+  this.then.slot({ max: ($) => $.limit, after: this.then.retry && 1000 * 2 ** (this.then.retry - 1) });
   this.scan(site).catch(this.then.retry < 3 ? this.visit : this.skip);
 }
 
@@ -40,7 +40,7 @@ protected async skip(site: string) {
 - a handler that is the caught step itself - `this.scan(x).catch(this.scan)` - is retry 1; its own failure is not caught, so it runs once more at most;
 - any other handler, and any other step, is `0`.
 
-An entry past 0 carries `retry`. Backoff is a [slot](slot.md) with `after` read from `retry`; a handler running in place of a branch under a slot it holds re-enters that slot, so `max` is not exceeded and nothing deadlocks. A step waiting on a [pending value](steps.md#pending-values) is not re-run: the wait counts no retry.
+An entry past 0 carries `retry`. Backoff is a [slot](slot.md) with `after` read from `retry`. A handler re-running its issuer releases the issuer's slots first - it waits `after`, then queues behind other waiters; any other handler under a held slot re-enters it, so `max` is not exceeded and nothing deadlocks. A step waiting on a [pending value](steps.md#pending-values) is not re-run: the wait counts no retry.
 
 ## Not caught
 
