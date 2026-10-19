@@ -191,12 +191,13 @@ Entry: `committed: true`. Outside a step, `then.commit()` throws `commit must be
 
 ## Collections
 
-A `has` list, `has` pool or `map` read by a step through `this` is captured: its contents as of that read, held while the step is in flight. Mutating it in place - `this.messages.push(x)` - is then part of the step:
+A `has` list, `has` pool or `map` read by a step through `this` comes back wrapped for that step. Its mutators - list `push`, `put`, `pop`, `set`, `clear`; pool `add`, `delete`, `clear`; map `set`, `delete`, `clear` - record an inverse for the step, then forward to the collection. Reads forward untouched. Mutating it in place - `this.messages.push(x)` - is then part of the step:
 
-- The entry's `wrote` lists the field; with [rewind](#rewind), `prior` and `patch` hold it in export form (`collection.get()`). A read without a change records nothing.
-- A change from anywhere while the step is in flight counts - another step's, an outside call's. Parallel steps reading one collection share the earliest capture, and a change is in every such step's entry.
-- Restoring - a failing, aborted or retried step, or a committed one under [rewind](#rewind) - returns it to the capture: a list is refilled in order; pool members the step added are deleted - destroyed when owned; map keys the step added are deleted, changed or removed ones set back.
-- Reads through `this.is` and `_` helpers are not captured.
+- The entry's `wrote` lists the field when the step changed it; a read, or a call changing nothing, records nothing. With [rewind](#rewind), `prior` holds the collection's export (`collection.get()`) at the step's first change, `patch` its export at commit - both whole collections, siblings' changes included.
+- Attribution is per step: parallel steps changing one collection each record their own changes. Restoring a step - failing, aborted or retried, or committed under [rewind](#rewind) - replays its own inverses, newest first; siblings' changes stay, committed or not.
+- An inverse finds what the step left by identity: a pushed or put value is removed at the nearest equal item to where it went; a `set` is put back where its value now is; a popped or cleared value goes back at its old index; a pool member the step added is deleted - destroyed when owned; a map key the step added is deleted, a changed or removed one set back. A value a sibling already removed or replaced is skipped.
+- A change through the wrapper after the step's first token fails the run, as a field write does (`next wrote items after scheduling later.`).
+- Changes not through a step's wrapper are unmanaged - from outside, through `this.is`, in `_` helpers, or through a wrapper kept after its step settled. A kept wrapper hands a change to the step's [inline arrow](steps.md#inline-steps) in flight, as the step's proxy does.
 
 ```ts
 async next(prompt: string) {
@@ -205,18 +206,18 @@ async next(prompt: string) {
 }
 ```
 
-A turn failing mid-step loses its own pushes; with rewind, a failing run leaves `messages` as it was before `next`.
+A turn failing mid-step loses its own pushes; with rewind, a failing run leaves `messages` as it was before `next`, less any outside pushes.
 
 ### Irreversible
 
-Some changes cannot be put back: a pool member removed - by `delete`, `clear` or its own destruction - and a map value that was destroyed when removed or replaced (an owned `Model`). A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`. Detected in both modes - it governs retry and where the unwind stops.
+Some changes cannot be put back: a pool member removed by `delete` or `clear`, and a map value destroyed when removed or replaced (an owned `Model`) - unless the step added it itself. Detected per step, through its wrapper; a member destroyed directly is unmanaged. A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`. Detected in both modes - it governs retry and where the unwind stops.
 
 - The unwind stops at the first irreversible entry, newest first. Entries after it are undone; it and every entry before it stay applied, without `undone`; it gets `halted: true`; `error` stays the original failure. `console.warn` names it once: `<instance> stopped unwinding at drop#1: items cannot be restored.`
 - A failing step that made one keeps its writes - fields included - and is journaled with `error` and `irreversible`, so the unwind halts there and nothing before it is undone.
 - An irreversible step is not retried ([retry.md](retry.md)).
 - A step returning an undo - closure or token - is reversible: the unwind runs its undo, then restores what can be restored.
 
-A map restores through its own `set(key, value)`: a factory map (`map((key) => …)`) passes the old value to its factory, so only keys it added are restored exactly.
+A map restores through its own `set(key, value)`: a factory map (`map((key) => …)`) passes the old value to its factory, so only keys the step added are restored exactly.
 
 ### Plain arrays and objects
 

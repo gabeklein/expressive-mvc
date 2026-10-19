@@ -4602,7 +4602,7 @@ describe('collections', () => {
     expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], ['items']]);
   });
 
-  it('will attribute a change to every parallel step reading the list', async () => {
+  it('will attribute a change only to the step making it', async () => {
     const gate = mockPromise();
 
     class Test extends Model {
@@ -4637,11 +4637,264 @@ describe('collections', () => {
 
     await expect(result).rejects.toThrow('boom');
     expect(test.items.get()).toEqual(['a']);
-    expect(test.then.record.map((entry) => [entry.key, entry.prior, entry.patch])).toEqual([
-      ['next', {}, {}],
-      ['write', { items: ['a'] }, { items: ['a', 'b'] }],
-      ['read', { items: ['a'] }, { items: ['a', 'b'] }]
+    expect(test.then.record.map((entry) => [entry.key, entry.wrote, entry.prior, entry.patch])).toEqual([
+      ['next', [], {}, {}],
+      ['write', ['items'], { items: ['a'] }, { items: ['a', 'b'] }],
+      ['read', [], {}, {}]
     ]);
+  });
+
+  it('will keep a sibling\'s pushes when a parallel step fails', async () => {
+    const gate = mockPromise();
+
+    class Test extends Model {
+      then = run(this);
+      items = has<string>();
+
+      next() {
+        this.then(this.good(), this.bad());
+      }
+
+      protected async good() {
+        this.items.push('good');
+      }
+
+      protected async bad() {
+        this.items.push('bad');
+        await gate;
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(test.items.get()).toEqual(['good', 'bad']);
+
+    gate.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.items.get()).toEqual(['good']);
+  });
+
+  it('will keep a sibling\'s pushes when a parallel step retries', async () => {
+    let tries = 0;
+
+    class Test extends Model {
+      then = run(this);
+      items = has<string>();
+
+      next() {
+        this.then(this.flaky(), this.steady());
+      }
+
+      protected async flaky() {
+        this.then.retry({ attempts: 2 });
+        this.items.push(`flaky ${++tries}`);
+        await Promise.resolve();
+
+        if (tries < 2) throw new Error('flaky');
+      }
+
+      protected async steady() {
+        this.items.push('steady');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.items.get()).toEqual(['steady', 'flaky 2']);
+  });
+
+  it('will undo only its own change around a sibling\'s', async () => {
+    const gate = mockPromise();
+
+    class Test extends Model {
+      then = run(this);
+      items = has(['a', 'b']);
+
+      next() {
+        this.then(this.bad(), this.good());
+      }
+
+      protected async bad() {
+        this.items.push('x', 'y');
+        this.items.set(0, 'z');
+        await gate;
+        throw new Error('boom');
+      }
+
+      protected async good() {
+        await Promise.resolve();
+        this.items.put(0, 'first');
+        this.items.push('last');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    expect(test.items.get()).toEqual(['first', 'z', 'b', 'x', 'y', 'last']);
+
+    gate.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.items.get()).toEqual(['first', 'a', 'b', 'last']);
+  });
+
+  it('will skip an undo whose value a sibling removed', async () => {
+    const gate = mockPromise();
+
+    class Test extends Model {
+      then = run(this);
+      items = has(['a']);
+
+      next() {
+        this.then(this.bad(), this.good());
+      }
+
+      protected async bad() {
+        this.items.push('x');
+        this.items.set(0, 'z');
+        await gate;
+        throw new Error('boom');
+      }
+
+      protected async good() {
+        await Promise.resolve();
+        this.items.clear();
+        this.items.push('kept');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    gate.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.items.get()).toEqual(['kept']);
+  });
+
+  it('will undo the nearest of equal values', async () => {
+    class Test extends Model {
+      then = run(this);
+      items = has(['a', 'b', 'a', 'c', 'a']);
+
+      next() {
+        this.items.put(2, 'a');
+        this.items.clear();
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.items.get()).toEqual(['a', 'b', 'a', 'c', 'a']);
+  });
+
+  it('will record nothing for a list call changing nothing', async () => {
+    class Test extends Model {
+      then = run(this);
+      items = has(['a']);
+
+      next() {
+        this.items.push();
+        this.items.put(0);
+        this.items.set(5, 'x');
+        this.items.set(0, 'a');
+        this.items.pop(3);
+        this.items.pop(0, 1);
+        this.items.pop();
+        this.items.clear();
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.record[0].wrote).toEqual(['items']);
+    expect(test.items.size).toBe(0);
+  });
+
+  it('will fail a collection change after scheduling', async () => {
+    class Test extends Model {
+      then = run(this);
+      items = has(['a']);
+
+      next() {
+        this.later();
+        this.items.push('b');
+      }
+
+      protected async later() {}
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('next wrote items after scheduling later.');
+    expect(test.items.get()).toEqual(['a']);
+  });
+
+  it('will not fail a collection call changing nothing after scheduling', async () => {
+    class Test extends Model {
+      then = run(this);
+      items = has<string>();
+
+      next() {
+        this.later();
+        this.items.pop();
+      }
+
+      protected async later() {}
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.then.status).toBe('idle');
+  });
+
+  it('will leave a change through a settled step\'s collection unmanaged', async () => {
+    let items!: has.List<string>;
+
+    class Test extends Model {
+      then = run(this);
+      list = has<string>();
+
+      next() {
+        items = this.list;
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    items.push('late');
+    expect(test.list.get()).toEqual(['late']);
+    expect(test.then.record[0].wrote).toEqual([]);
+  });
+
+  it('will hand one wrapper per collection to a step', async () => {
+    class Test extends Model {
+      then = run(this);
+      items = has(['a']);
+      same = false;
+
+      next() {
+        this.same = this.items === this.items && this.items.get(0) === 'a' && this.items.size == 1;
+      }
+    }
+
+    const test = Test.new();
+
+    await test.next();
+    expect(test.same).toBe(true);
   });
 
   it('will restore the earliest snapshot of parallel steps', async () => {
@@ -4785,6 +5038,153 @@ describe('collections', () => {
     expect(test.items.size).toBe(0);
     expect(added.get(null)).toBe(true);
   });
+
+  it('will keep a sibling\'s map entries when a parallel step fails', async () => {
+    const gate = mockPromise();
+
+    class Test extends Model {
+      then = run(this);
+      values = map<string, number>([['a', 1], ['b', 2]]);
+
+      next() {
+        this.then(this.bad(), this.good());
+      }
+
+      protected async bad() {
+        this.values.set('a', 2).set('n', 1);
+        this.values.delete('b');
+        await gate;
+        throw new Error('boom');
+      }
+
+      protected async good() {
+        await Promise.resolve();
+        this.values.set('g', 1);
+        this.values.set('n', 5);
+        this.values.set('b', 7);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    gate.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.values.get()).toEqual(new Map([['a', 1], ['n', 5], ['g', 1], ['b', 7]]));
+  });
+
+  it('will restore a cleared map', async () => {
+    class Test extends Model {
+      then = run(this);
+      values = map<string, number>([['a', 1], ['b', 2]]);
+      empty = map<string, number>();
+
+      next() {
+        this.values.clear();
+        this.values.set('c', 3);
+        this.values.set('c', 3);
+        this.values.delete('x');
+        this.empty.clear();
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.values.get()).toEqual(new Map([['a', 1], ['b', 2]]));
+  });
+
+  it('will remove a key it added and replaced', async () => {
+    class Test extends Model {
+      then = run(this);
+      values = map<string, Model>();
+      plain = map<string, number>();
+
+      next() {
+        this.values.set('a', Item.new({ name: 'a' }));
+        this.values.set('a', Item.new({ name: 'b' }));
+        this.values.delete('a');
+        this.values.set('a', Item.new({ name: 'c' }));
+        this.plain.set('x', 1);
+        this.plain.set('x', 2);
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.values.size).toBe(0);
+    expect(test.plain.size).toBe(0);
+    expect(test.then.record).toEqual([]);
+  });
+
+  it('will keep a sibling\'s pool members when a parallel step fails', async () => {
+    const gate = mockPromise();
+    const kept = Item.new({ name: 'kept' });
+
+    class Test extends Model {
+      then = run(this);
+      items = has(Item);
+
+      protected new() {
+        this.items.add(kept);
+      }
+
+      next() {
+        this.then(this.bad(), this.good());
+      }
+
+      protected async bad() {
+        this.items.add({ name: 'bad' });
+        this.items.add(kept);
+        this.items.delete(Item.new());
+        await gate;
+        throw new Error('boom');
+      }
+
+      protected async good() {
+        await Promise.resolve();
+        this.items.add({ name: 'good' });
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    gate.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.items.map((item) => item.name)).toEqual(['kept', 'good']);
+  });
+
+  it('will not be irreversible removing members it added', async () => {
+    class Test extends Model {
+      then = run(this);
+      items = has(Item);
+      empty = has(Item);
+
+      next() {
+        const item = this.items.add({ name: 'a' });
+
+        this.items.delete(item);
+        this.items.add({ name: 'b' });
+        this.items.clear();
+        this.empty.clear();
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.items.size).toBe(0);
+    expect(test.then.record).toEqual([]);
+  });
 });
 
 describe('irreversible', () => {
@@ -4887,12 +5287,14 @@ describe('irreversible', () => {
       protected new() {
         this.items.add({ name: 'a' });
         this.values.set('a');
+        this.values.set('c');
       }
 
       next() {
         this.items.clear();
         this.values.delete('a');
         this.values.set('b');
+        this.values.set('c');
         this.fail();
         return undo;
       }
@@ -4907,7 +5309,7 @@ describe('irreversible', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(undo).toHaveBeenCalledTimes(1);
     expect(test.items.size).toBe(0);
-    expect([...test.values.keys()]).toEqual([]);
+    expect([...test.values.keys()]).toEqual(['c']);
     expect(test.then.record[0]).toMatchObject({ undo: 'closure', undone: true });
     expect(test.then.record[0].irreversible).toBeUndefined();
   });

@@ -2,14 +2,12 @@ import { get, has, map, Model, unbind } from '@expressive/mvc';
 import { event, listener, touch } from '@expressive/mvc/observable';
 
 type Collection = has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>;
+type Change = [out: unknown, changed: boolean, undo?: () => void, lost?: boolean];
+type Mutator = (...args: any[]) => Change;
 
 interface Held {
-  key: string;
-  value: Collection;
-  raw: unknown[] | Map<unknown, unknown>;
-  prior: unknown;
-  readers: Set<Frame>;
-  release(): void;
+  prior: Record<string, unknown>;
+  log: (() => void)[];
 }
 
 interface Ticket {
@@ -523,8 +521,7 @@ class Run extends Model {
   _ticket!: Ticket;
   _counts = new Map<string, number>();
   _undo = new Map<string, Undo>();
-  _held = new Map<string, Map<string, Held>>();
-  _captures = new Map<Collection, Held>();
+  _held = new Map<string, Held>();
   _inline = new Map<string, Function>();
   _owner = new Map<string, Frame>();
   _watchers = new Map<string, Function[]>();
@@ -541,7 +538,6 @@ class Run extends Model {
   _error?: unknown = undefined;
   _stopped?: Error = undefined;
   _warned?: boolean = undefined;
-  _quiet = false;
 
   protected new() {
     const { control } = this;
@@ -806,7 +802,7 @@ class Run extends Model {
     } catch (error) {
       frame._settled = true;
 
-      if (!frame._lost.size && !frame._committed) this.restore(frame._prior, frame.touched());
+      if (!frame._lost.size && !frame._committed) this.restore(frame._prior, frame._log);
       if (undo) throw error;
 
       const { signal } = frame._abort;
@@ -821,12 +817,13 @@ class Run extends Model {
   }
 
   reset(frame: Frame) {
-    this.restore(frame._prior, frame.touched());
-    frame.leave();
+    this.restore(frame._prior, frame._log);
     frame._armed++;
 
     Object.assign(frame, {
-      _held: new Map(),
+      _wrappers: new Map(),
+      _log: [],
+      _before: new Map(),
       _changed: new Set(),
       _items: [],
       _wrote: new Set(),
@@ -970,7 +967,11 @@ class Run extends Model {
           break;
         }
 
-        if (rewind) this.restore(entry.prior!, this._held.get(entry.id)!);
+        if (rewind) {
+          const { prior, log } = this._held.get(entry.id)!;
+
+          this.restore(prior, log);
+        }
         if (undo || rewind) entry.undone = true;
 
         this._spent.add(entry.id);
@@ -1046,38 +1047,11 @@ class Run extends Model {
     return !frame!._committed;
   }
 
-  capture(key: string, value: Collection) {
-    const raw = value instanceof has.List ? value.get(0, value.size) : value instanceof Map ? new Map(value) : [...value];
-    const held = { key, value, raw, prior: value.get(), readers: new Set() } as Held;
-
-    held.release = listener(value, (change) => {
-      if (this._quiet || !signal(change)) return;
-
-      const gone = lost(held, change);
-
-      for (const reader of held.readers) {
-        reader._changed.add(key);
-        if (gone) reader._lost.add(key);
-      }
-    });
-
-    this._captures.set(value, held);
-
-    return held;
-  }
-
-  restore(prior: Record<string, unknown>, held: Map<string, Held>) {
+  restore(prior: Record<string, unknown>, log: (() => void)[]) {
     const self = this.control._self as any;
 
-    for (const key in prior) if (!held.has(key)) self[key] = prior[key];
-
-    this._quiet = true;
-
-    try {
-      for (const each of held.values()) revert(each);
-    } finally {
-      this._quiet = false;
-    }
+    for (const key in prior) self[key] = prior[key];
+    for (const undo of [...log].reverse()) undo();
   }
 }
 
@@ -1095,7 +1069,9 @@ class Frame extends Model {
   _items: Runner.Node[] = [];
   _wrote = new Set<string>();
   _prior: Record<string, unknown> = {};
-  _held = new Map<string, Held>();
+  _wrappers = new Map<Collection, Collection>();
+  _log: (() => void)[] = [];
+  _before = new Map<string, unknown>();
   _changed = new Set<string>();
   _lost = new Set<string>();
   _wake?: string = undefined;
@@ -1124,11 +1100,9 @@ class Frame extends Model {
 
         if (value === _runner) return this.view();
         if (typeof value != 'function') {
-          let fresh = !this._undo && !this._settled && !this._held.has(prop as string) && collection(value);
+          let managed = !this._undo && !this._settled && collection(value);
 
-          if (fresh) this.hold(prop as string, value);
-
-          return value;
+          return managed ? this.wrap(prop as string, value) : value;
         }
 
         return Object.hasOwn(target, prop) ? value : value.bind(target);
@@ -1155,7 +1129,6 @@ class Frame extends Model {
 
     return () => {
       this._abort.abort();
-      this.leave();
       this._left();
     };
   }
@@ -1364,7 +1337,7 @@ class Frame extends Model {
     }
     else if (_lost.size) entry.irreversible = [..._lost];
 
-    if (run.control._rewind) run._held.set(id, this.touched());
+    if (run.control._rewind) run._held.set(id, { prior: this._prior, log: this._log });
     if (this._undo) run._spent.add(id);
 
     run.record.push(entry);
@@ -1373,7 +1346,7 @@ class Frame extends Model {
   }
 
   journal(): Runner.Entry {
-    const { run, id, key, args, _wrote, _prior, _held, _changed, _committed } = this;
+    const { run, id, key, args, _wrote, _prior, _before, _changed, _committed } = this;
     const wrote = [...new Set([..._wrote, ..._changed])];
     const entry: Runner.Entry = { id, key, args, next: [], wrote };
 
@@ -1381,7 +1354,7 @@ class Frame extends Model {
 
     if (run.control._rewind) {
       const values = run.control._self.get() as Record<string, unknown>;
-      const collections = [..._changed].map((key) => [key, _held.get(key)!.prior]);
+      const collections = [..._changed].map((key) => [key, _before.get(key)]);
 
       entry.prior = { ..._prior, ...Object.fromEntries(collections) };
       entry.patch = Object.fromEntries(wrote.map((key) => [key, values[key]]));
@@ -1390,29 +1363,52 @@ class Frame extends Model {
     return entry;
   }
 
-  hold(key: string, value: Collection) {
-    const { run } = this;
-    const held = run._captures.get(value) || run.capture(key, value);
+  wrap(key: string, value: Collection) {
+    let wrapper = this._wrappers.get(value);
 
-    held.readers.add(this);
-    this._held.set(key, held);
+    if (wrapper) return wrapper;
+
+    const ops = mutators(value);
+
+    wrapper = new Proxy(value, {
+      get: (target, prop) => {
+        const op = ops[prop as string];
+
+        if (op)
+          return (...args: unknown[]) => {
+            const out = this.change(key, target, () => op(...args));
+
+            return out === target ? wrapper : out;
+          };
+
+        const got = Reflect.get(target, prop, target);
+
+        return typeof got == 'function' ? got.bind(target) : got;
+      }
+    });
+
+    this._wrappers.set(value, wrapper);
+
+    return wrapper;
   }
 
-  leave() {
-    for (const each of this._held.values()) {
-      each.readers.delete(this);
+  change(key: string, value: Collection, op: () => Change) {
+    const at = this._settled ? this.live() : this;
 
-      if (each.readers.size) continue;
+    if (!at) return op()[0];
 
-      each.release();
-      this.run._captures.delete(each.value);
-    }
-  }
+    if (at.run.control._rewind && !at._before.has(key)) at._before.set(key, value.get());
 
-  touched() {
-    const { _held, _changed } = this;
+    const [out, changed, undo, lost] = op();
 
-    return new Map([..._changed].map((key) => [key, _held.get(key)!]));
+    if (!changed) return out;
+    if (at._items.length) at._violation ||= key;
+    if (undo) at._log.push(undo);
+    if (lost) at._lost.add(key);
+
+    at._changed.add(key);
+
+    return out;
   }
 }
 
@@ -1509,31 +1505,166 @@ function collection(value: unknown): value is Collection {
   return value instanceof has.List || value instanceof has.Pool || value instanceof map.Managed;
 }
 
-function lost({ value, raw }: Held, signal: unknown) {
-  if (value instanceof has.Pool) return (raw as unknown[]).includes(signal) && !value.has(signal);
-  if (value instanceof Map) return dead((raw as Map<unknown, unknown>).get(signal));
-
-  return false;
-}
-
 function dead(value: unknown) {
   return value instanceof Model && value.get(null);
 }
 
-function revert({ value, raw }: Held) {
-  if (value instanceof has.List) {
-    value.pop(0, value.size);
-    value.push(...(raw as unknown[]));
-  }
-  else if (value instanceof has.Pool) {
-    for (const member of [...value]) if (!(raw as unknown[]).includes(member)) value.delete(member);
-  }
-  else {
-    const before = raw as Map<unknown, unknown>;
+function mutators(value: Collection): Record<string, Mutator> {
+  if (value instanceof has.List) return listOps(value);
+  if (value instanceof has.Pool) return poolOps(value);
 
-    for (const key of [...value.keys()]) if (!before.has(key)) value.delete(key);
-    for (const [key, item] of before) if (value.get(key) !== item && !dead(item)) value.set(key, item);
-  }
+  return mapOps(value);
+}
+
+function listOps(list: has.List<unknown>): Record<string, Mutator> {
+  const at = (index: number, size: number) => (index < 0 ? Math.max(size + index, 0) : Math.min(index, size));
+
+  const unput = (start: number, values: unknown[]) => () => {
+    for (let i = values.length - 1; i >= 0; i--) {
+      const found = near(list, values[i], start + i);
+
+      if (found >= 0) list.pop(found);
+    }
+  };
+
+  return {
+    push: (...values: unknown[]) => {
+      const start = list.size;
+
+      return [list.push(...values), values.length > 0, unput(start, values)];
+    },
+    put: (index: number, ...values: unknown[]) => {
+      const start = at(index, list.size);
+
+      list.put(index, ...values);
+
+      return [undefined, values.length > 0, unput(start, values)];
+    },
+    pop: (index = -1, count?: number) => {
+      const before = list.get(0, list.size);
+      const start = at(index, before.length);
+      const removed = before.slice(start, start + (count ?? 1));
+      const out = count === undefined ? list.pop(index) : list.pop(index, count);
+
+      return [out, removed.length > 0, () => list.put(start, ...removed)];
+    },
+    set: (index: number, value: unknown) => {
+      const before = list.get(0, list.size);
+      const start = index < 0 ? before.length + index : index;
+      const prior = before[start];
+
+      list.set(index, value);
+
+      const restore = () => {
+        const found = near(list, value, start);
+
+        if (found >= 0) list.set(found, prior);
+      };
+
+      return [undefined, start >= 0 && start < before.length && prior !== value, restore];
+    },
+    clear: () => {
+      const removed = list.get(0, list.size);
+
+      list.clear();
+
+      return [undefined, removed.length > 0, () => list.put(0, ...removed)];
+    }
+  };
+}
+
+function poolOps(pool: has.Pool<unknown>): Record<string, Mutator> {
+  const added = new Set<unknown>();
+
+  const lost = (members: unknown[]) => members.filter((member) => !added.delete(member)).length > 0;
+
+  return {
+    add: (...args: unknown[]) => {
+      const size = pool.size;
+      const made = pool.add(...args);
+      const fresh = pool.size > size;
+
+      if (fresh) added.add(made);
+
+      return [made, fresh, () => pool.delete(made)];
+    },
+    delete: (member: unknown) => {
+      const had = pool.delete(member);
+
+      return [had, had, undefined, had && lost([member])];
+    },
+    clear: () => {
+      const members = [...pool];
+
+      pool.clear();
+
+      return [undefined, members.length > 0, undefined, lost(members)];
+    }
+  };
+}
+
+function mapOps(map: map.Managed<unknown, unknown>): Record<string, Mutator> {
+  const added = new Set<unknown>();
+
+  const removed = (entries: [unknown, unknown][]): Change => {
+    const kept = entries.filter(([, value]) => !dead(value));
+    const lost = entries.some(([key, value]) => dead(value) && !added.has(key));
+
+    const restore = () => {
+      for (const [key, value] of kept) if (!map.has(key)) map.set(key, value);
+    };
+
+    return [undefined, entries.length > 0, restore, lost];
+  };
+
+  return {
+    set: (key: unknown, ...rest: unknown[]) => {
+      const had = map.has(key);
+      const prior = map.get(key);
+      const own = !had || added.has(key);
+
+      map.set(key, ...rest);
+
+      const value = map.get(key);
+      const gone = had && dead(prior);
+
+      const restore = () => {
+        if (map.get(key) !== value) return;
+        if (had && !gone) map.set(key, prior);
+        else if (own) map.delete(key);
+      };
+
+      added.add(key);
+
+      return [map, !had || value !== prior, restore, gone && !own];
+    },
+    delete: (key: unknown) => {
+      const entry: [unknown, unknown] = [key, map.get(key)];
+      const had = map.delete(key);
+      const change = removed(had ? [entry] : []);
+
+      change[0] = had;
+
+      return change;
+    },
+    clear: () => {
+      const entries = [...map.entries()];
+
+      map.clear();
+
+      return removed(entries);
+    }
+  };
+}
+
+function near(list: has.List<unknown>, value: unknown, at: number) {
+  let found = -1;
+
+  list.get(0, list.size).forEach((item, index) => {
+    if (item === value && (found < 0 || Math.abs(index - at) < Math.abs(found - at))) found = index;
+  });
+
+  return found;
 }
 
 export { Job, run };

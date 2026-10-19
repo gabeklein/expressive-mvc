@@ -208,7 +208,7 @@ it('will abort the model call when stopped mid-turn', async () => {
   expect(agent.then.record.map((entry) => entry.id)).toEqual(['next#1']);
 });
 
-it('will not repeat what a retried tool wrote', async () => {
+it('will retry a tool, keeping what the tool pushed from outside', async () => {
   const agent = Agent.new({ mode: 'yolo' });
 
   vi.spyOn(tools, 'run').mockImplementationOnce(async (call) => {
@@ -220,6 +220,7 @@ it('will not repeat what a retried tool wrote', async () => {
   expect([...agent.messages].map((message) => message.content)).toEqual([
     'write notes',
     '',
+    'call_1_0: started',
     'call_1_0: write notes ok',
     'done'
   ]);

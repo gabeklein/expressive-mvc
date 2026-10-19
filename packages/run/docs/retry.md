@@ -16,6 +16,6 @@ Only throws from the step body retry: a broken rule - write after scheduling, la
 
 A step waiting on a [pending value](steps.md#pending-values) is not retrying: the wait uses no attempt.
 
-Before a retry, collections the step changed return to their capture ([undo.md](undo.md#collections)) - a retried step's pushes do not repeat. Hooks run once around all tries, not per try. A run stopped, or ended from outside, during a backoff does not try again.
+Before a retry, the step's own collection changes are undone ([undo.md](undo.md#collections)) - its pushes do not repeat, a sibling's stay. Hooks run once around all tries, not per try. A run stopped, or ended from outside, during a backoff does not try again.
 
 Outside a step, `then.retry()` throws `retry must be called inside a step.`
