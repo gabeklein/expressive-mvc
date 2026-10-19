@@ -3134,10 +3134,12 @@ describe('slot', () => {
     await flushMicrotasks();
     expect(work).not.toHaveBeenCalled();
 
+    const failure = expect(failed).rejects.toThrow('boom');
+
     gate.reject(new Error('boom'));
 
     await waiting;
-    await expect(failed).rejects.toThrow('boom');
+    await failure;
     expect(work.mock.calls).toEqual([['other']]);
   });
 
