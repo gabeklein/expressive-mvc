@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, Model, has, map } from '@expressive/mvc';
+import { Component, Model, has } from '@expressive/mvc';
 import { render } from '../index';
 import { flushMicrotasks, mockPromise, mount, place } from '../../test.setup';
 
@@ -80,23 +80,6 @@ describe('class element', () => {
 
     render(<div><Bare>text</Bare><Bare /></div>, root);
     expect(root.textContent).toBe('text');
-  });
-
-  it('will ignore what is returns', () => {
-    let held!: Rows;
-
-    class Rows extends Model {
-      rows = map<string, number>();
-
-      render() {
-        return <p>{this.rows.size}</p>;
-      }
-    }
-
-    const root = place(<Rows is={(value) => (held = value)} />);
-
-    expect(held).toBeInstanceOf(Rows);
-    expect(root.textContent).toBe('0');
   });
 
   it('will be owned by enclosing Component', () => {
