@@ -127,7 +127,7 @@ declare namespace Runner {
     halted?: true;
     /** A `back` entry: id of the entry it went back to, which stays. */
     to?: string;
-    /** A `back` entry: the reason given to `back`. */
+    /** A `back` entry: the reason given to `back`. A halted entry: the reason given to `stop()` while the unwind was parked here. */
     reason?: unknown;
   }
 
@@ -150,10 +150,10 @@ declare namespace Runner {
     key?: unknown;
   }
 
-  /** How a run ended, given to `exit`. `error` is what the run rejects with. */
+  /** How a run ended, given to `exit`. `error` is what the run rejects with; `stopped`, a `stop()` reason given while a failure unwound. */
   type Outcome<R = unknown> =
     | { status: 'done'; result: R }
-    | { status: 'failed'; error: unknown }
+    | { status: 'failed'; error: unknown; stopped?: unknown }
     | { status: 'stopped'; error: unknown };
 
   interface Options<T extends Model = Model> {
@@ -556,6 +556,9 @@ class Control extends Model {
     for (const ticket of queue) ticket.reject(stopped);
 
     queue.clear();
+
+    if (current._halted == 'failed') current._cut = { reason };
+
     current._stopped = stopped;
     current.release();
     current.halt('stopped', undefined, undo);
@@ -597,6 +600,7 @@ class Run extends Model {
   _stopped?: Error = undefined;
   _warned?: boolean = undefined;
   _backed?: boolean = undefined;
+  _cut?: { reason: unknown } = undefined;
 
   protected new() {
     const { control } = this;
@@ -1134,7 +1138,10 @@ class Run extends Model {
       if (!this._backed) this.fire('back', this.reason());
     }
 
-    this.exit({ status: this._halted!, error: this.reason() });
+    const { _cut: cut } = this;
+    const error = this.reason();
+
+    this.exit(cut ? { status: 'failed', error, stopped: cut.reason } : { status: this._halted!, error });
     this.reject();
   }
 
@@ -1190,6 +1197,9 @@ class Run extends Model {
 
         if (!done) {
           entry.halted = true;
+
+          if (this._cut && this._cut.reason !== undefined) entry.reason = this._cut.reason;
+
           break;
         }
 

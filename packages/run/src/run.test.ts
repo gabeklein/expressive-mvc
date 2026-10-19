@@ -5262,6 +5262,68 @@ describe('undo tokens', () => {
     ]);
   });
 
+  it('will record a stop reason on a parked unwind it halts', async () => {
+    const exit = vi.fn();
+    const error = new Error('boom');
+
+    class Test extends Model {
+      then = run(this, { exit });
+
+      async next() {
+        this.fail();
+
+        return this.then(this.refund);
+      }
+
+      async fail() {
+        throw error;
+      }
+
+      async refund() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    test.then.stop(false, 'user left');
+
+    await expect(result).rejects.toBe(error);
+    expect(error).not.toHaveProperty('cause');
+    expect(test.then.record[0]).toMatchObject({ id: 'next#1', halted: true, reason: 'user left' });
+    expect(exit).toHaveBeenCalledWith({ status: 'failed', error, stopped: 'user left' });
+  });
+
+  it('will mark a parked unwind stopped without a reason', async () => {
+    const exit = vi.fn();
+
+    class Test extends Model {
+      then = run(this, { exit });
+
+      async next() {
+        this.fail();
+
+        return this.then(this.refund);
+      }
+
+      async fail() {
+        throw new Error('boom');
+      }
+
+      async refund() {}
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    test.then.stop();
+
+    await expect(result).rejects.toThrow('boom');
+    expect(test.then.record[0]).not.toHaveProperty('reason');
+    expect(exit.mock.calls[0][0]).toHaveProperty('stopped', undefined);
+  });
+
   it('will answer an unwind wait from a watcher', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout'] });
 
