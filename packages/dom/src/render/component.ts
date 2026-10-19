@@ -51,7 +51,7 @@ function mountOwnedComponent(
   const props = observe(resolved.props);
   const instance = new Type(props);
 
-  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props as Renderable["props"]);
+  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props);
 }
 
 function mountComponent(
@@ -63,7 +63,7 @@ function mountComponent(
   appearance?: Appearance,
   owned = false,
   key?: Key,
-  props = instance.props
+  props: Record<string, any> = instance.props
 ) {
   const fiber = range('component', parent, before, context);
   const childContext = context.push(instance);

@@ -16,9 +16,7 @@ interface Boundary {
   waiting?: Set<Fiber>;
 }
 
-interface Renderable extends Component<any> {
-  mount?(): (() => void) | void;
-}
+type Renderable = Component<any>;
 
 type Placement = Pick<Renderable, 'fallback' | 'catch'>;
 
