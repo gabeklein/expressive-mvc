@@ -584,7 +584,7 @@ class Run extends Model {
   _gates = new Map<string, Gate>();
   _groups = new Set<string>();
   _pending = new Map<string, () => void>();
-  _holding = new Set<() => void>();
+  _holding = new Map<() => void, string>();
   _dropped = new Set<string>();
   _kept = new Set<string>();
   _spent = new Set<string>();
@@ -721,7 +721,8 @@ class Run extends Model {
     const { key, fn } = rescue;
     const { cause } = branch.failed;
     const node = this.node(key || 'then', key ? item.args : []);
-    const repeats = key == item.key ? 0 : key == from.key ? from._retry : -1;
+    const issuer = key != item.key && key == from.key;
+    const repeats = key == item.key ? 0 : issuer ? from._retry : -1;
 
     this._parent.set(node.id, this._parent.get(item.id)!);
     this._lineage.set(node.id, { retry: repeats + 1, caught: cause });
@@ -730,6 +731,8 @@ class Run extends Model {
       this._inline.set(node.id, fn);
       this._owner.set(node.id, from);
     }
+
+    if (issuer) for (const [release, id] of this._holding) if (id == from.id) release();
 
     await this.exec(node, from);
   }
@@ -886,7 +889,7 @@ class Run extends Model {
         hold,
         max: typeof max == 'function' ? max : () => max,
         grant: () => {
-          this._holding.add(release);
+          this._holding.set(release, from.id);
           finish(release);
         }
       };
@@ -964,7 +967,7 @@ class Run extends Model {
     this.waits.clear();
 
     for (const cancel of this._pending.values()) cancel();
-    for (const release of this._holding) release();
+    for (const release of this._holding.keys()) release();
   }
 
   async invoke(node: Runner.Node, wake?: string, undo?: boolean): Promise<Frame | undefined> {

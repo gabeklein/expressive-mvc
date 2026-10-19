@@ -3088,6 +3088,100 @@ describe('slot', () => {
     expect(done.mock.calls).toEqual([['a'], ['b']]);
   });
 
+  it('will queue a retry behind those waiting', async () => {
+    const scanned: string[] = [];
+    let failed = false;
+
+    class Test extends Job {
+      async next() {
+        this.then(['a', 'b', 'c'], this.visit);
+      }
+
+      protected async visit(site: string) {
+        this.then.slot({ max: 1 });
+        this.scan(site).catch(this.visit);
+      }
+
+      protected async scan(site: string) {
+        scanned.push(site);
+        await Promise.resolve();
+
+        if (site == 'a' && !failed) {
+          failed = true;
+          throw new Error('down');
+        }
+      }
+    }
+
+    await Test.new().next();
+    expect(scanned).toEqual(['a', 'b', 'c', 'a']);
+  });
+
+  it('will not hold a slot through a retry\'s backoff', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    const scanned: string[] = [];
+    let failed = false;
+
+    class Test extends Job {
+      async next() {
+        this.then(['a', 'b'], this.visit);
+      }
+
+      protected async visit(site: string) {
+        this.then.slot({ max: 1, after: this.then.retry && 1000 });
+        this.scan(site).catch(this.visit);
+      }
+
+      protected async scan(site: string) {
+        scanned.push(site);
+
+        if (site == 'a' && !failed) {
+          failed = true;
+          throw new Error('down');
+        }
+      }
+    }
+
+    const result = Test.new().next();
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(scanned).toEqual(['a', 'b']);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await result;
+    expect(scanned).toEqual(['a', 'b', 'a']);
+  });
+
+  it('will not deadlock a retry under a slot held above its issuer', async () => {
+    const scanned: string[] = [];
+    let failed = false;
+
+    class Test extends Job {
+      async next() {
+        this.then.slot({ key: 'db', max: 1 });
+        this.visit('a');
+      }
+
+      protected async visit(site: string) {
+        this.then.slot({ key: 'db', max: 1 });
+        this.scan(site).catch(this.visit);
+      }
+
+      protected async scan(site: string) {
+        scanned.push(site);
+
+        if (!failed) {
+          failed = true;
+          throw new Error('down');
+        }
+      }
+    }
+
+    await Test.new().next();
+    expect(scanned).toEqual(['a', 'a']);
+  });
+
   it('will release slots when a run fails', async () => {
     const lock = {};
     const gate = mockPromise();
