@@ -13,7 +13,7 @@ Origin: a spike that harvested candidates from `gabeklein/LFCP` (`app/src/common
 
 ## Status
 
-Caught up to `main` (extends `Model`). `tsc` clean, `tsdown` builds, form's 6 tests pass. Coverage fails the 100% gate - only `form/` has tests. Closing that gate is the first trunk work.
+Caught up to `main` (extends `Model`). `tsc` clean, `tsdown` builds, every module tested, coverage at the 100% gate. Tests run under happy-dom (`suite(true)`) for `overlay`, `sentinel` and `keyboard`.
 
 ## Scope
 
@@ -38,7 +38,8 @@ Caught up to `main` (extends `Model`). `tsc` clean, `tsdown` builds, form's 6 te
 2. **Intrinsics are not the problem.** `Grid` renders only its four slots plus `Fragment` - no host tag manifest needed. Slot-shaped components sidestep #128; it binds on leaf components that emit a tag (router's `Link`, a canonical text/box).
 3. **No portal seam.** `Overlay` has dismissal, escape and cross-instance open count, but `createPortal` has no agnostic equivalent - a host subclass must own render. Blocks Dialog/Popover/Tooltip/Menu.
 4. **`Component.key` is reserved** for collection identity, colliding with a table row-key function. Renamed `rowKey`.
-5. **Set-factory reads `undefined` as suspend**, colliding with LFCP's absence-as-disabled computeds. `Calendar.backMonth`/`nextMonth` return `false` instead; apply the same to any ported computed.
+5. **LFCP's `get(this, fn)` computeds port to getters**, not zero-arg `set()` factories - those run once and are read-only. `Calendar.backMonth`/`nextMonth` return `false` at a bound.
+6. **Generic `Component` subclasses trip `Component.Props` in JSX.** `<Column<Row> />`, or `<Column />` once `CellProps<Row>` has resolved in the same file, fails with TS2615 (circular mapped type over `set`/`props`). Core typing issue in mvc; `grid.test.tsx` types `Column` through a props-only alias.
 
 ## Not supplied by LFCP
 
