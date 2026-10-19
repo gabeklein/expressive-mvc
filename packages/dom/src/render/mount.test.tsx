@@ -46,12 +46,29 @@ describe('mount', () => {
   });
 
   it('will reject unsupported render values and element types', () => {
-    class Bare extends Model {}
     const root = document.createElement('main');
 
     expect(() => render({} as never, root)).toThrow('Cannot render');
     expect(() => render(vnode(Symbol('unknown'), {}), root)).toThrow('Cannot render');
-    expect(() => render(<div>{Bare.new() as never}</div>, root)).toThrow('Cannot render');
     expect(root.textContent).toBe('');
+  });
+
+  it('will throw if a Model class is rendered as an element', () => {
+    class Bare extends Model {}
+
+    // @ts-expect-error a Model is not a JSX element
+    expect(() => render(<Bare />, document.createElement('main'))).toThrow(
+      'Bare is a Model - extend Component to render it, or provide it with <Component for={Bare}>.'
+    );
+  });
+
+  it('will throw if a Model instance is placed inline', () => {
+    class Bare extends Model {}
+    const bare = Bare.new();
+
+    expect(() => render(<div>{bare as never}</div>, document.createElement('main'))).toThrow(
+      'Bare is a Model - extend Component to render it, or provide it with <Component for={Bare}>.'
+    );
+    bare.set(null);
   });
 });

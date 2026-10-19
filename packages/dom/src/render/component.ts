@@ -1,4 +1,4 @@
-import { Component, Context, Model, unbind } from '@expressive/mvc';
+import { Component, Context, unbind } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 
 import { resolve } from '../node/loader';
@@ -9,7 +9,7 @@ import type { Appearance } from '../style/claim';
 import { call, enter } from './adapter';
 import { inserted } from './commits';
 import { makeScope, range } from './fiber';
-import type { Boundary, Fiber, Placement, Renderable } from './fiber';
+import type { Boundary, Fiber, Placement } from './fiber';
 import { latest, track, untrack } from './hot';
 import { complete } from './mount';
 import { attempt, passiveRender } from './render';
@@ -47,17 +47,15 @@ function mountOwnedComponent(
   appearance?: Appearance
 ) {
   const resolved = componentProps(value.type, value.props, appearance);
-  const Type = value.type as new (...args: unknown[]) => Renderable;
+  const Type = value.type as new (props: unknown) => Component;
   const props = observe(resolved.props);
-  const instance: Renderable = new Type(props,
-    Type.prototype instanceof Component ? undefined : () => void props.is?.(instance)
-  );
+  const instance = new Type(props);
 
   return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props);
 }
 
 function mountComponent(
-  instance: Renderable,
+  instance: Component,
   parent: globalThis.Node,
   before: globalThis.Node | null,
   context: Context,
@@ -65,22 +63,19 @@ function mountComponent(
   appearance?: Appearance,
   owned = false,
   key?: Key,
-  props = instance.props
+  props: Record<string, any> = instance.props
 ) {
   const fiber = range('component', parent, before, context);
   const childContext = context.push(instance);
   const element = (owned ? props : {}) as Placement;
-  const fallback = element.fallback !== undefined ? element.fallback : instance.fallback;
+  const { fallback } = instance;
   const ownBoundary: Boundary | undefined = fallback !== undefined && fallback !== false || element.catch || instance.catch
     ? {
         catch: element.catch || instance.catch ? (error) => {
           const handler = owned && (fiber.props as Placement).catch;
           return (handler || instance.catch)!.call(instance, error, instance);
         } : undefined,
-        fallback: () => {
-          const placed = owned ? (fiber.props as Placement).fallback : undefined;
-          return placed !== undefined ? placed : instance.fallback;
-        },
+        fallback: () => instance.fallback,
         owner: fiber,
         parent: inherited
       }
@@ -97,8 +92,7 @@ function mountComponent(
   fiber.appearance = appearance;
   fiber.scope = makeScope(childContext, (passive) => run(fiber, passive));
   fiber.render = () => enter(fiber.scope!, () => {
-    const { render } = fiber.value as Renderable;
-    return render ? unbind(render).call(fiber.value, fiber.props) : fiber.props!.children ?? null;
+    return unbind((fiber.value as Component).render).call(fiber.value, fiber.props);
   });
   probing(fiber);
 
@@ -170,8 +164,7 @@ function patchComponent(fiber: Fiber, value: RenderNode, appearance?: Appearance
   if (isVNode(value) && props !== fiber.props) {
     const instance = fiber.instance!;
     if (passiveRender) fiber.applied = true;
-    if (instance instanceof Component) (instance as any).props = props;
-    else instance.set(merge(fiber.props!, props) as never);
+    (instance as any).props = props;
   }
   fiber.props = props;
   rerun(fiber, () => run(fiber, passiveRender));
@@ -189,14 +182,8 @@ function unmountComponent(fiber: Fiber) {
   if (fiber.owned && !fiber.instance!.get(null)) fiber.instance!.set(null);
 }
 
-function renderable(value: unknown): value is Renderable {
-  return value instanceof Model && typeof (value as Renderable).render == 'function';
-}
-
-function merge(previous: Record<string, any>, next: Record<string, any>) {
-  const output: Record<string, any> = {};
-  for (const key in previous) output[key] = undefined;
-  return { ...output, ...next };
+function renderable(value: unknown): value is Component {
+  return value instanceof Component;
 }
 
 export { mountComponent, mountFunction, mountOwnedComponent, patchComponent, patchFunction, renderable, unmountComponent };
