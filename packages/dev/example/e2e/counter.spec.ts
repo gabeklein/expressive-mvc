@@ -1,5 +1,7 @@
 import { expect, test } from "./fixture";
 
+test.describe.configure({ mode: "serial" });
+
 test("reads a route default's values through its twin, kept current by its calls", async ({ page, open }) => {
   await open("/counter");
   const output = page.locator("output");
