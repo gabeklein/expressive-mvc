@@ -14,7 +14,7 @@ function mountCollection(value: has.List<unknown> | has.Pool<unknown> | map.Mana
   fiber.value = value;
   fiber.boundary = boundary;
   fiber.appearance = appearance;
-  fiber.scope = makeScope('collection', context, (passive) => runCollection(fiber, passive));
+  fiber.scope = makeScope(context, (passive) => runCollection(fiber, passive));
 
   let first = true;
   fiber.release = watch(value, (current) => {
