@@ -546,7 +546,7 @@ describe('inputs', () => {
 
   it.each([
     ["will throw on bad include property", { Thing: { toString: () => 'Foobar' } }, " but got Foobar (as 'Thing')."],
-    ['will throw on bad include property (no alias)', { [0]: { toString: () => 'Thing' } }, ' but got Thing.']
+    ['will throw on bad single include (no alias)', Object.assign(function Thing() {}, { toString: () => 'Thing' }), ' but got Thing.']
   ])('%s', (_, include, message) => {
     // @ts-ignore
     expect(() => new Context(include)).toThrow('Context can only include an instance or class of Model' + message);

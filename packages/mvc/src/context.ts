@@ -307,18 +307,16 @@ function host(state: Model) {
 }
 
 function insert(into: Context, input: Accept) {
-  const accept = typeof input == "function" || input instanceof Model
-    ? { input }
-    : input;
-
+  const single = typeof input == "function" || input instanceof Model;
+  const entries = Object.entries(single ? { input } : input);
   const init: Model[] = [];
   const owns: Model[] = [];
 
-  for (const [K, V] of Object.entries(accept)) {
+  for (const [K, V] of entries) {
     const owned = Model.is(V);
 
     if (!(owned || V instanceof Model)) {
-      const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
+      const as = single || K == String(V) ? V : `${V} (as '${K}')`;
       throw new Error(
         `Context can only include an instance or class of Model but got ${as}.`,
       );
@@ -329,7 +327,7 @@ function insert(into: Context, input: Accept) {
     into.add(state, true);
     init.push(state);
 
-    if (input !== accept) HOST.set(into, state);
+    if (single) HOST.set(into, state);
     if (owned) owns.push(state);
   }
 
