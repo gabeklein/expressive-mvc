@@ -1,6 +1,6 @@
 import { vi, describe, it, expect } from 'vitest';
 import { Context } from '../context';
-import { Model } from '../state';
+import { event, Model } from '../state';
 import { get } from './get';
 import { has } from './has';
 import { set } from './set';
@@ -16,9 +16,12 @@ describe('fetch mode', () => {
       sibling = get(Sibling);
     }
 
-    const context = new Context({ Sibling, Test });
+    const context = new Context(Sibling);
+    const test = new Test();
 
-    const test = context.get(Test);
+    context.add(test, true);
+    event(test);
+
     const sibling = context.get(Sibling);
 
     expect(test.sibling).toBe(sibling);
@@ -191,7 +194,7 @@ describe('fetch mode', () => {
       foo = get(Foo);
     }
 
-    const context = new Context({ Foo, Bar });
+    const context = new Context(Foo).push(Bar);
     const bar = context.get(Bar);
 
     expect(bar.baz.foo).toBeInstanceOf(Foo);
@@ -206,7 +209,12 @@ describe('fetch mode', () => {
     const test = new Test();
     const ambient = new Ambient();
 
-    new Context({ ambient, test });
+    const context = new Context();
+
+    context.add(ambient, true);
+    context.add(test, true);
+    event(ambient);
+    event(test);
 
     expect(test.ambient).toBe(ambient);
     expect(Object.keys(test)).toMatchObject(['foo']);
@@ -248,14 +256,17 @@ describe('fetch mode', () => {
       class A extends Parent {}
       class B extends Parent {}
 
-      const context = new Context({ A, B });
+      const context = new Context(A);
       const a = context.get(A);
-      const b = context.get(B);
+      const b = B.new();
+
+      context.add(b, true);
 
       expect(a.child.peer).toBe(a.peer);
       expect(b.child.peer).toBe(b.peer);
 
       context.pop();
+      b.set(null);
     });
 
     it('will run callback for sibling declared later', () => {
@@ -382,7 +393,7 @@ describe('fetch mode', () => {
         items = has(Item);
       }
 
-      const context = new Context({ Theme, Store });
+      const context = new Context(Theme).push(Store);
       const item = context.get(Store).items.add();
 
       expect(item.theme).toBe(context.get(Theme));
@@ -488,8 +499,9 @@ describe('fetch mode', () => {
         top = new Top();
       }
 
-      const context = new Context({ Top, Root });
-      const provided = context.get(Top);
+      const outer = new Context(Top);
+      const context = outer.push(Root);
+      const provided = outer.get(Top);
       const { top } = context.get(Root);
 
       expect(provided).not.toBe(top);
@@ -699,7 +711,10 @@ describe('fetch mode', () => {
         const child1 = new Child();
         const child2 = new Child();
 
-        new Context(parent).push({ child1, child2 });
+        const context = new Context(parent);
+
+        context.push(child1);
+        context.push(child2);
 
         expect(parent.children).toEqual([child1, child2]);
       });
@@ -1032,7 +1047,7 @@ describe('lifecycle callbacks', () => {
     const remote = new Remote();
     const test = new Test();
 
-    new Context({ remote, test });
+    new Context(remote).push(test);
 
     expect(remoteCallback).toBeCalledTimes(1);
     expect(remoteCallback).toBeCalledWith(remote, test);
@@ -1069,7 +1084,10 @@ describe('lifecycle callbacks', () => {
     const child2 = new Child();
 
     const context = new Context(parent);
-    const context2 = context.push({ child1, child2 });
+    const context2 = context.push();
+
+    context2.push(child1);
+    context2.push(child2);
 
     expect(didAdd).toBeCalledTimes(2);
     expect(parent.children).toEqual([child1, child2]);
@@ -1091,12 +1109,13 @@ describe('lifecycle callbacks', () => {
     const parent = new Parent();
     const context = new Context(parent);
 
-    context.push({ 1: Child, 2: Child });
+    context.push(Child);
+    context.push(Child);
 
     expect(hasChild).toBeCalledTimes(2);
     expect(parent.children.length).toBe(0);
 
-    context.push({ Child });
+    context.push(Child);
 
     await expect(parent).not.toHaveUpdated();
     expect(hasChild).toBeCalledTimes(3);
@@ -1117,7 +1136,7 @@ describe('lifecycle callbacks', () => {
     const remote = new Remote();
     const test = new Test();
 
-    new Context({ remote, test });
+    new Context(remote).push(test);
 
     remote.value = 'bar';
     await remote.set();
@@ -1138,7 +1157,7 @@ describe('lifecycle callbacks', () => {
     const remote = new Remote();
     const test = new Test();
 
-    new Context({ remote, test });
+    new Context(remote).push(test);
 
     expect(cleanup).not.toBeCalled();
 

@@ -6,10 +6,7 @@ const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
 const HOST = new WeakMap<Context, Model>();
 let ROOT: Context;
 
-type Accept<T extends Model = Model> =
-  | T
-  | Model.Type<T>
-  | Record<string | number, T | Model.Type<T>>;
+type Accept<T extends Model = Model> = T | Model.Type<T>;
 
 type Expect<T extends Model = Model> = (
   state: T,
@@ -157,31 +154,22 @@ class Context {
     if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
   }
 
-  private include(inputs: Accept) {
-    const single = typeof inputs == "function" || inputs instanceof Model;
-    const added: Model[] = [];
+  private include(input: Accept) {
+    const owned = Model.is(input);
 
-    for (const [K, V] of Object.entries(single ? { 0: inputs } : inputs)) {
-      const owned = Model.is(V);
+    if (!(owned || input instanceof Model))
+      throw new Error(
+        `Context can only include an instance or class of Model but got ${input}.`,
+      );
 
-      if (!(owned || V instanceof Model)) {
-        const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
-        throw new Error(
-          `Context can only include an instance or class of Model but got ${as}.`,
-        );
-      }
+    const state = owned ? new input() : input.is;
 
-      const state = owned ? new (V as Model.Type)() : V.is;
+    this.add(state, true);
+    HOST.set(this, state);
 
-      this.add(state, true);
-      added.push(state);
+    if (owned) this.cleanup.add(() => event(state, null));
 
-      if (owned) this.cleanup.add(() => event(state, null));
-    }
-
-    if (single) HOST.set(this, added[0]);
-
-    added.forEach((state) => event(state));
+    event(state);
   }
 
   add(I: Model, explicit = false) {
@@ -261,13 +249,15 @@ class Context {
   }
 
   /**
-   * Create a child context, optionally registering one or more Models to it.
+   * Create a child context, optionally registering a Model to it.
    *
-   * @param inputs Model, Model class, or map of Models / Model classes to register.
+   * @param input Model instance to adopt, or Model class to create - and destroy when the context pops.
+   * @param cleanup Called once when the context pops, before its Models are removed.
    */
-  public push(inputs?: Accept) {
+  public push(input?: Accept, cleanup?: () => void) {
     const next = new Context(this);
-    if (inputs) next.include(inputs);
+    if (cleanup) next.cleanup.add(cleanup);
+    if (input) next.include(input);
     return next;
   }
 

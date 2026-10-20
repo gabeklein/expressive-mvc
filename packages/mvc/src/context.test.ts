@@ -434,25 +434,11 @@ describe('context helper', () => {
   });
 });
 
-describe('inputs', () => {
-  it('will register multiple', () => {
-    class Foo extends Model {}
-    class Bar extends Model {}
-
-    const foo = Foo.new();
-    const bar = Bar.new();
-
-    const context = new Context({ foo, bar });
-
-    expect(context.get(Foo)).toBe(foo);
-    expect(context.get(Bar)).toBe(bar);
-  });
-
+describe('push', () => {
   it('will complain if multiple of same type', () => {
-    const context = new Context({
-      e1: Example,
-      e2: Example
-    });
+    const context = new Context(Example);
+
+    context.add(Example.new(), true);
 
     expect(() => context.get(Example)).toThrow(
       `Did find Example in context, but multiple were defined.`
@@ -461,10 +447,9 @@ describe('inputs', () => {
 
   it('will ignore if multiple of same instance', () => {
     const example = Example.new();
-    const context = new Context({
-      e1: example,
-      e2: example
-    });
+    const context = new Context(example);
+
+    context.add(example, true);
 
     expect(context.get(Example)).toBe(example);
   });
@@ -476,8 +461,10 @@ describe('inputs', () => {
     }
 
     const foo = new Foo();
-    const foobar = new Bar();
-    const context = new Context({ foo, Bar: foobar });
+    const foobar = Bar.new();
+    const context = new Context(foo);
+
+    context.add(foobar, true);
 
     expect(context.get(Bar)).toBe(foobar);
     expect(context.get(Foo)).not.toBe(foobar.foo);
@@ -497,7 +484,10 @@ describe('inputs', () => {
       child: Foo | undefined = shared;
     }
 
-    const context = new Context({ ParentA, ParentB });
+    const context = new Context(ParentA);
+    const parentB = ParentB.new();
+
+    context.add(parentB, true);
 
     expect(context.get(Foo)).toBe(shared);
 
@@ -505,7 +495,7 @@ describe('inputs', () => {
 
     expect(context.get(Foo)).toBe(shared);
 
-    context.get(ParentB).child = undefined;
+    parentB.child = undefined;
 
     expect(context.get(Foo, false)).toBeUndefined();
   });
@@ -525,11 +515,12 @@ describe('inputs', () => {
 
     const test2 = Test2.new();
 
-    const context1 = new Context({ Test1 });
-    const context2 = context1.push({ test2, Test3 });
+    const context1 = new Context(Test1);
+    const context2 = context1.push(test2);
+    const context3 = context2.push(Test3);
 
-    const test1 = context2.get(Test1)!;
-    const test3 = context2.get(Test3)!;
+    const test1 = context3.get(Test1)!;
+    const test3 = context3.get(Test3)!;
 
     context2.pop();
 
@@ -538,34 +529,99 @@ describe('inputs', () => {
     expect(test3.destroyed).toBeCalled();
   });
 
-  it('will throw on base Model include', () => {
-    // @ts-ignore
-    expect(() => new Context({ Model })).toThrow('Cannot create base Model.');
+  it('will throw on bad input', () => {
+    // @ts-expect-error
+    expect(() => new Context({ toString: () => 'Thing' })).toThrow(
+      'Context can only include an instance or class of Model but got Thing.'
+    );
   });
 
-  it.each([
-    ["will throw on bad include property", { Thing: { toString: () => 'Foobar' } }, " but got Foobar (as 'Thing')."],
-    ['will throw on bad include property (no alias)', { [0]: { toString: () => 'Thing' } }, ' but got Thing.']
-  ])('%s', (_, include, message) => {
-    // @ts-ignore
-    expect(() => new Context(include)).toThrow('Context can only include an instance or class of Model' + message);
-  });
-
-  it('will set multiple types and cleanup all', () => {
+  it('will not accept a map of inputs', () => {
     class A extends Model {}
-    class B extends Model {}
 
-    const ctx = new Context({ A, B });
-
-    expect(ctx.get(A)).toBeInstanceOf(A);
-    expect(ctx.get(B)).toBeInstanceOf(B);
-
-    ctx.pop();
-
-    expect(ctx.get(A, false)).toBeUndefined();
-    expect(ctx.get(B, false)).toBeUndefined();
+    // @ts-expect-error
+    expect(() => new Context().push({ A })).toThrow();
   });
 
+  it('will run cleanup on pop', () => {
+    const cleanup = vi.fn();
+    const context = new Context().push(undefined, cleanup);
+
+    expect(cleanup).not.toBeCalled();
+
+    context.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will run cleanup when parent pops', () => {
+    const cleanup = vi.fn();
+    const parent = new Context();
+
+    parent.push().push(Example, cleanup);
+    parent.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will run cleanup once', () => {
+    const cleanup = vi.fn();
+    const parent = new Context();
+    const context = parent.push(Example, cleanup);
+
+    context.pop();
+    context.pop();
+    parent.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will run cleanup before removing input', () => {
+    class Test extends Model {
+      destroyed = vi.fn();
+
+      new() {
+        return this.destroyed;
+      }
+    }
+
+    const found = vi.fn();
+    const context = new Context().push(Test, () => {
+      const test = context.get(Test);
+
+      expect(test.destroyed).not.toBeCalled();
+      found(test);
+    });
+
+    const test = context.get(Test);
+
+    context.pop();
+
+    expect(found).toBeCalledWith(test);
+    expect(test.destroyed).toBeCalledTimes(1);
+    expect(context.get(Test, false)).toBeUndefined();
+  });
+
+  it('will not destroy adopted instance on cleanup', () => {
+    const example = Example.new();
+    const cleanup = vi.fn();
+    const context = new Context().push(example, cleanup);
+
+    context.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+    expect(context.get(Example, false)).toBeUndefined();
+    expect(example.get(null)).toBe(false);
+  });
+
+  it('will destroy adopted instance from cleanup', () => {
+    const example = Example.new();
+    const context = new Context().push(example, () => example.set(null));
+
+    context.pop();
+
+    expect(example.get(null)).toBe(true);
+  });
 });
 
 describe('ambiguous implicit entries', () => {
@@ -875,7 +931,7 @@ describe('root global', () => {
     }
 
     const parent = Parent.new();
-    const context = root.push({ parent });
+    const context = root.push(parent);
 
     expect(context.get(Child)).toBe(parent.child);
     expect(context.get(Grandchild)).toBe(parent.child.grandchild);

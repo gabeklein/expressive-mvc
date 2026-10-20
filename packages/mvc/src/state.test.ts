@@ -214,7 +214,7 @@ it('will not re-provide a guest already provided above', () => {
     foo = set(() => this.get(Foo));
   }
 
-  const outer = new Context({ Foo });
+  const outer = new Context(Foo);
   const foo = outer.get(Foo);
   const release = vi.fn();
   const attach = vi.fn(() => release);
@@ -242,7 +242,10 @@ it('will provide a guest when ancestors hold others of its type', () => {
     foo = set(() => foo);
   }
 
-  const outer = new Context({ a: Foo, b: Foo });
+  const outer = new Context(Foo);
+
+  outer.add(Foo.new(), true);
+
   const inner = outer.push(Holder);
 
   expect(() => inner.get(Holder).foo).not.toThrow();
@@ -753,7 +756,7 @@ describe('get method', () => {
       const foo = Foo.new();
       const bar = Bar.new();
 
-      new Context({ foo, bar });
+      new Context(foo).add(bar, true);
 
       expect(foo.get(Bar)).toBe(bar);
     });
@@ -765,7 +768,7 @@ describe('get method', () => {
 
       const foo = Foo.new();
 
-      new Context({ foo, Baz });
+      new Context(Baz).push(foo);
 
       const baz: Baz = foo.get(Baz);
 
@@ -845,7 +848,7 @@ describe('get method', () => {
         other = 0;
       }
 
-      const ctx = new Context({ Auth, Foo });
+      const ctx = new Context(Auth).push(Foo);
       const auth = ctx.get(Auth);
       const effect = vi.fn();
       const release = ctx.get(Foo).get((self) => {
@@ -937,7 +940,11 @@ describe('get method', () => {
       const b = Child.new();
       const child = new Child();
 
-      new Context({ a, b }).push(child);
+      const context = new Context();
+
+      context.add(a, true);
+      context.add(b, true);
+      context.push(child);
 
       expect(child.get(Model, false)).toBeUndefined();
     });
