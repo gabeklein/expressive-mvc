@@ -1,4 +1,6 @@
 import { enqueue, hold, REPORT } from './dispatch';
+import { Observing } from './observing';
+import type { Observed } from './observing';
 
 declare namespace Observer {
   /**
@@ -42,21 +44,12 @@ interface Observer {
   events: Set<Observer.Event>;
 }
 
-interface Observing {
-  callback: Observer.Callback;
-  watching: Set<Observer.Signal>;
-  required?: boolean;
-  release: (() => void)[];
-}
-
 const Observer: unique symbol = Symbol('Observer');
-const Observing: unique symbol = Symbol('Observing');
 
 /** Event every observer treats as watched, to force a refresh. */
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 
 interface Observable { [Observer]?: Observer | null }
-interface Observed { [Observing]?: Observing }
 
 /**
  * Fetch the dispatch bundle attached to an object.
