@@ -1,6 +1,7 @@
 import { listener } from "./observable";
-import { event, Model, uid } from "./state";
+import { event, Model, observed, uid } from "./state";
 
+const STACK: [Context, Model?][] = [];
 const LOOKUP = new WeakMap<Model, Context>();
 const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
 const HOST = new WeakMap<Context, Model>();
@@ -25,9 +26,60 @@ class Context {
     return ROOT ??= new Context();
   }
 
-  /** Get the context for a Model. Adapters may override to provide framework context. */
-  static get(state?: Model): Context {
-    return state && LOOKUP.get(state.is) || Context.root;
+  /** Innermost context set by {@link Context.set}, if any. */
+  static get current(): Context | undefined {
+    return STACK[STACK.length - 1]?.[0];
+  }
+
+  /** Current context - innermost set by {@link Context.set}, otherwise root. Hosts may return their own while rendering. */
+  static get(): Context;
+
+  /** Get the context a Model was added to - root if none. */
+  static get(state: Model): Context;
+
+  /**
+   * Resolve a static `get` of `Type` by running `compute` against the current
+   * context. Within {@link Context.set} for a Model, `from` is that Model and a
+   * returned Model is tracked through it; otherwise hosts may run `compute`
+   * against their own context and track the result.
+   *
+   * @param Type - Class `get` was called on.
+   * @param compute - Resolves the value from a context.
+   * @param required - Whether a host should track the result as `get(true)` does.
+   */
+  static get<R>(
+    Type: Model.Extends,
+    compute: (context: Context, from?: Model) => R,
+    required?: boolean,
+  ): R;
+
+  static get(
+    arg?: Model | Model.Extends,
+    compute?: (context: Context, from?: Model) => unknown,
+  ): unknown {
+    if (arg && typeof arg != "function") return LOOKUP.get(arg.is) || Context.root;
+
+    const [context = Context.root, from] = STACK[STACK.length - 1] || [];
+
+    if (!compute) return context;
+
+    return from ? observed(from, arg, compute(context, from.is)) : compute(context);
+  }
+
+  /**
+   * Run `fn` with `target` as current context - for a Model, its context, with
+   * the Model as origin of any `get` resolved within. Nests.
+   *
+   * @returns Whatever `fn` returns.
+   */
+  static set<R>(target: Model | Context, fn: () => R): R {
+    STACK.push(target instanceof Context ? [target] : [Context.get(target), target]);
+
+    try {
+      return fn();
+    } finally {
+      STACK.pop();
+    }
   }
 
   public id = uid();
@@ -105,7 +157,7 @@ class Context {
     Type: Model.Extends<T>,
     arg: boolean | Expect<T> | undefined,
     downstream: boolean | undefined,
-    skip: Model,
+    skip?: Model,
   ): T | undefined | (() => void);
 
   public get<T extends Model>(

@@ -1,4 +1,4 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, expectTypeOf } from 'vitest';
 import { Context } from '../context';
 import { Model } from '../state';
 import { get } from './get';
@@ -1014,6 +1014,104 @@ describe('fetch mode', () => {
       await expect(parent).toHaveUpdated('owned');
       expect(parent.owned).toBe(parent.child);
     });
+  });
+});
+
+describe('key mode', () => {
+  class Record extends Model {
+    id = 0;
+
+    static get<T extends Record>(this: Model.Extends<T>, id?: T['id'] | false): T {
+      return Context.get(this, (context) => {
+        const found = context.get(this, false);
+        return found?.id === id ? found : undefined;
+      }) as T;
+    }
+  }
+
+  class User extends Record {
+    name = 'user';
+  }
+
+  it('will fetch through override with owner as origin', () => {
+    const lookup = vi.spyOn(User, 'get');
+    const origin = vi.fn();
+
+    class Test extends Model {
+      user = get(User, 5);
+    }
+
+    lookup.mockImplementation(function (this: typeof User, ...args) {
+      origin(Context.current);
+      return Record.get.apply(this, args) as User;
+    });
+
+    const user = User.new({ id: 5 });
+    const context = new Context({ user, Test });
+    const test = context.get(Test);
+    const found = test.user;
+
+    expectTypeOf(found).toEqualTypeOf<User>();
+
+    expect(found).toBe(user);
+    expect(lookup).toBeCalledWith(5);
+    expect(origin).toBeCalledWith(context);
+
+    lookup.mockRestore();
+  });
+
+  it('will pass further arguments', () => {
+    const fetch = vi.fn();
+
+    class Lookup extends Model {
+      key = '';
+      extra = 0;
+
+      static get<T extends Lookup>(
+        this: Model.Extends<T>,
+        key?: T['key'] | false,
+        extra?: T['extra']
+      ): T {
+        return Context.get(this, () => fetch(key, extra));
+      }
+    }
+
+    class Test extends Model {
+      found = get(Lookup, 'key', 1);
+    }
+
+    Test.new();
+
+    expect(fetch).toBeCalledWith('key', 1);
+  });
+
+  it('will keep existing forms', () => {
+    class Child extends Model {}
+
+    class Test extends Model {
+      required = get(Child, true, true);
+      optional = get(Child, true, false);
+      list = get(Child, true);
+      maybe = get(Child, false);
+    }
+
+    const forms = (test: Test) => {
+      expectTypeOf(test.required).toEqualTypeOf<Child>();
+      expectTypeOf(test.optional).toEqualTypeOf<Child | undefined>();
+      expectTypeOf(test.list).toEqualTypeOf<Child[]>();
+      expectTypeOf(test.maybe).toEqualTypeOf<Child | undefined>();
+    };
+
+    expect(forms).toBeTypeOf('function');
+  });
+
+  it('will reject a key of the wrong type', () => {
+    class Test extends Model {
+      // @ts-expect-error - key is a number
+      user = get(User, 'x');
+    }
+
+    expect(Test).toBeDefined();
   });
 });
 
