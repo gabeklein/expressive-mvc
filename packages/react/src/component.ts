@@ -83,9 +83,14 @@ Component.on({
   }
 });
 
-function bootstrap(this: Component, context: Context){
-  context = context.push();
-  context.set(this, () => () => this.set(null));
+function bootstrap(this: Component, parent: Context){
+  const context = parent.push(this);
+  const { pop } = context;
+
+  context.pop = () => {
+    pop.call(context);
+    this.set(null);
+  };
 
   Object.defineProperties(this, {
     context: {
