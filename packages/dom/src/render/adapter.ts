@@ -12,7 +12,7 @@ interface Scope extends Schedulable {
 
 let current: Scope | undefined;
 let collecting: (() => void)[] | undefined;
-let memo: Map<Model, Model>[] | undefined;
+let memo: Map<Model, Model> | undefined;
 
 function enter<T>(scope: Scope, render: () => T): T {
   const parent = current;
@@ -22,7 +22,7 @@ function enter<T>(scope: Scope, render: () => T): T {
 
   current = scope;
   collecting = next;
-  memo = [new Map(), new Map()];
+  memo = new Map();
 
   try {
     return render();
@@ -72,11 +72,10 @@ const forward = Context.get as (...args: unknown[]) => unknown;
 
 Context.get = ((
   arg?: Model | Model.Extends,
-  compute?: (context: Context) => unknown,
-  required?: boolean
+  compute?: (context: Context) => unknown
 ) => {
   if (!current || Context.current || (arg && !compute))
-    return forward(arg, compute, required);
+    return forward(arg, compute);
 
   if (!compute) return current.context;
 
@@ -84,10 +83,9 @@ Context.get = ((
 
   if (!(found instanceof Model)) return found;
 
-  const cache = memo![required ? 1 : 0];
-  let proxy = cache.get(found);
+  let proxy = memo!.get(found);
 
-  if (!proxy) cache.set(found, (proxy = tracked(found, required)));
+  if (!proxy) memo!.set(found, (proxy = tracked(found, false)));
 
   return proxy;
 }) as typeof Context.get;

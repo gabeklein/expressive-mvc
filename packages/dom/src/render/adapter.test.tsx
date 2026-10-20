@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Model, Component, Context } from '@expressive/mvc';
 import { render } from '../index';
 import * as hot from '@expressive/mvc/hot';
+import { observer } from '@expressive/mvc/observable';
 import { flushMicrotasks, mockPromise, mount } from '../../test.setup';
 
 describe('MVC adapter', () => {
@@ -182,6 +183,65 @@ describe('MVC adapter', () => {
     expect(required.is).toBe(source);
 
     release();
+    source.set(null);
+  });
+
+  it('will share one subscription between plain and strict reads', async () => {
+    class Source extends Model {
+      value = 1;
+    }
+
+    const renders = vi.fn();
+    const added: number[] = [];
+
+    function View() {
+      renders();
+      const { listeners } = observer(source)!;
+      const { value } = Source.get();
+      const before = listeners.size;
+      const strict = Source.get(true);
+      added.push(listeners.size - before);
+      return <span>{value}:{strict.value}</span>;
+    }
+
+    const source = Source.new();
+    const root = document.createElement('main');
+    const release = render(<Component for={source}><View /></Component>, root);
+
+    source.value = 2;
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('2:2');
+    expect(renders).toHaveBeenCalledTimes(2);
+    expect(added).toEqual([0, 0]);
+
+    release();
+    source.set(null);
+  });
+
+  it('will keep get(true) strict through an override delegating to super', () => {
+    class Source extends Model {
+      id = 0;
+      pending?: string = undefined;
+
+      static get<T extends Source>(this: Model.Extends<T>, id?: T['id'] | boolean): T {
+        if (typeof id != 'number') return super.get(id as never) as T;
+
+        return Context.get(this, (context) => context.get(this));
+      }
+    }
+
+    function View() {
+      return <span>{Source.get(true).pending}</span>;
+    }
+
+    const source = Source.new();
+
+    expect(() => render(
+      <Component for={source}><View /></Component>,
+      document.createElement('main')
+    )).toThrow(/\.pending is required in this context\./);
+
     source.set(null);
   });
 
