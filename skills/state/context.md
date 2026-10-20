@@ -211,7 +211,7 @@ scene.get(Model, (node) => attach(node), true); // direct members only - a, not 
 ```ts
 Context.get(): Context                       // Context.current ?? Context.root; a dom render returns its scope
 Context.get(state): Context                  // state's home context
-Context.get(Type, compute, required?): R     // resolve a static get - see get.md#overriding
+Context.get(Type, compute): R                // resolve a static get - see get.md#overriding
 Context.set(target, fn): R                   // run fn with target current; returns fn's result
 Context.current: Context | undefined         // innermost set context; readonly
 ```
@@ -226,7 +226,7 @@ const user = Context.set(session, () => User.get(5));
 
 ### Writing a host
 
-A host replaces `Context.get`, keeping the previous function and forwarding to it for a `Context.get(state)`, for everything while `Context.current` is set, and wherever the host is not rendering. Do not call a static `super.get` - it recurses after reassignment. Hosts read `Context.current`, never write it, and never wrap their own scopes in `Context.set`. Installs stack. In render the host runs `compute` against its own context and tracks a returned Model, honoring `required` as `get(true)` does.
+A host replaces `Context.get`, keeping the previous function and forwarding to it for a `Context.get(state)`, for everything while `Context.current` is set, and wherever the host is not rendering. The patch does not call a static `super.get` - it recurses after reassignment; static `get` overrides call `super` normally. Hosts read `Context.current`, never write it, and never wrap their own scopes in `Context.set`. Installs stack. In render the host runs `compute` against its own context and tracks a returned Model, one subscription per instance per render; base `get(true)` makes that tracked result strict.
 
 ## API Surface
 

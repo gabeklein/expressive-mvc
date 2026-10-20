@@ -169,23 +169,28 @@ Context lookup from wherever it is called. Inside a host render (React, dom) the
 class User extends Model {
   id = 0;
 
-  static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | false): T {
+  static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | boolean): T {
+    if (typeof id != 'number') return super.get(id as never) as T;
+
     return Context.get(this, (context) => context.get(Directory).find(id) as T);
   }
 }
 
 User.get(5);             // in render: tracked
+User.get(true);          // base form through super - strict
 session.get(User, 5);    // from session's context
 class Order extends Model {
   buyer = get(User, 5);  // from the owner's context, once ready
 }
 ```
 
-- Call `Context.get(this, compute, required?)` once, unconditionally, synchronously - it resolves context and tracking for every call form ([context.md](context.md#static-context)). `this` is always the class.
+- Handle own keys; delegate base forms with `super.get(arg)` - `get()`, `get(false)` and `get(true)` keep their meaning. `super` from a static `get` is ordinary inheritance. `as never`: a `boolean | undefined` argument matches no single base overload.
+- Each call reaches `Context.get(this, compute)` exactly once, synchronously - directly or through `super.get` - for context and tracking in every call form ([context.md](context.md#static-context)). `this` is always the class.
+- Strictness is base `get(true)`'s, applied after `Context.get` - an own key resolves as `get()` does.
 - `compute(context, from?)` returns the result; `from` is the calling instance for the instance and instruction forms. A returned Model is tracked - by the host in render, through `from` when it is a tracking proxy.
 - A plain `Other.get()` inside `compute` resolves the same way - the instance and instruction forms keep it on the caller's context.
 - Prefer one signature - inference from overloads uses the last.
-- Type a key from `T` (`T['id'] | false`) or accept booleans - a plain `key?: string` fails the static-side check against base `get`. Through `state.get(Type, ...)` and the `get(Type, ...)` instruction, arguments type against the base, not a narrowed override.
+- Type a key from `T` (`T['id'] | boolean`) so `get()`, `get(false)` and `get(true)` stay callable - a plain `key?: string` fails the static-side check against base `get`. Through `state.get(Type, ...)` and the `get(Type, ...)` instruction, arguments type against the base, not a narrowed override.
 
 ## Type Signatures
 
