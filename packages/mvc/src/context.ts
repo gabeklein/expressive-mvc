@@ -39,16 +39,14 @@ class Context {
   >();
   public provide = new Map<Model.Extends, Set<[Model, boolean]> | null>();
 
-  protected inputs: Record<string | number, Model | Model.Extends> = {};
-
-  private cleanup = new Map<string | number | Function, () => void>();
+  private cleanup = new Set<() => void>();
 
   constructor(arg?: Context | Accept) {
     if (arg instanceof Context) {
       this.parent = arg;
       arg.scope.add(this);
     } else if (arg) {
-      this.set(arg);
+      this.include(arg);
     }
   }
 
@@ -159,44 +157,11 @@ class Context {
     if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
   }
 
-  /**
-   * Register one or more Models to this context.
-   *
-   * Context will add or remove Models as needed to keep with provided input.
-   *
-   * @param inputs Model, Model class, or map of Models / Model classes to register.
-   * @param forEach Optional callback to run for each Model registered. Receives
-   *   whether this context created the Model - and so will destroy it - as
-   *   opposed to it having been provided already active. May return a callback
-   *   to run before that entry is dropped.
-   */
-  public set<T extends Model>(
-    inputs: Accept<T>,
-    forEach?: (state: T, owned: boolean) => (() => void) | void,
-  ) {
-    const init = new Set<() => void>();
-    const { cleanup } = this;
-
+  private include(inputs: Accept) {
     const single = typeof inputs == "function" || inputs instanceof Model;
+    const added: Model[] = [];
 
-    if (typeof inputs == "function" || inputs instanceof Model)
-      inputs = { [0]: inputs };
-
-    for (const K of Object.keys({ ...this.inputs, ...inputs })) {
-      const V = inputs[K];
-      const E = this.inputs[K];
-
-      if (E === V) continue;
-
-      if (E) {
-        cleanup.get(K)?.();
-        cleanup.delete(K);
-      }
-
-      if (!V) continue;
-
-      // a class is constructed here - and so destroyed here; an instance is
-      // adopted as-is and outlives this context
+    for (const [K, V] of Object.entries(single ? { 0: inputs } : inputs)) {
       const owned = Model.is(V);
 
       if (!(owned || V instanceof Model)) {
@@ -207,26 +172,16 @@ class Context {
       }
 
       const state = owned ? new (V as Model.Type)() : V.is;
-      const remove = this.add(state, true);
 
-      if (single && this !== ROOT) HOST.set(this, state);
+      this.add(state, true);
+      added.push(state);
 
-      init.add(() => {
-        event(state);
-        const dispose = forEach?.(state as T, owned);
-        cleanup.set(K, () => {
-          if (typeof dispose == "function") dispose();
-          remove();
-          if (owned) event(state, null);
-        });
-      });
+      if (owned) this.cleanup.add(() => event(state, null));
     }
 
-    for (const i of init) i();
+    if (single) HOST.set(this, added[0]);
 
-    this.inputs = inputs;
-
-    return this;
+    added.forEach((state) => event(state));
   }
 
   add(I: Model, explicit = false) {
@@ -300,7 +255,7 @@ class Context {
       flush();
     }
 
-    cleanup.set(remove, remove);
+    cleanup.add(remove);
 
     return remove;
   }
@@ -312,7 +267,7 @@ class Context {
    */
   public push(inputs?: Accept) {
     const next = new Context(this);
-    if (inputs) next.set(inputs);
+    if (inputs) next.include(inputs);
     return next;
   }
 
@@ -322,7 +277,6 @@ class Context {
    * Will also run any cleanup callbacks registered when Models were added.
    */
   public pop() {
-    this.inputs = {};
     this.scope.forEach((x) => x.pop());
     this.scope.clear();
     this.cleanup.forEach((cb) => cb());
