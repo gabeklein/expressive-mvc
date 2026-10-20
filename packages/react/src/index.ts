@@ -8,6 +8,7 @@ import './jsx-runtime';
 import { Runtime } from './adapter';
 import { weak } from './runtime';
 import { ErrorBoundary, dedupe } from './boundary';
+import { idle } from './idle';
 
 // React detects class components by this brand (preact reads `prototype.render`).
 Object.defineProperty(Component.prototype, 'isReactComponent', {
@@ -26,6 +27,7 @@ Object.defineProperty(Component.prototype, '_reactInternals', {
 });
 
 Object.assign(Runtime, {
+  idle: idle(React),
   dedupe,
   ErrorBoundary,
   createElement: React.createElement,

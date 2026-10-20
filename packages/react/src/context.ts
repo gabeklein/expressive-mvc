@@ -28,7 +28,7 @@ Object.defineProperty(Component, 'contextType', { configurable: true, get: Layer
 const _get = Context.get;
 
 Context.get = (state?: Model) => {
-  if (!state)
+  if (!state && !Runtime.idle())
     try {
       return useAmbient();
     } catch { }

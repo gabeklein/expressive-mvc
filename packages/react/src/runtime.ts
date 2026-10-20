@@ -52,6 +52,8 @@ export const Runtime = {} as {
   ): number;
   /** Per-render-attempt lifecycle; absent where render attempts do not stack. */
   dedupe?(from: Component, context: Context): { commit(): void; remove(): void };
+  /** Whether the host is certainly not rendering, so a hook probe would only throw - and may log. */
+  idle(): boolean;
   /** Host error-boundary component, wrapping a Component whose `catch` is set. */
   ErrorBoundary: unknown;
   Suspense: any;
