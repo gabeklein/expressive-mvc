@@ -133,11 +133,11 @@ Context.root.get(Sub); // b - explicit wins
 ```ts
 import { Context } from '@expressive/mvc';
 
-const ctx = new Context({ AppState, UserState });
+const ctx = new Context(AppState);
 const app = ctx.get(AppState);
 
-const child = ctx.push({ PageControl });
-child.pop(); // destroy child context
+const child = ctx.push(PageControl, () => console.log('page closed'));
+child.pop(); // runs cleanup, destroys PageControl
 ```
 
 `get(Type)` walks parents toward root.
@@ -213,7 +213,6 @@ new Context();                         // empty
 new Context(parentContext);            // child of parent
 new Context(StateClass);               // create + register an instance
 new Context(stateInstance);            // register existing instance
-new Context({ a: A, b: B });           // multi-instance
 
 ctx.get(Type);                         // upstream lookup, throws if missing
 ctx.get(Type, false);                  // optional, returns undefined
@@ -221,7 +220,7 @@ ctx.get(Type, callback);               // watch, upstream and downstream
 ctx.get(Type, callback, true);         // downstream only
 ctx.get(Type, callback, false);        // upstream only
 ctx.add(state, explicit?);             // register an instance
-ctx.push(inputs?);                     // child context; owns classes, adopts instances
+ctx.push(input?, cleanup?);            // child context; owns a class, adopts an instance; cleanup runs once on pop
 ctx.pop();                             // destroy this and descendants
 Context.get(state);                    // static: state's home context
 Context.root;                          // global registry
