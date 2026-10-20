@@ -47,7 +47,7 @@ class Context {
       this.parent = arg;
       arg.scope.add(this);
     } else if (arg) {
-      include.call(this, arg);
+      insert(this, arg);
     }
   }
 
@@ -245,7 +245,7 @@ class Context {
     const next = new Context(this);
 
     if (cleanup) CLEANUP.get(next)!.add(cleanup);
-    if (input) include.call(next, input);
+    if (input) insert(next, input);
 
     return next;
   }
@@ -306,7 +306,7 @@ function host(state: Model) {
   }
 }
 
-function include(this: Context, input: Accept) {
+function insert(into: Context, input: Accept) {
   const accept = typeof input == "function" || input instanceof Model
     ? { input }
     : input;
@@ -326,14 +326,14 @@ function include(this: Context, input: Accept) {
 
     const state = owned ? new V() : V.is;
 
-    this.add(state, true);
+    into.add(state, true);
     init.push(state);
 
-    if (input !== accept) HOST.set(this, state);
+    if (input !== accept) HOST.set(into, state);
     if (owned) owns.push(state);
   }
 
-  for (const state of owns) CLEANUP.get(this)!.add(() => event(state, null));
+  for (const state of owns) CLEANUP.get(into)!.add(() => event(state, null));
   for (const state of init) event(state);
 }
 
