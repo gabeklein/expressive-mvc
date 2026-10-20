@@ -169,6 +169,51 @@ describe('Model.get', () => {
     });
   });
 
+  it('will throw if expected value undefined through an override delegating to super', () => {
+    class Test extends Model {
+      id = 0;
+      value?: number = undefined;
+
+      static get<T extends Test>(this: Model.Extends<T>, id?: T['id'] | boolean): T {
+        if (typeof id != 'number') return super.get(id as never) as T;
+
+        return Context.get(this, (context) => context.get(this));
+      }
+    }
+
+    renderWith(Test, () => {
+      expect(Test.get(false)?.value).toBeUndefined();
+      expect(() => {
+        void Test.get(true).value;
+      }).toThrow(/[\w-]+\.value is required in this context\./);
+    });
+  });
+
+  it('will render once per change for plain and strict reads', async () => {
+    class Test extends Model {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const didRender = vi.fn();
+
+    function View() {
+      didRender();
+      const { value } = Test.get();
+      const strict = Test.get(true);
+      return <>{value}:{strict.value}</>;
+    }
+
+    const view = render(<Component for={test}><View /></Component>);
+
+    await act(async () => {
+      test.value = 2;
+    });
+
+    expect(view.container.textContent).toBe('2:2');
+    expect(didRender).toBeCalledTimes(2);
+  });
+
   describe('over destroyed instance', () => {
     class Test extends Model {
       value = 'foo';

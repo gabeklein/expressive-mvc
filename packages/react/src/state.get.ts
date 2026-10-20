@@ -7,10 +7,9 @@ const forward = Context.get as (...args: unknown[]) => unknown;
 
 Context.get = ((
   arg?: Model | Model.Extends,
-  compute?: (context: Context) => unknown,
-  required?: boolean
+  compute?: (context: Context) => unknown
 ) => {
-  if (Context.current || (arg && !compute)) return forward(arg, compute, required);
+  if (Context.current || (arg && !compute)) return forward(arg, compute);
 
   if (!compute)
     try {
@@ -19,14 +18,10 @@ Context.get = ((
       return forward();
     }
 
-  return use(arg as Model.Extends, compute, required);
+  return use(arg as Model.Extends, compute);
 }) as typeof Context.get;
 
-function use(
-  Type: Model.Extends,
-  compute: (context: Context) => unknown,
-  required?: boolean
-) {
+function use(Type: Model.Extends, compute: (context: Context) => unknown) {
   const [tick, next] = Runtime.useState(0);
   const claim = useSettle(tick);
   const local = useAmbient();
@@ -95,7 +90,7 @@ function use(
             if (update === true) force();
           };
         },
-        required,
+        false,
         Runtime.startTransition
       );
     }
