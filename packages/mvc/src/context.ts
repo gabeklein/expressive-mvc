@@ -160,7 +160,6 @@ class Context {
 
   add(I: Model, explicit = false) {
     const { provide } = this;
-    const cleanup = CLEANUP.get(this)!;
     const root = this === Context.root;
     const TT: Model.Extends[] = [];
 
@@ -216,6 +215,7 @@ class Context {
       onDone.clear();
     }
 
+    const cleanup = CLEANUP.get(this)!;
     const held = Array.from(HELD.get(I) || [], ([child, added]) => {
       const done = this.add(child);
       added.add(done);
@@ -331,7 +331,9 @@ function insert(into: Context, input: Accept) {
     if (owned) owns.push(state);
   }
 
-  for (const state of owns) CLEANUP.get(into)!.add(() => event(state, null));
+  const cleanup = CLEANUP.get(into)!;
+
+  for (const state of owns) cleanup.add(() => event(state, null));
   for (const state of init) event(state);
 }
 
