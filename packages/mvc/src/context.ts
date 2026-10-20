@@ -307,15 +307,14 @@ function host(state: Model) {
 }
 
 function include(this: Context, input: Accept) {
-  const single = typeof input == "function" || input instanceof Model;
-  const inputs: Record<string, Model | Model.Type> = single
-    ? { 0: input }
+  const accept = typeof input == "function" || input instanceof Model
+    ? { input }
     : input;
+
   const init: Model[] = [];
   const owns: Model[] = [];
 
-  for (const K of Object.keys(inputs)) {
-    const V = inputs[K];
+  for (const [K, V] of Object.entries(accept)) {
     const owned = Model.is(V);
 
     if (!(owned || V instanceof Model)) {
@@ -330,7 +329,7 @@ function include(this: Context, input: Accept) {
     this.add(state, true);
     init.push(state);
 
-    if (single) HOST.set(this, state);
+    if (input !== accept) HOST.set(this, state);
     if (owned) owns.push(state);
   }
 
