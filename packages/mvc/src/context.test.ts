@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, expectTypeOf } from 'vitest';
 import { Context } from './context';
 import { Model } from './state';
+import { get } from './field/get';
 
 class Example extends Model {}
 class Example2 extends Example {}
@@ -322,14 +323,13 @@ describe('has method', () => {
 
   it('will notify has-subscriber for state created before context', () => {
     const parent = new Context();
-    const child = parent.push();
     const cb = vi.fn();
 
     parent.get(DownstreamModel, cb, true);
 
     const state = DownstreamModel.new();
 
-    child.set(state);
+    parent.push(state);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(state, true);
@@ -348,7 +348,7 @@ describe('get callback (upstream subscription)', () => {
 
     expect(cb).not.toBeCalled();
 
-    parent.set(Upstream);
+    parent.add(Upstream.new(), true);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(expect.any(Upstream), false);
@@ -361,7 +361,7 @@ describe('get callback (upstream subscription)', () => {
 
     const cancel = child.get(Upstream, cb);
     cancel();
-    parent.set(Upstream);
+    parent.add(Upstream.new(), true);
 
     expect(cb).not.toBeCalled();
   });
@@ -373,7 +373,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn(() => cleanup);
 
     child.get(Upstream, cb);
-    parent.set(Upstream);
+    parent.add(Upstream.new(), true);
 
     expect(cb).toBeCalledTimes(1);
 
@@ -391,7 +391,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn();
 
     child.get(Upstream, cb);
-    parent.set(shared);
+    parent.add(shared, true);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(shared, false);
@@ -579,7 +579,7 @@ describe('static set', () => {
   });
 });
 
-describe('set method', () => {
+describe('inputs', () => {
   it('will register multiple', () => {
     class Foo extends Model {}
     class Bar extends Model {}
@@ -622,9 +622,7 @@ describe('set method', () => {
 
     const foo = new Foo();
     const foobar = new Bar();
-    const context = new Context();
-
-    context.set({ foo, Bar: foobar });
+    const context = new Context({ foo, Bar: foobar });
 
     expect(context.get(Bar)).toBe(foobar);
     expect(context.get(Foo)).not.toBe(foobar.foo);
@@ -686,145 +684,16 @@ describe('set method', () => {
   });
 
   it('will throw on base Model include', () => {
-    const context = new Context();
-
     // @ts-ignore
-    expect(() => context.set({ Model })).toThrow('Cannot create base Model.');
+    expect(() => new Context({ Model })).toThrow('Cannot create base Model.');
   });
 
   it.each([
     ["will throw on bad include property", { Thing: { toString: () => 'Foobar' } }, " but got Foobar (as 'Thing')."],
-    ['will throw on bad include property (no alias)', { [0]: { toString: () => 'Thing' } }, ' but got Thing.']
+    ['will throw on bad single include (no alias)', Object.assign(function Thing() {}, { toString: () => 'Thing' }), ' but got Thing.']
   ])('%s', (_, include, message) => {
     // @ts-ignore
-    expect(() => new Context().set(include)).toThrow('Context can only include an instance or class of Model' + message);
-  });
-
-  it('will remove implicit children when parent removed via set', () => {
-    class Parent extends Model {
-      child = new Example();
-    }
-
-    const context = new Context({ Parent });
-    const { child } = context.get(Parent);
-
-    expect(Context.get(child)).toBe(context);
-
-    context.set({});
-
-    expect(Context.get(child)).toBe(context);
-    expect(context.get(Example, false)).toBeUndefined();
-  });
-
-  it('will remove multiple implicit children when parent is removed', () => {
-    class Parent extends Model {
-      a = new Example();
-      b = new Example2();
-    }
-
-    const context = new Context({ Parent });
-
-    expect(context.get(Example)).toBeNull();
-    expect(context.get(Example2)).toBeInstanceOf(Example2);
-
-    context.set({});
-
-    expect(context.get(Example, false)).toBeUndefined();
-    expect(context.get(Example2, false)).toBeUndefined();
-  });
-
-  it('will callback once per unique added', () => {
-    class Foo extends Model {}
-    class Bar extends Model {}
-
-    const foo = Foo.new();
-    const bar = Bar.new();
-    const cb = vi.fn();
-
-    const context = new Context();
-
-    context.set({ foo, bar }, cb);
-
-    expect(cb).toBeCalledWith(foo, false);
-    expect(cb).toBeCalledWith(bar, false);
-    expect(cb).toBeCalledTimes(2);
-
-    context.set({ foo, bar }, cb);
-
-    expect(cb).toBeCalledTimes(2);
-
-    const foo2 = Foo.new();
-
-    context.set({ foo, bar, foo2 }, cb);
-
-    expect(cb).toBeCalledWith(foo2, false);
-    expect(cb).toBeCalledTimes(3);
-  });
-
-  it('will ignore subsequent if callback', () => {
-    class Foo extends Model {}
-
-    const cb = vi.fn();
-    const context = new Context();
-
-    context.set(Foo, cb);
-    context.set(Foo, cb);
-
-    expect(context.get(Foo)).toBeInstanceOf(Foo);
-    expect(cb).toBeCalledTimes(1);
-  });
-
-  it('will remove and delete state of type absent', () => {
-    class Bar extends Model {
-      didDie = vi.fn();
-
-      protected new() {
-        return this.didDie;
-      }
-    }
-
-    const context = new Context({ Bar });
-    const bar = context.get(Bar);
-
-    context.set({});
-
-    expect(bar.didDie).toBeCalled();
-    expect(context.get(Bar, false)).toBeUndefined();
-  });
-
-  it('will replace owned instance when key changes', () => {
-    class Baz extends Model {
-      didDie = vi.fn();
-
-      protected new() {
-        return this.didDie;
-      }
-    }
-
-    class Baz2 extends Model {}
-
-    const context = new Context({ Baz });
-    const baz = context.get(Baz);
-
-    context.set({ Baz: Baz2 });
-
-    expect(baz.didDie).toBeCalled();
-    expect(context.get(Baz, false)).toBeUndefined();
-    expect(context.get(Baz2)).toBeInstanceOf(Baz2);
-  });
-
-  it('will remove non-owned instance without destroying it', () => {
-    class Bar extends Model {}
-
-    const bar = Bar.new();
-    const context = new Context({ bar });
-
-    expect(context.get(Bar)).toBe(bar);
-
-    context.set({});
-
-    expect(context.get(Bar, false)).toBeUndefined();
-    expect(bar.get(null)).toBe(false);
+    expect(() => new Context(include)).toThrow('Context can only include an instance or class of Model' + message);
   });
 
   it('will set multiple types and cleanup all', () => {
@@ -841,83 +710,124 @@ describe('set method', () => {
     expect(ctx.get(A, false)).toBeUndefined();
     expect(ctx.get(B, false)).toBeUndefined();
   });
+});
 
-  it('will call forEach cleanup for each state removed or replaced', () => {
-    class Foo extends Model {}
-    class Bar extends Model {}
-    class Foo2 extends Model {}
+describe('push', () => {
+  it('will run cleanup on pop', () => {
+    const cleanup = vi.fn();
+    const context = new Context().push(undefined, cleanup);
 
-    const didCleanup = vi.fn();
-    const context = new Context();
-
-    context.set({ x: Foo, Bar }, (state) => () => didCleanup(state.constructor.name));
-
-    expect(didCleanup).not.toBeCalled();
-
-    context.set({ x: Foo2 });
-
-    expect(didCleanup.mock.calls).toEqual([['Foo'], ['Bar']]);
-    expect(context.get(Foo, false)).toBeUndefined();
-    expect(context.get(Foo2)).toBeInstanceOf(Foo2);
-  });
-
-  it('will ignore a non-function returned by forEach', () => {
-    class Foo extends Model {}
-
-    const context = new Context();
-
-    context.set(Foo, (state) => (state as any));
-
-    expect(() => context.set({})).not.toThrow();
-  });
-
-  it('will tell forEach whether context owns the state', () => {
-    class Foo extends Model {}
-    class Bar extends Model {}
-
-    const bar = Bar.new();
-    const didCall = vi.fn();
-    const context = new Context();
-
-    context.set({ Foo, bar }, (state, owned) => {
-      didCall(state.constructor.name, owned);
-    });
-
-    expect(didCall).toBeCalledWith('Foo', true);
-    expect(didCall).toBeCalledWith('Bar', false);
+    expect(cleanup).not.toBeCalled();
 
     context.pop();
-
-    expect(context.get(Foo, false)).toBeUndefined();
-    expect(bar.get(null)).toBe(false);
-  });
-
-  it('will call forEach cleanup on pop', () => {
-    class Foo extends Model {}
-
-    const cleanup = vi.fn();
-    const parent = new Context();
-    const child = parent.push();
-
-    child.set(Foo, () => cleanup);
-    child.pop();
 
     expect(cleanup).toBeCalledTimes(1);
   });
 
-  it('will clean up subtype keys on delete', () => {
-    class Base extends Model {}
-    class Child extends Base {}
+  it('will run cleanup when parent pops', () => {
+    const cleanup = vi.fn();
+    const parent = new Context();
 
-    const context = new Context({ Child });
+    parent.push().push(Example, cleanup);
+    parent.pop();
 
-    expect(context.get(Child)).toBeInstanceOf(Child);
-    expect(context.get(Base)).toBeInstanceOf(Child);
+    expect(cleanup).toBeCalledTimes(1);
+  });
 
-    context.set({});
+  it('will run cleanup once', () => {
+    const cleanup = vi.fn();
+    const parent = new Context();
+    const context = parent.push(Example, cleanup);
 
-    expect(context.get(Child, false)).toBeUndefined();
-    expect(context.get(Base, false)).toBeUndefined();
+    context.pop();
+    context.pop();
+    parent.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will run cleanup once for multiple inputs', () => {
+    class A extends Model {}
+    class B extends Model {}
+
+    const cleanup = vi.fn();
+    const context = new Context().push({ A, B }, cleanup);
+
+    context.pop();
+    context.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will run cleanup before removing input', () => {
+    class Test extends Model {
+      destroyed = vi.fn();
+
+      new() {
+        return this.destroyed;
+      }
+    }
+
+    const found = vi.fn();
+    const context = new Context().push(Test, () => {
+      const test = context.get(Test);
+
+      expect(test.destroyed).not.toBeCalled();
+      found(test);
+    });
+
+    const test = context.get(Test);
+
+    context.pop();
+
+    expect(found).toBeCalledWith(test);
+    expect(test.destroyed).toBeCalledTimes(1);
+    expect(context.get(Test, false)).toBeUndefined();
+  });
+
+  it('will not destroy adopted instance on cleanup', () => {
+    const example = Example.new();
+    const cleanup = vi.fn();
+    const context = new Context().push(example, cleanup);
+
+    context.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+    expect(context.get(Example, false)).toBeUndefined();
+    expect(example.get(null)).toBe(false);
+  });
+
+  it('will destroy adopted instance from cleanup', () => {
+    const example = Example.new();
+    const context = new Context().push(example, () => example.set(null));
+
+    context.pop();
+
+    expect(example.get(null)).toBe(true);
+  });
+
+  it('will destroy owned but not adopted inputs', () => {
+    class Owned extends Model {}
+
+    const example = Example.new();
+    const context = new Context().push({ Owned, example });
+    const owned = context.get(Owned);
+
+    context.pop();
+
+    expect(owned.get(null)).toBe(true);
+    expect(example.get(null)).toBe(false);
+  });
+
+  it('will register all inputs before any activates', () => {
+    class Sibling extends Model {}
+    class Test extends Model {
+      sibling = get(Sibling);
+    }
+
+    const context = new Context().push({ Test, Sibling });
+
+    expect(context.get(Test).sibling).toBe(context.get(Sibling));
   });
 });
 
@@ -1012,13 +922,12 @@ describe('add method listener lookup', () => {
 
     const grandparent = new Context();
     const parent = grandparent.push();
-    const child = parent.push();
     const cb = vi.fn();
 
     grandparent.get(Foo, cb, true);
     parent.get(Foo, cb, true);
 
-    child.set(Foo);
+    parent.push(Foo);
 
     expect(cb).toBeCalledTimes(1);
   });
@@ -1032,7 +941,7 @@ describe('add method listener lookup', () => {
 
     child.get(Bar, vi.fn());
 
-    parent.set(Foo);
+    parent.add(Foo.new(), true);
 
     expect(parent.get(Foo)).toBeInstanceOf(Foo);
   });
@@ -1048,7 +957,7 @@ describe('add method listener lookup', () => {
     parent.get(Foo, cb);
     child.get(Foo, cb);
 
-    middle.set(Foo);
+    middle.add(Foo.new(), true);
 
     expect(cb).toBeCalledTimes(1);
   });

@@ -98,8 +98,7 @@ describe('orphans under a host', () => {
     expect(Instance.of(global).claimed).toBe(true);
     expect(Instance.of(resolved).claimed).toBe(true);
 
-    const scoped = new Context(Context.root);
-    scoped.set(Scoped);
+    const scoped = Context.root.push(Scoped);
     await flushMicrotasks();
     expect(orphans().length).toBe(3);
     scoped.pop();
