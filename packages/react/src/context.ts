@@ -1,4 +1,4 @@
-import { Model, Context, Component } from '@expressive/mvc';
+import { Context, Component } from '@expressive/mvc';
 import { Runtime } from './runtime';
 
 let shared: any;
@@ -25,15 +25,4 @@ function createProvider(context: Context, children: any) {
 // Class components consume the active Context through the host's `contextType`
 Object.defineProperty(Component, 'contextType', { configurable: true, get: Layers });
 
-const _get = Context.get;
-
-Context.get = (state?: Model) => {
-  if (!state)
-    try {
-      return useAmbient();
-    } catch { }
-
-  return _get(state);
-};
-
-export { Context, createProvider };
+export { Context, createProvider, useAmbient };

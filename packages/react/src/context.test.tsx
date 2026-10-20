@@ -355,7 +355,7 @@ describe('context', () => {
   });
 
   it('will not select nested instance from outer sibling on server', () => {
-    const Value = () => Foo.get(({ value }) => value);
+    const Value = () => Foo.get().value;
 
     const html = renderToString(
       <Component for={Foo} value="outer">
@@ -372,6 +372,23 @@ describe('context', () => {
 
   it('will return root context if called outside render', () => {
     expect(Context.get()).toBe(Context.root);
+  });
+
+  it('will return root context from bare get in render', () => {
+    let context: Context | undefined;
+
+    const Probe = () => {
+      context = Context.get();
+      return null;
+    };
+
+    render(
+      <Component for={Foo}>
+        <Probe />
+      </Component>
+    );
+
+    expect(context).toBe(Context.root);
   });
 
   it('will handle complex arrangement', () => {
