@@ -916,17 +916,60 @@ describe('get method', () => {
       expect(Context.set(context, () => Foo.get())).toBe(foo);
     });
 
-    it('will pass required flag to Context.get', () => {
+    it('will not pass required to Context.get', () => {
       const spy = vi.spyOn(Context, 'get');
 
       Foo.get(false);
       expect(() => Foo.get(true)).toThrow('Could not find Foo in context.');
 
-      const required = spy.mock.calls.map((call) => call[2]);
+      const lengths = spy.mock.calls.map((call) => call.length);
 
       spy.mockRestore();
 
-      expect(required).toEqual([false, true]);
+      expect(lengths).toEqual([2, 2]);
+    });
+
+    it('will require values through a tracking origin', () => {
+      class Baz extends Model {
+        value?: string = undefined;
+      }
+
+      const baz = Baz.new();
+      const foo = Foo.new();
+
+      new Context({ baz, foo });
+
+      expect(() => foo.get((self) => void self.get(Baz).value)).not.toThrow();
+      expect(() => foo.get((self) => void self.get(Baz, true).value)).toThrow(
+        /\.value is required in this context\./
+      );
+    });
+
+    it('will keep get(true) strict through an override delegating to super', () => {
+      class Keyed extends Model {
+        id = 0;
+        value?: string = undefined;
+
+        static get<T extends Keyed>(this: Model.Extends<T>, arg?: T['id'] | boolean): T {
+          if (typeof arg != 'number') return super.get(arg as never) as T;
+
+          return Context.get(this, (context) => {
+            const found = context.get(this);
+            return found.id === arg ? found : undefined;
+          }) as T;
+        }
+      }
+
+      const keyed = Keyed.new({ id: 5 });
+      const foo = Foo.new();
+
+      new Context({ keyed, foo });
+
+      expect(Context.set(foo, () => Keyed.get(true))).toBe(keyed);
+      expect(() => foo.get((self) => void self.get(Keyed).value)).not.toThrow();
+      expect(() => foo.get((self) => void self.get(Keyed, true).value)).toThrow(
+        /\.value is required in this context\./
+      );
     });
 
     it('will resolve upstream of origin', () => {

@@ -1,5 +1,6 @@
 import { Context, host, join } from './context';
 import { REPORT } from './dispatch';
+import { strict } from './observing';
 import {
   capture,
   event,
@@ -560,7 +561,8 @@ abstract class Model {
   /**
    * Fetch instance of this class from context. Throws if not found.
    *
-   * Override with a single signature to accept other arguments; it must call
+   * Override with a single signature to accept other arguments - delegate
+   * base forms to `super.get(arg)`, and resolve others by calling
    * `Context.get(this, compute)` once, synchronously, so host context and
    * tracking still apply.
    */
@@ -573,11 +575,8 @@ abstract class Model {
   static get<T extends Model>(this: Model.Extends<T>, required: true): Required<T>;
 
   static get(this: Model.Extends, required?: boolean): any {
-    return Context.get(
-      this,
-      (context, from) => context.get(this, required !== false, undefined, from),
-      required === true
-    );
+    const result = Context.get(this, (context, from) => context.get(this, required !== false, undefined, from));
+    return required === true ? strict(result) : result;
   }
 
   /**

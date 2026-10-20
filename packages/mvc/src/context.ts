@@ -45,12 +45,10 @@ class Context {
    *
    * @param Type - Class `get` was called on.
    * @param compute - Resolves the value from a context.
-   * @param required - Whether a host should track the result as `get(true)` does.
    */
   static get<R>(
     Type: Model.Extends,
     compute: (context: Context, from?: Model) => R,
-    required?: boolean,
   ): R;
 
   static get(

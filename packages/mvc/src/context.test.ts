@@ -464,6 +464,13 @@ describe('static get', () => {
     expect(compute).toBeCalledWith(Context.root);
   });
 
+  it('will not accept a third argument', () => {
+    const compute = vi.fn(() => 'value');
+
+    // @ts-expect-error - strictness applies after Context.get
+    expect(Context.get(Test, compute, true)).toBe('value');
+  });
+
   it('will compute against a set context without origin', () => {
     const context = new Context();
     const compute = vi.fn(() => 'value');
