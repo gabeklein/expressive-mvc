@@ -188,14 +188,15 @@ export class Deploy extends Job {
 
   // once per run on every outcome - after the unwind and back, before the run settles
   protected exit(outcome: Runner.Outcome<Released>) {
-    if (outcome.status == 'done')
-      this.report = `${this.version} live on ${outcome.result.hosts.length} hosts`;
-    else
-      this.report = `${this.version} ${outcome.status}: ${(outcome.error as Error).message}`;
+    const message = outcome.status == 'done'
+      ? `live on ${outcome.result.hosts.length} hosts`
+      : `${outcome.status}: ${(outcome.error as Error).message}`;
+
+    this.report = `${this.version} ${message}`;
   }
 
-  // a helper: `_` keeps it from being a step - it runs inline on the instance
-  _spread(count: number) {
+  // a helper: `_` keeps it from being a step - runs normally on instance.
+  private _spread(count: number) {
     const every = Math.ceil(this.hosts.length / count);
 
     return this.hosts.filter((_, index) => index % every == 0);
