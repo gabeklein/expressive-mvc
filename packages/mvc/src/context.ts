@@ -46,9 +46,10 @@ class Context {
       this.parent = arg;
       arg.scope.add(this);
     } else if (arg) {
-      this.include(arg);
+      include(this, this.cleanup, arg);
     }
   }
+
 
   private traverse(accept: (ctx: Context) => boolean | void) {
     const queue = [...this.scope];
@@ -157,37 +158,7 @@ class Context {
     if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
   }
 
-  private include(input: Accept) {
-    const single = typeof input == "function" || input instanceof Model;
-    const inputs: Record<string, Model | Model.Type> = single
-      ? { 0: input }
-      : input;
-    const init: Model[] = [];
-    const owns: Model[] = [];
 
-    for (const K of Object.keys(inputs)) {
-      const V = inputs[K];
-      const owned = Model.is(V);
-
-      if (!(owned || V instanceof Model)) {
-        const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
-        throw new Error(
-          `Context can only include an instance or class of Model but got ${as}.`,
-        );
-      }
-
-      const state = owned ? new V() : V.is;
-
-      this.add(state, true);
-      init.push(state);
-
-      if (single) HOST.set(this, state);
-      if (owned) owns.push(state);
-    }
-
-    for (const state of owns) this.cleanup.add(() => event(state, null));
-    for (const state of init) event(state);
-  }
 
   add(I: Model, explicit = false) {
     const { cleanup, provide } = this;
@@ -274,7 +245,7 @@ class Context {
   public push(input?: Accept, cleanup?: () => void) {
     const next = new Context(this);
     if (cleanup) next.cleanup.add(cleanup);
-    if (input) next.include(input);
+    if (input) include(next, next.cleanup, input);
     return next;
   }
 
@@ -331,6 +302,38 @@ function host(state: Model) {
     const found = HOST.get(ctx);
     if (found && found !== state) return found;
   }
+}
+
+function include(context: Context, cleanup: Set<() => void>, input: Accept) {
+  const single = typeof input == "function" || input instanceof Model;
+  const inputs: Record<string, Model | Model.Type> = single
+    ? { 0: input }
+    : input;
+  const init: Model[] = [];
+  const owns: Model[] = [];
+
+  for (const K of Object.keys(inputs)) {
+    const V = inputs[K];
+    const owned = Model.is(V);
+
+    if (!(owned || V instanceof Model)) {
+      const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
+      throw new Error(
+        `Context can only include an instance or class of Model but got ${as}.`,
+      );
+    }
+
+    const state = owned ? new V() : V.is;
+
+    context.add(state, true);
+    init.push(state);
+
+    if (single) HOST.set(context, state);
+    if (owned) owns.push(state);
+  }
+
+  for (const state of owns) cleanup.add(() => event(state, null));
+  for (const state of init) event(state);
 }
 
 export { Context, host, join };
