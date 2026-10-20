@@ -115,9 +115,29 @@ A getter that throws on its _first_ read throws to the reader instead. `Componen
 
 Create an instance scoped to a React component. Covered in [Hooks](/docs/api/hooks).
 
-### `Model.get(...)` <small>(React)</small>
+### `Model.get(...)`
 
-Look up an instance from React context. Covered in [Hooks](/docs/api/hooks).
+Look up an instance from context - `get()` required, `get(false)` optional, `get(true)` with required values. In a React or dom render it reads the host's context and subscribes to what the component reads ([Hooks](/docs/api/hooks)). Inside `Context.set(target, fn)` it reads that target's context; elsewhere the root context, untracked.
+
+#### Overriding `get`
+
+A subclass may override static `get` with one signature of its own. It calls `Context.get(this, compute)` exactly once, unconditionally and synchronously; `compute(context, from?)` returns the result, `from` being the calling instance for `session.get(User, 5)` and the `get` instruction.
+
+```ts
+import { Context, Model } from '@expressive/mvc';
+
+class User extends Model {
+  id = 0;
+
+  static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | false): T {
+    return Context.get(this, (context) => context.get(Directory).find(id) as T);
+  }
+}
+```
+
+Type the key from the instance (`T['id'] | false`) or accept booleans - a plain `key?: string` won't type-check against the base `get`.
+
+`User.get(5)` in a component keeps context and tracking. `session.get(User, 5)` and the instruction `get(User, 5)` route through the same override from that instance's context.
 
 <br />
 
@@ -173,6 +193,7 @@ state.get(null, () => console.log('destroyed')); // register callback
 ```ts
 const parent = child.get(Parent); // throws if not found
 const maybe = child.get(Parent, false); // undefined if not found
+const user = session.get(User, 5); // User.get(5), from session's context
 ```
 
 ### `get(Type, callback, downstream?)` - subscribe to context availability
