@@ -182,7 +182,7 @@ protected async first() {
   this.value = this._double(2);        // wrote: ['value']
 }
 
-_double(n: number) {
+private _double(n: number) {
   return n * 2;
 }
 ```

@@ -91,3 +91,4 @@ Opinionated, opt-out: steps are `protected async`. Calling a step schedules it a
 - Public: `next` - called from outside, its parameters type the call; answering steps (`allow`, `deny`) - called from outside while a wait accepts them. Still `async`.
 - `end` is `protected`, `async` only if it awaits - the result type is read from it either way.
 - Hooks are `protected` - nothing reads them through the type - and not `async`: their return is not awaited.
+- `_` helpers are `private` - not steps, called only from the class's own steps - and sync when they compute.
