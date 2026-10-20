@@ -166,8 +166,8 @@ describe('history patch', () => {
   it('will notice external pushState after an earlier router is destroyed', () => {
     location('/');
 
-    const first = new Context(BrowserRouter);
-    const second = new Context(BrowserRouter);
+    const first = new Context({ BrowserRouter });
+    const second = new Context({ BrowserRouter });
 
     first.pop();
     act(() => window.history.pushState(null, '', '/after'));

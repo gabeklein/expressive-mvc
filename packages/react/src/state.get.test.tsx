@@ -941,7 +941,7 @@ describe('Model.get - pre-commit dispatch', () => {
     const refs: { current: any }[] = [];
     const inited: boolean[] = [];
     const effects: (() => (() => void) | void)[] = [];
-    const context = new Context(test);
+    const context = new Context({ test });
     const update = vi.fn();
     let index = 0;
 
