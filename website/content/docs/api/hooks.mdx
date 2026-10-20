@@ -120,7 +120,7 @@ Side effects belong in the Model - `mount()`, or an instance effect with `state.
 
 ### Custom lookup
 
-A class may override static `get` with its own arguments - `User.get(id)` - and keep context and render tracking. See the [Model.get reference](/docs/api/state#overriding-get) for the `getter` contract.
+A class may override static `get` with its own arguments - `User.get(id)` - and keep context and render tracking. See the [Model.get reference](/docs/api/state#overriding-get) for how an override delegates to `super.get` and calls `Context.get`.
 
 <br />
 

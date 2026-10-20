@@ -314,7 +314,7 @@ ctx.push(inputs?);                    // create a child context
 ctx.pop();                            // tear down this context and descendants
 Context.get(state);                   // static - a state's home context
 Context.get();                        // static - current context, else root
-Context.get(Type, compute, required?); // static - resolve a static get (overrides)
+Context.get(Type, compute);           // static - resolve a static get (overrides)
 Context.set(target, fn);              // static - run fn with target current
 Context.current;                      // static - innermost set context, readonly
 Context.root;                         // global registry
