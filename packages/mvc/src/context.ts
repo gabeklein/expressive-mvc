@@ -6,7 +6,10 @@ const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
 const HOST = new WeakMap<Context, Model>();
 let ROOT: Context;
 
-type Accept<T extends Model = Model> = T | Model.Type<T>;
+type Accept<T extends Model = Model> =
+  | T
+  | Model.Type<T>
+  | Record<string | number, T | Model.Type<T>>;
 
 type Expect<T extends Model = Model> = (
   state: T,
@@ -155,21 +158,35 @@ class Context {
   }
 
   private include(input: Accept) {
-    const owned = Model.is(input);
+    const single = typeof input == "function" || input instanceof Model;
+    const inputs: Record<string, Model | Model.Type> = single
+      ? { 0: input }
+      : input;
+    const init: Model[] = [];
+    const owns: Model[] = [];
 
-    if (!(owned || input instanceof Model))
-      throw new Error(
-        `Context can only include an instance or class of Model but got ${input}.`,
-      );
+    for (const K of Object.keys(inputs)) {
+      const V = inputs[K];
+      const owned = Model.is(V);
 
-    const state = owned ? new input() : input.is;
+      if (!(owned || V instanceof Model)) {
+        const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
+        throw new Error(
+          `Context can only include an instance or class of Model but got ${as}.`,
+        );
+      }
 
-    this.add(state, true);
-    HOST.set(this, state);
+      const state = owned ? new V() : V.is;
 
-    if (owned) this.cleanup.add(() => event(state, null));
+      this.add(state, true);
+      init.push(state);
 
-    event(state);
+      if (single) HOST.set(this, state);
+      if (owned) owns.push(state);
+    }
+
+    for (const state of owns) this.cleanup.add(() => event(state, null));
+    for (const state of init) event(state);
   }
 
   add(I: Model, explicit = false) {
@@ -249,9 +266,9 @@ class Context {
   }
 
   /**
-   * Create a child context, optionally registering a Model to it.
+   * Create a child context, optionally registering Models to it.
    *
-   * @param input Model instance to adopt, or Model class to create - and destroy when the context pops.
+   * @param input Model instance to adopt, Model class to create - and destroy when the context pops - or an object of them, all registered before any activates.
    * @param cleanup Called once when the context pops, before its Models are removed.
    */
   public push(input?: Accept, cleanup?: () => void) {
