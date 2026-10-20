@@ -188,6 +188,7 @@ class Order extends Model {
 - Each call reaches `Context.get(this, compute)` exactly once, synchronously - directly or through `super.get` - for context and tracking in every call form ([context.md](context.md#static-context)). `this` is always the class.
 - Strictness is base `get(true)`'s, applied after `Context.get` - an own key resolves as `get()` does.
 - `compute(context, from?)` returns the result; `from` is the calling instance for the instance and instruction forms. A returned Model is tracked - by the host in render, through `from` when it is a tracking proxy.
+- In `compute`, use only `context.get(Type, required?)` - other members of `context` are unstable.
 - A plain `Other.get()` inside `compute` resolves the same way - the instance and instruction forms keep it on the caller's context.
 - Prefer one signature - inference from overloads uses the last.
 - Type a key from `T` (`T['id'] | boolean`) so `get()`, `get(false)` and `get(true)` stay callable - a plain `key?: string` fails the static-side check against base `get`. Through `state.get(Type, ...)` and the `get(Type, ...)` instruction, arguments type against the base, not a narrowed override.
