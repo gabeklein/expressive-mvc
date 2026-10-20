@@ -221,8 +221,7 @@ ctx.get(Type, callback);               // watch, upstream and downstream
 ctx.get(Type, callback, true);         // downstream only
 ctx.get(Type, callback, false);        // upstream only
 ctx.add(state, explicit?);             // register an instance
-ctx.set(inputs, forEach?);             // register multiple
-ctx.push(inputs?);                     // create child context
+ctx.push(inputs?);                     // child context; owns classes, adopts instances
 ctx.pop();                             // destroy this and descendants
 Context.get(state);                    // static: state's home context
 Context.root;                          // global registry

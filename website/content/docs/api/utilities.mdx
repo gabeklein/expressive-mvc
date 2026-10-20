@@ -309,15 +309,14 @@ ctx.get(Type, false);                 // optional - undefined if missing
 ctx.get(Type, callback);              // upstream watch - returns unsubscribe
 ctx.get(Type, callback, true);        // downstream watch
 ctx.add(state, explicit?);            // register one instance (does not activate)
-ctx.set(inputs, forEach?);            // reconcile registered states with inputs
-ctx.push(inputs?);                    // create a child context
+ctx.push(inputs?);                    // create a child context with inputs registered
 ctx.pop();                            // tear down this context and descendants
 Context.get(state);                   // static - a state's home context
 Context.root;                         // global registry
 ```
 
 - A failed `ctx.get(Type)` throws `Could not find ${Type} in context.`
-- `ctx.set()` accepts a class, an instance, or a map of either. Classes are constructed and activated; when inputs change, removed entries run their cleanup and instances the context created are destroyed. Instances you passed in are left alone.
+- `ctx.push()` and the constructor accept a class, an instance, or a map of either. Classes are constructed and activated, and destroyed when the context pops. Instances you passed in are left alone.
 - `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
 - Adapters may override `Context.get` - the React adapter returns the ambient React context when called with no argument.
