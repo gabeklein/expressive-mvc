@@ -211,6 +211,7 @@ scene.get(Model, (node) => attach(node), true); // direct members only - a, not 
 ```ts
 new Context();                         // empty
 new Context(parentContext);            // child of parent
+new Context(parentContext, input?, cleanup?); // child with inputs, as push
 new Context(StateClass);               // create + register an instance
 new Context(stateInstance);            // register existing instance
 new Context({ a: A, b: B });           // several, registered before any activates

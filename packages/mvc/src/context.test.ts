@@ -569,6 +569,23 @@ describe('inputs', () => {
 });
 
 describe('push', () => {
+  it('will create child with inputs from constructor', () => {
+    class Test extends Model {}
+
+    const cleanup = vi.fn();
+    const parent = new Context();
+    const child = new Context(parent, Test, cleanup);
+    const test = child.get(Test);
+
+    expect(child.parent).toBe(parent);
+    expect(parent.get(Test, false)).toBeUndefined();
+
+    parent.pop();
+
+    expect(cleanup).toHaveBeenCalledTimes(1);
+    expect(test.get(null)).toBe(true);
+  });
+
   it('will run cleanup on pop', () => {
     const cleanup = vi.fn();
     const context = new Context().push(undefined, cleanup);
