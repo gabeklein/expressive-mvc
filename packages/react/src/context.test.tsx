@@ -374,7 +374,7 @@ describe('context', () => {
     expect(Context.get()).toBe(Context.root);
   });
 
-  it('will return root context from bare get in render', () => {
+  it('will return render context from bare get in render', () => {
     let context: Context | undefined;
 
     const Probe = () => {
@@ -388,7 +388,8 @@ describe('context', () => {
       </Component>
     );
 
-    expect(context).toBe(Context.root);
+    expect(context).not.toBe(Context.root);
+    expect(context!.get(Foo)).toBeInstanceOf(Foo);
   });
 
   it('will handle complex arrangement', () => {

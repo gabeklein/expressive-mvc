@@ -10,7 +10,14 @@ Context.get = ((
   compute?: (context: Context) => unknown,
   required?: boolean
 ) => {
-  if (!compute || Context.current) return forward(arg, compute, required);
+  if (Context.current || (arg && !compute)) return forward(arg, compute, required);
+
+  if (!compute)
+    try {
+      return useAmbient();
+    } catch {
+      return forward();
+    }
 
   return use(arg as Model.Extends, compute, required);
 }) as typeof Context.get;

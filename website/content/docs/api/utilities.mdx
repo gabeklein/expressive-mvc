@@ -325,7 +325,7 @@ Context.root;                         // global registry
 - `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
 - `Context.set(state, fn)` runs `fn` with `state`'s home context current and `state` as origin - `Model.get()` inside resolves there, tracked through `state` when it is a tracking proxy. `Context.set(context, fn)` sets a context with no origin. It nests and returns `fn`'s result.
-- Hosts replace `Context.get` to supply render context. While `Context.current` is set, they step aside. The dom host returns its render scope for bare `Context.get()`; React does not - there it returns current or root.
+- Hosts replace `Context.get` to supply render context. While `Context.current` is set, they step aside. Both hosts return the render's context for bare `Context.get()` in a render, and current or root elsewhere.
 
 ### Home context
 
