@@ -12,20 +12,24 @@ interface Scope extends Schedulable {
 
 let current: Scope | undefined;
 let collecting: (() => void)[] | undefined;
+let memo: Map<Model, Model>[] | undefined;
 
 function enter<T>(scope: Scope, render: () => T): T {
   const parent = current;
   const releases = collecting;
+  const cached = memo;
   const next: (() => void)[] = [];
 
   current = scope;
   collecting = next;
+  memo = [new Map(), new Map()];
 
   try {
     return render();
   } finally {
     current = parent;
     collecting = releases;
+    memo = cached;
     scope.subscriptions.forEach((release) => release());
     scope.subscriptions = next;
   }
@@ -38,15 +42,8 @@ function dispose(scope: Scope) {
   scope.subscriptions = [];
 }
 
-function requireScope(): Scope {
-  if (!current)
-    throw new Error('Model.get() may only run while @expressive/dom is rendering.');
-
-  return current;
-}
-
 function tracked<T extends object>(target: T, required?: boolean): T {
-  const scope = requireScope();
+  const scope = current!;
   let proxy = target;
   let first = true;
 
@@ -65,57 +62,35 @@ function tracked<T extends object>(target: T, required?: boolean): T {
   return proxy;
 }
 
-type NoVoid<T> = T extends undefined | void ? null : T;
-
 declare module '@expressive/mvc' {
-  namespace Model {
-    type ForceRefresh = {
-      (): void;
-      <T = void>(waitFor: Promise<T>): Promise<T>;
-      <T = void>(invoke: () => Promise<T>): Promise<T>;
-    };
-
-    type GetFactory<T extends Model, R> = (
-      this: T,
-      current: T,
-      refresh: ForceRefresh
-    ) => R;
-
-    function get<T extends Model>(this: Model.Extends<T>): T;
-    function get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
-    function get<T extends Model>(this: Model.Extends<T>, required: true): Required<T>;
-    function get<T extends Model, R>(
-      this: Model.Extends<T>,
-      factory: GetFactory<T, R>
-    ): NoVoid<R>;
-  }
-
   interface Component {
     mount?(): (() => void) | void;
   }
 }
 
-(Model as any).get = function get<T extends Model>(
-  this: Model.Extends<T>,
-  argument?: boolean | Model.GetFactory<T, unknown>
-) {
-  const scope = requireScope();
-  const instance = scope.context.get(this, argument === false ? false : true);
+const forward = Context.get as (...args: unknown[]) => unknown;
 
-  if (!instance) return undefined;
+Context.get = ((
+  arg?: Model | Model.Extends,
+  compute?: (context: Context) => unknown,
+  required?: boolean
+) => {
+  if (!current || Context.current || (arg && !compute))
+    return forward(arg, compute, required);
 
-  const proxy = tracked(instance, argument === true);
+  if (!compute) return current.context;
 
-  if (typeof argument != 'function') return proxy;
+  const found = compute(current.context);
 
-  const refresh = ((action?: Promise<unknown> | (() => Promise<unknown>)) => {
-    if (typeof action == 'function') action = action();
-    schedule(scope);
-    return action instanceof Promise ? action.finally(() => schedule(scope)) : undefined;
-  }) as Model.ForceRefresh;
+  if (!(found instanceof Model)) return found;
 
-  return argument.call(proxy, proxy, refresh) ?? null;
-};
+  const cache = memo![required ? 1 : 0];
+  let proxy = cache.get(found);
+
+  if (!proxy) cache.set(found, (proxy = tracked(found, required)));
+
+  return proxy;
+}) as typeof Context.get;
 
 const OWNERS = new WeakMap<Function, { owner: Model; key: string }>();
 
