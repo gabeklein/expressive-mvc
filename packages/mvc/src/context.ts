@@ -4,6 +4,7 @@ import { event, Model, uid } from "./state";
 const LOOKUP = new WeakMap<Model, Context>();
 const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
 const HOST = new WeakMap<Context, Model>();
+const CLEANUP = new WeakMap<Context, Set<() => void>>();
 let ROOT: Context;
 
 type Accept<T extends Model = Model> =
@@ -39,51 +40,16 @@ class Context {
   >();
   public provide = new Map<Model.Extends, Set<[Model, boolean]> | null>();
 
-  private cleanup = new Set<() => void>();
+  constructor(arg?: Context | Accept) {
+    CLEANUP.set(this, new Set());
 
-  constructor(input?: Accept);
-  constructor(parent: Context, input?: Accept, cleanup?: () => void);
-  constructor(arg?: Context | Accept, input?: Accept, cleanup?: () => void) {
     if (arg instanceof Context) {
       this.parent = arg;
       arg.scope.add(this);
-    } else input = arg;
-
-    if (cleanup) this.cleanup.add(cleanup);
-    if (!input) return;
-
-    const given = input;
-    const single = typeof given == "function" || given instanceof Model;
-    const inputs: Record<string, Model | Model.Type> = single
-      ? { 0: given }
-      : given;
-    const init: Model[] = [];
-    const owns: Model[] = [];
-
-    for (const K of Object.keys(inputs)) {
-      const V = inputs[K];
-      const owned = Model.is(V);
-
-      if (!(owned || V instanceof Model)) {
-        const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
-        throw new Error(
-          `Context can only include an instance or class of Model but got ${as}.`,
-        );
-      }
-
-      const state = owned ? new V() : V.is;
-
-      this.add(state, true);
-      init.push(state);
-
-      if (single) HOST.set(this, state);
-      if (owned) owns.push(state);
+    } else if (arg) {
+      include.call(this, arg);
     }
-
-    for (const state of owns) this.cleanup.add(() => event(state, null));
-    for (const state of init) event(state);
   }
-
 
   private traverse(accept: (ctx: Context) => boolean | void) {
     const queue = [...this.scope];
@@ -192,10 +158,9 @@ class Context {
     if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
   }
 
-
-
   add(I: Model, explicit = false) {
-    const { cleanup, provide } = this;
+    const { provide } = this;
+    const cleanup = CLEANUP.get(this)!;
     const root = this === Context.root;
     const TT: Model.Extends[] = [];
 
@@ -277,7 +242,12 @@ class Context {
    * @param cleanup Called once when the context pops, before its Models are removed.
    */
   public push(input?: Accept, cleanup?: () => void) {
-    return new Context(this, input, cleanup);
+    const next = new Context(this);
+
+    if (cleanup) CLEANUP.get(next)!.add(cleanup);
+    if (input) include.call(next, input);
+
+    return next;
   }
 
   /**
@@ -288,8 +258,9 @@ class Context {
   public pop() {
     this.scope.forEach((x) => x.pop());
     this.scope.clear();
-    this.cleanup.forEach((cb) => cb());
-    this.cleanup.clear();
+    const cleanup = CLEANUP.get(this)!;
+    cleanup.forEach((cb) => cb());
+    cleanup.clear();
     this.consume.clear();
     this.provide.clear();
     if (this.parent) {
@@ -333,6 +304,38 @@ function host(state: Model) {
     const found = HOST.get(ctx);
     if (found && found !== state) return found;
   }
+}
+
+function include(this: Context, input: Accept) {
+  const single = typeof input == "function" || input instanceof Model;
+  const inputs: Record<string, Model | Model.Type> = single
+    ? { 0: input }
+    : input;
+  const init: Model[] = [];
+  const owns: Model[] = [];
+
+  for (const K of Object.keys(inputs)) {
+    const V = inputs[K];
+    const owned = Model.is(V);
+
+    if (!(owned || V instanceof Model)) {
+      const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
+      throw new Error(
+        `Context can only include an instance or class of Model but got ${as}.`,
+      );
+    }
+
+    const state = owned ? new V() : V.is;
+
+    this.add(state, true);
+    init.push(state);
+
+    if (single) HOST.set(this, state);
+    if (owned) owns.push(state);
+  }
+
+  for (const state of owns) CLEANUP.get(this)!.add(() => event(state, null));
+  for (const state of init) event(state);
 }
 
 export { Context, host, join };

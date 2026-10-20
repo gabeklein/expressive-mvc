@@ -296,7 +296,6 @@ child.pop();
 ```ts
 new Context();                        // empty
 new Context(parentContext);           // child of parent
-new Context(parentContext, input?, cleanup?); // child with inputs - what push does
 new Context(StateClass);              // create, register and activate a state
 new Context(stateInstance);           // register (and activate) an existing instance
 new Context({ a: A, b: B });          // several at once
