@@ -650,22 +650,30 @@ class Timer extends Model {
 }
 ```
 
-## Using Model.get() with Computed Hook
+## Deriving from Model.get()
+
+`Model.get()` takes no selector - destructure what renders and derive inline, or move a reused derivation to a getter on the Model:
 
 ```tsx
-function OrderSummary() {
-  const summary = Cart.get(($) => ({
-    total: $.total,
-    count: $.count,
-    empty: $.items.length === 0
-  }));
+class Cart extends Model {
+  items = [] as Item[];
 
-  if (summary.empty) return <p>Cart is empty</p>;
-  return (
-    <div>
-      <p>{summary.count} items</p>
-      <p>Total: ${summary.total}</p>
-    </div>
-  );
+  get total() {
+    return this.items.reduce((sum, item) => sum + item.price, 0);
+  }
+}
+
+function OrderSummary() {
+  const { items, total } = Cart.get();
+
+  if (items.length)
+    return (
+      <div>
+        <p>{items.length} items</p>
+        <p>Total: ${total}</p>
+      </div>
+    );
+
+  return <p>Cart is empty</p>;
 }
 ```
