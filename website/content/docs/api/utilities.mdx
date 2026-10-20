@@ -284,10 +284,10 @@ The hierarchical registry behind `<Component for>` and the `get` instruction. Ev
 ```ts
 import { Context } from '@expressive/mvc';
 
-const ctx = new Context(AppState);
+const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
 
-const child = ctx.push(PageControl, () => console.log('page closed'));
+const child = ctx.push({ PageControl }, () => console.log('page closed'));
 child.pop();
 ```
 
@@ -298,6 +298,7 @@ new Context();                        // empty
 new Context(parentContext);           // child of parent
 new Context(StateClass);              // create, register and activate a state
 new Context(stateInstance);           // register (and activate) an existing instance
+new Context({ a: A, b: B });          // several at once
 ```
 
 ### Methods
@@ -308,15 +309,15 @@ ctx.get(Type, false);                 // optional - undefined if missing
 ctx.get(Type, callback);              // upstream watch - returns unsubscribe
 ctx.get(Type, callback, true);        // downstream watch
 ctx.add(state, explicit?);            // register one instance (does not activate)
-ctx.push(input?, cleanup?);           // create a child context with input registered
+ctx.push(input?, cleanup?);           // create a child context with inputs registered
 ctx.pop();                            // tear down this context and descendants
 Context.get(state);                   // static - a state's home context
 Context.root;                         // global registry
 ```
 
 - A failed `ctx.get(Type)` throws `Could not find ${Type} in context.`
-- `ctx.push()` and the constructor accept one class or instance. A class is constructed and activated, and destroyed when the context pops. An instance you passed in is left alone. To register several, `add` them or nest `push` calls.
-- `ctx.push(input, cleanup)` runs `cleanup` once when the child context pops - directly or with an ancestor - before its input is removed or destroyed.
+- `ctx.push()` and the constructor accept a class, an instance, or an object of either. Every input is registered before any activates, so siblings resolve each other with `get`. Classes are constructed and activated, and destroyed when the context pops; instances you passed in are left alone. Keys only name a bad input in the error. Inputs are registered once - there is no reconciling a later set.
+- `ctx.push(input, cleanup)` runs `cleanup` once when the child context pops - directly or with an ancestor - before its inputs are removed or destroyed.
 - `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
 - Adapters may override `Context.get` - the React adapter returns the ambient React context when called with no argument.
