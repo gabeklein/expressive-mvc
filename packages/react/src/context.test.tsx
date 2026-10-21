@@ -13,7 +13,7 @@ import {
 import { act, render, screen } from '@testing-library/react';
 import { Model } from '@expressive/mvc';
 import { Component, Context, get, set } from '.';
-import { flushMicrotasks, preactDiffers } from '../test.setup';
+import { flushMicrotasks, preactDiffers, reactOnly } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
 
@@ -374,22 +374,29 @@ describe('context', () => {
     expect(Context.get()).toBe(Context.root);
   });
 
-  it('will return render context from bare get in render', () => {
-    let context: Context | undefined;
+  reactOnly.it('will return root context without logging before any render', () => {
+    const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const dispatcher = internals.H;
 
-    const Probe = () => {
-      context = Context.get();
-      return null;
-    };
+    internals.H = null;
 
-    render(
-      <Component for={Foo}>
-        <Probe />
-      </Component>
+    try {
+      expect(Context.get()).toBe(Context.root);
+    } finally {
+      internals.H = dispatcher;
+    }
+  });
+
+  it('will return context of render', () => {
+    within(
+      () => {
+        const context = Context.get();
+
+        expect(context).not.toBe(Context.root);
+        expect(context.get(Foo)).toBeInstanceOf(Foo);
+      },
+      (check) => <Component for={Foo}>{check}</Component>
     );
-
-    expect(context).not.toBe(Context.root);
-    expect(context!.get(Foo)).toBeInstanceOf(Foo);
   });
 
   it('will handle complex arrangement', () => {

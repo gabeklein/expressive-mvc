@@ -914,6 +914,7 @@ describe('Model.get - pre-commit dispatch', () => {
     const update = vi.fn();
     let index = 0;
 
+    Runtime.idle = () => false;
     Runtime.useContext = (() => context) as typeof Runtime.useContext;
 
     Runtime.useRef = ((value: any) => {
