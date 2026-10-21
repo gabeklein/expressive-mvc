@@ -24,6 +24,7 @@ function reject(children: ComponentChildren) {
 }
 
 Object.assign(Runtime, {
+  idle: () => undefined,
   createElement: compat.createElement,
   createContext: compat.createContext,
   useContext: compat.useContext,

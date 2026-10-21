@@ -393,6 +393,9 @@ Object.assign(Runtime, {
   useSyncExternalStore, // optional: pre-commit revision validation
   transition,           // optional: startTransition, for pending() work
   Suspense,
+  idle,                 // true when certainly not rendering, undefined when it cannot tell
   // plus adapter-specific: dedupe, ErrorBoundary, ignore
 });
 ```
+
+`idle()` lets `Context.get()` skip its hook probe outside a render - React reads its dispatcher (`null`, or the between-render stub whose hooks all throw); Preact returns `undefined` and probes, which never logs. An unrecognised React returns `undefined` too.
