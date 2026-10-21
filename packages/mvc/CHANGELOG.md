@@ -1,5 +1,11 @@
 # @expressive/mvc
 
+## 0.90.0
+
+### Minor Changes
+
+- [#550](https://github.com/gabeklein/expressive-mvc/pull/550) [`d0b9cf6`](https://github.com/gabeklein/expressive-mvc/commit/d0b9cf6a29916f5db4c9eca23668c208540f9923) `context.set(inputs, forEach?)` is removed. `push(input?, cleanup?)` and the `Context` constructor register a class, an instance, or an object of them once - no reconciliation across calls. Every input is registered before any activates. `cleanup` runs once when the new context pops, before its inputs are removed.
+
 ## 0.89.0
 
 ### Minor Changes
