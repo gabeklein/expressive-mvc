@@ -43,6 +43,51 @@ describe('Model.get', () => {
     expect(calls).toEqual([]);
   });
 
+  it('will resolve from context outside render', () => {
+    class Test extends Model {}
+
+    const test = Test.new();
+    const remove = Context.root.add(test, true);
+
+    expect(Test.get()).toBe(test);
+    expect(Test.get(false)).toBe(test);
+
+    remove();
+  });
+
+  it('will probe outside render when idle cannot tell', () => {
+    class Test extends Model {}
+
+    const idle = Runtime.idle;
+    const test = Test.new();
+    const remove = Context.root.add(test, true);
+
+    render(<></>);
+    Runtime.idle = () => undefined;
+
+    try {
+      expect(Context.get()).toBe(Context.root);
+      expect(Test.get()).toBe(test);
+    } finally {
+      Runtime.idle = idle;
+      remove();
+    }
+  });
+
+  it('will resolve an override outside render', () => {
+    class Item extends Model {
+      static get<T extends Item>(this: Model.Extends<T>, id?: number | boolean): T {
+        if (typeof id != 'number') return super.get(id as never) as T;
+
+        return Context.get(this, () => Object.assign((this as Model.Type<T>).new(), { id }));
+      }
+
+      id = 0;
+    }
+
+    expect(Item.get(5).id).toBe(5);
+  });
+
   it('will fetch model', () => {
     class Test extends Model {}
 

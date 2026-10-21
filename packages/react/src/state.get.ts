@@ -11,14 +11,21 @@ Context.get = ((
 ) => {
   if (Context.current || (arg && !compute)) return forward(arg, compute);
 
-  if (!compute)
-    try {
-      return useAmbient();
-    } catch {
-      return forward();
-    }
+  const idle = Runtime.idle();
 
-  return use(arg as Model.Extends, compute);
+  if (idle) return forward(arg, compute);
+
+  let ambient: Context;
+
+  if (idle === undefined)
+    try {
+      ambient = useAmbient();
+    } catch {
+      return forward(arg, compute);
+    }
+  else ambient = useAmbient();
+
+  return compute ? use(arg as Model.Extends, compute) : ambient;
 }) as typeof Context.get;
 
 function use(Type: Model.Extends, compute: (context: Context) => unknown) {
