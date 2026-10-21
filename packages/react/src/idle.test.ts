@@ -27,8 +27,8 @@ describe.each([
   });
 });
 
-it('will not be idle if internals are unrecognised', () => {
-  expect(idle({})()).toBe(false);
-  expect(idle({ __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: {} })()).toBe(false);
-  expect(idle({ __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: {} })()).toBe(false);
+it('will not tell if internals are unrecognised', () => {
+  expect(idle({})()).toBeUndefined();
+  expect(idle({ __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: {} })()).toBeUndefined();
+  expect(idle({ __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: {} })()).toBeUndefined();
 });

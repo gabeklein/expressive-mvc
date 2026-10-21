@@ -3,7 +3,7 @@ interface Dispatcher {
   useState: unknown;
 }
 
-export function idle(React: any): () => boolean {
+export function idle(React: any): () => boolean | undefined {
   const modern = React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
   const legacy = React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED?.ReactCurrentDispatcher;
 
@@ -12,7 +12,7 @@ export function idle(React: any): () => boolean {
     legacy && 'current' in legacy ? () => legacy.current :
     undefined;
 
-  if (!current) return () => false;
+  if (!current) return () => undefined;
 
   return () => {
     const dispatcher = current();
