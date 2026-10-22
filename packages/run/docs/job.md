@@ -12,7 +12,7 @@ class Job extends Model {
 | --- | --- | --- |
 | `then` | public, `readonly` | the `Runner` ([runner.md](runner.md)) - `await job` starts or joins a run ([runs.md](runs.md#awaiting-the-instance---start-or-join)) |
 | `next(...args)` | public | the entry - starts a run, or queues one ([runs.md](runs.md)); narrow its parameters freely |
-| `end(value?)` | `protected` | last in a run; its return types `await job`, else its argument, else the values dump ([steps.md](steps.md#end-joins)) |
+| `end(value?)` | `protected` | ends the run where the plan reaches it; its return types `await job`, else its argument, else the values dump ([steps.md](steps.md#end-is-terminal)) |
 | `before(step, args, skip)` | `protected` | before each step ([hooks.md](hooks.md)) |
 | `after(step, entry, skip)` | `protected` | after each step commits ([hooks.md](hooks.md)) |
 | `back(reason)` | `protected` | once an unwind completes - after `then.back(step, reason)`, or a failure before the run rejects ([hooks.md](hooks.md#back)) |

@@ -28,7 +28,7 @@ export class SubmitOrder extends Job {
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
-    // one parallel group; end joins - it runs after everything else
+    // one parallel group; end runs once it is done, ending the run - it must be the last call
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.end();
 

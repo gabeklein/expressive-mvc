@@ -134,10 +134,10 @@ It is a token in the plan, like a step call. When the plan reaches it:
 
 - The calling step has not committed when it calls `back` - its own writes stay, and it is never a target: `this.then.back(this.ship)` from `ship` targets an earlier `ship`. Steps it scheduled before `back()` have run by then and are unwound.
 - Retry is a call after it - `this.then.back(this.reserve); this.pay(card2);` - or a wait for one: `this.then.back(this.reserve); this.then(this.pay);` parks until `order.pay(card2)` from outside.
-- `end` scheduled by an unwound entry is discarded; one scheduled after `back()` replaces it.
+- `end` scheduled by an unwound entry is discarded; one scheduled after `back()` runs at its place.
 - `step` is a step reference. A call, string or nothing throws `back() takes a step to go back to; stop(true) unwinds the whole run.`; `step` without a committed entry fails the run - `back() found no committed reserve.`
 - An undo throwing fails the run, `undone: 'failed'`; the failure unwind stops there. A throw from `back` fails the run.
-- Backs from parallel steps run one at a time. `stop()`, a failure or an outside `end` during one stops it; a failure's unwind takes up what is left.
+- Backs from parallel steps run one at a time. `stop()`, a failure or an `end` during one stops it; a failure's unwind takes up what is left.
 - Not groupable (`back() cannot be grouped.`), not an undo - returned, it fails the run as any value.
 
 ## Rewind

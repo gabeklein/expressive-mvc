@@ -73,14 +73,14 @@ Named `run`, the controller is the thenable: `await x.run`.
 
 ## End from outside
 
-`then.end(value?)` from outside ends the active run without undoing anything:
+`then.end(value?)` from outside ends the active run now, without undoing anything - what an `end` token does when the plan reaches it ([steps.md](steps.md#end-is-terminal)):
 
 - pending steps are discarded - not journaled; open waits are released;
 - in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
 - then `end` runs with `value` - the class's `end` if declared, else the result is `value`, else the dump - and the run resolves with the result as a normal end;
 - the queue proceeds - the next queued run starts.
 
-Idle, or with the run already ending, stopped or failed, it does nothing. A step in flight failing meanwhile fails the run as usual. Inside a step, `this.then.end(value)` joins instead ([steps.md](steps.md#end-joins)).
+Idle, or with the run already ending, stopped or failed, it does nothing. A step in flight failing meanwhile fails the run as usual.
 
 ## Stop
 

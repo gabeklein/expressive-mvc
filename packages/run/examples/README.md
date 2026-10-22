@@ -35,6 +35,7 @@ A PR adding a feature extends an example and this table.
 | inline step returned as a `void`-typed undo | `SubmitOrder.ship` |
 | `_` helper - computes, the step assigns | `Deploy._spread`, `Deploy.canary` |
 | `end` typing the result | `SubmitOrder.end`, `Agent.end`, `Deploy.end` |
+| `end` is terminal - runs at its place, the last call in its step; a returned undo may follow | `SubmitOrder.pay`, `SubmitOrder.backorder` (after `back`), `Agent.turn` |
 | implicit end - the plan drains, the values dump, journaled `implicit: true` | `Sync`, sync test `will pull every page and end with its values` |
 
 ## Undo
