@@ -1056,8 +1056,51 @@ describe('inline', () => {
 });
 
 describe('end', () => {
-  it('will run end after everything else scheduled', async () => {
+  it('will run end at its place and drop what is left', async () => {
     const order: string[] = [];
+
+    class Test extends Model {
+      then = run(this);
+
+      next() {
+        this.a();
+        this.b();
+        this.c();
+      }
+
+      a() {
+        order.push('a');
+      }
+
+      b() {
+        order.push('b');
+        this.b1();
+        this.end('early');
+      }
+
+      b1() {
+        order.push('b1');
+      }
+
+      c() {
+        order.push('c');
+      }
+
+      end(value: string) {
+        order.push('end');
+        return value;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(await test.next()).toBe('early');
+    expect(order).toEqual(['a', 'b', 'b1', 'end']);
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'b#1', 'b1#1', 'end#1']);
+  });
+
+  it('will fail if a step is called after end', async () => {
+    const a = vi.fn();
 
     class Test extends Model {
       then = run(this);
@@ -1067,22 +1110,90 @@ describe('end', () => {
         this.a();
       }
 
-      async a() {
-        order.push('a');
-        this.b();
+      a() {
+        a();
       }
 
-      b() {
-        order.push('b');
+      end() {}
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('end must be the last call in a step.');
+    expect(a).not.toHaveBeenCalled();
+  });
+
+  it('will take an undo returned after end', async () => {
+    const refund = vi.fn();
+
+    class Test extends Model {
+      then = run(this);
+
+      next(fail: boolean) {
+        this.pay(fail);
       }
 
-      end() {
-        order.push('end');
+      pay(fail: boolean) {
+        if (fail) throw new Error('declined');
+
+        this.end('paid');
+
+        return this.refund();
+      }
+
+      refund() {
+        refund();
+      }
+
+      end(value: string) {
+        return value;
       }
     }
 
-    await Test.new().next();
-    expect(order).toEqual(['a', 'b', 'end']);
+    const test = Test.new();
+
+    expect(await test.next(false)).toBe('paid');
+    expect(refund).not.toHaveBeenCalled();
+    expect(test.then.record[1]).toMatchObject({ id: 'pay#1', next: [{ id: 'end#1', key: 'end' }], undo: { id: 'refund#1', key: 'refund' } });
+  });
+
+  it('will end with the first end the plan reaches', async () => {
+    const slow = mockPromise();
+    const after = vi.fn();
+
+    class Test extends Model {
+      then = run(this);
+
+      next() {
+        this.then(this.fast(), this.slow());
+      }
+
+      async fast() {
+        this.end('fast');
+      }
+
+      async slow() {
+        await slow;
+        this.more();
+        this.end('slow');
+      }
+
+      more() {
+        after();
+      }
+
+      end(value: string) {
+        return value;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    slow.resolve();
+
+    expect(await result).toBe('fast');
+    expect(after).not.toHaveBeenCalled();
+    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'fast#1', 'slow#1', 'end#1']);
   });
 
   it('will resolve with the argument when end returns nothing', async () => {
@@ -1182,7 +1293,7 @@ describe('end', () => {
     await expect(Test.new().next()).rejects.toThrow('end cannot schedule more.');
   });
 
-  it('will fail if end is scheduled twice', async () => {
+  it('will fail if end is called twice in a step', async () => {
     class Test extends Model {
       then = run(this);
 
@@ -1194,7 +1305,7 @@ describe('end', () => {
       end() {}
     }
 
-    await expect(Test.new().next()).rejects.toThrow('end was scheduled twice.');
+    await expect(Test.new().next()).rejects.toThrow('end must be the last call in a step.');
   });
 
   it('will do nothing if ended from outside while idle', () => {
@@ -6994,13 +7105,13 @@ describe('back', () => {
     expect(await Test.new().next()).toBe('second');
   });
 
-  it('will fail if end is scheduled twice across back', async () => {
+  it('will end with the end after back before one kept pending', async () => {
     class Test extends Model {
       then = run(this);
 
       next() {
         this.first();
-        this.end();
+        this.end('next');
       }
 
       first() {
@@ -7009,13 +7120,15 @@ describe('back', () => {
 
       second() {
         this.then.back(this.next);
-        this.end();
+        this.end('second');
       }
 
-      end() {}
+      end(value: string) {
+        return value;
+      }
     }
 
-    await expect(Test.new().next()).rejects.toThrow('end was scheduled twice.');
+    expect(await Test.new().next()).toBe('second');
   });
 
   it('will fail if to has no committed entry', async () => {

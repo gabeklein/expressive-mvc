@@ -244,9 +244,9 @@ declare namespace Runner {
     /** A plain snapshot of status, active, record, queue, waiting, runs and error. */
     get(): Runner.Snapshot;
     /**
-     * Inside a step: end the run once everything else pending has settled. From outside: discard
-     * pending steps and end once those in flight settle. The result is the class's `end` given this
-     * value, else the value, else a dump of its public values.
+     * End the run - inside a step, where the plan reaches it; from outside, now. Pending steps are
+     * discarded and steps in flight settle first. The result is the class's `end` given this value,
+     * else the value, else a dump of its public values.
      */
     end(value?: unknown): void;
     /**
@@ -419,7 +419,7 @@ class Job extends Model {
   /** The entry: starts a run, or queues one while a run is active. Settles with its run. */
   next?(...args: any[]): unknown;
 
-  /** Runs last in a run. Its return, else its argument, else a dump of public values, is the result. */
+  /** Ends the run where the plan reaches it, discarding what is left. Its return, else its argument, else a dump of public values, is the result. */
   protected end?(value?: any): unknown;
 
   /** Before each step, once per step. `skip` is true when the step is replayed. */
@@ -542,13 +542,7 @@ class Control extends Model {
   conclude(value: unknown) {
     const { _current: run } = this;
 
-    if (!run || run._halted || run._ending) return;
-
-    run.release();
-
-    for (const frame of run.flight()) frame._abort.abort();
-
-    run.end(run.node('end', value === undefined ? [] : [value]));
+    if (run && !run.stale()) run.terminate(run.node('end', value === undefined ? [] : [value]));
   }
 
   stop(undo?: boolean, reason?: unknown) {
@@ -599,7 +593,6 @@ class Run extends Model {
   _spent = new Set<string>();
   _backing?: Promise<void> = undefined;
   _drained: (() => void)[] = [];
-  _end?: Runner.Node = undefined;
   _halted?: 'failed' | 'stopped' = undefined;
   _ending?: boolean = undefined;
   _error?: unknown = undefined;
@@ -696,7 +689,16 @@ class Run extends Model {
       }
     }
     else if (item.key == 'back') await this.back(item, from!);
-    else if (item.key != 'end') await this.descend(await this.invoke(item));
+    else if (item.key == 'end') await this.terminate(item);
+    else await this.descend(await this.invoke(item));
+  }
+
+  terminate(item: Runner.Node) {
+    this.release();
+
+    for (const frame of this.flight()) frame._abort.abort();
+
+    return this.end(item);
   }
 
   back(item: Runner.Node, from: Frame) {
@@ -778,8 +780,6 @@ class Run extends Model {
   }
 
   discard() {
-    if (this._end && this.dropped(this._end.id)) this._end = undefined;
-
     for (const wait of this.waits.filter((wait) => !wait._undo && this.dropped(wait.id))) this.waits.delete(wait);
     for (const [id, cancel] of this._pending) if (this.dropped(id)) cancel();
 
@@ -833,15 +833,7 @@ class Run extends Model {
 
     if (thrown) {
       this._backed = true;
-      return this.halt('failed', thrown.cause);
-    }
-
-    const rest = from._items.slice(from._items.indexOf(item) + 1);
-
-    for (const end of rest.filter((each) => each.key == 'end')) {
-      if (this._end) return this.halt('failed', new Error('end was scheduled twice.'));
-
-      this._end = end;
+      this.halt('failed', thrown.cause);
     }
   }
 
@@ -1086,7 +1078,7 @@ class Run extends Model {
     });
   }
 
-  async end(item = this._end) {
+  async end(item?: Runner.Node) {
     this._ending = true;
 
     await this.drain();
@@ -1614,13 +1606,9 @@ class Frame extends Model {
     }
     else if (out !== undefined) throw new Error(`${key} returned a value; a step returns nothing, or its undo.`);
 
-    for (const item of items) {
-      if (item.key == 'back') break;
-      if (item.key != 'end') continue;
-      if (run._end) throw new Error('end was scheduled twice.');
+    const end = items.findIndex((item) => item.key == 'end');
 
-      run._end = item;
-    }
+    if (end >= 0 && end < items.length - 1) throw new Error('end must be the last call in a step.');
 
     adopt(run._parent, items, id);
 
