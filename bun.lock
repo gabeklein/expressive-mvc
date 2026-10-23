@@ -29,7 +29,7 @@
         "@expressive/inspect": "workspace:*",
         "@expressive/react": "workspace:*",
         "@expressive/router": "workspace:*",
-        "@expressive/run": "workspace:*",
+        "@expressive/steps": "workspace:*",
         "@lezer/highlight": "^1",
         "lucide-react": "^0.570.0",
         "react": "^19.2.4",
@@ -145,8 +145,8 @@
         "@expressive/mvc": "^0.89.0",
       },
     },
-    "packages/run": {
-      "name": "@expressive/run",
+    "packages/steps": {
+      "name": "@expressive/steps",
       "version": "0.0.0",
       "devDependencies": {
         "@expressive/mvc": "workspace:*",
@@ -399,7 +399,7 @@
 
     "@expressive/router": ["@expressive/router@workspace:packages/router"],
 
-    "@expressive/run": ["@expressive/run@workspace:packages/run"],
+    "@expressive/steps": ["@expressive/steps@workspace:packages/steps"],
 
     "@floating-ui/core": ["@floating-ui/core@1.7.5", "", { "dependencies": { "@floating-ui/utils": "^0.2.11" } }, "sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ=="],
 

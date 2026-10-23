@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
         '@common': fileURLToPath(new URL('./common', import.meta.url)),
         '@expressive/inspect': src('inspect'),
         '@expressive/router': src('router'),
-        '@expressive/run': src('run'),
+        '@expressive/steps': src('steps'),
         '@expressive/react': src(dom ? 'dom' : 'react'),
         '@expressive/dom': src('dom'),
         '@expressive/mvc': src('mvc')
