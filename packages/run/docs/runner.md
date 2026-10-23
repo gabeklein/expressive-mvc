@@ -1,6 +1,6 @@
 # Runner - The Controller
 
-`job.then` - or what `run(this)` returns - is a `Runner`: an observable callable, not a Model. With `run(this)` the field name is the user's - `then` makes the instance awaitable ([runs.md](runs.md#awaiting-the-instance---start-or-join)), `run` keeps the controller at `x.run`.
+`job.then` is a `Runner`: an observable callable, not a Model. Named `then`, it makes the instance awaitable ([runs.md](runs.md#awaiting-the-instance---start-or-join)).
 
 | member | |
 | --- | --- |

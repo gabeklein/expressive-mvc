@@ -2,11 +2,11 @@
 
 ```ts
 class Job extends Model {
-  readonly then = run(this, { base: Job });
+  readonly then: Runner<this>;
 }
 ```
 
-`Job` is a `Model` with `then = run(this, { base: Job })` built in - every subclass's methods are steps - and its hooks declared as optional members - subclasses get autocomplete, `override` catches a misspelling, a signature is checked by declaration. None is required.
+`Job` is a `Model` whose subclasses' methods are steps - every class from the instance's own up to `Job`; `Model`'s stay plain. Its hooks are declared as optional members - subclasses get autocomplete, `override` catches a misspelling, a signature is checked by declaration. None is required. The class is the only contract: no function makes a Model runnable, and hooks are found on the class alone.
 
 | member | visibility | when it runs |
 | --- | --- | --- |
@@ -20,25 +20,37 @@ class Job extends Model {
 
 Other methods are steps, `protected async` by convention ([README.md](README.md#conventions)). Per-step `before<Step>`/`after<Step>` are checked at runtime only.
 
-## Escape hatch: `run(this, options)`
+## Composition
 
-For a class that cannot extend `Job` - it already extends another `Model` or a `Component`. The same runtime without the base class: the field holds the `Runner`. Hooks are found by name, `back` and `exit` included, and unchecked - or passed as options, typed. Prefer `Job` otherwise.
+A class that already extends another `Model`, or a `Component`, holds a job as a field - owned like any child Model, destroyed with its owner. The job reaches its owner with `get()`:
 
 ```ts
-class Sync extends Remote {
-  then = run(this, {
-    exit(outcome) {
-      if (outcome.status != 'done') this.cursor = '';
-    }
-  });
+class Sync extends Feed {
+  token = set<string>();
+  pull = new Pull();
 }
+
+class Pull extends Job {
+  sync = get(Sync);
+  cursor = '';
+
+  async next() {
+    this.page();
+  }
+
+  protected async page() {
+    const { sync } = this;
+    const page = await api.page(this.cursor, { token: sync.token, signal: this.then.signal });
+
+    sync.items.push(...page.items);
+    this.cursor = page.next || this.cursor;
+
+    if (page.next) this.page();
+  }
+}
+
+await sync.pull;                       // starts or joins the job's run
+sync.pull.then.status;                 // reactive, as on any job
 ```
 
-`Runner.Options<T>`:
-
-| option | |
-| --- | --- |
-| `base` | opt into an extensible runner - the topmost class whose methods are steps and hooks, walked from the most-derived class; classes above it stay plain. Default: the most-derived class only. The instance must extend it, else `run` throws `<instance> does not extend <base>.` |
-| `before`, `after`, `back`, `exit` | hooks typed against the instance, raw instance as `this`; each runs after the class's same-named hook ([hooks.md](hooks.md#hooks-as-options)) |
-
-Without `base`, only the most-derived class's methods are steps and hooks - `Remote`'s stay plain, callable inline from a step and from outside. A subclass of `Sync` would get only its own methods as steps: a runner meant to be extended passes itself, `run(this, { base: Sync })`. `Job` passes `base: Job`.
+Writes to the owner are unmanaged - in no entry, not restored by the job's unwind; state that must come back lives on the job. `get(Sync)` is a field, so it is in the values dump. A component renders the job's fields and Runner through the field: `const { pull } = this; pull.then.status`.
