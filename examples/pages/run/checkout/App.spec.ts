@@ -67,7 +67,7 @@ test('will go back to reserve when the card is declined', async ({ page }) => {
   await expect(page.locator('.status')).toHaveText('Status: waiting');
   await expect(field(page, 'Hold')).toHaveText('H-1');
   await expect(field(page, 'Authorization')).toHaveText('-');
-  await expect(ids(page)).toHaveText(['next#1', 'reserve#1', 'pay#1', 'decline#1', 'back#1']);
+  await expect(ids(page)).toHaveText(['next#1', 'reserve#1', 'pay#1', 'decline#1']);
   await expect(page.locator('.record li', { hasText: 'pay#1' })).toContainText('undone');
 });
 
@@ -98,7 +98,7 @@ test('will retry with another card after a decline', async ({ page }) => {
   await expect(page.locator('.status')).toHaveText('Status: idle');
   await expect(field(page, 'Tracking')).toHaveText('T-H-1-1');
   await expect(ids(page)).toHaveText([
-    'next#1', 'reserve#1', 'pay#1', 'decline#1', 'back#1', 'pay#2', 'approve#1', 'mail#1', 'ship#1', 'end#1'
+    'next#1', 'reserve#1', 'pay#1', 'decline#1', 'pay#2', 'approve#1', 'mail#1', 'ship#1', 'end#1'
   ]);
 });
 

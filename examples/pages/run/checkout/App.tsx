@@ -1,7 +1,7 @@
 import './App.css';
 
-import { Component } from '@expressive/mvc';
-import { Job } from '@expressive/run';
+import { Component, has } from '@expressive/mvc';
+import { Job, type Runner } from '@expressive/run';
 
 const CART = [
   { name: 'Desk lamp', price: 48 },
@@ -26,10 +26,11 @@ export default () => (
     <Storefront />
     <small>
       A decline calls <code>this.then.back(this.reserve)</code> - the
-      authorization is cancelled by the undo <code>pay</code> returned and its
-      fields restored by <code>rewind</code>, the hold stays - then waits on{' '}
+      authorization is cancelled by the undo <code>pay</code> returned, which
+      also restores its fields; the hold stays - then waits on{' '}
       <code>this.then(this.pay)</code> for another card. Stop cancels and unwinds
-      everything. The journal below is <code>checkout.then.record</code>.
+      everything. The journal below is <code>checkout.log</code>, filled by the{' '}
+      <code>after</code> hook with each step's entry.
     </small>
   </div>
 );
@@ -48,8 +49,8 @@ class Storefront extends Component {
 
   render() {
     const { checkout, card } = this;
-    const { status, active, record } = checkout.then;
-    const { hold, authorization, tracking, receipt, notice } = checkout;
+    const { status, active } = checkout.then;
+    const { hold, authorization, tracking, receipt, notice, log } = checkout;
     const working = status == 'running' || status == 'waiting';
     const ready = !working;
 
@@ -88,7 +89,7 @@ class Storefront extends Component {
           <dd>{receipt || '-'}</dd>
         </dl>
         <ol className="record">
-          {record.map((entry, index) => (
+          {log.map((entry, index) => (
             <li key={index}>
               <code>{entry.id}</code>
               {entry.wrote.length > 0 && <span> wrote {entry.wrote.join(', ')}</span>}
@@ -102,13 +103,12 @@ class Storefront extends Component {
 }
 
 class Checkout extends Job {
-  static readonly rewind = true;
-
   hold = '';
   authorization = '';
   tracking = '';
   receipt = '';
   notice = '';
+  log = has<Runner.Entry>();
 
   async next(card: string) {
     this.tracking = '';
@@ -167,6 +167,14 @@ class Checkout extends Job {
 
   protected end() {
     return { tracking: this.tracking, receipt: this.receipt };
+  }
+
+  protected before(step: string) {
+    if (step == 'next') this.log.clear();
+  }
+
+  protected after(step: string, entry: Runner.Entry) {
+    this.log.push(entry);
   }
 
   protected back(reason: unknown) {

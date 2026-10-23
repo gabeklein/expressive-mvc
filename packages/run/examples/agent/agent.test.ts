@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 
+import { journal, record } from '../../test.setup';
 import { Agent } from './agent';
 import { delay, MINUTE, model, tools, type Message, type ToolCall } from './services';
 
@@ -9,7 +10,7 @@ afterEach(() => {
 });
 
 it('will run a turn to end', async () => {
-  const agent = Agent.new({ mode: 'yolo' });
+  const agent = journal(Agent).new({ mode: 'yolo' });
 
   expect(await agent.next('write notes')).toBe('done');
   expect([...agent.messages].map((message) => message.content)).toEqual([
@@ -18,7 +19,7 @@ it('will run a turn to end', async () => {
     'call_1_0: write notes ok',
     'done'
   ]);
-  expect(agent.then.record.map((entry) => entry.id)).toEqual(['next#1', 'turn#1', 'tool#1', 'exec#1', 'turn#2', 'end#1']);
+  expect(record(agent).map((entry) => entry.id)).toEqual(['next#1', 'turn#1', 'tool#1', 'exec#1', 'turn#2', 'end#1']);
 });
 
 it('will reject an idle await without a prompt', async () => {
@@ -85,7 +86,7 @@ it('will resolve allow once its tool has run', async () => {
 });
 
 it('will answer the tool call it is given', async () => {
-  const agent = Agent.new();
+  const agent = journal(Agent).new();
   const reply = agent.next('write notes, write docs');
 
   await vi.waitFor(() => expect(agent.then.waiting).toHaveLength(2));
@@ -101,7 +102,7 @@ it('will answer the tool call it is given', async () => {
   await agent.deny(notes);
 
   expect(await reply).toBe('done');
-  expect(agent.then.record.filter((entry) => entry.wake).map((entry) => [entry.key, entry.wake])).toEqual([
+  expect(record(agent).filter((entry) => entry.wake).map((entry) => [entry.key, entry.wake])).toEqual([
     ['allow', 'wait#2'],
     ['deny', 'wait#1']
   ]);
@@ -138,14 +139,14 @@ it('will throw if allow is called after its wait closed', async () => {
 });
 
 it('will keep messages across runs', async () => {
-  const agent = Agent.new({ mode: 'yolo' });
+  const agent = journal(Agent).new({ mode: 'yolo' });
 
   await agent.next('write notes');
   await agent.next('write tests');
 
   expect(agent.messages.size).toBe(8);
   expect(agent.then.runs).toBe(2);
-  expect(agent.then.record[0].args).toEqual(['write tests']);
+  expect(record(agent)[0].args).toEqual(['write tests']);
 });
 
 it('will queue a prompt sent mid-turn', async () => {
@@ -165,7 +166,7 @@ it('will queue a prompt sent mid-turn', async () => {
 });
 
 it('will keep what a failing turn committed', async () => {
-  const agent = Agent.new({ mode: 'yolo' });
+  const agent = journal(Agent).new({ mode: 'yolo' });
   const { create } = model;
 
   vi.spyOn(model, 'create')
@@ -176,10 +177,10 @@ it('will keep what a failing turn committed', async () => {
     });
 
   await expect(agent.next('write notes')).rejects.toThrow('overloaded');
-  // light journal: committed pushes stay, the failing turn's draft chunks are restored
+  // no step returns an undo or true: committed pushes stay, the failing turn's own draft chunks are restored
   expect([...agent.messages].map((message) => message.content)).toEqual(['write notes', '', 'call_1_0: write notes ok']);
   expect(agent.draft.size).toBe(0);
-  expect(agent.then.record.map((entry) => [entry.id, entry.wrote, entry.undone])).toEqual([
+  expect(record(agent).map((entry) => [entry.id, entry.wrote, entry.undone])).toEqual([
     ['next#1', ['messages'], undefined],
     ['turn#1', ['messages'], undefined],
     ['tool#1', [], undefined],
@@ -188,7 +189,7 @@ it('will keep what a failing turn committed', async () => {
 });
 
 it('will abort the model call when stopped mid-turn', async () => {
-  const agent = Agent.new({ mode: 'yolo' });
+  const agent = journal(Agent).new({ mode: 'yolo' });
   const create = vi.spyOn(model, 'create').mockImplementationOnce(async (_, { signal, onChunk } = {}) => {
     onChunk?.('Writing');
     await delay(MINUTE, { signal: signal! });
@@ -205,11 +206,11 @@ it('will abort the model call when stopped mid-turn', async () => {
   expect(create.mock.calls[0][1]!.signal!.aborted).toBe(true);
   expect(agent.draft.size).toBe(0);
   expect([...agent.messages].map((message) => message.content)).toEqual(['write notes']);
-  expect(agent.then.record.map((entry) => entry.id)).toEqual(['next#1']);
+  expect(record(agent).map((entry) => entry.id)).toEqual(['next#1']);
 });
 
 it('will retry a tool, keeping what the tool pushed from outside', async () => {
-  const agent = Agent.new({ mode: 'yolo' });
+  const agent = journal(Agent).new({ mode: 'yolo' });
 
   vi.spyOn(tools, 'run').mockImplementationOnce(async (call) => {
     agent.messages.push({ role: 'tool', content: `${call.id}: started` });
@@ -224,11 +225,8 @@ it('will retry a tool, keeping what the tool pushed from outside', async () => {
     'call_1_0: write notes ok',
     'done'
   ]);
-  // the failed try is its own entry with its error; the re-run carries retry 1
-  expect(agent.then.record.filter((entry) => entry.key == 'exec').map((entry) => [entry.retry, (entry.error as Error)?.message])).toEqual([
-    [undefined, 'timeout'],
-    [1, undefined]
-  ]);
+  // the failed try never commits, so after sees only the re-run - it carries retry 1
+  expect(record(agent).filter((entry) => entry.key == 'exec').map((entry) => entry.retry)).toEqual([1]);
 });
 
 it('will deny a tool call nobody answers within a minute', async () => {
@@ -248,7 +246,7 @@ it('will deny a tool call nobody answers within a minute', async () => {
 it('will time out each tool call on its own', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
-  const agent = Agent.new();
+  const agent = journal(Agent).new();
   const reply = agent.next('write notes, write docs');
 
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
@@ -259,7 +257,7 @@ it('will time out each tool call on its own', async () => {
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
 
   expect(await reply).toBe('done');
-  expect(agent.then.record.filter((entry) => entry.wake).map((entry) => [entry.key, entry.args[0], entry.wake])).toEqual([
+  expect(record(agent).filter((entry) => entry.wake).map((entry) => [entry.key, entry.args[0], entry.wake])).toEqual([
     ['allow', docs, 'wait#2'],
     ['deny', notes, 'wait#1']
   ]);
@@ -268,13 +266,13 @@ it('will time out each tool call on its own', async () => {
 it('will time out parallel tool calls each against its own wait', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
-  const agent = Agent.new();
+  const agent = journal(Agent).new();
   const reply = agent.next('write notes, write docs');
 
   await vi.advanceTimersByTimeAsync(MINUTE);
 
   expect(await reply).toBe('done');
-  expect(agent.then.record.filter((entry) => entry.wake).map((entry) => [(entry.args[0] as ToolCall).id, entry.wake])).toEqual([
+  expect(record(agent).filter((entry) => entry.wake).map((entry) => [(entry.args[0] as ToolCall).id, entry.wake])).toEqual([
     ['call_1_0', 'wait#1'],
     ['call_1_1', 'wait#2']
   ]);
@@ -302,7 +300,7 @@ it('will not let a stale timeout deny the next turn', async () => {
 });
 
 it('will pull steering sent mid-turn before ending', async () => {
-  const agent = Agent.new({ mode: 'yolo' });
+  const agent = journal(Agent).new({ mode: 'yolo' });
   const reply = agent.next('write notes');
 
   // the push is unmanaged; the pull happens inside turn, so it is part of that turn's entry
@@ -320,11 +318,11 @@ it('will pull steering sent mid-turn before ending', async () => {
     'call_5_0: read docs ok',
     'done'
   ]);
-  expect(agent.then.record.find((entry) => entry.id == 'turn#2')!.wrote).toContain('steers');
+  expect(record(agent).find((entry) => entry.id == 'turn#2')!.wrote).toContain('steers');
 });
 
 it('will steer later tool calls by writing mode', async () => {
-  const agent = Agent.new();
+  const agent = journal(Agent).new();
   const reply = agent.next('write notes');
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
@@ -339,8 +337,8 @@ it('will steer later tool calls by writing mode', async () => {
   expect(await reply).toBe('done');
   expect(agent.messages.get(-2)).toEqual({ role: 'tool', content: 'call_5_0: write docs ok' });
   // only the first call waited; a steer is in no entry
-  expect(agent.then.record.filter((entry) => entry.wake)).toHaveLength(1);
-  expect(agent.then.record.some((entry) => entry.wrote.includes('mode'))).toBe(false);
+  expect(record(agent).filter((entry) => entry.wake)).toHaveLength(1);
+  expect(record(agent).some((entry) => entry.wrote.includes('mode'))).toBe(false);
 });
 
 it('will end a turn early from outside', async () => {

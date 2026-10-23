@@ -1,13 +1,16 @@
 import { afterEach, expect, it, vi } from 'vitest';
 
-import { mockWarn } from '../../test.setup';
+import { journal, mockWarn, record } from '../../test.setup';
 import { Deploy } from './deploy';
 import { chat, ci, db, delay, fleet, git, MINUTE, pager, registry, SECOND } from './services';
 
 const HOSTS = ['web-1', 'web-2', 'web-3', 'web-4', 'web-5'];
 
+// a subclass keeping each entry its after hook is handed - read with record(deploy)
+const Logged = journal(Deploy);
+
 const create = () => {
-  const deploy = Deploy.new({ version: '1.2.0', hosts: HOSTS });
+  const deploy = Logged.new({ version: '1.2.0', hosts: HOSTS });
 
   deploy.releases.add({ version: '1.0.0' });
   deploy.releases.add({ version: '1.1.0' });
@@ -48,7 +51,7 @@ it('will release through the gate', async () => {
   expect(deploy.releases.map((release) => release.version)).toEqual(['1.1.0', '1.2.0']);
   expect(fleet.drain).toHaveBeenCalledTimes(3);
   expect(fleet.serve).toHaveBeenCalledTimes(3);
-  expect(deploy.then.record.map((entry) => entry.key)).toEqual([
+  expect(record(deploy).map((entry) => entry.key)).toEqual([
     'next',
     'build',
     'test',
@@ -80,7 +83,7 @@ it('will log every step through before and after', async () => {
   expect(deploy.log.get(0, 6)).toEqual(['next()', 'next#1 ok', 'build()', 'build#1 ok', 'test()', 'test#1 ok']);
   expect(deploy.log.get((line) => line.startsWith('promote'))).toBe('promote(gabe)');
   // hooks write outside any entry
-  expect(deploy.then.record.some((entry) => entry.wrote.includes('log'))).toBe(false);
+  expect(record(deploy).some((entry) => entry.wrote.includes('log'))).toBe(false);
 });
 
 it('will retry a flaky test suite with backoff', async () => {
@@ -100,16 +103,14 @@ it('will retry a flaky test suite with backoff', async () => {
   await vi.advanceTimersByTimeAsync(2 * SECOND);
   expect(test).toHaveBeenCalledTimes(3);
 
-  // each failed suite is its own entry with its error; each re-run of test carries its retry count
-  const tries = deploy.then.record.filter((entry) => entry.key == 'test' || entry.key == 'suite');
+  // a failed suite never commits; each re-run of test carries its retry count
+  const tries = record(deploy).filter((entry) => entry.key == 'test' || entry.key == 'suite');
 
-  expect(tries.map((entry) => [entry.id, entry.retry, (entry.error as Error)?.message])).toEqual([
-    ['test#1', undefined, undefined],
-    ['suite#1', undefined, 'flaky'],
-    ['test#2', 1, undefined],
-    ['suite#2', undefined, 'flaky'],
-    ['test#3', 2, undefined],
-    ['suite#3', undefined, undefined]
+  expect(tries.map((entry) => [entry.id, entry.retry])).toEqual([
+    ['test#1', undefined],
+    ['test#2', 1],
+    ['test#3', 2],
+    ['suite#3', undefined]
   ]);
   expect(deploy.then.status).toBe('waiting');
 
@@ -129,7 +130,7 @@ it('will abort the test suite when stopped', async () => {
   expect(test).toHaveBeenCalledTimes(1);
   expect(deploy.report).toBe(`1.2.0 stopped: ${deploy} was stopped.`);
   // a plain stop does not unwind - stop(true) would
-  expect(deploy.then.record.find((entry) => entry.key == 'build')!.undone).toBeUndefined();
+  expect(record(deploy).find((entry) => entry.key == 'build')!.undone).toBeUndefined();
 });
 
 it('will roll back the canaries and the build when the gate aborts', async () => {
@@ -151,18 +152,19 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   expect(fleet.uninstall).toHaveBeenCalledWith('web-1');
   expect(fleet.uninstall).toHaveBeenCalledWith('web-4');
   expect(deploy.live.size).toBe(0);
+  expect(deploy.canaries).toEqual([]);
   expect(registry.unpublish).toHaveBeenCalledWith('app-1.2.0.tgz');
   expect(git.untag).toHaveBeenCalledWith('1.2.0');
   expect(db.migrate).not.toHaveBeenCalled();
   expect(deploy.then.status).toBe('stopped');
   expect(deploy.report).toBe('1.2.0 stopped: canary rejected: error rate');
-  // light journal: only entries with an undo are marked
-  expect(deploy.then.record.map((entry) => [entry.key, entry.undone])).toEqual([
+  // only entries returning an undo or true are undone - their fields restored too
+  expect(record(deploy).map((entry) => [entry.key, entry.undone])).toEqual([
     ['next', undefined],
     ['build', true],
     ['test', undefined],
     ['suite', undefined],
-    ['canary', undefined],
+    ['canary', true],
     ['install', true],
     ['install', true],
     ['gate', undefined],
@@ -214,11 +216,10 @@ it('will ask before reverting a failed rollout', async () => {
   expect(fleet.serve).not.toHaveBeenCalledWith('web-3');
   // migrate committed, so the unwind halts there: canaries and build stay
   expect(registry.unpublish).not.toHaveBeenCalled();
-  expect(deploy.then.record.map((entry) => [entry.id, entry.wake, entry.committed, entry.halted, entry.undone]).slice(-4)).toEqual([
-    ['migrate#1', undefined, true, true, undefined],
-    ['rollout#1', undefined, undefined, undefined, true],
-    ['upgrade#1', undefined, undefined, undefined, undefined],
-    ['keep#1', 'wait#2', undefined, undefined, undefined]
+  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.undone]).slice(-3)).toEqual([
+    ['migrate#1', true, true, undefined],
+    ['rollout#1', undefined, undefined, true],
+    ['upgrade#1', undefined, undefined, undefined]
   ]);
 });
 
@@ -241,7 +242,7 @@ it('will revert a failed rollout nobody answers', async () => {
   expect(fleet.uninstall).toHaveBeenCalledTimes(1);
   expect(fleet.uninstall).toHaveBeenCalledWith('web-2');
   expect([...deploy.live.keys()].sort()).toEqual(['web-1', 'web-4']);
-  expect(deploy.then.record.at(-1)).toMatchObject({ key: 'revert', wake: 'wait#2' });
+  expect(record(deploy).find((entry) => entry.key == 'rollout')).toMatchObject({ undone: true });
 });
 
 it('will stop unwinding at the retired release', async () => {
@@ -258,7 +259,7 @@ it('will stop unwinding at the retired release', async () => {
 
   await expect(release).rejects.toThrow('chat is down');
   // a deleted pool member cannot come back: the unwind halts at retire with a warning, before reaching rollout's wait
-  expect(deploy.then.record.at(-1)).toMatchObject({ key: 'retire', irreversible: ['releases'], halted: true });
+  expect(record(deploy).at(-1)).toMatchObject({ key: 'retire', irreversible: ['releases'], halted: true });
   expect(warn).toHaveBeenCalledWith(`${deploy} stopped unwinding at retire#1: releases cannot be restored.`);
   expect(deploy.then.status).toBe('failed');
   expect(fleet.uninstall).not.toHaveBeenCalled();

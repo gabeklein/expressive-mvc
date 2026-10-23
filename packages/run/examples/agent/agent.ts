@@ -3,7 +3,7 @@ import { Job } from '@expressive/run';
 
 import { delay, MINUTE, model, result, safe, toolCalls, tools, user, type Message, type ToolCall } from './services';
 
-// light journal (no rewind): a long-lived instance whose fields are the product - a failed turn keeps what earlier steps committed
+// a long-lived instance whose fields are the product: no step returns an undo or true, so a failed turn keeps what earlier steps committed
 export class Agent extends Job {
   mode: 'ask' | 'auto' | 'yolo' = 'ask';
   messages = has<Message>();

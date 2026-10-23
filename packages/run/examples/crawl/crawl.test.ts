@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 
-import { flushMicrotasks, mockPromise } from '../../test.setup';
+import { flushMicrotasks, journal, mockPromise, record } from '../../test.setup';
 import { Crawl } from './crawl';
 import { browser, SECOND, stats, type Product } from './services';
 
@@ -74,7 +74,7 @@ it('will retry a failing site with backoff, keeping what other sites found', asy
   search.mockImplementation(async (site) => [product(`${site}-sku`, site)]);
   search.mockRejectedValueOnce(new Error('timeout'));
 
-  const crawl = Crawl.new({ sites: ['a', 'b'] });
+  const crawl = journal(Crawl).new({ sites: ['a', 'b'] });
 
   crawl.next('office');
 
@@ -88,11 +88,8 @@ it('will retry a failing site with backoff, keeping what other sites found', asy
   await vi.advanceTimersByTimeAsync(SECOND);
   expect((await found).map((item) => item.sku)).toEqual(['b-sku', 'a-sku']);
 
-  // the failed scan is journaled with its error; visit's re-run carries retry 1
-  expect(crawl.then.record.filter((entry) => entry.error || entry.retry).map((entry) => [entry.id, entry.retry])).toEqual([
-    ['scan#1', undefined],
-    ['visit#3', 1]
-  ]);
+  // the failed scan never commits; visit's re-run carries retry 1
+  expect(record(crawl).filter((entry) => entry.retry).map((entry) => [entry.id, entry.retry])).toEqual([['visit#3', 1]]);
 });
 
 it('will skip a site after three retries', async () => {
@@ -118,10 +115,11 @@ it('will skip a site after three retries', async () => {
 it('will end even when the report fails', async () => {
   vi.spyOn(stats, 'post').mockRejectedValue(new Error('offline'));
 
-  const crawl = Crawl.new({ sites: ['a'] });
+  const crawl = journal(Crawl).new({ sites: ['a'] });
 
   crawl.next('office');
 
   expect(await crawl).toHaveLength(1);
-  expect(crawl.then.record.find((entry) => entry.key == 'report')).toMatchObject({ error: new Error('offline') });
+  expect(stats.post).toHaveBeenCalled();
+  expect(record(crawl).some((entry) => entry.key == 'report')).toBe(false);
 });

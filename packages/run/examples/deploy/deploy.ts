@@ -13,7 +13,7 @@ export interface Released {
   approver: string;
 }
 
-// light journal: undos put the world back, fields of settled steps stay as they were left
+// undos put the world back, and an unwind restores the fields of the steps returning them - the rest stay as they were left
 export class Deploy extends Job {
   version!: string;
   hosts: string[] = [];
@@ -72,6 +72,9 @@ export class Deploy extends Job {
 
     this.then(this.canaries, this.install);     // a mapped group: install(host, index) per canary, in parallel
     this.gate();                                // scheduled by canary, so it runs before migrate - depth-first
+
+    // nothing to call on unwind, but true keeps the prior - an unwind restores canaries
+    return true;
   }
 
   protected async install(host: string) {
@@ -147,7 +150,7 @@ export class Deploy extends Job {
     fleet.serve(entry.args[0] as string);
   }
 
-  // an unwind answer runs as an undo frame: journaled with wake, no hooks, cannot schedule
+  // an unwind answer runs as an undo frame: no hooks, cannot schedule
   async revert() {
     const upgraded = [...this.live.keys()].filter((host) => !this.canaries.includes(host));
 

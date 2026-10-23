@@ -2,10 +2,8 @@ import { Job } from '@expressive/run';
 
 import { courier, inventory, mail, stripe, type Cart, type Charge } from './services';
 
+// all or nothing: every step that writes a field returns its undo, so a failed run puts each field back
 export class SubmitOrder extends Job {
-  // all or nothing: entries keep prior/patch, and a failed run puts every field back
-  static readonly rewind = true;
-
   cart!: Cart;
   charge?: Charge = undefined;
   tracking = '';
@@ -32,7 +30,7 @@ export class SubmitOrder extends Job {
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.end();
 
-    // a returned step token is the undo: refund never runs forward, only on unwind
+    // a returned step token is the undo: refund never runs forward, only on unwind - and charge is restored after it
     return this.refund(this.charge.id);
   }
 
@@ -70,7 +68,7 @@ export class SubmitOrder extends Job {
     return { orderId: this.charge?.id, tracking: this.tracking };
   }
 
-  // after any unwind - given back()'s reason, else the error; writes here are in no entry, so they survive rewind
+  // after any unwind - given back()'s reason, else the error; writes here are in no entry, so no unwind restores them
   protected back(reason: unknown) {
     this.notice = `Order ${this.cart.id} was not placed: ${reason instanceof Error ? reason.message : reason}`;
   }

@@ -10,14 +10,6 @@ it('will pull every page and end with its values', async () => {
 
   // awaiting an idle instance runs next(); without end the result is the values, then excluded
   expect(await sync).toEqual({ items: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], cursor: 'p2', token: 't1', acked: 'p2' });
-  expect(sync.then.record.map((entry) => [entry.id, entry.wrote])).toEqual([
-    ['next#1', []],
-    ['pull#1', ['cursor', 'items']],
-    ['pull#2', ['cursor', 'items']],
-    ['then#1', ['acked']],
-    ['end#1', []]
-  ]);
-
   // Feed's method stayed plain: pull called it inline, and it reads from outside
   expect(sync.known('b')).toBe(true);
 });
@@ -56,10 +48,10 @@ it('will wait for a token before pulling', async () => {
   // pull read the pending token: no entry yet, still running
   expect(sync.then.status).toBe('running');
   expect(sync.then.active).toBe('pull');
-  expect(sync.then.record.map((entry) => entry.id)).toEqual(['next#1']);
+  expect(sync.items.size).toBe(0);
 
   sync.token = 't1';
 
   await done;
-  expect(sync.then.record.map((entry) => entry.id)).toEqual(['next#1', 'pull#1', 'pull#2', 'then#1', 'end#1']);
+  expect(sync.items.size).toBe(3);
 });

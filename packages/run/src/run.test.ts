@@ -1,14 +1,14 @@
 import { has, map, set, Model } from '@expressive/mvc';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
-import { flushMicrotasks, mockPromise, mockUncaught, mockWarn } from '../test.setup';
+import { flushMicrotasks, Journal, mockPromise, mockUncaught, mockWarn, record } from '../test.setup';
 import { Job, run, type Runner } from './run';
 
 describe('steps', () => {
   it('will run steps from next through to end', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       next(seed: number) {
         order.push(`next:${seed}`);
         this.first(seed + 1);
@@ -39,7 +39,7 @@ describe('steps', () => {
     expect(await test.next(1)).toBe(30);
     expect(order).toEqual(['next:1', 'first:2', 'second:3', 'end:3']);
     expect(test.then.status).toBe('idle');
-    expect(test.then.record).toEqual([
+    expect(record(test)).toEqual([
       { id: 'next#1', key: 'next', args: [1], wrote: [], next: [{ id: 'first#1', key: 'first', args: [2] }] },
       { id: 'first#1', key: 'first', args: [2], wrote: [], next: [{ id: 'second#1', key: 'second', args: [3] }] },
       { id: 'second#1', key: 'second', args: [3], wrote: [], next: [{ id: 'end#1', key: 'end', args: [3] }] },
@@ -172,7 +172,7 @@ describe('steps', () => {
   });
 
   it('will loop by calling next inside a step', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       count = 0;
 
       next(until: number) {
@@ -189,11 +189,11 @@ describe('steps', () => {
 
     await test.next(3);
     expect(test.count).toBe(3);
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'next#2', 'next#3', 'next#4', 'end#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'next#2', 'next#3', 'next#4']);
   });
 
   it('will record which fields each step wrote', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       a = 0;
       b = '';
 
@@ -212,36 +212,8 @@ describe('steps', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([['a'], ['b', 'a'], []]);
-    expect(test.then.record.some((entry) => 'prior' in entry || 'patch' in entry)).toBe(false);
-  });
-
-  it('will record prior and patch with rewind', async () => {
-    class Test extends Job {
-      static readonly rewind = true;
-      a = 0;
-      b = '';
-
-      next() {
-        this.a = 1;
-        this.first();
-      }
-
-      first() {
-        this.b = 'x';
-        this.a = 2;
-        this.a = 3;
-      }
-    }
-
-    const test = Test.new();
-
-    await test.next();
-    expect(test.then.record.map(({ prior, patch }) => [prior, patch])).toEqual([
-      [{ a: 0 }, { a: 1 }],
-      [{ b: '', a: 1 }, { b: 'x', a: 3 }],
-      [undefined, undefined]
-    ]);
+    expect(record(test).map((entry) => entry.wrote)).toEqual([['a'], ['b', 'a']]);
+    expect(record(test).some((entry) => 'prior' in entry || 'patch' in entry)).toBe(false);
   });
 
   it('will bind Model methods to the instance', async () => {
@@ -269,7 +241,7 @@ describe('steps', () => {
   it('will run helpers on the instance', async () => {
     let self: unknown;
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -286,11 +258,11 @@ describe('steps', () => {
 
     expect(await test.next()).toEqual({ value: 4 });
     expect(self).toBe(test);
-    expect(test.then.record[0].wrote).toEqual(['value']);
+    expect(record(test)[0].wrote).toEqual(['value']);
   });
 
   it('will not journal writes of a helper', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
       label = '';
 
@@ -307,7 +279,7 @@ describe('steps', () => {
     const test = Test.new();
 
     expect(await test.next()).toEqual({ value: 4, label: 'doubled' });
-    expect(test.then.record[0].wrote).toEqual(['value']);
+    expect(record(test)[0].wrote).toEqual(['value']);
   });
 
   it('will pass function fields through', async () => {
@@ -327,7 +299,7 @@ describe('steps', () => {
   });
 
   it('will accept writes from outside', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       mode = 'ask';
 
       async next() {
@@ -346,7 +318,7 @@ describe('steps', () => {
     test.mode = 'yolo';
 
     expect(await result).toBe('yolo');
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], []]);
+    expect(record(test).map((entry) => entry.wrote)).toEqual([[], []]);
   });
 
   it('will type the result from end', async () => {
@@ -427,7 +399,7 @@ describe('groups', () => {
     const a = mockPromise();
     const b = mockPromise();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.then(this.a(), this.b());
         this.c();
@@ -464,7 +436,7 @@ describe('groups', () => {
     a.resolve();
     await test;
     expect(order).toEqual(['a', 'b', 'b!', 'a!', 'c']);
-    expect(test.then.record[0].next).toEqual([
+    expect(record(test)[0].next).toEqual([
       { id: 'then#1', key: 'then', args: [], group: [{ id: 'a#1', key: 'a', args: [] }, { id: 'b#1', key: 'b', args: [] }] },
       { id: 'c#1', key: 'c', args: [] }
     ]);
@@ -505,7 +477,7 @@ describe('groups', () => {
   it('will attribute writes to their own step', async () => {
     const a = mockPromise();
 
-    class Test extends Job {
+    class Test extends Journal {
       x = 0;
       y = 0;
 
@@ -527,11 +499,10 @@ describe('groups', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => [entry.key, entry.wrote])).toEqual([
+    expect(record(test).map((entry) => [entry.key, entry.wrote])).toEqual([
       ['next', []],
       ['b', ['y']],
-      ['a', ['x']],
-      ['end', []]
+      ['a', ['x']]
     ]);
   });
 
@@ -632,7 +603,7 @@ describe('groups', () => {
   });
 
   it('will group a single token', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.then(this.a());
       }
@@ -643,7 +614,7 @@ describe('groups', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record[0].next).toEqual([
+    expect(record(test)[0].next).toEqual([
       { id: 'then#1', key: 'then', args: [], group: [{ id: 'a#1', key: 'a', args: [] }] }
     ]);
   });
@@ -660,7 +631,7 @@ describe('inline', () => {
   it('will run a function as a step in its place in the plan', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.a();
         this.then(() => void order.push('inline'));
@@ -684,8 +655,8 @@ describe('inline', () => {
 
     await test.next();
     expect(order).toEqual(['before:next', 'before:a', 'a', 'before:then', 'inline', 'before:b', 'b']);
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'then#1', 'b#1', 'end#1']);
-    expect(test.then.record[0].next).toEqual([
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'then#1', 'b#1']);
+    expect(record(test)[0].next).toEqual([
       { id: 'a#1', key: 'a', args: [] },
       { id: 'then#1', key: 'then', args: [] },
       { id: 'b#1', key: 'b', args: [] }
@@ -693,7 +664,7 @@ describe('inline', () => {
   });
 
   it('will run a function with its own proxy as a full step', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -709,16 +680,15 @@ describe('inline', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
       ['next#1', [], ['then#1']],
       ['then#1', ['value'], ['later#1']],
-      ['later#1', [], []],
-      ['end#1', [], []]
+      ['later#1', [], []]
     ]);
   });
 
   it('will journal the writes of an arrow as its own', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -735,11 +705,10 @@ describe('inline', () => {
 
     await test.next();
     expect(test.value).toBe(1);
-    expect(test.then.record.map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
       ['next#1', [], ['then#1']],
       ['then#1', ['value'], ['later#1']],
-      ['later#1', [], []],
-      ['end#1', [], []]
+      ['later#1', [], []]
     ]);
   });
 
@@ -764,7 +733,7 @@ describe('inline', () => {
   it('will give an arrow its own controller', async () => {
     let signal!: AbortSignal;
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.then(() => {
           signal = this.then.signal;
@@ -780,12 +749,12 @@ describe('inline', () => {
 
     await test.next();
     expect(signal.aborted).toBe(true);
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'then#1', 'a#1', 'b#1', 'end#1']);
-    expect(test.then.record[1].next).toMatchObject([{ key: 'then', group: [{ id: 'a#1' }, { id: 'b#1' }] }]);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'then#1', 'a#1', 'b#1']);
+    expect(record(test)[1].next).toMatchObject([{ key: 'then', group: [{ id: 'a#1' }, { id: 'b#1' }] }]);
   });
 
   it('will attribute a nested arrow to its own frame', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -800,18 +769,17 @@ describe('inline', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => [entry.id, entry.wrote])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.wrote])).toEqual([
       ['next#1', []],
       ['then#1', []],
-      ['then#2', ['value']],
-      ['end#1', []]
+      ['then#2', ['value']]
     ]);
   });
 
   it('will attribute an arrow beside a step in flight', async () => {
     const slow = mockPromise();
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -832,14 +800,14 @@ describe('inline', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.find((entry) => entry.id == 'then#1')!.wrote).toEqual(['value']);
+    expect(record(test).find((entry) => entry.id == 'then#1')!.wrote).toEqual(['value']);
   });
 
   it('will not attribute arrows in flight together', async () => {
     const both = mockPromise();
     let ran = 0;
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -858,7 +826,7 @@ describe('inline', () => {
 
     await test.next();
     expect(test.value).toBe(2);
-    expect(test.then.record.filter((entry) => entry.key == 'then').map((entry) => entry.wrote)).toEqual([[], []]);
+    expect(record(test).filter((entry) => entry.key == 'then').map((entry) => entry.wrote)).toEqual([[], []]);
   });
 
   it('will not schedule from arrows in flight together', async () => {
@@ -886,7 +854,7 @@ describe('inline', () => {
   it('will keep a watcher an outside call beside an arrow', async () => {
     const work = mockPromise();
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -909,11 +877,10 @@ describe('inline', () => {
 
     await test.next();
     expect(test.value).toBe(1);
-    expect(test.then.record.map((entry) => [entry.id, entry.wrote])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.wrote])).toEqual([
       ['next#1', []],
       ['then#1', []],
-      ['allow#1', []],
-      ['end#1', []]
+      ['allow#1', []]
     ]);
   });
 
@@ -921,7 +888,7 @@ describe('inline', () => {
     const work = mockPromise();
     let signal!: AbortSignal;
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.then(async (given) => {
           signal = given;
@@ -941,13 +908,13 @@ describe('inline', () => {
 
     work.resolve();
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'then#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'then#1']);
   });
 
   it('will run a returned function as the undo', async () => {
     const refund = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.fail();
 
@@ -963,8 +930,8 @@ describe('inline', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(refund).toHaveBeenCalledWith(false);
-    expect(test.then.record[0]).toMatchObject({ undo: { id: 'then#1', key: 'then', args: [] }, undone: true });
-    expect(test.then.record[0].next).toEqual([{ id: 'fail#1', key: 'fail', args: [] }]);
+    expect(record(test)[0]).toMatchObject({ undo: { id: 'then#1', key: 'then', args: [] }, undone: true });
+    expect(record(test)[0].next).toEqual([{ id: 'fail#1', key: 'fail', args: [] }]);
   });
 
   it('will type a returned function as no value', async () => {
@@ -985,7 +952,7 @@ describe('inline', () => {
       }
     }
 
-    await expect(Test.new().next()).rejects.toThrow('then returned a value; a step returns nothing, or its undo.');
+    await expect(Test.new().next()).rejects.toThrow('then returned a value; a step returns nothing, true, or its undo.');
   });
 });
 
@@ -993,7 +960,7 @@ describe('end', () => {
   it('will run end at its place and drop what is left', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.a();
         this.b();
@@ -1028,7 +995,7 @@ describe('end', () => {
 
     expect(await test.next()).toBe('early');
     expect(order).toEqual(['a', 'b', 'b1', 'end']);
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'b#1', 'b1#1', 'end#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'b#1', 'b1#1', 'end#1']);
   });
 
   it('will fail if a step is called after end', async () => {
@@ -1054,7 +1021,7 @@ describe('end', () => {
   it('will take an undo returned after end', async () => {
     const refund = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next(fail: boolean) {
         this.pay(fail);
       }
@@ -1080,14 +1047,14 @@ describe('end', () => {
 
     expect(await test.next(false)).toBe('paid');
     expect(refund).not.toHaveBeenCalled();
-    expect(test.then.record[1]).toMatchObject({ id: 'pay#1', next: [{ id: 'end#1', key: 'end' }], undo: { id: 'refund#1', key: 'refund' } });
+    expect(record(test)[1]).toMatchObject({ id: 'pay#1', next: [{ id: 'end#1', key: 'end' }], undo: { id: 'refund#1', key: 'refund' } });
   });
 
   it('will end with the first end the plan reaches', async () => {
     const slow = mockPromise();
     const after = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.then(this.fast(), this.slow());
       }
@@ -1119,7 +1086,7 @@ describe('end', () => {
 
     expect(await result).toBe('fast');
     expect(after).not.toHaveBeenCalled();
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'fast#1', 'slow#1', 'end#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'fast#1', 'slow#1', 'end#1']);
   });
 
   it('will resolve with the argument when end returns nothing', async () => {
@@ -1148,20 +1115,19 @@ describe('end', () => {
     expect(await Test.new().next()).toEqual({ count: 1 });
   });
 
-  it('will journal an implicit end', async () => {
+  it('will not call hooks for an implicit end', async () => {
     const after = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { after });
-
+    class Test extends Job {
       next() {}
+
+      protected after(step: string) {
+        after(step);
+      }
     }
 
-    const test = Test.new();
-
-    await test.next();
-    expect(test.then.record.at(-1)).toEqual({ id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true });
-    expect(after.mock.calls.map(([key]) => key)).toEqual(['next']);
+    expect(await Test.new().next()).toEqual({});
+    expect(after.mock.calls).toEqual([['next']]);
   });
 
   it('will end from the controller', async () => {
@@ -1241,7 +1207,7 @@ describe('end', () => {
     const more = mockPromise();
     const later = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       async next(work: Promise<void>) {
@@ -1280,7 +1246,7 @@ describe('end', () => {
     more.resolve();
 
     expect(await queued).toBe('second:1');
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'end#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'end#1']);
   });
 
   it('will end from outside with the value, else a dump', async () => {
@@ -1337,7 +1303,7 @@ describe('end', () => {
 
 describe('runs', () => {
   it('will repeat with a record each and fields kept', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       count = 0;
 
       next(by: number) {
@@ -1351,9 +1317,8 @@ describe('runs', () => {
     expect(await test.next(2)).toEqual({ count: 3 });
     expect(test.then.runs).toBe(2);
     expect(test.then.status).toBe('idle');
-    expect(test.then.record).toEqual([
-      { id: 'next#1', key: 'next', args: [2], wrote: ['count'], next: [] },
-      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
+    expect(record(test)).toEqual([
+      { id: 'next#1', key: 'next', args: [2], wrote: ['count'], next: [] }
     ]);
   });
 
@@ -1675,7 +1640,7 @@ describe('then', () => {
     expect(await test.next()).toEqual({ count: 1 });
   });
 
-  it('will spread to a snapshot and iterate its record', async () => {
+  it('will spread to a snapshot', async () => {
     class Test extends Job {
       next() {
         this.a();
@@ -1693,14 +1658,14 @@ describe('then', () => {
     expect(snapshot).toEqual({
       status: 'idle',
       active: undefined,
-      record: test.then.record,
       queue: [],
       waiting: [],
       runs: 1,
       error: undefined
     });
     expect(test.then.get()).toEqual(snapshot);
-    expect([...test.then].map((entry) => entry.id)).toEqual(['next#1', 'a#1', 'end#1']);
+    expect(test.then).not.toHaveProperty('record');
+    expect(Symbol.iterator in test.then).toBe(false);
   });
 });
 
@@ -1709,7 +1674,7 @@ describe('stop', () => {
     const work = mockPromise();
     const later = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       async next() {
@@ -1734,7 +1699,7 @@ describe('stop', () => {
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
     expect(later).not.toHaveBeenCalled();
     expect(test.value).toBe(1);
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1']);
     expect(test.then.status).toBe('stopped');
     expect(test.then.runs).toBe(1);
   });
@@ -1765,8 +1730,7 @@ describe('stop', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -1790,13 +1754,13 @@ describe('stop', () => {
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
     expect(undo).toHaveBeenCalled();
     expect(test.value).toBe(0);
-    expect(test.then.record.map((entry) => entry.undone)).toEqual([true, true]);
+    expect(record(test).map((entry) => entry.undone)).toEqual([true, undefined]);
   });
 
   it('will stop from inside a step', async () => {
     const later = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.then.stop();
         this.later();
@@ -1811,7 +1775,7 @@ describe('stop', () => {
 
     await expect(test.next()).rejects.toMatchObject({ name: 'Stopped' });
     expect(later).not.toHaveBeenCalled();
-    expect(test.then.record[0].next).toEqual([{ id: 'later#1', key: 'later', args: [] }]);
+    expect(record(test)[0].next).toEqual([{ id: 'later#1', key: 'later', args: [] }]);
   });
 
   it('will stop when the instance is destroyed', async () => {
@@ -1962,7 +1926,7 @@ describe('stop', () => {
 
 describe('wait', () => {
   it('will park until a listed step answers', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       answer = '';
 
       next() {
@@ -1996,9 +1960,9 @@ describe('wait', () => {
     expect(test.then.status).toBe('running');
 
     expect(await result).toEqual({ answer: 'yes' });
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'reply#1', 'thanks#1', 'later#1', 'end#1']);
-    expect(test.then.record[1].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['reply', 'skip'] }]);
-    expect(test.then.record[2]).toMatchObject({ wake: 'wait#1', wrote: ['answer'] });
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'reply#1', 'thanks#1', 'later#1']);
+    expect(record(test)[1].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['reply', 'skip'] }]);
+    expect(record(test)[2]).toMatchObject({ wake: 'wait#1', wrote: ['answer'] });
   });
 
   it('will run what follows a wait after its answer', async () => {
@@ -2033,7 +1997,7 @@ describe('wait', () => {
   });
 
   it('will answer the oldest wait first', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       answers: string[] = [];
 
       next() {
@@ -2062,7 +2026,7 @@ describe('wait', () => {
 
     await result;
     expect(test.answers).toEqual(['1', '2']);
-    expect(test.then.record.filter((entry) => entry.wake).map((entry) => [entry.wake, entry.args])).toEqual([
+    expect(record(test).filter((entry) => entry.wake).map((entry) => [entry.wake, entry.args])).toEqual([
       ['wait#1', ['1']],
       ['wait#2', ['2']]
     ]);
@@ -2116,7 +2080,7 @@ describe('wait', () => {
   });
 
   it('will answer the wait opened with the same first argument', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       answers: string[] = [];
 
       next() {
@@ -2143,7 +2107,7 @@ describe('wait', () => {
     test.reply('a');
     await result;
 
-    expect(test.then.record.filter((entry) => entry.wake).map((entry) => [entry.wake, entry.args])).toEqual([
+    expect(record(test).filter((entry) => entry.wake).map((entry) => [entry.wake, entry.args])).toEqual([
       ['wait#2', ['b']],
       ['wait#1', ['a']]
     ]);
@@ -2350,7 +2314,7 @@ describe('wait', () => {
   it('will answer its own wait through a settled step', async () => {
     const calls = new Map<string, () => unknown>();
 
-    class Test extends Job {
+    class Test extends Journal {
       answers: string[] = [];
 
       next() {
@@ -2379,7 +2343,7 @@ describe('wait', () => {
     await result;
 
     expect(test.answers).toEqual(['B', 'A']);
-    expect(test.then.record.filter((entry) => entry.wake).map((entry) => [entry.wake, entry.args])).toEqual([
+    expect(record(test).filter((entry) => entry.wake).map((entry) => [entry.wake, entry.args])).toEqual([
       ['wait#2', ['B']],
       ['wait#1', ['A']]
     ]);
@@ -2447,7 +2411,7 @@ describe('wait', () => {
   it('will not journal writes through a settled step', async () => {
     let write!: () => void;
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -2467,7 +2431,7 @@ describe('wait', () => {
     await result;
 
     expect(test.value).toBe(1);
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], [], []]);
+    expect(record(test).map((entry) => entry.wrote)).toEqual([[], []]);
   });
 
   it('will not have wait on the runner', () => {
@@ -2497,7 +2461,7 @@ describe('watchers', () => {
   it('will answer a wait from a watcher', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
-    class Test extends Job {
+    class Test extends Journal {
       answer = '';
 
       next() {
@@ -2524,12 +2488,11 @@ describe('watchers', () => {
 
     await vi.advanceTimersByTimeAsync(1);
     expect(await result).toEqual({ answer: 'timeout' });
-    expect(test.then.record.map((entry) => [entry.id, entry.wake])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.wake])).toEqual([
       ['next#1', undefined],
-      ['deny#1', 'wait#1'],
-      ['end#1', undefined]
+      ['deny#1', 'wait#1']
     ]);
-    expect(test.then.record[0].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['allow', 'deny'] }]);
+    expect(record(test)[0].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['allow', 'deny'] }]);
   });
 
   it('will abort watchers once answered from outside', async () => {
@@ -2646,7 +2609,7 @@ describe('watchers', () => {
   it('will answer each wait from its own watcher', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.then([200, 100], this.ask);
       }
@@ -2667,7 +2630,7 @@ describe('watchers', () => {
     await vi.advanceTimersByTimeAsync(200);
     await result;
 
-    expect(test.then.record.filter((entry) => entry.wake).map((entry) => entry.wake)).toEqual(['wait#2', 'wait#1']);
+    expect(record(test).filter((entry) => entry.wake).map((entry) => entry.wake)).toEqual(['wait#2', 'wait#1']);
   });
 
   it('will fail the run if a watcher throws before the wait closes', async () => {
@@ -2791,7 +2754,7 @@ describe('slot', () => {
     const work = gates('a', 'b', 'c', 'd');
     const started: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.then(['a', 'b', 'c', 'd'], this.visit);
       }
@@ -2824,7 +2787,7 @@ describe('slot', () => {
     work.get('c')!.resolve();
     work.get('d')!.resolve();
     await result;
-    expect(test.then.record[1].next).toEqual([
+    expect(record(test)[1].next).toEqual([
       { id: 'slot#1', key: 'slot', args: [] },
       { id: 'scan#1', key: 'scan', args: ['a'] }
     ]);
@@ -3113,7 +3076,7 @@ describe('slot', () => {
   it('will slot a step outside any group on the job', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.then.slot({ max: 1 });
         this.a();
@@ -3134,7 +3097,7 @@ describe('slot', () => {
 
     await test.next();
     expect(order).toEqual(['a', 'b']);
-    expect(test.then.record[0].next.map((node) => node.id)).toEqual(['slot#1', 'a#1', 'b#1']);
+    expect(record(test)[0].next.map((node) => node.id)).toEqual(['slot#1', 'a#1', 'b#1']);
   });
 
   it('will re-enter a slot held above it', async () => {
@@ -3398,6 +3361,7 @@ describe('slot', () => {
 
   it('will cancel a slot whose step a back discards', async () => {
     const never = vi.fn();
+    const back = vi.fn();
 
     class Test extends Job {
       async next() {
@@ -3425,13 +3389,17 @@ describe('slot', () => {
       protected async never() {
         never();
       }
+
+      protected back(reason: unknown) {
+        back(reason);
+      }
     }
 
     const test = Test.new();
     const result = test.next();
 
     await flushMicrotasks();
-    expect(test.then.record.at(-1)).toMatchObject({ key: 'back', to: 'first#1' });
+    expect(back).toHaveBeenCalledWith('reset');
     expect(test.then.status).toBe('running');
 
     test.then.stop();
@@ -3482,7 +3450,7 @@ describe('slot', () => {
     }
 
     await expect(Grouped.new().next()).rejects.toThrow('slot() cannot be grouped.');
-    await expect(Returned.new().next()).rejects.toThrow('next returned a value; a step returns nothing, or its undo.');
+    await expect(Returned.new().next()).rejects.toThrow('next returned a value; a step returns nothing, true, or its undo.');
   });
 
   it('will throw outside a step', () => {
@@ -3498,9 +3466,7 @@ describe('catch', () => {
   it('will unwind a caught branch and continue', async () => {
     const undo = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
-
+    class Test extends Journal {
       value = 0;
 
       async next() {
@@ -3527,30 +3493,26 @@ describe('catch', () => {
 
     expect(await test.next()).toEqual({ value: 0 });
     expect(undo).toHaveBeenCalledTimes(1);
-    expect(test.then.record).toEqual([
+    expect(record(test)).toEqual([
       {
         id: 'next#1',
         key: 'next',
         args: [],
         wrote: [],
-        prior: {},
-        patch: {},
         next: [
           { id: 'a#1', key: 'a', args: [], rescue: true },
           { id: 'b#1', key: 'b', args: [] }
         ]
       },
       expect.objectContaining({ id: 'a#1', undo: 'closure', undone: true }),
-      { id: 'a1#1', key: 'a1', args: [], next: [], wrote: [], error: new Error('boom') },
-      expect.objectContaining({ id: 'b#1' }),
-      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
+      expect.objectContaining({ id: 'b#1' })
     ]);
   });
 
   it('will run a step in the caught branch\'s place with its args', async () => {
     const seen = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.scan('x').catch(this.fallback);
         this.after1();
@@ -3573,14 +3535,14 @@ describe('catch', () => {
 
     await test.next();
     expect(seen.mock.calls).toEqual([['x', new Error('x is down'), 0], ['after']]);
-    expect(test.then.record[0].next[0]).toEqual({ id: 'scan#1', key: 'scan', args: ['x'], rescue: 'fallback' });
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'scan#1', 'fallback#1', 'after1#1', 'end#1']);
+    expect(record(test)[0].next[0]).toEqual({ id: 'scan#1', key: 'scan', args: ['x'], rescue: 'fallback' });
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'fallback#1', 'after1#1']);
   });
 
   it('will count retries of a step re-run from its own catch', async () => {
     const retries: number[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.then(['a'], (site) => this.visit(site).catch());
       }
@@ -3602,14 +3564,10 @@ describe('catch', () => {
 
     await test.next();
     expect(retries).toEqual([0, 1, 2]);
-    expect(test.then.record.map(({ id, retry, error }) => [id, retry, (error as Error)?.message])).toEqual([
+    expect(record(test).map(({ id, retry, error }) => [id, retry, (error as Error)?.message])).toEqual([
       ['next#1', undefined, undefined],
       ['visit#1', undefined, undefined],
-      ['scan#1', undefined, 'a is down'],
-      ['visit#2', 1, undefined],
-      ['scan#2', undefined, 'a is down'],
-      ['visit#3', 2, 'give up'],
-      ['end#1', undefined, undefined]
+      ['visit#2', 1, undefined]
     ]);
   });
 
@@ -3667,7 +3625,7 @@ describe('catch', () => {
   });
 
   it('will run a function in the caught branch\'s place given the error', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       value = '';
 
       async next() {
@@ -3684,8 +3642,8 @@ describe('catch', () => {
     const test = Test.new();
 
     expect(await test.next()).toEqual({ value: 'down' });
-    expect(test.then.record[0].next).toEqual([{ id: 'scan#1', key: 'scan', args: [], rescue: 'then' }]);
-    expect(test.then.record.at(-2)).toMatchObject({ id: 'then#1', key: 'then', args: [], wrote: ['value'] });
+    expect(record(test)[0].next).toEqual([{ id: 'scan#1', key: 'scan', args: [], rescue: 'then' }]);
+    expect(record(test).at(-1)).toMatchObject({ id: 'then#1', key: 'then', args: [], wrote: ['value'] });
   });
 
   it('will settle a mapped group with what succeeded', async () => {
@@ -3714,9 +3672,7 @@ describe('catch', () => {
     const gate = mockPromise();
     const after = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
-
+    class Test extends Journal {
       value = 0;
 
       async next() {
@@ -3726,6 +3682,7 @@ describe('catch', () => {
 
       protected async a() {
         this.value = 1;
+        return true;
       }
 
       protected async b() {
@@ -3752,7 +3709,7 @@ describe('catch', () => {
 
     await result;
     expect(after).toHaveBeenCalledWith(0);
-    expect(test.then.record.filter((entry) => entry.error).map((entry) => entry.id)).toEqual(['b#1', 'c#1']);
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([['next#1', undefined], ['a#1', true], ['d#1', undefined]]);
   });
 
   it('will catch an answer or watcher of a caught wait', async () => {
@@ -3780,7 +3737,7 @@ describe('catch', () => {
   });
 
   it('will fail the run when a caught branch\'s undo throws', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.a().catch();
       }
@@ -3801,7 +3758,7 @@ describe('catch', () => {
     const test = Test.new();
 
     await expect(test.next()).rejects.toThrow('undo');
-    expect(test.then.record[1]).toMatchObject({ id: 'a#1', undone: 'failed' });
+    expect(record(test)[1]).toMatchObject({ id: 'a#1', undone: 'failed' });
   });
 
   it('will not run a handler once the run stops', async () => {
@@ -3898,7 +3855,7 @@ describe('suspense', () => {
   it('will wait in next for a pending value', async () => {
     let tries = 0;
 
-    class Test extends Job {
+    class Test extends Journal {
       price = set<number>();
       total = 0;
 
@@ -3915,23 +3872,22 @@ describe('suspense', () => {
     expect(tries).toBe(1);
     expect(test.then.status).toBe('running');
     expect(test.then.active).toBe('next');
-    expect(test.then.record).toEqual([]);
+    expect(record(test)).toEqual([]);
 
     test.price = 3;
 
     await result;
     expect(tries).toBe(2);
     expect(test.total).toBe(6);
-    expect(test.then.record).toEqual([
-      { id: 'next#1', key: 'next', args: [], wrote: ['total'], next: [] },
-      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
+    expect(record(test)).toEqual([
+      { id: 'next#1', key: 'next', args: [], wrote: ['total'], next: [] }
     ]);
   });
 
   it('will restore writes and drop tokens of a suspended try', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       price = set<number>();
       note = '';
 
@@ -3961,11 +3917,10 @@ describe('suspense', () => {
 
     await result;
     expect(order).toEqual(['quote:quoting', 'quote:quoting', 'report:quoting']);
-    expect(test.then.record.map(({ id, wrote, next }) => [id, wrote, next.map((node) => node.id)])).toEqual([
+    expect(record(test).map(({ id, wrote, next }) => [id, wrote, next.map((node) => node.id)])).toEqual([
       ['next#1', [], ['quote#1']],
       ['quote#1', ['note'], ['report#2']],
-      ['report#2', [], []],
-      ['end#1', [], []]
+      ['report#2', [], []]
     ]);
   });
 
@@ -4025,7 +3980,7 @@ describe('suspense', () => {
   it('will fail with the rejection of a pending value', async () => {
     const pending = mockPromise();
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -4043,14 +3998,14 @@ describe('suspense', () => {
     await expect(result).rejects.toThrow('gone');
     expect(test.value).toBe(0);
     expect(test.then.status).toBe('failed');
-    expect(test.then.record).toEqual([]);
+    expect(record(test)).toEqual([]);
   });
 
   it('will not count a suspended try as a retry', async () => {
     const pending = mockPromise();
     const retries: number[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.flaky().catch(this.flaky);
       }
@@ -4071,18 +4026,14 @@ describe('suspense', () => {
 
     await result;
     expect(retries).toEqual([0, 0, 1]);
-    expect(test.then.record.slice(1)).toEqual([
-      { id: 'flaky#1', key: 'flaky', args: [], wrote: [], next: [], error: new Error('flaky') },
-      { id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], retry: 1 },
-      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
-    ]);
+    expect(record(test).slice(1)).toEqual([{ id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], retry: 1 }]);
   });
 
   it('will catch a rejected pending value', async () => {
     const pending = mockPromise();
     let tries = 0;
 
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.flaky().catch(this.flaky);
       }
@@ -4100,11 +4051,7 @@ describe('suspense', () => {
 
     await result;
     expect(tries).toBe(2);
-    expect(test.then.record.slice(1).map(({ retry, error }) => [retry, error])).toEqual([
-      [undefined, new Error('gone')],
-      [1, undefined],
-      [undefined, undefined]
-    ]);
+    expect(record(test).slice(1).map(({ retry, error }) => [retry, error])).toEqual([[1, undefined]]);
   });
 
   it('will not fire hooks again', async () => {
@@ -4137,7 +4084,7 @@ describe('suspense', () => {
   });
 
   it('will abort when stopped while waiting', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       price = set<number>();
       value = 0;
 
@@ -4156,11 +4103,11 @@ describe('suspense', () => {
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
     expect(test.value).toBe(0);
     expect(test.then.status).toBe('stopped');
-    expect(test.then.record).toEqual([]);
+    expect(record(test)).toEqual([]);
   });
 
   it('will end without the step when ended while waiting', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       price = set<number>();
 
       next() {
@@ -4175,7 +4122,7 @@ describe('suspense', () => {
     test.then.end('early');
 
     expect(await result).toBe('early');
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['end#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['end#1']);
   });
 
   it('will abort a pending read after the step was stopped', async () => {
@@ -4214,7 +4161,7 @@ describe('suspense', () => {
     const test = Test.new();
 
     await expect(test.next()).rejects.toBe(pending);
-    expect(test.then.record).toMatchObject([{ id: 'next#1', committed: true, error: pending }]);
+    expect(test.then.error).toBe(pending);
   });
 
   it('will fail a hook reading a pending value after its step', async () => {
@@ -4237,6 +4184,7 @@ describe('suspense', () => {
 describe('hooks', () => {
   it('will call hooks around each step', async () => {
     const order: unknown[][] = [];
+    const wrote: string[][] = [];
 
     class Test extends Job {
       value = 0;
@@ -4256,6 +4204,7 @@ describe('hooks', () => {
 
       protected after(key: string, entry: Runner.Entry, skip: boolean) {
         order.push(['after', key, entry.id, skip]);
+        wrote.push(entry.wrote);
       }
 
       protected beforeShip(skip: boolean, id: string, n: number) {
@@ -4280,7 +4229,7 @@ describe('hooks', () => {
       ['after', 'ship', 'ship#1', false]
     ]);
     expect(test.value).toBe(2);
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], [], []]);
+    expect(wrote).toEqual([[], []]);
   });
 
   it('will not wrap hooks as steps', async () => {
@@ -4323,7 +4272,7 @@ describe('hooks', () => {
   it('will call back once the unwind completes', async () => {
     const order: unknown[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       async next() {
@@ -4346,8 +4295,8 @@ describe('hooks', () => {
     const result = test.next().catch((error: Error) => void order.push(['rejected', error.message]));
 
     await result;
-    expect(order).toEqual(['undo', ['back', 1, 'failed', 'boom'], ['rejected', 'boom']]);
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next']);
+    expect(order).toEqual(['undo', ['back', 0, 'failed', 'boom'], ['rejected', 'boom']]);
+    expect(record(test).map((entry) => entry.key)).toEqual(['next']);
   });
 
   it('will call back after a halted unwind', async () => {
@@ -4357,7 +4306,7 @@ describe('hooks', () => {
 
     class Item extends Model {}
 
-    class Test extends Job {
+    class Test extends Journal {
       items = has(Item);
 
       protected new() {
@@ -4374,7 +4323,7 @@ describe('hooks', () => {
       }
 
       protected back(error: unknown) {
-        back(error, this.then.record[0].halted);
+        back(error, record(this)[0].halted);
       }
     }
 
@@ -4449,7 +4398,7 @@ describe('hooks', () => {
   });
 
   it('will not wrap back as a step', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       next() {}
 
       back() {
@@ -4461,7 +4410,7 @@ describe('hooks', () => {
 
     expect(test.back()).toBe(test);
     await test.next();
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'end']);
+    expect(record(test).map((entry) => entry.key)).toEqual(['next']);
   });
 
   it('will call exit last when a run ends', async () => {
@@ -4609,7 +4558,7 @@ describe('hooks', () => {
   });
 
   it('will not wrap exit as a step', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       next() {}
 
       exit() {
@@ -4621,7 +4570,7 @@ describe('hooks', () => {
 
     expect(test.exit()).toBe(test);
     await test.next();
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'end']);
+    expect(record(test).map((entry) => entry.key)).toEqual(['next']);
   });
 
   it('will call an overridden hook once', async () => {
@@ -4689,7 +4638,6 @@ describe('hooks', () => {
       ['exit', 'failed', true]
     ]);
     expect(test.value).toBe(2);
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[]]);
   });
 
   it('will call class hooks before option hooks', async () => {
@@ -4830,10 +4778,10 @@ describe('hooks', () => {
 });
 
 describe('undo', () => {
-  it('will run undos in reverse and keep committed writes', async () => {
+  it('will run undos in reverse and keep writes of steps returning nothing', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       a = 0;
       b = 0;
       c = 0;
@@ -4859,18 +4807,17 @@ describe('undo', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(order).toEqual(['undo next a=1']);
-    expect(test.get()).toMatchObject({ a: 1, b: 2, c: 0 });
-    expect(test.then.record.map((entry) => [entry.key, entry.undo, entry.undone])).toEqual([
+    expect(test.get()).toMatchObject({ a: 0, b: 2, c: 0 });
+    expect(record(test).map((entry) => [entry.key, entry.undo, entry.undone])).toEqual([
       ['next', 'closure', true],
       ['first', undefined, undefined]
     ]);
   });
 
-  it('will unwind every step in reverse and restore fields with rewind', async () => {
+  it('will restore fields of steps returning true or an undo', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       a = 0;
       b = 0;
       c = 0;
@@ -4884,6 +4831,7 @@ describe('undo', () => {
       first() {
         this.b = 2;
         this.second();
+        return true;
       }
 
       second() {
@@ -4897,21 +4845,76 @@ describe('undo', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(order).toEqual(['undo next a=1']);
     expect(test.get()).toMatchObject({ a: 0, b: 0, c: 0 });
-    expect(test.then.record.map((entry) => [entry.key, entry.undo, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.key, entry.undo, entry.undone])).toEqual([
       ['next', 'closure', true],
       ['first', undefined, true]
     ]);
   });
 
+  it('will restore a step which returns true', async () => {
+    class Test extends Journal {
+      kept = 0;
+      value = 0;
+
+      async next() {
+        this.kept = 1;
+        this.write();
+      }
+
+      protected async write() {
+        this.value = 1;
+        this.fail();
+
+        return true;
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.get()).toMatchObject({ kept: 1, value: 0 });
+    expect(record(test).map((entry) => [entry.id, entry.undo, entry.undone])).toEqual([
+      ['next#1', undefined, undefined],
+      ['write#1', undefined, true]
+    ]);
+  });
+
+  it('will not restore a step which returns false', async () => {
+    class Test extends Journal {
+      value = 0;
+
+      async next() {
+        this.value = 1;
+        this.fail();
+
+        return false;
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('boom');
+    expect(test.value).toBe(1);
+    expect(record(test)[0].undone).toBeUndefined();
+  });
+
   it('will not roll back writes of a helper', async () => {
     class Test extends Job {
-      static readonly rewind = true;
       value = 0;
       count = 0;
 
       next() {
         this.value = this._count();
         this.first();
+        return true;
       }
 
       first() {
@@ -4935,8 +4938,7 @@ describe('undo', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -4960,8 +4962,8 @@ describe('undo', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(undo).toHaveBeenCalled();
     expect(test.value).toBe(0);
-    expect(test.then.record.map((entry) => [entry.key, entry.undone])).toEqual([
-      ['next', true],
+    expect(record(test).map((entry) => [entry.key, entry.undone])).toEqual([
+      ['next', undefined],
       ['a', true]
     ]);
   });
@@ -4969,7 +4971,7 @@ describe('undo', () => {
   it('will unwind through a returned step', async () => {
     const undo = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.first();
       }
@@ -4992,14 +4994,14 @@ describe('undo', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(undo).toHaveBeenCalledWith('r1');
-    expect(test.then.record[1].undo).toEqual({ id: 'release#1', key: 'release', args: ['r1'] });
-    expect(test.then.record[1].next.map((node) => node.key)).toEqual(['second']);
+    expect(record(test)[1].undo).toEqual({ id: 'release#1', key: 'release', args: ['r1'] });
+    expect(record(test)[1].next.map((node) => node.key)).toEqual(['second']);
   });
 
   it('will stop unwinding where an undo throws', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.first();
         return () => void order.push('undo next');
@@ -5021,7 +5023,7 @@ describe('undo', () => {
 
     await expect(test.next()).rejects.toThrow('undo failed');
     expect(order).toEqual([]);
-    expect(test.then.record.map((entry) => entry.undone)).toEqual([undefined, 'failed']);
+    expect(record(test).map((entry) => entry.undone)).toEqual([undefined, 'failed']);
   });
 
   it('will throw if an undo schedules a step', async () => {
@@ -5051,7 +5053,7 @@ describe('undo tokens', () => {
     const order: string[] = [];
     const refund = mockPromise();
 
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.fail();
 
@@ -5081,18 +5083,17 @@ describe('undo tokens', () => {
 
     await expect(result).rejects.toThrow('boom');
     expect(order).toEqual(['refund', 'notify', 'refunded']);
-    expect(test.then.record[0]).toMatchObject({
+    expect(record(test)[0]).toMatchObject({
       undo: { id: 'then#1', key: 'then', args: [], group: [{ id: 'refund#1' }, { id: 'notify#1' }] },
       undone: true
     });
-    expect(test.then.record[0].next).toEqual([{ id: 'fail#1', key: 'fail', args: [] }]);
+    expect(record(test)[0].next).toEqual([{ id: 'fail#1', key: 'fail', args: [] }]);
   });
 
   it('will park the unwind on a returned wait', async () => {
     const charge = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       charged = false;
 
       async next() {
@@ -5138,17 +5139,15 @@ describe('undo tokens', () => {
     expect(charge).toHaveBeenCalledWith('ch_1');
     expect(test.charged).toBe(false);
     expect(test.then.status).toBe('failed');
-    expect(test.then.record.map((entry) => [entry.id, entry.wake, entry.undone])).toEqual([
-      ['next#1', undefined, true],
-      ['pay#1', undefined, true],
-      ['refund#1', 'wait#1', undefined]
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([
+      ['next#1', undefined],
+      ['pay#1', true]
     ]);
-    expect(test.then.record[1].undo).toEqual({ id: 'wait#1', key: 'wait', args: [], answers: ['refund', 'keep'] });
+    expect(record(test)[1].undo).toEqual({ id: 'wait#1', key: 'wait', args: [], answers: ['refund', 'keep'] });
   });
 
   it('will continue the unwind after an answer which does nothing', async () => {
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       value = 0;
 
       async next() {
@@ -5174,14 +5173,11 @@ describe('undo tokens', () => {
 
     await expect(result).rejects.toThrow('boom');
     expect(test.value).toBe(0);
-    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
-      ['next#1', true],
-      ['keep#1', undefined]
-    ]);
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([['next#1', true]]);
   });
 
   it('will not let an unwind answer schedule', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.fail();
 
@@ -5206,7 +5202,7 @@ describe('undo tokens', () => {
     await expect(test.refund()).rejects.toThrow(`${test} is failed; more cannot run.`);
 
     await expect(result).rejects.toThrow(`${test} is failed; more cannot run.`);
-    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([['next#1', 'failed']]);
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([['next#1', 'failed']]);
   });
 
   it('will not call hooks for an unwind answer', async () => {
@@ -5243,8 +5239,7 @@ describe('undo tokens', () => {
   it('will halt a parked unwind on stop', async () => {
     const undo = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       value = 0;
 
       async next() {
@@ -5264,6 +5259,8 @@ describe('undo tokens', () => {
       async second() {
         this.value = 3;
         this.fail();
+
+        return true;
       }
 
       async fail() {
@@ -5286,7 +5283,7 @@ describe('undo tokens', () => {
     expect(test.value).toBe(2);
     expect(test.then.status).toBe('failed');
     expect(test.refund).toBeUndefined();
-    expect(test.then.record.map((entry) => [entry.id, entry.undone, entry.halted])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.undone, entry.halted])).toEqual([
       ['next#1', undefined, undefined],
       ['first#1', undefined, true],
       ['second#1', true, undefined]
@@ -5297,9 +5294,7 @@ describe('undo tokens', () => {
     const exit = vi.fn();
     const error = new Error('boom');
 
-    class Test extends Model {
-      then = run(this, { exit });
-
+    class Test extends Journal {
       async next() {
         this.fail();
 
@@ -5311,6 +5306,10 @@ describe('undo tokens', () => {
       }
 
       async refund() {}
+
+      protected exit(outcome: Runner.Outcome) {
+        exit(outcome);
+      }
     }
 
     const test = Test.new();
@@ -5321,16 +5320,14 @@ describe('undo tokens', () => {
 
     await expect(result).rejects.toBe(error);
     expect(error).not.toHaveProperty('cause');
-    expect(test.then.record[0]).toMatchObject({ id: 'next#1', halted: true, reason: 'user left' });
+    expect(record(test)[0]).toMatchObject({ id: 'next#1', halted: true, reason: 'user left' });
     expect(exit).toHaveBeenCalledWith({ status: 'failed', error, stopped: 'user left' });
   });
 
   it('will mark a parked unwind stopped without a reason', async () => {
     const exit = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { exit });
-
+    class Test extends Journal {
       async next() {
         this.fail();
 
@@ -5342,6 +5339,10 @@ describe('undo tokens', () => {
       }
 
       async refund() {}
+
+      protected exit(outcome: Runner.Outcome) {
+        exit(outcome);
+      }
     }
 
     const test = Test.new();
@@ -5351,7 +5352,7 @@ describe('undo tokens', () => {
     test.then.stop();
 
     await expect(result).rejects.toThrow('boom');
-    expect(test.then.record[0]).not.toHaveProperty('reason');
+    expect(record(test)[0]).not.toHaveProperty('reason');
     expect(exit.mock.calls[0][0]).toHaveProperty('stopped', undefined);
   });
 
@@ -5395,7 +5396,7 @@ describe('undo tokens', () => {
   });
 
   it('will fail the undo if a watcher of its wait throws', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       async next() {
         this.fail();
 
@@ -5415,7 +5416,7 @@ describe('undo tokens', () => {
 
     await expect(test.next()).rejects.toThrow('watcher');
     expect(test.then.waiting).toEqual([]);
-    expect(test.then.record.map((entry) => entry.undone)).toEqual(['failed']);
+    expect(record(test).map((entry) => entry.undone)).toEqual(['failed']);
   });
 
   it('will keep a step Promise<void> when it returns a group or a wait', () => {
@@ -5447,8 +5448,7 @@ describe('collections', () => {
   }
 
   it('will roll back list push, put, pop and set', async () => {
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       items = has(['a', 'b', 'c']);
 
       next() {
@@ -5457,6 +5457,8 @@ describe('collections', () => {
         this.items.pop(1);
         this.items.set(-1, 'e');
         this.fail();
+
+        return true;
       }
 
       protected async fail() {
@@ -5468,17 +5470,11 @@ describe('collections', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.items.get()).toEqual(['a', 'b', 'c']);
-    expect(test.then.record).toEqual([
-      expect.objectContaining({
-        prior: { items: ['a', 'b', 'c'] },
-        patch: { items: ['z', 'b', 'c', 'e'] },
-        undone: true
-      })
-    ]);
+    expect(record(test)).toEqual([expect.objectContaining({ wrote: ['items'], undone: true })]);
   });
 
   it('will record nothing for a read without change', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       items = has(['a']);
       count = 0;
 
@@ -5490,12 +5486,11 @@ describe('collections', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record[0].wrote).toEqual(['count']);
+    expect(record(test)[0].wrote).toEqual(['count']);
   });
 
-  it('will journal a collection in its export form', async () => {
-    class Test extends Job {
-      static readonly rewind = true;
+  it('will journal a changed collection by name, without values', async () => {
+    class Test extends Journal {
       items = has(Item);
 
       next(name: string) {
@@ -5507,14 +5502,11 @@ describe('collections', () => {
 
     await test.next('a');
     await test.next('b');
-    expect(test.then.record[0]).toMatchObject({
-      prior: { items: [{ name: 'a' }] },
-      patch: { items: [{ name: 'a' }, { name: 'b' }] }
-    });
+    expect(record(test)).toEqual([{ id: 'next#1', key: 'next', args: ['b'], next: [], wrote: ['items'] }]);
   });
 
   it('will not capture writes outside a step proxy', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       items = has<string>();
 
       next() {
@@ -5525,13 +5517,13 @@ describe('collections', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record[0].wrote).toEqual([]);
+    expect(record(test)[0].wrote).toEqual([]);
   });
 
   it('will restore a list before a retry', async () => {
     let tries = 0;
 
-    class Test extends Job {
+    class Test extends Journal {
       items = has<string>();
 
       async next() {
@@ -5549,14 +5541,13 @@ describe('collections', () => {
 
     await test.next();
     expect(test.items.get()).toEqual(['try 2']);
-    expect(test.then.record.map((entry) => entry.wrote)).toEqual([[], [], ['items'], []]);
+    expect(record(test).map((entry) => entry.wrote)).toEqual([[], ['items']]);
   });
 
   it('will attribute a change only to the step making it', async () => {
     const gate = mockPromise();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       items = has(['a']);
 
       next() {
@@ -5567,6 +5558,8 @@ describe('collections', () => {
       protected async write() {
         await gate;
         this.items.push('b');
+
+        return true;
       }
 
       protected async read() {
@@ -5587,10 +5580,10 @@ describe('collections', () => {
 
     await expect(result).rejects.toThrow('boom');
     expect(test.items.get()).toEqual(['a']);
-    expect(test.then.record.map((entry) => [entry.key, entry.wrote, entry.prior, entry.patch])).toEqual([
-      ['next', [], {}, {}],
-      ['write', ['items'], { items: ['a'] }, { items: ['a', 'b'] }],
-      ['read', [], {}, {}]
+    expect(record(test).map((entry) => [entry.key, entry.wrote, entry.undone])).toEqual([
+      ['next', [], undefined],
+      ['write', ['items'], true],
+      ['read', [], undefined]
     ]);
   });
 
@@ -5743,7 +5736,7 @@ describe('collections', () => {
   });
 
   it('will record nothing for a list call changing nothing', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       items = has(['a']);
 
       next() {
@@ -5761,7 +5754,7 @@ describe('collections', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record[0].wrote).toEqual(['items']);
+    expect(record(test)[0].wrote).toEqual(['items']);
     expect(test.items.size).toBe(0);
   });
 
@@ -5804,7 +5797,7 @@ describe('collections', () => {
   it('will leave a change through a settled step\'s collection unmanaged', async () => {
     let items!: has.List<string>;
 
-    class Test extends Job {
+    class Test extends Journal {
       list = has<string>();
 
       next() {
@@ -5817,7 +5810,7 @@ describe('collections', () => {
     await test.next();
     items.push('late');
     expect(test.list.get()).toEqual(['late']);
-    expect(test.then.record[0].wrote).toEqual([]);
+    expect(record(test)[0].wrote).toEqual([]);
   });
 
   it('will hand one wrapper per collection to a step', async () => {
@@ -5841,7 +5834,6 @@ describe('collections', () => {
     const second = mockPromise();
 
     class Test extends Job {
-      static readonly rewind = true;
       items = has(['a']);
 
       next() {
@@ -5852,11 +5844,15 @@ describe('collections', () => {
       protected async early() {
         this.items.push('b');
         await first;
+
+        return true;
       }
 
       protected async late() {
         await second;
         this.items.push('c');
+
+        return true;
       }
 
       protected async fail() {
@@ -5877,8 +5873,7 @@ describe('collections', () => {
   });
 
   it('will roll back a map', async () => {
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       values = map([['a', 1], ['b', 2], ['c', 3]]);
 
       next() {
@@ -5886,6 +5881,8 @@ describe('collections', () => {
         this.values.delete('b');
         this.values.set('d', 4);
         this.fail();
+
+        return true;
       }
 
       protected async fail() {
@@ -5897,22 +5894,19 @@ describe('collections', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.values.get()).toEqual(new Map([['a', 1], ['b', 2], ['c', 3]]));
-    expect(test.then.record[0]).toMatchObject({
-      prior: { values: new Map([['a', 1], ['b', 2], ['c', 3]]) },
-      patch: { values: new Map([['a', 10], ['c', 3], ['d', 4]]) }
-    });
   });
 
   it('will restore a guest Model removed from a map', async () => {
     const guest = Item.new({ name: 'guest' });
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       values = map<string, Item>([['a', guest]]);
 
       next() {
         this.values.delete('a');
         this.fail();
+
+        return true;
       }
 
       protected async fail() {
@@ -5924,12 +5918,11 @@ describe('collections', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.values.get('a')).toBe(guest);
-    expect(test.then.record[0].irreversible).toBeUndefined();
+    expect(record(test)[0].irreversible).toBeUndefined();
   });
 
   it('will remove pool members added by a failed run', async () => {
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       items = has(Item);
 
       protected new() {
@@ -5943,6 +5936,8 @@ describe('collections', () => {
 
       protected async add() {
         this.items.add({ name: 'a' });
+
+        return true;
       }
 
       protected async fail() {
@@ -5954,7 +5949,7 @@ describe('collections', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
 
-    expect(test.then.record[1].patch).toEqual({ items: [{ name: 'kept' }, { name: 'a' }] });
+    expect(record(test)[1]).toMatchObject({ wrote: ['items'], undone: true });
     expect(test.items.map((item) => item.name)).toEqual(['kept']);
   });
 
@@ -6034,7 +6029,7 @@ describe('collections', () => {
   });
 
   it('will remove a key it added and replaced', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       values = map<string, Model>();
       plain = map<string, number>();
 
@@ -6054,7 +6049,7 @@ describe('collections', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.values.size).toBe(0);
     expect(test.plain.size).toBe(0);
-    expect(test.then.record).toEqual([]);
+    expect(record(test)).toEqual([]);
   });
 
   it('will keep a sibling\'s pool members when a parallel step fails', async () => {
@@ -6097,7 +6092,7 @@ describe('collections', () => {
   });
 
   it('will not be irreversible removing members it added', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       items = has(Item);
       empty = has(Item);
 
@@ -6116,7 +6111,7 @@ describe('collections', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.items.size).toBe(0);
-    expect(test.then.record).toEqual([]);
+    expect(record(test)).toEqual([]);
   });
 });
 
@@ -6128,7 +6123,7 @@ describe('irreversible', () => {
   it('will stop the unwind at a removed pool member', async () => {
     const warn = mockWarn();
 
-    class Test extends Job {
+    class Test extends Journal {
       items = has(Item);
       value = 0;
 
@@ -6158,7 +6153,7 @@ describe('irreversible', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.value).toBe(2);
     expect(test.then.error).toEqual(new Error('boom'));
-    expect(test.then.record.map((entry) => [entry.key, entry.irreversible, entry.halted, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.key, entry.irreversible, entry.halted, entry.undone])).toEqual([
       ['next', undefined, undefined, undefined],
       ['drop', ['items'], true, undefined]
     ]);
@@ -6169,8 +6164,7 @@ describe('irreversible', () => {
   it('will unwind steps after an irreversible one', async () => {
     mockWarn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       items = has(Item);
       value = 0;
 
@@ -6190,6 +6184,8 @@ describe('irreversible', () => {
       protected async write() {
         this.value = 1;
         this.fail();
+
+        return true;
       }
 
       protected async fail() {
@@ -6201,7 +6197,7 @@ describe('irreversible', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.value).toBe(0);
-    expect(test.then.record.map((entry) => [entry.key, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.key, entry.undone])).toEqual([
       ['next', undefined],
       ['drop', undefined],
       ['write', true]
@@ -6211,8 +6207,7 @@ describe('irreversible', () => {
   it('will be reversible with an undo of its own', async () => {
     const undo = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       items = has(Item);
       values = map((key: string) => new Item({ name: key }));
 
@@ -6242,14 +6237,14 @@ describe('irreversible', () => {
     expect(undo).toHaveBeenCalledTimes(1);
     expect(test.items.size).toBe(0);
     expect([...test.values.keys()]).toEqual(['c']);
-    expect(test.then.record[0]).toMatchObject({ undo: 'closure', undone: true });
-    expect(test.then.record[0].irreversible).toBeUndefined();
+    expect(record(test)[0]).toMatchObject({ undo: 'closure', undone: true });
+    expect(record(test)[0].irreversible).toBeUndefined();
   });
 
   it('will be irreversible when a map evicts an owned value', async () => {
     mockWarn();
 
-    class Test extends Job {
+    class Test extends Journal {
       values = map<string, Item>();
 
       protected new() {
@@ -6270,15 +6265,15 @@ describe('irreversible', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.values.get('a')!.name).toBe('b');
-    expect(test.then.record[0]).toMatchObject({ irreversible: ['values'], halted: true });
+    expect(record(test)[0]).toMatchObject({ irreversible: ['values'], halted: true });
   });
 
   it('will not catch an irreversible step', async () => {
-    mockWarn();
+    const warn = mockWarn();
 
     const attempt = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       items = has(Item);
       value = 0;
 
@@ -6303,22 +6298,14 @@ describe('irreversible', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(test.value).toBe(1);
-    expect(test.then.record[1]).toEqual({
-      id: 'drop#1',
-      key: 'drop',
-      args: [],
-      wrote: ['value', 'items'],
-      next: [],
-      error: new Error('boom'),
-      irreversible: ['items'],
-      halted: true
-    });
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1']);
+    expect(warn).toHaveBeenCalledWith(`${test} stopped unwinding at drop#1: items cannot be restored.`);
   });
 
   it('will keep the writes of a failing irreversible step', async () => {
     const warn = mockWarn();
 
-    class Test extends Job {
+    class Test extends Journal {
       items = has(Item);
       value = 0;
 
@@ -6342,10 +6329,7 @@ describe('irreversible', () => {
 
     await expect(test.next()).rejects.toThrow('boom');
     expect(test.value).toBe(2);
-    expect(test.then.record.map((entry) => [entry.key, entry.error, entry.halted, entry.undone])).toEqual([
-      ['next', undefined, undefined, undefined],
-      ['drop', new Error('boom'), true, undefined]
-    ]);
+    expect(record(test).map((entry) => [entry.key, entry.halted, entry.undone])).toEqual([['next', undefined, undefined]]);
     expect(warn).toHaveBeenCalledWith(`${test} stopped unwinding at drop#1: items cannot be restored.`);
   });
 });
@@ -6356,8 +6340,7 @@ describe('commit', () => {
     const refund = vi.fn();
     const recall = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       charged = false;
       notified = false;
 
@@ -6392,7 +6375,7 @@ describe('commit', () => {
     expect(refund).not.toHaveBeenCalled();
     expect(warn).not.toHaveBeenCalled();
     expect(test.get()).toMatchObject({ charged: true, notified: false });
-    expect(test.then.record.map((entry) => [entry.key, entry.committed, entry.halted, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.key, entry.committed, entry.halted, entry.undone])).toEqual([
       ['next', undefined, undefined, undefined],
       ['pay', true, true, undefined],
       ['notify', undefined, undefined, true]
@@ -6402,7 +6385,7 @@ describe('commit', () => {
   it('will not catch or restore a step failing after commit', async () => {
     const attempt = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -6422,9 +6405,7 @@ describe('commit', () => {
     await expect(test.next()).rejects.toThrow('boom');
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(test.value).toBe(1);
-    expect(test.then.record[1]).toEqual(
-      { id: 'pay#1', key: 'pay', args: [], next: [], wrote: ['value'], committed: true, error: new Error('boom'), halted: true }
-    );
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1']);
   });
 
   it('will throw if commit is called outside a step', () => {
@@ -6453,7 +6434,7 @@ describe('back', () => {
   it('will unwind and end normally', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       a = 0;
       b = 0;
 
@@ -6482,24 +6463,21 @@ describe('back', () => {
 
     const test = Test.new();
 
-    expect(await test.next()).toEqual({ a: 1, b: 1 });
+    expect(await test.next()).toEqual({ a: 1, b: 0 });
     expect(order).toEqual(['undo first', 'back changed my mind']);
     expect(test.then.status).toBe('idle');
     expect(test.then.error).toBeUndefined();
-    expect(test.then.record).toEqual([
+    expect(record(test)).toEqual([
       { id: 'next#1', key: 'next', args: [], wrote: ['a'], next: [{ id: 'first#1', key: 'first', args: [] }], undo: 'closure' },
       { id: 'first#1', key: 'first', args: [], wrote: ['b'], next: [{ id: 'second#1', key: 'second', args: [] }], undo: 'closure', undone: true },
-      { id: 'second#1', key: 'second', args: [], wrote: [], next: [{ id: 'back#1', key: 'back', args: [] }] },
-      { id: 'back#1', key: 'back', args: [], wrote: [], next: [], to: 'next#1', reason: 'changed my mind' },
-      { id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }
+      { id: 'second#1', key: 'second', args: [], wrote: [], next: [{ id: 'back#1', key: 'back', args: [] }] }
     ]);
   });
 
   it('will unwind what committed after a step', async () => {
     const undo = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       a = 0;
       b = 0;
 
@@ -6533,19 +6511,16 @@ describe('back', () => {
     await test.next();
     expect(undo.mock.calls).toEqual([['second']]);
     expect(test.get()).toMatchObject({ a: 1, b: 0 });
-    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([
       ['next#1', undefined],
       ['first#1', undefined],
       ['second#1', true],
-      ['third#1', undefined],
-      ['back#1', undefined],
-      ['end#1', undefined]
+      ['third#1', undefined]
     ]);
-    expect(test.then.record[4]).toEqual({ id: 'back#1', key: 'back', args: [], next: [], wrote: [], to: 'first#1' });
   });
 
-  it('will leave fields of unwound steps without rewind', async () => {
-    class Test extends Job {
+  it('will leave fields of unwound steps returning nothing', async () => {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -6566,14 +6541,13 @@ describe('back', () => {
 
     await test.next();
     expect(test.value).toBe(1);
-    expect(test.then.record.map((entry) => entry.undone)).toEqual([undefined, undefined, undefined, undefined, undefined]);
+    expect(record(test).map((entry) => entry.undone)).toEqual([undefined, undefined, undefined]);
   });
 
   it('will call a step again after back', async () => {
     const refund = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       charged = '';
 
       next() {
@@ -6599,22 +6573,19 @@ describe('back', () => {
 
     expect(await test.next()).toEqual({ charged: 'card2' });
     expect(refund.mock.calls).toEqual([['card1']]);
-    expect(test.then.record.map((entry) => [entry.id, entry.args, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.args, entry.undone])).toEqual([
       ['next#1', [], undefined],
       ['pay#1', ['card1'], true],
       ['ship#1', [], undefined],
-      ['back#1', [], undefined],
       ['pay#2', ['card2'], undefined],
-      ['ship#2', [], undefined],
-      ['end#1', [], undefined]
+      ['ship#2', [], undefined]
     ]);
-    expect(test.then.record[3]).toMatchObject({ to: 'next#1' });
   });
 
   it('will discard what unwound steps scheduled', async () => {
     const receipt = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.pay();
         this.more();
@@ -6641,13 +6612,13 @@ describe('back', () => {
 
     await test.next();
     expect(receipt).not.toHaveBeenCalled();
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'pay#1', 'ship#1', 'back#1', 'more#1', 'end#2']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'pay#1', 'ship#1', 'more#1']);
   });
 
   it('will unwind steps scheduled before back and run those after', async () => {
     const undo = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.first();
       }
@@ -6671,11 +6642,10 @@ describe('back', () => {
 
     expect(await test.next()).toBe('done');
     expect(undo).toHaveBeenCalledWith('early');
-    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([
       ['next#1', undefined],
       ['first#1', undefined],
       ['early#1', true],
-      ['back#1', undefined],
       ['later#1', undefined],
       ['end#1', undefined]
     ]);
@@ -6686,7 +6656,7 @@ describe('back', () => {
     const signals: AbortSignal[] = [];
     const recall = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.pay();
       }
@@ -6722,18 +6692,16 @@ describe('back', () => {
 
     await result;
     expect(recall).toHaveBeenCalled();
-    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([
       ['next#1', undefined],
       ['pay#1', undefined],
       ['ship#1', undefined],
-      ['receipt#1', true],
-      ['back#1', undefined],
-      ['end#1', undefined]
+      ['receipt#1', true]
     ]);
   });
 
   it('will release a wait opened by a step it unwinds', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.then(this.ask(), this.cancel());
       }
@@ -6754,7 +6722,7 @@ describe('back', () => {
 
     await test.next();
     expect(test.answer).toBeUndefined();
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'cancel#1', 'back#1', 'end#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'ask#1', 'cancel#1']);
   });
 
   it('will call back with its reason, and with the error on failure', async () => {
@@ -6930,14 +6898,14 @@ describe('back', () => {
       }
     }
 
-    await expect(Returned.new().next()).rejects.toThrow('next returned a value; a step returns nothing, or its undo.');
+    await expect(Returned.new().next()).rejects.toThrow('next returned a value; a step returns nothing, true, or its undo.');
   });
 
   it('will halt at a committed step and continue the run', async () => {
     const refund = vi.fn();
     const recall = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.pay('card1');
       }
@@ -6968,16 +6936,14 @@ describe('back', () => {
     await test.next();
     expect(recall).toHaveBeenCalledTimes(1);
     expect(refund).not.toHaveBeenCalled();
-    expect(test.then.record.map((entry) => [entry.id, entry.halted, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.halted, entry.undone])).toEqual([
       ['next#1', undefined, undefined],
       ['pay#1', true, undefined],
       ['notify#1', undefined, true],
       ['ship#1', undefined, undefined],
-      ['back#1', undefined, undefined],
       ['pay#2', undefined, undefined],
       ['notify#2', undefined, undefined],
-      ['ship#2', undefined, undefined],
-      ['end#1', undefined, undefined]
+      ['ship#2', undefined, undefined]
     ]);
   });
 
@@ -6986,7 +6952,7 @@ describe('back', () => {
 
     class Item extends Model {}
 
-    class Test extends Job {
+    class Test extends Journal {
       items = has(Item);
 
       protected new() {
@@ -7012,11 +6978,10 @@ describe('back', () => {
 
     expect(await test.next()).toBe('kept going');
     expect(warn).toHaveBeenCalledWith(`${test} stopped unwinding at drop#1: items cannot be restored.`);
-    expect(test.then.record.map((entry) => [entry.id, entry.halted])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.halted])).toEqual([
       ['next#1', undefined],
       ['drop#1', true],
       ['first#1', undefined],
-      ['back#1', undefined],
       ['end#1', undefined]
     ]);
   });
@@ -7024,8 +6989,7 @@ describe('back', () => {
   it('will wait for an outside call to retry', async () => {
     const refund = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       card = '';
       tracking = '';
 
@@ -7062,14 +7026,12 @@ describe('back', () => {
     await test.pay('card2');
 
     expect(await result).toEqual({ card: 'card2', tracking: 'trk_card2' });
-    expect(test.then.record.map((entry) => [entry.id, entry.wake, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.wake, entry.undone])).toEqual([
       ['next#1', undefined, undefined],
       ['pay#1', undefined, true],
       ['ship#1', undefined, undefined],
-      ['back#1', undefined, undefined],
       ['pay#2', 'wait#1', undefined],
-      ['ship#2', undefined, undefined],
-      ['end#1', undefined, undefined]
+      ['ship#2', undefined, undefined]
     ]);
   });
 
@@ -7104,8 +7066,9 @@ describe('back', () => {
 
   it('will run backs from parallel steps one at a time', async () => {
     const undo = vi.fn();
+    const back = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.first();
       }
@@ -7123,19 +7086,24 @@ describe('back', () => {
       async right() {
         this.then.back(this.next);
       }
+
+      protected back() {
+        back();
+      }
     }
 
     const test = Test.new();
 
     await test.next();
     expect(undo).toHaveBeenCalledTimes(1);
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'first', 'left', 'right', 'back', 'end']);
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(record(test).map((entry) => entry.key)).toEqual(['next', 'first', 'left', 'right']);
   });
 
   it('will fail when an undo throws and stop unwinding there', async () => {
     const undo = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.first();
 
@@ -7159,7 +7127,7 @@ describe('back', () => {
 
     await expect(test.next()).rejects.toThrow('undo');
     expect(undo).not.toHaveBeenCalled();
-    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([
       ['next#1', undefined],
       ['first#1', 'failed'],
       ['second#1', undefined]
@@ -7198,7 +7166,7 @@ describe('back', () => {
   it('will halt a parked unwind on stop', async () => {
     const order: string[] = [];
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.first();
 
@@ -7226,7 +7194,7 @@ describe('back', () => {
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
     expect(order).toEqual([]);
-    expect(test.then.record.map((entry) => [entry.id, entry.halted, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.halted, entry.undone])).toEqual([
       ['next#1', undefined, undefined],
       ['first#1', undefined, undefined],
       ['second#1', undefined, undefined]
@@ -7237,7 +7205,7 @@ describe('back', () => {
     const refunded = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.zero();
       }
@@ -7262,13 +7230,13 @@ describe('back', () => {
     const test = Test.new();
     const result = test.next();
 
-    await vi.waitFor(() => expect(test.then.record.at(-1)?.id).toBe('second#1'));
+    await vi.waitFor(() => expect(record(test).at(-1)?.id).toBe('second#1'));
     test.then.stop();
     refunded.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
     expect(undo).not.toHaveBeenCalled();
-    expect(test.then.record.map((entry) => [entry.id, entry.undone])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([
       ['next#1', undefined],
       ['zero#1', undefined],
       ['first#1', true],
@@ -7318,7 +7286,7 @@ describe('back', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.first();
 
@@ -7342,21 +7310,21 @@ describe('back', () => {
     const test = Test.new();
     const result = test.next();
 
-    await vi.waitFor(() => expect(test.then.record.at(-1)?.id).toBe('quick#1'));
+    await vi.waitFor(() => expect(record(test).at(-1)?.id).toBe('quick#1'));
     await flushMicrotasks();
     test.then.end('early');
     work.resolve();
 
     expect(await result).toBe('early');
     expect(undo).not.toHaveBeenCalled();
-    expect(test.then.record.map((entry) => entry.id)).toEqual(['next#1', 'first#1', 'quick#1', 'slow#1', 'end#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'first#1', 'quick#1', 'slow#1', 'end#1']);
   });
 
   it('will stop unwinding when a discarded step fails', async () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       next() {
         this.first();
 
@@ -7381,7 +7349,7 @@ describe('back', () => {
     const test = Test.new();
     const result = test.next();
 
-    await vi.waitFor(() => expect(test.then.record.at(-1)?.id).toBe('quick#1'));
+    await vi.waitFor(() => expect(record(test).at(-1)?.id).toBe('quick#1'));
     await flushMicrotasks();
     work.resolve();
 
@@ -7392,8 +7360,7 @@ describe('back', () => {
   it('will halt an unwind at an answer which commits', async () => {
     const undo = vi.fn();
 
-    class Test extends Job {
-      static readonly rewind = true;
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -7429,10 +7396,9 @@ describe('back', () => {
     await expect(result).rejects.toThrow('boom');
     expect(undo).not.toHaveBeenCalled();
     expect(test.value).toBe(1);
-    expect(test.then.record.map((entry) => [entry.id, entry.halted, entry.committed])).toEqual([
+    expect(record(test).map((entry) => [entry.id, entry.halted, entry.committed])).toEqual([
       ['next#1', undefined, undefined],
-      ['first#1', true, undefined],
-      ['keep#1', undefined, true]
+      ['first#1', true, undefined]
     ]);
   });
 
@@ -7468,7 +7434,7 @@ describe('signal', () => {
   it('will abort the signal of a step in flight on stop', async () => {
     const attempt = vi.fn();
 
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       async next() {
@@ -7492,11 +7458,11 @@ describe('signal', () => {
     expect(test.value).toBe(0);
     expect(test.then.status).toBe('stopped');
     expect(test.then.error).toBeUndefined();
-    expect(test.then.record).toEqual([]);
+    expect(record(test)).toEqual([]);
   });
 
   it('will abort the signal of a step in flight on an outside end', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -7517,7 +7483,7 @@ describe('signal', () => {
 
     expect(await result).toBe('early');
     expect(test.value).toBe(0);
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'end']);
+    expect(record(test).map((entry) => entry.key)).toEqual(['next', 'end']);
   });
 
   it('will abort the signal of a step in flight when another fails', async () => {
@@ -7613,7 +7579,7 @@ describe('failures', () => {
       }
     }
 
-    await expect(Test.new().next()).rejects.toThrow('next returned a value; a step returns nothing, or its undo.');
+    await expect(Test.new().next()).rejects.toThrow('next returned a value; a step returns nothing, true, or its undo.');
   });
 
   it('will reject when a step writes after scheduling', async () => {
@@ -7635,7 +7601,7 @@ describe('failures', () => {
   });
 
   it('will not guard writes of a helper after scheduling', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       next() {
@@ -7655,7 +7621,7 @@ describe('failures', () => {
     await test.next();
 
     expect(test.value).toBe(1);
-    expect(test.then.record[0].wrote).toEqual([]);
+    expect(record(test)[0].wrote).toEqual([]);
   });
 
   it('will reject when a step keeps working after scheduling', async () => {
@@ -7804,7 +7770,6 @@ describe('base', () => {
     await sync.next();
 
     expect(sync.items).toEqual(['a']);
-    expect(sync.then.record.map((entry) => entry.key)).toEqual(['next', 'ship', 'end']);
   });
 
   it('will wrap only a subclass own methods when extending a runner without base', async () => {
@@ -7827,7 +7792,7 @@ describe('base', () => {
 
     await paged.next();
 
-    expect(paged.then.record).toEqual([]);
+    expect(record(paged)).toEqual([]);
   });
 
   it('will leave methods above base plain', async () => {
@@ -7852,7 +7817,6 @@ describe('base', () => {
 
     expect(sync.items).toEqual(['a']);
     expect(sync.then.status).toBe('idle');
-    expect(sync.then.record.map((entry) => entry.key)).toEqual(['next', 'pull', 'end']);
   });
 
   it('will wrap methods of a subclass of base', async () => {
@@ -7881,7 +7845,6 @@ describe('base', () => {
     await paged.next();
 
     expect(paged.items).toEqual(['a']);
-    expect(paged.then.record.map((entry) => entry.key)).toEqual(['next', 'pull', 'page', 'end']);
   });
 
   it('will accept Model as base', async () => {
@@ -7898,7 +7861,6 @@ describe('base', () => {
     const test = Test.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'step', 'end']);
   });
 
   it('will throw if not an instance of base', () => {
@@ -7914,7 +7876,7 @@ describe('base', () => {
 
 describe('Job', () => {
   it('will run and type the result from end', async () => {
-    class Test extends Job {
+    class Test extends Journal {
       value = 0;
 
       async next(n: number) {
@@ -7935,7 +7897,7 @@ describe('Job', () => {
     expectTypeOf<Awaited<Test>>().toEqualTypeOf<{ n: number }>();
     expect(result).toEqual({ n: 2 });
     expect(test.then.on).toBe(test);
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'end']);
+    expect(record(test).map((entry) => entry.key)).toEqual(['next', 'end']);
   });
 
   it('will type the result as values without end', async () => {
@@ -7968,7 +7930,7 @@ describe('Job', () => {
   });
 
   it('will collect steps through intermediate classes', async () => {
-    class B extends Job {
+    class B extends Journal {
       async next() {
         this.first();
       }
@@ -7991,38 +7953,7 @@ describe('Job', () => {
     const test = C.new();
 
     await test.next();
-    expect(test.then.record.map((entry) => entry.key)).toEqual(['next', 'first', 'second', 'third', 'end']);
-  });
-
-  it('will rewind when the class opts in', async () => {
-    class Light extends Job {
-      value = 0;
-
-      async next() {
-        this.value = 1;
-        this.fail();
-      }
-
-      protected async fail() {
-        throw new Error('boom');
-      }
-    }
-
-    class Rewind extends Light {
-      static readonly rewind = true;
-    }
-
-    const light = Light.new();
-    const rewind = Rewind.new();
-
-    await expect(light.next()).rejects.toThrow('boom');
-    await expect(rewind.next()).rejects.toThrow('boom');
-
-    expect(Object.hasOwn(Job, 'rewind')).toBe(false);
-    expect(light.value).toBe(1);
-    expect(light.then.record[0]).not.toHaveProperty('prior');
-    expect(rewind.value).toBe(0);
-    expect(rewind.then.record[0]).toMatchObject({ prior: { value: 0 }, patch: { value: 1 }, undone: true });
+    expect(record(test).map((entry) => entry.key)).toEqual(['next', 'first', 'second', 'third']);
   });
 
   it('will not define hooks on the prototype', () => {

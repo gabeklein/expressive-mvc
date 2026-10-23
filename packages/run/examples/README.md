@@ -1,6 +1,6 @@
 # Examples
 
-Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo, `rewind`, failing forward with `back`; [agent](agent/agent.ts) - a long-lived instance on the light journal: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undo by group and by wait, hooks, `exit`; [crawl](crawl/crawl.ts) - many branches at once: `slot` with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - `run(this, options)` on a class that cannot extend `Job`: steps from its own class only, a hook as an option. Shipped behavior is documented in [docs/](../docs/README.md).
+Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo restoring fields, failing forward with `back`; [agent](agent/agent.ts) - a long-lived instance whose steps return nothing, keeping what they wrote: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undo by group and by wait, hooks, `exit`; [crawl](crawl/crawl.ts) - many branches at once: `slot` with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - `run(this, options)` on a class that cannot extend `Job`: steps from its own class only, a hook as an option. Shipped behavior is documented in [docs/](../docs/README.md).
 
 A PR adding a feature extends an example and this table.
 
@@ -30,13 +30,13 @@ A PR adding a feature extends an example and this table.
 | loop - a step scheduling itself | `Agent.turn`, `Sync.pull` |
 | loop - a plain `for` scheduling serially | `Deploy.rollout` |
 | inline step `this.then(async (signal) => …)` | `Sync.pull` |
-| inline arrow - its writes in its own entry | `Sync.pull` (`acked`); sync test `will pull every page and end with its values` |
+| inline arrow - its writes are its own | `Sync.pull` (`acked`); sync test `will pull every page and end with its values` |
 | a pending `set<T>()` read waits | `Sync.token`; sync test `will wait for a token before pulling` |
 | inline step returned as a `void`-typed undo | `SubmitOrder.ship` |
 | `_` helper - computes, the step assigns | `Deploy._spread`, `Deploy.canary` |
 | `end` typing the result | `SubmitOrder.end`, `Agent.end`, `Deploy.end` |
 | `end` is terminal - runs at its place, the last call in its step; a returned undo may follow | `SubmitOrder.pay`, `SubmitOrder.backorder` (after `back`), `Agent.turn` |
-| implicit end - the plan drains, the values dump, journaled `implicit: true` | `Sync`, sync test `will pull every page and end with its values` |
+| implicit end - the plan drains, the values dump | `Sync`, sync test `will pull every page and end with its values` |
 
 ## Undo
 
@@ -46,8 +46,9 @@ A PR adding a feature extends an example and this table.
 | returned step token | `SubmitOrder.pay` (`refund`), `Deploy.install` (`uninstall`) |
 | returned group | `Deploy.build` |
 | returned wait, with a watcher timeout | `Deploy.rollout`; deploy tests `will ask before reverting a failed rollout`, `will revert a failed rollout nobody answers` |
-| `static readonly rewind = true` - `prior`/`patch` | `SubmitOrder`; order test `will keep what each step changed with rewind` |
-| default light journal - `wrote` only | `Agent`, `Deploy`; agent test `will keep what a failing turn committed` |
+| an undo restores its step's fields - all or nothing when every writing step returns one | `SubmitOrder`; order test `will unwind what succeeded when a step fails` |
+| `return true` - no undo to call, fields restored | `Deploy.canary`; deploy test `will roll back the canaries and the build when the gate aborts` |
+| a step returning nothing keeps its fields through an unwind | `Agent`; agent test `will keep what a failing turn committed` |
 | `this.then.commit()` | `Deploy.migrate`; deploy test `will ask before reverting a failed rollout` |
 | collection rollback - `has` list | `Agent.turn` (`draft`); agent test `will keep what a failing turn committed` |
 | per-step attribution - parallel steps writing one `map` | `Crawl.scan`; crawl test `will retry a failing site with backoff, keeping what other sites found` |
@@ -91,12 +92,11 @@ A PR adding a feature extends an example and this table.
 | member | where |
 | --- | --- |
 | `status`, `active` | order test `will expose progress as fields` |
-| `record` - `wrote` | agent test `will keep what a failing turn committed` |
-| `record` - `prior` / `patch` | order test `will keep what each step changed with rewind` |
+| entries from `after` - `wrote`, no values; the runner keeps none | agent test `will keep what a failing turn committed`, order test `will name the fields each step wrote`; a log kept by `after` - `Checkout.log` on the [checkout page](../../../examples/pages/run/checkout/App.tsx) |
 | `waiting` | agent and deploy tests |
 | `queue`, `runs` | agent tests |
 | `error` | deploy test `will roll back the canaries and the build when the gate aborts` |
-| `{ ...instance.then }`, `for (const entry of instance.then)` | order test `will snapshot and iterate the runner` |
+| `{ ...instance.then }` | order test `will snapshot the runner` |
 
 ## Recipes
 

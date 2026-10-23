@@ -65,7 +65,7 @@ interface Waiter {
 }
 
 const HOOK = /^(before|after)([A-Z]|$)/;
-const KEYS = ['status', 'active', 'record', 'queue', 'waiting', 'runs', 'error'] as const;
+const KEYS = ['status', 'active', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
 const GATES = new WeakMap<object, Gate>();
 const INERT = ['back', 'slot'];
@@ -107,10 +107,6 @@ declare namespace Runner {
     next: Node[];
     /** Fields the step wrote, collections changed in place included. */
     wrote: string[];
-    /** With `rewind`: values before the step's first write to each. */
-    prior?: { [key: string]: unknown };
-    /** With `rewind`: values the step left. */
-    patch?: { [key: string]: unknown };
     undo?: 'closure' | Node;
     undone?: true | 'failed';
     /** Id of the wait this step answered. */
@@ -169,8 +165,6 @@ declare namespace Runner {
      * to be extended passes itself.
      */
     base?: abstract new (...args: any[]) => Model;
-    /** Keep `prior`/`patch` per entry; the unwind restores committed steps' fields. */
-    rewind?: boolean;
     /** Before each step, after the class's `before`. */
     before?: (this: T, step: string, args: unknown[], skip: boolean) => void;
     /** After each step commits, after the class's `after`. */
@@ -184,7 +178,6 @@ declare namespace Runner {
   interface Snapshot {
     status: Status;
     active: string | undefined;
-    record: Entry[];
     queue: unknown[][];
     waiting: Wait[];
     runs: number;
@@ -231,8 +224,6 @@ declare namespace Runner {
     readonly status: Runner.Status;
     /** Key of a step in flight - the latest invoked, with a group in flight. */
     readonly active: string | undefined;
-    /** Journal of the current or last run - one entry per settled step. */
-    readonly record: readonly Runner.Entry[];
     /** Arguments of each `next()` waiting for the active run to finish. */
     readonly queue: readonly unknown[][];
     /** Open waits, oldest first. */
@@ -241,7 +232,7 @@ declare namespace Runner {
     readonly runs: number;
     readonly error: unknown;
 
-    /** A plain snapshot of status, active, record, queue, waiting, runs and error. */
+    /** A plain snapshot of status, active, queue, waiting, runs and error. */
     get(): Runner.Snapshot;
     /**
      * End the run - inside a step, where the plan reaches it; from outside, now. Pending steps are
@@ -277,8 +268,6 @@ declare namespace Runner {
     readonly retry: number;
     /** Inside a `.catch` handler: what the caught branch threw; else `undefined`. */
     readonly caught: unknown;
-
-    [Symbol.iterator](): Iterator<Runner.Entry>;
   }
 
   interface Thenable<T extends Model = Model> {
@@ -314,12 +303,11 @@ function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<
     return control.settled().then(onfulfilled as any, onrejected as any);
   } as Runner<T>;
 
-  const control = Control.new({ _self: self, _runner: runner, _rewind: options.rewind });
+  const control = Control.new({ _self: self, _runner: runner });
 
   const read: Record<(typeof KEYS)[number], () => unknown> = {
     status: () => control.status,
     active: () => control.active,
-    record: () => control.run.record.get(),
     queue: () => control.queue.map((ticket) => ticket.args),
     waiting: () => control.run.waits.map(({ id, step, args, answers }) => ({ id, step, args, answers })),
     runs: () => control.runs,
@@ -345,12 +333,7 @@ function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<
     slot: { value: () => outside('slot') },
     signal: { get: () => outside('signal', 'read') },
     retry: { get: () => outside('retry', 'read') },
-    caught: { get: () => outside('caught', 'read') },
-    [Symbol.iterator]: {
-      value(this: Runner.Controller) {
-        return this.record[Symbol.iterator]();
-      }
-    }
+    caught: { get: () => outside('caught', 'read') }
   });
 
   event(runner);
@@ -410,11 +393,8 @@ function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<
  * resolving with the result of `end`. The members below are the contract - each optional.
  */
 class Job extends Model {
-  /** Keep `prior`/`patch` per entry and restore committed steps' fields on unwind. */
-  declare static readonly rewind?: boolean;
-
   /** The controller - status, journal, queue, waits; awaiting the instance awaits it. */
-  readonly then = run(this, { base: Job, rewind: (this.constructor as typeof Job).rewind });
+  readonly then = run(this, { base: Job });
 
   /** The entry: starts a run, or queues one while a run is active. Settles with its run. */
   next?(...args: any[]): unknown;
@@ -445,7 +425,6 @@ class Control extends Model {
 
   _self!: Model;
   _runner!: object;
-  _rewind?: boolean = undefined;
   _steps = new Map<string, Function>();
   _hooks = new Map<string, Function[]>();
   _gates = new Map<unknown, Gate>();
@@ -458,7 +437,7 @@ class Control extends Model {
       if (signal(key)) event(this, 'queue');
     });
 
-    return this.set((key) => void event(_runner, key == 'run' ? 'record' : (key as string)));
+    return this.set((key) => void event(_runner, key as string));
   }
 
   call(key: string, args: unknown[]) {
@@ -567,11 +546,11 @@ class Control extends Model {
 
 class Run extends Model {
   control = get(Control);
-  record = has<Runner.Entry>();
   frames = has(Frame);
   waits = has(Wait);
 
   _ticket!: Ticket;
+  _entries: Runner.Entry[] = [];
   _counts = new Map<string, number>();
   _undo = new Map<string, Undo>();
   _held = new Map<string, Held>();
@@ -603,10 +582,6 @@ class Run extends Model {
 
   protected new() {
     const { control } = this;
-
-    listener(this.record, (key) => {
-      if (signal(key) && control.run === this) event(control, 'record');
-    });
 
     listener(this.waits, (key) => {
       let current = signal(key) && control._current === this;
@@ -751,8 +726,7 @@ class Run extends Model {
   }
 
   async recover(item: Runner.Node) {
-    const entries = this.record.get() as Runner.Entry[];
-    const ids = entries.filter((entry) => !this._spent.has(entry.id) && this.line(entry.id).includes(item.id));
+    const ids = this._entries.filter((entry) => !this._spent.has(entry.id) && this.line(entry.id).includes(item.id));
     const failed = await this.unwind(new Set(ids.map((entry) => entry.id)));
 
     if (failed) this.halt('failed', failed.cause);
@@ -789,9 +763,8 @@ class Run extends Model {
   async retreat(item: Runner.Node, from: Frame) {
     if (this.stale() || this.dropped(item.id)) return;
 
-    const { record } = this;
+    const { _entries: entries } = this;
     const { key, reason } = this._backs.get(item.id)!;
-    const entries = record.get() as Runner.Entry[];
     const live = (entry: Runner.Entry) => entry.id != from.id && !('error' in entry) && !this._spent.has(entry.id);
     const at = entries.findLastIndex((entry) => entry.key == key && live(entry));
 
@@ -827,7 +800,7 @@ class Run extends Model {
     if (reason !== undefined) entry.reason = reason;
 
     this._spent.add(item.id);
-    record.push(entry);
+    entries.push(entry);
 
     const thrown = this.fire('back', reason);
 
@@ -1036,7 +1009,7 @@ class Run extends Model {
             error = failed.cause;
           }
 
-          if (fixed) this.record.push({ ...frame.journal(), error, ...irreversible.length && { irreversible } });
+          if (fixed) this._entries.push({ ...frame.journal(), error, ...irreversible.length && { irreversible } });
 
           throw error;
         }
@@ -1051,7 +1024,7 @@ class Run extends Model {
       if (signal.aborted && error === signal.reason) return;
 
       if (body && !fixed && this.caught(error, id))
-        this.record.push({ id, key, args, next: [], wrote: [], error, ...frame._retry && { retry: frame._retry } });
+        this._entries.push({ id, key, args, next: [], wrote: [], error, ...frame._retry && { retry: frame._retry } });
       else this.halt('failed', error);
     } finally {
       this.frames.delete(frame);
@@ -1068,7 +1041,6 @@ class Run extends Model {
     Object.assign(frame, {
       _wrappers: new Map(),
       _log: [],
-      _before: new Map(),
       _changed: new Set(),
       _items: [],
       _wrote: new Set(),
@@ -1088,7 +1060,7 @@ class Run extends Model {
     if (!item) {
       const { id } = this.node('end', []);
 
-      this.record.push({ id, key: 'end', args: [], next: [], wrote: [], implicit: true });
+      this._entries.push({ id, key: 'end', args: [], next: [], wrote: [], implicit: true });
 
       return this.finish(dump(this.control));
     }
@@ -1117,6 +1089,9 @@ class Run extends Model {
 
     control._current = undefined;
     control.runs++;
+    this._entries = [];
+    this._held.clear();
+    this._undo.clear();
     this.frames.clear();
     this.waits.clear();
   }
@@ -1180,9 +1155,7 @@ class Run extends Model {
   }
 
   async unwind(ids?: Set<string>) {
-    const { control, record } = this;
-    const { _rewind: rewind } = control;
-    const entries = record.get() as Runner.Entry[];
+    const { control, _entries: entries } = this;
 
     for (let i = entries.length - 1; i >= 0; i--) {
       const entry = entries[i];
@@ -1194,7 +1167,6 @@ class Run extends Model {
 
       if (entry.irreversible || entry.committed) {
         entry.halted = true;
-        event(record, i);
 
         if (entry.irreversible)
           console.warn(`${control._self} stopped unwinding at ${entry.id}: ${entry.irreversible.join(', ')} cannot be restored.`);
@@ -1217,19 +1189,15 @@ class Run extends Model {
           break;
         }
 
-        if (rewind) {
-          const { prior, log } = this._held.get(entry.id)!;
+        const held = this._held.get(entry.id);
 
-          this.restore(prior, log);
-        }
-        if (undo || rewind) entry.undone = true;
+        if (held) this.restore(held.prior, held.log);
+        if (undo || held) entry.undone = true;
 
         this._spent.add(entry.id);
       } catch (cause) {
         entry.undone = 'failed';
         return { cause };
-      } finally {
-        event(record, i);
       }
     }
   }
@@ -1334,7 +1302,6 @@ class Frame extends Model {
   _prior: Record<string, unknown> = {};
   _wrappers = new Map<Collection, Collection>();
   _log: (() => void)[] = [];
-  _before = new Map<string, unknown>();
   _changed = new Set<string>();
   _lost = new Set<string>();
   _wake?: string = undefined;
@@ -1592,6 +1559,7 @@ class Frame extends Model {
     if (_late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
 
     let undo: Function | Runner.Node | undefined;
+    let keep = false;
     let token = items.includes(out as Runner.Node) && !INERT.includes((out as Runner.Node).key);
 
     if (key == 'end') {
@@ -1604,7 +1572,8 @@ class Frame extends Model {
       undo = out as Runner.Node;
       items.splice(items.indexOf(undo), 1);
     }
-    else if (out !== undefined) throw new Error(`${key} returned a value; a step returns nothing, or its undo.`);
+    else if (typeof out == 'boolean') keep = out;
+    else if (out !== undefined) throw new Error(`${key} returned a value; a step returns nothing, true, or its undo.`);
 
     const end = items.findIndex((item) => item.key == 'end');
 
@@ -1623,28 +1592,19 @@ class Frame extends Model {
     }
     else if (_lost.size) entry.irreversible = [..._lost];
 
-    if (run.control._rewind) run._held.set(id, { prior: this._prior, log: this._log });
+    if (undo || keep) run._held.set(id, { prior: this._prior, log: this._log });
     if (this._undo) run._spent.add(id);
 
-    run.record.push(entry);
+    run._entries.push(entry);
 
     return entry;
   }
 
   journal(): Runner.Entry {
-    const { run, id, key, args, _wrote, _prior, _before, _changed, _committed } = this;
-    const wrote = [...new Set([..._wrote, ..._changed])];
-    const entry: Runner.Entry = { id, key, args, next: [], wrote };
+    const { id, key, args, _wrote, _changed, _committed } = this;
+    const entry: Runner.Entry = { id, key, args, next: [], wrote: [...new Set([..._wrote, ..._changed])] };
 
     if (_committed) entry.committed = true;
-
-    if (run.control._rewind) {
-      const values = run.control._self.get() as Record<string, unknown>;
-      const collections = [..._changed].map((key) => [key, _before.get(key)]);
-
-      entry.prior = { ..._prior, ...Object.fromEntries(collections) };
-      entry.patch = Object.fromEntries(wrote.map((key) => [key, values[key]]));
-    }
 
     return entry;
   }
@@ -1662,7 +1622,7 @@ class Frame extends Model {
 
         if (op)
           return (...args: unknown[]) => {
-            const out = this.change(key, target, () => op(...args));
+            const out = this.change(key, () => op(...args));
 
             return out === target ? wrapper : out;
           };
@@ -1678,12 +1638,10 @@ class Frame extends Model {
     return wrapper;
   }
 
-  change(key: string, value: Collection, op: () => Change) {
+  change(key: string, op: () => Change) {
     const at = this._settled ? this.live() : this;
 
     if (!at) return op()[0];
-
-    if (at.run.control._rewind && !at._before.has(key)) at._before.set(key, value.get());
 
     const [out, changed, undo, lost] = op();
 
