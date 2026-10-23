@@ -1,6 +1,6 @@
 # Examples
 
-Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo restoring fields, failing forward with `back`; [agent](agent/agent.ts) - a long-lived instance whose steps return nothing, keeping what they wrote: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undo by group and by wait, hooks, `exit`; [crawl](crawl/crawl.ts) - many branches at once: `slot` with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - `run(this, options)` on a class that cannot extend `Job`: steps from its own class only, a hook as an option. Shipped behavior is documented in [docs/](../docs/README.md).
+Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo restoring fields, failing forward with `back`; [agent](agent/agent.ts) - a long-lived instance whose steps return nothing, keeping what they wrote: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undo by group and by wait, hooks, `exit`; [crawl](crawl/crawl.ts) - many branches at once: `slot` with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - composition: a class that cannot extend `Job` holds one as a field. Shipped behavior is documented in [docs/](../docs/README.md).
 
 A PR adding a feature extends an example and this table.
 
@@ -27,11 +27,11 @@ A PR adding a feature extends an example and this table.
 | sequence, depth-first | `Deploy.next`, `Deploy.canary` (schedules `gate`, which runs before `migrate`) |
 | variadic group `this.then(a, b)` | `SubmitOrder.pay` |
 | mapped group `this.then(items, this.step)` | `Agent.turn`, `Deploy.canary`, `Crawl.next` |
-| loop - a step scheduling itself | `Agent.turn`, `Sync.pull` |
+| loop - a step scheduling itself | `Agent.turn`, `Pull.page` |
 | loop - a plain `for` scheduling serially | `Deploy.rollout` |
-| inline step `this.then(async (signal) => …)` | `Sync.pull` |
-| inline arrow - its writes are its own | `Sync.pull` (`acked`); sync test `will pull every page and end with its values` |
-| a pending `set<T>()` read waits | `Sync.token`; sync test `will wait for a token before pulling` |
+| inline step `this.then(async (signal) => …)` | `Pull.page` |
+| inline arrow - its writes are its own | `Pull.page` (`acked`); sync test `will pull every page and end with its values` |
+| a pending `set<T>()` read waits | `Sync.token`, read by `Pull.page`; sync test `will wait for a token before pulling` |
 | inline step returned as a `void`-typed undo | `SubmitOrder.ship` |
 | `_` helper - computes, the step assigns | `Deploy._spread`, `Deploy.canary` |
 | `end` typing the result | `SubmitOrder.end`, `Agent.end`, `Deploy.end` |
@@ -84,8 +84,8 @@ A PR adding a feature extends an example and this table.
 | `before` / `after` | `Deploy.before`, `Deploy.after` |
 | `before<Step>` / `after<Step>` with `skip` | `Deploy.beforeUpgrade`, `Deploy.afterUpgrade` |
 | `exit(outcome)` | `Deploy.exit` |
-| hook as an option - `run(this, { exit })` | `Sync`; sync test `will start over after a failed sync` |
-| `this.then.signal`, aborted by `stop()` | `Agent.turn`, `Deploy.suite`, `Sync.pull` |
+| `exit` resetting a field on a failed run | `Pull.exit`; sync test `will start over after a failed sync` |
+| `this.then.signal`, aborted by `stop()` | `Agent.turn`, `Deploy.suite`, `Pull.page` |
 
 ## Runner surface
 
@@ -102,6 +102,6 @@ A PR adding a feature extends an example and this table.
 
 | recipe | where |
 | --- | --- |
-| `run(this)` on a class that cannot extend `Job` - steps from the instance's class only, a parent's methods plain | `Sync`, `Feed.known`; sync test `will pull every page and end with its values` |
+| composition - a class that cannot extend `Job` holds one as a field; the job reaches its owner with `get()`, writes to it unmanaged | `Sync.pull`, `Pull.sync`, `Feed.known`; sync tests `will pull every page and end with its values`, `will start over after a failed sync` |
 | steering mailbox - a `has()` list pulled by the loop | `Agent.steers`, `Agent.turn`; agent test `will pull steering sent mid-turn before ending` |
 | steering by field - an outside write read by the next step | `Agent.tool` (`mode`); agent test `will steer later tool calls by writing mode` |

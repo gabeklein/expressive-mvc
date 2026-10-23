@@ -2,7 +2,7 @@ import { has, map, set, Model } from '@expressive/mvc';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { flushMicrotasks, Journal, mockPromise, mockUncaught, mockWarn, record } from '../test.setup';
-import { Job, run, type Runner } from './run';
+import { Job, type Runner } from './run';
 
 describe('steps', () => {
   it('will run steps from next through to end', async () => {
@@ -4576,9 +4576,7 @@ describe('hooks', () => {
   it('will call an overridden hook once', async () => {
     const order: string[] = [];
 
-    class Parent extends Model {
-      then = run(this, { base: Parent });
-
+    class Parent extends Job {
       next() {}
 
       protected exit() {
@@ -4596,185 +4594,6 @@ describe('hooks', () => {
     expect(order).toEqual(['child']);
   });
 
-  it('will call hooks passed as options', async () => {
-    const order: unknown[] = [];
-
-    class Test extends Model {
-      value = 0;
-
-      then = run(this, {
-        before(step, args, skip) {
-          this.value++;
-          order.push(['before', step, args, skip]);
-        },
-        after(step, entry, skip) {
-          order.push(['after', step, entry.id, skip]);
-        },
-        back(error) {
-          order.push(['back', (error as Error).message]);
-        },
-        exit(outcome) {
-          order.push(['exit', outcome.status, this === test]);
-        }
-      });
-
-      async next() {
-        this.fail();
-      }
-
-      protected async fail() {
-        throw new Error('boom');
-      }
-    }
-
-    const test = Test.new();
-
-    await expect(test.next()).rejects.toThrow('boom');
-    expect(order).toEqual([
-      ['before', 'next', [], false],
-      ['after', 'next', 'next#1', false],
-      ['before', 'fail', [], false],
-      ['back', 'boom'],
-      ['exit', 'failed', true]
-    ]);
-    expect(test.value).toBe(2);
-  });
-
-  it('will call class hooks before option hooks', async () => {
-    const order: string[] = [];
-
-    class Test extends Model {
-      then = run(this, {
-        before: () => void order.push('option before'),
-        after: () => void order.push('option after'),
-        back: () => void order.push('option back'),
-        exit: () => void order.push('option exit')
-      });
-
-      async next() {
-        this.fail();
-      }
-
-      protected async fail() {
-        throw new Error('boom');
-      }
-
-      protected before() {
-        order.push('before');
-      }
-
-      protected beforeFail() {
-        order.push('beforeFail');
-      }
-
-      protected after() {
-        order.push('after');
-      }
-
-      protected back() {
-        order.push('back');
-      }
-
-      protected exit() {
-        order.push('exit');
-      }
-    }
-
-    await expect(Test.new().next()).rejects.toThrow('boom');
-    expect(order).toEqual([
-      'before',
-      'option before',
-      'after',
-      'option after',
-      'before',
-      'option before',
-      'beforeFail',
-      'back',
-      'option back',
-      'exit',
-      'option exit'
-    ]);
-  });
-
-  it('will fail when an option hook throws', async () => {
-    const before = vi.fn();
-
-    class Test extends Model {
-      then = run(this, {
-        before() {
-          throw new Error('hook');
-        }
-      });
-
-      next() {}
-
-      protected beforeNext() {
-        before();
-      }
-    }
-
-    await expect(Test.new().next()).rejects.toThrow('hook');
-    expect(before).not.toHaveBeenCalled();
-  });
-
-  it('will call option exit when the class exit throws', async () => {
-    const caught = mockUncaught();
-    const exit = vi.fn();
-
-    class Test extends Model {
-      then = run(this, { exit });
-
-      next() {}
-
-      exit() {
-        throw new Error('exit');
-      }
-    }
-
-    const test = Test.new();
-
-    expect(await test.next()).toEqual({});
-    await flushMicrotasks();
-    expect(exit).toHaveBeenCalledWith({ status: 'done', result: {} });
-    expect(test.then.status).toBe('idle');
-    expect(caught).toEqual([new Error('exit')]);
-  });
-
-  it('will check hook options by signature', () => {
-    class Test extends Model {
-      value = 0;
-
-      then = run(this, {
-        // @ts-expect-error
-        before(step: number) {
-          void step;
-        },
-        // @ts-expect-error
-        back(error: unknown, more: number) {
-          void error, more;
-        },
-        exit(outcome) {
-          expectTypeOf(outcome.status).toEqualTypeOf<'done' | 'failed' | 'stopped'>();
-          this.value++;
-        }
-      });
-
-      next() {}
-    }
-
-    run(Test.new(), {
-      // @ts-expect-error
-      bakc() {}
-    });
-
-    run(Test.new(), {
-      exit(outcome) {
-        expectTypeOf(outcome).toEqualTypeOf<Runner.Outcome<Model.Values<Test>>>();
-      }
-    });
-
-    expect(Test.new().then.status).toBe('idle');
-  });
 });
 
 describe('undo', () => {
@@ -6728,11 +6547,7 @@ describe('back', () => {
   it('will call back with its reason, and with the error on failure', async () => {
     const order: unknown[] = [];
 
-    class Test extends Model {
-      then = run(this, {
-        back: (reason) => void order.push(['option', reason])
-      });
-
+    class Test extends Job {
       next(fail: boolean) {
         this.first(fail);
       }
@@ -6756,12 +6571,12 @@ describe('back', () => {
     const test = Test.new();
 
     await test.next(false);
-    expect(order).toEqual([['back', 'retreat'], ['option', 'retreat'], 'second']);
+    expect(order).toEqual([['back', 'retreat'], 'second']);
 
     order.length = 0;
 
     await expect(test.next(true)).rejects.toThrow('boom');
-    expect(order).toEqual([['back', 'retreat'], ['option', 'retreat'], 'second', ['back', new Error('boom')], ['option', new Error('boom')]]);
+    expect(order).toEqual([['back', 'retreat'], 'second', ['back', new Error('boom')]]);
   });
 
   it('will end with an end scheduled after back', async () => {
@@ -7734,146 +7549,6 @@ describe('failures', () => {
   });
 });
 
-describe('base', () => {
-  class Feed extends Model {
-    items: string[] = [];
-
-    load() {
-      return ['a'];
-    }
-
-    exit() {
-      throw new Error('exit');
-    }
-
-    afterShip() {}
-  }
-
-  it('will leave methods above the instance class plain by default', async () => {
-    class Sync extends Feed {
-      then = run(this);
-
-      async next() {
-        this.ship();
-      }
-
-      protected async ship() {
-        this.items = this.load();
-      }
-    }
-
-    const sync = Sync.new();
-
-    expect(sync.load()).toEqual(['a']);
-    expect(() => sync.exit()).toThrow('exit');
-
-    await sync.next();
-
-    expect(sync.items).toEqual(['a']);
-  });
-
-  it('will wrap only a subclass own methods when extending a runner without base', async () => {
-    class Sync extends Model {
-      then = run(this);
-
-      async next() {}
-
-      protected async pull() {}
-    }
-
-    class Paged extends Sync {
-      protected async page() {}
-    }
-
-    const paged = Paged.new() as any;
-
-    expect(paged.pull).toBeInstanceOf(Function);
-    expect(paged.page).toBeUndefined();
-
-    await paged.next();
-
-    expect(record(paged)).toEqual([]);
-  });
-
-  it('will leave methods above base plain', async () => {
-    class Sync extends Feed {
-      then = run(this, { base: Sync });
-
-      async next() {
-        this.pull();
-      }
-
-      protected async pull() {
-        this.items = this.load();
-      }
-    }
-
-    const sync = Sync.new();
-
-    expect(sync.load()).toEqual(['a']);
-    expect(() => sync.exit()).toThrow('exit');
-
-    await sync.next();
-
-    expect(sync.items).toEqual(['a']);
-    expect(sync.then.status).toBe('idle');
-  });
-
-  it('will wrap methods of a subclass of base', async () => {
-    class Sync extends Feed {
-      then = run(this, { base: Sync });
-
-      async next() {
-        this.pull();
-      }
-
-      protected async pull() {}
-    }
-
-    class Paged extends Sync {
-      protected async pull() {
-        this.page();
-      }
-
-      protected async page() {
-        this.items = this.load();
-      }
-    }
-
-    const paged = Paged.new();
-
-    await paged.next();
-
-    expect(paged.items).toEqual(['a']);
-  });
-
-  it('will accept Model as base', async () => {
-    class Test extends Model {
-      then = run(this, { base: Model });
-
-      async next() {
-        this.step();
-      }
-
-      protected async step() {}
-    }
-
-    const test = Test.new();
-
-    await test.next();
-  });
-
-  it('will throw if not an instance of base', () => {
-    class Other extends Model {}
-
-    class Test extends Model {
-      then = run(this, { base: Other });
-    }
-
-    expect(() => Test.new()).toThrow(/^Test-\w+ does not extend Other\.$/);
-  });
-});
-
 describe('Job', () => {
   it('will run and type the result from end', async () => {
     class Test extends Journal {
@@ -8035,12 +7710,6 @@ describe('Job', () => {
       protected override bakc() {}
     }
 
-    const assign = (test: Test) => {
-      // @ts-expect-error
-      test.then = run(test);
-    };
-
-    expectTypeOf(assign).toBeFunction();
     expect(Test.new().then.status).toBe('idle');
   });
 });

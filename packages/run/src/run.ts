@@ -158,23 +158,6 @@ declare namespace Runner {
     | { status: 'failed'; error: unknown; stopped?: unknown }
     | { status: 'stopped'; error: unknown };
 
-  interface Options<T extends Model = Model> {
-    /**
-     * The topmost class whose methods are steps and hooks - classes above it stay plain.
-     * The instance must extend it. Default: the instance's own class only - a runner meant
-     * to be extended passes itself.
-     */
-    base?: abstract new (...args: any[]) => Model;
-    /** Before each step, after the class's `before`. */
-    before?: (this: T, step: string, args: unknown[], skip: boolean) => void;
-    /** After each step commits, after the class's `after`. */
-    after?: (this: T, step: string, entry: Runner.Entry, skip: boolean) => void;
-    /** Once an unwind completes, after the class's `back`. A throw replaces the error. */
-    back?: (this: T, reason: unknown) => void;
-    /** Once per run on every outcome, after the class's `exit`. A throw is reported uncaught; the outcome stands. */
-    exit?: (this: T, outcome: Runner.Outcome<Runner.Result<T>>) => void;
-  }
-
   interface Snapshot {
     status: Status;
     active: string | undefined;
@@ -287,16 +270,7 @@ declare namespace Runner {
  */
 type Runner<T extends Model = Model> = Runner.Controller<T> & Runner.Thenable<T>;
 
-/**
- * Make this Model runnable: its methods become steps, each scheduling the next, and the
- * returned Runner is the controller - status, journal, result. `next()` starts a run.
- * `_`-prefixed methods are helpers; `before`/`after`-prefixed ones, `back` and `exit` are hooks.
- */
-function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<T> {
-  const { base } = options;
-
-  if (base && !(self instanceof base)) throw new Error(`${self} does not extend ${base.name}.`);
-
+function run<T extends Job>(self: T): Runner<T> {
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
     if (onfulfilled && typeof onfulfilled == 'object') throw new Error('then(steps) must be called inside a step.');
 
@@ -339,9 +313,8 @@ function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<
   event(runner);
 
   const { _hooks: hooks } = control;
-  const top = Object.getPrototypeOf(base ? base.prototype : Object.getPrototypeOf(self));
 
-  for (let proto = Object.getPrototypeOf(self); proto !== Model.prototype && proto !== top; proto = Object.getPrototypeOf(proto))
+  for (let proto = Object.getPrototypeOf(self); proto !== Model.prototype; proto = Object.getPrototypeOf(proto))
     for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
       let method = desc.get && unbind(desc.get) !== desc.get;
       let skip = !method || key == 'new' || key[0] == '_' || Object.hasOwn(self, key);
@@ -349,7 +322,7 @@ function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<
       if (skip) continue;
 
       if (HOOK.test(key) || key == 'back' || key == 'exit') {
-        if (!hooks.has(key)) hooks.set(key, [unbind(desc.get!)]);
+        if (!hooks.has(key)) hooks.set(key, unbind(desc.get!));
         continue;
       }
 
@@ -371,12 +344,6 @@ function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<
       );
     }
 
-  for (const key of ['before', 'after', 'back', 'exit'] as const) {
-    const hook = options[key];
-
-    if (hook) hooks.set(key, [...(hooks.get(key) || []), hook]);
-  }
-
   for (const hook of hooks.keys()) {
     const target = HOOK.test(hook) && hook.replace(HOOK, (_, __, first: string) => first.toLowerCase());
 
@@ -394,7 +361,7 @@ function run<T extends Model>(self: T, options: Runner.Options<T> = {}): Runner<
  */
 class Job extends Model {
   /** The controller - status, journal, queue, waits; awaiting the instance awaits it. */
-  readonly then = run(this, { base: Job });
+  readonly then = run(this);
 
   /** The entry: starts a run, or queues one while a run is active. Settles with its run. */
   next?(...args: any[]): unknown;
@@ -426,7 +393,7 @@ class Control extends Model {
   _self!: Model;
   _runner!: object;
   _steps = new Map<string, Function>();
-  _hooks = new Map<string, Function[]>();
+  _hooks = new Map<string, Function>();
   _gates = new Map<unknown, Gate>();
   _current?: Run = undefined;
 
@@ -456,7 +423,7 @@ class Control extends Model {
   }
 
   hook(key: string, ...args: unknown[]) {
-    for (const hook of this._hooks.get(key) || []) hook.apply(this._self, args);
+    this._hooks.get(key)?.apply(this._self, args);
   }
 
   start(args: unknown[]) {
@@ -1203,31 +1170,22 @@ class Run extends Model {
   }
 
   fire(key: string, arg: unknown) {
-    const { control } = this;
-    let thrown: { cause: unknown } | undefined;
-
-    for (const hook of control._hooks.get(key) || [])
-      try {
-        hook.call(control._self, arg);
-      } catch (cause) {
-        this.blame(cause);
-        thrown = { cause };
-      }
-
-    return thrown;
+    try {
+      this.control.hook(key, arg);
+    } catch (cause) {
+      this.blame(cause);
+      return { cause };
+    }
   }
 
   exit(outcome: Runner.Outcome) {
-    const { control } = this;
-
-    for (const hook of control._hooks.get('exit') || [])
-      try {
-        hook.call(control._self, outcome);
-      } catch (cause) {
-        queueMicrotask(() => {
-          throw cause;
-        });
-      }
+    try {
+      this.control.hook('exit', outcome);
+    } catch (cause) {
+      queueMicrotask(() => {
+        throw cause;
+      });
+    }
   }
 
   blame(cause: unknown) {
@@ -1927,5 +1885,5 @@ function near(list: has.List<unknown>, value: unknown, at: number) {
   return found;
 }
 
-export { Job, run };
+export { Job };
 export type { Runner };
