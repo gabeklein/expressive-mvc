@@ -2,7 +2,7 @@
 
 ```ts
 class Job extends Model {
-  readonly then = run(this, { base: Job, rewind: this.constructor.rewind });
+  readonly then = run(this, { base: Job });
 }
 ```
 
@@ -17,23 +17,8 @@ class Job extends Model {
 | `after(step, entry, skip)` | `protected` | after each step commits ([hooks.md](hooks.md)) |
 | `back(reason)` | `protected` | once an unwind completes - after `then.back(step, reason)`, or a failure before the run rejects ([hooks.md](hooks.md#back)) |
 | `exit(outcome)` | `protected` | once per run on every outcome - done, failed, stopped - last before it settles ([hooks.md](hooks.md#exit)) |
-| `static rewind` | `static readonly` | `true`: entries keep `prior`/`patch` and the unwind restores committed steps' fields ([undo.md](undo.md#rewind)) |
 
 Other methods are steps, `protected async` by convention ([README.md](README.md#conventions)). Per-step `before<Step>`/`after<Step>` are checked at runtime only.
-
-## Options
-
-A `Job` subclass configures its run with `static readonly` members. `Job` reads them from the subclass and passes them as `run(this, options)` - one config in two spellings.
-
-```ts
-class SubmitOrder extends Job {
-  static readonly rewind = true;
-}
-```
-
-| option | |
-| --- | --- |
-| `rewind` | keep `prior`/`patch` per entry; the unwind restores committed steps' fields ([undo.md](undo.md#rewind)) |
 
 ## Escape hatch: `run(this, options)`
 
@@ -42,7 +27,6 @@ For a class that cannot extend `Job` - it already extends another `Model` or a `
 ```ts
 class Sync extends Remote {
   then = run(this, {
-    rewind: true,
     exit(outcome) {
       if (outcome.status != 'done') this.cursor = '';
     }
@@ -55,7 +39,6 @@ class Sync extends Remote {
 | option | |
 | --- | --- |
 | `base` | opt into an extensible runner - the topmost class whose methods are steps and hooks, walked from the most-derived class; classes above it stay plain. Default: the most-derived class only. The instance must extend it, else `run` throws `<instance> does not extend <base>.` |
-| `rewind` | as `static rewind` above |
 | `before`, `after`, `back`, `exit` | hooks typed against the instance, raw instance as `this`; each runs after the class's same-named hook ([hooks.md](hooks.md#hooks-as-options)) |
 
 Without `base`, only the most-derived class's methods are steps and hooks - `Remote`'s stay plain, callable inline from a step and from outside. A subclass of `Sync` would get only its own methods as steps: a runner meant to be extended passes itself, `run(this, { base: Sync })`. `Job` passes `base: Job`.

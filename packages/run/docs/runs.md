@@ -23,7 +23,7 @@ Nothing starts on its own. A class wanting a run on creation writes `new() { thi
 
 ## Runs repeat
 
-A finished run returns status to `idle`; the next `next()` starts a fresh run with its own `record` and ids. Instance fields persist across runs. `runs` counts finished runs - ended, failed or stopped. `status` `stopped`/`failed` and `error` hold until the next run starts.
+A finished run returns status to `idle`; the next `next()` starts a fresh run with its own ids. Instance fields persist across runs. `runs` counts finished runs - ended, failed or stopped. `status` `stopped`/`failed` and `error` hold until the next run starts.
 
 ```ts
 await agent.next('write notes');
@@ -87,7 +87,7 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 `then.stop(undo?, reason?)` - or `this.then.stop()` in a step - cancels the active run, rejecting it and the queue:
 
 - status `stopped` at once; pending steps are discarded; open waits are released;
-- in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - their entries are recorded, what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
+- in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - `after` sees their entries, what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
 - queued runs are dropped: `queue` empties, each queued Promise rejects with an error named `'Stopped'`;
 - once in-flight steps have settled, the run's Promise rejects with that error.
 

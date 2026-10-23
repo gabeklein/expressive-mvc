@@ -4,7 +4,7 @@ A token issued in a step - a step call, a group, an inline step, a wait - takes 
 
 1. The failing step's own writes are restored, as always; it is journaled `{ id, key, args, next: [], wrote: [], error }`.
 2. The rest of the branch is discarded: pending items dropped, open waits released, slots cancelled, steps in flight aborted - they settle and commit.
-3. The branch's committed entries unwind, newest first, as a [`back`](undo.md#back) would: undos run, `prior` restored with [rewind](undo.md#rewind), halting at a `committed` or irreversible entry. Outside the branch nothing is touched - parallel siblings keep their writes.
+3. The branch's committed entries unwind, newest first, as a [`back`](undo.md#back) would: undos run, fields restored for steps that returned an undo or `true` ([undo.md](undo.md#restoring-fields)), halting at a `committed` or irreversible entry. Outside the branch nothing is touched - parallel siblings keep their writes.
 4. The handler, if any, runs in the branch's place; then the plan continues with the next item, the branch counting as done.
 
 ```ts

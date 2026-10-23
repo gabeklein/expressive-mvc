@@ -218,11 +218,11 @@ From outside, `instance.end` reads `undefined`; `then.end(value)` ends the activ
 
 ## What a step returns
 
-Nothing, a closure (its undo), or a token it issued - a step, group, wait or inline step: `return this.release(id)` registers that step as its undo and removes it from the plan ([undo.md](undo.md)). Any other value fails the run (`first returned a value; a step returns nothing, or its undo.`). `end`'s return is the result.
+Nothing, `true` or `false`, a closure (its undo), or a token it issued - a step, group, wait or inline step: `return this.release(id)` registers that step as its undo and removes it from the plan ([undo.md](undo.md)). An undo or `true` also has an unwind restore the step's fields ([undo.md](undo.md#restoring-fields)); nothing or `false`, not. Any other value fails the run (`first returned a value; a step returns nothing, true, or its undo.`). `end`'s return is the result.
 
 ## Entry
 
-Each settled step is one journal entry (`record` on the [runner](runner.md)):
+Each step that commits is one entry, handed to [`after`](hooks.md) - the runner keeps none ([runner.md](runner.md#entry)):
 
 ```ts
 {
@@ -241,15 +241,8 @@ Each settled step is one journal entry (`record` on the [runner](runner.md)):
 }
 ```
 
-A `back` token is journaled as its own entry - `to`, `reason` ([undo.md](undo.md#back)).
-
 Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `error` - a caught failure ([catch.md](catch.md)), or a failing step that kept its writes; `retry` - a re-run from its own catch; `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit); `implicit` - an `end` the runtime added ([end](#end-is-terminal)).
 
-With [`rewind`](undo.md#rewind), an entry also keeps values - `prior` before the step's first write to each field, `patch` as it left them; a collection changed in place in export form ([undo.md](undo.md#collections)):
-
-```ts
-prior: { charge: undefined },
-patch: { charge: { id: 'ch_42', … } },
-```
+The runtime makes entries no hook is handed, for its own unwind: a failed try that was caught or kept its writes (`error`), a `back` (`to`, `reason` - [undo.md](undo.md#back)), an implicit `end`, and an unwind's answer to a returned wait (`wake`). An entry holds no values - an unwind restores fields from priors the runtime keeps for steps that opted in ([undo.md](undo.md#restoring-fields)).
 
 Writes from outside the run, through `this.is`, in helpers, or in hooks are in no entry.

@@ -6,7 +6,6 @@
 | --- | --- |
 | `status` | `'idle' \| 'running' \| 'waiting' \| 'stopped' \| 'failed'` - `idle` from construction and after a run ends |
 | `active` | key of a step in flight, else `undefined`; with a group in flight, the latest invoked |
-| `record` | the current or last run's journal - one entry per settled step, in commit order |
 | `queue` | argument arrays of queued `next()` calls |
 | `waiting` | open waits, `{ id, step, args, answers }`, oldest first ([wait.md](wait.md)) |
 | `runs` | finished runs - ended, failed or stopped |
@@ -30,19 +29,13 @@
 { id, key, args, next, wrote, undo?, undone?, wake?, retry?, error?, irreversible?, committed?, halted?, reason? }
 ```
 
-A [`back`](undo.md#back) is an entry of its own: `{ id: 'back#1', key: 'back', args: [], next: [], wrote: [], to, reason? }` - `to` the id of the entry it went back to. A halted entry carries `reason` when `stop(undo, reason)` halted a parked unwind there ([undo.md](undo.md#a-returned-wait)).
+The Runner keeps no journal. Each step's entry is handed to `after(step, entry)` as it commits ([hooks.md](hooks.md)); a class wanting a log keeps them - `this.log.push(entry)`. A later unwind updates a kept entry in place: `undone`, `halted`, and `reason` when `stop(undo, reason)` halted a parked unwind there ([undo.md](undo.md#a-returned-wait)). See [steps.md](steps.md#entry).
 
-A run that drains without `end` journals one last: `{ id: 'end#1', key: 'end', args: [], next: [], wrote: [], implicit: true }` - every finished run's record ends with `end`.
-
-`wrote` names the fields the step wrote, collections changed in place included - no values. With [`rewind`](undo.md#rewind), each entry also carries `prior` and `patch` - values before and after - for the unwind to restore. See [steps.md](steps.md#entry).
+`wrote` names the fields the step wrote, collections changed in place included - no values.
 
 `commit`, `back`, `slot`, `signal`, `retry` and `caught` outside a step throw.
 
-`status`, `active`, `record`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them. The Runner iterates `record`:
-
-```ts
-for (const entry of order.then) console.log(entry.id);
-```
+`status`, `active`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them.
 
 ## Reactive
 
