@@ -8,9 +8,7 @@ describe('steps', () => {
   it('will run steps from next through to end', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(seed: number) {
         order.push(`next:${seed}`);
         this.first(seed + 1);
@@ -50,9 +48,7 @@ describe('steps', () => {
   });
 
   it('will not touch the prototype', () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {}
     }
 
@@ -68,8 +64,7 @@ describe('steps', () => {
   });
 
   it('will not wrap new or getters', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 2;
       ready = false;
 
@@ -96,9 +91,7 @@ describe('steps', () => {
     const work = mockPromise();
     const second = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
       }
@@ -129,9 +122,7 @@ describe('steps', () => {
   it('will run steps in sequence, each through what it schedules', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.a();
         this.b();
@@ -160,9 +151,7 @@ describe('steps', () => {
   it('will not run a step awaited inside a step', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await this.a();
         order.push('next');
@@ -183,8 +172,7 @@ describe('steps', () => {
   });
 
   it('will loop by calling next inside a step', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       count = 0;
 
       next(until: number) {
@@ -205,8 +193,7 @@ describe('steps', () => {
   });
 
   it('will record which fields each step wrote', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       a = 0;
       b = '';
 
@@ -230,8 +217,8 @@ describe('steps', () => {
   });
 
   it('will record prior and patch with rewind', async () => {
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       a = 0;
       b = '';
 
@@ -260,8 +247,7 @@ describe('steps', () => {
   it('will bind Model methods to the instance', async () => {
     let values: Record<string, unknown> | undefined;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 1;
 
       next() {
@@ -283,8 +269,7 @@ describe('steps', () => {
   it('will run helpers on the instance', async () => {
     let self: unknown;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -305,8 +290,7 @@ describe('steps', () => {
   });
 
   it('will not journal writes of a helper', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
       label = '';
 
@@ -330,8 +314,7 @@ describe('steps', () => {
     const fn = () => 1;
     let seen: unknown;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       fn = fn;
 
       next() {
@@ -344,8 +327,7 @@ describe('steps', () => {
   });
 
   it('will accept writes from outside', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       mode = 'ask';
 
       async next() {
@@ -368,9 +350,7 @@ describe('steps', () => {
   });
 
   it('will type the result from end', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.end(1);
       }
@@ -390,10 +370,8 @@ describe('steps', () => {
   });
 
   it('will type the result from a protected end', async () => {
-    class Test extends Model {
-      then = run(this);
-
-      protected async next() {
+    class Test extends Job {
+      async next() {
         this.end(1);
       }
 
@@ -409,10 +387,8 @@ describe('steps', () => {
   });
 
   it('will type the result from an async end', async () => {
-    class Test extends Model {
-      then = run(this);
-
-      protected async next() {
+    class Test extends Job {
+      async next() {
         this.end(1);
       }
 
@@ -428,10 +404,8 @@ describe('steps', () => {
   });
 
   it('will type the result from the argument of an async end', async () => {
-    class Test extends Model {
-      then = run(this);
-
-      protected async next() {
+    class Test extends Job {
+      async next() {
         this.end('x');
       }
 
@@ -453,9 +427,7 @@ describe('groups', () => {
     const a = mockPromise();
     const b = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.a(), this.b());
         this.c();
@@ -501,9 +473,7 @@ describe('groups', () => {
   it('will join each member through what it schedules', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.a(), this.b());
         this.c();
@@ -535,8 +505,7 @@ describe('groups', () => {
   it('will attribute writes to their own step', async () => {
     const a = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       x = 0;
       y = 0;
 
@@ -569,9 +538,7 @@ describe('groups', () => {
   it('will map items to a group', async () => {
     const seen: unknown[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(items: string[]) {
         this.then(items, (item) => this.fetch(item));
       }
@@ -588,9 +555,7 @@ describe('groups', () => {
   it('will map items through a step with its index', async () => {
     const seen: unknown[][] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(items: string[]) {
         this.then(items, this.fetch);
       }
@@ -605,9 +570,7 @@ describe('groups', () => {
   });
 
   it('will fail if a step calls then as a thenable', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         (this.then as Function)(() => {}, () => {});
       }
@@ -619,8 +582,7 @@ describe('groups', () => {
   it('will map an iterable to a group', async () => {
     const seen: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = new Set(['a', 'b']);
 
       next() {
@@ -637,9 +599,7 @@ describe('groups', () => {
   });
 
   it('will fail if a step awaits its own run', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await this;
       }
@@ -649,9 +609,7 @@ describe('groups', () => {
   });
 
   it('will fail if a group holds what the step did not call', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then({});
       }
@@ -661,9 +619,7 @@ describe('groups', () => {
   });
 
   it('will not take an array of tokens as a group', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then([this.a(), this.b()]);
       }
@@ -676,9 +632,7 @@ describe('groups', () => {
   });
 
   it('will group a single token', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.a());
       }
@@ -695,8 +649,7 @@ describe('groups', () => {
   });
 
   it('will throw if a group is made outside a step', () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
     }
 
     expect(() => Test.new().then([])).toThrow('then(steps) must be called inside a step.');
@@ -707,9 +660,7 @@ describe('inline', () => {
   it('will run a function as a step in its place in the plan', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.a();
         this.then(() => void order.push('inline'));
@@ -742,8 +693,7 @@ describe('inline', () => {
   });
 
   it('will run a function with its own proxy as a full step', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -768,8 +718,7 @@ describe('inline', () => {
   });
 
   it('will journal the writes of an arrow as its own', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -795,8 +744,7 @@ describe('inline', () => {
   });
 
   it('will restore the writes of an arrow that throws', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -816,9 +764,7 @@ describe('inline', () => {
   it('will give an arrow its own controller', async () => {
     let signal!: AbortSignal;
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(() => {
           signal = this.then.signal;
@@ -839,8 +785,7 @@ describe('inline', () => {
   });
 
   it('will attribute a nested arrow to its own frame', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -866,8 +811,7 @@ describe('inline', () => {
   it('will attribute an arrow beside a step in flight', async () => {
     const slow = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -895,8 +839,7 @@ describe('inline', () => {
     const both = mockPromise();
     let ran = 0;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -922,9 +865,7 @@ describe('inline', () => {
     const both = mockPromise();
     let ran = 0;
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         const arrow = async () => {
           if (++ran == 2) both.resolve();
@@ -945,8 +886,7 @@ describe('inline', () => {
   it('will keep a watcher an outside call beside an arrow', async () => {
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -981,9 +921,7 @@ describe('inline', () => {
     const work = mockPromise();
     let signal!: AbortSignal;
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(async (given) => {
           signal = given;
@@ -1009,9 +947,7 @@ describe('inline', () => {
   it('will run a returned function as the undo', async () => {
     const refund = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.fail();
 
@@ -1043,9 +979,7 @@ describe('inline', () => {
   });
 
   it('will fail if the function returns a value', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(() => 1);
       }
@@ -1059,9 +993,7 @@ describe('end', () => {
   it('will run end at its place and drop what is left', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.a();
         this.b();
@@ -1102,9 +1034,7 @@ describe('end', () => {
   it('will fail if a step is called after end', async () => {
     const a = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.end();
         this.a();
@@ -1124,9 +1054,7 @@ describe('end', () => {
   it('will take an undo returned after end', async () => {
     const refund = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(fail: boolean) {
         this.pay(fail);
       }
@@ -1159,9 +1087,7 @@ describe('end', () => {
     const slow = mockPromise();
     const after = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.fast(), this.slow());
       }
@@ -1197,9 +1123,7 @@ describe('end', () => {
   });
 
   it('will resolve with the argument when end returns nothing', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.end('value');
       }
@@ -1213,8 +1137,7 @@ describe('end', () => {
   });
 
   it('will end with public values when nothing is left', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       count = 0;
 
       next() {
@@ -1242,8 +1165,7 @@ describe('end', () => {
   });
 
   it('will end from the controller', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       count = 0;
 
       next() {
@@ -1256,9 +1178,7 @@ describe('end', () => {
   });
 
   it('will end from the controller with a value', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
       }
@@ -1276,9 +1196,7 @@ describe('end', () => {
   });
 
   it('will fail if end schedules a step', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.end();
       }
@@ -1294,9 +1212,7 @@ describe('end', () => {
   });
 
   it('will fail if end is called twice in a step', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.end();
         this.then.end();
@@ -1309,8 +1225,7 @@ describe('end', () => {
   });
 
   it('will do nothing if ended from outside while idle', () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
     }
 
     const test = Test.new();
@@ -1326,8 +1241,7 @@ describe('end', () => {
     const more = mockPromise();
     const later = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       async next(work: Promise<void>) {
@@ -1370,8 +1284,7 @@ describe('end', () => {
   });
 
   it('will end from outside with the value, else a dump', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       count = 1;
 
       next() {
@@ -1404,9 +1317,7 @@ describe('end', () => {
   it('will fail if a step in flight fails after an outside end', async () => {
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await work;
         throw new Error('boom');
@@ -1426,8 +1337,7 @@ describe('end', () => {
 
 describe('runs', () => {
   it('will repeat with a record each and fields kept', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       count = 0;
 
       next(by: number) {
@@ -1451,8 +1361,7 @@ describe('runs', () => {
     const work = mockPromise();
     const queues: unknown[][][] = [];
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       seen: string[] = [];
 
       async next(label: string) {
@@ -1483,9 +1392,7 @@ describe('runs', () => {
   it('will await the instance through the queue', async () => {
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next(value?: string) {
         await work;
         this.end(value);
@@ -1513,9 +1420,7 @@ describe('runs', () => {
   it('will start a run when awaited idle', async () => {
     const next = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(value = 'x') {
         next(value);
         this.then.end(value);
@@ -1532,9 +1437,7 @@ describe('runs', () => {
   });
 
   it('will reject an idle await when next takes arguments', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(prompt: string) {
         this.then.end(prompt);
       }
@@ -1550,9 +1453,7 @@ describe('runs', () => {
   });
 
   it('will join a run when next takes arguments', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(prompt: string) {
         this.then.end(prompt);
       }
@@ -1566,9 +1467,7 @@ describe('runs', () => {
   });
 
   it('will start on idle await when next has defaults', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(x = 1) {
         this.then.end(x);
       }
@@ -1578,9 +1477,7 @@ describe('runs', () => {
   });
 
   it('will not start on idle await when next has an optional parameter', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(x?: number) {
         this.then.end(x);
       }
@@ -1592,9 +1489,7 @@ describe('runs', () => {
   });
 
   it('will reject the instance when the last run failed', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(fail?: boolean) {
         if (fail) throw new Error('boom');
       }
@@ -1616,9 +1511,7 @@ describe('runs', () => {
   });
 
   it('will reset error and status on the next run', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(fail: boolean) {
         if (fail) throw new Error('boom');
       }
@@ -1637,9 +1530,7 @@ describe('runs', () => {
   it('will be observed through the instance', async () => {
     const seen: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
       }
@@ -1666,9 +1557,7 @@ describe('runs', () => {
   });
 
   it('will not expose a step outside unless a wait accepts it', () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       second() {}
     }
 
@@ -1681,9 +1570,7 @@ describe('runs', () => {
 
 describe('then', () => {
   it('will await the instance', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       protected new() {
         this.next();
       }
@@ -1705,9 +1592,7 @@ describe('then', () => {
   });
 
   it('will type the result from end through the instance', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       protected new() {
         this.next();
       }
@@ -1731,9 +1616,7 @@ describe('then', () => {
     const seen: string[] = [];
     let view: unknown;
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await flushMicrotasks();
       }
@@ -1755,9 +1638,7 @@ describe('then', () => {
   });
 
   it('will resolve a set factory to the result', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       protected new() {
         this.next();
       }
@@ -1781,8 +1662,7 @@ describe('then', () => {
   });
 
   it('will export then as a field and exclude it from the dump', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       count = 1;
 
       next() {}
@@ -1796,9 +1676,7 @@ describe('then', () => {
   });
 
   it('will spread to a snapshot and iterate its record', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.a();
       }
@@ -1831,8 +1709,7 @@ describe('stop', () => {
     const work = mockPromise();
     const later = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       async next() {
@@ -1865,9 +1742,7 @@ describe('stop', () => {
   it('will reject queued runs', async () => {
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await work;
       }
@@ -1890,8 +1765,8 @@ describe('stop', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       value = 0;
 
       next() {
@@ -1921,9 +1796,7 @@ describe('stop', () => {
   it('will stop from inside a step', async () => {
     const later = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then.stop();
         this.later();
@@ -1944,9 +1817,7 @@ describe('stop', () => {
   it('will stop when the instance is destroyed', async () => {
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await work;
       }
@@ -1963,8 +1834,7 @@ describe('stop', () => {
   });
 
   it('will not stop when idle', () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
     }
 
     const test = Test.new();
@@ -1976,9 +1846,7 @@ describe('stop', () => {
   it('will not resolve when stopped during end', async () => {
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.end();
       }
@@ -1999,9 +1867,7 @@ describe('stop', () => {
   });
 
   it('will run again after a stop', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then.stop();
       }
@@ -2019,9 +1885,7 @@ describe('stop', () => {
     const back = vi.fn();
     const exit = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await work;
       }
@@ -2056,9 +1920,7 @@ describe('stop', () => {
     const work = mockPromise();
     const reason = { code: 499 };
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await work;
       }
@@ -2079,9 +1941,7 @@ describe('stop', () => {
   it('will not set a cause without a reason', async () => {
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await work;
       }
@@ -2102,8 +1962,7 @@ describe('stop', () => {
 
 describe('wait', () => {
   it('will park until a listed step answers', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       answer = '';
 
       next() {
@@ -2145,9 +2004,7 @@ describe('wait', () => {
   it('will run what follows a wait after its answer', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply);
         this.log('after');
@@ -2176,8 +2033,7 @@ describe('wait', () => {
   });
 
   it('will answer the oldest wait first', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       answers: string[] = [];
 
       next() {
@@ -2214,9 +2070,7 @@ describe('wait', () => {
   });
 
   it('will expose a step only while a wait accepts it', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply);
       }
@@ -2246,8 +2100,7 @@ describe('wait', () => {
   });
 
   it('will schedule a waited-for step from inside a step', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       count = 0;
 
       next() {
@@ -2263,8 +2116,7 @@ describe('wait', () => {
   });
 
   it('will answer the wait opened with the same first argument', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       answers: string[] = [];
 
       next() {
@@ -2301,9 +2153,7 @@ describe('wait', () => {
     const work = mockPromise();
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply);
         this.later();
@@ -2345,9 +2195,7 @@ describe('wait', () => {
   it('will reject an answer if the run stops first', async () => {
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply);
       }
@@ -2377,9 +2225,7 @@ describe('wait', () => {
   });
 
   it('will reject an answer if its step fails', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply);
       }
@@ -2399,9 +2245,7 @@ describe('wait', () => {
   });
 
   it('will not answer a wait with a step it does not list', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply);
       }
@@ -2421,9 +2265,7 @@ describe('wait', () => {
   });
 
   it('will fail if next or end answers a wait', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(end: boolean) {
         if (end) this.then(this.end);
         else this.then(this.next);
@@ -2439,9 +2281,7 @@ describe('wait', () => {
   });
 
   it('will not wait on a step of another instance', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(other?: Test) {
         if (other) this.then(other.reply);
       }
@@ -2457,9 +2297,7 @@ describe('wait', () => {
   it('will warn once if undo closures are held', async () => {
     const warn = mockWarn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.ask();
         this.ask();
@@ -2487,9 +2325,7 @@ describe('wait', () => {
   });
 
   it('will release waits on stop', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply);
       }
@@ -2514,8 +2350,7 @@ describe('wait', () => {
   it('will answer its own wait through a settled step', async () => {
     const calls = new Map<string, () => unknown>();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       answers: string[] = [];
 
       next() {
@@ -2553,8 +2388,7 @@ describe('wait', () => {
   it('will route a settled step call as an outside call', async () => {
     let poke!: () => unknown;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       answer = '';
 
       next() {
@@ -2583,9 +2417,7 @@ describe('wait', () => {
   it('will bind a settled step call to its run', async () => {
     let poke!: () => unknown;
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         poke = () => this.reply();
         this.then(this.reply);
@@ -2615,8 +2447,7 @@ describe('wait', () => {
   it('will not journal writes through a settled step', async () => {
     let write!: () => void;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -2640,8 +2471,7 @@ describe('wait', () => {
   });
 
   it('will not have wait on the runner', () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
     }
 
     const test = Test.new();
@@ -2667,8 +2497,7 @@ describe('watchers', () => {
   it('will answer a wait from a watcher', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       answer = '';
 
       next() {
@@ -2707,9 +2536,7 @@ describe('watchers', () => {
     let signal!: AbortSignal;
     const lost = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply, async (given) => {
           signal = given;
@@ -2737,9 +2564,7 @@ describe('watchers', () => {
   it('will leave the wait open if a watcher settles without answering', async () => {
     const nudge = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply, async () => {
           nudge();
@@ -2764,9 +2589,7 @@ describe('watchers', () => {
     const work = mockPromise();
     const watcher = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.slow();
         this.ask();
@@ -2797,9 +2620,7 @@ describe('watchers', () => {
   });
 
   it('will call a watcher function on the step which opened the wait', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.ask('question');
       }
@@ -2825,9 +2646,7 @@ describe('watchers', () => {
   it('will answer each wait from its own watcher', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then([200, 100], this.ask);
       }
@@ -2852,8 +2671,7 @@ describe('watchers', () => {
   });
 
   it('will fail the run if a watcher throws before the wait closes', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -2878,9 +2696,7 @@ describe('watchers', () => {
     const gate = mockPromise();
     const late = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(first: boolean) {
         this.then(this.reply, async () => {
           if (!first) return;
@@ -2920,9 +2736,7 @@ describe('watchers', () => {
   it('will abort watchers when the run stops', async () => {
     let signal!: AbortSignal;
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply, (given) => void (signal = given));
       }
@@ -2941,9 +2755,7 @@ describe('watchers', () => {
   });
 
   it('will fail if tokens are mixed with step references', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.a(), this.reply);
       }
@@ -4086,8 +3898,7 @@ describe('suspense', () => {
   it('will wait in next for a pending value', async () => {
     let tries = 0;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       price = set<number>();
       total = 0;
 
@@ -4120,8 +3931,7 @@ describe('suspense', () => {
   it('will restore writes and drop tokens of a suspended try', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       price = set<number>();
       note = '';
 
@@ -4160,8 +3970,7 @@ describe('suspense', () => {
   });
 
   it('will wait for a getter over a pending value', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       price = set<number>();
       total = 0;
 
@@ -4188,8 +3997,7 @@ describe('suspense', () => {
     const work = mockPromise();
     let tries = 0;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       price = set<number>();
       total = 0;
 
@@ -4217,8 +4025,7 @@ describe('suspense', () => {
   it('will fail with the rejection of a pending value', async () => {
     const pending = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -4303,8 +4110,7 @@ describe('suspense', () => {
   it('will not fire hooks again', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       price = set<number>();
 
       next() {
@@ -4331,8 +4137,7 @@ describe('suspense', () => {
   });
 
   it('will abort when stopped while waiting', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       price = set<number>();
       value = 0;
 
@@ -4355,8 +4160,7 @@ describe('suspense', () => {
   });
 
   it('will end without the step when ended while waiting', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       price = set<number>();
 
       next() {
@@ -4377,8 +4181,7 @@ describe('suspense', () => {
   it('will abort a pending read after the step was stopped', async () => {
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       price = set<number>();
 
       async next() {
@@ -4401,9 +4204,7 @@ describe('suspense', () => {
   it('will fail a committed step reading a pending value', async () => {
     const pending = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then.commit();
         throw pending;
@@ -4417,8 +4218,7 @@ describe('suspense', () => {
   });
 
   it('will fail a hook reading a pending value after its step', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       price = set<number>();
 
       next() {}
@@ -4438,8 +4238,7 @@ describe('hooks', () => {
   it('will call hooks around each step', async () => {
     const order: unknown[][] = [];
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       async next() {
@@ -4485,9 +4284,7 @@ describe('hooks', () => {
   });
 
   it('will not wrap hooks as steps', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {}
 
       beforeNext() {
@@ -4504,9 +4301,7 @@ describe('hooks', () => {
   });
 
   it('will fail when a hook throws', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {}
 
       beforeNext() {
@@ -4518,9 +4313,7 @@ describe('hooks', () => {
   });
 
   it('will throw if a hook has no step', () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       afterShip() {}
     }
 
@@ -4530,8 +4323,7 @@ describe('hooks', () => {
   it('will call back once the unwind completes', async () => {
     const order: unknown[] = [];
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       async next() {
@@ -4565,8 +4357,7 @@ describe('hooks', () => {
 
     class Item extends Model {}
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(Item);
 
       protected new() {
@@ -4595,9 +4386,7 @@ describe('hooks', () => {
     const work = mockPromise();
     const back = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await work;
       }
@@ -4622,9 +4411,7 @@ describe('hooks', () => {
     const work = mockPromise();
     const back = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await work;
       }
@@ -4645,9 +4432,7 @@ describe('hooks', () => {
   });
 
   it('will replace the error when back throws', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         throw new Error('boom');
       }
@@ -4664,9 +4449,7 @@ describe('hooks', () => {
   });
 
   it('will not wrap back as a step', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {}
 
       back() {
@@ -4684,9 +4467,7 @@ describe('hooks', () => {
   it('will call exit last when a run ends', async () => {
     const order: unknown[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.end('ok');
       }
@@ -4711,9 +4492,7 @@ describe('hooks', () => {
   it('will call exit after back when a run fails', async () => {
     const order: unknown[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         throw new Error('boom');
       }
@@ -4735,9 +4514,7 @@ describe('hooks', () => {
     const exit = vi.fn();
     const work = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         await work;
         this.then.end();
@@ -4763,8 +4540,7 @@ describe('hooks', () => {
     const caught = mockUncaught();
     const queued = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       runs = 0;
 
       next() {
@@ -4792,9 +4568,7 @@ describe('hooks', () => {
   it('will keep the error when exit throws', async () => {
     const caught = mockUncaught();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         throw new Error('boom');
       }
@@ -4816,9 +4590,7 @@ describe('hooks', () => {
   it('will keep a stop when exit throws', async () => {
     const caught = mockUncaught();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.then.stop();
       }
@@ -4837,9 +4609,7 @@ describe('hooks', () => {
   });
 
   it('will not wrap exit as a step', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {}
 
       exit() {
@@ -5063,8 +4833,7 @@ describe('undo', () => {
   it('will run undos in reverse and keep committed writes', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       a = 0;
       b = 0;
       c = 0;
@@ -5100,8 +4869,8 @@ describe('undo', () => {
   it('will unwind every step in reverse and restore fields with rewind', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       a = 0;
       b = 0;
       c = 0;
@@ -5135,8 +4904,8 @@ describe('undo', () => {
   });
 
   it('will not roll back writes of a helper', async () => {
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       value = 0;
       count = 0;
 
@@ -5166,8 +4935,8 @@ describe('undo', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       value = 0;
 
       next() {
@@ -5200,9 +4969,7 @@ describe('undo', () => {
   it('will unwind through a returned step', async () => {
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
       }
@@ -5232,9 +4999,7 @@ describe('undo', () => {
   it('will stop unwinding where an undo throws', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
         return () => void order.push('undo next');
@@ -5260,9 +5025,7 @@ describe('undo', () => {
   });
 
   it('will throw if an undo schedules a step', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.second();
         return this.release();
@@ -5288,9 +5051,7 @@ describe('undo tokens', () => {
     const order: string[] = [];
     const refund = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.fail();
 
@@ -5330,8 +5091,8 @@ describe('undo tokens', () => {
   it('will park the unwind on a returned wait', async () => {
     const charge = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       charged = false;
 
       async next() {
@@ -5386,8 +5147,8 @@ describe('undo tokens', () => {
   });
 
   it('will continue the unwind after an answer which does nothing', async () => {
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       value = 0;
 
       async next() {
@@ -5420,9 +5181,7 @@ describe('undo tokens', () => {
   });
 
   it('will not let an unwind answer schedule', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.fail();
 
@@ -5453,9 +5212,7 @@ describe('undo tokens', () => {
   it('will not call hooks for an unwind answer', async () => {
     const before = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.fail();
 
@@ -5486,8 +5243,8 @@ describe('undo tokens', () => {
   it('will halt a parked unwind on stop', async () => {
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       value = 0;
 
       async next() {
@@ -5603,9 +5360,7 @@ describe('undo tokens', () => {
 
     const refund = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.fail();
 
@@ -5640,9 +5395,7 @@ describe('undo tokens', () => {
   });
 
   it('will fail the undo if a watcher of its wait throws', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.fail();
 
@@ -5694,8 +5447,8 @@ describe('collections', () => {
   }
 
   it('will roll back list push, put, pop and set', async () => {
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       items = has(['a', 'b', 'c']);
 
       next() {
@@ -5725,8 +5478,7 @@ describe('collections', () => {
   });
 
   it('will record nothing for a read without change', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(['a']);
       count = 0;
 
@@ -5742,8 +5494,8 @@ describe('collections', () => {
   });
 
   it('will journal a collection in its export form', async () => {
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       items = has(Item);
 
       next(name: string) {
@@ -5762,8 +5514,7 @@ describe('collections', () => {
   });
 
   it('will not capture writes outside a step proxy', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has<string>();
 
       next() {
@@ -5804,8 +5555,8 @@ describe('collections', () => {
   it('will attribute a change only to the step making it', async () => {
     const gate = mockPromise();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       items = has(['a']);
 
       next() {
@@ -5846,8 +5597,7 @@ describe('collections', () => {
   it('will keep a sibling\'s pushes when a parallel step fails', async () => {
     const gate = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has<string>();
 
       next() {
@@ -5880,8 +5630,7 @@ describe('collections', () => {
   it('will keep a sibling\'s pushes when a parallel step retries', async () => {
     let tries = 0;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has<string>();
 
       next() {
@@ -5909,8 +5658,7 @@ describe('collections', () => {
   it('will undo only its own change around a sibling\'s', async () => {
     const gate = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(['a', 'b']);
 
       next() {
@@ -5946,8 +5694,7 @@ describe('collections', () => {
   it('will skip an undo whose value a sibling removed', async () => {
     const gate = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(['a']);
 
       next() {
@@ -5979,8 +5726,7 @@ describe('collections', () => {
   });
 
   it('will undo the nearest of equal values', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(['a', 'b', 'a', 'c', 'a']);
 
       next() {
@@ -5997,8 +5743,7 @@ describe('collections', () => {
   });
 
   it('will record nothing for a list call changing nothing', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(['a']);
 
       next() {
@@ -6021,8 +5766,7 @@ describe('collections', () => {
   });
 
   it('will fail a collection change after scheduling', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(['a']);
 
       next() {
@@ -6040,8 +5784,7 @@ describe('collections', () => {
   });
 
   it('will not fail a collection call changing nothing after scheduling', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has<string>();
 
       next() {
@@ -6061,8 +5804,7 @@ describe('collections', () => {
   it('will leave a change through a settled step\'s collection unmanaged', async () => {
     let items!: has.List<string>;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       list = has<string>();
 
       next() {
@@ -6079,8 +5821,7 @@ describe('collections', () => {
   });
 
   it('will hand one wrapper per collection to a step', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(['a']);
       same = false;
 
@@ -6099,8 +5840,8 @@ describe('collections', () => {
     const first = mockPromise();
     const second = mockPromise();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       items = has(['a']);
 
       next() {
@@ -6136,8 +5877,8 @@ describe('collections', () => {
   });
 
   it('will roll back a map', async () => {
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       values = map([['a', 1], ['b', 2], ['c', 3]]);
 
       next() {
@@ -6165,8 +5906,8 @@ describe('collections', () => {
   it('will restore a guest Model removed from a map', async () => {
     const guest = Item.new({ name: 'guest' });
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       values = map<string, Item>([['a', guest]]);
 
       next() {
@@ -6187,8 +5928,8 @@ describe('collections', () => {
   });
 
   it('will remove pool members added by a failed run', async () => {
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       items = has(Item);
 
       protected new() {
@@ -6220,8 +5961,7 @@ describe('collections', () => {
   it('will destroy a member a failing step added', async () => {
     let added!: Item;
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(Item);
 
       next() {
@@ -6240,8 +5980,7 @@ describe('collections', () => {
   it('will keep a sibling\'s map entries when a parallel step fails', async () => {
     const gate = mockPromise();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       values = map<string, number>([['a', 1], ['b', 2]]);
 
       next() {
@@ -6274,8 +6013,7 @@ describe('collections', () => {
   });
 
   it('will restore a cleared map', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       values = map<string, number>([['a', 1], ['b', 2]]);
       empty = map<string, number>();
 
@@ -6296,8 +6034,7 @@ describe('collections', () => {
   });
 
   it('will remove a key it added and replaced', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       values = map<string, Model>();
       plain = map<string, number>();
 
@@ -6324,8 +6061,7 @@ describe('collections', () => {
     const gate = mockPromise();
     const kept = Item.new({ name: 'kept' });
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(Item);
 
       protected new() {
@@ -6361,8 +6097,7 @@ describe('collections', () => {
   });
 
   it('will not be irreversible removing members it added', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(Item);
       empty = has(Item);
 
@@ -6393,8 +6128,7 @@ describe('irreversible', () => {
   it('will stop the unwind at a removed pool member', async () => {
     const warn = mockWarn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(Item);
       value = 0;
 
@@ -6435,8 +6169,8 @@ describe('irreversible', () => {
   it('will unwind steps after an irreversible one', async () => {
     mockWarn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       items = has(Item);
       value = 0;
 
@@ -6477,8 +6211,8 @@ describe('irreversible', () => {
   it('will be reversible with an undo of its own', async () => {
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       items = has(Item);
       values = map((key: string) => new Item({ name: key }));
 
@@ -6515,8 +6249,7 @@ describe('irreversible', () => {
   it('will be irreversible when a map evicts an owned value', async () => {
     mockWarn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       values = map<string, Item>();
 
       protected new() {
@@ -6545,8 +6278,7 @@ describe('irreversible', () => {
 
     const attempt = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(Item);
       value = 0;
 
@@ -6586,8 +6318,7 @@ describe('irreversible', () => {
   it('will keep the writes of a failing irreversible step', async () => {
     const warn = mockWarn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(Item);
       value = 0;
 
@@ -6625,8 +6356,8 @@ describe('commit', () => {
     const refund = vi.fn();
     const recall = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       charged = false;
       notified = false;
 
@@ -6671,8 +6402,7 @@ describe('commit', () => {
   it('will not catch or restore a step failing after commit', async () => {
     const attempt = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -6698,17 +6428,14 @@ describe('commit', () => {
   });
 
   it('will throw if commit is called outside a step', () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
     }
 
     expect(() => Test.new().then.commit()).toThrow('commit must be called inside a step.');
   });
 
   it('will throw if commit is called after its step settled', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.reply, async () => {
           this.then.commit();
@@ -6726,8 +6453,7 @@ describe('back', () => {
   it('will unwind and end normally', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       a = 0;
       b = 0;
 
@@ -6772,8 +6498,8 @@ describe('back', () => {
   it('will unwind what committed after a step', async () => {
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       a = 0;
       b = 0;
 
@@ -6819,8 +6545,7 @@ describe('back', () => {
   });
 
   it('will leave fields of unwound steps without rewind', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -6847,8 +6572,8 @@ describe('back', () => {
   it('will call a step again after back', async () => {
     const refund = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       charged = '';
 
       next() {
@@ -6889,9 +6614,7 @@ describe('back', () => {
   it('will discard what unwound steps scheduled', async () => {
     const receipt = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.pay();
         this.more();
@@ -6924,9 +6647,7 @@ describe('back', () => {
   it('will unwind steps scheduled before back and run those after', async () => {
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
       }
@@ -6965,9 +6686,7 @@ describe('back', () => {
     const signals: AbortSignal[] = [];
     const recall = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.pay();
       }
@@ -7014,9 +6733,7 @@ describe('back', () => {
   });
 
   it('will release a wait opened by a step it unwinds', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.ask(), this.cancel());
       }
@@ -7080,9 +6797,7 @@ describe('back', () => {
   });
 
   it('will end with an end scheduled after back', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.pay();
       }
@@ -7106,9 +6821,7 @@ describe('back', () => {
   });
 
   it('will end with the end after back before one kept pending', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
         this.end('next');
@@ -7132,9 +6845,7 @@ describe('back', () => {
   });
 
   it('will fail if to has no committed entry', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
       }
@@ -7153,9 +6864,7 @@ describe('back', () => {
   });
 
   it('will not unwind the step calling back', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
       }
@@ -7169,9 +6878,7 @@ describe('back', () => {
   });
 
   it('will throw if to is not a step', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(step?: unknown) {
         this.then.back(step === 'call' ? (this.first() as never) : (step as () => void));
       }
@@ -7188,9 +6895,7 @@ describe('back', () => {
     await expect(test.next('call')).rejects.toThrow(message);
     await expect(test.next(() => {})).rejects.toThrow(message);
 
-    class End extends Model {
-      then = run(this);
-
+    class End extends Job {
       next() {
         this.then.back(this.end);
       }
@@ -7202,17 +6907,14 @@ describe('back', () => {
   });
 
   it('will throw if back is called outside a step', () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
     }
 
     expect(() => Test.new().then.back(() => {})).toThrow('back must be called inside a step.');
   });
 
   it('will not group or return a back token', async () => {
-    class Grouped extends Model {
-      then = run(this);
-
+    class Grouped extends Job {
       next() {
         this.then(this.then.back(this.next) as never, this.first());
       }
@@ -7222,9 +6924,7 @@ describe('back', () => {
 
     await expect(Grouped.new().next()).rejects.toThrow('back() cannot be grouped.');
 
-    class Returned extends Model {
-      then = run(this);
-
+    class Returned extends Job {
       next() {
         return this.then.back(this.next);
       }
@@ -7237,9 +6937,7 @@ describe('back', () => {
     const refund = vi.fn();
     const recall = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.pay('card1');
       }
@@ -7288,8 +6986,7 @@ describe('back', () => {
 
     class Item extends Model {}
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has(Item);
 
       protected new() {
@@ -7327,8 +7024,8 @@ describe('back', () => {
   it('will wait for an outside call to retry', async () => {
     const refund = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       card = '';
       tracking = '';
 
@@ -7379,9 +7076,7 @@ describe('back', () => {
   it('will not unwind entries a back already undid', async () => {
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
       }
@@ -7410,9 +7105,7 @@ describe('back', () => {
   it('will run backs from parallel steps one at a time', async () => {
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
       }
@@ -7442,9 +7135,7 @@ describe('back', () => {
   it('will fail when an undo throws and stop unwinding there', async () => {
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
 
@@ -7478,9 +7169,7 @@ describe('back', () => {
   it('will fail when the back hook throws, calling it once for that unwind', async () => {
     const reasons: unknown[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next(reason: string) {
         this.first(reason);
       }
@@ -7509,9 +7198,7 @@ describe('back', () => {
   it('will halt a parked unwind on stop', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
 
@@ -7550,9 +7237,7 @@ describe('back', () => {
     const refunded = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.zero();
       }
@@ -7594,9 +7279,7 @@ describe('back', () => {
   it('will hand a parked unwind to the failure unwind', async () => {
     const order: string[] = [];
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
 
@@ -7635,9 +7318,7 @@ describe('back', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
 
@@ -7675,9 +7356,7 @@ describe('back', () => {
     const work = mockPromise();
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.first();
 
@@ -7713,8 +7392,8 @@ describe('back', () => {
   it('will halt an unwind at an answer which commits', async () => {
     const undo = vi.fn();
 
-    class Test extends Model {
-      then = run(this, { rewind: true });
+    class Test extends Job {
+      static readonly rewind = true;
       value = 0;
 
       next() {
@@ -7760,9 +7439,7 @@ describe('back', () => {
   it('will not leave an answer promise rejecting unhandled', async () => {
     const caught = mockUncaught();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.abort);
       }
@@ -7791,8 +7468,7 @@ describe('signal', () => {
   it('will abort the signal of a step in flight on stop', async () => {
     const attempt = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       async next() {
@@ -7820,8 +7496,7 @@ describe('signal', () => {
   });
 
   it('will abort the signal of a step in flight on an outside end', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -7848,9 +7523,7 @@ describe('signal', () => {
   it('will abort the signal of a step in flight when another fails', async () => {
     let signal!: AbortSignal;
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then(this.slow(), this.fail());
       }
@@ -7876,9 +7549,7 @@ describe('signal', () => {
     const seen: boolean[] = [];
     let signal!: AbortSignal;
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         signal = this.then.signal;
         seen.push(signal.aborted);
@@ -7895,8 +7566,7 @@ describe('signal', () => {
   });
 
   it('will throw if signal is read outside a step', () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
     }
 
     expect(() => Test.new().then.signal).toThrow('signal must be read inside a step.');
@@ -7905,9 +7575,7 @@ describe('signal', () => {
 
 describe('failures', () => {
   it('will reject when a step throws synchronously', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         throw new Error('sync');
       }
@@ -7923,9 +7591,7 @@ describe('failures', () => {
   it('will reject when a step rejects and discard what it scheduled', async () => {
     const next = vi.fn();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.second();
         throw new Error('after scheduling');
@@ -7941,9 +7607,7 @@ describe('failures', () => {
   });
 
   it('will reject when a step returns a value', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         return 1 as unknown as void;
       }
@@ -7953,8 +7617,7 @@ describe('failures', () => {
   });
 
   it('will reject when a step writes after scheduling', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -7972,8 +7635,7 @@ describe('failures', () => {
   });
 
   it('will not guard writes of a helper after scheduling', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       value = 0;
 
       next() {
@@ -7997,9 +7659,7 @@ describe('failures', () => {
   });
 
   it('will reject when a step keeps working after scheduling', async () => {
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       async next() {
         this.second();
         await flushMicrotasks();
@@ -8014,9 +7674,7 @@ describe('failures', () => {
   it('will throw if a step is called after its caller settled', async () => {
     let late: () => unknown = () => {};
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         late = () => this.second();
       }
@@ -8031,9 +7689,7 @@ describe('failures', () => {
   it('will throw if a settled step schedules through then', async () => {
     let late: () => unknown = () => {};
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         late = () => this.then.end();
       }
@@ -8046,9 +7702,7 @@ describe('failures', () => {
   it('will throw uncaught when nobody awaits a failed run', async () => {
     const caught = mockUncaught();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       protected new() {
         this.next();
       }
@@ -8067,9 +7721,7 @@ describe('failures', () => {
   it('will not throw uncaught when awaited before the rethrow', async () => {
     const caught = mockUncaught();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         throw new Error('late listener');
       }
@@ -8087,9 +7739,7 @@ describe('failures', () => {
   it('will not throw uncaught when stopped', async () => {
     const caught = mockUncaught();
 
-    class Test extends Model {
-      then = run(this);
-
+    class Test extends Job {
       next() {
         this.then.stop();
       }
@@ -8102,8 +7752,7 @@ describe('failures', () => {
   });
 
   it('will keep a list field through a run', async () => {
-    class Test extends Model {
-      then = run(this);
+    class Test extends Job {
       items = has<string>();
 
       next(item: string) {
