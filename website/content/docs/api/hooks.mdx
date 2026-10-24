@@ -102,53 +102,25 @@ const user = User.get(true); // Required<User>
 
 With `true`, reading a property that is currently `undefined` throws a plain `Error` - `User-XXXXXX.name is required in this context.` That surfaces at the nearest **error boundary**, not Suspense. Use it when the component's contract is "this data exists by now."
 
-### Computed selector
+### Deriving values
 
-Pass a factory to derive a value. The component re-renders only when the derived result changes by `===`:
-
-```tsx
-const summary = Cart.get((cart) => ({
-  total: cart.total,
-  count: cart.count
-}));
-```
-
-The factory receives:
-
-- A tracking proxy (reads subscribe).
-- A `ForceRefresh` function.
-
-### Effect mode
-
-Return `null` from the factory to run a side effect once, on first render, without subscribing - the factory doesn't run again:
+`Model.get` takes no function. Destructure what the component renders and derive inline, or declare a getter on the Model so the derivation is memoized and shared:
 
 ```tsx
-AppState.get((app) => {
-  analytics.track('page', app.page);
-  return null;
-});
+function CartSummary() {
+  const { items, total } = Cart.get();
+
+  if (items.length) return <p>{items.length} items - ${total}</p>;
+
+  return <p>Cart is empty</p>;
+}
 ```
 
-### `ForceRefresh`
+Side effects belong in the Model - `mount()`, or an instance effect with `state.get(effect)`.
 
-The second argument is a function that forces the component to re-render:
+### Custom lookup
 
-```ts
-type ForceRefresh = {
-  (): void;
-  <T>(waitFor: Promise<T>): Promise<T>;
-  <T>(invoke: () => Promise<T>): Promise<T>;
-};
-```
-
-```tsx
-const data = DataService.get((svc, refresh) => {
-  const reload = () => refresh(svc.fetch());
-  return { items: svc.items, reload };
-});
-```
-
-Given a promise (or async function), it refreshes now and again when the promise settles.
+A class may override static `get` with its own arguments - `User.get(id)` - and keep context and render tracking. See the [Model.get reference](/docs/api/state#overriding-get) for how an override delegates to `super.get` and calls `Context.get`.
 
 <br />
 

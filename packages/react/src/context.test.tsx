@@ -355,7 +355,7 @@ describe('context', () => {
   });
 
   it('will not select nested instance from outer sibling on server', () => {
-    const Value = () => Foo.get(({ value }) => value);
+    const Value = () => Foo.get().value;
 
     const html = renderToString(
       <Component for={Foo} value="outer">

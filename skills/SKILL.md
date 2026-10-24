@@ -108,7 +108,7 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | Helper  | Use for                                                                                                | Reference                  |
 | ------- | ------------------------------------------------------------------------------------------------------ | -------------------------- |
 | `set()` | Defaults, placeholders (suspend until assigned), lazy/async factories (suspense), setter callbacks and validation | [field/set.md](field/set.md) |
-| `get()` | Context lookup between instances - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
+| `get()` | Context lookup between instances - required or optional upstream, downstream collection, override key | [field/get.md](field/get.md) |
 | `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
 | `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `Model` members and direct render    | [field/map.md](field/map.md) |
 | `has()` | Owned collections - an ordered list of values, or a pool of spawned members. Pools are for per-item UI state (selection, progress, row actions). Class first (`has(Row)`); factory when the seed isn't the init | [field/has.md](field/has.md) |
@@ -162,7 +162,7 @@ function Parent({ counter }: { counter: Counter }) {
 
 Static `.use()` and `.get()` are React hooks - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. They build green when misused and crash at runtime. (Instance method get is not a hook.)
 
-Use `Model.use()` when the component should create and own the instance. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
+Use `Model.use()` when the component should create and own the instance. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values).
 
 ## The Dependency Snapshot
 
@@ -302,18 +302,18 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 ### Model (core)
 
 - [state/state.md](state/state.md) - Model class, instantiation, properties, methods, events, context
-- [state/get.md](state/get.md) - Instance `.get()` method: read values, run effects, context lookup
+- [state/get.md](state/get.md) - Instance `.get()` method: read values, run effects, context lookup; static `get` and overriding it
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
 - [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense, when a derivation should stay local
 - [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases; hot patching and the `hot` seam
-- [state/context.md](state/context.md) - Context system, global root, home context, ownership rules
+- [state/context.md](state/context.md) - Context system, global root, home context, ownership rules, `Context.get`/`set`/`current`, writing a host
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
 Instructions: `field/*.md`, linked from the [helper table](#instructions--reactive-helpers).
 
 ### React
 
-- [react/react.md](react/react.md) - use(), Model.use(), Model.get() (optional lookup, required values `get(true)`, computed selector), providing state, transparent writes, ForceRefresh, Vite hot reload
+- [react/react.md](react/react.md) - use(), Model.use(), Model.get() (optional lookup, required values `get(true)`, custom lookup), providing state, transparent writes, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controls, router bridge, host-agnostic domain model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 

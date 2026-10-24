@@ -1,4 +1,4 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, expectTypeOf } from 'vitest';
 import { Context } from './context';
 import { Model } from './state';
 import { get } from './field/get';
@@ -432,6 +432,150 @@ describe('context helper', () => {
     new Context(test);
 
     expect(Context.get(test)).toBe(first);
+  });
+});
+
+describe('static get', () => {
+  class Test extends Model {
+    value = 1;
+  }
+
+  it('will return root outside set', () => {
+    const context = Context.get();
+
+    expectTypeOf(context).toEqualTypeOf<Context>();
+
+    expect(context).toBe(Context.root);
+  });
+
+  it('will return current context within set', () => {
+    const context = new Context();
+
+    expect(Context.set(context, () => Context.get())).toBe(context);
+  });
+
+  it('will compute against root', () => {
+    const compute = vi.fn((context: Context) => context.id);
+    const id = Context.get(Test, compute);
+
+    expectTypeOf(id).toEqualTypeOf<string>();
+
+    expect(id).toBe(Context.root.id);
+    expect(compute).toBeCalledWith(Context.root);
+  });
+
+  it('will not accept a third argument', () => {
+    const compute = vi.fn(() => 'value');
+
+    // @ts-expect-error - strictness applies after Context.get
+    expect(Context.get(Test, compute, true)).toBe('value');
+  });
+
+  it('will compute against a set context without origin', () => {
+    const context = new Context();
+    const compute = vi.fn(() => 'value');
+
+    expect(Context.set(context, () => Context.get(Test, compute))).toBe('value');
+    expect(compute).toBeCalledWith(context);
+  });
+
+  it('will compute with a Model as origin', () => {
+    const test = Test.new();
+    const context = new Context(test);
+    const compute = vi.fn((_context: Context, from?: Model) => from);
+
+    expect(Context.set(test, () => Context.get(Test, compute))).toBe(test);
+    expect(compute).toBeCalledWith(context, test);
+  });
+
+  it('will pass the real instance from a tracking proxy', () => {
+    const test = Test.new();
+    const compute = vi.fn((_context: Context, from?: Model) => from);
+
+    test.get((proxy) => {
+      Context.set(proxy, () => Context.get(Test, compute));
+    });
+
+    expect(compute).toBeCalledWith(Context.root, test);
+  });
+
+  it('will subscribe a tracking origin to its result', async () => {
+    const test = Test.new();
+    const other = Test.new();
+    const effect = vi.fn();
+
+    test.get((proxy) => {
+      effect(Context.set(proxy, () => Context.get(Test, () => other)).value);
+    });
+
+    other.value = 2;
+    await expect(other).toHaveUpdated();
+
+    expect(effect).toBeCalledTimes(2);
+    expect(effect).toHaveBeenLastCalledWith(2);
+  });
+});
+
+describe('static set', () => {
+  class Test extends Model {}
+
+  it('will return result of function', () => {
+    const result = Context.set(new Context(), () => 1);
+
+    expectTypeOf(result).toEqualTypeOf<number>();
+
+    expect(result).toBe(1);
+  });
+
+  it('will set home context of a Model', () => {
+    const test = Test.new();
+    const context = new Context(test);
+
+    expect(Context.set(test, () => Context.current)).toBe(context);
+  });
+
+  it('will set root for a Model without context', () => {
+    const test = Test.new();
+
+    expect(Context.set(test, () => Context.current)).toBe(Context.root);
+  });
+
+  it('will nest', () => {
+    const outer = new Context();
+    const inner = new Context();
+    const seen: (Context | undefined)[] = [];
+
+    Context.set(outer, () => {
+      seen.push(Context.current);
+      Context.set(inner, () => seen.push(Context.current));
+      seen.push(Context.current);
+    });
+
+    expect(seen).toEqual([outer, inner, outer]);
+    expect(Context.current).toBeUndefined();
+  });
+
+  it('will restore on throw', () => {
+    const context = new Context();
+
+    expect(() =>
+      Context.set(context, () => {
+        throw new Error('oops');
+      })
+    ).toThrow('oops');
+
+    expect(Context.current).toBeUndefined();
+  });
+
+  it('will not allow current to be assigned', () => {
+    const current = Context.current;
+
+    expectTypeOf(current).toEqualTypeOf<Context | undefined>();
+
+    expect(current).toBeUndefined();
+
+    // @ts-expect-error - readonly
+    expect(() => (Context.current = new Context())).toThrow();
   });
 });
 

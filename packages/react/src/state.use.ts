@@ -1,5 +1,6 @@
-import { Model, Context } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import type { UseModel } from '@expressive/mvc';
+import { useAmbient } from './context';
 import { useFactory, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
@@ -52,7 +53,7 @@ Model.use = function use<T extends Model>(
   this: Model.Type<T>,
   ...args: Model.UseArgs<T>
 ) {
-  const outer = Context.get();
+  const outer = useAmbient();
   const render = useFactory(() => {
     const add = (arg: unknown) =>
       typeof arg == 'object' && instance.set(arg as Model.Assign<T>);

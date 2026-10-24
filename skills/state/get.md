@@ -115,13 +115,15 @@ const stop = state.get(null, () => console.log('destroyed'));
 ```ts
 get<T extends Model>(type: Model.Type<T>, required?: true): T
 get<T extends Model>(type: Model.Type<T>, required: boolean): T | undefined
+get<C extends Model.Extends>(type: C, key, ...rest): instance of C // forwarded to C.get
 ```
 
-Fetches an instance of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
+Calls `Type.get(...args)` with this instance as origin: the lookup searches this instance's context, skipping itself, and a tracking proxy subscribes to the result. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead. A class overriding static `get` receives its own arguments ([Static get](#static-get)).
 
 ```ts
 const parent = child.get(Parent);
 const maybe = child.get(Parent, false);
+const user = session.get(User, 5); // User.get(5) from session's context
 ```
 
 ### Subscribe to context
@@ -150,6 +152,47 @@ With a callback and `true`, runs per owned instance - direct children only, not 
 const owner = child.get(Model);
 const stop = scene.get(Model, (node) => attach(node), true);
 ```
+
+## Static get
+
+```ts
+Model.get(): T                  // required; throws if not in context
+Model.get(false): T | undefined // optional
+Model.get(true): Required<T>    // throws if an accessed value is undefined
+```
+
+Context lookup from wherever it is called. Inside a host render (React, dom) the host supplies context and subscribes to reads. Within [`Context.set`](context.md#static-context) it reads that context, hosts uninvolved; elsewhere the root context, untracked. Function arguments are not accepted.
+
+### Overriding
+
+```ts
+class User extends Model {
+  id = 0;
+
+  static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | boolean): T {
+    if (typeof id != 'number') return super.get(id as never) as T;
+
+    return Context.get(this, (context) => context.get(Directory).find(id) as T);
+  }
+}
+
+User.get(5);             // in render: tracked
+User.get(true);          // base form through super - strict
+session.get(User, 5);    // from session's context
+class Order extends Model {
+  buyer = get(User, 5);  // from the owner's context, once ready
+}
+```
+
+- Handle own keys; delegate base forms with `super.get(arg)` - `get()`, `get(false)` and `get(true)` keep their meaning. `super` from a static `get` is ordinary inheritance. `as never`: a `boolean | undefined` argument matches no single base overload.
+- Each call reaches `Context.get(this, compute)` exactly once, synchronously - directly or through `super.get` - for context and tracking in every call form ([context.md](context.md#static-context)). `this` is always the class.
+- Strictness is base `get(true)`'s, applied after `Context.get` - an own key resolves as `get()` does.
+- `compute(context, from?)` returns the result; `from` is the calling instance for the instance and instruction forms. A returned Model is tracked - by the host in render, through `from` when it is a tracking proxy.
+- In `compute`, use only `context.get(Type, required?)` - other members of `context` are unstable.
+- Outside render - event handlers, effects, module code - a static `get` resolves from `Context.current` or root, untracked, on every host.
+- A plain `Other.get()` inside `compute` resolves the same way - the instance and instruction forms keep it on the caller's context.
+- Prefer one signature - inference from overloads uses the last.
+- Type a key from `T` (`T['id'] | boolean`) so `get()`, `get(false)` and `get(true)` stay callable - a plain `key?: string` fails the static-side check against base `get`. Through `state.get(Type, ...)` and the `get(Type, ...)` instruction, arguments type against the base, not a narrowed override.
 
 ## Type Signatures
 
