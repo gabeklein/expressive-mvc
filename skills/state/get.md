@@ -161,7 +161,7 @@ Model.get(false): T | undefined // optional
 Model.get(true): Required<T>    // throws if an accessed value is undefined
 ```
 
-Context lookup from wherever it is called. Inside a host render (React, dom) the host supplies context and subscribes to reads. Within [`Context.set`](context.md#static-context) it reads that context, hosts uninvolved; elsewhere the root context, untracked. Function arguments are not accepted.
+Context lookup from wherever it is called. Inside a host render (React, dom) the host supplies context and subscribes to reads. Through `state.get(Type)` or the `get` instruction it reads that instance's context, hosts uninvolved ([context.md](context.md#static-context)); elsewhere the root context, untracked. Function arguments are not accepted.
 
 ### Overriding
 
@@ -189,7 +189,7 @@ class Order extends Model {
 - Strictness is base `get(true)`'s, applied after `Context.get` - an own key resolves as `get()` does.
 - `compute(context, from?)` returns the result; `from` is the calling instance for the instance and instruction forms. A returned Model is tracked - by the host in render, through `from` when it is a tracking proxy.
 - In `compute`, use only `context.get(Type, required?)` - other members of `context` are unstable.
-- Outside render - event handlers, effects, module code - a static `get` resolves from `Context.current` or root, untracked, on every host.
+- Outside render - event handlers, effects, module code - a static `get` resolves from root, untracked, on every host.
 - A plain `Other.get()` inside `compute` resolves the same way - the instance and instruction forms keep it on the caller's context.
 - Prefer one signature - inference from overloads uses the last.
 - Type a key from `T` (`T['id'] | boolean`) so `get()`, `get(false)` and `get(true)` stay callable - a plain `key?: string` fails the static-side check against base `get`. Through `state.get(Type, ...)` and the `get(Type, ...)` instruction, arguments type against the base, not a narrowed override.

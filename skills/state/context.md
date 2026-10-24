@@ -209,24 +209,16 @@ scene.get(Model, (node) => attach(node), true); // direct members only - a, not 
 ## Static Context
 
 ```ts
-Context.get(): Context                       // Context.current ?? Context.root; a dom render returns its scope
+Context.get(): Context                       // current context, else root; a render returns its own
 Context.get(state): Context                  // state's home context
 Context.get(Type, compute): R                // resolve a static get - see get.md#overriding
-Context.set(target, fn): R                   // run fn with target current; returns fn's result
-Context.current: Context | undefined         // innermost set context; readonly
 ```
 
-`Context.set(model, fn)` makes the model's home context current and the model the origin of each `get` inside `fn`: `compute` receives it as `from`, and a returned Model is tracked through it when it is a tracking proxy. `Context.set(context, fn)` sets a context with no origin. Synchronous; nests; restores on throw.
-
-While `Context.current` is set, every static `get` resolves there through core - hosts do not track it, and React runs no hooks. `state.get(Type, ...args)` is `Context.set(state, () => Type.get(...args))`.
-
-```ts
-const user = Context.set(session, () => User.get(5));
-```
+`state.get(Type, ...args)` and the `get(Type, ...)` instruction make the instance's home context current and the instance the origin of each static `get` they reach: `compute` receives it as `from`, and a returned Model is tracked through it when it is a tracking proxy. There hosts do not track, and React runs no hooks.
 
 ### Writing a host
 
-A host replaces `Context.get`, keeping the previous function and forwarding to it for a `Context.get(state)`, for everything while `Context.current` is set, and wherever the host is not rendering. The patch does not call a static `super.get` - it recurses after reassignment; static `get` overrides call `super` normally. Hosts read `Context.current`, never write it, and never wrap their own scopes in `Context.set`. Installs stack. In render the host runs `compute` against its own context and tracks a returned Model, one subscription per instance per render; base `get(true)` makes that tracked result strict.
+A host assigns `Context.resolve(Type, compute)`, which runs for every `Context.get` outside an origin - `Type` is undefined for bare `Context.get()`. It keeps the previous function and calls it where the host is not rendering; installs stack. Its return value is what the caller receives. In render the host runs `compute` against its own context and tracks a returned Model, one subscription per instance per render; base `get(true)` makes that tracked result strict.
 
 ## API Surface
 
@@ -247,8 +239,6 @@ ctx.push(input?, cleanup?);            // child context; input as constructor; o
 ctx.pop();                             // destroy this and descendants
 Context.get(state);                    // static: state's home context
 Context.get();                         // static: current context, else root
-Context.set(target, fn);               // static: run fn with target current
-Context.current;                       // static: innermost set context
 Context.root;                          // global registry
 ```
 

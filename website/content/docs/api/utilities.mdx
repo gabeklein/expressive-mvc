@@ -314,8 +314,6 @@ ctx.pop();                            // tear down this context and descendants
 Context.get(state);                   // static - a state's home context
 Context.get();                        // static - current context, else root
 Context.get(Type, compute);           // static - resolve a static get (overrides)
-Context.set(target, fn);              // static - run fn with target current
-Context.current;                      // static - innermost set context, readonly
 Context.root;                         // global registry
 ```
 
@@ -324,8 +322,8 @@ Context.root;                         // global registry
 - `ctx.push(input, cleanup)` runs `cleanup` once when the child context pops - directly or with an ancestor - before its inputs are removed or destroyed.
 - `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
-- `Context.set(state, fn)` runs `fn` with `state`'s home context current and `state` as origin - `Model.get()` inside resolves there, tracked through `state` when it is a tracking proxy. `Context.set(context, fn)` sets a context with no origin. It nests and returns `fn`'s result.
-- Hosts replace `Context.get` to supply render context. While `Context.current` is set, they step aside. Both hosts return the render's context for bare `Context.get()` in a render, and current or root elsewhere.
+- `state.get(Type, ...args)` and the `get` instruction resolve `Type.get` from `state`'s home context with `state` as origin, tracked through `state` when it is a tracking proxy.
+- Hosts assign `Context.resolve(Type, compute)` to supply render context; its return value is what the caller receives. It is not consulted under an origin. Both hosts return the render's context for bare `Context.get()` in a render, and root elsewhere.
 
 ### Home context
 

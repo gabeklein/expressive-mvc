@@ -280,7 +280,7 @@ function Greeting() {
 
 A class overriding static `get` keeps context and render tracking - `User.get(id)` subscribes like `User.get()`. See [../state/get.md](../state/get.md#static-get).
 
-Bare `Context.get()` returns `Context.current` when set, else the render's context in a render, else root - safe anywhere. Inside `Context.set(...)`, `Model.get()` runs no hooks and does not subscribe the component.
+Bare `Context.get()` returns the render's context in a render, else root - safe anywhere. `state.get(Type)` runs no hooks and does not subscribe the component.
 
 ### Reactive context
 

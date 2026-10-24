@@ -117,7 +117,7 @@ Create an instance scoped to a React component. Covered in [Hooks](/docs/api/hoo
 
 ### `Model.get(...)`
 
-Look up an instance from context - `get()` required, `get(false)` optional, `get(true)` with required values. In a React or dom render it reads the host's context and subscribes to what the component reads ([Hooks](/docs/api/hooks)). Inside `Context.set(target, fn)` it reads that target's context; elsewhere the root context, untracked.
+Look up an instance from context - `get()` required, `get(false)` optional, `get(true)` with required values. In a React or dom render it reads the host's context and subscribes to what the component reads ([Hooks](/docs/api/hooks)). Through `state.get(Type)` it reads that instance's context; elsewhere the root context, untracked.
 
 #### Overriding `get`
 
