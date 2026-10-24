@@ -101,15 +101,13 @@ function get<T extends Model>(
   ...args: any[]
 ): any {
   if (arg1 === true) return below(Type, args[0]);
+
   if (arg1 === undefined || typeof arg1 == 'boolean' || typeof arg1 == 'function')
     return above(Type, arg1);
-  return keyed(Type, [arg1, ...args]);
-}
 
-function keyed(Type: Model.Extends, args: unknown[]) {
   return def((key, subject) => {
     listener(subject, () => {
-      update(subject, key, Context.set(subject, () => (Type.get as Function)(...args)));
+      update(subject, key, Context.set(subject, () => (Type.get as Function)(arg1, ...args)));
       return null;
     }, true);
 

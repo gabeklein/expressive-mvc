@@ -61,8 +61,8 @@ class Context {
     const [context = Context.root, from] = STACK[STACK.length - 1] || [];
 
     if (!compute) return context;
-
-    return from ? observed(from, arg, compute(context, from.is)) : compute(context);
+    if (!from) return compute(context);
+    return observed(from, arg, compute(context, from.is));
   }
 
   /**

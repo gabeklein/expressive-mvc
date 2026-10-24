@@ -576,7 +576,7 @@ abstract class Model {
 
   static get(this: Model.Extends, required?: boolean): any {
     const result = Context.get(this, (context, from) => context.get(this, required !== false, undefined, from));
-    return required === true ? strict(result) : result;
+    return required ? strict(result) : result;
   }
 
   /**
