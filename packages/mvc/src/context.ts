@@ -66,10 +66,10 @@ class Context {
    * may track or wrap what `compute` returns. Hosts assign their own, calling
    * the previous one when not rendering.
    */
-  static resolve = (
-    _Type: Model.Extends | undefined,
+  static resolve: (
+    Type: Model.Extends | undefined,
     compute: (context: Context) => unknown,
-  ): unknown => compute(Context.root);
+  ) => unknown = (_Type, compute) => compute(Context.root);
 
   public id = uid();
   public parent?: Context;
