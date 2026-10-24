@@ -27,12 +27,7 @@ class Context {
     return ROOT ??= new Context();
   }
 
-  /** Innermost context set by {@link Context.set}, if any. */
-  static get current(): Context | undefined {
-    return STACK[STACK.length - 1]?.[0];
-  }
-
-  /** Current context - innermost set by {@link Context.set}, otherwise root. Hosts may return their own while rendering. */
+  /** Current context - innermost set by `state.get(Type)` or the `get` instruction, otherwise as {@link Context.resolve} returns it. */
   static get(): Context;
 
   /** Get the context a Model was added to - root if none. */
@@ -40,9 +35,9 @@ class Context {
 
   /**
    * Resolve a static `get` of `Type` by running `compute` against the current
-   * context. Within {@link Context.set} for a Model, `from` is that Model and a
-   * returned Model is tracked through it; otherwise hosts may run `compute`
-   * against their own context and track the result.
+   * context. Inside `state.get(Type)` or the `get` instruction, `from` is that
+   * Model and a returned Model is tracked through it; otherwise
+   * {@link Context.resolve} decides.
    *
    * @param Type - Class `get` was called on.
    * @param compute - Resolves the value from a context.
@@ -54,32 +49,27 @@ class Context {
 
   static get(
     arg?: Model | Model.Extends,
-    compute?: (context: Context, from?: Model) => unknown,
+    compute: (context: Context, from?: Model) => unknown = (context) => context,
   ): unknown {
     if (arg && typeof arg != "function") return LOOKUP.get(arg.is) || Context.root;
 
-    const [context = Context.root, from] = STACK[STACK.length - 1] || [];
+    const [context, from] = STACK[STACK.length - 1] || [];
 
-    if (!compute) return context;
+    if (!context) return Context.resolve(arg, compute);
     if (!from) return compute(context);
     return observed(from, arg, compute(context, from.is));
   }
 
   /**
-   * Run `fn` with `target` as current context - for a Model, its context, with
-   * the Model as origin of any `get` resolved within. Nests.
-   *
-   * @returns Whatever `fn` returns.
+   * Run `compute` for a `Context.get` outside any origin - `Type` is undefined
+   * for bare `Context.get()`. Returns the value the caller receives, so a host
+   * may track or wrap what `compute` returns. Hosts assign their own, calling
+   * the previous one when not rendering.
    */
-  static set<R>(target: Model | Context, fn: () => R): R {
-    STACK.push(target instanceof Context ? [target] : [Context.get(target), target]);
-
-    try {
-      return fn();
-    } finally {
-      STACK.pop();
-    }
-  }
+  static resolve = (
+    _Type: Model.Extends | undefined,
+    compute: (context: Context) => unknown,
+  ): unknown => compute(Context.root);
 
   public id = uid();
   public parent?: Context;
@@ -326,6 +316,20 @@ Object.defineProperty(Context.prototype, "toString", {
 });
 
 /**
+ * Run `fn` with `target` as current context - for a Model, its context, with
+ * the Model as origin of any `get` resolved within. Nests.
+ */
+function within<R>(target: Model | Context, fn: () => R): R {
+  STACK.push(target instanceof Context ? [target] : [Context.get(target), target]);
+
+  try {
+    return fn();
+  } finally {
+    STACK.pop();
+  }
+}
+
+/**
  * Add `value` to the context `state` was added to. A context-less `state` holds
  * it instead - every context adding `state` later adds its held children too.
  */
@@ -387,4 +391,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, host, join };
+export { Context, host, join, within };

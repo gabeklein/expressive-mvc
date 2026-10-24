@@ -1,4 +1,4 @@
-import { Context, host, join } from './context';
+import { Context, host, join, within } from './context';
 import { REPORT } from './dispatch';
 import { strict } from './observing';
 import {
@@ -420,7 +420,7 @@ abstract class Model {
     if (Model.is(arg1))
       return typeof arg2 == 'function'
         ? Context.get(self).get(arg1, arg2, args[0], self)
-        : Context.set(this, () => (arg1.get as Function)(arg2, ...args));
+        : within(this, () => (arg1.get as Function)(arg2, ...args));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;

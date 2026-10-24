@@ -1,6 +1,6 @@
 import { vi, expect, expectTypeOf, it, describe } from 'vitest';
 import { flushMicrotasks, mockError, mockPromise, mockUncaught, mockWarn } from '../test.setup';
-import { Context } from './context';
+import { Context, within } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
 import { set } from './field/set';
@@ -913,7 +913,7 @@ describe('get method', () => {
       const foo = Foo.new();
       const context = new Context(foo);
 
-      expect(Context.set(context, () => Foo.get())).toBe(foo);
+      expect(within(context, () => Foo.get())).toBe(foo);
     });
 
     it('will not pass required to Context.get', () => {
@@ -965,7 +965,7 @@ describe('get method', () => {
 
       new Context({ keyed, foo });
 
-      expect(Context.set(foo, () => Keyed.get(true))).toBe(keyed);
+      expect(within(foo, () => Keyed.get(true))).toBe(keyed);
       expect(() => foo.get((self) => void self.get(Keyed).value)).not.toThrow();
       expect(() => foo.get((self) => void self.get(Keyed, true).value)).toThrow(
         /\.value is required in this context\./
@@ -979,16 +979,16 @@ describe('get method', () => {
       new Context(outer).push(inner);
 
       expect(inner.get(Foo)).toBe(outer);
-      expect(Context.set(inner, () => Foo.get())).toBe(outer);
+      expect(within(inner, () => Foo.get())).toBe(outer);
     });
 
     it('will route standalone form through override', () => {
       const user = User.new({ id: 5 });
       const context = new Context(user);
-      const found: User = Context.set(context, () => User.get(5));
+      const found: User = within(context, () => User.get(5));
 
       expect(found).toBe(user);
-      expect(Context.set(context, () => User.get(6))).toBeUndefined();
+      expect(within(context, () => User.get(6))).toBeUndefined();
     });
 
     it('will route instance form through override', () => {
@@ -1048,7 +1048,7 @@ describe('get method', () => {
       class Baz extends Model {
         static get(): any {
           return Context.get(this, (context, from) => {
-            inner(Bar.get(false), Context.current);
+            inner(Bar.get(false), Context.get());
             return from;
           });
         }

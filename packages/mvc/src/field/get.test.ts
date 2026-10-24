@@ -1042,7 +1042,7 @@ describe('key mode', () => {
     }
 
     lookup.mockImplementation(function (this: typeof User, ...args) {
-      origin(Context.current);
+      origin(Context.get());
       return Record.get.apply(this, args) as User;
     });
 

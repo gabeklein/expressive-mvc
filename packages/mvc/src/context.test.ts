@@ -1,5 +1,5 @@
-import { vi, describe, it, expect, expectTypeOf } from 'vitest';
-import { Context } from './context';
+import { vi, describe, it, expect, expectTypeOf, onTestFinished } from 'vitest';
+import { Context, within } from './context';
 import { Model } from './state';
 import { get } from './field/get';
 
@@ -451,7 +451,7 @@ describe('static get', () => {
   it('will return current context within set', () => {
     const context = new Context();
 
-    expect(Context.set(context, () => Context.get())).toBe(context);
+    expect(within(context, () => Context.get())).toBe(context);
   });
 
   it('will compute against root', () => {
@@ -475,7 +475,7 @@ describe('static get', () => {
     const context = new Context();
     const compute = vi.fn(() => 'value');
 
-    expect(Context.set(context, () => Context.get(Test, compute))).toBe('value');
+    expect(within(context, () => Context.get(Test, compute))).toBe('value');
     expect(compute).toBeCalledWith(context);
   });
 
@@ -484,7 +484,7 @@ describe('static get', () => {
     const context = new Context(test);
     const compute = vi.fn((_context: Context, from?: Model) => from);
 
-    expect(Context.set(test, () => Context.get(Test, compute))).toBe(test);
+    expect(within(test, () => Context.get(Test, compute))).toBe(test);
     expect(compute).toBeCalledWith(context, test);
   });
 
@@ -493,7 +493,7 @@ describe('static get', () => {
     const compute = vi.fn((_context: Context, from?: Model) => from);
 
     test.get((proxy) => {
-      Context.set(proxy, () => Context.get(Test, compute));
+      within(proxy, () => Context.get(Test, compute));
     });
 
     expect(compute).toBeCalledWith(Context.root, test);
@@ -505,7 +505,7 @@ describe('static get', () => {
     const effect = vi.fn();
 
     test.get((proxy) => {
-      effect(Context.set(proxy, () => Context.get(Test, () => other)).value);
+      effect(within(proxy, () => Context.get(Test, () => other)).value);
     });
 
     other.value = 2;
@@ -516,11 +516,11 @@ describe('static get', () => {
   });
 });
 
-describe('static set', () => {
+describe('within', () => {
   class Test extends Model {}
 
   it('will return result of function', () => {
-    const result = Context.set(new Context(), () => 1);
+    const result = within(new Context(), () => 1);
 
     expectTypeOf(result).toEqualTypeOf<number>();
 
@@ -531,13 +531,13 @@ describe('static set', () => {
     const test = Test.new();
     const context = new Context(test);
 
-    expect(Context.set(test, () => Context.current)).toBe(context);
+    expect(within(test, () => Context.get())).toBe(context);
   });
 
   it('will set root for a Model without context', () => {
     const test = Test.new();
 
-    expect(Context.set(test, () => Context.current)).toBe(Context.root);
+    expect(within(test, () => Context.get())).toBe(Context.root);
   });
 
   it('will nest', () => {
@@ -545,37 +545,83 @@ describe('static set', () => {
     const inner = new Context();
     const seen: (Context | undefined)[] = [];
 
-    Context.set(outer, () => {
-      seen.push(Context.current);
-      Context.set(inner, () => seen.push(Context.current));
-      seen.push(Context.current);
+    within(outer, () => {
+      seen.push(Context.get());
+      within(inner, () => seen.push(Context.get()));
+      seen.push(Context.get());
     });
 
     expect(seen).toEqual([outer, inner, outer]);
-    expect(Context.current).toBeUndefined();
+    expect(Context.get()).toBe(Context.root);
   });
 
   it('will restore on throw', () => {
     const context = new Context();
 
     expect(() =>
-      Context.set(context, () => {
+      within(context, () => {
         throw new Error('oops');
       })
     ).toThrow('oops');
 
-    expect(Context.current).toBeUndefined();
+    expect(Context.get()).toBe(Context.root);
+  });
+});
+
+describe('static resolve', () => {
+  class Test extends Model {}
+
+  function assign(resolve: typeof Context.resolve) {
+    const previous = Context.resolve;
+
+    Context.resolve = resolve;
+    onTestFinished(() => {
+      Context.resolve = previous;
+    });
+  }
+
+  it('will resolve a static get outside within', () => {
+    const context = new Context();
+    const resolve = vi.fn((_Type: unknown, compute: (context: Context) => unknown) => compute(context));
+
+    assign(resolve);
+
+    expect(Context.get(Test, (context) => context)).toBe(context);
+    expect(resolve).toBeCalledWith(Test, expect.any(Function));
   });
 
-  it('will not allow current to be assigned', () => {
-    const current = Context.current;
+  it('will resolve bare get without a type', () => {
+    const context = new Context();
+    const resolve = vi.fn((_Type: unknown, compute: (context: Context) => unknown) => compute(context));
 
-    expectTypeOf(current).toEqualTypeOf<Context | undefined>();
+    assign(resolve);
 
-    expect(current).toBeUndefined();
+    expect(Context.get()).toBe(context);
+    expect(resolve).toBeCalledWith(undefined, expect.any(Function));
+  });
 
-    // @ts-expect-error - readonly
-    expect(() => (Context.current = new Context())).toThrow();
+  it('will return what resolve returns', () => {
+    assign(() => 'wrapped');
+
+    expect(Context.get(Test, () => 'value')).toBe('wrapped');
+  });
+
+  it('will not be called within', () => {
+    const resolve = vi.fn();
+
+    assign(resolve);
+    within(new Context(), () => Context.get(Test, () => 'value'));
+
+    expect(resolve).not.toBeCalled();
+  });
+
+  it('will not be called for a Model', () => {
+    const resolve = vi.fn();
+
+    assign(resolve);
+    Context.get(Test.new());
+
+    expect(resolve).not.toBeCalled();
   });
 });
 

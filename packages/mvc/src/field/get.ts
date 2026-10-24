@@ -1,5 +1,5 @@
 import { capture, listener, observer } from '../observable';
-import { Context } from '../context';
+import { Context, within } from '../context';
 import { Model, children, owned, parent, STORE, update } from '../state';
 import type { Got, Keyed } from '../state';
 import { def } from './def';
@@ -107,7 +107,7 @@ function get<T extends Model>(
 
   return def((key, subject) => {
     listener(subject, () => {
-      update(subject, key, Context.set(subject, () => (Type.get as Function)(arg1, ...args)));
+      update(subject, key, within(subject, () => (Type.get as Function)(arg1, ...args)));
       return null;
     }, true);
 
