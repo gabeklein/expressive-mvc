@@ -3,17 +3,12 @@ import { observer, watch } from '@expressive/mvc/observable';
 import { useAmbient } from './context';
 import { Runtime, useFactory, useSettle, useSetup, useWeak } from './runtime';
 
-const forward = Context.get as (...args: unknown[]) => unknown;
+const normal = Context.resolve;
 
-Context.get = ((
-  arg?: Model | Model.Extends,
-  compute?: (context: Context) => unknown
-) => {
-  if (Context.current || (arg && !compute)) return forward(arg, compute);
-
+Context.resolve = (Type, compute) => {
   const idle = Runtime.idle();
 
-  if (idle) return forward(arg, compute);
+  if (idle) return normal(Type, compute);
 
   let ambient: Context;
 
@@ -21,12 +16,12 @@ Context.get = ((
     try {
       ambient = useAmbient();
     } catch {
-      return forward(arg, compute);
+      return normal(Type, compute);
     }
   else ambient = useAmbient();
 
-  return compute ? use(arg as Model.Extends, compute) : ambient;
-}) as typeof Context.get;
+  return Type ? use(Type, compute) : compute(ambient);
+};
 
 function use(Type: Model.Extends, compute: (context: Context) => unknown) {
   const [tick, next] = Runtime.useState(0);

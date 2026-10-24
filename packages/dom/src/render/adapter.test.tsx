@@ -292,20 +292,23 @@ describe('MVC adapter', () => {
     source.set(null);
   });
 
-  it('will forward to core within Context.set', async () => {
+  it('will forward to core from a Model origin', async () => {
     class Source extends Model {
       value = 1;
     }
 
+    class Origin extends Model {}
+
     const outer = Source.new();
     const inner = Source.new();
-    const context = new Context(inner);
+    const origin = Origin.new();
+    const context = new Context(inner).push(origin);
     const renders = vi.fn();
     let found: Source | undefined;
 
     function View() {
       renders();
-      found = Context.set(context, () => Source.get());
+      found = origin.get(Source);
       return null;
     }
 
@@ -322,6 +325,7 @@ describe('MVC adapter', () => {
     expect(renders).toHaveBeenCalledOnce();
 
     release();
+    context.pop();
     outer.set(null);
     inner.set(null);
   });

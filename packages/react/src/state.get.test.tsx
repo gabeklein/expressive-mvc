@@ -311,17 +311,20 @@ describe('Model.get', () => {
     });
   });
 
-  describe('within Context.set', () => {
+  describe('from a Model origin', () => {
     class Test extends Model {
       value = 'foo';
     }
 
+    class Origin extends Model {}
+
     it('will resolve without hooks', async () => {
       const outer = Test.new({ value: 'outer' });
       const inner = Test.new({ value: 'inner' });
-      const context = new Context(inner);
+      const origin = Origin.new();
+      new Context(inner).push(origin);
       const View = (props: { local: boolean }) => {
-        const found = props.local && Context.set(context, () => Test.get());
+        const found = props.local && origin.get(Test);
         const { value } = Test.get();
         return <>{found ? found.value : 'none'}:{value}</>;
       };

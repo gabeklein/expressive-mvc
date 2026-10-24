@@ -68,16 +68,10 @@ declare module '@expressive/mvc' {
   }
 }
 
-const forward = Context.get as (...args: unknown[]) => unknown;
+const normal = Context.resolve;
 
-Context.get = ((
-  arg?: Model | Model.Extends,
-  compute?: (context: Context) => unknown
-) => {
-  if (!current || Context.current || (arg && !compute))
-    return forward(arg, compute);
-
-  if (!compute) return current.context;
+Context.resolve = (Type, compute) => {
+  if (!current) return normal(Type, compute);
 
   const found = compute(current.context);
 
@@ -88,7 +82,7 @@ Context.get = ((
   if (!proxy) memo!.set(found, (proxy = tracked(found, false)));
 
   return proxy;
-}) as typeof Context.get;
+};
 
 const OWNERS = new WeakMap<Function, { owner: Model; key: string }>();
 
