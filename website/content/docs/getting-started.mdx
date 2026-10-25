@@ -136,7 +136,11 @@ class Greeter extends Component {
 <Greeter name="React" />;
 ```
 
-No props interface to keep in sync with state - the class is both. A prop the parent passes is the parent's to control, so pass the ones it actually drives; leave the rest to the class.
+No props interface to keep in sync with state - the class is both. A prop the parent passes is the parent's to control - reassigned every render - so pass the ones it actually drives. To seed a value the user then edits, set it once in `is`:
+
+```tsx
+<Greeter is={(greeter) => (greeter.name = user.firstName)} />
+```
 
 <br />
 

@@ -1,12 +1,12 @@
 # Comparisons - Expressive MVC vs Alternatives
 
-Distilled positioning against common React state solutions. The [site comparisons page](https://expressive.dev/docs/comparisons/) shows code-level side-by-sides; this is the summary form. Statements about alternatives describe their defaults, not their limits - most can approximate any behavior with enough wiring.
+Distilled positioning against the state solutions a React team would otherwise pick. Expressive is MVC run in React - classes own state and structure, portable to `@expressive/dom` - so the comparison is between workflows, not hooks. The [site comparisons page](https://expressive.dev/docs/comparisons/) shows code-level side-by-sides; this is the summary form. Statements about alternatives describe their defaults, not their limits - most can approximate any behavior with enough wiring.
 
 ## At a glance
 
 | | Mental model | Re-render granularity | Writes | Derived + async | Maturity |
 | --- | --- | --- | --- | --- | --- |
-| **Expressive** | `Model` classes: fields observable, getters computed, methods actions | Per-field: destructuring is the subscription, nested included | Direct assignment through subscription proxies | Auto-memoized getters; `set(async)` integrates Suspense | Pre-1.0, small community, single primary maintainer |
+| **Expressive** | Classes - `Component` owns and renders, `Model` is headless; fields observable, getters computed, methods actions | Per-field: destructuring is the subscription, nested included | Direct assignment through subscription proxies | Auto-memoized getters; `set(async)` integrates Suspense | Pre-1.0, small community, single primary maintainer |
 | **Zustand** | Store hook created by `create()` | Selector functions per consumer | `set()` merge inside actions | Manual selectors; async by convention | Very large adoption, mature |
 | **Jotai** | Bottom-up atoms | Per-atom | Atom setters | Derived atoms; async atoms + Suspense | Large adoption, mature |
 | **MobX** | Observable objects/classes | Tracked reads via `observer` HOC | Direct mutation (in actions) | `computed`; async via `flow` | Very mature, large adoption |
@@ -31,7 +31,7 @@ This is also the sparsely populated side of the field. The selector/atom/reducer
 
 ## What choosing Expressive buys
 
-The organizational claim, in one sentence: behavior consolidates into named, inheritable, independently-testable classes, and views shrink to projections that subscribe to exactly the fields they read. Concretely - no selector functions (destructuring subscribes, nested values included), no dependency arrays, no provider-value memoization, async that suspends without orchestration, and state logic tests that run in milliseconds without rendering anything. The full working case is [why.md](why.md); this page stays the scorecard.
+The organizational claim, in one sentence: behavior consolidates into named, inheritable, independently-testable classes, and views shrink to projections that subscribe to exactly the fields they read - so a feature splits into more views without rewiring its owner, and the class tree moves between hosts. Concretely - no selector functions (destructuring subscribes, nested values included), no dependency arrays, no provider-value memoization, async that suspends without orchestration, and state logic tests that run in milliseconds without rendering anything. The full working case is [why.md](why.md); this page stays the scorecard.
 
 ## Maturity, stated plainly
 
