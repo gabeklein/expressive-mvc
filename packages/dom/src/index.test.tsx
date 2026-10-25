@@ -23,7 +23,7 @@ describe('classic JSX', () => {
     render(
       <>
         <i>one</i>
-        <Card title="two" is={(value) => (card = value)} />
+        <Card title="two" is={(value) => void (card = value)} />
       </>,
       root
     );
