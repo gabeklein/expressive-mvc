@@ -60,7 +60,7 @@ Before moving code, choose the destination:
 
 - **`Component`** for state intrinsic to display logic. Usually that means defining `render()`.
 - **`Component` without `render()`** when React tree placement is the point. It passes children through while still providing context and Suspense/ErrorBoundary placement.
-- **`Model`** for headless state and logic, even when it is contextual.
+- **`Model`** for headless state and logic, even when it is contextual - placed above its readers with `<Component for>`, or held as a field of the Component that owns it.
 - **Hooks** for trivial local UI state.
 
 Don't create `UserFormState` plus `UserFormView` just because hooks were present. If the form's state, handlers, validation, lifecycle, and JSX are a single reusable control, `class UserForm extends Component` may be the cleanest migration.
@@ -95,13 +95,15 @@ class UserForm extends Model {
 }
 ```
 
-If `UserForm` is a display-agnostic `Model`, replace the hooks in the component with `UserForm.use()`:
+Derived values move to getters, not to extra fields that need to be synchronized.
+
+The smallest first diff leaves the component where it is and swaps its hooks for one line:
 
 ```tsx
 const { is: form, name, email, saving, dirty } = UserForm.use();
 ```
 
-Writes change from `setName(x)` to `form.name = x`. If `UserForm` is a `Component`, read and write the same fields through `this` inside `render()` and methods. Derived values should usually move to getters, not to extra fields that need to be synchronized.
+Writes change from `setName(x)` to `form.name = x`, and the rest of the function keeps working. That's a fine place to pause and ship - but it's a stop on the way, not the destination. Step 4e moves the JSX into the class.
 
 ### 4b. Move effects
 
@@ -189,6 +191,62 @@ Methods are automatically bound - you can destructure `save` and pass it as a ha
 ### 4d. Verify and delete
 
 Run the component, test the behavior, and delete the old hook calls. If something breaks, the migration is trivially reversible - the class lives in its own file.
+
+### 4e. Move the view into the class
+
+Once the hooks are gone, the function is only a projection of `UserForm` plus whatever props it took. Finish by making the class the component: extend `Component`, turn props into fields, and move the body into `render()`:
+
+```tsx
+// Before
+function UserFormView({ onSaved }: { onSaved: () => void }) {
+  const { is: form, name, email, saving, dirty, save } = UserForm.use();
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        save().then(onSaved);
+      }}>
+      <input value={name} onChange={(e) => (form.name = e.target.value)} />
+      <input value={email} onChange={(e) => (form.email = e.target.value)} />
+      <button disabled={!dirty || saving}>Save</button>
+    </form>
+  );
+}
+```
+
+```tsx
+// After
+class UserForm extends Component {
+  name = '';
+  email = '';
+  saving = false;
+
+  // ...dirty and save() as before
+
+  render(props = {} as { onSaved: () => void }) {
+    const { name, email, saving, dirty, save } = this;
+
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save().then(props.onSaved);
+        }}>
+        <input value={name} onChange={(e) => (this.name = e.target.value)} />
+        <input value={email} onChange={(e) => (this.email = e.target.value)} />
+        <button disabled={!dirty || saving}>Save</button>
+      </form>
+    );
+  }
+}
+
+<UserForm onSaved={close} />;
+```
+
+What changed is ownership, made explicit. The instance is the element - created when `<UserForm />` first renders, destroyed on unmount - instead of a hook call buried in a function that happens to own it. Every field is now an optional, typed prop (`<UserForm name={user.name} />`), extra props are declared on `render()`, and `this` is the write handle, so there's no `is` alias to thread through. A suspending field like an async `set()` gets a home too: the Component is its own Suspense boundary, showing its `fallback` while the instance - which lives outside the render - loads.
+
+If the state turns out to be shared - a second view needs it - keep it a `Model`, place it with `<Component for>`, and let each view read it with `.get()`. That's Step 5.
 
 <br />
 
@@ -315,30 +373,63 @@ The class version is shorter, testable without rendering, and shareable across c
 
 <br />
 
-## Step 7 - Bridge to existing React hooks with `use()` method
+## Step 7 - Bridge to existing React hooks
 
-Some hooks cannot be replaced - `useNavigate`, `useLocation`, `useTranslation`, `useQuery` from a library. To use them inside a Model class, define a `use()` method. It runs on every render of the consumer:
+Some hooks cannot be replaced - `useNavigate`, `useLocation`, `useTranslation`, `useQuery` from a library. There are two ways to bring them in.
+
+Preferred: read the hook in a small function component and pass what it returns as props. Props are fields, so the class receives the value on every render and never knows where it came from:
 
 ```tsx
-class Nav extends Model {
-  shouldRedirect = false;
+class SearchPage extends Component {
+  query = '';
 
-  use() {
-    const navigate = useNavigate();
-    if (this.shouldRedirect) {
-      this.shouldRedirect = false;
-      navigate('/dashboard');
-    }
+  get results() {
+    return search(this.query);
+  }
+
+  render() {
+    const { query, results } = this;
+    // ...
   }
 }
 
-function SomeComponent() {
-  const { is: nav, shouldRedirect } = Nav.use();
-  // ... trigger nav.shouldRedirect = true somewhere
+function SearchRoute() {
+  const [params] = useSearchParams();
+
+  return <SearchPage query={params.get('q') ?? ''} />;
 }
 ```
 
-This is the escape hatch - any hook you need can be bridged through `use()`. Use it sparingly; it runs every render. For one-shot setup, prefer `new()`.
+`SearchPage` stays testable as `SearchPage.new({ query: 'shoes' })`, with no router in sight.
+
+When the hook's result is a function the view calls - `navigate`, `t` - call the hook at the top of `render()`. A Component's `render()` runs as a real function component, so the usual rules of hooks apply there:
+
+```tsx
+class Checkout extends Component {
+  saving = false;
+
+  async place() {
+    this.saving = true;
+    await api.placeOrder();
+    this.saving = false;
+  }
+
+  render() {
+    const navigate = useNavigate();
+    const { saving, place } = this;
+
+    return (
+      <button
+        disabled={saving}
+        onClick={() => place().then(() => navigate('/dashboard'))}>
+        Place order
+      </button>
+    );
+  }
+}
+```
+
+Keep hook calls out of methods and getters - they run outside render. For one-shot setup, prefer `new()` or `mount()`.
 
 <br />
 
@@ -388,20 +479,20 @@ const counter = Counter.new(); // constructs AND activates - always use this
 
 The first form warns if nothing activates it before the end of the tick, so this mistake announces itself rather than leaving you with an inert instance.
 
-Inside React, `Counter.use()` handles activation for you.
+Inside React, `<Counter />` and `<Component for={Counter}>` handle activation for you.
 
-### Assuming `use()` replaces `useEffect`
+### Treating `render()` as a lifecycle
 
-The class `use()` method runs on every render - it is a bridge for calling React hooks, not a lifecycle effect. For setup/teardown, use `new()`. For reactive side effects, use `this.get(effect)` inside `new()`.
+`render()` runs on every render - a place to read state and call bridging hooks, not to start work. For setup/teardown, use `new()` (or `mount()` for anything touching `window`). For reactive side effects, use `this.get(effect)` inside `new()`.
 
 ### Expecting state to survive destructured variables
 
 ```tsx
-const { count } = Counter.use();
+const { count } = Counter.get();
 count = 5; // just rebinds the local - doesn't update state
 ```
 
-Writes pass straight through the destructured values, so no alias is needed for most code. Reach for `is` in the one case it earns: retaining the root object alongside sibling values from the same snapshot, like `const { is: counter, count } = Counter.use();`.
+Writes pass straight through the destructured values, so no alias is needed for most code. Reach for `is` in the one case it earns: retaining the root object alongside sibling values from the same snapshot, like `const { is: counter, count } = Counter.get();`.
 
 <br />
 

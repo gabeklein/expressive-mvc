@@ -5,20 +5,20 @@ description: The same component built with Zustand, Jotai, Redux, and MobX - sid
 
 How Expressive relates to the store libraries you already know. For the case against raw hooks, see [Why Classes?](/docs/why-classes) - this page is about the libraries you'd otherwise pick instead.
 
-The fairest comparison is a *component-owned* unit of state: reusable, self-contained, re-renders on change. Below, the consumer code is held identical everywhere it can be - only the cost of building the unit differs.
+The fairest comparison is a *component-owned* unit of state: reusable, self-contained, re-renders on change. Below, the rendered markup is held identical everywhere it can be - only the cost of building the unit differs.
 
 <br />
 
 ## Local state
 
-Say you want a reusable `useFooBarBaz` that a widget can own. Flip through:
+Say you want a widget that owns a few values and a method to change them. Flip through:
 
 <Compare labels={['Expressive', 'Hooks', 'Zustand', 'Jotai', 'Redux', 'MobX']}>
 
 ```tsx
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class FooBarBaz extends Model {
+class Widget extends Component {
   foo = 0;
   bar = 'hello';
   baz = true;
@@ -26,16 +26,16 @@ class FooBarBaz extends Model {
   bump() {
     this.foo++;
   }
-}
 
-function Widget() {
-  const { foo, bar, baz, bump } = FooBarBaz.use();
+  render() {
+    const { foo, bar, baz, bump } = this;
 
-  return (
-    <button onClick={bump}>
-      {foo} · {bar} · {String(baz)}
-    </button>
-  );
+    return (
+      <button onClick={bump}>
+        {foo} · {bar} · {String(baz)}
+      </button>
+    );
+  }
 }
 ```
 
@@ -181,7 +181,7 @@ const Widget = observer(() => {
 
 </Compare>
 
-On the Expressive side, the destructure *is* the dependency list. Read a field, subscribe to it. Ignore it, don't. Nothing to declare, nothing to forget - no setters, no selectors, no store factory. Need a silent read? `state.is.foo`.
+On the Expressive side, the unit *is* the widget - no hook to name and return from, no wrapper to remember. The destructure at the top of `render()` is the dependency list: read a field, subscribe to it; ignore it, don't. Nothing to declare, nothing to forget - no setters, no selectors, no store factory. Need a silent read? `this.is.foo`. And `foo`, `bar` and `baz` are already typed props: `<Widget bar="hi" />`.
 
 <br />
 
@@ -355,7 +355,7 @@ class Counter extends Model {
 
 MobX is the closest relative - both use observable objects with automatic dependency tracking. Expressive is what you get when that idea is allowed to own the whole problem:
 
-- **No `observer()` wrapper.** Miss one in MobX and you get stale renders. Expressive tracks through `use()` and `get()` themselves.
+- **No `observer()` wrapper.** Miss one in MobX and you get stale renders. Expressive tracks through `render()` and `get()` themselves.
 - **No `makeAutoObservable`.** Extending `Model` is enough - and methods arrive pre-bound.
 - **Lifecycle, context, and Suspense are built in** - `new()`, class-keyed context, async `set()`. In MobX these are pieces you wire together yourself.
 

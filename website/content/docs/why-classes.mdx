@@ -120,12 +120,18 @@ Now look at what moved in the class:
 - **`dirty` became a getter.** Its inputs (`name`, `email`, `initial`) are tracked automatically - no dependency array to maintain, no way to forget one.
 - **`save` became a regular async method.** No `useCallback`, no stale closures.
 
-And the component? Pure presentation:
+And the component? Pure presentation. Place the class above it with `<Component for>` - that element owns the instance, assigns `userId` on every render, and shows `fallback` while `initial` loads - and the view just reads it:
 
 ```tsx
-function UserSettingsView(props: { userId: string }) {
+const UserSettingsPage = ({ userId }: { userId: string }) => (
+  <Component for={UserSettings} userId={userId} fallback={<p>Loading...</p>}>
+    <UserSettingsForm />
+  </Component>
+);
+
+function UserSettingsForm() {
   const { is: settings, name, email, dirty, saving, error, save } =
-    UserSettings.use(props);
+    UserSettings.get();
 
   return (
     <form
@@ -148,7 +154,7 @@ function UserSettingsView(props: { userId: string }) {
 }
 ```
 
-> Notice how the component remains completely independent from the logic. Want a second view of the same feature - a modal, a sidebar, a mobile layout? Write a second component. The behavior stays put.
+> Notice how the form remains completely independent from the logic - it owns nothing, and creates nothing. Want a second view of the same feature - a modal, a sidebar, a mobile layout? Write a second function and place it under the same element, or under its own. The behavior stays put.
 
 <br />
 
@@ -237,7 +243,7 @@ export const faq = {
       name: 'Are Expressive MVC classes React class components?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'No. A Model class is headless - no render method, no setState, no lifecycle-method views. Components subscribe to it through hooks like Model.use() and Model.get(), re-rendering only when values they actually read change.',
+        text: 'No. A Model class is headless - no render method, no setState, no lifecycle-method views. It is placed with <Component for>, and function components below read it with Model.get(), re-rendering only when values they actually read change.',
       },
     },
     {
