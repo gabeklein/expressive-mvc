@@ -5,9 +5,9 @@ Working examples of the fundamentals.
 ## Counter (minimal)
 
 ```tsx
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class Counter extends Model {
+class Counter extends Component {
   count = 0;
 
   increment() {
@@ -17,27 +17,31 @@ class Counter extends Model {
   decrement() {
     this.count--;
   }
+
+  render() {
+    const { count, increment, decrement } = this;
+
+    return (
+      <div>
+        <button onClick={decrement}>-</button>
+        <span>{count}</span>
+        <button onClick={increment}>+</button>
+      </div>
+    );
+  }
 }
 
-function CounterApp() {
-  const { count, increment, decrement } = Counter.use();
-
-  return (
-    <div>
-      <button onClick={decrement}>-</button>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
-    </div>
-  );
-}
+<Counter count={5} />;
 ```
+
+Fields are optional props, applied every render.
 
 ## Todo List (owned collection)
 
 Each entry is its own instance in a `has` pool - `done` and `toggle` live on the item, not as `(id, value)` methods on the list:
 
 ```tsx
-import { Model, has } from '@expressive/mvc';
+import { Model, Component, has } from '@expressive/mvc';
 
 class TodoItem extends Model {
   text = '';
@@ -48,7 +52,7 @@ class TodoItem extends Model {
   }
 }
 
-class TodoState extends Model {
+class TodoApp extends Component {
   items = has(TodoItem);
   input = '';
 
@@ -61,38 +65,38 @@ class TodoState extends Model {
     this.items.add({ text: this.input });
     this.input = '';
   }
-}
 
-function TodoApp() {
-  const state = TodoState.use();
+  render() {
+    const { input, remaining, items, add } = this;
 
-  return (
-    <div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          state.add();
-        }}>
-        <input
-          value={state.input}
-          onChange={(e) => (state.input = e.target.value)}
-        />
-        <button type="submit">Add</button>
-      </form>
-      <p>{state.remaining} remaining</p>
-      <ul>
-        {state.items.map((item) => (
-          <li key={String(item)} onClick={item.toggle}>
-            {item.done ? <s>{item.text}</s> : item.text}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+      <div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            add();
+          }}>
+          <input
+            value={input}
+            onChange={(e) => (this.input = e.target.value)}
+          />
+          <button type="submit">Add</button>
+        </form>
+        <p>{remaining} remaining</p>
+        <ul>
+          {items.map((item) => (
+            <li key={String(item)} onClick={item.toggle}>
+              {item.done ? <s>{item.text}</s> : item.text}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 }
 ```
 
-Rows that paint themselves become `Component` members placed as `{state.items}` - pool recipes in [patterns.md](../react/patterns.md).
+Rows that paint themselves become `Component` members placed as `{this.items}` - pool recipes in [patterns.md](../react/patterns.md).
 
 ## Async Data (with Suspense)
 
@@ -145,7 +149,7 @@ class Theme extends Model {
   }
 }
 
-class Panel extends Model {
+class Panel extends Component {
   theme = get(Theme);
   expanded = false;
 
@@ -156,30 +160,34 @@ class Panel extends Model {
   get isDark() {
     return this.theme.mode === 'dark';
   }
+
+  render() {
+    const { expanded, toggle, isDark } = this;
+
+    return (
+      <div style={{ background: isDark ? '#333' : '#fff' }}>
+        <button onClick={toggle}>{expanded ? 'Collapse' : 'Expand'}</button>
+        {expanded && <p>Panel content</p>}
+      </div>
+    );
+  }
 }
 
-function App() {
-  const theme = Theme.use();
+class App extends Component {
+  theme = new Theme();
 
-  return (
-    <Component for={theme}>
-      <button onClick={theme.toggle}>Toggle Theme</button>
-      <PanelView />
-    </Component>
-  );
-}
-
-function PanelView() {
-  const { expanded, toggle, isDark } = Panel.use();
-
-  return (
-    <div style={{ background: isDark ? '#333' : '#fff' }}>
-      <button onClick={toggle}>{expanded ? 'Collapse' : 'Expand'}</button>
-      {expanded && <p>Panel content</p>}
-    </div>
-  );
+  render() {
+    return (
+      <>
+        <button onClick={this.theme.toggle}>Toggle Theme</button>
+        <Panel />
+      </>
+    );
+  }
 }
 ```
+
+`theme` is provided by the `App` that owns it - `Panel` finds it with `get(Theme)`.
 
 ## Component Class (self-rendering)
 
@@ -233,9 +241,9 @@ Explicit `loading` keeps previous results visible during refresh - the deliberat
 ## Form Validation (setter callbacks)
 
 ```tsx
-import { Model, set } from '@expressive/mvc';
+import { Component, set } from '@expressive/mvc';
 
-class SignupForm extends Model {
+class Signup extends Component {
   name = '';
   email = set('', (value) => {
     if (value && !value.includes('@')) throw false; // reject - value stays unchanged
@@ -254,37 +262,38 @@ class SignupForm extends Model {
 
   submit() {
     if (!this.valid) return;
-    console.log('Submitting:', this.get());
+    const { name, email, password } = this;
+    console.log('Submitting:', { name, email, password });
   }
-}
 
-function Signup() {
-  const form = SignupForm.use();
+  render() {
+    const { name, email, password, valid, submit } = this;
 
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        form.submit();
-      }}>
-      <input
-        placeholder="Name"
-        value={form.name}
-        onChange={(e) => (form.name = e.target.value)}
-      />
-      <input
-        placeholder="Email"
-        value={form.email}
-        onChange={(e) => (form.email = e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password (8+ chars)"
-        value={form.password}
-        onChange={(e) => (form.password = e.target.value)}
-      />
-      <button disabled={!form.valid}>Sign Up</button>
-    </form>
-  );
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}>
+        <input
+          placeholder="Name"
+          value={name}
+          onChange={(e) => (this.name = e.target.value)}
+        />
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => (this.email = e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password (8+ chars)"
+          value={password}
+          onChange={(e) => (this.password = e.target.value)}
+        />
+        <button disabled={!valid}>Sign Up</button>
+      </form>
+    );
+  }
 }
 ```

@@ -11,7 +11,7 @@
 
 ---
 
-The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Define state as a class, use it in a component, and reads automatically subscribe - components re-render only when accessed values change.
+The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Define state as a class, render it as a component, and reads automatically subscribe - components re-render only when accessed values change.
 
 ```bash
 npm install @expressive/mvc @expressive/react
@@ -22,25 +22,27 @@ npm install @expressive/mvc @expressive/react
 Works on React DOM, and on React Native and Expo - the adapter imports only `react` and `react/jsx-runtime`, so there is nothing renderer-specific to port. Exercised on an iOS simulator and an Android emulator in both Debug and Release builds, and gated per release on Metro resolution and a Hermes build (Expo SDK 57, React Native 0.86). Under Jest, add `@expressive` to `transformIgnorePatterns`.
 
 ```tsx
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class Counter extends Model {
+class Counter extends Component {
   count = 0;
   increment = () => this.count++;
   decrement = () => this.count--;
+
+  render() {
+    const { count, increment, decrement } = this;
+
+    return (
+      <div>
+        <button onClick={decrement}>-</button>
+        <span>{count}</span>
+        <button onClick={increment}>+</button>
+      </div>
+    );
+  }
 }
 
-function CounterWidget() {
-  const { count, increment, decrement } = Counter.use();
-
-  return (
-    <div>
-      <button onClick={decrement}>-</button>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
-    </div>
-  );
-}
+<Counter count={5} />;
 ```
 
 ## Component
@@ -193,10 +195,10 @@ function Profile() {
 
 **At a glance**
 
-- **`Model.use()`** - create an instance bound to a component's lifecycle.
+- **`Component`** - a class that renders: owns its state, lifecycle and boundaries.
 - **`Model.get()`** - read shared state from context, no prop drilling.
 - **`<Component for={Model}>`** - explicit hierarchical dependency injection.
-- **`Component`** - smart widgets and shells whose behavior lives in the tree.
+- **`Model.use()`** - adopt a class inside an existing function component.
 - **Suspense & error boundaries** - async values suspend; `catch()` handles child errors.
 
 Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**

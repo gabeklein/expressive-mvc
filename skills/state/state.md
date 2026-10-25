@@ -117,7 +117,7 @@ Circular self-reference. Destructure it to keep instance access alongside values
 
 ```tsx
 const Component = () => {
-  const { is: counter, count } = Counter.use();
+  const { is: counter, count } = Counter.get();
 
   return <button onClick={() => counter.count++}>{count}</button>;
 };
