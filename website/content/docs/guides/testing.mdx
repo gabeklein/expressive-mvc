@@ -373,7 +373,7 @@ test('refreshes on update', async () => {
   }
 
   let control!: Control;
-  render(<Control is={(x) => (control = x)} />);
+  render(<Control is={(x) => void (control = x)} />);
 
   await act(async () => {
     control.value = 'foo';

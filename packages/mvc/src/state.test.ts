@@ -2835,6 +2835,29 @@ describe('new method (static)', () => {
     expect(order).toEqual([1, 2, 3, 4]);
   });
 
+  it('will assign an object a callback returns', () => {
+    class Test extends Model {
+      value = 0;
+    }
+
+    const test = Test.new(() => ({ value: 1 }));
+
+    expect(test.value).toBe(1);
+  });
+
+  it('will not assign a class instance a callback returns', () => {
+    let held: Model | undefined;
+
+    class Test extends Model {
+      rows = map<string, number>();
+    }
+
+    const test = Test.new((self) => (held = self) as any, () => new Map() as any);
+
+    expect(held).toBe(test);
+    expect(test.rows.size).toBe(0);
+  });
+
   it('will run callbacks in order', () => {
     const willDestroy2 = vi.fn();
     const willDestroy1 = vi.fn(() => {

@@ -3,6 +3,7 @@ import { flushMicrotasks, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
 import { Model, event } from './state';
+import { map } from './field/map';
 
 it('will default fallback to null and accept it as prop', () => {
   expect(Component.new().fallback).toBe(null);
@@ -55,6 +56,35 @@ it('will call is callback once with instance', () => {
   (foo as any).props = { is };
 
   expect(is).toHaveBeenCalledTimes(1);
+});
+
+it('will assign an object is returns before new()', () => {
+  const seen = vi.fn();
+
+  class Foo extends Component {
+    value = 0;
+
+    new() {
+      seen(this.value);
+    }
+  }
+
+  const foo = Foo.new({ is: () => ({ value: 2 }) });
+
+  expect(foo.value).toBe(2);
+  expect(seen).toBeCalledWith(2);
+});
+
+it('will not assign an instance is returns', () => {
+  let held: Foo | undefined;
+
+  class Foo extends Component {
+    rows = map<string, number>();
+  }
+
+  const foo = Foo.new({ is: (x: Foo) => (held = x) } as any);
+
+  expect(held).toBe(foo);
 });
 
 it('will merge state and reset omitted props when reassigned', async () => {
@@ -278,6 +308,13 @@ describe('for', () => {
     expect(session.name).toBe('Ada');
     expect(is).toBeCalledWith(session);
     expect(is).not.toBeCalledWith(provider);
+  });
+
+  it('will assign an object is returns to a provided class', () => {
+    const provider = Component.new({ for: Session, is: () => ({ name: 'Grace' }) } as any);
+    const context = new Context().push(provider);
+
+    expect(context.get(Session).name).toBe('Grace');
   });
 
   it('will destroy a provided class with the provider', () => {

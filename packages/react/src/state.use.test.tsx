@@ -538,7 +538,7 @@ describe('owner', () => {
     }
     class Outer extends Component {
       render() {
-        return <Inner is={(i) => (inner = i)} />;
+        return <Inner is={(i) => void (inner = i)} />;
       }
     }
 
@@ -547,7 +547,7 @@ describe('owner', () => {
       return null;
     }
 
-    render(<Outer is={(o) => (outer = o)} />);
+    render(<Outer is={(o) => void (outer = o)} />);
 
     expect(used.get(Model)).toBe(inner);
     expect(used.get(Model).get(Model)).toBe(outer);

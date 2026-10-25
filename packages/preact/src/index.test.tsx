@@ -41,7 +41,7 @@ describe('Component', () => {
     }
 
     let instance!: Control;
-    render(<Control is={(c) => (instance = c)} />);
+    render(<Control is={(c) => void (instance = c)} />);
 
     expect(Object.keys(instance).sort()).toEqual(['baz', 'foo']);
   });
