@@ -125,13 +125,13 @@ Every `Component` also accepts these, regardless of state fields:
 
 | Prop       | Type                     | Description                                                          |
 | ---------- | ------------------------ | -------------------------------------------------------------------- |
-| `is`       | `(instance: T) => void`  | Called once with the created instance                                |
+| `is`       | `(instance: T) => Model.Assign<T> \| void` | Called once with the created instance; a returned object is assigned |
 | `ref`      | `Ref<T>`                 | Standard React ref - the instance after mount, `null` on unmount     |
 | `fallback` | `ReactNode \| false`     | Overrides `this.fallback`; `false` defers to an ancestor boundary    |
 | `catch`    | `(error, instance) => void \| Promise<void>` | Handles this element's errors in place of the `catch()` method |
 | `children` | `ReactNode`              | Passed through when no `render()` is declared; otherwise read from the render parameter or `this.props` |
 
-`is` runs after props apply but **before** the `new()` lifecycle hook - so it may configure state that `new()` then observes. Use `ref` (object or callback, per React convention) for post-mount imperative access instead.
+`is` runs after props apply but **before** the `new()` lifecycle hook - so it may configure state that `new()` then observes. A plain object it returns is assigned, once - `is={() => ({ count: start })}`. To capture the instance, discard the result with `void` or braces: `is={(c) => void (counter = c)}`. Use `ref` (object or callback, per React convention) for post-mount imperative access instead.
 
 <br />
 
@@ -205,7 +205,7 @@ const items = [Item.new({ label: 'First' }), Item.new({ label: 'Second' })];
 The bare `Component` class - not a subclass - with a `for` attribute provides one instance to its children. This replaces the removed `Provider`.
 
 ```tsx
-<Component for={Session} name="Ada" is={(session) => session.load()}>
+<Component for={Session} name="Ada" is={(session) => void session.load()}>
   <App />
 </Component>
 ```

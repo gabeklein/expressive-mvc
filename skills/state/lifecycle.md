@@ -52,7 +52,7 @@ class Timer extends Model {
 
 `Model.new()` accepts `Model.Args`, processed in order during activation:
 
-- `function` - called with `this` as the instance; may return a cleanup function, an object to assign, an array to process, or a Promise
+- `function` - called with `this` as the instance; may return a cleanup function, a plain object to assign, an array to process, or a Promise - any other object, the instance included, is ignored
 - `object` - assigned to instance properties
 - `array` - flattened and re-processed
 - `Promise` (returned by a callback) - a rejection is reported with kind `setup` ([Error Handling](#error-handling))

@@ -255,7 +255,7 @@ describe('instance element', () => {
 
     const element = render(
       <Component for={Theme} color="red">
-        <Store is={(x) => (store = x)} />
+        <Store is={(x) => void (store = x)} />
       </Component>
     );
 

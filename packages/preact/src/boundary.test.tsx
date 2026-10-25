@@ -94,7 +94,7 @@ describe('error boundary', () => {
 
     render(
       <Boundary
-        is={(value) => (instance = value)}
+        is={(value) => void (instance = value)}
         catch={async (error, self) => {
           received(error.message, self);
           await new Promise<void>((r) => {
@@ -163,7 +163,7 @@ describe('error boundary', () => {
       }
     }
 
-    render(<Boundary is={(value) => (instance = value)} />);
+    render(<Boundary is={(value) => void (instance = value)} />);
 
     expect(member).toHaveBeenCalledWith('boom', instance);
   });

@@ -304,7 +304,7 @@ reactOnly.describe('pending', () => {
     const Status = () => <b>{Shell.get().pending ? 'busy' : 'idle'}</b>;
 
     const view = await mount(
-      <Shell is={(i) => (shell = i)}>
+      <Shell is={(i) => void (shell = i)}>
         <Status />
         <Content />
       </Shell>
@@ -331,7 +331,7 @@ reactOnly.describe('pending', () => {
     );
 
     const view = await mount(
-      <Shell is={(i) => (shell = i)}>
+      <Shell is={(i) => void (shell = i)}>
         <Lock>
           <Content />
         </Lock>

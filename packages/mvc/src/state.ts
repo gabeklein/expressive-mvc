@@ -686,13 +686,14 @@ function init(state: Model, ...args: Model.Args) {
 
       for (let i = 0; i < queue.length; i++) {
         const arg = queue[i];
-        const out = typeof arg == 'function' ? arg.call(state, state) : arg;
+        const called = typeof arg == 'function';
+        const out = called ? arg.call(state, state) : arg;
 
         if (out instanceof Promise)
           out.catch((err) => report('setup', state, err));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
-        else if (typeof out == 'object') assign(state, out, true);
+        else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
       }
     });
 
@@ -1180,6 +1181,14 @@ function access(state: Model, property: string, required?: boolean) {
   });
 }
 
+function plain(value: unknown): value is Model.Assign<Model> {
+  if (!value || typeof value != 'object') return false;
+
+  const proto = Object.getPrototypeOf(value);
+
+  return proto === Object.prototype || proto === null;
+}
+
 function assign(state: Model, data: Model.Assign<Model>, silent?: boolean) {
   if (!silent && observer(state) !== null) event(state);
 
@@ -1323,4 +1332,4 @@ function parent(child: object, value?: Model | null) {
 }
 
 export type { Handler };
-export { adopt, event, unbind, Model, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
+export { adopt, event, plain, unbind, Model, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };

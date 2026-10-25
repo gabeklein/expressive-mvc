@@ -93,7 +93,7 @@ describe('class element', () => {
 
     class Outer extends Component {
       render() {
-        return <Panel is={(panel) => (inner = panel)} />;
+        return <Panel is={(panel) => void (inner = panel)} />;
       }
     }
 
@@ -122,7 +122,7 @@ describe('class element', () => {
     }
 
     const root = document.createElement('main');
-    const release = render(<Panel label="busy" is={(value) => (panel = value)} />, root);
+    const release = render(<Panel label="busy" is={(value) => void (panel = value)} />, root);
 
     expect(root.textContent).toBe('busy:0');
     expect(lifecycle).toEqual(['mount']);
@@ -183,7 +183,7 @@ describe('class element', () => {
     const root = document.createElement('main');
     const release = render(
       <>
-        <Component for={Session} name="Grace" is={(value: Session) => (session = value)}>
+        <Component for={Session} name="Grace" is={(value: Session) => void (session = value)}>
           <Leaf />
         </Component>
         <Sibling />
@@ -302,7 +302,7 @@ describe('class element', () => {
 
     const root = place(
       <Plain
-        is={(value) => (plain = value)}
+        is={(value) => void (plain = value)}
         fallback={<i>recovering</i>}
         catch={(error: Error, instance: Plain) => {
           caught(error.message, instance);
