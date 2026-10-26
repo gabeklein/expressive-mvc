@@ -129,8 +129,8 @@ class UserProfile extends Model {
     return res.json();
   });
 
-  email = set('', (value) => {
-    if (!value.includes('@')) throw false;
+  bio = set('', (value) => {
+    if (value.length > 280) throw false; // never stored - write rejected
   });
 
   get displayName() {

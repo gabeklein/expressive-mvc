@@ -624,7 +624,7 @@ class LayoutBadge extends Component {
   }
 
   render() {
-    const { width, compact } = this;
+    const { compact, width } = this;
 
     return <span>{compact ? 'Compact' : `Wide (${width}px)`}</span>;
   }

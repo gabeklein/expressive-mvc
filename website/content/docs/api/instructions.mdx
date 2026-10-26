@@ -56,13 +56,15 @@ name = set('untitled');
 
 Like `name = 'untitled'` but **non-enumerable** - hidden from `Object.keys()`, spread, and `ref(this)`.
 
-### `set(value, callback)` - default with validation
+### `set(value, callback)` - default with a write guard
 
 ```ts
-email = set('', (next, prev) => {
-  if (!next.includes('@')) throw false; // reject
+bio = set('', (next, prev) => {
+  if (next.length > 280) throw false; // reject - never stored
 });
 ```
+
+Reject only what should never be stored. Input that isn't valid *yet* - a half-typed email - should land, with a getter reporting on it ([Validation](/docs/guides/forms-and-refs#validation)).
 
 Callback behaviors:
 
