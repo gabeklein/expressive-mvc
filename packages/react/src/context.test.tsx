@@ -408,7 +408,7 @@ describe('Component for', () => {
     expect(list.items).toHaveLength(2);
   });
 
-  it.fails('will not provide itself', () => {
+  it('will not provide itself', () => {
     let outer!: Component;
 
     class Outer extends Component {}

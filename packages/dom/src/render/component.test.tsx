@@ -201,7 +201,7 @@ describe('class element', () => {
     expect(session.get(null)).toBe(true);
   });
 
-  it.fails('will not provide Component for itself', () => {
+  it('will not provide Component for itself', () => {
     class Session extends Model {}
 
     let outer!: Outer;

@@ -299,7 +299,7 @@ describe('for', () => {
     name = 'none';
   }
 
-  it.fails('will not provide itself', () => {
+  it('will not provide itself', () => {
     const provider = Component.new({ for: Session } as any);
     const context = Context.root.push(provider);
 
