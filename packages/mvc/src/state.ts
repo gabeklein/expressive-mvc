@@ -1,4 +1,4 @@
-import { Context, host, join, provides } from './context';
+import { Context, host, join } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -1007,8 +1007,6 @@ function apply(
 
 function child(state: Model) {
   let cleanup: (() => void) | undefined;
-  const ctx = Context.get(state);
-
   function reset() {
     if (cleanup) cleanup();
     cleanup = undefined;
@@ -1029,8 +1027,6 @@ function child(state: Model) {
         event(value, null);
       };
       const cancel = listener(state, cleanup, null);
-    } else if (!provides(ctx, value)) {
-      cleanup = join(state, value);
     }
 
     event(value);

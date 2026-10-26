@@ -290,7 +290,7 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
   const ctx = LOOKUP.get(state.is);
   const held = HELD.get(state) || new Map();
 
-  if (ctx ? provides(ctx, value, true) : held.get(value)?.[1]) return () => {};
+  if (ctx ? provides(ctx, value) : held.get(value)?.[1]) return () => {};
   if (ctx) return ctx.add(value, explicit);
 
   const added = new Set<() => void>();
@@ -306,13 +306,12 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
   };
 }
 
-/** Whether a context above `from` already provides `value` - or, if `explicit`, explicitly provides it at or above `from`. */
-function provides(from: Context, value: Model, explicit?: boolean) {
-  for (let ctx: Context | undefined = explicit ? from : from.parent; ctx; ctx = ctx.parent) {
+/** Whether `value` is explicitly provided at or above `from`. */
+function provides(from: Context, value: Model) {
+  for (let ctx: Context | undefined = from; ctx; ctx = ctx.parent) {
     const entries = ctx.provide.get(value.constructor as Model.Extends);
     if (entries)
-      for (const [state, is] of entries)
-        if (state === value && (is || !explicit)) return true;
+      for (const [state, is] of entries) if (state === value && is) return true;
   }
 }
 
@@ -355,4 +354,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, host, INERT, join, provides };
+export { Context, host, INERT, join };
