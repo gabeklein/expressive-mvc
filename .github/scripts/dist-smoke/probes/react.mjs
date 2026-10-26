@@ -10,9 +10,12 @@ class Counter extends Model {
   value = 5;
 }
 
-const View = () => createElement('span', null, Counter.use().value);
+const View = () => createElement('span', null, Counter.get().value);
 
-assert.equal(renderToStaticMarkup(createElement(View)), '<span>5</span>');
+assert.equal(
+  renderToStaticMarkup(createElement(Component, { for: Counter }, createElement(View))),
+  '<span>5</span>'
+);
 
 class Widget extends Component {
   label = 'unset';

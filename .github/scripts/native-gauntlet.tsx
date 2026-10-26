@@ -274,7 +274,7 @@ const CHECKS: [string, (report: Report) => Promise<void>][] = [
 ];
 
 function Renderer() {
-  const counter = Counter.use();
+  const counter = Counter.get();
   const renders = useRef(0);
   const reported = useRef(false);
 
@@ -361,7 +361,9 @@ export default function App() {
       <Text testID="summary" style={styles.summary}>
         {done ? failed ? `FAIL ${failed}` : `PASS ${log.length}` : 'running'}
       </Text>
-      <Renderer />
+      <Component for={Counter}>
+        <Renderer />
+      </Component>
       <View style={styles.block}>
         <Text style={styles.heading}>Checks</Text>
         {log.map(([name, pass, detail], i) => (

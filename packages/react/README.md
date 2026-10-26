@@ -198,7 +198,6 @@ function Profile() {
 - **`Component`** - a class that renders: owns its state, lifecycle and boundaries.
 - **`Model.get()`** - read shared state from context, no prop drilling.
 - **`<Component for={Model}>`** - explicit hierarchical dependency injection.
-- **`Model.use()`** - adopt a class inside an existing function component.
 - **Suspense & error boundaries** - async values suspend; `catch()` handles child errors.
 
 Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**
