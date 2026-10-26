@@ -323,7 +323,7 @@ describe('for', () => {
     expect(found).toBeCalledWith(context.get(Other), true);
   });
 
-  it.fails('will provide an instance already provided above', () => {
+  it('will provide an instance already provided above', () => {
     class Holder extends Model {
       session?: Session = undefined;
     }

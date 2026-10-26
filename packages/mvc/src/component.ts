@@ -1,4 +1,5 @@
-import { Context } from './context';
+import { Context, join } from './context';
+import { listener } from './observable';
 import { set } from './field/set';
 import { Model, adopt, plain, trailing } from './state';
 
@@ -208,6 +209,12 @@ function provide(self: Component<any>) {
   let owned: { mount?(): unknown } | undefined;
   let mounted = false;
   let release: unknown;
+  let provided: (() => void) | undefined;
+
+  function unprovide() {
+    if (provided) provided();
+    provided = undefined;
+  }
 
   function unmount() {
     if (typeof release == 'function') release();
@@ -240,9 +247,12 @@ function provide(self: Component<any>) {
     if (next !== input) {
       input = next;
       unmount();
+      unprovide();
 
       if (Model.is(next)) {
-        adopt(self, 'for', (target = new (next as Model.Type)(rest)));
+        target = new (next as Model.Type)(rest);
+        provided = join(self, target, true);
+        adopt(self, 'for', target);
         owned = target as typeof owned;
 
         const out = is?.(target);
@@ -254,7 +264,9 @@ function provide(self: Component<any>) {
       }
 
       owned = undefined;
-      adopt(self, 'for', (target = next instanceof Model ? next : undefined));
+      target = next instanceof Model ? next : undefined;
+      if (target) provided = join(self, target, true);
+      adopt(self, 'for', target);
     }
 
     target?.set(rest);
@@ -262,6 +274,7 @@ function provide(self: Component<any>) {
 
   sync();
   self.set('props', sync);
+  listener(self, unprovide, null);
 }
 
 export { Component };

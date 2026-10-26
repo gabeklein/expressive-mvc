@@ -3,7 +3,7 @@ import { event, Model, parent, uid } from "./state";
 
 const LOOKUP = new WeakMap<Model, Context>();
 const HOME = new WeakMap<Model, Context>();
-const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
+const HELD = new WeakMap<Model, Map<Model, [Set<() => void>, boolean?]>>();
 const HOST = new WeakMap<Context, Model>();
 const CLEANUP = new WeakMap<Context, Set<() => void>>();
 let ROOT: Context;
@@ -221,8 +221,8 @@ class Context {
     }
 
     const cleanup = CLEANUP.get(this)!;
-    const held = Array.from(HELD.get(I) || [], ([child, added]) => {
-      const done = this.add(child);
+    const held = Array.from(HELD.get(I) || [], ([child, [added, explicit]]) => {
+      const done = this.add(child, explicit);
       added.add(done);
       return () => {
         if (added.delete(done)) done();
@@ -284,15 +284,16 @@ Object.defineProperty(Context.prototype, "toString", {
  * Add `value` to the context `state` was added to. A context-less `state` holds
  * it instead - every context adding `state` later adds its held children too.
  */
-function join(state: Model, value: Model): () => void {
+function join(state: Model, value: Model, explicit?: boolean): () => void {
   const ctx = LOOKUP.get(state.is);
-
-  if (ctx) return ctx.add(value);
-
   const held = HELD.get(state) || new Map();
+
+  if (ctx ? provides(ctx, value, true) : held.get(value)?.[1]) return () => {};
+  if (ctx) return ctx.add(value, explicit);
+
   const added = new Set<() => void>();
 
-  HELD.set(state, held.set(value, added));
+  HELD.set(state, held.set(value, [added, explicit]));
 
   return () => {
     held.delete(value);
@@ -301,6 +302,16 @@ function join(state: Model, value: Model): () => void {
       done();
     });
   };
+}
+
+/** Whether a context above `from` already provides `value` - or, if `explicit`, explicitly provides it at or above `from`. */
+function provides(from: Context, value: Model, explicit?: boolean) {
+  for (let ctx: Context | undefined = explicit ? from : from.parent; ctx; ctx = ctx.parent) {
+    const entries = ctx.provide.get(value.constructor as Model.Extends);
+    if (entries)
+      for (const [state, is] of entries)
+        if (state === value && (is || !explicit)) return true;
+  }
 }
 
 /** The Model a host mounted `state` under - the one its nearest enclosing context was set up for. */
@@ -342,4 +353,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, host, join };
+export { Context, host, join, provides };

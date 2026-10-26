@@ -1,4 +1,4 @@
-import { Context, host, join } from './context';
+import { Context, host, join, provides } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -1003,13 +1003,6 @@ function apply(
   });
 
   if ('value' in config) set(config.value, silent);
-}
-
-function provides(ctx: Context, value: Model) {
-  while (ctx = ctx.parent!) {
-    const entries = ctx.provide.get(value.constructor as Model.Extends);
-    if (entries) for (const [state] of entries) if (state === value) return true;
-  }
 }
 
 function child(state: Model) {
