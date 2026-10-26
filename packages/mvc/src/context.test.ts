@@ -1177,7 +1177,7 @@ describe('root global', () => {
     base.set(null);
   });
 
-  it('will preserve subtype entries on eviction', () => {
+  it('will make a shared supertype ambiguous between globals', () => {
     class Base extends Model {}
     class SubA extends Base {
       static global = true;
@@ -1193,7 +1193,7 @@ describe('root global', () => {
 
     const b = SubB.new();
 
-    expect(root.get(Base, false)).toBeUndefined();
+    expect(root.get(Base, false)).toBeNull();
     expect(root.get(SubA)).toBe(a);
     expect(root.get(SubB)).toBe(b);
 
@@ -1201,7 +1201,7 @@ describe('root global', () => {
     b.set(null);
   });
 
-  it('will register fresh sibling cleanly after ancestor eviction', () => {
+  it('will keep a shared supertype ambiguous as globals are added', () => {
     class Base extends Model {}
     class SubA extends Base {
       static global = true;
@@ -1216,11 +1216,11 @@ describe('root global', () => {
     const a = SubA.new();
     const b = SubB.new();
 
-    expect(root.get(Base, false)).toBeUndefined();
+    expect(root.get(Base, false)).toBeNull();
 
     const c = SubC.new();
 
-    expect(root.get(Base)).toBe(c);
+    expect(root.get(Base, false)).toBeNull();
     expect(root.get(SubA)).toBe(a);
     expect(root.get(SubB)).toBe(b);
     expect(root.get(SubC)).toBe(c);
@@ -1241,7 +1241,7 @@ describe('root global', () => {
     ctx.pop();
   });
 
-  it('will not apply global eviction to explicit add', () => {
+  it('will prefer an explicit add over a global', () => {
     class Base extends Model {}
     class SubA extends Base {
       static global = true;
