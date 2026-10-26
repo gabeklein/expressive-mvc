@@ -101,12 +101,20 @@ Write the class beside the existing component. Nothing renders it yet, so the ap
 
 ### 4b. Move effects
 
-For a `useEffect` that performs setup/teardown, move it into the `new()` hook:
+For a `useEffect` that opens a client resource - a timer, a listener, a socket - move it into `mount()`. It runs once when the owning component commits, never during server render, and its returned function runs on unmount:
+
+```tsx
+mount() {
+  const id = setInterval(() => this.poll(), 5000);
+  return () => clearInterval(id);
+}
+```
+
+Setup that accompanies the instance itself - a listener on its own state, an initial value computed from applied props - goes in `new()`, which runs once after activation wherever the instance is created, server included:
 
 ```tsx
 new() {
-  const id = setInterval(() => this.poll(), 5000);
-  return () => clearInterval(id);
+  return this.set('query', () => (this.page = 0));
 }
 ```
 
@@ -249,6 +257,8 @@ class UserForm extends Component {
 
 What changed is ownership, made explicit. The instance is the element - created when `<UserForm />` first renders, destroyed on unmount - instead of state cells scattered through a function's body. Every field is now an optional, typed prop (`<UserForm name={user.name} />`), extra props are declared on `render()`, and `this` is the write handle. A suspending field like an async `set()` gets a home too: the Component is its own Suspense boundary, showing its `fallback` while the instance - which lives outside the render - loads.
 
+The Component form is not shorter than the hook form. What it buys is that the class now provides itself, so when the view grows it splits into functions calling `UserForm.get()` - no context, no props to rewire.
+
 If the state turns out to be shared - a second view needs it - keep it a `Model`, place it with `<Component for>`, and let each view read it with `.get()`. That's Step 5.
 
 <br />
@@ -378,9 +388,7 @@ The class version is shorter, testable without rendering, and shareable across c
 
 ## Step 7 - Bridge to existing React hooks
 
-Some hooks cannot be replaced - `useNavigate`, `useLocation`, `useTranslation`, `useQuery` from a library. There are two ways to bring them in.
-
-Preferred: read the hook in a small function component and pass what it returns as props. Props are fields, so the class receives the value on every render and never knows where it came from:
+Some hooks cannot be replaced - `useNavigate`, `useLocation`, `useTranslation`, `useQuery` from a library. Bridge them from outside: read the hook in a small function component and pass what it returns as props. Props are fields, so the class receives the value on every render and never knows where it came from:
 
 ```tsx
 class SearchPage extends Component {
@@ -405,7 +413,7 @@ function SearchRoute() {
 
 `SearchPage` stays testable as `SearchPage.new({ query: 'shoes' })`, with no router in sight.
 
-When the hook's result is a function the view calls - `navigate`, `t` - call the hook at the top of `render()`. A Component's `render()` runs as a real function component, so the usual rules of hooks apply there:
+The escape hatch, for a hook whose result the view itself calls - `navigate`, `t` - is calling it inside `render()`. A Component's `render()` runs as a real function component, so this works, but it reintroduces hook-order rules inside the class: keep such a call at the top of `render()`, and never let it spread to methods or getters.
 
 ```tsx
 class Checkout extends Component {
@@ -432,7 +440,7 @@ class Checkout extends Component {
 }
 ```
 
-Keep hook calls out of methods and getters - they run outside render. For one-shot setup, prefer `new()` or `mount()`.
+Keep hook calls out of methods and getters - they run outside render. For one-shot setup, use `mount()` for client resources and `new()` for setup that accompanies the instance itself.
 
 <br />
 
@@ -486,7 +494,7 @@ Inside React, `<Counter />` and `<Component for={Counter}>` handle activation fo
 
 ### Treating `render()` as a lifecycle
 
-`render()` runs on every render - a place to read state and call bridging hooks, not to start work. For setup/teardown, use `new()` (or `mount()` for anything touching `window`). For reactive side effects, use `this.get(effect)` inside `new()`.
+`render()` runs on every render - a place to read state and call bridging hooks, not to start work. Client resources - timers, listeners, anything touching `window` - go in `mount()`; setup that accompanies the instance itself goes in `new()`. For reactive side effects, use `this.get(effect)` inside `new()`.
 
 ### Expecting state to survive destructured variables
 

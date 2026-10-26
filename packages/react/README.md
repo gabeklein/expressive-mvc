@@ -26,8 +26,14 @@ import { Component } from '@expressive/mvc';
 
 class Counter extends Component {
   count = 0;
-  increment = () => this.count++;
-  decrement = () => this.count--;
+
+  increment() {
+    this.count++;
+  }
+
+  decrement() {
+    this.count--;
+  }
 
   render() {
     const { count, increment, decrement } = this;
@@ -72,9 +78,9 @@ PascalCase members become their own reactive React components scoped to the live
 abstract class Toggle extends Component {
   active = false;
 
-  toggle = () => {
+  toggle() {
     this.active = !this.active;
-  };
+  }
 
   Active() { return null; }       // subclasses fill these in
   Inactive() { return null; }
@@ -145,11 +151,12 @@ class Greeting extends Component {
 <Greeting name="React" loud />;
 ```
 
-Every Component also accepts three special props:
+Every Component also accepts four special props:
 
-- **`is`** - callback handed the instance once, at creation.
+- **`is`** - callback handed the instance once, at creation; an object it returns is assigned to the instance.
 - **`ref`** - standard React ref; set after mount, cleared on unmount.
 - **`fallback`** - Suspense/error UI, overriding the instance's own.
+- **`catch`** - error boundary for this element's children, called `(error, instance)`.
 
 ### Suspense
 
@@ -173,7 +180,7 @@ class Profile extends Component {
 Provide an instance once; descendants read it with `Model.get()` - no props, no selectors.
 
 ```tsx
-import { Component } from '@expressive/mvc';
+import { Model, Component } from '@expressive/mvc';
 
 class Session extends Model {
   user = 'guest';

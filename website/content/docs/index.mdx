@@ -56,7 +56,7 @@ Expressive takes a different approach: **put the logic back in one place**. Stat
 - **Computed values** - getters that update when the values they read change.
 - **Async + Suspense** - declarative data loading, integrated with Suspense out of the box.
 - **Context** - the class itself is the context key. Fully typed, no wiring.
-- **Lifecycle** - one `new()` hook for setup and teardown. No dependency arrays.
+- **Lifecycle** - `new()` for setup and teardown, `mount()` for client effects. No dependency arrays.
 - **Components** - the `Component` class lets state render itself, with built-in error boundaries and subcomponents.
 - **Testability** - `Model` instances are plain objects. Test them without a renderer, without `act()`, without a DOM.
 
@@ -83,7 +83,7 @@ Expressive takes a different approach: **put the logic back in one place**. Stat
   <Card
     title="API Reference"
     href="/docs/api/state"
-    description="Every method, instruction, and hook."
+    description="Every method, instruction, and type."
   />
 </Cards>
 

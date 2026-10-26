@@ -144,9 +144,9 @@ Handler object accepted by `Model.on()` - hooks lifecycle by stage.
 ```ts
 interface On<T> {
   type?(type: Model.Extends<T>): void;
-  pre?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
-  new?(this: T, self: T): void | (() => void);
-  bind?(this: T, key: string, fn: Function, self: T): void;
+  setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Assign<T>;
+  ready?(this: T, self: T): void | (() => void);
+  method?(this: T, key: string, fn: Function, self: T): void;
   catch?(
     this: T,
     error: unknown,
@@ -167,6 +167,17 @@ type Global<T> = boolean | ((self: T) => boolean);
 ```
 
 A bare literal (`static readonly global = true`) seals the choice for subclasses - widen a subclass's `static global` to `Model.Global` to allow a resolver or a later override. See [root context and globals](/docs/api/utilities#root-context-and-globals).
+
+### `Model.Ref<T>`
+
+The exotic value a [`ref()`](/docs/api/instructions#ref) field holds - callable to assign, with the value on `current`:
+
+```ts
+type Ref<T = any> = {
+  (next: T): void;
+  current: T | null;
+};
+```
 
 ### `Model.Assign<T>`
 
@@ -289,6 +300,22 @@ type ref.CustomProxy<T extends Model, R> =
 <br />
 
 ## Component
+
+### `Component.Node`
+
+The host's element type - `ReactNode` once `@expressive/react` is loaded. With no host loaded it is `any`, so an un-annotated `render()` in a host-agnostic package still type-checks as JSX.
+
+### `Component.ModelProps<T>`
+
+Every settable field of the class (getters and `readonly` excluded), each optional - the attributes a parent may assign on every render.
+
+### `Component.BaseProps<T>`
+
+The special props: `is` (`(instance: T) => Model.Assign<T> | void`, run once; a returned object is assigned), `fallback` (`Component.Node`, or `false` to defer to an ancestor boundary) and `catch` (`(error, instance) => Promise<void> | void`).
+
+### `Component.RenderProps<R>`
+
+The props a `render(props)` declaration adds - its parameter type when one is declared, else `{ children?: Component.Node }`.
 
 ### `Component.Props<T>`
 

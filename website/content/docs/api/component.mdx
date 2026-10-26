@@ -220,6 +220,15 @@ The bare `Component` class - not a subclass - with a `for` attribute provides on
 
 A provided class's `mount()` runs with the element's; an instance passed in is never mounted or destroyed by it. Changing `for` releases the previous item and provides the next. One instance per element - compose several as fields of a parent instance. See [Context](/docs/guides/context#providing-with-component-for).
 
+There is no `Consumer` or render-prop form. A function component below reads the instance with [`Model.get()`](/docs/api/state#modelget):
+
+```tsx
+const Themed = () => {
+  const { color } = Theme.get();
+  return <p style={{ color }}>Themed</p>;
+};
+```
+
 <br />
 
 ## TypeScript shape
@@ -246,4 +255,4 @@ Props are inferred automatically from state fields plus any `render(props)` decl
 
 - [Components guide](/docs/guides/components) - patterns, subclass composition, children, context.
 - [Model](/docs/api/state) - the base class.
-- [Hooks](/docs/api/hooks) - `Model.get` for function components.
+- [`Model.get()`](/docs/api/state#modelget) - reading a provided instance from a function component.

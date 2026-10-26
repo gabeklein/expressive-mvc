@@ -1,6 +1,6 @@
 # Expressive MVC - React
 
-`@expressive/react` connects Model to React with hooks, components, and context.
+`@expressive/react` is the React host: a `Component` renders as a React component, `<Component for>` provides a Model to the tree, and function components read it with `Model.get()`.
 
 - Core Model API (properties, reactivity, lifecycle, events): `../state/`.
 - Instructions and reactive helpers (`get`, `set`, `ref`, `map`, `has`, `def`): `../field/*.md`.
@@ -9,10 +9,9 @@
 ## Exports
 
 ```ts
-export { Model, Model as default }; // deprecated - import { Model } from @expressive/mvc
-export { Context, def, get, ref, set, pending }; // deprecated re-exports of @expressive/mvc
+export { Model, State, Model as default }; // deprecated - import { Model } from @expressive/mvc (State is the pre-rename alias)
+export { Component, Context, def, get, ref, set, pending }; // deprecated re-exports of @expressive/mvc
 export { has, map }; // deprecated - import from @expressive/mvc
-export { Component }; // deprecated re-export of @expressive/mvc
 ```
 
 ## Quick Start
@@ -305,7 +304,7 @@ Object.assign(Runtime, {
   useState,
   useRef,
   useSyncExternalStore, // optional: pre-commit revision validation
-  transition,           // optional: startTransition, for pending() work
+  startTransition,      // optional: for pending() work
   Suspense,
   idle,                 // true when certainly not rendering, undefined when it cannot tell
   // plus adapter-specific: dedupe, ErrorBoundary, ignore

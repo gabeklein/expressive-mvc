@@ -1,11 +1,11 @@
 ---
 name: expressive-mvc
-description: Class-based reactive state management for React (Expressive MVC). Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
 
-Class-based reactive state for React. Model classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
+A class-based state backbone - reactive MVC in plain classes, rendered by React or `@expressive/dom`. Model classes define reactive properties, computed values, async data, and context - all as plain class fields using instruction helpers.
 
 ## Packages
 
@@ -167,7 +167,7 @@ function Parent({ counter }: { counter: Counter }) {
 }
 ```
 
-Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. They build green when misused and crash at runtime. (Instance method get is not a hook.)
+Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. It builds green when misused and crashes at runtime. (Instance method get is not a hook.)
 
 State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 
@@ -347,9 +347,9 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 | Group | Pages |
 | --- | --- |
 | `featured` | `forms`, `kanban`, `spreadsheet`, `stopwatch`, `store`, `tictactoe`, `todomvc` |
-| `essentials` | `counter`, `computed`, `fetch`, `async` |
+| `essentials` | `counter`, `computed`, `fetch`, `async`, `async-effect`, `await-effect`, `private`, `unmanaged` |
 | `component` | `props`, `subcomponents`, `lifecycle`, `injection`, `headless`, `suspense`, `boundary`, `custom` |
-| `composition` | `nested`, `context`, `concerns`, `extension`, `globals` |
+| `composition` | `nested`, `context`, `concerns`, `globals` |
 | `instructions` | `set`, `set-factory`, `set-computed`, `get`, `get-downstream`, `ref`, `ref-multiple`, `map`, `map-insert`, `has`, `has-list`, `def` |
 | `router` | `overview`, `browser`, `params`, `query`, `guards`, `transitions`, `nav`, `wizard` |
 

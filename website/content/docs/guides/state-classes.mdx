@@ -187,20 +187,22 @@ An instance has four phases:
 
 ### The `new()` hook
 
-Override `new()` for one-time setup. Return a cleanup function to run on destruction:
+Override `new()` for one-time setup that accompanies the instance itself. Return a cleanup function to run on destruction:
 
 ```ts
-class Timer extends Model {
-  elapsed = 0;
+class Cart extends Model {
+  items: string[] = [];
+  updatedAt = 0;
 
   protected new() {
-    const id = setInterval(() => this.elapsed++, 1000);
-    return () => clearInterval(id);
+    return this.set('items', () => {
+      this.updatedAt = Date.now();
+    });
   }
 }
 ```
 
-`new()` runs once, after fields are initialized and constructor arguments are applied. Everything on `this` is live by then - assign, read, call methods, register effects. [Hot reload](/docs/getting-started#hot-reload-vite) doesn't re-run it either: an edit to `new()` reloads the page, while other edits patch live instances in place.
+`new()` runs once, after fields are initialized and constructor arguments are applied - wherever the instance is created, server render included. Everything on `this` is live by then - assign, read, call methods, register effects. [Hot reload](/docs/getting-started#hot-reload-vite) doesn't re-run it either: an edit to `new()` reloads the page, while other edits patch live instances in place.
 
 > **Timing:** the constructor body (and `Model.on` setup) runs *before* arguments merge, so it only ever sees field defaults. `new()` runs *after* - making it the right place to read a value passed via `.new({ ... })`, or props in adapters.
 
@@ -218,6 +220,23 @@ class Resource extends Model {
   }
 }
 ```
+
+### The `mount()` hook
+
+Client-only resources - timers, DOM, subscriptions to `window` - belong in `mount()`, not `new()`. It runs once when the owning component commits, and its returned function runs on unmount:
+
+```ts
+class Timer extends Model {
+  elapsed = 0;
+
+  mount() {
+    const id = setInterval(() => this.elapsed++, 1000);
+    return () => clearInterval(id);
+  }
+}
+```
+
+`mount()` never runs during server render - there is no unmount there, so a resource opened in `new()` would leak. It fires for a `Component` rendered as JSX, or for a class given to `<Component for>`; an instance merely read with `.get()` or placed as `{instance}` is not owned, so it does not. See [`mount()`](/docs/api/state#mount) for the reference.
 
 ### Class-level setup with `Model.on()`
 
