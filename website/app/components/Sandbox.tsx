@@ -12,13 +12,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import CodeLabel from './CodeLabel';
@@ -27,13 +21,114 @@ import { intellisense } from './sandbox/intellisense';
 
 declare const __SANDBOX_DEPS__: Record<string, string>;
 
-interface LayoutProps {
+type Files = Record<string, string | { code: string }>;
+
+interface SandboxProps {
+  name: string;
   label: string;
-  navigationOpen: boolean;
+  files: Record<string, string>;
+  navigationOpen?: boolean;
   onOpenNavigation?: () => void;
-  ts: {
-    ensure(): SandboxTs;
-    sync(files: Record<string, string>): void;
+}
+
+export default function Sandbox(props: SandboxProps) {
+  const { resolvedTheme } = useTheme();
+
+  return <Workspace {...props} dark={resolvedTheme === 'dark'} />;
+}
+
+class Workspace extends Component {
+  name = '';
+  label = '';
+  files: Files = {};
+  dark = false;
+  navigationOpen = false;
+  onOpenNavigation?: () => void = undefined;
+
+  // Owned here, not by the provider below: a theme toggle remounts the provider,
+  // and respawning the worker would leave IntelliSense cold.
+  ts = languageService(() => this.files);
+
+  new() {
+    return () => this.ts.dispose();
+  }
+
+  // Each example declares its own @expressive/* deps via its imports, pinned to
+  // the workspace at build time.
+  get dependencies() {
+    const deps: Record<string, string> = {};
+
+    for (const entry of Object.values(this.files)) {
+      const code = typeof entry === 'string' ? entry : entry.code;
+
+      for (const [pkg] of code.matchAll(/@expressive\/[a-z-]+/g)) {
+        const version = __SANDBOX_DEPS__[pkg];
+
+        if (!version)
+          throw new Error(`${pkg} is not a published package - a sandbox example cannot import it.`);
+
+        deps[pkg] = version;
+      }
+    }
+
+    return deps;
+  }
+
+  // The preview is a cross-origin iframe; bake the theme into the hidden entry,
+  // which global.css honors via :root[data-theme].
+  get themed(): Files {
+    const entry = this.files['/index.tsx'];
+    const line = `\ndocument.documentElement.dataset.theme = ${JSON.stringify(this.dark ? 'dark' : 'light')};`;
+
+    return {
+      ...this.files,
+      '/index.tsx':
+        typeof entry === 'string'
+          ? entry + line
+          : { ...entry, code: entry.code + line },
+    };
+  }
+
+  render() {
+    const { name, dark, themed, dependencies } = this;
+
+    return (
+      <SandpackProvider
+        key={`${name}:${dark ? 'dark' : 'light'}`}
+        theme={dark ? 'dark' : 'light'}
+        template="react-ts"
+        files={themed}
+        customSetup={{ dependencies }}
+        style={{ height: '100%' }}>
+        <Layout />
+      </SandpackProvider>
+    );
+  }
+}
+
+function languageService(source: () => Files) {
+  let client: SandboxTs | undefined;
+
+  return {
+    ensure() {
+      if (!client) {
+        const files: Record<string, string> = {};
+
+        for (const [path, entry] of Object.entries(source()))
+          files[path] = typeof entry === 'string' ? entry : entry.code;
+
+        client = createSandboxTs(files);
+      }
+
+      return client;
+    },
+    sync(next: Record<string, string>) {
+      client?.sync(next);
+    },
+    dispose() {
+      client?.dispose();
+      client = undefined;
+    },
   };
 }
 
@@ -42,10 +137,11 @@ class Layout extends Component {
   stacked = false;
   ratio = 50;
   dragging = false;
+  tabs: HTMLElement | null = null;
   media = new MediaQuery({ query: '(max-width: 639px)' });
 
-  // Hold Ctrl and two-finger swipe to nudge split
   layout = ref<HTMLDivElement>((el) => {
+    // Hold Ctrl and two-finger swipe to nudge split
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
@@ -54,9 +150,35 @@ class Layout extends Component {
       this.ratio = Math.min(80, Math.max(20, this.ratio - delta * 0.05));
     };
 
+    // Sandpack renders its tab strip late; track it as a portal target.
+    const findTabs = () => {
+      this.tabs = el.querySelector<HTMLElement>('.sp-tabs-scrollable-container');
+    };
+
+    const observer = new MutationObserver(findTabs);
+
+    findTabs();
+    observer.observe(el, { childList: true, subtree: true });
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+
+    return () => {
+      observer.disconnect();
+      el.removeEventListener('wheel', onWheel);
+    };
   });
+
+  get narrow() {
+    return this.media.matches;
+  }
+
+  // Below the breakpoint the panels can't fit side by side; show one at a time.
+  get showEditor() {
+    return !this.narrow || this.mode === 'code';
+  }
+
+  get showPreview() {
+    return !this.narrow || this.mode === 'preview';
+  }
 
   onSelect(is: typeof this.mode) {
     this.mode = is;
@@ -112,151 +234,26 @@ class Layout extends Component {
     event.preventDefault();
   }
 
-  render({
-    label,
-    navigationOpen,
-    onOpenNavigation,
-    ts,
-  } = {} as LayoutProps) {
+  render() {
     const {
-      onSelect,
-      mode,
-      stacked,
-      ratio,
-      grab,
-      adjust,
-      toggleSplit,
       layout,
-      dragging,
-      media: { matches: narrow },
+      mode,
+      narrow,
+      onSelect,
+      ratio,
+      showPreview,
+      stacked,
+      toggleSplit,
     } = this;
-    const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(
-      null
-    );
-    const [tabs, setTabs] = useState<HTMLElement | null>(null);
-    const connectLayout = useCallback(
-      (element: HTMLDivElement | null) => {
-        layout(element);
-        setLayoutElement(element);
-      },
-      [layout]
-    );
-    useEffect(() => {
-      if (!layoutElement) {
-        setTabs(null);
-        return;
-      }
-
-      const update = () =>
-        setTabs(
-          layoutElement.querySelector<HTMLElement>(
-            '.sp-tabs-scrollable-container'
-          )
-        );
-      const observer = new MutationObserver(update);
-
-      update();
-      observer.observe(layoutElement, { childList: true, subtree: true });
-      return () => observer.disconnect();
-    }, [layoutElement]);
-    const sandpack = useSandpack();
-    const refreshOnSave = {
-      key: 'Mod-s',
-      preventDefault: true,
-      run() {
-        sandpack.dispatch({ type: 'refresh' });
-        return true;
-      },
-    };
-
-    // The language service is owned by Sandbox (it outlives this remount); keep it
-    // fed as files change, without spawning it if the editor was never used.
-    const { files, activeFile } = sandpack.sandpack;
-    const activeFileRef = useRef(activeFile);
-    activeFileRef.current = activeFile;
-
-    useEffect(() => {
-      const out: Record<string, string> = {};
-      for (const [path, file] of Object.entries(files)) out[path] = file.code;
-      ts.sync(out);
-    }, [files, ts]);
-
-    const extensions = useMemo(
-      () => [intellisense(() => ts.ensure(), () => activeFileRef.current)],
-      [ts],
-    );
-
-    // Below the breakpoint the panels can't fit side by side; show one at a time
-    // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
-    const showEditor = !narrow || mode === 'code';
-    const showPreview = !narrow || mode === 'preview';
 
     return (
       <SandpackLayout
-        ref={connectLayout}
+        ref={layout}
         style={{ flexDirection: stacked ? 'column' : 'row' }}
         className="relative h-full [--sp-layout-height:100%]">
-        <SandpackCodeEditor
-          showLineNumbers
-          style={{
-            display: showEditor ? 'flex' : 'none',
-            flex: narrow ? '1' : `0 0 ${ratio}%`,
-          }}
-          extensions={extensions}
-          extensionsKeymap={[refreshOnSave]}
-        />
-        {onOpenNavigation &&
-          !navigationOpen &&
-          tabs &&
-          createPortal(
-            <button
-              aria-label={`Open examples navigation for ${label.replace(/`/g, '')}`}
-              className="order-first mr-1 flex max-w-56 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
-              onClick={onOpenNavigation}>
-              <PanelLeftOpen className="size-4 shrink-0" />
-              <span className="truncate">
-                <CodeLabel label={label} />
-              </span>
-            </button>,
-            tabs
-          )}
-        {!narrow && (
-          <div
-            role="separator"
-            aria-label="Resize code and preview panels"
-            aria-orientation={stacked ? 'horizontal' : 'vertical'}
-            aria-valuemin={20}
-            aria-valuemax={80}
-            aria-valuenow={Math.round(ratio)}
-            tabIndex={0}
-            className={`group relative z-10 shrink-0 touch-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-fd-ring ${
-              stacked
-                ? '-my-4 h-11 w-full cursor-row-resize'
-                : '-mx-4 h-full w-11 cursor-col-resize'
-            }`}
-            onPointerDown={grab}
-            onKeyDown={adjust}>
-            <span
-              className={`pointer-events-none absolute bg-fd-border transition-colors group-hover:bg-fd-primary group-focus-visible:bg-fd-primary ${
-                stacked
-                  ? 'inset-x-0 top-1/2 h-px -translate-y-1/2'
-                  : 'inset-y-0 left-1/2 w-px -translate-x-1/2'
-              }`}
-            />
-            <span
-              className={`pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 rounded-full border border-fd-border bg-fd-background shadow-sm transition-colors group-hover:border-fd-primary group-focus-visible:border-fd-primary ${
-                stacked ? 'h-1.5 w-12' : 'h-12 w-1.5'
-              }`}
-            />
-            {dragging && (
-              <div
-                className={`fixed inset-0 z-50 ${
-                  stacked ? 'cursor-row-resize' : 'cursor-col-resize'
-                }`}
-              />
-            )}
-          </div>
-        )}
+        <Editor />
+        <NavigationButton />
+        {!narrow && <Divider />}
         <SandpackPreview
           style={{ display: showPreview ? 'flex' : 'none', flex: '1 1 0%' }}
         />
@@ -273,111 +270,107 @@ class Layout extends Component {
   }
 }
 
-export default function Sandbox({
-  name,
-  label,
-  files,
-  navigationOpen = false,
-  onOpenNavigation,
-}: {
-  name: string;
-  label: string;
-  files: Record<string, string>;
-  navigationOpen?: boolean;
-  onOpenNavigation?: () => void;
-}) {
-  const { resolvedTheme } = useTheme();
-  const dark = resolvedTheme === 'dark';
+function Editor() {
+  const { ts } = Workspace.get();
+  const { narrow, ratio, showEditor } = Layout.get();
+  const sandpack = useSandpack();
+  const { files, activeFile } = sandpack.sandpack;
+  const activeFileRef = useRef(activeFile);
 
-  // Each example declares its own @expressive/* deps via its imports - scan
-  // the source so router (or any future package) resolves without a hardcoded
-  // list. Versions are pinned to the workspace at build time.
-  const dependencies = useMemo(() => {
-    const deps: Record<string, string> = {};
+  activeFileRef.current = activeFile;
 
-    for (const entry of Object.values(files) as (string | { code: string })[]) {
-      const code = typeof entry === 'string' ? entry : entry.code;
-      for (const [pkg] of code.matchAll(/@expressive\/[a-z-]+/g)) {
-        const version = __SANDBOX_DEPS__[pkg];
+  useEffect(() => {
+    const out: Record<string, string> = {};
+    for (const [path, file] of Object.entries(files)) out[path] = file.code;
+    ts.sync(out);
+  }, [files, ts]);
 
-        if (!version)
-          throw new Error(`${pkg} is not a published package - a sandbox example cannot import it.`);
+  const extensions = useMemo(
+    () => [intellisense(() => ts.ensure(), () => activeFileRef.current)],
+    [ts],
+  );
 
-        deps[pkg] = version;
-      }
-    }
-
-    return deps;
-  }, [files]);
-
-  // The provider below is keyed on theme, so a toggle remounts it. The language
-  // service lives out here instead, where it survives that - spawning the worker
-  // and re-acquiring @types on every toggle would leave IntelliSense cold.
-  const filesRef = useRef(files);
-  filesRef.current = files;
-
-  const ts = useMemo(() => {
-    let client: SandboxTs | undefined;
-
-    return {
-      ensure() {
-        if (!client) {
-          const source: Record<string, string> = {};
-
-          for (const [path, entry] of Object.entries(filesRef.current) as [
-            string,
-            string | { code: string },
-          ][])
-            source[path] = typeof entry === 'string' ? entry : entry.code;
-
-          client = createSandboxTs(source);
-        }
-
-        return client;
-      },
-      sync(next: Record<string, string>) {
-        client?.sync(next);
-      },
-      dispose() {
-        client?.dispose();
-        client = undefined;
-      },
-    };
-  }, []);
-
-  useEffect(() => () => ts.dispose(), [ts]);
-
-  // The preview is a cross-origin Sandpack iframe, so we can't set its theme
-  // from here - bake it into the hidden entry, which global.css honors via
-  // :root[data-theme]. Keyed into the provider so a toggle re-applies it.
-  const themed = useMemo(() => {
-    const entry = files['/index.tsx'] as string | { code: string };
-    const line = `\ndocument.documentElement.dataset.theme = ${JSON.stringify(dark ? 'dark' : 'light')};`;
-
-    return {
-      ...files,
-      '/index.tsx':
-        typeof entry === 'string'
-          ? entry + line
-          : { ...entry, code: entry.code + line },
-    };
-  }, [files, dark]);
+  const refreshOnSave = {
+    key: 'Mod-s',
+    preventDefault: true,
+    run() {
+      sandpack.dispatch({ type: 'refresh' });
+      return true;
+    },
+  };
 
   return (
-    <SandpackProvider
-      key={`${name}:${dark ? 'dark' : 'light'}`}
-      theme={dark ? 'dark' : 'light'}
-      template="react-ts"
-      files={themed}
-      customSetup={{ dependencies }}
-      style={{ height: '100%' }}>
-      <Layout
-        label={label}
-        navigationOpen={navigationOpen}
-        onOpenNavigation={onOpenNavigation}
-        ts={ts}
+    <SandpackCodeEditor
+      showLineNumbers
+      style={{
+        display: showEditor ? 'flex' : 'none',
+        flex: narrow ? '1' : `0 0 ${ratio}%`,
+      }}
+      extensions={extensions}
+      extensionsKeymap={[refreshOnSave]}
+    />
+  );
+}
+
+function NavigationButton() {
+  const { label, navigationOpen, onOpenNavigation } = Workspace.get();
+  const { tabs } = Layout.get();
+
+  if (!onOpenNavigation || navigationOpen || !tabs) return null;
+
+  return createPortal(
+    <button
+      aria-label={`Open examples navigation for ${label.replace(/`/g, '')}`}
+      className="order-first mr-1 flex max-w-56 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
+      onClick={onOpenNavigation}>
+      <PanelLeftOpen className="size-4 shrink-0" />
+      <span className="truncate">
+        <CodeLabel label={label} />
+      </span>
+    </button>,
+    tabs
+  );
+}
+
+function Divider() {
+  const { adjust, dragging, grab, ratio, stacked } = Layout.get();
+
+  return (
+    <div
+      role="separator"
+      aria-label="Resize code and preview panels"
+      aria-orientation={stacked ? 'horizontal' : 'vertical'}
+      aria-valuemin={20}
+      aria-valuemax={80}
+      aria-valuenow={Math.round(ratio)}
+      tabIndex={0}
+      className={`group relative z-10 shrink-0 touch-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-fd-ring ${
+        stacked
+          ? '-my-4 h-11 w-full cursor-row-resize'
+          : '-mx-4 h-full w-11 cursor-col-resize'
+      }`}
+      onPointerDown={grab}
+      onKeyDown={adjust}>
+      <span
+        className={`pointer-events-none absolute bg-fd-border transition-colors group-hover:bg-fd-primary group-focus-visible:bg-fd-primary ${
+          stacked
+            ? 'inset-x-0 top-1/2 h-px -translate-y-1/2'
+            : 'inset-y-0 left-1/2 w-px -translate-x-1/2'
+        }`}
       />
-    </SandpackProvider>
+      <span
+        className={`pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 rounded-full border border-fd-border bg-fd-background shadow-sm transition-colors group-hover:border-fd-primary group-focus-visible:border-fd-primary ${
+          stacked ? 'h-1.5 w-12' : 'h-12 w-1.5'
+        }`}
+      />
+      {dragging && (
+        <div
+          className={`fixed inset-0 z-50 ${
+            stacked ? 'cursor-row-resize' : 'cursor-col-resize'
+          }`}
+        />
+      )}
+    </div>
   );
 }
 
