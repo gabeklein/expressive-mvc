@@ -11,7 +11,7 @@ Every library makes a single counter short, so a lone widget proves little. The 
 
 ## One feature, two views
 
-A player owns a track list, a position and a play state. `Title` shows the current track; `Controls` toggles and skips. Pausing should not re-render `Title`. Flip through:
+A player owns a track and a play state. `Title` shows the track; `Toggle` plays and pauses. Pausing should not re-render `Title`. Flip through:
 
 <Compare labels={['Expressive', 'Hooks', 'Zustand', 'Jotai', 'Redux', 'MobX']}>
 
@@ -19,69 +19,44 @@ A player owns a track list, a position and a play state. `Title` shows the curre
 import { Component } from '@expressive/mvc';
 
 class Player extends Component {
-  tracks = ['Intro', 'Verse', 'Outro'];
-  index = 0;
+  track = 'Intro';
   playing = false;
-
-  get current() {
-    return this.tracks[this.index];
-  }
 
   toggle() {
     this.playing = !this.playing;
-  }
-
-  next() {
-    this.index = (this.index + 1) % this.tracks.length;
   }
 
   render() {
     return (
       <>
         <Title />
-        <Controls />
+        <Toggle />
       </>
     );
   }
 }
 
 function Title() {
-  const { current } = Player.get();
+  const { track } = Player.get();
 
-  return <h2>{current}</h2>;
+  return <h2>{track}</h2>;
 }
 
-function Controls() {
-  const { playing, toggle, next } = Player.get();
+function Toggle() {
+  const { playing, toggle } = Player.get();
 
-  return (
-    <>
-      <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>
-      <button onClick={next}>Next</button>
-    </>
-  );
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 }
 ```
 
 ```tsx
 import { createContext, useContext, useState } from 'react';
 
-const tracks = ['Intro', 'Verse', 'Outro'];
-
-function usePlayerState() {
-  const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
-
-  return {
-    current: tracks[index],
-    playing,
-    toggle: () => setPlaying(p => !p),
-    next: () => setIndex(i => (i + 1) % tracks.length),
-  };
-}
-
-const PlayerContext =
-  createContext<ReturnType<typeof usePlayerState> | null>(null);
+const PlayerContext = createContext<{
+  track: string;
+  playing: boolean;
+  toggle: () => void;
+} | null>(null);
 
 function usePlayer() {
   const player = useContext(PlayerContext);
@@ -93,55 +68,42 @@ function usePlayer() {
 }
 
 function Player() {
-  const player = usePlayerState();
+  const [playing, setPlaying] = useState(false);
+  const toggle = () => setPlaying(p => !p);
 
   return (
-    <PlayerContext.Provider value={player}>
+    <PlayerContext.Provider value={{ track: 'Intro', playing, toggle }}>
       <Title />
-      <Controls />
+      <Toggle />
     </PlayerContext.Provider>
   );
 }
 
 function Title() {
-  const { current } = usePlayer();
+  const { track } = usePlayer();
 
-  return <h2>{current}</h2>;
+  return <h2>{track}</h2>;
 }
 
-function Controls() {
-  const { playing, toggle, next } = usePlayer();
+function Toggle() {
+  const { playing, toggle } = usePlayer();
 
-  return (
-    <>
-      <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>
-      <button onClick={next}>Next</button>
-    </>
-  );
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 }
 
-// every consumer re-renders on any change -
-// splitting contexts or memoizing is on you
+// every consumer re-renders on any change
 ```
 
 ```tsx
 import { createContext, useContext, useState } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 
-type PlayerState = {
-  tracks: string[];
-  index: number;
-  playing: boolean;
-  toggle(): void;
-  next(): void;
-};
+type PlayerState = { track: string; playing: boolean; toggle(): void };
 
 const makePlayer = () => createStore<PlayerState>(set => ({
-  tracks: ['Intro', 'Verse', 'Outro'],
-  index: 0,
+  track: 'Intro',
   playing: false,
   toggle: () => set(s => ({ playing: !s.playing })),
-  next: () => set(s => ({ index: (s.index + 1) % s.tracks.length })),
 }));
 
 const PlayerContext = createContext<StoreApi<PlayerState> | null>(null);
@@ -161,46 +123,31 @@ function Player() {
   return (
     <PlayerContext.Provider value={store}>
       <Title />
-      <Controls />
+      <Toggle />
     </PlayerContext.Provider>
   );
 }
 
 function Title() {
-  const current = usePlayer(s => s.tracks[s.index]);
+  const track = usePlayer(s => s.track);
 
-  return <h2>{current}</h2>;
+  return <h2>{track}</h2>;
 }
 
-function Controls() {
+function Toggle() {
   const playing = usePlayer(s => s.playing);
   const toggle = usePlayer(s => s.toggle);
-  const next = usePlayer(s => s.next);
 
-  return (
-    <>
-      <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>
-      <button onClick={next}>Next</button>
-    </>
-  );
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 }
 ```
 
 ```tsx
-import { atom, createStore, Provider, useAtomValue, useSetAtom } from 'jotai';
+import { atom, createStore, Provider, useAtom, useAtomValue } from 'jotai';
 import { useState } from 'react';
 
-const tracksAtom = atom(['Intro', 'Verse', 'Outro']);
-const indexAtom = atom(0);
+const trackAtom = atom('Intro');
 const playingAtom = atom(false);
-
-const currentAtom = atom(get => get(tracksAtom)[get(indexAtom)]);
-
-const toggleAtom = atom(null, (get, set) =>
-  set(playingAtom, !get(playingAtom)));
-
-const nextAtom = atom(null, (get, set) =>
-  set(indexAtom, (get(indexAtom) + 1) % get(tracksAtom).length));
 
 function Player() {
   const [store] = useState(() => createStore());
@@ -208,28 +155,22 @@ function Player() {
   return (
     <Provider store={store}>
       <Title />
-      <Controls />
+      <Toggle />
     </Provider>
   );
 }
 
 function Title() {
-  const current = useAtomValue(currentAtom);
+  const track = useAtomValue(trackAtom);
 
-  return <h2>{current}</h2>;
+  return <h2>{track}</h2>;
 }
 
-function Controls() {
-  const playing = useAtomValue(playingAtom);
-  const toggle = useSetAtom(toggleAtom);
-  const next = useSetAtom(nextAtom);
+function Toggle() {
+  const [playing, setPlaying] = useAtom(playingAtom);
+  const toggle = () => setPlaying(p => !p);
 
-  return (
-    <>
-      <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>
-      <button onClick={next}>Next</button>
-    </>
-  );
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 }
 
 // the Provider scopes every atom in the subtree
@@ -243,14 +184,9 @@ import { useState } from 'react';
 
 const player = createSlice({
   name: 'player',
-  initialState: {
-    tracks: ['Intro', 'Verse', 'Outro'],
-    index: 0,
-    playing: false,
-  },
+  initialState: { track: 'Intro', playing: false },
   reducers: {
     toggle: (s) => { s.playing = !s.playing; },
-    next: (s) => { s.index = (s.index + 1) % s.tracks.length; },
   },
 });
 
@@ -263,29 +199,23 @@ function Player() {
   return (
     <Provider store={store}>
       <Title />
-      <Controls />
+      <Toggle />
     </Provider>
   );
 }
 
 function Title() {
-  const current = useSelector((s: State) => s.tracks[s.index]);
+  const track = useSelector((s: State) => s.track);
 
-  return <h2>{current}</h2>;
+  return <h2>{track}</h2>;
 }
 
-function Controls() {
+function Toggle() {
   const playing = useSelector((s: State) => s.playing);
   const dispatch = useDispatch();
   const toggle = () => dispatch(player.actions.toggle());
-  const next = () => dispatch(player.actions.next());
 
-  return (
-    <>
-      <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>
-      <button onClick={next}>Next</button>
-    </>
-  );
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 }
 ```
 
@@ -295,24 +225,15 @@ import { observer } from 'mobx-react-lite';
 import { createContext, useContext, useState } from 'react';
 
 class PlayerState {
-  tracks = ['Intro', 'Verse', 'Outro'];
-  index = 0;
+  track = 'Intro';
   playing = false;
 
   constructor() {
     makeAutoObservable(this, {}, { autoBind: true });
   }
 
-  get current() {
-    return this.tracks[this.index];
-  }
-
   toggle() {
     this.playing = !this.playing;
-  }
-
-  next() {
-    this.index = (this.index + 1) % this.tracks.length;
   }
 }
 
@@ -333,34 +254,29 @@ function Player() {
   return (
     <PlayerContext.Provider value={state}>
       <Title />
-      <Controls />
+      <Toggle />
     </PlayerContext.Provider>
   );
 }
 
 const Title = observer(() => {
-  const { current } = usePlayer();
+  const { track } = usePlayer();
 
-  return <h2>{current}</h2>;
+  return <h2>{track}</h2>;
 });
 
-const Controls = observer(() => {
-  const { playing, toggle, next } = usePlayer();
+const Toggle = observer(() => {
+  const { playing, toggle } = usePlayer();
 
-  return (
-    <>
-      <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>
-      <button onClick={next}>Next</button>
-    </>
-  );
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 });
 ```
 
 </Compare>
 
-Every other tab builds the same three things by hand: a per-instance store, a context to carry it, and a typed hook to read it back - then each view declares what it reads, through a selector or a wrapper. In Expressive the Component is all three. It owns the instance, provides itself to whatever it renders, and `Player.get()` is the typed hook. Destructuring is the selector: `Title` re-renders when `current` changes, not when `playing` does.
+Every other tab builds the same three things by hand: a per-instance store, a context to carry it, and a typed hook to read it back - then each view declares what it reads, through a selector or a wrapper. In Expressive the Component is all three. It owns the instance, provides itself to whatever it renders, and `Player.get()` is the typed hook. Destructuring is the selector: `Title` re-renders when `track` changes, not when `playing` does.
 
-Growing the feature changes nothing about the owner - another view is another function calling `Player.get()`. And the fields are typed props: `<Player tracks={album.tracks} />`.
+Growing the feature changes nothing about the owner - another view is another function calling `Player.get()`. And the fields are typed props: `<Player track="Verse" />`.
 
 <br />
 
