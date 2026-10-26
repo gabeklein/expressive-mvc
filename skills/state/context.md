@@ -4,7 +4,7 @@ Hierarchical registry through which Model instances find each other. Every activ
 
 ## Home Context
 
-Recorded per instance (internal `LOOKUP` map); first explicit claim wins, and no later context can transfer it.
+An owned instance's home is its owner's - lookups follow ownership, not where it was provided. Otherwise recorded per instance; first explicit claim wins, and no later context can transfer it.
 
 | Activation path                              | Home becomes     |
 | -------------------------------------------- | ---------------- |
@@ -47,7 +47,9 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 - Recursive: grandchildren inherit through their immediate parent.
 - Siblings resolve each other through their parent regardless of field order, so two parents never cross-resolve.
-- Reassigning a child field destroys the old child if owned (`new Child()` syntax) and adds the replacement to the same context; externally-assigned children survive replacement.
+- `has` rows and `map` values join like child fields - with their owner, held until it has a context, never root.
+- Reassigning a child field destroys the old child if owned (`new Child()` syntax) and adds the replacement to the same context.
+- Assigning an instance owned elsewhere is a reference - it is not added to the parent's context. To provide one, wrap with `<Component for={instance}>` or `ctx.add(instance, true)`.
 
 ## Root Context
 
@@ -99,9 +101,9 @@ Context.root.get(Sub); // a - first instance unaffected
 
 Destroy the existing one first (`a.set(null)`) and a fresh instance registers cleanly - including a subclass replacing its base. To hold several deliberately, register them explicitly ([Explicit Bypass](#explicit-bypass)).
 
-### Subtype Eviction
+### Subtype Ambiguity
 
-Sibling subtypes are different types - they don't throw; they collide only at their shared supertype, where both evict. Subtype lookups stay unambiguous:
+Sibling subtypes are different types - they don't throw; they collide only at their shared supertype, which becomes ambiguous. Subtype lookups stay unambiguous:
 
 ```ts
 // Base is a widened global; each subtype re-declares (required on extend)
@@ -111,19 +113,19 @@ class SubB extends Base { static readonly global = true; }
 const a = SubA.new();
 const b = SubB.new();
 
-Context.root.get(Base, false); // undefined - contested at Base
+Context.root.get(Base, false); // null - ambiguous at Base
 Context.root.get(SubA);        // a
 Context.root.get(SubB);        // b
 ```
 
 ### Explicit Bypass
 
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component for>`) bypasses collision handling - no throw, no eviction. Global and explicit entries coexist; explicit wins on lookup.
+Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component for>`) bypasses collision handling - no throw. Global and explicit entries coexist; explicit wins on lookup.
 
 ```ts
 const a = Sub.new();          // global, in root
 const b = new Sub();
-Context.root.add(b, true);    // explicit, no eviction
+Context.root.add(b, true);    // explicit
 
 Context.root.get(Sub); // b - explicit wins
 ```
@@ -158,7 +160,7 @@ ctx.get(Parent).foo = undefined;
 ctx.get(Foo); // Bar instance - heals
 ```
 
-Unlike root - where shadowing a global throws and sibling contests evict permanently - scoped contexts model "candidates available here," root models "the global instance."
+Unlike root - where shadowing a global throws and sibling contests are ambiguous - scoped contexts model "candidates available here," root models "the global instance."
 
 ## Providing with Component
 
