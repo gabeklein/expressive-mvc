@@ -19,8 +19,8 @@ const ID = new WeakMap<Model, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
-/** Ready callbacks of instances not yet settled - opened at activation, closed once setup resolves. */
-const WAITING = new WeakMap<Model, Set<() => void>>();
+/** Ready subscribers while an instance settles; once settled, its outcome - `[]` ready, `[reason]` failed. */
+const WAITING = new WeakMap<Model, Set<(...failed: unknown[]) => void> | unknown[]>();
 
 /** Models under construction - added on `new`, removed when activated or released.
  *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
@@ -322,22 +322,31 @@ abstract class Model {
   ): Model.Value<this, T>;
 
   /**
-   * Check a lifecycle moment - `true` whether state is ready, `null` whether it is destroyed.
+   * Check a lifecycle moment - `true` whether ready, `null` whether destroyed.
    *
    * @param status - `true` for ready, `null` for destroyed.
    */
   get(status: true | null): boolean;
 
   /**
-   * Callback at a lifecycle moment - `true` once ready (activated, with any async setup
-   * such as an async `new()` resolved; at once if already, never if setup fails), or
-   * `null` when destroyed.
+   * Callback once ready - activated, with any async setup such as an async `new()`
+   * resolved. Called at once if already ready. If setup fails, or the instance is
+   * destroyed first, called with the error instead.
    *
-   * @param status - `true` for ready, `null` for destroy.
-   * @param callback - Function to call.
+   * @param status - `true` for ready.
+   * @param callback - Function to call; may return a cleanup to run on destroy.
    * @returns Function to cancel listener.
    */
-  get(status: true | null, callback: () => void): () => void;
+  get(status: true, callback: (error?: unknown) => void | (() => void)): () => void;
+
+  /**
+   * Callback when state is destroyed.
+   *
+   * @param status - `null` for destroy.
+   * @param callback - Function to call when state is destroyed.
+   * @returns Function to cancel listener.
+   */
+  get(status: null, callback: () => void): () => void;
 
   /** Fetch Model of type from context. Throws if not found. */
   get<T extends Model>(type: Model.Type<T>, required?: true): T;
@@ -407,7 +416,7 @@ abstract class Model {
     if (Model.is(arg1))
       return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
-    if (arg1 === true) return arg2 ? ready(self, arg2 as Function) : !PENDING.has(self) && !WAITING.has(self);
+    if (arg1 === true) return arg2 ? ready(self, arg2 as Function) : isReady(self);
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1 as string, arg2);
@@ -616,18 +625,27 @@ function callback<T extends Model>(
   return listener(self, (key) => cb.call(self, key, self), select);
 }
 
-function ready(state: Model, cb: Function) {
-  const run = () => capture((release) => {
-    listener(state, () => release(null), null);
+function isReady(state: Model) {
+  const outcome = WAITING.get(state);
+  return Array.isArray(outcome) && !outcome.length;
+}
 
-    const out = cb.call(state, state);
-    if (typeof out == 'function') listener(state, out, null);
-  });
+function ready(state: Model, cb: Function) {
+  const run = (...failed: unknown[]) => {
+    if (failed.length) return cb.call(state, failed[0]);
+
+    capture((release) => {
+      listener(state, () => release(null), null);
+
+      const out = cb.call(state);
+      if (typeof out == 'function') listener(state, out, null);
+    });
+  };
 
   let waiting = WAITING.get(state);
 
-  if (!waiting && !PENDING.has(state)) {
-    run();
+  if (Array.isArray(waiting)) {
+    run(...waiting);
     return () => false;
   }
 
@@ -638,14 +656,18 @@ function ready(state: Model, cb: Function) {
   return () => callbacks.delete(run);
 }
 
-function settle(state: Model) {
-  const waiting = WAITING.get(state)!;
+function settle(state: Model, failed?: () => unknown) {
+  const waiting = WAITING.get(state);
 
-  WAITING.delete(state);
+  if (!(waiting instanceof Set)) return;
+
+  const outcome = failed ? [failed()] : [];
+
+  WAITING.set(state, outcome);
 
   for (const run of waiting) {
     waiting.delete(run);
-    run();
+    run(...outcome);
   }
 }
 
@@ -722,10 +744,13 @@ function init(state: Model, ...args: Model.Args) {
     const waits: Promise<unknown>[] = [];
     const queue = [...before, observe, ...args, () => {
       if (!waits.length) settle(state);
-      else Promise.all(waits).then(() => observer(state) !== null && settle(state), () => {});
+      else Promise.all(waits).then(() => settle(state), (err) => settle(state, () => err));
     }, register];
 
-    for (const handler of after) ready(state, handler);
+    for (const handler of after)
+      ready(state, (...failed: unknown[]) => failed.length ? undefined : handler.call(state, state));
+
+    listener(state, () => settle(state, () => new Error(`${state} was destroyed before ready.`)), null);
 
     capture((release) => {
       listener(state, () => release(null), null);

@@ -93,12 +93,12 @@ get(status: true | null): boolean
 get(status: true | null, callback: () => void): () => void
 ```
 
-`true` is ready - activated, with any async setup (an `async new()`, a setup step returning a promise) resolved. `null` is destroyed. Without a callback, whether it has happened; with one, runs `callback` when it does - at once if ready already, never if setup rejects. Returns unsubscribe.
+`true` is ready - activated, with any async setup (an `async new()`, a setup step returning a promise) resolved. `null` is destroyed. Without a callback, whether it has happened; with one, runs `callback` when it does - at once if already. A ready callback receives the error instead if setup rejects or the instance is destroyed first, so a waiter never hangs. Returns unsubscribe.
 
 ```ts
 if (state.get(null)) console.log('state is dead');
 const stop = state.get(null, () => console.log('destroyed'));
-seat.get(true, () => admit(request));
+seat.get(true, (error) => error ? reject(error) : admit(request));
 ```
 
 ### Fetch from context

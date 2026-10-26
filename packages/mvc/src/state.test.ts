@@ -3079,6 +3079,21 @@ describe('activation', () => {
       );
     });
 
+    it('will not read a state which never activated as ready', async () => {
+      class Test extends Model {}
+
+      const state = new Test();
+      const ready = vi.fn();
+
+      state.get(true, ready);
+
+      await flushMicrotasks();
+
+      expect(state.get(true)).toBe(false);
+      expect(ready).not.toBeCalled();
+      expect(warn).toBeCalledTimes(1);
+    });
+
     it('will still warn for unrelated state constructed alongside', async () => {
       class Child extends Model {}
       class Other extends Model {}
@@ -3573,11 +3588,9 @@ describe('on setup / ready stages (static)', () => {
     expect(ready).toBeCalledTimes(1);
   });
 
-  it('will call get(true) once an async new() resolves, never if it rejects', async () => {
+  it('will call get(true) once an async new() resolves', async () => {
     const done = mockPromise();
     const ready = vi.fn();
-    const failed = vi.fn();
-    const handler = vi.fn();
 
     class Test extends Model {
       protected async new() {
@@ -3585,19 +3598,10 @@ describe('on setup / ready stages (static)', () => {
       }
     }
 
-    class Fails extends Model {
-      protected async new() {
-        throw new Error('failed');
-      }
-    }
-
-    Fails.on({ catch: handler });
-
     const test = Test.new();
 
     test.get(true, ready);
     test.get(true, () => ready());
-    Fails.new().get(true, failed);
 
     await flushMicrotasks();
     expect(ready).not.toBeCalled();
@@ -3606,8 +3610,63 @@ describe('on setup / ready stages (static)', () => {
     done.resolve();
     await flushMicrotasks();
     expect(ready).toBeCalledTimes(2);
+    expect(ready).toBeCalledWith();
     expect(test.get(true)).toBe(true);
-    expect(failed).not.toBeCalled();
+  });
+
+  it('will call get(true) with the error if an async new() rejects', async () => {
+    const failed = vi.fn();
+    const late = vi.fn();
+    const handler = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        throw new Error('failed');
+      }
+    }
+
+    Test.on({ catch: handler });
+
+    const test = Test.new();
+
+    test.get(true, failed);
+
+    await flushMicrotasks();
+    expect(failed).toBeCalledWith(expect.objectContaining({ message: 'failed' }));
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+    expect(test.get(true)).toBe(false);
+
+    expect(test.get(true, late)()).toBe(false);
+    expect(late).toBeCalledWith(expect.objectContaining({ message: 'failed' }));
+  });
+
+  it('will call get(true) with an error if destroyed before ready', async () => {
+    const done = mockPromise();
+    const failed = vi.fn();
+    const late = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+
+    test.get(true, failed);
+    test.set(null);
+
+    expect(failed).toBeCalledWith(
+      expect.objectContaining({ message: `${test} was destroyed before ready.` })
+    );
+
+    test.get(true, late);
+    expect(late).toBeCalledWith(expect.objectContaining({ message: `${test} was destroyed before ready.` }));
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(failed).toBeCalledTimes(1);
+    expect(test.get(true)).toBe(false);
   });
 
   it('will not call get(true) once cancelled', async () => {

@@ -167,10 +167,10 @@ const stop = state.get((current, changed) => {
 state.get(null); // true if destroyed
 state.get(null, () => console.log('destroyed')); // register callback
 state.get(true); // true if ready
-state.get(true, () => console.log('ready')); // register callback
+state.get(true, (error) => console.log(error ? 'failed' : 'ready')); // register callback
 ```
 
-Ready means activated, with any async setup - an `async new()`, a setup step returning a promise - resolved. A ready callback runs at once if the instance already is, never if setup rejects. Both return unsubscribe.
+Ready means activated, with any async setup - an `async new()`, a setup step returning a promise - resolved. A ready callback runs at once if the instance already is. If setup rejects, or the instance is destroyed before it settles, the callback receives the error instead. Both return unsubscribe.
 
 ### `get(Type, required?)` - context lookup
 
