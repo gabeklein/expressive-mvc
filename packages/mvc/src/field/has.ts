@@ -2,6 +2,7 @@ import { Context } from '../context';
 import { event, listener, touch } from '../observable';
 import { Model, parent } from '../state';
 import { def } from './def';
+import { renderable } from '../jsx';
 
 const LENGTH = Symbol('length');
 const SHAPE = Symbol('shape');
@@ -393,5 +394,8 @@ function filterOf<T>(self: Iterable<T>, fn: Predicate<T>): T[] {
 }
 
 Object.assign(has, { List, Pool });
+
+renderable(List.prototype, (self: List<unknown>) => [...self]);
+renderable(Pool.prototype, (self: Pool<unknown>) => [...self]);
 
 export { has };

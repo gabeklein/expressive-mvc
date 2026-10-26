@@ -1,4 +1,5 @@
 import { Component } from '@expressive/mvc';
+import { adopter } from '@expressive/mvc/jsx-runtime';
 import { Context } from './context';
 import { Runtime, useFactory, useWatch } from './runtime';
 import { createFrame } from './component';
@@ -69,4 +70,36 @@ function Element(this: Component){
   });
 
   return render();
+}
+
+/** Prototypes the core declared renderable - `has` lists and pools, `map`s. */
+const ADOPTED = new Set<object>();
+
+/** Whether `object` is an instance of an adopted prototype (a derived view is one too). */
+function adopted(object: object | null) {
+  for (let proto = Object.getPrototypeOf(object); proto; proto = Object.getPrototypeOf(proto))
+    if (ADOPTED.has(proto)) return true;
+
+  return false;
+}
+
+adopter((prototype, members) => {
+  ADOPTED.add(prototype);
+
+  Object.defineProperty(prototype, '$$typeof', {
+    configurable: true,
+    get() {
+      let self = this as object;
+
+      // A view derived from an instance (`Object.create(pool)`) renders the instance.
+      for (let proto = Object.getPrototypeOf(self); adopted(proto); proto = Object.getPrototypeOf(self))
+        self = proto;
+
+      return seam(self, {}, Members.bind(self, members), null);
+    }
+  });
+});
+
+function Members(this: object, members: (self: unknown) => unknown[]) {
+  return members(useWatch(this));
 }

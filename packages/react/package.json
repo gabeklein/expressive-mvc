@@ -32,8 +32,6 @@
     "./src/*.ts",
     "./dist/index.js",
     "./dist/adapter.js",
-    "./dist/has.js",
-    "./dist/map.js",
     "./dist/chunk-*.js"
   ],
   "main": "dist/index.js",

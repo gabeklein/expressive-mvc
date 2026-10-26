@@ -33,8 +33,21 @@ assert.equal(
   '<b>patched</b>'
 );
 
+// Collections render as elements through the core's renderable seam - which
+// a shaken bundle must keep, since the adapter imports neither `has` nor `map`.
+class Rows extends Component {
+  items = has(['a', 'b']);
+  entries = map([['k', 'v']]);
+
+  render() {
+    return createElement('ul', null, this.items, this.entries);
+  }
+}
+
+assert.equal(renderToStaticMarkup(createElement(Rows)), '<ul>abv</ul>');
+
 const { default: reactHot } = await import('@expressive/react/vite');
 
 assert.equal(reactHot().name, '@expressive/react:hot');
 
-console.log('react: hook render + Component render + vite ok');
+console.log('react: hook render + Component render + collections + vite ok');
