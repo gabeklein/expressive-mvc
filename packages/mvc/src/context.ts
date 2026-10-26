@@ -1,7 +1,8 @@
 import { listener } from "./observable";
-import { event, Model, uid } from "./state";
+import { event, Model, parent, uid } from "./state";
 
 const LOOKUP = new WeakMap<Model, Context>();
+const HOME = new WeakMap<Model, Context>();
 const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
 const HOST = new WeakMap<Context, Model>();
 const CLEANUP = new WeakMap<Context, Set<() => void>>();
@@ -28,7 +29,10 @@ class Context {
 
   /** Get the context for a Model. Adapters may override to provide framework context. */
   static get(state?: Model): Context {
-    return state && LOOKUP.get(state.is) || Context.root;
+    const self = state?.is;
+    const owner = self && parent(self);
+
+    return self && HOME.get(self) || (owner ? Context.get(owner) : Context.root);
   }
 
   public id = uid();
@@ -203,6 +207,7 @@ class Context {
     this.traverse((ctx) => queue(ctx, false));
 
     if (!LOOKUP.has(I)) LOOKUP.set(I, this);
+    if (!HOME.has(I) && !parent(I)) HOME.set(I, this);
 
     listener(I, () => {
       expects.forEach((f) => f());

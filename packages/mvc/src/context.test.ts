@@ -1309,7 +1309,7 @@ describe('lookup origin', () => {
     expect(parent.child.get(Peer)).toBe(context.get(Peer));
   });
 
-  it.fails('will look up from owner for a has row', () => {
+  it('will look up from owner for a has row', () => {
     const parent = Parent.new();
     const row = parent.rows.add();
     const context = Context.root.push(new Peer()).push(parent);
@@ -1320,7 +1320,7 @@ describe('lookup origin', () => {
     parent.set(null);
   });
 
-  it.fails('will look up from owner for a map value', () => {
+  it('will look up from owner for a map value', () => {
     const parent = Parent.new();
     const value = new Child();
 
@@ -1334,7 +1334,7 @@ describe('lookup origin', () => {
     parent.set(null);
   });
 
-  it.fails('will look up from owner for an assigned reference', () => {
+  it('will look up from owner for an assigned reference', () => {
     class Holder extends Model {
       ref?: Child = undefined;
     }
