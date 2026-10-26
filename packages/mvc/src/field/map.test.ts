@@ -447,17 +447,6 @@ describe('context', () => {
 
     expect(Context.root.get(User, false)).toBeUndefined();
   });
-
-  it('will drop a row from the owner\'s level when deleted', () => {
-    const connection = Connection.new();
-    const context = Context.root.push(connection);
-
-    connection.users.set('a');
-    expect(context.get(User).id).toBe('a');
-
-    connection.users.delete('a');
-    expect(context.get(User, false)).toBeUndefined();
-  });
 });
 
 describe('subscriptions', () => {

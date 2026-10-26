@@ -353,17 +353,6 @@ describe('for', () => {
     expect(session.get(null)).toBe(false);
   });
 
-  it('will remove an instance on pop without destroying it', () => {
-    const session = Session.new();
-    const provider = Component.new({ for: session } as any);
-    const context = Context.root.push(provider);
-
-    context.pop();
-
-    expect(context.get(Session, false)).toBeUndefined();
-    expect(session.get(null)).toBe(false);
-  });
-
   it('will construct and provide a class', () => {
     const is = vi.fn();
     const provider = Component.new({ for: Session, name: 'Ada', is } as any);

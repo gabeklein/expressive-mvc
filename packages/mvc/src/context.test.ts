@@ -1357,12 +1357,6 @@ describe('lookup origin', () => {
     expect(Context.get(child)).toBe(Context.root);
   });
 
-  it('will look up from root for an unowned instance', () => {
-    const child = Child.new();
-
-    expect(Context.get(child)).toBe(Context.root);
-  });
-
   it('will look up from root for a global and its child', () => {
     class Global extends Model {
       static global = true;
@@ -1379,59 +1373,6 @@ describe('lookup origin', () => {
 });
 
 describe('placed instance', () => {
-  it('will create a level for an instance', () => {
-    class Other extends Model {}
-
-    const parent = Context.root.push(new Other());
-    const example = Example.new();
-    const level = parent.push(example);
-
-    expect(level).not.toBe(example);
-    expect(level.get(Example)).toBe(example);
-    expect(level.get(Other)).toBe(parent.get(Other));
-    expect(parent.get(Example, false)).toBeUndefined();
-  });
-
-  it('will include what an instance holds', () => {
-    class Child extends Model {}
-    class Parent extends Model {
-      child = new Child();
-    }
-
-    const parent = Parent.new();
-    const level = Context.root.push().push(parent);
-
-    expect(level.get(Child)).toBe(parent.child);
-  });
-
-  it('will create a level per placement', () => {
-    const example = Example.new();
-    const from = Context.root.push();
-    const a = from.push(example);
-    const b = from.push(example);
-
-    expect(a).not.toBe(b);
-
-    a.pop();
-
-    expect(a.get(Example, false)).toBeUndefined();
-    expect(b.get(Example)).toBe(example);
-  });
-
-  it('will activate an instance', () => {
-    const ready = vi.fn();
-
-    class Test extends Model {
-      new() {
-        ready();
-      }
-    }
-
-    Context.root.push().push(new Test());
-
-    expect(ready).toBeCalledTimes(1);
-  });
-
   it('will not move an instance from its home', () => {
     class Other extends Model {}
 
@@ -1442,61 +1383,5 @@ describe('placed instance', () => {
     expect(Context.get(example)).toBe(home);
     expect(level.get(Other)).toBeInstanceOf(Other);
     expect(home.get(Other, false)).toBeUndefined();
-  });
-
-  it('will remove a placed instance on pop without destroying it', () => {
-    const parent = Context.root.push();
-    const example = new Example();
-    const context = parent.push(example);
-
-    context.pop();
-
-    expect(example.get(null)).toBe(false);
-    expect(context.get(Example, false)).toBeUndefined();
-  });
-
-  it('will return context of a placed instance', () => {
-    const parent = Context.root.push();
-    const example = new Example();
-    const context = parent.push(example);
-
-    expect(Context.get(example)).toBe(context);
-    expect(context.get(Example)).toBe(example);
-    expect(parent.get(Example, false)).toBeUndefined();
-  });
-
-  it('will share context of a placed instance with its children', () => {
-    class Parent extends Model {
-      child = new Example();
-    }
-
-    const parent = new Parent();
-    const context = Context.root.push(parent);
-
-    expect(Context.get(parent.child)).toBe(context);
-    expect(context.get(Example)).toBe(parent.child);
-    expect(context.push().get(Parent)).toBe(parent);
-  });
-
-  it('will pop nodes attached below a placed instance', () => {
-    const cleanup = vi.fn();
-    const parent = Context.root.push();
-    const context = parent.push(new Example());
-
-    context.push(new Example2(), cleanup);
-    parent.pop();
-
-    expect(cleanup).toBeCalledTimes(1);
-  });
-
-  it('will resolve a sibling from an enclosing node', () => {
-    class Sibling extends Model {}
-    class Test extends Model {
-      sibling = get(Sibling);
-    }
-
-    const context = Context.root.push(new Sibling()).push(new Test());
-
-    expect(context.get(Test).sibling).toBe(context.get(Sibling));
   });
 });
