@@ -49,4 +49,5 @@ Object.assign(Runtime, {
   ]
 });
 
-export {};
+// Type-only, so this entry's .d.ts stays linked to the adapter's augmentations.
+export type { Runtime } from '@expressive/react/adapter';

@@ -49,3 +49,7 @@ Object.assign(Runtime, {
 // from `@expressive/mvc`. These register `has` and `map` collections as renderable.
 import './has';
 import './map';
+
+// A type-only export, so this entry's .d.ts stays linked to the adapter's
+// `Model`/`Component` augmentations; the bundler drops a bare import.
+export type { Runtime } from './adapter';
