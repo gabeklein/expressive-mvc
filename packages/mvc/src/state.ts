@@ -331,13 +331,13 @@ abstract class Model {
   /**
    * Callback once ready - activated, with any async setup such as an async `new()`
    * resolved. Called at once if already ready. If setup fails, or the instance is
-   * destroyed first, called with the error instead.
+   * destroyed first, called with the reason instead.
    *
    * @param status - `true` for ready.
    * @param callback - Function to call; may return a cleanup to run on destroy.
    * @returns Function to cancel listener.
    */
-  get(status: true, callback: (error?: unknown) => void | (() => void)): () => void;
+  get(status: true, callback: (reason?: unknown) => void | (() => void)): () => void;
 
   /**
    * Callback when state is destroyed.
