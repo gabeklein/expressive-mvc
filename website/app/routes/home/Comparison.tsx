@@ -45,9 +45,9 @@ export function Comparison() {
 
 const ExprCode = code /*tsx*/`
   import React from 'react';
-  import { Model } from '@expressive/mvc';
+  import { Component } from '@expressive/mvc';
 
-  class FooBarBaz extends Model {
+  class FooBarBaz extends Component {
     foo = 0;
     bar = 'hello';
     baz = true;
@@ -55,16 +55,16 @@ const ExprCode = code /*tsx*/`
     bump() {
       this.foo++;
     }
-  }
 
-  function Widget() {
-    const { foo, bar, baz, bump } = FooBarBaz.use();
+    render() {
+      const { foo, bar, baz, bump } = this;
 
-    return (
-      <button onClick={bump}>
-        {foo} · {bar} · {String(baz)}
-      </button>
-    );
+      return (
+        <button onClick={bump}>
+          {foo} · {bar} · {String(baz)}
+        </button>
+      );
+    }
   }
 `;
 

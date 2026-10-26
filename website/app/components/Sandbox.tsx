@@ -5,7 +5,7 @@ import {
   SandpackProvider,
   useSandpack,
 } from '@codesandbox/sandpack-react';
-import Model, { ref, set } from '@expressive/react';
+import Model, { Component, ref, set } from '@expressive/react';
 import { Columns2, PanelLeftOpen, Rows2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type {
@@ -27,11 +27,22 @@ import { intellisense } from './sandbox/intellisense';
 
 declare const __SANDBOX_DEPS__: Record<string, string>;
 
-class Panes extends Model {
+interface LayoutProps {
+  label: string;
+  navigationOpen: boolean;
+  onOpenNavigation?: () => void;
+  ts: {
+    ensure(): SandboxTs;
+    sync(files: Record<string, string>): void;
+  };
+}
+
+class Layout extends Component {
   mode: 'preview' | 'code' = 'preview';
   stacked = false;
   ratio = 50;
   dragging = false;
+  media = new MediaQuery({ query: '(max-width: 639px)' });
 
   // Hold Ctrl and two-finger swipe to nudge split
   layout = ref<HTMLDivElement>((el) => {
@@ -99,6 +110,166 @@ class Panes extends Model {
     else return;
 
     event.preventDefault();
+  }
+
+  render({
+    label,
+    navigationOpen,
+    onOpenNavigation,
+    ts,
+  } = {} as LayoutProps) {
+    const {
+      onSelect,
+      mode,
+      stacked,
+      ratio,
+      grab,
+      adjust,
+      toggleSplit,
+      layout,
+      dragging,
+      media: { matches: narrow },
+    } = this;
+    const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(
+      null
+    );
+    const [tabs, setTabs] = useState<HTMLElement | null>(null);
+    const connectLayout = useCallback(
+      (element: HTMLDivElement | null) => {
+        layout(element);
+        setLayoutElement(element);
+      },
+      [layout]
+    );
+    useEffect(() => {
+      if (!layoutElement) {
+        setTabs(null);
+        return;
+      }
+
+      const update = () =>
+        setTabs(
+          layoutElement.querySelector<HTMLElement>(
+            '.sp-tabs-scrollable-container'
+          )
+        );
+      const observer = new MutationObserver(update);
+
+      update();
+      observer.observe(layoutElement, { childList: true, subtree: true });
+      return () => observer.disconnect();
+    }, [layoutElement]);
+    const sandpack = useSandpack();
+    const refreshOnSave = {
+      key: 'Mod-s',
+      preventDefault: true,
+      run() {
+        sandpack.dispatch({ type: 'refresh' });
+        return true;
+      },
+    };
+
+    // The language service is owned by Sandbox (it outlives this remount); keep it
+    // fed as files change, without spawning it if the editor was never used.
+    const { files, activeFile } = sandpack.sandpack;
+    const activeFileRef = useRef(activeFile);
+    activeFileRef.current = activeFile;
+
+    useEffect(() => {
+      const out: Record<string, string> = {};
+      for (const [path, file] of Object.entries(files)) out[path] = file.code;
+      ts.sync(out);
+    }, [files, ts]);
+
+    const extensions = useMemo(
+      () => [intellisense(() => ts.ensure(), () => activeFileRef.current)],
+      [ts],
+    );
+
+    // Below the breakpoint the panels can't fit side by side; show one at a time
+    // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
+    const showEditor = !narrow || mode === 'code';
+    const showPreview = !narrow || mode === 'preview';
+
+    return (
+      <SandpackLayout
+        ref={connectLayout}
+        style={{ flexDirection: stacked ? 'column' : 'row' }}
+        className="relative h-full [--sp-layout-height:100%]">
+        <SandpackCodeEditor
+          showLineNumbers
+          style={{
+            display: showEditor ? 'flex' : 'none',
+            flex: narrow ? '1' : `0 0 ${ratio}%`,
+          }}
+          extensions={extensions}
+          extensionsKeymap={[refreshOnSave]}
+        />
+        {onOpenNavigation &&
+          !navigationOpen &&
+          tabs &&
+          createPortal(
+            <button
+              aria-label={`Open examples navigation for ${label.replace(/`/g, '')}`}
+              className="order-first mr-1 flex max-w-56 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
+              onClick={onOpenNavigation}>
+              <PanelLeftOpen className="size-4 shrink-0" />
+              <span className="truncate">
+                <CodeLabel label={label} />
+              </span>
+            </button>,
+            tabs
+          )}
+        {!narrow && (
+          <div
+            role="separator"
+            aria-label="Resize code and preview panels"
+            aria-orientation={stacked ? 'horizontal' : 'vertical'}
+            aria-valuemin={20}
+            aria-valuemax={80}
+            aria-valuenow={Math.round(ratio)}
+            tabIndex={0}
+            className={`group relative z-10 shrink-0 touch-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-fd-ring ${
+              stacked
+                ? '-my-4 h-11 w-full cursor-row-resize'
+                : '-mx-4 h-full w-11 cursor-col-resize'
+            }`}
+            onPointerDown={grab}
+            onKeyDown={adjust}>
+            <span
+              className={`pointer-events-none absolute bg-fd-border transition-colors group-hover:bg-fd-primary group-focus-visible:bg-fd-primary ${
+                stacked
+                  ? 'inset-x-0 top-1/2 h-px -translate-y-1/2'
+                  : 'inset-y-0 left-1/2 w-px -translate-x-1/2'
+              }`}
+            />
+            <span
+              className={`pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 rounded-full border border-fd-border bg-fd-background shadow-sm transition-colors group-hover:border-fd-primary group-focus-visible:border-fd-primary ${
+                stacked ? 'h-1.5 w-12' : 'h-12 w-1.5'
+              }`}
+            />
+            {dragging && (
+              <div
+                className={`fixed inset-0 z-50 ${
+                  stacked ? 'cursor-row-resize' : 'cursor-col-resize'
+                }`}
+              />
+            )}
+          </div>
+        )}
+        <SandpackPreview
+          style={{ display: showPreview ? 'flex' : 'none', flex: '1 1 0%' }}
+        />
+        {!narrow && (
+          <SplitSwitcher
+            stacked={stacked}
+            ratio={ratio}
+            onToggle={toggleSplit}
+          />
+        )}
+        {narrow && <Switcher panel={mode} onSelect={onSelect} />}
+      </SandpackLayout>
+    );
   }
 }
 
@@ -207,174 +378,6 @@ export default function Sandbox({
         ts={ts}
       />
     </SandpackProvider>
-  );
-}
-
-function Layout({
-  label,
-  navigationOpen,
-  onOpenNavigation,
-  ts,
-}: {
-  label: string;
-  navigationOpen: boolean;
-  onOpenNavigation?: () => void;
-  ts: {
-    ensure(): SandboxTs;
-    sync(files: Record<string, string>): void;
-  };
-}) {
-  const {
-    onSelect,
-    mode,
-    stacked,
-    ratio,
-    grab,
-    adjust,
-    toggleSplit,
-    layout,
-    dragging,
-  } = Panes.use();
-  const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(
-    null
-  );
-  const [tabs, setTabs] = useState<HTMLElement | null>(null);
-  const connectLayout = useCallback(
-    (element: HTMLDivElement | null) => {
-      layout(element);
-      setLayoutElement(element);
-    },
-    [layout]
-  );
-  useEffect(() => {
-    if (!layoutElement) {
-      setTabs(null);
-      return;
-    }
-
-    const update = () =>
-      setTabs(
-        layoutElement.querySelector<HTMLElement>(
-          '.sp-tabs-scrollable-container'
-        )
-      );
-    const observer = new MutationObserver(update);
-
-    update();
-    observer.observe(layoutElement, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [layoutElement]);
-  const sandpack = useSandpack();
-  const refreshOnSave = {
-    key: 'Mod-s',
-    preventDefault: true,
-    run() {
-      sandpack.dispatch({ type: 'refresh' });
-      return true;
-    },
-  };
-
-  // The language service is owned by Sandbox (it outlives this remount); keep it
-  // fed as files change, without spawning it if the editor was never used.
-  const { files, activeFile } = sandpack.sandpack;
-  const activeFileRef = useRef(activeFile);
-  activeFileRef.current = activeFile;
-
-  useEffect(() => {
-    const out: Record<string, string> = {};
-    for (const [path, file] of Object.entries(files)) out[path] = file.code;
-    ts.sync(out);
-  }, [files, ts]);
-
-  const extensions = useMemo(
-    () => [intellisense(() => ts.ensure(), () => activeFileRef.current)],
-    [ts],
-  );
-
-  // Below the breakpoint the panels can't fit side by side; show one at a time
-  // and reveal a toggle. Inline display wins over Sandpack's own layout CSS.
-  const { matches: narrow } = MediaQuery.use({ query: '(max-width: 639px)' });
-  const showEditor = !narrow || mode === 'code';
-  const showPreview = !narrow || mode === 'preview';
-
-  return (
-    <SandpackLayout
-      ref={connectLayout}
-      style={{ flexDirection: stacked ? 'column' : 'row' }}
-      className="relative h-full [--sp-layout-height:100%]">
-      <SandpackCodeEditor
-        showLineNumbers
-        style={{
-          display: showEditor ? 'flex' : 'none',
-          flex: narrow ? '1' : `0 0 ${ratio}%`,
-        }}
-        extensions={extensions}
-        extensionsKeymap={[refreshOnSave]}
-      />
-      {onOpenNavigation &&
-        !navigationOpen &&
-        tabs &&
-        createPortal(
-          <button
-            aria-label={`Open examples navigation for ${label.replace(/`/g, '')}`}
-            className="order-first mr-1 flex max-w-56 shrink-0 items-center gap-1.5 self-stretch pr-4 pl-3 text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground"
-            onClick={onOpenNavigation}>
-            <PanelLeftOpen className="size-4 shrink-0" />
-            <span className="truncate">
-              <CodeLabel label={label} />
-            </span>
-          </button>,
-          tabs
-        )}
-      {!narrow && (
-        <div
-          role="separator"
-          aria-label="Resize code and preview panels"
-          aria-orientation={stacked ? 'horizontal' : 'vertical'}
-          aria-valuemin={20}
-          aria-valuemax={80}
-          aria-valuenow={Math.round(ratio)}
-          tabIndex={0}
-          className={`group relative z-10 shrink-0 touch-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-fd-ring ${
-            stacked
-              ? '-my-4 h-11 w-full cursor-row-resize'
-              : '-mx-4 h-full w-11 cursor-col-resize'
-          }`}
-          onPointerDown={grab}
-          onKeyDown={adjust}>
-          <span
-            className={`pointer-events-none absolute bg-fd-border transition-colors group-hover:bg-fd-primary group-focus-visible:bg-fd-primary ${
-              stacked
-                ? 'inset-x-0 top-1/2 h-px -translate-y-1/2'
-                : 'inset-y-0 left-1/2 w-px -translate-x-1/2'
-            }`}
-          />
-          <span
-            className={`pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 rounded-full border border-fd-border bg-fd-background shadow-sm transition-colors group-hover:border-fd-primary group-focus-visible:border-fd-primary ${
-              stacked ? 'h-1.5 w-12' : 'h-12 w-1.5'
-            }`}
-          />
-          {dragging && (
-            <div
-              className={`fixed inset-0 z-50 ${
-                stacked ? 'cursor-row-resize' : 'cursor-col-resize'
-              }`}
-            />
-          )}
-        </div>
-      )}
-      <SandpackPreview
-        style={{ display: showPreview ? 'flex' : 'none', flex: '1 1 0%' }}
-      />
-      {!narrow && (
-        <SplitSwitcher
-          stacked={stacked}
-          ratio={ratio}
-          onToggle={toggleSplit}
-        />
-      )}
-      {narrow && <Switcher panel={mode} onSelect={onSelect} />}
-    </SandpackLayout>
   );
 }
 
