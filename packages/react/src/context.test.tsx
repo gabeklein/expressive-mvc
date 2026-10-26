@@ -280,6 +280,164 @@ describe('Component for', () => {
     });
   });
 
+  it('will provide what a class owns below', () => {
+    class User extends Model {
+      name = 'Ada';
+    }
+
+    class Session extends Model {
+      user = new User();
+    }
+
+    within(
+      () => expect(User.get().name).toBe('Ada'),
+      (check) => <Component for={Session}>{check}</Component>
+    );
+  });
+
+  it('will provide what an instance owns below', () => {
+    class User extends Model {
+      name = 'Ada';
+    }
+
+    class Session extends Model {
+      user = new User();
+    }
+
+    const session = Session.new();
+
+    within(
+      () => expect(User.get().is).toBe(session.user.is),
+      (check) => <Component for={session}>{check}</Component>
+    );
+  });
+
+  it('will let peers owned by the target find each other', () => {
+    class Left extends Model {}
+    class Right extends Model {
+      left = get(Left);
+    }
+
+    class Session extends Model {
+      left = new Left();
+      right = new Right();
+    }
+
+    let session!: Session;
+
+    render(<Component for={Session} is={(s) => void (session = s)} />);
+
+    expect(session.right.left).toBe(session.left);
+  });
+
+  it('will keep children mounted when for changes', async () => {
+    class Base extends Model {}
+    class First extends Base {}
+    class Second extends Base {}
+
+    const made: Child[] = [];
+
+    class Child extends Component {
+      new() {
+        made.push(this);
+      }
+    }
+
+    const view = render(
+      <Component for={First}>
+        <Child />
+      </Component>
+    );
+
+    view.rerender(
+      <Component for={Second}>
+        <Child />
+      </Component>
+    );
+
+    await act(async () => {});
+
+    expect(made).toHaveLength(1);
+    expect(made[0].get(null)).toBe(false);
+    expect(made[0].get(Base)).toBeInstanceOf(Second);
+  });
+
+  it('will notify a child waiting upstream when for changes', async () => {
+    class Base extends Model {}
+    class First extends Base {}
+    class Second extends Base {}
+
+    const seen: Model[] = [];
+
+    class Child extends Component {
+      base = get(Base, (base) => void seen.push(base));
+    }
+
+    const view = render(
+      <Component for={First}>
+        <Child />
+      </Component>
+    );
+
+    view.rerender(
+      <Component for={Second}>
+        <Child />
+      </Component>
+    );
+
+    await act(async () => {});
+
+    expect(seen).toEqual([expect.any(First), expect.any(Second)]);
+  });
+
+  it('will collect children below for the target', () => {
+    class Item extends Component {}
+    class List extends Model {
+      items = get(Item, true);
+    }
+
+    let list!: List;
+
+    render(
+      <Component for={List} is={(l) => void (list = l)}>
+        <Item />
+        <Item />
+      </Component>
+    );
+
+    expect(list.items).toHaveLength(2);
+  });
+
+  it.fails('will not provide itself', () => {
+    let outer!: Component;
+
+    class Outer extends Component {}
+
+    within(
+      () => expect(Context.get().get(Component).is).toBe(outer.is),
+      (check) => (
+        <Outer is={(o) => void (outer = o)}>
+          <Component for={Foo}>{check}</Component>
+        </Outer>
+      )
+    );
+  });
+
+  it('will not move the home of an instance it is given', () => {
+    const foo = Foo.new();
+    const home = Context.root.push(foo);
+
+    within(
+      () => {
+        expect(Foo.get().is).toBe(foo);
+        expect(Context.get(foo)).toBe(home);
+      },
+      (check) => <Component for={foo}>{check}</Component>
+    );
+
+    expect(home.get(Foo)).toBe(foo);
+  });
+
   it('will create once, provide and destroy on unmount under strict mode', async () => {
     const didCreate = vi.fn();
     const didDestroy = vi.fn();
@@ -385,6 +543,16 @@ describe('context', () => {
     } finally {
       internals.H = dispatcher;
     }
+  });
+
+  it('will return home of a given Model', () => {
+    const foo = Foo.new();
+    const context = Context.root.push(foo);
+
+    within(
+      () => expect(Context.get(foo)).toBe(context),
+      (check) => <Component for={Foo}>{check}</Component>
+    );
   });
 
   it('will return context of render', () => {

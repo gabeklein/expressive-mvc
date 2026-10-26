@@ -1,4 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
+import { Context } from '../context';
 import { Model } from '../state';
 import { fires } from '../../test.setup';
 import { get } from './get';
@@ -560,6 +561,37 @@ describe('pool adoption', () => {
     store.set(null);
 
     expect(injected.get(null)).toBe(true);
+  });
+});
+
+describe('pool context', () => {
+  class Member extends Model {}
+
+  class Owner extends Model {
+    members = has(Member);
+  }
+
+  it.fails('will not provide members of an owner without a level', () => {
+    const owner = Owner.new();
+
+    owner.members.add();
+    expect(Context.root.get(Member, false)).toBeUndefined();
+
+    owner.members.add();
+    expect(Context.root.get(Member, false)).toBeUndefined();
+  });
+
+  it.fails('will provide held members once the owner has a level', () => {
+    const owner = Owner.new();
+    const member = owner.members.add();
+    const context = Context.root.push(owner);
+
+    expect(context.get(Member)).toBe(member);
+    expect(Context.root.get(Member, false)).toBeUndefined();
+
+    owner.members.delete(member);
+
+    expect(context.get(Member, false)).toBeUndefined();
   });
 });
 

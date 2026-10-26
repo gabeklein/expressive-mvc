@@ -2,6 +2,8 @@ import { vi, describe, it, expect } from 'vitest';
 import { Context } from './context';
 import { Model } from './state';
 import { get } from './field/get';
+import { has } from './field/has';
+import { map } from './field/map';
 
 class Example extends Model {}
 class Example2 extends Example {}
@@ -1287,5 +1289,223 @@ describe('root global', () => {
 
     removeA();
     b.set(null);
+  });
+});
+
+describe('lookup origin', () => {
+  class Peer extends Model {}
+  class Child extends Model {}
+  class Parent extends Model {
+    child = new Child();
+    rows = has(Child);
+    values = map<string, Child>();
+  }
+
+  it('will look up from owner for an owned child', () => {
+    const parent = Parent.new();
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(parent.child)).toBe(context);
+    expect(parent.child.get(Peer)).toBe(context.get(Peer));
+  });
+
+  it.fails('will look up from owner for a has row', () => {
+    const parent = Parent.new();
+    const row = parent.rows.add();
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(row)).toBe(context);
+    expect(row.get(Peer)).toBe(context.get(Peer));
+
+    parent.set(null);
+  });
+
+  it.fails('will look up from owner for a map value', () => {
+    const parent = Parent.new();
+    const value = new Child();
+
+    parent.values.set('a', value);
+
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(value)).toBe(context);
+    expect(value.get(Peer)).toBe(context.get(Peer));
+
+    parent.set(null);
+  });
+
+  it.fails('will look up from owner for an assigned reference', () => {
+    class Holder extends Model {
+      ref?: Child = undefined;
+    }
+
+    const parent = Parent.new();
+    const holder = new Holder();
+
+    Context.root.push(holder);
+    holder.ref = parent.child;
+
+    expect(Context.get(parent.child)).toBe(Context.root);
+
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(parent.child)).toBe(context);
+  });
+
+  it.fails('will not look up from where an unowned reference was assigned', () => {
+    class Holder extends Model {
+      ref?: Child = undefined;
+    }
+
+    const child = Child.new();
+    const holder = new Holder();
+
+    Context.root.push(holder);
+    holder.ref = child;
+
+    expect(Context.get(child)).toBe(Context.root);
+  });
+
+  it('will look up from root for an unowned instance', () => {
+    const child = Child.new();
+
+    expect(Context.get(child)).toBe(Context.root);
+  });
+
+  it('will look up from root for a global and its child', () => {
+    class Global extends Model {
+      static global = true;
+      child = new Child();
+    }
+
+    const global = Global.new();
+
+    expect(Context.get(global)).toBe(Context.root);
+    expect(Context.get(global.child)).toBe(Context.root);
+
+    global.set(null);
+  });
+});
+
+describe('placed instance', () => {
+  it('will create a level for an instance', () => {
+    class Other extends Model {}
+
+    const parent = Context.root.push(new Other());
+    const example = Example.new();
+    const level = parent.push(example);
+
+    expect(level).not.toBe(example);
+    expect(level.get(Example)).toBe(example);
+    expect(level.get(Other)).toBe(parent.get(Other));
+    expect(parent.get(Example, false)).toBeUndefined();
+  });
+
+  it('will include what an instance holds', () => {
+    class Child extends Model {}
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+    const level = Context.root.push().push(parent);
+
+    expect(level.get(Child)).toBe(parent.child);
+  });
+
+  it('will create a level per placement', () => {
+    const example = Example.new();
+    const from = Context.root.push();
+    const a = from.push(example);
+    const b = from.push(example);
+
+    expect(a).not.toBe(b);
+
+    a.pop();
+
+    expect(a.get(Example, false)).toBeUndefined();
+    expect(b.get(Example)).toBe(example);
+  });
+
+  it('will activate an instance', () => {
+    const ready = vi.fn();
+
+    class Test extends Model {
+      new() {
+        ready();
+      }
+    }
+
+    Context.root.push().push(new Test());
+
+    expect(ready).toBeCalledTimes(1);
+  });
+
+  it('will not move an instance from its home', () => {
+    class Other extends Model {}
+
+    const example = Example.new();
+    const home = Context.root.push(example);
+    const level = Context.root.push(new Other()).push(example);
+
+    expect(Context.get(example)).toBe(home);
+    expect(level.get(Other)).toBeInstanceOf(Other);
+    expect(home.get(Other, false)).toBeUndefined();
+  });
+
+  it('will remove a placed instance on pop without destroying it', () => {
+    const parent = Context.root.push();
+    const example = new Example();
+    const context = parent.push(example);
+
+    context.pop();
+
+    expect(example.get(null)).toBe(false);
+    expect(context.get(Example, false)).toBeUndefined();
+  });
+
+  it('will return context of a placed instance', () => {
+    const parent = Context.root.push();
+    const example = new Example();
+    const context = parent.push(example);
+
+    expect(Context.get(example)).toBe(context);
+    expect(context.get(Example)).toBe(example);
+    expect(parent.get(Example, false)).toBeUndefined();
+  });
+
+  it('will share context of a placed instance with its children', () => {
+    class Parent extends Model {
+      child = new Example();
+    }
+
+    const parent = new Parent();
+    const context = Context.root.push(parent);
+
+    expect(Context.get(parent.child)).toBe(context);
+    expect(context.get(Example)).toBe(parent.child);
+    expect(context.push().get(Parent)).toBe(parent);
+  });
+
+  it('will pop nodes attached below a placed instance', () => {
+    const cleanup = vi.fn();
+    const parent = Context.root.push();
+    const context = parent.push(new Example());
+
+    context.push(new Example2(), cleanup);
+    parent.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will resolve a sibling from an enclosing node', () => {
+    class Sibling extends Model {}
+    class Test extends Model {
+      sibling = get(Sibling);
+    }
+
+    const context = Context.root.push(new Sibling()).push(new Test());
+
+    expect(context.get(Test).sibling).toBe(context.get(Sibling));
   });
 });

@@ -299,6 +299,71 @@ describe('for', () => {
     name = 'none';
   }
 
+  it.fails('will not provide itself', () => {
+    const provider = Component.new({ for: Session } as any);
+    const context = Context.root.push(provider);
+
+    expect(context.get(Session)).toBeInstanceOf(Session);
+    expect(context.get(Component, false)).toBeUndefined();
+  });
+
+  it('will provide a class swapped in for once', async () => {
+    class Other extends Model {}
+
+    const provider = Component.new({ for: Session } as any);
+    const context = Context.root.push(provider);
+    const found = vi.fn();
+
+    context.get(Other, found);
+
+    (provider as any).props = { for: Other };
+    await flushMicrotasks();
+
+    expect(found).toBeCalledTimes(1);
+    expect(found).toBeCalledWith(context.get(Other), true);
+  });
+
+  it.fails('will provide an instance already provided above', () => {
+    class Holder extends Model {
+      session?: Session = undefined;
+    }
+
+    const session = Session.new();
+    const holder = new Holder();
+    const outer = Context.root.push(holder);
+
+    holder.session = session;
+
+    const inner = outer.push(new Component({ for: session } as any));
+
+    holder.session = undefined;
+
+    expect(outer.get(Session, false)).toBeUndefined();
+    expect(inner.get(Session)).toBe(session);
+  });
+
+  it('will release an instance when the provider is destroyed', () => {
+    const session = Session.new();
+    const provider = Component.new({ for: session } as any);
+    const context = Context.root.push(provider);
+
+    provider.set(null);
+
+    expect(context.get(Session, false)).toBeUndefined();
+    expect(session.get(null)).toBe(false);
+  });
+
+  it('will remove an instance on pop without destroying it', () => {
+    const session = Session.new();
+    const provider = Component.new({ for: session } as any);
+    const context = Context.root.push(provider);
+
+    context.pop();
+
+    expect(context.get(Session, false)).toBeUndefined();
+    expect(session.get(null)).toBe(false);
+  });
+
   it('will construct and provide a class', () => {
     const is = vi.fn();
     const provider = Component.new({ for: Session, name: 'Ada', is } as any);

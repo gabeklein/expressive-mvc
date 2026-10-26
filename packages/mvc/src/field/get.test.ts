@@ -694,6 +694,23 @@ describe('fetch mode', () => {
         children = get(Child, true);
       }
 
+      it('will ignore child provided twice below', async () => {
+        class Parent extends Model {
+          children = get(Child, true, gotChild);
+        }
+
+        const gotChild = vi.fn();
+        const parent = new Parent();
+        const child = new Child();
+        class Holder extends Model {}
+
+        const below = Context.root.push(parent).push(child).push(new Holder());
+
+        below.add(child);
+
+        expect(gotChild).toBeCalledTimes(1);
+      });
+
       it('will collect multiple children', () => {
         const parent = new Parent();
         const child1 = new Child();

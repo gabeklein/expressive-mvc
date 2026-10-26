@@ -871,6 +871,42 @@ describe('get method', () => {
   describe('owner', () => {
     class Child extends Model {}
 
+    it('will get Model pushed as host', () => {
+      const host = new Child();
+      const child = new Child();
+      const context = Context.root.push(host);
+
+      context.push(child);
+
+      expect(host.get(Model, false)).toBeUndefined();
+      expect(child.get(Model)).toBe(host);
+    });
+
+    it('will get nearest pushed host', () => {
+      const outer = new Child();
+      const inner = new Child();
+      const child = new Child();
+
+      Context.root.push(outer).push(inner).push(child);
+
+      expect(inner.get(Model)).toBe(outer);
+      expect(child.get(Model)).toBe(inner);
+    });
+
+    it('will get owner over pushed host', () => {
+      class Parent extends Model {
+        child = new Child();
+      }
+
+      const host = new Child();
+      const parent = new Parent();
+
+      Context.root.push(host).push(parent);
+
+      expect(parent.get(Model)).toBe(host);
+      expect(parent.child.get(Model)).toBe(parent);
+    });
+
     it('will get owner of a field or late assignment', () => {
       class Parent extends Model {
         child = new Child();

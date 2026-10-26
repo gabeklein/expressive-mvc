@@ -36,6 +36,24 @@ it('will not enumerate react internals on instance', () => {
   expect(Object.keys(instance).sort()).toEqual(['baz', 'foo']);
 });
 
+it('will not assign values of parent from context', () => {
+  class Parent extends Component {
+    value = 'parent';
+  }
+
+  class Child extends Component {
+    value = 'child';
+
+    render() {
+      return <span>{this.value}</span>;
+    }
+  }
+
+  render(<Parent><Child /></Parent>);
+
+  screen.getByText('child');
+});
+
 reactOnly.it('will transition Component dispatch', async () => {
   const gate = mockPromise<void>();
 

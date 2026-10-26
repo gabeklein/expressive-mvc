@@ -201,6 +201,67 @@ describe('class element', () => {
     expect(session.get(null)).toBe(true);
   });
 
+  it.fails('will not provide Component for itself', () => {
+    class Session extends Model {}
+
+    let outer!: Outer;
+    let found: Component | undefined;
+
+    function Probe() {
+      found = Component.get();
+      return null;
+    }
+
+    class Outer extends Component {
+      render() {
+        return (
+          <Component for={Session}>
+            <Probe />
+          </Component>
+        );
+      }
+    }
+
+    [outer] = mount(Outer);
+
+    expect(found!.is).toBe(outer.is);
+  });
+
+  it('will keep children of Component for mounted when for changes', async () => {
+    class Base extends Model {}
+    class First extends Base {}
+    class Second extends Base {}
+
+    const made: Child[] = [];
+
+    class Child extends Component {
+      new() {
+        made.push(this);
+      }
+    }
+
+    class Host extends Component {
+      second = false;
+
+      render() {
+        return (
+          <Component for={this.second ? Second : First}>
+            <Child />
+          </Component>
+        );
+      }
+    }
+
+    const [host] = mount(Host);
+
+    host.second = true;
+    await flushMicrotasks();
+
+    expect(made).toHaveLength(1);
+    expect(made[0].get(null)).toBe(false);
+    expect(made[0].get(Base)).toBeInstanceOf(Second);
+  });
+
 
   it('will render a Component instance inline', async () => {
     class Panel extends Component {
@@ -220,6 +281,193 @@ describe('class element', () => {
     expect(panel.get(null)).toBe(false);
   });
 
+  it('will own Components rendered by an instance placed inline', () => {
+    let inner!: Component;
+
+    class Inner extends Component {}
+    class Slot extends Component {
+      render() {
+        return <Inner is={(i) => void (inner = i)} />;
+      }
+    }
+
+    const instance = Slot.new();
+
+    place(<div>{instance}</div>);
+
+    expect(inner.get(Model)).toBe(instance);
+  });
+
+  it('will keep its own context after another placement is removed', async () => {
+    function Value() {
+      return <span>{Item.get().value}</span>;
+    }
+
+    class Item extends Component {
+      value = 'a';
+      show = false;
+
+      render() {
+        return this.show && <Value />;
+      }
+    }
+
+    class Host extends Component {
+      both = true;
+
+      render() {
+        return <>{this.both && <section>{instance}</section>}<aside>{instance}</aside></>;
+      }
+    }
+
+    const instance = Item.new();
+    const host = Host.new();
+    const root = place(<div>{host}</div>);
+
+    host.both = false;
+    await flushMicrotasks();
+
+    instance.show = true;
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('a');
+  });
+
+  describe('placed instance context', () => {
+    class Theme extends Model {
+      color = '';
+    }
+
+    class Child extends Model {
+      name = '';
+    }
+
+    function Probe() {
+      return <span>{Child.get().name} {Theme.get().color}</span>;
+    }
+
+    it('will resolve like a for provider', () => {
+      class Slot extends Component {
+        child = new Child({ name: 'held' });
+
+        render() {
+          return <Probe />;
+        }
+      }
+
+      const placed = Slot.new();
+      const provided = Slot.new();
+      const root = place(
+        <Component for={Theme} color="red">
+          <Component for={Child} name="outer">
+            <section>{placed}</section>
+            <Component for={provided}>
+              <aside><Probe /></aside>
+            </Component>
+          </Component>
+        </Component>
+      );
+
+      expect(root.querySelector('section')!.textContent).toBe('held red');
+      expect(root.querySelector('aside')!.textContent).toBe('held red');
+    });
+
+    it('will resolve each placement from its own ancestors', async () => {
+      class Slot extends Component {
+        child = new Child({ name: 'held' });
+        show = false;
+
+        render() {
+          return this.show && <Probe />;
+        }
+      }
+
+      const slot = Slot.new();
+      const root = place(
+        <>
+          <Component for={Theme} color="red">
+            <section>{slot}</section>
+          </Component>
+          <Component for={Theme} color="blue">
+            <aside>{slot}</aside>
+          </Component>
+        </>
+      );
+
+      slot.show = true;
+      await flushMicrotasks();
+
+      expect(root.querySelector('section')!.textContent).toBe('held red');
+      expect(root.querySelector('aside')!.textContent).toBe('held blue');
+    });
+
+    it('will not move its home', () => {
+      class Slot extends Component {
+        render() {
+          return <Probe />;
+        }
+      }
+
+      class Parent extends Model {
+        child = new Child({ name: 'home' });
+        slot = new Slot();
+      }
+
+      const parent = Parent.new();
+      const root = place(
+        <>
+          <Component for={Theme} color="red">
+            <Component for={parent} />
+          </Component>
+          <Component for={Theme} color="blue">
+            <Component for={Child} name="outer">
+              <section>{parent.slot}</section>
+            </Component>
+          </Component>
+        </>
+      );
+
+      expect(root.querySelector('section')!.textContent).toBe('outer blue');
+      expect(parent.slot.get(Child).name).toBe('home');
+      expect(parent.slot.get(Theme).color).toBe('red');
+    });
+
+    it('will resolve a new placement after the first is removed', async () => {
+      class Slot extends Component {
+        child = new Child({ name: 'held' });
+
+        render() {
+          return <Probe />;
+        }
+      }
+
+      const slot = Slot.new();
+      const first = document.createElement('main');
+      const release = render(
+        <Component for={Theme} color="red">
+          <section>{slot}</section>
+        </Component>,
+        first
+      );
+
+      expect(first.textContent).toBe('held red');
+
+      release();
+
+      const second = place(
+        <Component for={Theme} color="blue">
+          <section>{slot}</section>
+        </Component>
+      );
+
+      expect(second.textContent).toBe('held blue');
+
+      slot.child.name = 'next';
+      await flushMicrotasks();
+
+      expect(second.textContent).toBe('next blue');
+    });
+  });
 
   it('will own a boundary from a fallback on the element', async () => {
     const loaded = mockPromise<() => Component.Node>();
