@@ -1,5 +1,5 @@
 import type React from 'react';
-import Model, { ref } from '@expressive/react';
+import { Component, ref } from '@expressive/react';
 import ScrollOverflowControls from './ScrollOverflowControls';
 import code from './Snippet';
 
@@ -17,7 +17,7 @@ interface CompareProps {
 
 const LN = { codeblock: { 'data-line-numbers': true } } as const;
 
-class Control extends Model {
+export default class Compare extends Component {
   tab = 0;
   face = 0;
   canScrollTabsLeft = false;
@@ -76,97 +76,97 @@ class Control extends Model {
     this.canScrollTabsLeft = mobile && el.scrollLeft > 1;
     this.canScrollTabsRight = mobile && remaining > 1;
   }
-}
 
-export default function Compare({ left, right }: CompareProps) {
-  const {
-    tab,
-    face,
-    select,
-    tabScroller,
-    canScrollTabsLeft,
-    canScrollTabsRight,
-    scrollTabs,
-  } = Control.use();
+  render({ left, right } = {} as CompareProps) {
+    const {
+      tab,
+      face,
+      select,
+      tabScroller,
+      canScrollTabsLeft,
+      canScrollTabsRight,
+      scrollTabs,
+    } = this;
 
-  const active = right[Math.min(tab, right.length - 1)];
-  const Left = left.code;
-  const Right = active.code;
+    const active = right[Math.min(tab, right.length - 1)];
+    const Left = left.code;
+    const Right = active.code;
 
-  const libTabs =
-    right.length > 1 ? (
-      <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {right.map((s, i) => (
-          <button
-            key={s.label}
-            onClick={() => select(i + 1)}
-            className={`shrink-0 rounded-full font-mono text-xs py-1 px-2.5 transition-colors ${
-              i === tab
-                ? 'bg-fd-muted text-fd-foreground'
-                : 'text-fd-muted-foreground hover:bg-fd-muted/60'
-            }`}>
-            {s.label}
-          </button>
-        ))}
-      </div>
-    ) : (
-      <span className="text-sm font-semibold text-fd-muted-foreground">{active.label}</span>
-    );
-
-  return (
-    <div>
-      <div className="compare-static hidden md:grid md:grid-cols-2 md:gap-5 md:items-start">
-        <div className="min-w-0">
-          <Head>
-            <span className="text-sm font-semibold text-fd-primary">{left.label}</span>
-            <span className="text-[11px] uppercase tracking-widest text-fd-muted-foreground">
-              Expressive
-            </span>
-          </Head>
-          <CodePanel snippet={Left} />
+    const libTabs =
+      right.length > 1 ? (
+        <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {right.map((s, i) => (
+            <button
+              key={s.label}
+              onClick={() => select(i + 1)}
+              className={`shrink-0 rounded-full font-mono text-xs py-1 px-2.5 transition-colors ${
+                i === tab
+                  ? 'bg-fd-muted text-fd-foreground'
+                  : 'text-fd-muted-foreground hover:bg-fd-muted/60'
+              }`}>
+              {s.label}
+            </button>
+          ))}
         </div>
-        <div className="min-w-0">
-          <Head>{libTabs}</Head>
-          <CodePanel snippet={Right} />
-        </div>
-      </div>
+      ) : (
+        <span className="text-sm font-semibold text-fd-muted-foreground">{active.label}</span>
+      );
 
-      <div className="md:hidden">
-        <div className="mb-3 [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)]">
-          <div className="relative w-fit max-w-full">
-            <div
-              ref={tabScroller}
-              className="flex w-fit max-w-full gap-[0.25em] overflow-x-auto rounded-[999px] bg-(--tab-scroll-bg) p-[0.25em] text-base [scrollbar-width:none] sm:text-sm [&::-webkit-scrollbar]:hidden">
-              <Segment active={face === 0} onClick={() => select(0)}>
+    return (
+      <div>
+        <div className="compare-static hidden md:grid md:grid-cols-2 md:gap-5 md:items-start">
+          <div className="min-w-0">
+            <Head>
+              <span className="text-sm font-semibold text-fd-primary">{left.label}</span>
+              <span className="text-[11px] uppercase tracking-widest text-fd-muted-foreground">
                 Expressive
-              </Segment>
-              {right.map((s, i) => (
-                <Segment
-                  key={s.label}
-                  active={face === 1 && tab === i}
-                  onClick={() => select(i + 1)}>
-                  {s.label}
-                </Segment>
-              ))}
-            </div>
-
-            <ScrollOverflowControls
-              canScrollLeft={canScrollTabsLeft}
-              canScrollRight={canScrollTabsRight}
-              leftLabel="Scroll comparison tabs left"
-              rightLabel="Scroll comparison tabs right"
-              onScrollLeft={() => scrollTabs(-1)}
-              onScrollRight={() => scrollTabs(1)}
-            />
+              </span>
+            </Head>
+            <CodePanel snippet={Left} />
+          </div>
+          <div className="min-w-0">
+            <Head>{libTabs}</Head>
+            <CodePanel snippet={Right} />
           </div>
         </div>
 
-        <div className="compare-static">
-          <CodePanel snippet={face ? Right : Left} />
+        <div className="md:hidden">
+          <div className="mb-3 [--tab-scroll-bg:color-mix(in_oklab,var(--color-fd-muted)_50%,transparent)]">
+            <div className="relative w-fit max-w-full">
+              <div
+                ref={tabScroller}
+                className="flex w-fit max-w-full gap-[0.25em] overflow-x-auto rounded-[999px] bg-(--tab-scroll-bg) p-[0.25em] text-base [scrollbar-width:none] sm:text-sm [&::-webkit-scrollbar]:hidden">
+                <Segment active={face === 0} onClick={() => select(0)}>
+                  Expressive
+                </Segment>
+                {right.map((s, i) => (
+                  <Segment
+                    key={s.label}
+                    active={face === 1 && tab === i}
+                    onClick={() => select(i + 1)}>
+                    {s.label}
+                  </Segment>
+                ))}
+              </div>
+
+              <ScrollOverflowControls
+                canScrollLeft={canScrollTabsLeft}
+                canScrollRight={canScrollTabsRight}
+                leftLabel="Scroll comparison tabs left"
+                rightLabel="Scroll comparison tabs right"
+                onScrollLeft={() => scrollTabs(-1)}
+                onScrollRight={() => scrollTabs(1)}
+              />
+            </div>
+          </div>
+
+          <div className="compare-static">
+            <CodePanel snippet={face ? Right : Left} />
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 function CodePanel({ snippet: Snippet }: { snippet: Snippet }) {

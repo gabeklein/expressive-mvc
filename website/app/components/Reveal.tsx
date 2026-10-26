@@ -1,5 +1,5 @@
 import type React from 'react';
-import Model, { ref } from '@expressive/react';
+import { Component, ref } from '@expressive/react';
 
 interface RevealProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ const OFFSET = {
   right: 'translate-x-8',
 };
 
-class Visibility extends Model {
+export default class Reveal extends Component {
   shown = false;
 
   element = ref<HTMLDivElement>((el) => {
@@ -50,19 +50,19 @@ class Visibility extends Model {
       for (const id of frames) cancelAnimationFrame(id);
     };
   });
-}
 
-export default function Reveal({ children, className, delay, from = 'up' }: RevealProps) {
-  const { shown, element } = Visibility.use();
+  render({ children, className, delay, from = 'up' } = {} as RevealProps) {
+    const { shown, element } = this;
 
-  return (
-    <div
-      ref={element}
-      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
-      className={`transition-[opacity,transform] duration-700 ease-out motion-reduce:transition-none motion-reduce:opacity-100 motion-reduce:translate-x-0 motion-reduce:translate-y-0 ${
-        shown ? 'opacity-100 translate-x-0 translate-y-0' : `opacity-0 ${OFFSET[from]}`
-      } ${className || ''}`}>
-      {children}
-    </div>
-  );
+    return (
+      <div
+        ref={element}
+        style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+        className={`transition-[opacity,transform] duration-700 ease-out motion-reduce:transition-none motion-reduce:opacity-100 motion-reduce:translate-x-0 motion-reduce:translate-y-0 ${
+          shown ? 'opacity-100 translate-x-0 translate-y-0' : `opacity-0 ${OFFSET[from]}`
+        } ${className || ''}`}>
+        {children}
+      </div>
+    );
+  }
 }
