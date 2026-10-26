@@ -311,10 +311,10 @@ class ContactForm extends Component {
 
   async submit() {
     if (!this.valid) return;
-    const { name, email, message } = this;
     this.submitting = true;
     this.error = null;
     try {
+      const { name, email, message } = this;
       await api.submitContact({ name, email, message });
       this.submitted = true;
     } catch (e) {
