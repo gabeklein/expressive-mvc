@@ -258,9 +258,9 @@ const InstructionsCode = code /*tsx*/`
     // factory with Suspense if async
     user = set(async () => fetchUser());
 
-    // validate or side-effect whenever assigned
-    email = set('', (next) => {
-      if (!next.includes('@')) throw false;
+    // guard or side-effect whenever assigned
+    bio = set('', (next) => {
+      if (next.length > 280) throw false;
     });
 
     // computed field, in lieu of a getter

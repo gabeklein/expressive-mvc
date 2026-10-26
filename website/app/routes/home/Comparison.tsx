@@ -14,9 +14,9 @@ export function Comparison() {
             The same logic. <span className='text-nowrap'>Half the noise.</span>
           </h2>
           <p className="text-fd-muted-foreground text-lg">
-            Say you want a reusable, component-owned <code>useFooBarBaz</code>{' '}
-            that re-renders on change. Examples have same state and
-            behavior. Expressive gets there with less code.
+            Say you want a widget that owns a few values and re-renders when
+            they change. Every example has the same state and behavior - in
+            Expressive, the widget is the class.
           </p>
         </div>
 

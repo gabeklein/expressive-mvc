@@ -238,62 +238,34 @@ function App() {
 
 Explicit `loading` keeps previous results visible during refresh - the deliberate alternative to `set(async)` suspense for user-initiated fetches.
 
-## Form Validation (setter callbacks)
+## Bounded Stepper (setter callback)
+
+A `set` callback guards writes - `throw false` rejects a value that should never be stored, so callers need no bounds checks:
 
 ```tsx
 import { Component, set } from '@expressive/mvc';
 
-class Signup extends Component {
-  name = '';
-  email = set('', (value) => {
-    if (value && !value.includes('@')) throw false; // reject - value stays unchanged
-  });
-  password = set('', (value) => {
-    if (value.length > 0 && value.length < 8) throw false; // reject short passwords
-  });
+class Quantity extends Component {
+  max = 10;
 
-  get valid() {
-    return (
-      this.name.length > 0 &&
-      this.email.includes('@') &&
-      this.password.length >= 8
-    );
-  }
-
-  submit() {
-    if (!this.valid) return;
-    const { name, email, password } = this;
-    console.log('Submitting:', { name, email, password });
-  }
+  value = set(1, (next) => {
+    if (!Number.isInteger(next) || next < 1 || next > this.max) throw false;
+  });
 
   render() {
-    const { name, email, password, valid, submit } = this;
+    const { value } = this;
 
     return (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}>
-        <input
-          placeholder="Name"
-          value={name}
-          onChange={(e) => (this.name = e.target.value)}
-        />
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => (this.email = e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password (8+ chars)"
-          value={password}
-          onChange={(e) => (this.password = e.target.value)}
-        />
-        <button disabled={!valid}>Sign Up</button>
-      </form>
+      <div>
+        <button onClick={() => this.value--}>-</button>
+        <span>{value}</span>
+        <button onClick={() => this.value++}>+</button>
+      </div>
     );
   }
 }
+
+<Quantity max={5} />;
 ```
+
+Rejecting suits values that are never valid. Input that is not valid *yet* - a half-typed email - lands, and a getter reports on it: [Form with Validation](../react/patterns.md#form-with-validation).
