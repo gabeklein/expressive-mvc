@@ -12,7 +12,8 @@ import {
 
 import { act, render, screen } from '@testing-library/react';
 import { Model } from '@expressive/mvc';
-import { Component, Context, get, set } from '.';
+import '.';
+import { Component, Context, get, set } from '@expressive/mvc';
 import { flushMicrotasks, preactDiffers, reactOnly } from '../test.setup';
 
 let error: MockInstance<Console['error']>;

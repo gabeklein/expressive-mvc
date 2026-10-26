@@ -1,4 +1,4 @@
-import Model, { Component, get, ref } from '@expressive/react';
+import { Model, Component, get, ref } from '@expressive/mvc';
 import type { CSSProperties } from 'react';
 
 declare const __LIB_VERSION__: string;

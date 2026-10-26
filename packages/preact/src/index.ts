@@ -49,12 +49,4 @@ Object.assign(Runtime, {
   ]
 });
 
-import { Model } from '@expressive/react/adapter'
-
-/** @deprecated Import `{ Model }` from `@expressive/mvc`. These re-exports will be removed. */
-export { Model, Model as State }
-
-/** @deprecated Import `{ Model }` from `@expressive/mvc`. The default export will be removed. */
-export default Model
-/** @deprecated Import from `@expressive/mvc`. These re-exports will be removed. */
-export { Component, Context, def, get, has, ref, set, map, pending } from '@expressive/mvc';
+export {};

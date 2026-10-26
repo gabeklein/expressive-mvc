@@ -1,7 +1,8 @@
 import { act, render, screen } from '@testing-library/react';
 import { lazy, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { Component } from '@expressive/react';
+import '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 import { location, browserRouter, mockError, mockPromise, renderAct } from '../test.setup';
 import { Route } from './route';

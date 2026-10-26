@@ -5,7 +5,7 @@ import {
   SandpackProvider,
   useSandpack,
 } from '@codesandbox/sandpack-react';
-import Model, { Component, ref, set } from '@expressive/react';
+import { Model, Component, ref, set } from '@expressive/mvc';
 import { Columns2, PanelLeftOpen, Rows2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type {

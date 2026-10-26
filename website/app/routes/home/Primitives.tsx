@@ -1,5 +1,5 @@
 import { Children, type ReactNode } from 'react';
-import { Component, get, ref } from '@expressive/react';
+import { Component, get, ref } from '@expressive/mvc';
 import { Hash } from '@/components/Hash';
 import Playground from '@/components/Playground';
 import ScrollOverflowControls from '@/components/ScrollOverflowControls';

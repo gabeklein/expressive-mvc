@@ -1,5 +1,5 @@
 import { Model } from '@expressive/mvc';
-import { Component, get, ref } from '@expressive/react';
+import { Component, get, ref } from '@expressive/mvc';
 import { BrowserRouter, Link, NavLinks, Route, Router } from '@expressive/router';
 
 import Logo from './Logo';

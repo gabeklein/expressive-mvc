@@ -1,4 +1,4 @@
-import Model, { Component, get, ref, set } from '@expressive/react';
+import { Model, Component, get, ref, set } from '@expressive/mvc';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Playground from '@/components/Playground';

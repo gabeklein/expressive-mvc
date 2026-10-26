@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import Model, { Component, get, set, ref, def, has, map } from '@expressive/react';
+import * as react from '@expressive/react';
+import { Model, Component, get, set, ref, def, has, map } from '@expressive/mvc';
+
+assert.deepEqual(Object.keys(react), [], 'the react dist re-exports something');
 
 for (const [name, value] of Object.entries({ Model, Component, get, set, ref, def, has, map }))
-  assert.equal(typeof value, 'function', name + ' is not exported by the built dist');
+  assert.equal(typeof value, 'function', name + ' is not exported by the core dist');
 
 class Counter extends Model {
   value = 5;

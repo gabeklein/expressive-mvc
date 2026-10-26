@@ -4,7 +4,8 @@ import React, { Suspense } from 'react';
 
 import { mockError, mockPromise, revisions } from '../test.setup';
 import { Model } from '@expressive/mvc';
-import { Component, get, has, map } from '.';
+import '.';
+import { Component, get, has, map } from '@expressive/mvc';
 import { pending } from '@expressive/mvc';
 
 let error: MockInstance<Console['error']>;

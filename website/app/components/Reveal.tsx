@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Component, ref } from '@expressive/react';
+import { Component, ref } from '@expressive/mvc';
 
 interface RevealProps {
   children: React.ReactNode;
