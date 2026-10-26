@@ -275,8 +275,14 @@ Object.defineProperty(Context.prototype, "toString", {
 function join(state: Model, value: Model, explicit?: boolean): () => void {
   const ctx = home(state.is);
   const held = HELD.get(state) || new Map();
+  let provided = !ctx && held.get(value)?.[1];
 
-  if (ctx ? provides(ctx, value) : held.get(value)?.[1]) return () => {};
+  for (let at = ctx; at && !provided; at = at.parent) {
+    const entries = at.provide.get(value.constructor as Model.Extends) || [];
+    for (const [x, is] of entries) if (x === value && is) provided = true;
+  }
+
+  if (provided) return () => {};
   if (ctx) return ctx.add(value, explicit);
 
   const added = new Set<() => void>();
@@ -290,15 +296,6 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
       done();
     });
   };
-}
-
-/** Whether `value` is explicitly provided at or above `from`. */
-function provides(from: Context, value: Model) {
-  for (let ctx: Context | undefined = from; ctx; ctx = ctx.parent) {
-    const entries = ctx.provide.get(value.constructor as Model.Extends);
-    if (entries)
-      for (const [state, is] of entries) if (state === value && is) return true;
-  }
 }
 
 function home(state: Model): Context | undefined {
