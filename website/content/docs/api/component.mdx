@@ -101,7 +101,7 @@ Component inherits the full Model lifecycle. See [Model](/docs/api/state) for de
 - `catch(error, instance)` - error boundary, above.
 - Destruction runs on unmount or `this.set(null)`.
 
-> A Component is rendered, not used - `MyComponent.use()` throws, and a `use()` method never runs. For an instance outside the tree, use `MyComponent.new()`.
+> For an instance outside the tree, use `MyComponent.new()`.
 
 <br />
 
@@ -246,4 +246,4 @@ Props are inferred automatically from state fields plus any `render(props)` decl
 
 - [Components guide](/docs/guides/components) - patterns, subclass composition, children, context.
 - [Model](/docs/api/state) - the base class.
-- [Hooks](/docs/api/hooks) - `Model.get` for function components, and `Model.use` for adopting classes into hook-style ones.
+- [Hooks](/docs/api/hooks) - `Model.get` for function components.

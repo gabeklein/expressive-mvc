@@ -292,8 +292,6 @@ class Greeter extends Component {
 
 A Component's `render()` also runs as a real function component, so a hook whose result the view calls directly - `useNavigate`, `useTranslation` - can sit at the top of `render()`. For one-shot setup, prefer `new()` or `mount()`.
 
-> A class used through the [`Model.use()`](/docs/api/hooks#modeluseargs) hook can instead define a `use()` method, called on every render of the host with the hook's arguments.
-
 ### Destruction
 
 ```ts

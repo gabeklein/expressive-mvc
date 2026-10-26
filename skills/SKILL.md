@@ -169,7 +169,7 @@ function Parent({ counter }: { counter: Counter }) {
 
 Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. They build green when misused and crash at runtime. (Instance method get is not a hook.)
 
-State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector). `Model.use()` - a hook owning a plain Model inside an FC - is an adoption bridge for existing hook components, not a default ([react/react.md](react/react.md#modeluse---adoption-bridge)).
+State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
 
 ## The Dependency Snapshot
 
@@ -320,7 +320,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### React
 
-- [react/react.md](react/react.md) - Model.get() (optional lookup, required values `get(true)`, computed selector), mount(), providing state, transparent writes, ForceRefresh, SSR, Vite hot reload, Model.use() adoption bridge
+- [react/react.md](react/react.md) - Model.get() (optional lookup, required values `get(true)`, computed selector), mount(), providing state, transparent writes, ForceRefresh, SSR, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controls, router bridge, host-agnostic domain model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 

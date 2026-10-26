@@ -1,9 +1,9 @@
 ---
 title: React Hooks
-description: Model.get, providing context, and Model.use for adopting classes into hook-style components
+description: Model.get and providing context for function components
 ---
 
-The React adapter augments the `Model` class with two static hooks. `Model.get()` is the everyday one - function components read state that a Component owns or an element provides. `Model.use()` is the on-ramp - it lets a hook-style function component own an instance while you adopt classes. Import the adapter once, for its side effect, in your app's entry; everything else imports from `@expressive/mvc`.
+The React adapter augments the `Model` class with a static hook, `Model.get()` - function components read state that a Component owns or an element provides. Function components own nothing; owned state lives on a [`Component`](/docs/api/component) or is placed with `<Component for>`. Import the adapter once, for its side effect, in your app's entry; everything else imports from `@expressive/mvc`.
 
 ```tsx
 import '@expressive/react';
@@ -123,90 +123,10 @@ const Themed = () => {
 
 <br />
 
-## `Model.use(...args)`
-
-Creates an instance owned by the calling function component.
-
-```tsx
-function CounterView() {
-  const { count, increment } = Counter.use();
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-This is not the default way to own state. When state belongs to one view, make that view a [`Component`](/docs/api/component) - the class owns its fields and renders itself, and fields double as props. When state is shared, place it with [`<Component for>`](#providing-context) and read it with `Model.get()`. Function components then stay stateless projections of state that lives in classes.
-
-`Model.use()` earns its place in two cases:
-
-- **Adopting incrementally.** Swap a component's tangle of `useState` and `useEffect` for one class without restructuring the component - see [Migrating from Hooks](/docs/migrating-from-hooks). Moving the JSX into a `Component` is the usual next step.
-- **Exporting a hook.** A library whose public API is a hook can implement it as `const useCart = () => Cart.use();`.
-
-Behavior:
-
-- Instance is created on mount and destroyed on unmount.
-- Reading properties subscribes the component - it re-renders when those properties change.
-- Methods are auto-bound; safe to destructure and pass as event handlers.
-- Strict mode safe (handles double-mount correctly).
-- An instance is not kept by a render React discards. If the component suspends before its first commit - including on the instance's own pending value - each retry creates and loads a new one, and the render never resolves. Own loading state above the reader: a `Component`, which is its own Suspense boundary, or `<Component for>` with a `fallback`.
-- A `Component` subclass can't be used this way - `MyComponent.use()` throws. Render it instead.
-
-### With initial values
-
-```tsx
-const form = Form.use({ name: 'Alice', email: 'a@b.c' });
-```
-
-### With a lifecycle callback
-
-```tsx
-const timer = Timer.use((self) => {
-  self.start();
-  return () => self.stop();
-});
-```
-
-### With a `use()` method
-
-If your class defines a `use()` method, its parameters define the arguments to `Model.use()`:
-
-```tsx
-class Search extends Model {
-  query = '';
-
-  use(props: { initialQuery: string }) {
-    this.query = props.initialQuery;
-  }
-}
-
-const state = Search.use({ initialQuery: 'react' });
-```
-
-`use()` runs on every render, so it can also call React hooks:
-
-```tsx
-class Nav extends Model {
-  path = '/';
-
-  use() {
-    this.path = useLocation().pathname;
-  }
-}
-```
-
-Both jobs have a Component form. Per-render arguments are fields passed as props (`<Search query="react" />`), with anything derived from them as getters. Third-party hooks are read in an outer function that passes props, or called at the top of `render()`, which runs as a real function component.
-
-> The `use()` method applies to the `Model.use()` hook path only. A [`Component`](/docs/api/component) rendered as JSX never calls it.
-
-### With a `mount()` method
-
-`mount()` runs once when the owning component commits, never during server render; return a function to run on unmount. It runs for `Model.use()`, `<Component for={Class}>`, and a rendered Component - each owns its instance - and not for `Model.get()`, an instance passed to `<Component for>`, or one placed as `{instance}`. See [lifecycle hooks](/docs/api/state#lifecycle-hooks).
-
-<br />
-
 ## See also
 
 - [Context guide](/docs/guides/context) - `<Component for>` patterns and the `get` instruction.
 - [Components](/docs/api/component) - the `Component` class, the default owner of view state, and rendering an instance as `{instance}`.
-- [Migrating from Hooks](/docs/migrating-from-hooks) - `Model.use()` as a first step, `Component` as the destination.
+- [Migrating from Hooks](/docs/migrating-from-hooks) - moving hook state into classes.
 - [Model](/docs/api/state) - the base class and its methods.
 - [Utilities](/docs/api/utilities) - `watch` and `listener` for observing state changes.

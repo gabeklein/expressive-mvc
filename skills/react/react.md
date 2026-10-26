@@ -65,7 +65,6 @@ class Viewport extends Model {
 | `Model.get()`                 | no      | no        |
 | `{instance}`                  | no      | no        |
 | `Model.new()`                 | no host | no        |
-| `Model.use()`                 | yes     | yes       |
 
 `<Component for={Model}>` runs the provided instance's `mount()` with its own commit:
 
@@ -290,70 +289,6 @@ Do not alias `is` merely because something will be written - writes never need t
 `<Component for={AppState}>` provides one instance to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); `mount()` timing in [mount() method](#mount-method). For a render-prop read, write an FC calling `AppState.get()`.
 
 `Provider` was removed - replace `<Provider for={X}>` with `<Component for={X}>`.
-
----
-
-## Model.use() - Adoption Bridge
-
-Creates a plain Model owned by the calling FC and subscribes to it. Not the default - FCs own nothing in the [ownership model](../SKILL.md#start-with-ownership-not-apis): state a view owns is a `Component`, state a subtree shares is `<Component for>`. Reach for `.use()` where restructuring is not the task:
-
-- adding a class to an existing hook component without restructuring it;
-- a library exporting a hook to components it does not control.
-
-```tsx
-function Counter() {
-  const { count, increment } = CounterState.use();
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-- Created once, reused across renders; destroyed on unmount. Strict-mode safe.
-- Provides nothing - children of the FC cannot `.get()` it. When they need it, convert to `<Component for={CounterState}>`.
-- Not kept by a render React discards: suspending before the first commit - reading the instance's own pending value included - drops it, and each retry creates and loads a new one, so the render never resolves. Own loading state in a committed ancestor ([Suspense](component.md#suspense)).
-- Same dependency-snapshot and transparent-write rules as `.get()`.
-
-Arguments match `Model.new()` - objects, callbacks:
-
-```tsx
-const state = CounterState.use({ count: 10 });
-const state = CounterState.use((self) => {
-  /* init, runs once */
-});
-```
-
-A `use()` method on the class intercepts the arguments - its parameter types become the static `.use()` argument types - and runs every render, so it can call hooks:
-
-```tsx
-class Greeter extends Model {
-  greeting = '';
-
-  use(props: { name: string }) {
-    this.greeting = `Hello, ${props.name}`;
-  }
-}
-
-const { greeting } = Greeter.use({ name });
-```
-
-The Component form needs neither - fields are props, derivations getters, and `render()` may call hooks:
-
-```tsx
-class Greeter extends Component {
-  name = '';
-
-  get greeting() {
-    return `Hello, ${this.name}`;
-  }
-
-  render() {
-    return <p>{this.greeting}</p>;
-  }
-}
-
-<Greeter name={name} />;
-```
-
-Router hooks: an outer FC passes params as props ([patterns.md](patterns.md#bridging-an-existing-router)).
 
 ---
 

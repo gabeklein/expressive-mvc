@@ -418,7 +418,7 @@ function SidebarItems() {
 - `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `Model.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
-`MyComponent.use()` throws - a Component is rendered (`<MyComponent />` or `{instance}`), not used. For a bare instance use `MyComponent.new()`.
+A Component is rendered (`<MyComponent />` or `{instance}`); for a bare instance use `MyComponent.new()`.
 
 Anything touching `window`, timers or subscriptions belongs in `mount()`, not `new()`:
 
