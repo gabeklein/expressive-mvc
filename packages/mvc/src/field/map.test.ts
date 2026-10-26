@@ -405,7 +405,7 @@ describe('context', () => {
     users = map((id: string) => new User({ id }));
   }
 
-  it.fails('will not provide rows of an owner without a level', () => {
+  it('will not provide rows of an owner without a level', () => {
     const connection = Connection.new();
 
     connection.users.set('a');
@@ -417,7 +417,7 @@ describe('context', () => {
     expect(Context.root.get(User, false)).toBeUndefined();
   });
 
-  it.fails('will not change lookup as rows are added', () => {
+  it('will not change lookup as rows are added', () => {
     class Reader extends Model {}
 
     const connection = Connection.new();
@@ -430,7 +430,7 @@ describe('context', () => {
     expect(reader.get(User, false)).toBeUndefined();
   });
 
-  it.fails('will provide held rows once the owner has a level', () => {
+  it('will provide held rows once the owner has a level', () => {
     const connection = Connection.new();
     const a = connection.users.set('a').get('a')!;
     const context = Context.root.push(connection);

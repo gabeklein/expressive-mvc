@@ -571,7 +571,7 @@ describe('pool context', () => {
     members = has(Member);
   }
 
-  it.fails('will not provide members of an owner without a level', () => {
+  it('will not provide members of an owner without a level', () => {
     const owner = Owner.new();
 
     owner.members.add();
@@ -581,7 +581,7 @@ describe('pool context', () => {
     expect(Context.root.get(Member, false)).toBeUndefined();
   });
 
-  it.fails('will provide held members once the owner has a level', () => {
+  it('will provide held members once the owner has a level', () => {
     const owner = Owner.new();
     const member = owner.members.add();
     const context = Context.root.push(owner);
