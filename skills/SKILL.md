@@ -313,7 +313,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
 - [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense, when a derivation should stay local
 - [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases; hot patching and the `hot` seam
-- [state/context.md](state/context.md) - Context system, global root, home context, ownership rules, `Context.get`/`set`/`current`, writing a host
+- [state/context.md](state/context.md) - Context system, global root, home context, ownership rules, `Context.get`/`resolve`, writing a host
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
 Instructions: `field/*.md`, linked from the [helper table](#instructions--reactive-helpers).

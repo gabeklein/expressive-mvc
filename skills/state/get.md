@@ -191,6 +191,7 @@ class Order extends Model {
 - Strictness is base `get(true)`'s, applied after `Context.get` - an own key resolves as `get()` does.
 - `compute(context, from?)` returns the result; `from` is the calling instance for the instance and instruction forms. A returned Model is tracked - by the host in render, through `from` when it is a tracking proxy.
 - In `compute`, use only `context.get(Type, required?)` - other members of `context` are unstable.
+- In render or through a tracking proxy, every `context.get` in `compute` follows context - `context.get(Connection).reference(this, id)` re-runs when `Connection`'s provider changes, as `User.get()` does for `User`.
 - Outside render - event handlers, effects, module code - a static `get` resolves from root, untracked, on every host.
 - A plain `Other.get()` inside `compute` resolves the same way - the instance and instruction forms keep it on the caller's context.
 - Prefer one signature - inference from overloads uses the last.

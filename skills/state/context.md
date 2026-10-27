@@ -215,11 +215,11 @@ Context.get(state): Context                  // state's home context
 Context.get(Type, compute): R                // resolve a static get - see get.md#overriding
 ```
 
-`state.get(Type, ...args)` and the `get(Type, ...)` instruction make the instance's home context current and the instance the origin of each static `get` they reach: `compute` receives it as `from`, and a returned Model is tracked through it when it is a tracking proxy. There hosts do not track, and React runs no hooks.
+`state.get(Type, ...args)` and the `get(Type, ...)` instruction make the instance's home context current and the instance the origin of each static `get` they reach: `compute` receives it as `from`. When it is a tracking proxy, `compute` gets a tracked view of the context - each `context.get` in it follows that context - and a returned Model is tracked through it. There hosts do not track, and React runs no hooks.
 
 ### Writing a host
 
-A host assigns `Context.resolve(Type, compute)`, which runs for every `Context.get` outside an origin - `Type` is undefined for bare `Context.get()`. It keeps the previous function and calls it where the host is not rendering; installs stack. Its return value is what the caller receives. In render the host runs `compute` against its own context and tracks a returned Model, one subscription per instance per render; base `get(true)` makes that tracked result strict.
+A host assigns `Context.resolve(Type, compute)`, which runs for every `Context.get` outside an origin - `Type` is undefined for bare `Context.get()`. It keeps the previous function and calls it where the host is not rendering; installs stack. Its return value is what the caller receives. In render the host runs `compute` against a tracked view of its own context, so a provider any lookup in `compute` reads arriving, replaced or leaving renders again, and tracks a returned Model, one subscription per instance per render; base `get(true)` makes that tracked result strict.
 
 ## API Surface
 
