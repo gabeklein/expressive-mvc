@@ -213,7 +213,7 @@ function provide(self: Component<any>) {
   let release: unknown;
   let provided: (() => void) | undefined;
 
-  function unprovide() {
+  function remove() {
     if (provided) provided();
     provided = undefined;
   }
@@ -249,7 +249,7 @@ function provide(self: Component<any>) {
     if (next !== input) {
       input = next;
       unmount();
-      unprovide();
+      remove();
 
       if (Model.is(next)) {
         target = new (next as Model.Type)(rest);
@@ -276,7 +276,7 @@ function provide(self: Component<any>) {
 
   sync();
   self.set('props', sync);
-  listener(self, unprovide, null);
+  listener(self, remove, null);
 }
 
 export { Component };
