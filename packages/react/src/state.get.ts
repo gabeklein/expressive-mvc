@@ -166,7 +166,7 @@ Model.get = function get<T extends Model>(
       if (follow(ctx.get(Type, false)) && mounted) observed();
     });
 
-    if (!unwatch && argument !== false) {
+    if (!found && argument !== false) {
       unfollow();
       throw new Error(`Could not find ${Type} in context.`);
     }
@@ -208,7 +208,8 @@ Model.get = function get<T extends Model>(
           return release;
         };
       });
-      return value === undefined ? found && null : value;
+      if (found) return value === undefined ? null : value;
+      if (argument !== false) throw new Error(`Could not find ${Type} in context.`);
     };
   });
 

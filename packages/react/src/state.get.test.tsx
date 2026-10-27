@@ -531,16 +531,77 @@ describe('Model.get', () => {
       expect(didRender).toBeCalledTimes(3);
     });
 
-    it('will render null when instance is removed', async () => {
+    it('will return undefined when instance is removed', async () => {
       class Other extends Model {}
 
-      const { container, swap } = mount(Test.new(), () => Test.get(false)?.value ?? null);
+      const didGet = vi.fn();
+      const { container, swap } = mount(Test.new(), () => {
+        const test = Test.get(false);
+        didGet(test);
+        return test?.value ?? null;
+      });
 
       expect(container.textContent).toBe('foo');
 
       await swap(Other.new());
 
       expect(container.textContent).toBe('');
+      expect(didGet).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it('will throw when a required instance is removed', async () => {
+      class Other extends Model {}
+
+      const { container, swap } = mount(Test.new(), () => {
+        try {
+          return Test.get().value;
+        } catch (err: any) {
+          return err.message;
+        }
+      });
+
+      expect(container.textContent).toBe('foo');
+
+      await swap(Other.new());
+
+      expect(container.textContent).toBe(`Could not find ${Test} in context.`);
+    });
+
+    it('will follow an ambiguous lookup', async () => {
+      class Parent extends Model {
+        a = new Test({ value: 'a' });
+        b?: Test = undefined;
+      }
+
+      const parent = Parent.new();
+      const didGet = vi.fn();
+
+      const Inner = () => {
+        const test = Test.get(false);
+        didGet(test);
+        return test?.value ?? 'none';
+      };
+
+      const view = render(
+        <Component for={parent}>
+          <Inner />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('a');
+
+      await act(async () => {
+        parent.b = new Test({ value: 'b' });
+      });
+
+      expect(view.container.textContent).toBe('none');
+      expect(didGet).toHaveBeenLastCalledWith(undefined);
+
+      await act(async () => {
+        parent.b = undefined;
+      });
+
+      expect(view.container.textContent).toBe('a');
     });
 
     it('will use factory with replaced instance', async () => {
