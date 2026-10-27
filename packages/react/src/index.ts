@@ -46,9 +46,7 @@ Object.assign(Runtime, {
 });
 
 // Nothing is exported for app code - `Model`, `Component` and the instructions come
-// from `@expressive/mvc`. These register `has` and `map` collections as renderable.
-import './has';
-import './map';
+// from `@expressive/mvc`; `has` and `map` collections are adopted in `element.ts`.
 
 // A type-only export, so this entry's .d.ts stays linked to the adapter's
 // `Model`/`Component` augmentations; the bundler drops a bare import.

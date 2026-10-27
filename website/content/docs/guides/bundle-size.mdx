@@ -13,15 +13,16 @@ Minified, then gzipped. React is a peer dependency and excluded, as it would alr
 | --- | --- |
 | `@expressive/mvc` — `Model` only (headless) | ~6.4 kB |
 | `@expressive/mvc` — every export | ~10.1 kB |
-| `@expressive/react` — `Model` only | ~12.1 kB |
-| `@expressive/react` — `Model`, `Component`, instructions | ~12.9 kB |
+| `@expressive/react` — `Model` only | ~10.4 kB |
+| `@expressive/react` — `Model`, `Component`, instructions | ~11.3 kB |
+| `@expressive/react` — the above plus `has` and `map` collections | ~12.1 kB |
 | `@expressive/react` — every export | ~13.0 kB |
 | `@expressive/mvc` + `@expressive/dom` — renderer without style helpers | ~17.8 kB |
 | `@expressive/mvc` + `@expressive/dom` — every export, including styling | ~19.9 kB |
 | `@expressive/router` — every export | ~13.2 kB |
-| `@expressive/react` + `@expressive/router` | ~16.8 kB |
+| `@expressive/react` + `@expressive/router` | ~15.9 kB |
 
-A typical React app lands around **12.9 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
+A typical React app lands around **11.3 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
 
 ## Methodology, and why the numbers differ elsewhere
 
@@ -39,14 +40,14 @@ The headless core shakes properly: importing only `Model` costs ~6.4 kB against 
 
 The appearance system is likewise optional: renderer imports measure ~17.8 kB; adding `style` and `macro` raises the total to ~19.9 kB. The renderer retains only the small token protocol needed to accept styles registered elsewhere. Unlike the React rows, these figures include `@expressive/mvc`, which `@expressive/dom` does not re-export and an app therefore imports directly.
 
-The React adapter has a **floor you cannot shake below: ~12.1 kB**, reached by importing it at all. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
+The React adapter has a **floor you cannot shake below: ~10.4 kB**, reached by importing it at all. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 
 - `Component.prototype.$$typeof`, so an instance can be placed directly as JSX
 - `Component.contextType`, wiring the class into React context
 - `isReactComponent`, so React treats it as a class component
 - the host runtime registry, which hands the core its renderer
 
-Cross-package prototype patches cannot be tree-shaken away without breaking the library, so the wiring arrives whole or not at all. The floor includes the `has` and `map` collection patches, which make a pool or map renderable as an element - they install at import, since an app takes `has` and `map` from the core and the adapter cannot tell whether it will render one. Above the floor, shaking resumes normally - `pending` and the rest of the core account for the remaining ~0.9 kB and drop out when unused.
+Cross-package prototype patches cannot be tree-shaken away without breaking the library, so the wiring arrives whole or not at all. Above the floor, shaking resumes normally. `has` and `map` are the clearest case: each declares itself renderable to the core as it loads, exactly as `Component` does, and the adapter adopts every declared class with the same element seam, so the patch that lets a pool or map render as an element travels with the collection module itself - an app that imports `has` pays for it (~0.8 kB together with `map`), an app that never does ships neither. `pending` and the rest of the core drop out the same way.
 
 The practical consequence: Expressive rewards using more of what you have already paid for, and is a poor fit for shipping one tiny piece of it into an otherwise dependency-free bundle.
 

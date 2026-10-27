@@ -1,4 +1,5 @@
 import { Context } from './context';
+import { element } from './element';
 import { set } from './field/set';
 import { Model, adopt, plain, trailing } from './state';
 
@@ -263,5 +264,7 @@ function provide(self: Component<any>) {
   sync();
   self.set('props', sync);
 }
+
+element(Component);
 
 export { Component };
