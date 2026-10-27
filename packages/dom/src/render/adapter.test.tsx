@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Model, Component } from '@expressive/mvc';
+import { Model, Component, Context } from '@expressive/mvc';
 import { render } from '../index';
 import * as hot from '@expressive/mvc/hot';
 import { flushMicrotasks, mockPromise, mount } from '../../test.setup';
@@ -417,5 +417,169 @@ describe('Component for', () => {
       // @ts-expect-error
       <Sub for={Typed} />
     ]);
+  });
+});
+
+describe('get parity', () => {
+  class Foo extends Model {
+    value = 'none';
+  }
+
+  it('will follow a provider replaced by parent render', async () => {
+    const a = Foo.new({ value: 'a' });
+    const b = Foo.new({ value: 'b' });
+    const renders = vi.fn();
+
+    function Name() {
+      renders();
+      return <span>{Foo.get().value}</span>;
+    }
+
+    class Stable extends Component {
+      render() {
+        renders();
+        return <span>{Foo.get().value}</span>;
+      }
+    }
+
+    class App extends Component {
+      current = a;
+
+      render() {
+        return (
+          <Component for={this.current}>
+            <Name />
+            <Stable />
+          </Component>
+        );
+      }
+    }
+
+    const [app, root, release] = mount(App);
+
+    expect(root.textContent).toBe('aa');
+
+    app.current = b;
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('bb');
+
+    renders.mockClear();
+    a.value = 'stale';
+    await flushMicrotasks();
+
+    expect(renders).not.toBeCalled();
+
+    release();
+  });
+
+  it('will follow an implicitly replaced child', async () => {
+    class Parent extends Model {
+      child = new Foo({ value: 'original' });
+    }
+
+    const parent = Parent.new();
+    const renders = vi.fn();
+
+    function Name() {
+      renders();
+      return <span>{Foo.get().value}</span>;
+    }
+
+    const root = document.createElement('main');
+    const release = render(<Component for={parent}><Name /></Component>, root);
+
+    expect(root.textContent).toBe('original');
+
+    parent.child = new Foo({ value: 'replaced' });
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('replaced');
+
+    parent.child.value = 'updated';
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('updated');
+
+    release();
+  });
+
+  it('will refresh for an instance arriving after mount', async () => {
+    class Parent extends Model {
+      child?: Foo = undefined;
+    }
+
+    const parent = Parent.new();
+
+    function Name() {
+      return <span>{Foo.get(false)?.value ?? 'missing'}</span>;
+    }
+
+    const root = document.createElement('main');
+    const release = render(<Component for={parent}><Name /></Component>, root);
+
+    expect(root.textContent).toBe('missing');
+
+    parent.child = new Foo({ value: 'arrived' });
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('arrived');
+
+    release();
+  });
+
+  it('will refresh for a provider whose for becomes defined', async () => {
+    class App extends Component {
+      current?: Foo = undefined;
+
+      render() {
+        return (
+          <Component for={this.current}>
+            <Name />
+          </Component>
+        );
+      }
+    }
+
+    function Name() {
+      return <span>{Foo.get(false)?.value ?? 'missing'}</span>;
+    }
+
+    const [app, root, release] = mount(App);
+
+    expect(root.textContent).toBe('missing');
+
+    app.current = Foo.new({ value: 'arrived' });
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('arrived');
+
+    release();
+  });
+
+  it('will not refresh for a provider above the one found', async () => {
+    class Parent extends Model {
+      child = new Foo({ value: 'near' });
+    }
+
+    const parent = Parent.new();
+    const renders = vi.fn();
+
+    function Name() {
+      renders();
+      return <span>{Foo.get().value}</span>;
+    }
+
+    const root = document.createElement('main');
+    const release = render(<Component for={parent}><Name /></Component>, root);
+
+    const remove = Context.root.add(Foo.new({ value: 'far' }));
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('near');
+    expect(renders).toBeCalledTimes(1);
+
+    remove();
+    release();
   });
 });
