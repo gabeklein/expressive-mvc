@@ -136,8 +136,8 @@ import { Context } from '@expressive/mvc';
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
 
-const child = ctx.push({ PageControl });
-child.pop(); // destroy child context
+const child = ctx.push({ PageControl }, () => console.log('page closed'));
+child.pop(); // runs cleanup, destroys PageControl
 ```
 
 `get(Type)` walks parents toward root.
@@ -182,7 +182,7 @@ Context is where an instance registers to be found; ownership is who constructed
 
 - A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every instance a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
 - Two siblings of one type are ambiguous to context (`get(Foo)` is `null`) but each has exactly one owner.
-- A host-mounted Component, `use()` instance or `<Component for>` is owned by the Component rendering it, with no field between them.
+- A host-mounted Component or `<Component for>` is owned by the Component rendering it, with no field between them.
 
 `state.get(Model)` reads the owner and `get(Model, true)` lists what an instance owns directly; neither consults context. Use a type to find a collaborator; use `Model` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
 
@@ -213,7 +213,7 @@ new Context();                         // empty
 new Context(parentContext);            // child of parent
 new Context(StateClass);               // create + register an instance
 new Context(stateInstance);            // register existing instance
-new Context({ a: A, b: B });           // multi-instance
+new Context({ a: A, b: B });           // several, registered before any activates
 
 ctx.get(Type);                         // upstream lookup, throws if missing
 ctx.get(Type, false);                  // optional, returns undefined
@@ -221,8 +221,7 @@ ctx.get(Type, callback);               // watch, upstream and downstream
 ctx.get(Type, callback, true);         // downstream only
 ctx.get(Type, callback, false);        // upstream only
 ctx.add(state, explicit?);             // register an instance
-ctx.set(inputs, forEach?);             // register multiple
-ctx.push(inputs?);                     // create child context
+ctx.push(input?, cleanup?);            // child context; input as constructor; owns classes, adopts instances; cleanup runs once on pop
 ctx.pop();                             // destroy this and descendants
 Context.get(state);                    // static: state's home context
 Context.root;                          // global registry

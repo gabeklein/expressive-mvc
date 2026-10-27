@@ -1,6 +1,6 @@
 ---
 title: Why Classes?
-description: The organizational case for moving state out of components
+description: The organizational case for moving state into classes
 ---
 
 React's hook model made a bold trade-off: instead of organizing code around data, organize it around *when code runs*. `useState` for mounts, `useEffect` for side effects, `useMemo` for derivations, `useCallback` for stable references. Every piece of state logic gets spread across these primitives, keyed by execution timing rather than by what it means.
@@ -120,12 +120,18 @@ Now look at what moved in the class:
 - **`dirty` became a getter.** Its inputs (`name`, `email`, `initial`) are tracked automatically - no dependency array to maintain, no way to forget one.
 - **`save` became a regular async method.** No `useCallback`, no stale closures.
 
-And the component? Pure presentation:
+And the component? Pure presentation. Place the class above it with `<Component for>` - that element owns the instance, assigns `userId` on every render, and shows `fallback` while `initial` loads - and the view just reads it:
 
 ```tsx
-function UserSettingsView(props: { userId: string }) {
+const UserSettingsPage = ({ userId }: { userId: string }) => (
+  <Component for={UserSettings} userId={userId} fallback={<p>Loading...</p>}>
+    <UserSettingsForm />
+  </Component>
+);
+
+function UserSettingsForm() {
   const { is: settings, name, email, dirty, saving, error, save } =
-    UserSettings.use(props);
+    UserSettings.get();
 
   return (
     <form
@@ -148,7 +154,9 @@ function UserSettingsView(props: { userId: string }) {
 }
 ```
 
-> Notice how the component remains completely independent from the logic. Want a second view of the same feature - a modal, a sidebar, a mobile layout? Write a second component. The behavior stays put.
+> Notice how the form remains completely independent from the logic - it owns nothing, and creates nothing. Want a second view of the same feature - a modal, a sidebar, a mobile layout? Write a second function and place it under the same element, or under its own. The behavior stays put.
+
+When the form *is* the feature, the class can render it instead: `class UserSettings extends Component` with a `render()`. A Component provides itself to everything it renders, so pieces of the form split out as functions calling `UserSettings.get()` - no wiring, no props. Either way, function components hold no state; they project it.
 
 <br />
 
@@ -182,7 +190,11 @@ No render utilities, no `act()`, no DOM. The tests run in milliseconds, and they
 
 ### Reuse across views
 
-The same class can power a sidebar, a modal, a mobile layout, and a full page. Components consume the class; they don't own it.
+The same class can power a sidebar, a modal, a mobile layout, and a full page. Views read the class; the element placing it owns it.
+
+### Portable by construction
+
+Nothing in a Model imports React. The same class tree runs headless under `App.new()` - for tests, scripts and agents - renders under React, and renders under `@expressive/dom` with no virtual DOM at all. What does not port is hook code. That is why views here stay projections, and why Expressive is MVC you run in React rather than one more way to hold state in a hook.
 
 ### Type safety as a side effect
 
@@ -207,17 +219,17 @@ This is also why classes are unusually friendly to agents. A Model class is a se
 To be honest about the trade-off:
 
 - **`this`** - you have to use it. If your team has a strict "functional only" rule, Expressive isn't for you.
-- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~11.2 kB gzip for a typical app, ~13.0 kB with every export used ([measured and CI-gated](/docs/guides/bundle-size)). Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
-- **An adapter floor you cannot tree-shake** - the React adapter works by patching things it does not own at import: `Component.prototype`, `contextType`, `isReactComponent`, the host runtime registry. Cross-package prototype patches cannot be shaken away, so importing `@expressive/react` at all costs ~10.3 kB before your first field. The headless core does shake properly (~6.4 kB for `Model` alone, ~10.1 kB for all of it).
+- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~11.3 kB gzip for a typical app, ~13.0 kB with every export used ([measured and CI-gated](/docs/guides/bundle-size)). Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
+- **An adapter floor you cannot tree-shake** - the React adapter works by patching things it does not own at import: `Component.prototype`, `contextType`, `isReactComponent`, the host runtime registry. Cross-package prototype patches cannot be shaken away, so importing `@expressive/react` at all costs ~10.4 kB before your first field. The headless core does shake properly (~6.4 kB for `Model` alone, ~10.1 kB for all of it).
 - **Familiarity for new hires** - engineers used to Redux or Zustand will need a brief ramp-up on classes and instructions.
 
-Expressive does not try to replace hooks wholesale. It coexists. Use `useState` where it's fine; reach for a class where the complexity justifies it.
+Expressive coexists with hooks - `useState` is fine for a toggle in a leaf, and React's own hooks still bridge in at the edges. What it does not offer is a hook-shaped way to own state: ownership lives in classes, which is what lets the same code move between hosts.
 
 <br />
 
 ## Next
 
-- [Comparisons](/docs/comparisons) - the same component built with Zustand, Jotai, Redux, and MobX, side by side.
+- [Comparisons](/docs/comparisons) - the same feature built with Zustand, Jotai, Redux, and MobX, side by side.
 - [Migrating from Hooks](/docs/migrating-from-hooks) - a step-by-step playbook for adopting Expressive in an existing codebase.
 
 export const faq = {
@@ -229,7 +241,7 @@ export const faq = {
       name: 'Didn’t React move away from classes?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'React moved away from class components - views with lifecycle methods and setState. Expressive agrees with that verdict: views stay ordinary function components. Classes are used only as the model layer, holding state and behavior that runs and tests without any framework, the same division MobX-style observables draw.',
+        text: 'React moved away from class components - state hidden behind setState, effects split across lifecycle methods. Expressive keeps that verdict where it matters. A Component render() is a projection of the fields it observes, with no setState and no componentDidUpdate; effects live in mount(); function components stay stateless views that read classes with Model.get(). The classes hold state and behavior that runs and tests without any framework.',
       },
     },
     {
@@ -237,7 +249,7 @@ export const faq = {
       name: 'Are Expressive MVC classes React class components?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'No. A Model class is headless - no render method, no setState, no lifecycle-method views. Components subscribe to it through hooks like Model.use() and Model.get(), re-rendering only when values they actually read change.',
+        text: 'A Component renders in React, but works nothing like a classic class component: no setState, no lifecycle-method tree, and its fields are observable state that also runs headless. A Model is headless altogether - placed with <Component for> or held as a field, and read with Model.get(), re-rendering only when values a view actually reads change.',
       },
     },
     {

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { Model } from '@expressive/mvc';
-import { Component } from '.';
+import '.';
+import { Component } from '@expressive/mvc';
 
 function onServer<T>(fn: () => T): T {
   const saved = (globalThis as any).window;
@@ -17,16 +18,18 @@ function onServer<T>(fn: () => T): T {
 describe('server render', () => {
   it('will run new() and render state', () => {
     let ran = false;
-    class Store extends Model {
+    class Store extends Component {
       value = 5;
       protected new() {
         ran = true;
         return () => {};
       }
+      render() {
+        return <span>{this.value}</span>;
+      }
     }
-    const View = () => <span>{Store.use().value}</span>;
 
-    expect(onServer(() => renderToString(<View />))).toContain('>5<');
+    expect(onServer(() => renderToString(<Store />))).toContain('>5<');
     expect(ran).toBe(true);
   });
 

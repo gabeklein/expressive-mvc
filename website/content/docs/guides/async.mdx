@@ -12,23 +12,25 @@ Async data is a first-class citizen in Expressive. You don't need a query librar
 Pass an async function to `set()` and the property becomes a promise-backed value. Accessing it before resolution throws a Suspense-compatible promise; accessing it after resolution returns the value.
 
 ```tsx
-class UserProfile extends Model {
+class Profile extends Component {
   user = set(async () => {
     const res = await fetch('/api/user');
     return res.json();
   });
+
+  fallback = <Spinner />;
+
+  render() {
+    const { user } = this;
+
+    return <h1>{user.name}</h1>; // guaranteed defined
+  }
 }
 
-function Profile() {
-  const { user } = UserProfile.use();
-  return <h1>{user.name}</h1>; // guaranteed defined
-}
-
-// Wrap with Suspense:
-<Suspense fallback={<Spinner />}>
-  <Profile />
-</Suspense>;
+<Profile />;
 ```
+
+A `Component` is its own Suspense boundary - `fallback` shows while any pending property read in `render()` loads, no `<Suspense>` wrapper needed. The instance lives outside the render that suspends, so it loads once and is still there when the render retries.
 
 By default the factory is **lazy** - it runs the first time something reads the property. Pass `true` as the second argument to run it eagerly on activation:
 
@@ -42,7 +44,7 @@ Pass `false` to make it non-blocking - the property returns `undefined` while pe
 avatar = set(async () => fetchAvatar(), false); // User['avatar'] | undefined
 ```
 
-> A `Component` gives you the boundary for free: set its `fallback` and any pending property in `render()` is covered, no `<Suspense>` wrapper needed. Details in [Components](/docs/guides/components#suspense). For a headless-Model version of this pattern, see [essentials/async](/examples/essentials/async).
+> For shared, headless data, the same shape is a `Model` placed with `<Component for={UserProfile} fallback={<Spinner />}>`, read below by function components with `UserProfile.get()` - see [essentials/async](/examples/essentials/async). Details on boundaries in [Components](/docs/guides/components#suspense).
 >
 > Whichever boundary catches, the pending value must be owned **above** it. A boundary rebuilds the subtree it retries, so an instance created below it is constructed again on every retry and requests again - a silent loop.
 
@@ -249,47 +251,42 @@ The callback returns a cleanup function, called before the next update (or on de
 
 Expressive and a server-cache library are not rivals - they own different things. TanStack Query (or SWR) owns the server cache: request dedupe, retries, background refresh, invalidation. The control owns what the view actually works with: filters, selection, derived values, actions.
 
-The bridge is the class `use()` method. It runs on every render of the hosting component, so hooks are legal inside it - the query lives *in the control*, and components never see the query library at all:
+The bridge is a small function component: it calls the query hook and passes the result as props. Props are fields, so the control receives the data on every render without importing the query library or knowing it exists:
 
 ```tsx
 import { useQuery } from '@tanstack/react-query';
 
-class Todos extends Model {
+function TodoList() {
+  const { data } = useQuery({ queryKey: ['todos'], queryFn: fetchTodos });
+
+  if (!data) return <Spinner />;
+
+  return <Todos items={data} />;
+}
+
+class Todos extends Component {
   items: Todo[] = [];
-  pending = false;
   filter: 'all' | 'open' = 'all';
-
-  use() {
-    const { data, isPending } = useQuery({
-      queryKey: ['todos'],
-      queryFn: fetchTodos
-    });
-
-    if (data) this.items = data;
-    this.pending = isPending;
-  }
 
   get visible() {
     if (this.filter === 'all') return this.items;
     return this.items.filter((t) => !t.done);
   }
-}
 
-function TodoList() {
-  const { visible, pending, is: todos } = Todos.use();
+  render() {
+    const { visible } = this;
 
-  if (pending) return <Spinner />;
-
-  return (
-    <>
-      <FilterBar onPick={(f) => (todos.filter = f)} />
-      {visible.map((t) => <TodoRow key={t.id} todo={t} />)}
-    </>
-  );
+    return (
+      <>
+        <FilterBar onPick={(f) => (this.filter = f)} />
+        {visible.map((t) => <TodoRow key={t.id} todo={t} />)}
+      </>
+    );
+  }
 }
 ```
 
-Assigning an unchanged value is a no-op - no event fires - so copying the query result in on every render costs nothing while the cache is stable. Writes flow the other way as ordinary assignments; a mutation hook slots into `use()` the same way.
+Assigning an unchanged value is a no-op - no event fires - so re-passing the query result on every render costs nothing while the cache is stable. `filter` is never passed, so it stays the control's own. Writes flow the other way as ordinary assignments; a mutation hook can go at the top of `render()`, which runs as a real function component, so hooks are legal there.
 
 For data without cross-view cache requirements, the [async factory](#async-factories) and [async method](#async-methods) patterns above cover fetching with no second library at all - reach for a query library when you need its cache semantics, not to fetch.
 

@@ -1,6 +1,7 @@
 import { Context, has, map } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
 
+import type { Node as VNode } from '../node/vnode';
 import type { Appearance } from '../style/claim';
 import { makeScope, range } from './fiber';
 import type { Boundary, Fiber } from './fiber';
@@ -14,7 +15,7 @@ function mountCollection(value: has.List<unknown> | has.Pool<unknown> | map.Mana
   fiber.value = value;
   fiber.boundary = boundary;
   fiber.appearance = appearance;
-  fiber.scope = makeScope('collection', context, (passive) => runCollection(fiber, passive));
+  fiber.scope = makeScope(context, (passive) => runCollection(fiber, passive));
 
   let first = true;
   fiber.release = watch(value, (current) => {
@@ -30,8 +31,7 @@ function mountCollection(value: has.List<unknown> | has.Pool<unknown> | map.Mana
 
 function runCollection(fiber: Fiber, passive: boolean) {
   attempt(fiber, passive, () => {
-    const value = fiber.value as Iterable<unknown>;
-    return value instanceof map.Managed ? [...value.values()] : [...value];
+    return (fiber.value as has.List<VNode>).render();
   });
 }
 

@@ -1,5 +1,18 @@
 # @expressive/dom
 
+## 0.5.0
+
+### Minor Changes
+
+- [#544](https://github.com/gabeklein/expressive-mvc/pull/544) [`86fee85`](https://github.com/gabeklein/expressive-mvc/commit/86fee85646b20548384a028940254e9deb466ae3) Remove `Model.use()` from `@expressive/dom`. Function components own no state - put owned state on a class: a Component field, a Model element, or `<Component for={Type}>` above a function component that reads it with `Model.get()`. Per-render arguments become attributes, which assign fields. `use` is no longer a reserved member on rendered instances. `@expressive/react` keeps `Model.use()`.
+
+- [#546](https://github.com/gabeklein/expressive-mvc/pull/546) [`fdf2116`](https://github.com/gabeklein/expressive-mvc/commit/fdf211636b05788a233e16ddb5709028a042c076) Only a `Component` renders. A plain `Model` is no longer a JSX element or inline-renderable - `<Session />` and `{session}` throw, naming the fix: extend `Component` to render, or provide with `<Component for={Session}>`. `fallback`, `catch`, `mount`, `key` and `render` are no longer read from plain Models. Matches `@expressive/react`, where only Components render. PascalCase subcomponents on any Model are unchanged.
+
+### Patch Changes
+
+- Updated dependencies [[`d0b9cf6`](https://github.com/gabeklein/expressive-mvc/commit/d0b9cf6a29916f5db4c9eca23668c208540f9923)]:
+  - @expressive/mvc@0.90.0
+
 ## 0.4.0
 
 ### Minor Changes

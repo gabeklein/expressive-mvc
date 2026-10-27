@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { browserRouter, location, mockPromise, renderAct, withWindow } from '../test.setup';
 import { Context } from '@expressive/mvc';
-import { Component } from '@expressive/react';
+import '@expressive/react';
+import { Component } from '@expressive/mvc';
 import { BrowserRouter } from './browser';
 import { Route } from './route';
 
@@ -216,7 +217,7 @@ describe('BrowserRouter navigation settlement', () => {
     };
 
     const view = await renderAct(
-      <BrowserRouter is={(value) => (router = value)}>
+      <BrowserRouter is={(value) => void (router = value)}>
         <Route>
           <Route to="" as={() => <h1>home</h1>} />
           <Route to="a" fallback={<i>loading</i>} as={A} />
@@ -252,7 +253,7 @@ describe('BrowserRouter navigation settlement', () => {
     };
 
     const view = await renderAct(
-      <BrowserRouter is={(value) => (router = value)}>
+      <BrowserRouter is={(value) => void (router = value)}>
         <Status />
         <Route to="page" as={Page} />
       </BrowserRouter>

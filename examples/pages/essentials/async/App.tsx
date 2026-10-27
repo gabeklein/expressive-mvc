@@ -1,11 +1,19 @@
 import './App.css';
 
+import { Component } from '@expressive/mvc';
+
 import { Control } from './Control';
 
-const App = () => {
-  // Control is a Model, separating concerns of this component.
-  // This focuses on presentation, while Control focuses on behavior.
-  const { agent, dead, getNewAgent, remaining } = Control.use();
+// Control is a Model, separating concerns of this page.
+// Component provides an instance; Bomb focuses on presentation.
+const App = () => (
+  <Component for={Control}>
+    <Bomb />
+  </Component>
+);
+
+const Bomb = () => {
+  const { agent, dead, getNewAgent, remaining } = Control.get();
 
   if (dead === true)
     return (

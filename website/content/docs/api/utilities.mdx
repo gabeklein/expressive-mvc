@@ -43,7 +43,7 @@ import { accept, replaced } from '@expressive/mvc/hot';
 
 `@expressive/mvc/jsx-runtime` and `/jsx-dev-runtime` also exist, for the JSX transform - you don't import them by hand.
 
-An adapter such as `@expressive/react` is imported once, for its side effect, in your app's entry (`import '@expressive/react'`). Its re-exports of `Model`, `Component`, the instructions and friends - and its default export - are deprecated; import those from `@expressive/mvc`. The core package is a peer dependency of the adapter, so install both.
+An adapter such as `@expressive/react` is imported once, for its side effect, in your app's entry (`import '@expressive/react'`). It exports nothing for app code; `Model`, `Component`, the instructions and friends come from `@expressive/mvc`. The core package is a peer dependency of the adapter, so install both.
 
 > There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `queued` and `capture` - plumbing Model itself uses; you'll probably never need them.)
 
@@ -193,7 +193,7 @@ observer(counter, true);
 
 Now `watch(counter, ...)` works - no Model required. ✨
 
-This is a headless seam. React components subscribe through [`Model.use()` or `Model.get()`](/docs/api/hooks), so reaching React with a custom observable means wrapping it in a Model; there is no hook that subscribes to an arbitrary object.
+This is a headless seam. React components subscribe through a Component's `render()` or [`Model.get()`](/docs/api/state#modelget), so reaching React with a custom observable means wrapping it in a Model; there is no hook that subscribes to an arbitrary object.
 
 <br />
 
@@ -287,7 +287,7 @@ import { Context } from '@expressive/mvc';
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
 
-const child = ctx.push({ PageControl });
+const child = ctx.push({ PageControl }, () => console.log('page closed'));
 child.pop();
 ```
 
@@ -309,15 +309,15 @@ ctx.get(Type, false);                 // optional - undefined if missing
 ctx.get(Type, callback);              // upstream watch - returns unsubscribe
 ctx.get(Type, callback, true);        // downstream watch
 ctx.add(state, explicit?);            // register one instance (does not activate)
-ctx.set(inputs, forEach?);            // reconcile registered states with inputs
-ctx.push(inputs?);                    // create a child context
+ctx.push(input?, cleanup?);           // create a child context with inputs registered
 ctx.pop();                            // tear down this context and descendants
 Context.get(state);                   // static - a state's home context
 Context.root;                         // global registry
 ```
 
 - A failed `ctx.get(Type)` throws `Could not find ${Type} in context.`
-- `ctx.set()` accepts a class, an instance, or a map of either. Classes are constructed and activated; when inputs change, removed entries run their cleanup and instances the context created are destroyed. Instances you passed in are left alone.
+- `ctx.push()` and the constructor accept a class, an instance, or an object of either. Every input is registered before any activates, so siblings resolve each other with `get`. Classes are constructed and activated, and destroyed when the context pops; instances you passed in are left alone. Keys only name a bad input in the error. Inputs are registered once - there is no reconciling a later set.
+- `ctx.push(input, cleanup)` runs `cleanup` once when the child context pops - directly or with an ancestor - before its inputs are removed or destroyed.
 - `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
 - Adapters may override `Context.get` - the React adapter returns the ambient React context when called with no argument.
@@ -465,4 +465,4 @@ The registry is keyed by `id`, so it works wherever edited modules re-run while 
 
 - [Context guide](/docs/guides/context) - the JSX-facing surface: `<Component for>`, `get` instruction, patterns.
 - [Model](/docs/api/state) - `set(callback)` and `get(effect)`, the instance-method forms of these helpers.
-- [Hooks](/docs/api/hooks) - `Model.use` and `Model.get`, the React subscription paths.
+- [`Model.get()`](/docs/api/state#modelget) - the subscription path for function components.

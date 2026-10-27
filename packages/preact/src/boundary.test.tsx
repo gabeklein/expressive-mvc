@@ -3,7 +3,8 @@ import { render, screen, act } from '@testing-library/preact';
 import { vi, expect, it, describe } from 'vitest';
 
 import { mockError, mockPromise, flushMicrotasks } from '../test.setup';
-import { Component } from '.';
+import '.';
+import { Component } from '@expressive/mvc';
 
 describe('error boundary', () => {
   mockError();
@@ -94,7 +95,7 @@ describe('error boundary', () => {
 
     render(
       <Boundary
-        is={(value) => (instance = value)}
+        is={(value) => void (instance = value)}
         catch={async (error, self) => {
           received(error.message, self);
           await new Promise<void>((r) => {
@@ -163,7 +164,7 @@ describe('error boundary', () => {
       }
     }
 
-    render(<Boundary is={(value) => (instance = value)} />);
+    render(<Boundary is={(value) => void (instance = value)} />);
 
     expect(member).toHaveBeenCalledWith('boom', instance);
   });

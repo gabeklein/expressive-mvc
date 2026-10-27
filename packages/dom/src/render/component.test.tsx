@@ -73,9 +73,9 @@ describe('component', () => {
   });
 });
 
-describe('renderable Model', () => {
-  it('will pass children through a Model without render', () => {
-    class Bare extends Model {}
+describe('class element', () => {
+  it('will pass children through a Component without render', () => {
+    class Bare extends Component {}
     const root = document.createElement('main');
 
     render(<div><Bare>text</Bare><Bare /></div>, root);
@@ -83,9 +83,9 @@ describe('renderable Model', () => {
   });
 
   it('will be owned by enclosing Component', () => {
-    let inner!: Model;
+    let inner!: Component;
 
-    class Panel extends Model {
+    class Panel extends Component {
       render() {
         return null;
       }
@@ -93,7 +93,7 @@ describe('renderable Model', () => {
 
     class Outer extends Component {
       render() {
-        return <Panel is={(panel) => (inner = panel)} />;
+        return <Panel is={(panel) => void (inner = panel)} />;
       }
     }
 
@@ -103,11 +103,11 @@ describe('renderable Model', () => {
     expect(inner.get(Model)).toBe(outer);
   });
 
-  it('will render a Model with a render method', async () => {
+  it('will render a Component with a render method', async () => {
     const lifecycle: string[] = [];
     let panel!: Panel;
 
-    class Panel extends Model {
+    class Panel extends Component {
       label = 'idle';
       count = 0;
 
@@ -122,7 +122,7 @@ describe('renderable Model', () => {
     }
 
     const root = document.createElement('main');
-    const release = render(<Panel label="busy" is={(value) => (panel = value)} />, root);
+    const release = render(<Panel label="busy" is={(value) => void (panel = value)} />, root);
 
     expect(root.textContent).toBe('busy:0');
     expect(lifecycle).toEqual(['mount']);
@@ -137,7 +137,7 @@ describe('renderable Model', () => {
   });
 
   it('will apply props to fields, reset dropped ones and pass the rest to render', async () => {
-    class Panel extends Model {
+    class Panel extends Component {
       label?: string = 'default';
 
       render(props: { children?: Component.Node }) {
@@ -165,7 +165,7 @@ describe('renderable Model', () => {
     expect(root.textContent).toBe('none!');
   });
 
-  it('will pass children through and provide a Model without render', async () => {
+  it('will provide a Model through Component for', async () => {
     class Session extends Model {
       name = 'Ada';
     }
@@ -183,9 +183,9 @@ describe('renderable Model', () => {
     const root = document.createElement('main');
     const release = render(
       <>
-        <Session name="Grace" is={(value) => (session = value)}>
+        <Component for={Session} name="Grace" is={(value: Session) => void (session = value)}>
           <Leaf />
-        </Session>
+        </Component>
         <Sibling />
       </>,
       root
@@ -201,33 +201,9 @@ describe('renderable Model', () => {
     expect(session.get(null)).toBe(true);
   });
 
-  it('will render a client extension of a plain Model', async () => {
-    class Session extends Model {
-      user = 'anon';
-    }
 
-    class SessionView extends Session {
-      render() {
-        return <span>{this.user}</span>;
-      }
-    }
-
-    function Leaf() {
-      return <b>{Session.get().user}</b>;
-    }
-
-    const [view, root] = mount(SessionView, { user: 'ada', children: <Leaf /> });
-
-    expect(root.textContent).toBe('ada');
-    expect(view).toBeInstanceOf(Session);
-
-    view.user = 'grace';
-    await flushMicrotasks();
-    expect(root.textContent).toBe('grace');
-  });
-
-  it('will render a Model instance inline', async () => {
-    class Panel extends Model {
+  it('will render a Component instance inline', async () => {
+    class Panel extends Component {
       label = 'inline';
       render() {
         return <span>{this.label}</span>;
@@ -244,57 +220,12 @@ describe('renderable Model', () => {
     expect(panel.get(null)).toBe(false);
   });
 
-  it('will own a boundary only when a Model declares fallback or catch', async () => {
-    class Bare extends Model {
-      broken = true;
-      render() {
-        if (this.broken) throw new Error('broken');
-        return <p>bare</p>;
-      }
-    }
-
-    class Guarded extends Model {
-      fallback = <i>guarded</i>;
-      broken = true;
-
-      catch() {
-        this.broken = false;
-      }
-
-      render() {
-        if (this.broken) throw new Error('broken');
-        return <p>guarded</p>;
-      }
-    }
-
-    class App extends Component {
-      fallback = <i>outer</i>;
-      caught = 0;
-
-      catch() {
-        this.caught++;
-      }
-
-      render() {
-        return <Bare />;
-      }
-    }
-
-    const [app, root] = mount(App);
-    expect(root.textContent).toBe('outer');
-    expect(app.caught).toBe(1);
-
-    const other = place(<Guarded />);
-    expect(other.textContent).toBe('guarded');
-    await flushMicrotasks();
-    expect(other.textContent).toBe('guarded');
-  });
 
   it('will own a boundary from a fallback on the element', async () => {
     const loaded = mockPromise<() => Component.Node>();
     const Lazy = () => loaded;
 
-    class Plain extends Model {
+    class Plain extends Component {
       render() {
         return <Lazy />;
       }
@@ -308,12 +239,12 @@ describe('renderable Model', () => {
     expect(root.textContent).toBe('ready');
   });
 
-  it('will keep a Model which suspends itself', async () => {
+  it('will keep a Component which suspends itself', async () => {
     const loaded = mockPromise<void>();
     const created = vi.fn();
     let ready = false;
 
-    class Report extends Model {
+    class Report extends Component {
       count = 1;
 
       new() {
@@ -341,7 +272,7 @@ describe('renderable Model', () => {
   it('will prefer an element fallback over the member, used when placed', () => {
     const Lazy = () => new Promise<never>(() => {});
 
-    class Guarded extends Model {
+    class Guarded extends Component {
       fallback: Component.Node = <i>member</i>;
 
       render() {
@@ -354,22 +285,13 @@ describe('renderable Model', () => {
 
     const other = place(<><Guarded /><div>{Guarded.new() as never}</div></>);
     expect(other.textContent).toBe('membermember');
-
-    if (false) {
-      class Labelled extends Model {
-        fallback = 'label' as const;
-      }
-
-      // @ts-expect-error a member named fallback narrows the element's attribute
-      <Labelled fallback={<i />} />;
-    }
   });
 
   it('will call an element catch with the error and instance', async () => {
     const caught = vi.fn();
     let plain!: Plain;
 
-    class Plain extends Model {
+    class Plain extends Component {
       broken = true;
 
       render() {
@@ -380,7 +302,7 @@ describe('renderable Model', () => {
 
     const root = place(
       <Plain
-        is={(value) => (plain = value)}
+        is={(value) => void (plain = value)}
         fallback={<i>recovering</i>}
         catch={(error: Error, instance: Plain) => {
           caught(error.message, instance);
@@ -405,7 +327,7 @@ describe('renderable Model', () => {
       return <Lazy />;
     }
 
-    class Outer extends Model {
+    class Outer extends Component {
       fallback = <i>outer</i>;
 
       render() {
@@ -422,7 +344,7 @@ describe('renderable Model', () => {
     const First = ({ text }: { text: string }) => <b>{text}</b>;
     const Second = ({ text }: { text: string }) => <i>{text}</i>;
 
-    class Panel extends Model {
+    class Panel extends Component {
       Badge = First;
 
       render() {
@@ -439,8 +361,8 @@ describe('renderable Model', () => {
     expect(root.querySelector('i')?.textContent).toBe('x');
   });
 
-  it('will reconcile keyed renderable Models', async () => {
-    class Item extends Model {
+  it('will reconcile keyed Components', async () => {
+    class Item extends Component {
       value = '';
       render() {
         return <li>{this.value}</li>;

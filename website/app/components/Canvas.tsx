@@ -1,4 +1,4 @@
-import { Component, ref, set } from "@expressive/react";
+import { Component, ref, set } from "@expressive/mvc";
 
 interface CanvasProps {
   style?: React.CSSProperties;

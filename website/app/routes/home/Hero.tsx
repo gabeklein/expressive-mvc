@@ -1,4 +1,4 @@
-import Model, { Component, get, ref } from '@expressive/react';
+import { Model, Component, get, ref } from '@expressive/mvc';
 import type { CSSProperties } from 'react';
 
 declare const __LIB_VERSION__: string;
@@ -73,7 +73,7 @@ export function Hero() {
 const btn =
   'inline-flex items-center justify-center rounded-full text-sm font-medium py-2.5 px-5 no-underline transition-[opacity,background-color] duration-200';
 
-class Parallax extends Model {
+class Aurora extends Component {
   layer = ref<HTMLDivElement>((el) => {
     let frame = 0;
 
@@ -96,23 +96,23 @@ class Parallax extends Model {
       cancelAnimationFrame(frame);
     };
   });
-}
 
-function Aurora() {
-  const { layer } = Parallax.use();
+  render() {
+    const { layer } = this;
 
-  return (
-    <div
-      ref={layer}
-      aria-hidden
-      className="absolute inset-0 overflow-hidden [mask-image:linear-gradient(to_bottom,black,black_60%,transparent)]">
-      <div className="absolute inset-0 opacity-40 sm:opacity-100">
-        <div className="aurora absolute -top-48 -left-40 size-[36rem] rounded-full bg-(--accent)/20 blur-3xl" />
-        <div className="aurora absolute top-16 -right-40 size-[42rem] rounded-full bg-(--accent)/10 blur-3xl [animation-delay:-9s]" />
-        <div className="aurora absolute -bottom-56 left-1/3 size-[32rem] rounded-full bg-(--accent)/15 blur-3xl [animation-delay:-17s]" />
+    return (
+      <div
+        ref={layer}
+        aria-hidden
+        className="absolute inset-0 overflow-hidden [mask-image:linear-gradient(to_bottom,black,black_60%,transparent)]">
+        <div className="absolute inset-0 opacity-40 sm:opacity-100">
+          <div className="aurora absolute -top-48 -left-40 size-[36rem] rounded-full bg-(--accent)/20 blur-3xl" />
+          <div className="aurora absolute top-16 -right-40 size-[42rem] rounded-full bg-(--accent)/10 blur-3xl [animation-delay:-9s]" />
+          <div className="aurora absolute -bottom-56 left-1/3 size-[32rem] rounded-full bg-(--accent)/15 blur-3xl [animation-delay:-17s]" />
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 type TraceStep = 'handler' | 'assignment' | 'field' | 'destructure' | 'jsx' | 'output';
@@ -318,30 +318,30 @@ class TypedComment extends Model {
 
 function CounterExample({ compact, count, comment }: CounterExampleProps) {
   const imports =
-    "import React from 'react';\n    import { Model } from '@expressive/mvc';\n\n    ";
+    "import React from 'react';\n    import { Component } from '@expressive/mvc';\n\n    ";
   const increment = compact
     ? 'increment() { this.count++; }'
     : 'increment() {\n        this.count++;\n      }';
   const destruct = compact
-    ? '{\n        count,\n        increment,\n      }'
+    ? '{\n          count,\n          increment,\n        }'
     : "{ count, increment }";
 
   const Example = code /*tsx*/`
-    ${imports}class Counter extends Model {
+    ${imports}class Counter extends Component {
       count = ${count};
 
       ${comment}
       ${increment}
-    }
 
-    function App() {
-      const ${destruct} = Counter.use();
+      render() {
+        const ${destruct} = this;
 
-      return (
-        <button onClick={increment}>
-          Clicked {count} times
-        </button>
-      );
+        return (
+          <button onClick={increment}>
+            Clicked {count} times
+          </button>
+        );
+      }
     }
   `;
 

@@ -131,7 +131,7 @@ get(type: typeof Model, required: boolean): Model | undefined
 get(type: typeof Model, callback: (child: Model) => void | (() => void), downstream: true): () => void
 ```
 
-`Model` is never in context - `get(Model)` reads ownership instead. An instance's owner is the instance that constructed it into a field, `has()` pool or `map()`; failing that, the instance its nearest enclosing context was set up for - the Component rendering a host-mounted Component, `use()` instance or `<Provider>`. `<Component for={X}>` owns X. A root, or an instance already active when something held it, has none. Missing throws `"{state} has no owner."`; `false` returns `undefined`.
+`Model` is never in context - `get(Model)` reads ownership instead. An instance's owner is the instance that constructed it into a field, `has()` pool or `map()`; failing that, the instance its nearest enclosing context was set up for - the Component rendering a host-mounted Component. `<Component for={X}>` owns X. A root, or an instance already active when something held it, has none. Missing throws `"{state} has no owner."`; `false` returns `undefined`.
 
 Ownership is fixed at activation: later holders, context pushes and field moves do not change it, and the value is not reactive. Context is where an instance registers to be found; ownership is who constructed it - see [context.md](context.md#ownership-vs-context).
 

@@ -14,10 +14,21 @@
 ## The `new()` Hook
 
 ```ts
+class Cart extends Model {
+  items: string[] = [];
+  updatedAt = 0;
+
+  protected new() {
+    return this.set('items', () => {
+      this.updatedAt = Date.now();
+    });
+  }
+}
+
 class Timer extends Model {
   elapsed = 0;
 
-  protected new() {
+  mount() {                      // client resources go here, not new()
     const id = setInterval(() => this.elapsed++, 1000);
     return () => clearInterval(id);
   }
@@ -27,9 +38,9 @@ class Timer extends Model {
 - Runs once, after all properties and child instances are set up.
 - Return nothing, or `() => void` to run on destruction.
 - `async new()` is allowed: its rejection reports to `catch` as `setup`, and `on({ ready })` handlers wait for it to resolve (skipped on rejection or an earlier destroy). Its cleanup cannot be returned - a promise's value is ignored.
-- `this` is the instance, not a tracking proxy - closures made here (a listener, an interval) capture it and may use it as a `Map`/`Set` key.
+- `this` is the instance, not a tracking proxy - closures made here (a listener) capture it and may use it as a `Map`/`Set` key.
 
-`new()` is a typed optional member of `Model` (`protected new?(): void | (() => void) | Promise<void>`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. Adapter hooks reached only through `Model.use()` - `use()` and `mount()` on a plain `Model` - are declared on the `UseModel` interface instead, which a class satisfies structurally: optional and unadvertised on never-rendered Models, at the cost of a looser check than a declared override.
+`new()` is a typed optional member of `Model` (`protected new?(): void | (() => void) | Promise<void>`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. `mount()` on a plain `Model` - run by either host - is not declared on `Model`; a class satisfies the host's interface structurally: optional and unadvertised on never-rendered Models, at the cost of a looser check than a declared override.
 
 > **`new()` runs on the server.** It is part of activation, so it fires wherever the instance is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook: `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for an instance some component owns.
 
@@ -53,7 +64,7 @@ class Timer extends Model {
 
 `Model.new()` accepts `Model.Args`, processed in order during activation:
 
-- `function` - called with `this` as the instance; may return a cleanup function, an object to assign, an array to process, or a Promise
+- `function` - called with `this` as the instance; may return a cleanup function, a plain object to assign, an array to process, or a Promise - any other object, the instance included, is ignored
 - `object` - assigned to instance properties
 - `array` - flattened and re-processed
 - `Promise` (returned by a callback) - a rejection is reported with kind `setup` ([Error Handling](#error-handling))

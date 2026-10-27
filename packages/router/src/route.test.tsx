@@ -1,7 +1,8 @@
 import { act, render, screen } from '@testing-library/react';
 import { lazy, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { Component } from '@expressive/react';
+import '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 import { location, browserRouter, mockError, mockPromise, renderAct } from '../test.setup';
 import { Route } from './route';
@@ -19,7 +20,7 @@ const Chrome = (props: { children?: ReactNode }) => <main>chrome/{props.children
 /** Render an anonymous root Route over `children`, capturing it, then settle. */
 async function mount(children: ReactNode) {
   let root!: Route;
-  const view = await renderAct(<Route is={(r) => (root = r)}>{children}</Route>);
+  const view = await renderAct(<Route is={(r) => void (root = r)}>{children}</Route>);
   return { root, view };
 }
 
@@ -235,8 +236,8 @@ describe('Route', () => {
       let leaf!: Route;
       const view = await renderAct(
         <Route>
-          <Route to="a/*" is={(r) => (scope = r)}>
-            <Route to="b" is={(r) => (leaf = r)} as={text('b')} />
+          <Route to="a/*" is={(r) => void (scope = r)}>
+            <Route to="b" is={(r) => void (leaf = r)} as={text('b')} />
           </Route>
         </Route>
       );
@@ -315,7 +316,7 @@ describe('Route', () => {
       let leaf!: Route;
       const view = render(
         <Route to="users" as={Chrome}>
-          <Route to=":id" is={(r) => (leaf = r)} as={() => <span>{Route.get().match!.id}</span>} />
+          <Route to=":id" is={(r) => void (leaf = r)} as={() => <span>{Route.get().match!.id}</span>} />
         </Route>
       );
       expect(view.container.textContent).toBe('chrome/1');
@@ -662,7 +663,7 @@ describe('Route', () => {
           let gate = mockPromise<string | void | null>();
           let router!: Router;
           await renderAct(
-            <Route is={(r) => (router = r.router)}>
+            <Route is={(r) => void (router = r.router)}>
               <Route as={() => <h1>lobby</h1>} />
               <Route to="login" as={() => <h1>login</h1>} />
               <Route to="document" as={Layout}>
@@ -688,7 +689,7 @@ describe('Route', () => {
           const gate = mockPromise<string | void | null>();
           let router!: Router;
           await renderAct(
-            <Route to="document" as={Layout} is={(r) => (router = r.router)}>
+            <Route to="document" as={Layout} is={(r) => void (router = r.router)}>
               <Route to=":id" redirect={() => router.path === '/document/123' ? gate : undefined} as={Document} />
               <Route none as={NotFound} />
             </Route>
@@ -708,7 +709,7 @@ describe('Route', () => {
           let owner!: Router;
           const gate = () => (allow ? undefined : null);
           const tree = () => (
-            <Route is={(r) => (owner = r.router)}>
+            <Route is={(r) => void (owner = r.router)}>
               <Route to="admin" redirect={() => gate()} as={() => <h1>secret</h1>} />
               <Route none as={NotFound} />
             </Route>
@@ -729,7 +730,7 @@ describe('Route', () => {
           const gate = mockPromise<string | void | null>();
           let scope!: Route;
           await renderAct(
-            <Route to="document" as={Layout} is={(r) => (scope = r)}>
+            <Route to="document" as={Layout} is={(r) => void (scope = r)}>
               <Route to=":id" redirect={() => gate} as={Document} />
               <Route none as={NotFound} />
             </Route>
@@ -889,10 +890,10 @@ describe('extends', () => {
       let mounted = 0;
       const view = render(
         <Route to="foo/*">
-          <Route to="bar" is={() => mounted++} as={text('bar')} />
+          <Route to="bar" is={() => void mounted++} as={text('bar')} />
           <>
-            <Route to="a" is={() => mounted++} />
-            <Route to="b" is={() => mounted++} />
+            <Route to="a" is={() => void mounted++} />
+            <Route to="b" is={() => void mounted++} />
           </>
         </Route>
       );
@@ -964,7 +965,7 @@ describe('active and matches', () => {
     let recent!: Route;
     const { root } = await mount(
       <Route to="posts/*">
-        <Route to="recent" is={(r) => (recent = r)} />
+        <Route to="recent" is={(r) => void (recent = r)} />
       </Route>
     );
     expect(root.active).toBe(recent);
@@ -992,7 +993,7 @@ describe('none', () => {
   it('will never match without a parent', async () => {
     let lone!: Route;
     const view = await renderAct(
-      <Route none as={text('lone')} is={(r) => (lone = r)} />
+      <Route none as={text('lone')} is={(r) => void (lone = r)} />
     );
     expect(lone.matched).toBe(false);
     expect(view.container.textContent).toBe('');
@@ -1003,7 +1004,7 @@ describe('none', () => {
     let fallback!: Route;
     await mount(
       <Route to="docs/*">
-        <Route none is={(r) => (fallback = r)} as={text('404')} />
+        <Route none is={(r) => void (fallback = r)} as={text('404')} />
       </Route>
     );
     expect(fallback.path).toBe('/docs');
@@ -1081,13 +1082,13 @@ it('will deregister a child from parent.inner on unmount', async () => {
   let parent!: Route;
 
   const view = await renderAct(
-    <Route is={(r) => (parent = r)}>
+    <Route is={(r) => void (parent = r)}>
       <Route to="a" />
     </Route>
   );
   expect(parent.inner.map((r) => r.path)).toEqual(['/a']);
 
-  await act(async () => view.rerender(<Route is={(r) => (parent = r)} />));
+  await act(async () => view.rerender(<Route is={(r) => void (parent = r)} />));
   expect(parent.inner).toEqual([]);
 });
 
@@ -1215,7 +1216,7 @@ describe('a lazy page as `as`', () => {
           to="users/:id"
           fallback={<span>loading</span>}
           as={lazy(() => module)}
-          is={(r) => (child = r)}
+          is={(r) => void (child = r)}
         />
       </Route>
     );
@@ -1234,7 +1235,7 @@ describe('a lazy page as `as`', () => {
     let scope!: Route;
 
     const view = await renderAct(
-      <Route to="/admin/*" fallback={<span>loading</span>} as={lazy(() => module)} is={(r) => (scope = r)}>
+      <Route to="/admin/*" fallback={<span>loading</span>} as={lazy(() => module)} is={(r) => void (scope = r)}>
         <Route to="users" as={text('users')} />
         <Route to="roles" as={text('roles')} />
       </Route>

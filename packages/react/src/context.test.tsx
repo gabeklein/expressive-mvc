@@ -12,8 +12,9 @@ import {
 
 import { act, render, screen } from '@testing-library/react';
 import { Model } from '@expressive/mvc';
-import { Component, Context, get, set } from '.';
-import { flushMicrotasks, preactDiffers } from '../test.setup';
+import '.';
+import { Component, Context, get, set } from '@expressive/mvc';
+import { flushMicrotasks, preactDiffers, reactOnly } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
 
@@ -64,13 +65,13 @@ describe('Component for', () => {
     const seen: Model[] = [];
 
     const element = render(
-      <Component for={First} is={(first) => seen.push(first)}>
+      <Component for={First} is={(first) => void seen.push(first)}>
         <span />
       </Component>
     );
 
     element.rerender(
-      <Component for={Second} is={(second) => seen.push(second)}>
+      <Component for={Second} is={(second) => void seen.push(second)}>
         <span />
       </Component>
     );
@@ -209,14 +210,11 @@ describe('Component for', () => {
         }
       }
 
-      const Child = () => {
-        Inner.use();
-        return <span />;
-      };
-
       render(
         <Component for={Outer}>
-          <Child />
+          <Component for={Inner}>
+            <span />
+          </Component>
         </Component>
       );
 
@@ -374,6 +372,31 @@ describe('context', () => {
     expect(Context.get()).toBe(Context.root);
   });
 
+  reactOnly.it('will return root context without logging before any render', () => {
+    const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const dispatcher = internals.H;
+
+    internals.H = null;
+
+    try {
+      expect(Context.get()).toBe(Context.root);
+    } finally {
+      internals.H = dispatcher;
+    }
+  });
+
+  it('will return context of render', () => {
+    within(
+      () => {
+        const context = Context.get();
+
+        expect(context).not.toBe(Context.root);
+        expect(context.get(Foo)).toBeInstanceOf(Foo);
+      },
+      (check) => <Component for={Foo}>{check}</Component>
+    );
+  });
+
   it('will handle complex arrangement', () => {
     const instance = Foo.new();
 
@@ -416,7 +439,7 @@ describe('get instruction', () => {
 
   it('will maintain hook', async () => {
     const Inner: React.FC = vi.fn(() => {
-      Foo.use();
+      Bar.get();
       return null;
     });
 
@@ -467,11 +490,13 @@ describe('get instruction', () => {
       foo = get(Foo);
     }
 
-    const FooBar = () => <>{Bar.use().foo.value}</>;
+    const FooBar = () => <>{Bar.get().foo.value}</>;
 
     render(
       <Component for={Foo}>
-        <FooBar />
+        <Component for={Bar}>
+          <FooBar />
+        </Component>
       </Component>
     );
 
@@ -490,45 +515,18 @@ describe('has instruction', () => {
     }
 
     const didGetBar = vi.fn();
-    const FooBar = () => void Bar.use();
     const foo = new Foo();
 
     render(
       <Component for={foo}>
-        <FooBar />
-        <FooBar />
+        <Component for={Bar} />
+        <Component for={Bar} />
       </Component>
     );
 
     expect(didGetBar).toBeCalledTimes(2);
     expect(foo.value).toEqual([expect.any(Bar), expect.any(Bar)]);
     expect(foo.value.map((i) => i.foo)).toEqual([foo, foo]);
-  });
-
-  it.skip('will notify parent of instance', () => {
-    class Foo extends Model {
-      value = get(Bar, true, didGetBar);
-    }
-
-    class Bar extends Model {
-      foo = get(Foo);
-    }
-
-    const didGetBar = vi.fn();
-    const FooBar = () => void Bar.use();
-
-    const Parent = () => {
-      const foo = Foo.use();
-
-      return (
-        <Component for={foo}>
-          <FooBar />
-        </Component>
-      );
-    };
-
-    render(<Parent />);
-    expect(didGetBar).toBeCalled();
   });
 });
 

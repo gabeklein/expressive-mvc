@@ -2,11 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Model, Component } from '@expressive/mvc';
 import { render } from '../index';
-import { Context } from '@expressive/mvc';
-import { commit, dispose, enter } from './adapter';
-import type { Scope } from './adapter';
 import * as hot from '@expressive/mvc/hot';
-import { flushMicrotasks, mockPromise, mount, place } from '../../test.setup';
+import { flushMicrotasks, mockPromise, mount } from '../../test.setup';
 
 describe('MVC adapter', () => {
   it('will update when a Model fetched via this.get changes', async () => {
@@ -78,115 +75,6 @@ describe('MVC adapter', () => {
     expect(cleanup).toHaveBeenCalledOnce();
   });
 
-  it('will own Model.use within a stable function-component slot', async () => {
-    const lifecycle: string[] = [];
-    let local!: Local;
-
-    class Local extends Model {
-      value = 0;
-      count = 0;
-
-      new() {
-        local = this;
-        lifecycle.push('new');
-      }
-
-      mount() {
-        lifecycle.push('mount');
-        return () => lifecycle.push('unmount');
-      }
-    }
-
-    function Value({ value }: { value: number }) {
-      const { value: current, count } = Local.use({ value });
-      return <span>{current}:{count}</span>;
-    }
-
-    class Owner extends Component {
-      value = 1;
-
-      render() {
-        return <Value value={this.value} />;
-      }
-    }
-
-    const [owner, root, release] = mount(Owner);
-
-    expect(root.textContent).toBe('1:0');
-    expect(lifecycle).toEqual(['new', 'mount']);
-
-    owner.value = 2;
-    await flushMicrotasks();
-    expect(root.textContent).toBe('2:0');
-
-    local.count = 3;
-    await flushMicrotasks();
-    expect(root.textContent).toBe('2:3');
-
-    release();
-    expect(lifecycle).toEqual(['new', 'mount', 'unmount']);
-    expect(local.get(null)).toBe(true);
-  });
-
-  it('will provide a Model.use instance to descendants', async () => {
-    class Session extends Model {
-      name = 'Ada';
-    }
-
-    let session!: Session;
-
-    function Leaf() {
-      return <b>{Session.get().name}</b>;
-    }
-
-    function Sibling() {
-      return <i>{Session.get(false) ? 'leak' : 'none'}</i>;
-    }
-
-    function Host() {
-      session = Session.use();
-      return <Leaf />;
-    }
-
-    const root = place(<><Host /><Sibling /></>);
-    expect(root.textContent).toBe('Adanone');
-
-    session.name = 'Grace';
-    await flushMicrotasks();
-    expect(root.textContent).toBe('Gracenone');
-  });
-
-  it('will call a Model use method on every render', async () => {
-    const calls: number[] = [];
-
-    class Selection extends Model {
-      selected = 0;
-
-      use(selected: number) {
-        calls.push(selected);
-        this.selected = selected;
-      }
-    }
-
-    function Selected({ value }: { value: number }) {
-      return <span>{Selection.use(value).selected}</span>;
-    }
-
-    class Owner extends Component {
-      value = 1;
-      render() {
-        return <Selected value={this.value} />;
-      }
-    }
-
-    const [owner, root] = mount(Owner);
-    owner.value = 2;
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe('2');
-    expect(calls).toEqual([1, 2, 2]);
-  });
-
   it('will pass context through functions', async () => {
     class Session extends Model {
       name = 'Ada';
@@ -199,7 +87,7 @@ describe('MVC adapter', () => {
     let session!: Session;
     const root = document.createElement('main');
     const release = render(
-      <Component for={Session} is={(value: Session) => (session = value)}>
+      <Component for={Session} is={(value: Session) => void (session = value)}>
         <Name />
       </Component>,
       root
@@ -214,21 +102,16 @@ describe('MVC adapter', () => {
     expect(session.get(null)).toBe(true);
   });
 
-  it('will reject render APIs outside their valid scope', () => {
+  it('will reject Model.get outside render', () => {
     class Value extends Model {}
-    class View extends Component {
-      render() {
-        Value.use();
-        return null;
-      }
-    }
 
     expect(() => Value.get()).toThrow('may only run while @expressive/dom is rendering');
-    expect(() => Value.use()).toThrow('may only run while @expressive/dom is rendering');
-    expect(() => (View as any).use()).toThrow('render it instead of calling use()');
-    expect(() => render(<View />, document.createElement('main'))).toThrow(
-      'only available at the top level of a function component'
-    );
+  });
+
+  it('will not provide Model.use', () => {
+    class Value extends Model {}
+
+    expect((Value as any).use).toBeUndefined();
   });
 
   it('will support optional, required and selected context snapshots', async () => {
@@ -282,31 +165,6 @@ describe('MVC adapter', () => {
       document.createElement('main')
     )).toThrow();
     required.set(null);
-  });
-
-  it('will enforce stable Model.use order', () => {
-    class First extends Model {}
-    class Second extends Model {}
-    const context = new Context(Context.root);
-    const scope: Scope = {
-      active: true,
-      childContext: context,
-      context,
-      kind: 'function',
-      subscriptions: [],
-      update() {},
-      useIndex: 0,
-      uses: []
-    };
-
-    enter(scope, () => First.use());
-    commit(scope);
-
-    expect(() => enter(scope, () => null)).toThrow('same order');
-    expect(() => enter(scope, () => Second.use())).toThrow('same order');
-
-    dispose(scope);
-    context.pop();
   });
 
   it('will render capitalized methods as owner-bound subcomponents', async () => {
@@ -429,47 +287,6 @@ describe('MVC adapter', () => {
     await flushMicrotasks();
     expect(root.textContent).toBe('plain');
   });
-
-  it('will mount Model.use after suspended content commits', async () => {
-    const waiting = mockPromise<void>();
-    const lifecycle: string[] = [];
-    let ready = false;
-
-    class Local extends Model {
-      mount() {
-        lifecycle.push('mount');
-        return () => lifecycle.push('unmount');
-      }
-    }
-
-    function Content() {
-      Local.use();
-      if (!ready) throw waiting;
-      return <p>ready</p>;
-    }
-
-    class App extends Component {
-      fallback = <i>loading</i>;
-
-      render() {
-        return <Content />;
-      }
-    }
-
-    const root = document.createElement('main');
-    const release = render(<App />, root);
-    expect(root.textContent).toBe('loading');
-    expect(lifecycle).toEqual([]);
-
-    ready = true;
-    waiting.resolve();
-    await flushMicrotasks();
-    expect(root.textContent).toBe('ready');
-    expect(lifecycle).toEqual(['mount']);
-
-    release();
-    expect(lifecycle).toEqual(['mount', 'unmount']);
-  });
 });
 
 describe('hot patch', () => {
@@ -529,12 +346,12 @@ describe('Component for', () => {
   it('will construct, provide and forward props to a class', async () => {
     let session!: Session;
 
-    class App extends Model {
+    class App extends Component {
       value = 'Ada';
 
       render() {
         return (
-          <Component for={Session} name={this.value} is={(s: Session) => (session = s)}>
+          <Component for={Session} name={this.value} is={(s: Session) => void (session = s)}>
             <Name />
           </Component>
         );
@@ -555,7 +372,8 @@ describe('Component for', () => {
   it('will not add a suspense boundary', () => {
     const gate = mockPromise<void>();
 
-    class Wait extends Model {
+    class Wait extends Component {
+      fallback = false as const;
       ready = false;
 
       render() {
@@ -587,7 +405,7 @@ describe('Component for', () => {
     class Sub extends Component {}
 
     void (() => [
-      <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
+      <Component for={Typed} name="Ada" is={(typed) => void typed.age.toFixed()} />,
       <Component for={Typed.new()} age={2} />,
       <Component fallback={null} />,
       // @ts-expect-error

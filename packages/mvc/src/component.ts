@@ -1,6 +1,7 @@
 import { Context } from './context';
+import { element } from './element';
 import { set } from './field/set';
-import { Model, adopt, trailing } from './state';
+import { Model, adopt, plain, trailing } from './state';
 
 import type { Host } from './jsx-runtime';
 
@@ -24,7 +25,7 @@ type ForProps<T extends Model> = {
   fallback?: Component.Node | false;
   catch?: (error: Error, instance: Component) => Promise<void> | void;
 } & (
-  | { for: Model.Extends<T>; is?: (instance: T) => void }
+  | { for: Model.Extends<T>; is?: (instance: T) => Model.Assign<T> | void }
   | { for: T | undefined; is?: never }
 ) & { [K in Exclude<keyof T, keyof Model> & Acceptable<T>]?: T[K] };
 
@@ -44,10 +45,11 @@ declare namespace Component {
      * Callback for newly created instance. Only called once.
      *
      * Runs after props apply but **before** the `new()` lifecycle hook - so it
-     * may configure state that `new()` then observes. To react to a fully
-     * initialized instance instead, use `watch` or an effect.
+     * may configure state that `new()` then observes. A returned object is
+     * assigned, like props. To react to a fully initialized instance instead,
+     * use `watch` or an effect.
      */
-    is?(instance: T): void;
+    is?(instance: T): Model.Assign<T> | void;
 
     /**
      * Fallback to show when suspended or in error recovery.
@@ -130,11 +132,15 @@ class Component<P = unknown> extends Model {
           other.set(null);
         }
 
+        let out: unknown;
+
         if (provider) provide(this);
-        else props.is?.(this);
+        else out = props.is?.(this);
 
         Object.defineProperty(this, 'props', { enumerable: false });
         PENDING.delete(props);
+
+        if (plain(out)) return out;
       }
     ]);
 
@@ -239,7 +245,11 @@ function provide(self: Component<any>) {
       if (Model.is(next)) {
         adopt(self, 'for', (target = new (next as Model.Type)(rest)));
         owned = target as typeof owned;
-        is?.(target);
+
+        const out = is?.(target);
+
+        if (plain(out)) target.set(out);
+
         if (mounted) release = owned!.mount?.();
         return;
       }
@@ -254,5 +264,7 @@ function provide(self: Component<any>) {
   sync();
   self.set('props', sync);
 }
+
+element(Component);
 
 export { Component };

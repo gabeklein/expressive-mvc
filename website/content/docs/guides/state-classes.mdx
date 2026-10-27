@@ -29,7 +29,7 @@ const counter = Counter.new();
 
 `new Counter()` constructs the object but does **not** activate it - properties aren't managed until activation happens. `Counter.new()` does both: it runs the constructor, promotes fields to managed properties, applies constructor arguments, and fires the `new()` lifecycle hook.
 
-Inside React, `Counter.use()` activates for you. Outside React, reach for `.new()`.
+Inside React, rendering a Component or placing a class with `<Component for={Counter}>` activates for you. Outside React, reach for `.new()`.
 
 > **Good to know:** <br />
 > If you're stuck holding a plain-constructed instance, `await state.set()` will activate it - the no-arg form fires the ready event if it hasn't fired already. Deferring activation on purpose is an advanced move (it controls where the instance lands in [context](/docs/guides/context)), but the escape hatch is there.
@@ -44,8 +44,6 @@ const counter = Counter.new({ count: 10 }, (self) => {
   return () => console.log('destroyed');
 });
 ```
-
-The same signature works for `Counter.use()`.
 
 <br />
 
@@ -136,7 +134,7 @@ To hold a DOM element, or a mutable value whose changes other code should hear a
 Methods are auto-bound on first access. Destructure them freely:
 
 ```ts
-const { increment } = Counter.use();
+const { increment } = Counter.new();
 increment(); // `this` is correct
 ```
 
@@ -155,7 +153,7 @@ Every instance has a non-enumerable `is` property that loops back to the instanc
 ### Write access after destructuring
 
 ```tsx
-const { is: counter, count } = Counter.use();
+const { is: counter, count } = Counter.get();
 counter.count = 5; // works
 ```
 
@@ -189,20 +187,22 @@ An instance has four phases:
 
 ### The `new()` hook
 
-Override `new()` for one-time setup. Return a cleanup function to run on destruction:
+Override `new()` for one-time setup that accompanies the instance itself. Return a cleanup function to run on destruction:
 
 ```ts
-class Timer extends Model {
-  elapsed = 0;
+class Cart extends Model {
+  items: string[] = [];
+  updatedAt = 0;
 
   protected new() {
-    const id = setInterval(() => this.elapsed++, 1000);
-    return () => clearInterval(id);
+    return this.set('items', () => {
+      this.updatedAt = Date.now();
+    });
   }
 }
 ```
 
-`new()` runs once, after fields are initialized and constructor arguments are applied. Everything on `this` is live by then - assign, read, call methods, register effects. [Hot reload](/docs/getting-started#hot-reload-vite) doesn't re-run it either: an edit to `new()` reloads the page, while other edits patch live instances in place.
+`new()` runs once, after fields are initialized and constructor arguments are applied - wherever the instance is created, server render included. Everything on `this` is live by then - assign, read, call methods, register effects. [Hot reload](/docs/getting-started#hot-reload-vite) doesn't re-run it either: an edit to `new()` reloads the page, while other edits patch live instances in place.
 
 > **Timing:** the constructor body (and `Model.on` setup) runs *before* arguments merge, so it only ever sees field defaults. `new()` runs *after* - making it the right place to read a value passed via `.new({ ... })`, or props in adapters.
 
@@ -220,6 +220,23 @@ class Resource extends Model {
   }
 }
 ```
+
+### The `mount()` hook
+
+Client-only resources - timers, DOM, subscriptions to `window` - belong in `mount()`, not `new()`. It runs once when the owning component commits, and its returned function runs on unmount:
+
+```ts
+class Timer extends Model {
+  elapsed = 0;
+
+  mount() {
+    const id = setInterval(() => this.elapsed++, 1000);
+    return () => clearInterval(id);
+  }
+}
+```
+
+`mount()` never runs during server render - there is no unmount there, so a resource opened in `new()` would leak. It fires for a `Component` rendered as JSX, or for a class given to `<Component for>`; an instance merely read with `.get()` or placed as `{instance}` is not owned, so it does not. See [`mount()`](/docs/api/state#mount) for the reference.
 
 ### Class-level setup with `Model.on()`
 
@@ -249,41 +266,50 @@ Model.on({
 });
 ```
 
-### The `use()` hook (React only)
+### Bridging React hooks
 
-If you define a `use()` method on a class, `Model.use()` will call it on every render. This is the bridge for calling React hooks from inside a Model class:
+A Model class doesn't call hooks - it holds state, and React hands it values. When a class needs something only a hook provides, give it a field and let the view supply it. With a Component, fields are props, so an outer function component can read the hook and pass the value down:
 
 ```tsx
 import { useLocation } from 'react-router-dom';
 
-class SearchState extends Model {
+class SearchPage extends Component {
   query = '';
 
-  use() {
-    const { search } = useLocation();
-    this.query = new URLSearchParams(search).get('q') ?? '';
+  render() {
+    const { query } = this;
+    // ...
   }
+}
+
+function SearchRoute() {
+  const { search } = useLocation();
+
+  return <SearchPage query={new URLSearchParams(search).get('q') ?? ''} />;
 }
 ```
 
-When `use()` is defined, its parameter types become the arguments `SearchState.use()` accepts:
+Values computed from those inputs are getters, recomputed when the input changes:
 
 ```tsx
-class Greeter extends Model {
-  greeting = '';
+class Greeter extends Component {
+  name = '';
 
-  use(props: { name: string }) {
-    this.greeting = `Hello, ${props.name}`;
+  get greeting() {
+    return `Hello, ${this.name}`;
+  }
+
+  render() {
+    const { greeting } = this;
+
+    return <p>{greeting}</p>;
   }
 }
 
-function App({ name }: { name: string }) {
-  const { greeting } = Greeter.use({ name });
-  return <p>{greeting}</p>;
-}
+<Greeter name="Ada" />;
 ```
 
-Use `use()` for every-render bridging. For one-shot setup, prefer `new()`.
+A Component's `render()` also runs as a real function component, so a hook whose result the view calls directly - `useNavigate`, `useTranslation` - can sit at the top of `render()`. For one-shot setup, prefer `new()` or `mount()`.
 
 ### Destruction
 
@@ -291,7 +317,7 @@ Use `use()` for every-render bridging. For one-shot setup, prefer `new()`.
 state.set(null);
 ```
 
-This is automatic in React - `Model.use()` destroys on unmount, and so does `<Component for={Timer}>` for the instance it constructs. You rarely call it yourself. When destruction runs:
+This is automatic in React - a Component destroys its instance on unmount, and so does `<Component for={Timer}>` for the instance it constructs. You rarely call it yourself. When destruction runs:
 
 1. **Children are destroyed first**, inner-to-outer.
 2. **Listeners are notified** with a `null` signal.
@@ -330,7 +356,7 @@ Child instance changes propagate through nested subscriptions:
 function UserStreet() {
   const {
     address: { street }
-  } = User.use();
+  } = User.get();
   // Re-renders only when user.address.street changes.
 }
 ```
@@ -339,7 +365,7 @@ function UserStreet() {
 
 ## Constructor arguments
 
-Beyond initial values and callbacks, `.new()` / `.use()` accepts arrays of arguments (flattened). A callback may return a cleanup, an object to assign, more arguments, or a promise - a rejected promise is reported to [`catch` handlers](#class-level-setup-with-modelon) with kind `setup` and, unhandled, escapes uncaught. All are applied in order during activation:
+Beyond initial values and callbacks, `.new()` accepts arrays of arguments (flattened). A callback may return a cleanup, an object to assign, more arguments, or a promise - a rejected promise is reported to [`catch` handlers](#class-level-setup-with-modelon) with kind `setup` and, unhandled, escapes uncaught. All are applied in order during activation:
 
 ```ts
 const t = Test.new(

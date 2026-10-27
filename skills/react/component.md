@@ -7,7 +7,7 @@ Runnable source (complete programs, served as HTML): [`props`](https://expressiv
 ## When to use Component vs Model vs function components
 
 - **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they own no persistent Expressive instance.
-- **Model** is display-agnostic - data and logic, no render. Use with `Model.use()` in FCs.
+- **Model** is display-agnostic - data and logic, no render. Provide it with `<Component for>` or hold it as a field; FCs read it with `.get()`.
 - **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form inputs, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as `<Component for>` + ErrorBoundary + Suspense in `main`.
 
 Premise: **the class tree is the app; rendering is a projection of it.** `App.new()` stands the UX up headless - every feature's status reads off the instance (`inbox.archive.open`, a pool's members, an import's progress) with no DOM. Keep that true: regions as fields rather than `<Component for>` elements, `has()` subtrees contributing to macro-state whether or not placed, render-less Components. Tests, devtools, and agents consume this surface as much as views do.
@@ -90,7 +90,7 @@ const items = [first, second];
 - Mounting subscribes and provides context as usual; unmounting only detaches. The external owner destroys it with `instance.set(null)`.
 - One instance may appear beneath separate parents. Repeating it within one sibling collection repeats the key and intentionally produces the host's duplicate-key warning.
 
-When a render reads more than a value or two, destructure everything it reads from `this` at the top - the dependency-snapshot rule of `.get()` / `Model.use()` ([react.md](react.md)). Rendering shares the hooks' subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
+When a render reads more than a value or two, destructure everything it reads from `this` at the top - the dependency-snapshot rule of `.get()` ([react.md](react.md)). Rendering shares the hooks' subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
 
 ```tsx
 render() {
@@ -207,7 +207,7 @@ class ChatRoom extends Component {
 }
 ```
 
-- `is` prop - construction-time, fires once: `<ChatRoom is={c => controller = c} />`. Use when the instance is needed during construction.
+- `is` prop - construction-time, fires once: `<ChatRoom is={(c) => void (controller = c)} />`. Use when the instance is needed during construction.
 - `ref` - Component is a real class component, so `ref` receives the instance after mount and clears to `null` on unmount: `<ChatRoom ref={chatRef} />`. Use for post-mount imperative access.
 
 ## Props
@@ -245,7 +245,7 @@ Non-optional render props become required JSX attributes. All props (field + ren
 
 ### Special Props
 
-- `is` - callback receiving the instance on creation: `<Counter is={c => ref = c} />`
+- `is` - callback receiving the instance on creation, before `new()`. A returned object is assigned once - a seed, where props reassign every render: `<Counter is={() => ({ count: start })} />`. Capturing the instance needs `void` or braces: `is={(c) => void (ref = c)}`.
 - `ref` - standard React ref (object or callback), attached after mount, cleared on unmount
 - `fallback` - ReactNode for suspense/error UI, overrides the instance property; `false` opts out of the component's own boundary so suspension bubbles to an ancestor
 - `catch` - `(error, instance)` handler for this placement, replacing the member `catch`; a returned promise retries once settled
@@ -418,7 +418,7 @@ function SidebarItems() {
 - `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `Model.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
-`MyComponent.use()` throws - a Component is rendered (`<MyComponent />` or `{instance}`), not used. For a bare instance use `MyComponent.new()`.
+A Component is rendered (`<MyComponent />` or `{instance}`); for a bare instance use `MyComponent.new()`.
 
 Anything touching `window`, timers or subscriptions belongs in `mount()`, not `new()`:
 

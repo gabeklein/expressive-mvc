@@ -33,7 +33,7 @@ describe('suspense and recovery', () => {
         ? Promise.reject(new Error('chunk'))
         : Promise.resolve(() => <b>ready</b>);
 
-    class Page extends Model {
+    class Page extends Component {
       fallback = <i>wait</i>;
 
       catch(error: Error) {
@@ -240,7 +240,7 @@ describe('suspense and recovery', () => {
     expect(settled()).toBe(true);
   });
 
-  describe('a transition revealing Model that loads', () => {
+  describe('a transition revealing a Model that loads', () => {
     let root: HTMLElement;
     let lives: string[];
 
@@ -254,10 +254,6 @@ describe('suspense and recovery', () => {
         protected new() {
           lives.push('new');
           return () => lives.push('gone');
-        }
-
-        mount() {
-          lives.push(`mount: ${root.textContent}`);
         }
       }
 
@@ -283,22 +279,10 @@ describe('suspense and recovery', () => {
       return root;
     }
 
-    it('will keep a Model.use() instance and commit once it loads', async () => {
-      const { loaded, lives, Data } = setup();
-      const root = await reveal(() => <b>{Data.use().value}</b>);
-
-      expect(root.textContent).toBe('closed');
-
-      loaded.resolve('ready');
-      await until(() => expect(root.textContent).toBe('ready'));
-
-      expect(lives).toEqual(['new', 'mount: ready']);
-    });
-
-    it('will keep a Model element and commit once it loads', async () => {
+    it('will keep a Component owning it and commit once it loads', async () => {
       const { loaded, lives, Data } = setup();
 
-      class Panel extends Model {
+      class Panel extends Component {
         data = new Data();
 
         mount() {
@@ -322,7 +306,20 @@ describe('suspense and recovery', () => {
 
     it('will hold new markup around it off the page until it loads', async () => {
       const { loaded, lives, Data } = setup();
-      const root = await reveal(() => <b>{Data.use().value}</b>, true);
+
+      class Panel extends Component {
+        data = new Data();
+
+        mount() {
+          lives.push(`panel mount: ${root.textContent}`);
+        }
+
+        render() {
+          return <b>{this.data.value}</b>;
+        }
+      }
+
+      const root = await reveal(() => <Panel />, true);
 
       expect(root.textContent).toBe('closed');
       expect(root.querySelector('section')).toBeNull();
@@ -330,7 +327,7 @@ describe('suspense and recovery', () => {
       loaded.resolve('ready');
       await until(() => expect(html(root)).toBe('<section><h2>title</h2><b>ready</b></section>'));
 
-      expect(lives).toEqual(['new', 'mount: titleready']);
+      expect(lives).toEqual(['new', 'panel mount: titleready']);
     });
   });
 
@@ -338,7 +335,7 @@ describe('suspense and recovery', () => {
     const [Lazy, loaded] = lazy();
     const mounted: string[] = [];
 
-    class Tab extends Model {
+    class Tab extends Component {
       mount() {
         mounted.push(root.textContent!);
       }
@@ -396,7 +393,7 @@ describe('suspense and recovery', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const mounted = vi.fn();
 
-    class Tab extends Model {
+    class Tab extends Component {
       mount = mounted;
 
       render() {
@@ -408,7 +405,7 @@ describe('suspense and recovery', () => {
       throw new Error('boom');
     };
 
-    class Panel extends Model {
+    class Panel extends Component {
       render() {
         return <><Tab /><Boom /></>;
       }
@@ -523,12 +520,6 @@ describe('suspense and recovery', () => {
       page = 'a';
     }
 
-    class Probe extends Model {
-      mount() {
-        seen.push(`use ${connected()}`);
-      }
-    }
-
     class Chart extends Component {
       mount() {
         seen.push(`mount ${connected()}`);
@@ -540,7 +531,6 @@ describe('suspense and recovery', () => {
     }
 
     function Page() {
-      Probe.use();
       return <section><Chart /></section>;
     }
 
@@ -559,7 +549,7 @@ describe('suspense and recovery', () => {
     const [app] = mount(App, {}, document.body.appendChild(document.createElement('main')));
 
     pending(() => (app.nav.page = 'b'));
-    await until(() => expect(seen).toEqual(['ref true', 'mount true', 'use true']));
+    await until(() => expect(seen).toEqual(['ref true', 'mount true']));
   });
 
   it('will not mount staged content dropped before it is inserted', async () => {
@@ -1251,7 +1241,7 @@ describe('suspense and recovery', () => {
       }
 
       render() {
-        return <Inner is={(value) => (inner = value)} />;
+        return <Inner is={(value) => void (inner = value)} />;
       }
     }
 
@@ -1310,7 +1300,7 @@ describe('suspense and recovery', () => {
   it.fails('will not render a child its parent removes in the same transition', async () => {
     const seen: unknown[] = [];
 
-    class Parent extends Model {
+    class Parent extends Component {
       value?: { id: number } = { id: 1 };
 
       render() {
@@ -1325,7 +1315,7 @@ describe('suspense and recovery', () => {
     };
 
     let parent!: Parent;
-    const root = place(<Parent is={(p) => (parent = p)} fallback={null} />);
+    const root = place(<Parent is={(p) => void (parent = p)} fallback={null} />);
     pending(() => (parent.value = undefined));
     await flushMicrotasks();
     await flushMicrotasks();
@@ -1352,8 +1342,8 @@ describe('suspense and recovery', () => {
       expect(load).toBeCalledTimes(1);
     });
 
-    it('will render a resolved Model class', async () => {
-      class Counter extends Model {
+    it('will render a resolved Component class', async () => {
+      class Counter extends Component {
         count = 0;
 
         render() {
@@ -1373,7 +1363,7 @@ describe('suspense and recovery', () => {
       const caught: string[] = [];
       const Page = () => Promise.resolve({} as { default: () => null });
 
-      class App extends Model {
+      class App extends Component {
         fallback = <i>wait</i>;
 
         catch(error: Error) {

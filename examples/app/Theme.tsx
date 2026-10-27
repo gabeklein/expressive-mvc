@@ -1,4 +1,4 @@
-import Model from '@expressive/react';
+import { Model } from '@expressive/mvc';
 import { Moon, Sun, SunMoon } from 'lucide-react';
 
 import styles from './Theme.module.css';

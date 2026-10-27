@@ -20,7 +20,11 @@ The payoff compounds with codebase size: repeated logic collapses into shared ba
 
 A component that accumulates fetches, derived values, handlers, and effects is unambiguous developer friction: slow to review, prone to merge conflicts, a re-render blast radius that grows with every added concern, and - increasingly relevant - an oversized context window cost for any agent asked to modify it safely.
 
-Expressive's answer is mechanical rather than aspirational. State and behavior hoist into a `Model` class; the component shrinks to a projection that subscribes to exactly the fields it reads. Because any component anywhere in the tree can subscribe to a domain model at the same cost (`Cart.get()`), there is no gravitational pull to keep logic in one giant component "where the state already is." The [refactoring guide](react/refactor.md) documents the extraction as a step-by-step algorithm - ownership triage, dependency snapshots, review checklist - precisely so that agents can execute it without judgment calls.
+Expressive's answer is mechanical rather than aspirational. State and behavior hoist into a class - a `Component` when intrinsic to one view, a provided `Model` when shared - and views shrink to projections subscribing to exactly the fields they read. Splitting a large Component costs nothing: it provides itself, so extracted views call `.get()`. Because any component anywhere in the tree can subscribe to a domain model at the same cost (`Cart.get()`), there is no gravitational pull to keep logic in one giant component "where the state already is." The [refactoring guide](react/refactor.md) documents the extraction as a step-by-step algorithm - ownership triage, dependency snapshots, review checklist - precisely so that agents can execute it without judgment calls.
+
+## MVC run in React, not a React state hook
+
+Ownership lives in classes, never in hook calls, so the class tree is host-independent: it runs headless under `App.new()` (tests, scripts, agents), renders under React, and renders under `@expressive/dom` - a small port ([dom.md](dom.md)). Hooks stay usable at the edges, where code stops being portable.
 
 ## A standard library, not a stack
 

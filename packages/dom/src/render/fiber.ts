@@ -1,4 +1,4 @@
-import { Context, Model } from '@expressive/mvc';
+import { Component, Context } from '@expressive/mvc';
 
 import type { Key, Node as RenderNode } from '../node/vnode';
 import type { Appearance, Claim } from '../style/claim';
@@ -16,16 +16,7 @@ interface Boundary {
   waiting?: Set<Fiber>;
 }
 
-interface Renderable extends Model {
-  props?: Record<string, any>;
-  key?: Key;
-  fallback?: RenderNode | false;
-  catch?(error: Error, instance: Renderable): Promise<void> | void;
-  mount?(): (() => void) | void;
-  render?(props?: any): RenderNode;
-}
-
-type Placement = Pick<Renderable, 'fallback' | 'catch'>;
+type Placement = Pick<Component, 'fallback' | 'catch'>;
 
 interface Fiber {
   kind: Kind;
@@ -44,7 +35,7 @@ interface Fiber {
   cleanup?: (() => void) | void;
   release?: () => void;
   childContext?: Context;
-  instance?: Renderable;
+  instance?: Component;
   owned?: boolean;
   events?: Map<string, EventListener>;
   portalStart?: globalThis.Node;
@@ -76,16 +67,12 @@ function range(kind: Kind, parent: globalThis.Node, before: globalThis.Node | nu
   return { kind, context, start, end, children: [] };
 }
 
-function makeScope(kind: Scope['kind'], context: Context, update: (passive: boolean) => void): Scope {
+function makeScope(context: Context, update: (passive: boolean) => void): Scope {
   return {
     active: true,
-    childContext: context,
     context,
-    kind,
     subscriptions: [],
-    update,
-    useIndex: 0,
-    uses: []
+    update
   };
 }
 
@@ -124,4 +111,4 @@ function removeRange(start: globalThis.Node, end: globalThis.Node) {
 }
 
 export { makeScope, move, moveRange, range, removeRange };
-export type { Boundary, Container, Fiber, Placement, Renderable };
+export type { Boundary, Container, Fiber, Placement };

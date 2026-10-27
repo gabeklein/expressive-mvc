@@ -15,15 +15,16 @@ In an App Router project, a file that defines or uses a Model class is client co
 'use client';
 
 import '@expressive/react';
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class Panel extends Model {
+export class Sidebar extends Component {
   open = false;
-}
 
-export function Sidebar() {
-  const { open, is: panel } = Panel.use();
-  return <aside data-open={open} onClick={() => (panel.open = !panel.open)} />;
+  render() {
+    const { open } = this;
+
+    return <aside data-open={open} onClick={() => (this.open = !open)} />;
+  }
 }
 ```
 
@@ -37,7 +38,7 @@ Server components compose these normally - fetch on the server, pass serializabl
 | --- | --- | --- |
 | constructor, field initializers | ✓ | ✓ |
 | `new()` | ✓ | ✓ |
-| class `use()` method | ✓ | ✓ |
+| `render()` | ✓ | ✓ |
 | `mount()` | never | ✓ |
 | `new()`'s returned teardown | never | ✓ |
 

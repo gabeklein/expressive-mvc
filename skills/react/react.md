@@ -1,6 +1,6 @@
 # Expressive MVC - React
 
-`@expressive/react` connects Model to React with hooks, components, and context.
+`@expressive/react` is the React host: a `Component` renders as a React component, `<Component for>` provides a Model to the tree, and function components read it with `Model.get()`.
 
 - Core Model API (properties, reactivity, lifecycle, events): `../state/`.
 - Instructions and reactive helpers (`get`, `set`, `ref`, `map`, `has`, `def`): `../field/*.md`.
@@ -8,12 +8,7 @@
 
 ## Exports
 
-```ts
-export { Model, Model as default }; // deprecated - import { Model } from @expressive/mvc
-export { Context, def, get, ref, set, pending }; // deprecated re-exports of @expressive/mvc
-export { has, map }; // deprecated - import from @expressive/mvc
-export { Component }; // deprecated re-export of @expressive/mvc
-```
+`@expressive/react` exports nothing for app code - import it once, for its side effect, and take `Model`, `Component` and the instructions from `@expressive/mvc`. Subpaths: `@expressive/react/adapter` (`Runtime`, for writing a host) and `@expressive/react/vite` (the hot-reload plugin).
 
 ## Quick Start
 
@@ -37,91 +32,7 @@ class Counter extends Component {
 
 ---
 
-## Model.use() - Local Component State
-
-Creates an instance scoped to the component's lifecycle and subscribes to it. Added to base Model by the React adapter.
-
-```tsx
-class Counter extends Model {
-  count = 0;
-  increment() {
-    this.count++;
-  }
-}
-
-function App() {
-  const { count, increment } = Counter.use();
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-- Instance is created once and reused across renders.
-- Re-renders when any accessed property changes; nested observable reads are proxied and tracked.
-- Destroyed on unmount (context popped, `set(null)` called).
-- Not kept by a render React discards: if the component suspends before its first commit - reading the instance's own pending value included - React drops it, and each retry creates and loads a new one, so the render never resolves. Own loading state in an ancestor that has committed and let the reader suspend ([Suspense](component.md#suspense)).
-- Strict-mode safe.
-- Open the component with a dependency snapshot: destructure the exact values it renders, nested ones included ([Dependency Snapshots](#dependency-snapshots)).
-- Writes pass through the proxy; `is` is only for retaining the root object alongside sibling destructuring ([Transparent Writes](#transparent-writes--is)).
-
-### Constructor arguments
-
-Same arguments as `Model.new()` - objects, callbacks:
-
-```tsx
-const state = Counter.use({ count: 10 });
-const state = Counter.use((self) => {
-  /* init, runs once */
-});
-```
-
-### use() method
-
-Define `use()` on the class to intercept arguments. Called every render, so it can also encapsulate hooks.
-
-```tsx
-class Search extends Model {
-  query = '';
-  results: string[] = [];
-
-  use() {
-    const { search } = useLocation();
-    this.query = new URLSearchParams(search).get('q') || '';
-  }
-}
-
-function SearchPage() {
-  const { query, results } = Search.use();
-  return (
-    <div>
-      <h1>Results for: {query}</h1>
-      {results.map((r) => {
-        /* ... */
-      })}
-    </div>
-  );
-}
-```
-
-This bridges router hooks (`useParams`, `useLocation`, `useNavigate`); the alternative - an outer FC passing params as props - and route-identity guidance are in [patterns.md](patterns.md).
-
-When `use()` is defined, its parameter types become the static `.use()` argument types, and arguments go to the method instead of the constructor:
-
-```tsx
-class Greeter extends Model {
-  greeting = '';
-
-  use(props: { name: string }) {
-    this.greeting = `Hello, ${props.name}`;
-  }
-}
-
-function App({ name }: { name: string }) {
-  const state = Greeter.use({ name });
-  return <p>{state.greeting}</p>;
-}
-```
-
-### mount() method
+## mount() method
 
 Client-only effects. Called once when the host component commits; the returned function runs on unmount.
 
@@ -143,7 +54,6 @@ class Viewport extends Model {
 
 | Reaching an instance          | Owns it | `mount()` |
 | ----------------------------- | ------- | --------- |
-| `Model.use()`                 | yes     | yes       |
 | `<Component />`               | yes     | yes       |
 | `<Component for={Model}>`     | yes     | yes       |
 | `<Component for={instance}>`  | no      | no        |
@@ -165,16 +75,15 @@ Pick the seam by what the work needs:
 | Hook       | Phase        | Runs                        | On the server |
 | ---------- | ------------ | --------------------------- | ------------- |
 | `new()`    | construction | once, synchronously         | yes           |
-| `use()`    | render       | every render of the host    | yes           |
 | `mount()`  | commit       | once, when the host commits | no            |
 
 Setup accompanying the instance itself goes in `new()`; anything touching `window`, timers or subscriptions goes in `mount()`.
 
 React can discard a render before committing it - a suspended first mount, a dropped transition. Instances an owning path created there are already activated, so `new()` ran; the adapter destroys them once React releases the attempt, at garbage collection rather than promptly. `mount()` runs only for the attempt that commits - another reason effects belong there.
 
-### Server render (SSR / RSC)
+## Server render (SSR / RSC)
 
-Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Effects don't run, so `mount()` never fires; `new()` and `use()` do. Request-safety rules:
+Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Effects don't run, so `mount()` never fires; `new()` does. Request-safety rules:
 
 - **Request state goes in a `<Component for>`.** Each render builds its own context, so provided instances are isolated per request.
 - **A `static global` is process-wide, *shared across requests* on the server** (globals are not sealed - a `global` is trusted to be mutable process state like config, flags or a warmed cache). Keep per-request data out; provide it with `<Component for>`.
@@ -182,7 +91,7 @@ Expressive components render on the server - `renderToString`, and the SSR pass 
 
 To render a specific request's data (a path, a session), provide it per request: `<Component for={Session} …>`. For this reason `Router` is a client-only global - on the server it is per-render, so paths never bleed between requests; provide `<Component for={Router} path={…}>` to render a request's path.
 
-### React Native
+## React Native
 
 Works with no configuration - the adapter imports only `react` and `react/jsx-runtime`, and Metro resolves it as published. Three boundaries:
 
@@ -197,7 +106,7 @@ Works with no configuration - the adapter imports only `react` and `react/jsx-ru
 - **`BrowserRouter` is the browser binding** - it reads `window.location`, undefined in React Native. Use `Router`, whose path and history are in memory.
 - **`Link` and `NavLinks` render DOM elements** (`<a>`, `<ul>`) with no native host yet. Drive navigation from `Router` directly and render your own `Pressable`.
 
-### Hot reload (Vite)
+## Hot reload (Vite)
 
 ```ts
 // vite.config.ts
@@ -391,8 +300,11 @@ Object.assign(Runtime, {
   useState,
   useRef,
   useSyncExternalStore, // optional: pre-commit revision validation
-  transition,           // optional: startTransition, for pending() work
+  startTransition,      // optional: for pending() work
   Suspense,
+  idle,                 // true when certainly not rendering, undefined when it cannot tell
   // plus adapter-specific: dedupe, ErrorBoundary, ignore
 });
 ```
+
+`idle()` lets `Context.get()` skip its hook probe outside a render - React reads its dispatcher (`null`, or the between-render stub whose hooks all throw); Preact returns `undefined` and probes, which never logs. An unrecognised React returns `undefined` too.

@@ -1,12 +1,12 @@
 # Comparisons - Expressive MVC vs Alternatives
 
-Distilled positioning against common React state solutions. The [site comparisons page](https://expressive.dev/docs/comparisons/) shows code-level side-by-sides; this is the summary form. Statements about alternatives describe their defaults, not their limits - most can approximate any behavior with enough wiring.
+Distilled positioning against the state solutions a React team would otherwise pick. Expressive is MVC run in React - classes own state and structure, portable to `@expressive/dom` - so the comparison is between workflows, not hooks. The [site comparisons page](https://expressive.dev/docs/comparisons/) shows code-level side-by-sides; this is the summary form. Statements about alternatives describe their defaults, not their limits - most can approximate any behavior with enough wiring.
 
 ## At a glance
 
 | | Mental model | Re-render granularity | Writes | Derived + async | Maturity |
 | --- | --- | --- | --- | --- | --- |
-| **Expressive** | `Model` classes: fields observable, getters computed, methods actions | Per-field: destructuring is the subscription, nested included | Direct assignment through subscription proxies | Auto-memoized getters; `set(async)` integrates Suspense | Pre-1.0, small community, single primary maintainer |
+| **Expressive** | Classes - `Component` owns and renders, `Model` is headless; fields observable, getters computed, methods actions | Per-field: destructuring is the subscription, nested included | Direct assignment through subscription proxies | Auto-memoized getters; `set(async)` integrates Suspense | Pre-1.0, small community, single primary maintainer |
 | **Zustand** | Store hook created by `create()` | Selector functions per consumer | `set()` merge inside actions | Manual selectors; async by convention | Very large adoption, mature |
 | **Jotai** | Bottom-up atoms | Per-atom | Atom setters | Derived atoms; async atoms + Suspense | Large adoption, mature |
 | **MobX** | Observable objects/classes | Tracked reads via `observer` HOC | Direct mutation (in actions) | `computed`; async via `flow` | Very mature, large adoption |
@@ -31,7 +31,7 @@ This is also the sparsely populated side of the field. The selector/atom/reducer
 
 ## What choosing Expressive buys
 
-The organizational claim, in one sentence: behavior consolidates into named, inheritable, independently-testable classes, and views shrink to projections that subscribe to exactly the fields they read. Concretely - no selector functions (destructuring subscribes, nested values included), no dependency arrays, no provider-value memoization, async that suspends without orchestration, and state logic tests that run in milliseconds without rendering anything. The full working case is [why.md](why.md); this page stays the scorecard.
+The organizational claim, in one sentence: behavior consolidates into named, inheritable, independently-testable classes, and views shrink to projections that subscribe to exactly the fields they read - so a feature splits into more views without rewiring its owner, and the class tree moves between hosts. Concretely - no selector functions (destructuring subscribes, nested values included), no dependency arrays, no provider-value memoization, async that suspends without orchestration, and state logic tests that run in milliseconds without rendering anything. The full working case is [why.md](why.md); this page stays the scorecard.
 
 ## Maturity, stated plainly
 
@@ -39,4 +39,4 @@ Expressive is pre-1.0, with a small community and a single primary maintainer. T
 
 The release discipline points the same direction. Pre-1.0 versions have repeatedly *removed* surface to harden what remains - `hot` fell to `map`/`has`, the standalone `use(instance)` hook to context, placement, and proxy tracking, `Provider`/`Consumer` to `<Component for>` - and breaking changes land only in minor versions, each documented by a changeset. 1.0 is scoped as a completion target, not a marketing milestone: a bounded API meant to hold still afterward, the way a finished utility does ([design.md](design.md), Stability before surface). Evaluate post-1.0 cadence against that intent - for a library designed to be finishable, quiet is the goal state, not a warning sign.
 
-Maintainer continuity remains the residual risk, and more maintainers realistically follow adoption rather than precede it - so the project prices the risk down instead of promising it away. The whole install is ~13.0 kB gzip of MIT-licensed code with zero runtime dependencies (~11.2 kB for a typical import shape; measured per shape and CI-gated, not asserted), the API contract is written down in these skills, and 2,000+ tests gate every coverage metric at 100%. That does not lower the bus factor - it bounds what losing the maintainer can cost, to a pinned version or a fork maintainable without archaeology. Weigh all of this against the alternatives' ecosystem depth honestly, and use the [audit guide](examples/audit.md) for the cases where the recommendation is to not adopt.
+Maintainer continuity remains the residual risk, and more maintainers realistically follow adoption rather than precede it - so the project prices the risk down instead of promising it away. The whole install is ~13.0 kB gzip of MIT-licensed code with zero runtime dependencies (~11.3 kB for a typical import shape; measured per shape and CI-gated, not asserted), the API contract is written down in these skills, and 2,000+ tests gate every coverage metric at 100%. That does not lower the bus factor - it bounds what losing the maintainer can cost, to a pinned version or a fork maintainable without archaeology. Weigh all of this against the alternatives' ecosystem depth honestly, and use the [audit guide](examples/audit.md) for the cases where the recommendation is to not adopt.
