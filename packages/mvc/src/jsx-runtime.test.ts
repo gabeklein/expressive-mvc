@@ -125,7 +125,7 @@ describe('introspection', () => {
 describe('jsx-runtime module', () => {
   it('will carry transform contract, host seams and render setup', () => {
     expect(Object.keys(entry).sort()).toEqual([
-      'Fragment', 'adopter', 'childrenOf', 'host', 'isElement',
+      'Fragment', 'childrenOf', 'elements', 'host', 'isElement',
       'jsx', 'jsxDEV', 'jsxs', 'propsOf', 'typeOf'
     ]);
   });

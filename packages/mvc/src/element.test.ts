@@ -1,54 +1,54 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { adopter, element } from './element';
+import { element, elements } from './element';
 import { Component } from './component';
 import { has } from './field/has';
 import { map } from './field/map';
 import { Model } from './state';
 
-afterEach(() => adopter(undefined));
+afterEach(() => elements(undefined));
 
 describe('element', () => {
-  it('will replay declarations made before a host adopts', () => {
-    const adopt = vi.fn();
+  it('will replay declarations made before a host seams', () => {
+    const seam = vi.fn();
     class Type {}
 
     element(Type);
-    adopter(adopt);
+    elements(seam);
 
-    expect(adopt).toHaveBeenCalledWith(Type);
+    expect(seam).toHaveBeenCalledWith(Type);
   });
 
-  it('will adopt a declaration made after', () => {
-    const adopt = vi.fn();
+  it('will seam a declaration made after', () => {
+    const seam = vi.fn();
     class Type {}
 
-    adopter(adopt);
+    elements(seam);
     element(Type);
 
-    expect(adopt).toHaveBeenCalledWith(Type);
+    expect(seam).toHaveBeenCalledWith(Type);
   });
 
-  it('will stop adopting once cleared', () => {
-    const adopt = vi.fn();
+  it('will stop once cleared', () => {
+    const seam = vi.fn();
 
-    adopter(adopt);
-    adopt.mockClear(); // the replay of earlier declarations
-    adopter(undefined);
+    elements(seam);
+    seam.mockClear(); // the replay of earlier declarations
+    elements(undefined);
     element(class {});
 
-    expect(adopt).not.toHaveBeenCalled();
+    expect(seam).not.toHaveBeenCalled();
   });
 
   it('will declare Component, lists, pools and maps', () => {
-    const adopted = new Set<Function>();
+    const seen = new Set<Function>();
 
-    adopter((Type) => adopted.add(Type));
+    elements((Type) => seen.add(Type));
 
-    expect(adopted).toContain(Component);
-    expect(adopted).toContain(has.List);
-    expect(adopted).toContain(has.Pool);
-    expect(adopted).toContain(map.Managed);
+    expect(seen).toContain(Component);
+    expect(seen).toContain(has.List);
+    expect(seen).toContain(has.Pool);
+    expect(seen).toContain(map.Managed);
   });
 });
 

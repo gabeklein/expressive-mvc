@@ -1,5 +1,5 @@
 import { Component } from '@expressive/mvc';
-import { adopter } from '@expressive/mvc/jsx-runtime';
+import { elements } from '@expressive/mvc/jsx-runtime';
 import type { Renderable } from '@expressive/mvc/jsx-runtime';
 import { Context } from './context';
 import { Runtime, useFactory, useWatch } from './runtime';
@@ -72,7 +72,7 @@ function Element(this: Component){
  * to its instance; a Component renders through its ownership frame, anything
  * else through `render()`.
  */
-adopter((Type) => {
+elements((Type) => {
   // Not configurable: Model's bootstrap would otherwise collect a configurable
   // prototype getter as a reactive getter and define it on each instance.
   Object.defineProperty(Type.prototype, '$$typeof', {

@@ -4,8 +4,8 @@
  * A class whose instances a host may render as elements declares itself here -
  * `Component`, `has` lists and pools, `map` collections. Each promises the same
  * small protocol: `is` names the instance behind a view (`Object.create(pool)`
- * renders the pool), and `render()` returns what to show. A host adopts every
- * declared class through `adopter` (re-exported by `jsx-runtime`), installing
+ * renders the pool), and `render()` returns what to show. A host seams every
+ * declared class through `elements` (re-exported by `jsx-runtime`), installing
  * its element seam on each prototype; declarations made before the host loaded
  * are replayed, so import order does not matter.
  *
@@ -14,34 +14,34 @@
  * `has` and `map` out of bundles that do not use them.
  */
 
-/** What an adopted class promises its host. */
+/** What a declared class promises its host. */
 interface Renderable {
   /** The instance to render - itself, or the source behind a derived view. */
   readonly is: Renderable;
   render(...args: any[]): unknown;
 }
 
-type Adopt = (Type: Function) => void;
+type Seam = (Type: Function) => void;
 
 const ELEMENTS = new Set<Function>();
 
-let adopt: Adopt | undefined;
+let seam: Seam | undefined;
 
 /** Declare instances of `Type` elements, for a host to render. */
 function element(Type: Function) {
   ELEMENTS.add(Type);
-  adopt?.(Type);
+  seam?.(Type);
 }
 
 /**
- * Install the host's adoption - called once per declared class, past and
- * future. Pass `undefined` to stop adopting.
+ * Host-side: receive every declared class, past and future, to install the
+ * host's element seam on. Pass `undefined` to stop.
  */
-function adopter(fn: Adopt | undefined) {
-  adopt = fn;
+function elements(fn: Seam | undefined) {
+  seam = fn;
 
   if (fn) for (const Type of ELEMENTS) fn(Type);
 }
 
-export { element, adopter };
-export type { Renderable, Adopt };
+export { element, elements };
+export type { Renderable, Seam };
