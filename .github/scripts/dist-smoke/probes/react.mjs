@@ -33,8 +33,8 @@ assert.equal(
   '<b>patched</b>'
 );
 
-// Collections render as elements through the core's renderable seam - which
-// a shaken bundle must keep, since the adapter imports neither `has` nor `map`.
+// Collections render as elements from a shaken bundle - the patch that makes a
+// pool or map an element has to survive tree-shaking, however it is installed.
 class Rows extends Component {
   items = has(['a', 'b']);
   entries = map([['k', 'v']]);
