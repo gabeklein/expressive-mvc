@@ -43,7 +43,7 @@ import { accept, replaced } from '@expressive/mvc/hot';
 
 `@expressive/mvc/jsx-runtime` and `/jsx-dev-runtime` also exist, for the JSX transform - you don't import them by hand.
 
-An adapter such as `@expressive/react` is imported once, for its side effect, in your app's entry (`import '@expressive/react'`). Its re-exports of `Model`, `Component`, the instructions and friends - and its default export - are deprecated; import those from `@expressive/mvc`. The core package is a peer dependency of the adapter, so install both.
+An adapter such as `@expressive/react` is imported once, for its side effect, in your app's entry (`import '@expressive/react'`). It exports nothing for app code; `Model`, `Component`, the instructions and friends come from `@expressive/mvc`. The core package is a peer dependency of the adapter, so install both.
 
 > There is no `Observable` export. The protocol symbol is named `Observer`, on the `/observable` subpath. (That subpath also exports `queued` and `capture` - plumbing Model itself uses; you'll probably never need them.)
 

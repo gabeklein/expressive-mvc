@@ -1,4 +1,5 @@
-import Model, { Component, get, has, map, ref, set } from '@expressive/react';
+import '@expressive/react';
+import { Model, Component, get, has, map, ref, set } from '@expressive/mvc';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';

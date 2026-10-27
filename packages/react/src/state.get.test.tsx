@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { Model } from '@expressive/mvc';
-import { Component, Context, get, set } from '.';
+import '.';
+import { Component, Context, get, set } from '@expressive/mvc';
 import { pending } from '@expressive/mvc';
 import * as Refresh from 'react-refresh/runtime';
 import {

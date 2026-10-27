@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { Model } from '@expressive/mvc';
-import { Component } from '.';
+import '.';
+import { Component } from '@expressive/mvc';
 
 function onServer<T>(fn: () => T): T {
   const saved = (globalThis as any).window;

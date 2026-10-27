@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { browserRouter, location, mockPromise, renderAct, withWindow } from '../test.setup';
 import { Context } from '@expressive/mvc';
-import { Component } from '@expressive/react';
+import '@expressive/react';
+import { Component } from '@expressive/mvc';
 import { BrowserRouter } from './browser';
 import { Route } from './route';
 

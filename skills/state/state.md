@@ -4,7 +4,7 @@
 import { Model } from '@expressive/mvc';
 ```
 
-`@expressive/mvc` - framework-agnostic reactive state built on classes. `State` is a deprecated alias of `Model`.
+`@expressive/mvc` - framework-agnostic reactive state built on classes.
 
 ## Creating a Model
 

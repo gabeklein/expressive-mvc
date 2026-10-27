@@ -1,4 +1,4 @@
-import { Component } from '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 export default class CopyPill extends Component {
   label = '';

@@ -8,11 +8,7 @@
 
 ## Exports
 
-```ts
-export { Model, State, Model as default }; // deprecated - import { Model } from @expressive/mvc (State is the pre-rename alias)
-export { Component, Context, def, get, ref, set, pending }; // deprecated re-exports of @expressive/mvc
-export { has, map }; // deprecated - import from @expressive/mvc
-```
+`@expressive/react` exports nothing for app code - import it once, for its side effect, and take `Model`, `Component` and the instructions from `@expressive/mvc`. Subpaths: `@expressive/react/adapter` (`Runtime`, for writing a host) and `@expressive/react/vite` (the hot-reload plugin).
 
 ## Quick Start
 

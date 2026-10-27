@@ -37,19 +37,20 @@ const CASES = [
   },
   {
     name: 'react: Model only',
-    limit: 10810,
-    code: `import Model from '@expressive/react'; console.log(Model);`
+    limit: 12640,
+    code: `import '@expressive/react'; import { Model } from '@expressive/mvc'; console.log(Model);`
   },
   {
     name: 'react: typical app',
-    limit: 11660,
-    code: `import Model, { Component, get, set, ref, def } from '@expressive/react';
+    limit: 13490,
+    code: `import '@expressive/react';
+           import { Model, Component, get, set, ref, def } from '@expressive/mvc';
            console.log(Model, Component, get, set, ref, def);`
   },
   {
     name: 'react: everything',
     limit: 13530,
-    code: `import * as all from '@expressive/react'; console.log(all);`
+    code: `import * as all from '@expressive/react'; import * as mvc from '@expressive/mvc'; console.log(all, mvc);`
   },
   {
     name: 'dom: renderer',

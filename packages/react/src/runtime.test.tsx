@@ -3,7 +3,8 @@ import { Activity, ReactNode, Suspense, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Model } from '@expressive/mvc';
-import { Component, pending } from '.';
+import '.';
+import { Component, pending } from '@expressive/mvc';
 import { mockPromise, reactOnly } from '../test.setup';
 import { Runtime, useHook } from './runtime';
 

@@ -6,7 +6,8 @@ import React, { Suspense } from 'react';
 import { collect, mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly, suspender } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
 import { Model } from '@expressive/mvc';
-import { Component, pending, set } from '.';
+import '.';
+import { Component, pending, set } from '@expressive/mvc';
 
 it('will create and provide instance', () => {
   class Control extends Component {

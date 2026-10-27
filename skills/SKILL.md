@@ -24,7 +24,7 @@ A class-based state backbone - reactive MVC in plain classes, rendered by React 
 npm install @expressive/mvc @expressive/react    # + @expressive/router for routing
 ```
 
-`@expressive/mvc` is a peer dependency - add it to `package.json` and import `Model`, `Component` and every instruction from it, whatever the host. `@expressive/react` supplies the host: import it once from your entry module so it registers. Its re-exports of the core are deprecated and will be removed, as is the default export of `Model` - adapter-augmented `Model.*` types are invisible through the default alias, so import `{ Model }` by name.
+`@expressive/mvc` is a peer dependency - add it to `package.json` and import `Model`, `Component` and every instruction from it, whatever the host. `@expressive/react` supplies the host: import it once from your entry module so it registers. It exports nothing for app code - import `{ Model }` by name from the core; adapter-augmented `Model.*` types are invisible through the core's deprecated default export.
 
 React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
 
