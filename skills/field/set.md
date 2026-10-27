@@ -40,7 +40,7 @@ Writable; unlike `name = 'default'`, hidden from `Object.keys()` and `ref(this)`
 ```ts
 class FormState extends Model {
   name = set('default', (next, prev) => {
-    if (next.length < 3) throw false; // reject update
+    if (next.length > 50) throw false; // reject - never stored
   });
 
   query = set('', (value) => {

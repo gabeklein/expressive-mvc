@@ -29,9 +29,9 @@ Properties read via `this` in `render()` are tracked. When one changes, the comp
 
 ## When to reach for Component
 
-Use **`Model` + `.use()`** when you want headless logic separated from rendering - the most common pattern. The component stays dumb, the class handles the smarts.
-
 Use **`Component`** when state is intrinsic to display logic. Form inputs, media players, data grids, app and route entrypoints - things where behavior and rendering move together. A hook-heavy route shell or tab panel doesn't need to become `FooState` plus `FooView`; when the rendered thing owns the behavior, make the rendered thing the class.
+
+Use a **`Model`** when you want headless logic separated from rendering - data shared by several views, or a domain object worth testing on its own. Place it with `<Component for>`, or make it a field of the Component that owns it (`page = new Pagination()`); function components below read it with `.get()`. Either way the function components stay dumb, and the classes handle the smarts.
 
 Usually a Component defines `render()`. Without one, children pass through while the instance still provides context, runs `mount()`, and places its Suspense and error boundaries - useful for route controls, progressive `Boundary` wrappers, and mount-only ancestors like a focus trap. Don't write `render() { return this.props.children; }` - just omit it.
 

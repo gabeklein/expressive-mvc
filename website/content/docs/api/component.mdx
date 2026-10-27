@@ -113,7 +113,11 @@ Settable state fields become optional JSX props, applied to the instance on ever
 <Counter count={5} />
 ```
 
-A field passed on one render and omitted on the next is cleared - reset to `undefined`, not left at its previous value. Props are a live binding, not one-time seeds.
+A field passed on one render and omitted on the next is cleared - reset to `undefined`, not left at its previous value. Props are a live binding, not one-time seeds. To seed a value the user then edits, return it from `is` - it runs once, so the seed is computed once:
+
+```tsx
+<ContactForm is={() => ({ email: user.email })} />
+```
 
 ### Special props
 
@@ -242,4 +246,4 @@ Props are inferred automatically from state fields plus any `render(props)` decl
 
 - [Components guide](/docs/guides/components) - patterns, subclass composition, children, context.
 - [Model](/docs/api/state) - the base class.
-- [Hooks](/docs/api/hooks) - `Model.use` and `Model.get`.
+- [Hooks](/docs/api/hooks) - `Model.get` for function components, and `Model.use` for adopting classes into hook-style ones.

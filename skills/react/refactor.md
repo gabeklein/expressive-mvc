@@ -195,7 +195,7 @@ Unplug is dropping the `<Resize>` wrap and the height read. `class Composer exte
 ```tsx
 // Wrong: instance created only to be provided
 function App() {
-  const transfer = TransferState.use();
+  const [transfer] = useState(() => TransferState.new());
   return (
     <Component for={transfer}>
       <TransferPage />
@@ -362,7 +362,7 @@ Pure presentation components (a `Metric`, a `StatusCallout`) may still take plai
 
 ## 10. Destructure an exact dependency snapshot
 
-Every `.get()` / `.use()` opens the component with the exact reactive values it renders, nested levels included, optional objects defaulted in place. They are React hooks: top of component or `render()`, unconditionally - in a branch, handler, or loop they build green and crash at runtime.
+Every `.get()` and `render()` opens with the exact reactive values it renders, nested levels included, optional objects defaulted in place. Static `.get()` is a React hook: top of component or `render()`, unconditionally - in a branch, handler, or loop they build green and crash at runtime.
 
 ```tsx
 // Wrong: deep reads scattered through JSX, one hidden in a branch
@@ -537,7 +537,7 @@ The checklist:
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
 - Does every method do more than assign one field? *(invariant)*
 - Are contextual values still being drilled through props - including slot FCs and section chrome fed values the parent unpacked from `this`? *(invariant)*
-- Does every `.get()` / `.use()` show the exact nested dependency surface? *(invariant)*
+- Does every `.get()` and `render()` show the exact nested dependency surface? *(invariant)*
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
 - Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
 - Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*

@@ -1,119 +1,180 @@
 ---
 title: Comparisons
-description: The same component built with Zustand, Jotai, Redux, and MobX - side by side
+description: The same feature built with Zustand, Jotai, Redux, and MobX - side by side
 ---
 
 How Expressive relates to the store libraries you already know. For the case against raw hooks, see [Why Classes?](/docs/why-classes) - this page is about the libraries you'd otherwise pick instead.
 
-The fairest comparison is a *component-owned* unit of state: reusable, self-contained, re-renders on change. Below, the consumer code is held identical everywhere it can be - only the cost of building the unit differs.
+Every library makes a single counter short, so a lone widget proves little. The fair test is a feature that splits: one owner, several views, each re-rendering only for what it reads. Below, the views' markup is held identical - only the cost of the owner and the wiring differs.
 
 <br />
 
-## Local state
+## One feature, two views
 
-Say you want a reusable `useFooBarBaz` that a widget can own. Flip through:
+A player owns a track and a play state. `Title` shows the track; `Toggle` plays and pauses. Pausing should not re-render `Title`. Flip through:
 
 <Compare labels={['Expressive', 'Hooks', 'Zustand', 'Jotai', 'Redux', 'MobX']}>
 
 ```tsx
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class FooBarBaz extends Model {
-  foo = 0;
-  bar = 'hello';
-  baz = true;
+class Player extends Component {
+  track = 'Intro';
+  playing = false;
 
-  bump() {
-    this.foo++;
+  toggle() {
+    this.playing = !this.playing;
+  }
+
+  render() {
+    return (
+      <>
+        <Title />
+        <Toggle />
+      </>
+    );
   }
 }
 
-function Widget() {
-  const { foo, bar, baz, bump } = FooBarBaz.use();
+function Title() {
+  const { track } = Player.get();
 
-  return (
-    <button onClick={bump}>
-      {foo} · {bar} · {String(baz)}
-    </button>
-  );
+  return <h2>{track}</h2>;
+}
+
+function Toggle() {
+  const { playing, toggle } = Player.get();
+
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 }
 ```
 
 ```tsx
-import { useState, useCallback } from 'react';
+import { createContext, useContext, useState } from 'react';
 
-function useFooBarBaz() {
-  const [foo, setFoo] = useState(0);
-  const [bar, setBar] = useState('hello');
-  const [baz, setBaz] = useState(true);
+const PlayerContext = createContext<{
+  track: string;
+  playing: boolean;
+  toggle: () => void;
+} | null>(null);
 
-  const bump = useCallback(() => setFoo(f => f + 1), []);
+function usePlayer() {
+  const player = useContext(PlayerContext);
 
-  return { foo, bar, baz, bump, setFoo, setBar, setBaz };
+  if (!player)
+    throw new Error('Player missing');
+
+  return player;
 }
 
-function Widget() {
-  const { foo, bar, baz, bump } = useFooBarBaz();
+function Player() {
+  const [playing, setPlaying] = useState(false);
+  const toggle = () => setPlaying(p => !p);
 
   return (
-    <button onClick={bump}>
-      {foo} · {bar} · {String(baz)}
-    </button>
+    <PlayerContext.Provider value={{ track: 'Intro', playing, toggle }}>
+      <Title />
+      <Toggle />
+    </PlayerContext.Provider>
   );
 }
+
+function Title() {
+  const { track } = usePlayer();
+
+  return <h2>{track}</h2>;
+}
+
+function Toggle() {
+  const { playing, toggle } = usePlayer();
+
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
+}
+
+// every consumer re-renders on any change
 ```
 
 ```tsx
-import { createStore, useStore } from 'zustand';
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
+import { createStore, useStore, type StoreApi } from 'zustand';
 
-const makeStore = () => createStore(set => ({
-  foo: 0, bar: 'hello', baz: true,
-  bump: () => set(s => ({ foo: s.foo + 1 })),
+type PlayerState = { track: string; playing: boolean; toggle(): void };
+
+const makePlayer = () => createStore<PlayerState>(set => ({
+  track: 'Intro',
+  playing: false,
+  toggle: () => set(s => ({ playing: !s.playing })),
 }));
 
-function useFooBarBaz() {
-  const [store] = useState(makeStore);
-  return useStore(store);
+const PlayerContext = createContext<StoreApi<PlayerState> | null>(null);
+
+function usePlayer<T>(select: (s: PlayerState) => T) {
+  const store = useContext(PlayerContext);
+
+  if (!store)
+    throw new Error('Player missing');
+
+  return useStore(store, select);
 }
 
-function Widget() {
-  const { foo, bar, baz, bump } = useFooBarBaz();
+function Player() {
+  const [store] = useState(makePlayer);
 
   return (
-    <button onClick={bump}>
-      {foo} · {bar} · {String(baz)}
-    </button>
+    <PlayerContext.Provider value={store}>
+      <Title />
+      <Toggle />
+    </PlayerContext.Provider>
   );
+}
+
+function Title() {
+  const track = usePlayer(s => s.track);
+
+  return <h2>{track}</h2>;
+}
+
+function Toggle() {
+  const playing = usePlayer(s => s.playing);
+  const toggle = usePlayer(s => s.toggle);
+
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 }
 ```
 
 ```tsx
-import { atom, useAtom } from 'jotai';
-import { useMemo } from 'react';
+import { atom, createStore, Provider, useAtom, useAtomValue } from 'jotai';
+import { useState } from 'react';
 
-function useFooBarBaz() {
-  const a = useMemo(() => ({
-    foo: atom(0), bar: atom('hello'), baz: atom(true),
-  }), []);
+const trackAtom = atom('Intro');
+const playingAtom = atom(false);
 
-  const [foo, setFoo] = useAtom(a.foo);
-  const [bar] = useAtom(a.bar);
-  const [baz] = useAtom(a.baz);
-  const bump = () => setFoo(f => f + 1);
-
-  return { foo, bar, baz, bump };
-}
-
-function Widget() {
-  const { foo, bar, baz, bump } = useFooBarBaz();
+function Player() {
+  const [store] = useState(() => createStore());
 
   return (
-    <button onClick={bump}>
-      {foo} · {bar} · {String(baz)}
-    </button>
+    <Provider store={store}>
+      <Title />
+      <Toggle />
+    </Provider>
   );
 }
+
+function Title() {
+  const track = useAtomValue(trackAtom);
+
+  return <h2>{track}</h2>;
+}
+
+function Toggle() {
+  const [playing, setPlaying] = useAtom(playingAtom);
+  const toggle = () => setPlaying(p => !p);
+
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
+}
+
+// the Provider scopes every atom in the subtree
+// to this store, not just the player's
 ```
 
 ```tsx
@@ -121,67 +182,101 @@ import { configureStore, createSlice } from '@reduxjs/toolkit';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { useState } from 'react';
 
-const slice = createSlice({
-  name: 'fooBarBaz',
-  initialState: { foo: 0, bar: 'hello', baz: true },
+const player = createSlice({
+  name: 'player',
+  initialState: { track: 'Intro', playing: false },
   reducers: {
-    bump: (s) => { s.foo++; },
+    toggle: (s) => { s.playing = !s.playing; },
   },
 });
 
-function useFooBarBaz() {
-  const { foo, bar, baz } = useSelector(s => s);
-  const dispatch = useDispatch();
-  const bump = () => dispatch(slice.actions.bump());
+type State = ReturnType<typeof player.reducer>;
 
-  return { foo, bar, baz, bump };
-}
-
-function App() {
+function Player() {
   const [store] = useState(() =>
-    configureStore({ reducer: slice.reducer }));
+    configureStore({ reducer: player.reducer }));
 
   return (
     <Provider store={store}>
-      <Widget />
+      <Title />
+      <Toggle />
     </Provider>
   );
+}
+
+function Title() {
+  const track = useSelector((s: State) => s.track);
+
+  return <h2>{track}</h2>;
+}
+
+function Toggle() {
+  const playing = useSelector((s: State) => s.playing);
+  const dispatch = useDispatch();
+  const toggle = () => dispatch(player.actions.toggle());
+
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 }
 ```
 
 ```tsx
 import { makeAutoObservable } from 'mobx';
 import { observer } from 'mobx-react-lite';
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 
-class FooBarBaz {
-  foo = 0;
-  bar = 'hello';
-  baz = true;
+class PlayerState {
+  track = 'Intro';
+  playing = false;
 
   constructor() {
-    makeAutoObservable(this);
+    makeAutoObservable(this, {}, { autoBind: true });
   }
 
-  bump() {
-    this.foo++;
+  toggle() {
+    this.playing = !this.playing;
   }
 }
 
-const Widget = observer(() => {
-  const [state] = useState(() => new FooBarBaz());
+const PlayerContext = createContext<PlayerState | null>(null);
+
+function usePlayer() {
+  const player = useContext(PlayerContext);
+
+  if (!player)
+    throw new Error('Player missing');
+
+  return player;
+}
+
+function Player() {
+  const [state] = useState(() => new PlayerState());
 
   return (
-    <button onClick={() => state.bump()}>
-      {state.foo} · {state.bar} · {String(state.baz)}
-    </button>
+    <PlayerContext.Provider value={state}>
+      <Title />
+      <Toggle />
+    </PlayerContext.Provider>
   );
+}
+
+const Title = observer(() => {
+  const { track } = usePlayer();
+
+  return <h2>{track}</h2>;
+});
+
+const Toggle = observer(() => {
+  const { playing, toggle } = usePlayer();
+
+  return <button onClick={toggle}>{playing ? 'Pause' : 'Play'}</button>;
 });
 ```
 
 </Compare>
 
-On the Expressive side, the destructure *is* the dependency list. Read a field, subscribe to it. Ignore it, don't. Nothing to declare, nothing to forget - no setters, no selectors, no store factory. Need a silent read? `state.is.foo`.
+Every other tab builds the same three things by hand: a per-instance store, a context to carry it, and a typed hook to read it back - then each view declares what it reads, through a selector or a wrapper. In Expressive the Component is all three. It owns the instance, provides itself to whatever it renders, and `Player.get()` is the typed hook. Destructuring is the selector: `Title` re-renders when `track` changes, not when `playing` does.
+
+Growing the feature changes nothing about the owner - another view is another function calling `Player.get()`. And the fields are typed props: `<Player track="Verse" />`.
 
 <br />
 
@@ -355,7 +450,7 @@ class Counter extends Model {
 
 MobX is the closest relative - both use observable objects with automatic dependency tracking. Expressive is what you get when that idea is allowed to own the whole problem:
 
-- **No `observer()` wrapper.** Miss one in MobX and you get stale renders. Expressive tracks through `use()` and `get()` themselves.
+- **No `observer()` wrapper.** Miss one in MobX and you get stale renders. Expressive tracks through `render()` and `get()` themselves.
 - **No `makeAutoObservable`.** Extending `Model` is enough - and methods arrive pre-bound.
 - **Lifecycle, context, and Suspense are built in** - `new()`, class-keyed context, async `set()`. In MobX these are pieces you wire together yourself.
 

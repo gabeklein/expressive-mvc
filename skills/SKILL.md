@@ -37,7 +37,7 @@ The most common failure when adopting this library is translating hooks one-for-
 For every stateful concern, pick exactly one owner:
 
 - **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region control fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
-- **`Model`** - headless domain model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()` (or `Model.use()` on React). Two roles: a *domain model* (`Cart`, `Message`, a pool row) outlives any one placement; a *control* (`Control`, `<Feature>Control` in apps) is constructed where a page, region or route places it, holds domain models as fields, and translates gestures into operations on them. Name a class for what it holds - `<Thing>State` and `<Feature>Control` are both fine, case by case.
+- **`Model`** - headless domain model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()`; an owning Component holds it as a field. Two roles: a *domain model* (`Cart`, `Message`, a pool row) outlives any one placement; a *control* (`Control`, `<Feature>Control` in apps) is constructed where a page, region or route places it, holds domain models as fields, and translates gestures into operations on them. Name a class for what it holds - `<Thing>State` and `<Feature>Control` are both fine, case by case.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
 Concerns include the rows: UI state describing an entry in a collection - selection, status, progress - is its own `Model` or `Component` spawned in a `has` pool; actions about item belong on item. Id-keyed fields (`Record<Id, T>`, parallel `Map`s) and `(id, value)` methods are a missing class; subsets are a second pool admitting the same members.
@@ -63,7 +63,7 @@ Counter-rules:
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
 9. Let contextual children call `.get()` instead of receiving drilled props.
-10. At every `.get()` / `.use()`, destructure for exact nested dependency snapshot.
+10. At every `.get()` and `render()`, destructure for exact nested dependency snapshot.
 11. May assign thru subscribed proxies; `is` only to retain the root object alongside sibling destructuring.
 12. A gated widget mounts unconditionally and gates itself, falling thru when unset; parent gate + `.get(true)` where the parent reads the field for its own content.
 13. Split `render()` and long JSX at conditionals and non-interacting siblings into honestly-named local FCs - units you'd delete or move whole; one-op conditionals and formatted scalars stay inline. Consolidate scopes that share dependencies and hold no nested logic.
@@ -129,8 +129,8 @@ class UserProfile extends Model {
     return res.json();
   });
 
-  email = set('', (value) => {
-    if (!value.includes('@')) throw false;
+  bio = set('', (value) => {
+    if (value.length > 280) throw false; // never stored - write rejected
   });
 
   get displayName() {
@@ -139,13 +139,20 @@ class UserProfile extends Model {
 }
 ```
 
-### React Hooks
+### React Views
 
 ```tsx
-// Local state - creates instance, owns lifecycle, subscribes to accessed fields
-function MyComponent() {
-  const { count, increment } = Counter.use();
-  return <button onClick={increment}>{count}</button>;
+// Owned state - a Component; render subscribes to what it reads
+class Counter extends Component {
+  count = 0;
+  increment() {
+    this.count++;
+  }
+
+  render() {
+    const { count, increment } = this;
+    return <button onClick={increment}>{count}</button>;
+  }
 }
 
 // Context state - reads nearest provided instance, subscribes reactively
@@ -160,9 +167,9 @@ function Parent({ counter }: { counter: Counter }) {
 }
 ```
 
-Static `.use()` and `.get()` are React hooks - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. They build green when misused and crash at runtime. (Instance method get is not a hook.)
+Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. They build green when misused and crash at runtime. (Instance method get is not a hook.)
 
-Use `Model.use()` when the component should create and own the instance. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
+State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector). `Model.use()` - a hook owning a plain Model inside an FC - is an adoption bridge for existing hook components, not a default ([react/react.md](react/react.md#modeluse---adoption-bridge)).
 
 ## The Dependency Snapshot
 
@@ -242,7 +249,7 @@ This gives the child a strong contract - no fallback values threaded through its
 
 ## Providing Context
 
-Pass the class: `<Component for={TransferState}>`. Pass an instance only when something else owns it (`<Component for={counter}>` after `Counter.use()`). One item per element - several belong to a parent instance owning them as fields, which makes them siblings; nesting `<Component for>` is a smell (the outer cannot `get` the inner). `is`, attributes, boundaries: [state/context.md](state/context.md#providing-with-component).
+Pass the class: `<Component for={TransferState}>`. Pass an instance only when something else owns it (`<Component for={row}>` for a pool member). One item per element - several belong to a parent instance owning them as fields, which makes them siblings; nesting `<Component for>` is a smell (the outer cannot `get` the inner). `is`, attributes, boundaries: [state/context.md](state/context.md#providing-with-component).
 
 ## Component Class
 
@@ -313,7 +320,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### React
 
-- [react/react.md](react/react.md) - use(), Model.use(), Model.get() (optional lookup, required values `get(true)`, computed selector), providing state, transparent writes, ForceRefresh, Vite hot reload
+- [react/react.md](react/react.md) - Model.get() (optional lookup, required values `get(true)`, computed selector), mount(), providing state, transparent writes, ForceRefresh, SSR, Vite hot reload, Model.use() adoption bridge
 - [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controls, router bridge, host-agnostic domain model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 

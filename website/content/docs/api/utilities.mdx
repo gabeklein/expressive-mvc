@@ -193,7 +193,7 @@ observer(counter, true);
 
 Now `watch(counter, ...)` works - no Model required. ✨
 
-This is a headless seam. React components subscribe through [`Model.use()` or `Model.get()`](/docs/api/hooks), so reaching React with a custom observable means wrapping it in a Model; there is no hook that subscribes to an arbitrary object.
+This is a headless seam. React components subscribe through a Component's `render()` or [`Model.get()`](/docs/api/hooks), so reaching React with a custom observable means wrapping it in a Model; there is no hook that subscribes to an arbitrary object.
 
 <br />
 
@@ -465,4 +465,4 @@ The registry is keyed by `id`, so it works wherever edited modules re-run while 
 
 - [Context guide](/docs/guides/context) - the JSX-facing surface: `<Component for>`, `get` instruction, patterns.
 - [Model](/docs/api/state) - `set(callback)` and `get(effect)`, the instance-method forms of these helpers.
-- [Hooks](/docs/api/hooks) - `Model.use` and `Model.get`, the React subscription paths.
+- [Hooks](/docs/api/hooks) - `Model.get` and `Model.use`, the React hook subscription paths.
