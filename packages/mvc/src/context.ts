@@ -117,11 +117,7 @@ class Context {
     let found: T | null | undefined;
     let priority = false;
 
-    for (
-      let ctx: Context | undefined = this;
-      ctx;
-      ctx = ctx.parent && touch(ctx, "parent", ctx.parent)
-    ) {
+    for (let ctx: Context | undefined = this; ctx; ctx = above(ctx)) {
       touch(ctx, Type);
       const entries = ctx.provide.get(Type);
       if (!entries) continue;
@@ -166,18 +162,18 @@ class Context {
 
   add(I: Model, explicit = false) {
     const { provide } = this;
-    const root = this === Context.root && this;
+    const root = this === Context.root;
     const TT: Model.Extends[] = [];
 
-    function conflict(T: Model.Extends) {
+    const conflict = (T: Model.Extends) => {
       const entries = provide.get(T);
       if (entries)
         for (const entry of entries)
           if (!entry[1] && entry[0] !== I) {
-            signal(root as Context, T as any);
+            signal(this, T as any);
             return entries.delete(entry);
           }
-    }
+    };
 
     for (
       let T = I.constructor as Model.Extends;
@@ -322,6 +318,10 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
       done();
     });
   };
+}
+
+function above(ctx: Context) {
+  return ctx.parent && touch(ctx, "parent", ctx.parent);
 }
 
 function home(state: Model): Context | undefined {
