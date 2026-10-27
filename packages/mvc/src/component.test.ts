@@ -428,6 +428,19 @@ describe('for', () => {
     expect(context.get(Session, false)).toBeUndefined();
   });
 
+  it('will provide the next instance when for changes', async () => {
+    const first = Session.new();
+    const next = Session.new();
+    const provider = Component.new({ for: first } as any);
+    const context = new Context().push(provider);
+
+    (provider as any).props = { for: next };
+    await flushMicrotasks();
+
+    expect(context.get(Session)).toBe(next);
+    expect(first.get(null)).toBe(false);
+  });
+
   it('will mount only a class it constructed', () => {
     const cleanup = vi.fn();
 
