@@ -4,7 +4,7 @@ import { Model } from './state';
 import { get } from './field/get';
 import { has } from './field/has';
 import { map } from './field/map';
-import { watch } from './observable';
+import { Observer, watch } from './observable';
 import { flushMicrotasks, mockUncaught } from '../test.setup';
 
 class Example extends Model {}
@@ -1471,6 +1471,35 @@ describe('tracked lookup', () => {
     await flushMicrotasks();
 
     expect(found).toHaveLength(1);
+  });
+
+  it('will not observe an untracked context', () => {
+    const root = new Context();
+    const child = root.push();
+    const remove = root.add(Test.new());
+
+    expect(child.get(Test)).toBeInstanceOf(Test);
+    remove();
+
+    expect(Object.getOwnPropertyDescriptor(root, Observer)).toBeUndefined();
+    expect(Object.getOwnPropertyDescriptor(child, Observer)).toBeUndefined();
+  });
+
+  it('will observe a context once tracked', async () => {
+    const root = new Context();
+    const middle = root.push();
+    const outer = Test.new();
+
+    root.add(outer);
+
+    const { found } = follow(middle.push());
+    const inner = Test.new();
+
+    middle.add(inner);
+    await flushMicrotasks();
+
+    expect(found).toEqual([outer, inner]);
+    expect(Object.getOwnPropertyDescriptor(root, Observer)).toBeDefined();
   });
 
   it('will refresh an effect using this.get', async () => {

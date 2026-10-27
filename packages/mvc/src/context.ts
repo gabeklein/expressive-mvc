@@ -1,4 +1,4 @@
-import { event as signal, listener, touch } from "./observable";
+import { event as signal, listener, Observer, touch } from "./observable";
 import { event, Model, parent, uid } from "./state";
 
 const HOME = new WeakMap<Model, Context>();
@@ -42,7 +42,6 @@ class Context {
 
   constructor(arg?: Context | Accept) {
     CLEANUP.set(this, new Set());
-    signal(this);
 
     if (arg instanceof Context) {
       this.parent = arg;
@@ -170,7 +169,7 @@ class Context {
       if (entries)
         for (const entry of entries)
           if (!entry[1] && entry[0] !== I) {
-            signal(this, T as any);
+            emit(this, T);
             return entries.delete(entry);
           }
     };
@@ -187,8 +186,8 @@ class Context {
 
     for (const T of TT) {
       onDone.add(this.register(T, [I, explicit]));
-      onDone.add(() => signal(this, T as any));
-      signal(this, T as any);
+      onDone.add(() => emit(this, T));
+      emit(this, T);
     }
 
     function queue(ctx: Context, downstream: boolean, same?: boolean) {
@@ -281,11 +280,24 @@ class Context {
   }
 }
 
-Object.defineProperty(Context.prototype, "toString", {
-  value() {
-    return `Context-${this.id}`;
+Object.defineProperties(Context.prototype, {
+  toString: {
+    value() {
+      return `Context-${this.id}`;
+    },
+  },
+  [Observer]: {
+    get(this: Context) {
+      Object.defineProperty(this, Observer, { writable: true });
+      signal(this);
+      return (this as any)[Observer];
+    },
   },
 });
+
+function emit(ctx: Context, T: Model.Extends) {
+  if (Object.getOwnPropertyDescriptor(ctx, Observer)) signal(ctx, T as any);
+}
 
 /**
  * Add `value` to the lookup origin of `state`. A context-less `state` holds
