@@ -202,7 +202,10 @@ class Context {
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
-    if (!HOME.has(I) && !parent(I)) HOME.set(I, this);
+    const owner = parent(I);
+    const placed = explicit && !(owner && home(owner));
+
+    if (!HOME.has(I) && (!owner || placed)) HOME.set(I, this);
 
     listener(I, () => {
       expects.forEach((f) => f());

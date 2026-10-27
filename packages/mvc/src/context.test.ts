@@ -1352,6 +1352,14 @@ describe('lookup origin', () => {
     expect(Context.get(parent.child)).toBe(context);
   });
 
+  it('will look up from where an owned child is placed if owner has no context', () => {
+    const parent = Parent.new();
+    const context = Context.root.push(new Peer()).push(parent.child);
+
+    expect(Context.get(parent.child)).toBe(context);
+    expect(parent.child.get(Peer)).toBe(context.get(Peer));
+  });
+
   it('will look up from root for a global and its child', () => {
     class Global extends Model {
       static global = true;
