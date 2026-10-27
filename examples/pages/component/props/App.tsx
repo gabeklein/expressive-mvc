@@ -40,7 +40,7 @@ class Dashboard extends Component {
         </div>
 
         <Gauge label="CPU" value={presets[preset]} unit="%" />
-        <Gauge label="Disk" max={512} step={32} unit=" GB" is={(disk) => (disk.value = 128)} />
+        <Gauge label="Disk" max={512} step={32} unit=" GB" is={() => ({ value: 128 })} />
       </>
     );
   }

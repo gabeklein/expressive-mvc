@@ -1241,7 +1241,7 @@ describe('suspense and recovery', () => {
       }
 
       render() {
-        return <Inner is={(value) => (inner = value)} />;
+        return <Inner is={(value) => void (inner = value)} />;
       }
     }
 
@@ -1315,7 +1315,7 @@ describe('suspense and recovery', () => {
     };
 
     let parent!: Parent;
-    const root = place(<Parent is={(p) => (parent = p)} fallback={null} />);
+    const root = place(<Parent is={(p) => void (parent = p)} fallback={null} />);
     pending(() => (parent.value = undefined));
     await flushMicrotasks();
     await flushMicrotasks();

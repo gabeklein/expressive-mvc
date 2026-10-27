@@ -1,5 +1,16 @@
 # @expressive/react
 
+## 0.91.0
+
+### Minor Changes
+
+- [#552](https://github.com/gabeklein/expressive-mvc/pull/552) [`387ef66`](https://github.com/gabeklein/expressive-mvc/commit/387ef6650dba59b11ce03004f8d9c2ab49963d1a) `Context.get()` outside a render no longer calls into React's hooks. React's development build logged "Invalid hook call" for it before any render, and on the server between renders. The adapter `Runtime` gains a required `idle(): boolean | undefined` - `true` when the host is certainly not rendering, `undefined` when it cannot tell, in which case the hook probe runs as before. React reads its dispatcher; Preact returns `undefined`.
+
+### Patch Changes
+
+- Updated dependencies [[`d0b9cf6`](https://github.com/gabeklein/expressive-mvc/commit/d0b9cf6a29916f5db4c9eca23668c208540f9923)]:
+  - @expressive/mvc@0.90.0
+
 ## 0.90.0
 
 ### Minor Changes

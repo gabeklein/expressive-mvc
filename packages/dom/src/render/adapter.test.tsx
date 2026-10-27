@@ -89,7 +89,7 @@ describe('MVC adapter', () => {
     let session!: Session;
     const root = document.createElement('main');
     const release = render(
-      <Component for={Session} is={(value: Session) => (session = value)}>
+      <Component for={Session} is={(value: Session) => void (session = value)}>
         <Name />
       </Component>,
       root
@@ -621,7 +621,7 @@ describe('Component for', () => {
 
       render() {
         return (
-          <Component for={Session} name={this.value} is={(s: Session) => (session = s)}>
+          <Component for={Session} name={this.value} is={(s: Session) => void (session = s)}>
             <Name />
           </Component>
         );
@@ -675,7 +675,7 @@ describe('Component for', () => {
     class Sub extends Component {}
 
     void (() => [
-      <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
+      <Component for={Typed} name="Ada" is={(typed) => void typed.age.toFixed()} />,
       <Component for={Typed.new()} age={2} />,
       <Component fallback={null} />,
       // @ts-expect-error

@@ -216,7 +216,7 @@ describe('BrowserRouter navigation settlement', () => {
     };
 
     const view = await renderAct(
-      <BrowserRouter is={(value) => (router = value)}>
+      <BrowserRouter is={(value) => void (router = value)}>
         <Route>
           <Route to="" as={() => <h1>home</h1>} />
           <Route to="a" fallback={<i>loading</i>} as={A} />
@@ -252,7 +252,7 @@ describe('BrowserRouter navigation settlement', () => {
     };
 
     const view = await renderAct(
-      <BrowserRouter is={(value) => (router = value)}>
+      <BrowserRouter is={(value) => void (router = value)}>
         <Status />
         <Route to="page" as={Page} />
       </BrowserRouter>

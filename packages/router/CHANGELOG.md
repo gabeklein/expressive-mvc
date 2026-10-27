@@ -1,5 +1,12 @@
 # @expressive/router
 
+## 0.9.4
+
+### Patch Changes
+
+- Updated dependencies [[`d0b9cf6`](https://github.com/gabeklein/expressive-mvc/commit/d0b9cf6a29916f5db4c9eca23668c208540f9923)]:
+  - @expressive/mvc@0.90.0
+
 ## 0.9.3
 
 ### Patch Changes

@@ -207,7 +207,7 @@ class ChatRoom extends Component {
 }
 ```
 
-- `is` prop - construction-time, fires once: `<ChatRoom is={c => controller = c} />`. Use when the instance is needed during construction.
+- `is` prop - construction-time, fires once: `<ChatRoom is={(c) => void (controller = c)} />`. Use when the instance is needed during construction.
 - `ref` - Component is a real class component, so `ref` receives the instance after mount and clears to `null` on unmount: `<ChatRoom ref={chatRef} />`. Use for post-mount imperative access.
 
 ## Props
@@ -245,7 +245,7 @@ Non-optional render props become required JSX attributes. All props (field + ren
 
 ### Special Props
 
-- `is` - callback receiving the instance on creation: `<Counter is={c => ref = c} />`
+- `is` - callback receiving the instance on creation, before `new()`. A returned object is assigned once - a seed, where props reassign every render: `<Counter is={() => ({ count: start })} />`. Capturing the instance needs `void` or braces: `is={(c) => void (ref = c)}`.
 - `ref` - standard React ref (object or callback), attached after mount, cleared on unmount
 - `fallback` - ReactNode for suspense/error UI, overrides the instance property; `false` opts out of the component's own boundary so suspension bubbles to an ancestor
 - `catch` - `(error, instance)` handler for this placement, replacing the member `catch`; a returned promise retries once settled

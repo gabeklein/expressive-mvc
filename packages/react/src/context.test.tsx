@@ -64,13 +64,13 @@ describe('Component for', () => {
     const seen: Model[] = [];
 
     const element = render(
-      <Component for={First} is={(first) => seen.push(first)}>
+      <Component for={First} is={(first) => void seen.push(first)}>
         <span />
       </Component>
     );
 
     element.rerender(
-      <Component for={Second} is={(second) => seen.push(second)}>
+      <Component for={Second} is={(second) => void seen.push(second)}>
         <span />
       </Component>
     );
