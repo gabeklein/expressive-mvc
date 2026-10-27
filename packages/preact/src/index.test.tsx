@@ -5,7 +5,8 @@ import { expect, it, describe, vi } from 'vitest';
 
 import { flushMicrotasks, mockPromise } from '../test.setup';
 import { Model } from '@expressive/mvc';
-import { Component, pending } from '.';
+import '.';
+import { Component, pending } from '@expressive/mvc';
 
 describe('Component', () => {
   it('will expose a base render for class detection', () => {

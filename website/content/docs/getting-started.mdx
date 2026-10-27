@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Install, write your first Model class, and learn how the pieces fit together
+description: Install, write your first class, and learn how the pieces fit together
 ---
 
 ## Install
@@ -22,7 +22,7 @@ import { Model, Component, get, set, ref } from '@expressive/mvc';
 import '@expressive/react';
 ```
 
-Its re-exports of the core, and its default export of `Model`, are deprecated - import from `@expressive/mvc` by name. Routing is a separate package, `@expressive/router`.
+It exports nothing for app code - everything comes from `@expressive/mvc` by name. Routing is a separate package, `@expressive/router`.
 
 > Working with an agent? `npx skills add gabeklein/expressive-mvc` teaches it the whole API in one shot.
 
@@ -34,7 +34,7 @@ On **React 18+** the adapter will validate instance revisions before each commit
 
 ### Size
 
-The whole install is about **13.0 kB** gzip with everything imported, and closer to **11.2 kB** for a typical app. Numbers are measured per import shape and gated in CI — see [Bundle size](/docs/guides/bundle-size).
+The whole install is about **13.0 kB** gzip with everything imported, and closer to **11.3 kB** for a typical app. Numbers are measured per import shape and gated in CI — see [Bundle size](/docs/guides/bundle-size).
 
 ### React Native
 
@@ -63,20 +63,21 @@ Editing a `Model` or `Component` class then patches it in place - instances keep
 
 <br />
 
-## Your first `Model`
+## Your first class
 
 Ultimately, the workflow is pretty simple.
 
 1. Create a class. Fill it with the values, getters, and methods you'll need.
-2. Extend `Model` (or any derivative, for that matter), making it reactive.
-3. Within a component, call `use()` as you would any other hook.
-4. Destructure out the values the component needs, subscribing to them.
-5. Update those values on demand. Your component will sync automagically. ✨
+2. Extend `Component`, making it reactive and renderable.
+3. Write a `render()` that destructures what it reads from `this`.
+4. Update those values on demand. The view will sync automagically. ✨
 
 Start with a bare minimum:
 
 ```tsx
-class Counter extends Model {
+import { Component } from '@expressive/mvc';
+
+class Counter extends Component {
   count = 0;
 
   increment() {
@@ -86,34 +87,60 @@ class Counter extends Model {
   decrement() {
     this.count--;
   }
+
+  render() {
+    const { count, increment, decrement } = this;
+
+    return (
+      <div>
+        <button onClick={decrement}>-</button>
+        <span>{count}</span>
+        <button onClick={increment}>+</button>
+      </div>
+    );
+  }
 }
-```
 
-Then use it inside a React component:
-
-```tsx
-function CounterView() {
-  const { count, increment, decrement } = Counter.use();
-
-  return (
-    <div>
-      <button onClick={decrement}>-</button>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
-    </div>
-  );
-}
+<Counter />;
 ```
 
 Three things are happening here:
 
-1. **`Counter.use()`** creates an instance scoped to the component - constructed on mount, destroyed on unmount.
-2. **Destructuring subscribes.** The component grabbed `count`, so when `count` changes, this component (and only this component) re-renders. Values it ignores are ignored right back.
+1. **`<Counter />` owns its instance** - constructed when the element first renders, destroyed on unmount. One object for the component's whole life, never recreated per render.
+2. **Destructuring subscribes.** `render()` grabbed `count`, so when `count` changes, this component (and only this component) re-renders. Values it ignores are ignored right back.
 3. **Methods come pre-bound.** `increment` and `decrement` can be passed straight to event handlers - `this` is always correct, no `useCallback` in sight.
 
 Here's that same idea running for real - edit it if you like:
 
 <Playground of="essentials/counter" />
+
+### Fields are props
+
+Every field doubles as an optional JSX prop, assigned on each render of the parent:
+
+```tsx
+class Greeter extends Component {
+  name = 'World';
+
+  get greeting() {
+    return `Hello, ${this.name}!`;
+  }
+
+  render() {
+    const { greeting } = this;
+
+    return <h1>{greeting}</h1>;
+  }
+}
+
+<Greeter name="React" />;
+```
+
+No props interface to keep in sync with state - the class is both. A prop the parent passes is the parent's to control - reassigned every render - so pass the ones it actually drives. To seed a value the user then edits, return it from `is`, which runs once:
+
+```tsx
+<Greeter is={() => ({ name: user.firstName })} />
+```
 
 <br />
 
@@ -122,7 +149,7 @@ Here's that same idea running for real - edit it if you like:
 A todo list with a computed value, local persistence, and a dash of validation - all in one class:
 
 ```tsx
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
 interface Todo {
   id: number;
@@ -130,7 +157,7 @@ interface Todo {
   done: boolean;
 }
 
-class TodoApp extends Model {
+class TodoList extends Component {
   items: Todo[] = [];
   draft = '';
   nextId = 1;
@@ -164,64 +191,51 @@ class TodoApp extends Model {
       i.id === id ? { ...i, done: !i.done } : i
     );
   }
+
+  render() {
+    const { items, draft, remaining, add, toggle } = this;
+
+    return (
+      <div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            add();
+          }}>
+          <input
+            value={draft}
+            onChange={(e) => (this.draft = e.target.value)}
+            placeholder="What needs doing?"
+          />
+          <button type="submit">Add</button>
+        </form>
+        <p>{remaining} remaining</p>
+        <ul>
+          {items.map((item) => (
+            <li key={item.id} onClick={() => toggle(item.id)}>
+              {item.done ? <s>{item.text}</s> : item.text}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 }
 ```
 
-Then the view:
-
-```tsx
-function TodoList() {
-  const { is: todo, items, draft, remaining, add, toggle } = TodoApp.use();
-
-  return (
-    <div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          add();
-        }}>
-        <input
-          value={draft}
-          onChange={(e) => (todo.draft = e.target.value)}
-          placeholder="What needs doing?"
-        />
-        <button type="submit">Add</button>
-      </form>
-      <p>{remaining} remaining</p>
-      <ul>
-        {items.map((item) => (
-          <li key={item.id} onClick={() => toggle(item.id)}>
-            {item.done ? <s>{item.text}</s> : item.text}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-> Notice what the component *doesn't* have: no effects, no memoization, no derived state in the render body, no setup. It's a pure projection of the state - [`mount()`](/docs/api/state#lifecycle-hooks) handles persistence once the component commits (client-only, so `localStorage` is safe even under server render), `remaining` keeps itself current, and `set('items', ...)` runs whenever the list changes.
-
-<br />
-
-## The `is` property
-
-After destructuring, you lose write access - `count = 5` just rebinds a local variable. For this, every instance exposes `is`, a loop-back to itself. Prefer destructuring it first, aliased to the instance's concept:
-
-```tsx
-const { is: todo, draft } = TodoApp.use();
-todo.draft = 'hello'; // updates state and re-renders
-```
-
-`is` has a second trick: **silent reads**. Reading through `is` inside a tracking context does not subscribe - handy when you want a value without volunteering to re-render every time it changes. More on that in [Reactivity](/docs/guides/reactivity).
+> Notice what `render()` *doesn't* have: no effects, no memoization, no derived state, no setup. It's a pure projection of the fields above it - [`mount()`](/docs/api/component#lifecycle-hooks) handles persistence once the component commits (client-only, so `localStorage` is safe even under server render), `remaining` keeps itself current, and `set('items', ...)` runs whenever the list changes.
 
 <br />
 
 ## The mental model
 
-If you've used React hooks, you're used to state living *inside* components. Expressive flips this: state lives in a class, and components are thin projections of it.
+If you've used React hooks, you're used to state living *inside* function components. Expressive flips this: state lives in a class, and function components are thin projections of it.
+
+When state belongs to one view, that class is the `Component` itself, as above. When several components share it, it's a plain `Model` - no `render()` - placed above them with `<Component for>`. Any function component below reads it with `.get()`:
 
 ```tsx
+import { Component, Model } from '@expressive/mvc';
+
 // The brain - data, derived values, and behavior
 class SearchPage extends Model {
   query = '';
@@ -236,30 +250,58 @@ class SearchPage extends Model {
   }
 }
 
-// The face - just renders what the brain knows
-function SearchView() {
-  const { is: page, query, results, loading, search } = SearchPage.use();
+// The faces - each renders the part of the brain it needs
+function SearchBox() {
+  const { is: page, query, search } = SearchPage.get();
 
   return (
-    <div>
-      <input
-        value={query}
-        onChange={(e) => (page.query = e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && search()}
-      />
-      {loading ? (
-        <p>Searching...</p>
-      ) : (
-        <ul>
-          {results.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <input
+      value={query}
+      onChange={(e) => (page.query = e.target.value)}
+      onKeyDown={(e) => e.key === 'Enter' && search()}
+    />
   );
 }
+
+function SearchResults() {
+  const { results, loading } = SearchPage.get();
+
+  if (loading) return <p>Searching...</p>;
+
+  return (
+    <ul>
+      {results.map((r) => (
+        <li key={r}>{r}</li>
+      ))}
+    </ul>
+  );
+}
+
+// The placement - creates the instance and provides it to everything below
+const App = () => (
+  <Component for={SearchPage}>
+    <SearchBox />
+    <SearchResults />
+  </Component>
+);
 ```
+
+`SearchResults` re-renders when `results` or `loading` change; typing in the box re-renders only `SearchBox`. Neither component creates or owns anything - they're functions of state that lives above them.
+
+### The `is` property
+
+After destructuring, you lose write access - `query = 'x'` just rebinds a local variable. For this, every instance exposes `is`, a loop-back to itself. Prefer destructuring it first, aliased to the instance's concept:
+
+```tsx
+const { is: page, query } = SearchPage.get();
+page.query = 'hello'; // updates state and re-renders
+```
+
+Inside a Component's `render()` you already have it - `this.draft = ...` writes directly.
+
+`is` has a second trick: **silent reads**. Reading through `is` inside a tracking context does not subscribe - handy when you want a value without volunteering to re-render every time it changes. More on that in [Reactivity](/docs/guides/reactivity).
+
+<br />
 
 Because state is a portable object, we can modify it from anywhere - and more crucially, *whenever*. That makes the async stuff pretty low maintenance: you write the business logic, the class handles dispatch. It also means:
 
@@ -270,7 +312,7 @@ Because state is a portable object, we can modify it from anywhere - and more cr
 
 <br />
 
-## When to create a Model class
+## When to create a class
 
 You don't need a class for every component. Good signals you should reach for one:
 
@@ -287,7 +329,7 @@ For single booleans, form field focus, or throwaway UI state, `useState` is stil
 When it does, choose the class shape by ownership:
 
 - **`Component`** when the state is intrinsic to one rendered unit - a shell, tab panel, form input, media player, editor surface.
-- **`Model`** when the state is display-agnostic, shared across components, or worth testing without rendering.
+- **`Model`** when the state is display-agnostic, shared across components, or worth testing without rendering. Place it with `<Component for>`, or hold it as a field of the Component that owns it (`page = new Pagination()`).
 
 Don't reach for `Component` just because a class is contextual - `Model` handles headless controls fine, and child instances of anything provided are available to descendants automatically.
 
@@ -298,6 +340,7 @@ And avoid splitting into `FooState` plus `FooView` by default. If the behavior o
 ## Next steps
 
 - [Why Classes?](/docs/why-classes) - the organizational case for moving state out of components.
+- [Components](/docs/guides/components) - the `Component` class, which lets state render itself.
+- [Context](/docs/guides/context) - placing shared state with `<Component for>` and reading it with `.get()`.
 - [Model Classes](/docs/guides/state-classes) - fields, methods, and lifecycle.
 - [Reactivity](/docs/guides/reactivity) - how tracking, computed values, and batching work.
-- [Components](/docs/guides/components) - the `Component` class, which lets state render itself.

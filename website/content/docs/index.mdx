@@ -3,13 +3,13 @@ title: Expressive MVC
 description: A class-based state backbone for modern UI applications
 ---
 
-Expressive MVC is a reactive state library built around **plain classes**. It's designed to be the backbone of your application - the place where data, behavior, and lifecycle live - so components can go back to doing what they're best at: describing UI.
+Expressive MVC is reactive MVC built around **plain classes**. It's designed to be the backbone of your application - the place where data, behavior, and lifecycle live, whether React renders it, `@expressive/dom` does, or nothing does - so views can go back to doing what they're best at: describing UI.
 
 ```tsx
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 import '@expressive/react';
 
-class Counter extends Model {
+class Counter extends Component {
   count = 0;
 
   increment() {
@@ -19,22 +19,24 @@ class Counter extends Model {
   decrement() {
     this.count--;
   }
+
+  render() {
+    const { count, increment, decrement } = this;
+
+    return (
+      <div>
+        <button onClick={decrement}>-</button>
+        <span>{count}</span>
+        <button onClick={increment}>+</button>
+      </div>
+    );
+  }
 }
 
-function CounterWidget() {
-  const { count, increment, decrement } = Counter.use();
-
-  return (
-    <div>
-      <button onClick={decrement}>-</button>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
-    </div>
-  );
-}
+<Counter />;
 ```
 
-No reducers. No selectors. No dependency arrays. No extra libraries for async, context, or computed values. Just a class and a hook.
+No reducers. No selectors. No dependency arrays. No extra libraries for async, context, or computed values. Just a class - fields are the state, methods are the handlers, `render()` is the view.
 
 > Every concept in these docs has a live, editable counterpart in the [Playground](/examples) - when a page links one, try breaking it.
 
@@ -44,7 +46,7 @@ No reducers. No selectors. No dependency arrays. No extra libraries for async, c
 
 Most React apps outgrow their state. What starts as `useState` sprawls into `useEffect` chains, `useCallback` memoization, custom hooks that return objects of hooks, then a store library, then middleware for async, then a query client. By the time a feature is "done", its logic is scattered across five different primitives - none of which are easy to test, reuse, or understand in isolation.
 
-Expressive takes a different approach: **put the logic back in one place**. Display-agnostic state and logic live in `Model` classes. Behavior that only exists for one rendered unit can live directly in a `Component` class. Either way - values, methods, lifecycle, and rendering boundary are explicit, instead of scattered across hooks.
+Expressive takes a different approach: **put the logic back in one place**. State and behavior that belong to one rendered unit live on a `Component` class, which renders itself. Display-agnostic state shared across views lives in a `Model`, placed above the function components that read it. Either way - values, methods, lifecycle, and rendering boundary are explicit, instead of scattered across hooks.
 
 <br />
 
@@ -54,7 +56,7 @@ Expressive takes a different approach: **put the logic back in one place**. Disp
 - **Computed values** - getters that update when the values they read change.
 - **Async + Suspense** - declarative data loading, integrated with Suspense out of the box.
 - **Context** - the class itself is the context key. Fully typed, no wiring.
-- **Lifecycle** - one `new()` hook for setup and teardown. No dependency arrays.
+- **Lifecycle** - `new()` for setup and teardown, `mount()` for client effects. No dependency arrays.
 - **Components** - the `Component` class lets state render itself, with built-in error boundaries and subcomponents.
 - **Testability** - `Model` instances are plain objects. Test them without a renderer, without `act()`, without a DOM.
 
@@ -81,7 +83,7 @@ Expressive takes a different approach: **put the logic back in one place**. Disp
   <Card
     title="API Reference"
     href="/docs/api/state"
-    description="Every method, instruction, and hook."
+    description="Every method, instruction, and type."
   />
 </Cards>
 

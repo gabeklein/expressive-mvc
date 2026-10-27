@@ -393,7 +393,7 @@ test('refreshes on update', async () => {
 - **`act()`** - unless a component is actually mounted, there's no renderer to flush.
 - **`@testing-library/react`** - you're not rendering anything.
 - **`jsdom`** - same deal; `Model` classes never touch the DOM on their own.
-- **Mocks for hooks** - Model classes don't call hooks. A `use()` method only runs on the `Model.use()` hook path, which `.new()` sidesteps entirely.
+- **Mocks for hooks** - `.new()` never renders, so a hook bridged in a Component's `render()` - or in a function component passing props - never runs in a logic test. Assign the field the hook would have supplied.
 
 Most of your logic tests end up as plain synchronous functions. That was the point of the classes all along.
 

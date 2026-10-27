@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { Model } from '@expressive/mvc';
-import { Component, Context, get, set } from '.';
+import '.';
+import { Component, Context, get, set } from '@expressive/mvc';
 import { pending } from '@expressive/mvc';
 import * as Refresh from 'react-refresh/runtime';
 import {
@@ -16,10 +17,12 @@ import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { collect, mockPromise, flushMicrotasks, revisions, reactOnly } from '../test.setup';
 import { Runtime } from './runtime';
 
-function renderWith<T>(target: Model.Type | Model, hook: () => T) {
+function renderWith<T>(target: Model.Type | Model, hook: () => T, inner?: Model.Type) {
   return renderHook(hook, {
     wrapper: (props) => {
-      const content = <Suspense fallback={null}>{props.children}</Suspense>;
+      let content = <Suspense fallback={null}>{props.children}</Suspense>;
+
+      if (inner) content = <Component for={inner}>{content}</Component>;
 
       return target instanceof Model
         ? <Component for={target}>{content}</Component>
@@ -670,7 +673,7 @@ describe('Model.get', () => {
 
     it('will attach peer from context', async () => {
       const bar = Bar.new();
-      const hook = renderWith(bar, () => Foo.use().is.bar);
+      const hook = renderWith(bar, () => Foo.get().is.bar, Foo);
 
       expect(hook.result.current).toBe(bar);
     });
@@ -680,8 +683,8 @@ describe('Model.get', () => {
       const didRender = vi.fn();
       const hook = renderWith(bar, () => {
         didRender();
-        return Foo.use().bar.value;
-      });
+        return Foo.get().bar.value;
+      }, Foo);
 
       expect(hook.result.current).toBe('bar');
 
@@ -699,7 +702,7 @@ describe('Model.get', () => {
         bar = get(Bar, false);
       }
 
-      const hook = renderHook(() => Foo.use().bar);
+      const hook = renderWith(Foo, () => Foo.get().bar);
 
       expect(hook.result.current).toBeUndefined();
     });
@@ -710,7 +713,7 @@ describe('Model.get', () => {
 
       }
 
-      const tryToRender = () => renderHook(() => Foo.use());
+      const tryToRender = () => renderWith(Foo, () => Foo.get());
 
       expect(tryToRender).toThrow(/Required Bar not found in context for [\w-]+\./);
     });
@@ -1053,18 +1056,17 @@ reactOnly.describe('abandoned render', () => {
 
     class Parent extends Model {}
 
-    class Test extends Model {
+    class Child extends Component {
       new() {
         live.add(this);
         return () => live.delete(this);
       }
-    }
 
-    const Child = () => {
-      Test.use();
-      Parent.get();
-      return null;
-    };
+      render() {
+        Parent.get();
+        return null;
+      }
+    }
 
     const Wait = () => {
       throw mockPromise();

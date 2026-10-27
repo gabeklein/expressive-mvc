@@ -5,9 +5,9 @@ Working examples of the fundamentals.
 ## Counter (minimal)
 
 ```tsx
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class Counter extends Model {
+class Counter extends Component {
   count = 0;
 
   increment() {
@@ -17,27 +17,31 @@ class Counter extends Model {
   decrement() {
     this.count--;
   }
+
+  render() {
+    const { count, increment, decrement } = this;
+
+    return (
+      <div>
+        <button onClick={decrement}>-</button>
+        <span>{count}</span>
+        <button onClick={increment}>+</button>
+      </div>
+    );
+  }
 }
 
-function CounterApp() {
-  const { count, increment, decrement } = Counter.use();
-
-  return (
-    <div>
-      <button onClick={decrement}>-</button>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
-    </div>
-  );
-}
+<Counter count={5} />;
 ```
+
+Fields are optional props, applied every render.
 
 ## Todo List (owned collection)
 
 Each entry is its own instance in a `has` pool - `done` and `toggle` live on the item, not as `(id, value)` methods on the list:
 
 ```tsx
-import { Model, has } from '@expressive/mvc';
+import { Model, Component, has } from '@expressive/mvc';
 
 class TodoItem extends Model {
   text = '';
@@ -48,7 +52,7 @@ class TodoItem extends Model {
   }
 }
 
-class TodoState extends Model {
+class TodoApp extends Component {
   items = has(TodoItem);
   input = '';
 
@@ -61,38 +65,38 @@ class TodoState extends Model {
     this.items.add({ text: this.input });
     this.input = '';
   }
-}
 
-function TodoApp() {
-  const state = TodoState.use();
+  render() {
+    const { input, remaining, items, add } = this;
 
-  return (
-    <div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          state.add();
-        }}>
-        <input
-          value={state.input}
-          onChange={(e) => (state.input = e.target.value)}
-        />
-        <button type="submit">Add</button>
-      </form>
-      <p>{state.remaining} remaining</p>
-      <ul>
-        {state.items.map((item) => (
-          <li key={String(item)} onClick={item.toggle}>
-            {item.done ? <s>{item.text}</s> : item.text}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+      <div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            add();
+          }}>
+          <input
+            value={input}
+            onChange={(e) => (this.input = e.target.value)}
+          />
+          <button type="submit">Add</button>
+        </form>
+        <p>{remaining} remaining</p>
+        <ul>
+          {items.map((item) => (
+            <li key={String(item)} onClick={item.toggle}>
+              {item.done ? <s>{item.text}</s> : item.text}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 }
 ```
 
-Rows that paint themselves become `Component` members placed as `{state.items}` - pool recipes in [patterns.md](../react/patterns.md).
+Rows that paint themselves become `Component` members placed as `{this.items}` - pool recipes in [patterns.md](../react/patterns.md).
 
 ## Async Data (with Suspense)
 
@@ -145,7 +149,7 @@ class Theme extends Model {
   }
 }
 
-class Panel extends Model {
+class Panel extends Component {
   theme = get(Theme);
   expanded = false;
 
@@ -156,30 +160,34 @@ class Panel extends Model {
   get isDark() {
     return this.theme.mode === 'dark';
   }
+
+  render() {
+    const { expanded, toggle, isDark } = this;
+
+    return (
+      <div style={{ background: isDark ? '#333' : '#fff' }}>
+        <button onClick={toggle}>{expanded ? 'Collapse' : 'Expand'}</button>
+        {expanded && <p>Panel content</p>}
+      </div>
+    );
+  }
 }
 
-function App() {
-  const theme = Theme.use();
+class App extends Component {
+  theme = new Theme();
 
-  return (
-    <Component for={theme}>
-      <button onClick={theme.toggle}>Toggle Theme</button>
-      <PanelView />
-    </Component>
-  );
-}
-
-function PanelView() {
-  const { expanded, toggle, isDark } = Panel.use();
-
-  return (
-    <div style={{ background: isDark ? '#333' : '#fff' }}>
-      <button onClick={toggle}>{expanded ? 'Collapse' : 'Expand'}</button>
-      {expanded && <p>Panel content</p>}
-    </div>
-  );
+  render() {
+    return (
+      <>
+        <button onClick={this.theme.toggle}>Toggle Theme</button>
+        <Panel />
+      </>
+    );
+  }
 }
 ```
+
+`theme` is provided by the `App` that owns it - `Panel` finds it with `get(Theme)`.
 
 ## Component Class (self-rendering)
 
@@ -230,61 +238,34 @@ function App() {
 
 Explicit `loading` keeps previous results visible during refresh - the deliberate alternative to `set(async)` suspense for user-initiated fetches.
 
-## Form Validation (setter callbacks)
+## Bounded Stepper (setter callback)
+
+A `set` callback guards writes - `throw false` rejects a value that should never be stored, so callers need no bounds checks:
 
 ```tsx
-import { Model, set } from '@expressive/mvc';
+import { Component, set } from '@expressive/mvc';
 
-class SignupForm extends Model {
-  name = '';
-  email = set('', (value) => {
-    if (value && !value.includes('@')) throw false; // reject - value stays unchanged
-  });
-  password = set('', (value) => {
-    if (value.length > 0 && value.length < 8) throw false; // reject short passwords
+class Quantity extends Component {
+  max = 10;
+
+  value = set(1, (next) => {
+    if (!Number.isInteger(next) || next < 1 || next > this.max) throw false;
   });
 
-  get valid() {
+  render() {
+    const { value } = this;
+
     return (
-      this.name.length > 0 &&
-      this.email.includes('@') &&
-      this.password.length >= 8
+      <div>
+        <button onClick={() => this.value--}>-</button>
+        <span>{value}</span>
+        <button onClick={() => this.value++}>+</button>
+      </div>
     );
   }
-
-  submit() {
-    if (!this.valid) return;
-    console.log('Submitting:', this.get());
-  }
 }
 
-function Signup() {
-  const form = SignupForm.use();
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        form.submit();
-      }}>
-      <input
-        placeholder="Name"
-        value={form.name}
-        onChange={(e) => (form.name = e.target.value)}
-      />
-      <input
-        placeholder="Email"
-        value={form.email}
-        onChange={(e) => (form.email = e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password (8+ chars)"
-        value={form.password}
-        onChange={(e) => (form.password = e.target.value)}
-      />
-      <button disabled={!form.valid}>Sign Up</button>
-    </form>
-  );
-}
+<Quantity max={5} />;
 ```
+
+Rejecting suits values that are never valid. Input that is not valid *yet* - a half-typed email - lands, and a getter reports on it: [Form with Validation](../react/patterns.md#form-with-validation).

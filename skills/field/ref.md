@@ -17,7 +17,7 @@ class Panel extends Model {
   element = ref<HTMLDivElement>();
 }
 
-const { is: state } = Panel.use();
+const state = Panel.new();
 
 state.element.current; // HTMLDivElement | null
 state.element.current = div; // set via .current
@@ -51,7 +51,7 @@ class Form extends Model {
   refs = ref(this);
 }
 
-const { is: form } = Form.use();
+const form = Form.new();
 
 form.refs.name; // ref.Object<string>
 form.refs.name.current; // current value of form.name

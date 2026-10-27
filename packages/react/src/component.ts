@@ -3,15 +3,6 @@ import { createProvider, type Context } from './context';
 import { Runtime, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
-  namespace Component {
-    /**
-     * Not available - a Component is rendered, not a hook.
-     * Render it with `<Component />` or `{component}`.
-     * For a bare instance use `Component.new()`.
-     */
-    const use: never;
-  }
-
   interface Component {
     /**
      * Optional hook called once this Component commits. Return a function to
@@ -45,15 +36,6 @@ Object.defineProperties(Component.prototype, {
   },
   context: {
     set: bootstrap
-  }
-});
-
-Object.defineProperty(Component, 'use', {
-  configurable: true,
-  value() {
-    throw new Error(
-      `${this} is a Component - render as an element instead of calling use().`
-    );
   }
 });
 

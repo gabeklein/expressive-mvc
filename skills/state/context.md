@@ -183,7 +183,7 @@ Context is where an instance registers to be found; ownership is who constructed
 
 - A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every instance a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
 - Two siblings of one type are ambiguous to context (`get(Foo)` is `null`) but each has exactly one owner.
-- A host-mounted Component, `use()` instance or `<Component for>` is owned by the Component rendering it, with no field between them.
+- A host-mounted Component or `<Component for>` is owned by the Component rendering it, with no field between them.
 
 `state.get(Model)` reads the owner and `get(Model, true)` lists what an instance owns directly; neither consults context. Use a type to find a collaborator; use `Model` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
 

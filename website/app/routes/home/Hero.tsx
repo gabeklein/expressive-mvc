@@ -1,4 +1,4 @@
-import Model, { Component, get, ref } from '@expressive/react';
+import { Model, Component, get, ref } from '@expressive/mvc';
 import type { CSSProperties } from 'react';
 
 declare const __LIB_VERSION__: string;
@@ -318,30 +318,30 @@ class TypedComment extends Model {
 
 function CounterExample({ compact, count, comment }: CounterExampleProps) {
   const imports =
-    "import React from 'react';\n    import { Model } from '@expressive/mvc';\n\n    ";
+    "import React from 'react';\n    import { Component } from '@expressive/mvc';\n\n    ";
   const increment = compact
     ? 'increment() { this.count++; }'
     : 'increment() {\n        this.count++;\n      }';
   const destruct = compact
-    ? '{\n        count,\n        increment,\n      }'
+    ? '{\n          count,\n          increment,\n        }'
     : "{ count, increment }";
 
   const Example = code /*tsx*/`
-    ${imports}class Counter extends Model {
+    ${imports}class Counter extends Component {
       count = ${count};
 
       ${comment}
       ${increment}
-    }
 
-    function App() {
-      const ${destruct} = Counter.use();
+      render() {
+        const ${destruct} = this;
 
-      return (
-        <button onClick={increment}>
-          Clicked {count} times
-        </button>
-      );
+        return (
+          <button onClick={increment}>
+            Clicked {count} times
+          </button>
+        );
+      }
     }
   `;
 

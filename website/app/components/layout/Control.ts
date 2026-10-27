@@ -1,4 +1,4 @@
-import Model, { Component, get, ref, set } from '@expressive/react';
+import { Model, Component, get, ref, set } from '@expressive/mvc';
 import React, { type MouseEventHandler, type ReactNode } from 'react';
 
 const AXIS = ['gridTemplateRows', 'gridTemplateColumns'] as const;

@@ -1,4 +1,5 @@
 import { Context, join } from './context';
+import { element } from './element';
 import { listener } from './observable';
 import { set } from './field/set';
 import { Model, adopt, plain, trailing } from './state';
@@ -276,5 +277,7 @@ function provide(self: Component<any>) {
   self.set('props', sync);
   listener(self, remove, null);
 }
+
+element(Component);
 
 export { Component };
