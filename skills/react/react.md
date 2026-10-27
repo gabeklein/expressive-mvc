@@ -214,7 +214,7 @@ const data = AppState.get(($, refresh) => {
 
 ### Reactive context
 
-If the upstream instance is replaced in context (e.g. `<Component for>` given a new item), the hook resubscribes to the new instance and refreshes.
+If the upstream instance is replaced in context (e.g. `<Component for>` given a new item), the hook resubscribes to the new instance and refreshes. An instance arriving after mount refreshes it too - `get(false)` included. Once the instance leaves, `get(false)` returns `undefined` and a required `get()` throws - unmount consumers before destroying their provider.
 
 ---
 

@@ -57,7 +57,7 @@ const stop = state.get((current, update) => {
 
 - Only reads via the `current` proxy subscribe - not via `this` or method calls.
 - Nested child instance properties track deeply (`current.child.value`); replacing a child re-subscribes to the new one.
-- `current.get(Type)` and `current.get(Model)` track the same way - reads off the fetched instance subscribe.
+- `current.get(Type)` and `current.get(Model)` track the same way - reads off the fetched instance subscribe. `current.get(Type)` also follows its provider (see [Fetch from context](#fetch-from-context)).
 - Simultaneous updates to several tracked properties produce one re-run.
 
 **Effect return value:**
@@ -118,6 +118,8 @@ get<T extends Model>(type: Model.Type<T>, required: boolean): T | undefined
 ```
 
 Fetches an instance of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
+
+Through a tracking proxy (effect, `render()`) the lookup follows context - a closer provider arriving or the found one leaving re-runs it. A required lookup whose provider leaves throws: destroy consumers before providers, or pass `false`.
 
 ```ts
 const parent = child.get(Parent);
