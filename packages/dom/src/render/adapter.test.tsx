@@ -557,6 +557,62 @@ describe('get parity', () => {
     release();
   });
 
+  it('will return undefined when the provider is removed', async () => {
+    class Parent extends Model {
+      child?: Foo = new Foo({ value: 'present' });
+    }
+
+    const parent = Parent.new();
+    const found = vi.fn();
+
+    function Name() {
+      const foo = Foo.get(false);
+      found(foo);
+      return <span>{foo?.value ?? 'missing'}</span>;
+    }
+
+    const root = document.createElement('main');
+    const release = render(<Component for={parent}><Name /></Component>, root);
+
+    expect(root.textContent).toBe('present');
+
+    parent.child = undefined;
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('missing');
+    expect(found).toHaveBeenLastCalledWith(undefined);
+
+    release();
+  });
+
+  it('will throw when a required provider is removed', async () => {
+    class Parent extends Model {
+      child?: Foo = new Foo({ value: 'present' });
+    }
+
+    const parent = Parent.new();
+
+    function Name() {
+      try {
+        return <span>{Foo.get().value}</span>;
+      } catch (err: any) {
+        return <span>{err.message}</span>;
+      }
+    }
+
+    const root = document.createElement('main');
+    const release = render(<Component for={parent}><Name /></Component>, root);
+
+    expect(root.textContent).toBe('present');
+
+    parent.child = undefined;
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe(`Could not find ${Foo} in context.`);
+
+    release();
+  });
+
   it('will not refresh for a provider above the one found', async () => {
     class Parent extends Model {
       child = new Foo({ value: 'near' });
