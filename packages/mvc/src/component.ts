@@ -1,7 +1,7 @@
 import { Context } from './context';
+import { element } from './element';
 import { set } from './field/set';
 import { Model, adopt, plain, trailing } from './state';
-import { element } from './element';
 
 import type { Host } from './jsx-runtime';
 

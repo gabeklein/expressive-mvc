@@ -1,8 +1,8 @@
 import { Context } from '../context';
-import { event, listener, touch } from '../observable';
-import { Model, parent } from '../state';
 import { def } from './def';
 import { element } from '../element';
+import { event, listener, touch } from '../observable';
+import { Model, parent } from '../state';
 
 const LENGTH = Symbol('length');
 const SHAPE = Symbol('shape');

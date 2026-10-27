@@ -1,8 +1,8 @@
 import { Context } from '../context';
-import { event, listener, touch } from '../observable';
-import { Model, parent } from '../state';
 import { def } from './def';
 import { element } from '../element';
+import { event, listener, touch } from '../observable';
+import { Model, parent } from '../state';
 
 const SHAPE = Symbol('shape');
 const KEYED = (_key: unknown, value: unknown) => value;
