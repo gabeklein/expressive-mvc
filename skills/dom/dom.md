@@ -146,7 +146,7 @@ function Total() {
 }
 ```
 
-`Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it.
+`Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it. The lookup follows context - a provider replaced, arriving after mount or leaving renders the scope. Once the provider leaves, `get(false)` returns `undefined` and a required `get()` throws.
 
 An FC owns nothing - same as React. Owned state is a class: a field on a Component, or `<Component for={Type}>` above an FC that reads it with `Model.get()`. Arguments a hook would take per render are attributes, which assign fields:
 

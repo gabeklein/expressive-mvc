@@ -1,4 +1,4 @@
-import { listener } from "./observable";
+import { event as signal, listener, Observer, touch } from "./observable";
 import { event, Model, parent, uid } from "./state";
 
 const HOME = new WeakMap<Model, Context>();
@@ -116,7 +116,8 @@ class Context {
     let found: T | null | undefined;
     let priority = false;
 
-    for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) {
+    for (let ctx: Context | undefined = this; ctx; ctx = above(ctx)) {
+      touch(ctx, Type);
       const entries = ctx.provide.get(Type);
       if (!entries) continue;
 
@@ -163,12 +164,15 @@ class Context {
     const root = this === Context.root;
     const TT: Model.Extends[] = [];
 
-    function conflict(T: Model.Extends) {
+    const conflict = (T: Model.Extends) => {
       const entries = provide.get(T);
       if (entries)
         for (const entry of entries)
-          if (!entry[1] && entry[0] !== I) return entries.delete(entry);
-    }
+          if (!entry[1] && entry[0] !== I) {
+            emit(this, T);
+            return entries.delete(entry);
+          }
+    };
 
     for (
       let T = I.constructor as Model.Extends;
@@ -180,7 +184,11 @@ class Context {
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
 
-    for (const T of TT) onDone.add(this.register(T, [I, explicit]));
+    for (const T of TT) {
+      onDone.add(this.register(T, [I, explicit]));
+      onDone.add(() => emit(this, T));
+      emit(this, T);
+    }
 
     function queue(ctx: Context, downstream: boolean, same?: boolean) {
       let found = false;
@@ -272,11 +280,24 @@ class Context {
   }
 }
 
-Object.defineProperty(Context.prototype, "toString", {
-  value() {
-    return `Context-${this.id}`;
+Object.defineProperties(Context.prototype, {
+  toString: {
+    value() {
+      return `Context-${this.id}`;
+    },
+  },
+  [Observer]: {
+    get(this: Context) {
+      Object.defineProperty(this, Observer, { writable: true });
+      signal(this);
+      return (this as any)[Observer];
+    },
   },
 });
+
+function emit(ctx: Context, T: Model.Extends) {
+  if (Object.getOwnPropertyDescriptor(ctx, Observer)) signal(ctx, T as any);
+}
 
 /**
  * Add `value` to the lookup origin of `state`. A context-less `state` holds
@@ -309,6 +330,10 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
       done();
     });
   };
+}
+
+function above(ctx: Context) {
+  return ctx.parent && touch(ctx, "parent", ctx.parent);
 }
 
 function home(state: Model): Context | undefined {

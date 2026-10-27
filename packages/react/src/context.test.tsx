@@ -40,7 +40,7 @@ class Baz extends Bar {}
 function within(assert: () => void, wrap: (check: React.ReactNode) => React.ReactNode) {
   const Check = vi.fn(() => (assert(), null));
 
-  render(<>{wrap(<Check />)}</>);
+  render(<>{wrap(<Check />)}</>).unmount();
 
   expect(Check).toHaveBeenCalled();
 }

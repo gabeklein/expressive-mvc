@@ -100,7 +100,7 @@ declare module '@expressive/mvc' {
   argument?: boolean | Model.GetFactory<T, unknown>
 ) {
   const scope = requireScope();
-  const instance = scope.context.get(this, argument === false ? false : true);
+  const instance = tracked(scope.context).get(this, argument === false ? false : true);
 
   if (!instance) return undefined;
 

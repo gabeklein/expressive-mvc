@@ -531,16 +531,102 @@ describe('Model.get', () => {
       expect(didRender).toBeCalledTimes(3);
     });
 
-    it.fails('will render null when instance is removed', async () => {
+    it('will return undefined when instance is removed', async () => {
       class Other extends Model {}
 
-      const { container, swap } = mount(Test.new(), () => Test.get(false)?.value ?? null);
+      const didGet = vi.fn();
+      const { container, swap } = mount(Test.new(), () => {
+        const test = Test.get(false);
+        didGet(test);
+        return test?.value ?? null;
+      });
 
       expect(container.textContent).toBe('foo');
 
       await swap(Other.new());
 
       expect(container.textContent).toBe('');
+      expect(didGet).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it('will throw when a required instance is removed', async () => {
+      class Other extends Model {}
+
+      const { container, swap } = mount(Test.new(), () => {
+        try {
+          return Test.get().value;
+        } catch (err: any) {
+          return err.message;
+        }
+      });
+
+      expect(container.textContent).toBe('foo');
+
+      await swap(Other.new());
+
+      expect(container.textContent).toBe(`Could not find ${Test} in context.`);
+    });
+
+    it('will keep following an instance provided again closer', async () => {
+      class Parent extends Model {
+        test = new Test();
+      }
+
+      const parent = Parent.new();
+      const Inner = () => Test.get(true).value;
+      const tree = (inner?: Test) => (
+        <Component for={parent}>
+          <Component for={inner}>
+            <Inner />
+          </Component>
+        </Component>
+      );
+
+      const { container, rerender } = render(tree());
+
+      await act(async () => parent.test.value = 'bar');
+      expect(container.textContent).toBe('bar');
+
+      rerender(tree(parent.test));
+      await act(async () => parent.test.value = 'baz');
+      expect(container.textContent).toBe('baz');
+    });
+
+    it('will follow an ambiguous lookup', async () => {
+      class Parent extends Model {
+        a = new Test({ value: 'a' });
+        b?: Test = undefined;
+      }
+
+      const parent = Parent.new();
+      const didGet = vi.fn();
+
+      const Inner = () => {
+        const test = Test.get(false);
+        didGet(test);
+        return test?.value ?? 'none';
+      };
+
+      const view = render(
+        <Component for={parent}>
+          <Inner />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('a');
+
+      await act(async () => {
+        parent.b = new Test({ value: 'b' });
+      });
+
+      expect(view.container.textContent).toBe('none');
+      expect(didGet).toHaveBeenLastCalledWith(undefined);
+
+      await act(async () => {
+        parent.b = undefined;
+      });
+
+      expect(view.container.textContent).toBe('a');
     });
 
     it('will use factory with replaced instance', async () => {
@@ -1085,5 +1171,88 @@ reactOnly.describe('abandoned render', () => {
     await act(collect);
 
     expect(live.size).toBe(0);
+  });
+});
+
+describe('Model.get - parity', () => {
+  class Foo extends Model {
+    value = 'none';
+  }
+
+  it('will follow a provider replaced above a stable subtree', async () => {
+    const a = Foo.new({ value: 'a' });
+    const b = Foo.new({ value: 'b' });
+    const didRender = vi.fn();
+
+    const Name = () => {
+      didRender();
+      return <>{Foo.get().value}</>;
+    };
+
+    class Stable extends Component {
+      render() {
+        didRender();
+        return <>{Foo.get().value}</>;
+      }
+    }
+
+    const content = (
+      <>
+        <Name />
+        <Stable />
+      </>
+    );
+
+    const view = render(<Component for={a}>{content}</Component>);
+
+    expect(view.container.textContent).toBe('aa');
+
+    await act(async () => {
+      view.rerender(<Component for={b}>{content}</Component>);
+    });
+
+    expect(view.container.textContent).toBe('bb');
+
+    didRender.mockClear();
+    a.value = 'stale';
+    await expect(a).toHaveUpdated();
+
+    expect(didRender).not.toBeCalled();
+  });
+
+  it('will refresh for an instance arriving after mount', async () => {
+    class Parent extends Model {
+      child?: Foo = undefined;
+    }
+
+    const parent = Parent.new();
+    const Name = () => <>{Foo.get(false)?.value ?? 'missing'}</>;
+    const view = render(
+      <Component for={parent}>
+        <Name />
+      </Component>
+    );
+
+    expect(view.container.textContent).toBe('missing');
+
+    await act(async () => {
+      parent.child = new Foo({ value: 'arrived' });
+    });
+
+    expect(view.container.textContent).toBe('arrived');
+  });
+
+  it('will refresh for a provider whose for becomes defined', async () => {
+    const Name = () => <>{Foo.get(false)?.value ?? 'missing'}</>;
+    const content = <Name />;
+    const view = render(<Component for={undefined as Foo | undefined}>{content}</Component>);
+
+    expect(view.container.textContent).toBe('missing');
+
+    await act(async () => {
+      view.rerender(<Component for={Foo.new({ value: 'arrived' })}>{content}</Component>);
+    });
+
+    expect(view.container.textContent).toBe('arrived');
   });
 });
