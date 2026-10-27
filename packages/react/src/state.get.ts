@@ -106,14 +106,12 @@ Model.get = function get<T extends Model>(
     }
 
     function release() {
-      unsubscribe();
+      unfollow();
       unwatch?.();
       unwatch = undefined;
     }
 
     function attach(next: T) {
-      if (local.get(Type, false) !== next) return;
-
       unwatch?.();
 
       if (observer(next) === null) {
@@ -121,7 +119,7 @@ Model.get = function get<T extends Model>(
           ? argument.call(next, next, refresh)
           : next;
         unwatch = () => {};
-        return release;
+        return;
       }
 
       let first = true;
@@ -147,20 +145,29 @@ Model.get = function get<T extends Model>(
         argument === true,
         Runtime.startTransition
       );
-
-      if (mounted) {
-        pending = true;
-        queueMicrotask(() => pending && update());
-      }
-
-      return release;
     }
 
-    const unsubscribe = local.get(Type, attach);
+    let found: T | undefined;
 
-    if (!unwatch) {
-      unsubscribe();
-      if (argument === false) return () => undefined;
+    function follow(next: T | undefined) {
+      if (next === found) return;
+
+      found = next;
+      unwatch?.();
+      unwatch = undefined;
+      value = undefined;
+
+      if (next) attach(next);
+
+      return true;
+    }
+
+    const unfollow = watch(local, (ctx) => {
+      if (follow(ctx.get(Type, false)) && mounted) observed();
+    });
+
+    if (!unwatch && argument !== false) {
+      unfollow();
       throw new Error(`Could not find ${Type} in context.`);
     }
 
@@ -190,6 +197,7 @@ Model.get = function get<T extends Model>(
     }
 
     return () => {
+      follow(local.get(Type, false));
       pending = false;
       useSetup((_self, reset) => {
         force = reset;
@@ -200,7 +208,7 @@ Model.get = function get<T extends Model>(
           return release;
         };
       });
-      return value === undefined ? null : value;
+      return value === undefined ? found && null : value;
     };
   });
 

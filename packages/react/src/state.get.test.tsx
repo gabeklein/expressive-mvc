@@ -531,7 +531,7 @@ describe('Model.get', () => {
       expect(didRender).toBeCalledTimes(3);
     });
 
-    it.fails('will render null when instance is removed', async () => {
+    it('will render null when instance is removed', async () => {
       class Other extends Model {}
 
       const { container, swap } = mount(Test.new(), () => Test.get(false)?.value ?? null);
@@ -1085,5 +1085,88 @@ reactOnly.describe('abandoned render', () => {
     await act(collect);
 
     expect(live.size).toBe(0);
+  });
+});
+
+describe('Model.get - parity', () => {
+  class Foo extends Model {
+    value = 'none';
+  }
+
+  it('will follow a provider replaced above a stable subtree', async () => {
+    const a = Foo.new({ value: 'a' });
+    const b = Foo.new({ value: 'b' });
+    const didRender = vi.fn();
+
+    const Name = () => {
+      didRender();
+      return <>{Foo.get().value}</>;
+    };
+
+    class Stable extends Component {
+      render() {
+        didRender();
+        return <>{Foo.get().value}</>;
+      }
+    }
+
+    const content = (
+      <>
+        <Name />
+        <Stable />
+      </>
+    );
+
+    const view = render(<Component for={a}>{content}</Component>);
+
+    expect(view.container.textContent).toBe('aa');
+
+    await act(async () => {
+      view.rerender(<Component for={b}>{content}</Component>);
+    });
+
+    expect(view.container.textContent).toBe('bb');
+
+    didRender.mockClear();
+    a.value = 'stale';
+    await expect(a).toHaveUpdated();
+
+    expect(didRender).not.toBeCalled();
+  });
+
+  it('will refresh for an instance arriving after mount', async () => {
+    class Parent extends Model {
+      child?: Foo = undefined;
+    }
+
+    const parent = Parent.new();
+    const Name = () => <>{Foo.get(false)?.value ?? 'missing'}</>;
+    const view = render(
+      <Component for={parent}>
+        <Name />
+      </Component>
+    );
+
+    expect(view.container.textContent).toBe('missing');
+
+    await act(async () => {
+      parent.child = new Foo({ value: 'arrived' });
+    });
+
+    expect(view.container.textContent).toBe('arrived');
+  });
+
+  it('will refresh for a provider whose for becomes defined', async () => {
+    const Name = () => <>{Foo.get(false)?.value ?? 'missing'}</>;
+    const content = <Name />;
+    const view = render(<Component for={undefined as Foo | undefined}>{content}</Component>);
+
+    expect(view.container.textContent).toBe('missing');
+
+    await act(async () => {
+      view.rerender(<Component for={Foo.new({ value: 'arrived' })}>{content}</Component>);
+    });
+
+    expect(view.container.textContent).toBe('arrived');
   });
 });
