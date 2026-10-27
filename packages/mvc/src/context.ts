@@ -5,7 +5,6 @@ const HOME = new WeakMap<Model, Context>();
 const HELD = new WeakMap<Model, Map<Model, [Set<() => void>, boolean?]>>();
 const HOST = new WeakMap<Context, Model>();
 const CLEANUP = new WeakMap<Context, Set<() => void>>();
-const INERT = new WeakSet<Model>();
 let ROOT: Context;
 
 type Accept<T extends Model = Model> =
@@ -171,13 +170,12 @@ class Context {
           if (!entry[1] && entry[0] !== I) return entries.delete(entry);
     }
 
-    if (!INERT.has(I))
-      for (
-        let T = I.constructor as Model.Extends;
-        T !== Model;
-        T = Object.getPrototypeOf(T)
-      )
-        if (explicit || !root || !conflict(T)) TT.push(T);
+    for (
+      let T = I.constructor as Model.Extends;
+      T !== Model;
+      T = Object.getPrototypeOf(T)
+    )
+      if (explicit || !root || !conflict(T)) TT.push(T);
 
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
@@ -351,4 +349,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, host, INERT, join };
+export { Context, host, join };

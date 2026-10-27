@@ -201,32 +201,6 @@ describe('class element', () => {
     expect(session.get(null)).toBe(true);
   });
 
-  it('will not provide Component for itself', () => {
-    class Session extends Model {}
-
-    let outer!: Outer;
-    let found: Component | undefined;
-
-    function Probe() {
-      found = Component.get();
-      return null;
-    }
-
-    class Outer extends Component {
-      render() {
-        return (
-          <Component for={Session}>
-            <Probe />
-          </Component>
-        );
-      }
-    }
-
-    [outer] = mount(Outer);
-
-    expect(found!.is).toBe(outer.is);
-  });
-
 
   it('will render a Component instance inline', async () => {
     class Panel extends Component {

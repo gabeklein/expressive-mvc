@@ -1,4 +1,4 @@
-import { Context, INERT, join } from './context';
+import { Context, join } from './context';
 import { listener } from './observable';
 import { set } from './field/set';
 import { Model, adopt, plain, trailing } from './state';
@@ -145,8 +145,6 @@ class Component<P = unknown> extends Model {
     ]);
 
     PENDING.set(props, this);
-
-    if (provider) INERT.add(this);
 
     this.props = props;
     this.set('props', () => {

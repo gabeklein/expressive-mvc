@@ -280,21 +280,6 @@ describe('Component for', () => {
     });
   });
 
-  it('will not provide itself', () => {
-    let outer!: Component;
-
-    class Outer extends Component {}
-
-    within(
-      () => expect(Context.get().get(Component).is).toBe(outer.is),
-      (check) => (
-        <Outer is={(o) => void (outer = o)}>
-          <Component for={Foo}>{check}</Component>
-        </Outer>
-      )
-    );
-  });
-
   it('will create once, provide and destroy on unmount under strict mode', async () => {
     const didCreate = vi.fn();
     const didDestroy = vi.fn();

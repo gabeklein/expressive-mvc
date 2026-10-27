@@ -299,14 +299,6 @@ describe('for', () => {
     name = 'none';
   }
 
-  it('will not provide itself', () => {
-    const provider = Component.new({ for: Session } as any);
-    const context = Context.root.push(provider);
-
-    expect(context.get(Session)).toBeInstanceOf(Session);
-    expect(context.get(Component, false)).toBeUndefined();
-  });
-
   it('will provide a class swapped in for once', async () => {
     class Other extends Model {}
 
