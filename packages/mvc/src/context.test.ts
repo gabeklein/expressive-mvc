@@ -122,7 +122,7 @@ it('will drop implicit child when property is overwritten', () => {
   expect(context.get(Foo)).toBe(foo2);
 });
 
-it('will not provide a reference held before the parent joined context', async () => {
+it('will drop a child held before the parent joined context', async () => {
   class Foo extends Model {}
 
   class Parent extends Model {
@@ -136,6 +136,11 @@ it('will not provide a reference held before the parent joined context', async (
   await expect(parent).toHaveUpdated();
 
   const context = new Context().push(parent);
+
+  expect(context.get(Foo)).toBe(foo);
+
+  parent.child = undefined;
+  await expect(parent).toHaveUpdated();
 
   expect(context.get(Foo, false)).toBeUndefined();
 });
@@ -482,7 +487,7 @@ describe('inputs', () => {
     expect(context.get(Foo)).toBe(foo);
   });
 
-  it('will not keep child in context through another parent referencing it', () => {
+  it('will keep child in context if still referenced by another parent', () => {
     class Foo extends Model {}
 
     const shared = new Foo();
@@ -500,6 +505,10 @@ describe('inputs', () => {
     expect(context.get(Foo)).toBe(shared);
 
     context.get(ParentA).child = undefined;
+
+    expect(context.get(Foo)).toBe(shared);
+
+    context.get(ParentB).child = undefined;
 
     expect(context.get(Foo, false)).toBeUndefined();
   });
@@ -1177,7 +1186,7 @@ describe('root global', () => {
     base.set(null);
   });
 
-  it('will make a shared supertype ambiguous between globals', () => {
+  it('will preserve subtype entries on eviction', () => {
     class Base extends Model {}
     class SubA extends Base {
       static global = true;
@@ -1193,7 +1202,7 @@ describe('root global', () => {
 
     const b = SubB.new();
 
-    expect(root.get(Base, false)).toBeNull();
+    expect(root.get(Base, false)).toBeUndefined();
     expect(root.get(SubA)).toBe(a);
     expect(root.get(SubB)).toBe(b);
 
@@ -1201,7 +1210,7 @@ describe('root global', () => {
     b.set(null);
   });
 
-  it('will keep a shared supertype ambiguous as globals are added', () => {
+  it('will register fresh sibling cleanly after ancestor eviction', () => {
     class Base extends Model {}
     class SubA extends Base {
       static global = true;
@@ -1216,11 +1225,11 @@ describe('root global', () => {
     const a = SubA.new();
     const b = SubB.new();
 
-    expect(root.get(Base, false)).toBeNull();
+    expect(root.get(Base, false)).toBeUndefined();
 
     const c = SubC.new();
 
-    expect(root.get(Base, false)).toBeNull();
+    expect(root.get(Base)).toBe(c);
     expect(root.get(SubA)).toBe(a);
     expect(root.get(SubB)).toBe(b);
     expect(root.get(SubC)).toBe(c);
@@ -1241,7 +1250,7 @@ describe('root global', () => {
     ctx.pop();
   });
 
-  it('will prefer an explicit add over a global', () => {
+  it('will not apply global eviction to explicit add', () => {
     class Base extends Model {}
     class SubA extends Base {
       static global = true;
@@ -1341,20 +1350,6 @@ describe('lookup origin', () => {
     const context = Context.root.push(new Peer()).push(parent);
 
     expect(Context.get(parent.child)).toBe(context);
-  });
-
-  it('will not look up from where an unowned reference was assigned', () => {
-    class Holder extends Model {
-      ref?: Child = undefined;
-    }
-
-    const child = Child.new();
-    const holder = new Holder();
-
-    Context.root.push(holder);
-    holder.ref = child;
-
-    expect(Context.get(child)).toBe(Context.root);
   });
 
   it('will look up from root for a global and its child', () => {

@@ -1005,8 +1005,17 @@ function apply(
   if ('value' in config) set(config.value, silent);
 }
 
+function provides(ctx: Context, value: Model) {
+  while (ctx = ctx.parent!) {
+    const entries = ctx.provide.get(value.constructor as Model.Extends);
+    if (entries) for (const [state] of entries) if (state === value) return true;
+  }
+}
+
 function child(state: Model) {
   let cleanup: (() => void) | undefined;
+  const ctx = Context.get(state);
+
   function reset() {
     if (cleanup) cleanup();
     cleanup = undefined;
@@ -1027,6 +1036,8 @@ function child(state: Model) {
         event(value, null);
       };
       const cancel = listener(state, cleanup, null);
+    } else if (!provides(ctx, value)) {
+      cleanup = join(state, value);
     }
 
     event(value);

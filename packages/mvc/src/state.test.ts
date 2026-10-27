@@ -233,7 +233,7 @@ it('will not re-provide a guest already provided above', () => {
   expect(outer.get(Foo)).toBe(foo);
 });
 
-it('will not provide a guest when ancestors hold others of its type', () => {
+it('will provide a guest when ancestors hold others of its type', () => {
   class Foo extends Model {}
 
   const foo = Foo.new();
@@ -246,7 +246,7 @@ it('will not provide a guest when ancestors hold others of its type', () => {
   const inner = outer.push(Holder);
 
   expect(() => inner.get(Holder).foo).not.toThrow();
-  expect(() => inner.get(Foo)).toThrow('multiple were defined');
+  expect(inner.get(Foo)).toBe(foo);
 });
 
 it('will not adopt child derived by getter', () => {

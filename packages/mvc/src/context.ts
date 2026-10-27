@@ -160,7 +160,16 @@ class Context {
   }
 
   add(I: Model, explicit = false) {
+    const { provide } = this;
+    const root = this === Context.root;
     const TT: Model.Extends[] = [];
+
+    function conflict(T: Model.Extends) {
+      const entries = provide.get(T);
+      if (entries)
+        for (const entry of entries)
+          if (!entry[1] && entry[0] !== I) return entries.delete(entry);
+    }
 
     if (!INERT.has(I))
       for (
@@ -168,7 +177,7 @@ class Context {
         T !== Model;
         T = Object.getPrototypeOf(T)
       )
-        TT.push(T);
+        if (explicit || !root || !conflict(T)) TT.push(T);
 
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
