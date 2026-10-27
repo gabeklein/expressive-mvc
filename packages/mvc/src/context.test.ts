@@ -5,7 +5,7 @@ import { get } from './field/get';
 import { has } from './field/has';
 import { map } from './field/map';
 import { watch } from './observable';
-import { flushMicrotasks } from '../test.setup';
+import { flushMicrotasks, mockUncaught } from '../test.setup';
 
 class Example extends Model {}
 class Example2 extends Example {}
@@ -1489,5 +1489,42 @@ describe('tracked lookup', () => {
     await flushMicrotasks();
 
     expect(found).toEqual([undefined, test]);
+  });
+
+  it('will refresh across a popped provider', async () => {
+    const test = Test.new();
+    const root = new Context();
+    const provider = root.push(test);
+    const { found } = follow(provider.push());
+
+    provider.pop();
+    await flushMicrotasks();
+
+    const next = Test.new();
+    root.add(next);
+    await flushMicrotasks();
+
+    expect(found).toEqual([test, undefined, next]);
+  });
+
+  it('will throw from an effect using this.get when the provider is removed', async () => {
+    class Host extends Model {}
+
+    const caught = mockUncaught();
+    const host = Host.new();
+    const root = new Context({ host });
+    const test = Test.new();
+    const remove = root.add(test);
+    const found: unknown[] = [];
+
+    host.get(($) => {
+      found.push($.get(Test));
+    });
+
+    remove();
+    await flushMicrotasks();
+
+    expect(found).toEqual([test]);
+    expect(caught).toEqual([new Error(`Could not find ${Test} in context.`)]);
   });
 });
