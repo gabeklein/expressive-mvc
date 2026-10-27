@@ -399,8 +399,11 @@ abstract class Model {
       return typeof arg2 == 'function'
         ? owned(self, arg2 as (child: Model) => void)
         : observed(this, arg1, owner(self, arg2 as boolean));
-    if (Model.is(arg1))
-      return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
+    if (Model.is(arg1)) {
+      const ctx = Context.get(self);
+      const view = typeof arg2 == 'function' ? ctx : touch(this, Context, ctx);
+      return observed(this, arg1, view.get(arg1, arg2, arg3, self));
+    }
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;

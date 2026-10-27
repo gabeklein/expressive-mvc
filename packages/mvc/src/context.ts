@@ -1,4 +1,4 @@
-import { listener } from "./observable";
+import { event as signal, listener, touch } from "./observable";
 import { event, Model, parent, uid } from "./state";
 
 const HOME = new WeakMap<Model, Context>();
@@ -42,6 +42,7 @@ class Context {
 
   constructor(arg?: Context | Accept) {
     CLEANUP.set(this, new Set());
+    signal(this);
 
     if (arg instanceof Context) {
       this.parent = arg;
@@ -116,7 +117,12 @@ class Context {
     let found: T | null | undefined;
     let priority = false;
 
-    for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) {
+    for (
+      let ctx: Context | undefined = this;
+      ctx;
+      ctx = ctx.parent && touch(ctx, "parent", ctx.parent)
+    ) {
+      touch(ctx, Type);
       const entries = ctx.provide.get(Type);
       if (!entries) continue;
 
@@ -160,14 +166,17 @@ class Context {
 
   add(I: Model, explicit = false) {
     const { provide } = this;
-    const root = this === Context.root;
+    const root = this === Context.root && this;
     const TT: Model.Extends[] = [];
 
     function conflict(T: Model.Extends) {
       const entries = provide.get(T);
       if (entries)
         for (const entry of entries)
-          if (!entry[1] && entry[0] !== I) return entries.delete(entry);
+          if (!entry[1] && entry[0] !== I) {
+            signal(root as Context, T as any);
+            return entries.delete(entry);
+          }
     }
 
     for (
@@ -180,7 +189,11 @@ class Context {
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
 
-    for (const T of TT) onDone.add(this.register(T, [I, explicit]));
+    for (const T of TT) {
+      onDone.add(this.register(T, [I, explicit]));
+      onDone.add(() => signal(this, T as any));
+      signal(this, T as any);
+    }
 
     function queue(ctx: Context, downstream: boolean, same?: boolean) {
       let found = false;

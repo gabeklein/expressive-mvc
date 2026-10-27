@@ -4,6 +4,8 @@ import { Model } from './state';
 import { get } from './field/get';
 import { has } from './field/has';
 import { map } from './field/map';
+import { watch } from './observable';
+import { flushMicrotasks } from '../test.setup';
 
 class Example extends Model {}
 class Example2 extends Example {}
@@ -1386,5 +1388,106 @@ describe('placed instance', () => {
     expect(Context.get(example)).toBe(home);
     expect(level.get(Other)).toBeInstanceOf(Other);
     expect(home.get(Other, false)).toBeUndefined();
+  });
+});
+
+describe('tracked lookup', () => {
+  class Test extends Model {}
+
+  function follow(context: Context, Type: Model.Extends = Test) {
+    const found: unknown[] = [];
+    const release = watch(context, (ctx) => {
+      found.push(ctx.get(Type, false));
+    });
+
+    return { found, release };
+  }
+
+  it('will refresh for a provider arriving upstream', async () => {
+    const root = new Context();
+    const leaf = root.push().push();
+    const { found } = follow(leaf);
+    const test = Test.new();
+
+    root.add(test);
+    await flushMicrotasks();
+
+    expect(found).toEqual([undefined, test]);
+  });
+
+  it('will refresh for a closer provider', async () => {
+    const outer = Test.new();
+    const root = new Context({ outer });
+    const middle = root.push();
+    const { found } = follow(middle.push());
+    const inner = Test.new();
+
+    middle.add(inner);
+    await flushMicrotasks();
+
+    expect(found).toEqual([outer, inner]);
+  });
+
+  it('will refresh when the provider is removed', async () => {
+    const test = Test.new();
+    const root = new Context();
+    const remove = root.add(test);
+    const { found } = follow(root.push());
+
+    remove();
+    await flushMicrotasks();
+
+    expect(found).toEqual([test, undefined]);
+  });
+
+  it('will not refresh for a provider above the one found', async () => {
+    const root = new Context();
+    const middle = root.push({ test: Test.new() });
+    const { found } = follow(middle.push());
+
+    root.add(Test.new());
+    await flushMicrotasks();
+
+    expect(found).toHaveLength(1);
+  });
+
+  it('will not refresh for another type', async () => {
+    class Other extends Model {}
+
+    const root = new Context();
+    const { found } = follow(root.push());
+
+    root.add(Other.new());
+    await flushMicrotasks();
+
+    expect(found).toHaveLength(1);
+  });
+
+  it('will not refresh for a sibling provider', async () => {
+    const root = new Context();
+    const { found } = follow(root.push());
+
+    root.push(Test.new());
+    await flushMicrotasks();
+
+    expect(found).toHaveLength(1);
+  });
+
+  it('will refresh an effect using this.get', async () => {
+    class Host extends Model {}
+
+    const host = Host.new();
+    const root = new Context({ host });
+    const found: unknown[] = [];
+
+    host.get(($) => {
+      found.push($.get(Test, false));
+    });
+
+    const test = Test.new();
+    root.add(test);
+    await flushMicrotasks();
+
+    expect(found).toEqual([undefined, test]);
   });
 });
