@@ -207,7 +207,7 @@ Component.on({
 function provide(self: Component<any>) {
   let input: unknown;
   let target: Model | undefined;
-  let owned: { mount?(): unknown } | undefined;
+  let owned: (Model & { mount?(): unknown }) | undefined;
   let mounted = false;
   let release: unknown;
   let provided: (() => void) | undefined;
@@ -251,23 +251,23 @@ function provide(self: Component<any>) {
       remove();
 
       if (Model.is(next)) {
-        target = new (next as Model.Type)(rest);
-        provided = join(self, target, true);
-        adopt(self, 'for', target);
-        owned = target as typeof owned;
-
-        const out = is?.(target);
-
-        if (plain(out)) target.set(out);
-
-        if (mounted) release = owned!.mount?.();
-        return;
+        owned = target = new (next as Model.Type)(rest);
+      } else {
+        owned = undefined;
+        target = next instanceof Model ? next : undefined;
       }
 
-      owned = undefined;
-      target = next instanceof Model ? next : undefined;
       if (target) provided = join(self, target, true);
       adopt(self, 'for', target);
+
+      if (owned) {
+        const out = is?.(owned);
+
+        if (plain(out)) owned.set(out);
+        if (mounted) release = owned.mount?.();
+
+        return;
+      }
     }
 
     target?.set(rest);
