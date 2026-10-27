@@ -119,7 +119,7 @@ get<T extends Model>(type: Model.Type<T>, required: boolean): T | undefined
 
 Fetches an instance of that type from context. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead.
 
-Through a tracking proxy (effect, `render()`) the lookup follows context - a closer provider arriving or the found one leaving re-runs it. A required lookup whose provider leaves throws: destroy consumers before providers, or pass `false`.
+Through a tracking proxy (effect, `render()`) the lookup follows the context it ran in - a closer provider arriving or the found one leaving re-runs it; placing the instance into a context later does not. A required lookup whose provider leaves throws: destroy consumers before providers, or pass `false`.
 
 ```ts
 const parent = child.get(Parent);

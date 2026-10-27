@@ -141,7 +141,7 @@ const child = ctx.push({ PageControl }, () => console.log('page closed'));
 child.pop(); // runs cleanup, destroys PageControl
 ```
 
-`get(Type)` walks parents toward root. A tracked lookup - `state.get(Type)` in an effect or render, a host's `Model.get()` - refreshes when a closer provider arrives or the found one leaves; providers above the one found, other types and siblings do not trigger it.
+`get(Type)` walks parents toward root. A tracked lookup - `state.get(Type)` in an effect or render, a host's `Model.get()` - refreshes when a closer provider arrives or the found one leaves; providers above the one found, other types and siblings do not trigger it. It follows the context it ran in - an instance placed into a context later does not re-run it.
 
 ### Ambiguity at Non-Root
 
