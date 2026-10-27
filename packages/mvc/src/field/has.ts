@@ -58,6 +58,16 @@ class List<T> {
     event(this);
   }
 
+  /** The instance to render - this, or the source behind a derived view. */
+  get is(): this {
+    return source(this);
+  }
+
+  /** Members to render, as a host sees them. */
+  render(): T[] {
+    return [...this];
+  }
+
   get size(): number {
     return touch(this, LENGTH, items<T>(this).length);
   }
@@ -200,6 +210,16 @@ class Pool<T, A extends unknown[] = unknown[], R = T> {
     OWNED.set(this, new Map());
 
     event(this);
+  }
+
+  /** The instance to render - this, or the source behind a derived view. */
+  get is(): this {
+    return source(this);
+  }
+
+  /** Members to render, as a host sees them. */
+  render(): T[] {
+    return [...this];
   }
 
   get size(): number {
@@ -395,7 +415,7 @@ function filterOf<T>(self: Iterable<T>, fn: Predicate<T>): T[] {
 
 Object.assign(has, { List, Pool });
 
-renderable(List.prototype, (self: List<unknown>) => [...self]);
-renderable(Pool.prototype, (self: Pool<unknown>) => [...self]);
+renderable(List);
+renderable(Pool);
 
 export { has };

@@ -1,6 +1,7 @@
 import { Context } from './context';
 import { set } from './field/set';
 import { Model, adopt, plain, trailing } from './state';
+import { renderable } from './jsx';
 
 import type { Host } from './jsx-runtime';
 
@@ -263,5 +264,7 @@ function provide(self: Component<any>) {
   sync();
   self.set('props', sync);
 }
+
+renderable(Component);
 
 export { Component };

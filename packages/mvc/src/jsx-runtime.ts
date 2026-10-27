@@ -54,6 +54,7 @@ export const Fragment = Symbol.for('@expressive/mvc.Fragment');
 
 /** Host-side: adopt the collections declared renderable - see `jsx.ts`. */
 export { adopter } from './jsx';
+export type { Renderable } from './jsx';
 
 /** Default for seams only a registered host can provide. */
 function absent(): never {

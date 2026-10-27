@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { adopter, renderable } from './jsx';
+import { Component } from './component';
 import { has } from './field/has';
 import { map } from './field/map';
 import { Model } from './state';
@@ -10,24 +11,22 @@ afterEach(() => adopter(undefined));
 describe('renderable', () => {
   it('will replay declarations made before a host adopts', () => {
     const adopt = vi.fn();
-    const proto = {};
-    const members = () => [];
+    class Type {}
 
-    renderable(proto, members);
+    renderable(Type);
     adopter(adopt);
 
-    expect(adopt).toHaveBeenCalledWith(proto, members);
+    expect(adopt).toHaveBeenCalledWith(Type);
   });
 
   it('will adopt a declaration made after', () => {
     const adopt = vi.fn();
-    const proto = {};
-    const members = () => [];
+    class Type {}
 
     adopter(adopt);
-    renderable(proto, members);
+    renderable(Type);
 
-    expect(adopt).toHaveBeenCalledWith(proto, members);
+    expect(adopt).toHaveBeenCalledWith(Type);
   });
 
   it('will stop adopting once cleared', () => {
@@ -36,30 +35,47 @@ describe('renderable', () => {
     adopter(adopt);
     adopt.mockClear(); // the replay of earlier declarations
     adopter(undefined);
-    renderable({}, () => []);
+    renderable(class {});
 
     expect(adopt).not.toHaveBeenCalled();
   });
+
+  it('will declare Component, lists, pools and maps', () => {
+    const adopted = new Set<Function>();
+
+    adopter((Type) => adopted.add(Type));
+
+    expect(adopted).toContain(Component);
+    expect(adopted).toContain(has.List);
+    expect(adopted).toContain(has.Pool);
+    expect(adopted).toContain(map.Managed);
+  });
 });
 
-describe('collections', () => {
-  it('will declare lists, pools and maps', () => {
-    const adopted = new Map<object, (self: any) => unknown[]>();
+describe('protocol', () => {
+  class Row extends Model {}
 
-    adopter((proto, members) => adopted.set(proto, members));
+  class Test extends Model {
+    list = has([1, 2]);
+    pool = has(Row);
+    map = map([['a', 1]]);
+  }
 
-    class Row extends Model {}
+  it('will render members', () => {
+    const { list, pool, map: entries } = Test.new();
+    const row = pool.add();
 
-    class Test extends Model {
-      list = has([1, 2]);
-      pool = has(Row);
-      map = map([['a', 1]]);
-    }
+    expect(list.render()).toEqual([1, 2]);
+    expect(pool.render()).toEqual([row]);
+    expect(entries.render()).toEqual([1]);
+  });
 
+  it('will resolve a derived view to its instance', () => {
     const { list, pool, map: entries } = Test.new();
 
-    expect(adopted.get(Object.getPrototypeOf(list))!(list)).toEqual([1, 2]);
-    expect(adopted.get(Object.getPrototypeOf(pool))!(pool)).toEqual([]);
-    expect(adopted.get(Object.getPrototypeOf(entries))!(entries)).toEqual([1]);
+    expect(list.is).toBe(list);
+    expect(Object.create(list).is).toBe(list);
+    expect(Object.create(pool).is).toBe(pool);
+    expect(Object.create(entries).is).toBe(entries);
   });
 });

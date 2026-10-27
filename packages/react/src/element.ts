@@ -1,5 +1,6 @@
 import { Component } from '@expressive/mvc';
 import { adopter } from '@expressive/mvc/jsx-runtime';
+import type { Renderable } from '@expressive/mvc/jsx-runtime';
 import { Context } from './context';
 import { Runtime, useFactory, useWatch } from './runtime';
 import { createFrame } from './component';
@@ -48,13 +49,6 @@ export function seam(
   return template.$$typeof;
 }
 
-Object.defineProperty(Component.prototype, '$$typeof', {
-  get(this: Component) {
-    const self = this.is;
-    return seam(self, false, Element.bind(self), self.key);
-  }
-});
-
 function Element(this: Component){
   const outer = Context.get();
   const render = useFactory(() => {
@@ -72,34 +66,26 @@ function Element(this: Component){
   return render();
 }
 
-/** Prototypes the core declared renderable - `has` lists and pools, `map`s. */
-const ADOPTED = new Set<object>();
+/**
+ * Every class the core declares renderable - `Component`, `has` lists and
+ * pools, `map` collections - gets the one getter. `is` resolves a derived view
+ * to its instance; a Component renders through its ownership frame, anything
+ * else through `render()`.
+ */
+adopter((Type) => {
+  // Not configurable: Model's bootstrap would otherwise collect a configurable
+  // prototype getter as a reactive getter and define it on each instance.
+  Object.defineProperty(Type.prototype, '$$typeof', {
+    get(this: Renderable) {
+      const self = this.is;
 
-/** Whether `object` is an instance of an adopted prototype (a derived view is one too). */
-function adopted(object: object | null) {
-  for (let proto = Object.getPrototypeOf(object); proto; proto = Object.getPrototypeOf(proto))
-    if (ADOPTED.has(proto)) return true;
-
-  return false;
-}
-
-adopter((prototype, members) => {
-  ADOPTED.add(prototype);
-
-  Object.defineProperty(prototype, '$$typeof', {
-    configurable: true,
-    get() {
-      let self = this as object;
-
-      // A view derived from an instance (`Object.create(pool)`) renders the instance.
-      for (let proto = Object.getPrototypeOf(self); adopted(proto); proto = Object.getPrototypeOf(self))
-        self = proto;
-
-      return seam(self, {}, Members.bind(self, members), null);
+      return self instanceof Component
+        ? seam(self, false, Element.bind(self), self.key)
+        : seam(self, {}, Members.bind(self), null);
     }
   });
 });
 
-function Members(this: object, members: (self: unknown) => unknown[]) {
-  return members(useWatch(this));
+function Members(this: Renderable) {
+  return useWatch(this).render();
 }

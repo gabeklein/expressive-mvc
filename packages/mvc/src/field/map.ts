@@ -62,6 +62,16 @@ class Managed<K, V> extends Map<K, V> {
       for (const [key, value] of arg) store(this, key, value);
   }
 
+  /** The instance to render - this, or the source behind a derived view. */
+  get is(): this {
+    return source(this);
+  }
+
+  /** Values to render, as a host sees them. */
+  render(): V[] {
+    return [...this.values()];
+  }
+
   get size(): number {
     return touch(this, SHAPE, MAP_SIZE.call(source(this)));
   }
@@ -244,6 +254,6 @@ function source<T extends object>(from: T): T {
   return OWNED.has(from) ? from : Object.getPrototypeOf(from);
 }
 
-renderable(Managed.prototype, (self: Managed<unknown, unknown>) => [...self.values()]);
+renderable(Managed);
 
 export { map };
