@@ -1,7 +1,7 @@
 ---
 '@expressive/mvc': minor
-'@expressive/dom': patch
-'@expressive/react': patch
+'@expressive/dom': minor
+'@expressive/react': minor
 ---
 
 Context lookups are observable.
