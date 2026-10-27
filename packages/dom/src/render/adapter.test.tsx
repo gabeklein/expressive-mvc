@@ -370,6 +370,62 @@ describe('MVC adapter', () => {
     source.set(null);
   });
 
+  it('will follow another type an override looks up', async () => {
+    class Row extends Model {
+      label = '';
+
+      static get<T extends Row>(this: Model.Extends<T>, key?: string | boolean): T {
+        if (typeof key != 'string') return super.get(key as never) as T;
+
+        return Context.get(this, (context) => context.get(Connection).reference(this, key));
+      }
+    }
+
+    class Connection extends Model {
+      name = '';
+      rows = new Map<string, Row>();
+
+      reference<T extends Row>(Type: Model.Extends<T>, key: string): T {
+        let row = this.rows.get(key);
+
+        if (!row) this.rows.set(key, (row = (Type as Model.Type<T>).new({ label: `${this.name}:${key}` } as never)));
+
+        return row as T;
+      }
+    }
+
+    class Session extends Model {
+      connection = new Connection({ name: 'a' });
+    }
+
+    const session = Session.new();
+    const root = document.createElement('main');
+
+    function View() {
+      return <span>{Row.get('x').label}</span>;
+    }
+
+    const release = render(
+      <Component for={session}>
+        <View />
+      </Component>,
+      root
+    );
+
+    expect(root.textContent).toBe('a:x');
+
+    session.connection = new Connection({ name: 'b' });
+    await flushMicrotasks();
+    expect(root.textContent).toBe('b:x');
+
+    session.connection.rows.get('x')!.label = 'updated';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('updated');
+
+    release();
+    session.set(null);
+  });
+
   it('will track an override and follow a changed key', async () => {
     class Item extends Model {
       id = 0;

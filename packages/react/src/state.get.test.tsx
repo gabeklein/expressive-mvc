@@ -454,6 +454,58 @@ describe('Model.get', () => {
       expect(view.container.textContent).toBe('dos');
     });
 
+    it('will follow another type its compute looks up', async () => {
+      class Row extends Model {
+        label = '';
+
+        static get<T extends Row>(this: Model.Extends<T>, key?: string | boolean): T {
+          if (typeof key != 'string') return super.get(key as never) as T;
+
+          return Context.get(this, (context) => context.get(Connection).reference(this, key));
+        }
+      }
+
+      class Connection extends Model {
+        name = '';
+        rows = new Map<string, Row>();
+
+        reference<T extends Row>(Type: Model.Extends<T>, key: string): T {
+          let row = this.rows.get(key);
+
+          if (!row) this.rows.set(key, (row = (Type as Model.Type<T>).new({ label: `${this.name}:${key}` } as never)));
+
+          return row as T;
+        }
+      }
+
+      class Session extends Model {
+        connection = new Connection({ name: 'a' });
+      }
+
+      const session = Session.new();
+      const View = () => <>{Row.get('x').label}</>;
+
+      const view = render(
+        <Component for={session}>
+          <View />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('a:x');
+
+      await act(async () => {
+        session.connection = new Connection({ name: 'b' });
+      });
+
+      expect(view.container.textContent).toBe('b:x');
+
+      await act(async () => {
+        session.connection.rows.get('x')!.label = 'updated';
+      });
+
+      expect(view.container.textContent).toBe('updated');
+    });
+
     it('will keep proxy while instance is unchanged', async () => {
       const store = Store.new();
       const seen: Item[] = [];
