@@ -209,14 +209,11 @@ describe('Component for', () => {
         }
       }
 
-      const Child = () => {
-        Inner.use();
-        return <span />;
-      };
-
       render(
         <Component for={Outer}>
-          <Child />
+          <Component for={Inner}>
+            <span />
+          </Component>
         </Component>
       );
 
@@ -441,7 +438,7 @@ describe('get instruction', () => {
 
   it('will maintain hook', async () => {
     const Inner: React.FC = vi.fn(() => {
-      Foo.use();
+      Bar.get();
       return null;
     });
 
@@ -492,11 +489,13 @@ describe('get instruction', () => {
       foo = get(Foo);
     }
 
-    const FooBar = () => <>{Bar.use().foo.value}</>;
+    const FooBar = () => <>{Bar.get().foo.value}</>;
 
     render(
       <Component for={Foo}>
-        <FooBar />
+        <Component for={Bar}>
+          <FooBar />
+        </Component>
       </Component>
     );
 
@@ -515,45 +514,18 @@ describe('has instruction', () => {
     }
 
     const didGetBar = vi.fn();
-    const FooBar = () => void Bar.use();
     const foo = new Foo();
 
     render(
       <Component for={foo}>
-        <FooBar />
-        <FooBar />
+        <Component for={Bar} />
+        <Component for={Bar} />
       </Component>
     );
 
     expect(didGetBar).toBeCalledTimes(2);
     expect(foo.value).toEqual([expect.any(Bar), expect.any(Bar)]);
     expect(foo.value.map((i) => i.foo)).toEqual([foo, foo]);
-  });
-
-  it.skip('will notify parent of instance', () => {
-    class Foo extends Model {
-      value = get(Bar, true, didGetBar);
-    }
-
-    class Bar extends Model {
-      foo = get(Foo);
-    }
-
-    const didGetBar = vi.fn();
-    const FooBar = () => void Bar.use();
-
-    const Parent = () => {
-      const foo = Foo.use();
-
-      return (
-        <Component for={foo}>
-          <FooBar />
-        </Component>
-      );
-    };
-
-    render(<Parent />);
-    expect(didGetBar).toBeCalled();
   });
 });
 

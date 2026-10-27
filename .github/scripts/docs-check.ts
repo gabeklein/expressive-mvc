@@ -53,8 +53,11 @@ for (const { path, text } of docs) {
 
   const anchors = new Set<string>();
 
-  for (const [, heading] of text.matchAll(/^#{2,6}\s+(.+?)\s*$/gm))
-    anchors.add(slugify(heading));
+  for (const [, heading] of text.matchAll(/^#{2,6}\s+(.+?)\s*$/gm)) {
+    // `## Heading [#custom]` pins the id, as fumadocs' remark-heading does.
+    const custom = heading.match(/\s*\[#([^\]]+)\]$/);
+    anchors.add(custom ? custom[1] : slugify(heading));
+  }
 
   routes.set(route, anchors);
 }

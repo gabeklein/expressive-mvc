@@ -148,7 +148,7 @@ function Total() {
 
 `Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it.
 
-There is no `Model.use()` - an FC owns nothing. Owned state is a class: a field on a Component, or `<Component for={Type}>` above an FC that reads it with `Model.get()`. Arguments a hook would take per render are attributes, which assign fields:
+An FC owns nothing - same as React. Owned state is a class: a field on a Component, or `<Component for={Type}>` above an FC that reads it with `Model.get()`. Arguments a hook would take per render are attributes, which assign fields:
 
 ```tsx
 class Row extends Component {

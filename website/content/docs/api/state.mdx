@@ -11,7 +11,7 @@ import { Model } from '@expressive/mvc';
 
 `Model` was named `State` before; `State` remains exported as a deprecated alias of the same class.
 
-Methods marked <small>(React)</small> exist once the adapter is loaded - import `'@expressive/react'` once in your entry.
+Members marked <small>(host)</small> exist once a host is loaded - import `'@expressive/react'` once in your entry, or render with `@expressive/dom`. Those marked <small>(React)</small> are React-only.
 
 <br />
 
@@ -41,6 +41,16 @@ Callbacks can return:
 - `array` - flattened and re-processed.
 - `Promise` - the instance is still created; a rejection is reported to [`catch` handlers](#error-handling) with kind `setup`.
 
+### `Model.global` <small>(static field)</small> [#modelglobal]
+
+```ts
+class Theme extends Model {
+  static global = true;
+}
+```
+
+Whether an instance activated with no enclosing context registers into the process-global root, where `Theme.get()` finds it from anywhere. `false` by default: a context-less instance stays private. Takes a resolver (`self => boolean`) to decide per instance, and must be declared per class - a subclass that would be global by inheritance alone throws on activation. See [Root context and globals](/docs/api/utilities#root-context-and-globals).
+
 ### `Model.is(maybe)`
 
 Type guard. Returns true if `maybe` is an instance of this class or a subclass.
@@ -51,7 +61,7 @@ Counter.is(subCounter); // true if subCounter extends Counter
 
 ### `Model.on(handler)`
 
-Register lifecycle handlers, keyed by stage, for this class and its subclasses. Returns a function to remove them. It takes an object of stages only - passing a bare function throws.
+Register lifecycle handlers, keyed by stage, for this class and its subclasses. Returns a function to remove them. A bare function registers as the `setup` stage.
 
 ```ts
 const stop = Counter.on({
@@ -111,13 +121,71 @@ Model.on({
 
 A getter that throws on its _first_ read throws to the reader instead. `Component.catch()` is a separate, per-instance boundary for child render errors - see [Component](/docs/api/component).
 
-### `Model.get(...)` <small>(React)</small>
+### `Model.get(...)` <small>(host)</small> [#modelget]
 
-Look up an instance from React context. Covered in [Hooks](/docs/api/hooks).
+Fetches an instance of this class from context and subscribes the reading component to the properties it accesses. In React, context is what a [`Component`](/docs/api/component) renders or a `<Component for>` element provides.
 
-### `Model.use(...args)` <small>(React)</small>
+```tsx
+function Profile() {
+  const { user } = UserProfile.get();
+  return <h1>{user.name}</h1>;
+}
+```
 
-Create an instance owned by the calling function component - the on-ramp for adopting a class into a hook-style component. Owned state otherwise lives on a [`Component`](/docs/api/component) or is placed with `<Component for>`. Covered in [Hooks](/docs/api/hooks#modeluseargs).
+- Throws `Could not find UserProfile in context.` if the instance is not provided above.
+- Re-subscribes (and refreshes) if the upstream instance is replaced.
+- A React hook: call it unconditionally at the top of a function component or `render()`.
+
+#### Optional lookup
+
+```tsx
+const maybe = Theme.get(false); // Theme | undefined
+```
+
+#### Required values
+
+```tsx
+const user = User.get(true); // Required<User>
+```
+
+With `true`, reading a property that is currently `undefined` throws a plain `Error` - `User-XXXXXX.name is required in this context.` That surfaces at the nearest **error boundary**, not Suspense. Use it when the component's contract is "this data exists by now."
+
+#### Factory forms <small>(React)</small>
+
+Pass a factory to derive a value. The component re-renders only when the derived result changes by `===`:
+
+```tsx
+const summary = Cart.get((cart) => ({
+  total: cart.total,
+  count: cart.count
+}));
+```
+
+The factory receives a tracking proxy (reads subscribe) and a `ForceRefresh` function. Return `null` to run a side effect once, on first render, without subscribing - the factory doesn't run again:
+
+```tsx
+AppState.get((app) => {
+  analytics.track('page', app.page);
+  return null;
+});
+```
+
+`ForceRefresh` forces the component to re-render. Given a promise (or async function), it refreshes now and again when the promise settles:
+
+```ts
+type ForceRefresh = {
+  (): void;
+  <T>(waitFor: Promise<T>): Promise<T>;
+  <T>(invoke: () => Promise<T>): Promise<T>;
+};
+```
+
+```tsx
+const data = DataService.get((svc, refresh) => {
+  const reload = () => refresh(svc.fetch());
+  return { items: svc.items, reload };
+});
+```
 
 <br />
 
@@ -373,23 +441,7 @@ class Cart extends Model {
 
 Runs once after activation, wherever the instance is created - including during server render. Return a cleanup function to run on destruction, or `void`. `new?()` is declared as an optional protected member of `Model`, so its signature is type-checked and `override` catches a misspelling. If it returns a promise that rejects, the rejection is reported with kind `setup`. Setup that must accompany the instance itself goes here; client-only resources (DOM, timers, subscriptions) belong in `mount()`.
 
-### `use(...props)` <small>(React)</small>
-
-```ts
-class SearchState extends Model {
-  path = '/';
-  query = '';
-
-  use(props: { initialQuery: string }) {
-    this.path = useLocation().pathname;
-    this.query = props.initialQuery;
-  }
-}
-```
-
-Runs on every render when used via `Model.use()`, and only there - a Component rendered as JSX never calls it. Parameter types define the argument types of `Model.use()` itself. On a Component, the same jobs are fields passed as props, and hooks called in `render()` or in an outer function component.
-
-### `mount()` <small>(React)</small>
+### `mount()` <small>(host)</small> [#mount]
 
 ```ts
 class Ticker extends Model {
@@ -402,7 +454,7 @@ class Ticker extends Model {
 }
 ```
 
-Runs once when the component that **owns** the instance commits - a Component rendered as JSX, a `<Component for={StateClass}>` that created it, or `Model.use()`. Return a function to run on unmount.
+Runs once when the component that **owns** the instance commits - a Component rendered as JSX, or a `<Component for={StateClass}>` that created it. Return a function to run on unmount.
 
 Never runs during server render, and never for an instance merely observed or placed - `.get()` and `{instance}` reach an instance the component does not own, and `Model.new()` has no component at all. Client-only effects (DOM, timers, subscriptions) belong here; setup that must accompany the instance itself belongs in `new()`.
 

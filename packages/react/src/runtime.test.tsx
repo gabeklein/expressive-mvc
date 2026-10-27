@@ -386,14 +386,17 @@ describe('useReap', () => {
     vi.stubGlobal('FinalizationRegistry', undefined);
 
     await import('.');
-    const { Model } = await import('@expressive/mvc');
+    const { Component } = await import('@expressive/mvc');
 
-    class Test extends Model {
+    class Test extends Component {
       value = 'foo';
+
+      render() {
+        return <>{this.value}</>;
+      }
     }
 
-    const Child = () => <>{Test.use().value}</>;
-    const element = render(<Child />);
+    const element = render(<Test />);
 
     expect(element.container.textContent).toBe('foo');
     element.unmount();

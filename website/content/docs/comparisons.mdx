@@ -419,7 +419,7 @@ Zustand is a great lightweight store. The differences that matter in practice:
 - **Destructuring is the selector** - no per-access selector functions or shallow-compare helpers.
 - **Classes are the organizational unit** - no factory functions, no spread-based updates.
 - **One API for every scope** - the same class can back a global store, a per-component instance, or a provider tree.
-- **Lifecycle is built in** - `new()` and automatic destruction replace manual subscribe/teardown.
+- **Lifecycle is built in** - `new()`/`mount()` and automatic destruction replace manual subscribe/teardown.
 
 <br />
 
@@ -452,7 +452,7 @@ MobX is the closest relative - both use observable objects with automatic depend
 
 - **No `observer()` wrapper.** Miss one in MobX and you get stale renders. Expressive tracks through `render()` and `get()` themselves.
 - **No `makeAutoObservable`.** Extending `Model` is enough - and methods arrive pre-bound.
-- **Lifecycle, context, and Suspense are built in** - `new()`, class-keyed context, async `set()`. In MobX these are pieces you wire together yourself.
+- **Lifecycle, context, and Suspense are built in** - `new()`/`mount()`, class-keyed context, async `set()`. In MobX these are pieces you wire together yourself.
 
 If you like MobX, you'll feel at home here. Expressive is simply more opinionated about the parts MobX leaves as an exercise.
 

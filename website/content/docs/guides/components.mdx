@@ -186,7 +186,7 @@ Every Component accepts these regardless of state fields:
 
 | Prop       | Type                    | Description                                                            |
 | ---------- | ----------------------- | ---------------------------------------------------------------------- |
-| `is`       | `(instance: T) => void` | Called once with the created instance                                  |
+| `is`       | `(instance: T) => Model.Assign<T> \| void` | Called once with the created instance; a returned object is assigned to it |
 | `ref`      | React ref (object or callback) | Standard ref - receives the instance after mount, `null` on unmount |
 | `fallback` | `ReactNode \| false`    | Shown while suspended or during error recovery; `false` opts out       |
 | `catch`    | `(error, instance) => void \| Promise<void>` | Handles errors from this element's content, in place of the class's `catch()` |
@@ -368,7 +368,7 @@ class Timer extends Component {
 }
 ```
 
-> A Component is rendered, not used - `MyComponent.use()` throws. For an instance outside the tree, use `MyComponent.new()`.
+> For an instance outside the tree, use `MyComponent.new()`.
 
 Component handles React strict mode correctly - only one instance is created despite double-mounts.
 

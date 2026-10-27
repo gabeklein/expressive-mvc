@@ -106,8 +106,11 @@ The callback receives the previous value too, so transitions are easy to detect:
 
 ```tsx
 class Field extends Model {
+  touched = false;
+
   value = set('', (next, prev) => {
-    if (next === '' && prev !== '') throw false; // prevent clearing
+    if (next.length > 280) throw false; // never storable - write rejected
+    if (next !== '' && prev === '') this.touched = true;
   });
 }
 ```

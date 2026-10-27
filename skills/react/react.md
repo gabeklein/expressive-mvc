@@ -1,6 +1,6 @@
 # Expressive MVC - React
 
-`@expressive/react` connects Model to React with hooks, components, and context.
+`@expressive/react` is the React host: a `Component` renders as a React component, `<Component for>` provides a Model to the tree, and function components read it with `Model.get()`.
 
 - Core Model API (properties, reactivity, lifecycle, events): `../state/`.
 - Instructions and reactive helpers (`get`, `set`, `ref`, `map`, `has`, `def`): `../field/*.md`.
@@ -9,10 +9,9 @@
 ## Exports
 
 ```ts
-export { Model, Model as default }; // deprecated - import { Model } from @expressive/mvc
-export { Context, def, get, ref, set, pending }; // deprecated re-exports of @expressive/mvc
+export { Model, State, Model as default }; // deprecated - import { Model } from @expressive/mvc (State is the pre-rename alias)
+export { Component, Context, def, get, ref, set, pending }; // deprecated re-exports of @expressive/mvc
 export { has, map }; // deprecated - import from @expressive/mvc
-export { Component }; // deprecated re-export of @expressive/mvc
 ```
 
 ## Quick Start
@@ -65,7 +64,6 @@ class Viewport extends Model {
 | `Model.get()`                 | no      | no        |
 | `{instance}`                  | no      | no        |
 | `Model.new()`                 | no host | no        |
-| `Model.use()`                 | yes     | yes       |
 
 `<Component for={Model}>` runs the provided instance's `mount()` with its own commit:
 
@@ -293,70 +291,6 @@ Do not alias `is` merely because something will be written - writes never need t
 
 ---
 
-## Model.use() - Adoption Bridge
-
-Creates a plain Model owned by the calling FC and subscribes to it. Not the default - FCs own nothing in the [ownership model](../SKILL.md#start-with-ownership-not-apis): state a view owns is a `Component`, state a subtree shares is `<Component for>`. Reach for `.use()` where restructuring is not the task:
-
-- adding a class to an existing hook component without restructuring it;
-- a library exporting a hook to components it does not control.
-
-```tsx
-function Counter() {
-  const { count, increment } = CounterState.use();
-  return <button onClick={increment}>{count}</button>;
-}
-```
-
-- Created once, reused across renders; destroyed on unmount. Strict-mode safe.
-- Provides nothing - children of the FC cannot `.get()` it. When they need it, convert to `<Component for={CounterState}>`.
-- Not kept by a render React discards: suspending before the first commit - reading the instance's own pending value included - drops it, and each retry creates and loads a new one, so the render never resolves. Own loading state in a committed ancestor ([Suspense](component.md#suspense)).
-- Same dependency-snapshot and transparent-write rules as `.get()`.
-
-Arguments match `Model.new()` - objects, callbacks:
-
-```tsx
-const state = CounterState.use({ count: 10 });
-const state = CounterState.use((self) => {
-  /* init, runs once */
-});
-```
-
-A `use()` method on the class intercepts the arguments - its parameter types become the static `.use()` argument types - and runs every render, so it can call hooks:
-
-```tsx
-class Greeter extends Model {
-  greeting = '';
-
-  use(props: { name: string }) {
-    this.greeting = `Hello, ${props.name}`;
-  }
-}
-
-const { greeting } = Greeter.use({ name });
-```
-
-The Component form needs neither - fields are props, derivations getters, and `render()` may call hooks:
-
-```tsx
-class Greeter extends Component {
-  name = '';
-
-  get greeting() {
-    return `Hello, ${this.name}`;
-  }
-
-  render() {
-    return <p>{this.greeting}</p>;
-  }
-}
-
-<Greeter name={name} />;
-```
-
-Router hooks: an outer FC passes params as props ([patterns.md](patterns.md#bridging-an-existing-router)).
-
----
-
 ## Internals: Runtime
 
 Each adapter injects framework hooks into a shared `Runtime` object, so the same core logic works across React and Preact:
@@ -370,7 +304,7 @@ Object.assign(Runtime, {
   useState,
   useRef,
   useSyncExternalStore, // optional: pre-commit revision validation
-  transition,           // optional: startTransition, for pending() work
+  startTransition,      // optional: for pending() work
   Suspense,
   idle,                 // true when certainly not rendering, undefined when it cannot tell
   // plus adapter-specific: dedupe, ErrorBoundary, ignore

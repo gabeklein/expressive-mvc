@@ -1,5 +1,4 @@
 import './state.get';
-import './state.use';
 import './component';
 
 export { Model } from '@expressive/mvc';

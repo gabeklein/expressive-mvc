@@ -47,7 +47,7 @@ Object.assign(Runtime, {
 });
 
 /** @deprecated Import `{ Model }` from `@expressive/mvc`. This re-export will be removed. */
-export { State } from './adapter';
+export { Model, State } from './adapter';
 
 /** @deprecated Import `{ Model }` from `@expressive/mvc`. The default export will be removed. */
 export default Model;
