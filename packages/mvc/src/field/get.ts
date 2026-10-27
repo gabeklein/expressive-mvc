@@ -183,15 +183,17 @@ function above<T extends Model>(
       subject.set(null, () => { remove(); });
     }
 
-    if (!found) {
-      const remove = Context.get(subject).get(Type, (state) => {
-        if (depth !== Infinity) return;
-        found = true;
-        assign(state);
-      }, false, subject) as () => void;
+    if (!found)
+      subject.set(null, watch(Context.get(subject), (ctx) => {
+        if (depth !== Infinity) return null;
 
-      subject.set(null, () => { remove(); });
-    }
+        const state = ctx.get(Type, false, undefined, subject);
+
+        if (state) {
+          found = true;
+          assign(state as T);
+        } else if (found) update(subject, key, undefined);
+      }, false));
 
     if (!found && argument !== false) {
       const missing = () =>

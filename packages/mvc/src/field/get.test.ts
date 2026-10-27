@@ -686,6 +686,127 @@ describe('fetch mode', () => {
       expect(callback).toBeCalledTimes(2);
       expect(callback).toBeCalledWith(consumer.remote, consumer);
     });
+
+    it('will follow a closer provider', async () => {
+      class Ambient extends Model {}
+      class Child extends Model {
+        ambient = get(Ambient);
+      }
+
+      const outer = Ambient.new();
+      const inner = Ambient.new();
+      const root = new Context();
+      const middle = root.push();
+      const child = new Child();
+
+      root.add(outer);
+      middle.push(child);
+
+      expect(child.ambient).toBe(outer);
+
+      middle.add(inner);
+      await expect(child).toHaveUpdated('ambient');
+
+      expect(child.ambient).toBe(inner);
+    });
+
+    it('will clear optional when provider is removed', async () => {
+      class Ambient extends Model {}
+      class Child extends Model {
+        ambient = get(Ambient, false);
+      }
+
+      const ambient = Ambient.new();
+      const context = new Context();
+      const remove = context.add(ambient);
+      const child = new Child();
+
+      context.push(child);
+
+      expect(child.ambient).toBe(ambient);
+
+      remove();
+      await expect(child).toHaveUpdated('ambient');
+
+      expect(child.ambient).toBeUndefined();
+    });
+
+    it('will suspend required until a provider returns', async () => {
+      class Ambient extends Model {}
+      class Child extends Model {
+        ambient = get(Ambient);
+      }
+
+      const context = new Context();
+      const remove = context.add(Ambient.new());
+      const child = new Child();
+
+      context.push(child);
+      remove();
+      await expect(child).toHaveUpdated('ambient');
+
+      expect(() => child.ambient).toThrow(expect.any(Promise));
+
+      const next = Ambient.new();
+
+      context.add(next);
+      await expect(child).toHaveUpdated('ambient');
+
+      expect(child.ambient).toBe(next);
+    });
+
+    it('will not rerun callback for a provider it already has', async () => {
+      class Ambient extends Model {}
+
+      const callback = vi.fn();
+
+      class Child extends Model {
+        ambient = get(Ambient, callback);
+      }
+
+      const ambient = Ambient.new();
+      const context = new Context();
+      const child = new Child();
+
+      context.add(ambient, true);
+      context.push(child);
+      context.add(Ambient.new());
+      await flushMicrotasks();
+
+      expect(child.ambient).toBe(ambient);
+      expect(callback).toBeCalledTimes(1);
+    });
+
+    it('will not follow context once owner provides', async () => {
+      class Peer extends Model {}
+      class Child extends Model {
+        peer = get(Peer, false);
+      }
+      class Parent extends Model {
+        child = new Child();
+        peer?: Peer = undefined;
+      }
+
+      const ambient = Peer.new();
+      const context = new Context();
+      const parent = new Parent();
+
+      context.add(ambient);
+      context.push(parent);
+
+      expect(parent.child.peer).toBe(ambient);
+
+      const own = new Peer();
+
+      parent.peer = own;
+      await expect(parent.child).toHaveUpdated('peer');
+
+      context.push().add(Peer.new());
+      context.add(Peer.new(), true);
+      await expect(parent.child).not.toHaveUpdated();
+
+      expect(parent.child.peer).toBe(own);
+    });
   });
 
   describe('downstream', () => {

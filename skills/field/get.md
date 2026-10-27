@@ -19,6 +19,8 @@ class Child extends Model {
 }
 ```
 
+Owner and siblings win; otherwise the field follows its context provider - a closer one arriving replaces it. On removal an optional field reads `undefined`; a required one suspends until another arrives.
+
 ### Upstream with callback
 
 ```ts
