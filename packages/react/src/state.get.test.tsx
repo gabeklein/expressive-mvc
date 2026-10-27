@@ -567,6 +567,31 @@ describe('Model.get', () => {
       expect(container.textContent).toBe(`Could not find ${Test} in context.`);
     });
 
+    it('will keep following an instance provided again closer', async () => {
+      class Parent extends Model {
+        test = new Test();
+      }
+
+      const parent = Parent.new();
+      const Inner = () => Test.get(true).value;
+      const tree = (inner?: Test) => (
+        <Component for={parent}>
+          <Component for={inner}>
+            <Inner />
+          </Component>
+        </Component>
+      );
+
+      const { container, rerender } = render(tree());
+
+      await act(async () => parent.test.value = 'bar');
+      expect(container.textContent).toBe('bar');
+
+      rerender(tree(parent.test));
+      await act(async () => parent.test.value = 'baz');
+      expect(container.textContent).toBe('baz');
+    });
+
     it('will follow an ambiguous lookup', async () => {
       class Parent extends Model {
         a = new Test({ value: 'a' });

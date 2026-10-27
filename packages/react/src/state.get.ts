@@ -164,7 +164,7 @@ Model.get = function get<T extends Model>(
 
     const unfollow = watch(local, (ctx) => {
       if (follow(ctx.get(Type, false)) && mounted) observed();
-    });
+    }, false);
 
     if (!found && argument !== false) {
       unfollow();
