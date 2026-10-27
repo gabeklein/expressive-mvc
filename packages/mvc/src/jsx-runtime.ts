@@ -52,9 +52,9 @@ export interface HostRuntime {
  */
 export const Fragment = Symbol.for('@expressive/mvc.Fragment');
 
-/** Host-side: adopt the collections declared renderable - see `jsx.ts`. */
-export { adopter } from './jsx';
-export type { Renderable } from './jsx';
+/** Host-side: adopt the classes declared elements - see `element.ts`. */
+export { adopter } from './element';
+export type { Renderable } from './element';
 
 /** Default for seams only a registered host can provide. */
 function absent(): never {

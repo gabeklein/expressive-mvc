@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { adopter, renderable } from './jsx';
+import { adopter, element } from './element';
 import { Component } from './component';
 import { has } from './field/has';
 import { map } from './field/map';
@@ -8,12 +8,12 @@ import { Model } from './state';
 
 afterEach(() => adopter(undefined));
 
-describe('renderable', () => {
+describe('element', () => {
   it('will replay declarations made before a host adopts', () => {
     const adopt = vi.fn();
     class Type {}
 
-    renderable(Type);
+    element(Type);
     adopter(adopt);
 
     expect(adopt).toHaveBeenCalledWith(Type);
@@ -24,7 +24,7 @@ describe('renderable', () => {
     class Type {}
 
     adopter(adopt);
-    renderable(Type);
+    element(Type);
 
     expect(adopt).toHaveBeenCalledWith(Type);
   });
@@ -35,7 +35,7 @@ describe('renderable', () => {
     adopter(adopt);
     adopt.mockClear(); // the replay of earlier declarations
     adopter(undefined);
-    renderable(class {});
+    element(class {});
 
     expect(adopt).not.toHaveBeenCalled();
   });

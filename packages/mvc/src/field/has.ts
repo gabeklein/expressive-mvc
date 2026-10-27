@@ -2,7 +2,7 @@ import { Context } from '../context';
 import { event, listener, touch } from '../observable';
 import { Model, parent } from '../state';
 import { def } from './def';
-import { renderable } from '../jsx';
+import { element } from '../element';
 
 const LENGTH = Symbol('length');
 const SHAPE = Symbol('shape');
@@ -415,7 +415,7 @@ function filterOf<T>(self: Iterable<T>, fn: Predicate<T>): T[] {
 
 Object.assign(has, { List, Pool });
 
-renderable(List);
-renderable(Pool);
+element(List);
+element(Pool);
 
 export { has };

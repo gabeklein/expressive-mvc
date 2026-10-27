@@ -2,7 +2,7 @@ import { Context } from '../context';
 import { event, listener, touch } from '../observable';
 import { Model, parent } from '../state';
 import { def } from './def';
-import { renderable } from '../jsx';
+import { element } from '../element';
 
 const SHAPE = Symbol('shape');
 const KEYED = (_key: unknown, value: unknown) => value;
@@ -254,6 +254,6 @@ function source<T extends object>(from: T): T {
   return OWNED.has(from) ? from : Object.getPrototypeOf(from);
 }
 
-renderable(Managed);
+element(Managed);
 
 export { map };

@@ -1,5 +1,5 @@
 /**
- * Renderable classes.
+ * Element classes.
  *
  * A class whose instances a host may render as elements declares itself here -
  * `Component`, `has` lists and pools, `map` collections. Each promises the same
@@ -23,13 +23,13 @@ interface Renderable {
 
 type Adopt = (Type: Function) => void;
 
-const RENDERABLE = new Set<Function>();
+const ELEMENTS = new Set<Function>();
 
 let adopt: Adopt | undefined;
 
-/** Declare instances of `Type` renderable; a host may make them elements. */
-function renderable(Type: Function) {
-  RENDERABLE.add(Type);
+/** Declare instances of `Type` elements, for a host to render. */
+function element(Type: Function) {
+  ELEMENTS.add(Type);
   adopt?.(Type);
 }
 
@@ -40,8 +40,8 @@ function renderable(Type: Function) {
 function adopter(fn: Adopt | undefined) {
   adopt = fn;
 
-  if (fn) for (const Type of RENDERABLE) fn(Type);
+  if (fn) for (const Type of ELEMENTS) fn(Type);
 }
 
-export { renderable, adopter };
+export { element, adopter };
 export type { Renderable, Adopt };
