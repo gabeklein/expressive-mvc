@@ -49,6 +49,24 @@ export function seam(
   return template.$$typeof;
 }
 
+/**
+ * Every class the core declares renderable - `Component`, `has` lists and
+ * pools, `map` collections - gets the one getter. `is` resolves a derived view
+ * to its instance; a Component renders through its ownership frame, anything
+ * else through `render()`.
+ */
+elements((Type) => {
+  Object.defineProperty(Type.prototype, '$$typeof', {
+    get(this: Renderable) {
+      const self = this.is;
+
+      return self instanceof Component
+        ? seam(self, false, Element.bind(self), self.key)
+        : seam(self, {}, Members.bind(self), null);
+    }
+  });
+});
+
 function Element(this: Component){
   const outer = Context.get();
   const render = useFactory(() => {
@@ -65,26 +83,6 @@ function Element(this: Component){
 
   return render();
 }
-
-/**
- * Every class the core declares renderable - `Component`, `has` lists and
- * pools, `map` collections - gets the one getter. `is` resolves a derived view
- * to its instance; a Component renders through its ownership frame, anything
- * else through `render()`.
- */
-elements((Type) => {
-  // Not configurable: Model's bootstrap would otherwise collect a configurable
-  // prototype getter as a reactive getter and define it on each instance.
-  Object.defineProperty(Type.prototype, '$$typeof', {
-    get(this: Renderable) {
-      const self = this.is;
-
-      return self instanceof Component
-        ? seam(self, false, Element.bind(self), self.key)
-        : seam(self, {}, Members.bind(self), null);
-    }
-  });
-});
 
 function Members(this: Renderable) {
   return useWatch(this).render();
