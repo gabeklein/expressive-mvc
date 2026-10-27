@@ -14,10 +14,21 @@
 ## The `new()` Hook
 
 ```ts
+class Cart extends Model {
+  items: string[] = [];
+  updatedAt = 0;
+
+  protected new() {
+    return this.set('items', () => {
+      this.updatedAt = Date.now();
+    });
+  }
+}
+
 class Timer extends Model {
   elapsed = 0;
 
-  protected new() {
+  mount() {                      // client resources go here, not new()
     const id = setInterval(() => this.elapsed++, 1000);
     return () => clearInterval(id);
   }
@@ -26,9 +37,9 @@ class Timer extends Model {
 
 - Runs once, after all properties and child instances are set up.
 - Return nothing, or `() => void` to run on destruction.
-- `this` is the instance, not a tracking proxy - closures made here (a listener, an interval) capture it and may use it as a `Map`/`Set` key.
+- `this` is the instance, not a tracking proxy - closures made here (a listener) capture it and may use it as a `Map`/`Set` key.
 
-`new()` is a typed optional member of `Model` (`protected new?(): void | (() => void)`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. Host hooks on a plain `Model` - `mount()` under either host, `use()` on React - are not declared on `Model`; a class satisfies the host's interface structurally: optional and unadvertised on never-rendered Models, at the cost of a looser check than a declared override.
+`new()` is a typed optional member of `Model` (`protected new?(): void | (() => void)`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. `mount()` on a plain `Model` - run by either host - is not declared on `Model`; a class satisfies the host's interface structurally: optional and unadvertised on never-rendered Models, at the cost of a looser check than a declared override.
 
 > **`new()` runs on the server.** It is part of activation, so it fires wherever the instance is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook: `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for an instance some component owns.
 

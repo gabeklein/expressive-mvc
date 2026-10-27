@@ -12,7 +12,7 @@ interface Scope extends Schedulable {
 
 let current: Scope | undefined;
 let collecting: (() => void)[] | undefined;
-let memo: Map<Model, Model> | undefined;
+let memo: Map<object, object> | undefined;
 
 function enter<T>(scope: Scope, render: () => T): T {
   const parent = current;
@@ -73,16 +73,18 @@ const normal = Context.resolve;
 Context.resolve = (Type, compute) => {
   if (!current) return normal(Type, compute);
 
-  const found = compute(current.context);
+  const found = compute(Type ? cache(current.context) : current.context);
 
-  if (!(found instanceof Model)) return found;
-
-  let proxy = memo!.get(found);
-
-  if (!proxy) memo!.set(found, (proxy = tracked(found, false)));
-
-  return proxy;
+  return found instanceof Model ? cache(found) : found;
 };
+
+function cache<T extends object>(target: T): T {
+  let proxy = memo!.get(target);
+
+  if (!proxy) memo!.set(target, (proxy = tracked(target, false)));
+
+  return proxy as T;
+}
 
 const OWNERS = new WeakMap<Function, { owner: Model; key: string }>();
 

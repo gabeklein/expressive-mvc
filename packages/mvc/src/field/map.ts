@@ -1,7 +1,8 @@
-import { Context } from '../context';
+import { join } from '../context';
+import { def } from './def';
+import { element } from '../element';
 import { event, listener, touch } from '../observable';
 import { Model, parent } from '../state';
-import { def } from './def';
 
 const SHAPE = Symbol('shape');
 const KEYED = (_key: unknown, value: unknown) => value;
@@ -59,6 +60,16 @@ class Managed<K, V> extends Map<K, V> {
 
     if (arg && typeof arg != 'function')
       for (const [key, value] of arg) store(this, key, value);
+  }
+
+  /** The instance to render - this, or the source behind a derived view. */
+  get is(): this {
+    return source(this);
+  }
+
+  /** Values to render, as a host sees them. */
+  render(): V[] {
+    return [...this.values()];
   }
 
   get size(): number {
@@ -213,7 +224,7 @@ function store<K, V>(target: Managed<K, V>, key: K, value: V) {
     let detach: (() => void) | undefined;
 
     if (fresh && owner)
-      detach = Context.get(owner).add(value);
+      detach = join(owner, value);
 
     OWNED.get(target)!.set(key, () => {
       evict();
@@ -242,5 +253,7 @@ function release(target: object, key: unknown) {
 function source<T extends object>(from: T): T {
   return OWNED.has(from) ? from : Object.getPrototypeOf(from);
 }
+
+element(Managed);
 
 export { map };

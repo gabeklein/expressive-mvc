@@ -1,9 +1,10 @@
-import { listener } from "./observable";
-import { event, Model, observed, uid } from "./state";
+import { event as signal, listener, Observer, touch } from "./observable";
+import { event, Model, observed, parent, uid } from "./state";
 
+const CONTEXT = Symbol("context");
 const STACK: [Context, Model?][] = [];
-const LOOKUP = new WeakMap<Model, Context>();
-const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
+const HOME = new WeakMap<Model, Context>();
+const HELD = new WeakMap<Model, Map<Model, [Set<() => void>, boolean?]>>();
 const HOST = new WeakMap<Context, Model>();
 const CLEANUP = new WeakMap<Context, Set<() => void>>();
 let ROOT: Context;
@@ -51,13 +52,16 @@ class Context {
     arg?: Model | Model.Extends,
     compute: (context: Context, from?: Model) => unknown = (context) => context,
   ): unknown {
-    if (arg && typeof arg != "function") return LOOKUP.get(arg.is) || Context.root;
+    if (arg && typeof arg != "function") return home(arg.is) || Context.root;
 
     const [context, from] = STACK[STACK.length - 1] || [];
 
     if (!context) return Context.resolve(arg, compute);
     if (!from) return compute(context);
-    return observed(from, arg, compute(context, from.is));
+
+    const view = arg ? touch(from, CONTEXT, context) : context;
+
+    return observed(from, arg, compute(view, from.is));
   }
 
   /**
@@ -156,7 +160,8 @@ class Context {
     let found: T | null | undefined;
     let priority = false;
 
-    for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) {
+    for (let ctx: Context | undefined = this; ctx; ctx = above(ctx)) {
+      touch(ctx, Type);
       const entries = ctx.provide.get(Type);
       if (!entries) continue;
 
@@ -203,12 +208,15 @@ class Context {
     const root = this === Context.root;
     const TT: Model.Extends[] = [];
 
-    function conflict(T: Model.Extends) {
+    const conflict = (T: Model.Extends) => {
       const entries = provide.get(T);
       if (entries)
         for (const entry of entries)
-          if (!entry[1] && entry[0] !== I) return entries.delete(entry);
-    }
+          if (!entry[1] && entry[0] !== I) {
+            emit(this, T);
+            return entries.delete(entry);
+          }
+    };
 
     for (
       let T = I.constructor as Model.Extends;
@@ -220,7 +228,11 @@ class Context {
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
 
-    for (const T of TT) onDone.add(this.register(T, [I, explicit]));
+    for (const T of TT) {
+      onDone.add(this.register(T, [I, explicit]));
+      onDone.add(() => emit(this, T));
+      emit(this, T);
+    }
 
     function queue(ctx: Context, downstream: boolean, same?: boolean) {
       let found = false;
@@ -242,7 +254,10 @@ class Context {
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
-    if (!LOOKUP.has(I)) LOOKUP.set(I, this);
+    const owner = parent(I);
+    const placed = explicit && !(owner && home(owner));
+
+    if (!HOME.has(I) && (!owner || placed)) HOME.set(I, this);
 
     listener(I, () => {
       expects.forEach((f) => f());
@@ -256,8 +271,8 @@ class Context {
     }
 
     const cleanup = CLEANUP.get(this)!;
-    const held = Array.from(HELD.get(I) || [], ([child, added]) => {
-      const done = this.add(child);
+    const held = Array.from(HELD.get(I) || [], ([child, [added, explicit]]) => {
+      const done = this.add(child, explicit);
       added.add(done);
       return () => {
         if (added.delete(done)) done();
@@ -309,11 +324,24 @@ class Context {
   }
 }
 
-Object.defineProperty(Context.prototype, "toString", {
-  value() {
-    return `Context-${this.id}`;
+Object.defineProperties(Context.prototype, {
+  toString: {
+    value() {
+      return `Context-${this.id}`;
+    },
+  },
+  [Observer]: {
+    get(this: Context) {
+      Object.defineProperty(this, Observer, { writable: true });
+      signal(this);
+      return (this as any)[Observer];
+    },
   },
 });
+
+function emit(ctx: Context, T: Model.Extends) {
+  if (Object.getOwnPropertyDescriptor(ctx, Observer)) signal(ctx, T as any);
+}
 
 /**
  * Run `fn` with `target` as current context - for a Model, its context, with
@@ -330,18 +358,28 @@ function within<R>(target: Model | Context, fn: () => R): R {
 }
 
 /**
- * Add `value` to the context `state` was added to. A context-less `state` holds
+ * Add `value` to the lookup origin of `state`. A context-less `state` holds
  * it instead - every context adding `state` later adds its held children too.
  */
-function join(state: Model, value: Model): () => void {
-  const ctx = LOOKUP.get(state.is);
+function join(state: Model, value: Model, explicit?: boolean): () => void {
+  const ctx = home(state.is);
+  const none = () => {};
 
-  if (ctx) return ctx.add(value);
+  if (ctx) {
+    for (let at: Context | undefined = ctx; at; at = at.parent)
+      for (const [x, is] of at.provide.get(value.constructor as Model.Extends) || [])
+        if (x === value && is) return none;
 
-  const held = HELD.get(state) || new Map();
+    return ctx.add(value, explicit);
+  }
+
+  const held = HELD.get(state) || new Map<Model, [Set<() => void>, boolean?]>();
+
+  if (held.get(value)?.[1]) return none;
+
   const added = new Set<() => void>();
 
-  HELD.set(state, held.set(value, added));
+  HELD.set(state, held.set(value, [added, explicit]));
 
   return () => {
     held.delete(value);
@@ -352,9 +390,18 @@ function join(state: Model, value: Model): () => void {
   };
 }
 
+function above(ctx: Context) {
+  return ctx.parent && touch(ctx, "parent", ctx.parent);
+}
+
+function home(state: Model): Context | undefined {
+  const owner = parent(state);
+  return HOME.get(state) || (owner ? home(owner) : undefined);
+}
+
 /** The Model a host mounted `state` under - the one its nearest enclosing context was set up for. */
 function host(state: Model) {
-  for (let ctx = LOOKUP.get(state); ctx; ctx = ctx.parent) {
+  for (let ctx = home(state); ctx; ctx = ctx.parent) {
     const found = HOST.get(ctx);
     if (found && found !== state) return found;
   }

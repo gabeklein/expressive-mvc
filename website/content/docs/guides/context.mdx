@@ -65,19 +65,22 @@ Changing `for` to another class releases the previous instance and provides a ne
 
 ### Providing an existing instance
 
-Pass an instance only when something else owns it - for example, one a component created with `Model.use()`:
+Pass an instance only when something else owns it - for example, documents created with `Doc.new()` and shown by whichever pane is pointed at them:
 
 ```tsx
-function Page() {
-  const theme = Theme.use();
+const docs = [Doc.new(), Doc.new()];
 
+function Pane({ index }: { index: number }) {
   return (
-    <Component for={theme}>
-      <App />
+    <Component for={docs[index]}>
+      <Toolbar />
+      <Canvas />
     </Component>
   );
 }
 ```
+
+`Toolbar` and `Canvas` call `Doc.get()` and see the pane's document; changing `index` swaps what they read.
 
 An instance passed in is **not** destroyed when the element unmounts, and its `mount()` is not called - its owner manages its lifetime.
 

@@ -4,7 +4,7 @@
 import { Model } from '@expressive/mvc';
 ```
 
-`@expressive/mvc` - framework-agnostic reactive state built on classes. `State` is a deprecated alias of `Model`.
+`@expressive/mvc` - framework-agnostic reactive state built on classes.
 
 ## Creating a Model
 
@@ -117,7 +117,7 @@ Circular self-reference. Destructure it to keep instance access alongside values
 
 ```tsx
 const Component = () => {
-  const { is: counter, count } = Counter.use();
+  const { is: counter, count } = Counter.get();
 
   return <button onClick={() => counter.count++}>{count}</button>;
 };

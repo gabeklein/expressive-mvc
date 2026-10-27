@@ -1,4 +1,6 @@
 import { Component } from '@expressive/mvc';
+import { elements } from '@expressive/mvc/jsx-runtime';
+import type { Renderable } from '@expressive/mvc/jsx-runtime';
 import { useAmbient } from './context';
 import { Runtime, useFactory, useWatch } from './runtime';
 import { createFrame } from './component';
@@ -47,11 +49,22 @@ export function seam(
   return template.$$typeof;
 }
 
-Object.defineProperty(Component.prototype, '$$typeof', {
-  get(this: Component) {
-    const self = this.is;
-    return seam(self, false, Element.bind(self), self.key);
-  }
+/**
+ * Every class the core declares renderable - `Component`, `has` lists and
+ * pools, `map` collections - gets the one getter. `is` resolves a derived view
+ * to its instance; a Component renders through its ownership frame, anything
+ * else through `render()`.
+ */
+elements((Type) => {
+  Object.defineProperty(Type.prototype, '$$typeof', {
+    get(this: Renderable) {
+      const self = this.is;
+
+      return self instanceof Component
+        ? seam(self, false, Element.bind(self), self.key)
+        : seam(self, {}, Members.bind(self), null);
+    }
+  });
 });
 
 function Element(this: Component){
@@ -69,4 +82,8 @@ function Element(this: Component){
   });
 
   return render();
+}
+
+function Members(this: Renderable) {
+  return useWatch(this).render();
 }

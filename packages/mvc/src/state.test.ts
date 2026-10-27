@@ -909,6 +909,18 @@ describe('get method', () => {
       expect(Foo.get(false)).toBeUndefined();
     });
 
+    it('will not resolve an ambiguous lookup', () => {
+      const context = new Context();
+
+      context.add(Foo.new());
+      context.add(Foo.new());
+
+      within(context, () => {
+        expect(Foo.get(false)).toBeUndefined();
+        expect(() => Foo.get()).toThrow('Could not find Foo in context.');
+      });
+    });
+
     it('will get from current context', () => {
       const foo = Foo.new();
       const context = new Context(foo);

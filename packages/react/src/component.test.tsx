@@ -6,7 +6,8 @@ import React, { Suspense } from 'react';
 import { collect, mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly, suspender } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
 import { Model } from '@expressive/mvc';
-import { Component, pending, set } from '.';
+import '.';
+import { Component, pending, set } from '@expressive/mvc';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -199,16 +200,6 @@ describe('mount method', () => {
 
     expect(renderToString(<Test />)).toContain('<span>hello</span>');
     expect(didMount).not.toBeCalled();
-  });
-});
-
-describe('use method', () => {
-  it('will throw if called as a hook', () => {
-    class Test extends Component {}
-
-    expect(() => (Test as any).use()).toThrow(
-      'Test is a Component - render as an element instead of calling use().'
-    );
   });
 });
 
@@ -452,6 +443,7 @@ describe('render method', () => {
     });
 
     expect(screen).toHaveText('bar');
+    screen.unmount();
     auth.set(null);
   });
 
@@ -1565,6 +1557,66 @@ reactOnly.describe('abandoned render', () => {
   }
 
   beforeEach(() => live.clear());
+
+  it('will destroy attempts superseded by a commit', async () => {
+    const { Wait, resolve } = suspender();
+
+    render(
+      <Suspense fallback={null}>
+        <Test />
+        <Wait />
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+    await act(collect);
+
+    expect(live.size).toBe(1);
+  });
+
+  it('will destroy a dropped transition render', async () => {
+    const { Wait } = suspender();
+    let show!: (shown: boolean) => void;
+
+    const App = () => {
+      const [shown, setShown] = React.useState(false);
+      show = setShown;
+
+      return (
+        <Suspense fallback={null}>
+          {shown && <><Test /><Wait /></>}
+        </Suspense>
+      );
+    };
+
+    render(<App />);
+
+    await act(async () => React.startTransition(() => show(true)));
+    await act(async () => React.startTransition(() => show(false)));
+    await act(collect);
+
+    expect(live.size).toBe(0);
+  });
+
+  it('will keep an instance hidden by Activity', async () => {
+    const element = render(
+      <React.Activity mode="hidden">
+        <Test />
+      </React.Activity>
+    );
+
+    await act(collect);
+    expect(live.size).toBe(1);
+
+    element.rerender(
+      <React.Activity mode="visible">
+        <Test />
+      </React.Activity>
+    );
+
+    await act(collect);
+    expect(live.size).toBe(1);
+  });
 
   it('will destroy a first mount removed while suspended', async () => {
     const { Wait } = suspender();

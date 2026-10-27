@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Component } from '@expressive/react';
+import '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 import { location, browserRouter } from '../test.setup';
 import { Route } from './route';

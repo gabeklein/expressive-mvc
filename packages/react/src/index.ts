@@ -1,5 +1,4 @@
 import { Component } from '@expressive/mvc';
-import { Model } from './adapter';
 import * as React from 'react';
 
 import './element';
@@ -46,17 +45,9 @@ Object.assign(Runtime, {
   ]
 });
 
-/** @deprecated Import `{ Model }` from `@expressive/mvc`. This re-export will be removed. */
-export { State } from './adapter';
+// Nothing is exported for app code - `Model`, `Component` and the instructions come
+// from `@expressive/mvc`; `has` and `map` collections are adopted in `element.ts`.
 
-/** @deprecated Import `{ Model }` from `@expressive/mvc`. The default export will be removed. */
-export default Model;
-
-/** @deprecated Import from `@expressive/mvc`. These re-exports will be removed. */
-export { Component, Context, def, get, ref, set, pending } from '@expressive/mvc';
-
-/** @deprecated Import `has` from `@expressive/mvc`. This re-export will be removed. */
-export { has } from './has';
-
-/** @deprecated Import `map` from `@expressive/mvc`. This re-export will be removed. */
-export { map } from './map';
+// A type-only export, so this entry's .d.ts stays linked to the adapter's
+// `Model`/`Component` augmentations; the bundler drops a bare import.
+export type { Runtime } from './adapter';

@@ -4,7 +4,8 @@ import React from 'react';
 import { observer } from '@expressive/mvc/observable';
 
 import { mockError, mockPromise } from '../test.setup';
-import { Component } from '.';
+import '.';
+import { Component } from '@expressive/mvc';
 
 const Throws = () => {
   throw new Error('boom');

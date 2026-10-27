@@ -1,4 +1,4 @@
-import Model from '@expressive/react';
+import { Model } from '@expressive/mvc';
 
 // One window 'hashchange' listener for the whole page. Owns the current
 // #slug and scrolls to a section whose id matches it - so deep-links and

@@ -1,8 +1,8 @@
 # Expressive MVC
-> Class-based reactive state management for React. Define state and logic as plain classes; components update when the values they read change.
+> A class-based state backbone for UI apps - reactive MVC in plain classes that React or @expressive/dom renders. Define state and logic as plain classes; components update when the values they read change.
 
 ## Installing
-`npm install @expressive/mvc @expressive/react` is the install for a React app: `@expressive/mvc` is the framework-agnostic core and a peer dependency of the adapter, so both belong in package.json. `Model`, `Component`, and every instruction (set, get, ref, map, has, def) are named exports of `@expressive/mvc`; the adapter's re-exports of them are deprecated. Import `@expressive/react` once from the entry module so the host registers. Add `@expressive/router` for routing. To render without React, install `@expressive/mvc` and `@expressive/dom` instead and set `jsxImportSource` to `@expressive/dom`. `@expressive/inspect` is a dev-only inspector - registry, ownership tree, path queries, frame journal - for tests, browser drivers, and agents. Published packages: @expressive/mvc, @expressive/react, @expressive/dom, @expressive/router, @expressive/inspect (@expressive/preact is internal and unpublished).
+`npm install @expressive/mvc @expressive/react` is the install for a React app: `@expressive/mvc` is the framework-agnostic core and a peer dependency of the adapter, so both belong in package.json. `Model`, `Component`, and every instruction (set, get, ref, map, has, def) are named exports of `@expressive/mvc`; the adapter exports nothing for app code. Import `@expressive/react` once from the entry module so the host registers. Add `@expressive/router` for routing. To render without React, install `@expressive/mvc` and `@expressive/dom` instead and set `jsxImportSource` to `@expressive/dom`. `@expressive/inspect` is a dev-only inspector - registry, ownership tree, path queries, frame journal - for tests, browser drivers, and agents. Published packages: @expressive/mvc, @expressive/react, @expressive/dom, @expressive/router, @expressive/inspect (@expressive/preact is internal and unpublished).
 
 ## For coding agents
 This documentation is also distributed as an installable skill: `npx skills add gabeklein/expressive-mvc`. It bundles the full API reference, refactoring algorithm, style profile, and audit guide as local files - preferable to crawling when working in a repo.
@@ -35,7 +35,7 @@ This documentation is also distributed as an installable skill: `npx skills add 
 - [def()](/llm/field/def.md): Low-level custom property behavior
 
 ## React
-- [React Adapter](/llm/react/react.md): use(), Model.use(), Model.get(), Component for
+- [React Adapter](/llm/react/react.md): Model.get(), Component for, mount()
 - [Component](/llm/react/component.md): Component class, props, children, subcomponents, error boundaries
 - [Refactoring Guide](/llm/react/refactor.md): Hook-migration algorithm - ownership triage, dependency snapshots, review checklist
 - [Style Profile](/llm/react/style.md): Snapshot formatting, affirmative conditions, render fallthrough

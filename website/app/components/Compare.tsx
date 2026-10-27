@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Component, ref } from '@expressive/react';
+import { Component, ref } from '@expressive/mvc';
 import ScrollOverflowControls from './ScrollOverflowControls';
 import code from './Snippet';
 

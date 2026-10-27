@@ -4,7 +4,7 @@ Hierarchical registry through which Model instances find each other. Every activ
 
 ## Home Context
 
-Recorded per instance (internal `LOOKUP` map); first explicit claim wins, and no later context can transfer it.
+An owned instance's home is its owner's - lookups follow ownership, not where it was provided. Otherwise recorded per instance; first explicit claim wins, and no later context can transfer it.
 
 | Activation path                              | Home becomes     |
 | -------------------------------------------- | ---------------- |
@@ -47,6 +47,7 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 - Recursive: grandchildren inherit through their immediate parent.
 - Siblings resolve each other through their parent regardless of field order, so two parents never cross-resolve.
+- `has` rows and `map` values join like child fields - with their owner, held until it has a context, never root.
 - Reassigning a child field destroys the old child if owned (`new Child()` syntax) and adds the replacement to the same context; externally-assigned children survive replacement.
 
 ## Root Context
@@ -140,7 +141,7 @@ const child = ctx.push({ PageControl }, () => console.log('page closed'));
 child.pop(); // runs cleanup, destroys PageControl
 ```
 
-`get(Type)` walks parents toward root.
+`get(Type)` walks parents toward root. A tracked lookup - `state.get(Type)` in an effect or render, a host's `Model.get()` - refreshes when a closer provider arrives or the found one leaves; providers above the one found, other types and siblings do not trigger it. It follows the context it ran in - an instance placed into a context later does not re-run it.
 
 ### Ambiguity at Non-Root
 
@@ -182,7 +183,7 @@ Context is where an instance registers to be found; ownership is who constructed
 
 - A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every instance a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
 - Two siblings of one type are ambiguous to context (`get(Foo)` is `null`) but each has exactly one owner.
-- A host-mounted Component, `use()` instance or `<Component for>` is owned by the Component rendering it, with no field between them.
+- A host-mounted Component or `<Component for>` is owned by the Component rendering it, with no field between them.
 
 `state.get(Model)` reads the owner and `get(Model, true)` lists what an instance owns directly; neither consults context. Use a type to find a collaborator; use `Model` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
 

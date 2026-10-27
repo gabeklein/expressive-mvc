@@ -20,23 +20,22 @@ Context.resolve = (Type, compute) => {
     }
   else ambient = useAmbient();
 
-  return Type ? use(Type, compute) : compute(ambient);
+  return Type ? use(ambient, compute) : compute(ambient);
 };
 
-function use(Type: Model.Extends, compute: (context: Context) => unknown) {
+function use(local: Context, compute: (context: Context) => unknown) {
   const [tick, next] = Runtime.useState(0);
   const claim = useSettle(tick);
-  const local = useAmbient();
   const dispatch = useWeak(next);
-  const hook = useFactory(() => {
+  const render = useFactory(() => {
+    let latest = compute;
     let mounted = false;
     let pending = false;
     let force!: () => void;
-    let context: Context | undefined;
     let target: unknown;
     let value: unknown;
     let unwatch: (() => void) | undefined;
-    let unsubscribe: (() => void) | undefined;
+    let thrown: [unknown] | undefined;
 
     function update() {
       pending = false;
@@ -51,78 +50,77 @@ function use(Type: Model.Extends, compute: (context: Context) => unknown) {
       else pending = true;
     }
 
-    function subscribe(next: Context) {
-      if (context === next) return;
-
-      let ready = false;
-
-      unsubscribe?.();
-      context = next;
-      unsubscribe = next.get(Type, () => {
-        if (!ready) return;
-
-        pending = true;
-
-        if (mounted) queueMicrotask(() => pending && update());
-      }, false);
-
-      ready = true;
-    }
-
-    function attach(found: unknown) {
+    function follow(found: unknown) {
       if (found === target) return;
 
       unwatch?.();
       unwatch = undefined;
       target = value = found;
 
-      if (!(found instanceof Model) || observer(found) === null) return;
+      if (found instanceof Model && observer(found) !== null) {
+        let first = true;
 
-      let first = true;
+        unwatch = watch(
+          found,
+          (current) => {
+            value = current;
 
-      unwatch = watch(
-        found,
-        (current) => {
-          value = current;
+            if (!first) observed();
+            first = false;
 
-          if (!first) observed();
-          first = false;
+            return (update) => {
+              if (update === true) force();
+            };
+          },
+          false,
+          Runtime.startTransition
+        );
+      }
 
-          return (update) => {
-            if (update === true) force();
-          };
-        },
-        false,
-        Runtime.startTransition
-      );
+      return true;
     }
 
     function release() {
-      unsubscribe?.();
+      unfollow();
       unwatch?.();
-      unsubscribe = unwatch = context = target = undefined;
+      unwatch = target = undefined;
     }
 
-    return {
-      render(found: unknown) {
-        pending = false;
-        attach(found);
-        useSetup((_self, reset) => {
-          force = reset;
+    const unfollow = watch(local, (ctx) => {
+      try {
+        if (follow(latest(ctx)) && mounted) observed();
+      } catch (error) {
+        thrown = [error];
+        if (mounted) observed();
+      }
+    }, false);
 
-          return () => {
-            mounted = true;
-            if (pending) update();
-            return release;
-          };
-        });
-        return value;
-      },
-      subscribe
+    if (thrown) {
+      unfollow();
+      throw thrown[0];
+    }
+
+    let fresh = true;
+
+    return (next: typeof compute) => {
+      pending = false;
+      useSetup((_self, reset) => {
+        force = reset;
+
+        return () => {
+          mounted = true;
+          if (pending) update();
+          return release;
+        };
+      });
+
+      if (!fresh) follow((latest = next)(local));
+
+      fresh = false;
+
+      return value;
     };
   });
 
-  hook.subscribe(local);
-
-  return hook.render(compute(local));
+  return render(compute);
 }

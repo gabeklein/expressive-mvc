@@ -1,4 +1,6 @@
-import { Context } from './context';
+import { Context, join } from './context';
+import { element } from './element';
+import { listener } from './observable';
 import { set } from './field/set';
 import { Model, adopt, plain, trailing } from './state';
 
@@ -205,9 +207,15 @@ Component.on({
 function provide(self: Component<any>) {
   let input: unknown;
   let target: Model | undefined;
-  let owned: { mount?(): unknown } | undefined;
+  let owned: (Model & { mount?(): unknown }) | undefined;
   let mounted = false;
   let release: unknown;
+  let provided: (() => void) | undefined;
+
+  function remove() {
+    if (provided) provided();
+    provided = undefined;
+  }
 
   function unmount() {
     if (typeof release == 'function') release();
@@ -240,21 +248,26 @@ function provide(self: Component<any>) {
     if (next !== input) {
       input = next;
       unmount();
+      remove();
 
       if (Model.is(next)) {
-        adopt(self, 'for', (target = new (next as Model.Type)(rest)));
-        owned = target as typeof owned;
-
-        const out = is?.(target);
-
-        if (plain(out)) target.set(out);
-
-        if (mounted) release = owned!.mount?.();
-        return;
+        owned = target = new (next as Model.Type)(rest);
+      } else {
+        owned = undefined;
+        target = next instanceof Model ? next : undefined;
       }
 
-      owned = undefined;
-      adopt(self, 'for', (target = next instanceof Model ? next : undefined));
+      if (target) provided = join(self, target, true);
+      adopt(self, 'for', target);
+
+      if (owned) {
+        const out = is?.(owned);
+
+        if (plain(out)) owned.set(out);
+        if (mounted) release = owned.mount?.();
+
+        return;
+      }
     }
 
     target?.set(rest);
@@ -262,6 +275,9 @@ function provide(self: Component<any>) {
 
   sync();
   self.set('props', sync);
+  listener(self, remove, null);
 }
+
+element(Component);
 
 export { Component };

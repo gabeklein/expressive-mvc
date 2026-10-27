@@ -2,6 +2,10 @@ import { vi, describe, it, expect, expectTypeOf, onTestFinished } from 'vitest';
 import { Context, within } from './context';
 import { Model } from './state';
 import { get } from './field/get';
+import { has } from './field/has';
+import { map } from './field/map';
+import { Observer, watch } from './observable';
+import { flushMicrotasks, mockUncaught } from '../test.setup';
 
 class Example extends Model {}
 class Example2 extends Example {}
@@ -496,7 +500,28 @@ describe('static get', () => {
       within(proxy, () => Context.get(Test, compute));
     });
 
-    expect(compute).toBeCalledWith(Context.root, test);
+    expect(compute.mock.calls[0][1]).toBe(test);
+  });
+
+  it('will pass a tracked context from a tracking proxy', async () => {
+    class Other extends Model {}
+
+    const test = Test.new();
+    const context = new Context(test);
+    const didFind = vi.fn();
+
+    test.get((proxy) => {
+      didFind(within(proxy, () => Context.get(Other, (ctx) => ctx.get(Other, false))));
+    });
+
+    expect(didFind).toBeCalledWith(undefined);
+
+    const other = Other.new();
+
+    context.add(other);
+    await flushMicrotasks();
+
+    expect(didFind).toHaveBeenLastCalledWith(other);
   });
 
   it('will subscribe a tracking origin to its result', async () => {
@@ -1477,5 +1502,269 @@ describe('root global', () => {
 
     removeA();
     b.set(null);
+  });
+});
+
+describe('lookup origin', () => {
+  class Peer extends Model {}
+  class Child extends Model {}
+  class Parent extends Model {
+    child = new Child();
+    rows = has(Child);
+    values = map<string, Child>();
+  }
+
+  it('will look up from owner for an owned child', () => {
+    const parent = Parent.new();
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(parent.child)).toBe(context);
+    expect(parent.child.get(Peer)).toBe(context.get(Peer));
+  });
+
+  it('will look up from owner for a has row', () => {
+    const parent = Parent.new();
+    const row = parent.rows.add();
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(row)).toBe(context);
+    expect(row.get(Peer)).toBe(context.get(Peer));
+
+    parent.set(null);
+  });
+
+  it('will look up from owner for a map value', () => {
+    const parent = Parent.new();
+    const value = new Child();
+
+    parent.values.set('a', value);
+
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(value)).toBe(context);
+    expect(value.get(Peer)).toBe(context.get(Peer));
+
+    parent.set(null);
+  });
+
+  it('will look up from owner for an assigned reference', () => {
+    class Holder extends Model {
+      ref?: Child = undefined;
+    }
+
+    const parent = Parent.new();
+    const holder = new Holder();
+
+    Context.root.push(holder);
+    holder.ref = parent.child;
+
+    expect(Context.get(parent.child)).toBe(Context.root);
+
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(parent.child)).toBe(context);
+  });
+
+  it('will look up from where an owned child is placed if owner has no context', () => {
+    const parent = Parent.new();
+    const context = Context.root.push(new Peer()).push(parent.child);
+
+    expect(Context.get(parent.child)).toBe(context);
+    expect(parent.child.get(Peer)).toBe(context.get(Peer));
+  });
+
+  it('will look up from root for a global and its child', () => {
+    class Global extends Model {
+      static global = true;
+      child = new Child();
+    }
+
+    const global = Global.new();
+
+    expect(Context.get(global)).toBe(Context.root);
+    expect(Context.get(global.child)).toBe(Context.root);
+
+    global.set(null);
+  });
+});
+
+describe('placed instance', () => {
+  it('will not move an instance from its home', () => {
+    class Other extends Model {}
+
+    const example = Example.new();
+    const home = Context.root.push(example);
+    const level = Context.root.push(new Other()).push(example);
+
+    expect(Context.get(example)).toBe(home);
+    expect(level.get(Other)).toBeInstanceOf(Other);
+    expect(home.get(Other, false)).toBeUndefined();
+  });
+});
+
+describe('tracked lookup', () => {
+  class Test extends Model {}
+
+  function follow(context: Context, Type: Model.Extends = Test) {
+    const found: unknown[] = [];
+    const release = watch(context, (ctx) => {
+      found.push(ctx.get(Type, false));
+    });
+
+    return { found, release };
+  }
+
+  it('will refresh for a provider arriving upstream', async () => {
+    const root = new Context();
+    const leaf = root.push().push();
+    const { found } = follow(leaf);
+    const test = Test.new();
+
+    root.add(test);
+    await flushMicrotasks();
+
+    expect(found).toEqual([undefined, test]);
+  });
+
+  it('will refresh for a closer provider', async () => {
+    const outer = Test.new();
+    const root = new Context({ outer });
+    const middle = root.push();
+    const { found } = follow(middle.push());
+    const inner = Test.new();
+
+    middle.add(inner);
+    await flushMicrotasks();
+
+    expect(found).toEqual([outer, inner]);
+  });
+
+  it('will refresh when the provider is removed', async () => {
+    const test = Test.new();
+    const root = new Context();
+    const remove = root.add(test);
+    const { found } = follow(root.push());
+
+    remove();
+    await flushMicrotasks();
+
+    expect(found).toEqual([test, undefined]);
+  });
+
+  it('will not refresh for a provider above the one found', async () => {
+    const root = new Context();
+    const middle = root.push({ test: Test.new() });
+    const { found } = follow(middle.push());
+
+    root.add(Test.new());
+    await flushMicrotasks();
+
+    expect(found).toHaveLength(1);
+  });
+
+  it('will not refresh for another type', async () => {
+    class Other extends Model {}
+
+    const root = new Context();
+    const { found } = follow(root.push());
+
+    root.add(Other.new());
+    await flushMicrotasks();
+
+    expect(found).toHaveLength(1);
+  });
+
+  it('will not refresh for a sibling provider', async () => {
+    const root = new Context();
+    const { found } = follow(root.push());
+
+    root.push(Test.new());
+    await flushMicrotasks();
+
+    expect(found).toHaveLength(1);
+  });
+
+  it('will not observe an untracked context', () => {
+    const root = new Context();
+    const child = root.push();
+    const remove = root.add(Test.new());
+
+    expect(child.get(Test)).toBeInstanceOf(Test);
+    remove();
+
+    expect(Object.getOwnPropertyDescriptor(root, Observer)).toBeUndefined();
+    expect(Object.getOwnPropertyDescriptor(child, Observer)).toBeUndefined();
+  });
+
+  it('will observe a context once tracked', async () => {
+    const root = new Context();
+    const middle = root.push();
+    const outer = Test.new();
+
+    root.add(outer);
+
+    const { found } = follow(middle.push());
+    const inner = Test.new();
+
+    middle.add(inner);
+    await flushMicrotasks();
+
+    expect(found).toEqual([outer, inner]);
+    expect(Object.getOwnPropertyDescriptor(root, Observer)).toBeDefined();
+  });
+
+  it('will refresh an effect using this.get', async () => {
+    class Host extends Model {}
+
+    const host = Host.new();
+    const root = new Context({ host });
+    const found: unknown[] = [];
+
+    host.get(($) => {
+      found.push($.get(Test, false));
+    });
+
+    const test = Test.new();
+    root.add(test);
+    await flushMicrotasks();
+
+    expect(found).toEqual([undefined, test]);
+  });
+
+  it('will refresh across a popped provider', async () => {
+    const test = Test.new();
+    const root = new Context();
+    const provider = root.push(test);
+    const { found } = follow(provider.push());
+
+    provider.pop();
+    await flushMicrotasks();
+
+    const next = Test.new();
+    root.add(next);
+    await flushMicrotasks();
+
+    expect(found).toEqual([test, undefined, next]);
+  });
+
+  it('will throw from an effect using this.get when the provider is removed', async () => {
+    class Host extends Model {}
+
+    const caught = mockUncaught();
+    const host = Host.new();
+    const root = new Context({ host });
+    const test = Test.new();
+    const remove = root.add(test);
+    const found: unknown[] = [];
+
+    host.get(($) => {
+      found.push($.get(Test));
+    });
+
+    remove();
+    await flushMicrotasks();
+
+    expect(found).toEqual([test]);
+    expect(caught).toEqual([new Error(`Could not find ${Test} in context.`)]);
   });
 });

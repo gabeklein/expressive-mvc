@@ -256,7 +256,7 @@ Children of a region `.get()` the region, never the page above it and back down.
 
 ## Bridging an Existing Router
 
-Bridge, don't replace: a conversion keeps the app's router; adopting `@expressive/router` needs explicit go-ahead. An outer FC reads router hooks and passes props, or the class encapsulates hooks with `use()` ([react.md](react.md)):
+Bridge, don't replace: a conversion keeps the app's router; adopting `@expressive/router` needs explicit go-ahead. An outer FC reads router hooks and passes props - fields take them - or a Component calls them at the top of `render()`, which runs as a function component:
 
 ```tsx
 function InboxRoute() {
@@ -550,7 +550,7 @@ class TabGroup extends Component {
 
 ## Owned Collection
 
-Register what a Component constructs - rendered children, `use()` instances, pool members - without a type, and release each when it is destroyed:
+Register what a Component constructs - rendered children, pool members - without a type, and release each when it is destroyed:
 
 ```tsx
 import { Model, Component } from '@expressive/mvc';
@@ -578,7 +578,7 @@ class Canvas extends Component {
 
 Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(Model)` - see [context.md](../state/context.md#ownership-vs-context).
 
-## Refactoring Hooks Into a Model
+## Refactoring Hooks Into a Class
 
 Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in `mount()`, event handlers in methods.
 
@@ -603,10 +603,10 @@ function LayoutBadge() {
 ```
 
 ```tsx
-// After: width is the source field, compact is a getter, and resize belongs to Viewport.
-import { Model } from '@expressive/mvc';
+// After: width is the source field, compact is a getter, and resize belongs to the class.
+import { Component } from '@expressive/mvc';
 
-class Viewport extends Model {
+class LayoutBadge extends Component {
   width = 0;
 
   get compact() {
@@ -622,12 +622,12 @@ class Viewport extends Model {
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }
-}
 
-function LayoutBadge() {
-  const { width, compact } = Viewport.use();
+  render() {
+    const { compact, width } = this;
 
-  return <span>{compact ? 'Compact' : `Wide (${width}px)`}</span>;
+    return <span>{compact ? 'Compact' : `Wide (${width}px)`}</span>;
+  }
 }
 ```
 

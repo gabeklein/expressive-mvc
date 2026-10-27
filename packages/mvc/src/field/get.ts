@@ -25,8 +25,6 @@ function get<T extends Model>(
 
 /**
  * Fetches and assigns the controller which spawned this host.
- * When parent assigns an instance via `use()` directive, it
- * will be made available to child upon this request.
  *
  * @param Type - Type of controller compatible with this class.
  * @param required - If false, property may be undefined. Otherwise will throw.
