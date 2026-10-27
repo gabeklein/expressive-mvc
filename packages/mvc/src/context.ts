@@ -284,16 +284,19 @@ Object.defineProperty(Context.prototype, "toString", {
  */
 function join(state: Model, value: Model, explicit?: boolean): () => void {
   const ctx = home(state.is);
-  const held = HELD.get(state) || new Map();
-  let provided = !ctx && held.get(value)?.[1];
+  const none = () => {};
 
-  for (let at = ctx; at && !provided; at = at.parent) {
-    const entries = at.provide.get(value.constructor as Model.Extends) || [];
-    for (const [x, is] of entries) if (x === value && is) provided = true;
+  if (ctx) {
+    for (let at: Context | undefined = ctx; at; at = at.parent)
+      for (const [x, is] of at.provide.get(value.constructor as Model.Extends) || [])
+        if (x === value && is) return none;
+
+    return ctx.add(value, explicit);
   }
 
-  if (provided) return () => {};
-  if (ctx) return ctx.add(value, explicit);
+  const held = HELD.get(state) || new Map<Model, [Set<() => void>, boolean?]>();
+
+  if (held.get(value)?.[1]) return none;
 
   const added = new Set<() => void>();
 
