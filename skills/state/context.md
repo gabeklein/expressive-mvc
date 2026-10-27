@@ -4,7 +4,7 @@ Hierarchical registry through which Model instances find each other. Every activ
 
 ## Home Context
 
-Recorded per instance (internal `LOOKUP` map); first explicit claim wins, and no later context can transfer it.
+An owned instance's home is its owner's - lookups follow ownership, not where it was provided. Otherwise recorded per instance; first explicit claim wins, and no later context can transfer it.
 
 | Activation path                              | Home becomes     |
 | -------------------------------------------- | ---------------- |
@@ -47,6 +47,7 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 - Recursive: grandchildren inherit through their immediate parent.
 - Siblings resolve each other through their parent regardless of field order, so two parents never cross-resolve.
+- `has` rows and `map` values join like child fields - with their owner, held until it has a context, never root.
 - Reassigning a child field destroys the old child if owned (`new Child()` syntax) and adds the replacement to the same context; externally-assigned children survive replacement.
 
 ## Root Context

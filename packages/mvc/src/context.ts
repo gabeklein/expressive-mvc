@@ -1,8 +1,8 @@
 import { listener } from "./observable";
-import { event, Model, uid } from "./state";
+import { event, Model, parent, uid } from "./state";
 
-const LOOKUP = new WeakMap<Model, Context>();
-const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
+const HOME = new WeakMap<Model, Context>();
+const HELD = new WeakMap<Model, Map<Model, [Set<() => void>, boolean?]>>();
 const HOST = new WeakMap<Context, Model>();
 const CLEANUP = new WeakMap<Context, Set<() => void>>();
 let ROOT: Context;
@@ -28,7 +28,7 @@ class Context {
 
   /** Get the context for a Model. Adapters may override to provide framework context. */
   static get(state?: Model): Context {
-    return state && LOOKUP.get(state.is) || Context.root;
+    return state && home(state.is) || Context.root;
   }
 
   public id = uid();
@@ -202,7 +202,10 @@ class Context {
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
-    if (!LOOKUP.has(I)) LOOKUP.set(I, this);
+    const owner = parent(I);
+    const placed = explicit && !(owner && home(owner));
+
+    if (!HOME.has(I) && (!owner || placed)) HOME.set(I, this);
 
     listener(I, () => {
       expects.forEach((f) => f());
@@ -216,8 +219,8 @@ class Context {
     }
 
     const cleanup = CLEANUP.get(this)!;
-    const held = Array.from(HELD.get(I) || [], ([child, added]) => {
-      const done = this.add(child);
+    const held = Array.from(HELD.get(I) || [], ([child, [added, explicit]]) => {
+      const done = this.add(child, explicit);
       added.add(done);
       return () => {
         if (added.delete(done)) done();
@@ -276,18 +279,28 @@ Object.defineProperty(Context.prototype, "toString", {
 });
 
 /**
- * Add `value` to the context `state` was added to. A context-less `state` holds
+ * Add `value` to the lookup origin of `state`. A context-less `state` holds
  * it instead - every context adding `state` later adds its held children too.
  */
-function join(state: Model, value: Model): () => void {
-  const ctx = LOOKUP.get(state.is);
+function join(state: Model, value: Model, explicit?: boolean): () => void {
+  const ctx = home(state.is);
+  const none = () => {};
 
-  if (ctx) return ctx.add(value);
+  if (ctx) {
+    for (let at: Context | undefined = ctx; at; at = at.parent)
+      for (const [x, is] of at.provide.get(value.constructor as Model.Extends) || [])
+        if (x === value && is) return none;
 
-  const held = HELD.get(state) || new Map();
+    return ctx.add(value, explicit);
+  }
+
+  const held = HELD.get(state) || new Map<Model, [Set<() => void>, boolean?]>();
+
+  if (held.get(value)?.[1]) return none;
+
   const added = new Set<() => void>();
 
-  HELD.set(state, held.set(value, added));
+  HELD.set(state, held.set(value, [added, explicit]));
 
   return () => {
     held.delete(value);
@@ -298,9 +311,14 @@ function join(state: Model, value: Model): () => void {
   };
 }
 
+function home(state: Model): Context | undefined {
+  const owner = parent(state);
+  return HOME.get(state) || (owner ? home(owner) : undefined);
+}
+
 /** The Model a host mounted `state` under - the one its nearest enclosing context was set up for. */
 function host(state: Model) {
-  for (let ctx = LOOKUP.get(state); ctx; ctx = ctx.parent) {
+  for (let ctx = home(state); ctx; ctx = ctx.parent) {
     const found = HOST.get(ctx);
     if (found && found !== state) return found;
   }

@@ -2,6 +2,8 @@ import { vi, describe, it, expect } from 'vitest';
 import { Context } from './context';
 import { Model } from './state';
 import { get } from './field/get';
+import { has } from './field/has';
+import { map } from './field/map';
 
 class Example extends Model {}
 class Example2 extends Example {}
@@ -1287,5 +1289,102 @@ describe('root global', () => {
 
     removeA();
     b.set(null);
+  });
+});
+
+describe('lookup origin', () => {
+  class Peer extends Model {}
+  class Child extends Model {}
+  class Parent extends Model {
+    child = new Child();
+    rows = has(Child);
+    values = map<string, Child>();
+  }
+
+  it('will look up from owner for an owned child', () => {
+    const parent = Parent.new();
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(parent.child)).toBe(context);
+    expect(parent.child.get(Peer)).toBe(context.get(Peer));
+  });
+
+  it('will look up from owner for a has row', () => {
+    const parent = Parent.new();
+    const row = parent.rows.add();
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(row)).toBe(context);
+    expect(row.get(Peer)).toBe(context.get(Peer));
+
+    parent.set(null);
+  });
+
+  it('will look up from owner for a map value', () => {
+    const parent = Parent.new();
+    const value = new Child();
+
+    parent.values.set('a', value);
+
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(value)).toBe(context);
+    expect(value.get(Peer)).toBe(context.get(Peer));
+
+    parent.set(null);
+  });
+
+  it('will look up from owner for an assigned reference', () => {
+    class Holder extends Model {
+      ref?: Child = undefined;
+    }
+
+    const parent = Parent.new();
+    const holder = new Holder();
+
+    Context.root.push(holder);
+    holder.ref = parent.child;
+
+    expect(Context.get(parent.child)).toBe(Context.root);
+
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(parent.child)).toBe(context);
+  });
+
+  it('will look up from where an owned child is placed if owner has no context', () => {
+    const parent = Parent.new();
+    const context = Context.root.push(new Peer()).push(parent.child);
+
+    expect(Context.get(parent.child)).toBe(context);
+    expect(parent.child.get(Peer)).toBe(context.get(Peer));
+  });
+
+  it('will look up from root for a global and its child', () => {
+    class Global extends Model {
+      static global = true;
+      child = new Child();
+    }
+
+    const global = Global.new();
+
+    expect(Context.get(global)).toBe(Context.root);
+    expect(Context.get(global.child)).toBe(Context.root);
+
+    global.set(null);
+  });
+});
+
+describe('placed instance', () => {
+  it('will not move an instance from its home', () => {
+    class Other extends Model {}
+
+    const example = Example.new();
+    const home = Context.root.push(example);
+    const level = Context.root.push(new Other()).push(example);
+
+    expect(Context.get(example)).toBe(home);
+    expect(level.get(Other)).toBeInstanceOf(Other);
+    expect(home.get(Other, false)).toBeUndefined();
   });
 });
