@@ -46,14 +46,13 @@ describe('plugin', () => {
     expect(transformIndexHtml()[0].attrs.src).toBe('/app/@id/virtual:expressive-inspect');
   });
 
-  it('will mount the panel and relay', () => {
+  it('will mount the panel and relay under one route', () => {
     const use = vi.fn();
     hooks().configureServer({ middlewares: { use }, ws: { on() {}, clients: new Set() } } as unknown as ViteDevServer);
-    expect(use).toHaveBeenNthCalledWith(1, '/__inspect/ui', expect.any(Function));
-    expect(use).toHaveBeenNthCalledWith(2, '/__inspect', expect.any(Function));
+    expect(use).toHaveBeenCalledWith('/__inspect', expect.any(Function));
 
     const res = { statusCode: 0, setHeader: vi.fn(), end: vi.fn() };
-    use.mock.calls[0][1]({ method: 'GET', url: '/', headers: {}, socket: {} }, res);
+    use.mock.calls[0][1]({ method: 'GET', url: '/ui', headers: {}, socket: {} }, res);
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/html');
     expect(res.end).toHaveBeenCalledWith(expect.stringContaining('__EXPRESSIVE_DEVTOOLS__'));
   });
@@ -86,7 +85,7 @@ describe('panel', () => {
   }
 
   it('will serve the page with its join and upgrade tokens', () => {
-    const res = request('GET');
+    const res = request('GET', '/ui');
     expect(res.headers['Content-Type']).toBe('text/html');
     expect(res.body).toContain('"token":"t"');
     expect(res.body).toContain('"ws":"v-token"');
@@ -105,7 +104,7 @@ describe('panel', () => {
   it('will 404 a missing bundle, unknown path, or non-GET', () => {
     expect(request('GET', '/ui.js').statusCode).toBe(404);
     expect(request('GET', '/other').statusCode).toBe(404);
-    expect(request('POST', '/').statusCode).toBe(404);
+    expect(request('POST', '/ui').statusCode).toBe(404);
   });
 });
 

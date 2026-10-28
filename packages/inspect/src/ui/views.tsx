@@ -245,7 +245,7 @@ function DetailView() {
 export class App extends Component {
   render() {
     const session = Session.get();
-    const { status, error, pages, page, tab, selected } = session;
+    const { status, error, pages, page, tab } = session;
 
     return (
       <div>

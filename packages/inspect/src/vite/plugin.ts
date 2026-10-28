@@ -50,8 +50,12 @@ export function plugin(url: string): Plugin {
       ];
     },
     configureServer(server) {
-      server.middlewares.use('/__inspect/ui', panel(url, () => ({ base, token, ws: wsToken })));
-      server.middlewares.use('/__inspect', relay(server.ws, { token }));
+      const handle = relay(server.ws, { token });
+      const assets = panel(url, () => ({ base, token, ws: wsToken }));
+
+      server.middlewares.use('/__inspect', (req, res) =>
+        req.url!.startsWith('/ui') ? assets(req, res) : handle(req, res)
+      );
     }
   };
 }
@@ -78,7 +82,7 @@ export function panel(entry: string, context: () => PanelContext) {
   return (req: IncomingMessage, res: ServerResponse) => {
     const path = req.url!.split('?')[0];
 
-    if (req.method !== 'GET' || (path !== '/' && path !== '/ui.js')) return reply(res, 404, { error: 'Not found.' });
+    if (req.method !== 'GET' || (path !== '/ui' && path !== '/ui/' && path !== '/ui.js')) return reply(res, 404, { error: 'Not found.' });
 
     if (path === '/ui.js') {
       const file = bundle.find((candidate) => existsSync(candidate));

@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 
-import { flushMicrotasks } from '../../test.setup';
 
 class FakeSocket {
   onopen: any = null;
