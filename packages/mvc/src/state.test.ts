@@ -3603,6 +3603,31 @@ describe('on setup / ready stages (static)', () => {
     expect(later).toBeCalledWith(1);
   });
 
+  it('will compute getters while an async new() is pending', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {
+      value = 1;
+
+      get double() {
+        return this.value * 2;
+      }
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.double).toBe(2);
+    test.value = 2;
+    await expect(test).toHaveUpdated('value');
+    expect(test.double).toBe(4);
+
+    done.resolve();
+  });
+
   it('will resolve an awaited effect once an async new() resolves', async () => {
     const done = mockPromise();
     let ready = false;

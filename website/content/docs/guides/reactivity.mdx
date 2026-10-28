@@ -126,7 +126,7 @@ The effect runs immediately, then re-runs whenever a tracked property changes. I
 ### What the effect callback receives
 
 - `current` - a tracking proxy of the instance. Reads subscribe.
-- `changed` - a readonly array of keys changed since the last run. Empty on the first run - or `undefined` when that first run was deferred, because the effect was registered before the instance was ready. (Registering effects during construction is fine; they simply wait for activation.)
+- `changed` - a readonly array of keys changed since the last run. Empty on the first run - or `undefined` when that first run was deferred, because the effect was registered before the instance was ready. (Registering effects during construction is fine; they wait for the instance to settle - activation, plus any async setup such as an `async new()`.)
 
 ### What the effect can return
 

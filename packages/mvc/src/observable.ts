@@ -264,14 +264,16 @@ function watch<T extends object, R = void>(
   target: T,
   callback: Observer.Effect<T, Observer.EffectOutput | Promise<R>>,
   recursive?: boolean,
-  transition?: (work: () => void) => void
+  transition?: (work: () => void) => void,
+  defer?: boolean
 ): Observer.Release<R>;
 
 function watch<T extends object, R>(
   target: T,
   callback: Observer.Effect<T, unknown>,
   argument?: boolean,
-  transition?: (work: () => void) => void
+  transition?: (work: () => void) => void,
+  defer?: boolean
 ): Observer.Release<R> {
   const o = observer(target, true);
   let events: readonly Observer.Event[] = [];
@@ -433,7 +435,7 @@ function watch<T extends object, R>(
   }
 
   const unlisten = listener(target, (key) => {
-    if (key === true) o.wait ? o.wait.add(invoke) : invoke();
+    if (key === true) defer && o.wait ? o.wait.add(invoke) : invoke();
     else if (key === null) {
       stop(null);
       fail('is destroyed.');
