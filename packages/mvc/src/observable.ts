@@ -35,6 +35,7 @@ declare namespace Observer {
 interface Observer {
   /** Becomes `true` once the subject has emitted its initial event. */
   ready?: true;
+  wait?: Set<() => void>;
   listeners: Map<Observer.Notify, Set<Observer.Signal> | undefined>;
   /** Recursion guard for an in-progress emit pass. */
   pending: Set<Observer.Signal>;
@@ -432,7 +433,7 @@ function watch<T extends object, R>(
   }
 
   const unlisten = listener(target, (key) => {
-    if (key === true) invoke();
+    if (key === true) o.wait ? o.wait.add(invoke) : invoke();
     else if (key === null) {
       stop(null);
       fail('is destroyed.');

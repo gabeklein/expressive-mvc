@@ -19,9 +19,6 @@ const ID = new WeakMap<Model, string>();
 /** Internal state assigned to states. */
 const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
-/** Ready subscribers while an instance settles; once settled, its outcome - `[]` ready, `[reason]` failed. */
-const WAITING = new WeakMap<Model, Set<(...failed: unknown[]) => void> | unknown[]>();
-
 /** Models under construction - added on `new`, removed when activated or released.
  *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
 const PENDING = new Set<Model | (() => void)>();
@@ -322,22 +319,11 @@ abstract class Model {
   ): Model.Value<this, T>;
 
   /**
-   * Check a lifecycle moment - `true` whether ready, `null` whether destroyed.
+   * Check if state is destroyed.
    *
-   * @param status - `true` for ready, `null` for destroyed.
+   * @param status - `null` for destroy.
    */
-  get(status: true | null): boolean;
-
-  /**
-   * Callback once ready - activated, with any async setup such as an async `new()`
-   * resolved. Called at once if already ready. If setup fails, or the instance is
-   * destroyed first, called with the reason instead.
-   *
-   * @param status - `true` for ready.
-   * @param callback - Function to call; may return a cleanup to run on destroy.
-   * @returns Function to cancel listener.
-   */
-  get(status: true, callback: (reason?: unknown) => void | (() => void)): () => void;
+  get(status: null): boolean;
 
   /**
    * Callback when state is destroyed.
@@ -402,7 +388,7 @@ abstract class Model {
   ): () => void;
 
   get(
-    arg1?: Model.Effect<this> | Model.Type | typeof Model | string | true | null,
+    arg1?: Model.Effect<this> | Model.Type | typeof Model | string | null,
     arg2?: boolean | Context.Expect | (() => void),
     arg3?: boolean
   ) {
@@ -416,7 +402,6 @@ abstract class Model {
     if (Model.is(arg1))
       return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
-    if (arg1 === true) return arg2 ? ready(self, arg2 as Function) : isReady(self);
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1 as string, arg2);
@@ -625,50 +610,14 @@ function callback<T extends Model>(
   return listener(self, (key) => cb.call(self, key, self), select);
 }
 
-function isReady(state: Model) {
-  const outcome = WAITING.get(state);
-  return Array.isArray(outcome) && !outcome.length;
-}
+function ready(state: Model, handler: NonNullable<Model.On['ready']>) {
+  capture((release) => {
+    listener(state, () => release(null), null);
 
-function ready(state: Model, cb: Function) {
-  const run = (...failed: unknown[]) => {
-    if (failed.length) return cb.call(state, failed[0]);
+    const out = handler.call(state, state);
 
-    capture((release) => {
-      listener(state, () => release(null), null);
-
-      const out = cb.call(state);
-      if (typeof out == 'function') listener(state, out, null);
-    });
-  };
-
-  let waiting = WAITING.get(state);
-
-  if (Array.isArray(waiting)) {
-    run(...waiting);
-    return () => false;
-  }
-
-  if (!waiting) WAITING.set(state, (waiting = new Set()));
-
-  const callbacks = waiting.add(run);
-
-  return () => callbacks.delete(run);
-}
-
-function settle(state: Model, failed?: () => unknown) {
-  const waiting = WAITING.get(state);
-
-  if (!(waiting instanceof Set)) return;
-
-  const outcome = failed ? [failed()] : [];
-
-  WAITING.set(state, outcome);
-
-  for (const run of waiting) {
-    waiting.delete(run);
-    run(...outcome);
-  }
+    if (typeof out == 'function') listener(state, out, null);
+  });
 }
 
 function register(state: Model) {
@@ -732,7 +681,6 @@ function init(state: Model, ...args: Model.Args) {
     PENDING.delete(state);
 
     if (key === null) return null;
-    if (!WAITING.has(state)) WAITING.set(state, new Set());
 
     if (!PARENT.has(state)) parent(state, host(state) || null);
 
@@ -743,14 +691,19 @@ function init(state: Model, ...args: Model.Args) {
 
     const waits: Promise<unknown>[] = [];
     const queue = [...before, observe, ...args, () => {
-      if (!waits.length) settle(state);
-      else Promise.all(waits).then(() => settle(state), (err) => settle(state, () => err));
+      const run = () => after.forEach((handler) => ready(state, handler));
+
+      if (!waits.length) return run();
+
+      const o = observer(state, true);
+      const wait = o.wait = new Set([run]);
+
+      Promise.all(waits).then(() => {
+        if (observer(state) === null) return;
+        o.wait = undefined;
+        wait.forEach((fn) => fn());
+      }, () => event(state, null));
     }, register];
-
-    for (const handler of after)
-      ready(state, (...failed: unknown[]) => failed.length ? undefined : handler.call(state, state));
-
-    listener(state, () => settle(state, () => new Error(`${state} was destroyed before ready.`)), null);
 
     capture((release) => {
       listener(state, () => release(null), null);
@@ -819,7 +772,7 @@ function unmanaged(state: Model, key: string, value: unknown) {
 function bootstrap(T: Model.Extends) {
   const chain = [] as Model.Extends[];
   const before = new Set<Model.Init>();
-  const after = new Set<Model.Init>();
+  const after = new Set<NonNullable<Model.On['ready']>>();
   const onType = new Set<NonNullable<Model.On['type']>>();
   let keys = new Map<string, (value: any) => void>();
   let getters = new Map<string, () => unknown>();

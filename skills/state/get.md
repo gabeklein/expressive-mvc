@@ -70,7 +70,7 @@ const stop = state.get((current, update) => {
 
 **Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) - synchronously or after an `await` - pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
 
-**Before ready:** effects registered in constructors wait for activation before first run.
+**Before ready:** effects registered during construction wait for the instance to settle - activation, plus any async setup (an `async new()`, a setup step returning a promise) - before first run. So does one registered while that setup is pending. `await state.get(() => {})` is the wait for an instance to be ready: it resolves once settled and rejects if the instance is destroyed first, including by a rejected setup.
 
 **Await the release:** `await state.get(effect)` cancels the effect once it settles and yields the latest clean run - a one-shot read of tracked state that suspends until it can complete. Only an async effect yields a value; a sync one resolves `undefined`, its cleanup called with `false`.
 
@@ -86,19 +86,18 @@ Rejects if the instance is destroyed before any clean run, or a run throws a non
 
 To watch a specific property or event, use [`set(event, callback)`](set.md).
 
-### Lifecycle
+### Check destroyed
 
 ```ts
-get(status: true | null): boolean
-get(status: true | null, callback: () => void): () => void
+get(status: null): boolean
+get(status: null, callback: () => void): () => void
 ```
 
-`true` is ready - activated, with any async setup (an `async new()`, a setup step returning a promise) resolved. `null` is destroyed. Without a callback, whether it has happened; with one, runs `callback` when it does - at once if already. A ready callback receives the reason instead if setup rejects or the instance is destroyed first, so a waiter never hangs. Returns unsubscribe.
+Without a callback, whether the instance is destroyed; with one, runs `callback` when it is. Returns unsubscribe.
 
 ```ts
 if (state.get(null)) console.log('state is dead');
 const stop = state.get(null, () => console.log('destroyed'));
-seat.get(true, (reason) => reason ? reject(reason) : admit(request));
 ```
 
 ### Fetch from context
