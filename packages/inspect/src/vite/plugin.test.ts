@@ -51,6 +51,11 @@ describe('plugin', () => {
     hooks().configureServer({ middlewares: { use }, ws: { on() {}, clients: new Set() } } as unknown as ViteDevServer);
     expect(use).toHaveBeenNthCalledWith(1, '/__inspect/ui', expect.any(Function));
     expect(use).toHaveBeenNthCalledWith(2, '/__inspect', expect.any(Function));
+
+    const res = { statusCode: 0, setHeader: vi.fn(), end: vi.fn() };
+    use.mock.calls[0][1]({ method: 'GET', url: '/', headers: {}, socket: {} }, res);
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/html');
+    expect(res.end).toHaveBeenCalledWith(expect.stringContaining('__EXPRESSIVE_DEVTOOLS__'));
   });
 
   it('will read the websocket token when vite provides one', () => {
@@ -104,7 +109,7 @@ describe('panel', () => {
   });
 });
 
-function setup(options: { token?: string } = {}) {
+function setup(options?: { token?: string }) {
   const listeners = new Map<string, Function>();
   const clients = new Set<WebSocketClient>();
   const ws = { on: (event: string, fn: Function) => listeners.set(event, fn), clients } as any;
@@ -130,6 +135,7 @@ function setup(options: { token?: string } = {}) {
     clients.add(client);
     listeners.get('expressive-inspect:join')!({ token }, client);
     return {
+      client,
       sent,
       forward: (data: unknown) => listeners.get('expressive-inspect:forward')!(data, client)
     };
@@ -309,6 +315,15 @@ describe('relay devtools', () => {
     const ui = env.ui();
     await flushMicrotasks();
     expect(ui.sent).toEqual([{ event: 'expressive-inspect:pages', data: [] }]);
+  });
+
+  it('will prune a ui whose socket is already gone', async () => {
+    const ui = env.ui('t');
+    await flushMicrotasks();
+    env.clients.delete(ui.client);
+    env.page('a', () => ({ value: { id: 'a' } }));
+    await flushMicrotasks();
+    expect(ui.sent).toHaveLength(1);
   });
 
   it('will push the roster to joined uis as pages come and go', async () => {

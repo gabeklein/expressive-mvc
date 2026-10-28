@@ -101,7 +101,7 @@ export function panel(entry: string, context: () => PanelContext) {
   <style>html, body { margin: 0; height: 100%; }</style>
 </head>
 <body>
-  <script>globalThis.__EXPRESSIVE_DEVTOOLS__ = ${JSON.stringify({ token, ws })};</script>
+  <script>globalThis.__EXPRESSIVE_DEVTOOLS__ = ${JSON.stringify({ token, ws, base })};</script>
   <script type="module" src="${base}__inspect/ui.js"></script>
 </body>
 </html>`);

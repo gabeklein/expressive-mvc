@@ -58,7 +58,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && bun build src/ui/main.tsx --outfile dist/ui.js --minify --jsx=automatic --jsx-import-source=@expressive/dom --target=browser",
     "typecheck": "tsc --noEmit --incremental",
     "coverage": "vitest run --coverage",
     "test": "bun run typecheck && bun run coverage"
@@ -75,6 +75,7 @@
   "devDependencies": {
     "@expressive/mvc": "workspace:*",
     "tsdown": "^0.20.1",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "@expressive/dom": "workspace:*"
   }
 }
