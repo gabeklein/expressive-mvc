@@ -1,5 +1,7 @@
+import { existsSync, readFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { Plugin, WebSocketClient, WebSocketServer } from 'vite';
+import { randomUUID } from 'node:crypto';
+import type { Plugin, ResolvedConfig, WebSocketClient, WebSocketServer } from 'vite';
 
 import type { Call } from '../dispatch';
 
@@ -19,6 +21,8 @@ const USAGE = 'GET /__inspect lists pages; POST /__inspect/:id with [method, ...
 
 export function plugin(url: string): Plugin {
   let base = '/';
+  let wsToken = '';
+  const token = randomUUID();
 
   return {
     name: 'expressive-inspect',
@@ -28,6 +32,7 @@ export function plugin(url: string): Plugin {
     },
     configResolved(config) {
       base = config.base;
+      wsToken = (config as ResolvedConfig & { webSocketToken?: string }).webSocketToken ?? '';
     },
     resolveId(id) {
       if (id === VIRTUAL) return RESOLVED;
@@ -45,25 +50,123 @@ export function plugin(url: string): Plugin {
       ];
     },
     configureServer(server) {
-      server.middlewares.use('/__inspect', relay(server.ws));
+      server.middlewares.use('/__inspect/ui', panel(url, () => ({ base, token, ws: wsToken })));
+      server.middlewares.use('/__inspect', relay(server.ws, { token }));
     }
   };
 }
 
 type Answer = { value?: unknown; error?: string };
 
-export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
+interface Forward {
+  rid: number;
+  target?: string;
+  call?: Call;
+}
+
+interface PanelContext {
+  base: string;
+  token: string;
+  /** Vite's `webSocketToken` - the upgrade is refused without it on browser-origin connections. */
+  ws: string;
+}
+
+/** Serve the devtools panel and its bundle. Assets carry no state; the ws join token is the gate. */
+export function panel(entry: string, context: () => PanelContext) {
+  const bundle = [new URL('./ui.js', entry), new URL('../../dist/ui.js', entry)];
+
+  return (req: IncomingMessage, res: ServerResponse) => {
+    const path = req.url!.split('?')[0];
+
+    if (req.method !== 'GET' || (path !== '/' && path !== '/ui.js')) return reply(res, 404, { error: 'Not found.' });
+
+    if (path === '/ui.js') {
+      const file = bundle.find((candidate) => existsSync(candidate));
+
+      if (!file) return reply(res, 404, { error: 'Panel bundle missing - run the @expressive/inspect build.' });
+
+      res.setHeader('Content-Type', 'text/javascript');
+      res.end(readFileSync(file));
+      return;
+    }
+
+    const { base, token, ws } = context();
+
+    res.setHeader('Content-Type', 'text/html');
+    res.end(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Expressive DevTools</title>
+  <style>html, body { margin: 0; height: 100%; }</style>
+</head>
+<body>
+  <script>globalThis.__EXPRESSIVE_DEVTOOLS__ = ${JSON.stringify({ token, ws })};</script>
+  <script type="module" src="${base}__inspect/ui.js"></script>
+</body>
+</html>`);
+  };
+}
+
+export function relay(
+  ws: Pick<WebSocketServer, 'on' | 'clients'>,
+  options: { token?: string } = {}
+) {
   const pages = new Map<string, WebSocketClient>();
+  const uis = new Set<WebSocketClient>();
   const pending = new Map<number, (answer: Answer) => void>();
   let next = 0;
 
   ws.on('expressive-inspect:hello', ({ id }: { id: string }, client: WebSocketClient) => {
     pages.set(id, client);
+    roster();
+  });
+
+  ws.on('vite:client:disconnect', (_data: unknown, client: WebSocketClient) => {
+    uis.delete(client);
+    roster();
+  });
+
+  ws.on('expressive-inspect:join', async ({ token }: { token?: string }, client: WebSocketClient) => {
+    if (options.token && token !== options.token)
+      return client.send('expressive-inspect:pages', { error: 'Dev token mismatch.' });
+
+    uis.add(client);
+    client.send('expressive-inspect:pages', await list());
+  });
+
+  ws.on('expressive-inspect:forward', async ({ rid, target, call }: Forward, client: WebSocketClient) => {
+    if (!uis.has(client)) return;
+
+    if (!call) return answer(client, rid, { value: await list() });
+
+    const open = live();
+    const page = target ? open.get(target) : open.size === 1 ? [...open.values()][0] : undefined;
+
+    if (!page)
+      return answer(client, rid, {
+        error: target ? `No page ${target}.` : open.size ? 'Several pages connected - pick one.' : 'No pages connected.'
+      });
+
+    const result = await ask(page, call, CALL_TIMEOUT);
+
+    answer(client, rid, result ?? { error: 'Page did not answer.' });
   });
 
   ws.on('expressive-inspect:answer', ({ rid, ...answer }: Answer & { rid: number }) => {
     pending.get(rid)?.(answer);
   });
+
+  function answer(client: WebSocketClient, rid: number, result: Answer) {
+    client.send('expressive-inspect:answer', { rid, ...result });
+  }
+
+  async function roster() {
+    for (const client of uis) if (!ws.clients.has(client)) uis.delete(client);
+    if (!uis.size) return;
+    const value = await list();
+    for (const client of uis) client.send('expressive-inspect:pages', value);
+  }
 
   function ask(client: WebSocketClient, call: Call | undefined, timeout: number) {
     return new Promise<Answer | undefined>((resolve) => {

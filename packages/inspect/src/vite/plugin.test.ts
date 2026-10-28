@@ -1,9 +1,12 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { tmpdir } from 'node:os';
 import { Readable } from 'node:stream';
 import type { ResolvedConfig, ViteDevServer, WebSocketClient } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CALL_TIMEOUT, LIST_TIMEOUT, plugin, relay } from './plugin';
+import { flushMicrotasks } from '../../test.setup';
+import { CALL_TIMEOUT, LIST_TIMEOUT, panel, plugin, relay } from './plugin';
 
 function hooks(url = 'file:///app/packages/inspect/dist/vite.js') {
   return plugin(url) as Record<string, any>;
@@ -43,18 +46,69 @@ describe('plugin', () => {
     expect(transformIndexHtml()[0].attrs.src).toBe('/app/@id/virtual:expressive-inspect');
   });
 
-  it('will mount the relay', () => {
+  it('will mount the panel and relay', () => {
     const use = vi.fn();
     hooks().configureServer({ middlewares: { use }, ws: { on() {}, clients: new Set() } } as unknown as ViteDevServer);
-    expect(use).toHaveBeenCalledWith('/__inspect', expect.any(Function));
+    expect(use).toHaveBeenNthCalledWith(1, '/__inspect/ui', expect.any(Function));
+    expect(use).toHaveBeenNthCalledWith(2, '/__inspect', expect.any(Function));
+  });
+
+  it('will read the websocket token when vite provides one', () => {
+    const { configResolved } = hooks();
+    configResolved({ base: '/', webSocketToken: 'v-token' } as ResolvedConfig);
   });
 });
 
-function setup() {
+describe('panel', () => {
+  const context = { base: '/', token: 't', ws: 'v-token' };
+
+  function request(method: string, url = '/', handle = panel('file:///missing/dist/vite.js', () => context)) {
+    const req = { method, url } as IncomingMessage;
+    const res = {
+      statusCode: 0,
+      headers: {} as Record<string, string>,
+      setHeader(key: string, value: string) {
+        this.headers[key] = value;
+      },
+      end(text?: string) {
+        this.body = text;
+      },
+      body: undefined as any
+    };
+
+    handle(req, res as unknown as ServerResponse);
+    return res;
+  }
+
+  it('will serve the page with its join and upgrade tokens', () => {
+    const res = request('GET');
+    expect(res.headers['Content-Type']).toBe('text/html');
+    expect(res.body).toContain('"token":"t"');
+    expect(res.body).toContain('"ws":"v-token"');
+    expect(res.body).toContain('/__inspect/ui.js');
+  });
+
+  it('will serve the bundle beside the entry or under the package dist', () => {
+    const dir = mkdtempSync(`${tmpdir()}/inspect-ui-`);
+    writeFileSync(`${dir}/ui.js`, 'bundle!');
+
+    const res = request('GET', '/ui.js', panel(`file://${dir}/vite.js`, () => context));
+    expect(res.headers['Content-Type']).toBe('text/javascript');
+    expect(String(res.body)).toBe('bundle!');
+  });
+
+  it('will 404 a missing bundle, unknown path, or non-GET', () => {
+    expect(request('GET', '/ui.js').statusCode).toBe(404);
+    expect(request('GET', '/other').statusCode).toBe(404);
+    expect(request('POST', '/').statusCode).toBe(404);
+  });
+});
+
+function setup(options: { token?: string } = {}) {
   const listeners = new Map<string, Function>();
   const clients = new Set<WebSocketClient>();
   const ws = { on: (event: string, fn: Function) => listeners.set(event, fn), clients } as any;
-  const handle = relay(ws);
+  const handle = relay(ws, options);
 
   function page(id: string, respond: (call: any) => unknown = () => ({})) {
     const client = {
@@ -67,6 +121,23 @@ function setup() {
     clients.add(client);
     listeners.get('expressive-inspect:hello')!({ id }, client);
     return client;
+  }
+
+  function ui(token?: string) {
+    const sent: { event: string; data: any }[] = [];
+    const client = { send: (event: string, data: unknown) => void sent.push({ event, data }) } as unknown as WebSocketClient;
+
+    clients.add(client);
+    listeners.get('expressive-inspect:join')!({ token }, client);
+    return {
+      sent,
+      forward: (data: unknown) => listeners.get('expressive-inspect:forward')!(data, client)
+    };
+  }
+
+  function disconnect(client: WebSocketClient) {
+    clients.delete(client);
+    listeners.get('vite:client:disconnect')!(undefined, client);
   }
 
   function answer(data: unknown) {
@@ -97,7 +168,7 @@ function setup() {
     return res;
   }
 
-  return { page, clients, answer, request };
+  return { page, ui, clients, disconnect, answer, request };
 }
 
 afterEach(() => {
@@ -212,5 +283,103 @@ describe('relay', () => {
     ['IPv4-mapped loopback', {}, '::ffff:127.0.0.1', 200]
   ] as [string, Record<string, string>, string | null, number][])('will answer %s with %i', async (_, headers, remote, status) => {
     expect((await request('GET', '/', '', headers, remote)).statusCode).toBe(status);
+  });
+});
+
+describe('relay devtools', () => {
+  let env = setup({ token: 't' });
+
+  beforeEach(() => void (env = setup({ token: 't' })));
+
+  it('will send a joined ui the page roster', async () => {
+    env.page('a', () => ({ value: { id: 'a' } }));
+    const ui = env.ui('t');
+    await flushMicrotasks();
+    expect(ui.sent).toEqual([{ event: 'expressive-inspect:pages', data: [{ id: 'a' }] }]);
+  });
+
+  it('will deny a join without the token', async () => {
+    const ui = env.ui('wrong');
+    await flushMicrotasks();
+    expect(ui.sent).toEqual([{ event: 'expressive-inspect:pages', data: { error: 'Dev token mismatch.' } }]);
+  });
+
+  it('will accept a join when no token is configured', async () => {
+    env = setup();
+    const ui = env.ui();
+    await flushMicrotasks();
+    expect(ui.sent).toEqual([{ event: 'expressive-inspect:pages', data: [] }]);
+  });
+
+  it('will push the roster to joined uis as pages come and go', async () => {
+    const ui = env.ui('t');
+    const respond = vi.fn(() => ({ value: { id: 'b' } }));
+    const client = env.page('b', respond);
+    await flushMicrotasks();
+    expect(ui.sent.at(-1)).toEqual({ event: 'expressive-inspect:pages', data: [{ id: 'b' }] });
+
+    env.disconnect(client);
+    await flushMicrotasks();
+    expect(ui.sent.at(-1)).toEqual({ event: 'expressive-inspect:pages', data: [] });
+  });
+
+  it('will answer a roster request', async () => {
+    env.page('a', () => ({ value: { id: 'a' } }));
+    const ui = env.ui('t');
+    await ui.forward({ rid: 1 });
+    expect(ui.sent.at(-1)).toEqual({ event: 'expressive-inspect:answer', data: { rid: 1, value: [{ id: 'a' }] } });
+  });
+
+  it('will forward a call to the addressed page', async () => {
+    const respond = vi.fn(() => ({ value: 'typed' }));
+    env.page('a');
+    env.page('b', respond);
+    const ui = env.ui('t');
+    await flushMicrotasks();
+    respond.mockClear();
+    await ui.forward({ rid: 2, target: 'b', call: [['get'], ['Composer.draft']] });
+    expect(respond).toHaveBeenCalledWith([['get'], ['Composer.draft']]);
+    expect(ui.sent.at(-1)).toEqual({ event: 'expressive-inspect:answer', data: { rid: 2, value: 'typed' } });
+  });
+
+  it('will call the only page without a target', async () => {
+    env.page('a', () => ({ value: 1 }));
+    const ui = env.ui('t');
+    await ui.forward({ rid: 3, call: [['get'], []] });
+    expect(ui.sent.at(-1)).toEqual({ event: 'expressive-inspect:answer', data: { rid: 3, value: 1 } });
+  });
+
+  it.each([
+    ['no page by that id', 'zz', 'No page zz.'],
+    ['no target and several pages', undefined, 'Several pages connected - pick one.']
+  ])('will refuse to guess: %s', async (_, target, error) => {
+    env.page('a', () => ({ value: { id: 'a' } }));
+    env.page('b', () => ({ value: { id: 'b' } }));
+    const ui = env.ui('t');
+    await ui.forward({ rid: 4, target, call: [['get'], []] });
+    expect(ui.sent.at(-1)).toEqual({ event: 'expressive-inspect:answer', data: { rid: 4, error } });
+  });
+
+  it('will report no pages connected', async () => {
+    const ui = env.ui('t');
+    await ui.forward({ rid: 5, call: [['get'], []] });
+    expect(ui.sent.at(-1)).toEqual({ event: 'expressive-inspect:answer', data: { rid: 5, error: 'No pages connected.' } });
+  });
+
+  it('will error when the page does not answer', async () => {
+    vi.useFakeTimers();
+    env.page('a', () => undefined);
+    const ui = env.ui('t');
+    const done = ui.forward({ rid: 6, target: 'a', call: [['get'], []] });
+    await vi.advanceTimersByTimeAsync(CALL_TIMEOUT);
+    await done;
+    expect(ui.sent.at(-1)).toEqual({ event: 'expressive-inspect:answer', data: { rid: 6, error: 'Page did not answer.' } });
+  });
+
+  it('will ignore a forward from a client that never joined', async () => {
+    env.page('a', () => ({ value: 1 }));
+    const ui = env.ui('wrong');
+    await ui.forward({ rid: 7, call: [['get'], []] });
+    expect(ui.sent.filter(({ event }) => event === 'expressive-inspect:answer')).toHaveLength(0);
   });
 });
