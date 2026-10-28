@@ -16,6 +16,9 @@ const define = Object.defineProperty;
 /** Register for all active states via string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
 
+/** Activation step which waits for pending setup before continuing. */
+const HOLD = Symbol('hold');
+
 /** Internal state assigned to states. */
 const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
@@ -689,27 +692,35 @@ function init(state: Model, ...args: Model.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
+    const [params, create] = args;
     const waits: Promise<unknown>[] = [];
-    const queue = [...before, observe, ...args, () => {
-      const run = () => after.forEach((handler) => ready(state, handler));
-
-      if (!waits.length) return run();
-
+    const queue: unknown[] = [...before, observe, params, register, HOLD, create, HOLD, () => {
       const o = observer(state, true);
-      const wait = o.wait = new Set([run]);
+      const { wait } = o;
 
-      Promise.all(waits).then(() => {
-        if (observer(state) === null) return;
-        o.wait = undefined;
-        wait.forEach((fn) => fn());
-      }, () => event(state, null));
-    }, register];
+      o.wait = undefined;
+      after.forEach((handler) => ready(state, handler));
+      wait?.forEach((fn) => fn());
+    }];
 
-    capture((release) => {
+    const advance = (from: number) => capture((release) => {
       listener(state, () => release(null), null);
 
-      for (let i = 0; i < queue.length; i++) {
+      for (let i = from; i < queue.length; i++) {
         const arg = queue[i];
+
+        if (arg === HOLD) {
+          if (!waits.length) continue;
+
+          observer(state, true).wait ||= new Set();
+
+          Promise.all(waits.splice(0)).then(() => {
+            if (observer(state) !== null) advance(i + 1);
+          }, () => event(state, null));
+
+          return;
+        }
+
         const called = typeof arg == 'function';
         const out = called ? arg.call(state, state) : arg;
 
@@ -722,6 +733,8 @@ function init(state: Model, ...args: Model.Args) {
         else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
       }
     });
+
+    advance(0);
 
     if (owns) {
       owns.add(state);

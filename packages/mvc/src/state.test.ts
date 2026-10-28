@@ -3628,6 +3628,114 @@ describe('on setup / ready stages (static)', () => {
     done.resolve();
   });
 
+  it('will run new() after an async setup handler resolves', async () => {
+    const done = mockPromise();
+    const create = vi.fn();
+
+    class Test extends Model {
+      loaded = false;
+
+      protected new() {
+        create(this.loaded);
+      }
+    }
+
+    Test.on({
+      setup: async (self) => {
+        await done;
+        self.loaded = true;
+      }
+    });
+
+    Test.new();
+
+    await flushMicrotasks();
+    expect(create).not.toBeCalled();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(create).toBeCalledWith(true);
+  });
+
+  it('will run new() after an async constructor callback resolves', async () => {
+    const done = mockPromise();
+    const order: string[] = [];
+
+    class Test extends Model {
+      protected new() {
+        order.push('new');
+      }
+    }
+
+    Test.new(async () => {
+      await done;
+      order.push('callback');
+    });
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(order).toEqual(['callback', 'new']);
+  });
+
+  it('will register a global before an async setup resolves', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {
+      static global = true;
+    }
+
+    Test.on({ setup: () => done });
+
+    const test = Test.new();
+
+    expect(Context.root.get(Test)).toBe(test);
+
+    done.resolve();
+    await flushMicrotasks();
+    test.set(null);
+  });
+
+  it('will not run new() if destroyed before setup resolves', async () => {
+    const done = mockPromise();
+    const create = vi.fn();
+
+    class Test extends Model {
+      protected new() {
+        create();
+      }
+    }
+
+    Test.on({ setup: () => done });
+    Test.new().set(null);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(create).not.toBeCalled();
+  });
+
+  it('will destroy the instance if a setup handler rejects', async () => {
+    const handler = vi.fn();
+    const create = vi.fn();
+
+    class Test extends Model {
+      protected new() {
+        create();
+      }
+    }
+
+    Test.on({ catch: handler, setup: () => Promise.reject(new Error('failed')) });
+
+    const test = Test.new();
+
+    await flushMicrotasks();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+    expect(create).not.toBeCalled();
+    expect(test.get(null)).toBe(true);
+  });
+
   it('will resolve an awaited effect once an async new() resolves', async () => {
     const done = mockPromise();
     let ready = false;

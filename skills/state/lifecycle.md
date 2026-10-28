@@ -35,7 +35,7 @@ class Timer extends Model {
 }
 ```
 
-- Runs once, after all properties and child instances are set up.
+- Runs once, after all properties and child instances are set up - and after `on({ setup })` handlers and arg callbacks settle, so an async one among them defers `new()`.
 - Return nothing, or `() => void` to run on destruction.
 - `async new()` is allowed: `on({ ready })` handlers and effects registered before it resolves wait for it. Its rejection reports to `catch` as `setup`, then destroys the instance - recovery belongs inside `new()`, around the await. Setup cannot lean on an effect to finish. Its cleanup cannot be returned - a promise's value is ignored.
 - `this` is the instance, not a tracking proxy - closures made here (a listener) capture it and may use it as a `Map`/`Set` key.
@@ -151,7 +151,7 @@ An instance failing out of turn - not at a call that could catch it - reaches th
 | `dead` | `Error` (`Tried to update {state}.{key} but state is destroyed.`) | write to a destroyed instance - stored without dispatch; unhandled, no output |
 | `unused`  | `Error` (`{state} was constructed but never activated.`) | constructed, never activated in that tick                              |
 | `getter`    | what the getter threw; `key`  | getter threw while refreshing - value becomes `undefined`              |
-| `setup`      | the rejection                 | async initializer or `new()` rejected - instance still created            |
+| `setup`      | the rejection                 | async setup step or `new()` rejected - instance destroyed                 |
 | `effect`    | what was thrown               | effect or listener threw during a flush - collections resolve to their owner |
 
 `catch` is class-level policy. `Component.catch()` is a separate per-instance boundary for child render errors - a Component's own effect errors reach `Model.on({ catch })`, not its boundary.
