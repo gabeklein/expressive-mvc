@@ -3,7 +3,7 @@ import { listener } from '@expressive/mvc/observable';
 import { isElement } from '@expressive/mvc/jsx-runtime';
 
 import { journal, note, noteCall, noteCaught, noteDestroy, notePatch, type Frame, type Query } from './journal';
-import { entries, parsePath, project, serialize, walk, type Select } from './serialize';
+import { entries, parsePath, project, serialize, walk, type Limits, type Select } from './serialize';
 import { bracket } from './bracket';
 import { tick, unreached, unsettled, type Act } from './settle';
 import { forget, seen, type TypeInfo } from './types';
@@ -236,9 +236,9 @@ export class Instance {
     return undefined;
   }
 
-  get(path?: string, select?: Select): unknown {
+  get(path?: string, select?: Select, limits?: Limits): unknown {
     const value = walk(this.state, path);
-    return select ? project(value, select) : serialize(value);
+    return select ? project(value, select, limits) : serialize(value, limits);
   }
 
   model(): ModelInfo {
@@ -427,10 +427,10 @@ export async function act(work: () => unknown, options: Act = {}): Promise<Frame
   return frames;
 }
 
-export function get(address?: string, select?: Select): unknown {
+export function get(address?: string, select?: Select, limits?: Limits): unknown {
   if (!address) return models();
   const { target, path } = parsePath(address);
-  return find(target)?.get(path, select);
+  return find(target)?.get(path, select, limits);
 }
 
 export function set(address: string, value: unknown): void {
@@ -443,6 +443,13 @@ export function set(address: string, value: unknown): void {
   const owner = dot < 0 ? instance.state : walk(instance.state, path.slice(0, dot));
 
   if (owner == null || typeof owner !== 'object') throw new Error(`No model at ${address}.`);
+
+  if (value && typeof value === 'object' && Object.keys(value).every((k) => k === '$ref' || k === '$type')) {
+    const row = live.get(String((value as { $ref: unknown }).$ref));
+    const state = row && (row.held ?? row.ref.deref());
+    if (!state) throw new Error(`No instance at ${(value as { $ref: unknown }).$ref}.`);
+    value = state;
+  }
 
   if (owner instanceof Map) owner.set(key, value);
   else (owner as Record<string, unknown>)[key] = value;

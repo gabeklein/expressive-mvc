@@ -105,6 +105,16 @@ describe('serialize', () => {
     expect(obj['…']).toBe(5);
   });
 
+  it('will lift caps under limits', () => {
+    const long = 'x'.repeat(300);
+    expect(serialize(long, { string: 400 })).toBe(long);
+    expect(serialize([[1, 2]], { depth: 2 })).toEqual([[1, 2]]);
+    expect(serialize(Array.from({ length: 30 }, (_, i) => i), { array: 40 })).toHaveLength(30);
+
+    const wide = Object.fromEntries(Array.from({ length: 45 }, (_, i) => [`k${i}`, i]));
+    expect(Object.keys(serialize(wide, { keys: 50 }) as object)).toHaveLength(45);
+  });
+
   it('will render scalars and specials as JSON-safe values', () => {
     expect(serialize(null)).toBeNull();
     expect(serialize(undefined)).toBeUndefined();

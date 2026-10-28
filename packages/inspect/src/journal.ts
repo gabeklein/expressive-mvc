@@ -215,7 +215,7 @@ export function note(state: Model, key: unknown, store: Map<string, unknown>): v
   };
 
   if (config.level === 'values' && event.kind === 'update')
-    event.value = serialize(store.get(name), 1);
+    event.value = serialize(store.get(name), { depth: 1 });
 
   push(event);
 }
