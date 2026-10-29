@@ -70,26 +70,28 @@ export class ReviewStep extends Component {
 
 **Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, or a boundary no Component below it can carry - lifecycle counts only when it manages owned state; a ref plus a DOM-sync reaction over context is still an FC. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`). Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
 
-**The app/route entrypoint is a Component when it owns the construction graph** - the replica and each headless region are its fields and provide implicitly. `main` only mounts it: `createRoot(el).render(<Inbox />)` - no `<Component for>`, no `Session.new()` in bootstrap. An entry owning nothing - a route table, a layout mount - is chrome, so an FC. Its last-resort `catch`/`fallback` go on the first Component it mounts, not on a class wrapping it:
+**The app entry is an FC** - pure composition, chrome like any shell owning nothing. Its last-resort boundary is `fallback`/`catch` on the top Component it mounts, not a class wrapping it:
 
 ```tsx
 export default function App() {
   return (
-    <BrowserRouter fallback={null}>
-      <Route as={Layout}>...</Route>
-    </BrowserRouter>
+    <Layout fallback={null}>
+      <Inbox />
+    </Layout>
   );
 }
 ```
 
 A `class App extends Component` whose only members are `fallback` and a `render()` returning that tree is a pass-through. Inspect reads the live tree, so it adds no introspection surface.
 
+The exception is an entry owning the construction graph - the replica and each headless region are its fields and provide implicitly, so it is a Component. `main` only mounts it: `createRoot(el).render(<Inbox />)` - no `<Component for>`, no `Session.new()` in bootstrap.
+
 The forms, by role:
 
 | Thing | Form |
 |---|---|
-| App / route entrypoint owning replica or regions | `Component` - owns construction, implicit provide |
-| App entry that only composes | FC - `catch`/`fallback` on the first Component it mounts |
+| App entry | FC - `catch`/`fallback` on the top Component it mounts |
+| App entry owning replica or regions | `Component` - owns construction, implicit provide |
 | Headless region (query, pool, policy) | `Model` field on that entrypoint |
 | Feature that paints | mounted `<Composer />` - never `new Composer()` on a parent |
 | Mount-only ancestor (scroll pin, focus trap) | `Component` without `render()` |
@@ -546,7 +548,7 @@ The checklist:
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
 - Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region controls, each rendered feature unplugging by one import? *(default)*
 - Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
-- Is the app/route entrypoint a Component only when it owns replica or regions as fields - `main` only mounting it, no bootstrap `<Component for>`? Otherwise an FC owning zero state, with last-resort `catch`/`fallback` on the first Component in the tree - fail a class holding only `fallback` around `<BrowserRouter>`. *(default)*
+- Is the app entry an FC owning zero state, with last-resort `catch`/`fallback` on the top Component it mounts - no class holding only `fallback` around the tree? A Component only when it owns replica or regions as fields, `main` only mounting it, no bootstrap `<Component for>`. *(default)*
 - Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, region controls held as fields? *(invariant)*
 - Does every Component without chrome omit `render()` - no `return this.props.children`? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
