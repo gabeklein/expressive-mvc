@@ -424,6 +424,8 @@ const { is: review, confirmed } = ReviewStep.get(); // root object + sibling val
 
 Default: a self-contained widget mounts unconditionally and gates itself - the parent writes `<UndoBar />`; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). A parent read existing only to gate belongs in the widget.
 
+This is for a widget the parent has no reason to mention. A piece split out of a Component's own `render()` (step 13) is the other way round: the parent writes `cond && <Slot />` and the slot paints unconditionally, never opening with `if (!cond) return`.
+
 Parent gate plus child `get(true)` is the secondary shape - right when the parent reads the field for its own content, or composition genuinely varies. Either way presence is a contract; the half-measure fails audit - `get()` plus an internal null-guard mid-snapshot:
 
 ```tsx
@@ -487,7 +489,7 @@ function Exceptions() {
 
 An early return skipping most of a declared snapshot signals the gated content wants its own component.
 
-A `render()` past ~50 lines usually stopped composing. Conditionals and ternaries are the cut points when the branch is a widget - deleted or moved as a unit, with its own moving parts. Then `cond && <Widget />` becomes a local FC that `.get()`s the parent and owns the gate; `a ? <Foo /> : <Bar />` picks its branch inside. A one-op stays in the parent: a single gated button or formatted scalar is lines in `render()`, not a component - the extra name makes deleting or moving the feature touch two places. Look for a gated chunk, independent siblings sharing no snapshot, or a replaceable slice (that one a subcomponent). Not a hard fail - a dense one-concern tree stays; a hop just to get under 50 is worse than reading the paint in place.
+A `render()` past ~50 lines usually stopped composing. Conditionals and ternaries are the cut points when the branch is a widget - deleted or moved as a unit, with its own moving parts. Then the branch becomes a local FC that `.get()`s the parent - the `cond &&` stays at the call site and the FC always paints; `a ? <Foo /> : <Bar />` may instead become one FC picking its branch inside; an FC whose first statement is a gate is not a unit. A one-op stays in the parent: a single gated button, empty-state copy or formatted scalar is lines in `render()`, not a component - the extra name makes deleting or moving the feature touch two places. Look for a gated chunk, independent siblings sharing no snapshot, or a replaceable slice (that one a subcomponent). Not a hard fail - a dense one-concern tree stays; a hop just to get under 50 is worse than reading the paint in place.
 
 A split needs a name meaningful without the parent (`UndoBar`, `AttachmentTray`). When the only honest name is parent plus "Body"/"Label" *and* the call site is children, it is not a concern. Two shapes stay valid even small: a child passed as a named slot prop (`label={<SenderBadge />}`, `detail`, `icon`) - the hop keeps the parent composing, not painting; and an early-return body whose branches *are* its job. A slot earns an FC only when it paints - `detail={String(unread || '')}` is a formatted scalar, inline.
 
@@ -541,7 +543,7 @@ The checklist:
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
 - Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
 - Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*
-- Is presence a contract - widget owns its gate and falls thru by default; parent gate + `.get(true)` where the parent reads the field for its own content; never `get()` plus an internal null-guard? *(invariant)*
+- Is presence a contract - a standalone widget owns its gate and falls thru by default; a split of `render()` is gated at the call site and always paints; parent gate + `.get(true)` where the parent reads the field for its own content; never `get()` plus an internal null-guard? *(invariant)*
 - Are Component subcomponents genuine extension points? *(invariant)*
 - Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
 - Are large JSX branches and ~50-line renders split at conditionals into honestly-named scopes - units that delete or move as one place, never one-op conditionals or formatted scalars? *(heuristic - name the cost)*

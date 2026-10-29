@@ -129,14 +129,6 @@ abstract class Toggle extends Component {
     this.active = !this.active;
   }
 
-  // Subclasses override to customize each state
-  Active(): ReactNode {
-    return null;
-  }
-  Inactive(): ReactNode {
-    return null;
-  }
-
   render() {
     return (
       <div onClick={this.toggle}>
@@ -144,13 +136,17 @@ abstract class Toggle extends Component {
       </div>
     );
   }
+
+  // Subclasses override to customize each state
+  protected abstract Active(): ReactNode;
+  protected abstract Inactive(): ReactNode;
 }
 
 class DarkModeSwitch extends Toggle {
-  Active() {
+  protected Active() {
     return <span>Dark</span>;
   }
-  Inactive() {
+  protected Inactive() {
     return <span>Light</span>;
   }
 }
@@ -158,10 +154,10 @@ class DarkModeSwitch extends Toggle {
 class Accordion extends Toggle {
   title = 'Details';
 
-  Inactive() {
+  protected Inactive() {
     return <h3>{this.title}</h3>;
   }
-  Active() {
+  protected Active() {
     return (
       <>
         <h3>{this.title}</h3>
@@ -364,7 +360,16 @@ class Dashboard extends Component {
   items = ['a', 'b', 'c'];
   title = 'My Dashboard';
 
-  Sidebar() {
+  render() {
+    return (
+      <div>
+        <this.Header />
+        <this.Sidebar />
+      </div>
+    );
+  }
+
+  protected Sidebar() {
     return (
       <ul>
         {this.items.map((i) => (
@@ -374,27 +379,18 @@ class Dashboard extends Component {
     );
   }
 
-  Header() {
+  protected Header() {
     return <h1>{this.title}</h1>;
-  }
-
-  render() {
-    return (
-      <div>
-        <this.Header />
-        <this.Sidebar />
-      </div>
-    );
   }
 }
 ```
 
 - Each usage subscribes to the parent and accepts props like any component.
-- Reachable from context: `Dashboard.get()` then `<dashboard.Sidebar />`.
-- **Overridable by subclasses.**
+- **Overridable by subclasses.** `protected` by default - a seam for subclasses, not a second public surface. Public only when an FC outside the class is meant to place `<dashboard.Sidebar />` from context.
+- Declared after `render()` - read the assembly, then the pieces it names.
 - Destructure what the body reads from `this` at the top, as in `render()`.
 
-Subcomponents are **extension points**, not a general decomposition tool. Test: **would a subclass reasonably replace or wrap this renderer?** If yes - `Toggle.Active`, a grid's `Row`, chrome a theme variant swaps - use a subcomponent. If no, it is an implementation scope: a freestanding FC calling `Dashboard.get()`, keeping dependencies local without the override machinery. Decomposing a busy `render()` into those costs nothing:
+Subcomponents are **extension points**, not a general decomposition tool. Test: **would a subclass reasonably replace or wrap this renderer?** Yes for the element or row a variant swaps - `Toggle.Active`, a grid's `Row`, a combobox's `Input`, `Option` or `Empty`. No for layout that only places those slots - a styled `div` holding `<this.Input />` and a clear button is assembly, and stays in `render()`; a subclass changes assembly by overriding `render()`. A wrapper taking `children` is a slot only when the wrapper itself is the swap - a listbox that is a popover in one variant and a portal in another - not for every grouping `div`. If no, it is an implementation scope: a freestanding FC calling `Dashboard.get()`, keeping dependencies local without the override machinery. Decomposing a busy `render()` into those costs nothing. Either way, presence stays at the call site - `{open && <this.Menu>…</this.Menu>}`, `{selected && <this.Value />}` - and the slot always paints:
 
 ```tsx
 function SidebarItems() {
