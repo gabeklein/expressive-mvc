@@ -174,42 +174,15 @@ function SettingsEditor() {
 
 Declare gateable fields **optional** (`draft?: SettingsLocation`), not nullable (`draft: SettingsLocation | null`). The runtime check rejects only strict `undefined`, and `Required<T>` removes `?` but does not strip `null` from a union - a nullable field silently defeats `get(true)` on both fronts.
 
-### Computed selector
+### Derived values and effects
 
-Pass a factory to derive a value. Reruns when deps change; re-renders only on a new result:
-
-```tsx
-const name = AppState.get(($) => $.user.name);
-```
-
-Factory receives `(current, refresh)`:
-
-- `current` - tracking proxy (reads create subscriptions)
-- `refresh` - `ForceRefresh` function (below)
-
-The return value is the hook's result; `undefined`/`void` becomes `null`.
-
-### Effect (no re-render)
-
-Return `null` to run a side effect without subscribing:
+`Model.get` takes no function. Derive from the snapshot in render, or declare a getter on the Model ([../state/computed.md](../state/computed.md)); side effects belong in `mount()` or an instance effect (`state.get(effect)`).
 
 ```tsx
-AppState.get(($) => {
-  console.log($.user);
-  return null;
-});
-```
-
-### ForceRefresh
-
-```tsx
-const data = AppState.get(($, refresh) => {
-  // refresh() - force re-render now
-  // refresh(promise) - re-render now and again after promise settles
-  // refresh(asyncFn) - re-render before and after async function
-  const reload = () => refresh(fetch('/api/data'));
-  return { user: $.user, reload };
-});
+function Greeting() {
+  const { user: { name } } = AppState.get();
+  return <p>Hello, {name.toUpperCase()}</p>;
+}
 ```
 
 ### Reactive context
