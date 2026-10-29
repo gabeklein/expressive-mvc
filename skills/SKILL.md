@@ -36,7 +36,7 @@ The most common failure when adopting this library is translating hooks one-for-
 
 For every stateful concern, pick exactly one owner:
 
-- **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region control fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
+- **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one when it owns construction (replica + region control fields) - they provide implicitly and `main` just mounts it. An entry that only composes is an FC; last-resort `catch`/`fallback` go on the first Component it mounts (`<BrowserRouter fallback={null}>`).
 - **`Model`** - headless domain model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()`; an owning Component holds it as a field. Two roles: a *domain model* (`Cart`, `Message`, a pool row) outlives any one placement; a *control* (`Control`, `<Feature>Control` in apps) is constructed where a page, region or route places it, holds domain models as fields, and translates gestures into operations on them. Name a class for what it holds - `<Thing>State` and `<Feature>Control` are both fine, case by case.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 

@@ -23,7 +23,7 @@ import { Route, Link, NavLinks, Redirect, Router, BrowserRouter } from '@express
 - **`Route`** - a `Component` that matches part of the URL and renders a page. Routes nest to mirror the URL hierarchy. Each `Route` is a scoped facade over the active `Router` (`path`, `match`, `query`, `goto`, `resolve`).
 - **`Link` / `NavLinks` / `Redirect`** - navigation UI built on `Route`. They resolve against the nearest `Route` and throw outside one - render shared navigation inside a layout (`<Route as={Frame}>`), not beside Routes under the `Router`.
 
-A `<Route>` with no ancestor `Router` in context spins up a headless `Router`. For a browser app, provide a `BrowserRouter` so navigation reflects the address bar.
+A `<Route>` with no ancestor `Router` in context spins up a headless `Router`. For a browser app, provide a `BrowserRouter` so navigation reflects the address bar. Both are Components - `fallback`/`catch` on them are the app-level boundary, so an entry that is only a route table stays an FC: `<BrowserRouter fallback={null} catch={…}>`.
 
 ## Declaring routes
 
