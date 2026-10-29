@@ -941,7 +941,7 @@ describe('get method', () => {
       expect(lengths).toEqual([2, 2]);
     });
 
-    it('will require values through a tracking origin', () => {
+    it('will not require values through a tracking origin', () => {
       class Baz extends Model {
         value?: string = undefined;
       }
@@ -952,12 +952,10 @@ describe('get method', () => {
       new Context({ baz, foo });
 
       expect(() => foo.get((self) => void self.get(Baz).value)).not.toThrow();
-      expect(() => foo.get((self) => void self.get(Baz, true).value)).toThrow(
-        /\.value is required in this context\./
-      );
+      expect(() => foo.get((self) => void self.get(Baz, true).value)).not.toThrow();
     });
 
-    it('will keep get(true) strict through an override delegating to super', () => {
+    it('will pass get(true) through an override delegating to super', () => {
       class Keyed extends Model {
         id = 0;
         value?: string = undefined;
@@ -978,10 +976,7 @@ describe('get method', () => {
       new Context({ keyed, foo });
 
       expect(within(foo, () => Keyed.get(true))).toBe(keyed);
-      expect(() => foo.get((self) => void self.get(Keyed).value)).not.toThrow();
-      expect(() => foo.get((self) => void self.get(Keyed, true).value)).toThrow(
-        /\.value is required in this context\./
-      );
+      expect(() => foo.get((self) => void self.get(Keyed, true).value)).not.toThrow();
     });
 
     it('will resolve upstream of origin', () => {
