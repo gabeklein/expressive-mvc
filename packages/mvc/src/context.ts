@@ -28,7 +28,7 @@ class Context {
     return ROOT ??= new Context();
   }
 
-  /** Current context - innermost set by `state.get(Type)` or the `get` instruction, otherwise as {@link Context.resolve} returns it. */
+  /** Current context - innermost set by `state.get(Type)` or the `get` instruction, otherwise as the host's {@link resolver} returns it. */
   static get(): Context;
 
   /** Get the context a Model was added to - root if none. */
@@ -38,7 +38,7 @@ class Context {
    * Resolve a static `get` of `Type` by running `compute` against the current
    * context. Inside `state.get(Type)` or the `get` instruction, `from` is that
    * Model and a returned Model is tracked through it; otherwise
-   * {@link Context.resolve} decides.
+   * the host's {@link resolver} decides.
    *
    * @param Type - Class `get` was called on.
    * @param compute - Resolves the value from a context.
@@ -56,24 +56,13 @@ class Context {
 
     const [context, from] = STACK[STACK.length - 1] || [];
 
-    if (!context) return Context.resolve(arg, compute);
+    if (!context) return current(arg, compute);
     if (!from) return compute(context);
 
     const view = arg ? touch(from, CONTEXT, context) : context;
 
     return observed(from, arg, compute(view, from.is));
   }
-
-  /**
-   * Run `compute` for a `Context.get` outside any origin - `Type` is undefined
-   * for bare `Context.get()`. Returns the value the caller receives, so a host
-   * may track or wrap what `compute` returns. Hosts assign their own, calling
-   * the previous one when not rendering.
-   */
-  static resolve: (
-    Type: Model.Extends | undefined,
-    compute: (context: Context) => unknown,
-  ) => unknown = (_Type, compute) => compute(Context.root);
 
   public id = uid();
   public parent?: Context;
@@ -343,6 +332,25 @@ function emit(ctx: Context, T: Model.Extends) {
   if (Object.getOwnPropertyDescriptor(ctx, Observer)) signal(ctx, T as any);
 }
 
+type Resolve = (
+  Type: Model.Extends | undefined,
+  compute: (context: Context) => unknown,
+) => unknown;
+
+let current: Resolve = (_Type, compute) => compute(Context.root);
+
+/**
+ * Install how a host runs `compute` for a `Context.get` outside any origin -
+ * `Type` is undefined for bare `Context.get()`. Its return value is what the
+ * caller receives, so a host may track or wrap it. Returns the previous
+ * resolver, for the host to call where it is not rendering.
+ */
+function resolver(next: Resolve): Resolve {
+  const previous = current;
+  current = next;
+  return previous;
+}
+
 /**
  * Run `fn` with `target` as current context - for a Model, its context, with
  * the Model as origin of any `get` resolved within. Nests.
@@ -438,4 +446,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, host, join, within };
+export { Context, host, join, resolver, within };

@@ -1,5 +1,6 @@
 import { Context, Model, unbind } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
+import { resolver } from '@expressive/mvc/jsx-runtime';
 
 import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';
@@ -68,15 +69,13 @@ declare module '@expressive/mvc' {
   }
 }
 
-const normal = Context.resolve;
-
-Context.resolve = (Type, compute) => {
+const normal = resolver((Type, compute) => {
   if (!current) return normal(Type, compute);
 
   const found = compute(Type ? cache(current.context) : current.context);
 
   return found instanceof Model ? cache(found) : found;
-};
+});
 
 function cache<T extends object>(target: T): T {
   let proxy = memo!.get(target);

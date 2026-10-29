@@ -219,7 +219,7 @@ Context.get(Type, compute): R                // resolve a static get - see get.m
 
 ### Writing a host
 
-A host assigns `Context.resolve(Type, compute)`, which runs for every `Context.get` outside an origin - `Type` is undefined for bare `Context.get()`. It keeps the previous function and calls it where the host is not rendering; installs stack. Its return value is what the caller receives. In render the host runs `compute` against a tracked view of its own context, so a provider any lookup in `compute` reads arriving, replaced or leaving renders again, and tracks a returned Model, one subscription per instance per render; base `get(true)` makes that tracked result strict.
+A host installs `resolver((Type, compute) => ...)` from `@expressive/mvc/jsx-runtime`, which runs for every `Context.get` outside an origin - `Type` is undefined for bare `Context.get()`. `resolver` returns the previous one; the host calls it where it is not rendering, so installs stack. Its return value is what the caller receives. In render the host runs `compute` against a tracked view of its own context, so a provider any lookup in `compute` reads arriving, replaced or leaving renders again, and tracks a returned Model, one subscription per instance per render; base `get(true)` makes that tracked result strict.
 
 ## API Surface
 

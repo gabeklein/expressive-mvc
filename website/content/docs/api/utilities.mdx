@@ -323,7 +323,7 @@ Context.root;                         // global registry
 - `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
 - `state.get(Type, ...args)` and the `get` instruction resolve `Type.get` from `state`'s home context with `state` as origin, tracked through `state` when it is a tracking proxy.
-- Hosts assign `Context.resolve(Type, compute)` to supply render context; its return value is what the caller receives. It is not consulted under an origin. Both hosts return the render's context for bare `Context.get()` in a render, and root elsewhere.
+- Hosts install `resolver((Type, compute) => ...)` from `@expressive/mvc/jsx-runtime` to supply render context; its return value is what the caller receives. It is not consulted under an origin. Both hosts return the render's context for bare `Context.get()` in a render, and root elsewhere.
 
 ### Home context
 

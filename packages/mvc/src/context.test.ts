@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, expectTypeOf, onTestFinished } from 'vitest';
-import { Context, within } from './context';
+import { Context, resolver, within } from './context';
 import { Model } from './state';
 import { get } from './field/get';
 import { has } from './field/has';
@@ -593,15 +593,14 @@ describe('within', () => {
   });
 });
 
-describe('static resolve', () => {
+describe('resolver', () => {
   class Test extends Model {}
 
-  function assign(resolve: typeof Context.resolve) {
-    const previous = Context.resolve;
+  function assign(next: Parameters<typeof resolver>[0]) {
+    const previous = resolver(next);
 
-    Context.resolve = resolve;
     onTestFinished(() => {
-      Context.resolve = previous;
+      resolver(previous);
     });
   }
 

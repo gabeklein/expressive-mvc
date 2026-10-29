@@ -1,11 +1,10 @@
 import { Model, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
+import { resolver } from '@expressive/mvc/jsx-runtime';
 import { useAmbient } from './context';
 import { Runtime, useFactory, useSettle, useSetup, useWeak } from './runtime';
 
-const normal = Context.resolve;
-
-Context.resolve = (Type, compute) => {
+const normal = resolver((Type, compute) => {
   const idle = Runtime.idle();
 
   if (idle) return normal(Type, compute);
@@ -21,7 +20,7 @@ Context.resolve = (Type, compute) => {
   else ambient = useAmbient();
 
   return Type ? use(ambient, compute) : compute(ambient);
-};
+});
 
 function use(local: Context, compute: (context: Context) => unknown) {
   const [tick, next] = Runtime.useState(0);
