@@ -1,6 +1,6 @@
 # Inspect
 
-`@expressive/inspect` - in-process inspector over live instances: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
+`@expressive/inspect` - in-process inspector over live instances: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)) or a handler your server mounts ([Server](#server)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
 
 ## Install
 
@@ -263,7 +263,7 @@ curl localhost:5173/__inspect -d '["journal.frames", { "since": 3 }]'   # the on
 - Body `[method, ...args]`, method dotted from the console API (`get`, `set`, `call`, `models`, `tree`, `journal.record`, ...). Response is the JSON result.
 - No id with several pages connected: 409 plus the page list - never guesses.
 - Ids are per page load; a reload issues new ones, closed pages drop out.
-- 404 unknown page, 500 the page threw (`{ error }`), 504 no answer within 10s.
+- 404 unknown page or method, 500 the page threw (`{ error }`), 504 no answer within 10s.
 - Local callers only: 403 for a request carrying `Origin`/`Sec-Fetch-Site` (a web page) or a proxy header (`Forwarded`, `X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`). Behind a tunnel, pages still connect; only `curl` on the dev machine reaches the relay. A proxy that strips these headers bypasses the guard - securing an exposed dev server is on its owner.
 - Dev server in a container or VM: the host's request arrives from a gateway address and gets 403. Run the request inside it (`docker exec <container> curl localhost:5173/__inspect`), or forward the port over SSH (`ssh -L`) or a devcontainer - those arrive as loopback.
 - No HTML (`appType: 'custom'`): `import 'virtual:expressive-inspect'` first in the entry.
@@ -286,6 +286,30 @@ What to reach for, in order:
 3. **Force a state** - `set("Type.key", value)` bypasses the instance's methods; for setting up a repro, sparingly.
 
 The relay reaches only the inspector's own members - no `eval`, no property walks beyond them. Arbitrary JS belongs to a driver's `evaluate`, granted by whoever runs the harness.
+
+## Server
+
+`handler(req, { ip })` from the root entry serves an installed inspector over HTTP from a backend's own server - Bun, Deno, Workers, Hono, Next route handlers. Web-standard `Request` in, `Response` out; mount it at `/__inspect`. Keep the inspector a devDependency and load it inside the server's dev gate - a static import crashes boot when dev dependencies are omitted:
+
+```ts
+if (pathname == '/__inspect') {
+  if (!dev) return new Response('Not found', { status: 404 });
+  const { handler } = await import('@expressive/inspect');
+  return handler(req, { ip: server.requestIP(req)?.address });
+}
+```
+
+- `install` still precedes any Model in the process ([Install](#install)).
+- A static `import { handler } from '@expressive/inspect'` works only with the package a runtime dependency.
+- Bundled deploys (Workers) resolve the dynamic import at build time - the package must be installed when building.
+- `ip` is the socket's remote address, required - missing or not loopback gets 403, as do the [Vite](#vite) relay's browser and proxy headers. Behind a tunnel (cloudflared) requests arrive from `127.0.0.1` but carry `CF-Connecting-IP`, so they are refused.
+- Inert until `install` runs: 404.
+- `GET` answers `{ process: true, pid, runtime, title }` - tells a backend from the Vite page list when probing ports.
+- `POST` takes the relay's body and answers: `[method, ...args]`, `act` included; 400 bad body, 404 unknown method, 500 `{ error }`, 200 the value.
+
+```bash
+curl localhost:8787/__inspect -d '["tree"]'
+```
 
 ## Node process, or a browser with a debug port
 

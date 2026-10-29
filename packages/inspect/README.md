@@ -10,7 +10,7 @@
 
 ---
 
-Query the live instance graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay - a base layer for agents, devtools, and test helpers.
+Query the live instance graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay or server handler - a base layer for agents, devtools, and test helpers.
 
 ```bash
 npm install --save-dev @expressive/inspect
@@ -65,6 +65,20 @@ curl localhost:5173/__inspect/<id> -d '["act", ["call", "Composer.submit", "hi"]
 ```
 
 Local callers only; browser and proxied (tunnel) requests are refused.
+
+## From your own server
+
+`handler` serves an installed inspector from a backend (Bun, Deno, Workers, Hono, Next route handlers) - same body and answers as the relay; `GET` describes the process. Load it inside your dev gate, so the package can stay a devDependency:
+
+```ts
+if (pathname == '/__inspect') {
+  if (!dev) return new Response('Not found', { status: 404 });
+  const { handler } = await import('@expressive/inspect');
+  return handler(req, { ip: server.requestIP(req)?.address });
+}
+```
+
+A static import works only with the package as a runtime dependency. Bundled deploys (Workers) resolve the dynamic import at build time, so the package must be installed when building. `ip` is required: missing or non-loopback callers get 403, as do browser and proxied requests. Until `install` runs, it answers 404.
 
 Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__.journal.record({ level: 'keys', paths: ['Composer.draft'] })`.
 
