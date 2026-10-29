@@ -176,7 +176,7 @@ Declare gateable fields **optional** (`draft?: SettingsLocation`), not nullable 
 
 ### Derived values and effects
 
-`Model.get` takes no function. Derive from the snapshot in render, or declare a getter on the Model ([../state/computed.md](../state/computed.md)); side effects belong in `mount()` or an instance effect (`state.get(effect)`).
+Derive from the snapshot in render, or declare a getter on the Model ([../state/computed.md](../state/computed.md)); side effects belong in `mount()` or an instance effect (`state.get(effect)`).
 
 ```tsx
 function Greeting() {
