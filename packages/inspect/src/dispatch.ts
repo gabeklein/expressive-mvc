@@ -10,18 +10,19 @@ export function dispatch(first: unknown, second?: unknown) {
       "@expressive/inspect is not attached in this page - make '@expressive/inspect/install' the first import of the app entry."
     );
 
+  const missing = () => Object.assign(new Error(`No inspector method ${call[0].join('.')}.`), { status: 404 });
+
   let target: unknown = api;
   let owner: unknown;
 
   for (const key of call[0]) {
-    if (!Object.prototype.hasOwnProperty.call(target, key))
-      throw new Error(`No inspector method ${call[0].join('.')}.`);
+    if (!Object.prototype.hasOwnProperty.call(target, key)) throw missing();
 
     owner = target;
     target = (target as Record<string, unknown>)[key];
   }
 
-  if (typeof target != 'function') throw new Error(`No inspector method ${call[0].join('.')}.`);
+  if (typeof target != 'function') throw missing();
 
   return target.apply(owner, call[1]);
 }

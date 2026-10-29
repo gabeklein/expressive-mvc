@@ -170,6 +170,7 @@ describe('relay', () => {
   it.each([
     ['404 with no pages connected', undefined, '/', 404, { error: 'No pages connected.', pages: [] }],
     ['404 an unknown id', () => ({ value: { id: 'a' } }), '/zz', 404, { error: 'No page zz.', pages: [{ id: 'a' }] }],
+    ['404 an unknown method', () => ({ error: 'No inspector method x.', status: 404 }), '/a', 404, { error: 'No inspector method x.' }],
     ['500 with the page error', () => ({ error: 'No method at X.y.' }), '/a', 500, { error: 'No method at X.y.' }]
   ])('will %s', async (_, respond, path, status, body) => {
     if (respond) page('a', respond);
