@@ -22,7 +22,7 @@ interface AppearanceContext {
   ): ResolvedAppearance | undefined;
 }
 
-type EnterAppearance = (parent?: AppearanceContext) => AppearanceContext;
+type EnterAppearance = (parent?: AppearanceContext, key?: string) => AppearanceContext | undefined;
 type Emit = (block: Block, depth: number, document: Document) => string;
 
 const registrations = new WeakMap<object, EnterAppearance>();
@@ -57,7 +57,7 @@ function appearanceSealed() {
   return rendered;
 }
 
-function enterAppearance(parent: AppearanceContext | undefined, type: Function) {
+function enterAppearance(parent: AppearanceContext | undefined, type: Function, key?: string) {
   const chain: EnterAppearance[] = [];
   let current: object | null = type;
 
@@ -67,7 +67,7 @@ function enterAppearance(parent: AppearanceContext | undefined, type: Function) 
     current = Object.getPrototypeOf(current);
   }
 
-  for (const enter of chain) parent = enter(parent);
+  for (const enter of chain) parent = enter(parent, key);
   return parent;
 }
 
