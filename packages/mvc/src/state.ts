@@ -1,6 +1,5 @@
 import { Context, host, join, within } from './context';
 import { REPORT } from './dispatch';
-import { strict } from './observing';
 import {
   capture,
   event,
@@ -571,21 +570,14 @@ abstract class Model {
   /** Fetch instance of this class from context. Undefined if not found. */
   static get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
 
-  /** Fetch instance of this class from context, suspending until its values are set. */
-  static get<T extends Model>(this: Model.Extends<T>, required: true): Required<T>;
-
-  static get(this: Model.Extends, required?: boolean): any {
-    let origin: Model | undefined;
-
-    const result = Context.get(this, (context, from) => {
-      const found = context.get(this, required !== false, undefined, origin = from);
+  static get(this: Model.Extends, required?: false): any {
+    return Context.get(this, (context, from) => {
+      const found = context.get(this, required !== false, undefined, from);
 
       if (found || required === false) return found || undefined;
 
       throw new Error(`Could not find ${this} in context.`);
     });
-
-    return required && !origin ? strict(result) : result;
   }
 
   /**

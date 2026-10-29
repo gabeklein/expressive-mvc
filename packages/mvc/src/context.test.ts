@@ -471,7 +471,7 @@ describe('static get', () => {
   it('will not accept a third argument', () => {
     const compute = vi.fn(() => 'value');
 
-    // @ts-expect-error - strictness applies after Context.get
+    // @ts-expect-error
     expect(Context.get(Test, compute, true)).toBe('value');
   });
 

@@ -7,6 +7,7 @@ import * as Refresh from 'react-refresh/runtime';
 import {
   vi,
   expect,
+  expectTypeOf,
   it,
   describe,
   beforeEach,
@@ -79,8 +80,8 @@ describe('Model.get', () => {
 
   it('will resolve an override outside render', () => {
     class Item extends Model {
-      static get<T extends Item>(this: Model.Extends<T>, id?: number | boolean): T {
-        if (typeof id != 'number') return super.get(id as never) as T;
+      static get<T extends Item>(this: Model.Extends<T>, id?: number | false): T {
+        if (typeof id != 'number') return super.get(id as false) as T;
 
         return Context.get(this, () => Object.assign((this as Model.Type<T>).new(), { id }));
       }
@@ -211,27 +212,7 @@ describe('Model.get', () => {
     expectTypeOf(Test.get).toBeCallableWith(true);
   });
 
-  it('will throw if expected value undefined through an override delegating to super', () => {
-    class Test extends Model {
-      id = 0;
-      value?: number = undefined;
-
-      static get<T extends Test>(this: Model.Extends<T>, id?: T['id'] | boolean): T {
-        if (typeof id != 'number') return super.get(id as never) as T;
-
-        return Context.get(this, (context) => context.get(this));
-      }
-    }
-
-    renderWith(Test, () => {
-      expect(Test.get(false)?.value).toBeUndefined();
-      expect(() => {
-        void Test.get(true).value;
-      }).toThrow(/[\w-]+\.value is required in this context\./);
-    });
-  });
-
-  it('will render once per change for plain and strict reads', async () => {
+  it('will render once per change for repeated reads', async () => {
     class Test extends Model {
       value = 1;
     }
@@ -242,8 +223,8 @@ describe('Model.get', () => {
     function View() {
       didRender();
       const { value } = Test.get();
-      const strict = Test.get(true);
-      return <>{value}:{strict.value}</>;
+      const again = Test.get();
+      return <>{value}:{again.value}</>;
     }
 
     const view = render(<Component for={test}><View /></Component>);
@@ -452,8 +433,8 @@ describe('Model.get', () => {
       class Row extends Model {
         label = '';
 
-        static get<T extends Row>(this: Model.Extends<T>, key?: string | boolean): T {
-          if (typeof key != 'string') return super.get(key as never) as T;
+        static get<T extends Row>(this: Model.Extends<T>, key?: string | false): T {
+          if (typeof key != 'string') return super.get(key as false) as T;
 
           return Context.get(this, (context) => context.get(Connection).reference(this, key));
         }

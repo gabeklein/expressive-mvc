@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { Model, Component, Context } from '@expressive/mvc';
 import { render } from '../index';
@@ -158,7 +158,7 @@ describe('MVC adapter', () => {
     const proxies: Source[] = [];
 
     function View() {
-      proxies.push(Source.get(), Source.get(), Source.get(true));
+      proxies.push(Source.get(), Source.get());
       return null;
     }
 
@@ -168,18 +168,17 @@ describe('MVC adapter', () => {
       document.createElement('main')
     );
 
-    const [first, second, required] = proxies;
+    const [first, second] = proxies;
 
     expect(first).toBe(second);
     expect(first).not.toBe(source);
-    expect(required).not.toBe(first);
-    expect(required.is).toBe(source);
+    expect(first.is).toBe(source);
 
     release();
     source.set(null);
   });
 
-  it('will share one subscription between plain and strict reads', async () => {
+  it('will share one subscription between repeated reads', async () => {
     class Source extends Model {
       value = 1;
     }
@@ -192,9 +191,9 @@ describe('MVC adapter', () => {
       const { listeners } = observer(source)!;
       const { value } = Source.get();
       const before = listeners.size;
-      const strict = Source.get(true);
+      const again = Source.get();
       added.push(listeners.size - before);
-      return <span>{value}:{strict.value}</span>;
+      return <span>{value}:{again.value}</span>;
     }
 
     const source = Source.new();
@@ -209,32 +208,6 @@ describe('MVC adapter', () => {
     expect(added).toEqual([0, 0]);
 
     release();
-    source.set(null);
-  });
-
-  it('will keep get(true) strict through an override delegating to super', () => {
-    class Source extends Model {
-      id = 0;
-      pending?: string = undefined;
-
-      static get<T extends Source>(this: Model.Extends<T>, id?: T['id'] | boolean): T {
-        if (typeof id != 'number') return super.get(id as never) as T;
-
-        return Context.get(this, (context) => context.get(this));
-      }
-    }
-
-    function View() {
-      return <span>{Source.get(true).pending}</span>;
-    }
-
-    const source = Source.new();
-
-    expect(() => render(
-      <Component for={source}><View /></Component>,
-      document.createElement('main')
-    )).toThrow(/\.pending is required in this context\./);
-
     source.set(null);
   });
 
@@ -367,8 +340,8 @@ describe('MVC adapter', () => {
     class Row extends Model {
       label = '';
 
-      static get<T extends Row>(this: Model.Extends<T>, key?: string | boolean): T {
-        if (typeof key != 'string') return super.get(key as never) as T;
+      static get<T extends Row>(this: Model.Extends<T>, key?: string | false): T {
+        if (typeof key != 'string') return super.get(key as false) as T;
 
         return Context.get(this, (context) => context.get(Connection).reference(this, key));
       }

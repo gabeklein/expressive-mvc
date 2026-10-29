@@ -896,7 +896,6 @@ describe('get method', () => {
 
       expect(Bar.get()).toBe(bar);
       expect(Bar.get(false)).toBe(bar);
-      expect(Bar.get(true)).toBe(bar);
 
       bar.set(null);
     });
@@ -907,6 +906,11 @@ describe('get method', () => {
 
     it('will return undefined if optional', () => {
       expect(Foo.get(false)).toBeUndefined();
+    });
+
+    it('will not accept true', () => {
+      // @ts-expect-error
+      expectTypeOf(Foo.get).toBeCallableWith(true);
     });
 
     it('will not resolve an ambiguous lookup', () => {
@@ -932,7 +936,7 @@ describe('get method', () => {
       const spy = vi.spyOn(Context, 'get');
 
       Foo.get(false);
-      expect(() => Foo.get(true)).toThrow('Could not find Foo in context.');
+      expect(() => Foo.get()).toThrow('Could not find Foo in context.');
 
       const lengths = spy.mock.calls.map((call) => call.length);
 
@@ -941,27 +945,12 @@ describe('get method', () => {
       expect(lengths).toEqual([2, 2]);
     });
 
-    it('will not require values through a tracking origin', () => {
-      class Baz extends Model {
-        value?: string = undefined;
-      }
-
-      const baz = Baz.new();
-      const foo = Foo.new();
-
-      new Context({ baz, foo });
-
-      expect(() => foo.get((self) => void self.get(Baz).value)).not.toThrow();
-      expect(() => foo.get((self) => void self.get(Baz, true).value)).not.toThrow();
-    });
-
-    it('will pass get(true) through an override delegating to super', () => {
+    it('will pass base forms through an override delegating to super', () => {
       class Keyed extends Model {
         id = 0;
-        value?: string = undefined;
 
-        static get<T extends Keyed>(this: Model.Extends<T>, arg?: T['id'] | boolean): T {
-          if (typeof arg != 'number') return super.get(arg as never) as T;
+        static get<T extends Keyed>(this: Model.Extends<T>, arg?: T['id'] | false): T {
+          if (typeof arg != 'number') return super.get(arg as false) as T;
 
           return Context.get(this, (context) => {
             const found = context.get(this);
@@ -975,8 +964,9 @@ describe('get method', () => {
 
       new Context({ keyed, foo });
 
-      expect(within(foo, () => Keyed.get(true))).toBe(keyed);
-      expect(() => foo.get((self) => void self.get(Keyed, true).value)).not.toThrow();
+      expect(within(foo, () => Keyed.get())).toBe(keyed);
+      expect(within(foo, () => Keyed.get(5))).toBe(keyed);
+      expect(Keyed.get(false)).toBeUndefined();
     });
 
     it('will resolve upstream of origin', () => {
