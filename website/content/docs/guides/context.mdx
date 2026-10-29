@@ -151,13 +151,19 @@ function ThemeToggle() {
 const theme = Theme.get(false); // Theme | undefined
 ```
 
-### Required values
+### Values that may be unset
+
+Destructure the field and render conditionally. Inside the branch the value is narrowed, so hand it to the child as a prop:
 
 ```tsx
-const profile = UserProfile.get(true); // Required<UserProfile>
-```
+function SettingsPanel() {
+  const { draft } = Settings.get();
 
-With `true`, reading a property that is currently `undefined` throws an Error (`UserProfile-XXXXXX.name is required in this context.`). That surfaces at the nearest **error boundary** - not Suspense - so use it where a missing value would be a bug, not a loading state.
+  if (draft) return <Editor draft={draft} />;
+
+  return <Spinner />;
+}
+```
 
 ### Deriving values
 

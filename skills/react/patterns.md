@@ -409,7 +409,7 @@ Pure presentation components (a `Metric`, a badge) may still take plain props - 
 
 ## Presence Boundary
 
-The parent owns whether an optional child exists; the child asserts its requirements with `.get(true)` - `SettingsContent` / `SettingsEditor` in [react.md](react.md#required-values--presence-boundaries). Declare the gated field optional (`draft?: T`), not `| null`:
+The parent owns whether an optional child exists - it destructures the gated field, renders conditionally, and passes the narrowed value as a prop: `SettingsContent` / `SettingsEditor` in [react.md](react.md#presence-boundaries).
 
 ```tsx
 class SettingsState extends Model {
