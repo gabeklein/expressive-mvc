@@ -1,5 +1,39 @@
 # @expressive/mvc
 
+## 0.91.0
+
+### Minor Changes
+
+- [#554](https://github.com/gabeklein/expressive-mvc/pull/554) [`5e6689c`](https://github.com/gabeklein/expressive-mvc/commit/5e6689c8c18ec34323fccd881552e76b4354d11e) An `is` callback's returned object is assigned to the instance, once, before `new()` - a seed, where props reassign every render: `<Counter is={() => ({ count: start })} />`. The same holds for `<Component for={Type} is>`.
+
+  **Breaking (types):** `is` is typed `(instance) => Model.Assign<T> | void`. A concise arrow capturing the instance returns it and no longer type-checks - discard the result with `void` or braces:
+
+  ```tsx
+  <Counter is={(c) => void (counter = c)} />
+  ```
+
+  **Fix:** a constructor callback returning anything other than a plain object - the instance itself, a `Map` - is no longer assigned. `Model.new((self) => (held = self))` threw on read-only fields such as `map()`.
+
+- [#558](https://github.com/gabeklein/expressive-mvc/pull/558) [`a55605b`](https://github.com/gabeklein/expressive-mvc/commit/a55605b2439078b2694abc2ac9361ca30fa2e119) **Breaking:** the deprecated `State` alias of `Model` is removed.
+
+- [#562](https://github.com/gabeklein/expressive-mvc/pull/562) [`aeb0787`](https://github.com/gabeklein/expressive-mvc/commit/aeb07871c5cfe30df9fd945f6c5f2c2832d94168) Context lookups are observable.
+
+  - A tracked lookup re-runs when a change can alter its result - a closer provider arriving, the found one removed - and not for providers above the one found, other types or siblings.
+  - `this.get(Type)` inside an effect or render now refreshes when its provider changes. A required lookup whose provider is removed throws.
+  - dom: `Model.get` follows a provider replaced by a field assignment, arriving after mount or removed.
+  - react: `Model.get` follows a provider arriving after mount, including an optional `Model.get(false)` that first found nothing, and one removed.
+  - dom and react: once its instance leaves context, `Model.get(false)` returns `undefined` and a required `Model.get()` throws `Could not find`. Unmount consumers before destroying their provider.
+
+- [#560](https://github.com/gabeklein/expressive-mvc/pull/560) [`f5fc45a`](https://github.com/gabeklein/expressive-mvc/commit/f5fc45ae6105876438b3c17a87f1da2546fe0d63) Renderable classes declare themselves to the core as they load - `Component`, `has` lists and pools, and `map` collections - and a host seams every declared class through `elements`, exported from `@expressive/mvc/jsx-runtime`, with one element seam. Each promises the same protocol: `is` names the instance behind a derived view and `render()` returns what to show; the collections gain both members. The React adapter no longer imports `has` or `map` to patch them, so collection code ships only in apps that import a collection: `Model` only 12.1 → 10.4 kB, a typical app 12.9 → 11.3 kB, an app using collections 12.1 kB. Declarations made before the host loaded are replayed, so import order does not matter.
+
+### Patch Changes
+
+- [#561](https://github.com/gabeklein/expressive-mvc/pull/561) [`2bef0ed`](https://github.com/gabeklein/expressive-mvc/commit/2bef0ed387aa4060725644a90d1def7221117810) Context provision follows ownership.
+
+  - A Model's own lookups (`get` fields, `this.get(Type)`) start from its ownership chain, not from wherever it was first provided.
+  - `has` and `map` rows register with their owner like any owned child, held until the owner joins a context - they no longer land at root.
+  - `<Component for>` provides its target explicitly at its own level unless an explicit provider above already holds it. An instance that was already provided above - by a field referencing it - no longer disappears from below the provider when that field is cleared.
+
 ## 0.90.0
 
 ### Minor Changes
