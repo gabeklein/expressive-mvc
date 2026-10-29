@@ -575,17 +575,14 @@ abstract class Model {
   static get<T extends Model>(this: Model.Extends<T>, required: true): Required<T>;
 
   static get(this: Model.Extends, required?: boolean): any {
-    let origin: Model | undefined;
-
     const result = Context.get(this, (context, from) => {
-      const found = context.get(this, required !== false, undefined, origin = from);
+      const found = context.get(this, required !== false, undefined, from);
 
       if (found || required === false) return found || undefined;
 
       throw new Error(`Could not find ${this} in context.`);
     });
-
-    return required && !origin ? strict(result) : result;
+    return required ? strict(result) : result;
   }
 
   /**

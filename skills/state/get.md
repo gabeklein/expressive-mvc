@@ -120,7 +120,7 @@ get<C extends Model.Extends>(type: C, key, ...rest): instance of C // forwarded 
 
 Calls `Type.get(...args)` with this instance as origin: the lookup searches this instance's context, skipping itself, and a tracking proxy subscribes to the result. Missing throws `"Could not find {Type} in context."`; pass `false` to get `undefined` instead. A class overriding static `get` receives its own arguments ([Static get](#static-get)).
 
-Through a tracking proxy (effect, `render()`) the lookup follows the context it ran in - a closer provider arriving or the found one leaving re-runs it; placing the instance into a context later does not. A required lookup whose provider leaves throws: destroy consumers before providers, or pass `false`.
+Through a tracking proxy (effect, `render()`) the lookup follows the context it ran in - a closer provider arriving or the found one leaving re-runs it; placing the instance into a context later does not. A required lookup whose provider leaves throws: destroy consumers before providers, or pass `false`. `true` returns a strict view, as `Model.get(true)` does in render - reading an `undefined` field throws.
 
 ```ts
 const parent = child.get(Parent);
