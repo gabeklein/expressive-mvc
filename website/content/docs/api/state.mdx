@@ -149,6 +149,10 @@ const user = User.get(true); // Required<User>
 
 With `true`, reading a property that is currently `undefined` throws a plain `Error` - `User-XXXXXX.name is required in this context.` That surfaces at the nearest **error boundary**, not Suspense. Use it when the component's contract is "this data exists by now."
 
+#### Deriving values
+
+Destructure and derive in render, declare a getter on the Model for a shared derivation, or move side effects to `mount()`.
+
 #### Overriding `get`
 
 A subclass may override static `get` with one signature of its own. It handles its own keys and delegates the base forms with `super.get(arg)` - ordinary inheritance, so `get()`, `get(false)` and `get(true)` keep working, `get(true)` still strict. For its own key it calls `Context.get(this, compute)` exactly once, synchronously; `compute(context, from?)` returns the result, `from` being the calling instance for `session.get(User, 5)` and the `get` instruction.

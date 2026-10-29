@@ -652,7 +652,7 @@ class Timer extends Model {
 
 ## Deriving from Model.get()
 
-`Model.get()` takes no selector - destructure what renders and derive inline, or move a reused derivation to a getter on the Model:
+Destructure what renders and derive inline; move a reused derivation to a getter on the Model:
 
 ```tsx
 class Cart extends Model {
