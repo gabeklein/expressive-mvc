@@ -1,5 +1,22 @@
 # @expressive/dom
 
+## 0.6.0
+
+### Minor Changes
+
+- [#562](https://github.com/gabeklein/expressive-mvc/pull/562) [`aeb0787`](https://github.com/gabeklein/expressive-mvc/commit/aeb07871c5cfe30df9fd945f6c5f2c2832d94168) Context lookups are observable.
+
+  - A tracked lookup re-runs when a change can alter its result - a closer provider arriving, the found one removed - and not for providers above the one found, other types or siblings.
+  - `this.get(Type)` inside an effect or render now refreshes when its provider changes. A required lookup whose provider is removed throws.
+  - dom: `Model.get` follows a provider replaced by a field assignment, arriving after mount or removed.
+  - react: `Model.get` follows a provider arriving after mount, including an optional `Model.get(false)` that first found nothing, and one removed.
+  - dom and react: once its instance leaves context, `Model.get(false)` returns `undefined` and a required `Model.get()` throws `Could not find`. Unmount consumers before destroying their provider.
+
+### Patch Changes
+
+- Updated dependencies [[`2bef0ed`](https://github.com/gabeklein/expressive-mvc/commit/2bef0ed387aa4060725644a90d1def7221117810), [`5e6689c`](https://github.com/gabeklein/expressive-mvc/commit/5e6689c8c18ec34323fccd881552e76b4354d11e), [`a55605b`](https://github.com/gabeklein/expressive-mvc/commit/a55605b2439078b2694abc2ac9361ca30fa2e119), [`aeb0787`](https://github.com/gabeklein/expressive-mvc/commit/aeb07871c5cfe30df9fd945f6c5f2c2832d94168), [`f5fc45a`](https://github.com/gabeklein/expressive-mvc/commit/f5fc45ae6105876438b3c17a87f1da2546fe0d63)]:
+  - @expressive/mvc@0.91.0
+
 ## 0.5.0
 
 ### Minor Changes
