@@ -6,10 +6,11 @@ import { Cart } from './Store';
 export const CartPage = () => {
   const {
     receipt,
-    count
+    count,
+    reset
   } = Cart.get();
 
-  if (receipt) return <Receipt />;
+  if (receipt) return <Receipt receipt={receipt} reset={reset} />;
 
   if (count)
     return (
@@ -23,14 +24,14 @@ export const CartPage = () => {
   return <Empty />;
 };
 
-const Receipt = () => {
+const Receipt = (props: { receipt: { count: number; total: number }; reset(): void }) => {
   const {
     reset,
     receipt: {
       count,
       total
     }
-  } = Cart.get(true);
+  } = props;
 
   return (
     <div className="notice">

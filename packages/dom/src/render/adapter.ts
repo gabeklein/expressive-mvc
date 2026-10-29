@@ -69,7 +69,6 @@ declare module '@expressive/mvc' {
   namespace Model {
     function get<T extends Model>(this: Model.Extends<T>): T;
     function get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
-    function get<T extends Model>(this: Model.Extends<T>, required: true): Required<T>;
   }
 
   interface Component {
@@ -79,12 +78,12 @@ declare module '@expressive/mvc' {
 
 (Model as any).get = function get<T extends Model>(
   this: Model.Extends<T>,
-  argument?: boolean
+  argument?: false
 ) {
   const scope = requireScope();
   const instance = tracked(scope.context).get(this, argument !== false);
 
-  return instance && tracked(instance, argument === true);
+  return instance && tracked(instance, false);
 };
 
 const OWNERS = new WeakMap<Function, { owner: Model; key: string }>();

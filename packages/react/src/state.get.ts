@@ -12,18 +12,12 @@ declare module '@expressive/mvc' {
       this: Model.Extends<T>,
       required: false
     ): T | undefined;
-
-    /** Fetch instance of this class from context. */
-    function get<T extends Model>(
-      this: Model.Extends<T>,
-      requireValues: true
-    ): Required<T>;
   }
 }
 
 Model.get = function get<T extends Model>(
   this: Model.Extends<T>,
-  argument?: boolean
+  argument?: false
 ) {
   const Type = this;
   const [tick, next] = Runtime.useState(0);
@@ -79,7 +73,7 @@ Model.get = function get<T extends Model>(
             if (update === true) force();
           };
         },
-        argument === true,
+        false,
         Runtime.startTransition
       );
     }

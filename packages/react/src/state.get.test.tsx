@@ -170,17 +170,11 @@ describe('Model.get', () => {
     expectTypeOf(Test.get).toBeCallableWith(($: Test) => $.value);
   });
 
-  it('will throw if expected value undefined', () => {
-    class Test extends Model {
-      value?: number = undefined;
+  it('will not accept true', () => {
+    class Test extends Model {}
 
-    }
-
-    renderWith(Test, () => {
-      expect(() => {
-        void Test.get(true).value;
-      }).toThrow(/[\w-]+\.value is required in this context\./);
-    });
+    // @ts-expect-error
+    expectTypeOf(Test.get).toBeCallableWith(true);
   });
 
   describe('over destroyed instance', () => {
@@ -332,7 +326,7 @@ describe('Model.get', () => {
       }
 
       const parent = Parent.new();
-      const Inner = () => Test.get(true).value;
+      const Inner = () => Test.get().value;
       const tree = (inner?: Test) => (
         <Component for={parent}>
           <Component for={inner}>
