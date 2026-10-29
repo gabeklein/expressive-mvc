@@ -112,17 +112,23 @@ describe('MVC adapter', () => {
     expect(Value.get(false)).toBeUndefined();
   });
 
+  it('will not accept true', () => {
+    class Value extends Model {}
+
+    // @ts-expect-error
+    expectTypeOf(Value.get).toBeCallableWith(true);
+  });
+
   it('will not provide Model.use', () => {
     class Value extends Model {}
 
     expect((Value as any).use).toBeUndefined();
   });
 
-  it('will support optional and required context lookups', async () => {
+  it('will support optional context lookups', async () => {
     class Missing extends Model {}
     class Source extends Model {
       value = 1;
-      pending?: string;
     }
 
     function View() {
@@ -142,19 +148,6 @@ describe('MVC adapter', () => {
 
     release();
     source.set(null);
-
-    class Required extends Component {
-      render() {
-        return <span>{Source.get(true).pending}</span>;
-      }
-    }
-
-    const required = Source.new();
-    expect(() => render(
-      <Component for={required}><Required fallback={false} /></Component>,
-      document.createElement('main')
-    )).toThrow();
-    required.set(null);
   });
 
   it('will return one tracked proxy per instance in a render', () => {

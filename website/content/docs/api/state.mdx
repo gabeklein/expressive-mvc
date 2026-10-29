@@ -141,13 +141,15 @@ function Profile() {
 const maybe = Theme.get(false); // Theme | undefined
 ```
 
-#### Required values
+#### Values that may be unset
+
+Destructure the field and render conditionally - the narrowed value passes on as a prop:
 
 ```tsx
-const user = User.get(true); // Required<User>
+const { draft } = Settings.get();
+if (draft) return <Editor draft={draft} />;
+return <Spinner />;
 ```
-
-With `true`, reading a property that is currently `undefined` throws a plain `Error` - `User-XXXXXX.name is required in this context.` That surfaces at the nearest **error boundary**, not Suspense. Use it when the component's contract is "this data exists by now."
 
 #### Deriving values
 

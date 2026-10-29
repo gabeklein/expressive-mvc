@@ -139,13 +139,17 @@ function Profile() {
 const app = AppState.get(false); // undefined if not in context
 ```
 
-### Required values & presence boundaries
+### Presence boundaries
+
+Destructure a field that may be unset and render conditionally - the narrowed value passes on as a prop:
 
 ```tsx
-const app = AppState.get(true); // Required<T>, throws if an accessed value is undefined
+const { draft } = Settings.get();
+if (draft) return <Editor draft={draft} />;
+return <Spinner />;
 ```
 
-`get(true)` is the child half of a **presence boundary**: the parent owns whether the child renders; the child asserts its required values exist - no fallback values threaded through its body:
+The parent owns whether the child renders; the child's prop type asserts the value exists - no fallback values threaded through its body:
 
 ```tsx
 function SettingsContent() {
@@ -154,25 +158,24 @@ function SettingsContent() {
   return (
     <div className="settings-layout">
       <LocationList />
-      {draft && <SettingsEditor />}
+      {draft && <SettingsEditor draft={draft} />}
     </div>
   );
 }
 
-function SettingsEditor() {
+function SettingsEditor({ draft }: { draft: SettingsLocation }) {
   const {
     saveSettings,
     saving,
-    draft: {
-      bankAccount,
-      categoryAccounts,
-    },
-  } = SettingsState.get(true);
+  } = SettingsState.get();
+
+  const {
+    bankAccount,
+    categoryAccounts,
+  } = draft;
   ...
 }
 ```
-
-Declare gateable fields **optional** (`draft?: SettingsLocation`), not nullable (`draft: SettingsLocation | null`). The runtime check rejects only strict `undefined`, and `Required<T>` removes `?` but does not strip `null` from a union - a nullable field silently defeats `get(true)` on both fronts.
 
 ### Derived values and effects
 

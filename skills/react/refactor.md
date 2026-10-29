@@ -424,7 +424,7 @@ const { is: review, confirmed } = ReviewStep.get(); // root object + sibling val
 
 Default: a self-contained widget mounts unconditionally and gates itself - the parent writes `<UndoBar />`; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). A parent read existing only to gate belongs in the widget.
 
-Parent gate plus child `get(true)` is the secondary shape - right when the parent reads the field for its own content, or composition genuinely varies. Either way presence is a contract; the half-measure fails audit - `get()` plus an internal null-guard mid-snapshot:
+Parent gate passing the narrowed value as a prop is the secondary shape - right when the parent reads the field for its own content, or composition genuinely varies. Either way presence is a contract; the half-measure fails audit - `get()` plus an internal null-guard mid-snapshot:
 
 ```tsx
 // Wrong: no contract either way
@@ -434,32 +434,31 @@ function SettingsEditor() {
   ...
 }
 
-// Right (parent reads draft for its own content): parent gates, child asserts
+// Right (parent reads draft for its own content): parent gates, passes draft down
 function SettingsContent() {
   const { draft } = SettingsState.get();
 
   return (
     <div className="settings-layout">
       <LocationList />
-      {draft && <SettingsEditor />}
+      {draft && <SettingsEditor draft={draft} />}
     </div>
   );
 }
 
-function SettingsEditor() {
+function SettingsEditor({ draft }: { draft: SettingsLocation }) {
   const {
     saveSettings,
     saving,
-    draft: {
-      bankAccount,
-      categoryAccounts,
-    },
-  } = SettingsState.get(true);
+  } = SettingsState.get();
+
+  const {
+    bankAccount,
+    categoryAccounts,
+  } = draft;
   ...
 }
 ```
-
-Declare gateable fields optional (`draft?: SettingsLocation`), not `| null` - `get(true)` rejects only `undefined`, and `Required<T>` does not strip `null` from unions.
 
 ## 13. Extract, then consolidate
 
@@ -541,7 +540,7 @@ The checklist:
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
 - Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
 - Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*
-- Is presence a contract - widget owns its gate and falls thru by default; parent gate + `.get(true)` where the parent reads the field for its own content; never `get()` plus an internal null-guard? *(invariant)*
+- Is presence a contract - widget owns its gate and falls thru by default; parent gate passing the narrowed value as a prop where the parent reads the field for its own content; never `get()` plus an internal null-guard? *(invariant)*
 - Are Component subcomponents genuine extension points? *(invariant)*
 - Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
 - Are large JSX branches and ~50-line renders split at conditionals into honestly-named scopes - units that delete or move as one place, never one-op conditionals or formatted scalars? *(heuristic - name the cost)*

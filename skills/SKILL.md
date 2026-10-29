@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries, providing context, async suspense, router - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
@@ -65,7 +65,7 @@ Counter-rules:
 9. Let contextual children call `.get()` instead of receiving drilled props.
 10. At every `.get()` and `render()`, destructure for exact nested dependency snapshot.
 11. May assign thru subscribed proxies; `is` only to retain the root object alongside sibling destructuring.
-12. A gated widget mounts unconditionally and gates itself, falling thru when unset; parent gate + `.get(true)` where the parent reads the field for its own content.
+12. A gated widget mounts unconditionally and gates itself, falling thru when unset; parent gate passing the narrowed value as a prop where the parent reads the field for its own content.
 13. Split `render()` and long JSX at conditionals and non-interacting siblings into honestly-named local FCs - units you'd delete or move whole; one-op conditionals and formatted scalars stay inline. Consolidate scopes that share dependencies and hold no nested logic.
 14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
 
@@ -169,7 +169,7 @@ function Parent({ counter }: { counter: Counter }) {
 
 Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. It builds green when misused and crashes at runtime. (Instance method get is not a hook.)
 
-State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, custom lookup).
+State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for optional lookup, presence boundaries and custom lookup.
 
 ## The Dependency Snapshot
 
@@ -215,9 +215,9 @@ const { is: review, confirmed, hasBlocking } = ReviewStep.get();  // `is`: root 
 
 `is` is **only** for keeping the root alongside sibling destructuring. Unwrapping every writable object through it is the most common misuse.
 
-## Presence Boundaries & `get(true)`
+## Presence Boundaries
 
-Default: a self-contained widget mounts unconditionally, reads its own context, and falls thru when its reason to render is unset - a parent read existing only to gate belongs in the widget. The secondary shape, when the parent reads the field for its own content: parent gates, child asserts with `get(true)`:
+Default: a self-contained widget mounts unconditionally, reads its own context, and falls thru when its reason to render is unset - a parent read existing only to gate belongs in the widget. The secondary shape, when the parent reads the field for its own content: parent gates and passes the narrowed value down:
 
 ```tsx
 function SettingsContent() {
@@ -226,26 +226,27 @@ function SettingsContent() {
   return (
     <div className="settings-layout">
       <LocationList />
-      {draft && <SettingsEditor />}
+      {draft && <SettingsEditor draft={draft} />}
     </div>
   );
 }
 
-function SettingsEditor() {
+function SettingsEditor({ draft }: { draft: SettingsLocation }) {
   const {
     saveSettings,
     saving,
-    draft: {
-      bankAccount,
-      categoryAccounts,
-    },
-  } = SettingsState.get(true); // Required<T> - throws if an accessed value is undefined
+  } = SettingsState.get();
+
+  const {
+    bankAccount,
+    categoryAccounts,
+  } = draft;
 
   return <section className="settings-editor">...</section>;
 }
 ```
 
-This gives the child a strong contract - no fallback values threaded through its body. Declare gateable fields **optional** (`draft?: SettingsLocation`), not `| null`: the runtime check rejects only `undefined`, and `Required<T>` does not strip `null` from a union (see [react/react.md](react/react.md)). Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
+The child's prop type is its contract - no fallback values threaded through its body. Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
 
 ## Providing Context
 
@@ -320,7 +321,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### React
 
-- [react/react.md](react/react.md) - Model.get() (optional lookup, required values `get(true)`, custom lookup), mount(), providing state, transparent writes, SSR, Vite hot reload
+- [react/react.md](react/react.md) - Model.get() (optional lookup, presence boundaries, custom lookup), mount(), providing state, transparent writes, SSR, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controls, router bridge, host-agnostic domain model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 
