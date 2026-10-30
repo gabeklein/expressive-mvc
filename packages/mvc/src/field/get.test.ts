@@ -1019,8 +1019,6 @@ describe('fetch mode', () => {
 });
 
 describe('key mode', () => {
-  it.todo('will resolve before an async new() reads the field');
-
   class Record extends Model {
     id = 0;
 
@@ -1171,6 +1169,27 @@ describe('key mode', () => {
     }
 
     expect(() => Test.new()).toThrow('nope');
+  });
+
+  it.fails('will resolve before an async new() reads the field', async () => {
+    let seen: User | undefined;
+
+    class Test extends Model {
+      user = get(User, 5);
+
+      async new() {
+        try {
+          seen = this.user;
+        } catch {}
+      }
+    }
+
+    const user = User.new({ id: 5 });
+    const context = new Context({ user }).push({ Test });
+
+    await context.get(Test).get(() => {});
+
+    expect(seen).toBe(user);
   });
 
   it('will keep existing forms', () => {
