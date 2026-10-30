@@ -52,16 +52,18 @@ class Context {
     arg?: Model | Model.Extends,
     compute: (context: Context, from?: Model) => unknown = (context) => context,
   ): unknown {
-    if (arg && typeof arg != "function") return home(arg.is) || Context.root;
+    if (!arg || typeof arg == "function") {
+      const [context, from] = STACK[STACK.length - 1] || [];
 
-    const [context, from] = STACK[STACK.length - 1] || [];
+      if (!context) return current(arg, compute);
+      if (!from) return compute(context);
 
-    if (!context) return current(arg, compute);
-    if (!from) return compute(context);
+      const view = arg ? touch(from, CONTEXT, context) : context;
 
-    const view = arg ? touch(from, CONTEXT, context) : context;
+      return observed(from, arg, compute(view, from.is));
+    }
 
-    return observed(from, arg, compute(view, from.is));
+    return home(arg.is) || Context.root;
   }
 
   public id = uid();
