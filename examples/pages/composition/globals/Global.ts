@@ -1,5 +1,11 @@
 import { Component, Model } from '@expressive/mvc';
 
+export class Global extends Component {
+  viewport = new Viewport();
+  session = new Session();
+  theme = new Theme();
+}
+
 export class Viewport extends Model {
   width = window.innerWidth;
 
@@ -40,12 +46,6 @@ export class Theme extends Model {
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     });
   }
-}
-
-export class Global extends Component {
-  viewport = new Viewport();
-  session = new Session();
-  theme = new Theme();
 }
 
 // Read the theme the document already has, or the effect above paints
