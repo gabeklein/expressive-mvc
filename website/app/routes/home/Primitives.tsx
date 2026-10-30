@@ -490,9 +490,8 @@ function Shared() {
       title="App-wide state, provided once."
       to="/examples/composition/globals">
       <>
-        Give the app one root model that owns its session, theme, or
-        viewport, and provide it once with <code>{'<Component for>'}</code>.
-        Any component below finds each with <code>.get()</code> - no store,
+        Let one component at the top own the session, theme, or viewport -
+        no <code>render()</code> needed, it wraps the app. Any component below finds each with <code>.get()</code> - no store,
         no Provider per value, no prop drilling.
       </>
       <SharedCode />
@@ -511,15 +510,15 @@ const SharedCode = code /*tsx*/`
     }
   }
 
-  // One root owns what the whole app shares.
-  class App extends Model {
+  // One component at the top owns what the whole app shares.
+  class App extends Component {
     session = new Session();
   }
 
   export default () => (
-    <Component for={App}>
+    <App>
       <Status />
-    </Component>
+    </App>
   );
 
   // Owned children are provided with their owner - reach by type.

@@ -1,24 +1,18 @@
 import './App.css';
 
-import { Component, Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
 import { Session } from './Session';
 import { Theme } from './Theme';
 import { Viewport } from './Viewport';
 
-class App extends Model {
-  viewport = new Viewport();
-  session = new Session();
-  theme = new Theme();
-}
-
 export default () => (
-  <Component for={App}>
+  <App>
     <div className="container">
       <h1>App-wide state</h1>
       <p>
-        Three states owned by one root, provided once at the top of the tree. What
-        the root owns is provided with it, so anything below reaches each by type.
+        The app's top component owns three states and provides them with itself,
+        so anything below reaches each by type.
       </p>
       <div className="cards">
         <Size />
@@ -30,8 +24,14 @@ export default () => (
         reads - resize the window and just the first one moves.
       </small>
     </div>
-  </Component>
+  </App>
 );
+
+class App extends Component {
+  viewport = new Viewport();
+  session = new Session();
+  theme = new Theme();
+}
 
 const Size = () => {
   const { width, compact } = Viewport.get();

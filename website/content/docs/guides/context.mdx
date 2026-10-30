@@ -292,25 +292,25 @@ const Themed = () => {
 
 ## App-wide state and the root context
 
-Some state belongs to the whole app - the session, the viewport, settings. Give the app one root model that owns them, and provide it once at the top of the tree:
+Some state belongs to the whole app - the session, the viewport, settings. Give it to a component at the top - no `render()` needed, it renders its children:
 
 ```tsx
 // app.tsx
-import { Component, Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class App extends Model {
+class App extends Component {
   session = new Session();
   theme = new Theme();
 }
 
 export default () => (
-  <Component for={App}>
+  <App>
     <Layout />
-  </Component>
+  </App>
 );
 ```
 
-What a provided instance owns is provided with it, so any component below can call `Session.get()`:
+A component provides itself and what it owns to everything below, so any component there can call `Session.get()`:
 
 ```tsx
 function Avatar() {
