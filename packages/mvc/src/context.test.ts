@@ -1091,28 +1091,8 @@ it('will skip consumer if filter does not match downstream', () => {
   expect(cb).toBeCalledWith(bar, true);
 });
 
-describe('root global', () => {
+describe('root', () => {
   const { root } = Context;
-
-  class Global extends Model {
-    static readonly global: Model.Global = true;
-  }
-
-  it('will register a global .new() instance in root, again once destroyed', () => {
-    const first = Global.new();
-
-    expect(root.get(Global)).toBe(first);
-
-    first.set(null);
-
-    expect(root.get(Global, false)).toBeUndefined();
-
-    const second = Global.new();
-
-    expect(root.get(Global)).toBe(second);
-
-    second.set(null);
-  });
 
   it('will not register children of a private instance in root', () => {
     class Child extends Model {}
@@ -1126,62 +1106,6 @@ describe('root global', () => {
     expect(root.get(Child, false)).toBeUndefined();
 
     parent.set(null);
-  });
-
-  it('will register descendants of a global instance in root', () => {
-    class Grandchild extends Model {}
-    class Child extends Model {
-      grandchild = new Grandchild();
-    }
-    class Parent extends Model {
-      static readonly global = true;
-      child = new Child();
-    }
-
-    const parent = Parent.new();
-
-    expect(root.get(Child)).toBe(parent.child);
-    expect(root.get(Grandchild)).toBe(parent.child.grandchild);
-
-    parent.set(null);
-
-    expect(root.get(Child, false)).toBeUndefined();
-  });
-
-  it('will register a child assigned after a global joins root', () => {
-    class Child extends Model {}
-    class Parent extends Model {
-      static readonly global = true;
-      child?: Child = undefined;
-    }
-
-    const parent = Parent.new();
-
-    parent.child = new Child();
-
-    expect(root.get(Child)).toBe(parent.child);
-
-    parent.set(null);
-  });
-
-  it('will not register a late child of a private sibling of a global', () => {
-    class Child extends Model {}
-    class Parent extends Model {
-      static readonly global: Model.Global<Parent> = (self) => self.shared;
-      shared = false;
-      child?: Child = undefined;
-    }
-
-    const shared = Parent.new({ shared: true });
-    const alone = Parent.new();
-
-    alone.child = new Child();
-
-    expect(root.get(Parent)).toBe(shared);
-    expect(root.get(Child, false)).toBeUndefined();
-
-    shared.set(null);
-    alone.set(null);
   });
 
   it('will provide children of a private instance where it is provided', () => {
@@ -1208,233 +1132,15 @@ describe('root global', () => {
   });
 
   it('will keep instance when re-added implicitly', () => {
-    const instance = Global.new();
+    class Thing extends Model {}
+
+    const instance = Thing.new();
 
     root.add(instance);
 
-    expect(root.get(Global)).toBe(instance);
+    expect(root.get(Thing)).toBe(instance);
 
     instance.set(null);
-  });
-
-  it('will throw when a subclass inherits global without re-declaring', () => {
-    class Sub extends Global {}
-
-    expect(() => Sub.new()).toThrow(
-      /would register as a global by inheritance alone/
-    );
-  });
-
-  it.each([
-    ['will register when a subclass re-declares global', true],
-    ['will allow a subclass to opt out of a global', false]
-  ])('%s', (_, global) => {
-    class Sub extends Global {
-      static readonly global = global;
-    }
-
-    const instance = Sub.new();
-
-    expect(root.get(Sub, false)).toBe(global ? instance : undefined);
-
-    instance.set(null);
-  });
-
-  it('will resolve global from a function at activation', () => {
-    let allow = false;
-
-    class Conditional extends Model {
-      static readonly global: Model.Global = () => allow;
-    }
-
-    const off = Conditional.new();
-    expect(root.get(Conditional, false)).toBeUndefined();
-    off.set(null);
-
-    allow = true;
-
-    const on = Conditional.new();
-    expect(root.get(Conditional)).toBe(on);
-    on.set(null);
-  });
-
-  it('will pass the instance to a global resolver', () => {
-    class Instanced extends Model {
-      persistent = true;
-      static readonly global: Model.Global<Instanced> = (self) => self.persistent;
-    }
-
-    const instance = Instanced.new();
-
-    expect(root.get(Instanced)).toBe(instance);
-
-    instance.set(null);
-  });
-
-  it('will enforce global inheritance through static types', () => {
-    void function () {
-      class SealedGlobal extends Model {
-        static readonly global = true;
-      }
-      class Floor extends Model {
-        static readonly global = false;
-      }
-
-      // @ts-expect-error - cannot opt out of a sealed (literal true) global
-      class OptOut extends SealedGlobal {
-        static readonly global = false;
-      }
-
-      // @ts-expect-error - cannot opt in against a literal-false floor
-      class OptIn extends Floor {
-        static readonly global = true;
-      }
-
-      class Open extends Model {
-        static readonly global: Model.Global = true;
-      }
-      class Scoped extends Open {
-        static readonly global = false;
-      }
-
-      return [OptOut, OptIn, Scoped];
-    };
-  });
-
-  it('will lock state ownership to root after init', () => {
-    const instance = Global.new();
-
-    expect(Context.get(instance)).toBe(root);
-
-    const ctx = new Context(instance);
-
-    expect(ctx.get(Global)).toBe(instance);
-    expect(Context.get(instance)).toBe(root);
-
-    instance.set(null);
-  });
-
-  it.each<[string, Model.Global]>([
-    ['will throw on duplicate global of same type', true],
-    ['will throw on duplicate global from a resolver', () => true]
-  ])('%s', (_, global) => {
-    class Multi extends Model {
-      static global = global;
-    }
-
-    const first = Multi.new();
-
-    expect(() => Multi.new()).toThrow(/already exists in root/);
-    expect(root.get(Multi)).toBe(first);
-
-    first.set(null);
-  });
-
-  it('will throw if a subtype would hide a supertype global', () => {
-    class Base extends Model {
-      static readonly global: Model.Global = true;
-    }
-    class Sub extends Base {
-      static readonly global = true;
-    }
-
-    const base = Base.new();
-
-    expect(() => Sub.new()).toThrow(
-      `as a global - ${base} already exists in root.`
-    );
-    expect(root.get(Base)).toBe(base);
-    expect(root.get(Sub, false)).toBeUndefined();
-
-    base.set(null);
-  });
-
-  it('will throw if a subtype global already resolves the type', () => {
-    class Base extends Model {
-      static readonly global: Model.Global = true;
-    }
-    class Sub extends Base {
-      static readonly global = true;
-    }
-
-    const sub = Sub.new();
-
-    expect(() => Base.new()).toThrow(
-      `as a global - ${sub} already exists in root.`
-    );
-    expect(root.get(Base)).toBe(sub);
-
-    sub.set(null);
-  });
-
-  it('will register a supertype after the subtype is destroyed', () => {
-    class Base extends Model {
-      static readonly global: Model.Global = true;
-    }
-    class Sub extends Base {
-      static readonly global = true;
-    }
-
-    Sub.new().set(null);
-
-    const base = Base.new();
-
-    expect(root.get(Base)).toBe(base);
-
-    base.set(null);
-  });
-
-  it('will preserve subtype entries on eviction', () => {
-    class Base extends Model {}
-    class SubA extends Base {
-      static global = true;
-    }
-    class SubB extends Base {
-      static global = true;
-    }
-
-    const a = SubA.new();
-
-    expect(root.get(Base)).toBe(a);
-    expect(root.get(SubA)).toBe(a);
-
-    const b = SubB.new();
-
-    expect(root.get(Base, false)).toBeUndefined();
-    expect(root.get(SubA)).toBe(a);
-    expect(root.get(SubB)).toBe(b);
-
-    a.set(null);
-    b.set(null);
-  });
-
-  it('will register fresh sibling cleanly after ancestor eviction', () => {
-    class Base extends Model {}
-    class SubA extends Base {
-      static global = true;
-    }
-    class SubB extends Base {
-      static global = true;
-    }
-    class SubC extends Base {
-      static global = true;
-    }
-
-    const a = SubA.new();
-    const b = SubB.new();
-
-    expect(root.get(Base, false)).toBeUndefined();
-
-    const c = SubC.new();
-
-    expect(root.get(Base)).toBe(c);
-    expect(root.get(SubA)).toBe(a);
-    expect(root.get(SubB)).toBe(b);
-    expect(root.get(SubC)).toBe(c);
-
-    a.set(null);
-    b.set(null);
-    c.set(null);
   });
 
   it('will not auto-register state created under an explicit context', () => {
@@ -1448,14 +1154,14 @@ describe('root global', () => {
     ctx.pop();
   });
 
-  it('will not apply global eviction to explicit add', () => {
+  it('will prefer an explicit entry in root', () => {
     class Base extends Model {}
-    class SubA extends Base {
-      static global = true;
-    }
+    class SubA extends Base {}
     class SubB extends Base {}
 
     const a = SubA.new();
+
+    root.add(a);
 
     expect(root.get(Base)).toBe(a);
 
