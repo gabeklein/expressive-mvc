@@ -6,6 +6,12 @@ import { Session } from './Session';
 import { Theme } from './Theme';
 import { Viewport } from './Viewport';
 
+class App extends Component {
+  viewport = new Viewport();
+  session = new Session();
+  theme = new Theme();
+}
+
 export default () => (
   <App>
     <div className="container">
@@ -26,12 +32,6 @@ export default () => (
     </div>
   </App>
 );
-
-class App extends Component {
-  viewport = new Viewport();
-  session = new Session();
-  theme = new Theme();
-}
 
 const Size = () => {
   const { width, compact } = Viewport.get();
