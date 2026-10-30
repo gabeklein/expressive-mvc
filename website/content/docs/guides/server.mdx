@@ -50,7 +50,7 @@ The last two rows are the rules that matter. There is no unmount on the server, 
 
 **Request state goes in a `<Component for>`.** Each render builds its own context, so provided instances are isolated - one request never sees another's.
 
-**A `static global` is process-wide - and on the server, that means shared across requests.** Globals are trusted mutable process state: config, feature flags, a warmed cache. Keep per-request data out of them; provide it with `<Component for>` instead.
+**An instance held in `Context.root` is process-wide - and on the server, that means shared across requests.** Root suits process state: config, feature flags, a warmed cache. Keep per-request data out of it; provide it with `<Component for>` instead.
 
 **Resources belong in `mount()` or the framework's request scope, never `new()`.** `mount()` never fires on the server, so client resources stay client-side for free. Anything the server itself must open and close belongs to the request handler, which actually has a close.
 
@@ -58,7 +58,7 @@ The last two rows are the rules that matter. There is no unmount on the server, 
 
 ## The Router on the server
 
-`@expressive/router` targets client-routed apps. The default `Router` is a client-only global for the same reason as the rules above: on the server it resolves per render, so paths never bleed between requests. To render a specific request's path, provide a `Router` per request:
+`@expressive/router` targets client-routed apps. Each render's `Router` is its own, so paths never bleed between requests. To render a specific request's path, provide a `Router` per request:
 
 ```tsx
 <Component for={Router} path={request.path}>

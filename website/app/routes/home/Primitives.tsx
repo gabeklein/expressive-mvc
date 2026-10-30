@@ -17,7 +17,7 @@ export class Primitives extends Component {
     Computed,
     Molecules,
     Forms,
-    Globals,
+    Shared,
     Testing,
     Instructions,
   };
@@ -484,28 +484,26 @@ const MoleculesCode = code /*tsx*/`
   }
 `;
 
-function Globals() {
+function Shared() {
   return (
     <Tab
-      title="Global state with no setup."
+      title="App-wide state, provided once."
       to="/examples/composition/globals">
       <>
-        Declare a Model <code>global</code>, create it once with{' '}
-        <code>.new()</code>, and any component can find it with{' '}
-        <code>.get()</code> - app-wide session, theme, or
-        viewport with no store, Provider, or prop drilling.
+        Give the app one root model that owns its session, theme, or
+        viewport, and provide it once with <code>{'<Component for>'}</code>.
+        Any component below finds each with <code>.get()</code> - no store,
+        no Provider per value, no prop drilling.
       </>
-      <GlobalsCode />
+      <SharedCode />
     </Tab>
   );
 }
 
-const GlobalsCode = code /*tsx*/`
-  import { Model } from '@expressive/mvc';
+const SharedCode = code /*tsx*/`
+  import { Component, Model } from '@expressive/mvc';
 
   class Session extends Model {
-    static global = true;
-
     user: string | null = null;
 
     login() {
@@ -513,10 +511,18 @@ const GlobalsCode = code /*tsx*/`
     }
   }
 
-  // Creating outside components activates and parks in global context.
-  Session.new();
+  // One root owns what the whole app shares.
+  class App extends Model {
+    session = new Session();
+  }
 
-  // Components still reach for it with .get() - nothing to provide.
+  export default () => (
+    <Component for={App}>
+      <Status />
+    </Component>
+  );
+
+  // Owned children are provided with their owner - reach by type.
   function Status() {
     const { user, login } = Session.get();
 

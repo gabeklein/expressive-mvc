@@ -290,44 +290,48 @@ const Themed = () => {
 
 <br />
 
-## Globals and the root context
+## App-wide state and the root context
 
-Not everything wants a `<Component for>`. Some state is genuinely global - the session, the viewport, app settings. Declare those with `static global` and call `Model.new()` at module scope:
+Some state belongs to the whole app - the session, the viewport, settings. Give the app one root model that owns them, and provide it once at the top of the tree:
 
-```ts
-// session.ts
-import { Model } from '@expressive/mvc';
+```tsx
+// app.tsx
+import { Component, Model } from '@expressive/mvc';
 
-class Session extends Model {
-  static global = true;
-
-  user = 'gabe';
-  logout() {
-    this.user = '';
-  }
+class App extends Model {
+  session = new Session();
+  theme = new Theme();
 }
 
-export default Session.new();
+export default () => (
+  <Component for={App}>
+    <Layout />
+  </Component>
+);
 ```
 
-`Model.new()` activates the instance against `Context.root`, the global registry every context ultimately inherits from - and because `Session` declares `static global`, it registers there too. Any component, anywhere, can now call `Session.get()` - nothing to provide:
+What a provided instance owns is provided with it, so any component below can call `Session.get()`:
 
 ```tsx
 function Avatar() {
-  const { user } = Session.get(); // found via the root context
+  const { user } = Session.get(); // found through App
   return <img src={`/avatars/${user}.png`} />;
 }
 ```
 
-The declaration is the opt-in. Without it, a context-less `Model.new()` instance is fully functional but private - it can read declared globals, but nothing can find *it*. And `static global` must be declared per class: a subclass of a global that doesn't redeclare it throws on activation, so an extended global can't leak into the shared root by accident.
+Every context descends from `Context.root`. A `Model.new()` outside any context resolves its own lookups against root, but never registers there - nothing can find it until something provides it. To make an instance findable without a provider, add it to root explicitly, and remove it when the instance is destroyed:
 
-A full app built this way (viewport, session, and theme as globals) is at [composition/globals](/examples/composition/globals).
+```ts
+Session.new((self) => Context.root.add(self, true));
+```
+
+A full app built the provided way (viewport, session, and theme) is at [composition/globals](/examples/composition/globals).
 
 ### Homes are permanent
 
-Where an instance activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A global's `Model.new()` registers it at root, which claims it immediately and permanently; wrapping the instance in a context afterward won't move it. A private instance only *falls back* to root, so the first explicit context to claim it later still becomes its home.
+Where an instance activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A `Model.new()` only *falls back* to root, so the first explicit context to claim it later still becomes its home, though its initialization already ran without it.
 
-The escape hatch is plain construction. `new Model()` builds the instance without activating it, so the first explicit placement gets to claim it:
+The escape hatch is plain construction. `new Model()` builds the instance without activating it, so the first explicit placement gets to claim it before anything runs:
 
 ```ts
 const cart = new Cart(); // constructed, not yet activated
@@ -336,10 +340,7 @@ new Context(cart); // cart's home is this context
 
 Useful in tests, and in code that prepares an instance before mounting it into a tree.
 
-> **Good to know:** <br/>
-> A global may not shadow another. A second `Model.new()` of the same global class throws, and so does a global subclass or supertype of one already in root - destroy the first (`set(null)`) before creating another. Two *different* subclasses of a shared global base don't throw; they collide only at the base, where both are evicted - `Base.get()` finds neither rather than one silently winning, while each subclass stays findable by its own type. Explicit registration (`<Component for>`, or `Context.root.add(state, true)`) bypasses both rules.
-
-That's the short version - constructor forms, `ctx.add`, eviction and subtype rules are all in [API: Utilities](/docs/api/utilities).
+That's the short version - constructor forms and `ctx.add` are in [API: Utilities](/docs/api/utilities).
 
 <br />
 
