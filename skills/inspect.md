@@ -314,22 +314,24 @@ const inspect = dev && (await import('@expressive/inspect')).handle;
 // Bun - (req, server)
 Bun.serve({ routes: inspect ? { '/__inspect': inspect } : undefined, fetch: app });
 
-// Node http, Express, Connect - (req, res); mount before body parsers
+// Node http, Express, Connect - (req, res)
 if (inspect) app.use('/__inspect', inspect);
-if (inspect && req.url == '/__inspect') return inspect(req, res);
+if (inspect && req.url?.split('?')[0] == '/__inspect') return inspect(req, res);
 
-// Deno - (req, info)
+// Deno, TCP listeners - (req, info)
 if (inspect && pathname == '/__inspect') return inspect(req, info);
 
 // anything else with a Request and the socket address
-return inspect(req, { ip });
+if (inspect) return inspect(req, { ip });
 ```
 
 - Hono: `inspect(c.req.raw, { ip: getConnInfo(c).remote.address })` - `getConnInfo` from `hono/bun`, `hono/deno` or `@hono/node-server/conninfo`.
+- Fastify: `inspect(request.raw, reply.raw)`, with the route's JSON parser disabled.
+- Node: a JSON array an earlier body parser read (`express.json()`) is used as is; mount before any other parser.
 - An address that is missing or not loopback gets 403, as do the [Vite](#vite) relay's browser and proxy headers. Behind a tunnel (cloudflared) requests arrive from `127.0.0.1` but carry `CF-Connecting-IP`, so they are refused.
 - Next route handlers and Workers expose no socket address - unsupported. Their only caller address is a header a client can forge.
 - Static imports of `install` or `handle` work only with the package as a runtime dependency. A bundled server resolves dynamic imports at build time - the package must be installed when building.
-- `GET` answers `{ process: true, pid, cwd, started, runtime, title }` - `started` epoch ms, `runtime` the user agent (`Bun/1.3.1`). Tells backends apart, and from the Vite page list, when probing ports.
+- `GET` answers `{ process: true, pid, cwd, started, runtime, title }` - `started` epoch ms, `runtime` the user agent (`Bun/1.3.1`), null on Node 20. Tells backends apart, and from the Vite page list, when probing ports.
 - `POST` takes the relay's body and answers: `[method, ...args]`, `act` included; 400 bad body, 404 unknown method or no install, 500 `{ error }`, 504 no answer within 10s, 200 the value.
 - Concurrent `act` calls share one journal window - run them one at a time.
 

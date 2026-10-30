@@ -92,13 +92,23 @@ Mount the route:
 ```ts
 const inspect = dev && (await import('@expressive/inspect')).handle;
 
-Bun.serve({ routes: inspect ? { '/__inspect': inspect } : undefined, fetch: app });   // Bun
-if (inspect) app.use('/__inspect', inspect);                                    // Node http, Express, Connect
-if (inspect && pathname == '/__inspect') return inspect(req, info);             // Deno
-return inspect(req, { ip });                                                    // any Request plus the socket address
+// Bun
+Bun.serve({ routes: inspect ? { '/__inspect': inspect } : undefined, fetch: app });
+
+// Express, Connect, node:http
+if (inspect) app.use('/__inspect', inspect);
+
+// Deno, TCP listeners
+if (inspect && pathname == '/__inspect') return inspect(req, info);
+
+// Hono
+if (inspect) app.all('/__inspect', (c) => inspect(c.req.raw, { ip: getConnInfo(c).remote.address }));
+
+// any Request plus the socket address
+if (inspect) return inspect(req, { ip });
 ```
 
-Missing or non-loopback callers get 403, as do browser and proxied requests. Mount it before body parsers. Next route handlers and Workers expose no socket address and are unsupported.
+Missing or non-loopback callers get 403, as do browser and proxied requests. A JSON array `express.json()` already read is used as is; mount before any other body parser. Next route handlers and Workers expose no socket address and are unsupported.
 
 Static imports work only with the package as a runtime dependency. A bundled server resolves dynamic imports at build time, so the package must be installed when building.
 
