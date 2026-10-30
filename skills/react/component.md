@@ -8,7 +8,7 @@ Runnable source (complete programs, served as HTML): [`props`](https://expressiv
 
 - **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they own no persistent Expressive instance.
 - **Model** is display-agnostic - data and logic, no render. Provide it with `<Component for>` or hold it as a field; FCs read it with `.get()`.
-- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form inputs, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as `<Component for>` + ErrorBoundary + Suspense in `main`.
+- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form inputs, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. House style: the **app entry** is an FC, pure composition. Its last-resort boundary is `fallback`/`catch` on the top Component it mounts, whichever that is; on an FC they are ordinary props and do nothing. App-wide logic is a `static global` Model, or `<Component for={Shared}>` to scope it to one tree.
 
 Premise: **the class tree is the app; rendering is a projection of it.** `App.new()` stands the UX up headless - every feature's status reads off the instance (`inbox.archive.open`, a pool's members, an import's progress) with no DOM. Keep that true: regions as fields rather than `<Component for>` elements, `has()` subtrees contributing to macro-state whether or not placed, render-less Components. Tests, devtools, and agents consume this surface as much as views do.
 
@@ -51,7 +51,7 @@ Use `Model` for headless domain models/controls, even ones meaningful only in co
 
 Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
 
-For one-shot feature builds and hook refactors, don't create `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form input is often clearer as `class Foo extends Component` - the state is intrinsic to the rendered unit. An app or route entrypoint stays a Component thru region extraction - regions become its fields; only chrome owning nothing demotes to an FC.
+For one-shot feature builds and hook refactors, don't create `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form input is often clearer as `class Foo extends Component` - the state is intrinsic to the rendered unit. A page or route Component stays one thru region extraction - regions become its fields; only chrome owning nothing demotes to an FC.
 
 ## Basic Usage
 
@@ -129,14 +129,6 @@ abstract class Toggle extends Component {
     this.active = !this.active;
   }
 
-  // Subclasses override to customize each state
-  Active(): ReactNode {
-    return null;
-  }
-  Inactive(): ReactNode {
-    return null;
-  }
-
   render() {
     return (
       <div onClick={this.toggle}>
@@ -144,13 +136,17 @@ abstract class Toggle extends Component {
       </div>
     );
   }
+
+  // Subclasses override to customize each state
+  protected abstract Active(): ReactNode;
+  protected abstract Inactive(): ReactNode;
 }
 
 class DarkModeSwitch extends Toggle {
-  Active() {
+  protected Active() {
     return <span>Dark</span>;
   }
-  Inactive() {
+  protected Inactive() {
     return <span>Light</span>;
   }
 }
@@ -158,10 +154,10 @@ class DarkModeSwitch extends Toggle {
 class Accordion extends Toggle {
   title = 'Details';
 
-  Inactive() {
+  protected Inactive() {
     return <h3>{this.title}</h3>;
   }
-  Active() {
+  protected Active() {
     return (
       <>
         <h3>{this.title}</h3>
@@ -364,7 +360,16 @@ class Dashboard extends Component {
   items = ['a', 'b', 'c'];
   title = 'My Dashboard';
 
-  Sidebar() {
+  render() {
+    return (
+      <div>
+        <this.Header />
+        <this.Sidebar />
+      </div>
+    );
+  }
+
+  protected Sidebar() {
     return (
       <ul>
         {this.items.map((i) => (
@@ -374,27 +379,18 @@ class Dashboard extends Component {
     );
   }
 
-  Header() {
+  protected Header() {
     return <h1>{this.title}</h1>;
-  }
-
-  render() {
-    return (
-      <div>
-        <this.Header />
-        <this.Sidebar />
-      </div>
-    );
   }
 }
 ```
 
 - Each usage subscribes to the parent and accepts props like any component.
-- Reachable from context: `Dashboard.get()` then `<dashboard.Sidebar />`.
-- **Overridable by subclasses.**
+- **Overridable by subclasses.** `protected` by default - a seam for subclasses, not a second public surface. Public only when an FC outside the class is meant to place `<dashboard.Sidebar />` from context.
+- Declared after `render()` - read the assembly, then the pieces it names.
 - Destructure what the body reads from `this` at the top, as in `render()`.
 
-Subcomponents are **extension points**, not a general decomposition tool. Test: **would a subclass reasonably replace or wrap this renderer?** If yes - `Toggle.Active`, a grid's `Row`, chrome a theme variant swaps - use a subcomponent. If no, it is an implementation scope: a freestanding FC calling `Dashboard.get()`, keeping dependencies local without the override machinery. Decomposing a busy `render()` into those costs nothing:
+Subcomponents are **extension points**, not a general decomposition tool. Test: **would a subclass reasonably replace or wrap this renderer?** Yes for the element or row a variant swaps - `Toggle.Active`, a grid's `Row`, a combobox's `Input`, `Option` or `Empty`. No for layout that only places those slots - a styled `div` holding `<this.Input />` and a clear button is assembly, and stays in `render()`; a subclass changes assembly by overriding `render()`. A wrapper taking `children` is a slot only when the wrapper itself is the swap - a listbox that is a popover in one variant and a portal in another - not for every grouping `div`. If no, it is an implementation scope: a freestanding FC calling `Dashboard.get()`, keeping dependencies local without the override machinery. Decomposing a busy `render()` into those costs nothing. Either way, presence stays at the call site - `{open && <this.Menu>…</this.Menu>}`, `{selected && <this.Value />}` - and the slot always paints:
 
 ```tsx
 function SidebarItems() {

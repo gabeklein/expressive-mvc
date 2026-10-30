@@ -131,7 +131,8 @@ function Profile() {
 ```
 
 - Throws `Could not find UserProfile in context.` if the instance is not provided above.
-- Re-subscribes (and refreshes) if the upstream instance is replaced.
+- Re-subscribes (and refreshes) if the upstream instance is replaced or arrives after mount.
+- Outside a render it reads the root context, untracked; through `state.get(Type)`, that instance's context.
 - A React hook: call it unconditionally at the top of a function component or `render()`.
 
 #### Optional lookup
@@ -140,50 +141,43 @@ function Profile() {
 const maybe = Theme.get(false); // Theme | undefined
 ```
 
-#### Required values
+#### Values that may be unset
+
+Hold the value as a Model field - it joins its owner's context. Destructure it and render conditionally; the child reads it with `Draft.get()`:
 
 ```tsx
-const user = User.get(true); // Required<User>
+const { draft } = Settings.get();
+if (draft) return <Editor />;
+return <Spinner />;
 ```
 
-With `true`, reading a property that is currently `undefined` throws a plain `Error` - `User-XXXXXX.name is required in this context.` That surfaces at the nearest **error boundary**, not Suspense. Use it when the component's contract is "this data exists by now."
+#### Deriving values
 
-#### Factory forms <small>(React)</small>
+Destructure and derive in render, declare a getter on the Model for a shared derivation, or move side effects to `mount()`.
 
-Pass a factory to derive a value. The component re-renders only when the derived result changes by `===`:
+#### Overriding `get`
 
-```tsx
-const summary = Cart.get((cart) => ({
-  total: cart.total,
-  count: cart.count
-}));
-```
-
-The factory receives a tracking proxy (reads subscribe) and a `ForceRefresh` function. Return `null` to run a side effect once, on first render, without subscribing - the factory doesn't run again:
-
-```tsx
-AppState.get((app) => {
-  analytics.track('page', app.page);
-  return null;
-});
-```
-
-`ForceRefresh` forces the component to re-render. Given a promise (or async function), it refreshes now and again when the promise settles:
+A subclass may override static `get` with one signature of its own. It handles its own keys and delegates the base forms with `super.get(arg)` - ordinary inheritance, so `get()` and `get(false)` keep working. For its own key it calls `Context.get(this, compute)` exactly once, synchronously; `compute(context, from?)` returns the result, `from` being the calling instance for `session.get(User, 5)` and the `get` instruction.
 
 ```ts
-type ForceRefresh = {
-  (): void;
-  <T>(waitFor: Promise<T>): Promise<T>;
-  <T>(invoke: () => Promise<T>): Promise<T>;
-};
+import { Context, Model } from '@expressive/mvc';
+
+class User extends Model {
+  id = 0;
+
+  static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | false): T {
+    if (typeof id != 'number') return (id === false ? super.get(false) : super.get()) as T;
+
+    return Context.get(this, (context) => context.get(Directory).find(id) as T);
+  }
+}
 ```
 
-```tsx
-const data = DataService.get((svc, refresh) => {
-  const reload = () => refresh(svc.fetch());
-  return { items: svc.items, reload };
-});
-```
+`compute` should look up the same types whatever the key - branch on what it finds, not on which types to look up. React follows the lookups a component made on its first render.
+
+Type the parameter from the instance (`T['id'] | false`) so the base forms stay callable - a plain `key?: string` won't type-check against the base `get`. Delegate each base form with its own `super.get` call - a `false | undefined` argument matches no single base overload.
+
+`User.get(5)` in a component keeps context and tracking. `session.get(User, 5)` and the instruction `get(User, 5)` route through the same override from that instance's context. The instruction resolves once; a thrown Promise suspends the field until it settles, then retries.
 
 <br />
 
@@ -239,6 +233,7 @@ state.get(null, () => console.log('destroyed')); // register callback
 ```ts
 const parent = child.get(Parent); // throws if not found
 const maybe = child.get(Parent, false); // undefined if not found
+const user = session.get(User, 5); // User.get(5), from session's context
 ```
 
 ### `get(Type, callback, downstream?)` - subscribe to context availability

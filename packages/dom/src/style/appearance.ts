@@ -1,7 +1,12 @@
-import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot } from './protocol';
+import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot, SUBCOMPONENT } from './protocol';
 import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from './protocol';
 
 type StyleMap = Record<string, unknown>;
+
+interface Styles {
+  own: StyleMap[];
+  subs: Record<string, StyleMap[]>;
+}
 
 type Macro = (value: unknown, key: string) => unknown;
 type Depths = ReadonlyMap<string, number>;
@@ -55,6 +60,9 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
 
     if (key[0] == '$')
       throw new Error(`Reserved key "${key}" in style map.`);
+
+    if (SUBCOMPONENT.test(key))
+      throw new Error(`Subcomponent "${key}" must be at the top of a style() map.`);
 
     if (key[0] == '_') {
       if (!isObject(entry))
@@ -146,17 +154,32 @@ function baseToken(scope: StyleScope) {
 function style<T extends object>(type: T, rules: StyleMap): T {
   if (entered.has(type)) throw new Error('Cannot add styles after a component has rendered.');
 
-  if (Object.hasOwn(type, STYLES)) (type as any)[STYLES].push(rules);
-  else {
+  if (!Object.hasOwn(type, STYLES)) {
     const label = (type as { displayName?: string }).displayName || (type as Function).name;
 
-    Object.defineProperty(type, STYLES, { configurable: true, value: [rules] });
-    registerAppearance(type, (parent) => {
+    Object.defineProperty(type, STYLES, { configurable: true, value: { own: [], subs: {} } });
+    registerAppearance(type, (parent, key) => {
+      const { own, subs } = (type as any)[STYLES] as Styles;
       entered.add(type);
-      return extendContext(parent, (type as any)[STYLES], label);
+
+      if (!key) return extendContext(parent, own, label);
+
+      return subs[key] ? extendContext(parent, subs[key], `${label}_${key}`) : parent;
     });
   }
 
+  const { own, subs } = (type as any)[STYLES] as Styles;
+  const rest: StyleMap = {};
+
+  for (const key of Object.keys(rules))
+    if (SUBCOMPONENT.test(key)) {
+      if (!isObject(rules[key]))
+        throw new Error(`Subcomponent "${key}" must be an object.`);
+
+      (subs[key.slice(1)] ||= []).push(rules[key] as StyleMap);
+    } else rest[key] = rules[key];
+
+  own.push(rest);
   return type;
 }
 

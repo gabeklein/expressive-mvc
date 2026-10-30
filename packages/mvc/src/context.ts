@@ -1,8 +1,10 @@
-import { listener } from "./observable";
-import { event, Model, uid } from "./state";
+import { event as signal, listener, Observer, touch } from "./observable";
+import { event, Model, observed, parent, uid } from "./state";
 
-const LOOKUP = new WeakMap<Model, Context>();
-const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
+const CONTEXT = Symbol("context");
+const STACK: [Context, Model][] = [];
+const HOME = new WeakMap<Model, Context>();
+const HELD = new WeakMap<Model, Map<Model, [Set<() => void>, boolean?]>>();
 const HOST = new WeakMap<Context, Model>();
 const CLEANUP = new WeakMap<Context, Set<() => void>>();
 let ROOT: Context;
@@ -26,9 +28,42 @@ class Context {
     return ROOT ??= new Context();
   }
 
-  /** Get the context for a Model. Adapters may override to provide framework context. */
-  static get(state?: Model): Context {
-    return state && LOOKUP.get(state.is) || Context.root;
+  /** Current context - innermost set by `state.get(Type)` or the `get` instruction, otherwise as the host's {@link resolver} returns it. */
+  static get(): Context;
+
+  /** Get the context a Model was added to - root if none. */
+  static get(state: Model): Context;
+
+  /**
+   * Resolve a static `get` of `Type` by running `compute` against the current
+   * context. Inside `state.get(Type)` or the `get` instruction, `from` is that
+   * Model and a returned Model is tracked through it; otherwise
+   * the host's {@link resolver} decides.
+   *
+   * @param Type - Class `get` was called on.
+   * @param compute - Resolves the value from a context.
+   */
+  static get<R>(
+    Type: Model.Extends,
+    compute: (context: Context, from?: Model) => R,
+  ): R;
+
+  static get(
+    arg?: Model | Model.Extends,
+    compute: (context: Context, from?: Model) => unknown = (context) => context,
+  ): unknown {
+    if (!arg || typeof arg == "function") {
+      const top = STACK[STACK.length - 1];
+
+      if (!top) return current(arg, compute);
+
+      const [context, from] = top;
+      const view = arg ? touch(from, CONTEXT, context) : context;
+
+      return observed(from, arg, compute(view, from.is));
+    }
+
+    return home(arg.is) || Context.root;
   }
 
   public id = uid();
@@ -104,7 +139,7 @@ class Context {
     Type: Model.Extends<T>,
     arg: boolean | Expect<T> | undefined,
     downstream: boolean | undefined,
-    skip: Model,
+    skip?: Model,
   ): T | undefined | (() => void);
 
   public get<T extends Model>(
@@ -116,7 +151,8 @@ class Context {
     let found: T | null | undefined;
     let priority = false;
 
-    for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) {
+    for (let ctx: Context | undefined = this; ctx; ctx = above(ctx)) {
+      touch(ctx, Type);
       const entries = ctx.provide.get(Type);
       if (!entries) continue;
 
@@ -163,12 +199,15 @@ class Context {
     const root = this === Context.root;
     const TT: Model.Extends[] = [];
 
-    function conflict(T: Model.Extends) {
+    const conflict = (T: Model.Extends) => {
       const entries = provide.get(T);
       if (entries)
         for (const entry of entries)
-          if (!entry[1] && entry[0] !== I) return entries.delete(entry);
-    }
+          if (!entry[1] && entry[0] !== I) {
+            emit(this, T);
+            return entries.delete(entry);
+          }
+    };
 
     for (
       let T = I.constructor as Model.Extends;
@@ -180,7 +219,11 @@ class Context {
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
 
-    for (const T of TT) onDone.add(this.register(T, [I, explicit]));
+    for (const T of TT) {
+      onDone.add(this.register(T, [I, explicit]));
+      onDone.add(() => emit(this, T));
+      emit(this, T);
+    }
 
     function queue(ctx: Context, downstream: boolean, same?: boolean) {
       let found = false;
@@ -202,7 +245,10 @@ class Context {
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
-    if (!LOOKUP.has(I)) LOOKUP.set(I, this);
+    const owner = parent(I);
+    const placed = explicit && !(owner && home(owner));
+
+    if (!HOME.has(I) && (!owner || placed)) HOME.set(I, this);
 
     listener(I, () => {
       expects.forEach((f) => f());
@@ -216,8 +262,8 @@ class Context {
     }
 
     const cleanup = CLEANUP.get(this)!;
-    const held = Array.from(HELD.get(I) || [], ([child, added]) => {
-      const done = this.add(child);
+    const held = Array.from(HELD.get(I) || [], ([child, [added, explicit]]) => {
+      const done = this.add(child, explicit);
       added.add(done);
       return () => {
         if (added.delete(done)) done();
@@ -269,25 +315,81 @@ class Context {
   }
 }
 
-Object.defineProperty(Context.prototype, "toString", {
-  value() {
-    return `Context-${this.id}`;
+Object.defineProperties(Context.prototype, {
+  toString: {
+    value() {
+      return `Context-${this.id}`;
+    },
+  },
+  [Observer]: {
+    get(this: Context) {
+      Object.defineProperty(this, Observer, { writable: true });
+      signal(this);
+      return (this as any)[Observer];
+    },
   },
 });
 
+function emit(ctx: Context, T: Model.Extends) {
+  if (Object.getOwnPropertyDescriptor(ctx, Observer)) signal(ctx, T as any);
+}
+
+type Resolve = (
+  Type: Model.Extends | undefined,
+  compute: (context: Context) => unknown,
+) => unknown;
+
+let current: Resolve = (_Type, compute) => compute(Context.root);
+
 /**
- * Add `value` to the context `state` was added to. A context-less `state` holds
+ * Install how a host runs `compute` for a `Context.get` outside any origin -
+ * `Type` is undefined for bare `Context.get()`. Its return value is what the
+ * caller receives, so a host may track or wrap it. Returns the previous
+ * resolver, for the host to call where it is not rendering.
+ */
+function resolver(next: Resolve): Resolve {
+  const previous = current;
+  current = next;
+  return previous;
+}
+
+/**
+ * Run `fn` with the context of `origin` current, and `origin` as origin of
+ * any `get` resolved within. Nests.
+ */
+function within<R>(origin: Model, fn: () => R): R {
+  STACK.push([Context.get(origin), origin]);
+
+  try {
+    return fn();
+  } finally {
+    STACK.pop();
+  }
+}
+
+/**
+ * Add `value` to the lookup origin of `state`. A context-less `state` holds
  * it instead - every context adding `state` later adds its held children too.
  */
-function join(state: Model, value: Model): () => void {
-  const ctx = LOOKUP.get(state.is);
+function join(state: Model, value: Model, explicit?: boolean): () => void {
+  const ctx = home(state.is);
+  const none = () => {};
 
-  if (ctx) return ctx.add(value);
+  if (ctx) {
+    for (let at: Context | undefined = ctx; at; at = at.parent)
+      for (const [x, is] of at.provide.get(value.constructor as Model.Extends) || [])
+        if (x === value && is) return none;
 
-  const held = HELD.get(state) || new Map();
+    return ctx.add(value, explicit);
+  }
+
+  const held = HELD.get(state) || new Map<Model, [Set<() => void>, boolean?]>();
+
+  if (held.get(value)?.[1]) return none;
+
   const added = new Set<() => void>();
 
-  HELD.set(state, held.set(value, added));
+  HELD.set(state, held.set(value, [added, explicit]));
 
   return () => {
     held.delete(value);
@@ -298,9 +400,18 @@ function join(state: Model, value: Model): () => void {
   };
 }
 
+function above(ctx: Context) {
+  return ctx.parent && touch(ctx, "parent", ctx.parent);
+}
+
+function home(state: Model): Context | undefined {
+  const owner = parent(state);
+  return HOME.get(state) || (owner ? home(owner) : undefined);
+}
+
 /** The Model a host mounted `state` under - the one its nearest enclosing context was set up for. */
 function host(state: Model) {
-  for (let ctx = LOOKUP.get(state); ctx; ctx = ctx.parent) {
+  for (let ctx = home(state); ctx; ctx = ctx.parent) {
     const found = HOST.get(ctx);
     if (found && found !== state) return found;
   }
@@ -337,4 +448,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, host, join };
+export { Context, host, join, resolver, within };

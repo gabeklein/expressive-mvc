@@ -7,6 +7,7 @@ import * as Refresh from 'react-refresh/runtime';
 import {
   vi,
   expect,
+  expectTypeOf,
   it,
   describe,
   beforeEach,
@@ -44,6 +45,51 @@ describe('Model.get', () => {
     error.mockRestore();
 
     expect(calls).toEqual([]);
+  });
+
+  it('will resolve from context outside render', () => {
+    class Test extends Model {}
+
+    const test = Test.new();
+    const remove = Context.root.add(test, true);
+
+    expect(Test.get()).toBe(test);
+    expect(Test.get(false)).toBe(test);
+
+    remove();
+  });
+
+  it('will probe outside render when idle cannot tell', () => {
+    class Test extends Model {}
+
+    const idle = Runtime.idle;
+    const test = Test.new();
+    const remove = Context.root.add(test, true);
+
+    render(<></>);
+    Runtime.idle = () => undefined;
+
+    try {
+      expect(Context.get()).toBe(Context.root);
+      expect(Test.get()).toBe(test);
+    } finally {
+      Runtime.idle = idle;
+      remove();
+    }
+  });
+
+  it('will resolve an override outside render', () => {
+    class Item extends Model {
+      static get<T extends Item>(this: Model.Extends<T>, id?: number | false): T {
+        if (typeof id != 'number') return super.get(id as false) as T;
+
+        return Context.get(this, () => Object.assign((this as Model.Type<T>).new(), { id }));
+      }
+
+      id = 0;
+    }
+
+    expect(Item.get(5).id).toBe(5);
   });
 
   it('will fetch model', () => {
@@ -133,16 +179,13 @@ describe('Model.get', () => {
     expect(didRender).toBeCalledTimes(1);
   });
 
-  it.each([
-    ['plain', (T: typeof Model) => T.get()],
-    ['computed', (T: typeof Model) => T.get((x) => x)]
-  ])('will throw if not found (%s)', (_, read) => {
+  it('will throw if not found', () => {
     class Test extends Model {
       value = 1;
     }
 
     const useTest = vi.fn(() => {
-      expect(() => read(Test)).toThrow('Could not find Test in context.');
+      expect(() => Test.get()).toThrow('Could not find Test in context.');
     });
 
     renderHook(useTest);
@@ -162,17 +205,36 @@ describe('Model.get', () => {
     expect(useTest).toHaveReturned();
   });
 
-  it('will throw if expected value undefined', () => {
-    class Test extends Model {
-      value?: number = undefined;
+  it('will not accept true', () => {
+    class Test extends Model {}
 
+    // @ts-expect-error
+    expectTypeOf(Test.get).toBeCallableWith(true);
+  });
+
+  it('will render once per change for repeated reads', async () => {
+    class Test extends Model {
+      value = 1;
     }
 
-    renderWith(Test, () => {
-      expect(() => {
-        void Test.get(true).value;
-      }).toThrow(/[\w-]+\.value is required in this context\./);
+    const test = Test.new();
+    const didRender = vi.fn();
+
+    function View() {
+      didRender();
+      const { value } = Test.get();
+      const again = Test.get();
+      return <>{value}:{again.value}</>;
+    }
+
+    const view = render(<Component for={test}><View /></Component>);
+
+    await act(async () => {
+      test.value = 2;
     });
+
+    expect(view.container.textContent).toBe('2:2');
+    expect(didRender).toBeCalledTimes(2);
   });
 
   describe('over destroyed instance', () => {
@@ -197,8 +259,7 @@ describe('Model.get', () => {
 
     it.each([
       ['will render last values', () => <>{Test.get().value}</>, 'foo'],
-      ['will render last values when optional', () => <>{Test.get(false)?.value}</>, 'foo'],
-      ['will evaluate factory with last values', () => <>{Test.get(($) => $.value.toUpperCase())}</>, 'FOO']
+      ['will render last values when optional', () => <>{Test.get(false)?.value}</>, 'foo']
     ])('%s', async (_, Consumer, expected) => {
       expect(await lateConsumer(Consumer)).toBe(expected);
       expect(error).not.toBeCalled();
@@ -228,251 +289,221 @@ describe('Model.get', () => {
     });
   });
 
-  describe('computed', () => {
+  describe('from a Model origin', () => {
     class Test extends Model {
-      foo = 1;
-      bar = 2;
+      value = 'foo';
     }
 
-    it.todo('will suspend if factory does', () => {});
+    class Origin extends Model {}
 
-    it('will compute and subscribe to output', async () => {
-      const test = Test.new();
-      const hook = renderWith(test, () => {
-        return Test.get((x) => x.foo + x.bar);
-      });
-
-      expect(hook.result.current).toBe(3);
-
-      await act(async () => test.set({ foo: 2 }));
-
-      expect(hook.result.current).toBe(4);
-    });
-
-    it('will ignore updates with same result', async () => {
-      const test = Test.new();
-      const compute = vi.fn();
-      const didRender = vi.fn();
-
-      const hook = renderWith(test, () => {
-        didRender();
-        return Test.get((x) => {
-          compute();
-          void x.foo;
-          return x.bar;
-        });
-      });
-
-      expect(hook.result.current).toBe(2);
-      expect(compute).toBeCalled();
-
-      test.foo = 2;
-      await expect(test).toHaveUpdated();
-
-      // did attempt a second compute
-      expect(compute).toBeCalledTimes(2);
-
-      // compute did not trigger a new render
-      expect(didRender).toBeCalledTimes(1);
-      expect(hook.result.current).toBe(2);
-    });
-
-    it.each([
-      ['will return null', () => null],
-      ['will convert undefined to null', () => {}]
-    ])('%s', (_, factory) => {
-      const hook = renderWith(Test, () => Test.get(factory));
-
-      expect(hook.result.current).toBeNull();
-    });
-
-    it('will disable updates if null returned', async () => {
-      const factory = vi.fn(($: Test) => {
-        void $.foo;
-        return null;
-      });
-
-      const didRender = vi.fn(() => {
-        return Test.get(factory);
-      });
-
-      const test = Test.new();
-      const hook = renderWith(test, didRender);
-
-      expect(didRender).toBeCalled();
-      expect(hook.result.current).toBeNull();
-
-      test.foo = 2;
-
-      await expect(test).toHaveUpdated();
-
-      expect(factory).toBeCalledTimes(1);
-      expect(didRender).toBeCalledTimes(1);
-    });
-
-    it('will run initial callback syncronously', async () => {
-      class Parent extends Model {
-        values = [] as string[];
-      }
-
-      type ChildProps = {
-        value: string;
+    it('will resolve without hooks', async () => {
+      const outer = Test.new({ value: 'outer' });
+      const inner = Test.new({ value: 'inner' });
+      const origin = Origin.new();
+      new Context(inner).push(origin);
+      const View = (props: { local: boolean }) => {
+        const found = props.local && origin.get(Test);
+        const { value } = Test.get();
+        return <>{found ? found.value : 'none'}:{value}</>;
       };
 
-      const Child = (props: ChildProps) =>
-        Parent.get(($) => {
-          didPushToValues();
-          $.values = [...$.values, props.value];
-          return null;
-        });
-
-      const parent = Parent.new();
-      const didUpdateValues = vi.fn();
-      const didPushToValues = vi.fn();
-
-      parent.get((state) => {
-        didUpdateValues(state.values.length);
-      });
-
-      render(
-        <Component for={parent}>
-          <Child value="foo" />
-          <Child value="bar" />
-          <Child value="baz" />
+      const view = render(
+        <Component for={outer}>
+          <View local={false} />
         </Component>
       );
 
-      expect(didPushToValues).toBeCalledTimes(3);
+      expect(view.container.textContent).toBe('none:outer');
 
-      await expect(parent).toHaveUpdated();
+      view.rerender(
+        <Component for={outer}>
+          <View local />
+        </Component>
+      );
 
-      // Expect updates to have bunched up before new frame.
-      expect(didUpdateValues).toBeCalledTimes(2);
-      expect(didUpdateValues).toBeCalledWith(3);
+      expect(view.container.textContent).toBe('inner:outer');
+
+      view.rerender(
+        <Component for={outer}>
+          <View local={false} />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('none:outer');
+
+      await act(async () => {
+        outer.value = 'updated';
+      });
+
+      expect(view.container.textContent).toBe('none:updated');
+    });
+
+    it('will track through a Model origin', async () => {
+      class Peer extends Model {
+        value = 'peer';
+      }
+
+      const peer = Peer.new();
+      const View = () => {
+        const test = Test.get();
+        return <>{test.get(Peer).value}</>;
+      };
+
+      const view = render(
+        <Component for={peer}>
+          <Component for={Test}>
+            <View />
+          </Component>
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('peer');
+
+      await act(async () => {
+        peer.value = 'updated';
+      });
+
+      expect(view.container.textContent).toBe('updated');
     });
   });
 
-  describe('force update', () => {
-    class Test extends Model {
-      foo = 'bar';
+  describe('override', () => {
+    class Item extends Model {
+      id = 0;
+      label = '';
+
+      static get<T extends Item>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return Context.get(this, (context) => {
+          const { a, b } = context.get(Store);
+          return [a, b].find((item) => item.id === id) as T;
+        });
+      }
     }
 
-    it.each([
-      ['will force a refresh', undefined],
-      ['will refresh without reevaluating', null]
-    ])('%s', async (_, output) => {
-      const didEvaluate = vi.fn();
+    class Store extends Model {
+      a = new Item({ id: 1, label: 'one' });
+      b = new Item({ id: 2, label: 'two' });
+    }
+
+    it('will track and follow a changed key', async () => {
+      const store = Store.new();
       const didRender = vi.fn();
-      let forceUpdate!: () => void;
-
-      renderWith(Test, () => {
+      const View = (props: { id: number }) => {
         didRender();
-        return Test.get((_, update) => {
-          didEvaluate();
-          forceUpdate = update;
-          return output;
-        });
-      });
+        return <>{Item.get(props.id).label}</>;
+      };
 
-      await act(async () => forceUpdate());
+      const view = render(
+        <Component for={store}>
+          <View id={1} />
+        </Component>
+      );
 
-      expect(didEvaluate).toBeCalledTimes(1);
-      expect(didRender).toBeCalledTimes(2);
-    });
-
-    it.each([
-      ['will refresh again after promise', (promise: Promise<unknown>) => promise],
-      ['will invoke async function', (promise: Promise<unknown>) => () => promise]
-    ])('%s', async (_, argument) => {
-      const promise = mockPromise();
-      const didRender = vi.fn();
-      let forceUpdate!: (after: any) => Promise<unknown>;
-
-      renderWith(Test, () => {
-        didRender();
-        return Test.get((_, update) => {
-          forceUpdate = update;
-          return null;
-        });
-      });
+      expect(view.container.textContent).toBe('one');
 
       await act(async () => {
-        forceUpdate(argument(promise));
+        store.a.label = 'uno';
       });
 
-      expect(didRender).toBeCalledTimes(2);
+      expect(view.container.textContent).toBe('uno');
+
+      view.rerender(
+        <Component for={store}>
+          <View id={2} />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('two');
+      expect(didRender).toBeCalledTimes(3);
 
       await act(async () => {
-        promise.resolve();
+        store.a.label = 'one';
       });
 
       expect(didRender).toBeCalledTimes(3);
-    });
-  });
 
-  describe('async', () => {
-    class Test extends Model {
-      foo = 'bar';
-    }
-
-    it('will convert void to null', async () => {
-      const promise = mockPromise<void>();
-
-      const hook = renderWith(Test, () => {
-        return Test.get(async () => promise);
+      await act(async () => {
+        store.b.label = 'dos';
       });
 
-      await act(async () => promise.resolve(undefined));
-
-      expect(hook.result.current).toBe(null);
+      expect(view.container.textContent).toBe('dos');
     });
 
-    it('will not subscribe to values', async () => {
-      const promise = mockPromise<string>();
+    it('will follow another type its compute looks up', async () => {
+      class Row extends Model {
+        label = '';
 
-      const test = Test.new();
-      const didRender = vi.fn();
-      const hook = renderWith(test, () => {
-        didRender();
-        return Test.get(async ($) => {
-          void $.foo;
-          return promise;
-        });
-      });
+        static get<T extends Row>(this: Model.Extends<T>, key?: string | false): T {
+          if (typeof key != 'string') return super.get(key as false) as T;
 
-      expect(didRender).toBeCalled();
-      expect(hook.result.current).toBeNull();
-
-      promise.resolve('foobar');
-      await waitFor(() => expect(didRender).toBeCalledTimes(2));
-
-      expect(hook.result.current).toBe('foobar');
-
-      test.foo = 'foo';
-      await expect(test).toHaveUpdated();
-
-      expect(didRender).toBeCalledTimes(2);
-    });
-
-    it('will refresh and throw if async rejects', async () => {
-      class Test extends Model {}
-
-      const promise = mockPromise();
-      const hook = renderWith(Test, () => {
-        try {
-          Test.get(async () => {
-            await promise;
-            throw 'oh no';
-          });
-        } catch (err: any) {
-          return err;
+          return Context.get(this, (context) => context.get(Connection).reference(this, key));
         }
+      }
+
+      class Connection extends Model {
+        name = '';
+        rows = new Map<string, Row>();
+
+        reference<T extends Row>(Type: Model.Extends<T>, key: string): T {
+          let row = this.rows.get(key);
+
+          if (!row) this.rows.set(key, (row = (Type as Model.Type<T>).new({ label: `${this.name}:${key}` } as never)));
+
+          return row as T;
+        }
+      }
+
+      class Session extends Model {
+        connection = new Connection({ name: 'a' });
+      }
+
+      const session = Session.new();
+      const View = () => <>{Row.get('x').label}</>;
+
+      const view = render(
+        <Component for={session}>
+          <View />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('a:x');
+
+      await act(async () => {
+        session.connection = new Connection({ name: 'b' });
       });
 
-      expect(hook.result.current).toBeUndefined();
+      expect(view.container.textContent).toBe('b:x');
 
-      promise.resolve();
-      await waitFor(() => expect(hook.result.current).toBe('oh no'));
+      await act(async () => {
+        session.connection.rows.get('x')!.label = 'updated';
+      });
+
+      expect(view.container.textContent).toBe('updated');
+    });
+
+    it('will keep proxy while instance is unchanged', async () => {
+      const store = Store.new();
+      const seen: Item[] = [];
+      const View = (_props: { tick: number }) => {
+        seen.push(Item.get(1));
+        return null;
+      };
+
+      const view = render(
+        <Component for={store}>
+          <View tick={0} />
+        </Component>
+      );
+
+      view.rerender(
+        <Component for={store}>
+          <View tick={1} />
+        </Component>
+      );
+
+      expect(seen).toHaveLength(2);
+      expect(seen[0]).toBe(seen[1]);
+      expect(seen[0]).not.toBe(store.a);
     });
   });
 
@@ -531,31 +562,130 @@ describe('Model.get', () => {
       expect(didRender).toBeCalledTimes(3);
     });
 
-    it.fails('will render null when instance is removed', async () => {
+    it('will return undefined when instance is removed', async () => {
       class Other extends Model {}
 
-      const { container, swap } = mount(Test.new(), () => Test.get(false)?.value ?? null);
+      const didGet = vi.fn();
+      const { container, swap } = mount(Test.new(), () => {
+        const test = Test.get(false);
+        didGet(test);
+        return test?.value ?? null;
+      });
 
       expect(container.textContent).toBe('foo');
 
       await swap(Other.new());
 
       expect(container.textContent).toBe('');
+      expect(didGet).toHaveBeenLastCalledWith(undefined);
     });
 
-    it('will use factory with replaced instance', async () => {
-      const didCompute = vi.fn();
-      const { container, swap } = mount(Test.new({ value: 'first' }), () =>
-        Test.get(($) => {
-          didCompute();
-          return $.value;
-        })
+    it('will throw when a required instance is removed', async () => {
+      class Other extends Model {}
+
+      const { container, swap } = mount(Test.new(), () => {
+        try {
+          return Test.get().value;
+        } catch (err: any) {
+          return err.message;
+        }
+      });
+
+      expect(container.textContent).toBe('foo');
+
+      await swap(Other.new());
+
+      expect(container.textContent).toBe(`Could not find ${Test} in context.`);
+    });
+
+    it('will keep following an instance provided again closer', async () => {
+      class Parent extends Model {
+        test = new Test();
+      }
+
+      const parent = Parent.new();
+      const Inner = () => Test.get().value;
+      const tree = (inner?: Test) => (
+        <Component for={parent}>
+          <Component for={inner}>
+            <Inner />
+          </Component>
+        </Component>
       );
 
-      await swap(Test.new({ value: 'second' }));
+      const { container, rerender } = render(tree());
 
-      expect(didCompute).toBeCalledTimes(2);
-      expect(container.textContent).toBe('second');
+      await act(async () => parent.test.value = 'bar');
+      expect(container.textContent).toBe('bar');
+
+      rerender(tree(parent.test));
+      await act(async () => parent.test.value = 'baz');
+      expect(container.textContent).toBe('baz');
+    });
+
+    it('will follow an ambiguous lookup', async () => {
+      class Parent extends Model {
+        a = new Test({ value: 'a' });
+        b?: Test = undefined;
+      }
+
+      const parent = Parent.new();
+      const didGet = vi.fn();
+
+      const Inner = () => {
+        const test = Test.get(false);
+        didGet(test);
+        return test?.value ?? 'none';
+      };
+
+      const view = render(
+        <Component for={parent}>
+          <Inner />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('a');
+
+      await act(async () => {
+        parent.b = new Test({ value: 'b' });
+      });
+
+      expect(view.container.textContent).toBe('none');
+      expect(didGet).toHaveBeenLastCalledWith(undefined);
+
+      await act(async () => {
+        parent.b = undefined;
+      });
+
+      expect(view.container.textContent).toBe('a');
+    });
+
+    it('will refresh for an instance arriving before mount', async () => {
+      class Child extends Model {
+        value = 'child';
+      }
+
+      class Parent extends Model {
+        child?: Child = undefined;
+      }
+
+      const parent = Parent.new();
+      const Inner = () => <>{Child.get(false)?.value ?? 'none'}</>;
+      const Adder = () => {
+        parent.child ||= new Child();
+        return null;
+      };
+
+      const { container } = render(
+        <Component for={parent}>
+          <Inner />
+          <Adder />
+        </Component>
+      );
+
+      await act(async () => {});
+
+      expect(container.textContent).toBe('child');
     });
 
     it('will track implicit replacement instance', async () => {
@@ -940,11 +1070,10 @@ describe('Model.get - pre-commit dispatch', () => {
     value = 0;
   }
 
-  function harness(test: Test) {
+  function harness(test: Test, context = new Context({ test })) {
     const refs: { current: any }[] = [];
     const inited: boolean[] = [];
     const effects: (() => (() => void) | void)[] = [];
-    const context = new Context({ test });
     const update = vi.fn();
     let index = 0;
 
@@ -994,6 +1123,42 @@ describe('Model.get - pre-commit dispatch', () => {
     test.value = 2;
 
     await expect(test).toHaveUpdated();
+
+    expect(update).not.toHaveBeenCalled();
+
+    commit();
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('will refresh on commit if provider changed before', async () => {
+    const test = Test.new();
+    const context = new Context();
+    const { update, render, commit } = harness(test, context);
+
+    context.add(test);
+    render();
+    context.add(Test.new(), true);
+
+    await flushMicrotasks();
+
+    expect(update).not.toHaveBeenCalled();
+
+    commit();
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('will refresh on commit if lookup failed before', async () => {
+    const test = Test.new();
+    const context = new Context();
+    const { update, render, commit } = harness(test, context);
+
+    context.add(test);
+    render();
+    context.add(Test.new());
+
+    await flushMicrotasks();
 
     expect(update).not.toHaveBeenCalled();
 
@@ -1085,5 +1250,88 @@ reactOnly.describe('abandoned render', () => {
     await act(collect);
 
     expect(live.size).toBe(0);
+  });
+});
+
+describe('Model.get - parity', () => {
+  class Foo extends Model {
+    value = 'none';
+  }
+
+  it('will follow a provider replaced above a stable subtree', async () => {
+    const a = Foo.new({ value: 'a' });
+    const b = Foo.new({ value: 'b' });
+    const didRender = vi.fn();
+
+    const Name = () => {
+      didRender();
+      return <>{Foo.get().value}</>;
+    };
+
+    class Stable extends Component {
+      render() {
+        didRender();
+        return <>{Foo.get().value}</>;
+      }
+    }
+
+    const content = (
+      <>
+        <Name />
+        <Stable />
+      </>
+    );
+
+    const view = render(<Component for={a}>{content}</Component>);
+
+    expect(view.container.textContent).toBe('aa');
+
+    await act(async () => {
+      view.rerender(<Component for={b}>{content}</Component>);
+    });
+
+    expect(view.container.textContent).toBe('bb');
+
+    didRender.mockClear();
+    a.value = 'stale';
+    await expect(a).toHaveUpdated();
+
+    expect(didRender).not.toBeCalled();
+  });
+
+  it('will refresh for an instance arriving after mount', async () => {
+    class Parent extends Model {
+      child?: Foo = undefined;
+    }
+
+    const parent = Parent.new();
+    const Name = () => <>{Foo.get(false)?.value ?? 'missing'}</>;
+    const view = render(
+      <Component for={parent}>
+        <Name />
+      </Component>
+    );
+
+    expect(view.container.textContent).toBe('missing');
+
+    await act(async () => {
+      parent.child = new Foo({ value: 'arrived' });
+    });
+
+    expect(view.container.textContent).toBe('arrived');
+  });
+
+  it('will refresh for a provider whose for becomes defined', async () => {
+    const Name = () => <>{Foo.get(false)?.value ?? 'missing'}</>;
+    const content = <Name />;
+    const view = render(<Component for={undefined as Foo | undefined}>{content}</Component>);
+
+    expect(view.container.textContent).toBe('missing');
+
+    await act(async () => {
+      view.rerender(<Component for={Foo.new({ value: 'arrived' })}>{content}</Component>);
+    });
+
+    expect(view.container.textContent).toBe('arrived');
   });
 });

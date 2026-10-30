@@ -299,6 +299,52 @@ describe('for', () => {
     name = 'none';
   }
 
+  it('will provide a class swapped in for once', async () => {
+    class Other extends Model {}
+
+    const provider = Component.new({ for: Session } as any);
+    const context = Context.root.push(provider);
+    const found = vi.fn();
+
+    context.get(Other, found);
+
+    (provider as any).props = { for: Other };
+    await flushMicrotasks();
+
+    expect(found).toBeCalledTimes(1);
+    expect(found).toBeCalledWith(context.get(Other), true);
+  });
+
+  it('will provide an instance already provided above', () => {
+    class Holder extends Model {
+      session?: Session = undefined;
+    }
+
+    const session = Session.new();
+    const holder = new Holder();
+    const outer = Context.root.push(holder);
+
+    holder.session = session;
+
+    const inner = outer.push(new Component({ for: session } as any));
+
+    holder.session = undefined;
+
+    expect(outer.get(Session, false)).toBeUndefined();
+    expect(inner.get(Session)).toBe(session);
+  });
+
+  it('will release an instance when the provider is destroyed', () => {
+    const session = Session.new();
+    const provider = Component.new({ for: session } as any);
+    const context = Context.root.push(provider);
+
+    provider.set(null);
+
+    expect(context.get(Session, false)).toBeUndefined();
+    expect(session.get(null)).toBe(false);
+  });
+
   it('will construct and provide a class', () => {
     const is = vi.fn();
     const provider = Component.new({ for: Session, name: 'Ada', is } as any);
@@ -380,6 +426,19 @@ describe('for', () => {
 
     expect(next.get(null)).toBe(false);
     expect(context.get(Session, false)).toBeUndefined();
+  });
+
+  it('will provide the next instance when for changes', async () => {
+    const first = Session.new();
+    const next = Session.new();
+    const provider = Component.new({ for: first } as any);
+    const context = new Context().push(provider);
+
+    (provider as any).props = { for: next };
+    await flushMicrotasks();
+
+    expect(context.get(Session)).toBe(next);
+    expect(first.get(null)).toBe(false);
   });
 
   it('will mount only a class it constructed', () => {

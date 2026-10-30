@@ -1,0 +1,5 @@
+---
+'@expressive/mvc': minor
+---
+
+`Model.get` is defined in core and may be overridden: an override handles its own arguments, delegates base forms to `super.get(arg)`, and resolves its own by calling `Context.get(this, compute)` once, synchronously, to keep host context and render tracking - `User.get(id)`. `Context.get(Type, compute)` resolves such a lookup; bare `Context.get()` returns the current context, else root. `state.get(Type, ...args)` and a `get(Type, key, ...)` instruction call `Type.get` with that instance's context current and the instance as origin, so they follow an override. Elsewhere `Context.get` defers to the host's resolver - root by default; hosts install one with `resolver` from `@expressive/mvc/jsx-runtime` to supply render context and tracking. A tracked caller - a render, or `state.get(Type, ...)` through a tracking proxy - follows every lookup `compute` makes, so an override reading another type refreshes when that type's provider changes. An ambiguous `Model.get()` throws `Could not find` and `get(false)` returns `undefined` - `state.get(Type)` included, which returned `null`.

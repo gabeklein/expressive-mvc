@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries with get(true), providing context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries, providing context, async suspense, router - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
@@ -36,7 +36,7 @@ The most common failure when adopting this library is translating hooks one-for-
 
 For every stateful concern, pick exactly one owner:
 
-- **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region control fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
+- **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. House style: the app entry is an FC - pure composition, with a last-resort boundary as `fallback`/`catch` on the top Component it mounts (`<Layout fallback={null}>`, `<BrowserRouter fallback={null}>`). App-wide logic is a `static global` Model, or `<Component for={Shared}>` to scope it to one tree.
 - **`Model`** - headless domain model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()`; an owning Component holds it as a field. Two roles: a *domain model* (`Cart`, `Message`, a pool row) outlives any one placement; a *control* (`Control`, `<Feature>Control` in apps) is constructed where a page, region or route places it, holds domain models as fields, and translates gestures into operations on them. Name a class for what it holds - `<Thing>State` and `<Feature>Control` are both fine, case by case.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
@@ -59,13 +59,13 @@ Counter-rules:
 3. Choose `Model`, `Component`, or a plain function component for each owner.
 4. Give every repeated UI entry own class in a `has` pool; actions about item belong on item.
 5. Split unrelated clusters remaining on page control to owned region controls `composer = new Composer()`. Bias one concern per class - barrels are deliberate (page orchestrator, pool owner, mounting shell); shed a second concern the moment it appears, growing a feature or refactoring one alike.
-6. Provide classes directly `<Component for={AppState}>` never an instance if only to provide it; the entrypoint Component's own fields provide implicitly - `main` only mounts `<Inbox />`.
+6. Provide classes directly `<Component for={AppState}>` never an instance if only to provide it; a page Component's own fields provide implicitly - mount `<Inbox />` bare.
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
 9. Let contextual children call `.get()` instead of receiving drilled props.
 10. At every `.get()` and `render()`, destructure for exact nested dependency snapshot.
 11. May assign thru subscribed proxies; `is` only to retain the root object alongside sibling destructuring.
-12. A gated widget mounts unconditionally and gates itself, falling thru when unset; parent gate + `.get(true)` where the parent reads the field for its own content.
+12. A gated widget mounts unconditionally and gates itself, falling thru when unset; where the parent reads the field for its own content, the gated value is a Model field and the child reads it with `.get()`.
 13. Split `render()` and long JSX at conditionals and non-interacting siblings into honestly-named local FCs - units you'd delete or move whole; one-op conditionals and formatted scalars stay inline. Consolidate scopes that share dependencies and hold no nested logic.
 14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
 
@@ -108,7 +108,7 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 | Helper  | Use for                                                                                                | Reference                  |
 | ------- | ------------------------------------------------------------------------------------------------------ | -------------------------- |
 | `set()` | Defaults, placeholders (suspend until assigned), lazy/async factories (suspense), setter callbacks and validation | [field/set.md](field/set.md) |
-| `get()` | Context lookup between instances - required or optional upstream, downstream collection                   | [field/get.md](field/get.md) |
+| `get()` | Context lookup between instances - required or optional upstream, downstream collection, override key | [field/get.md](field/get.md) |
 | `ref()` | Mutable refs (`.current`), ref callbacks with cleanup, ref proxies                                      | [field/ref.md](field/ref.md) |
 | `map()` | Reactive `Map` field - keyed entries or a keyed spawner, with owned `Model` members and direct render    | [field/map.md](field/map.md) |
 | `has()` | Owned collections - an ordered list of values, or a pool of spawned members. Pools are for per-item UI state (selection, progress, row actions). Class first (`has(Row)`); factory when the seed isn't the init | [field/has.md](field/has.md) |
@@ -167,9 +167,9 @@ function Parent({ counter }: { counter: Counter }) {
 }
 ```
 
-Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. It builds green when misused and crashes at runtime. (Instance method get is not a hook.)
+Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. Outside render it resolves root, untracked - no error, possibly the wrong instance; a handler uses what the render's snapshot destructured. (Instance method get is not a hook.)
 
-State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for overloads (optional lookup, required values, computed selector).
+State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for optional lookup, presence boundaries and custom lookup.
 
 ## The Dependency Snapshot
 
@@ -215,9 +215,9 @@ const { is: review, confirmed, hasBlocking } = ReviewStep.get();  // `is`: root 
 
 `is` is **only** for keeping the root alongside sibling destructuring. Unwrapping every writable object through it is the most common misuse.
 
-## Presence Boundaries & `get(true)`
+## Presence Boundaries
 
-Default: a self-contained widget mounts unconditionally, reads its own context, and falls thru when its reason to render is unset - a parent read existing only to gate belongs in the widget. The secondary shape, when the parent reads the field for its own content: parent gates, child asserts with `get(true)`:
+Default: a self-contained widget mounts unconditionally, reads its own context, and falls thru when its reason to render is unset - a parent read existing only to gate belongs in the widget. The secondary shape, when the parent reads the field for its own content: the gated value is a Model field (`draft?: Draft`), which joins its owner's context - parent gates, child reads it with `Draft.get()`:
 
 ```tsx
 function SettingsContent() {
@@ -233,19 +233,20 @@ function SettingsContent() {
 
 function SettingsEditor() {
   const {
+    bankAccount,
+    categoryAccounts,
+  } = Draft.get();
+
+  const {
     saveSettings,
     saving,
-    draft: {
-      bankAccount,
-      categoryAccounts,
-    },
-  } = SettingsState.get(true); // Required<T> - throws if an accessed value is undefined
+  } = SettingsState.get();
 
   return <section className="settings-editor">...</section>;
 }
 ```
 
-This gives the child a strong contract - no fallback values threaded through its body. Declare gateable fields **optional** (`draft?: SettingsLocation`), not `| null`: the runtime check rejects only `undefined`, and `Required<T>` does not strip `null` from a union (see [react/react.md](react/react.md)). Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
+The child renders only where the instance exists - no fallback values threaded through its body, no Model values passed as props. A gated value with one view of its own is a `Component`, placed as `{draft}`. Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
 
 ## Providing Context
 
@@ -309,18 +310,18 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 ### Model (core)
 
 - [state/state.md](state/state.md) - Model class, instantiation, properties, methods, events, context
-- [state/get.md](state/get.md) - Instance `.get()` method: read values, run effects, context lookup
+- [state/get.md](state/get.md) - Instance `.get()` method: read values, run effects, context lookup; static `get` and overriding it
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
 - [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense, when a derivation should stay local
 - [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases; hot patching and the `hot` seam
-- [state/context.md](state/context.md) - Context system, global root, home context, ownership rules
+- [state/context.md](state/context.md) - Context system, global root, home context, ownership rules, `Context.get`/`resolve`, writing a host
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
 Instructions: `field/*.md`, linked from the [helper table](#instructions--reactive-helpers).
 
 ### React
 
-- [react/react.md](react/react.md) - Model.get() (optional lookup, required values `get(true)`, computed selector), mount(), providing state, transparent writes, ForceRefresh, SSR, Vite hot reload
+- [react/react.md](react/react.md) - Model.get() (optional lookup, presence boundaries, custom lookup), mount(), providing state, transparent writes, SSR, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controls, router bridge, host-agnostic domain model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 

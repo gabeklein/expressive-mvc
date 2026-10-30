@@ -77,6 +77,17 @@ style(Button, {
 - A rule applies when `_name` is truthy on an element, or when the element's host tag is `name`. `0` and `''` do not activate - a rule is on or off, while a macro still treats `0` as a value. Each applied rule is one class named after its source, such as `Button_active`. Nested inside a rule body, `_name` opens a descendant scope.
 - Bare keys at the top of a map form a **base rule** applied to each of the component's host roots - `padding` above styles every root `Button` renders, through fragments.
 - A map never reaches inside a child component. Rules, base declarations and tag matches apply to the elements that component renders; a descendant scope handed to a child through `style` covers that child's own output and stops there. Only the class chain inherits - `Derived` sees `Base`'s rules.
+- A map styles `render()` output only, not subcomponents ([component.md](../react/component.md#subcomponents)). `_` plus a capital letter addresses one by key: its body is that subcomponent's own map - base declarations for its roots, rules and tag matches for its output - resolved through the owner's class wherever it renders. A `_Title` body composes through the class chain like the top-level map; `_Title` nested in a rule, or as an attribute on any element, throws. To share rules, spread one object into both: `style(Card, { ...shared, _Title: { ...shared } })`.
+
+```tsx
+style(Card, {
+  _active: { color: 'red' },        // render() only
+  _Title: {
+    fontWeight: 700,                // Title's roots
+    _active: { color: 'blue' }      // Title's output; class Card_Title_active
+  }
+});
+```
 - Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door. A class Component declaring a matching unmanaged `_` field also receives the value ([state.md](../state/state.md#unmanaged-instance-data)). The value is not reactive, and writing it does not restyle - style is resolved in the caller's render. A component styles its own output through `_rule` in its own render; anything driving behavior belongs in a managed prop.
 - `$name` is reserved for host instructions and throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
@@ -146,7 +157,7 @@ function Total() {
 }
 ```
 
-`Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it.
+`Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent; outside render it reads the root context, untracked. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it. The lookup follows context - a provider replaced, arriving after mount or leaving renders the scope. Once the provider leaves, `get(false)` returns `undefined` and a required `get()` throws.
 
 An FC owns nothing - same as React. Owned state is a class: a field on a Component, or `<Component for={Type}>` above an FC that reads it with `Model.get()`. Arguments a hook would take per render are attributes, which assign fields:
 
@@ -170,7 +181,7 @@ Only a `Component` renders - as an element or placed inline (`{page}`). A plain 
 
 ## Code splitting, boundaries, transitions
 
-A function component returning a promise renders what it resolves to - a module's default export or a component itself (function or Component class): `const Settings = () => import('./Settings')`. Its first render suspends on the load; later renders and placements reuse the result without calling it again. Attributes pass to, and are typed from, the loaded component. It takes no parameters - props never change what loads. Declare it at module scope - one created per render loads every render. There is no `lazy`. A failed load rejects to the nearest `catch`; the next render after recovery loads again. A Component supplies a suspense boundary unless `fallback = false`; `fallback` and `catch` are members or attributes - `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence over the member and still passes through to a field of that name. Function components never own a boundary; `fallback` on them is an ordinary prop. A placed instance (`{page}`) uses its members. `<Component fallback={…}>` adds one explicitly, with or without `for`. With no boundary above, a suspension throws from `render()` - give the root one: `render(<App fallback={null} />, el)`. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders.
+A function component returning a promise renders what it resolves to - a module's default export or a component itself (function or Component class): `const Settings = () => import('./Settings')`. Its first render suspends on the load; later renders and placements reuse the result without calling it again. Attributes pass to, and are typed from, the loaded component. It takes no parameters - props never change what loads. Declare it at module scope - one created per render loads every render. There is no `lazy`. A failed load rejects to the nearest `catch`; the next render after recovery loads again. A Component supplies a suspense boundary unless `fallback = false`; `fallback` and `catch` are members or attributes - `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence over the member and still passes through to a field of that name. Function components never own a boundary; `fallback` on them is an ordinary prop. A placed instance (`{page}`) uses its members. `<Component fallback={…}>` adds one explicitly, with or without `for`. With no boundary above, a suspension throws from `render()` - give the root one: `fallback` on the top Component an FC `App` mounts (`<Layout fallback={null}>`), or `render(<App fallback={null} />, el)` when `App` is itself a Component. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders.
 
 Suspending destroys nothing. Instances below a boundary - including one that suspends itself - keep their state and retry in place, so an instance may own its loading and error state and suspend in its own `render`. This holds on first mount and in a transition: new content a `pending()` update reveals waits off the page with the instances it created - Components, owned children - while the current screen holds, then commits with it. Each is created once, `mount()` runs after it reaches the page, and it is destroyed only if a later render drops its position. A boundary for plain content is a bare Component:
 

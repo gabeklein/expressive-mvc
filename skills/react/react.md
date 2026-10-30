@@ -139,13 +139,17 @@ function Profile() {
 const app = AppState.get(false); // undefined if not in context
 ```
 
-### Required values & presence boundaries
+### Presence boundaries
+
+Hold a value that may be unset as a Model field - the instance joins its owner's context. Destructure it and render conditionally; the child reads it with `.get()`:
 
 ```tsx
-const app = AppState.get(true); // Required<T>, throws if an accessed value is undefined
+const { draft } = Settings.get();
+if (draft) return <Editor />;
+return <Spinner />;
 ```
 
-`get(true)` is the child half of a **presence boundary**: the parent owns whether the child renders; the child asserts its required values exist - no fallback values threaded through its body:
+The parent owns whether the child renders; the child's `Draft.get()` finds the instance wherever it renders - no fallback values threaded through its body, no Model values passed as props. A gated value with one view of its own is a `Component`, placed as `{draft}`:
 
 ```tsx
 function SettingsContent() {
@@ -161,60 +165,38 @@ function SettingsContent() {
 
 function SettingsEditor() {
   const {
+    bankAccount,
+    categoryAccounts,
+  } = Draft.get();
+
+  const {
     saveSettings,
     saving,
-    draft: {
-      bankAccount,
-      categoryAccounts,
-    },
-  } = SettingsState.get(true);
+  } = SettingsState.get();
   ...
 }
 ```
 
-Declare gateable fields **optional** (`draft?: SettingsLocation`), not nullable (`draft: SettingsLocation | null`). The runtime check rejects only strict `undefined`, and `Required<T>` removes `?` but does not strip `null` from a union - a nullable field silently defeats `get(true)` on both fronts.
+### Derived values and effects
 
-### Computed selector
-
-Pass a factory to derive a value. Reruns when deps change; re-renders only on a new result:
+Derive from the snapshot in render, or declare a getter on the Model ([../state/computed.md](../state/computed.md)); side effects belong in `mount()` or an instance effect (`state.get(effect)`).
 
 ```tsx
-const name = AppState.get(($) => $.user.name);
+function Greeting() {
+  const { user: { name } } = AppState.get();
+  return <p>Hello, {name.toUpperCase()}</p>;
+}
 ```
 
-Factory receives `(current, refresh)`:
+### Custom lookup
 
-- `current` - tracking proxy (reads create subscriptions)
-- `refresh` - `ForceRefresh` function (below)
+A class overriding static `get` keeps context and render tracking - `User.get(id)` subscribes like `User.get()`. See [../state/get.md](../state/get.md#static-get).
 
-The return value is the hook's result; `undefined`/`void` becomes `null`.
-
-### Effect (no re-render)
-
-Return `null` to run a side effect without subscribing:
-
-```tsx
-AppState.get(($) => {
-  console.log($.user);
-  return null;
-});
-```
-
-### ForceRefresh
-
-```tsx
-const data = AppState.get(($, refresh) => {
-  // refresh() - force re-render now
-  // refresh(promise) - re-render now and again after promise settles
-  // refresh(asyncFn) - re-render before and after async function
-  const reload = () => refresh(fetch('/api/data'));
-  return { user: $.user, reload };
-});
-```
+Bare `Context.get()` returns the render's context in a render, else root - safe anywhere. `state.get(Type)` runs no hooks and does not subscribe the component.
 
 ### Reactive context
 
-If the upstream instance is replaced in context (e.g. `<Component for>` given a new item), the hook resubscribes to the new instance and refreshes.
+If the upstream instance is replaced in context (e.g. `<Component for>` given a new item), the hook resubscribes to the new instance and refreshes. An instance arriving after mount refreshes it too - `get(false)` included. Once the instance leaves, `get(false)` returns `undefined` and a required `get()` throws - unmount consumers before destroying their provider.
 
 ---
 

@@ -443,6 +443,7 @@ describe('render method', () => {
     });
 
     expect(screen).toHaveText('bar');
+    screen.unmount();
     auth.set(null);
   });
 
