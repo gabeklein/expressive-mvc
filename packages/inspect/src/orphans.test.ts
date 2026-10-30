@@ -35,17 +35,10 @@ class Owner extends Model {
 }
 
 class Scoped extends Model {
-  static global = true;
   value = 1;
 }
 
-class Global extends Model {
-  static global = true;
-  value = 1;
-}
-
-class Resolved extends Model {
-  static global = (self: Resolved) => self.value > 0;
+class Held extends Model {
   value = 1;
 }
 
@@ -89,14 +82,12 @@ describe('orphans under a host', () => {
     expect(Instance.of(provider).claimed).toBe(true);
   });
 
-  it('will claim owned children and root-provided globals', async () => {
+  it('will claim owned children and instances held in root', async () => {
     const owner = Owner.new();
-    const global = Global.new();
-    const resolved = Resolved.new();
+    const held = Held.new((self) => Context.root.add(self, true));
     await flushMicrotasks();
     expect(orphans().map((o) => o.id)).toEqual([String(owner), String(owner.child)]);
-    expect(Instance.of(global).claimed).toBe(true);
-    expect(Instance.of(resolved).claimed).toBe(true);
+    expect(Instance.of(held).claimed).toBe(true);
 
     const scoped = Context.root.push(Scoped);
     await flushMicrotasks();

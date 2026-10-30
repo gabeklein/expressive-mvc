@@ -7,9 +7,7 @@ import { location, browserRouter } from '../test.setup';
 import { Route } from './route';
 import { Router as CoreRouter } from './router';
 
-class Router extends CoreRouter {
-  static readonly global: (typeof CoreRouter)['global'] = false;
-}
+class Router extends CoreRouter {}
 
 const router = browserRouter();
 

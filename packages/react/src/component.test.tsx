@@ -5,7 +5,7 @@ import React, { Suspense } from 'react';
 
 import { collect, mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly, suspender } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
-import { Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import '.';
 import { Component, pending, set } from '@expressive/mvc';
 
@@ -422,7 +422,6 @@ describe('render method', () => {
 
   it('will update when a Model fetched via this.get changes', async () => {
     class Auth extends Model {
-      static readonly global = true;
       name = 'foo';
     }
 
@@ -432,7 +431,7 @@ describe('render method', () => {
       }
     }
 
-    const auth = Auth.new();
+    const auth = Auth.new((self) => Context.root.add(self, true));
     const screen = render(<Control />);
 
     expect(screen).toHaveText('foo');
