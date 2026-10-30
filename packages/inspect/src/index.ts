@@ -8,7 +8,7 @@ export type { Health, ModelInfo, Node } from './inspect';
 export type { ModelInfo as Model } from './inspect';
 export type { Event, Frame, Level, Options, Query, Summary } from './journal';
 export type { Act } from './settle';
-export type { Select } from './serialize';
+export type { Limits, Select } from './serialize';
 export type { TypeInfo } from './types';
 export { Instance, act, attach, call, detach, find, get, health, instances, label, models, orphans, resolve, roots, set, tree };
 export { parsePath, serialize } from './serialize';

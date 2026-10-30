@@ -4,8 +4,10 @@
     "module": "ESNext",
     "useDefineForClassFields": true,
     "esModuleInterop": true,
-    "lib": ["ES2023", "DOM"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "jsxImportSource": "@expressive/dom",
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "sourceMap": true,
@@ -13,6 +15,8 @@
     "types": ["node"],
     "paths": {
       "@expressive/mvc/*": ["../mvc/src/*"],
+      "@expressive/dom": ["../dom/src"],
+      "@expressive/dom/*": ["../dom/src/*"],
       "@expressive/*": ["../*/src"]
     }
   },

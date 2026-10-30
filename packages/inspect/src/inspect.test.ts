@@ -164,6 +164,18 @@ describe('get', () => {
     expect(get('Parent.lazy')).toBeUndefined();
     expect(get('Parent.child.name')).toBe('kid');
   });
+
+  it('will read past caps under limits', () => {
+    class Verbose extends Model {
+      text = 'x'.repeat(300);
+      deep = { a: { b: { c: 1 } } };
+    }
+
+    Verbose.new();
+    expect((get('Verbose.text') as string).length).toBe(240);
+    expect(get('Verbose.text', undefined, { string: 400 })).toHaveLength(300);
+    expect(get('Verbose.deep', undefined, { depth: 4 })).toEqual({ a: { b: { c: 1 } } });
+  });
 });
 
 describe('get with a selection', () => {
@@ -328,6 +340,26 @@ describe('set', () => {
     expect(parent.title).toBe('renamed');
     expect(parent.child.name).toBe('named');
     expect(parent.lookup.get('k')).toBe(parent.child);
+  });
+
+  it('will resolve a $ref to a live instance', () => {
+    const parent = Parent.new();
+    const stray = Child.new();
+
+    assign('Parent.child', { $ref: String(stray), $type: 'Child' });
+    expect(parent.child).toBe(stray);
+  });
+
+  it('will assign an object with $ref among other keys verbatim', () => {
+    const parent = Parent.new();
+
+    assign('Parent.lookup.k', { $ref: 'x', other: 1 });
+    expect(parent.lookup.get('k')).toEqual({ $ref: 'x', other: 1 });
+  });
+
+  it('will throw when a $ref names no instance', () => {
+    Parent.new();
+    expect(() => assign('Parent.child', { $ref: 'Nope-1' })).toThrow('No instance at Nope-1.');
   });
 
   it('will throw for unknown targets', () => {

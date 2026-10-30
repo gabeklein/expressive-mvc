@@ -64,6 +64,7 @@
       "name": "@expressive/inspect",
       "version": "0.5.2",
       "devDependencies": {
+        "@expressive/dom": "workspace:*",
         "@expressive/mvc": "workspace:*",
         "tsdown": "^0.20.1",
         "vite": "^7.3.1",
