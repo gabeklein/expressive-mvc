@@ -1,9 +1,6 @@
 import { Model } from '@expressive/mvc';
 
 export class Theme extends Model {
-  // Global by nature: there is only one document to paint.
-  static global = true;
-
   dark = prefersDark();
 
   toggle() {

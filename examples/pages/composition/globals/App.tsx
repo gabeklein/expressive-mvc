@@ -1,33 +1,36 @@
 import './App.css';
 
+import { Component, Model } from '@expressive/mvc';
+
 import { Session } from './Session';
 import { Theme } from './Theme';
 import { Viewport } from './Viewport';
 
-Viewport.new();
-Session.new();
-Theme.new();
+class App extends Model {
+  viewport = new Viewport();
+  session = new Session();
+  theme = new Theme();
+}
 
 export default () => (
-  <div className="container">
-    <h1>Globals</h1>
-    <p>
-      Three states created once up here, the way you would beside the root render.
-      Reaching one anywhere takes two halves: the class declares{' '}
-      <code>static global</code>, and <code>.new()</code> activates it. Activation
-      alone leaves an instance private to whoever made it - which is what keeps a
-      forgotten provider from installing per-request state process-wide.
-    </p>
-    <div className="cards">
-      <Size />
-      <Account />
-      <Appearance />
+  <Component for={App}>
+    <div className="container">
+      <h1>App-wide state</h1>
+      <p>
+        Three states owned by one root, provided once at the top of the tree. What
+        the root owns is provided with it, so anything below reaches each by type.
+      </p>
+      <div className="cards">
+        <Size />
+        <Account />
+        <Appearance />
+      </div>
+      <small>
+        Each card calls <code>.get()</code> and subscribes to only the fields it
+        reads - resize the window and just the first one moves.
+      </small>
     </div>
-    <small>
-      Nothing provides them. Each card calls <code>.get()</code> and subscribes to
-      only the fields it reads - resize the window and just the first one moves.
-    </small>
-  </div>
+  </Component>
 );
 
 const Size = () => {

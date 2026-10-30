@@ -4,8 +4,6 @@ import type { Component } from '@expressive/mvc';
 import { Link, Route, Router } from '@expressive/router';
 
 class Museum extends Router {
-  static global = false;
-
   deferred = true;
 
   toggle() {
