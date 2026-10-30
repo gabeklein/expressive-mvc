@@ -130,8 +130,6 @@ Override `navigate(work)` on a subclass to stage the swap differently - `work` a
 
 ```ts
 class MyRouter extends BrowserRouter {
-  static global = true;   // subclasses re-declare global explicitly
-
   protected navigate(work: () => void) {
     // bracket the swap (e.g. View Transitions), then defer as usual
     return super.navigate(work);

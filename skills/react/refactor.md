@@ -82,14 +82,14 @@ export default function App() {
 }
 ```
 
-A `class App extends Component` whose only members are `fallback` and a `render()` returning that tree is a pass-through. Inspect reads the live tree, so it adds no introspection surface. App-wide logic is a `static global` Model, or `<Component for={Shared}>` to scope it to one tree. A Component entry is not wrong - the FC is convention, not rule.
+A `class App extends Component` whose only members are `fallback` and a `render()` returning that tree is a pass-through. Inspect reads the live tree, so it adds no introspection surface. App-wide logic is a Model the app's root owns, provided with `<Component for>`. A Component entry is not wrong - the FC is convention, not rule.
 
 The forms, by role:
 
 | Thing | Form |
 |---|---|
 | App entry | FC (house style) - `catch`/`fallback` on the top Component it mounts |
-| App-wide logic | `static global` Model, or `<Component for>` scoped to one tree |
+| App-wide logic | Model owned by the app root, provided with `<Component for>` |
 | Headless region (query, pool, policy) | `Model` field on the Component owning the feature |
 | Feature that paints | mounted `<Composer />` - never `new Composer()` on a parent |
 | Mount-only ancestor (scroll pin, focus trap) | `Component` without `render()` |

@@ -255,7 +255,7 @@ All events batch and flush via `queueMicrotask()`.
 
 ## Context
 
-Every active instance has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It registers into root (findable by others) only with `static global`; a global's home locks to root at activation, while a private instance's stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
+Every active instance has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It never registers into root by itself; its home stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
 
 Primarily consumed via the [`get` instruction](../field/get.md) and [`<Component for>`](context.md#providing-with-component).
 
