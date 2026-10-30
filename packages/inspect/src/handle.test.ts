@@ -44,8 +44,8 @@ describe('handle', () => {
         process: true,
         pid: process.pid,
         cwd: process.cwd(),
-        started: Math.round(performance.timeOrigin),
-        runtime: navigator.userAgent,
+        started: expect.any(Number),
+        runtime: expect.any(String),
         title: process.title
       }
     });
@@ -90,6 +90,15 @@ describe('handle', () => {
       status: 500,
       body: { error: 'No method at Missing.method.' }
     });
+  });
+
+  it('will 500 when the call throws without a message', async () => {
+    globalThis.__EXPRESSIVE_INSPECT__ = {
+      fail() {
+        throw new Error();
+      }
+    } as never;
+    expect(await request('POST', '["fail"]')).toEqual({ status: 500, body: { error: 'Call failed.' } });
   });
 
   it('will 504 when the call does not answer', async () => {

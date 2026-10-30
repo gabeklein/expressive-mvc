@@ -64,4 +64,17 @@ describe('answer', () => {
 
     expect(await answer([['fail'], []])).toEqual({ error: 'Unauthorized', status: undefined });
   });
+
+  it.each([
+    ['an Error without a message', new Error()],
+    ['an empty string', '']
+  ])('will answer an error for %s', async (_, thrown) => {
+    globalThis.__EXPRESSIVE_INSPECT__ = {
+      fail() {
+        throw thrown;
+      }
+    } as never;
+
+    expect(await answer([['fail'], []])).toMatchObject({ error: 'Call failed.' });
+  });
 });

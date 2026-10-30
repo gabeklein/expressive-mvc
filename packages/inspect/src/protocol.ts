@@ -10,6 +10,7 @@ export type Answer = { value?: unknown; error?: string; status?: number };
 const FOREIGN = ['origin', 'sec-fetch-site', 'forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'];
 const LOOPBACK = /^((::ffff:)?127(\.\d{1,3}){3}|::1)$/;
 const MISSING = Symbol.for('expressive-inspect.missing');
+const FAILED = 'Call failed.';
 
 export function local(ip: string | null | undefined, headers: { has(name: string): boolean }) {
   return !FOREIGN.some((header) => headers.has(header)) && LOOPBACK.test(ip ?? '');
@@ -47,8 +48,8 @@ export async function answer(call: Call): Promise<Answer> {
 
     return { value: JSON.parse(JSON.stringify(value) ?? 'null') };
   } catch (error) {
-    if (!(error instanceof Error)) return { error: String(error) };
+    if (!(error instanceof Error)) return { error: String(error) || FAILED };
 
-    return { error: error.message, status: MISSING in error ? 404 : undefined };
+    return { error: error.message || FAILED, status: MISSING in error ? 404 : undefined };
   }
 }
