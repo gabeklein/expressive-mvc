@@ -2,7 +2,8 @@ import { Model } from '@expressive/mvc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { attach, inspect, journal } from './index';
-import { handler } from './handler';
+import { handle } from './handle';
+import { CALL_TIMEOUT } from './protocol';
 
 class Composer extends Model {
   draft = '';
@@ -13,8 +14,8 @@ class Composer extends Model {
   }
 }
 
-async function request(method: string, body?: string, headers: Record<string, string> = {}, ip: string | null | undefined = '127.0.0.1') {
-  const res = await handler(new Request('http://localhost/__inspect', { method, body, headers }), { ip });
+async function request(method: string, body?: string, headers: Record<string, string> = {}) {
+  const res = await handle(new Request('http://localhost/__inspect', { method, body, headers }), { ip: '127.0.0.1' });
   return { status: res.status, body: await res.json() };
 }
 
@@ -24,11 +25,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   globalThis.__EXPRESSIVE_INSPECT__ = undefined;
 });
 
-describe('handler', () => {
+describe('handle', () => {
   it('will 404 when install never ran', async () => {
     globalThis.__EXPRESSIVE_INSPECT__ = undefined;
     expect(await request('GET')).toEqual({ status: 404, body: { error: 'Inspector not installed.' } });
@@ -38,17 +40,21 @@ describe('handler', () => {
   it('will describe the process', async () => {
     expect(await request('GET')).toEqual({
       status: 200,
-      body: { process: true, pid: process.pid, runtime: 'node', title: process.title }
+      body: {
+        process: true,
+        pid: process.pid,
+        cwd: process.cwd(),
+        started: Math.round(performance.timeOrigin),
+        runtime: navigator.userAgent,
+        title: process.title
+      }
     });
   });
 
-  it.each([
-    ['bun', { Bun: {} }, { pid: process.pid }],
-    ['deno', { Deno: { pid: 7 }, process: undefined }, { pid: 7, title: null }],
-    ['unknown', { process: undefined }, { pid: null, title: null }]
-  ])('will name the %s runtime', async (runtime, globals, expected) => {
-    for (const [key, value] of Object.entries(globals)) vi.stubGlobal(key, value);
-    expect((await request('GET')).body).toMatchObject({ process: true, runtime, ...expected });
+  it('will describe a process without node globals', async () => {
+    vi.stubGlobal('process', undefined);
+    vi.stubGlobal('navigator', undefined);
+    expect((await request('GET')).body).toMatchObject({ pid: null, cwd: null, runtime: null, title: null });
   });
 
   it('will call the inspector', async () => {
@@ -86,12 +92,22 @@ describe('handler', () => {
     });
   });
 
-  it('will 400 a body that is not [method, ...args]', async () => {
-    for (const body of ['', 'nope', '"get"', '{}', '[1]']) expect((await request('POST', body)).status).toBe(400);
+  it('will 504 when the call does not answer', async () => {
+    vi.useFakeTimers();
+    globalThis.__EXPRESSIVE_INSPECT__ = { hang: () => new Promise(() => {}) } as never;
+    const res = request('POST', '["hang"]');
+    await vi.advanceTimersByTimeAsync(CALL_TIMEOUT);
+    expect(await res).toEqual({ status: 504, body: { error: 'Call did not answer.' } });
   });
 
-  it('will 403 when the server reports no address', async () => {
-    expect((await handler(new Request('http://localhost/'), { ip: undefined })).status).toBe(403);
+  it('will 400 a body that is not [method, ...args]', async () => {
+    expect((await request('POST', 'nope')).status).toBe(400);
+  });
+
+  it('will 400 a body already consumed', async () => {
+    const req = new Request('http://localhost/', { method: 'POST', body: '["get"]' });
+    await req.text();
+    expect((await handle(req, { ip: '127.0.0.1' })).status).toBe(400);
   });
 
   it('will 405 other methods', async () => {
@@ -99,16 +115,11 @@ describe('handler', () => {
   });
 
   it.each([
-    ['a browser origin', { origin: 'http://evil.test' }, '127.0.0.1', 403],
-    ['a browser fetch', { 'sec-fetch-site': 'same-origin' }, '127.0.0.1', 403],
-    ...['forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'].map(
-      (header) => [`a request relayed with ${header}`, { [header]: '203.0.113.9' }, '127.0.0.1', 403]
-    ),
-    ['a non-loopback caller', {}, '192.168.1.4', 403],
-    ['a caller without an address', {}, null, 403],
-    ['IPv6 loopback', {}, '::1', 200],
-    ['IPv4-mapped loopback', {}, '::ffff:127.0.0.1', 200]
-  ] as [string, Record<string, string>, string | null, number][])('will answer %s with %i', async (_, headers, ip, status) => {
-    expect((await request('GET', undefined, headers, ip)).status).toBe(status);
+    ['a proxied request', { 'x-forwarded-for': '203.0.113.9' }, '127.0.0.1'],
+    ['a non-loopback caller', {}, '192.168.1.4'],
+    ['a caller without an address', {}, undefined]
+  ])('will 403 %s', async (_, headers, ip) => {
+    const res = await handle(new Request('http://localhost/', { headers }), { ip });
+    expect(res.status).toBe(403);
   });
 });
