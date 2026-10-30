@@ -424,7 +424,7 @@ const { is: review, confirmed } = ReviewStep.get(); // root object + sibling val
 
 Default: a self-contained widget mounts unconditionally and gates itself - the parent writes `<UndoBar />`; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). A parent read existing only to gate belongs in the widget.
 
-Parent gate passing the narrowed value as a prop is the secondary shape - right when the parent reads the field for its own content, or composition genuinely varies. Either way presence is a contract; the half-measure fails audit - `get()` plus an internal null-guard mid-snapshot:
+Parent gate over a Model field the child reads with `.get()` is the secondary shape - right when the parent reads the field for its own content, or composition genuinely varies. Either way presence is a contract; the half-measure fails audit - `get()` plus an internal null-guard mid-snapshot:
 
 ```tsx
 // Wrong: no contract either way
@@ -434,28 +434,28 @@ function SettingsEditor() {
   ...
 }
 
-// Right (parent reads draft for its own content): parent gates, passes draft down
+// Right (parent reads draft for its own content): draft is a Model field, child gets it
 function SettingsContent() {
   const { draft } = SettingsState.get();
 
   return (
     <div className="settings-layout">
       <LocationList />
-      {draft && <SettingsEditor draft={draft} />}
+      {draft && <SettingsEditor />}
     </div>
   );
 }
 
-function SettingsEditor({ draft }: { draft: SettingsLocation }) {
+function SettingsEditor() {
+  const {
+    bankAccount,
+    categoryAccounts,
+  } = Draft.get();
+
   const {
     saveSettings,
     saving,
   } = SettingsState.get();
-
-  const {
-    bankAccount,
-    categoryAccounts,
-  } = draft;
   ...
 }
 ```
@@ -540,7 +540,7 @@ The checklist:
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
 - Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
 - Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*
-- Is presence a contract - widget owns its gate and falls thru by default; parent gate passing the narrowed value as a prop where the parent reads the field for its own content; never `get()` plus an internal null-guard? *(invariant)*
+- Is presence a contract - widget owns its gate and falls thru by default; parent gate over a Model field the child reads with `.get()` where the parent reads the field for its own content; no Model values as props; never `get()` plus an internal null-guard? *(invariant)*
 - Are Component subcomponents genuine extension points? *(invariant)*
 - Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
 - Are large JSX branches and ~50-line renders split at conditionals into honestly-named scopes - units that delete or move as one place, never one-op conditionals or formatted scalars? *(heuristic - name the cost)*

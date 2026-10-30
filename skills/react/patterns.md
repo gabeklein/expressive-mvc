@@ -409,11 +409,11 @@ Pure presentation components (a `Metric`, a badge) may still take plain props - 
 
 ## Presence Boundary
 
-The parent owns whether an optional child exists - it destructures the gated field, renders conditionally, and passes the narrowed value as a prop: `SettingsContent` / `SettingsEditor` in [react.md](react.md#presence-boundaries).
+The parent owns whether an optional child exists - it destructures the gated field and renders conditionally; the child reads the field's instance with `.get()`: `SettingsContent` / `SettingsEditor` in [react.md](react.md#presence-boundaries).
 
 ```tsx
 class SettingsState extends Model {
-  draft?: SettingsLocation = undefined;
+  draft?: Draft = undefined;
   saving = false;
 
   async saveSettings() { ... }

@@ -141,15 +141,15 @@ const app = AppState.get(false); // undefined if not in context
 
 ### Presence boundaries
 
-Destructure a field that may be unset and render conditionally - the narrowed value passes on as a prop:
+Hold a value that may be unset as a Model field - the instance joins its owner's context. Destructure it and render conditionally; the child reads it with `.get()`:
 
 ```tsx
 const { draft } = Settings.get();
-if (draft) return <Editor draft={draft} />;
+if (draft) return <Editor />;
 return <Spinner />;
 ```
 
-The parent owns whether the child renders; the child's prop type asserts the value exists - no fallback values threaded through its body:
+The parent owns whether the child renders; the child's `Draft.get()` finds the instance wherever it renders - no fallback values threaded through its body, no Model values passed as props. A gated value with one view of its own is a `Component`, placed as `{draft}`:
 
 ```tsx
 function SettingsContent() {
@@ -158,21 +158,21 @@ function SettingsContent() {
   return (
     <div className="settings-layout">
       <LocationList />
-      {draft && <SettingsEditor draft={draft} />}
+      {draft && <SettingsEditor />}
     </div>
   );
 }
 
-function SettingsEditor({ draft }: { draft: SettingsLocation }) {
+function SettingsEditor() {
+  const {
+    bankAccount,
+    categoryAccounts,
+  } = Draft.get();
+
   const {
     saveSettings,
     saving,
   } = SettingsState.get();
-
-  const {
-    bankAccount,
-    categoryAccounts,
-  } = draft;
   ...
 }
 ```

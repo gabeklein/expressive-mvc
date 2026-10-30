@@ -65,7 +65,7 @@ Counter-rules:
 9. Let contextual children call `.get()` instead of receiving drilled props.
 10. At every `.get()` and `render()`, destructure for exact nested dependency snapshot.
 11. May assign thru subscribed proxies; `is` only to retain the root object alongside sibling destructuring.
-12. A gated widget mounts unconditionally and gates itself, falling thru when unset; parent gate passing the narrowed value as a prop where the parent reads the field for its own content.
+12. A gated widget mounts unconditionally and gates itself, falling thru when unset; where the parent reads the field for its own content, the gated value is a Model field and the child reads it with `.get()`.
 13. Split `render()` and long JSX at conditionals and non-interacting siblings into honestly-named local FCs - units you'd delete or move whole; one-op conditionals and formatted scalars stay inline. Consolidate scopes that share dependencies and hold no nested logic.
 14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
 
@@ -217,7 +217,7 @@ const { is: review, confirmed, hasBlocking } = ReviewStep.get();  // `is`: root 
 
 ## Presence Boundaries
 
-Default: a self-contained widget mounts unconditionally, reads its own context, and falls thru when its reason to render is unset - a parent read existing only to gate belongs in the widget. The secondary shape, when the parent reads the field for its own content: parent gates and passes the narrowed value down:
+Default: a self-contained widget mounts unconditionally, reads its own context, and falls thru when its reason to render is unset - a parent read existing only to gate belongs in the widget. The secondary shape, when the parent reads the field for its own content: the gated value is a Model field (`draft?: Draft`), which joins its owner's context - parent gates, child reads it with `Draft.get()`:
 
 ```tsx
 function SettingsContent() {
@@ -226,27 +226,27 @@ function SettingsContent() {
   return (
     <div className="settings-layout">
       <LocationList />
-      {draft && <SettingsEditor draft={draft} />}
+      {draft && <SettingsEditor />}
     </div>
   );
 }
 
-function SettingsEditor({ draft }: { draft: SettingsLocation }) {
+function SettingsEditor() {
+  const {
+    bankAccount,
+    categoryAccounts,
+  } = Draft.get();
+
   const {
     saveSettings,
     saving,
   } = SettingsState.get();
 
-  const {
-    bankAccount,
-    categoryAccounts,
-  } = draft;
-
   return <section className="settings-editor">...</section>;
 }
 ```
 
-The child's prop type is its contract - no fallback values threaded through its body. Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
+The child renders only where the instance exists - no fallback values threaded through its body, no Model values passed as props. A gated value with one view of its own is a `Component`, placed as `{draft}`. Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
 
 ## Providing Context
 
