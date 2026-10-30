@@ -3,6 +3,7 @@ import { Context } from '@expressive/mvc';
 import type { VNode } from '../node/vnode';
 import { applyClaim, claim } from '../style/claim';
 import type { Appearance } from '../style/claim';
+import { reserved } from '../style/protocol';
 import { inserted } from './commits';
 import type { Boundary, Fiber } from './fiber';
 import { complete, unmountFiber } from './mount';
@@ -60,7 +61,12 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   }
 
   for (const key of Object.keys({ ...previous, ...next })) {
-    if (key.startsWith('_') || key == 'children' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
+    if (key[0] == '_') {
+      reserved(key);
+      continue;
+    }
+
+    if (key == 'children' || key == 'className' || key == 'key' || key == 'ref' || key == 'style' || CONTROLS.includes(key)) continue;
     if (previous[key] === next[key]) continue;
     patchProp(fiber, element, key, previous[key], next[key]);
   }

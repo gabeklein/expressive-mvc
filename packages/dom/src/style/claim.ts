@@ -1,5 +1,5 @@
 import { applyDeclarations } from './declarations';
-import { appearanceToken, createAppearanceToken, emitClass } from './protocol';
+import { appearanceToken, createAppearanceToken, emitClass, reserved } from './protocol';
 import type { AppearanceContext, ResolvedAppearance } from './protocol';
 
 type Style = string | Record<string, unknown> | false | null | undefined | readonly Style[];
@@ -44,6 +44,9 @@ function componentProps(
   appearance: Appearance | undefined
 ) {
   const context = appearance?.context;
+
+  for (const key of Object.keys(props)) reserved(key);
+
   if (!context || typeof type != 'function') return { appearance, props };
 
   const value = context.resolve(props);

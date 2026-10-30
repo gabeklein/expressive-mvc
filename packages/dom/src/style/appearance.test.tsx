@@ -774,6 +774,23 @@ describe('subcomponent', () => {
     expect(root.querySelector('h1')!.className).toBe('Card_accent-d1');
   });
 
+  it('will throw for a subcomponent key on an element', () => {
+    function Host() {
+      return <div {...{ _Title: true }} />;
+    }
+
+    function Child() {
+      return null;
+    }
+
+    function Caller() {
+      return <Child {...{ _Title: true }} />;
+    }
+
+    expect(() => place(<Host />)).toThrow('"_Title" is reserved for subcomponents in style() maps.');
+    expect(() => place(<Caller />)).toThrow('"_Title" is reserved for subcomponents in style() maps.');
+  });
+
   it('will throw if a subcomponent map is not an object', () => {
     class Card extends Component {}
 

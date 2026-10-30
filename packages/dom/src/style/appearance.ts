@@ -1,4 +1,4 @@
-import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot } from './protocol';
+import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot, SUBCOMPONENT } from './protocol';
 import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from './protocol';
 
 type StyleMap = Record<string, unknown>;
@@ -40,7 +40,6 @@ const chains = new WeakMap<StyleScope, Map<string, Macro[]>>();
 const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
 const STYLES = Symbol('@expressive/dom.styles');
-const SUBCOMPONENT = /^_[A-Z]/;
 const entered = new WeakSet<object>();
 const globals: StyleMap[] = [];
 let globalContext: AppearanceContext | undefined;
