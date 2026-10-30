@@ -324,7 +324,7 @@ Session.on({
 });
 ```
 
-Construction stays with the consumer - `session = new Session()` on the entrypoint. No subclass (`class ViewSession extends Session`), no `Session.new()` in the adapter. Inbound snapshots land with `set(values)` - a superset payload is fine, extra keys drop ([set.md](../state/set.md)).
+Construction stays with the consumer - `session = new Session()` on the owning Component. No subclass (`class ViewSession extends Session`), no `Session.new()` in the adapter. Inbound snapshots land with `set(values)` - a superset payload is fine, extra keys drop ([set.md](../state/set.md)).
 
 ## Context Sharing
 

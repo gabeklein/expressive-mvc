@@ -36,7 +36,7 @@ The most common failure when adopting this library is translating hooks one-for-
 
 For every stateful concern, pick exactly one owner:
 
-- **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. The app/route entrypoint is one even when `render()` only composes: it owns construction (replica + region control fields), provides implicitly, and ships last-resort `catch`/`fallback` - `main` just mounts it.
+- **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. House style: the app entry is an FC - pure composition, with a last-resort boundary as `fallback`/`catch` on the top Component it mounts (`<Layout fallback={null}>`, `<BrowserRouter fallback={null}>`). App-wide logic is a `static global` Model, or `<Component for={Shared}>` to scope it to one tree.
 - **`Model`** - headless domain model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()`; an owning Component holds it as a field. Two roles: a *domain model* (`Cart`, `Message`, a pool row) outlives any one placement; a *control* (`Control`, `<Feature>Control` in apps) is constructed where a page, region or route places it, holds domain models as fields, and translates gestures into operations on them. Name a class for what it holds - `<Thing>State` and `<Feature>Control` are both fine, case by case.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
@@ -59,7 +59,7 @@ Counter-rules:
 3. Choose `Model`, `Component`, or a plain function component for each owner.
 4. Give every repeated UI entry own class in a `has` pool; actions about item belong on item.
 5. Split unrelated clusters remaining on page control to owned region controls `composer = new Composer()`. Bias one concern per class - barrels are deliberate (page orchestrator, pool owner, mounting shell); shed a second concern the moment it appears, growing a feature or refactoring one alike.
-6. Provide classes directly `<Component for={AppState}>` never an instance if only to provide it; the entrypoint Component's own fields provide implicitly - `main` only mounts `<Inbox />`.
+6. Provide classes directly `<Component for={AppState}>` never an instance if only to provide it; a page Component's own fields provide implicitly - mount `<Inbox />` bare.
 7. Move source fields and behavioral methods first; do not mechanically translate setters.
 8. Keep shared, semantic derivations as getters; leave single-consumer display derivations in their consuming component.
 9. Let contextual children call `.get()` instead of receiving drilled props.

@@ -50,7 +50,7 @@ function ResolvedFeeClassifications() {
 }
 ```
 
-Don't annotate them as returning `void` - allow inference. Fallthrough is also how an always-mounted widget owns its gate - step 12 of [refactor.md](refactor.md).
+Don't annotate them as returning `void` - allow inference. Fallthrough is also how an always-mounted widget owns its gate - step 12 of [refactor.md](refactor.md). It is not how a Component's own `render()` splits: a piece cut out of `render()` - a subcomponent or local FC - always paints, and the parent writes the `&&`.
 
 Operational guards differ: a workflow method uses explicit `return` - it guards behavior, not a render result:
 
@@ -65,7 +65,7 @@ A render guard skipping most of a declared snapshot marks the gated content as a
 
 ## Member order
 
-Fields, getters, methods - then lifecycle (`new`/`mount`) and `render()` last, adjacent. Don't park methods between `mount()` and `render()`; the lifecycle pair reads as one unit.
+Fields, getters, methods - then lifecycle (`new`/`mount`) and `render()`, adjacent, then `protected` PascalCase subcomponents. Don't park methods between `mount()` and `render()`; the lifecycle pair reads as one unit. Slots follow `render()` - read the assembly, then the pieces it names.
 
 ## Layout
 

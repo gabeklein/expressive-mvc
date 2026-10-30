@@ -68,16 +68,29 @@ export class ReviewStep extends Component {
 
 **Anti-pattern - the reflexive split.** `ReviewState` plus a `ReviewView` FC because the old code had hooks. Fields supporting one rendered surface belong on the `Component` rendering it.
 
-**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, or its boundary/suspense is wanted - lifecycle counts only when it manages owned state; a ref plus a DOM-sync reaction over context is still an FC. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`). Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
+**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, or a boundary no Component below it can carry - lifecycle counts only when it manages owned state; a ref plus a DOM-sync reaction over context is still an FC. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`). Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
 
-**The app/route entrypoint is a Component** even when `render()` is pure composition - owning the construction graph is the state. The replica and each headless region are its fields; they provide implicitly, ship the last-resort boundary (`catch`, `fallback`), and are the introspection surface - a debugger or later agent reads the app's parts off the instance, not by walking provider elements. `main` only mounts it: `createRoot(el).render(<Inbox />)` - no `<Component for>`, no `Session.new()` in bootstrap. "Stateless shell → FC" is a chrome rule; it never fires on the entrypoint.
+**House style: the app entry is an FC** - pure composition, chrome like any shell owning nothing. Its last-resort boundary is `fallback`/`catch` on the top Component it mounts, not a class wrapping it:
+
+```tsx
+export default function App() {
+  return (
+    <Layout fallback={null}>
+      <Inbox />
+    </Layout>
+  );
+}
+```
+
+A `class App extends Component` whose only members are `fallback` and a `render()` returning that tree is a pass-through. Inspect reads the live tree, so it adds no introspection surface. App-wide logic is a `static global` Model, or `<Component for={Shared}>` to scope it to one tree. A Component entry is not wrong - the FC is convention, not rule.
 
 The forms, by role:
 
 | Thing | Form |
 |---|---|
-| App / route entrypoint | `Component` - owns construction, catch, fallback, implicit provide |
-| Headless region (query, pool, policy) | `Model` field on that entrypoint |
+| App entry | FC (house style) - `catch`/`fallback` on the top Component it mounts |
+| App-wide logic | `static global` Model, or `<Component for>` scoped to one tree |
+| Headless region (query, pool, policy) | `Model` field on the Component owning the feature |
 | Feature that paints | mounted `<Composer />` - never `new Composer()` on a parent |
 | Mount-only ancestor (scroll pin, focus trap) | `Component` without `render()` |
 | Chrome / token frame / zero-state strip | FC that `.get()`s |
@@ -170,7 +183,7 @@ const { canSend, send } = ComposePage.get();
 
 An owned region needs no cross-control sync - the parent holds and reads the instance. Split when the second cluster appears, not as late cleanup.
 
-A feature region is unpluggable: it owns its pool, display state, and chrome - don't leave the pool or query on the page because the page syncs it. Test each pane, strip, or panel the page mounts: delete its import - does the feature leave whole, pool included? Judge clusters by interaction, not product framing - clusters that never read each other are unrelated even when the product calls them one surface; a shared wire or replica decides sync, not view ownership. Sibling features read each other thru optional context (`get(Other, false)`); siblings don't see each other's context, so the consumer mounts beneath the provider in JSX. Extraction moves concerns off the class, not ownership off the tree: regions stay fields on the entrypoint. Only a shell owning nothing - chrome between entrypoint and features - demotes to an FC (step 3).
+A feature region is unpluggable: it owns its pool, display state, and chrome - don't leave the pool or query on the page because the page syncs it. Test each pane, strip, or panel the page mounts: delete its import - does the feature leave whole, pool included? Judge clusters by interaction, not product framing - clusters that never read each other are unrelated even when the product calls them one surface; a shared wire or replica decides sync, not view ownership. Sibling features read each other thru optional context (`get(Other, false)`); siblings don't see each other's context, so the consumer mounts beneath the provider in JSX. Extraction moves concerns off the class, not ownership off the tree: regions stay fields on the page Component. Only a shell owning nothing - chrome between page and features - demotes to an FC (step 3).
 
 Same rule while building: a second concern appearing on a class is the moment it leaves. Bias one concern per Model/Component; barrels are deliberate - the page after extraction, a pool owner, a shell that only mounts. Chrome counts: a resize handle's `height`/`resizing`/`beginDrag` parked on Composer fails like a stranded pool. Compose the add-on as a mounted wrapper - the sized thing reads the sizer:
 
@@ -213,7 +226,7 @@ function App() {
 }
 ```
 
-Provide an instance only when preconfiguration or external ownership requires it. The app entrypoint needs neither: owned fields provide implicitly, so `main` mounts `<Inbox />` bare - a `<Component for>` plus `Session.new()` in bootstrap hides the construction graph.
+Provide an instance only when preconfiguration or external ownership requires it. A page Component needs neither: owned fields provide implicitly, so `<Inbox />` mounts bare - a `<Component for>` plus `Session.new()` in bootstrap hides the construction graph.
 
 ## 7. Move source state and behavior; do not translate setters
 
@@ -358,7 +371,7 @@ function ReviewActions() {
 
 Pure presentation components (a `Metric`, a `StatusCallout`) may still take plain props - context replaces drilled *state*, not every value.
 
-`.get()` the nearest real parent. When Composer owns the form, its inputs call `Composer.get()` - reaching over to `ComposePage.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'sending'`) become parent getters (`get sending()`); nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope - `config`, not `sendOptions`. Only the parent holds `get(ComposePage)`. The entrypoint is not exempt: token and frame chrome reads its own snapshot (`Frame` `.get()`s `theme`) - don't snapshot `this` at the root only to drill `style`.
+`.get()` the nearest real parent. When Composer owns the form, its inputs call `Composer.get()` - reaching over to `ComposePage.get()` and back down is drilling with extra steps. Facts repeated across those children (`status === 'sending'`) become parent getters (`get sending()`); nested config they keep unpacking is forwarded once (`get config() { return this.page.sendOptions; }`), named for the local scope - `config`, not `sendOptions`. Only the parent holds `get(ComposePage)`. The root is not exempt: token and frame chrome reads its own snapshot (`Frame` `.get()`s `theme`) - don't snapshot `this` at the root only to drill `style`.
 
 ## 10. Destructure an exact dependency snapshot
 
@@ -424,6 +437,8 @@ const { is: review, confirmed } = ReviewStep.get(); // root object + sibling val
 
 Default: a self-contained widget mounts unconditionally and gates itself - the parent writes `<UndoBar />`; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). A parent read existing only to gate belongs in the widget.
 
+This is for a widget the parent has no reason to mention. A piece split out of a Component's own `render()` (step 13) is the other way round: the parent writes `cond && <Slot />` and the slot paints unconditionally, never opening with `if (!cond) return`.
+
 Parent gate plus child `get(true)` is the secondary shape - right when the parent reads the field for its own content, or composition genuinely varies. Either way presence is a contract; the half-measure fails audit - `get()` plus an internal null-guard mid-snapshot:
 
 ```tsx
@@ -487,7 +502,7 @@ function Exceptions() {
 
 An early return skipping most of a declared snapshot signals the gated content wants its own component.
 
-A `render()` past ~50 lines usually stopped composing. Conditionals and ternaries are the cut points when the branch is a widget - deleted or moved as a unit, with its own moving parts. Then `cond && <Widget />` becomes a local FC that `.get()`s the parent and owns the gate; `a ? <Foo /> : <Bar />` picks its branch inside. A one-op stays in the parent: a single gated button or formatted scalar is lines in `render()`, not a component - the extra name makes deleting or moving the feature touch two places. Look for a gated chunk, independent siblings sharing no snapshot, or a replaceable slice (that one a subcomponent). Not a hard fail - a dense one-concern tree stays; a hop just to get under 50 is worse than reading the paint in place.
+A `render()` past ~50 lines usually stopped composing. Conditionals and ternaries are the cut points when the branch is a widget - deleted or moved as a unit, with its own moving parts. Then the branch becomes a local FC that `.get()`s the parent - the `cond &&` stays at the call site and the FC always paints; `a ? <Foo /> : <Bar />` may instead become one FC picking its branch inside; an FC whose first statement is a gate is not a unit. A one-op stays in the parent: a single gated button, empty-state copy or formatted scalar is lines in `render()`, not a component - the extra name makes deleting or moving the feature touch two places. Look for a gated chunk, independent siblings sharing no snapshot, or a replaceable slice (that one a subcomponent). Not a hard fail - a dense one-concern tree stays; a hop just to get under 50 is worse than reading the paint in place.
 
 A split needs a name meaningful without the parent (`UndoBar`, `AttachmentTray`). When the only honest name is parent plus "Body"/"Label" *and* the call site is children, it is not a concern. Two shapes stay valid even small: a child passed as a named slot prop (`label={<SenderBadge />}`, `detail`, `icon`) - the hop keeps the parent composing, not painting; and an early-return body whose branches *are* its job. A slot earns an FC only when it paints - `detail={String(unread || '')}` is a formatted scalar, inline.
 
@@ -531,7 +546,7 @@ The checklist:
 - Does every subscription consume what it declares - no `void x` reads to force tracking in a render? *(invariant)*
 - Does each class name one concern or a declared barrel (page orchestrator, pool owner, mounting shell) - unrelated clusters split into region controls, each rendered feature unplugging by one import? *(default)*
 - Does every Component earn its instance (owned fields, pool, boundary - not a ref plus a DOM-sync reaction) - pass-throughs demoted to FCs, stateless shells mounted not held? *(default)*
-- Is the app/route entrypoint a Component owning replica and regions as fields - `main` only mounting it, no bootstrap `<Component for>`? *(default)*
+- Is the app entry an FC (house style), with last-resort `catch`/`fallback` on the top Component it mounts - no class holding only `fallback` around the tree? *(default)*
 - Is every `new Component()` on a parent a pool member or hot-swap - painting features mounted as JSX, region controls held as fields? *(invariant)*
 - Does every Component without chrome omit `render()` - no `return this.props.children`? *(default)*
 - Is working identity (session, selection) a separate field from URL params, soft-synced by a reaction? *(default)*
@@ -541,7 +556,7 @@ The checklist:
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
 - Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
 - Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*
-- Is presence a contract - widget owns its gate and falls thru by default; parent gate + `.get(true)` where the parent reads the field for its own content; never `get()` plus an internal null-guard? *(invariant)*
+- Is presence a contract - a standalone widget owns its gate and falls thru by default; a split of `render()` is gated at the call site and always paints; parent gate + `.get(true)` where the parent reads the field for its own content; never `get()` plus an internal null-guard? *(invariant)*
 - Are Component subcomponents genuine extension points? *(invariant)*
 - Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
 - Are large JSX branches and ~50-line renders split at conditionals into honestly-named scopes - units that delete or move as one place, never one-op conditionals or formatted scalars? *(heuristic - name the cost)*
