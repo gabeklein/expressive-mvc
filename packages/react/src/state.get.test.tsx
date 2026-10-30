@@ -481,6 +481,58 @@ describe('Model.get', () => {
       expect(view.container.textContent).toBe('updated');
     });
 
+    it.fails('will follow a type first looked up on re-render', async () => {
+      class User extends Model {
+        name = '';
+
+        static get<T extends User>(this: Model.Extends<T>, id?: number | string | false): T {
+          return Context.get(this, (context) =>
+            typeof id == 'number'
+              ? context.get(Directory).user
+              : context.get(Cache).user
+          ) as T;
+        }
+      }
+
+      class Directory extends Model {
+        user = new User({ name: 'directory' });
+      }
+
+      class Cache extends Model {
+        user = new User({ name: 'cache' });
+      }
+
+      class Session extends Model {
+        directory = new Directory();
+        cache = new Cache();
+      }
+
+      const session = Session.new();
+      const View = (props: { id: number | string }) => <>{User.get(props.id).name}</>;
+
+      const view = render(
+        <Component for={session}>
+          <View id={0} />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('directory');
+
+      view.rerender(
+        <Component for={session}>
+          <View id="x" />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('cache');
+
+      await act(async () => {
+        session.cache = new Cache({ user: new User({ name: 'replaced' }) });
+      });
+
+      expect(view.container.textContent).toBe('replaced');
+    });
+
     it('will keep proxy while instance is unchanged', async () => {
       const store = Store.new();
       const seen: Item[] = [];
