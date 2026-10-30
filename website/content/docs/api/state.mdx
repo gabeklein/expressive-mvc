@@ -142,11 +142,11 @@ const maybe = Theme.get(false); // Theme | undefined
 
 #### Values that may be unset
 
-Destructure the field and render conditionally - the narrowed value passes on as a prop:
+Hold the value as a Model field - it joins its owner's context. Destructure it and render conditionally; the child reads it with `Draft.get()`:
 
 ```tsx
 const { draft } = Settings.get();
-if (draft) return <Editor draft={draft} />;
+if (draft) return <Editor />;
 return <Spinner />;
 ```
 

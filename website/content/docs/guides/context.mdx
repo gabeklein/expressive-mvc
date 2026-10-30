@@ -153,17 +153,29 @@ const theme = Theme.get(false); // Theme | undefined
 
 ### Values that may be unset
 
-Destructure the field and render conditionally. Inside the branch the value is narrowed, so hand it to the child as a prop:
+Hold the value as a Model field - a field instance joins its owner's context. Destructure it and render conditionally; the child reads it from context, so it only ever renders where the value exists:
 
 ```tsx
+class Settings extends Model {
+  draft?: Draft = undefined;
+}
+
 function SettingsPanel() {
   const { draft } = Settings.get();
 
-  if (draft) return <Editor draft={draft} />;
+  if (draft) return <Editor />;
 
   return <Spinner />;
 }
+
+function Editor() {
+  const { name } = Draft.get();
+
+  return <input value={name} />;
+}
 ```
+
+If the value has a single view of its own, make it a `Component` and place it directly: `if (draft) return <>{draft}</>`.
 
 ### Deriving values
 
