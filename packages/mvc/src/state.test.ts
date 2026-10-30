@@ -3243,6 +3243,61 @@ describe('new method (static)', () => {
   });
 });
 
+describe('context argument', () => {
+  class Theme extends Model {}
+  class Panel extends Model {
+    theme = get(Theme);
+  }
+
+  it('will add instance to the context', () => {
+    const context = new Context();
+    const theme = Theme.new(context);
+
+    expect(context.get(Theme)).toBe(theme);
+    expect(Context.get(theme)).toBe(context);
+  });
+
+  it('will resolve get against the context', () => {
+    const context = new Context({ Theme });
+    const panel = Panel.new(context);
+
+    expect(panel.theme).toBe(context.get(Theme));
+  });
+
+  it('will accept a context nested in arguments', () => {
+    const context = new Context();
+    const theme = Theme.new([context]);
+
+    expect(context.get(Theme)).toBe(theme);
+  });
+
+  it('will remove instance when destroyed', () => {
+    const theme = Theme.new(Context.root);
+
+    expect(Context.root.get(Theme)).toBe(theme);
+
+    theme.set(null);
+
+    expect(Context.root.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will use the last context argument', () => {
+    const a = new Context();
+    const b = new Context();
+    const theme = Theme.new(a, b);
+
+    expect(Context.get(theme)).toBe(b);
+    expect(a.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will place from a returned context', () => {
+    const context = new Context();
+    const theme = Theme.new(() => [context]);
+
+    expect(context.get(Theme)).toBe(theme);
+  });
+});
+
 describe('activation', () => {
   // e.g. React element internals like `_owner`, installed before activation
   it('will ignore non-configurable own value properties', () => {

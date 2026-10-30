@@ -84,7 +84,7 @@ describe('orphans under a host', () => {
 
   it('will claim owned children and instances held in root', async () => {
     const owner = Owner.new();
-    const held = Held.new((self) => Context.root.add(self, true));
+    const held = Held.new(Context.root);
     await flushMicrotasks();
     expect(orphans().map((o) => o.id)).toEqual([String(owner), String(owner.child)]);
     expect(Instance.of(held).claimed).toBe(true);

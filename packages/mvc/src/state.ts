@@ -90,7 +90,7 @@ declare namespace Model {
     Omit<typeof Model, never>;
 
   /** Model constructor arguments */
-  type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | void)[];
+  type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | Context | void)[];
 
   /**
    * Model constructor callback - runs during activation, in argument order,
@@ -649,6 +649,16 @@ function init(state: Model, ...args: Model.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
+  let target: Context | undefined;
+
+  args = args.map(function strip(arg): any {
+    if (Array.isArray(arg)) return arg.map(strip);
+    if (arg instanceof Context) target = arg;
+    else return arg;
+  });
+
+  if (target) place(state, target);
+
   function observe() {
     for (const key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
@@ -685,7 +695,8 @@ function init(state: Model, ...args: Model.Args) {
         const called = typeof arg == 'function';
         const out = called ? arg.call(state, state) : arg;
 
-        if (out instanceof Promise)
+        if (out instanceof Context) place(state, out);
+        else if (out instanceof Promise)
           out.catch((err) => report('setup', state, err));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
@@ -722,6 +733,11 @@ function init(state: Model, ...args: Model.Args) {
   }
 
   PENDING.add(state);
+}
+
+function place(state: Model, context: Context) {
+  const remove = context.add(state, true);
+  listener(state, () => void remove(), null);
 }
 
 function unmanaged(state: Model, key: string, value: unknown) {
@@ -772,7 +788,7 @@ function bootstrap(T: Model.Extends) {
 
     if (Object.prototype.hasOwnProperty.call(type, 'global'))
       throw new Error(
-        `${type.name} declares \`static global\`, which was removed - provide it with <Component for>, or add it to Context.root explicitly.`
+        `${type.name} declares \`static global\`, which was removed - provide it with <Component for>, or create it with .new(Context.root).`
       );
 
     METHODS.set(type, (keys = new Map(keys)));

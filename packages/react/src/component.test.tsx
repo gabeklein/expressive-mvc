@@ -444,7 +444,7 @@ describe('render method', () => {
       }
     }
 
-    const auth = Auth.new((self) => Context.root.add(self, true));
+    const auth = Auth.new(Context.root);
     const screen = render(<Control />);
 
     expect(screen).toHaveText('foo');
