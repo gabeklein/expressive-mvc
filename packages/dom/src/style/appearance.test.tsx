@@ -351,7 +351,8 @@ describe('appearance', () => {
   it.each([
     ['a rule is a function', { _bad: () => null }, 'Rule "_bad" must be an object. Macros are defined by macro().'],
     ['a rule is a token', { _also: 'token' }, 'Rule "_also" must be an object.'],
-    ['a map uses a reserved key', { $hover: { color: 'red' } }, 'Reserved key "$hover" in style map.']
+    ['a map uses a reserved key', { $hover: { color: 'red' } }, 'Reserved key "$hover" in style map.'],
+    ['a subcomponent is nested', { _Title: { color: 'red' } }, 'Subcomponent "_Title" must be at the top of a style() map.']
   ])('will throw if %s', (_, map, message) => {
     expect(() => createStyleScope(undefined, map as any)).toThrow(message);
   });
@@ -629,6 +630,171 @@ describe('appearance', () => {
 
     expect(resolveAppearance(scope, {})).toBeUndefined();
     expect(resolveAppearance(scope, { _active: true })?.blocks).toHaveLength(1);
+  });
+});
+
+describe('subcomponent', () => {
+  it('will not reach a subcomponent with owner rules', () => {
+    class Card extends Component {
+      Title() {
+        return <h1 _active>sub</h1>;
+      }
+
+      render() {
+        return <div><h1 _active>own</h1><this.Title /></div>;
+      }
+    }
+
+    style(Card, { padding: '1px', _active: { color: 'red' }, _h1: { margin: 0 } });
+
+    const root = place(<Card />);
+    const [own, sub] = root.querySelectorAll('h1');
+
+    expect(root.querySelector('div')!.className).toBe('Card');
+    expect(own.className).toBe('Card_h1 Card_active');
+    expect(sub.className).toBe('');
+  });
+
+  it('will style a subcomponent by its key', () => {
+    class Card extends Component {
+      Title() {
+        return <h1><b _active>title</b><i>note</i></h1>;
+      }
+
+      render() {
+        return <div><b _active>own</b><this.Title /></div>;
+      }
+    }
+
+    style(Card, { _active: { color: 'red' } });
+    style(Card, {
+      _Title: {
+        padding: '1px',
+        _active: { color: 'blue' },
+        _i: { margin: 0 }
+      }
+    });
+
+    const root = place(<Card />);
+    const [own, sub] = root.querySelectorAll('b');
+
+    expect(own.className).toBe('Card_active');
+    expect(root.querySelector('h1')!.className).toBe('Card_Title');
+    expect(sub.className).toBe('Card_Title_active');
+    expect(root.querySelector('i')!.className).toBe('Card_Title_i');
+  });
+
+  it('will style only subcomponents from a map of keys', () => {
+    class Card extends Component {
+      Title() {
+        return <h1>title</h1>;
+      }
+
+      render() {
+        return <div><this.Title /></div>;
+      }
+    }
+
+    style(Card, { _Title: { padding: '1px' } });
+
+    const root = place(<Card />);
+
+    expect(root.querySelector('div')!.className).toBe('');
+    expect(root.querySelector('h1')!.className).toBe('Card_Title');
+  });
+
+  it('will style a subcomponent by its owner wherever placed', () => {
+    class Card extends Component {
+      Title() {
+        return <h1 _active>title</h1>;
+      }
+    }
+
+    class Page extends Component {
+      card = new Card();
+
+      render() {
+        return <section><this.card.Title /></section>;
+      }
+    }
+
+    style(Card, { _active: { color: 'red' }, _Title: { _active: { color: 'blue' } } });
+    style(Page, { _active: { color: 'green' }, _Title: { _active: { color: 'pink' } } });
+
+    const root = place(<Page />);
+
+    expect(root.querySelector('h1')!.className).toBe('Card_Title_active');
+  });
+
+  it('will compose subcomponent maps through the class chain', () => {
+    class Card extends Component {
+      Title() {
+        return <h1 _active _muted>title</h1>;
+      }
+
+      render() {
+        return <div><this.Title /><this.Badge /></div>;
+      }
+
+      Badge() {
+        return null as Component.Node;
+      }
+    }
+
+    class Fancy extends Card {
+      Badge() {
+        return <b _active>badge</b>;
+      }
+    }
+
+    style(Card, { _active: { color: 'red' }, _Title: { _active: { color: 'blue' } } });
+    style(Fancy, { _Title: { _muted: { opacity: 0.5 } } });
+
+    const root = place(<Fancy />);
+
+    expect(root.querySelector('h1')!.className).toBe('Card_Title_active Fancy_Title_muted');
+    expect(root.querySelector('b')!.className).toBe('');
+  });
+
+  it('will still apply rules a caller hands a subcomponent', () => {
+    class Card extends Component {
+      Title() {
+        return <h1>title</h1>;
+      }
+
+      render() {
+        return <div><this.Title _accent /></div>;
+      }
+    }
+
+    style(Card, { _accent: { color: 'red' } });
+
+    const root = place(<Card />);
+
+    expect(root.querySelector('h1')!.className).toBe('Card_accent-d1');
+  });
+
+  it('will throw for a subcomponent key on an element', () => {
+    function Host() {
+      return <div {...{ _Title: true }} />;
+    }
+
+    function Child() {
+      return null;
+    }
+
+    function Caller() {
+      return <Child {...{ _Title: true }} />;
+    }
+
+    expect(() => place(<Host />)).toThrow('"_Title" is reserved for subcomponents in style() maps.');
+    expect(() => place(<Caller />)).toThrow('"_Title" is reserved for subcomponents in style() maps.');
+  });
+
+  it('will throw if a subcomponent map is not an object', () => {
+    class Card extends Component {}
+
+    expect(() => style(Card, { _Title: 'title' } as any)).toThrow('Subcomponent "_Title" must be an object.');
   });
 });
 

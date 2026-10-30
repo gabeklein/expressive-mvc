@@ -22,9 +22,10 @@ interface AppearanceContext {
   ): ResolvedAppearance | undefined;
 }
 
-type EnterAppearance = (parent?: AppearanceContext) => AppearanceContext;
+type EnterAppearance = (parent?: AppearanceContext, key?: string) => AppearanceContext | undefined;
 type Emit = (block: Block, depth: number, document: Document) => string;
 
+const SUBCOMPONENT = /^_[A-Z]/;
 const registrations = new WeakMap<object, EnterAppearance>();
 const tokens = new WeakMap<object, ResolvedAppearance>();
 let root: (() => AppearanceContext | undefined) | undefined;
@@ -57,7 +58,7 @@ function appearanceSealed() {
   return rendered;
 }
 
-function enterAppearance(parent: AppearanceContext | undefined, type: Function) {
+function enterAppearance(parent: AppearanceContext | undefined, type: Function, key?: string) {
   const chain: EnterAppearance[] = [];
   let current: object | null = type;
 
@@ -67,8 +68,13 @@ function enterAppearance(parent: AppearanceContext | undefined, type: Function) 
     current = Object.getPrototypeOf(current);
   }
 
-  for (const enter of chain) parent = enter(parent);
+  for (const enter of chain) parent = enter(parent, key);
   return parent;
+}
+
+function reserved(key: string) {
+  if (SUBCOMPONENT.test(key))
+    throw new Error(`"${key}" is reserved for subcomponents in style() maps.`);
 }
 
 function createAppearanceToken(appearance: ResolvedAppearance) {
@@ -90,7 +96,9 @@ export {
   enterAppearance,
   registerAppearance,
   registerAppearanceRoot,
-  registerEmitter
+  registerEmitter,
+  reserved,
+  SUBCOMPONENT
 };
 
 export type { AppearanceContext, Block, Declaration, ResolvedAppearance };
