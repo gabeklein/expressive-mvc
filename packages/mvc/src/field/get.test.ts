@@ -1019,6 +1019,8 @@ describe('fetch mode', () => {
 });
 
 describe('key mode', () => {
+  it.todo('will resolve before an async new() reads the field');
+
   class Record extends Model {
     id = 0;
 
