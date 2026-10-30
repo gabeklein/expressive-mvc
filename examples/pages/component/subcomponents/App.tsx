@@ -22,7 +22,7 @@ class FruitPicker extends Picker {
   name = 'Fruit';
   names = ['Apple', 'Banana', 'Cherry'];
 
-  Item({ index }: { index: number }) {
+  protected Item({ index }: { index: number }) {
     return (
       <>
         {index === this.selected ? '🍎 ' : '🍏 '}
@@ -44,11 +44,11 @@ class PalettePicker extends Picker {
 
   names = Object.keys(this.colors);
 
-  Item({ index }: { index: number }) {
+  protected Item({ index }: { index: number }) {
     return <span className="swatch" style={{ background: this.colors[this.names[index]] }} />;
   }
 
-  Summary() {
+  protected Summary() {
     const name = this.names[this.selected];
 
     return (
