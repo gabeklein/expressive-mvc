@@ -6,11 +6,10 @@ import { Cart } from './Store';
 export const CartPage = () => {
   const {
     receipt,
-    count,
-    reset
+    count
   } = Cart.get();
 
-  if (receipt) return <Receipt receipt={receipt} reset={reset} />;
+  if (receipt) return <>{receipt}</>;
 
   if (count)
     return (
@@ -22,29 +21,6 @@ export const CartPage = () => {
     );
 
   return <Empty />;
-};
-
-const Receipt = (props: { receipt: { count: number; total: number }; reset(): void }) => {
-  const {
-    reset,
-    receipt: {
-      count,
-      total
-    }
-  } = props;
-
-  return (
-    <div className="notice">
-      <span className="big-emoji">✅</span>
-      <h2>Order placed!</h2>
-      <p>
-        {count} {count === 1 ? 'item' : 'items'} · {usd(total)}
-      </p>
-      <Link to="/" onClick={reset}>
-        Continue shopping
-      </Link>
-    </div>
-  );
 };
 
 const Empty = () => (
