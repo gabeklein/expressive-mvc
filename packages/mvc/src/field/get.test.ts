@@ -4,6 +4,7 @@ import { Model } from '../state';
 import { get } from './get';
 import { has } from './has';
 import { set } from './set';
+import { flushMicrotasks, mockPromise } from '../../test.setup';
 
 // is this desirable?
 it.todo('will add pending compute to frame immediately', () => {});
@@ -1083,6 +1084,105 @@ describe('key mode', () => {
     Test.new();
 
     expect(fetch).toBeCalledWith('key', 1);
+  });
+
+  it('will suspend while override compute throws a promise, then assign', async () => {
+    const pending = mockPromise();
+    let ready = false;
+
+    class Lazy extends Model {
+      id = 0;
+
+      static get<T extends Lazy>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        if (!ready) throw pending;
+        return user as T;
+      }
+    }
+
+    const user = Lazy.new({ id: 5 });
+
+    class Test extends Model {
+      user = get(Lazy, 5);
+    }
+
+    const test = Test.new();
+
+    expect(() => test.user).toThrow(expect.any(Promise));
+
+    ready = true;
+    pending.resolve();
+
+    await expect(test).toHaveUpdated('user');
+    expect(test.user).toBe(user);
+  });
+
+  it('will refresh when a provider the compute looks up changes', async () => {
+    class Test extends Model {
+      user = get(User, 5);
+    }
+
+    const outer = User.new({ id: 5 });
+    const inner = User.new({ id: 5 });
+    const context = new Context({ outer }).push({ Test });
+    const test = context.get(Test);
+
+    expect(test.user).toBe(outer);
+
+    context.add(inner);
+
+    await expect(test).toHaveUpdated('user');
+    expect(test.user).toBe(inner);
+  });
+
+  it('will throw from new if override throws', () => {
+    class Broken extends Model {
+      id = 0;
+
+      static get<T extends Broken>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        throw new Error('nope');
+      }
+    }
+
+    class Test extends Model {
+      user = get(Broken, 5);
+    }
+
+    expect(() => Test.new()).toThrow('nope');
+  });
+
+  it('will report if override throws on refresh', async () => {
+    const handler = vi.fn();
+    let fail = false;
+
+    class Flaky extends Model {
+      id = 0;
+
+      static get<T extends Flaky>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return Context.get(this, (context) => {
+          const found = context.get(this, false);
+          if (fail) throw new Error('nope');
+          return found as T;
+        });
+      }
+    }
+
+    class Test extends Model {
+      user = get(Flaky, 5);
+    }
+
+    Test.on({ catch: handler });
+
+    const outer = Flaky.new({ id: 5 });
+    const context = new Context({ outer }).push({ Test });
+    const test = context.get(Test);
+
+    fail = true;
+    context.add(Flaky.new({ id: 5 }));
+
+    await flushMicrotasks();
+
+    expect(test.user).toBe(outer);
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'nope' }), 'effect', undefined);
   });
 
   it('will keep existing forms', () => {
