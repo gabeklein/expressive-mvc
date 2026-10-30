@@ -1,7 +1,7 @@
 import { Component } from '@expressive/mvc';
 import { elements } from '@expressive/mvc/jsx-runtime';
 import type { Renderable } from '@expressive/mvc/jsx-runtime';
-import { Context } from './context';
+import { useAmbient } from './context';
 import { Runtime, useFactory, useWatch } from './runtime';
 import { createFrame } from './component';
 
@@ -68,7 +68,7 @@ elements((Type) => {
 });
 
 function Element(this: Component){
-  const outer = Context.get();
+  const outer = useAmbient();
   const render = useFactory(() => {
     let from = this;
     const context = outer.push(this);

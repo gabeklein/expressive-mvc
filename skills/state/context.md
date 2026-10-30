@@ -207,6 +207,20 @@ a.get(Scene) === scene;           // a type resolves its direct owner too
 scene.get(Model, (node) => attach(node), true); // direct members only - a, not b
 ```
 
+## Static Context
+
+```ts
+Context.get(): Context                       // current context, else root; a render returns its own
+Context.get(state): Context                  // state's home context
+Context.get(Type, compute): R                // resolve a static get - see get.md#overriding
+```
+
+`state.get(Type, ...args)` and the `get(Type, ...)` instruction make the instance's home context current and the instance the origin of each static `get` they reach: `compute` receives it as `from`. When it is a tracking proxy, `compute` gets a tracked view of the context - each `context.get` in it follows that context - and a returned Model is tracked through it. There hosts do not track, and React runs no hooks.
+
+### Writing a host
+
+A host installs `resolver((Type, compute) => ...)` from `@expressive/mvc/jsx-runtime`, which runs for every `Context.get` outside an origin - `Type` is undefined for bare `Context.get()`. `resolver` returns the previous one; the host calls it where it is not rendering, so installs stack. Its return value is what the caller receives. In render the host runs `compute` against a tracked view of its own context, so a provider any lookup in `compute` reads arriving, replaced or leaving renders again, and tracks a returned Model, one subscription per instance per render.
+
 ## API Surface
 
 ```ts
@@ -225,6 +239,7 @@ ctx.add(state, explicit?);             // register an instance
 ctx.push(input?, cleanup?);            // child context; input as constructor; owns classes, adopts instances; cleanup runs once on pop
 ctx.pop();                             // destroy this and descendants
 Context.get(state);                    // static: state's home context
+Context.get();                         // static: current context, else root
 Context.root;                          // global registry
 ```
 

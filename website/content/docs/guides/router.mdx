@@ -77,9 +77,9 @@ A page reads its nearest `Route` like any contextual instance:
 import { Route } from '@expressive/router';
 
 function Mission() {
-  const { match, query, goto } = Route.get(true);
+  const { match, query, goto } = Route.get();
 
-  return (
+  if (match) return (
     <article>
       <h2>Operation {match.codename}</h2>
       <button onClick={() => goto({ codename: 'thunderball' })}>
@@ -88,6 +88,8 @@ function Mission() {
       <p>view: {query.get('view') ?? 'summary'}</p>
     </article>
   );
+
+  return null;
 }
 ```
 

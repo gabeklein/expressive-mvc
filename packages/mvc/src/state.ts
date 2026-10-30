@@ -1,4 +1,4 @@
-import { Context, host, join } from './context';
+import { Context, host, join, within } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -43,9 +43,6 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 /** Replacement for a getter captured by live computed properties, for hot patching. */
 const LATEST = new WeakMap<Function, Function>();
 
-/** Key a tracked model touches to follow its context. */
-const CONTEXT = Symbol('context');
-
 /** Event every observer treats as watched, forcing a refresh after a hot patch. */
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 
@@ -65,6 +62,17 @@ const ADOPT = new WeakMap<Model, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<Model, Set<(child: Model) => void>>();
 const OWNS = new WeakMap<Model, Set<Model>>();
 const OWNED = new WeakMap<Model, Set<(child: Model) => void>>();
+
+type Got<C extends { get(...args: any[]): any }> = ReturnType<C['get']> extends infer R
+  ? NonNullable<R> extends Model
+    ? C extends abstract new (...args: any[]) => infer I ? I | Extract<R, undefined> : R
+    : R
+  : never;
+
+type Keyed<C extends { get(...args: any[]): any }> = [
+  key: Exclude<Parameters<C['get']>[0], boolean | Function | undefined>,
+  ...rest: Parameters<C['get']> extends [any?, ...infer R] ? R : []
+];
 
 type Overlay<T> = Record<string, unknown> & {
   [K in Model.Property<T>]?: T[K] extends (...args: infer A) => infer R
@@ -390,10 +398,16 @@ abstract class Model {
     downstream: true
   ): () => void;
 
+  /**
+   * Fetch through `Type.get(...args)` with this instance as origin - its
+   * context, and its subscription when this is a tracking proxy.
+   */
+  get<C extends Model.Extends>(Type: C, ...args: Keyed<C>): Got<C>;
+
   get(
     arg1?: Model.Effect<this> | Model.Type | typeof Model | string | null,
     arg2?: boolean | Context.Expect | (() => void),
-    arg3?: boolean
+    ...args: any[]
   ) {
     const self = this.is;
 
@@ -402,11 +416,10 @@ abstract class Model {
       return typeof arg2 == 'function'
         ? owned(self, arg2 as (child: Model) => void)
         : observed(this, arg1, owner(self, arg2 as boolean));
-    if (Model.is(arg1)) {
-      const ctx = Context.get(self);
-      const view = typeof arg2 == 'function' ? ctx : touch(this, CONTEXT, ctx);
-      return observed(this, arg1, view.get(arg1, arg2, arg3, self));
-    }
+    if (Model.is(arg1))
+      return typeof arg2 == 'function'
+        ? Context.get(self).get(arg1, arg2, args[0], self)
+        : within(this, () => (arg1.get as Function)(arg2, ...args));
     if (typeof arg1 == 'function') return watch(self, unbind(arg1));
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
@@ -542,6 +555,29 @@ abstract class Model {
     const instance = new this(...args);
     event(instance);
     return instance;
+  }
+
+  /**
+   * Fetch instance of this class from context. Throws if not found.
+   *
+   * Override with a single signature to accept other arguments - delegate
+   * base forms to `super.get(arg)`, and resolve others by calling
+   * `Context.get(this, compute)` once, synchronously, so host context and
+   * tracking still apply.
+   */
+  static get<T extends Model>(this: Model.Extends<T>): T;
+
+  /** Fetch instance of this class from context. Undefined if not found. */
+  static get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
+
+  static get(this: Model.Extends, required?: false): any {
+    return Context.get(this, (context, from) => {
+      const found = context.get(this, required !== false, undefined, from);
+
+      if (found || required === false) return found || undefined;
+
+      throw new Error(`Could not find ${this} in context.`);
+    });
   }
 
   /**
@@ -1337,5 +1373,5 @@ function parent(child: object, value?: Model | null) {
   return true;
 }
 
-export type { Handler };
-export { adopt, event, plain, unbind, Model, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
+export type { Got, Handler, Keyed };
+export { adopt, event, plain, unbind, Model, observed, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };

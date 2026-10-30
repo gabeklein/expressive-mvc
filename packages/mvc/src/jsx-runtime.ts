@@ -54,6 +54,9 @@ export const Fragment = Symbol.for('@expressive/mvc.Fragment');
 
 /** Host-side: every class declared an element - see `element.ts`. */
 export { elements } from './element';
+
+/** Host-side: how `Context.get` resolves outside an origin - see `context.ts`. */
+export { resolver } from './context';
 export type { Renderable } from './element';
 
 /** Default for seams only a registered host can provide. */

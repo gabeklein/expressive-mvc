@@ -1,9 +1,10 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, expectTypeOf } from 'vitest';
 import { Context } from '../context';
 import { Model } from '../state';
 import { get } from './get';
 import { has } from './has';
 import { set } from './set';
+import { flushMicrotasks, mockPromise } from '../../test.setup';
 
 // is this desirable?
 it.todo('will add pending compute to frame immediately', () => {});
@@ -1014,6 +1015,207 @@ describe('fetch mode', () => {
       await expect(parent).toHaveUpdated('owned');
       expect(parent.owned).toBe(parent.child);
     });
+  });
+});
+
+describe('key mode', () => {
+  class Record extends Model {
+    id = 0;
+
+    static get<T extends Record>(this: Model.Extends<T>, id?: T['id'] | false): T {
+      return Context.get(this, (context) => {
+        const found = context.get(this, false);
+        return found?.id === id ? found : undefined;
+      }) as T;
+    }
+  }
+
+  class User extends Record {
+    name = 'user';
+  }
+
+  it('will fetch through override with owner as origin', () => {
+    const lookup = vi.spyOn(User, 'get');
+    const origin = vi.fn();
+
+    class Test extends Model {
+      user = get(User, 5);
+    }
+
+    lookup.mockImplementation(function (this: typeof User, ...args) {
+      origin(Context.get());
+      return Record.get.apply(this, args) as User;
+    });
+
+    const user = User.new({ id: 5 });
+    const context = new Context({ user, Test });
+    const test = context.get(Test);
+    const found = test.user;
+
+    expectTypeOf(found).toEqualTypeOf<User>();
+
+    expect(found).toBe(user);
+    expect(lookup).toBeCalledWith(5);
+    expect(origin).toBeCalledWith(context);
+
+    lookup.mockRestore();
+  });
+
+  it('will pass further arguments', () => {
+    const fetch = vi.fn();
+
+    class Lookup extends Model {
+      key = '';
+      extra = 0;
+
+      static get<T extends Lookup>(
+        this: Model.Extends<T>,
+        key?: T['key'] | false,
+        extra?: T['extra']
+      ): T {
+        return Context.get(this, () => fetch(key, extra));
+      }
+    }
+
+    class Test extends Model {
+      found = get(Lookup, 'key', 1);
+    }
+
+    Test.new();
+
+    expect(fetch).toBeCalledWith('key', 1);
+  });
+
+  it('will suspend while override compute throws a promise, then assign', async () => {
+    const pending = mockPromise();
+    let ready = false;
+
+    class Lazy extends Model {
+      id = 0;
+
+      static get<T extends Lazy>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        if (!ready) throw pending;
+        return user as T;
+      }
+    }
+
+    const user = Lazy.new({ id: 5 });
+
+    class Test extends Model {
+      user = get(Lazy, 5);
+    }
+
+    const test = Test.new();
+
+    expect(() => test.user).toThrow(expect.any(Promise));
+
+    ready = true;
+    pending.resolve();
+
+    await expect(test).toHaveUpdated('user');
+    expect(test.user).toBe(user);
+  });
+
+  it('will not reassign after resolving', async () => {
+    class Test extends Model {
+      user = get(User, 5);
+    }
+
+    const outer = User.new({ id: 5 });
+    const context = new Context({ outer }).push({ Test });
+    const test = context.get(Test);
+
+    expect(test.user).toBe(outer);
+    await flushMicrotasks();
+
+    context.add(User.new({ id: 5 }));
+
+    await expect(test).not.toHaveUpdated();
+    expect(test.user).toBe(outer);
+  });
+
+  it('will not adopt the resolved instance', () => {
+    class Shared extends Model {
+      id = 0;
+
+      static get<T extends Shared>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return shared as T;
+      }
+    }
+
+    const shared = new Shared();
+
+    class Test extends Model {
+      item = get(Shared, 5);
+    }
+
+    const test = Test.new();
+
+    expect(test.item).toBe(shared);
+    expect(shared.get(Model, false)).toBeUndefined();
+  });
+
+  it('will throw from new if override throws', () => {
+    class Broken extends Model {
+      id = 0;
+
+      static get<T extends Broken>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        throw new Error('nope');
+      }
+    }
+
+    class Test extends Model {
+      user = get(Broken, 5);
+    }
+
+    expect(() => Test.new()).toThrow('nope');
+  });
+
+  it('will resolve before new() reads the field', () => {
+    let seen: User | undefined;
+
+    class Test extends Model {
+      user = get(User, 5);
+
+      new() {
+        seen = this.user;
+      }
+    }
+
+    const user = User.new({ id: 5 });
+
+    new Context({ user }).push({ Test });
+
+    expect(seen).toBe(user);
+  });
+
+  it('will keep existing forms', () => {
+    class Child extends Model {}
+
+    class Test extends Model {
+      required = get(Child, true, true);
+      optional = get(Child, true, false);
+      list = get(Child, true);
+      maybe = get(Child, false);
+    }
+
+    const forms = (test: Test) => {
+      expectTypeOf(test.required).toEqualTypeOf<Child>();
+      expectTypeOf(test.optional).toEqualTypeOf<Child | undefined>();
+      expectTypeOf(test.list).toEqualTypeOf<Child[]>();
+      expectTypeOf(test.maybe).toEqualTypeOf<Child | undefined>();
+    };
+
+    expect(forms).toBeTypeOf('function');
+  });
+
+  it('will reject a key of the wrong type', () => {
+    class Test extends Model {
+      // @ts-expect-error - key is a number
+      user = get(User, 'x');
+    }
+
+    expect(Test).toBeDefined();
   });
 });
 

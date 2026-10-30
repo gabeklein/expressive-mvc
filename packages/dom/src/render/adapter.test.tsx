@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { Model, Component, Context } from '@expressive/mvc';
 import { render } from '../index';
 import * as hot from '@expressive/mvc/hot';
+import { observer } from '@expressive/mvc/observable';
 import { flushMicrotasks, mockPromise, mount } from '../../test.setup';
 
 describe('MVC adapter', () => {
@@ -81,7 +82,8 @@ describe('MVC adapter', () => {
     }
 
     function Name() {
-      return Session.get((value) => <span>{value.name}</span>);
+      const { name } = Session.get();
+      return <span>{name}</span>;
     }
 
     let session!: Session;
@@ -102,10 +104,19 @@ describe('MVC adapter', () => {
     expect(session.get(null)).toBe(true);
   });
 
-  it('will reject Model.get outside render', () => {
+  it('will read root context outside render', () => {
     class Value extends Model {}
 
-    expect(() => Value.get()).toThrow('may only run while @expressive/dom is rendering');
+    expect(Context.get()).toBe(Context.root);
+    expect(() => Value.get()).toThrow('Could not find Value in context.');
+    expect(Value.get(false)).toBeUndefined();
+  });
+
+  it('will not accept true', () => {
+    class Value extends Model {}
+
+    // @ts-expect-error
+    expectTypeOf(Value.get).toBeCallableWith(true);
   });
 
   it('will not provide Model.use', () => {
@@ -114,25 +125,16 @@ describe('MVC adapter', () => {
     expect((Value as any).use).toBeUndefined();
   });
 
-  it('will support optional, required and selected context snapshots', async () => {
+  it('will support optional context lookups', async () => {
     class Missing extends Model {}
     class Source extends Model {
       value = 1;
-      pending?: string;
     }
 
-    let refresh!: Model.ForceRefresh;
-    let renders = 0;
-
     function View() {
-      renders++;
       const missing = Missing.get(false);
-      const selected = Source.get(({ value }, force) => {
-        refresh = force;
-        return value * 2;
-      });
-      const empty = Source.get(() => undefined);
-      return <span>{String(missing)}:{selected}:{String(empty)}</span>;
+      const { value } = Source.get();
+      return <span>{String(missing)}:{value}</span>;
     }
 
     const source = Source.new();
@@ -142,29 +144,319 @@ describe('MVC adapter', () => {
       root
     );
 
-    expect(root.textContent).toBe('undefined:2:null');
-    refresh();
-    await flushMicrotasks();
-    await refresh(Promise.resolve());
-    await refresh(() => Promise.resolve());
-    await flushMicrotasks();
-    expect(renders).toBeGreaterThan(1);
+    expect(root.textContent).toBe('undefined:1');
 
     release();
     source.set(null);
+  });
 
-    class Required extends Component {
-      render() {
-        return <span>{Source.get(true).pending}</span>;
+  it('will return one tracked proxy per instance in a render', () => {
+    class Source extends Model {
+      value = 1;
+    }
+
+    const proxies: Source[] = [];
+
+    function View() {
+      proxies.push(Source.get(), Source.get());
+      return null;
+    }
+
+    const source = Source.new();
+    const release = render(
+      <Component for={source}><View /></Component>,
+      document.createElement('main')
+    );
+
+    const [first, second] = proxies;
+
+    expect(first).toBe(second);
+    expect(first).not.toBe(source);
+    expect(first.is).toBe(source);
+
+    release();
+    source.set(null);
+  });
+
+  it('will share one subscription between repeated reads', async () => {
+    class Source extends Model {
+      value = 1;
+    }
+
+    const renders = vi.fn();
+    const added: number[] = [];
+
+    function View() {
+      renders();
+      const { listeners } = observer(source)!;
+      const { value } = Source.get();
+      const before = listeners.size;
+      const again = Source.get();
+      added.push(listeners.size - before);
+      return <span>{value}:{again.value}</span>;
+    }
+
+    const source = Source.new();
+    const root = document.createElement('main');
+    const release = render(<Component for={source}><View /></Component>, root);
+
+    source.value = 2;
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('2:2');
+    expect(renders).toHaveBeenCalledTimes(2);
+    expect(added).toEqual([0, 0]);
+
+    release();
+    source.set(null);
+  });
+
+  it('will return render context from bare Context.get', () => {
+    class Source extends Model {}
+
+    let context!: Context;
+
+    function View() {
+      context = Context.get();
+      return null;
+    }
+
+    const source = Source.new();
+    const release = render(
+      <Component for={source}><View /></Component>,
+      document.createElement('main')
+    );
+
+    expect(context).not.toBe(Context.root);
+    expect(context.get(Source)).toBe(source);
+
+    release();
+    source.set(null);
+  });
+
+  it('will return a computed value untracked', () => {
+    class Source extends Model {
+      value = 1;
+    }
+
+    let result: unknown;
+
+    function View() {
+      result = Context.get(Source, (context) => context.get(Source).value);
+      return null;
+    }
+
+    const source = Source.new();
+    const release = render(
+      <Component for={source}><View /></Component>,
+      document.createElement('main')
+    );
+
+    expect(result).toBe(1);
+
+    release();
+    source.set(null);
+  });
+
+  it('will forward to core from a Model origin', async () => {
+    class Source extends Model {
+      value = 1;
+    }
+
+    class Origin extends Model {}
+
+    const outer = Source.new();
+    const inner = Source.new();
+    const origin = Origin.new();
+    const context = new Context(inner).push(origin);
+    const renders = vi.fn();
+    let found: Source | undefined;
+
+    function View() {
+      renders();
+      found = origin.get(Source);
+      return null;
+    }
+
+    const release = render(
+      <Component for={outer}><View /></Component>,
+      document.createElement('main')
+    );
+
+    expect(found).toBe(inner);
+
+    inner.value = 2;
+    await flushMicrotasks();
+
+    expect(renders).toHaveBeenCalledOnce();
+
+    release();
+    context.pop();
+    outer.set(null);
+    inner.set(null);
+  });
+
+  it('will not cache a throw', () => {
+    class Source extends Model {}
+
+    let ready = false;
+    const results: unknown[] = [];
+
+    class Lookup extends Model {
+      static get(): any {
+        return Context.get(this, (context) => {
+          if (!ready) throw new Error('not ready');
+          return context.get(Source);
+        });
       }
     }
 
-    const required = Source.new();
-    expect(() => render(
-      <Component for={required}><Required fallback={false} /></Component>,
+    function View() {
+      try {
+        Lookup.get();
+      } catch (error) {
+        results.push(error);
+      }
+
+      ready = true;
+      results.push(Lookup.get());
+      return null;
+    }
+
+    const source = Source.new();
+    const release = render(
+      <Component for={source}><View /></Component>,
       document.createElement('main')
-    )).toThrow();
-    required.set(null);
+    );
+
+    expect(results[0]).toEqual(new Error('not ready'));
+    expect((results[1] as Source).is).toBe(source);
+
+    release();
+    source.set(null);
+  });
+
+  it('will follow another type an override looks up', async () => {
+    class Row extends Model {
+      label = '';
+
+      static get<T extends Row>(this: Model.Extends<T>, key?: string | false): T {
+        if (typeof key != 'string') return super.get(key as false) as T;
+
+        return Context.get(this, (context) => context.get(Connection).reference(this, key));
+      }
+    }
+
+    class Connection extends Model {
+      name = '';
+      rows = new Map<string, Row>();
+
+      reference<T extends Row>(Type: Model.Extends<T>, key: string): T {
+        let row = this.rows.get(key);
+
+        if (!row) this.rows.set(key, (row = (Type as Model.Type<T>).new({ label: `${this.name}:${key}` } as never)));
+
+        return row as T;
+      }
+    }
+
+    class Session extends Model {
+      connection = new Connection({ name: 'a' });
+    }
+
+    const session = Session.new();
+    const root = document.createElement('main');
+
+    function View() {
+      return <span>{Row.get('x').label}</span>;
+    }
+
+    const release = render(
+      <Component for={session}>
+        <View />
+      </Component>,
+      root
+    );
+
+    expect(root.textContent).toBe('a:x');
+
+    session.connection = new Connection({ name: 'b' });
+    await flushMicrotasks();
+    expect(root.textContent).toBe('b:x');
+
+    session.connection.rows.get('x')!.label = 'updated';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('updated');
+
+    release();
+    session.set(null);
+  });
+
+  it('will track an override and follow a changed key', async () => {
+    class Item extends Model {
+      id = 0;
+      label = '';
+
+      static get<T extends Item>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return Context.get(this, (context) => {
+          const { a, b } = context.get(Store);
+          return [a, b].find((item) => item.id === id) as T;
+        });
+      }
+    }
+
+    class Store extends Model {
+      a = new Item({ id: 1, label: 'one' });
+      b = new Item({ id: 2, label: 'two' });
+    }
+
+    class Picker extends Model {
+      selected = 1;
+    }
+
+    const renders = vi.fn();
+
+    function View() {
+      renders();
+      const { selected } = Picker.get();
+      const { label } = Item.get(selected);
+      return <span>{label}</span>;
+    }
+
+    const store = Store.new();
+    const picker = Picker.new();
+    const root = document.createElement('main');
+    const release = render(
+      <Component for={store}>
+        <Component for={picker}>
+          <View />
+        </Component>
+      </Component>,
+      root
+    );
+
+    expect(root.textContent).toBe('one');
+
+    store.a.label = 'uno';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('uno');
+
+    picker.selected = 2;
+    await flushMicrotasks();
+    expect(root.textContent).toBe('two');
+    expect(renders).toBeCalledTimes(3);
+
+    store.a.label = 'one';
+    await flushMicrotasks();
+    expect(renders).toBeCalledTimes(3);
+
+    store.b.label = 'dos';
+    await flushMicrotasks();
+    expect(root.textContent).toBe('dos');
+
+    release();
+    store.set(null);
+    picker.set(null);
   });
 
   it('will render capitalized methods as owner-bound subcomponents', async () => {
