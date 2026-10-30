@@ -1094,6 +1094,18 @@ it('will skip consumer if filter does not match downstream', () => {
 describe('root', () => {
   const { root } = Context;
 
+  it('will throw for a class still declaring static global', () => {
+    class Legacy extends Model {
+      static global = true;
+    }
+    class Sub extends Legacy {}
+
+    const message = 'Legacy declares `static global`, which was removed - provide it with <Component for>, or add it to Context.root explicitly.';
+
+    expect(() => Legacy.new()).toThrow(message);
+    expect(() => Sub.new()).toThrow(message);
+  });
+
   it('will not register children of a private instance in root', () => {
     class Child extends Model {}
     class Parent extends Model {
@@ -1264,18 +1276,17 @@ describe('lookup origin', () => {
     expect(parent.child.get(Peer)).toBe(context.get(Peer));
   });
 
-  it('will look up from root for a global and its child', () => {
-    class Global extends Model {
-      static global = true;
+  it('will look up from root for an unplaced instance and its child', () => {
+    class Loose extends Model {
       child = new Child();
     }
 
-    const global = Global.new();
+    const loose = Loose.new();
 
-    expect(Context.get(global)).toBe(Context.root);
-    expect(Context.get(global.child)).toBe(Context.root);
+    expect(Context.get(loose)).toBe(Context.root);
+    expect(Context.get(loose.child)).toBe(Context.root);
 
-    global.set(null);
+    loose.set(null);
   });
 });
 

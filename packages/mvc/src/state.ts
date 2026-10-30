@@ -770,6 +770,11 @@ function bootstrap(T: Model.Extends) {
 
     for (const setupType of onType) setupType(type);
 
+    if (Object.prototype.hasOwnProperty.call(type, 'global'))
+      throw new Error(
+        `${type.name} declares \`static global\`, which was removed - provide it with <Component for>, or add it to Context.root explicitly.`
+      );
+
     METHODS.set(type, (keys = new Map(keys)));
     GETTERS.set(type, (getters = new Map(getters)));
 
