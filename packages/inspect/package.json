@@ -25,7 +25,9 @@
   "type": "module",
   "sideEffects": [
     "./dist/install.js",
-    "./src/install.ts"
+    "./src/install.ts",
+    "./dist/http.js",
+    "./src/http.ts"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -37,6 +39,10 @@
     "./install": {
       "types": "./dist/install.d.ts",
       "default": "./dist/install.js"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "default": "./dist/http.js"
     },
     "./bridge": {
       "types": "./dist/bridge.d.ts",

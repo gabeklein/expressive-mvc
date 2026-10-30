@@ -12,7 +12,6 @@ export type { Select } from './serialize';
 export type { TypeInfo } from './types';
 export { Instance, act, attach, call, detach, find, get, health, instances, label, models, orphans, resolve, roots, set, tree };
 export { parsePath, serialize } from './serialize';
-export { handle } from './handle';
 
 export const journal = {
   ...base,

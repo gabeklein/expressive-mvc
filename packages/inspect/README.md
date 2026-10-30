@@ -70,27 +70,11 @@ Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__
 
 ## From your own server
 
-`handle` serves an installed inspector from a backend's own server - same body and answers as the relay; `GET` describes the process. It takes each host's native handler arguments, so it mounts as a route anywhere, nested routers included. Load both pieces only in dev, so the package can stay a devDependency.
-
-Install before any Model is constructed:
-
-```bash
-bun --preload @expressive/inspect/install server.ts      # dev script
-node --import @expressive/inspect/install server.js
-```
+`@expressive/inspect/http` installs the inspector and exports `handle`, which serves it from a backend's own server - same body and answers as the relay; `GET` describes the process. `handle` takes each host's native handler arguments, so it mounts as a route anywhere, nested routers included. Import it dynamically behind your dev flag, so the package can stay a devDependency:
 
 ```ts
-// entry.ts - any runtime: install, then load the app
-if (dev) await import('@expressive/inspect/install');
-await import('./server');
-```
-
-`attach()` alone does not publish the global `handle` serves; without install it answers 404.
-
-Mount the route:
-
-```ts
-const inspect = dev && (await import('@expressive/inspect')).handle;
+// top of the server entry - installs, so it precedes any Model
+const inspect = dev && (await import('@expressive/inspect/http')).handle;
 
 // Bun
 Bun.serve({ routes: inspect ? { '/__inspect': inspect } : undefined, fetch: app });
@@ -110,7 +94,9 @@ if (inspect) return inspect(req, { ip });
 
 Missing or non-loopback callers get 403, as do browser and proxied requests. A JSON array `express.json()` already read is used as is; mount before any other body parser. Next route handlers and Workers expose no socket address and are unsupported.
 
-Static imports work only with the package as a runtime dependency. A bundled server resolves dynamic imports at build time, so the package must be installed when building.
+Instances the entry's static imports construct at module scope exist before its body runs. To see those, install from the dev script - `bun --preload @expressive/inspect/install` or `node --import @expressive/inspect/install` - and keep the `/http` import for `handle`.
+
+A static import works only with the package as a runtime dependency. A bundled server resolves dynamic imports at build time, so the package must be installed when building.
 
 ## Journal
 
