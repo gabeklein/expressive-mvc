@@ -4,6 +4,7 @@ import { Model } from '../state';
 import { get } from './get';
 import { has } from './has';
 import { set } from './set';
+import { flushMicrotasks, mockPromise } from '../../test.setup';
 
 // is this desirable?
 it.todo('will add pending compute to frame immediately', () => {});
@@ -1083,6 +1084,109 @@ describe('key mode', () => {
     Test.new();
 
     expect(fetch).toBeCalledWith('key', 1);
+  });
+
+  it('will suspend while override compute throws a promise, then assign', async () => {
+    const pending = mockPromise();
+    let ready = false;
+
+    class Lazy extends Model {
+      id = 0;
+
+      static get<T extends Lazy>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        if (!ready) throw pending;
+        return user as T;
+      }
+    }
+
+    const user = Lazy.new({ id: 5 });
+
+    class Test extends Model {
+      user = get(Lazy, 5);
+    }
+
+    const test = Test.new();
+
+    expect(() => test.user).toThrow(expect.any(Promise));
+
+    ready = true;
+    pending.resolve();
+
+    await expect(test).toHaveUpdated('user');
+    expect(test.user).toBe(user);
+  });
+
+  it('will not reassign after resolving', async () => {
+    class Test extends Model {
+      user = get(User, 5);
+    }
+
+    const outer = User.new({ id: 5 });
+    const context = new Context({ outer }).push({ Test });
+    const test = context.get(Test);
+
+    expect(test.user).toBe(outer);
+    await flushMicrotasks();
+
+    context.add(User.new({ id: 5 }));
+
+    await expect(test).not.toHaveUpdated();
+    expect(test.user).toBe(outer);
+  });
+
+  it('will not adopt the resolved instance', () => {
+    class Shared extends Model {
+      id = 0;
+
+      static get<T extends Shared>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return shared as T;
+      }
+    }
+
+    const shared = new Shared();
+
+    class Test extends Model {
+      item = get(Shared, 5);
+    }
+
+    const test = Test.new();
+
+    expect(test.item).toBe(shared);
+    expect(shared.get(Model, false)).toBeUndefined();
+  });
+
+  it('will throw from new if override throws', () => {
+    class Broken extends Model {
+      id = 0;
+
+      static get<T extends Broken>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        throw new Error('nope');
+      }
+    }
+
+    class Test extends Model {
+      user = get(Broken, 5);
+    }
+
+    expect(() => Test.new()).toThrow('nope');
+  });
+
+  it('will resolve before new() reads the field', () => {
+    let seen: User | undefined;
+
+    class Test extends Model {
+      user = get(User, 5);
+
+      new() {
+        seen = this.user;
+      }
+    }
+
+    const user = User.new({ id: 5 });
+
+    new Context({ user }).push({ Test });
+
+    expect(seen).toBe(user);
   });
 
   it('will keep existing forms', () => {

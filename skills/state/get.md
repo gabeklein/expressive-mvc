@@ -181,7 +181,7 @@ User.get(5);             // in render: tracked
 User.get(false);         // base form through super
 session.get(User, 5);    // from session's context
 class Order extends Model {
-  buyer = get(User, 5);  // from the owner's context, once ready
+  buyer = get(User, 5);  // from the owner's context, as defined
 }
 ```
 

@@ -1,4 +1,4 @@
-import { capture, listener, observer } from '../observable';
+import { capture, listener, observer, watch } from '../observable';
 import { Context, within } from '../context';
 import { Model, children, owned, parent, STORE, update } from '../state';
 import type { Got, Keyed } from '../state';
@@ -81,9 +81,10 @@ function get<T extends Model>(
 ): T | undefined;
 
 /**
- * Fetches through `Type.get(...args)` once this Model is ready, with this Model
- * as origin. Applies where the first argument is neither boolean nor function -
- * a key for a class overriding static `get`.
+ * Fetches through `Type.get(...args)` as this field is defined, with this
+ * Model as origin. Resolves once; a thrown Promise suspends the field and
+ * retries once settled. Applies where the first argument is neither boolean
+ * nor function - a key for a class overriding static `get`.
  *
  * @param Type - Class to fetch from.
  * @param args - Arguments for `Type.get`.
@@ -104,10 +105,18 @@ function get<T extends Model>(
     return above(Type, arg1);
 
   return def((key, subject) => {
-    listener(subject, () => {
-      update(subject, key, within(subject, () => (Type.get as Function)(arg1, ...args)));
-      return null;
-    }, true);
+    const resolve = () => update(subject, key, within(subject, () => (Type.get as Function)(arg1, ...args)));
+
+    try {
+      resolve();
+    } catch (error) {
+      if (!(error instanceof Promise)) throw error;
+
+      watch(subject, () => {
+        resolve();
+        return null;
+      });
+    }
 
     return {
       get: true,
