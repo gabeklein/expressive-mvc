@@ -36,11 +36,11 @@ Receives `(state, subject)`. Runs when the upstream resolves, and again when it 
 
 ```ts
 class Order extends Model {
-  buyer = get(User, 5); // User.get(5) once ready, this as origin
+  buyer = get(User, 5); // User.get(5) as defined, this as origin
 }
 ```
 
-A first argument that is neither boolean nor function forwards every argument to `Type.get` - for a class overriding static `get` ([../state/get.md](../state/get.md#static-get)). Resolves once, when this instance is ready; reading before then suspends. A thrown Promise suspends the field and retries once settled; an Error throws from `new()`.
+A first argument that is neither boolean nor function forwards every argument to `Type.get` - for a class overriding static `get` ([../state/get.md](../state/get.md#static-get)). Resolves once, as the field is defined - `new()` can read it. A thrown Promise suspends the field and retries once settled; an Error throws from construction.
 
 ### Downstream collection
 

@@ -1171,23 +1171,20 @@ describe('key mode', () => {
     expect(() => Test.new()).toThrow('nope');
   });
 
-  it.fails('will resolve before an async new() reads the field', async () => {
+  it('will resolve before new() reads the field', () => {
     let seen: User | undefined;
 
     class Test extends Model {
       user = get(User, 5);
 
-      async new() {
-        try {
-          seen = this.user;
-        } catch {}
+      new() {
+        seen = this.user;
       }
     }
 
     const user = User.new({ id: 5 });
-    const context = new Context({ user }).push({ Test });
 
-    await context.get(Test).get(() => {});
+    new Context({ user }).push({ Test });
 
     expect(seen).toBe(user);
   });
