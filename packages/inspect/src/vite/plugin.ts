@@ -94,7 +94,7 @@ export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
   }
 
   return async (req: IncomingMessage, res: ServerResponse) => {
-    if (!local(req.socket.remoteAddress, new Set(Object.keys(req.headers)))) return reply(res, 403, { error: 'Local callers only; browser and proxied requests are refused.' });
+    if (!local(req.socket.remoteAddress, { has: (name) => name in req.headers })) return reply(res, 403, { error: 'Local callers only; browser and proxied requests are refused.' });
 
     const id = decodeURIComponent(req.url!.split('?')[0].slice(1));
 
