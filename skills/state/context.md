@@ -52,7 +52,7 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 ## Root Context
 
-`Context.root` is the process-wide registry, parent of every host's contexts; `Context.get(state)` falls back to it when an instance has no recorded home. An instance reads from root but never registers itself there. Prefer a render-less `Global` Component at the app's top owning shared state - it provides what it owns to everything below. To make an instance findable from anywhere, add it explicitly and tie removal to its lifetime - an explicit entry stays until removed:
+`Context.root` is the process-wide registry, parent of every host's contexts; `Context.get(state)` falls back to it when an instance has no recorded home. An instance reads from root but never registers itself there. Prefer a render-less `Global` Component at the app's top owning shared state - it provides what it owns to everything below, so readers call `Session.get()` rather than reaching through `Global`. To make an instance findable from anywhere, add it explicitly and tie removal to its lifetime - an explicit entry stays until removed:
 
 ```ts
 const flags = Flags.new((self) => Context.root.add(self, true));

@@ -319,6 +319,8 @@ function Avatar() {
 }
 ```
 
+That's the point of `Global` - it makes each piece of shared state available by its own type. Components ask for `Session`, not for `Global` and then its `session`; `Global.get()` works, but nothing below should need to know where `Session` lives.
+
 Every context descends from `Context.root`. A `Model.new()` outside any context resolves its own lookups against root, but never registers there - nothing can find it until something provides it. To make an instance findable without a provider, add it to root explicitly, and remove it when the instance is destroyed:
 
 ```ts

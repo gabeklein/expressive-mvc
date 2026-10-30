@@ -376,7 +376,7 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 `Context.root` is a regular `Context` instance, the process-wide registry every host's contexts descend from. An instance activated by `Model.new()` outside an explicit context resolves its own lookups against root, but never registers itself there.
 
-App-wide state belongs to a render-less `Global` Component at the app's top - what it owns is provided to everything below. [See it in action](/examples/composition/globals).
+App-wide state belongs to a render-less `Global` Component at the app's top - what it owns is provided to everything below, so components read `Session.get()` directly rather than through `Global`. [See it in action](/examples/composition/globals).
 
 To make an instance findable from anywhere without a provider, add it explicitly. An explicit entry stays until removed, so tie removal to the instance's lifetime:
 

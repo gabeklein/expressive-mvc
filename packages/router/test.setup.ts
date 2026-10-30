@@ -9,8 +9,8 @@ import { act, cleanup, render } from '@testing-library/react';
 import '@expressive/react';
 
 import '../mvc/test.setup';
-import { Context } from '@expressive/mvc';
 
+import { Context } from '@expressive/mvc';
 import { BrowserRouter } from './src/browser';
 
 afterEach(() => {
