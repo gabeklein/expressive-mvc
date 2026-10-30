@@ -1118,22 +1118,43 @@ describe('key mode', () => {
     expect(test.user).toBe(user);
   });
 
-  it('will refresh when a provider the compute looks up changes', async () => {
+  it('will not reassign after resolving', async () => {
     class Test extends Model {
       user = get(User, 5);
     }
 
     const outer = User.new({ id: 5 });
-    const inner = User.new({ id: 5 });
     const context = new Context({ outer }).push({ Test });
     const test = context.get(Test);
 
     expect(test.user).toBe(outer);
+    await flushMicrotasks();
 
-    context.add(inner);
+    context.add(User.new({ id: 5 }));
 
-    await expect(test).toHaveUpdated('user');
-    expect(test.user).toBe(inner);
+    await expect(test).not.toHaveUpdated();
+    expect(test.user).toBe(outer);
+  });
+
+  it('will not adopt the resolved instance', () => {
+    class Shared extends Model {
+      id = 0;
+
+      static get<T extends Shared>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return shared as T;
+      }
+    }
+
+    const shared = new Shared();
+
+    class Test extends Model {
+      item = get(Shared, 5);
+    }
+
+    const test = Test.new();
+
+    expect(test.item).toBe(shared);
+    expect(shared.get(Model, false)).toBeUndefined();
   });
 
   it('will throw from new if override throws', () => {
@@ -1150,41 +1171,6 @@ describe('key mode', () => {
     }
 
     expect(() => Test.new()).toThrow('nope');
-  });
-
-  it('will report if override throws on refresh', async () => {
-    const handler = vi.fn();
-    let fail = false;
-
-    class Flaky extends Model {
-      id = 0;
-
-      static get<T extends Flaky>(this: Model.Extends<T>, id?: T['id'] | false): T {
-        return Context.get(this, (context) => {
-          const found = context.get(this, false);
-          if (fail) throw new Error('nope');
-          return found as T;
-        });
-      }
-    }
-
-    class Test extends Model {
-      user = get(Flaky, 5);
-    }
-
-    Test.on({ catch: handler });
-
-    const outer = Flaky.new({ id: 5 });
-    const context = new Context({ outer }).push({ Test });
-    const test = context.get(Test);
-
-    fail = true;
-    context.add(Flaky.new({ id: 5 }));
-
-    await flushMicrotasks();
-
-    expect(test.user).toBe(outer);
-    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'nope' }), 'effect', undefined);
   });
 
   it('will keep existing forms', () => {

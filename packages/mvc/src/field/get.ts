@@ -82,8 +82,8 @@ function get<T extends Model>(
 
 /**
  * Fetches through `Type.get(...args)` once this Model is ready, with this Model
- * as origin, as an effect - refetches when a lookup or tracked read changes,
- * and retries a thrown Promise once settled. Applies where the first argument
+ * as origin. Resolves once; a thrown Promise suspends the field and retries
+ * once settled. Applies where the first argument
  * is neither boolean nor function - a key for a class overriding static `get`.
  *
  * @param Type - Class to fetch from.
@@ -105,8 +105,9 @@ function get<T extends Model>(
     return above(Type, arg1);
 
   return def((key, subject) => {
-    watch(subject, (self) => {
-      update(subject, key, within(self, () => (Type.get as Function)(arg1, ...args)));
+    watch(subject, () => {
+      update(subject, key, within(subject, () => (Type.get as Function)(arg1, ...args)));
+      return null;
     });
 
     return {

@@ -181,7 +181,7 @@ User.get(5);             // in render: tracked
 User.get(false);         // base form through super
 session.get(User, 5);    // from session's context
 class Order extends Model {
-  buyer = get(User, 5);  // from the owner's context, followed
+  buyer = get(User, 5);  // from the owner's context, once ready
 }
 ```
 
@@ -189,7 +189,7 @@ class Order extends Model {
 - Each call reaches `Context.get(this, compute)` exactly once, synchronously - directly or through `super.get` - for context and tracking in every call form ([context.md](context.md#static-context)). `this` is always the class.
 - `compute(context, from?)` returns the result; `from` is the calling instance for the instance and instruction forms. A returned Model is tracked - by the host in render, through `from` when it is a tracking proxy.
 - In `compute`, use only `context.get(Type, required?)` - other members of `context` are unstable.
-- In render, through a tracking proxy, or in the `get` instruction, every `context.get` in `compute` follows context - `context.get(Connection).reference(this, id)` re-runs when `Connection`'s provider changes, as `User.get()` does for `User`.
+- In render or through a tracking proxy, every `context.get` in `compute` follows context - `context.get(Connection).reference(this, id)` re-runs when `Connection`'s provider changes, as `User.get()` does for `User`.
 - Outside render - event handlers, effects, module code - a static `get` resolves from root, untracked, on every host; so does a plain `Other.get()` inside `compute`, except under the instance and instruction forms, which keep it on the caller's context.
 - One signature, typing a key from `T` (`T['id'] | false`) - inference from overloads uses the last, and `get()` and `get(false)` stay callable - a plain `key?: string` fails the static-side check against base `get`. Through `state.get(Type, ...)` and the `get(Type, ...)` instruction, arguments type against the base, not a narrowed override.
 

@@ -175,7 +175,7 @@ class User extends Model {
 
 Type the parameter from the instance (`T['id'] | false`) so the base forms stay callable - a plain `key?: string` won't type-check against the base `get`. Delegate each base form with its own `super.get` call - a `false | undefined` argument matches no single base overload.
 
-`User.get(5)` in a component keeps context and tracking. `session.get(User, 5)` and the instruction `get(User, 5)` route through the same override from that instance's context. The instruction resolves as an effect: it re-runs when a provider the override looked up changes, and a thrown Promise suspends the field until it settles.
+`User.get(5)` in a component keeps context and tracking. `session.get(User, 5)` and the instruction `get(User, 5)` route through the same override from that instance's context. The instruction resolves once; a thrown Promise suspends the field until it settles, then retries.
 
 <br />
 
