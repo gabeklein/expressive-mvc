@@ -7,6 +7,18 @@ export const CALL_TIMEOUT = 10000;
 
 export type Answer = { value?: unknown; error?: string; status?: number };
 
+export interface NodeRequest extends AsyncIterable<unknown> {
+  method?: string;
+  headers: object;
+  socket: { remoteAddress?: string };
+}
+
+export interface NodeResponse {
+  statusCode: number;
+  setHeader(name: string, value: string): unknown;
+  end(data: string): unknown;
+}
+
 const FOREIGN = ['origin', 'sec-fetch-site', 'forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'];
 const LOOPBACK = /^((::ffff:)?127(\.\d{1,3}){3}|::1)$/;
 const MISSING = Symbol.for('expressive-inspect.missing');
@@ -52,4 +64,16 @@ export async function answer(call: Call): Promise<Answer> {
 
     return { error: error.message || FAILED, status: MISSING in error ? 404 : undefined };
   }
+}
+
+export async function body(req: NodeRequest) {
+  let text = '';
+  for await (const chunk of req) text += chunk;
+  return text;
+}
+
+export function reply(res: NodeResponse, status: number, data: unknown) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(data ?? null));
 }

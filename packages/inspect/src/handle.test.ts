@@ -1,4 +1,6 @@
 import { Model } from '@expressive/mvc';
+import { createServer, type RequestListener } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { attach, inspect, journal } from './index';
@@ -124,11 +126,60 @@ describe('handle', () => {
   });
 
   it.each([
+    ["Bun's server", { requestIP: () => ({ address: '127.0.0.1' }) }],
+    ["Deno's info", { remoteAddr: { hostname: '::1' } }]
+  ])('will take the address from %s', async (_, source) => {
+    expect((await handle(new Request('http://localhost/'), source)).status).toBe(200);
+  });
+
+  it.each([
+    ["Bun's server with no address", { requestIP: () => null }],
+    ["Deno's info from a remote caller", { remoteAddr: { hostname: '192.168.1.4' } }],
+    ['an unknown source', {}]
+  ])('will 403 %s', async (_, source) => {
+    expect((await handle(new Request('http://localhost/'), source as never)).status).toBe(403);
+  });
+
+  it.each([
     ['a proxied request', { 'x-forwarded-for': '203.0.113.9' }, '127.0.0.1'],
     ['a non-loopback caller', {}, '192.168.1.4'],
     ['a caller without an address', {}, undefined]
   ])('will 403 %s', async (_, headers, ip) => {
     const res = await handle(new Request('http://localhost/', { headers }), { ip });
     expect(res.status).toBe(403);
+  });
+});
+
+describe('handle on node:http', () => {
+  async function listen(listener: RequestListener) {
+    const server = createServer(listener);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as AddressInfo;
+    return { url: `http://127.0.0.1:${port}/__inspect`, close: () => server.close() };
+  }
+
+  it('will serve as a listener', async () => {
+    Composer.new();
+    const { url, close } = await listen(handle);
+
+    try {
+      const res = await fetch(url, { method: 'POST', body: '["call", "Composer.submit", "hi"]' });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toBe('application/json');
+      expect(await res.json()).toBe(2);
+      expect(await (await fetch(url)).json()).toMatchObject({ process: true, pid: process.pid });
+    } finally {
+      close();
+    }
+  });
+
+  it('will 403 a proxied request', async () => {
+    const { url, close } = await listen((req, res) => handle(req, res));
+
+    try {
+      expect((await fetch(url, { headers: { 'x-forwarded-for': '203.0.113.9' } })).status).toBe(403);
+    } finally {
+      close();
+    }
   });
 });

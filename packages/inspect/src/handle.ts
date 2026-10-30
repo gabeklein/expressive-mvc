@@ -1,31 +1,62 @@
-import { answer, CALL_TIMEOUT, local, parse, type Answer } from './protocol';
+import { answer, body, CALL_TIMEOUT, local, parse, reply, type Answer, type NodeRequest, type NodeResponse } from './protocol';
+
+/** Where the caller's address comes from: given outright, Bun's `server`, or Deno's `info`. */
+type Source =
+  | { ip: string | null | undefined }
+  | { requestIP(req: Request): { address: string } | null }
+  | { remoteAddr: { hostname: string } };
+
+type Result = [status: number, data: unknown];
 
 const USAGE = 'GET describes this process; POST with [method, ...args] calls the inspector.';
 
 /** Serve an installed inspector over HTTP, to loopback callers only. */
-export async function handle(req: Request, { ip }: { ip: string | null | undefined }): Promise<Response> {
-  if (!globalThis.__EXPRESSIVE_INSPECT__) return Response.json({ error: 'Inspector not installed.' }, { status: 404 });
+export function handle(req: Request, source: Source): Promise<Response>;
+export function handle(req: NodeRequest, res: NodeResponse): Promise<void>;
+export async function handle(req: Request | NodeRequest, second: Source | NodeResponse) {
+  if ('socket' in req) {
+    const has = (name: string) => name in req.headers;
+    const [status, data] = await respond(req.method, req.socket.remoteAddress, { has }, () => body(req));
 
-  if (!local(ip, req.headers))
-    return Response.json({ error: 'Local callers only; browser and proxied requests are refused.' }, { status: 403 });
+    return reply(second as NodeResponse, status, data);
+  }
 
-  if (req.method === 'GET') return Response.json(identity());
-  if (req.method !== 'POST') return Response.json({ error: USAGE }, { status: 405 });
+  const [status, data] = await respond(req.method, address(req, second as Source), req.headers, () => req.text());
 
-  const call = parse(await req.text().catch(() => ''));
+  return Response.json(data, { status });
+}
 
-  if (!call) return Response.json({ error: 'Body must be a JSON array: [method, ...args].' }, { status: 400 });
+function address(req: Request, source: Source) {
+  if ('ip' in source) return source.ip;
+  if ('requestIP' in source) return source.requestIP(req)?.address;
+  if ('remoteAddr' in source) return source.remoteAddr.hostname;
+}
+
+async function respond(
+  method: string | undefined,
+  ip: string | null | undefined,
+  headers: { has(name: string): boolean },
+  text: () => Promise<string>
+): Promise<Result> {
+  if (!globalThis.__EXPRESSIVE_INSPECT__) return [404, { error: 'Inspector not installed.' }];
+  if (!local(ip, headers)) return [403, { error: 'Local callers only; browser and proxied requests are refused.' }];
+  if (method === 'GET') return [200, identity()];
+  if (method !== 'POST') return [405, { error: USAGE }];
+
+  const call = parse(await text().catch(() => ''));
+
+  if (!call) return [400, { error: 'Body must be a JSON array: [method, ...args].' }];
 
   let timer: Parameters<typeof clearTimeout>[0];
   const expire = new Promise<undefined>((resolve) => (timer = setTimeout(resolve, CALL_TIMEOUT)));
-  const reply: Answer | undefined = await Promise.race([answer(call), expire]);
+  const result: Answer | undefined = await Promise.race([answer(call), expire]);
 
   clearTimeout(timer);
 
-  if (!reply) return Response.json({ error: 'Call did not answer.' }, { status: 504 });
-  if (reply.error) return Response.json({ error: reply.error }, { status: reply.status ?? 500 });
+  if (!result) return [504, { error: 'Call did not answer.' }];
+  if (result.error) return [result.status ?? 500, { error: result.error }];
 
-  return Response.json(reply.value);
+  return [200, result.value];
 }
 
 function identity() {

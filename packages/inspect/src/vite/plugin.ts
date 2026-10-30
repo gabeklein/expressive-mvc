@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin, WebSocketClient, WebSocketServer } from 'vite';
 
 import type { Call } from '../dispatch';
-import { CALL_TIMEOUT, local, parse, type Answer } from '../protocol';
+import { body, CALL_TIMEOUT, local, parse, reply, type Answer } from '../protocol';
 
 const VIRTUAL = 'virtual:expressive-inspect';
 const RESOLVED = '\0' + VIRTUAL;
@@ -120,16 +120,4 @@ export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
 
     reply(res, 200, answer.value);
   };
-}
-
-async function body(req: IncomingMessage) {
-  let text = '';
-  for await (const chunk of req) text += chunk;
-  return text;
-}
-
-function reply(res: ServerResponse, status: number, data: unknown) {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(data ?? null));
 }
