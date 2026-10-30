@@ -1,5 +1,16 @@
 # @expressive/inspect
 
+## 0.6.0
+
+### Minor Changes
+
+- [#577](https://github.com/gabeklein/expressive-mvc/pull/577) [`2efd070`](https://github.com/gabeklein/expressive-mvc/commit/2efd070b08bde93fdf6bfe57a9440a269667c46c) Add `@expressive/inspect/http`: importing it installs the inspector, and its `handle` serves it over HTTP from a backend's own server. It takes each host's native handler arguments - Bun's `(req, server)`, Deno's `(req, info)`, Node/Express/Connect's `(req, res)`, or `(req, { ip })` - and reads the caller's address from them. Same body and answers as the Vite relay; `GET` describes the process (`pid`, `cwd`, `started`, `runtime`, `title`). Refuses non-loopback, browser, and proxied callers. The Vite relay now answers 404 for an unknown method, where it answered 500.
+
+### Patch Changes
+
+- Updated dependencies [[`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f), [`c052455`](https://github.com/gabeklein/expressive-mvc/commit/c0524556b85ad598b2f6db774b639627b61cb337)]:
+  - @expressive/mvc@0.92.0
+
 ## 0.5.2
 
 ### Patch Changes
