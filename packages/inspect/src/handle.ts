@@ -1,4 +1,4 @@
-import { answer, body, CALL_TIMEOUT, local, parse, reply, type Answer, type NodeRequest, type NodeResponse } from './protocol';
+import { answer, body, CALL_TIMEOUT, headers, local, parse, reply, type Answer, type NodeRequest, type NodeResponse } from './protocol';
 
 /** Where the caller's address comes from: given outright, Bun's `server`, or Deno's `info`. */
 type Source =
@@ -14,14 +14,16 @@ const USAGE = 'GET describes this process; POST with [method, ...args] calls the
 export function handle(req: Request, source: Source): Promise<Response>;
 export function handle(req: NodeRequest, res: NodeResponse): Promise<void>;
 export async function handle(req: Request | NodeRequest, second: Source | NodeResponse) {
-  if ('socket' in req) {
-    const has = (name: string) => name in req.headers;
-    const [status, data] = await respond(req.method, req.socket.remoteAddress, { has }, () => body(req));
+  if (typeof (second as NodeResponse).end == 'function') {
+    const node = req as NodeRequest;
+    const text = () => body(node).then((text) => text || (Array.isArray(node.body) ? JSON.stringify(node.body) : ''));
+    const [status, data] = await respond(node.method, node.socket?.remoteAddress, headers(node), text);
 
     return reply(second as NodeResponse, status, data);
   }
 
-  const [status, data] = await respond(req.method, address(req, second as Source), req.headers, () => req.text());
+  const web = req as Request;
+  const [status, data] = await respond(web.method, address(web, second as Source), web.headers, () => web.text());
 
   return Response.json(data, { status });
 }

@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin, WebSocketClient, WebSocketServer } from 'vite';
 
 import type { Call } from '../dispatch';
-import { body, CALL_TIMEOUT, local, parse, reply, type Answer } from '../protocol';
+import { body, CALL_TIMEOUT, headers, local, parse, reply, type Answer } from '../protocol';
 
 const VIRTUAL = 'virtual:expressive-inspect';
 const RESOLVED = '\0' + VIRTUAL;
@@ -94,7 +94,7 @@ export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
   }
 
   return async (req: IncomingMessage, res: ServerResponse) => {
-    if (!local(req.socket.remoteAddress, { has: (name) => name in req.headers })) return reply(res, 403, { error: 'Local callers only; browser and proxied requests are refused.' });
+    if (!local(req.socket.remoteAddress, headers(req))) return reply(res, 403, { error: 'Local callers only; browser and proxied requests are refused.' });
 
     const id = decodeURIComponent(req.url!.split('?')[0].slice(1));
 

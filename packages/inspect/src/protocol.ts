@@ -11,9 +11,11 @@ export interface NodeRequest extends AsyncIterable<unknown> {
   method?: string;
   headers: object;
   socket: { remoteAddress?: string };
+  body?: unknown;
 }
 
 export interface NodeResponse {
+  headersSent?: boolean;
   statusCode: number;
   setHeader(name: string, value: string): unknown;
   end(data: string): unknown;
@@ -66,13 +68,24 @@ export async function answer(call: Call): Promise<Answer> {
   }
 }
 
+export function headers({ headers }: NodeRequest) {
+  const fetched = typeof (headers as Headers).has == 'function';
+
+  return { has: (name: string) => (fetched ? (headers as Headers).has(name) : name in headers) };
+}
+
 export async function body(req: NodeRequest) {
+  const decoder = new TextDecoder();
   let text = '';
-  for await (const chunk of req) text += chunk;
-  return text;
+
+  for await (const chunk of req) text += typeof chunk == 'string' ? chunk : decoder.decode(chunk as Uint8Array, { stream: true });
+
+  return text + decoder.decode();
 }
 
 export function reply(res: NodeResponse, status: number, data: unknown) {
+  if (res.headersSent) return;
+
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify(data ?? null));

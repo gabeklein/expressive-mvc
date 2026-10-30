@@ -1,11 +1,12 @@
 import { Model } from '@expressive/mvc';
 import { createServer, type RequestListener } from 'node:http';
+import { Readable } from 'node:stream';
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { attach, inspect, journal } from './index';
 import { handle } from './handle';
-import { CALL_TIMEOUT } from './protocol';
+import { CALL_TIMEOUT, type NodeResponse } from './protocol';
 
 class Composer extends Model {
   draft = '';
@@ -136,7 +137,7 @@ describe('handle', () => {
     ["Bun's server with no address", { requestIP: () => null }],
     ["Deno's info from a remote caller", { remoteAddr: { hostname: '192.168.1.4' } }],
     ['an unknown source', {}]
-  ])('will 403 %s', async (_, source) => {
+  ])('will 403 a source of %s', async (_, source) => {
     expect((await handle(new Request('http://localhost/'), source as never)).status).toBe(403);
   });
 
@@ -144,7 +145,7 @@ describe('handle', () => {
     ['a proxied request', { 'x-forwarded-for': '203.0.113.9' }, '127.0.0.1'],
     ['a non-loopback caller', {}, '192.168.1.4'],
     ['a caller without an address', {}, undefined]
-  ])('will 403 %s', async (_, headers, ip) => {
+  ])('will 403 a request from %s', async (_, headers, ip) => {
     const res = await handle(new Request('http://localhost/', { headers }), { ip });
     expect(res.status).toBe(403);
   });
@@ -181,5 +182,53 @@ describe('handle on node:http', () => {
     } finally {
       close();
     }
+  });
+});
+
+describe('handle on a node request', () => {
+  function respond() {
+    return {
+      headersSent: false,
+      statusCode: 0,
+      body: undefined as unknown,
+      setHeader() {},
+      end(text: string) {
+        this.body = JSON.parse(text);
+      }
+    };
+  }
+
+  function request(text: string, extra = {}) {
+    return Object.assign(Readable.from(text ? [Buffer.from(text)] : []), {
+      method: 'POST',
+      headers: {},
+      socket: { remoteAddress: '127.0.0.1' },
+      ...extra
+    });
+  }
+
+  it('will use a body a parser already read', async () => {
+    Composer.new();
+    const res = respond();
+    await handle(request('', { body: ['get', 'Composer.draft'] }), res);
+    expect(res).toMatchObject({ statusCode: 200, body: '' });
+  });
+
+  it('will 400 a body a parser read into something else', async () => {
+    const res = respond();
+    await handle(request('', { body: { get: true } }), res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('will not answer twice', async () => {
+    const res = { ...respond(), headersSent: true, end: vi.fn() };
+    await handle(request('["get"]'), res as NodeResponse);
+    expect(res.end).not.toHaveBeenCalled();
+  });
+
+  it('will 403 a fetch request paired with a node response', async () => {
+    const res = respond();
+    await handle(new Request('http://localhost/', { headers: { 'x-forwarded-for': '203.0.113.9' } }) as never, res);
+    expect(res.statusCode).toBe(403);
   });
 });
