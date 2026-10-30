@@ -40,7 +40,7 @@ class Order extends Model {
 }
 ```
 
-A first argument that is neither boolean nor function forwards every argument to `Type.get` - for a class overriding static `get` ([../state/get.md](../state/get.md#static-get)). Runs once, when this instance is ready; reading before then suspends.
+A first argument that is neither boolean nor function forwards every argument to `Type.get` - for a class overriding static `get` ([../state/get.md](../state/get.md#static-get)). Resolves as an effect once this instance is ready - re-runs when a provider `compute` looked up or a tracked read changes. Reading before a value suspends; a thrown Promise retries once settled. An Error on the first run throws from `new()`, later ones go to `catch` as `'effect'`.
 
 ### Downstream collection
 
