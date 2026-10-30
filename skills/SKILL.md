@@ -167,7 +167,7 @@ function Parent({ counter }: { counter: Counter }) {
 }
 ```
 
-Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. It builds green when misused and crashes at runtime. (Instance method get is not a hook.)
+Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. Outside render it resolves root, untracked - no error, possibly the wrong instance; a handler uses what the render's snapshot destructured. (Instance method get is not a hook.)
 
 State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for optional lookup, presence boundaries and custom lookup.
 
