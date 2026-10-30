@@ -1026,11 +1026,10 @@ describe('Model.get - pre-commit dispatch', () => {
     value = 0;
   }
 
-  function harness(test: Test) {
+  function harness(test: Test, context = new Context({ test })) {
     const refs: { current: any }[] = [];
     const inited: boolean[] = [];
     const effects: (() => (() => void) | void)[] = [];
-    const context = new Context({ test });
     const update = vi.fn();
     let index = 0;
 
@@ -1080,6 +1079,24 @@ describe('Model.get - pre-commit dispatch', () => {
     test.value = 2;
 
     await expect(test).toHaveUpdated();
+
+    expect(update).not.toHaveBeenCalled();
+
+    commit();
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('will refresh on commit if provider changed before', async () => {
+    const test = Test.new();
+    const context = new Context();
+    const { update, render, commit } = harness(test, context);
+
+    context.add(test);
+    render();
+    context.add(Test.new(), true);
+
+    await flushMicrotasks();
 
     expect(update).not.toHaveBeenCalled();
 

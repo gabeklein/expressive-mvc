@@ -162,9 +162,13 @@ Model.get = function get<T extends Model>(
       return true;
     }
 
+    let first = true;
+
     const unfollow = watch(local, (ctx) => {
-      if (follow(ctx.get(Type, false)) && mounted) observed();
+      if (follow(ctx.get(Type, false)) && !first) observed();
     }, false);
+
+    first = false;
 
     if (!found && argument !== false) {
       unfollow();
