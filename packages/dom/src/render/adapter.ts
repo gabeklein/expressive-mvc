@@ -1,5 +1,6 @@
 import { Context, Model, unbind } from '@expressive/mvc';
 import { watch } from '@expressive/mvc/observable';
+import { resolver } from '@expressive/mvc/jsx-runtime';
 
 import { schedule, transition, unschedule } from './scheduler';
 import type { Schedulable } from './scheduler';
@@ -12,20 +13,24 @@ interface Scope extends Schedulable {
 
 let current: Scope | undefined;
 let collecting: (() => void)[] | undefined;
+let memo: Map<object, object> | undefined;
 
 function enter<T>(scope: Scope, render: () => T): T {
   const parent = current;
   const releases = collecting;
+  const cached = memo;
   const next: (() => void)[] = [];
 
   current = scope;
   collecting = next;
+  memo = new Map();
 
   try {
     return render();
   } finally {
     current = parent;
     collecting = releases;
+    memo = cached;
     scope.subscriptions.forEach((release) => release());
     scope.subscriptions = next;
   }
@@ -38,15 +43,8 @@ function dispose(scope: Scope) {
   scope.subscriptions = [];
 }
 
-function requireScope(): Scope {
-  if (!current)
-    throw new Error('Model.get() may only run while @expressive/dom is rendering.');
-
-  return current;
-}
-
 function tracked<T extends object>(target: T, required?: boolean): T {
-  const scope = requireScope();
+  const scope = current!;
   let proxy = target;
   let first = true;
 
@@ -66,25 +64,26 @@ function tracked<T extends object>(target: T, required?: boolean): T {
 }
 
 declare module '@expressive/mvc' {
-  namespace Model {
-    function get<T extends Model>(this: Model.Extends<T>): T;
-    function get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
-  }
-
   interface Component {
     mount?(): (() => void) | void;
   }
 }
 
-(Model as any).get = function get<T extends Model>(
-  this: Model.Extends<T>,
-  argument?: false
-) {
-  const scope = requireScope();
-  const instance = tracked(scope.context).get(this, argument !== false);
+const normal = resolver((Type, compute) => {
+  if (!current) return normal(Type, compute);
 
-  return instance && tracked(instance, false);
-};
+  const found = compute(Type ? cache(current.context) : current.context);
+
+  return found instanceof Model ? cache(found) : found;
+});
+
+function cache<T extends object>(target: T): T {
+  let proxy = memo!.get(target);
+
+  if (!proxy) memo!.set(target, (proxy = tracked(target, false)));
+
+  return proxy as T;
+}
 
 const OWNERS = new WeakMap<Function, { owner: Model; key: string }>();
 

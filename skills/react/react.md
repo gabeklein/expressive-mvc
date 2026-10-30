@@ -188,6 +188,12 @@ function Greeting() {
 }
 ```
 
+### Custom lookup
+
+A class overriding static `get` keeps context and render tracking - `User.get(id)` subscribes like `User.get()`. See [../state/get.md](../state/get.md#static-get).
+
+Bare `Context.get()` returns the render's context in a render, else root - safe anywhere. `state.get(Type)` runs no hooks and does not subscribe the component.
+
 ### Reactive context
 
 If the upstream instance is replaced in context (e.g. `<Component for>` given a new item), the hook resubscribes to the new instance and refreshes. An instance arriving after mount refreshes it too - `get(false)` included. Once the instance leaves, `get(false)` returns `undefined` and a required `get()` throws - unmount consumers before destroying their provider.

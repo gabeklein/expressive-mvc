@@ -1,5 +1,5 @@
-import { vi, describe, it, expect } from 'vitest';
-import { Context } from './context';
+import { vi, describe, it, expect, expectTypeOf, onTestFinished } from 'vitest';
+import { Context, resolver, within } from './context';
 import { Model } from './state';
 import { get } from './field/get';
 import { has } from './field/has';
@@ -436,6 +436,202 @@ describe('context helper', () => {
     new Context(test);
 
     expect(Context.get(test)).toBe(first);
+  });
+});
+
+describe('static get', () => {
+  class Test extends Model {
+    value = 1;
+  }
+
+  it('will return root outside set', () => {
+    const context = Context.get();
+
+    expectTypeOf(context).toEqualTypeOf<Context>();
+
+    expect(context).toBe(Context.root);
+  });
+
+  it('will compute against root', () => {
+    const compute = vi.fn((context: Context) => context.id);
+    const id = Context.get(Test, compute);
+
+    expectTypeOf(id).toEqualTypeOf<string>();
+
+    expect(id).toBe(Context.root.id);
+    expect(compute).toBeCalledWith(Context.root);
+  });
+
+  it('will not accept a third argument', () => {
+    const compute = vi.fn(() => 'value');
+
+    // @ts-expect-error
+    expect(Context.get(Test, compute, true)).toBe('value');
+  });
+
+  it('will compute with a Model as origin', () => {
+    const test = Test.new();
+    const context = new Context(test);
+    const compute = vi.fn((_context: Context, from?: Model) => from);
+
+    expect(within(test, () => Context.get(Test, compute))).toBe(test);
+    expect(compute).toBeCalledWith(context, test);
+  });
+
+  it('will pass the real instance from a tracking proxy', () => {
+    const test = Test.new();
+    const compute = vi.fn((_context: Context, from?: Model) => from);
+
+    test.get((proxy) => {
+      within(proxy, () => Context.get(Test, compute));
+    });
+
+    expect(compute.mock.calls[0][1]).toBe(test);
+  });
+
+  it('will pass a tracked context from a tracking proxy', async () => {
+    class Other extends Model {}
+
+    const test = Test.new();
+    const context = new Context(test);
+    const didFind = vi.fn();
+
+    test.get((proxy) => {
+      didFind(within(proxy, () => Context.get(Other, (ctx) => ctx.get(Other, false))));
+    });
+
+    expect(didFind).toBeCalledWith(undefined);
+
+    const other = Other.new();
+
+    context.add(other);
+    await flushMicrotasks();
+
+    expect(didFind).toHaveBeenLastCalledWith(other);
+  });
+
+  it('will subscribe a tracking origin to its result', async () => {
+    const test = Test.new();
+    const other = Test.new();
+    const effect = vi.fn();
+
+    test.get((proxy) => {
+      effect(within(proxy, () => Context.get(Test, () => other)).value);
+    });
+
+    other.value = 2;
+    await expect(other).toHaveUpdated();
+
+    expect(effect).toBeCalledTimes(2);
+    expect(effect).toHaveBeenLastCalledWith(2);
+  });
+});
+
+describe('within', () => {
+  class Test extends Model {}
+
+  it('will return result of function', () => {
+    const result = within(Test.new(), () => 1);
+
+    expectTypeOf(result).toEqualTypeOf<number>();
+
+    expect(result).toBe(1);
+  });
+
+  it('will set home context of a Model', () => {
+    const test = Test.new();
+    const context = new Context(test);
+
+    expect(within(test, () => Context.get())).toBe(context);
+  });
+
+  it('will set root for a Model without context', () => {
+    const test = Test.new();
+
+    expect(within(test, () => Context.get())).toBe(Context.root);
+  });
+
+  it('will nest', () => {
+    const outer = Test.new();
+    const inner = Test.new();
+    const outerContext = new Context(outer);
+    const innerContext = new Context(inner);
+    const seen: Context[] = [];
+
+    within(outer, () => {
+      seen.push(Context.get());
+      within(inner, () => seen.push(Context.get()));
+      seen.push(Context.get());
+    });
+
+    expect(seen).toEqual([outerContext, innerContext, outerContext]);
+    expect(Context.get()).toBe(Context.root);
+  });
+
+  it('will restore on throw', () => {
+    expect(() =>
+      within(Test.new(), () => {
+        throw new Error('oops');
+      })
+    ).toThrow('oops');
+
+    expect(Context.get()).toBe(Context.root);
+  });
+});
+
+describe('resolver', () => {
+  class Test extends Model {}
+
+  function assign(next: Parameters<typeof resolver>[0]) {
+    const previous = resolver(next);
+
+    onTestFinished(() => {
+      resolver(previous);
+    });
+  }
+
+  it('will resolve a static get outside within', () => {
+    const context = new Context();
+    const resolve = vi.fn((_Type: unknown, compute: (context: Context) => unknown) => compute(context));
+
+    assign(resolve);
+
+    expect(Context.get(Test, (context) => context)).toBe(context);
+    expect(resolve).toBeCalledWith(Test, expect.any(Function));
+  });
+
+  it('will resolve bare get without a type', () => {
+    const context = new Context();
+    const resolve = vi.fn((_Type: unknown, compute: (context: Context) => unknown) => compute(context));
+
+    assign(resolve);
+
+    expect(Context.get()).toBe(context);
+    expect(resolve).toBeCalledWith(undefined, expect.any(Function));
+  });
+
+  it('will return what resolve returns', () => {
+    assign(() => 'wrapped');
+
+    expect(Context.get(Test, () => 'value')).toBe('wrapped');
+  });
+
+  it('will not be called within', () => {
+    const resolve = vi.fn();
+
+    assign(resolve);
+    within(Test.new(), () => Context.get(Test, () => 'value'));
+
+    expect(resolve).not.toBeCalled();
+  });
+
+  it('will not be called for a Model', () => {
+    const resolve = vi.fn();
+
+    assign(resolve);
+    Context.get(Test.new());
+
+    expect(resolve).not.toBeCalled();
   });
 });
 

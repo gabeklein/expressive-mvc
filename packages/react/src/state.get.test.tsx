@@ -7,9 +7,9 @@ import * as Refresh from 'react-refresh/runtime';
 import {
   vi,
   expect,
+  expectTypeOf,
   it,
   describe,
-  expectTypeOf,
   beforeEach,
   afterEach,
   type MockInstance
@@ -45,6 +45,51 @@ describe('Model.get', () => {
     error.mockRestore();
 
     expect(calls).toEqual([]);
+  });
+
+  it('will resolve from context outside render', () => {
+    class Test extends Model {}
+
+    const test = Test.new();
+    const remove = Context.root.add(test, true);
+
+    expect(Test.get()).toBe(test);
+    expect(Test.get(false)).toBe(test);
+
+    remove();
+  });
+
+  it('will probe outside render when idle cannot tell', () => {
+    class Test extends Model {}
+
+    const idle = Runtime.idle;
+    const test = Test.new();
+    const remove = Context.root.add(test, true);
+
+    render(<></>);
+    Runtime.idle = () => undefined;
+
+    try {
+      expect(Context.get()).toBe(Context.root);
+      expect(Test.get()).toBe(test);
+    } finally {
+      Runtime.idle = idle;
+      remove();
+    }
+  });
+
+  it('will resolve an override outside render', () => {
+    class Item extends Model {
+      static get<T extends Item>(this: Model.Extends<T>, id?: number | false): T {
+        if (typeof id != 'number') return super.get(id as false) as T;
+
+        return Context.get(this, () => Object.assign((this as Model.Type<T>).new(), { id }));
+      }
+
+      id = 0;
+    }
+
+    expect(Item.get(5).id).toBe(5);
   });
 
   it('will fetch model', () => {
@@ -160,21 +205,36 @@ describe('Model.get', () => {
     expect(useTest).toHaveReturned();
   });
 
-  it('will not accept a function', () => {
-    class Test extends Model {
-      value = 1;
-    }
-
-    expectTypeOf(Test.get).toBeCallableWith(false);
-    // @ts-expect-error
-    expectTypeOf(Test.get).toBeCallableWith(($: Test) => $.value);
-  });
-
   it('will not accept true', () => {
     class Test extends Model {}
 
     // @ts-expect-error
     expectTypeOf(Test.get).toBeCallableWith(true);
+  });
+
+  it('will render once per change for repeated reads', async () => {
+    class Test extends Model {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const didRender = vi.fn();
+
+    function View() {
+      didRender();
+      const { value } = Test.get();
+      const again = Test.get();
+      return <>{value}:{again.value}</>;
+    }
+
+    const view = render(<Component for={test}><View /></Component>);
+
+    await act(async () => {
+      test.value = 2;
+    });
+
+    expect(view.container.textContent).toBe('2:2');
+    expect(didRender).toBeCalledTimes(2);
   });
 
   describe('over destroyed instance', () => {
@@ -226,6 +286,224 @@ describe('Model.get', () => {
 
       expect(view.container.textContent).toBe('foo');
       expect(error).not.toBeCalled();
+    });
+  });
+
+  describe('from a Model origin', () => {
+    class Test extends Model {
+      value = 'foo';
+    }
+
+    class Origin extends Model {}
+
+    it('will resolve without hooks', async () => {
+      const outer = Test.new({ value: 'outer' });
+      const inner = Test.new({ value: 'inner' });
+      const origin = Origin.new();
+      new Context(inner).push(origin);
+      const View = (props: { local: boolean }) => {
+        const found = props.local && origin.get(Test);
+        const { value } = Test.get();
+        return <>{found ? found.value : 'none'}:{value}</>;
+      };
+
+      const view = render(
+        <Component for={outer}>
+          <View local={false} />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('none:outer');
+
+      view.rerender(
+        <Component for={outer}>
+          <View local />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('inner:outer');
+
+      view.rerender(
+        <Component for={outer}>
+          <View local={false} />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('none:outer');
+
+      await act(async () => {
+        outer.value = 'updated';
+      });
+
+      expect(view.container.textContent).toBe('none:updated');
+    });
+
+    it('will track through a Model origin', async () => {
+      class Peer extends Model {
+        value = 'peer';
+      }
+
+      const peer = Peer.new();
+      const View = () => {
+        const test = Test.get();
+        return <>{test.get(Peer).value}</>;
+      };
+
+      const view = render(
+        <Component for={peer}>
+          <Component for={Test}>
+            <View />
+          </Component>
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('peer');
+
+      await act(async () => {
+        peer.value = 'updated';
+      });
+
+      expect(view.container.textContent).toBe('updated');
+    });
+  });
+
+  describe('override', () => {
+    class Item extends Model {
+      id = 0;
+      label = '';
+
+      static get<T extends Item>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return Context.get(this, (context) => {
+          const { a, b } = context.get(Store);
+          return [a, b].find((item) => item.id === id) as T;
+        });
+      }
+    }
+
+    class Store extends Model {
+      a = new Item({ id: 1, label: 'one' });
+      b = new Item({ id: 2, label: 'two' });
+    }
+
+    it('will track and follow a changed key', async () => {
+      const store = Store.new();
+      const didRender = vi.fn();
+      const View = (props: { id: number }) => {
+        didRender();
+        return <>{Item.get(props.id).label}</>;
+      };
+
+      const view = render(
+        <Component for={store}>
+          <View id={1} />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('one');
+
+      await act(async () => {
+        store.a.label = 'uno';
+      });
+
+      expect(view.container.textContent).toBe('uno');
+
+      view.rerender(
+        <Component for={store}>
+          <View id={2} />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('two');
+      expect(didRender).toBeCalledTimes(3);
+
+      await act(async () => {
+        store.a.label = 'one';
+      });
+
+      expect(didRender).toBeCalledTimes(3);
+
+      await act(async () => {
+        store.b.label = 'dos';
+      });
+
+      expect(view.container.textContent).toBe('dos');
+    });
+
+    it('will follow another type its compute looks up', async () => {
+      class Row extends Model {
+        label = '';
+
+        static get<T extends Row>(this: Model.Extends<T>, key?: string | false): T {
+          if (typeof key != 'string') return super.get(key as false) as T;
+
+          return Context.get(this, (context) => context.get(Connection).reference(this, key));
+        }
+      }
+
+      class Connection extends Model {
+        name = '';
+        rows = new Map<string, Row>();
+
+        reference<T extends Row>(Type: Model.Extends<T>, key: string): T {
+          let row = this.rows.get(key);
+
+          if (!row) this.rows.set(key, (row = (Type as Model.Type<T>).new({ label: `${this.name}:${key}` } as never)));
+
+          return row as T;
+        }
+      }
+
+      class Session extends Model {
+        connection = new Connection({ name: 'a' });
+      }
+
+      const session = Session.new();
+      const View = () => <>{Row.get('x').label}</>;
+
+      const view = render(
+        <Component for={session}>
+          <View />
+        </Component>
+      );
+
+      expect(view.container.textContent).toBe('a:x');
+
+      await act(async () => {
+        session.connection = new Connection({ name: 'b' });
+      });
+
+      expect(view.container.textContent).toBe('b:x');
+
+      await act(async () => {
+        session.connection.rows.get('x')!.label = 'updated';
+      });
+
+      expect(view.container.textContent).toBe('updated');
+    });
+
+    it('will keep proxy while instance is unchanged', async () => {
+      const store = Store.new();
+      const seen: Item[] = [];
+      const View = (_props: { tick: number }) => {
+        seen.push(Item.get(1));
+        return null;
+      };
+
+      const view = render(
+        <Component for={store}>
+          <View tick={0} />
+        </Component>
+      );
+
+      view.rerender(
+        <Component for={store}>
+          <View tick={1} />
+        </Component>
+      );
+
+      expect(seen).toHaveLength(2);
+      expect(seen[0]).toBe(seen[1]);
+      expect(seen[0]).not.toBe(store.a);
     });
   });
 
@@ -380,6 +658,34 @@ describe('Model.get', () => {
       });
 
       expect(view.container.textContent).toBe('a');
+    });
+
+    it('will refresh for an instance arriving before mount', async () => {
+      class Child extends Model {
+        value = 'child';
+      }
+
+      class Parent extends Model {
+        child?: Child = undefined;
+      }
+
+      const parent = Parent.new();
+      const Inner = () => <>{Child.get(false)?.value ?? 'none'}</>;
+      const Adder = () => {
+        parent.child ||= new Child();
+        return null;
+      };
+
+      const { container } = render(
+        <Component for={parent}>
+          <Inner />
+          <Adder />
+        </Component>
+      );
+
+      await act(async () => {});
+
+      expect(container.textContent).toBe('child');
     });
 
     it('will track implicit replacement instance', async () => {
@@ -764,11 +1070,10 @@ describe('Model.get - pre-commit dispatch', () => {
     value = 0;
   }
 
-  function harness(test: Test) {
+  function harness(test: Test, context = new Context({ test })) {
     const refs: { current: any }[] = [];
     const inited: boolean[] = [];
     const effects: (() => (() => void) | void)[] = [];
-    const context = new Context({ test });
     const update = vi.fn();
     let index = 0;
 
@@ -818,6 +1123,42 @@ describe('Model.get - pre-commit dispatch', () => {
     test.value = 2;
 
     await expect(test).toHaveUpdated();
+
+    expect(update).not.toHaveBeenCalled();
+
+    commit();
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('will refresh on commit if provider changed before', async () => {
+    const test = Test.new();
+    const context = new Context();
+    const { update, render, commit } = harness(test, context);
+
+    context.add(test);
+    render();
+    context.add(Test.new(), true);
+
+    await flushMicrotasks();
+
+    expect(update).not.toHaveBeenCalled();
+
+    commit();
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('will refresh on commit if lookup failed before', async () => {
+    const test = Test.new();
+    const context = new Context();
+    const { update, render, commit } = harness(test, context);
+
+    context.add(test);
+    render();
+    context.add(Test.new());
+
+    await flushMicrotasks();
 
     expect(update).not.toHaveBeenCalled();
 

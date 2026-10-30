@@ -32,6 +32,16 @@ class Child extends Model {
 
 Receives `(state, subject)`. Runs when the upstream resolves, and again when it is replaced. A returned cleanup runs when the subject is destroyed.
 
+### Key
+
+```ts
+class Order extends Model {
+  buyer = get(User, 5); // User.get(5) once ready, this as origin
+}
+```
+
+A first argument that is neither boolean nor function forwards every argument to `Type.get` - for a class overriding static `get` ([../state/get.md](../state/get.md#static-get)). Runs once, when this instance is ready; reading before then suspends.
+
 ### Downstream collection
 
 ```ts

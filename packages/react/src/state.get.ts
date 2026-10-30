@@ -1,35 +1,40 @@
 import { Model, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
+import { resolver } from '@expressive/mvc/jsx-runtime';
+import { useAmbient } from './context';
 import { Runtime, useFactory, useSettle, useSetup, useWeak } from './runtime';
 
-declare module '@expressive/mvc' {
-  namespace Model {
-    /** Fetch instance of this class from context. */
-    function get<T extends Model>(this: Model.Extends<T>): T;
+const normal = resolver((Type, compute) => {
+  const idle = Runtime.idle();
 
-    /** Fetch instance of this class optionally. */
-    function get<T extends Model>(
-      this: Model.Extends<T>,
-      required: false
-    ): T | undefined;
-  }
-}
+  if (idle) return normal(Type, compute);
 
-Model.get = function get<T extends Model>(
-  this: Model.Extends<T>,
-  argument?: false
-) {
-  const Type = this;
+  let ambient: Context;
+
+  if (idle === undefined)
+    try {
+      ambient = useAmbient();
+    } catch {
+      return normal(Type, compute);
+    }
+  else ambient = useAmbient();
+
+  return Type ? use(ambient, compute) : compute(ambient);
+});
+
+function use(local: Context, compute: (context: Context) => unknown) {
   const [tick, next] = Runtime.useState(0);
   const claim = useSettle(tick);
-  const local = Context.get();
   const dispatch = useWeak(next);
   const render = useFactory(() => {
-    let unwatch: (() => void) | undefined;
+    let latest = compute;
     let mounted = false;
     let pending = false;
-    let value: any;
     let force!: () => void;
+    let target: unknown;
+    let value: unknown;
+    let unwatch: (() => void) | undefined;
+    let thrown: [unknown] | undefined;
 
     function update() {
       pending = false;
@@ -44,66 +49,63 @@ Model.get = function get<T extends Model>(
       else pending = true;
     }
 
-    function release() {
-      unfollow();
+    function follow(found: unknown) {
+      if (found === target) return;
+
       unwatch?.();
       unwatch = undefined;
-    }
+      target = value = found;
 
-    function attach(next: T) {
-      unwatch?.();
+      if (found instanceof Model && observer(found) !== null) {
+        let first = true;
 
-      if (observer(next) === null) {
-        value = next;
-        unwatch = () => {};
-        return;
+        unwatch = watch(
+          found,
+          (current) => {
+            value = current;
+
+            if (!first) observed();
+            first = false;
+
+            return (update) => {
+              if (update === true) force();
+            };
+          },
+          false,
+          Runtime.startTransition
+        );
       }
-
-      let first = true;
-
-      unwatch = watch(
-        next,
-        (current) => {
-          value = current;
-
-          if (!first) observed();
-          first = false;
-
-          return (update) => {
-            if (update === true) force();
-          };
-        },
-        false,
-        Runtime.startTransition
-      );
-    }
-
-    let found: T | undefined;
-
-    function follow(next: T | undefined) {
-      if (next === found) return;
-
-      found = next;
-      unwatch?.();
-      unwatch = undefined;
-      value = undefined;
-
-      if (next) attach(next);
 
       return true;
     }
 
-    const unfollow = watch(local, (ctx) => {
-      if (follow(ctx.get(Type, false)) && mounted) observed();
-    }, false);
-
-    if (!found && argument !== false) {
+    function release() {
       unfollow();
-      throw new Error(`Could not find ${Type} in context.`);
+      unwatch?.();
+      unwatch = target = undefined;
     }
 
-    return () => {
-      follow(local.get(Type, false));
+    let first = true;
+
+    const unfollow = watch(local, (ctx) => {
+      try {
+        if (follow(latest(ctx)) && !first) observed();
+      } catch (error) {
+        thrown = [error];
+        if (!first) observed();
+      }
+    }, false);
+
+    first = false;
+
+    if (thrown) {
+      unfollow();
+      throw thrown[0];
+    }
+
+    let fresh = true;
+
+    return (next: typeof compute) => {
       pending = false;
       useSetup((_self, reset) => {
         force = reset;
@@ -114,10 +116,14 @@ Model.get = function get<T extends Model>(
           return release;
         };
       });
-      if (found) return value;
-      if (argument !== false) throw new Error(`Could not find ${Type} in context.`);
+
+      if (!fresh) follow((latest = next)(local));
+
+      fresh = false;
+
+      return value;
     };
   });
 
-  return render();
-};
+  return render(compute);
+}

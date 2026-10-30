@@ -1,6 +1,8 @@
 import { event as signal, listener, Observer, touch } from "./observable";
-import { event, Model, parent, uid } from "./state";
+import { event, Model, observed, parent, uid } from "./state";
 
+const CONTEXT = Symbol("context");
+const STACK: [Context, Model][] = [];
 const HOME = new WeakMap<Model, Context>();
 const HELD = new WeakMap<Model, Map<Model, [Set<() => void>, boolean?]>>();
 const HOST = new WeakMap<Context, Model>();
@@ -26,9 +28,42 @@ class Context {
     return ROOT ??= new Context();
   }
 
-  /** Get the context for a Model. Adapters may override to provide framework context. */
-  static get(state?: Model): Context {
-    return state && home(state.is) || Context.root;
+  /** Current context - innermost set by `state.get(Type)` or the `get` instruction, otherwise as the host's {@link resolver} returns it. */
+  static get(): Context;
+
+  /** Get the context a Model was added to - root if none. */
+  static get(state: Model): Context;
+
+  /**
+   * Resolve a static `get` of `Type` by running `compute` against the current
+   * context. Inside `state.get(Type)` or the `get` instruction, `from` is that
+   * Model and a returned Model is tracked through it; otherwise
+   * the host's {@link resolver} decides.
+   *
+   * @param Type - Class `get` was called on.
+   * @param compute - Resolves the value from a context.
+   */
+  static get<R>(
+    Type: Model.Extends,
+    compute: (context: Context, from?: Model) => R,
+  ): R;
+
+  static get(
+    arg?: Model | Model.Extends,
+    compute: (context: Context, from?: Model) => unknown = (context) => context,
+  ): unknown {
+    if (!arg || typeof arg == "function") {
+      const top = STACK[STACK.length - 1];
+
+      if (!top) return current(arg, compute);
+
+      const [context, from] = top;
+      const view = arg ? touch(from, CONTEXT, context) : context;
+
+      return observed(from, arg, compute(view, from.is));
+    }
+
+    return home(arg.is) || Context.root;
   }
 
   public id = uid();
@@ -104,7 +139,7 @@ class Context {
     Type: Model.Extends<T>,
     arg: boolean | Expect<T> | undefined,
     downstream: boolean | undefined,
-    skip: Model,
+    skip?: Model,
   ): T | undefined | (() => void);
 
   public get<T extends Model>(
@@ -299,6 +334,39 @@ function emit(ctx: Context, T: Model.Extends) {
   if (Object.getOwnPropertyDescriptor(ctx, Observer)) signal(ctx, T as any);
 }
 
+type Resolve = (
+  Type: Model.Extends | undefined,
+  compute: (context: Context) => unknown,
+) => unknown;
+
+let current: Resolve = (_Type, compute) => compute(Context.root);
+
+/**
+ * Install how a host runs `compute` for a `Context.get` outside any origin -
+ * `Type` is undefined for bare `Context.get()`. Its return value is what the
+ * caller receives, so a host may track or wrap it. Returns the previous
+ * resolver, for the host to call where it is not rendering.
+ */
+function resolver(next: Resolve): Resolve {
+  const previous = current;
+  current = next;
+  return previous;
+}
+
+/**
+ * Run `fn` with the context of `origin` current, and `origin` as origin of
+ * any `get` resolved within. Nests.
+ */
+function within<R>(origin: Model, fn: () => R): R {
+  STACK.push([Context.get(origin), origin]);
+
+  try {
+    return fn();
+  } finally {
+    STACK.pop();
+  }
+}
+
 /**
  * Add `value` to the lookup origin of `state`. A context-less `state` holds
  * it instead - every context adding `state` later adds its held children too.
@@ -380,4 +448,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, host, join };
+export { Context, host, join, resolver, within };
