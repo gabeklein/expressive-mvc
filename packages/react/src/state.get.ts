@@ -85,14 +85,18 @@ function use(local: Context, compute: (context: Context) => unknown) {
       unwatch = target = undefined;
     }
 
+    let first = true;
+
     const unfollow = watch(local, (ctx) => {
       try {
-        if (follow(latest(ctx)) && mounted) observed();
+        if (follow(latest(ctx)) && !first) observed();
       } catch (error) {
         thrown = [error];
-        if (mounted) observed();
+        if (!first) observed();
       }
     }, false);
+
+    first = false;
 
     if (thrown) {
       unfollow();
