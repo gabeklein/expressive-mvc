@@ -9,7 +9,7 @@
 import '@expressive/inspect/install';
 ```
 
-Attaches to `Model` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `Model` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build. A value already on `globalThis.__EXPRESSIVE_INSPECT__` of the form `{ record }` is read first, so a driver can arm recording before the page boots ([below](#failure-journal)).
+Attaches to `Model` from the same `@expressive/mvc` instance and publishes `globalThis.__EXPRESSIVE_INSPECT__` (typed on `globalThis`). Instances constructed before the import are invisible. Install ships in the app bundle - a Playwright `addInitScript` or userscript imports a different `Model` and sees nothing. Gate it yourself: side-effect import for a harness, `attach()` behind a dev flag for a shipped build, a preload or dynamic import for a server ([Server](#server)). A value already on `globalThis.__EXPRESSIVE_INSPECT__` of the form `{ record }` is read first, so a driver can arm recording before the page boots ([below](#failure-journal)).
 
 Programmatic: `attach(Model)` returns detach; `attach(Sub)` scopes to a subclass.
 
@@ -289,7 +289,24 @@ The relay reaches only the inspector's own members - no `eval`, no property walk
 
 ## Server
 
-`handle(req, { ip })` from the root entry serves an installed inspector over HTTP from a backend's own server. Web-standard `Request` in, `Response` out; mount it at `/__inspect`. Keep the inspector a devDependency and load it inside the server's dev gate - a static import crashes boot when dev dependencies are omitted:
+`handle(req, { ip })` from the root entry serves an installed inspector over HTTP from a backend's own server - Bun, Deno, or Node through a `Request` adapter (`@hono/node-server`). Web-standard `Request` in, `Response` out; mount it at `/__inspect`. Keep the inspector a devDependency - both pieces load only in dev, since a static import crashes boot when dev dependencies are omitted.
+
+**Install, dev only** - before any Model is constructed, one of:
+
+```bash
+bun --preload @expressive/inspect/install server.ts      # dev script
+node --import @expressive/inspect/install server.js
+```
+
+```ts
+// entry.ts - any runtime: install, then load the app
+if (dev) await import('@expressive/inspect/install');
+await import('./server');
+```
+
+`attach()` alone records but does not publish `globalThis.__EXPRESSIVE_INSPECT__` - `handle` answers 404 without it.
+
+**Route, dev only:**
 
 ```ts
 // Bun: fetch(req, server)
@@ -303,11 +320,9 @@ if (pathname == '/__inspect') {
 - `ip` is the socket's remote address, required: Deno `Deno.serve((req, info) => ...)` → `info.remoteAddr.hostname`; Hono `getConnInfo(c).remote.address` (`hono/bun`, `hono/deno`, `@hono/node-server/conninfo`), passing `c.req.raw`.
 - Missing or not loopback gets 403, as do the [Vite](#vite) relay's browser and proxy headers. Behind a tunnel (cloudflared) requests arrive from `127.0.0.1` but carry `CF-Connecting-IP`, so they are refused.
 - Next route handlers and Workers expose no socket address - unsupported. Their only caller address is a header a client can forge.
-- `install` still precedes any Model in the process ([Install](#install)).
-- A static `import { handle } from '@expressive/inspect'` works only with the package a runtime dependency. A bundled server resolves the dynamic import at build time - the package must be installed when building.
-- Inert until `install` runs: 404.
+- Static imports of `install` or `handle` work only with the package as a runtime dependency. A bundled server resolves dynamic imports at build time - the package must be installed when building.
 - `GET` answers `{ process: true, pid, cwd, started, runtime, title }` - `started` epoch ms, `runtime` the user agent (`Bun/1.3.1`). Tells backends apart, and from the Vite page list, when probing ports.
-- `POST` takes the relay's body and answers: `[method, ...args]`, `act` included; 400 bad body, 404 unknown method, 500 `{ error }`, 504 no answer within 10s, 200 the value.
+- `POST` takes the relay's body and answers: `[method, ...args]`, `act` included; 400 bad body, 404 unknown method or no install, 500 `{ error }`, 504 no answer within 10s, 200 the value.
 - Concurrent `act` calls share one journal window - run them one at a time.
 
 ```bash
