@@ -136,15 +136,21 @@ function above<T extends Model>(
         ? (argument as get.Callback<T>)
         : undefined;
 
-    function assign(value: T) {
+    let release: (() => void) | undefined;
+
+    function assign(value: T | undefined) {
       if (STORE.get(subject)![key] === value) return;
 
-      if (callback) {
-        const result = callback(value, subject);
-        if (typeof result === 'function') subject.set(null, result);
-      }
+      if (release) release();
+
+      const result = callback && value && callback(value, subject);
+
+      release = typeof result === 'function' ? result : undefined;
       update(subject, key, value);
     }
+
+    if (callback)
+      subject.set(null, () => release?.());
 
     if (hasParent && hasParent instanceof Type) {
       assign(hasParent as T);
@@ -183,15 +189,17 @@ function above<T extends Model>(
       subject.set(null, () => { remove(); });
     }
 
-    if (!found) {
-      const remove = Context.get(subject).get(Type, (state) => {
-        if (depth !== Infinity) return;
-        found = true;
-        assign(state);
-      }, false, subject) as () => void;
+    if (!found)
+      subject.set(null, watch(Context.get(subject), (ctx) => {
+        if (depth !== Infinity) return null;
 
-      subject.set(null, () => { remove(); });
-    }
+        const state = ctx.get(Type, false, undefined, subject);
+
+        if (state) {
+          found = true;
+          assign(state as T);
+        } else if (found) assign(undefined);
+      }, false));
 
     if (!found && argument !== false) {
       const missing = () =>
