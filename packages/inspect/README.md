@@ -66,21 +66,24 @@ curl localhost:5173/__inspect/<id> -d '["act", ["call", "Composer.submit", "hi"]
 
 Local callers only; browser and proxied (tunnel) requests are refused.
 
+Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__.journal.record({ level: 'keys', paths: ['Composer.draft'] })`.
+
 ## From your own server
 
-`handler` serves an installed inspector from a backend (Bun, Deno, Workers, Hono, Next route handlers) - same body and answers as the relay; `GET` describes the process. Load it inside your dev gate, so the package can stay a devDependency:
+`handle` serves an installed inspector from a backend's own server (Bun, Deno, Node, Hono) - same body and answers as the relay; `GET` describes the process. Load it inside your dev gate, so the package can stay a devDependency:
 
 ```ts
+// Bun: fetch(req, server)
 if (pathname == '/__inspect') {
   if (!dev) return new Response('Not found', { status: 404 });
-  const { handler } = await import('@expressive/inspect');
-  return handler(req, { ip: server.requestIP(req)?.address });
+  const { handle } = await import('@expressive/inspect');
+  return handle(req, { ip: server.requestIP(req)?.address });
 }
 ```
 
-A static import works only with the package as a runtime dependency. Bundled deploys (Workers) resolve the dynamic import at build time, so the package must be installed when building. `ip` is required: missing or non-loopback callers get 403, as do browser and proxied requests. Until `install` runs, it answers 404.
+`ip` is the socket's remote address and required: Deno passes `info.remoteAddr.hostname` from `Deno.serve((req, info) => ...)`, Hono `getConnInfo(c).remote.address`. Missing or non-loopback callers get 403, as do browser and proxied requests. Next route handlers and Workers expose no socket address and are unsupported. Until `install` runs, it answers 404.
 
-Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__.journal.record({ level: 'keys', paths: ['Composer.draft'] })`.
+A static import works only with the package as a runtime dependency. A bundled server resolves the dynamic import at build time, so the package must be installed when building.
 
 ## Journal
 

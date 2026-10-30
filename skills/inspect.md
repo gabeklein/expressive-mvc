@@ -289,23 +289,26 @@ The relay reaches only the inspector's own members - no `eval`, no property walk
 
 ## Server
 
-`handler(req, { ip })` from the root entry serves an installed inspector over HTTP from a backend's own server - Bun, Deno, Workers, Hono, Next route handlers. Web-standard `Request` in, `Response` out; mount it at `/__inspect`. Keep the inspector a devDependency and load it inside the server's dev gate - a static import crashes boot when dev dependencies are omitted:
+`handle(req, { ip })` from the root entry serves an installed inspector over HTTP from a backend's own server. Web-standard `Request` in, `Response` out; mount it at `/__inspect`. Keep the inspector a devDependency and load it inside the server's dev gate - a static import crashes boot when dev dependencies are omitted:
 
 ```ts
+// Bun: fetch(req, server)
 if (pathname == '/__inspect') {
   if (!dev) return new Response('Not found', { status: 404 });
-  const { handler } = await import('@expressive/inspect');
-  return handler(req, { ip: server.requestIP(req)?.address });
+  const { handle } = await import('@expressive/inspect');
+  return handle(req, { ip: server.requestIP(req)?.address });
 }
 ```
 
+- `ip` is the socket's remote address, required: Deno `Deno.serve((req, info) => ...)` → `info.remoteAddr.hostname`; Hono `getConnInfo(c).remote.address` (`hono/bun`, `hono/deno`, `@hono/node-server/conninfo`), passing `c.req.raw`.
+- Missing or not loopback gets 403, as do the [Vite](#vite) relay's browser and proxy headers. Behind a tunnel (cloudflared) requests arrive from `127.0.0.1` but carry `CF-Connecting-IP`, so they are refused.
+- Next route handlers and Workers expose no socket address - unsupported. Their only caller address is a header a client can forge.
 - `install` still precedes any Model in the process ([Install](#install)).
-- A static `import { handler } from '@expressive/inspect'` works only with the package a runtime dependency.
-- Bundled deploys (Workers) resolve the dynamic import at build time - the package must be installed when building.
-- `ip` is the socket's remote address, required - missing or not loopback gets 403, as do the [Vite](#vite) relay's browser and proxy headers. Behind a tunnel (cloudflared) requests arrive from `127.0.0.1` but carry `CF-Connecting-IP`, so they are refused.
+- A static `import { handle } from '@expressive/inspect'` works only with the package a runtime dependency. A bundled server resolves the dynamic import at build time - the package must be installed when building.
 - Inert until `install` runs: 404.
-- `GET` answers `{ process: true, pid, runtime, title }` - tells a backend from the Vite page list when probing ports.
-- `POST` takes the relay's body and answers: `[method, ...args]`, `act` included; 400 bad body, 404 unknown method, 500 `{ error }`, 200 the value.
+- `GET` answers `{ process: true, pid, cwd, started, runtime, title }` - `started` epoch ms, `runtime` the user agent (`Bun/1.3.1`). Tells backends apart, and from the Vite page list, when probing ports.
+- `POST` takes the relay's body and answers: `[method, ...args]`, `act` included; 400 bad body, 404 unknown method, 500 `{ error }`, 504 no answer within 10s, 200 the value.
+- Concurrent `act` calls share one journal window - run them one at a time.
 
 ```bash
 curl localhost:8787/__inspect -d '["tree"]'
