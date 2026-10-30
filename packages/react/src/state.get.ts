@@ -27,7 +27,6 @@ function use(local: Context, compute: (context: Context) => unknown) {
   const claim = useSettle(tick);
   const dispatch = useWeak(next);
   const render = useFactory(() => {
-    let latest = compute;
     let mounted = false;
     let pending = false;
     let force!: () => void;
@@ -35,6 +34,7 @@ function use(local: Context, compute: (context: Context) => unknown) {
     let value: unknown;
     let unwatch: (() => void) | undefined;
     let thrown: [unknown] | undefined;
+    let unfollow: (() => void) | undefined;
 
     function update() {
       pending = false;
@@ -80,22 +80,32 @@ function use(local: Context, compute: (context: Context) => unknown) {
     }
 
     function release() {
-      unfollow();
+      unfollow!();
       unwatch?.();
       unwatch = target = undefined;
     }
 
-    const unfollow = watch(local, (ctx) => {
-      try {
-        if (follow(latest(ctx)) && mounted) observed();
-      } catch (error) {
-        thrown = [error];
-        if (mounted) observed();
-      }
-    }, false);
+    function track(compute: (context: Context) => unknown) {
+      let first = true;
+
+      unfollow?.();
+      thrown = undefined;
+      unfollow = watch(local, (ctx) => {
+        try {
+          if (follow(compute(ctx)) && !first) observed();
+        } catch (error) {
+          thrown = [error];
+          if (!first) observed();
+        }
+      }, false);
+
+      first = false;
+    }
+
+    track(compute);
 
     if (thrown) {
-      unfollow();
+      unfollow!();
       throw thrown[0];
     }
 
@@ -113,7 +123,10 @@ function use(local: Context, compute: (context: Context) => unknown) {
         };
       });
 
-      if (!fresh) follow((latest = next)(local));
+      if (!fresh) {
+        track(next);
+        if (thrown) throw thrown[0];
+      }
 
       fresh = false;
 

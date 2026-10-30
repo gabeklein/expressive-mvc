@@ -481,7 +481,7 @@ describe('Model.get', () => {
       expect(view.container.textContent).toBe('updated');
     });
 
-    it.fails('will follow a type first looked up on re-render', async () => {
+    it('will follow a type first looked up on re-render', async () => {
       class User extends Model {
         name = '';
 
@@ -531,6 +531,74 @@ describe('Model.get', () => {
       });
 
       expect(view.container.textContent).toBe('replaced');
+    });
+
+    it('will release a lookup dropped on re-render', async () => {
+      class User extends Model {
+        name = '';
+
+        static get<T extends User>(this: Model.Extends<T>, id?: number | string | false): T {
+          return Context.get(this, (context) =>
+            typeof id == 'number'
+              ? context.get(Directory).user
+              : context.get(Cache).user
+          ) as T;
+        }
+      }
+
+      class Directory extends Model {
+        user = new User({ name: 'directory' });
+      }
+
+      class Cache extends Model {
+        user = new User({ name: 'cache' });
+      }
+
+      class Session extends Model {
+        directory = new Directory();
+        cache = new Cache();
+      }
+
+      const session = Session.new();
+      const didRender = vi.fn();
+      const View = (props: { id: number | string }) => {
+        didRender();
+        return <>{User.get(props.id).name}</>;
+      };
+
+      const view = render(
+        <React.StrictMode>
+          <Component for={session}>
+            <View id={0} />
+          </Component>
+        </React.StrictMode>
+      );
+
+      view.rerender(
+        <React.StrictMode>
+          <Component for={session}>
+            <View id="x" />
+          </Component>
+        </React.StrictMode>
+      );
+
+      expect(view.container.textContent).toBe('cache');
+      didRender.mockClear();
+
+      await act(async () => {
+        session.directory = new Directory({ user: new User({ name: 'stale' }) });
+      });
+
+      expect(didRender).not.toBeCalled();
+      expect(view.container.textContent).toBe('cache');
+
+      view.unmount();
+
+      await act(async () => {
+        session.cache = new Cache({ user: new User({ name: 'gone' }) });
+      });
+
+      expect(didRender).not.toBeCalled();
     });
 
     it('will keep proxy while instance is unchanged', async () => {
