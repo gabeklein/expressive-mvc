@@ -321,10 +321,10 @@ function Avatar() {
 
 That's the point of `Global` - it makes each piece of shared state available by its own type. Components ask for `Session`, not for `Global` and then its `session`; `Global.get()` works, but nothing below should need to know where `Session` lives.
 
-Every context descends from `Context.root`. A `Model.new()` outside any context resolves its own lookups against root, but never registers there - nothing can find it until something provides it. To make an instance findable without a provider, add it to root explicitly, and remove it when the instance is destroyed:
+Every context descends from `Context.root`. A `Model.new()` outside any context resolves its own lookups against root, but never registers there - nothing can find it until something provides it. To make an instance findable without a provider, pass root when creating it - it's removed again when the instance is destroyed:
 
 ```ts
-Session.new((self) => Context.root.add(self, true));
+Session.new(Context.root);
 ```
 
 A full app built the provided way (viewport, session, and theme) is at [composition/globals](/examples/composition/globals).
@@ -333,7 +333,13 @@ A full app built the provided way (viewport, session, and theme) is at [composit
 
 Where an instance activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A `Model.new()` only *falls back* to root, so the first explicit context to claim it later still becomes its home, though its initialization already ran without it.
 
-The escape hatch is plain construction. `new Model()` builds the instance without activating it, so the first explicit placement gets to claim it before anything runs:
+To choose the home up front, pass the context to `.new()` - the instance is placed before its initialization runs:
+
+```ts
+const cart = Cart.new(context); // cart's home is context
+```
+
+Or construct without activating - `new Model()` builds the instance, so the first explicit placement gets to claim it before anything runs:
 
 ```ts
 const cart = new Cart(); // constructed, not yet activated

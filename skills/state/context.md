@@ -17,17 +17,19 @@ An owned instance's home is its owner's - lookups follow ownership, not where it
 
 ### Construct vs Activate
 
-To choose a home other than root, construct with `new Model()` and place it in the same tick:
+To choose a home other than root, pass a context to `.new()` - the instance is added there before init runs and removed when destroyed. Given several, the last wins:
 
 ```ts
-// .new() activates immediately - init runs, and resolves get(), against root
-const a = FormState.new();
-new Context(a); // a's home from here, after init already ran without it
+const a = FormState.new(context); // a's home is context; get() resolves there
+
+// .new() alone activates immediately - init runs, and resolves get(), against root
+const b = FormState.new();
+new Context(b); // b's home from here, after init already ran without it
 
 // new FormState() constructs without activating
 // - the first explicit Context claims it before init runs
-const b = new FormState();
-new Context(b); // b's home is this context
+const c = new FormState();
+new Context(c); // c's home is this context
 ```
 
 Matters in tests and in code that prepares an instance before placing it in a context tree. Placement is an ordering constraint, not a deferral - an instance not activated by the end of the tick warns. Release one you no longer want with `set(null)`.
@@ -52,10 +54,10 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 ## Root Context
 
-`Context.root` is the process-wide registry, parent of every host's contexts; `Context.get(state)` falls back to it when an instance has no recorded home. An instance reads from root but never registers itself there. Prefer a render-less `Global` Component at the app's top owning shared state - it provides what it owns to everything below, so readers call `Session.get()` rather than reaching through `Global`. To make an instance findable from anywhere, add it explicitly and tie removal to its lifetime - an explicit entry stays until removed:
+`Context.root` is the process-wide registry, parent of every host's contexts; `Context.get(state)` falls back to it when an instance has no recorded home. An instance reads from root but never registers itself there. Prefer a render-less `Global` Component at the app's top owning shared state - it provides what it owns to everything below, so readers call `Session.get()` rather than reaching through `Global`. To make an instance findable from anywhere, pass root to `.new()` - it is added explicitly and removed when destroyed:
 
 ```ts
-const flags = Flags.new((self) => Context.root.add(self, true));
+const flags = Flags.new(Context.root);
 Context.root.get(Flags); // flags, until destroyed
 ```
 
