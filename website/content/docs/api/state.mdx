@@ -173,6 +173,8 @@ class User extends Model {
 }
 ```
 
+`compute` should look up the same types whatever the key - branch on what it finds, not on which types to look up. React follows the lookups a component made on its first render.
+
 Type the parameter from the instance (`T['id'] | false`) so the base forms stay callable - a plain `key?: string` won't type-check against the base `get`. Delegate each base form with its own `super.get` call - a `false | undefined` argument matches no single base overload.
 
 `User.get(5)` in a component keeps context and tracking. `session.get(User, 5)` and the instruction `get(User, 5)` route through the same override from that instance's context. The instruction resolves once; a thrown Promise suspends the field until it settles, then retries.
