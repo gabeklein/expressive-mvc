@@ -166,14 +166,14 @@ class User extends Model {
   id = 0;
 
   static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | false): T {
-    if (typeof id != 'number') return super.get(id as false) as T;
+    if (typeof id != 'number') return (id === false ? super.get(false) : super.get()) as T;
 
     return Context.get(this, (context) => context.get(Directory).find(id) as T);
   }
 }
 ```
 
-Type the parameter from the instance (`T['id'] | false`) so the base forms stay callable - a plain `key?: string` won't type-check against the base `get`. `super.get(id as false)` because a `false | undefined` argument matches no single base overload.
+Type the parameter from the instance (`T['id'] | false`) so the base forms stay callable - a plain `key?: string` won't type-check against the base `get`. Delegate each base form with its own `super.get` call - a `false | undefined` argument matches no single base overload.
 
 `User.get(5)` in a component keeps context and tracking. `session.get(User, 5)` and the instruction `get(User, 5)` route through the same override from that instance's context.
 
