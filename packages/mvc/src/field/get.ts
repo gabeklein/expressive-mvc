@@ -83,8 +83,8 @@ function get<T extends Model>(
 /**
  * Fetches through `Type.get(...args)` as this field is defined, with this
  * Model as origin. Resolves once; a thrown Promise suspends the field and
- * retries once settled. Applies where the first argument
- * is neither boolean nor function - a key for a class overriding static `get`.
+ * retries once settled. Applies where the first argument is neither boolean
+ * nor function - a key for a class overriding static `get`.
  *
  * @param Type - Class to fetch from.
  * @param args - Arguments for `Type.get`.
