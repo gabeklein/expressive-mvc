@@ -10,7 +10,7 @@
 
 ---
 
-Query the live instance graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay - a base layer for agents, devtools, and test helpers.
+Query the live instance graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay or server handler - a base layer for agents, devtools, and test helpers.
 
 ```bash
 npm install --save-dev @expressive/inspect
@@ -67,6 +67,36 @@ curl localhost:5173/__inspect/<id> -d '["act", ["call", "Composer.submit", "hi"]
 Local callers only; browser and proxied (tunnel) requests are refused.
 
 Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__.journal.record({ level: 'keys', paths: ['Composer.draft'] })`.
+
+## From your own server
+
+`@expressive/inspect/http` installs the inspector and exports `handle`, which serves it from a backend's own server - same body and answers as the relay; `GET` describes the process. `handle` takes each host's native handler arguments, so it mounts as a route anywhere, nested routers included. Import it dynamically behind your dev flag, so the package can stay a devDependency:
+
+```ts
+// top of the server entry - installs, so it precedes any Model
+const inspect = dev && (await import('@expressive/inspect/http')).handle;
+
+// Bun
+Bun.serve({ routes: inspect ? { '/__inspect': inspect } : undefined, fetch: app });
+
+// Express, Connect, node:http
+if (inspect) app.use('/__inspect', inspect);
+
+// Deno, TCP listeners
+if (inspect && pathname == '/__inspect') return inspect(req, info);
+
+// Hono
+if (inspect) app.all('/__inspect', (c) => inspect(c.req.raw, { ip: getConnInfo(c).remote.address }));
+
+// any Request plus the socket address
+if (inspect) return inspect(req, { ip });
+```
+
+Missing or non-loopback callers get 403, as do browser and proxied requests. A JSON array `express.json()` already read is used as is; mount before any other body parser. Next route handlers and Workers expose no socket address and are unsupported.
+
+Instances the entry's static imports construct at module scope exist before its body runs. To see those, install from the dev script - `bun --preload @expressive/inspect/install` or `node --import @expressive/inspect/install` - and keep the `/http` import for `handle`.
+
+A static import works only with the package as a runtime dependency. A bundled server resolves dynamic imports at build time, so the package must be installed when building.
 
 ## Journal
 
