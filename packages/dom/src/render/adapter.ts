@@ -65,29 +65,10 @@ function tracked<T extends object>(target: T, required?: boolean): T {
   return proxy;
 }
 
-type NoVoid<T> = T extends undefined | void ? null : T;
-
 declare module '@expressive/mvc' {
   namespace Model {
-    type ForceRefresh = {
-      (): void;
-      <T = void>(waitFor: Promise<T>): Promise<T>;
-      <T = void>(invoke: () => Promise<T>): Promise<T>;
-    };
-
-    type GetFactory<T extends Model, R> = (
-      this: T,
-      current: T,
-      refresh: ForceRefresh
-    ) => R;
-
     function get<T extends Model>(this: Model.Extends<T>): T;
     function get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
-    function get<T extends Model>(this: Model.Extends<T>, required: true): Required<T>;
-    function get<T extends Model, R>(
-      this: Model.Extends<T>,
-      factory: GetFactory<T, R>
-    ): NoVoid<R>;
   }
 
   interface Component {
@@ -97,24 +78,12 @@ declare module '@expressive/mvc' {
 
 (Model as any).get = function get<T extends Model>(
   this: Model.Extends<T>,
-  argument?: boolean | Model.GetFactory<T, unknown>
+  argument?: false
 ) {
   const scope = requireScope();
-  const instance = tracked(scope.context).get(this, argument === false ? false : true);
+  const instance = tracked(scope.context).get(this, argument !== false);
 
-  if (!instance) return undefined;
-
-  const proxy = tracked(instance, argument === true);
-
-  if (typeof argument != 'function') return proxy;
-
-  const refresh = ((action?: Promise<unknown> | (() => Promise<unknown>)) => {
-    if (typeof action == 'function') action = action();
-    schedule(scope);
-    return action instanceof Promise ? action.finally(() => schedule(scope)) : undefined;
-  }) as Model.ForceRefresh;
-
-  return argument.call(proxy, proxy, refresh) ?? null;
+  return instance && tracked(instance, false);
 };
 
 const OWNERS = new WeakMap<Function, { owner: Model; key: string }>();

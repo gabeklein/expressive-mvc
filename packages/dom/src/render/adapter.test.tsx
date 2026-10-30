@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { Model, Component, Context } from '@expressive/mvc';
 import { render } from '../index';
@@ -81,7 +81,9 @@ describe('MVC adapter', () => {
     }
 
     function Name() {
-      return Session.get((value) => <span>{value.name}</span>);
+      const { name } = Session.get();
+
+      return <span>{name}</span>;
     }
 
     let session!: Session;
@@ -108,31 +110,40 @@ describe('MVC adapter', () => {
     expect(() => Value.get()).toThrow('may only run while @expressive/dom is rendering');
   });
 
+  it('will not accept a function', () => {
+    class Value extends Model {
+      value = 1;
+    }
+
+    expectTypeOf(Value.get).toBeCallableWith(false);
+    // @ts-expect-error
+    expectTypeOf(Value.get).toBeCallableWith(($: Value) => $.value);
+  });
+
+  it('will not accept true', () => {
+    class Value extends Model {}
+
+    // @ts-expect-error
+    expectTypeOf(Value.get).toBeCallableWith(true);
+  });
+
   it('will not provide Model.use', () => {
     class Value extends Model {}
 
     expect((Value as any).use).toBeUndefined();
   });
 
-  it('will support optional, required and selected context snapshots', async () => {
+  it('will support optional context snapshots', async () => {
     class Missing extends Model {}
     class Source extends Model {
       value = 1;
-      pending?: string;
     }
 
-    let refresh!: Model.ForceRefresh;
-    let renders = 0;
-
     function View() {
-      renders++;
       const missing = Missing.get(false);
-      const selected = Source.get(({ value }, force) => {
-        refresh = force;
-        return value * 2;
-      });
-      const empty = Source.get(() => undefined);
-      return <span>{String(missing)}:{selected}:{String(empty)}</span>;
+      const { value } = Source.get();
+
+      return <span>{String(missing)}:{value}</span>;
     }
 
     const source = Source.new();
@@ -142,29 +153,13 @@ describe('MVC adapter', () => {
       root
     );
 
-    expect(root.textContent).toBe('undefined:2:null');
-    refresh();
+    expect(root.textContent).toBe('undefined:1');
+    source.value = 2;
     await flushMicrotasks();
-    await refresh(Promise.resolve());
-    await refresh(() => Promise.resolve());
-    await flushMicrotasks();
-    expect(renders).toBeGreaterThan(1);
+    expect(root.textContent).toBe('undefined:2');
 
     release();
     source.set(null);
-
-    class Required extends Component {
-      render() {
-        return <span>{Source.get(true).pending}</span>;
-      }
-    }
-
-    const required = Source.new();
-    expect(() => render(
-      <Component for={required}><Required fallback={false} /></Component>,
-      document.createElement('main')
-    )).toThrow();
-    required.set(null);
   });
 
   it('will render capitalized methods as owner-bound subcomponents', async () => {

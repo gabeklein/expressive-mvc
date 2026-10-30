@@ -409,11 +409,11 @@ Pure presentation components (a `Metric`, a badge) may still take plain props - 
 
 ## Presence Boundary
 
-The parent owns whether an optional child exists; the child asserts its requirements with `.get(true)` - `SettingsContent` / `SettingsEditor` in [react.md](react.md#required-values--presence-boundaries). Declare the gated field optional (`draft?: T`), not `| null`:
+The parent owns whether an optional child exists - it destructures the gated field and renders conditionally; the child reads the field's instance with `.get()`: `SettingsContent` / `SettingsEditor` in [react.md](react.md#presence-boundaries).
 
 ```tsx
 class SettingsState extends Model {
-  draft?: SettingsLocation = undefined;
+  draft?: Draft = undefined;
   saving = false;
 
   async saveSettings() { ... }
@@ -650,22 +650,30 @@ class Timer extends Model {
 }
 ```
 
-## Using Model.get() with Computed Hook
+## Deriving from Model.get()
+
+Destructure what renders and derive inline; move a reused derivation to a getter on the Model:
 
 ```tsx
-function OrderSummary() {
-  const summary = Cart.get(($) => ({
-    total: $.total,
-    count: $.count,
-    empty: $.items.length === 0
-  }));
+class Cart extends Model {
+  items = [] as Item[];
 
-  if (summary.empty) return <p>Cart is empty</p>;
-  return (
-    <div>
-      <p>{summary.count} items</p>
-      <p>Total: ${summary.total}</p>
-    </div>
-  );
+  get total() {
+    return this.items.reduce((sum, item) => sum + item.price, 0);
+  }
+}
+
+function OrderSummary() {
+  const { items, total } = Cart.get();
+
+  if (items.length)
+    return (
+      <div>
+        <p>{items.length} items</p>
+        <p>Total: ${total}</p>
+      </div>
+    );
+
+  return <p>Cart is empty</p>;
 }
 ```

@@ -219,8 +219,8 @@ This is also why classes are unusually friendly to agents. A Model class is a se
 To be honest about the trade-off:
 
 - **`this`** - you have to use it. If your team has a strict "functional only" rule, Expressive isn't for you.
-- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~11.3 kB gzip for a typical app, ~13.0 kB with every export used ([measured and CI-gated](/docs/guides/bundle-size)). Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
-- **An adapter floor you cannot tree-shake** - the React adapter works by patching things it does not own at import: `Component.prototype`, `contextType`, `isReactComponent`, the host runtime registry. Cross-package prototype patches cannot be shaken away, so importing `@expressive/react` at all costs ~10.4 kB before your first field. The headless core does shake properly (~6.4 kB for `Model` alone, ~10.1 kB for all of it).
+- **A runtime footprint** - reactive proxies, lifecycle tracking, context management: ~11.7 kB gzip for a typical app, ~13.4 kB with every export used ([measured and CI-gated](/docs/guides/bundle-size)). Tracked reads are proxy reads during render; reads in handlers or through `is` subscribe nothing. Measurable, not zero.
+- **An adapter floor you cannot tree-shake** - the React adapter works by patching things it does not own at import: `Component.prototype`, `contextType`, `isReactComponent`, the host runtime registry. Cross-package prototype patches cannot be shaken away, so importing `@expressive/react` at all costs ~10.8 kB before your first field. The headless core does shake properly (~6.8 kB for `Model` alone, ~10.7 kB for all of it).
 - **Familiarity for new hires** - engineers used to Redux or Zustand will need a brief ramp-up on classes and instructions.
 
 Expressive coexists with hooks - `useState` is fine for a toggle in a leaf, and React's own hooks still bridge in at the edges. What it does not offer is a hook-shaped way to own state: ownership lives in classes, which is what lets the same code move between hosts.

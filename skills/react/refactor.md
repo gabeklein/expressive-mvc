@@ -439,7 +439,7 @@ Default: a self-contained widget mounts unconditionally and gates itself - the p
 
 This is for a widget the parent has no reason to mention. A piece split out of a Component's own `render()` (step 13) is the other way round: the parent writes `cond && <Slot />` and the slot paints unconditionally, never opening with `if (!cond) return`.
 
-Parent gate plus child `get(true)` is the secondary shape - right when the parent reads the field for its own content, or composition genuinely varies. Either way presence is a contract; the half-measure fails audit - `get()` plus an internal null-guard mid-snapshot:
+Parent gate over a Model field the child reads with `.get()` is the secondary shape - right when the parent reads the field for its own content, or composition genuinely varies. Either way presence is a contract; the half-measure fails audit - `get()` plus an internal null-guard mid-snapshot:
 
 ```tsx
 // Wrong: no contract either way
@@ -449,7 +449,7 @@ function SettingsEditor() {
   ...
 }
 
-// Right (parent reads draft for its own content): parent gates, child asserts
+// Right (parent reads draft for its own content): draft is a Model field, child gets it
 function SettingsContent() {
   const { draft } = SettingsState.get();
 
@@ -463,18 +463,17 @@ function SettingsContent() {
 
 function SettingsEditor() {
   const {
+    bankAccount,
+    categoryAccounts,
+  } = Draft.get();
+
+  const {
     saveSettings,
     saving,
-    draft: {
-      bankAccount,
-      categoryAccounts,
-    },
-  } = SettingsState.get(true);
+  } = SettingsState.get();
   ...
 }
 ```
-
-Declare gateable fields optional (`draft?: SettingsLocation`), not `| null` - `get(true)` rejects only `undefined`, and `Required<T>` does not strip `null` from unions.
 
 ## 13. Extract, then consolidate
 
@@ -556,7 +555,7 @@ The checklist:
 - Are any reactive deep reads hidden in conditional branches or handlers? *(invariant)*
 - Does a Component holding `foo = get(Foo)` read it thru `this` - never a second `Foo.get()` in `render()`? *(invariant)*
 - Is `is` used only where the root object must be retained alongside sibling destructuring? *(invariant)*
-- Is presence a contract - a standalone widget owns its gate and falls thru by default; a split of `render()` is gated at the call site and always paints; parent gate + `.get(true)` where the parent reads the field for its own content; never `get()` plus an internal null-guard? *(invariant)*
+- Is presence a contract - a standalone widget owns its gate and falls thru by default; a split of `render()` is gated at the call site and always paints; parent gate over a Model field the child reads with `.get()` where the parent reads the field for its own content; no Model values as props; never `get()` plus an internal null-guard? *(invariant)*
 - Are Component subcomponents genuine extension points? *(invariant)*
 - Does every getter on shared state earn its place - multiple consumers, domain meaning, expensive computation, deliberate API, or introspection value? *(default - judge meaning, not reference counts)*
 - Are large JSX branches and ~50-line renders split at conditionals into honestly-named scopes - units that delete or move as one place, never one-op conditionals or formatted scalars? *(heuristic - name the cost)*

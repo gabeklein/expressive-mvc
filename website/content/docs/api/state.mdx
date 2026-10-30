@@ -140,50 +140,19 @@ function Profile() {
 const maybe = Theme.get(false); // Theme | undefined
 ```
 
-#### Required values
+#### Values that may be unset
+
+Hold the value as a Model field - it joins its owner's context. Destructure it and render conditionally; the child reads it with `Draft.get()`:
 
 ```tsx
-const user = User.get(true); // Required<User>
+const { draft } = Settings.get();
+if (draft) return <Editor />;
+return <Spinner />;
 ```
 
-With `true`, reading a property that is currently `undefined` throws a plain `Error` - `User-XXXXXX.name is required in this context.` That surfaces at the nearest **error boundary**, not Suspense. Use it when the component's contract is "this data exists by now."
+#### Deriving values
 
-#### Factory forms <small>(React)</small>
-
-Pass a factory to derive a value. The component re-renders only when the derived result changes by `===`:
-
-```tsx
-const summary = Cart.get((cart) => ({
-  total: cart.total,
-  count: cart.count
-}));
-```
-
-The factory receives a tracking proxy (reads subscribe) and a `ForceRefresh` function. Return `null` to run a side effect once, on first render, without subscribing - the factory doesn't run again:
-
-```tsx
-AppState.get((app) => {
-  analytics.track('page', app.page);
-  return null;
-});
-```
-
-`ForceRefresh` forces the component to re-render. Given a promise (or async function), it refreshes now and again when the promise settles:
-
-```ts
-type ForceRefresh = {
-  (): void;
-  <T>(waitFor: Promise<T>): Promise<T>;
-  <T>(invoke: () => Promise<T>): Promise<T>;
-};
-```
-
-```tsx
-const data = DataService.get((svc, refresh) => {
-  const reload = () => refresh(svc.fetch());
-  return { items: svc.items, reload };
-});
-```
+Destructure and derive in render, declare a getter on the Model for a shared derivation, or move side effects to `mount()`.
 
 <br />
 
