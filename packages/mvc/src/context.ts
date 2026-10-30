@@ -2,7 +2,7 @@ import { event as signal, listener, Observer, touch } from "./observable";
 import { event, Model, observed, parent, uid } from "./state";
 
 const CONTEXT = Symbol("context");
-const STACK: [Context, Model?][] = [];
+const STACK: [Context, Model][] = [];
 const HOME = new WeakMap<Model, Context>();
 const HELD = new WeakMap<Model, Map<Model, [Set<() => void>, boolean?]>>();
 const HOST = new WeakMap<Context, Model>();
@@ -53,11 +53,11 @@ class Context {
     compute: (context: Context, from?: Model) => unknown = (context) => context,
   ): unknown {
     if (!arg || typeof arg == "function") {
-      const [context, from] = STACK[STACK.length - 1] || [];
+      const top = STACK[STACK.length - 1];
 
-      if (!context) return current(arg, compute);
-      if (!from) return compute(context);
+      if (!top) return current(arg, compute);
 
+      const [context, from] = top;
       const view = arg ? touch(from, CONTEXT, context) : context;
 
       return observed(from, arg, compute(view, from.is));
@@ -354,11 +354,11 @@ function resolver(next: Resolve): Resolve {
 }
 
 /**
- * Run `fn` with `target` as current context - for a Model, its context, with
- * the Model as origin of any `get` resolved within. Nests.
+ * Run `fn` with the context of `origin` current, and `origin` as origin of
+ * any `get` resolved within. Nests.
  */
-function within<R>(target: Model | Context, fn: () => R): R {
-  STACK.push(target instanceof Context ? [target] : [Context.get(target), target]);
+function within<R>(origin: Model, fn: () => R): R {
+  STACK.push([Context.get(origin), origin]);
 
   try {
     return fn();

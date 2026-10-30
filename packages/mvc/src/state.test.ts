@@ -1,6 +1,6 @@
 import { vi, expect, expectTypeOf, it, describe } from 'vitest';
 import { flushMicrotasks, mockError, mockPromise, mockUncaught, mockWarn } from '../test.setup';
-import { Context, within } from './context';
+import { Context, resolver, within } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
 import { set } from './field/set';
@@ -919,7 +919,7 @@ describe('get method', () => {
       context.add(Foo.new());
       context.add(Foo.new());
 
-      within(context, () => {
+      under(context, () => {
         expect(Foo.get(false)).toBeUndefined();
         expect(() => Foo.get()).toThrow('Could not find Foo in context.');
       });
@@ -929,7 +929,7 @@ describe('get method', () => {
       const foo = Foo.new();
       const context = new Context(foo);
 
-      expect(within(context, () => Foo.get())).toBe(foo);
+      expect(under(context, () => Foo.get())).toBe(foo);
     });
 
     it('will not pass required to Context.get', () => {
@@ -982,10 +982,10 @@ describe('get method', () => {
     it('will route standalone form through override', () => {
       const user = User.new({ id: 5 });
       const context = new Context(user);
-      const found: User = within(context, () => User.get(5));
+      const found: User = under(context, () => User.get(5));
 
       expect(found).toBe(user);
-      expect(within(context, () => User.get(6))).toBeUndefined();
+      expect(under(context, () => User.get(6))).toBeUndefined();
     });
 
     it('will route instance form through override', () => {
@@ -4868,3 +4868,13 @@ describe('computed (getters)', () => {
     });
   });
 });
+
+function under<R>(context: Context, fn: () => R): R {
+  const previous = resolver((_Type, compute) => compute(context));
+
+  try {
+    return fn();
+  } finally {
+    resolver(previous);
+  }
+}

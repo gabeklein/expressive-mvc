@@ -452,12 +452,6 @@ describe('static get', () => {
     expect(context).toBe(Context.root);
   });
 
-  it('will return current context within set', () => {
-    const context = new Context();
-
-    expect(within(context, () => Context.get())).toBe(context);
-  });
-
   it('will compute against root', () => {
     const compute = vi.fn((context: Context) => context.id);
     const id = Context.get(Test, compute);
@@ -473,14 +467,6 @@ describe('static get', () => {
 
     // @ts-expect-error
     expect(Context.get(Test, compute, true)).toBe('value');
-  });
-
-  it('will compute against a set context without origin', () => {
-    const context = new Context();
-    const compute = vi.fn(() => 'value');
-
-    expect(within(context, () => Context.get(Test, compute))).toBe('value');
-    expect(compute).toBeCalledWith(context);
   });
 
   it('will compute with a Model as origin', () => {
@@ -545,7 +531,7 @@ describe('within', () => {
   class Test extends Model {}
 
   it('will return result of function', () => {
-    const result = within(new Context(), () => 1);
+    const result = within(Test.new(), () => 1);
 
     expectTypeOf(result).toEqualTypeOf<number>();
 
@@ -566,9 +552,11 @@ describe('within', () => {
   });
 
   it('will nest', () => {
-    const outer = new Context();
-    const inner = new Context();
-    const seen: (Context | undefined)[] = [];
+    const outer = Test.new();
+    const inner = Test.new();
+    const outerContext = new Context(outer);
+    const innerContext = new Context(inner);
+    const seen: Context[] = [];
 
     within(outer, () => {
       seen.push(Context.get());
@@ -576,15 +564,13 @@ describe('within', () => {
       seen.push(Context.get());
     });
 
-    expect(seen).toEqual([outer, inner, outer]);
+    expect(seen).toEqual([outerContext, innerContext, outerContext]);
     expect(Context.get()).toBe(Context.root);
   });
 
   it('will restore on throw', () => {
-    const context = new Context();
-
     expect(() =>
-      within(context, () => {
+      within(Test.new(), () => {
         throw new Error('oops');
       })
     ).toThrow('oops');
@@ -634,7 +620,7 @@ describe('resolver', () => {
     const resolve = vi.fn();
 
     assign(resolve);
-    within(new Context(), () => Context.get(Test, () => 'value'));
+    within(Test.new(), () => Context.get(Test, () => 'value'));
 
     expect(resolve).not.toBeCalled();
   });
