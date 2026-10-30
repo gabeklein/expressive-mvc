@@ -289,7 +289,7 @@ The relay reaches only the inspector's own members - no `eval`, no property walk
 
 ## Server
 
-`handle(req, { ip })` from the root entry serves an installed inspector over HTTP from a backend's own server - Bun, Deno, or Node through a `Request` adapter (`@hono/node-server`). Web-standard `Request` in, `Response` out; mount it at `/__inspect`. Keep the inspector a devDependency - both pieces load only in dev, since a static import crashes boot when dev dependencies are omitted.
+`handle` from the root entry serves an installed inspector over HTTP from a backend's own server. It takes each host's native handler arguments and reads the caller's address from them, so it mounts as a route. Path-agnostic - mount it anywhere, nested routers included. Keep the inspector a devDependency - both pieces load only in dev, since a static import crashes boot when dev dependencies are omitted.
 
 **Install, dev only** - before any Model is constructed, one of:
 
@@ -309,16 +309,24 @@ await import('./server');
 **Route, dev only:**
 
 ```ts
-// Bun: fetch(req, server)
-if (pathname == '/__inspect') {
-  if (!dev) return new Response('Not found', { status: 404 });
-  const { handle } = await import('@expressive/inspect');
-  return handle(req, { ip: server.requestIP(req)?.address });
-}
+const inspect = dev && (await import('@expressive/inspect')).handle;
+
+// Bun - (req, server)
+Bun.serve({ routes: inspect ? { '/__inspect': inspect } : undefined, fetch: app });
+
+// Node http, Express, Connect - (req, res); mount before body parsers
+if (inspect) app.use('/__inspect', inspect);
+if (inspect && req.url == '/__inspect') return inspect(req, res);
+
+// Deno - (req, info)
+if (inspect && pathname == '/__inspect') return inspect(req, info);
+
+// anything else with a Request and the socket address
+return inspect(req, { ip });
 ```
 
-- `ip` is the socket's remote address, required: Deno `Deno.serve((req, info) => ...)` → `info.remoteAddr.hostname`; Hono `getConnInfo(c).remote.address` (`hono/bun`, `hono/deno`, `@hono/node-server/conninfo`), passing `c.req.raw`.
-- Missing or not loopback gets 403, as do the [Vite](#vite) relay's browser and proxy headers. Behind a tunnel (cloudflared) requests arrive from `127.0.0.1` but carry `CF-Connecting-IP`, so they are refused.
+- Hono: `inspect(c.req.raw, { ip: getConnInfo(c).remote.address })` - `getConnInfo` from `hono/bun`, `hono/deno` or `@hono/node-server/conninfo`.
+- An address that is missing or not loopback gets 403, as do the [Vite](#vite) relay's browser and proxy headers. Behind a tunnel (cloudflared) requests arrive from `127.0.0.1` but carry `CF-Connecting-IP`, so they are refused.
 - Next route handlers and Workers expose no socket address - unsupported. Their only caller address is a header a client can forge.
 - Static imports of `install` or `handle` work only with the package as a runtime dependency. A bundled server resolves dynamic imports at build time - the package must be installed when building.
 - `GET` answers `{ process: true, pid, cwd, started, runtime, title }` - `started` epoch ms, `runtime` the user agent (`Bun/1.3.1`). Tells backends apart, and from the Vite page list, when probing ports.

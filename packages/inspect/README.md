@@ -70,7 +70,7 @@ Console: `__EXPRESSIVE_INSPECT__.get('Composer.draft')`, `__EXPRESSIVE_INSPECT__
 
 ## From your own server
 
-`handle` serves an installed inspector from a backend's own server - Bun, Deno, or Node through a `Request` adapter (`@hono/node-server`). Same body and answers as the relay; `GET` describes the process. Load both pieces only in dev, so the package can stay a devDependency.
+`handle` serves an installed inspector from a backend's own server - same body and answers as the relay; `GET` describes the process. It takes each host's native handler arguments, so it mounts as a route anywhere, nested routers included. Load both pieces only in dev, so the package can stay a devDependency.
 
 Install before any Model is constructed:
 
@@ -87,18 +87,18 @@ await import('./server');
 
 `attach()` alone does not publish the global `handle` serves; without install it answers 404.
 
-Mount the route inside your dev gate:
+Mount the route:
 
 ```ts
-// Bun: fetch(req, server)
-if (pathname == '/__inspect') {
-  if (!dev) return new Response('Not found', { status: 404 });
-  const { handle } = await import('@expressive/inspect');
-  return handle(req, { ip: server.requestIP(req)?.address });
-}
+const inspect = dev && (await import('@expressive/inspect')).handle;
+
+Bun.serve({ routes: inspect ? { '/__inspect': inspect } : undefined, fetch: app });   // Bun
+if (inspect) app.use('/__inspect', inspect);                                    // Node http, Express, Connect
+if (inspect && pathname == '/__inspect') return inspect(req, info);             // Deno
+return inspect(req, { ip });                                                    // any Request plus the socket address
 ```
 
-`ip` is the socket's remote address and required: Deno passes `info.remoteAddr.hostname` from `Deno.serve((req, info) => ...)`, Hono `getConnInfo(c).remote.address`. Missing or non-loopback callers get 403, as do browser and proxied requests. Next route handlers and Workers expose no socket address and are unsupported.
+Missing or non-loopback callers get 403, as do browser and proxied requests. Mount it before body parsers. Next route handlers and Workers expose no socket address and are unsupported.
 
 Static imports work only with the package as a runtime dependency. A bundled server resolves dynamic imports at build time, so the package must be installed when building.
 
