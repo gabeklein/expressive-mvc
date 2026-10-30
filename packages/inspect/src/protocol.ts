@@ -3,12 +3,16 @@ import { dispatch, type Call } from './dispatch';
 import type { Options, Query } from './journal';
 import { tick, type Act } from './settle';
 
+export const CALL_TIMEOUT = 10000;
+
 export type Answer = { value?: unknown; error?: string; status?: number };
 
 const FOREIGN = ['origin', 'sec-fetch-site', 'forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'];
+const LOOPBACK = /^((::ffff:)?127(\.\d{1,3}){3}|::1)$/;
+const MISSING = Symbol.for('expressive-inspect.missing');
 
-export function local(ip: string | null | undefined, has: (header: string) => boolean) {
-  return !FOREIGN.some(has) && /^(::ffff:)?127\.|^::1$/.test(ip ?? '');
+export function local(ip: string | null | undefined, headers: { has(name: string): boolean }) {
+  return !FOREIGN.some((header) => headers.has(header)) && LOOPBACK.test(ip ?? '');
 }
 
 export function parse(text: string): Call | undefined {
@@ -19,16 +23,16 @@ export function parse(text: string): Call | undefined {
   } catch {}
 }
 
-export const journal = (method: string, ...args: unknown[]) => dispatch([['journal', method], args]) as any;
+export const journalCall = (method: string, ...args: unknown[]) => dispatch([['journal', method], args]) as any;
 
 async function act(step: unknown, options?: Act) {
   if (!Array.isArray(step) || typeof step[0] != 'string')
     throw new Error('act takes one call: ["act", [method, ...args], options?].');
 
   const remote = {
-    record: (...options: Options[]) => journal('record', ...options),
-    seq: () => journal('seq'),
-    frames: (query: Query) => journal('frames', query),
+    record: (...options: Options[]) => journalCall('record', ...options),
+    seq: () => journalCall('seq'),
+    frames: (query: Query) => journalCall('frames', query),
     get: (address: string) => dispatch([['get'], [address]])
   };
 
@@ -45,8 +49,6 @@ export async function answer(call: Call): Promise<Answer> {
   } catch (error) {
     if (!(error instanceof Error)) return { error: String(error) };
 
-    const { status } = error as { status?: number };
-
-    return status ? { error: error.message, status } : { error: error.message };
+    return { error: error.message, status: MISSING in error ? 404 : undefined };
   }
 }

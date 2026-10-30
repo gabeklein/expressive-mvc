@@ -10,7 +10,8 @@ export function dispatch(first: unknown, second?: unknown) {
       "@expressive/inspect is not attached in this page - make '@expressive/inspect/install' the first import of the app entry."
     );
 
-  const missing = () => Object.assign(new Error(`No inspector method ${call[0].join('.')}.`), { status: 404 });
+  const missing = () =>
+    Object.assign(new Error(`No inspector method ${call[0].join('.')}.`), { [Symbol.for('expressive-inspect.missing')]: true });
 
   let target: unknown = api;
   let owner: unknown;

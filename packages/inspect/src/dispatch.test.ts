@@ -46,7 +46,7 @@ describe('dispatch', () => {
     expect(() => dispatch([[], []])).toThrow('No inspector method .');
   });
 
-  it('will mark a missing method 404', () => {
-    expect(() => dispatch([['nope'], []])).toThrow(expect.objectContaining({ status: 404 }));
+  it('will mark a missing method', () => {
+    expect(() => dispatch([['nope'], []])).toThrow(expect.objectContaining({ [Symbol.for('expressive-inspect.missing')]: true }));
   });
 });

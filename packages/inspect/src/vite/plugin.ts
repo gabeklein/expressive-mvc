@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin, WebSocketClient, WebSocketServer } from 'vite';
 
 import type { Call } from '../dispatch';
-import { local, parse, type Answer } from '../protocol';
+import { CALL_TIMEOUT, local, parse, type Answer } from '../protocol';
 
 const VIRTUAL = 'virtual:expressive-inspect';
 const RESOLVED = '\0' + VIRTUAL;
@@ -14,7 +14,6 @@ if (import.meta.hot) connect(import.meta.hot);
 `;
 
 export const LIST_TIMEOUT = 1000;
-export const CALL_TIMEOUT = 10000;
 
 const USAGE = 'GET /__inspect lists pages; POST /__inspect/:id with [method, ...args] calls one.';
 
@@ -95,7 +94,7 @@ export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
   }
 
   return async (req: IncomingMessage, res: ServerResponse) => {
-    if (!local(req.socket.remoteAddress, (header) => header in req.headers)) return reply(res, 403, { error: 'Local callers only; browser and proxied requests are refused.' });
+    if (!local(req.socket.remoteAddress, new Set(Object.keys(req.headers)))) return reply(res, 403, { error: 'Local callers only; browser and proxied requests are refused.' });
 
     const id = decodeURIComponent(req.url!.split('?')[0].slice(1));
 

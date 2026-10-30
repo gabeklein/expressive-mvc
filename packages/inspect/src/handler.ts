@@ -6,7 +6,7 @@ const USAGE = 'GET describes this process; POST with [method, ...args] calls the
 export async function handler(req: Request, { ip }: { ip: string | null | undefined }): Promise<Response> {
   if (!globalThis.__EXPRESSIVE_INSPECT__) return Response.json({ error: 'Inspector not installed.' }, { status: 404 });
 
-  if (!local(ip, (header) => req.headers.has(header)))
+  if (!local(ip, req.headers))
     return Response.json({ error: 'Local callers only; browser and proxied requests are refused.' }, { status: 403 });
 
   if (req.method === 'GET') return Response.json(identity());

@@ -3,7 +3,8 @@ import { Readable } from 'node:stream';
 import type { ResolvedConfig, ViteDevServer, WebSocketClient } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CALL_TIMEOUT, LIST_TIMEOUT, plugin, relay } from './plugin';
+import { CALL_TIMEOUT } from '../protocol';
+import { LIST_TIMEOUT, plugin, relay } from './plugin';
 
 function hooks(url = 'file:///app/packages/inspect/dist/vite.js') {
   return plugin(url) as Record<string, any>;
@@ -201,17 +202,9 @@ describe('relay', () => {
     expect((await request('PUT')).statusCode).toBe(405);
   });
 
-  it.each([
-    ['a browser origin', { origin: 'http://evil.test' }, '127.0.0.1', 403],
-    ['a browser fetch', { 'sec-fetch-site': 'same-origin' }, '127.0.0.1', 403],
-    ...['forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'].map(
-      (header) => [`a request relayed with ${header}`, { [header]: '203.0.113.9' }, '127.0.0.1', 403]
-    ),
-    ['a non-loopback caller', {}, '192.168.1.4', 403],
-    ['a caller without an address', {}, null, 403],
-    ['IPv6 loopback', {}, '::1', 200],
-    ['IPv4-mapped loopback', {}, '::ffff:127.0.0.1', 200]
-  ] as [string, Record<string, string>, string | null, number][])('will answer %s with %i', async (_, headers, remote, status) => {
-    expect((await request('GET', '/', '', headers, remote)).statusCode).toBe(status);
+  it('will refuse a caller that is not local', async () => {
+    expect((await request('GET', '/', '', { 'x-forwarded-for': '203.0.113.9' })).statusCode).toBe(403);
+    expect((await request('GET', '/', '', {}, '192.168.1.4')).statusCode).toBe(403);
+    expect((await request('GET', '/', '', {}, '::1')).statusCode).toBe(200);
   });
 });

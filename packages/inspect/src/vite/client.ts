@@ -1,5 +1,5 @@
 import type { Call } from '../dispatch';
-import { answer, journal } from '../protocol';
+import { answer, journalCall } from '../protocol';
 
 export interface Hot {
   on(event: string, listener: (data: any) => unknown): void;
@@ -34,14 +34,14 @@ function recall() {
 export function connect(hot: Hot) {
   const id = Math.random().toString(36).slice(2, 8);
 
-  if (journal('record').level === 'off') journal('record', { level: 'keys' });
+  if (journalCall('record').level === 'off') journalCall('record', { level: 'keys' });
 
   const reloaded = recall();
 
-  if (reloaded) journal('hot', 'reload', reloaded);
+  if (reloaded) journalCall('hot', 'reload', reloaded);
 
   hot.on('vite:beforeUpdate', ({ updates }: { updates: { path: string }[] }) => {
-    journal('hot', 'update', updates.map((update) => update.path));
+    journalCall('hot', 'update', updates.map((update) => update.path));
   });
 
   hot.on('vite:beforeFullReload', ({ path, triggeredBy }: { path?: string; triggeredBy?: string } = {}) => {
