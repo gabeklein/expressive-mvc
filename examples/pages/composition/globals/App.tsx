@@ -1,16 +1,6 @@
 import './App.css';
 
-import { Component } from '@expressive/mvc';
-
-import { Session } from './Session';
-import { Theme } from './Theme';
-import { Viewport } from './Viewport';
-
-class Global extends Component {
-  viewport = new Viewport();
-  session = new Session();
-  theme = new Theme();
-}
+import { Global, Session, Theme, Viewport } from './Global';
 
 export default () => (
   <Global>
