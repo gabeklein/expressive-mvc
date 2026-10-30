@@ -32,7 +32,7 @@ class Child extends Model {
 }
 ```
 
-Receives `(state, subject)`. Runs when the upstream resolves, and again when it is replaced. A returned cleanup runs when the subject is destroyed.
+Receives `(state, subject)`. Runs when the upstream resolves, and again when it is replaced. A returned cleanup runs when that upstream is replaced or leaves, or the subject is destroyed.
 
 ### Key
 

@@ -1470,6 +1470,38 @@ describe('lifecycle callbacks', () => {
     expect(cleanup).toBeCalledTimes(1);
   });
 
+  it('will run cleanup when provider leaves', async () => {
+    class Remote extends Model {}
+
+    const cleanup = vi.fn();
+    const callback = vi.fn(() => cleanup);
+
+    class Test extends Model {
+      remote = get(Remote, callback);
+    }
+
+    const context = new Context();
+    const remove = context.add(Remote.new());
+    const test = new Test();
+
+    context.push(test);
+
+    remove();
+    await expect(test).toHaveUpdated('remote');
+
+    expect(cleanup).toBeCalledTimes(1);
+
+    context.add(Remote.new());
+    await expect(test).toHaveUpdated('remote');
+
+    expect(callback).toBeCalledTimes(2);
+    expect(cleanup).toBeCalledTimes(1);
+
+    test.set(null);
+
+    expect(cleanup).toBeCalledTimes(2);
+  });
+
   it('will receive ready instance', async () => {
     const didSet = vi.fn();
 
