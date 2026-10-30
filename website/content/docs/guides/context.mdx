@@ -298,15 +298,15 @@ Some state belongs to the whole app - the session, the viewport, settings. Give 
 // app.tsx
 import { Component } from '@expressive/mvc';
 
-class App extends Component {
+class Global extends Component {
   session = new Session();
   theme = new Theme();
 }
 
 export default () => (
-  <App>
+  <Global>
     <Layout />
-  </App>
+  </Global>
 );
 ```
 
@@ -314,7 +314,7 @@ A component provides itself and what it owns to everything below, so any compone
 
 ```tsx
 function Avatar() {
-  const { user } = Session.get(); // found through App
+  const { user } = Session.get(); // found through Global
   return <img src={`/avatars/${user}.png`} />;
 }
 ```

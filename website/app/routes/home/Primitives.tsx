@@ -511,14 +511,14 @@ const SharedCode = code /*tsx*/`
   }
 
   // One component at the top owns what the whole app shares.
-  class App extends Component {
+  class Global extends Component {
     session = new Session();
   }
 
   export default () => (
-    <App>
+    <Global>
       <Status />
-    </App>
+    </Global>
   );
 
   // Owned children are provided with their owner - reach by type.

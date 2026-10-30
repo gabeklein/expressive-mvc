@@ -6,14 +6,14 @@ import { Session } from './Session';
 import { Theme } from './Theme';
 import { Viewport } from './Viewport';
 
-class App extends Component {
+class Global extends Component {
   viewport = new Viewport();
   session = new Session();
   theme = new Theme();
 }
 
 export default () => (
-  <App>
+  <Global>
     <div className="container">
       <h1>App-wide state</h1>
       <p>
@@ -30,7 +30,7 @@ export default () => (
         reads - resize the window and just the first one moves.
       </small>
     </div>
-  </App>
+  </Global>
 );
 
 const Size = () => {
