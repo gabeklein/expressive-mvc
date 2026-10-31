@@ -165,7 +165,7 @@ increment(); // `this` is bound
 
 ### `Model.new()`
 
-Creates and activates an instance. Takes `Model.Args` - objects (initial values) and callbacks (lifecycle), processed in order; return handling in [Constructor Arguments](lifecycle.md#constructor-arguments).
+Creates and activates an instance. Takes `Model.Args` - objects (initial values), callbacks (lifecycle) and contexts (home), processed in order; return handling in [Constructor Arguments](lifecycle.md#constructor-arguments).
 
 ```ts
 const test = Test.new(
@@ -221,10 +221,10 @@ Model.on({
 ## Constructor Args (`Model.Args`)
 
 ```ts
-type Args<T> = (Args<T> | Init<T> | Assign<T> | void)[];
+type Args<T> = (Args<T> | Init<T> | Assign<T> | Context | void)[];
 ```
 
-Nested arrays (flattened at runtime), objects (assigned), and callbacks (lifecycle).
+Nested arrays (flattened at runtime), objects (assigned), callbacks (lifecycle), and contexts (home - the last wins; [context.md](context.md#context-arguments)).
 
 ## Observable / Event System
 

@@ -9,19 +9,45 @@ An owned instance's home is its owner's - lookups follow ownership, not where it
 | Activation path                              | Home becomes     |
 | -------------------------------------------- | ---------------- |
 | `Model.new()`                                | `Context.root`   |
+| `Model.new(context)`                         | That context     |
 | `new Context(StateClass)`                    | That context     |
 | `new Model()` then `new Context(instance)`   | That context     |
 | `<Component for={StateClass}>`               | Component context |
 
 > A bare `Model.new()` resolves its `get()` lookups against root but never registers there, so the first explicit context to claim it later still becomes its home. See [Root Context](#root-context).
 
-### Construct vs Activate
+### Context Arguments
 
-To choose a home other than root, pass a context to `.new()` - the instance is added there before init runs and removed when destroyed. Given several, the last wins:
+A `Context` among `.new()` or constructor arguments chooses the home: the instance is added there as it activates, before init runs, and removed when destroyed. What a context does depends on where it comes from:
+
+| Source                                                     | Effect                                  |
+| ---------------------------------------------------------- | --------------------------------------- |
+| Home given before activation - host, `ctx.add`, `ctx.push` | Wins - context arguments are ignored    |
+| Context arguments                                          | Last one becomes home                   |
+| Context returned from a callback or `setup` handler        | Adds an entry - home unchanged          |
+
+Arguments compose like overlays - later overrides earlier, so a helper's default context yields to the caller's. Several entries are opt-in, by returning them:
 
 ```ts
-const a = FormState.new(context); // a's home is context; get() resolves there
+FormState.new(context);                         // home: context
+FormState.new(Context.root);                    // findable from anywhere until destroyed
+FormState.new([Context.root, ...args]);         // default home; a context in args overrides it
+FormState.new(context, () => [Context.root]);   // home: context; also listed in root
+```
 
+A `Component` takes the context after props - added like any Model, so its siblings there see it. To mount one as a host does, under its own child context, push it:
+
+```ts
+Panel.new(props, context);                      // entry in context
+
+const panel = new Panel(props);
+const layer = context.push(panel, () => panel.set(null)); // own layer, as hosts mount
+layer.pop();                                    // unmount
+```
+
+### Construct vs Activate
+
+```ts
 // .new() alone activates immediately - init runs, and resolves get(), against root
 const b = FormState.new();
 new Context(b); // b's home from here, after init already ran without it
@@ -170,6 +196,7 @@ ctx.get(Type, callback, false);        // upstream only
 ctx.add(state, explicit?);             // register an instance
 ctx.push(input?, cleanup?);            // child context; input as constructor; owns classes, adopts instances; cleanup runs once on pop
 ctx.pop();                             // destroy this and descendants
+Type.new(context, ...args);            // home: last context argument - see Context Arguments
 Context.get(state);                    // static: state's home context
 Context.get();                         // static: current context, else root
 Context.root;                          // process-wide registry

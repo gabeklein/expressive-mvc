@@ -339,6 +339,19 @@ To choose the home up front, pass the context to `.new()` - the instance is plac
 const cart = Cart.new(context); // cart's home is context
 ```
 
+When more than one context is in play, where each comes from decides what it does:
+
+- **Placed before activation** - a host mounting the instance, or `ctx.add` / `ctx.push` before it activates. That placement is the home, and context arguments are ignored. This is how a component rendered by React keeps its own layer even though React hands its constructor the parent context.
+- **Context arguments** - the last one becomes the home. Arguments compose like initial values: later overrides earlier, so a helper's default yields to the caller's.
+- **Returned from a callback or `setup` handler** - adds the instance to that context too, without moving its home.
+
+```ts
+Cart.new([Context.root, ...args]); // root by default; a context in args overrides it
+Cart.new(context, () => [Context.root]); // home is context; also listed in root
+```
+
+A component given a context this way - `Panel.new(props, context)` - is added to it like any instance, visible to its siblings there. To mount one as a host would, under its own layer, push it: `context.push(new Panel(props))`.
+
 Or construct without activating - `new Model()` builds the instance, so the first explicit placement gets to claim it before anything runs:
 
 ```ts
