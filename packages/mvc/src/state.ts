@@ -163,7 +163,7 @@ declare namespace Model {
   type Property<T> = Exclude<keyof T, keyof Model>;
 
   /** Managed subset of Property<T> - excludes unmanaged `_` keys. **/
-  type Field<T> = Exclude<Property<T>, `_${string}`>;
+  type Field<T> = Exclude<Property<T>, `_${string}` | 'then'>;
 
   /** Any valid key for state, including but not limited to Field<T>. */
   type Event<T = Model> = Field<T> | number | symbol | (string & {});
@@ -677,7 +677,7 @@ function init(state: Model, ...args: Model.Args) {
 
       if (!('value' in desc) || !desc.configurable) continue;
 
-      if (key[0] == '_') unmanaged(state, key, desc.value);
+      if (key[0] == '_' || key == 'then') unmanaged(state, key, desc.value);
       else apply(state, key, desc, true);
     }
   }
@@ -1240,9 +1240,10 @@ function assign(state: Model, data: Model.Assign<Model>, silent?: boolean) {
   for (const key in data) {
     const bind = methods.get(key);
 
-    if (bind) bind.call(state, data[key]);
+    if (key === 'is' || key === 'then') continue;
+    else if (bind) bind.call(state, data[key]);
     else if (getters?.has(key)) continue;
-    else if (key in state && key !== 'is') {
+    else if (key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
       const set = desc.set as (value: any, silent?: boolean) => void;
 
