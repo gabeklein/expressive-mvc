@@ -18,13 +18,13 @@ An owned instance's home is its owner's - lookups follow ownership, not where it
 
 ### Context Arguments
 
-A `Context` among `.new()` or constructor arguments chooses the home: the instance is added there as it activates, before init runs, and removed when destroyed. What a context does depends on where it comes from:
+A `Context` among `.new()` or constructor arguments chooses the home: the instance is added there as it activates, before its instructions and arguments apply, and removed when destroyed - `ctx.pop()` removes the entry, not the instance. What a context does depends on where it comes from:
 
 | Source                                                     | Effect                                  |
 | ---------------------------------------------------------- | --------------------------------------- |
-| Home given before activation - host, `ctx.add`, `ctx.push` | Wins - context arguments are ignored    |
+| Home given before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push` | Wins - context arguments are ignored |
 | Context arguments                                          | Last one becomes home                   |
-| Context returned from a callback or `setup` handler        | Adds an entry - home unchanged          |
+| Context returned from a callback or `setup` handler        | Adds an entry - home only if it has none |
 
 Arguments compose like overlays - later overrides earlier, so a helper's default context yields to the caller's. Several entries are opt-in, by returning them:
 

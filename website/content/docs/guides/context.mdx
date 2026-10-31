@@ -329,7 +329,9 @@ Session.new(Context.root);
 
 A full app built the provided way (viewport, session, and theme) is at [composition/globals](/examples/composition/globals).
 
-### Homes are permanent
+<br />
+
+## Placing instances
 
 Where an instance activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A `Model.new()` only *falls back* to root, so the first explicit context to claim it later still becomes its home, though its initialization already ran without it.
 
@@ -343,14 +345,16 @@ When more than one context is in play, where each comes from decides what it doe
 
 - **Placed before activation** - a host mounting the instance, or `ctx.add` / `ctx.push` before it activates. That placement is the home, and context arguments are ignored. This is how a component rendered by React keeps its own layer even though React hands its constructor the parent context.
 - **Context arguments** - the last one becomes the home. Arguments compose like initial values: later overrides earlier, so a helper's default yields to the caller's.
-- **Returned from a callback or `setup` handler** - adds the instance to that context too, without moving its home.
+- **Returned from a callback or `setup` handler** - adds the instance to that context too. It becomes the home only if nothing else has.
 
 ```ts
 Cart.new([Context.root, ...args]); // root by default; a context in args overrides it
 Cart.new(context, () => [Context.root]); // home is context; also listed in root
 ```
 
-A component given a context this way - `Panel.new(props, context)` - is added to it like any instance, visible to its siblings there. To mount one as a host would, under its own layer, push it: `context.push(new Panel(props))`.
+A component given a context this way - `Panel.new(props, context)` - is added to it like any instance, visible to its siblings there. To mount one as a host would, under its own layer, push it with a cleanup: `context.push(panel, () => panel.set(null))`.
+
+An entry lasts until the instance is destroyed. Popping the context removes the entry but leaves the instance alive - destroy it with `set(null)` to release it.
 
 Or construct without activating - `new Model()` builds the instance, so the first explicit placement gets to claim it before anything runs:
 

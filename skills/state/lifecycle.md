@@ -63,7 +63,7 @@ class Timer extends Model {
 
 `Model.new()` accepts `Model.Args`, processed in order during activation:
 
-- `function` - called with `this` as the instance; may return a cleanup function, a plain object to assign, an array to process, a `Context` to add the instance to (home unchanged), or a Promise - any other object, the instance included, is ignored
+- `function` - called with `this` as the instance; may return a cleanup function, a plain object to assign, an array to process, a `Context` to add the instance to (its home only if it has none), or a Promise - any other object, the instance included, is ignored
 - `object` - assigned to instance properties
 - `array` - flattened and re-processed
 - `Context` - home context; the last one wins, ignored if a host placed the instance first ([context.md](context.md#context-arguments))
