@@ -22,7 +22,7 @@ A `Context` among `.new()` or constructor arguments chooses the home: the instan
 
 | Source                                                     | Effect                                  |
 | ---------------------------------------------------------- | --------------------------------------- |
-| Home given before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push` | Wins - context arguments are ignored |
+| Home given before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, a placed owner | Wins - context arguments are ignored |
 | Context arguments                                          | Last one becomes home                   |
 | Context returned from a callback or `setup` handler        | Adds an entry - home only if it has none |
 
@@ -33,6 +33,14 @@ FormState.new(context);                         // home: context
 FormState.new(Context.root);                    // findable from anywhere until destroyed
 FormState.new([Context.root, ...args]);         // default home; a context in args overrides it
 FormState.new(context, () => [Context.root]);   // home: context; also listed in root
+```
+
+An owned child's home is its owner's, so only a returned context reaches it. `Child.new(ctx)` in a field is a guest - homed in `ctx`, never destroyed with the parent:
+
+```ts
+class App extends Model {
+  session = new Session(() => [Context.root]);  // owned; also listed in root until destroyed
+}
 ```
 
 A `Component` takes the context after props - added like any Model, so its siblings there see it. To mount one as a host does, under its own child context, push it:
