@@ -28,7 +28,7 @@ type ForProps<T extends Model> = {
 } & (
   | { for: Model.Extends<T>; is?: (instance: T) => Model.Assign<T> | void }
   | { for: T | undefined; is?: never }
-) & { [K in Exclude<keyof T, keyof Model> & Acceptable<T>]?: T[K] };
+) & { [K in Acceptable<Pick<T, Exclude<keyof T, keyof Model>>>]?: T[K] };
 
 declare namespace Component {
   /**
@@ -67,7 +67,7 @@ declare namespace Component {
   }
 
   type ModelProps<T extends Model> = {
-    [K in Exclude<keyof T, keyof Component> & Acceptable<T>]?: T[K];
+    [K in Acceptable<Pick<T, Exclude<keyof T, keyof Component>>>]?: T[K];
   };
 
   /** @deprecated Renamed to `ModelProps`. */

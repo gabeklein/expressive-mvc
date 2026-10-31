@@ -239,6 +239,19 @@ describe('element props', () => {
     (() => <Bar id={2} />);
   });
 
+  it('will infer generic props', () => {
+    class Table<T> extends Component {
+      rows: T[] = [];
+      pick?: (row: T) => void = undefined;
+    }
+
+    render(<Table rows={[{ name: 'a' }]} pick={(row) => row.name} />);
+    render(<Table<{ name: string }> rows={[]} pick={(row) => row.name} />);
+
+    // @ts-expect-error - row is inferred from rows
+    (() => <Table rows={[{ name: 'a' }]} pick={(row) => row.age} />);
+  });
+
   it('will trigger set instruction', () => {
     class Foo extends Component {
       value = set('foobar', didSet);
