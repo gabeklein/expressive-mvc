@@ -89,18 +89,19 @@ declare namespace Model {
   type Type<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
-  /** Model constructor arguments */
+  /** Model constructor arguments - the last `Context` given becomes the home, unless already placed. */
   type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | Context | void)[];
 
   /**
    * Model constructor callback - runs during activation, in argument order,
    * before the `new()` lifecycle hook (so it may configure state `new()`
-   * will observe). Returned function will run when state is destroyed.
+   * will observe). Returned function will run when state is destroyed;
+   * a returned `Context` lists the instance there too.
    */
   type Init<T extends Model = Model> = (
     this: T,
     thisArg: T
-  ) => Promise<void> | (() => void) | Args<T> | Overlay<T> | void;
+  ) => Promise<void> | (() => void) | Args<T> | Overlay<T> | Context | void;
 
   /** Lifecycle handlers for `Model.on`, keyed by when they run. */
   interface On<T extends Model = Model> {
@@ -117,7 +118,7 @@ declare namespace Model {
      * before constructor args and `new()`. May return a cleanup, constructor
      * args, or an assign overlay.
      */
-    setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Overlay<T>;
+    setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Overlay<T> | Context;
 
     /**
      * Per-instance, once ready - after own values are observed, constructor
@@ -527,7 +528,7 @@ abstract class Model {
    *
    * **Important** - Unlike `new this(...)` - this method also activates state.
    *
-   * @param args - arguments sent to constructor
+   * @param args - arguments sent to constructor; a `Context` among them becomes its home
    */
   static new<T extends Model>(this: Model.Type<T>, ...args: Model.Args<T>): T {
     const instance = new this(...args);

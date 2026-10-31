@@ -3292,9 +3292,25 @@ describe('context argument', () => {
 
   it('will place from a returned context', () => {
     const context = new Context();
-    const theme = Theme.new(() => [context]);
+    const theme = Theme.new(() => context);
 
     expect(context.get(Theme)).toBe(theme);
+    expect(Context.get(theme)).toBe(context);
+  });
+
+  it('will resolve a consumer placed before its provider', () => {
+    class Panel extends Model {
+      theme = get(Theme, false);
+    }
+
+    const context = new Context();
+    const panel = Panel.new(context);
+
+    expect(panel.theme).toBe(undefined);
+
+    const theme = Theme.new(context);
+
+    expect(panel.theme).toBe(theme);
   });
 
   it('will add a returned context without changing home', () => {

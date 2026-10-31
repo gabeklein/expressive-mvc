@@ -1501,6 +1501,23 @@ describe('owner', () => {
     expect(inner.get(Component)).toBe(outer);
   });
 
+  it('will not add hosted Component to its parent context', () => {
+    let outer!: Outer;
+    let inner!: Inner;
+
+    class Inner extends Component {}
+    class Outer extends Component {
+      render() {
+        return <Inner is={(i) => void (inner = i)} />;
+      }
+    }
+
+    render(<Outer is={(o) => void (outer = o)} />);
+
+    expect(Context.get(outer).get(Inner, false)).toBeUndefined();
+    expect(Context.get(inner).parent).toBe(Context.get(outer));
+  });
+
   it('will report and drop hosted Components', async () => {
     const owned = vi.fn();
     const dropped = vi.fn();
