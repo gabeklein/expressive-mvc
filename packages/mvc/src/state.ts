@@ -743,7 +743,13 @@ function init(state: Model, ...args: Model.Args) {
 
       o.wait = undefined;
       after.forEach((handler) => ready(state, handler));
-      wait?.forEach((fn) => fn());
+      wait?.forEach((fn) => {
+        try {
+          fn();
+        } catch (err) {
+          report('effect', state, err);
+        }
+      });
     }];
 
     const advance = (from: number) => capture((release) => {

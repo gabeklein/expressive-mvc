@@ -4056,6 +4056,35 @@ describe('on setup / ready stages (static)', () => {
     await expect(test.get()).rejects.toThrow(`${test} is destroyed.`);
   });
 
+  it('will resolve awaited values if a deferred effect throws', async () => {
+    const done = mockPromise();
+    const handler = vi.fn();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      foo = 'foo';
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ catch: handler });
+
+    const test = Test.new();
+
+    test.get(() => { throw new Error('first run'); });
+    test.get(effect);
+
+    const settled = test.get();
+
+    done.resolve();
+
+    expect(await settled).toEqual({ foo: 'foo' });
+    expect(effect).toBeCalledTimes(1);
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'first run' }), 'effect', undefined);
+  });
+
   it('will resolve awaited values as a frozen plain tree', async () => {
     const done = mockPromise();
 
