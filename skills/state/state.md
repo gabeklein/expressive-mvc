@@ -94,6 +94,8 @@ class Job extends Model {
 }
 ```
 
+`then` is reserved the same way, without the prefix: a `then` field or method is unmanaged, non-enumerable and never overlaid, so a class may make its instances thenable without the function becoming state.
+
 `#private` is for logic only. Computeds and effects run against the tracking subject, not the instance, so `this.#x` there throws. Methods and `_` accessors are bound to the instance - a `_` getter is the bridge from `#private` to reactive code:
 
 ```ts

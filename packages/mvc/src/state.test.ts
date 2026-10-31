@@ -2751,6 +2751,56 @@ describe('unmanaged keys', () => {
     });
   });
 
+  it('will not manage or enumerate a then field', async () => {
+    class Test extends Model {
+      value = 1;
+      then = (resolve: (value: number) => void) => resolve(this.value);
+    }
+
+    const test = Test.new();
+    const then = test.then;
+
+    expect(await test).toBe(1);
+    expect(test.then).toBe(then);
+    expect(test.get()).toEqual({ value: 1 });
+    expect(Object.keys(test)).toEqual(['value']);
+    expect(Object.getOwnPropertyDescriptor(test, 'then')).toMatchObject({
+      enumerable: false,
+      configurable: true
+    });
+  });
+
+  it('will not overlay a then field', async () => {
+    class Test extends Model {
+      value = 1;
+      then = (resolve: (value: string) => void) => resolve('own');
+    }
+
+    const test = Test.new({ value: 2, then: () => {} } as Model.Assign<Test>);
+
+    expect(test.value).toBe(2);
+    expect(await test).toBe('own');
+
+    test.set({ then: () => {} } as Model.Assign<Test>);
+
+    expect(await test).toBe('own');
+    await expect(test).not.toHaveUpdated();
+  });
+
+  it('will not overlay a then method', async () => {
+    class Test extends Model {
+      value = 1;
+
+      then(resolve: (value: string) => void) {
+        resolve('own');
+      }
+    }
+
+    const test = Test.new({ then: () => {} } as Model.Assign<Test>);
+
+    expect(await test).toBe('own');
+  });
+
   it('will write _ keys thru a subscriber', async () => {
     class Test extends Model {
       value = 1;
