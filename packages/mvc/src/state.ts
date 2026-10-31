@@ -16,6 +16,9 @@ const define = Object.defineProperty;
 /** Register for all active states via string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
 
+/** Activation step which waits for pending setup before continuing. */
+const HOLD = Symbol('hold');
+
 /** Internal state assigned to states. */
 const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
@@ -288,14 +291,15 @@ abstract class Model {
    *
    * It is recommended you protect this method.
    */
-  protected new?(): void | (() => void);
+  protected new?(): void | (() => void) | Promise<void>;
 
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
+   * Awaited, resolves with them once the instance is ready - rejecting if destroyed first.
    *
    * @returns Object with all values from this state.
    **/
-  get(): Model.Values<this>;
+  get<T extends Model>(this: T): Model.Values<T> & PromiseLike<Model.Values<T>>;
 
   /**
    * Run a function to run automatically when accessed values change.
@@ -332,14 +336,14 @@ abstract class Model {
   /**
    * Check if state is destroyed.
    *
-   * @param status - `null` to check if state is destroyed.
-   * @returns `true` if state is destroyed, `false` otherwise.
+   * @param status - `null` for destroy.
    */
   get(status: null): boolean;
 
   /**
-   * Callback when state is to be destroyed.
+   * Callback when state is destroyed.
    *
+   * @param status - `null` for destroy.
    * @param callback - Function to call when state is destroyed.
    * @returns Function to cancel listener.
    */
@@ -420,10 +424,10 @@ abstract class Model {
       return typeof arg2 == 'function'
         ? Context.get(self).get(arg1, arg2, args[0], self)
         : within(this, () => (arg1.get as Function)(arg2, ...args));
-    if (typeof arg1 == 'function') return watch(self, unbind(arg1));
+    if (typeof arg1 == 'function') return watch(self, unbind(arg1), undefined, undefined, true);
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
-    return access(self, arg1, arg2);
+    return access(self, arg1 as string, arg2);
   }
 
   /**
@@ -652,6 +656,52 @@ function callback<T extends Model>(
   return listener(self, (key) => cb.call(self, key, self), select);
 }
 
+function ready(state: Model, handler: NonNullable<Model.On['ready']>) {
+  capture((release) => {
+    listener(state, () => release(null), null);
+
+    const out = handler.call(state, state);
+
+    if (typeof out == 'function') listener(state, out, null);
+  });
+}
+
+function register(state: Model) {
+  if (Context.get(state) !== Context.root) return;
+
+  const type = state.constructor as typeof Model;
+  const g = type.global;
+
+  if (!(typeof g == 'function' ? g(state) : g)) return;
+
+  if (!Object.prototype.hasOwnProperty.call(type, 'global'))
+    throw new Error(
+      `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
+    );
+
+  for (let T: Model.Extends = type; T !== Model; T = Object.getPrototypeOf(T)) {
+    const found = Context.root.get(T, false);
+
+    if (found && (T === type || found.constructor === T))
+      throw new Error(
+        `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
+      );
+  }
+
+  return Context.root.add(state);
+}
+
+function observe(state: Model) {
+  for (const key in state) {
+    const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
+
+    if (!('value' in desc) || !desc.configurable) continue;
+
+    if (key[0] == '_') unmanaged(state, key, desc.value);
+    else apply(state, key, desc, true);
+  }
+}
+
 /**
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
@@ -671,42 +721,6 @@ function init(state: Model, ...args: Model.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
-  function observe() {
-    for (const key in state) {
-      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
-
-      if (!('value' in desc) || !desc.configurable) continue;
-
-      if (key[0] == '_') unmanaged(state, key, desc.value);
-      else apply(state, key, desc, true);
-    }
-  }
-
-  function register() {
-    if (Context.get(state) !== Context.root) return;
-
-    const type = state.constructor as typeof Model;
-    const g = type.global;
-
-    if (!(typeof g == 'function' ? g(state) : g)) return;
-
-    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
-      throw new Error(
-        `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
-      );
-
-    for (let T: Model.Extends = type; T !== Model; T = Object.getPrototypeOf(T)) {
-      const found = Context.root.get(T, false);
-
-      if (found && (T === type || found.constructor === T))
-        throw new Error(
-          `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
-        );
-    }
-
-    return Context.root.add(state);
-  }
-
   listener(state, (key) => {
     const rest = trailing(state);
 
@@ -721,23 +735,55 @@ function init(state: Model, ...args: Model.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const queue = [...before, observe, ...args, ...after, register];
+    const [params, create] = args;
+    const waits: Promise<unknown>[] = [];
+    const queue: unknown[] = [...before, observe, params, register, HOLD, create, HOLD, () => {
+      const o = observer(state, true);
+      const { wait } = o;
 
-    capture((release) => {
+      o.wait = undefined;
+      after.forEach((handler) => ready(state, handler));
+      wait?.forEach((fn) => {
+        try {
+          fn();
+        } catch (err) {
+          report('effect', state, err);
+        }
+      });
+    }];
+
+    const advance = (from: number) => capture((release) => {
       listener(state, () => release(null), null);
 
-      for (let i = 0; i < queue.length; i++) {
+      for (let i = from; i < queue.length; i++) {
         const arg = queue[i];
+
+        if (arg === HOLD) {
+          if (!waits.length) continue;
+
+          observer(state, true).wait ||= new Set();
+
+          Promise.all(waits.splice(0)).then(() => {
+            if (observer(state) !== null) advance(i + 1);
+          }, () => event(state, null));
+
+          return;
+        }
+
         const called = typeof arg == 'function';
         const out = called ? arg.call(state, state) : arg;
 
-        if (out instanceof Promise)
+        if (out instanceof Promise) {
+          waits.push(out);
           out.catch((err) => report('setup', state, err));
+        }
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
       }
     });
+
+    advance(0);
 
     if (owns) {
       owns.add(state);
@@ -788,7 +834,7 @@ function unmanaged(state: Model, key: string, value: unknown) {
 function bootstrap(T: Model.Extends) {
   const chain = [] as Model.Extends[];
   const before = new Set<Model.Init>();
-  const after = new Set<Model.Init>();
+  const after = new Set<NonNullable<Model.On['ready']>>();
   const onType = new Set<NonNullable<Model.On['type']>>();
   let keys = new Map<string, (value: any) => void>();
   let getters = new Map<string, () => unknown>();
@@ -1158,7 +1204,41 @@ function owned(state: Model, callback: (child: Model) => void | (() => void)) {
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
 
-function values<T extends Model>(state: T): Model.Values<T> {
+function pending(state: Model) {
+  return observer(state)?.wait;
+}
+
+function values<T extends Model>(state: T) {
+  const out = (pending(state) ? {} : snapshot(state)) as Model.Values<T>;
+
+  define(out, 'then', {
+    value: (
+      onFulfilled?: (value: Model.Values<T>) => unknown,
+      onRejected?: (reason: unknown) => unknown
+    ) => settled(state).then(onFulfilled, onRejected)
+  });
+
+  return Object.freeze(out) as Model.Values<T> & PromiseLike<Model.Values<T>>;
+}
+
+function settled<T extends Model>(state: T) {
+  return new Promise<Model.Values<T>>((resolve, reject) => {
+    const o = observer(state);
+    const fail = () => reject(new Error(`${state} is destroyed.`));
+
+    if (o === null) return fail();
+    if (!o?.wait) return resolve(Object.freeze(snapshot(state)));
+
+    const off = listener(state, fail, null);
+
+    o.wait.add(() => {
+      off();
+      resolve(Object.freeze(snapshot(state)));
+    });
+  });
+}
+
+function snapshot<T extends Model>(state: T): Model.Values<T> {
   const values = {} as any;
   let notRecursive;
 
@@ -1171,6 +1251,8 @@ function values<T extends Model>(state: T): Model.Values<T> {
 
   for (let [key, value] of state) {
     if (EXPORT.has(value)) value = EXPORT.get(value);
+    else if (value instanceof Model)
+      value = Object.freeze(pending(value) ? {} : snapshot(value));
     else if (
       value &&
       typeof value == 'object' &&
@@ -1184,7 +1266,7 @@ function values<T extends Model>(state: T): Model.Values<T> {
 
   if (notRecursive) EXPORT = undefined;
 
-  return Object.freeze(values);
+  return values;
 }
 
 function access(state: Model, property: string, required?: boolean) {

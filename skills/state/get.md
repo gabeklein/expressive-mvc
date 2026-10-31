@@ -7,10 +7,12 @@ Instance method for reading values, running effects, checking status, and fetchi
 ### Export all values
 
 ```ts
-get(): Model.Values<this>
+get(): Model.Values<this> & PromiseLike<Model.Values<this>>
 ```
 
 Returns a frozen plain object of all managed values - including non-enumerable `set()` / `ref` fields; lazy factories and computeds appear once computed. Recursively exports child instances; exotic values (ref, etc.) unwrap via their `.get()`. Circular references (parent/child loops) return the same exported object.
+
+Awaitable: `await state.get()` resolves with the values once the instance is ready - activation, plus any async setup ([lifecycle.md](lifecycle.md)) - and rejects if it is destroyed first. While setup is pending the synchronous snapshot is empty. The resolved object is plain, not thenable.
 
 ```ts
 const values = state.get();
@@ -70,7 +72,7 @@ const stop = state.get((current, update) => {
 
 **Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) - synchronously or after an `await` - pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
 
-**Before ready:** effects registered in constructors wait for activation before first run.
+**Before ready:** effects registered during construction wait for the instance to settle - activation, plus any async setup (an `async new()`, a setup step returning a promise) - before first run. So does one registered while that setup is pending. `await state.get()` is the wait for an instance to be ready: it resolves with its values once settled and rejects if the instance is destroyed first, including by a rejected setup.
 
 **Await the release:** `await state.get(effect)` cancels the effect once it settles and yields the latest clean run - a one-shot read of tracked state that suspends until it can complete. Only an async effect yields a value; a sync one resolves `undefined`, its cleanup called with `false`.
 
@@ -90,23 +92,13 @@ To watch a specific property or event, use [`set(event, callback)`](set.md).
 
 ```ts
 get(status: null): boolean
-```
-
-`true` if destroyed.
-
-```ts
-if (state.get(null)) console.log('state is dead');
-```
-
-### Destroy callback
-
-```ts
 get(status: null, callback: () => void): () => void
 ```
 
-Runs `callback` on destruction. Returns unsubscribe.
+Without a callback, whether the instance is destroyed; with one, runs `callback` when it is. Returns unsubscribe.
 
 ```ts
+if (state.get(null)) console.log('state is dead');
 const stop = state.get(null, () => console.log('destroyed'));
 ```
 
