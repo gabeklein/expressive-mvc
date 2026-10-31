@@ -3995,6 +3995,115 @@ describe('on setup / ready stages (static)', () => {
     expect(ready).toBe(true);
   });
 
+  it('will resolve awaited values at once when ready', async () => {
+    class Test extends Model {
+      foo = 'foo';
+    }
+
+    const test = Test.new();
+    const values = await test.get();
+
+    expect(values).toEqual({ foo: 'foo' });
+    expect('then' in values).toBe(false);
+  });
+
+  it('will export an empty snapshot while an async new() is pending', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {
+      foo = 'foo';
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(Object.keys(test.get())).toEqual([]);
+    expect(Object.isFrozen(test.get())).toBe(true);
+
+    done.resolve();
+    await test.get();
+
+    expect(test.get()).toEqual({ foo: 'foo' });
+  });
+
+  it('will resolve awaited values once an async new() resolves', async () => {
+    const done = mockPromise();
+    let values: unknown;
+
+    class Test extends Model {
+      foo = 'foo';
+
+      protected async new() {
+        await done;
+        this.foo = 'bar';
+      }
+    }
+
+    const test = Test.new();
+    const settled = test.get().then((out) => { values = out; });
+
+    await flushMicrotasks();
+    expect(values).toBeUndefined();
+
+    done.resolve();
+    await settled;
+    expect(values).toEqual({ foo: 'bar' });
+
+    test.set(null);
+    await expect(test.get()).rejects.toThrow(`${test} is destroyed.`);
+  });
+
+  it('will resolve awaited values as a frozen plain tree', async () => {
+    const done = mockPromise();
+
+    class Child extends Model {
+      value = 1;
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+
+    expect(parent.get()).toEqual({ child: {} });
+
+    done.resolve();
+    await parent.child.get();
+
+    const values = await parent.get();
+
+    expect(values).toEqual({ child: { value: 1 } });
+    expect(Object.isFrozen(values)).toBe(true);
+    expect(Object.isFrozen(values.child)).toBe(true);
+    expect('then' in values).toBe(false);
+    expect('then' in values.child).toBe(false);
+    expect('then' in parent.get().child).toBe(false);
+  });
+
+  it('will reject awaited values if destroyed before an async new() resolves', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+    const settled = Promise.resolve(test.get());
+
+    test.set(null);
+    await expect(settled).rejects.toThrow(`${test} is destroyed.`);
+  });
+
   it('will destroy the instance if an async new() rejects', async () => {
     const handler = vi.fn();
     const effect = vi.fn();

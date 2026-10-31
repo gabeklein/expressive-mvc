@@ -191,6 +191,8 @@ const values = state.get();
 
 Returns a frozen plain object of current values. Exotic values (refs, computed) are unwrapped via their internal `.get()`. Recursive - exports child instances too. Handles circular references.
 
+The snapshot is also awaitable: `await state.get()` resolves with the values once the instance is ready, including after an `async new()`, and rejects if the instance is destroyed first.
+
 ### `get(key, required?)` - single property
 
 ```ts

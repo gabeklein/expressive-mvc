@@ -295,10 +295,11 @@ abstract class Model {
 
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
+   * Awaited, resolves with them once the instance is ready - rejecting if destroyed first.
    *
    * @returns Object with all values from this state.
    **/
-  get(): Model.Values<this>;
+  get<T extends Model>(this: T): Model.Values<T> & PromiseLike<Model.Values<T>>;
 
   /**
    * Run a function to run automatically when accessed values change.
@@ -1197,7 +1198,41 @@ function owned(state: Model, callback: (child: Model) => void | (() => void)) {
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
 let EXPORT: Map<any, any> | undefined;
 
-function values<T extends Model>(state: T): Model.Values<T> {
+function pending(state: Model) {
+  return observer(state)?.wait;
+}
+
+function values<T extends Model>(state: T) {
+  const out = (pending(state) ? {} : snapshot(state)) as Model.Values<T>;
+
+  define(out, 'then', {
+    value: (
+      onFulfilled?: (value: Model.Values<T>) => unknown,
+      onRejected?: (reason: unknown) => unknown
+    ) => settled(state).then(onFulfilled, onRejected)
+  });
+
+  return Object.freeze(out) as Model.Values<T> & PromiseLike<Model.Values<T>>;
+}
+
+function settled<T extends Model>(state: T) {
+  return new Promise<Model.Values<T>>((resolve, reject) => {
+    const o = observer(state);
+    const fail = () => reject(new Error(`${state} is destroyed.`));
+
+    if (o === null) return fail();
+    if (!o?.wait) return resolve(Object.freeze(snapshot(state)));
+
+    const off = listener(state, fail, null);
+
+    o.wait.add(() => {
+      off();
+      resolve(Object.freeze(snapshot(state)));
+    });
+  });
+}
+
+function snapshot<T extends Model>(state: T): Model.Values<T> {
   const values = {} as any;
   let notRecursive;
 
@@ -1210,6 +1245,8 @@ function values<T extends Model>(state: T): Model.Values<T> {
 
   for (let [key, value] of state) {
     if (EXPORT.has(value)) value = EXPORT.get(value);
+    else if (value instanceof Model)
+      value = Object.freeze(pending(value) ? {} : snapshot(value));
     else if (
       value &&
       typeof value == 'object' &&
@@ -1223,7 +1260,7 @@ function values<T extends Model>(state: T): Model.Values<T> {
 
   if (notRecursive) EXPORT = undefined;
 
-  return Object.freeze(values);
+  return values;
 }
 
 function access(state: Model, property: string, required?: boolean) {
