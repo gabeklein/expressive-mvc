@@ -1,5 +1,22 @@
 # @expressive/dom
 
+## 0.7.0
+
+### Minor Changes
+
+- [#551](https://github.com/gabeklein/expressive-mvc/pull/551) [`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f) Outside render, `Model.get()` no longer throws - it reads the root context, untracked, which may not be the instance the component rendered. Read it in render and use that in handlers. A class overriding static `get` keeps tracking.
+
+- [#567](https://github.com/gabeklein/expressive-mvc/pull/567) [`afd750c`](https://github.com/gabeklein/expressive-mvc/commit/afd750c8e6d3a35321daeb29e8e4c10a1e824d9d) `Model.get` no longer accepts a function: the computed (`Model.get(fn)`), effect (`fn` returning `null`) and async forms are removed, with `Model.ForceRefresh`, `Model.GetFactory` and `Model.GetEffect` (react) and `Model.ForceRefresh` and `Model.GetFactory` (dom). Destructure and derive in render, declare a getter on the Model, or move side effects to `mount()`.
+
+  `Model.get(true)` (required values, `Required<T>`) is removed. Hold a value that may be unset as a Model field - it joins its owner's context. Destructure it and render conditionally (`if (draft) return <Editor />`); the child reads it with `Draft.get()`. A value with its own view is a `Component`, placed as `{draft}`. `Model.get()` and `Model.get(false)` are unchanged.
+
+- [#565](https://github.com/gabeklein/expressive-mvc/pull/565) [`a6341f7`](https://github.com/gabeklein/expressive-mvc/commit/a6341f781df6bf5bddd61fd9bf50b6086e171583) `style()` maps address subcomponents by key. `_Title: { ... }` is the `Title` subcomponent's own map - base declarations for its roots, rules and tag matches for its output - resolved through the owner's class wherever it renders and composed through the class chain. Top-level rules still style `render()` output only. `_` plus a capital letter is reserved for this and throws when nested in a rule or written as an attribute on an element.
+
+### Patch Changes
+
+- Updated dependencies [[`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f), [`c052455`](https://github.com/gabeklein/expressive-mvc/commit/c0524556b85ad598b2f6db774b639627b61cb337)]:
+  - @expressive/mvc@0.92.0
+
 ## 0.6.0
 
 ### Minor Changes

@@ -1,5 +1,13 @@
 # @expressive/mvc
 
+## 0.92.0
+
+### Minor Changes
+
+- [#551](https://github.com/gabeklein/expressive-mvc/pull/551) [`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f) `Model.get` is defined in core and may be overridden: an override handles its own arguments, delegates base forms to `super.get(arg)`, and resolves its own by calling `Context.get(this, compute)` once, synchronously, to keep host context and render tracking - `User.get(id)`. `Context.get(Type, compute)` resolves such a lookup; bare `Context.get()` returns the current context, else root. `state.get(Type, ...args)` and a `get(Type, key, ...)` instruction call `Type.get` with that instance's context current and the instance as origin, so they follow an override. Elsewhere `Context.get` defers to the host's resolver - root by default; hosts install one with `resolver` from `@expressive/mvc/jsx-runtime` to supply render context and tracking. A tracked caller - a render, or `state.get(Type, ...)` through a tracking proxy - follows every lookup `compute` makes, so an override reading another type refreshes when that type's provider changes. An ambiguous `Model.get()` throws `Could not find` and `get(false)` returns `undefined` - `state.get(Type)` included, which returned `null`.
+
+- [#571](https://github.com/gabeklein/expressive-mvc/pull/571) [`c052455`](https://github.com/gabeklein/expressive-mvc/commit/c0524556b85ad598b2f6db774b639627b61cb337) A `get(Type, key, ...)` instruction resolves as its field is defined, so `new()` can read it; it ran after `new()` before. A `Type.get` that throws a Promise no longer throws it from construction - the field suspends readers and resolves once the Promise settles.
+
 ## 0.91.0
 
 ### Minor Changes

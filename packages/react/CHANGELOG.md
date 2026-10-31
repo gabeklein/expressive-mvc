@@ -1,5 +1,21 @@
 # @expressive/react
 
+## 0.93.0
+
+### Minor Changes
+
+- [#551](https://github.com/gabeklein/expressive-mvc/pull/551) [`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f) A class overriding static `Model.get` keeps tracking. Bare `Context.get()` returns the render's context as before. Outside a render, `Model.get()` and overrides of static `get` no longer throw an invalid hook call - they resolve from root, untracked, which may not be the instance the component rendered. Read it in render and use that in handlers.
+
+- [#567](https://github.com/gabeklein/expressive-mvc/pull/567) [`afd750c`](https://github.com/gabeklein/expressive-mvc/commit/afd750c8e6d3a35321daeb29e8e4c10a1e824d9d) `Model.get` no longer accepts a function: the computed (`Model.get(fn)`), effect (`fn` returning `null`) and async forms are removed, with `Model.ForceRefresh`, `Model.GetFactory` and `Model.GetEffect` (react) and `Model.ForceRefresh` and `Model.GetFactory` (dom). Destructure and derive in render, declare a getter on the Model, or move side effects to `mount()`.
+
+  `Model.get(true)` (required values, `Required<T>`) is removed. Hold a value that may be unset as a Model field - it joins its owner's context. Destructure it and render conditionally (`if (draft) return <Editor />`); the child reads it with `Draft.get()`. A value with its own view is a `Component`, placed as `{draft}`. `Model.get()` and `Model.get(false)` are unchanged.
+
+### Patch Changes
+
+- [#551](https://github.com/gabeklein/expressive-mvc/pull/551) [`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f) `Model.get()` refreshes on mount when its provider changed, or its lookup started failing, between render and commit; the change was dropped before.
+- Updated dependencies [[`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f), [`c052455`](https://github.com/gabeklein/expressive-mvc/commit/c0524556b85ad598b2f6db774b639627b61cb337)]:
+  - @expressive/mvc@0.92.0
+
 ## 0.92.0
 
 ### Minor Changes
