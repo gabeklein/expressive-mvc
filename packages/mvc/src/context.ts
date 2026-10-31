@@ -436,4 +436,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, HOME, host, join, resolver, within };
+export { Context, home, host, join, resolver, within };

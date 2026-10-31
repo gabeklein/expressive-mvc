@@ -1,4 +1,4 @@
-import { Context, HOME, host, join, within } from './context';
+import { Context, home, host, join, within } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -677,7 +677,7 @@ function init(state: Model, ...args: Model.Args) {
 
     if (key === null) return null;
 
-    if (target && !HOME.has(state)) place(state, target);
+    if (target && !home(state)) place(state, target);
 
     if (!PARENT.has(state)) parent(state, host(state) || null);
 

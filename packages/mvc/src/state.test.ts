@@ -3313,6 +3313,36 @@ describe('context argument', () => {
     expect(panel.theme).toBe(theme);
   });
 
+  it('will ignore context argument of child under a homed owner', () => {
+    class Child extends Model {}
+
+    const ignored = new Context();
+
+    class Owner extends Model {
+      child = new Child(ignored);
+    }
+
+    const context = new Context();
+    const owner = Owner.new(context);
+
+    expect(Context.get(owner.child)).toBe(context);
+    expect(ignored.get(Child, false)).toBeUndefined();
+  });
+
+  it('will place child under an owner with no home', () => {
+    class Child extends Model {}
+
+    const context = new Context();
+
+    class Owner extends Model {
+      child = new Child(context);
+    }
+
+    const owner = Owner.new();
+
+    expect(Context.get(owner.child)).toBe(context);
+  });
+
   it('will add a returned context without changing home', () => {
     const a = new Context();
     const b = new Context();
