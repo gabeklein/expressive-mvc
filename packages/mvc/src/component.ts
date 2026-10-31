@@ -1,4 +1,4 @@
-import { Context, join } from './context';
+import { join } from './context';
 import { element } from './element';
 import { listener } from './observable';
 import { set } from './field/set';
@@ -124,7 +124,7 @@ class Component<P = unknown> extends Model {
 
     super([
       props,
-      rest.filter((x) => !(x instanceof Context)),
+      rest,
       () => {
         const other = twin || PENDING.get(props)!;
 

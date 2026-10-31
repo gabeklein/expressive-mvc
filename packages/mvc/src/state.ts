@@ -1,4 +1,4 @@
-import { Context, host, join, within } from './context';
+import { Context, HOME, host, join, within } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -657,8 +657,6 @@ function init(state: Model, ...args: Model.Args) {
     else return arg;
   });
 
-  if (target) place(state, target);
-
   function observe() {
     for (const key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
@@ -677,6 +675,8 @@ function init(state: Model, ...args: Model.Args) {
     PENDING.delete(state);
 
     if (key === null) return null;
+
+    if (target && !HOME.has(state)) place(state, target);
 
     if (!PARENT.has(state)) parent(state, host(state) || null);
 

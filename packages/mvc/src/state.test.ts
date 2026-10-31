@@ -3296,6 +3296,51 @@ describe('context argument', () => {
 
     expect(context.get(Theme)).toBe(theme);
   });
+
+  it('will add a returned context without changing home', () => {
+    const a = new Context();
+    const b = new Context();
+    const theme = Theme.new(a, () => [b]);
+
+    expect(Context.get(theme)).toBe(a);
+    expect(b.get(Theme)).toBe(theme);
+  });
+
+  it('will add a context returned by setup', () => {
+    class Local extends Model {}
+
+    const a = new Context();
+    const b = new Context();
+    const stop = Local.on(() => [b]);
+    const local = Local.new(a);
+
+    stop();
+
+    expect(Context.get(local)).toBe(a);
+    expect(b.get(Local)).toBe(local);
+  });
+
+  it('will defer to a home given before activation', () => {
+    const a = new Context();
+    const b = new Context();
+    const theme = new Theme(b);
+
+    a.add(theme, true);
+    event(theme);
+
+    expect(Context.get(theme)).toBe(a);
+    expect(b.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will not throw if destroyed after context is popped', () => {
+    const context = new Context();
+    const theme = Theme.new(context);
+
+    context.pop();
+
+    expect(context.get(Theme, false)).toBeUndefined();
+    expect(() => theme.set(null)).not.toThrow();
+  });
 });
 
 describe('activation', () => {
