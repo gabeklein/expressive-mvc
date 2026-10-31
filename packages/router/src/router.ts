@@ -1,4 +1,4 @@
-import { Component, map, pending, set, Model } from '@expressive/mvc';
+import { Component, map, pending, set } from '@expressive/mvc';
 
 import type { Route } from './route';
 import {
@@ -18,8 +18,6 @@ import {
  * per-request `path`/`query` can't bleed across requests; provide a `Router`
  * per-request (`<Component for={Router} path={…}>`) to render a specific path there.
  */
-const clientOnly: Model.Global = () => typeof window !== 'undefined';
-
 interface Navigation {
   navigating: boolean;
   get(key: null): boolean;
@@ -44,10 +42,6 @@ const READY = new WeakSet<object>();
  * the edges either way.
  */
 export class Router extends Component {
-  /** The default router: a client-side singleton a `Route` resolves when no
-   * ambient `Router` is provided. See {@link clientOnly}. */
-  static readonly global = clientOnly;
-
   path = '/';
 
   /**

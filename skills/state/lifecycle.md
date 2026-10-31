@@ -5,7 +5,7 @@
 | Phase        | Trigger             | What Happens                                                                  |    Ready?    |
 | ------------ | ------------------- | ----------------------------------------------------------------------------- | :----------: |
 | Construction | `new Timer()`       | Listeners registered, nothing activated. Home context claimable.              |      NO      |
-| Activation   | `Model.new()`       | Properties managed, constructor args run, `new()` hook runs; a global's home locks to root | YES |
+| Activation   | `Model.new()`       | Properties managed, constructor args run, `new()` hook runs                   |     YES      |
 | Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run                        |     YES      |
 | Destruction  | `state.set(null)`   | Children destroyed first, listeners called, dispatch stops                    |  DESTROYED   |
 

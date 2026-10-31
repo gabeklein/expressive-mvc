@@ -153,10 +153,6 @@ Not supported by the public contract:
 Do not simulate these by relying on current normalization accidents - use the
 host/framework router until the feature lands.
 
-Server rendering does not register Router/BrowserRouter as a shared process
-global, so requests do not leak the default instance. This is crash and
-isolation safety, not an SSR routing system.
-
 On React Native use Router directly. BrowserRouter requires browser globals;
 Link and NavLinks render DOM elements, so native buttons call `goto` instead.
 

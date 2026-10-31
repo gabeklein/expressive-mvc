@@ -36,7 +36,7 @@ The most common failure when adopting this library is translating hooks one-for-
 
 For every stateful concern, pick exactly one owner:
 
-- **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. House style: the app entry is an FC - pure composition, with a last-resort boundary as `fallback`/`catch` on the top Component it mounts (`<Layout fallback={null}>`, `<BrowserRouter fallback={null}>`). App-wide logic is a `static global` Model, or `<Component for={Shared}>` to scope it to one tree.
+- **`Component`** - state intrinsic to one display subtree: inputs, panels, editors, review/confirm surfaces. Usually defines `render()`. Fields, handlers, and rendering live on one class. House style: the app entry is an FC - pure composition, with a last-resort boundary as `fallback`/`catch` on the top Component it mounts (`<Layout fallback={null}>`, `<BrowserRouter fallback={null}>`). App-wide state is Models owned by a render-less `Global` Component the app entry mounts at the top - it provides them to everything below. Its job is making `Session.get()` work anywhere, not being read itself - `Global.get().session` works but isn't the goal.
 - **`Model`** - headless domain model or workflow: network operations, domain rules, cross-view coordination. Views subscribe via `Model.get()`; an owning Component holds it as a field. Two roles: a *domain model* (`Cart`, `Message`, a pool row) outlives any one placement; a *control* (`Control`, `<Feature>Control` in apps) is constructed where a page, region or route places it, holds domain models as fields, and translates gestures into operations on them. Name a class for what it holds - `<Thing>State` and `<Feature>Control` are both fine, case by case.
 - **Plain function component** - simple presentation, or trivial local UI state. Not everything needs a class.
 
@@ -314,7 +314,7 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 - [state/set.md](state/set.md) - Instance `.set()` method: write values, listen to updates, events, destroy
 - [state/computed.md](state/computed.md) - Reactive class getters: tracking, caching, inheritance, suspense, when a derivation should stay local
 - [state/lifecycle.md](state/lifecycle.md) - Construction, activation, operation, destruction phases; hot patching and the `hot` seam
-- [state/context.md](state/context.md) - Context system, global root, home context, ownership rules, `Context.get`/`resolve`, writing a host
+- [state/context.md](state/context.md) - Context system, root context, home context, ownership rules, `Context.get`/`resolve`, writing a host
 - [state/types.md](state/types.md) - TypeScript type aliases and utility types
 
 Instructions: `field/*.md`, linked from the [helper table](#instructions--reactive-helpers).

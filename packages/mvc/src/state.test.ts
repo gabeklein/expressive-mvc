@@ -872,7 +872,6 @@ describe('get method', () => {
     class Foo extends Model {}
 
     class Bar extends Model {
-      static readonly global = true;
       value = 'bar';
     }
 
@@ -890,15 +889,6 @@ describe('get method', () => {
     class User extends Record {
       name = 'user';
     }
-
-    it('will get from root', () => {
-      const bar = Bar.new();
-
-      expect(Bar.get()).toBe(bar);
-      expect(Bar.get(false)).toBe(bar);
-
-      bar.set(null);
-    });
 
     it('will throw if not found', () => {
       expect(() => Foo.get()).toThrow('Could not find Foo in context.');

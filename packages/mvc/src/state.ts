@@ -93,16 +93,6 @@ declare namespace Model {
   type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | void)[];
 
   /**
-   * Value of `static global`. A boolean opts a Model in or out of the
-   * process-global root; a resolver decides at activation, receiving the
-   * instance and returning whether it registers - use it to make the choice
-   * conditional (e.g. per environment). A bare literal (`= true` / `= false`)
-   * seals the choice for subclasses; widen a subclass's `static global` type to
-   * `Model.Global` to permit a resolver or a later override.
-   */
-  type Global<T extends Model = any> = boolean | ((self: T) => boolean);
-
-  /**
    * Model constructor callback - runs during activation, in argument order,
    * before the `new()` lifecycle hook (so it may configure state `new()`
    * will observe). Returned function will run when state is destroyed.
@@ -258,18 +248,6 @@ declare namespace Model {
 }
 
 abstract class Model {
-  /**
-   * Whether an instance activated with no enclosing context registers itself
-   * to the process-global root, where `get()` can resolve it from anywhere.
-   * `false` (the default) keeps a context-less instance fully functional but
-   * private - not injectable, though it can still read declared globals. Opt in
-   * with `static readonly global = true`; a resolver (see {@link Model.Global})
-   * makes the choice conditional. It must be declared per class - a subclass
-   * that would inherit a global without its own declaration throws on
-   * activation, so an accidental global (a forgotten `<Component for>`, an
-   * extended global) cannot leak into the shared root.
-   */
-  static readonly global: Model.Global = false;
 
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
@@ -682,30 +660,6 @@ function init(state: Model, ...args: Model.Args) {
     }
   }
 
-  function register() {
-    if (Context.get(state) !== Context.root) return;
-
-    const type = state.constructor as typeof Model;
-    const g = type.global;
-
-    if (!(typeof g == 'function' ? g(state) : g)) return;
-
-    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
-      throw new Error(
-        `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
-      );
-
-    for (let T: Model.Extends = type; T !== Model; T = Object.getPrototypeOf(T)) {
-      const found = Context.root.get(T, false);
-
-      if (found && (T === type || found.constructor === T))
-        throw new Error(
-          `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
-        );
-    }
-
-    return Context.root.add(state);
-  }
 
   listener(state, (key) => {
     const rest = trailing(state);
@@ -721,7 +675,7 @@ function init(state: Model, ...args: Model.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const queue = [...before, observe, ...args, ...after, register];
+    const queue = [...before, observe, ...args, ...after];
 
     capture((release) => {
       listener(state, () => release(null), null);
@@ -815,6 +769,11 @@ function bootstrap(T: Model.Extends) {
     }
 
     for (const setupType of onType) setupType(type);
+
+    if (Object.prototype.hasOwnProperty.call(type, 'global'))
+      throw new Error(
+        `${type.name} declares \`static global\`, which was removed - provide it with <Component for>, or add it to Context.root explicitly.`
+      );
 
     METHODS.set(type, (keys = new Map(keys)));
     GETTERS.set(type, (getters = new Map(getters)));

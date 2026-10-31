@@ -9,7 +9,6 @@ import { flushMicrotasks, mockPromise, mount } from '../../test.setup';
 describe('MVC adapter', () => {
   it('will update when a Model fetched via this.get changes', async () => {
     class Auth extends Model {
-      static readonly global = true;
       name = 'foo';
     }
 
@@ -19,7 +18,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    const auth = Auth.new();
+    const auth = Auth.new((self) => Context.root.add(self, true));
     const [, root, release] = mount(View);
 
     expect(root.textContent).toBe('foo');

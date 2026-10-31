@@ -11,7 +11,7 @@ Each crawlable page exists to serve the source being demonstrated: prerendered o
 Declaration order:
 
 1. Imports, then module sentinels (constants).
-2. `export default` - a *frame* component: `<div className="container">` holding the `<h1>`, the descriptive `<p>`, the demo as an element (`<Dashboard />`), and any trailing `<small>` note. The export comes first because it is what the reader looks for; the only forced exception is a module sentinel calling `.new()` at eval time, whose class must sit above it.
+2. `export default` - a *frame* component: `<div className="container">` holding the `<h1>`, the descriptive `<p>`, the demo as an element (`<Dashboard />`), and any trailing `<small>` note. The export comes first because it is what the reader looks for; exceptions: a module sentinel calling `.new()` at eval time, whose class must sit above it, and a short class the export wraps - a long one moves to its own file.
 3. Supporting components and classes.
 4. Helper functions last.
 

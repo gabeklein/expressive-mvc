@@ -314,13 +314,13 @@ ctx.pop();                            // tear down this context and descendants
 Context.get(state);                   // static - a state's home context
 Context.get();                        // static - current context, else root
 Context.get(Type, compute);           // static - resolve a static get (overrides)
-Context.root;                         // global registry
+Context.root;                         // process-wide registry
 ```
 
 - A failed `ctx.get(Type)` throws `Could not find ${Type} in context.`
 - `ctx.push()` and the constructor accept a class, an instance, or an object of either. Every input is registered before any activates, so siblings resolve each other with `get`. Classes are constructed and activated, and destroyed when the context pops; instances you passed in are left alone. Keys only name a bad input in the error. Inputs are registered once - there is no reconciling a later set.
 - `ctx.push(input, cleanup)` runs `cleanup` once when the child context pops - directly or with an ancestor - before its inputs are removed or destroyed.
-- `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) bypass global eviction and win priority on lookup.
+- `ctx.add(state, explicit?)` registers without activating. Explicit entries (`true`) win priority on lookup.
 - `ctx.pop()` recursively destroys descendant contexts and runs all cleanup.
 - `state.get(Type, ...args)` and the `get` instruction resolve `Type.get` from `state`'s home context with `state` as origin, tracked through `state` when it is a tracking proxy.
 - Hosts install `resolver((Type, compute) => ...)` from `@expressive/mvc/jsx-runtime` to supply render context; its return value is what the caller receives. It is not consulted under an origin. Both hosts return the render's context for bare `Context.get()` in a render, and root elsewhere.
@@ -338,16 +338,16 @@ An instance's home is recorded once, at activation, and is permanent.
 
 > First-wins: once an instance has a home, no later context can transfer ownership.
 
-> A bare `Model.new()` resolves its `get()` lookups against root either way, but it only *registers* into root - becoming findable by others - when the class declares [`static global`](#root-context-and-globals).
+> A bare `Model.new()` resolves its `get()` lookups against root, but never registers there - see [Root context](#root-context).
 
 ### Construct vs activate
 
 The escape hatch for "create now, place later" is the difference between `new Model()` and `Model.new()`:
 
 ```ts
-// .new() activates immediately - home is root, locked
+// .new() activates immediately - init runs, and resolves get(), against root
 const a = FormState.new();
-new Context(a); // does NOT change a's home
+new Context(a); // a's home from here, after init already ran without it
 
 // new FormState() constructs without the activation event -
 // the first explicit Context claims it before init runs
@@ -372,58 +372,25 @@ ctx.get(Child); // the child instance - registered in ctx, not root
 
 Recursive: grandchildren inherit through their immediate parent. Reassigning a child field destroys the old child (if owned via `new Child()`) and registers the replacement in the same context; externally-assigned children are not destroyed on replacement.
 
-### Root context and globals
+### Root context
 
-`Context.root` is a regular `Context` instance serving as the global registry. An instance activated by `Model.new()` outside an explicit context resolves its own lookups against root either way, but it only *registers* here - becoming findable app-wide with no provider - when the class declares `static global`:
+`Context.root` is a regular `Context` instance, the process-wide registry every host's contexts descend from. An instance activated by `Model.new()` outside an explicit context resolves its own lookups against root, but never registers itself there.
+
+App-wide state belongs to a render-less `Global` Component at the app's top - what it owns is provided to everything below, so components read `Session.get()` directly rather than through `Global`. [See it in action](/examples/composition/globals).
+
+To make an instance findable from anywhere without a provider, add it explicitly. An explicit entry stays until removed, so tie removal to the instance's lifetime:
 
 ```ts
-class Theme extends Model {
-  static global = true;
-}
-
-const theme = Theme.new();
+const theme = Theme.new((self) => Context.root.add(self, true));
 Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
 ```
 
-Without the declaration, a context-less instance stays private. `static global` also takes a resolver (`self => boolean`) to decide at activation, and must be declared per class - a subclass that would be global purely by inheritance throws on activation.
-
-[See globals in action](/examples/composition/globals).
-
 > **Good to know:** <br />
-> Module-scope globals persist across tests. `Context.root.pop()` between tests clears them - see the [testing guide](/docs/guides/testing).
+> Instances held in root persist across tests. `Context.root.pop()` between tests clears them - see the [testing guide](/docs/guides/testing).
 
-### Global collision
+### Ambiguity
 
-A global may not shadow another. Activation throws if root already resolves the type - the same class, or an instance of a subclass - or if the new instance would hide an instance whose class is one of its supertypes:
-
-```ts
-const a = Sub.new(); // Sub and Base both declare `static global`
-Sub.new();           // throws - a already exists in root
-Base.new();          // throws - a resolves Base
-```
-
-Destroy the existing instance first (`a.set(null)`) to register another - for example, to replace a global with a subclass in a test.
-
-Sibling subtypes don't shadow each other - they collide only at their shared supertype, where both evict:
-
-```ts
-// Base is a widened global; each subtype re-declares (required on extend)
-class SubA extends Base { static readonly global = true; }
-class SubB extends Base { static readonly global = true; }
-
-const a = SubA.new();
-const b = SubB.new();
-
-Context.root.get(Base, false); // undefined - contested at Base
-Context.root.get(SubA);        // a - unambiguous
-Context.root.get(SubB);        // b - unambiguous
-```
-
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component for>`) bypasses eviction entirely; implicit and explicit entries coexist and explicit wins on lookup.
-
-### Ambiguity at non-root
-
-Scoped contexts use softer collision semantics: implicit candidates both stay registered, and a lookup at the shared ancestor returns `null` (ambiguous) rather than evicting. Removing one heals it:
+When implicit candidates share an ancestor type, both stay registered and a lookup at that ancestor returns `null` (ambiguous). Removing one heals it:
 
 ```ts
 class Parent extends Model {
@@ -436,8 +403,6 @@ ctx.get(Foo); // null - ambiguous
 ctx.get(Parent).foo = undefined;
 ctx.get(Foo); // the Bar instance - healed
 ```
-
-Root models "the global instance"; scoped contexts model "candidates available here". Different jobs, different rules.
 
 <br />
 

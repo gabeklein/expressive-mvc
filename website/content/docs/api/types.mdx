@@ -158,16 +158,6 @@ interface On<T> {
 
 Stage timing is covered under [`Model.on`](/docs/api/state#modelonhandler); `catch` kinds under [Error handling](/docs/api/state#error-handling).
 
-### `Model.Global<T>`
-
-Value of `static global`. A boolean opts a class in or out of the global root; a resolver decides per instance at activation.
-
-```ts
-type Global<T> = boolean | ((self: T) => boolean);
-```
-
-A bare literal (`static readonly global = true`) seals the choice for subclasses - widen a subclass's `static global` to `Model.Global` to allow a resolver or a later override. See [root context and globals](/docs/api/utilities#root-context-and-globals).
-
 ### `Model.Ref<T>`
 
 The exotic value a [`ref()`](/docs/api/instructions#ref) field holds - callable to assign, with the value on `current`:
