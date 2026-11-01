@@ -114,6 +114,17 @@ A number gets `px` only where the CSSOM rejects a bare one - probed once per pro
 
 Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged.
 
+For other units, `rem`, `em` and `px` suffix each number and join with spaces - plain strings, usable anywhere:
+
+```ts
+import { px, rem } from '@expressive/dom';
+
+style(Heading, { padding: rem(0.2, 0.45), border: `${px(1)} solid` });
+// padding: '0.2rem 0.45rem'
+```
+
+The `px` function is unrelated to the `px` macro key from `css` (horizontal padding).
+
 ### Typing
 
 Maps are typed: a bare key must be a CSS property or a macro declared in `macro.Registry`, `_name` opens a rule, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
