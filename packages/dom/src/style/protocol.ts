@@ -4,6 +4,7 @@ interface Block {
   declarations: Declaration;
   name: string;
   ordinal: number;
+  when?: readonly string[];
 }
 
 interface ResolvedAppearance {

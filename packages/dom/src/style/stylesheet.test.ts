@@ -58,6 +58,19 @@ describe('style map types', () => {
     expect([pack, wrong]).toHaveLength(2);
   });
 
+  it('will accept conditions holding maps', () => {
+    const map: style.Map = {
+      ':hover': { color: 'blue' },
+      '@media (max-width: 900px)': { _grid: { gap: '2px' } },
+      _control: { ':focus-within, :active': { color: 'navy' } }
+    };
+    // @ts-expect-error - a condition holds a map
+    const bare: style.Map = { ':hover': 'blue' };
+    const key: style.Condition = '@media print';
+
+    expect([map, bare, key]).toHaveLength(3);
+  });
+
   it('will declare a pack from its value', () => {
     const map: style.Map = { edge: 'Top', pill: 2, row: true };
     // @ts-expect-error - pill takes a number, so true is not a flag

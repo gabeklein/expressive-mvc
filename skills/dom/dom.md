@@ -102,6 +102,35 @@ Inline style always beats classes. Among classes, a caller's rule beats the call
 
 Build-time extraction is not part of the `0.1` experiment.
 
+### Conditions
+
+A key starting with `:` (state) or `@` (environment) holds a map that applies while the condition holds - at the top of a map (the component's roots), inside a rule, or nested in another condition:
+
+```tsx
+import { media } from '@expressive/dom';
+
+const mobile = media({ maxWidth: 900 });   // '@media (max-width: 900px)'
+
+style(Select, {
+  ':hover': { opacity: 1 },
+  _control: {
+    border: '1px solid var(--border)',
+    ':hover, :focus-within': { borderColor: 'var(--accent)' }
+  },
+  _grid: { gridTemplateColumns: '1fr 1fr' },
+  [mobile]: { padding: '4px', _grid: { gridTemplateColumns: '1fr' } }
+});
+```
+
+- Each condition is its own block, sorted right after the block it modifies. It adds no specificity, so doors and inline style win over it as over any rule.
+- A `,` in a `:` key lists alternatives (`:is(...)` stays whole); an `@` key is never split.
+- `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope. `_rule` inside a `:` condition (hover a parent, style a child) throws - not supported yet.
+- Macros expand inside a condition; one producing a class there throws.
+- The host decides what a condition means; CSS names are the vocabulary. Raw strings are fine in host-bound code. For maps meant to move between hosts, export named conditions (`mobile` above) from one style module, so another host can supply its own value under the same name.
+- Layers and subclasses merge a condition's body key by key, like a rule.
+
+The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and`.
+
 ### The web pack
 
 `css` is a macro pack shipped with the renderer. Registering it opts into pixel units for numbers and the axis shorthands CSS lacks:
@@ -129,7 +158,7 @@ The `px` function is unrelated to the `px` macro key from `css` (horizontal padd
 
 ### Typing
 
-Maps are typed: a bare key must be a CSS property or a macro declared in `macro.Registry`, `_name` opens a rule, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
+Maps are typed: a bare key must be a CSS property or a macro declared in `macro.Registry`, `_name` opens a rule, a `:` or `@` key holds a condition's map, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
 
 A pack declares what it registers:
 
