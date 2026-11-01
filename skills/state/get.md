@@ -74,6 +74,12 @@ const stop = state.get((current, update) => {
 
 **Await the release:** `await state.get(effect)` cancels the effect once it settles and yields the latest clean run - a one-shot read of tracked state that suspends until it can complete. Only an async effect yields a value; a sync one resolves `undefined`, its cleanup called with `false`.
 
+**Readiness:** an empty effect awaited is the wait for an instance to be ready - built, placed, its subtree included ([lifecycle.md](lifecycle.md#the-new-hook)). It rejects if the instance is destroyed first.
+
+```ts
+await state.get(() => {});
+```
+
 - idle - resolves at once with the latest run
 - run in flight, queued, or suspended - waits for it; a change arriving meanwhile re-runs first
 
