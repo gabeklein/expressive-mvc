@@ -2,9 +2,15 @@ import { describe, it, expect } from 'vitest';
 
 import type { macro, style } from './stylesheet';
 
+const sides = {
+  edge: (side: 'Top' | 'Left') => ({ [`border${side}`]: '1px solid' }),
+  _raised: { boxShadow: '0 1px 2px black' },
+  '*': (value: unknown, key: string) => ({ [key]: value })
+};
+
 declare module './stylesheet' {
   namespace macro {
-    interface Registry {
+    interface Registry extends macro.From<typeof sides> {
       pill(value: number): { marginLeft: string };
     }
   }
@@ -49,5 +55,15 @@ describe('style map types', () => {
     const wrong: macro.Map = { pill: (value: string) => ({ marginLeft: value }) };
 
     expect([pack, wrong]).toHaveLength(2);
+  });
+
+  it('will declare a pack from its value', () => {
+    const map: style.Map = { edge: 'Top', pill: 2 };
+    // @ts-expect-error - edge declared from its implementation
+    const wrong: style.Map = { edge: 'Bottom' };
+    // @ts-expect-error - rules and '*' are not macros
+    const rule: style.Map = { raised: true };
+
+    expect([map, wrong, rule, sides]).toHaveLength(4);
   });
 });

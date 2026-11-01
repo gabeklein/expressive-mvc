@@ -26,6 +26,14 @@ declare namespace macro {
    */
   interface Registry {}
 
+  /**
+   * Registry entries for the macros in a pack, so one line declares them all:
+   * `interface Registry extends macro.From<typeof pack> {}`.
+   */
+  type From<T> = {
+    [K in keyof T as K extends `_${string}` | `$${string}` | '*' ? never : K]: T[K];
+  };
+
   /** Maps one argument to style, or to keys which resolve further. */
   type Fn = (value: any, key: string) => unknown;
 
