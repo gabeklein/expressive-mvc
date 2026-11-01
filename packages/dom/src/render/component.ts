@@ -38,6 +38,14 @@ function mountFunction(value: VNode, parent: globalThis.Node, before: globalThis
   });
 }
 
+const PLACED = new WeakMap<Component, Promise<void>>();
+
+Component.on({
+  setup(self) {
+    return PLACED.get(self);
+  }
+});
+
 function mountOwnedComponent(
   value: VNode,
   parent: globalThis.Node,
@@ -47,11 +55,12 @@ function mountOwnedComponent(
   appearance?: Appearance
 ) {
   const resolved = componentProps(value.type, value.props, appearance);
-  const Type = value.type as new (props: unknown, place: () => Promise<void>) => Component;
+  const Type = value.type as new (props: unknown) => Component;
   const props = observe(resolved.props);
+  const instance = new Type(props);
   let place!: () => void;
-  const placed = new Promise<void>((resolve) => (place = resolve));
-  const instance = new Type(props, () => placed);
+
+  PLACED.set(instance, new Promise<void>((resolve) => (place = resolve)));
 
   return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props, place);
 }
@@ -121,11 +130,7 @@ function mountComponent(
       run(fiber, passiveRender);
     });
   } finally {
-    if (owned && !fiber.dead)
-      inserted(fiber, () => {
-        place!();
-        fiber.cleanup = instance.mount?.();
-      });
+    if (owned && !fiber.dead) inserted(fiber, place!);
   }
 
   return fiber;
@@ -184,7 +189,6 @@ function rerun(fiber: Fiber, run: () => void) {
 }
 
 function unmountComponent(fiber: Fiber) {
-  if (typeof fiber.cleanup == 'function') fiber.cleanup();
   fiber.childContext?.pop();
   if (fiber.owned && !fiber.instance!.get(null)) fiber.instance!.set(null);
 }

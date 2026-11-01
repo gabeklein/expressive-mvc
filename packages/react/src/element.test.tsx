@@ -385,33 +385,6 @@ describe('instance element', () => {
     expect(instance.get(null)).toBe(false);
   });
 
-  it('will not mount a placed instance', () => {
-    const didMount = vi.fn();
-
-    class Test extends Component {
-      mount() {
-        didMount();
-      }
-
-      render() {
-        return <span>hello</span>;
-      }
-    }
-
-    const instance = Test.new();
-    const element = render(
-      <>
-        <section>{instance}</section>
-        <aside>{instance}</aside>
-      </>
-    );
-
-    expect(didMount).not.toBeCalled();
-
-    element.unmount();
-
-    expect(instance.get(null)).toBe(false);
-  });
 
   it('will resolve ancestor provided at placement', async () => {
     class Theme extends Model {

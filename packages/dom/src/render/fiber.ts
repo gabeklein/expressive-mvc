@@ -32,7 +32,6 @@ interface Fiber {
   end: globalThis.Node;
   children: Fiber[];
   scope?: Scope;
-  cleanup?: (() => void) | void;
   release?: () => void;
   childContext?: Context;
   instance?: Component;

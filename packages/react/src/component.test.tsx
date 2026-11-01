@@ -1,6 +1,5 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { beforeEach, vi, expect, it, describe } from 'vitest';
-import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
 import { collect, mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly, suspender } from '../test.setup';
@@ -161,30 +160,7 @@ describe('new method', () => {
   });
 });
 
-describe('mount method', () => {
-  it.each([false, true])('will call once on commit and cleanup on unmount (strict: %s)', (reactStrictMode) => {
-    const didMount = vi.fn();
-    const didUnmount = vi.fn();
-
-    class Test extends Component {
-      mount() {
-        didMount();
-        return didUnmount;
-      }
-    }
-
-    const element = render(<Test />, { reactStrictMode });
-
-    element.rerender(<Test />);
-
-    expect(didMount).toBeCalledTimes(1);
-    expect(didUnmount).not.toBeCalled();
-
-    element.unmount();
-
-    expect(didUnmount).toBeCalledTimes(1);
-  });
-
+describe('effects at commit', () => {
   it.each([false, true])('will run an effect from new() once committed (strict: %s)', async (reactStrictMode) => {
     const effect = vi.fn();
 
@@ -200,23 +176,6 @@ describe('mount method', () => {
 
     await flushMicrotasks();
     expect(effect).toBeCalledTimes(1);
-  });
-
-  it('will not call during server render', () => {
-    const didMount = vi.fn();
-
-    class Test extends Component {
-      mount() {
-        didMount();
-      }
-
-      render() {
-        return <span>hello</span>;
-      }
-    }
-
-    expect(renderToString(<Test />)).toContain('<span>hello</span>');
-    expect(didMount).not.toBeCalled();
   });
 });
 
@@ -1350,13 +1309,13 @@ describe('for', () => {
     return <>{Session.get().name}</>;
   }
 
-  it('will construct, provide, mount and destroy a class', () => {
+  it('will construct, provide, release and destroy a class', async () => {
     const released = vi.fn();
     let session!: Owned;
 
     class Owned extends Session {
-      mount() {
-        return released;
+      protected new() {
+        this.get(() => released);
       }
     }
 
@@ -1368,6 +1327,7 @@ describe('for', () => {
 
     expect(screen).toHaveText('Ada');
 
+    await flushMicrotasks();
     view.unmount();
 
     expect(released).toBeCalledTimes(1);

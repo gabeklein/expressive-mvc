@@ -56,8 +56,8 @@ describe('component', () => {
     const cleanup = vi.fn();
 
     class Message extends Component {
-      mount() {
-        return cleanup;
+      protected new() {
+        this.get(() => cleanup);
       }
 
       render() {
@@ -132,9 +132,11 @@ describe('class element', () => {
       label = 'idle';
       count = 0;
 
-      mount() {
-        lifecycle.push('mount');
-        return () => lifecycle.push('unmount');
+      protected new() {
+        this.get(() => {
+          lifecycle.push('effect');
+          return () => lifecycle.push('cleanup');
+        });
       }
 
       render() {
@@ -146,14 +148,16 @@ describe('class element', () => {
     const release = render(<Panel label="busy" is={(value) => void (panel = value)} />, root);
 
     expect(root.textContent).toBe('busy:0');
-    expect(lifecycle).toEqual(['mount']);
+
+    await flushMicrotasks();
+    expect(lifecycle).toEqual(['effect']);
 
     panel.count = 2;
     await flushMicrotasks();
     expect(root.textContent).toBe('busy:2');
 
     release();
-    expect(lifecycle).toEqual(['mount', 'unmount']);
+    expect(lifecycle).toEqual(['effect', 'cleanup']);
     expect(panel.get(null)).toBe(true);
   });
 

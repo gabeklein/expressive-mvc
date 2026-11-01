@@ -45,8 +45,8 @@ describe('MVC adapter', () => {
         this.count++;
       }
 
-      mount() {
-        return cleanup;
+      protected new() {
+        this.get(() => cleanup);
       }
 
       render() {

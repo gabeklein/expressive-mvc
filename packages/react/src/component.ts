@@ -4,14 +4,6 @@ import { Runtime, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
   interface Component {
-    /**
-     * @deprecated An effect declared in `new()` waits for the same commit:
-     * `this.get(() => { ...; return cleanup })`. Still called once this
-     * Component commits, never during server render; its return runs on
-     * unmount.
-     */
-    mount?(): (() => void) | void;
-
     /** @deprecated Only to satisfy host JSX. Use `this.get(Model)` instead. */
     readonly context: Context;
     /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
@@ -131,12 +123,7 @@ function render(from: Component, context: Context) {
   const Component = () => {
     from = useWatch(from, () => {
       PLACE.get(owner)!();
-
-      const release = owner.mount?.();
-
       attempt?.commit();
-
-      return release;
     }, teardown);
 
     return createFrame(from, context, createElement(Render));

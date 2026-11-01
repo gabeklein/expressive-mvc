@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { flushMicrotasks, mockWarn } from '../test.setup';
+import { flushMicrotasks, mockPromise, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
 import { Model, event } from './state';
@@ -463,55 +463,72 @@ describe('for', () => {
       }
     }
 
-    const provider = Component.new({ for: Owned } as any) as any;
+    const placed = mockPromise<void>();
+
+    const stop = Component.on({ setup: () => placed });
+
+    Component.new({ for: Owned } as any);
+    stop();
 
     await flushMicrotasks();
     expect(effect).not.toBeCalled();
 
-    provider.mount();
+    placed.resolve();
 
     await flushMicrotasks();
     expect(effect).toBeCalledTimes(1);
   });
 
-  it('will mount only a class it constructed', () => {
-    const cleanup = vi.fn();
+  it('will hold only a class it constructed', async () => {
+    const effect = vi.fn();
 
     class Owned extends Model {
-      mount() {
-        return cleanup;
+      protected new() {
+        this.get(effect);
       }
     }
 
-    const owned = Component.new({ for: Owned } as any) as any;
-    const placed = Component.new({ for: Owned.new() } as any) as any;
-    const plain = Component.new({ for: Session } as any) as any;
+    const placed = mockPromise<void>();
 
-    owned.mount()();
-    placed.mount()();
-    plain.mount()();
+    const stop = Component.on({ setup: () => placed });
 
-    expect(cleanup).toBeCalledTimes(1);
+    Component.new({ for: Owned } as any);
+    Component.new({ for: Owned.new() } as any);
+    stop();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+
+    placed.resolve();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(2);
   });
 
-  it('will hand mount to the next class when for changes', async () => {
+  it('will release the next class at once when for changes', async () => {
     const log: string[] = [];
 
     const tracked = (name: string) => class extends Model {
-      mount() {
-        log.push(name + ':mount');
-        return () => log.push(name + ':unmount');
-      }
-
       protected new() {
+        this.get(() => {
+          log.push(name + ':effect');
+          return () => log.push(name + ':release');
+        });
         return () => log.push(name + ':destroy');
       }
     };
 
     const First = tracked('first');
     const Second = tracked('second');
+    const placed = mockPromise<void>();
+
+    const stop = Component.on({ setup: () => placed });
     const provider = Component.new({ for: First } as any) as any;
-    const release = provider.mount();
+
+    stop();
+    placed.resolve();
+    await flushMicrotasks();
+    expect(log).toEqual(['first:effect']);
 
     provider.props = { for: Second };
     await flushMicrotasks();
@@ -519,46 +536,14 @@ describe('for', () => {
     provider.props = { for: Session };
     await flushMicrotasks();
 
-    release();
-
     expect(log).toEqual([
-      'first:mount',
-      'first:unmount',
+      'first:effect',
+      'first:release',
       'first:destroy',
-      'second:mount',
-      'second:unmount',
+      'second:effect',
+      'second:release',
       'second:destroy'
     ]);
-  });
-
-  it('will keep a mount defined before it provides', () => {
-    const order: string[] = [];
-
-    class Owned extends Model {
-      mount() {
-        order.push('owned');
-        return () => order.push('owned:done');
-      }
-    }
-
-    const stop = Component.on({
-      setup(self) {
-        Object.defineProperty(self, 'mount', {
-          configurable: true,
-          value: () => {
-            order.push('inherited');
-            return () => order.push('inherited:done');
-          }
-        });
-      }
-    });
-
-    const provider = Component.new({ for: Owned } as any) as any;
-
-    stop();
-    provider.mount()();
-
-    expect(order).toEqual(['inherited', 'owned', 'owned:done', 'inherited:done']);
   });
 
   it('will not default a boundary', () => {

@@ -2,4 +2,4 @@
 '@expressive/mvc': minor
 ---
 
-`<Component for={Type}>` holds the instance it constructs until the provider's own `mount()` runs, so effects declared in that class wait for the provider to commit.
+`<Component for={Type}>` no longer defines `mount` on the provider or calls it on the instance it constructs - that instance is a child of the provider, so its effects wait for the provider's commit and a replacement while committed is released at once.
