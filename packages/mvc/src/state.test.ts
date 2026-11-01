@@ -3298,7 +3298,7 @@ describe('context argument', () => {
     expect(Context.get(theme)).toBe(context);
   });
 
-  it('will resolve a consumer placed before its provider', () => {
+  it('will resolve a consumer placed before its provider', async () => {
     class Panel extends Model {
       theme = get(Theme, false);
     }
@@ -3310,6 +3310,7 @@ describe('context argument', () => {
 
     const theme = Theme.new(context);
 
+    await expect(panel).toHaveUpdated('theme');
     expect(panel.theme).toBe(theme);
   });
 
