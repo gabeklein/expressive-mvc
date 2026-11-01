@@ -61,6 +61,9 @@ let ANNOUNCED = false;
 const ADOPT = new WeakMap<Model, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<Model, Set<(child: Model) => void>>();
 const OWNS = new WeakMap<Model, Set<Model>>();
+
+/** Instances mid-activation: what they wait on, whether a hold reached them, and the children they will settle. */
+const ACTIVE = new WeakMap<Model, { waits: Promise<unknown>[]; held: boolean; children: (() => void)[] }>();
 const OWNED = new WeakMap<Model, Set<(child: Model) => void>>();
 
 type Got<C extends { get(...args: any[]): any }> = ReturnType<C['get']> extends infer R
@@ -658,7 +661,14 @@ function init(state: Model, ...args: Model.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
+  const waits: Promise<unknown>[] = [];
+  const children: (() => void)[] = [];
+
   function observe() {
+    const active = ACTIVE.get(state)!;
+
+    if (waits.length) active.held = true;
+
     for (const key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
 
@@ -674,6 +684,7 @@ function init(state: Model, ...args: Model.Args) {
     const { wait } = o;
 
     o.wait = undefined;
+    children.forEach((release) => release());
 
     capture((release) => {
       listener(state, () => release(null), null);
@@ -704,10 +715,11 @@ function init(state: Model, ...args: Model.Args) {
 
     const above = PARENT.get(state);
     const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
+    const up = above ? ACTIVE.get(above) : undefined;
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const waits: Promise<unknown>[] = [];
+    ACTIVE.set(state, { waits, children, held: !!up?.held });
 
     capture((release) => {
       const queue = [...before, observe, ...args];
@@ -730,14 +742,24 @@ function init(state: Model, ...args: Model.Args) {
       }
     });
 
-    if (waits.length) {
-      observer(state, true).wait = new Set();
-      Promise.all(waits).then(() => {
-        if (observer(state) !== null) settle();
-      }, () => {
-        event(state, null);
-      });
-    } else settle();
+    const { held } = ACTIVE.get(state)!;
+    const settled = waits.length ? Promise.all(waits) : undefined;
+    const release = () => {
+      if (observer(state) !== null) settle();
+    };
+    const fail = () => {
+      event(state, null);
+    };
+
+    ACTIVE.delete(state);
+
+    if (held || settled) observer(state, true).wait = new Set();
+
+    if (up) {
+      if (settled) up.waits.push(settled.then(undefined, fail));
+      up.children.push(release);
+    } else if (settled) settled.then(release, fail);
+    else settle();
 
     if (owns) {
       owns.add(state);
