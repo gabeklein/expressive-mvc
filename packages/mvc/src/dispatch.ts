@@ -65,14 +65,10 @@ function drop(scheduled: Scheduled) {
  * rather than on the replay. Returns nothing unless the replay carries pending
  * work, so an unrelated subscriber pays for none of it.
  */
-function hold(detached?: true, transition?: Transition, owner?: object) {
-  const scheduled = replaying || {};
+function hold(detached?: Pick<Scheduled, 'transition' | 'owner'>) {
+  const scheduled: Scheduled = detached ? { ...detached } : replaying || {};
 
-  if (detached) {
-    scheduled.transition = transition;
-    scheduled.owner = owner;
-    claim(scheduled);
-  }
+  if (detached) claim(scheduled);
   else if (!scheduled.awaiting) return;
 
   let released = false;
