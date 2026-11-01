@@ -412,7 +412,7 @@ function SidebarItems() {
 
 - `new()` - once after init, synchronously; runs during server render. Return cleanup for teardown.
 - `render(props)` - every render.
-- `mount()` - once when `<MyComponent />` commits, client only. Return cleanup for unmount. Not called for an instance placed as `{instance}` - the placing component does not own it (see [react.md](react.md)).
+- an effect declared in `new()` - first runs once `<MyComponent />` commits, client only; its cleanup runs on destroy. Not held for an instance placed as `{instance}` - the placing component does not own it ([react.md](react.md#effects-run-once-committed)).
 - `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `Model.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
