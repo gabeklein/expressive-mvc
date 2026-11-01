@@ -392,7 +392,12 @@ function above(ctx: Context) {
   return ctx.parent && touch(ctx, "parent", ctx.parent);
 }
 
-/** Home context of `state` - its own, else its owner's. Given `context`, an unowned, unplaced `state` is added there as home until destroyed. */
+/** Home context of `state` - its own, else its owner's. */
+function home(state: Model): Context | undefined;
+
+/** Add an unowned, unplaced `state` to `context` as its home until destroyed, then return its home. */
+function home(state: Model, context: Context): Context | undefined;
+
 function home(state: Model, context?: Context): Context | undefined {
   const owner = parent(state);
 
