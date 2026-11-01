@@ -21,6 +21,7 @@ interface Expansion {
 interface StyleScope {
   children: WeakMap<object, StyleScope>;
   expansions: Map<string, Expansion>;
+  globals?: StyleScope;
   label: string;
   labels: Record<string, string>;
   names: readonly string[];
@@ -87,13 +88,15 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   for (const name of own) {
     const rule = source[name];
     const inherited = parent?.rules[name];
-    rules[name] = isObject(inherited) && isObject(rule) ? { ...inherited, ...rule } : rule;
+    const merge = isObject(inherited) && isObject(rule) && (defines || inherited !== parent!.globals?.rules[name]);
+    rules[name] = merge ? { ...inherited, ...rule } : rule;
     labels[name] = scopeLabel;
   }
 
   const scope: StyleScope = {
     children: new WeakMap(),
     expansions: new Map(),
+    globals: parent?.globals,
     label: scopeLabel,
     labels,
     names,
@@ -101,6 +104,8 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
     routes: new Map(),
     rules
   };
+
+  if (defines) scope.globals = scope;
 
   cache.set(value, scope);
   return scope;
@@ -144,7 +149,7 @@ function baseToken(scope: StyleScope) {
   const appearance: ResolvedAppearance = {};
 
   if (Object.keys(expansion.declarations).length)
-    appearance.blocks = [{ declarations: expansion.declarations, name: scope.label, ordinal: -1 }];
+    appearance.blocks = [{ declarations: expansion.declarations, name: scope.label, ordinal: shared(scope) - 0.5 }];
 
   if (expansion.classes.length) appearance.classes = expansion.classes;
 
@@ -243,7 +248,7 @@ function resolveAppearance(
     if (props[`_${name}`]) names.push(name);
 
   for (const name of names)
-    parts.push(expandRule(route.scope, name));
+    expandShadowed(route.scope, name, parts);
 
   const blocks = parts.flatMap((part) => part.block ? [part.block] : []);
   const classes = parts.flatMap((part) => part.classes);
@@ -274,13 +279,32 @@ function expandRule(scope: StyleScope, name: string) {
       expansion.block = {
         declarations: expansion.declarations,
         name: `${scope.labels[name]}_${name}`,
-        ordinal: scope.names.indexOf(name)
+        ordinal: ordinal(scope, name)
       };
 
     scope.expansions.set(name, expansion);
   }
 
   return expansion;
+}
+
+function shared(scope: StyleScope) {
+  return scope.globals ? scope.globals.names.length : 0;
+}
+
+function ordinal(scope: StyleScope, name: string) {
+  const index = scope.names.indexOf(name);
+
+  return scope.rules[name] === scope.globals?.rules[name] ? index : shared(scope) + index;
+}
+
+function expandShadowed(scope: StyleScope, name: string, parts: Expansion[]) {
+  const { globals } = scope;
+
+  if (globals && isObject(globals.rules[name]) && globals.rules[name] !== scope.rules[name])
+    parts.push(expandRule(globals, name));
+
+  parts.push(expandRule(scope, name));
 }
 
 function handlers(scope: StyleScope, name: string) {

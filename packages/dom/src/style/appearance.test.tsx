@@ -37,7 +37,8 @@ macro({
   tint: (value?: unknown) => ['tinted', { color: value }],
   bare: () => 'bare',
   globalTone: (value?: unknown) => ({ color: value }),
-  _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 }
+  _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 },
+  _output: { color: 'gray', padding: '5px' }
 });
 
 macro({
@@ -332,6 +333,29 @@ describe('appearance', () => {
     style(Bare, { bare: true });
 
     expect(place(<Bare />).querySelector('wbr')!.className).toBe('bare');
+  });
+
+  it('will let base declarations beat global rules', () => {
+    function Readout() {
+      return <output>out</output>;
+    }
+
+    function Gauge() {
+      return <output _shared>gauge</output>;
+    }
+
+    style(Readout, { color: 'black' });
+    style(Gauge, { color: 'black', letterSpacing: '1px', padding: '1px', _output: { padding: '6px' } });
+
+    const readout = place(<Readout />).querySelector('output')!;
+    const gauge = place(<Gauge />).querySelector('output')!;
+
+    expect(getComputedStyle(readout).color).toBe('black');
+    expect(getComputedStyle(readout).padding).toBe('5px');
+    expect(gauge.className.split(' ')).toEqual(['global_output', 'Gauge_output', 'global_shared', 'Gauge']);
+    expect(getComputedStyle(gauge).color).toBe('black');
+    expect(getComputedStyle(gauge).letterSpacing).toBe('1px');
+    expect(getComputedStyle(gauge).padding).toBe('6px');
   });
 
   it('will not activate a rule for a falsy flag', () => {
