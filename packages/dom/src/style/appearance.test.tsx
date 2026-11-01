@@ -463,6 +463,34 @@ describe('appearance', () => {
     expect(getComputedStyle(root.querySelector('b')!).color).toBe('blue');
   });
 
+  it('will not leak a base rule into a placed component instance', () => {
+    class Card extends Component {
+      render() {
+        return <b>card</b>;
+      }
+    }
+
+    class Deck extends Component {
+      cards = [new Card()];
+
+      render() {
+        return <i>{this.cards}</i>;
+      }
+    }
+
+    style(Card, { color: 'blue' });
+    style(Deck, { padding: '9px', _b: { margin: '3px' } });
+
+    const root = place(<Deck />);
+    const card = root.querySelector('b')!;
+
+    expect(getComputedStyle(root.querySelector('i')!).padding).toBe('9px');
+    expect(card.className).toBe('Card');
+    expect(getComputedStyle(card).padding).toBe('');
+    expect(getComputedStyle(card).margin).toBe('');
+    expect(getComputedStyle(card).color).toBe('blue');
+  });
+
   it('will not merge a same-named rule across a component', () => {
     function Kid() {
       return <u _tone>k</u>;

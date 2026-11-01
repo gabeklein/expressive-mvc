@@ -63,6 +63,10 @@ function componentProps(
   };
 }
 
+function placed(appearance: Appearance | undefined): Appearance | undefined {
+  return appearance && { entries: appearance.entries };
+}
+
 function door(value: Style) {
   const collected: Collected = { classes: [], declarations: {}, tokens: [] };
   const { classes, declarations, tokens } = collected;
@@ -160,5 +164,5 @@ function appendClasses(classes: string[], value: unknown) {
   if (typeof value == 'string') classes.push(...value.split(/\s+/).filter(Boolean));
 }
 
-export { applyClaim, claim, componentProps, door };
+export { applyClaim, claim, componentProps, door, placed };
 export type { Appearance, Claim, Style };
