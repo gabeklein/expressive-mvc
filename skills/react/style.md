@@ -2,6 +2,8 @@
 
 Conventions, not library semantics - they keep reactive dependency snapshots auditable, and [refactor.md](refactor.md) applies them by default. A project may override them: keep the architectural rules, swap only the formatting.
 
+For `style()` maps under `@expressive/dom`, see [its conventions](../dom/dom.md#conventions).
+
 ## Snapshot formatting
 
 - A destructure of multiple values puts every binding on its own line.
