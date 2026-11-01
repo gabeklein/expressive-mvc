@@ -13,6 +13,7 @@ const tick = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
 mount(root);
 await tick();
 assert.equal(root.querySelector('#items').textContent, 'a');
+assert.equal(document.body.dataset.mounted, 'list');
 
 const draft = root.querySelector('#draft');
 draft.value = 'b';
