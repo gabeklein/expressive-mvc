@@ -400,17 +400,14 @@ abstract class Model {
       return typeof arg2 == 'function'
         ? Context.get(self).get(arg1, arg2, args[0], self)
         : within(this, () => (arg1.get as Function)(arg2, ...args));
-    if (typeof arg1 == 'function') {
-      const effect = unbind(arg1);
-
+    if (typeof arg1 == 'function')
       return watch(self, function (current, update) {
         const { wait } = observer(self, true);
 
         if (wait) throw new Promise<void>((resolve) => wait.add(resolve));
 
-        return effect.call(this, current, update);
+        return unbind(arg1).call(this, current, update);
       });
-    }
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1, arg2);
