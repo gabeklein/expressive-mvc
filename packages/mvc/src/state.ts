@@ -128,7 +128,8 @@ declare namespace Model {
     /**
      * Runs each time a method is bound to an instance - first access,
      * reassignment, and the rebind after a hot patch - with the key, the bound
-     * function and the instance. Tooling and development use.
+     * function and the instance. Not run for unbound `_` methods. Tooling and
+     * development use.
      */
     method?(this: T, key: string, fn: Function, self: T): void;
 
@@ -819,6 +820,15 @@ function classify(
     const { value } = desc;
 
     if (typeof value !== 'function') continue;
+
+    if (key[0] == '_') {
+      const run = function (this: Model, ...args: unknown[]) { return value.apply(this.is || this, args) };
+
+      UNBIND.set(run, value);
+      define(type.prototype, key, { ...desc, value: run });
+
+      continue;
+    }
 
     function bind(this: Model, original?: Function) {
       const { is } = this;
