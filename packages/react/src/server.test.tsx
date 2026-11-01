@@ -68,7 +68,7 @@ describe('server render', () => {
 
     expect(onServer(() => renderToString(<Store is={(s: Store) => void (store = s)} />))).toContain('hello');
 
-    store.get(() => {}).then(resolved);
+    store.get(() => {}).then(resolved, () => {});
 
     await flushMicrotasks();
     expect(ready).not.toBeCalled();
