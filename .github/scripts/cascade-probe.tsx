@@ -65,9 +65,32 @@ function Readout() {
 
 style(Readout, { color: 'rgb(7, 7, 7)', padding: '1px', _output: { padding: '6px' } });
 
+function Toggle() {
+  return <input type="checkbox" checked readOnly />;
+}
+
+style(Toggle, {
+  color: 'rgb(10, 10, 10)',
+  ':checked': { color: 'rgb(11, 11, 11)', outlineColor: 'rgb(11, 11, 11)' },
+  '@media (min-width: 1px)': { letterSpacing: '2px' },
+  '@media (max-width: 1px)': { wordSpacing: '9px' }
+});
+
+function Picker() {
+  return <Toggle _pick />;
+}
+
+style(Picker, { _pick: { color: 'rgb(12, 12, 12)' } });
+
+function Tip() {
+  return <span _tip>tip</span>;
+}
+
+style(Tip, { _tip: { '::before': { content: '"x"' } } });
+
 const root = document.getElementById('app')!;
 
-render(<><Outer /><Inline /><Nested /><Units /><Readout /></>, root);
+render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /></>, root);
 
 const leaf = root.querySelector('b')!;
 const inline = root.querySelector('i')!;
@@ -88,6 +111,14 @@ check('px appended where required', getComputedStyle(box).paddingTop, '5px');
 check('unitless left alone', getComputedStyle(box).zIndex, '3');
 check('logical property sized', getComputedStyle(box).marginBlockEnd, '2px');
 check('axis shorthand', getComputedStyle(box).marginLeft, '4px');
+const [toggle, picked] = root.querySelectorAll('input');
+
+check('state beats base', getComputedStyle(toggle).color, 'rgb(11, 11, 11)');
+check('caller door beats callee state', getComputedStyle(picked).color, 'rgb(12, 12, 12)');
+check('callee state still applies under a door', getComputedStyle(picked).outlineColor, 'rgb(11, 11, 11)');
+check('matching media applies', getComputedStyle(toggle).letterSpacing, '2px');
+check('other media does not', getComputedStyle(toggle).wordSpacing, '0px');
+check('pseudo-element applies', getComputedStyle(root.querySelector('span[class*=Tip]')!, '::before').content, '"x"');
 check('leaf carries door classes', String(leaf.className.includes('-d1') && leaf.className.includes('-d2')), 'true');
 
 document.querySelector('style[data-expressive]')!.remove();

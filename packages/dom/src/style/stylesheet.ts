@@ -14,7 +14,8 @@ type Key =
   | style.Property
   | keyof macro.Registry
   | `--${string}`
-  | `_${string}`;
+  | `_${string}`
+  | style.Condition;
 
 type Argument<K extends keyof macro.Registry> =
   macro.Registry[K] extends (value: infer A, ...rest: any[]) => any ? A : never;
@@ -52,6 +53,12 @@ declare namespace style {
   /** CSS property names, minus the CSSOM's own members. */
   type Property = Exclude<Settable, 'length' | 'parentRule' | 'cssText'>;
 
+  /**
+   * A state (`:hover`) or environment (`@media …`) key. Its body applies while
+   * the condition holds; the host decides how to honour it.
+   */
+  type Condition = `:${string}` | `@${string}`;
+
   /** What a declaration or macro argument may be; never a plain object. */
   type Value =
     | string
@@ -63,11 +70,12 @@ declare namespace style {
 
   /**
    * Body of a `style()` map. Bare keys are declarations or macro calls,
-   * `_name` opens a rule or descendant scope, and `$name` is reserved.
+   * `_name` opens a rule or descendant scope, `:state` and `@media …` apply
+   * their body conditionally, and `$name` is reserved.
    */
   type Map = {
     [K in Key]?:
-      K extends `_${string}` ? Map :
+      K extends `_${string}` | Condition ? Map :
       K extends keyof macro.Registry ? Argument<K> | (undefined extends Argument<K> ? true : never) :
       Value;
   };
@@ -111,21 +119,32 @@ function emit(block: Block, depth: number, document: Document) {
   const cached = byDepth.get(depth);
   if (cached) return cached;
 
+  const when = block.when || [];
   const css = serialize(document, block.declarations);
-  const base = (depth ? `${block.name}-d${depth}` : block.name).replace(/[^\w-]/g, '_');
+  const key = [...when, css].join('\0');
+  const label = [depth ? `${block.name}-d${depth}` : block.name, ...when].join('-');
+  const base = label.replace(/[^\w-]+/g, '_').replace(/_*(-)_*|_+$/g, '$1');
   let name = base;
 
-  for (let index = 2; sheet.names.has(name) && sheet.names.get(name) !== css; index++)
+  for (let index = 2; sheet.names.has(name) && sheet.names.get(name) !== key; index++)
     name = `${base}-${index}`;
 
   if (!sheet.names.has(name)) {
     const { positions } = sheet;
+    const pseudo = when.filter((condition) => condition[0] == ':').join('');
+    const split = pseudo.indexOf('::');
+    const states = split < 0 ? pseudo : pseudo.slice(0, split);
+    const element = split < 0 ? '' : pseudo.slice(split);
+    const selector = `.${name}${states ? `:where(${states})` : ''}${element}`;
     let at = positions.findIndex(([d, o]) => d > depth || d == depth && o > block.ordinal);
     if (at < 0) at = positions.length;
 
-    sheet.names.set(name, css);
+    sheet.names.set(name, key);
     positions.splice(at, 0, [depth, block.ordinal]);
-    sheet.element.sheet!.insertRule(`.${name}{${css}}`, at);
+    sheet.element.sheet!.insertRule(
+      when.reduceRight((rule, condition) => condition[0] == '@' ? `${condition}{${rule}}` : rule, `${selector}{${css}}`),
+      at
+    );
   }
 
   byDepth.set(depth, name);

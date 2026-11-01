@@ -12,11 +12,17 @@ type Macro = (value: unknown, key: string) => unknown;
 type Chain = Macro[] & { named: number };
 type Depths = ReadonlyMap<string, number>;
 
+interface Variant {
+  declarations: Declaration;
+  when: string[];
+}
+
 interface Expansion {
-  block?: Block;
+  blocks: Block[];
   classes: string[];
   declarations: Declaration;
   nested: StyleMap[];
+  variants: Variant[];
 }
 
 interface StyleScope {
@@ -72,8 +78,20 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
         throw new Error(`Rule "${key}" must be an object. Macros are defined by macro().`);
 
       const name = key.slice(1);
-      own.push(name);
-      source[name] = entry;
+      if (!own.includes(name)) own.push(name);
+      source[name] = merge(source[name], entry);
+    } else if (isCondition(key) && isObject(entry)) {
+      const rest: StyleMap = {};
+
+      for (const inner of Object.keys(entry))
+        if (inner[0] == '_') {
+          const name = inner.slice(1);
+          if (key[0] != '@') unsupported(inner, key);
+          if (!own.includes(name)) own.push(name);
+          source[name] = merge(source[name], { [key]: entry[inner] });
+        } else rest[inner] = entry[inner];
+
+      base[key] = merge(base[key], rest);
     } else if (defines && typeof entry == 'function') {
       own.push(key);
       source[key] = entry;
@@ -92,8 +110,8 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   for (const name of own) {
     const rule = source[name];
     const inherited = parent?.rules[name];
-    const merge = isObject(inherited) && isObject(rule) && (defines || inherited !== parent!.globals?.rules[name]);
-    rules[name] = merge ? { ...inherited, ...rule } : rule;
+    const extend = isObject(inherited) && isObject(rule) && (defines || inherited !== parent!.globals?.rules[name]);
+    rules[name] = extend ? mergeRule(inherited, rule) : rule;
     labels[name] = scopeLabel;
   }
 
@@ -138,7 +156,7 @@ function extendContext(parent: AppearanceContext | undefined, maps: readonly Sty
 
   for (const map of maps) {
     scope = createStyleScope(scope, map, label, defines);
-    Object.assign(base, scope!.own);
+    Object.assign(base, mergeRule(base, scope!.own));
   }
 
   if (Object.keys(base).length) bases.set(scope!, base);
@@ -151,10 +169,10 @@ function baseToken(scope: StyleScope) {
   if (!base) return undefined;
 
   const expansion = expand(scope, base, new Map());
+  const blocks = toBlocks(expansion, scope.label, shared(scope) - 0.5);
   const appearance: ResolvedAppearance = {};
 
-  if (Object.keys(expansion.declarations).length)
-    appearance.blocks = [{ declarations: expansion.declarations, name: scope.label, ordinal: shared(scope) - 0.5 }];
+  if (blocks.length) appearance.blocks = blocks;
 
   if (expansion.classes.length) appearance.classes = expansion.classes;
 
@@ -255,7 +273,7 @@ function resolveAppearance(
   for (const name of names)
     expandShadowed(route.scope, name, parts);
 
-  const blocks = parts.flatMap((part) => part.block ? [part.block] : []);
+  const blocks = parts.flatMap((part) => part.blocks);
   const classes = parts.flatMap((part) => part.classes);
   let child: StyleScope | undefined = route.scope;
 
@@ -279,18 +297,23 @@ function expandRule(scope: StyleScope, name: string) {
 
   if (!expansion) {
     expansion = expand(scope, scope.rules[name], new Map());
-
-    if (Object.keys(expansion.declarations).length)
-      expansion.block = {
-        declarations: expansion.declarations,
-        name: `${scope.labels[name]}_${name}`,
-        ordinal: ordinal(scope, name)
-      };
+    expansion.blocks = toBlocks(expansion, `${scope.labels[name]}_${name}`, ordinal(scope, name));
 
     scope.expansions.set(name, expansion);
   }
 
   return expansion;
+}
+
+function toBlocks({ declarations, variants }: Expansion, name: string, ordinal: number) {
+  const blocks: Block[] = [];
+
+  if (Object.keys(declarations).length) blocks.push({ declarations, name, ordinal });
+
+  for (const { declarations, when } of variants)
+    blocks.push({ declarations, name, ordinal: ordinal + 0.5 - 0.25 / when.length, when });
+
+  return blocks;
 }
 
 function shared(scope: StyleScope) {
@@ -337,8 +360,9 @@ function handlers(scope: StyleScope, name: string) {
 }
 
 function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
-  const output: Expansion = { classes: [], declarations: {}, nested: [] };
+  const output: Expansion = { blocks: [], classes: [], declarations: {}, nested: [], variants: [] };
   const nested: StyleMap = {};
+  const conditions: [string, StyleMap][] = [];
 
   function walk(value: unknown, depths: Depths) {
     if (!value) return;
@@ -355,7 +379,13 @@ function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
 
     for (const [name, entry] of Object.entries(value as Declaration)) {
       if (name[0] == '_') {
-        if (isObject(entry)) nested[name] = entry;
+        if (isObject(entry)) nested[name] = merge(nested[name], entry);
+        continue;
+      }
+
+      if (isCondition(name)) {
+        if (isObject(entry)) conditions.push([name, entry]);
+        else if (isPresent(entry)) throw new Error(`Condition "${name}" must be an object.`);
         continue;
       }
 
@@ -376,6 +406,27 @@ function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
   }
 
   walk(value, depths);
+
+  for (const [key, body] of conditions)
+    for (const when of split(key)) {
+      const inner = expand(scope, body, depths);
+
+      if (inner.classes.length)
+        throw new Error(`Classes are not supported inside "${when}".`);
+
+      for (const map of inner.nested)
+        for (const rule of Object.keys(map)) {
+          if (when[0] != '@') unsupported(rule, when);
+          nested[rule] = merge(nested[rule], { [when]: map[rule] });
+        }
+
+      if (Object.keys(inner.declarations).length)
+        output.variants.push({ declarations: inner.declarations, when: [when] });
+
+      for (const variant of inner.variants)
+        output.variants.push({ declarations: variant.declarations, when: [when, ...variant.when] });
+    }
+
   if (Object.keys(nested).length) output.nested.push(nested);
   return output;
 }
@@ -387,6 +438,50 @@ function terminal(name: string, value: unknown) {
     throw new Error(`No macro handles "${name}".`);
 
   return typeof value == 'number' ? String(value) : value;
+}
+
+function isCondition(key: string) {
+  return key[0] == ':' || key[0] == '@';
+}
+
+function split(key: string) {
+  if (key[0] == '@') return [key];
+
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+
+  for (let index = 0; index < key.length; index++) {
+    const char = key[index];
+
+    if (char == '(') depth++;
+    else if (char == ')') depth--;
+    else if (char == ',' && !depth) {
+      parts.push(key.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+
+  parts.push(key.slice(start).trim());
+  return parts;
+}
+
+function unsupported(rule: string, condition: string) {
+  throw new Error(`Rule "${rule}" inside "${condition}" is not supported.`);
+}
+
+function merge(left: unknown, right: StyleMap): StyleMap {
+  return isObject(left) ? mergeRule(left, right) : right;
+}
+
+function mergeRule(left: StyleMap, right: StyleMap): StyleMap {
+  const output = { ...left, ...right };
+
+  for (const key of Object.keys(right))
+    if (isCondition(key) && isObject(left[key]) && isObject(right[key]))
+      output[key] = mergeRule(left[key] as StyleMap, right[key] as StyleMap);
+
+  return output;
 }
 
 function isPresent(value: unknown) {

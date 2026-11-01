@@ -1045,3 +1045,178 @@ describe('hot patch', () => {
     expect(rule()).toContain('blue');
   });
 });
+
+describe('conditions', () => {
+  function sheet(match: string) {
+    const { sheet } = document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!;
+    return [...sheet!.cssRules]
+      .map((rule) => rule.cssText.replace(/\s+/g, ' '))
+      .filter((rule) => rule.includes(match));
+  }
+
+  it('will emit a state block after its rule', () => {
+    function Field() {
+      return <div _control />;
+    }
+
+    style(Field, {
+      ':hover': { opacity: 1 },
+      _control: {
+        color: 'gray',
+        ':hover': { color: 'blue' },
+        ':focus-within, :is(:active, :checked)': { color: 'navy' }
+      }
+    });
+
+    const node = place(<Field />).querySelector('div')!;
+    expect(node.className).toBe(
+      'Field_control Field_control-hover Field_control-focus-within Field_control-is_active_checked Field-hover'
+    );
+    expect(sheet('.Field')).toEqual([
+      '.Field-hover:where(:hover) { opacity: 1; }',
+      '.Field_control { color: gray; }',
+      '.Field_control-hover:where(:hover) { color: blue; }',
+      '.Field_control-focus-within:where(:focus-within) { color: navy; }',
+      '.Field_control-is_active_checked:where(:is(:active, :checked)) { color: navy; }'
+    ]);
+  });
+
+  it('will place pseudo-elements after the state', () => {
+    function Entry() {
+      return <input _field />;
+    }
+
+    style(Entry, {
+      _field: {
+        '::placeholder': { color: 'gray' },
+        ':hover': { '::after': { content: '"!"' } },
+        ':focus::before': { content: '"?"' }
+      }
+    });
+
+    place(<Entry />);
+    expect(sheet('.Entry')).toEqual([
+      '.Entry_field-placeholder::placeholder { color: gray; }',
+      '.Entry_field-focus_before:where(:focus)::before { content: "?"; }',
+      '.Entry_field-hover-after:where(:hover)::after { content: "!"; }'
+    ]);
+  });
+
+  it('will wrap media blocks and hoist rules into them', () => {
+    function Grid() {
+      return <div _grid />;
+    }
+
+    style(Grid, {
+      _grid: {
+        gridTemplateColumns: '1fr 1fr',
+        '@media (max-width: 900px)': { gridTemplateColumns: '1fr', ':hover': { opacity: 0.5 } }
+      },
+      '@media (max-width: 600px)': { padding: '4px', _grid: { gap: '2px' } }
+    });
+
+    const node = place(<Grid />).querySelector('div')!;
+    expect(node.className).toBe(
+      'Grid_grid Grid_grid-media_max-width_900px Grid_grid-media_max-width_900px-hover Grid_grid-media_max-width_600px Grid-media_max-width_600px'
+    );
+    expect(sheet('.Grid')).toEqual([
+      '@media (max-width: 600px) { .Grid-media_max-width_600px { padding: 4px; } }',
+      '.Grid_grid { grid-template-columns: 1fr 1fr; }',
+      '@media (max-width: 900px) { .Grid_grid-media_max-width_900px { grid-template-columns: 1fr; } }',
+      '@media (max-width: 600px) { .Grid_grid-media_max-width_600px { gap: 2px; } }',
+      '@media (max-width: 900px) { .Grid_grid-media_max-width_900px-hover:where(:hover) { opacity: 0.5; } }'
+    ]);
+  });
+
+  it('will hoist media into rules declared before or after it', () => {
+    function Sheet() {
+      return <div _page _only />;
+    }
+
+    style(Sheet, {
+      '@media print': { _page: { margin: '0px' }, _only: { display: 'block' } },
+      _page: { margin: '8px' }
+    });
+
+    const node = place(<Sheet />).querySelector('div')!;
+    expect(node.className).toBe('Sheet_page Sheet_page-media_print Sheet_only-media_print');
+  });
+
+  it('will hoist media around a descendant scope', () => {
+    function List() {
+      return <ul _list><li _item /></ul>;
+    }
+
+    style(List, {
+      _list: { '@media print': { _item: { color: 'black' } } }
+    });
+
+    const item = place(<List />).querySelector('li')!;
+    expect(item.className).toBe('List_ul_item-media_print');
+    expect(sheet('List_ul_item')).toEqual(['@media print { .List_ul_item-media_print { color: black; } }']);
+  });
+
+  it('will merge conditions across layers and classes', () => {
+    class Base extends Component {
+      render() {
+        return <div _tone />;
+      }
+    }
+    class Derived extends Base {}
+
+    style(Base, { ':hover': { color: 'red' }, _tone: { ':hover': { color: 'red', padding: '2px' } } });
+    style(Derived, { _tone: { ':hover': { color: 'blue' } } });
+    style(Derived, { ':hover': { padding: '3px' } });
+
+    place(<Derived />);
+    expect(sheet('Derived')).toEqual([
+      '.Derived-hover:where(:hover) { color: red; padding: 3px; }',
+      '.Derived_tone-hover:where(:hover) { color: blue; padding: 2px; }'
+    ]);
+  });
+
+  it('will run macros and skip falsy bodies inside a condition', () => {
+    function Lift() {
+      return <div />;
+    }
+
+    style(Lift, { ':hover': { mex: 2 }, ':focus': false as any, ':active': null as any });
+
+    place(<Lift />);
+    expect(sheet('.Lift')).toEqual([
+      '.Lift-hover:where(:hover) { margin-left: 2px; margin-right: 2px; }'
+    ]);
+  });
+
+  it('will throw for a rule inside a state', () => {
+    function Thumb() {
+      return <div _thumb />;
+    }
+
+    function Root() {
+      return <div />;
+    }
+
+    style(Thumb, { _thumb: { ':hover': { _delete: { opacity: 1 } } } });
+    style(Root, { ':hover': { _delete: { opacity: 1 } } });
+
+    expect(() => place(<Thumb />)).toThrow('Rule "_delete" inside ":hover" is not supported.');
+    expect(() => place(<Root />)).toThrow('Rule "_delete" inside ":hover" is not supported.');
+  });
+
+  it('will throw for a bare value or a class inside a condition', () => {
+    function Bare() {
+      return <div />;
+    }
+
+    function Classy() {
+      return <div />;
+    }
+
+    style(Bare, { ':hover': 'red' as any });
+    style(Classy, { ':hover': { bare: true } });
+
+    expect(() => place(<Bare />)).toThrow('Condition ":hover" must be an object.');
+    expect(() => place(<Classy />)).toThrow('Classes are not supported inside ":hover".');
+  });
+});
