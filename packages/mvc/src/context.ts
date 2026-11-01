@@ -388,15 +388,15 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
   };
 }
 
-/** Add `state` to `context` until destroyed - as its home unless owned or already placed. With `listOnly`, only adds the entry. */
-function place(state: Model, context: Context, listOnly?: boolean) {
+/** Add `state` to `context` until destroyed - as its home unless owned or already placed. With `add`, adds it regardless but never as its home. */
+function place(state: Model, context: Context, add?: boolean) {
   const homed = HOME.has(state);
 
-  if (!listOnly && (homed || parent(state))) return;
+  if (!add && (homed || parent(state))) return;
 
   const remove = context.add(state, true);
 
-  if (listOnly && !homed) HOME.delete(state);
+  if (add && !homed) HOME.delete(state);
 
   listener(state, () => void remove(), null);
 }

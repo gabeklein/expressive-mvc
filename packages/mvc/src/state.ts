@@ -96,7 +96,7 @@ declare namespace Model {
    * Model constructor callback - runs during activation, in argument order,
    * before the `new()` lifecycle hook (so it may configure state `new()`
    * will observe). Returned function will run when state is destroyed;
-   * a returned `Context` lists the instance there too, never as its home.
+   * a returned `Context` adds the instance there too, never as its home.
    */
   type Init<T extends Model = Model> = (
     this: T,

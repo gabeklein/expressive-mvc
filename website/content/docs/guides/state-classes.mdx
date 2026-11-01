@@ -365,7 +365,7 @@ function UserStreet() {
 
 ## Constructor arguments
 
-Beyond initial values and callbacks, `.new()` accepts arrays of arguments (flattened) and a [`Context`](/docs/guides/context) to make the instance's home - given several, the first wins. A callback may return a cleanup, an object to assign, more arguments, a context to also list the instance in, or a promise - a rejected promise is reported to [`catch` handlers](#class-level-setup-with-modelon) with kind `setup` and, unhandled, escapes uncaught. All are applied in order during activation:
+Beyond initial values and callbacks, `.new()` accepts arrays of arguments (flattened) and a [`Context`](/docs/guides/context) to make the instance's home - given several, the first wins. A callback may return a cleanup, an object to assign, more arguments, a context to also add the instance to, or a promise - a rejected promise is reported to [`catch` handlers](#class-level-setup-with-modelon) with kind `setup` and, unhandled, escapes uncaught. All are applied in order during activation:
 
 ```ts
 const t = Test.new(
