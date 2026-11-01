@@ -4361,6 +4361,7 @@ describe('on setup / ready stages (static)', () => {
   it('will not hold a child for the parent\'s own async new()', async () => {
     const done = mockPromise();
     const effect = vi.fn();
+    const ready = vi.fn();
 
     class Child extends Model {
       constructor() {
@@ -4377,10 +4378,98 @@ describe('on setup / ready stages (static)', () => {
       }
     }
 
+    Child.on({ ready });
     Parent.new();
 
     expect(effect).toBeCalledTimes(1);
+    expect(ready).toBeCalledTimes(1);
     done.resolve();
+  });
+
+  it('will settle a child with nothing to wait on inline', () => {
+    const order: string[] = [];
+
+    class Child extends Model {
+      constructor() {
+        super();
+        this.get(() => void order.push('child effect'));
+      }
+
+      protected new() {
+        order.push('child new');
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+
+      constructor() {
+        super();
+        this.get(() => void order.push('parent effect'));
+      }
+
+      protected new() {
+        order.push('parent new');
+      }
+    }
+
+    Child.on({ ready: () => void order.push('child ready') });
+    Parent.on({ ready: () => void order.push('parent ready') });
+    Parent.new();
+
+    expect(order).toEqual(['child new', 'child ready', 'child effect', 'parent new', 'parent ready', 'parent effect']);
+  });
+
+  it('will park an effect a parent registers on its held child', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+
+    class Child extends Model {
+      value = 1;
+    }
+
+    class Root extends Model {
+      child = new Child();
+
+      protected new() {
+        this.child.get(($) => void effect($.value));
+      }
+    }
+
+    Root.on({ setup: () => done });
+    Root.new();
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).toBeCalledWith(1);
+  });
+
+  it('will suspend a parked effect again on an unset field', async () => {
+    const done = mockPromise();
+    const seen = vi.fn();
+
+    class Test extends Model {
+      value = set<string>();
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+
+    test.get(($) => void seen($.value));
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(seen).not.toBeCalled();
+
+    test.value = 'ready';
+    await expect(test).toHaveUpdated();
+    expect(seen).toBeCalledWith('ready');
   });
 
   it('will settle a child adopted after ready on its own', async () => {

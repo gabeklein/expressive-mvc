@@ -62,7 +62,7 @@ const ADOPT = new WeakMap<Model, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<Model, Set<(child: Model) => void>>();
 const OWNS = new WeakMap<Model, Set<Model>>();
 
-/** Instances mid-activation: what they wait on, whether a hold reached them, and the children they will settle. */
+/** Instances mid-activation. */
 const ACTIVE = new WeakMap<Model, { waits: Promise<unknown>[]; held: boolean; children: (() => void)[] }>();
 const OWNED = new WeakMap<Model, Set<(child: Model) => void>>();
 
@@ -663,10 +663,9 @@ function init(state: Model, ...args: Model.Args) {
 
   const waits: Promise<unknown>[] = [];
   const children: (() => void)[] = [];
+  const active = { waits, children, held: false };
 
   function observe() {
-    const active = ACTIVE.get(state)!;
-
     if (waits.length) active.held = true;
 
     for (const key in state) {
@@ -719,7 +718,8 @@ function init(state: Model, ...args: Model.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    ACTIVE.set(state, { waits, children, held: !!up?.held });
+    active.held = !!up?.held;
+    ACTIVE.set(state, active);
 
     capture((release) => {
       const queue = [...before, observe, ...args];
@@ -742,8 +742,8 @@ function init(state: Model, ...args: Model.Args) {
       }
     });
 
-    const { held } = ACTIVE.get(state)!;
     const settled = waits.length ? Promise.all(waits) : undefined;
+    const hold = active.held || !!settled;
     const failed = () => event(state, null);
     const release = () => {
       if (observer(state) !== null) settle();
@@ -751,9 +751,9 @@ function init(state: Model, ...args: Model.Args) {
 
     ACTIVE.delete(state);
 
-    if (held || settled) observer(state, true).wait = new Set();
+    if (hold) observer(state, true).wait = new Set();
 
-    if (up) {
+    if (up && hold) {
       if (settled) up.waits.push(settled.then(undefined, failed));
       up.children.push(release);
     }
