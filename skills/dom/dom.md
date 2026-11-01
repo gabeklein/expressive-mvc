@@ -145,7 +145,24 @@ declare module '@expressive/dom' {
 macro({ mx: (value: number) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }) });
 ```
 
-Declaration merging is whole-program, so the augmentation may sit anywhere - above the registration, below it, or in another module. A declared name is checked where it registers *and* where it is called; an undeclared one still registers, but a typed map cannot call it. With no pack at all, CSS properties, rules and `--variables` work as they are.
+To declare a whole pack from its value, extend `macro.From` - it copies each macro's signature and skips rules and `'*'`:
+
+```ts
+const app = {
+  row: (gap?: string) => ({ display: 'flex', alignItems: 'center', gap }),
+  edge: (side: 'Top' | 'Left') => ({ [`border${side}`]: '1px solid' })
+};
+
+macro(app);
+
+declare module '@expressive/dom' {
+  namespace macro {
+    interface Registry extends macro.From<typeof app> {}
+  }
+}
+```
+
+Declaration merging is whole-program, so the augmentation may sit anywhere - above the registration, below it, or in another module. A declared name is checked where it registers *and* where it is called - a macro whose argument is optional also takes `true` (`row: true` calls it with none); an undeclared one still registers, but a typed map cannot call it. With no pack at all, CSS properties, rules and `--variables` work as they are.
 
 `className` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 
