@@ -651,10 +651,9 @@ function init(state: Model, ...args: Model.Args) {
 
   let target: Context | undefined;
 
-  args = args.map(function strip(arg): any {
-    if (Array.isArray(arg)) return arg.map(strip);
-    if (arg instanceof Context) target ||= arg;
-    else return arg;
+  args.forEach(function find(arg) {
+    if (Array.isArray(arg)) arg.forEach(find);
+    else if (!target && arg instanceof Context) target = arg;
   });
 
   function observe() {
