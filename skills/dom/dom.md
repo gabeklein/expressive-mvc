@@ -134,7 +134,7 @@ The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported co
 
 ### The web pack
 
-`css` is a macro pack shipped with the renderer. Registering it opts into pixel units for numbers and the axis shorthands CSS lacks:
+`css` is a macro pack shipped with the renderer. Registering it opts into pixel units for numbers and a `size` shorthand:
 
 ```ts
 import { css, macro } from '@expressive/dom';
@@ -142,7 +142,7 @@ import { css, macro } from '@expressive/dom';
 macro(css);
 ```
 
-A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. `mx` / `my` / `px` / `py` set an axis, and `size` sets width and height.
+A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
 
 Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged.
 
@@ -154,8 +154,6 @@ import { px, rem } from '@expressive/dom';
 style(Heading, { padding: rem(0.2, 0.45), border: `${px(1)} solid` });
 // padding: '0.2rem 0.45rem'
 ```
-
-The `px` function is unrelated to the `px` macro key from `css` (horizontal padding).
 
 ### Typing
 

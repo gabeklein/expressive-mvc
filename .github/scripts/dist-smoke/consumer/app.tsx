@@ -11,7 +11,7 @@ class Item extends Component {
 }
 
 macro(css);
-style(Item, { px: 4, _first: { mx: 2 } });
+style(Item, { size: 4, _first: { size: [1, 2] } });
 
 class List extends Component {
   items = has(Item);

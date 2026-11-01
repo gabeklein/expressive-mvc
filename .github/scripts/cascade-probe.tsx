@@ -49,7 +49,7 @@ function Units() {
   return <span _box>units</span>;
 }
 
-style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, mx: 4 } });
+style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, marginInline: 4 } });
 
 function Nested() {
   return <section _frame><em>deep</em></section>;
@@ -110,7 +110,7 @@ check('own rule beats base', getComputedStyle(readout).padding, '6px');
 check('px appended where required', getComputedStyle(box).paddingTop, '5px');
 check('unitless left alone', getComputedStyle(box).zIndex, '3');
 check('logical property sized', getComputedStyle(box).marginBlockEnd, '2px');
-check('axis shorthand', getComputedStyle(box).marginLeft, '4px');
+check('logical axis sized', getComputedStyle(box).marginLeft, '4px');
 const [toggle, picked] = root.querySelectorAll('input');
 
 check('state beats base', getComputedStyle(toggle).color, 'rgb(11, 11, 11)');
