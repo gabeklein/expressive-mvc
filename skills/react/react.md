@@ -77,7 +77,7 @@ Nothing commits during server render, so these effects never run there. Children
 | `new()` body      | construction | once, synchronously                     | yes           |
 | effect in `new()` | commit       | once the host commits, then per change  | no            |
 
-Setup accompanying the instance itself is the `new()` body; anything touching `window`, timers or subscriptions is an effect declared there. `mount()` is deprecated - it still runs at the same commit with its return on unmount, but an effect in `new()` covers it.
+Setup accompanying the instance itself is the `new()` body; anything touching `window`, timers or subscriptions is an effect declared there.
 
 React can discard a render before committing it - a suspended first mount, a dropped transition. Instances an owning path created there are already activated, so `new()` ran; the adapter destroys them once React releases the attempt, at garbage collection rather than promptly. Effects run only for the attempt that commits.
 

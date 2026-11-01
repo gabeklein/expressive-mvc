@@ -175,7 +175,7 @@ class Row extends Component {
 <Row id={id} selected={id == current} />
 ```
 
-Only a `Component` renders - as an element or placed inline (`{page}`). A plain `Model` is data: `<Session />` or `{session}` throws; extend `Component` to render, or provide it with `<Component for={Session} name="x">`. A view of a Model owns it as a field. A PascalCase method on any Model rendered as an element (`<this.Label />`, `<session.Badge />`, or passed on and rendered elsewhere) is a subcomponent tracking its owner; called directly it stays a plain method. A PascalCase function field is plain data and renders as an ordinary FC. Host-read members on a Component are `render`, `fallback`, `catch`, `key` and `mount`; a field or method by one of these names opts into that behavior.
+Only a `Component` renders - as an element or placed inline (`{page}`). A plain `Model` is data: `<Session />` or `{session}` throws; extend `Component` to render, or provide it with `<Component for={Session} name="x">`. A view of a Model owns it as a field. A PascalCase method on any Model rendered as an element (`<this.Label />`, `<session.Badge />`, or passed on and rendered elsewhere) is a subcomponent tracking its owner; called directly it stays a plain method. A PascalCase function field is plain data and renders as an ordinary FC. Host-read members on a Component are `render`, `fallback`, `catch` and `key`; a field or method by one of these names opts into that behavior.
 
 `<Component for>` ([context.md](../state/context.md#providing-with-component)), implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
 

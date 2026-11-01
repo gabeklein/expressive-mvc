@@ -65,7 +65,7 @@ A render guard skipping most of a declared snapshot marks the gated content as a
 
 ## Member order
 
-Fields, getters, methods - then lifecycle (`new`/`mount`) and `render()`, adjacent, then `protected` PascalCase subcomponents. Don't park methods between `mount()` and `render()`; the lifecycle pair reads as one unit. Slots follow `render()` - read the assembly, then the pieces it names.
+Fields, getters, methods - then `new()` and `render()`, adjacent, then `protected` PascalCase subcomponents. Don't park methods between `new()` and `render()`; the lifecycle pair reads as one unit. Slots follow `render()` - read the assembly, then the pieces it names.
 
 ## Layout
 

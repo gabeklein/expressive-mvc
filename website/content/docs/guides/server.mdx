@@ -40,10 +40,9 @@ Server components compose these normally - fetch on the server, pass serializabl
 | `new()` | ✓ | ✓ |
 | `render()` | ✓ | ✓ |
 | effects declared in `new()` | never | ✓ |
-| `mount()` (deprecated) | never | ✓ |
 | `new()`'s returned teardown | never | ✓ |
 
-The last three rows are the rules that matter. There is no unmount on the server, so a resource opened in the `new()` body - a socket, a subscription, a file handle - leaks there. An effect declared in `new()` waits for the owning component to commit, which never happens on the server, so that is where such work belongs.
+The last two rows are the rules that matter. There is no unmount on the server, so a resource opened in the `new()` body - a socket, a subscription, a file handle - leaks there. An effect declared in `new()` waits for the owning component to commit, which never happens on the server, so that is where such work belongs.
 
 <br />
 

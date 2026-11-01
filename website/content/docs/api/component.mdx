@@ -61,7 +61,7 @@ class Card extends Component {
 
 - The `= {} as T` default satisfies TypeScript's JSX inference and is safely ignored at runtime.
 - Non-optional parameter fields become required JSX attributes.
-- Without `render()` altogether, children pass through - the instance still provides context, runs `mount()`, and places its boundaries.
+- Without `render()` altogether, children pass through - the instance still provides context, runs its effects at commit, and places its boundaries.
 
 A subclass `render()` replaces the base's like any method override - call `super.render(props)` to wrap it. To keep base chrome around subclass content, render a [subcomponent](#subcomponents) the subclass overrides.
 
@@ -241,8 +241,6 @@ declare class Component extends Model {
 
   render(props?: {}): Component.Node;
   catch?(error: Error, instance: this): Promise<void> | void;
-  /** @deprecated - an effect declared in new() waits for the same commit */
-  mount?(): (() => void) | void;
 }
 ```
 
