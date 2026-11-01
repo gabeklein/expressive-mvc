@@ -89,7 +89,7 @@ declare namespace Model {
   type Type<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
-  /** Model constructor arguments - the last `Context` given becomes the home, unless already placed. */
+  /** Model constructor arguments - the first `Context` given becomes the home, unless already placed. */
   type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | Context | void)[];
 
   /**
@@ -654,7 +654,7 @@ function init(state: Model, ...args: Model.Args) {
 
   args = args.map(function strip(arg): any {
     if (Array.isArray(arg)) return arg.map(strip);
-    if (arg instanceof Context) target = arg;
+    if (arg instanceof Context) target ||= arg;
     else return arg;
   });
 

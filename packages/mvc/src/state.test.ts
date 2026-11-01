@@ -3281,13 +3281,13 @@ describe('context argument', () => {
     expect(Context.root.get(Theme, false)).toBeUndefined();
   });
 
-  it('will use the last context argument', () => {
+  it('will use the first context argument', () => {
     const a = new Context();
     const b = new Context();
-    const theme = Theme.new(a, b);
+    const theme = Theme.new(a, [b]);
 
-    expect(Context.get(theme)).toBe(b);
-    expect(a.get(Theme, false)).toBeUndefined();
+    expect(Context.get(theme)).toBe(a);
+    expect(b.get(Theme, false)).toBeUndefined();
   });
 
   it('will place from a returned context', () => {
