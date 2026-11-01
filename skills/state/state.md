@@ -96,7 +96,7 @@ class Job extends Model {
 
 `then` is reserved the same way, without the prefix: a `then` field or method is unmanaged, non-enumerable and never overlaid, so a class may make its instances thenable without the function becoming state.
 
-`#private` is for logic only. Computeds and effects run against the tracking subject, not the instance, so `this.#x` there throws. Methods and `_` accessors are bound to the instance - a `_` getter is the bridge from `#private` to reactive code:
+`#private` is for logic only. Computeds and effects run against the tracking subject, not the instance, so `this.#x` there throws. Methods are bound to the instance; `_` methods and accessors run on it unbound - a `_` getter is the bridge from `#private` to reactive code:
 
 ```ts
 class Session extends Model {
@@ -108,7 +108,7 @@ class Session extends Model {
 }
 ```
 
-- A `_` accessor is never computed or cached and never subscribes - running on the instance, its reads bypass the tracking subject, managed fields included. Deliberate: a subscribing `_` getter would be an uncached computed hidden behind the unmanaged prefix. Derived from managed state → a plain getter (computed); a computed reads its managed dependencies directly.
+- A `_` method or accessor never subscribes - running on the instance, its reads bypass the tracking subject, managed fields included. A `_` accessor is never computed or cached. Deliberate: a subscribing `_` getter would be an uncached computed hidden behind the unmanaged prefix. Derived from managed state → a plain getter (computed); a computed reads its managed dependencies directly.
 - An instruction on a `_` key throws.
 - TypeScript `private` does not opt out.
 - A handle only lifecycle touches is simpler as a `new()` closure variable.
@@ -149,7 +149,7 @@ class Parent extends Model {
 
 ## Methods
 
-Auto-bound on first access - safe to destructure.
+Auto-bound on first access - safe to destructure. `_` methods are not bound: called through the instance or a tracking subject, `this` is the instance; detached, `this` is the caller's.
 
 ```ts
 const { increment } = Counter.new();

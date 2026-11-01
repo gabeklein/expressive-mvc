@@ -84,7 +84,7 @@ class Job extends Model {
 
 **`#private` fields** are for logic that only the class itself touches. JavaScript enforces the privacy, and the reactive system never sees them. One catch: computed getters and effects run against a tracking proxy instead of the real instance, and a proxy can't read `#private` fields - `this.#secret` inside a computed throws.
 
-Methods don't have this problem, because they're bound to the instance. Neither do `_` accessors: a `get _thing()` or `set _thing()` always runs against the real instance, even when a computed or effect calls it. That makes a `_` getter the bridge from private logic to reactive code:
+Methods don't have this problem, because they're bound to the instance. Neither do `_` members: a `_method()`, `get _thing()` or `set _thing()` always runs against the real instance, even when a computed or effect calls it. That makes a `_` getter the bridge from private logic to reactive code:
 
 ```ts
 class Session extends Model {
@@ -131,7 +131,7 @@ To hold a DOM element, or a mutable value whose changes other code should hear a
 
 ## Methods
 
-Methods are auto-bound on first access. Destructure them freely:
+Methods are auto-bound on first access. Destructure them freely - except `_` methods, which stay unbound like plain class methods:
 
 ```ts
 const { increment } = Counter.new();
