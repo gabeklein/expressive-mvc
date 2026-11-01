@@ -2970,6 +2970,91 @@ describe('unmanaged keys', () => {
     expect(written).toBe(test);
   });
 
+  it('will run _ methods on the instance', () => {
+    class Test extends Model {
+      value = 1;
+      #secret = 10;
+
+      _whoami() {
+        return this;
+      }
+
+      _secret() {
+        return this.#secret;
+      }
+    }
+
+    const test = Test.new();
+    const effect = vi.fn((self: Test) => {
+      expect(self._whoami()).toBe(test.is);
+      expect(self._secret()).toBe(10);
+    });
+
+    test.get(effect);
+
+    expect(effect).toBeCalledTimes(1);
+  });
+
+  it('will not subscribe thru _ methods', async () => {
+    class Test extends Model {
+      value = 1;
+
+      _value() {
+        return this.value;
+      }
+
+      get total() {
+        return this._value();
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.total).toBe(1);
+
+    test.value = 2;
+
+    await expect(test).toHaveUpdated('value');
+    expect(test.total).toBe(1);
+  });
+
+  it('will not bind _ methods', () => {
+    const method = vi.fn();
+
+    class Test extends Model {
+      _method() {
+        return this;
+      }
+    }
+
+    Test.on({ method });
+
+    const test = Test.new();
+    const { _method } = test;
+
+    expect(_method).toBe(Test.prototype._method);
+    expect(Object.getOwnPropertyDescriptor(test, '_method')).toBeUndefined();
+    const plain = {};
+
+    expect(_method.call(plain)).toBe(plain);
+    expect(method).not.toBeCalled();
+  });
+
+  it('will accept _ methods from overlay', () => {
+    class Test extends Model {
+      _method() {
+        return 'before';
+      }
+    }
+
+    const test = Test.new();
+
+    test.set({ _method: () => 'after' });
+
+    expect(test._method()).toBe('after');
+    expect(Test.prototype._method.call(test)).toBe('before');
+  });
+
   it('will exclude _ keys from field types', () => {
     class Test extends Model {
       value = 1;
