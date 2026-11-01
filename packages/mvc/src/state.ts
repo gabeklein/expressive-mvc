@@ -653,7 +653,7 @@ function init(state: Model, ...args: Model.Args) {
 
   args.forEach(function find(arg) {
     if (Array.isArray(arg)) arg.forEach(find);
-    else if (!target && arg instanceof Context) target = arg;
+    else if (arg instanceof Context && !target) target = arg;
   });
 
   function observe() {
