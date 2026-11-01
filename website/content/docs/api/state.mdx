@@ -39,16 +39,6 @@ Callbacks can return:
 - `array` - flattened and re-processed.
 - `Promise` - the instance is still created; a rejection is reported to [`catch` handlers](#error-handling) with kind `setup`.
 
-### `Model.global` <small>(static field)</small> [#modelglobal]
-
-```ts
-class Theme extends Model {
-  static global = true;
-}
-```
-
-Whether an instance activated with no enclosing context registers into the process-global root, where `Theme.get()` finds it from anywhere. `false` by default: a context-less instance stays private. Takes a resolver (`self => boolean`) to decide per instance, and must be declared per class - a subclass that would be global by inheritance alone throws on activation. See [Root context and globals](/docs/api/utilities#root-context-and-globals).
-
 ### `Model.is(maybe)`
 
 Type guard. Returns true if `maybe` is an instance of this class or a subclass.

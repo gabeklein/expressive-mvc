@@ -293,9 +293,8 @@ the owning instance should use `AbortController` or its own generation check.
   non-browser hosts.
 - `BrowserRouter` binds `window.location` and `window.history`. It is for
   client-routed browser applications.
-- Server rendering is safe from shared global router state, but request-path
-  routing, redirects, loader serialization, and hydration are not a supported
-  SSR routing system today.
+- Request-path routing, redirects, loader serialization, and hydration are not
+  a supported SSR routing system today.
 - On React Native, use `Router` and render navigation UI from native host
   components that call `goto`. `BrowserRouter`, `Link`, and `NavLinks` are
   DOM-facing.

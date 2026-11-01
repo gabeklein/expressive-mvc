@@ -9,6 +9,8 @@ import { act, cleanup, render } from '@testing-library/react';
 import '@expressive/react';
 
 import '../mvc/test.setup';
+
+import { Context } from '@expressive/mvc';
 import { BrowserRouter } from './src/browser';
 
 afterEach(() => {
@@ -28,10 +30,10 @@ export function browserRouter() {
 
   beforeEach(() => {
     window.history.replaceState(null, '', '/');
-    ctx.current = BrowserRouter.new();
+    ctx.current = BrowserRouter.new((self) => Context.root.add(self, true));
   });
 
-  afterEach(() => ctx.current && ctx.current.set(null));
+  afterEach(() => ctx.current.set(null));
 
   return ctx;
 }

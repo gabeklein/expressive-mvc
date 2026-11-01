@@ -195,26 +195,14 @@ class Context {
   }
 
   add(I: Model, explicit = false) {
-    const { provide } = this;
-    const root = this === Context.root;
     const TT: Model.Extends[] = [];
-
-    const conflict = (T: Model.Extends) => {
-      const entries = provide.get(T);
-      if (entries)
-        for (const entry of entries)
-          if (!entry[1] && entry[0] !== I) {
-            emit(this, T);
-            return entries.delete(entry);
-          }
-    };
 
     for (
       let T = I.constructor as Model.Extends;
       T !== Model;
       T = Object.getPrototypeOf(T)
     )
-      if (explicit || !root || !conflict(T)) TT.push(T);
+      TT.push(T);
 
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();

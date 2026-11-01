@@ -144,13 +144,10 @@ describe('BrowserRouter', () => {
     remove.mockRestore();
   });
 
-  it('will be global on the client but not without a window', () => {
-    expect(Context.root.get(BrowserRouter)).toBe(router.current);
-
+  it('will start at / without a window', () => {
     withWindow(undefined, () => {
       const server = BrowserRouter.new();
       expect(server.path).toBe('/');
-      expect(Context.root.get(BrowserRouter)).toBe(router.current);
       server.set(null);
     });
   });
@@ -306,8 +303,6 @@ describe('BrowserRouter navigation settlement', () => {
     const gates = [goto, external];
 
     class Test extends BrowserRouter {
-      static global = false;
-
       protected navigate(work: () => void) {
         const gate = gates.shift()!;
         gate.then(work);

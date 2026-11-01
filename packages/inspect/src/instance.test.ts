@@ -78,10 +78,9 @@ describe('Instance', () => {
       own = new Child();
     }
     class Theme extends Model {
-      static global = true;
       mode = 'dark';
     }
-    const theme = Theme.new();
+    const theme = Theme.new((self) => Context.root.add(self, true));
     const consumer = Consumer.new();
     expect(consumer.theme).toBe(theme);
     expect(Instance.of(theme).parent).toBeUndefined();

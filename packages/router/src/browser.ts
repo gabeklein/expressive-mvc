@@ -7,8 +7,6 @@ let restore: (() => void) | undefined;
 
 /** Binds the headless core to `window.location` and browser history. */
 export class BrowserRouter extends Router {
-  static readonly global = Router.global;
-
   path = typeof window == 'undefined' ? '/' : window.location.pathname;
 
   protected async next(url: string, replace?: boolean) {

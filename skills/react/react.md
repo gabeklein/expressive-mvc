@@ -86,10 +86,10 @@ React can discard a render before committing it - a suspended first mount, a dro
 Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Effects don't run, so `mount()` never fires; `new()` does. Request-safety rules:
 
 - **Request state goes in a `<Component for>`.** Each render builds its own context, so provided instances are isolated per request.
-- **A `static global` is process-wide, *shared across requests* on the server** (globals are not sealed - a `global` is trusted to be mutable process state like config, flags or a warmed cache). Keep per-request data out; provide it with `<Component for>`.
+- **An instance held in `Context.root` is process-wide, *shared across requests* on the server** - fit for config, flags or a warmed cache. Keep per-request data out; provide it with `<Component for>`.
 - **Resources belong in `mount()` or the request handler, never `new()`.** `new()` runs on the server but its returned teardown does not (no unmount), so a socket or handle opened there leaks. `mount()` is client-only; server-side resources are the framework's request scope to open and close.
 
-To render a specific request's data (a path, a session), provide it per request: `<Component for={Session} …>`. For this reason `Router` is a client-only global - on the server it is per-render, so paths never bleed between requests; provide `<Component for={Router} path={…}>` to render a request's path.
+To render a specific request's data (a path, a session), provide it per request: `<Component for={Session} …>`. Each render's `Router` is its own, so paths never bleed between requests; provide `<Component for={Router} path={…}>` to render a request's path.
 
 ## React Native
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
-import { Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import '.';
 import { Component } from '@expressive/mvc';
 
@@ -57,15 +57,14 @@ describe('server render', () => {
     expect(r2).not.toContain('alice');
   });
 
-  it('will share a declared global across requests', () => {
+  it('will share an instance held in root across requests', () => {
     class Flags extends Model {
-      static global = true;
       enabled = false;
     }
     const Show = () => <i>{String(Flags.get().enabled)}</i>;
 
     onServer(() => {
-      const flags = Flags.new();
+      const flags = Flags.new((self) => Context.root.add(self, true));
       const a = renderToString(<Show />);
 
       flags.enabled = true;

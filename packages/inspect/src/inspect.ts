@@ -150,11 +150,8 @@ function claim(state: Model) {
   version++;
 }
 
-/** A `static global` instance currently holding its slot in the root context. */
+/** An instance held in the root context. */
 function provided(state: Model): boolean {
-  const type = state.constructor as typeof Model;
-  const global = typeof type.global === 'function' ? type.global(state) : type.global;
-  if (!global) return false;
   for (const set of Context.root.provide.values())
     if (set) for (const [member] of set) if (member === state) return true;
   return false;
@@ -198,7 +195,7 @@ export class Instance {
     return live.has(this.id);
   }
 
-  /** Reached by a host commit (`mount`), a claimed owner, or `static global`. Always true without a host. */
+  /** Reached by a host commit (`mount`), a claimed owner, or the root context. Always true without a host. */
   get claimed() {
     return !orphaned(this.state, reach());
   }

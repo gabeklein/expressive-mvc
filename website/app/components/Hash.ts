@@ -1,11 +1,9 @@
-import { Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 
 // One window 'hashchange' listener for the whole page. Owns the current
 // #slug and scrolls to a section whose id matches it - so deep-links and
 // in-page anchors resolve on fresh load, past the webfont layout shift.
 export class Hash extends Model {
-  static global = true;
-
   active = '';
 
   protected new() {
@@ -31,4 +29,4 @@ export class Hash extends Model {
   }
 }
 
-Hash.new();
+Hash.new((self) => Context.root.add(self, true));

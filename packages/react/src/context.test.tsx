@@ -599,14 +599,13 @@ describe('HMR', () => {
   it.todo("will updated consumer if context's instance is replaced", () => {});
 });
 
-describe('root global', () => {
+describe('root', () => {
   class Global extends Model {
-    static global = true;
     value = 'root';
   }
 
   it('will get from root unless provided', () => {
-    const instance = Global.new();
+    const instance = Global.new((self) => Context.root.add(self, true));
 
     within(() => expect(Global.get().is).toBe(instance), (check) => check);
 
