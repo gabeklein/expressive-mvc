@@ -211,6 +211,13 @@ function provide(self: Component<any>) {
   let mounted = false;
   let release: unknown;
   let provided: (() => void) | undefined;
+  let place: (() => void) | undefined;
+
+  function placed() {
+    place?.();
+    place = undefined;
+    return owned?.mount?.();
+  }
 
   function remove() {
     if (provided) provided();
@@ -230,7 +237,7 @@ function provide(self: Component<any>) {
       const done = inherited?.call(self);
 
       mounted = true;
-      release = owned?.mount?.();
+      release = placed();
 
       return () => {
         mounted = false;
@@ -251,7 +258,9 @@ function provide(self: Component<any>) {
       remove();
 
       if (Model.is(next)) {
-        owned = target = new (next as Model.Type)(rest);
+        const hold = new Promise<void>((resolve) => (place = resolve));
+
+        owned = target = new (next as Model.Type)(rest, () => hold);
       } else {
         owned = undefined;
         target = next instanceof Model ? next : undefined;
@@ -264,7 +273,7 @@ function provide(self: Component<any>) {
         const out = is?.(owned);
 
         if (plain(out)) owned.set(out);
-        if (mounted) release = owned.mount?.();
+        if (mounted) release = placed();
 
         return;
       }

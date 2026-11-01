@@ -5,6 +5,27 @@ import { render } from '../index';
 import { flushMicrotasks, mockPromise, mount, place } from '../../test.setup';
 
 describe('component', () => {
+  it('will run an effect from new() once inserted', async () => {
+    const effect = vi.fn();
+
+    class App extends Component {
+      protected new() {
+        this.get(effect);
+      }
+
+      render() {
+        return <b>app</b>;
+      }
+    }
+
+    mount(App);
+
+    expect(effect).not.toBeCalled();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+  });
+
   it('will retain a class Component when its VNode props object is unchanged', async () => {
     class Child extends Component {
       label = '';

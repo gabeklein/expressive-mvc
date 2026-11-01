@@ -47,11 +47,13 @@ function mountOwnedComponent(
   appearance?: Appearance
 ) {
   const resolved = componentProps(value.type, value.props, appearance);
-  const Type = value.type as new (props: unknown) => Component;
+  const Type = value.type as new (props: unknown, place: () => Promise<void>) => Component;
   const props = observe(resolved.props);
-  const instance = new Type(props);
+  let place!: () => void;
+  const placed = new Promise<void>((resolve) => (place = resolve));
+  const instance = new Type(props, () => placed);
 
-  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props);
+  return mountComponent(instance, parent, before, context, boundary, resolved.appearance, true, value.key, props, place);
 }
 
 function mountComponent(
@@ -63,7 +65,8 @@ function mountComponent(
   appearance?: Appearance,
   owned = false,
   key?: Key,
-  props: Record<string, any> = instance.props
+  props: Record<string, any> = instance.props,
+  place?: () => void
 ) {
   const fiber = range('component', parent, before, context);
   const childContext = context.push(instance);
@@ -118,7 +121,11 @@ function mountComponent(
       run(fiber, passiveRender);
     });
   } finally {
-    if (owned && !fiber.dead) inserted(fiber, () => (fiber.cleanup = instance.mount?.()));
+    if (owned && !fiber.dead)
+      inserted(fiber, () => {
+        place!();
+        fiber.cleanup = instance.mount?.();
+      });
   }
 
   return fiber;

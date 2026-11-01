@@ -5,13 +5,10 @@ import { Runtime, useWatch } from './runtime';
 declare module '@expressive/mvc' {
   interface Component {
     /**
-     * Optional hook called once this Component commits. Return a function to
-     * run when it unmounts.
-     *
-     * Not called during server render, nor for an instance placed as
-     * `{component}` - a placement does not own what it renders. Client-only
-     * effects belong here; setup which must accompany the instance itself
-     * belongs in `new()`.
+     * @deprecated An effect declared in `new()` waits for the same commit:
+     * `this.get(() => { ...; return cleanup })`. Still called once this
+     * Component commits, never during server render; its return runs on
+     * unmount.
      */
     mount?(): (() => void) | void;
 
@@ -29,6 +26,9 @@ declare module '@expressive/mvc' {
 // Host-agnostic seams: `state` is a read-only values bag; `context`'s setter
 // pushes a child context, registers the instance for teardown, and installs its
 // per-instance render host. Host-specific descriptors stay in each adapter.
+const PLACED = new WeakMap<Component, Promise<void>>();
+const PLACE = new WeakMap<Component, () => void>();
+
 Object.defineProperties(Component.prototype, {
   state: {
     set() {},
@@ -62,10 +62,13 @@ Component.on({
   },
   setup(self) {
     subcomponents(self);
+    return PLACED.get(self);
   }
 });
 
 function bootstrap(this: Component, parent: Context){
+  PLACED.set(this, new Promise((resolve) => PLACE.set(this, resolve)));
+
   const context = parent.push(this, () => this.set(null));
 
   Object.defineProperties(this, {
@@ -127,6 +130,8 @@ function render(from: Component, context: Context) {
   const Render = () => (own || Object.getPrototypeOf(owner).render).call(from, from.props);
   const Component = () => {
     from = useWatch(from, () => {
+      PLACE.get(owner)!();
+
       const release = owner.mount?.();
 
       attempt?.commit();

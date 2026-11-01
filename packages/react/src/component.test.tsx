@@ -185,6 +185,23 @@ describe('mount method', () => {
     expect(didUnmount).toBeCalledTimes(1);
   });
 
+  it.each([false, true])('will run an effect from new() once committed (strict: %s)', async (reactStrictMode) => {
+    const effect = vi.fn();
+
+    class Test extends Component {
+      protected new() {
+        this.get(effect);
+      }
+    }
+
+    render(<Test />, { reactStrictMode });
+
+    expect(effect).not.toBeCalled();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+  });
+
   it('will not call during server render', () => {
     const didMount = vi.fn();
 
@@ -375,6 +392,7 @@ describe('props property', () => {
 
     const { rerender } = render(<Control value="foo" />);
 
+    await flushMicrotasks();
     expect(didUpdate).toBeCalledWith({ value: 'foo' });
 
     await act(async () => {
@@ -1290,6 +1308,7 @@ describe('strict mode', () => {
       effect($.foo);
     });
 
+    await flushMicrotasks();
     expect(effect).toBeCalledWith('foo');
     instance.foo = 'bar';
 
@@ -1353,6 +1372,23 @@ describe('for', () => {
 
     expect(released).toBeCalledTimes(1);
     expect(session.get(null)).toBe(true);
+  });
+
+  it('will hold a constructed class until the provider commits', async () => {
+    const effect = vi.fn();
+
+    class Owned extends Session {
+      protected new() {
+        this.get(effect);
+      }
+    }
+
+    render(<Component for={Owned} />);
+
+    expect(effect).not.toBeCalled();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
   });
 
   it('will provide an instance without owning it', async () => {
@@ -1601,6 +1637,32 @@ reactOnly.describe('abandoned render', () => {
     await act(collect);
 
     expect(live.size).toBe(1);
+  });
+
+  it('will not run effects of an attempt superseded by a commit', async () => {
+    const { Wait, resolve } = suspender();
+    const effect = vi.fn();
+    const constructed = vi.fn();
+
+    class Effects extends Component {
+      protected new() {
+        constructed();
+        this.get(effect);
+      }
+    }
+
+    render(
+      <Suspense fallback={null}>
+        <Effects />
+        <Wait />
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+    await act(collect);
+
+    expect(constructed.mock.calls.length).toBeGreaterThan(1);
+    expect(effect).toBeCalledTimes(1);
   });
 
   it('will destroy a dropped transition render', async () => {

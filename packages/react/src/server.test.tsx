@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderToString } from 'react-dom/server';
+import { flushMicrotasks } from '../test.setup';
 import { Context, Model } from '@expressive/mvc';
 import '.';
 import { Component } from '@expressive/mvc';
@@ -31,6 +32,25 @@ describe('server render', () => {
 
     expect(onServer(() => renderToString(<Store />))).toContain('>5<');
     expect(ran).toBe(true);
+  });
+
+  it('will not run an effect from new()', async () => {
+    const effect = vi.fn();
+
+    class Store extends Component {
+      protected new() {
+        this.get(effect);
+      }
+
+      render() {
+        return <span>hello</span>;
+      }
+    }
+
+    expect(onServer(() => renderToString(<Store />))).toContain('hello');
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
   });
 
   it('will isolate provided state per request', () => {

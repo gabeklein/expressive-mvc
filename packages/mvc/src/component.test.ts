@@ -454,6 +454,26 @@ describe('for', () => {
     expect(first.get(null)).toBe(false);
   });
 
+  it('will hold a constructed class until mount', async () => {
+    const effect = vi.fn();
+
+    class Owned extends Model {
+      protected new() {
+        this.get(effect);
+      }
+    }
+
+    const provider = Component.new({ for: Owned } as any) as any;
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+
+    provider.mount();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+  });
+
   it('will mount only a class it constructed', () => {
     const cleanup = vi.fn();
 

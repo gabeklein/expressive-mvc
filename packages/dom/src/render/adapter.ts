@@ -65,6 +65,7 @@ function tracked<T extends object>(target: T, required?: boolean): T {
 
 declare module '@expressive/mvc' {
   interface Component {
+    /** @deprecated An effect declared in `new()` waits for the same insertion. */
     mount?(): (() => void) | void;
   }
 }
