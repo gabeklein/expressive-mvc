@@ -654,8 +654,8 @@ function init(state: Model, ...args: Model.Args) {
 
   args = args.map(function strip(arg): any {
     if (Array.isArray(arg)) return arg.map(strip);
-    if (arg instanceof Context) target ||= arg;
-    else return arg;
+    if (!(arg instanceof Context)) return arg;
+    target ||= arg;
   });
 
   function observe() {
@@ -737,10 +737,10 @@ function init(state: Model, ...args: Model.Args) {
 }
 
 function place(state: Model, context: Context, grant?: boolean) {
-  const keep = !grant || HOME.has(state);
+  const homed = HOME.has(state);
   const remove = context.add(state, true);
 
-  if (!keep) HOME.delete(state);
+  if (grant && !homed) HOME.delete(state);
 
   listener(state, () => void remove(), null);
 }

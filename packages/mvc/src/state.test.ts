@@ -3410,6 +3410,36 @@ describe('context argument', () => {
     expect(b.get(Theme, false)).toBeUndefined();
   });
 
+  it('will remove a returned context entry when destroyed', () => {
+    const context = new Context();
+    const theme = Theme.new(() => context);
+
+    theme.set(null);
+
+    expect(context.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will resolve when also returned from a callback', () => {
+    const context = new Context();
+    const theme = Theme.new(context, () => context);
+
+    expect(context.get(Theme)).toBe(theme);
+  });
+
+  it('will link to host of the context without owning', () => {
+    class Host extends Model {}
+
+    const host = Host.new();
+    const layer = new Context().push(host);
+    const theme = Theme.new(layer);
+
+    expect(theme.get(Model)).toBe(host);
+
+    host.set(null);
+
+    expect(layer.get(Theme)).toBe(theme);
+  });
+
   it('will not throw if destroyed after context is popped', () => {
     const context = new Context();
     const theme = Theme.new(context);
