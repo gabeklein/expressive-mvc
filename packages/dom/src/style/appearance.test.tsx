@@ -712,6 +712,126 @@ describe('appearance', () => {
   });
 });
 
+describe('authoring scope', () => {
+  it('will style children by the component that wrote them', () => {
+    class Page extends Component {}
+
+    function Wrap({ children }: { children?: Component.Node }) {
+      return <section>{children}</section>;
+    }
+
+    function Author() {
+      return (
+        <Page>
+          <div _grid />
+          <Wrap><p _note>note</p></Wrap>
+        </Page>
+      );
+    }
+
+    style(Wrap, { _p: { color: 'red' }, _note: { color: 'red' } });
+    style(Author, { _grid: { display: 'grid' }, _note: { color: 'green' } });
+
+    const root = place(<Author />);
+    const note = root.querySelector('p')!;
+
+    expect(root.querySelector('div')!.className).toBe('Author_grid');
+    expect(note.className).toBe('Author_note');
+    expect(getComputedStyle(note).color).toBe('green');
+  });
+
+  it('will keep rules nested under the wrapper element', () => {
+    function Link({ children, style: appearance }: { children?: Component.Node; style?: any }) {
+      return <a style={appearance}>{children}</a>;
+    }
+
+    function Preview() {
+      return (
+        <Link _link>
+          <img />
+          <span _caption>caption</span>
+          <em _frame><b>deep</b></em>
+        </Link>
+      );
+    }
+
+    style(Link, { _img: { display: 'inline' } });
+    style(Preview, {
+      _img: { display: 'block' },
+      _link: { color: 'blue', _caption: { fontWeight: 700 } },
+      _frame: { _b: { color: 'red' } }
+    });
+
+    const root = place(<Preview />);
+
+    expect(getComputedStyle(root.querySelector('a')!).color).toBe('blue');
+    expect(root.querySelector('img')!.className).toBe('Preview_img');
+    expect(getComputedStyle(root.querySelector('span')!).fontWeight).toBe('700');
+    expect(getComputedStyle(root.querySelector('b')!).color).toBe('red');
+  });
+
+  it('will resolve children passed through several wrappers', () => {
+    function Inner({ children }: { children?: Component.Node }) {
+      return <ins>{children}</ins>;
+    }
+
+    function Outer({ children }: { children?: Component.Node }) {
+      return <Inner _inner>{children}</Inner>;
+    }
+
+    function Writer() {
+      return <Outer><mark _hit>hit</mark></Outer>;
+    }
+
+    style(Outer, { _inner: { _hit: { color: 'red' } } });
+    style(Inner, { _hit: { color: 'red' } });
+    style(Writer, { _hit: { color: 'purple' } });
+
+    const mark = place(<Writer />).querySelector('mark')!;
+
+    expect(mark.className).toBe('Writer_hit');
+    expect(getComputedStyle(mark).color).toBe('purple');
+  });
+
+  it('will style a node written elsewhere by where it is placed', () => {
+    let made: Component.Node;
+
+    function Maker() {
+      made = <dfn _term>term</dfn>;
+      return null;
+    }
+
+    function Shower() {
+      return made;
+    }
+
+    style(Maker, { _term: { color: 'red' } });
+    style(Shower, { _term: { color: 'teal' } });
+
+    const term = place(<><Maker /><Shower /></>).querySelector('dfn')!;
+
+    expect(term.className).toBe('Shower_term');
+  });
+
+  it('will keep base declarations of a wrapper on its roots', () => {
+    function Shell({ children }: { children?: Component.Node }) {
+      return <>{children}</>;
+    }
+
+    function Uses() {
+      return <Shell><h6 _title>title</h6></Shell>;
+    }
+
+    style(Shell, { padding: '4px' });
+    style(Uses, { _title: { color: 'navy' } });
+
+    const title = place(<Uses />).querySelector('h6')!;
+
+    expect(title.className.split(' ')).toEqual(['Uses_title', 'Shell']);
+    expect(getComputedStyle(title).padding).toBe('4px');
+  });
+});
+
 describe('subcomponent', () => {
   it('will not reach a subcomponent with owner rules', () => {
     class Card extends Component {

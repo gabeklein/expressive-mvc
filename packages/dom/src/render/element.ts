@@ -86,7 +86,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
       next.children,
       fiber.context,
       fiber.boundary,
-      claimed.context ? { context: claimed.context, entries: [] } : undefined
+      claimed.context ? { author: appearance?.author, context: claimed.context, entries: [] } : undefined
     );
   }
 
