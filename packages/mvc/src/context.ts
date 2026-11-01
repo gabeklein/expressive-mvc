@@ -392,10 +392,10 @@ function above(ctx: Context) {
   return ctx.parent && touch(ctx, "parent", ctx.parent);
 }
 
+/** Home context of `state` - its own, else its owner's. */
 function home(state: Model): Context | undefined;
-
+/** Set home context for state. Noop and returns false if has one. */
 function home(state: Model, context: Context): boolean;
-
 function home(state: Model, context?: Context): Context | boolean | undefined {
   const owner = parent(state);
 
