@@ -388,18 +388,17 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
   };
 }
 
-/** Add `state` to `context` as its home until destroyed - unless owned or already placed. */
-function place(state: Model, context: Context) {
-  if (!HOME.has(state) && !parent(state))
-    listener(state, context.add(state, true), null);
-}
-
 function above(ctx: Context) {
   return ctx.parent && touch(ctx, "parent", ctx.parent);
 }
 
-function home(state: Model): Context | undefined {
+/** Home context of `state` - its own, else its owner's. Given `context`, an unowned, unplaced `state` is added there as home until destroyed. */
+function home(state: Model, context?: Context): Context | undefined {
   const owner = parent(state);
+
+  if (context && !owner && !HOME.has(state))
+    listener(state, context.add(state, true), null);
+
   return HOME.get(state) || (owner ? home(owner) : undefined);
 }
 
@@ -442,4 +441,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, host, join, place, resolver, within };
+export { Context, home, host, join, resolver, within };

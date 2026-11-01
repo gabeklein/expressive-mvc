@@ -1,4 +1,4 @@
-import { Context, host, join, place, within } from './context';
+import { Context, home, host, join, within } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -670,7 +670,7 @@ function init(state: Model, ...args: Model.Args) {
 
     args.forEach(function find(arg) {
       if (Array.isArray(arg)) arg.forEach(find);
-      else if (arg instanceof Context) place(state, arg);
+      else if (arg instanceof Context) home(state, arg);
     });
 
     if (!PARENT.has(state)) parent(state, host(state) || null);
