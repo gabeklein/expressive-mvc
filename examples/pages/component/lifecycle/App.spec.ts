@@ -1,7 +1,7 @@
 import { expect, test } from '../../../e2e';
 
-const MOUNTED = ['new() · constructed', 'ref() · element attached', 'mount() · committed'];
-const UNMOUNTED = ['ref() · element detached', 'mount() cleanup · unmounted', 'new() cleanup · destroyed'];
+const MOUNTED = ['new() · constructed', 'ref() · element attached', 'effect · committed'];
+const UNMOUNTED = ['ref() · element detached', 'effect cleanup · unmounted', 'new() cleanup · destroyed'];
 
 test('will fire each seam and unwind on unmount', async ({ page, open }) => {
   await page.clock.install({ time: 0 });

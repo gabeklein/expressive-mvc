@@ -34,7 +34,7 @@ class Draft extends Component {
     return saved ? 'Saved' : 'Nothing to save';
   }
 
-  mount() {
+  protected new() {
     this.get((current) => {
       const { text, saved, is } = current;
 
