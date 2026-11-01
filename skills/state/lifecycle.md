@@ -37,7 +37,20 @@ class Timer extends Model {
 
 - Runs once, after all properties and child instances are set up.
 - Return nothing, or `() => void` to run on destruction.
-- `async new()` is allowed: `on({ ready })` handlers wait for it, as for a promise from any activation step. Its rejection reports to `catch` as `setup`, then destroys the instance - recovery belongs inside `new()`, around the await. Its cleanup cannot be returned - a promise's value is ignored.
+- `async new()` is allowed: `on({ ready })` handlers and effects registered before it resolves wait for it, as for a promise from any activation step. Its rejection reports to `catch` as `setup`, then destroys the instance - recovery belongs inside `new()`, around the await. Setup cannot lean on an effect to finish. Its cleanup cannot be returned - a promise's value is ignored.
+- Readiness is per tree. A parent is ready once its own steps and every child it owned at activation have settled - a child whose setup rejects is destroyed and the parent settles without it. A hold already on the parent when its children activate (an async `setup` handler, a host's placement) reaches them: their `ready` and effects wait for the root. The parent's own `async new()` runs after its children and does not hold them. Children settle before their parent; effects run after the `ready` handlers. A child adopted later settles on its own.
+- Readiness gates effects and `ready` only - never render, getters or `set(key, cb)` listeners, so a held instance still renders from the values it has. A render that must wait names the field it waits for: `data = set(() => this.load())` suspends reads until the async factory resolves. To wait for an instance from outside, await an empty effect: `await state.get(() => {})` ([get.md](get.md#await-the-release)).
+
+How an instance settles:
+
+```
+activate   setup handlers → fields (children activate here) → args → new()
+collect    own promises + each owned child's settle
+parent activating?
+  yes      waits join the parent's; the parent releases this instance
+  no       nothing to wait on: settle now, inline - else hold until all resolve
+settle     release children → ready handlers → parked effects replay
+```
 - `this` is the instance, not a tracking proxy - closures made here (a listener) capture it and may use it as a `Map`/`Set` key.
 
 `new()` is a typed optional member of `Model` (`protected new?(): void | (() => void) | Promise<void>`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. `mount()` on a plain `Model` - run by either host - is not declared on `Model`; a class satisfies the host's interface structurally: optional and unadvertised on never-rendered Models, at the cost of a looser check than a declared override.

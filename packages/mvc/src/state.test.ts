@@ -1923,6 +1923,26 @@ describe('get method', () => {
         expect(didUpdate).toBeCalledWith('foo');
         expect(willUpdate).toBeCalledTimes(2);
       });
+
+      it('will report a throw on retry to catch', async () => {
+        const handler = vi.fn();
+
+        class Failing extends Test {}
+
+        Failing.on({ catch: handler });
+
+        const test = Failing.new();
+
+        test.get(($) => {
+          void $.value;
+          throw new Error('retry');
+        });
+
+        test.value = 'foo';
+
+        await expect(test).toHaveUpdated();
+        expect(handler).toBeCalledWith(expect.objectContaining({ message: 'retry' }), 'effect', undefined);
+      });
     });
 
     describe('before ready', () => {
@@ -4140,6 +4160,7 @@ describe('on setup / ready stages (static)', () => {
 
   it('will destroy the instance if an async new() rejects', async () => {
     const handler = vi.fn();
+    const effect = vi.fn();
 
     class Test extends Model {
       protected async new() {
@@ -4150,10 +4171,389 @@ describe('on setup / ready stages (static)', () => {
     Test.on({ catch: handler });
 
     const test = Test.new();
+    const settled = test.get(effect);
 
     await flushMicrotasks();
     expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
     expect(test.get(null)).toBe(true);
+    expect(effect).not.toBeCalled();
+    await expect(Promise.resolve(settled)).rejects.toThrow(`${test} is destroyed.`);
+  });
+
+  it('will defer effects until an async new() resolves', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+    const later = vi.fn();
+
+    class Test extends Model {
+      value = 0;
+
+      protected async new() {
+        this.get(($) => void effect($.value));
+        await done;
+        this.value = 1;
+      }
+    }
+
+    const test = Test.new();
+
+    test.get(($) => void later($.value));
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+    expect(later).not.toBeCalled();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+    expect(effect).toBeCalledWith(1);
+    expect(later).toBeCalledWith(1);
+  });
+
+  it('will resolve an awaited effect once an async new() resolves', async () => {
+    const done = mockPromise();
+    let ready = false;
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+    const settled = test.get(() => {}).then(() => { ready = true; });
+
+    await flushMicrotasks();
+    expect(ready).toBe(false);
+
+    done.resolve();
+    await settled;
+    expect(ready).toBe(true);
+  });
+
+  it('will not run deferred effects if destroyed before an async new() resolves', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+    const settled = test.get(effect);
+
+    test.set(null);
+    await expect(Promise.resolve(settled)).rejects.toThrow(`${test} is destroyed.`);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+  });
+
+  it('will not run a deferred effect cancelled before an async new() resolves', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const stop = Test.new().get(effect);
+
+    stop();
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+  });
+
+  it('will run remaining deferred effects if one throws', async () => {
+    const done = mockPromise();
+    const handler = vi.fn();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ catch: handler });
+
+    const test = Test.new();
+
+    test.get(() => { throw new Error('first run'); });
+    test.get(effect);
+
+    done.resolve();
+    await flushMicrotasks();
+
+    expect(effect).toBeCalledTimes(1);
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'first run' }), 'effect', undefined);
+  });
+
+  it('will hold ready until an owned child settles', async () => {
+    const done = mockPromise();
+    const order: string[] = [];
+
+    class Child extends Model {
+      protected async new() {
+        await done;
+        order.push('child new');
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    Child.on({ ready: () => void order.push('child ready') });
+    Parent.on({ ready: () => void order.push('parent ready') });
+    Parent.new();
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(order).toEqual(['child new', 'child ready', 'parent ready']);
+  });
+
+  it('will hold a child and grandchild for a hold the root carries', async () => {
+    const done = mockPromise();
+    const order: string[] = [];
+
+    class Leaf extends Model {
+      value = 0;
+
+      constructor() {
+        super();
+        this.get(($) => void order.push(`leaf effect ${$.value}`));
+      }
+    }
+
+    class Child extends Model {
+      leaf = new Leaf();
+    }
+
+    class Root extends Model {
+      child = new Child();
+    }
+
+    Leaf.on({ ready: () => void order.push('leaf ready') });
+    Child.on({ ready: () => void order.push('child ready') });
+    Root.on({ ready: () => void order.push('root ready'), setup: () => done });
+
+    const root = Root.new();
+
+    root.child.leaf.value = 1;
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(order).toEqual(['leaf ready', 'child ready', 'root ready', 'leaf effect 1']);
+  });
+
+  it('will not hold a child for the parent\'s own async new()', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+    const ready = vi.fn();
+
+    class Child extends Model {
+      constructor() {
+        super();
+        this.get(effect);
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    Child.on({ ready });
+    Parent.new();
+
+    expect(effect).toBeCalledTimes(1);
+    expect(ready).toBeCalledTimes(1);
+    done.resolve();
+  });
+
+  it('will settle a child with nothing to wait on inline', () => {
+    const order: string[] = [];
+
+    class Child extends Model {
+      constructor() {
+        super();
+        this.get(() => void order.push('child effect'));
+      }
+
+      protected new() {
+        order.push('child new');
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+
+      constructor() {
+        super();
+        this.get(() => void order.push('parent effect'));
+      }
+
+      protected new() {
+        order.push('parent new');
+      }
+    }
+
+    Child.on({ ready: () => void order.push('child ready') });
+    Parent.on({ ready: () => void order.push('parent ready') });
+    Parent.new();
+
+    expect(order).toEqual(['child new', 'child ready', 'child effect', 'parent new', 'parent ready', 'parent effect']);
+  });
+
+  it('will park an effect a parent registers on its held child', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+
+    class Child extends Model {
+      value = 1;
+    }
+
+    class Root extends Model {
+      child = new Child();
+
+      protected new() {
+        this.child.get(($) => void effect($.value));
+      }
+    }
+
+    Root.on({ setup: () => done });
+    Root.new();
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).toBeCalledWith(1);
+  });
+
+  it('will suspend a parked effect again on an unset field', async () => {
+    const done = mockPromise();
+    const seen = vi.fn();
+
+    class Test extends Model {
+      value = set<string>();
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+
+    test.get(($) => void seen($.value));
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(seen).not.toBeCalled();
+
+    test.value = 'ready';
+    await expect(test).toHaveUpdated();
+    expect(seen).toBeCalledWith('ready');
+  });
+
+  it('will settle a child adopted after ready on its own', async () => {
+    const done = mockPromise();
+    const ready = vi.fn();
+
+    class Child extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    class Parent extends Model {
+      child?: Child = undefined;
+    }
+
+    Child.on({ ready });
+    Parent.on({ ready });
+
+    const parent = Parent.new();
+
+    expect(ready).toBeCalledTimes(1);
+
+    parent.child = new Child();
+
+    await flushMicrotasks();
+    expect(ready).toBeCalledTimes(1);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(ready).toBeCalledTimes(2);
+  });
+
+  it('will destroy a child whose setup rejects without failing the parent', async () => {
+    const handler = vi.fn();
+    const ready = vi.fn();
+
+    class Child extends Model {
+      protected async new() {
+        throw new Error('failed');
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    Child.on({ catch: handler });
+    Parent.on({ ready });
+
+    const parent = Parent.new();
+
+    await flushMicrotasks();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+    expect(parent.child.get(null)).toBe(true);
+    expect(parent.get(null)).toBe(false);
+    expect(ready).toBeCalledTimes(1);
+  });
+
+  it('will not settle children if the parent is destroyed first', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+    const ready = vi.fn();
+
+    class Child extends Model {
+      constructor() {
+        super();
+        this.get(effect);
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    Child.on({ ready });
+    Parent.on({ setup: () => done });
+
+    Parent.new().set(null);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+    expect(ready).not.toBeCalled();
   });
 
   it('will release effects a deferred ready creates when destroyed', async () => {

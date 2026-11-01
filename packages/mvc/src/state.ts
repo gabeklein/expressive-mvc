@@ -61,6 +61,9 @@ let ANNOUNCED = false;
 const ADOPT = new WeakMap<Model, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<Model, Set<(child: Model) => void>>();
 const OWNS = new WeakMap<Model, Set<Model>>();
+
+/** Instances mid-activation. */
+const ACTIVE = new WeakMap<Model, { waits: Promise<unknown>[]; held: boolean; children: (() => void)[] }>();
 const OWNED = new WeakMap<Model, Set<(child: Model) => void>>();
 
 type Got<C extends { get(...args: any[]): any }> = ReturnType<C['get']> extends infer R
@@ -400,7 +403,14 @@ abstract class Model {
       return typeof arg2 == 'function'
         ? Context.get(self).get(arg1, arg2, args[0], self)
         : within(this, () => (arg1.get as Function)(arg2, ...args));
-    if (typeof arg1 == 'function') return watch(self, unbind(arg1));
+    if (typeof arg1 == 'function')
+      return watch(self, function (current, update) {
+        const { wait } = observer(self, true);
+
+        if (wait) throw new Promise<void>((resolve) => wait.add(resolve));
+
+        return unbind(arg1).call(this, current, update);
+      });
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1, arg2);
@@ -651,7 +661,13 @@ function init(state: Model, ...args: Model.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
+  const waits: Promise<unknown>[] = [];
+  const children: (() => void)[] = [];
+  const active = { waits, children, held: false };
+
   function observe() {
+    if (waits.length) active.held = true;
+
     for (const key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
 
@@ -663,6 +679,12 @@ function init(state: Model, ...args: Model.Args) {
   }
 
   function settle() {
+    const o = observer(state, true);
+    const { wait } = o;
+
+    o.wait = undefined;
+    children.forEach((release) => release());
+
     capture((release) => {
       listener(state, () => release(null), null);
 
@@ -672,6 +694,8 @@ function init(state: Model, ...args: Model.Args) {
         if (typeof out == 'function') listener(state, out, null);
       }
     });
+
+    wait?.forEach((resolve) => resolve());
   }
 
   listener(state, (key) => {
@@ -690,10 +714,12 @@ function init(state: Model, ...args: Model.Args) {
 
     const above = PARENT.get(state);
     const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
+    const up = above ? ACTIVE.get(above) : undefined;
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const waits: Promise<unknown>[] = [];
+    active.held = !!up?.held;
+    ACTIVE.set(state, active);
 
     capture((release) => {
       const queue = [...before, observe, ...args];
@@ -716,12 +742,22 @@ function init(state: Model, ...args: Model.Args) {
       }
     });
 
-    if (waits.length)
-      Promise.all(waits).then(() => {
-        if (observer(state) !== null) settle();
-      }, () => {
-        event(state, null);
-      });
+    const settled = waits.length ? Promise.all(waits) : undefined;
+    const hold = active.held || !!settled;
+    const failed = () => event(state, null);
+    const release = () => {
+      if (observer(state) !== null) settle();
+    };
+
+    ACTIVE.delete(state);
+
+    if (hold) observer(state, true).wait = new Set();
+
+    if (up && hold) {
+      if (settled) up.waits.push(settled.then(undefined, failed));
+      up.children.push(release);
+    }
+    else if (settled) settled.then(release, failed);
     else settle();
 
     if (owns) {
