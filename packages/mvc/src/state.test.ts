@@ -409,6 +409,25 @@ describe('methods', () => {
     expect(inside).toBe(test.is);
   });
 
+  it('will run an async new()', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {
+      value = 0;
+
+      protected async new() {
+        await done;
+        this.value = 1;
+      }
+    }
+
+    const test = Test.new();
+
+    done.resolve();
+
+    await expect(test).toHaveUpdated('value');
+  });
+
   it('will allow overwrite', () => {
     class Test extends Model {
       foo = 'foo';
@@ -3981,6 +4000,190 @@ describe('on setup / ready stages (static)', () => {
     Test.new();
 
     expect(order).toEqual(['setup', 'new', 'ready']);
+  });
+
+  it('will run ready once an async new() resolves', async () => {
+    const done = mockPromise();
+    const order: string[] = [];
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+        order.push('new');
+      }
+    }
+
+    Test.on({ ready: () => void order.push('ready') });
+    Test.new();
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(order).toEqual(['new', 'ready']);
+  });
+
+  it('will not run ready if an async new() rejects, handing the rejection to catch', async () => {
+    const ready = vi.fn();
+    const handler = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        throw new Error('failed');
+      }
+    }
+
+    Test.on({ ready, catch: handler });
+    Test.new();
+
+    await flushMicrotasks();
+    expect(ready).not.toBeCalled();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+  });
+
+  it('will not run ready if destroyed before an async new() resolves', async () => {
+    const done = mockPromise();
+    const ready = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ ready });
+    Test.new().set(null);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(ready).not.toBeCalled();
+  });
+
+  it('will run effects after a synchronous new()', () => {
+    const order: string[] = [];
+
+    class Test extends Model {
+      protected new() {
+        this.get(() => void order.push('effect'));
+        order.push('new');
+      }
+    }
+
+    Test.on({ ready: () => void order.push('ready') });
+    Test.new();
+
+    expect(order).toEqual(['new', 'ready', 'effect']);
+  });
+
+  it('will compute getters while an async new() is pending', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {
+      value = 1;
+
+      get double() {
+        return this.value * 2;
+      }
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.double).toBe(2);
+    test.value = 2;
+    await expect(test).toHaveUpdated('value');
+    expect(test.double).toBe(4);
+
+    done.resolve();
+  });
+
+  it('will place in a context argument before an async setup resolves', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {}
+
+    Test.on({ setup: () => done });
+
+    const test = Test.new(Context.root);
+
+    expect(Context.root.get(Test)).toBe(test);
+
+    done.resolve();
+    await flushMicrotasks();
+    test.set(null);
+  });
+
+  it('will destroy the instance if a setup handler rejects', async () => {
+    const handler = vi.fn();
+    const create = vi.fn();
+
+    class Test extends Model {
+      protected new() {
+        create();
+      }
+    }
+
+    Test.on({ catch: handler, setup: () => Promise.reject(new Error('failed')) });
+
+    const test = Test.new();
+
+    expect(create).toBeCalled();
+
+    await flushMicrotasks();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+    expect(test.get(null)).toBe(true);
+  });
+
+  it('will destroy the instance if an async new() rejects', async () => {
+    const handler = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        throw new Error('failed');
+      }
+    }
+
+    Test.on({ catch: handler });
+
+    const test = Test.new();
+
+    await flushMicrotasks();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+    expect(test.get(null)).toBe(true);
+  });
+
+  it('will release effects a deferred ready creates when destroyed', async () => {
+    const done = mockPromise();
+    const seen = vi.fn();
+
+    class Other extends Model {
+      value = 0;
+    }
+
+    const other = Other.new();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ ready: () => void other.get(($) => seen($.value)) });
+
+    const test = Test.new();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(seen).toBeCalledTimes(1);
+
+    test.set(null);
+    other.value = 1;
+    await flushMicrotasks();
+    expect(seen).toBeCalledTimes(1);
   });
 
 });
