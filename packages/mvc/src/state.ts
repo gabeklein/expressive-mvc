@@ -744,11 +744,9 @@ function init(state: Model, ...args: Model.Args) {
 
     const { held } = ACTIVE.get(state)!;
     const settled = waits.length ? Promise.all(waits) : undefined;
+    const failed = () => event(state, null);
     const release = () => {
       if (observer(state) !== null) settle();
-    };
-    const fail = () => {
-      event(state, null);
     };
 
     ACTIVE.delete(state);
@@ -756,9 +754,10 @@ function init(state: Model, ...args: Model.Args) {
     if (held || settled) observer(state, true).wait = new Set();
 
     if (up) {
-      if (settled) up.waits.push(settled.then(undefined, fail));
+      if (settled) up.waits.push(settled.then(undefined, failed));
       up.children.push(release);
-    } else if (settled) settled.then(release, fail);
+    }
+    else if (settled) settled.then(release, failed);
     else settle();
 
     if (owns) {
