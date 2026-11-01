@@ -74,8 +74,8 @@ interface Sheet {
 
 const sheets = new WeakMap<Document, Sheet>();
 
-function style<T extends object>(type: T, rules: style.Map): T {
-  appearance.style(type, rules);
+function style<T extends object>(type: T, ...maps: (style.Map | false | null | undefined)[]): T {
+  for (const rules of maps) if (rules) appearance.style(type, rules);
   registerEmitter(emit);
   return type;
 }

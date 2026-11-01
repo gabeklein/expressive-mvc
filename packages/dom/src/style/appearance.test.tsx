@@ -437,6 +437,21 @@ describe('appearance', () => {
     expect(getComputedStyle(node).padding).toBe('2px');
   });
 
+  it('will layer several maps from one call and skip falsy ones', () => {
+    function Meta() {
+      return <div _name />;
+    }
+
+    const shared = { _name: { color: 'red', padding: '2px' } };
+    const wide = false as boolean;
+
+    style(Meta, shared, wide && { padding: '9px' }, null, { _name: { color: 'blue' } });
+
+    const node = place(<Meta />).querySelector('div')!;
+    expect(getComputedStyle(node).color).toBe('blue');
+    expect(getComputedStyle(node).padding).toBe('2px');
+  });
+
   it('will apply rules from every class in the chain', () => {
     class Bar extends Component {
       render() {
