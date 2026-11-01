@@ -23,6 +23,7 @@ declare module './stylesheet' {
       tint(value: any): unknown;
       bare(value?: any): unknown;
       globalTone(value: any): unknown;
+      selfish(value?: any): unknown;
     }
   }
 }
@@ -37,7 +38,9 @@ macro({
   tint: (value?: unknown) => ['tinted', { color: value }],
   bare: () => 'bare',
   globalTone: (value?: unknown) => ({ color: value }),
-  _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 }
+  selfish: () => ({ selfish: true }),
+  _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 },
+  _output: { color: 'gray', padding: '5px' }
 });
 
 macro({
@@ -310,6 +313,20 @@ describe('appearance', () => {
     const fn = createStyleScope(undefined, { _fn: { margin: () => '1px' } })!;
     expect(() => resolveAppearance(fn, { _fn: true }))
       .toThrow('No macro handles "margin".');
+
+    const flag = createStyleScope(undefined, { _flag: { margin: true } })!;
+    expect(() => resolveAppearance(flag, { _flag: true }))
+      .toThrow('No macro handles "margin".');
+  });
+
+  it('will throw for a macro that returns itself', () => {
+    function Selfish() {
+      return <i _loop />;
+    }
+
+    style(Selfish, { _loop: { selfish: true } });
+
+    expect(() => place(<Selfish />)).toThrow('Macro "selfish" returned itself.');
   });
 
   it('will apply base declarations to each component root', () => {
@@ -332,6 +349,40 @@ describe('appearance', () => {
     style(Bare, { bare: true });
 
     expect(place(<Bare />).querySelector('wbr')!.className).toBe('bare');
+  });
+
+  it('will let base declarations beat global rules', () => {
+    function Readout() {
+      return <output>out</output>;
+    }
+
+    function Gauge() {
+      return <output _shared>gauge</output>;
+    }
+
+    style(Readout, { color: 'black' });
+    style(Gauge, { color: 'black', letterSpacing: '1px', padding: '1px', _output: { padding: '6px' } });
+
+    const readout = place(<Readout />).querySelector('output')!;
+    const gauge = place(<Gauge />).querySelector('output')!;
+
+    expect(getComputedStyle(readout).color).toBe('black');
+    expect(getComputedStyle(readout).padding).toBe('5px');
+    expect(gauge.className.split(' ')).toEqual(['global_output', 'Gauge_output', 'global_shared', 'Gauge']);
+    expect(getComputedStyle(gauge).color).toBe('black');
+    expect(getComputedStyle(gauge).letterSpacing).toBe('1px');
+    expect(getComputedStyle(gauge).padding).toBe('6px');
+  });
+
+  it('will order a rule shadowing a global by its own registration', () => {
+    function Gauge() {
+      return <output _wide />;
+    }
+
+    style(Gauge, { _wide: { padding: '1px' }, _output: { padding: '2px' } });
+
+    const node = place(<Gauge />).querySelector('output')!;
+    expect(getComputedStyle(node).padding).toBe('2px');
   });
 
   it('will not activate a rule for a falsy flag', () => {
@@ -437,6 +488,34 @@ describe('appearance', () => {
     expect(getComputedStyle(root.querySelector('i')!).padding).toBe('9px');
     expect(getComputedStyle(root.querySelector('b')!).padding).toBe('');
     expect(getComputedStyle(root.querySelector('b')!).color).toBe('blue');
+  });
+
+  it('will not leak a base rule into a placed component instance', () => {
+    class Card extends Component {
+      render() {
+        return <b>card</b>;
+      }
+    }
+
+    class Deck extends Component {
+      cards = [new Card()];
+
+      render() {
+        return <i>{this.cards}</i>;
+      }
+    }
+
+    style(Card, { color: 'blue' });
+    style(Deck, { padding: '9px', _b: { margin: '3px' } });
+
+    const root = place(<Deck />);
+    const card = root.querySelector('b')!;
+
+    expect(getComputedStyle(root.querySelector('i')!).padding).toBe('9px');
+    expect(card.className).toBe('Card');
+    expect(getComputedStyle(card).padding).toBe('');
+    expect(getComputedStyle(card).margin).toBe('');
+    expect(getComputedStyle(card).color).toBe('blue');
   });
 
   it('will not merge a same-named rule across a component', () => {

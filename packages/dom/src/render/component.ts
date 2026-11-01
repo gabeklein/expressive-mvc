@@ -4,7 +4,7 @@ import { watch } from '@expressive/mvc/observable';
 import { resolve } from '../node/loader';
 import { isVNode } from '../node/vnode';
 import type { Key, Node as RenderNode, VNode } from '../node/vnode';
-import { componentProps } from '../style/claim';
+import { componentProps, placed } from '../style/claim';
 import type { Appearance } from '../style/claim';
 import { call, enter } from './adapter';
 import { inserted } from './commits';
@@ -158,7 +158,7 @@ function patchFunction(fiber: Fiber, value: VNode, appearance?: Appearance) {
 function patchComponent(fiber: Fiber, value: RenderNode, appearance?: Appearance) {
   const resolved = isVNode(value)
     ? componentProps(value.type, value.props, appearance)
-    : { appearance, props: fiber.props! };
+    : { appearance: placed(appearance), props: fiber.props! };
   fiber.appearance = resolved.appearance;
   const props = isVNode(value) ? observe(resolved.props) : resolved.props;
   if (isVNode(value) && props !== fiber.props) {

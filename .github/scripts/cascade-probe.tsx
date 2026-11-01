@@ -3,6 +3,7 @@ import { Component } from '@expressive/mvc';
 import { css, macro, render, style } from '@expressive/dom';
 
 macro(css);
+macro({ _output: { color: 'rgb(5, 5, 5)', padding: '5px' } });
 
 const out: string[] = [];
 
@@ -58,9 +59,15 @@ style(Nested, {
   _frame: { '--depth': '7', _em: { color: 'rgb(6, 6, 6)', paddingTop: '3px' } }
 });
 
+function Readout() {
+  return <output>readout</output>;
+}
+
+style(Readout, { color: 'rgb(7, 7, 7)', padding: '1px', _output: { padding: '6px' } });
+
 const root = document.getElementById('app')!;
 
-render(<><Outer /><Inline /><Nested /><Units /></>, root);
+render(<><Outer /><Inline /><Nested /><Units /><Readout /></>, root);
 
 const leaf = root.querySelector('b')!;
 const inline = root.querySelector('i')!;
@@ -72,6 +79,10 @@ check('inline beats class', getComputedStyle(inline).color, 'rgb(9, 9, 9)');
 check('descendant scope applies', getComputedStyle(em).color, 'rgb(6, 6, 6)');
 check('custom property', getComputedStyle(frame).getPropertyValue('--depth').trim(), '7');
 const box = root.querySelector('span')!;
+const readout = root.querySelector('output')!;
+
+check('base beats global rule', getComputedStyle(readout).color, 'rgb(7, 7, 7)');
+check('own rule beats base', getComputedStyle(readout).padding, '6px');
 
 check('px appended where required', getComputedStyle(box).paddingTop, '5px');
 check('unitless left alone', getComputedStyle(box).zIndex, '3');
