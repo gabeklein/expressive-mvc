@@ -29,4 +29,4 @@ export class Hash extends Model {
   }
 }
 
-Hash.new((self) => Context.root.add(self, true));
+Hash.new(Context.root);

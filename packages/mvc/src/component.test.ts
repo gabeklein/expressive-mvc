@@ -165,15 +165,28 @@ describe('twin construction', () => {
   });
 });
 
-it('will ignore Context passed as constructor argument', () => {
+describe('context argument', () => {
   class Foo extends Component {
     value?: number = 10;
   }
 
-  const foo = Foo.new({ value: 5 }, new Context() as any);
+  it('will place instance in a context after props', () => {
+    const context = new Context();
+    const foo = Foo.new({ value: 5 }, context);
 
-  expect(foo.value).toBe(5);
-  expect(Object.keys(foo.get())).not.toContain('0');
+    expect(foo.value).toBe(5);
+    expect(context.get(Foo)).toBe(foo);
+    expect(Object.keys(foo.get())).not.toContain('0');
+  });
+
+  it('will defer to a host context', () => {
+    const parent = new Context();
+    const foo = new Foo({}, parent);
+    const child = parent.push(foo);
+
+    expect(Context.get(foo)).toBe(child);
+    expect(parent.get(Foo, false)).toBeUndefined();
+  });
 });
 
 describe('render', () => {

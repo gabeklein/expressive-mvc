@@ -18,7 +18,7 @@ describe('MVC adapter', () => {
       }
     }
 
-    const auth = Auth.new((self) => Context.root.add(self, true));
+    const auth = Auth.new(Context.root);
     const [, root, release] = mount(View);
 
     expect(root.textContent).toBe('foo');

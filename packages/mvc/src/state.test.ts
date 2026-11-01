@@ -3328,6 +3328,146 @@ describe('new method (static)', () => {
   });
 });
 
+describe('context argument', () => {
+  class Theme extends Model {}
+  class Panel extends Model {
+    theme = get(Theme);
+  }
+
+  it('will add instance to the context', () => {
+    const context = new Context();
+    const theme = Theme.new(context);
+
+    expect(context.get(Theme)).toBe(theme);
+    expect(Context.get(theme)).toBe(context);
+  });
+
+  it('will resolve get against the context', () => {
+    const context = new Context({ Theme });
+    const panel = Panel.new(context);
+
+    expect(panel.theme).toBe(context.get(Theme));
+  });
+
+  it('will accept a context nested in arguments', () => {
+    const context = new Context();
+    const theme = Theme.new([context]);
+
+    expect(context.get(Theme)).toBe(theme);
+  });
+
+  it('will remove instance when destroyed', () => {
+    const theme = Theme.new(Context.root);
+
+    expect(Context.root.get(Theme)).toBe(theme);
+
+    theme.set(null);
+
+    expect(Context.root.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will use the first context argument', () => {
+    const a = new Context();
+    const b = new Context();
+    const theme = Theme.new(a, [b]);
+
+    expect(Context.get(theme)).toBe(a);
+    expect(b.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will resolve a consumer placed before its provider', async () => {
+    class Panel extends Model {
+      theme = get(Theme, false);
+    }
+
+    const context = new Context();
+    const panel = Panel.new(context);
+
+    expect(panel.theme).toBe(undefined);
+
+    const theme = Theme.new(context);
+
+    await expect(panel).toHaveUpdated('theme');
+    expect(panel.theme).toBe(theme);
+  });
+
+  it('will ignore context argument of child under a homed owner', () => {
+    class Child extends Model {}
+
+    const ignored = new Context();
+
+    class Owner extends Model {
+      child = new Child(ignored);
+    }
+
+    const context = new Context();
+    const owner = Owner.new(context);
+
+    expect(Context.get(owner.child)).toBe(context);
+    expect(ignored.get(Child, false)).toBeUndefined();
+  });
+
+  it('will ignore context argument of child under an owner with no home', () => {
+    class Child extends Model {}
+
+    const ignored = new Context();
+
+    class Owner extends Model {
+      child = new Child(ignored);
+    }
+
+    const owner = Owner.new();
+    const context = new Context(owner);
+
+    expect(Context.get(owner.child)).toBe(context);
+    expect(ignored.get(Child, false)).toBeUndefined();
+  });
+
+  it('will ignore a returned context', () => {
+    const context = new Context();
+    const theme = Theme.new(() => [context]);
+
+    expect(context.get(Theme, false)).toBeUndefined();
+    expect(Context.get(theme)).toBe(Context.root);
+  });
+
+  it('will defer to a home given before activation', () => {
+    const a = new Context();
+    const b = new Context();
+    const theme = new Theme(b);
+
+    a.add(theme, true);
+    event(theme);
+
+    expect(Context.get(theme)).toBe(a);
+    expect(b.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will link to host of the context without owning', () => {
+    class Host extends Model {}
+
+    const host = Host.new();
+    const layer = new Context().push(host);
+    const theme = Theme.new(layer);
+
+    expect(theme.get(Model)).toBe(host);
+
+    host.set(null);
+
+    expect(layer.get(Theme)).toBe(theme);
+  });
+
+  it('will not throw if destroyed after context is popped', () => {
+    const context = new Context();
+    const theme = Theme.new(context);
+
+    context.pop();
+
+    expect(context.get(Theme, false)).toBeUndefined();
+    expect(() => theme.set(null)).not.toThrow();
+  });
+});
+
 describe('activation', () => {
   // e.g. React element internals like `_owner`, installed before activation
   it('will ignore non-configurable own value properties', () => {

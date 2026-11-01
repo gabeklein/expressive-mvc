@@ -121,10 +121,10 @@ type Export<R> = R extends Model
 Union type accepted by `Model.new()`:
 
 ```ts
-type Args<T> = (Args<T> | Init<T> | Assign<T> | void)[];
+type Args<T> = (Args<T> | Init<T> | Assign<T> | Context | void)[];
 ```
 
-Arrays are flattened recursively at runtime.
+Arrays are flattened recursively at runtime. A `Context` claims the home - the first one wins, unless the instance was already placed.
 
 ### `Model.Init<T>`
 

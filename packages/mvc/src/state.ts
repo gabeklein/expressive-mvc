@@ -1,4 +1,4 @@
-import { Context, host, join, within } from './context';
+import { Context, home, host, join, within } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -89,8 +89,8 @@ declare namespace Model {
   type Type<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
-  /** Model constructor arguments */
-  type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | void)[];
+  /** Model constructor arguments - the first `Context` given becomes the home, unless already placed. */
+  type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | Context | void)[];
 
   /**
    * Model constructor callback - runs during activation, in argument order,
@@ -528,7 +528,7 @@ abstract class Model {
    *
    * **Important** - Unlike `new this(...)` - this method also activates state.
    *
-   * @param args - arguments sent to constructor
+   * @param args - arguments sent to constructor; a `Context` among them becomes its home
    */
   static new<T extends Model>(this: Model.Type<T>, ...args: Model.Args<T>): T {
     const instance = new this(...args);
@@ -669,6 +669,11 @@ function init(state: Model, ...args: Model.Args) {
 
     if (key === null) return null;
 
+    args.forEach(function find(arg) {
+      if (Array.isArray(arg)) arg.forEach(find);
+      else if (arg instanceof Context) home(state, arg);
+    });
+
     if (!PARENT.has(state)) parent(state, host(state) || null);
 
     const above = PARENT.get(state);
@@ -685,6 +690,8 @@ function init(state: Model, ...args: Model.Args) {
         const arg = queue[i];
         const called = typeof arg == 'function';
         const out = called ? arg.call(state, state) : arg;
+
+        if (out instanceof Context) continue;
 
         if (out instanceof Promise)
           out.catch((err) => report('setup', state, err));
@@ -773,7 +780,7 @@ function bootstrap(T: Model.Extends) {
 
     if (Object.prototype.hasOwnProperty.call(type, 'global'))
       throw new Error(
-        `${type.name} declares \`static global\`, which was removed - provide it with <Component for>, or add it to Context.root explicitly.`
+        `${type.name} declares \`static global\`, which was removed - provide it with <Component for>, or create it with .new(Context.root).`
       );
 
     METHODS.set(type, (keys = new Map(keys)));

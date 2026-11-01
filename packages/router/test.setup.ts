@@ -30,7 +30,7 @@ export function browserRouter() {
 
   beforeEach(() => {
     window.history.replaceState(null, '', '/');
-    ctx.current = BrowserRouter.new((self) => Context.root.add(self, true));
+    ctx.current = BrowserRouter.new(Context.root);
   });
 
   afterEach(() => ctx.current.set(null));

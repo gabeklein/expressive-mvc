@@ -321,19 +321,27 @@ function Avatar() {
 
 That's the point of `Global` - it makes each piece of shared state available by its own type. Components ask for `Session`, not for `Global` and then its `session`; `Global.get()` works, but nothing below should need to know where `Session` lives.
 
-Every context descends from `Context.root`. A `Model.new()` outside any context resolves its own lookups against root, but never registers there - nothing can find it until something provides it. To make an instance findable without a provider, add it to root explicitly, and remove it when the instance is destroyed:
+Every context descends from `Context.root`. A `Model.new()` outside any context resolves its own lookups against root, but never registers there - nothing can find it until something provides it. To make an instance findable without a provider, pass root when creating it - it's removed again when the instance is destroyed:
 
 ```ts
-Session.new((self) => Context.root.add(self, true));
+Session.new(Context.root);
 ```
 
 A full app built the provided way (viewport, session, and theme) is at [composition/globals](/examples/composition/globals).
 
-### Homes are permanent
+<br />
+
+## Placing instances
 
 Where an instance activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A `Model.new()` only *falls back* to root, so the first explicit context to claim it later still becomes its home, though its initialization already ran without it.
 
-The escape hatch is plain construction. `new Model()` builds the instance without activating it, so the first explicit placement gets to claim it before anything runs:
+To choose the home up front, pass the context to `.new()` - the instance is placed before its initialization runs:
+
+```ts
+const cart = Cart.new(context); // cart's home is context
+```
+
+Or construct without activating - `new Model()` builds the instance, so the first explicit placement gets to claim it before anything runs:
 
 ```ts
 const cart = new Cart(); // constructed, not yet activated
@@ -341,6 +349,23 @@ new Context(cart); // cart's home is this context
 ```
 
 Useful in tests, and in code that prepares an instance before mounting it into a tree.
+
+When more than one context is in play, the first claim wins:
+
+- **Claimed before activation** - a host mounting the instance, `ctx.add` / `ctx.push` before it activates, or an owner adopting it as a field child (an owned child always lives where its owner does). That claim decides the home, and context arguments are ignored. This is how a component rendered by React keeps its own layer even though React hands its constructor the parent context.
+- **Context arguments** - the first one becomes the home, and later ones are ignored. So a default goes last, like a fallback (the opposite of initial values, where later wins), and a subclass that must decide its placement passes its context first: `super(context, ...args)`, or `super(props, context, ...rest)` for a component.
+
+When a context "didn't take", something earlier had the claim - the host, the owner, or an earlier argument.
+
+```ts
+Cart.new(...args, Context.root); // root unless args brought a context
+```
+
+An owned child - `session = new Session()` - always lives where its owner does. Writing `Session.new(context)` in a field instead makes a guest - homed there, but not owned, so it is never destroyed with the parent. Created in a field initializer, nothing ever releases it; make guests where their lifetime is held and pass them in.
+
+A component given a context this way - `Panel.new(props, context)` - is added to it like any instance, visible to its siblings there - two of one class in the same context make a lookup throw. To mount one as a host would, under its own layer, push it with a cleanup: `context.push(panel, () => panel.set(null))`.
+
+An entry lasts until the instance is destroyed. Popping the context removes the entry but leaves the instance alive, and `Context.get(instance)` still returns the popped context - destroy it with `set(null)` to release it.
 
 That's the short version - constructor forms and `ctx.add` are in [API: Utilities](/docs/api/utilities).
 

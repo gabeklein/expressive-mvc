@@ -4,23 +4,72 @@ Hierarchical registry through which Model instances find each other. Every activ
 
 ## Home Context
 
-An owned instance's home is its owner's - lookups follow ownership, not where it was provided. Otherwise recorded per instance; first explicit claim wins, and no later context can transfer it.
+An owned instance's home is its owner's - lookups follow ownership, not where it was provided or which context its arguments name. Otherwise recorded per instance; first explicit claim wins, and no later context can transfer it.
 
 | Activation path                              | Home becomes     |
 | -------------------------------------------- | ---------------- |
 | `Model.new()`                                | `Context.root`   |
+| `Model.new(context)`                         | That context     |
 | `new Context(StateClass)`                    | That context     |
 | `new Model()` then `new Context(instance)`   | That context     |
 | `<Component for={StateClass}>`               | Component context |
 
 > A bare `Model.new()` resolves its `get()` lookups against root but never registers there, so the first explicit context to claim it later still becomes its home. See [Root Context](#root-context).
 
-### Construct vs Activate
+### Context Arguments
 
-To choose a home other than root, construct with `new Model()` and place it in the same tick:
+A `Context` among `.new()` or constructor arguments claims the home: the instance is added there as it activates, before its instructions and arguments apply, and removed when destroyed. The first claim wins:
+
+| Claim                                                       | Effect                                       |
+| ----------------------------------------------------------- | -------------------------------------------- |
+| Before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, or an owner (field child) | Home - context arguments are ignored |
+| Context arguments                                           | First one becomes home; the rest are ignored |
+
+A context that loses has no effect. A default goes last, like a fallback - unlike overlays, where later wins:
 
 ```ts
-// .new() activates immediately - init runs, and resolves get(), against root
+FormState.new(context);                         // home: context
+FormState.new(Context.root);                    // findable from anywhere until destroyed
+FormState.new(...args, Context.root);           // root unless args brought a context
+```
+
+A subclass enforces its placement by passing the context first, or offers a default by passing it last - after props for a `Component`:
+
+```ts
+super(context, ...args);                        // Model: enforce
+super(...args, context);                        // Model: default
+super(props, context, ...rest);                 // Component: enforce
+```
+
+An owned child's home is always its owner's - the owner claims it before it activates, so its context arguments are ignored:
+
+```ts
+class App extends Model {
+  session = new Session();                      // owned - homed where App is
+  guest = Session.new(context);                 // guest - homed in context, not owned
+}
+```
+
+A guest is never destroyed with the parent - created in a field, nothing releases it. Create it where its lifetime is held and assign it, or return `() => this.guest.set(null)` from `new()`.
+
+A `Component` takes the context after props - added like any Model, so its siblings there see it; two in one context make `context.get(Panel)` throw. To mount one as a host does, under its own child context, push it:
+
+```ts
+Panel.new(props, context);                      // entry in context
+
+const panel = new Panel(props);
+const layer = context.push(panel, () => panel.set(null)); // own layer, as hosts mount
+layer.pop();                                    // unmount
+```
+
+An instance placed in a host's layer - `X.new(layer)` - takes that host as owner for `get()`, but is not destroyed with it.
+
+`ctx.pop()` removes the entry, not the instance - `Context.get(instance)` still returns the popped context.
+
+### Construct vs Activate
+
+```ts
+// .new() alone activates immediately - init runs, and resolves get(), against root
 const a = FormState.new();
 new Context(a); // a's home from here, after init already ran without it
 
@@ -52,10 +101,10 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 ## Root Context
 
-`Context.root` is the process-wide registry, parent of every host's contexts; `Context.get(state)` falls back to it when an instance has no recorded home. An instance reads from root but never registers itself there. Prefer a render-less `Global` Component at the app's top owning shared state - it provides what it owns to everything below, so readers call `Session.get()` rather than reaching through `Global`. To make an instance findable from anywhere, add it explicitly and tie removal to its lifetime - an explicit entry stays until removed:
+`Context.root` is the process-wide registry, parent of every host's contexts; `Context.get(state)` falls back to it when an instance has no recorded home. An instance reads from root but never registers itself there. Prefer a render-less `Global` Component at the app's top owning shared state - it provides what it owns to everything below, so readers call `Session.get()` rather than reaching through `Global`. To make an instance findable from anywhere, pass root to `.new()` - it is added explicitly and removed when destroyed:
 
 ```ts
-const flags = Flags.new((self) => Context.root.add(self, true));
+const flags = Flags.new(Context.root);
 Context.root.get(Flags); // flags, until destroyed
 ```
 
@@ -168,6 +217,7 @@ ctx.get(Type, callback, false);        // upstream only
 ctx.add(state, explicit?);             // register an instance
 ctx.push(input?, cleanup?);            // child context; input as constructor; owns classes, adopts instances; cleanup runs once on pop
 ctx.pop();                             // destroy this and descendants
+Type.new(context, ...args);            // home: first context argument - see Context Arguments
 Context.get(state);                    // static: state's home context
 Context.get();                         // static: current context, else root
 Context.root;                          // process-wide registry

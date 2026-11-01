@@ -1100,7 +1100,7 @@ describe('root', () => {
     }
     class Sub extends Legacy {}
 
-    const message = 'Legacy declares `static global`, which was removed - provide it with <Component for>, or add it to Context.root explicitly.';
+    const message = 'Legacy declares `static global`, which was removed - provide it with <Component for>, or create it with .new(Context.root).';
 
     expect(() => Legacy.new()).toThrow(message);
     expect(() => Sub.new()).toThrow(message);

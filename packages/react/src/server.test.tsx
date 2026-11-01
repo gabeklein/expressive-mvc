@@ -64,7 +64,7 @@ describe('server render', () => {
     const Show = () => <i>{String(Flags.get().enabled)}</i>;
 
     onServer(() => {
-      const flags = Flags.new((self) => Context.root.add(self, true));
+      const flags = Flags.new(Context.root);
       const a = renderToString(<Show />);
 
       flags.enabled = true;

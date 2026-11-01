@@ -605,7 +605,7 @@ describe('root', () => {
   }
 
   it('will get from root unless provided', () => {
-    const instance = Global.new((self) => Context.root.add(self, true));
+    const instance = Global.new(Context.root);
 
     within(() => expect(Global.get().is).toBe(instance), (check) => check);
 

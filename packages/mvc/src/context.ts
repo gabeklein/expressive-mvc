@@ -392,8 +392,20 @@ function above(ctx: Context) {
   return ctx.parent && touch(ctx, "parent", ctx.parent);
 }
 
-function home(state: Model): Context | undefined {
+/** Home context of `state` - its own, else its owner's. */
+function home(state: Model): Context | undefined;
+/** Set home context for state. Noop and returns false if has one. */
+function home(state: Model, context: Context): boolean;
+function home(state: Model, context?: Context): Context | boolean | undefined {
   const owner = parent(state);
+
+  if (context) {
+    if (owner || HOME.has(state)) return false;
+
+    listener(state, context.add(state, true), null);
+    return true;
+  }
+
   return HOME.get(state) || (owner ? home(owner) : undefined);
 }
 
@@ -436,4 +448,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, host, join, resolver, within };
+export { Context, home, host, join, resolver, within };

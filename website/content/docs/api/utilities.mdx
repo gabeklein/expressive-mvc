@@ -378,10 +378,10 @@ Recursive: grandchildren inherit through their immediate parent. Reassigning a c
 
 App-wide state belongs to a render-less `Global` Component at the app's top - what it owns is provided to everything below, so components read `Session.get()` directly rather than through `Global`. [See it in action](/examples/composition/globals).
 
-To make an instance findable from anywhere without a provider, add it explicitly. An explicit entry stays until removed, so tie removal to the instance's lifetime:
+To make an instance findable from anywhere without a provider, pass root when creating it. The instance is added explicitly and removed when destroyed:
 
 ```ts
-const theme = Theme.new((self) => Context.root.add(self, true));
+const theme = Theme.new(Context.root);
 Context.root.get(Theme); // theme - and so does Theme.get(), anywhere
 ```
 
