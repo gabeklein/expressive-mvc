@@ -92,7 +92,7 @@ style(Card, {
 - `$name` is reserved for host instructions and throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 
-Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. The host joins arrays with spaces, rejects a function or object (`No macro handles "mx"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
+Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "mx"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
 Repeated `style()` calls add layers and return the component unchanged. Within a scope, global rules come first, then base declarations, then rules by base class, derived class, and registration order - a rule shadowing a global one stacks on it rather than absorbing it. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered. `macro()` is global and closes at the first render of anything.
 

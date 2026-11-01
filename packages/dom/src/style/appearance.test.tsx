@@ -23,6 +23,7 @@ declare module './stylesheet' {
       tint(value: any): unknown;
       bare(value?: any): unknown;
       globalTone(value: any): unknown;
+      selfish(value?: any): unknown;
     }
   }
 }
@@ -37,6 +38,7 @@ macro({
   tint: (value?: unknown) => ['tinted', { color: value }],
   bare: () => 'bare',
   globalTone: (value?: unknown) => ({ color: value }),
+  selfish: () => ({ selfish: true }),
   _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 },
   _output: { color: 'gray', padding: '5px' }
 });
@@ -311,6 +313,20 @@ describe('appearance', () => {
     const fn = createStyleScope(undefined, { _fn: { margin: () => '1px' } })!;
     expect(() => resolveAppearance(fn, { _fn: true }))
       .toThrow('No macro handles "margin".');
+
+    const flag = createStyleScope(undefined, { _flag: { margin: true } })!;
+    expect(() => resolveAppearance(flag, { _flag: true }))
+      .toThrow('No macro handles "margin".');
+  });
+
+  it('will throw for a macro that returns itself', () => {
+    function Selfish() {
+      return <i _loop />;
+    }
+
+    style(Selfish, { _loop: { selfish: true } });
+
+    expect(() => place(<Selfish />)).toThrow('Macro "selfish" returned itself.');
   });
 
   it('will apply base declarations to each component root', () => {

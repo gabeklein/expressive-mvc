@@ -9,6 +9,7 @@ interface Styles {
 }
 
 type Macro = (value: unknown, key: string) => unknown;
+type Chain = Macro[] & { named: number };
 type Depths = ReadonlyMap<string, number>;
 
 interface Expansion {
@@ -37,7 +38,7 @@ interface AppearanceRoute {
 }
 
 const bases = new WeakMap<StyleScope, Declaration>();
-const chains = new WeakMap<StyleScope, Map<string, Macro[]>>();
+const chains = new WeakMap<StyleScope, Map<string, Chain>>();
 const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
 const STYLES = Symbol('@expressive/dom.styles');
@@ -314,13 +315,16 @@ function handlers(scope: StyleScope, name: string) {
   let chain = known.get(name);
 
   if (!chain) {
-    chain = [];
+    chain = Object.assign([], { named: 0 });
 
-    for (const key of [name, '*'])
+    for (const key of [name, '*']) {
       for (let rules: object | null = scope.rules; rules; rules = Object.getPrototypeOf(rules)) {
         const own = Object.getOwnPropertyDescriptor(rules, key);
         if (own && typeof own.value == 'function') chain.push(own.value as Macro);
       }
+
+      if (key == name) chain.named = chain.length;
+    }
 
     known.set(name, chain);
   }
@@ -354,6 +358,9 @@ function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
       const chain = handlers(scope, name);
       const depth = depths.get(name) || 0;
 
+      if (depth && depth >= chain.named && entry === true)
+        throw new Error(`Macro "${name}" returned itself.`);
+
       if (depth < chain.length) {
         if (isPresent(entry))
           walk(
@@ -372,7 +379,7 @@ function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
 function terminal(name: string, value: unknown) {
   if (Array.isArray(value)) return value.join(' ');
 
-  if (typeof value == 'function' || isObject(value))
+  if (value === true || typeof value == 'function' || isObject(value))
     throw new Error(`No macro handles "${name}".`);
 
   return typeof value == 'number' ? String(value) : value;
