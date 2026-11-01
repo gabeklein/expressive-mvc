@@ -64,13 +64,13 @@ function Button({ active }: { active: boolean }) {
 }
 
 macro({
-  mx: (value: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` })
+  gutter: (value: unknown) => ({ paddingInline: `${value}px` })
 });
 
 style(Button, {
   padding: '8px',
   _active: { fontWeight: 700 },
-  _raised: { mx: 4, boxShadow: '0 1px 2px black' }
+  _raised: { gutter: 4, boxShadow: '0 1px 2px black' }
 });
 ```
 
@@ -92,7 +92,7 @@ style(Card, {
 - `$name` is reserved for host instructions and throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 
-Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "mx"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
+Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
 Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead.
 
@@ -134,7 +134,7 @@ The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported co
 
 ### The web pack
 
-`css` is a macro pack shipped with the renderer. Registering it opts into pixel units for numbers and the axis shorthands CSS lacks:
+`css` is a macro pack shipped with the renderer. Registering it opts into pixel units for numbers and a `size` shorthand:
 
 ```ts
 import { css, macro } from '@expressive/dom';
@@ -142,7 +142,7 @@ import { css, macro } from '@expressive/dom';
 macro(css);
 ```
 
-A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. `mx` / `my` / `px` / `py` set an axis, and `size` sets width and height.
+A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
 
 Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged.
 
@@ -155,8 +155,6 @@ style(Heading, { padding: rem(0.2, 0.45), border: `${px(1)} solid` });
 // padding: '0.2rem 0.45rem'
 ```
 
-The `px` function is unrelated to the `px` macro key from `css` (horizontal padding).
-
 ### Typing
 
 Maps are typed: a bare key must be a CSS property or a macro declared in `macro.Registry`, `_name` opens a rule, a `:` or `@` key holds a condition's map, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
@@ -167,12 +165,12 @@ A pack declares what it registers:
 declare module '@expressive/dom' {
   namespace macro {
     interface Registry {
-      mx(value: number): style.Map;
+      gutter(value: number): style.Map;
     }
   }
 }
 
-macro({ mx: (value: number) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }) });
+macro({ gutter: (value: number) => ({ paddingInline: `${value}px` }) });
 ```
 
 To declare a whole pack from its value, extend `macro.From` - it copies each macro's signature and skips rules and `'*'`:
