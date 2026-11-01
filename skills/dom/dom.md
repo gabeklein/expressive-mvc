@@ -64,13 +64,13 @@ function Button({ active }: { active: boolean }) {
 }
 
 macro({
-  mx: (value: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` })
+  gutter: (value: unknown) => ({ paddingInline: `${value}px` })
 });
 
 style(Button, {
   padding: '8px',
   _active: { fontWeight: 700 },
-  _raised: { mx: 4, boxShadow: '0 1px 2px black' }
+  _raised: { gutter: 4, boxShadow: '0 1px 2px black' }
 });
 ```
 
@@ -92,7 +92,7 @@ style(Card, {
 - `$name` is reserved for host instructions and throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 
-Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "mx"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
+Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
 Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead.
 
@@ -165,12 +165,12 @@ A pack declares what it registers:
 declare module '@expressive/dom' {
   namespace macro {
     interface Registry {
-      mx(value: number): style.Map;
+      gutter(value: number): style.Map;
     }
   }
 }
 
-macro({ mx: (value: number) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }) });
+macro({ gutter: (value: number) => ({ paddingInline: `${value}px` }) });
 ```
 
 To declare a whole pack from its value, extend `macro.From` - it copies each macro's signature and skips rules and `'*'`:
