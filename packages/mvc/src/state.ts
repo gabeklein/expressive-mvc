@@ -121,7 +121,8 @@ declare namespace Model {
 
     /**
      * Per-instance, once ready - after own values are observed, constructor
-     * args applied and `new()` has run. May return a cleanup function.
+     * args applied, `new()` has run and any promise those returned resolved.
+     * May return a cleanup function.
      */
     ready?(this: T, self: T): void | (() => void);
 
@@ -631,18 +632,8 @@ function callback<T extends Model>(
   return listener(self, (key) => cb.call(self, key, self), select);
 }
 
-function ready(state: Model, handler: NonNullable<Model.On['ready']>) {
-  capture((release) => {
-    listener(state, () => release(null), null);
-
-    const out = handler.call(state, state);
-
-    if (typeof out == 'function') listener(state, out, null);
-  });
-}
-
 /**
- * Apply state arguemnts, run callbacks and observe properties.
+ * Apply state arguments, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
 function init(state: Model, ...args: Model.Args) {
@@ -671,6 +662,17 @@ function init(state: Model, ...args: Model.Args) {
     }
   }
 
+  function settle() {
+    capture((release) => {
+      listener(state, () => release(null), null);
+
+      for (const handler of after) {
+        const out = handler.call(state, state);
+
+        if (typeof out == 'function') listener(state, out, null);
+      }
+    });
+  }
 
   listener(state, (key) => {
     const rest = trailing(state);
@@ -693,7 +695,6 @@ function init(state: Model, ...args: Model.Args) {
 
     const queue = [...before, observe, ...args];
     const waits: Promise<unknown>[] = [];
-    const settle = () => after.forEach((handler) => ready(state, handler));
 
     capture((release) => {
       listener(state, () => release(null), null);
@@ -708,8 +709,7 @@ function init(state: Model, ...args: Model.Args) {
         if (out instanceof Promise) {
           waits.push(out);
           out.catch((err) => report('setup', state, err));
-        }
-        else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
+        } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
       }
