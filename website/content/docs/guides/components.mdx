@@ -391,7 +391,7 @@ const second = Item.new({ label: 'Second' });
 ```
 
 - Each instance is keyed by `key`, defaulting to its unique id. Override the readonly `key` property for an application-defined identity.
-- Placing subscribes and provides context as usual, but the placement doesn't own the instance: unmounting only detaches, and `mount()` doesn't run. The owner destroys it with `instance.set(null)`.
+- Placing subscribes and provides context as usual, but the placement doesn't own the instance: unmounting only detaches, and its effects are not held for the placement. The owner destroys it with `instance.set(null)`.
 - One instance may appear beneath separate parents.
 
 <br />

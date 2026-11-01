@@ -195,7 +195,7 @@ const items = [Item.new({ label: 'First' }), Item.new({ label: 'Second' })];
 ```
 
 - Each is keyed by [`key`](#thiskey).
-- Placing subscribes, provides context and installs the instance's boundaries, but doesn't own it: `mount()` doesn't run, and unmounting only detaches. Whoever created it destroys it with `instance.set(null)`.
+- Placing subscribes, provides context and installs the instance's boundaries, but doesn't own it: its effects are not held for the placement, and unmounting only detaches. Whoever created it destroys it with `instance.set(null)`.
 - The same instance may be placed beneath separate parents.
 
 <br />
