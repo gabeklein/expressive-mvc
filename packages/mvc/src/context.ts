@@ -395,14 +395,18 @@ function above(ctx: Context) {
 /** Home context of `state` - its own, else its owner's. */
 function home(state: Model): Context | undefined;
 
-/** Add an unowned, unplaced `state` to `context` as its home until destroyed, then return its home. */
-function home(state: Model, context: Context): Context | undefined;
+/** Add an unowned, unplaced `state` to `context` as its home until destroyed. Returns whether it was added. */
+function home(state: Model, context: Context): boolean;
 
-function home(state: Model, context?: Context): Context | undefined {
+function home(state: Model, context?: Context): Context | boolean | undefined {
   const owner = parent(state);
 
-  if (context && !owner && !HOME.has(state))
+  if (context) {
+    if (owner || HOME.has(state)) return false;
+
     listener(state, context.add(state, true), null);
+    return true;
+  }
 
   return HOME.get(state) || (owner ? home(owner) : undefined);
 }
