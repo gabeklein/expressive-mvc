@@ -693,10 +693,11 @@ function init(state: Model, ...args: Model.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const queue = [...before, observe, ...args];
     const waits: Promise<unknown>[] = [];
 
     capture((release) => {
+      const queue = [...before, observe, ...args];
+
       listener(state, () => release(null), null);
 
       for (let i = 0; i < queue.length; i++) {
@@ -718,7 +719,9 @@ function init(state: Model, ...args: Model.Args) {
     if (waits.length)
       Promise.all(waits).then(() => {
         if (observer(state) !== null) settle();
-      }, () => event(state, null));
+      }, () => {
+        event(state, null);
+      });
     else settle();
 
     if (owns) {
