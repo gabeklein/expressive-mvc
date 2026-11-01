@@ -68,7 +68,7 @@ export class ReviewStep extends Component {
 
 **Anti-pattern - the reflexive split.** `ReviewState` plus a `ReviewView` FC because the old code had hooks. Fields supporting one rendered surface belong on the `Component` rendering it.
 
-**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, or a boundary no Component below it can carry - lifecycle counts only when it manages owned state; a ref plus a DOM-sync reaction over context is still an FC. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`). Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, `mount()` reacts to them.
+**Anti-pattern - the pass-through Component.** A class whose only members are `foo = get(Foo)` and `render()` is an FC wearing an instance - snapshot `Foo.get()` instead. Component earns the class when the instance owns fields, a pool, or a boundary no Component below it can carry - lifecycle counts only when it manages owned state; a ref plus a DOM-sync reaction over context is still an FC. Same triage for shells: a singleton feature with no state of its own is an FC mounting its children (`<Sidebar /> <MessageList />`). Inversely, a leaf widget still on `useState`/`useEffect` whose inputs are its identity is a Component - `<Thumbnail src size />` writes the fields, an effect in `new()` reacts to them.
 
 **House style: the app entry is an FC** - pure composition, chrome like any shell owning nothing. Its last-resort boundary is `fallback`/`catch` on the top Component it mounts, not a class wrapping it:
 
@@ -234,8 +234,8 @@ Once ownership is settled:
 
 - Values written by user input, browser events, timers, or network callbacks -> mutable class fields.
 - `useMemo` values and effects that only sync state -> class getters.
-- `useEffect` setup/teardown -> `protected new()` returning cleanup; browser-only resources -> `mount()` on a `Component`.
-- Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`/`mount()`; updates batch, one re-run per flush however many trigger fields changed.
+- `useEffect` setup/teardown -> `protected new()` returning cleanup; browser-only resources -> an effect declared in `new()`, which waits for commit.
+- Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`; updates batch, one re-run per flush however many trigger fields changed.
 - `useCallback` handlers -> auto-bound class methods - pass directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
 - `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
 - Repeated `postMessage`-style calls over a typed union -> one signal helper (`signal('setLabel', { id })`). The union is the API - no per-message facade methods.
@@ -262,8 +262,8 @@ class Workspace extends Component {
   sessionId?: string;                 // working identity
   urlSessionId?: string;              // route prop
 
-  mount() {
-    return this.get(($) => {
+  protected new() {
+    this.get(($) => {
       void $.urlSessionId;
       this.syncRoute();               // adopt or keep per policy - not 1:1
     });

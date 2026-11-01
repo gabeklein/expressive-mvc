@@ -285,8 +285,8 @@ describe('suspense and recovery', () => {
       class Panel extends Component {
         data = new Data();
 
-        mount() {
-          lives.push(`panel mount: ${root.textContent}`);
+        protected new() {
+          this.get(() => void lives.push(`panel effect: ${root.textContent}`));
         }
 
         render() {
@@ -301,7 +301,7 @@ describe('suspense and recovery', () => {
       loaded.resolve('ready');
       await until(() => expect(root.textContent).toBe('ready'));
 
-      expect(lives).toEqual(['new', 'panel mount: ready']);
+      await until(() => expect(lives).toEqual(['new', 'panel effect: ready']));
     });
 
     it('will hold new markup around it off the page until it loads', async () => {
@@ -310,8 +310,8 @@ describe('suspense and recovery', () => {
       class Panel extends Component {
         data = new Data();
 
-        mount() {
-          lives.push(`panel mount: ${root.textContent}`);
+        protected new() {
+          this.get(() => void lives.push(`panel effect: ${root.textContent}`));
         }
 
         render() {
@@ -327,7 +327,7 @@ describe('suspense and recovery', () => {
       loaded.resolve('ready');
       await until(() => expect(html(root)).toBe('<section><h2>title</h2><b>ready</b></section>'));
 
-      expect(lives).toEqual(['new', 'panel mount: titleready']);
+      await until(() => expect(lives).toEqual(['new', 'panel effect: titleready']));
     });
   });
 
@@ -336,8 +336,8 @@ describe('suspense and recovery', () => {
     const mounted: string[] = [];
 
     class Tab extends Component {
-      mount() {
-        mounted.push(root.textContent!);
+      protected new() {
+        this.get(() => void mounted.push(root.textContent!));
       }
 
       render() {
@@ -365,7 +365,7 @@ describe('suspense and recovery', () => {
     loaded.resolve(() => <s>lazy</s>);
     await until(() => expect(html(root)).toBe('<b>new</b><s>lazy</s><u>tail</u>'));
 
-    expect(mounted).toEqual(['newlazytail']);
+    await until(() => expect(mounted).toEqual(['newlazytail']));
   });
 
   it('will show content a transition updates in place while new content it adds is held', async () => {
@@ -521,8 +521,8 @@ describe('suspense and recovery', () => {
     }
 
     class Chart extends Component {
-      mount() {
-        seen.push(`mount ${connected()}`);
+      protected new() {
+        this.get(() => void seen.push(`effect ${connected()}`));
       }
 
       render() {
@@ -549,7 +549,7 @@ describe('suspense and recovery', () => {
     const [app] = mount(App, {}, document.body.appendChild(document.createElement('main')));
 
     pending(() => (app.nav.page = 'b'));
-    await until(() => expect(seen).toEqual(['ref true', 'mount true']));
+    await until(() => expect(seen).toEqual(['ref true', 'effect true']));
   });
 
   it('will not mount staged content dropped before it is inserted', async () => {
@@ -562,8 +562,8 @@ describe('suspense and recovery', () => {
     }
 
     class Child extends Component {
-      mount() {
-        mounted();
+      protected new() {
+        this.get(mounted);
       }
 
       render() {

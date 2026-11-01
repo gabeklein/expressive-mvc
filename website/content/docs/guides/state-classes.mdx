@@ -221,22 +221,24 @@ class Resource extends Model {
 }
 ```
 
-### The `mount()` hook
+### Effects run once committed
 
-Client-only resources - timers, DOM, subscriptions to `window` - belong in `mount()`, not `new()`. It runs once when the owning component commits, and its returned function runs on unmount:
+Client-only resources - timers, DOM, subscriptions to `window` - go in an effect declared in `new()`, not in its body. For a Model a component owns, the effect's first run waits until that component commits; its returned cleanup runs on destroy:
 
 ```ts
 class Timer extends Model {
   elapsed = 0;
 
-  mount() {
-    const id = setInterval(() => this.elapsed++, 1000);
-    return () => clearInterval(id);
+  protected new() {
+    this.get(() => {
+      const id = setInterval(() => this.elapsed++, 1000);
+      return () => clearInterval(id);
+    });
   }
 }
 ```
 
-`mount()` never runs during server render - there is no unmount there, so a resource opened in `new()` would leak. It fires for a `Component` rendered as JSX, or for a class given to `<Component for>`; an instance merely read with `.get()` or placed as `{instance}` is not owned, so it does not. See [`mount()`](/docs/api/state#mount) for the reference.
+Nothing commits during server render, so the effect never runs there - a resource opened in the `new()` body would leak, since there is no unmount. The wait applies to a `Component` rendered as JSX and to a class given to `<Component for>`; an instance merely read with `.get()` or placed as `{instance}` is not owned, so its effects run at activation. See [`new()`](/docs/api/state#new) for the reference.
 
 ### Class-level setup with `Model.on()`
 
@@ -309,7 +311,7 @@ class Greeter extends Component {
 <Greeter name="Ada" />;
 ```
 
-A Component's `render()` also runs as a real function component, so a hook whose result the view calls directly - `useNavigate`, `useTranslation` - can sit at the top of `render()`. For one-shot setup, prefer `new()` or `mount()`.
+A Component's `render()` also runs as a real function component, so a hook whose result the view calls directly - `useNavigate`, `useTranslation` - can sit at the top of `render()`. For one-shot setup, prefer `new()`.
 
 ### Destruction
 

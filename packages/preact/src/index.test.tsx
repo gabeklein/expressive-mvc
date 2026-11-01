@@ -72,14 +72,16 @@ describe('Component', () => {
 });
 
 describe('Component for', () => {
-  it('will mount an instance it creates', () => {
+  it('will run effects of an instance it creates once committed', async () => {
     const didMount = vi.fn();
     const didUnmount = vi.fn();
 
     class Test extends Model {
-      mount() {
-        didMount();
-        return didUnmount;
+      protected new() {
+        this.get(() => {
+          didMount();
+          return didUnmount;
+        });
       }
     }
 
@@ -89,6 +91,7 @@ describe('Component for', () => {
       </Component>
     );
 
+    await flushMicrotasks();
     expect(didMount).toBeCalledTimes(1);
     expect(didUnmount).not.toBeCalled();
 

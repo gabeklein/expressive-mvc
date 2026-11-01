@@ -19,16 +19,15 @@ class List extends Component {
 
   new() {
     this.items.add({ name: 'a' });
+    this.get(() => {
+      document.body.dataset.mounted = 'list';
+      return () => delete document.body.dataset.mounted;
+    });
   }
 
   add() {
     this.items.add({ name: this.draft });
     this.draft = '';
-  }
-
-  mount() {
-    document.body.dataset.mounted = 'list';
-    return () => delete document.body.dataset.mounted;
   }
 
   render() {
@@ -41,15 +40,6 @@ class List extends Component {
     );
   }
 }
-
-class Wrong extends Component {
-  // @ts-expect-error
-  mount() {
-    return 1;
-  }
-}
-
-void Wrong;
 
 const Frame = (props: { children?: Component.Node }) => (
   <main>

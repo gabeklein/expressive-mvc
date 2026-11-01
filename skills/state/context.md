@@ -149,7 +149,7 @@ Bare `Component` (not a subclass) given `for` provides one instance to its child
 <Component for={session} name="Ada">…</Component>                      // provided as-is
 ```
 
-- A class is constructed, owned and destroyed with the element; `is` receives it; its `mount()` runs with the element's, and a replacement class takes over the mount.
+- A class is constructed, owned and destroyed with the element; `is` receives it; its effects wait for the element's commit, and a replacement class while committed is released at once.
 - An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted like a field - `for={new X()}` in render gives an instance that lives for one render.
 - Other attributes are typed from the provided instance and assign to it on every render.
 - Changing `for` releases the previous item, then provides the next.

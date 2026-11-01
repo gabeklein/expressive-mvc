@@ -32,62 +32,64 @@ class Counter extends Component {
 
 ---
 
-## mount() method
+## Effects run once committed
 
-Client-only effects. Called once when the host component commits; the returned function runs on unmount.
+An effect declared during construction - in the constructor or `new()` - holds its first run until the owning component commits, client only. Timers, listeners, anything touching `window` go there; the cleanup it returns runs on destroy.
 
 ```tsx
 class Viewport extends Model {
   width = 0;
 
-  mount() {
-    const measure = () => (this.width = window.innerWidth);
+  protected new() {
+    this.get(() => {
+      const measure = () => (this.width = window.innerWidth);
 
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+      measure();
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    });
   }
 }
 ```
 
-`mount()` is an **ownership** hook, not an observation one - it runs where a component creates and destroys the instance, never on a path merely reaching an instance owned elsewhere:
+Commit is an **ownership** signal - it reaches an instance where a component creates and destroys it, never one a path merely reaches:
 
-| Reaching an instance          | Owns it | `mount()` |
-| ----------------------------- | ------- | --------- |
-| `<Component />`               | yes     | yes       |
-| `<Component for={Model}>`     | yes     | yes       |
-| `<Component for={instance}>`  | no      | no        |
-| `Model.get()`                 | no      | no        |
-| `{instance}`                  | no      | no        |
-| `Model.new()`                 | no host | no        |
+| Reaching an instance          | Owns it | Effects wait for      |
+| ----------------------------- | ------- | --------------------- |
+| `<Component />`               | yes     | its commit            |
+| `<Component for={Model}>`     | yes     | the provider's commit |
+| `<Component for={instance}>`  | no      | nothing               |
+| `Model.get()`                 | no      | nothing               |
+| `{instance}`                  | no      | nothing               |
+| `Model.new()`                 | no host | its own settle        |
 
-`<Component for={Model}>` runs the provided instance's `mount()` with its own commit:
+`<Component for={Model}>` releases the instance it constructed with its own commit:
 
-- Like any parent, it mounts *after* its descendants (React commits bottom-up) - a descendant should react to a provided instance by subscription, not read it imperatively in its own `mount()`.
-- Replacing `for` with another class unmounts and destroys the previous instance, then mounts the new one.
+- Like any parent, it commits *after* its descendants (React commits bottom-up) - a descendant reacts to a provided instance by subscription, not by reading it imperatively in its own effect.
+- Replacing `for` with another class destroys the previous instance and releases the new one at once - the provider is already placed, or, swapped before its first commit, treated as such.
 
-The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. A hook firing once per observer is not a lifecycle - to react to an instance a component does not own, subscribe with `Model.get()` or an event.
+The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. To react to an instance a component does not own, subscribe with `Model.get()` or an event.
 
-`mount()` never runs during server render.
+Nothing commits during server render, so these effects never run there. Children owned as fields follow their root ([../state/lifecycle.md](../state/lifecycle.md#the-new-hook)).
 
-Pick the seam by what the work needs:
+The effect is tracked: a read of `$` subscribes, and each change re-runs it after its cleanup - a socket opened on `$.url` reopens per change. A one-shot resource reads `this`, which is untracked, and runs once.
 
-| Hook       | Phase        | Runs                        | On the server |
-| ---------- | ------------ | --------------------------- | ------------- |
-| `new()`    | construction | once, synchronously         | yes           |
-| `mount()`  | commit       | once, when the host commits | no            |
+| Seam              | Phase        | Runs                                    | On the server |
+| ----------------- | ------------ | --------------------------------------- | ------------- |
+| `new()` body      | construction | once, synchronously                     | yes           |
+| effect in `new()` | commit       | once the host commits, then per change  | no            |
 
-Setup accompanying the instance itself goes in `new()`; anything touching `window`, timers or subscriptions goes in `mount()`.
+Setup accompanying the instance itself is the `new()` body; anything touching `window`, timers or subscriptions is an effect declared there.
 
-React can discard a render before committing it - a suspended first mount, a dropped transition. Instances an owning path created there are already activated, so `new()` ran; the adapter destroys them once React releases the attempt, at garbage collection rather than promptly. `mount()` runs only for the attempt that commits - another reason effects belong there.
+React can discard a render before committing it - a suspended first mount, a dropped transition. Instances an owning path created there are already activated, so `new()` ran; the adapter destroys them once React releases the attempt, at garbage collection rather than promptly. Effects run only for the attempt that commits.
 
 ## Server render (SSR / RSC)
 
-Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Effects don't run, so `mount()` never fires; `new()` does. Request-safety rules:
+Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Nothing commits, so for a host-owned Component and the children it owns, effects declared in `new()` never run, `on({ ready })` never fires and `await state.get(() => {})` never resolves; the `new()` body does. Request-safety rules:
 
 - **Request state goes in a `<Component for>`.** Each render builds its own context, so provided instances are isolated per request.
 - **An instance held in `Context.root` is process-wide, *shared across requests* on the server** - fit for config, flags or a warmed cache. Keep per-request data out; provide it with `<Component for>`.
-- **Resources belong in `mount()` or the request handler, never `new()`.** `new()` runs on the server but its returned teardown does not (no unmount), so a socket or handle opened there leaks. `mount()` is client-only; server-side resources are the framework's request scope to open and close.
+- **Resources belong in an effect or the request handler, never the `new()` body.** The body runs on the server but its returned teardown does not (no unmount), so a socket or handle opened there leaks. An effect is client-only; server-side resources are the framework's request scope to open and close.
 
 To render a specific request's data (a path, a session), provide it per request: `<Component for={Session} …>`. Each render's `Router` is its own, so paths never bleed between requests; provide `<Component for={Router} path={…}>` to render a request's path.
 
@@ -179,7 +181,7 @@ function SettingsEditor() {
 
 ### Derived values and effects
 
-Derive from the snapshot in render, or declare a getter on the Model ([../state/computed.md](../state/computed.md)); side effects belong in `mount()` or an instance effect (`state.get(effect)`).
+Derive from the snapshot in render, or declare a getter on the Model ([../state/computed.md](../state/computed.md)); side effects belong in an instance effect (`state.get(effect)`), declared in `new()`.
 
 ```tsx
 function Greeting() {
@@ -263,7 +265,7 @@ Do not alias `is` merely because something will be written - writes never need t
 
 ## Providing state
 
-`<Component for={AppState}>` provides one instance to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); `mount()` timing in [mount() method](#mount-method). For a render-prop read, write an FC calling `AppState.get()`.
+`<Component for={AppState}>` provides one instance to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); commit timing in [Effects run once committed](#effects-run-once-committed). For a render-prop read, write an FC calling `AppState.get()`.
 
 `Provider` was removed - replace `<Provider for={X}>` with `<Component for={X}>`.
 

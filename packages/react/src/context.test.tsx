@@ -104,15 +104,17 @@ describe('Component for', () => {
     expect(didDestroy.mock.calls).toEqual([['Child'], ['Parent']]);
   });
 
-  describe('mount method', () => {
-    it.each([false, true])('will call for an instance it creates (strict: %s)', (reactStrictMode) => {
-      const didMount = vi.fn();
-      const didUnmount = vi.fn();
+  describe('effects at commit', () => {
+    it.each([false, true])('will run for an instance it creates (strict: %s)', async (reactStrictMode) => {
+      const effect = vi.fn();
+      const cleanup = vi.fn();
 
       class Test extends Model {
-        mount() {
-          didMount();
-          return didUnmount;
+        protected new() {
+          this.get(() => {
+            effect();
+            return cleanup;
+          });
         }
       }
 
@@ -123,53 +125,63 @@ describe('Component for', () => {
         { reactStrictMode }
       );
 
-      expect(didMount).toBeCalledTimes(1);
-      expect(didUnmount).not.toBeCalled();
+      expect(effect).not.toBeCalled();
+
+      await flushMicrotasks();
+      expect(effect).toBeCalledTimes(1);
+      expect(cleanup).not.toBeCalled();
 
       element.unmount();
 
-      expect(didUnmount).toBeCalledTimes(1);
+      expect(cleanup).toBeCalledTimes(1);
     });
 
-    it('will not call for an instance it is given', () => {
-      const didMount = vi.fn();
+    it('will not hold an instance it is given', async () => {
+      const effect = vi.fn();
+      const cleanup = vi.fn();
 
       class Guest extends Model {
-        mount() {
-          didMount();
+        protected new() {
+          this.get(() => {
+            effect();
+            return cleanup;
+          });
         }
       }
 
       const guest = Guest.new();
+
+      expect(effect).toBeCalledTimes(1);
+
       const element = render(
         <Component for={guest}>
           <span />
         </Component>
       );
 
-      expect(didMount).not.toBeCalled();
+      await flushMicrotasks();
+      expect(effect).toBeCalledTimes(1);
 
       element.unmount();
 
+      expect(cleanup).not.toBeCalled();
       expect(guest.get(null)).toBe(false);
     });
 
-    it('will hand the mount to a replacement class', () => {
+    it('will release a replacement class at once', async () => {
       const events: string[] = [];
 
-      class First extends Model {
-        mount() {
-          events.push('mount first');
-          return () => events.push('release first');
+      const tracked = (name: string) => class extends Model {
+        protected new() {
+          this.get(() => {
+            events.push(`effect ${name}`);
+            return () => events.push(`release ${name}`);
+          });
         }
-      }
+      };
 
-      class Second extends Model {
-        mount() {
-          events.push('mount second');
-          return () => events.push('release second');
-        }
-      }
+      const First = tracked('first');
+      const Second = tracked('second');
 
       const element = render(
         <Component for={First}>
@@ -177,36 +189,34 @@ describe('Component for', () => {
         </Component>
       );
 
+      await flushMicrotasks();
       element.rerender(
         <Component for={Second}>
           <span />
         </Component>
       );
 
-      expect(events).toEqual(['mount first', 'release first', 'mount second']);
+      await flushMicrotasks();
+      expect(events).toEqual(['effect first', 'release first', 'effect second']);
 
       element.unmount();
 
-      expect(events).toEqual([
-        'mount first',
-        'release first',
-        'mount second',
-        'release second'
-      ]);
+      await flushMicrotasks();
+      expect(events).toEqual(['effect first', 'release first', 'effect second', 'release second']);
     });
 
-    it('will mount after descendants, as any parent does', () => {
+    it('will run after descendants, as any parent commits', async () => {
       const order: string[] = [];
 
       class Outer extends Model {
-        mount() {
-          order.push('provided');
+        protected new() {
+          this.get(() => void order.push('provided'));
         }
       }
 
       class Inner extends Model {
-        mount() {
-          order.push('child');
+        protected new() {
+          this.get(() => void order.push('child'));
         }
       }
 
@@ -218,6 +228,7 @@ describe('Component for', () => {
         </Component>
       );
 
+      await flushMicrotasks();
       expect(order).toEqual(['child', 'provided']);
     });
   });

@@ -241,7 +241,7 @@ export const faq = {
       name: 'Didn’t React move away from classes?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'React moved away from class components - state hidden behind setState, effects split across lifecycle methods. Expressive keeps that verdict where it matters. A Component render() is a projection of the fields it observes, with no setState and no componentDidUpdate; effects live in mount(); function components stay stateless views that read classes with Model.get(). The classes hold state and behavior that runs and tests without any framework.',
+        text: 'React moved away from class components - state hidden behind setState, effects split across lifecycle methods. Expressive keeps that verdict where it matters. A Component render() is a projection of the fields it observes, with no setState and no componentDidUpdate; effects are declared in new() and run once the component commits; function components stay stateless views that read classes with Model.get(). The classes hold state and behavior that runs and tests without any framework.',
       },
     },
     {

@@ -2,8 +2,8 @@ import { Component, Context, Model } from '@expressive/mvc';
 import { host } from '@expressive/mvc/jsx-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { flushMicrotasks } from '../test.setup';
-import { attach, find, health, Instance, instances, models, orphans } from './index';
+import { flushMicrotasks, mockPromise } from '../test.setup';
+import { attach, detach, find, health, Instance, instances, models, orphans } from './index';
 import { collected } from './inspect';
 
 host({
@@ -18,12 +18,6 @@ host({
 
 class Widget extends Model {
   value = 1;
-  mounted = 0;
-
-  mount() {
-    this.mounted++;
-    return 'release';
-  }
 }
 
 class Plain extends Model {
@@ -56,29 +50,58 @@ describe('orphans under a host', () => {
     expect(health()).toMatchObject({ orphans: 1, collected: 0 });
   });
 
-  it('will claim on host mount and forward the original', async () => {
-    const widget = Widget.new();
+  it('will claim a held instance once it is ready', async () => {
+    const placed = mockPromise<void>();
+    const widget = Widget.new(() => placed);
     await flushMicrotasks();
     expect(orphans().length).toBe(1);
-    expect(widget.mount()).toBe('release');
-    expect(widget.mounted).toBe(1);
+    placed.resolve();
+    await flushMicrotasks();
     expect(orphans()).toEqual([]);
     expect(instances().map((i) => i.id)).toEqual([String(widget)]);
-    widget.mount();
-    expect(widget.mounted).toBe(2);
   });
 
-  it('will claim a mounted instance without its own mount', async () => {
-    const plain = Plain.new() as Plain & { mount(): unknown };
+  it('will not hold an instance destroyed before it settles', async () => {
+    const placed = mockPromise<void>();
+    const plain = Plain.new(() => placed);
+    plain.set(null);
     await flushMicrotasks();
-    expect(plain.mount()).toBeUndefined();
-    expect(Instance.of(plain).claimed).toBe(true);
+    expect(Instance.of(plain).alive).toBe(false);
+    expect(Instance.of(plain).claimed).toBe(false);
+  });
+
+  it('will ignore a held instance settling after detach', async () => {
+    const placed = mockPromise<void>();
+    const widget = Widget.new(() => placed);
+    await flushMicrotasks();
+    detach();
+    placed.resolve();
+    await flushMicrotasks();
+    expect(widget.get(null)).toBe(false);
+    attach();
+  });
+
+  it('will claim once an instance held in root and placed', async () => {
+    const placed = mockPromise<void>();
+    const held = Held.new(Context.root, () => placed);
+    await flushMicrotasks();
+    expect(orphans()).toEqual([]);
+    expect(Instance.of(held).claimed).toBe(true);
+    placed.resolve();
+    await flushMicrotasks();
+    expect(Instance.of(held).claimed).toBe(true);
+    Context.root.pop();
   });
 
   it('will claim a Component providing for', async () => {
-    const provider = Component.new({ for: Widget } as any) as Component & { mount(): unknown };
+    const placed = mockPromise<void>();
+    const stop = Component.on({ setup: () => placed });
+    const provider = Component.new({ for: Widget } as any);
+    stop();
     await flushMicrotasks();
-    provider.mount();
+    expect(Instance.of(provider).claimed).toBe(false);
+    placed.resolve();
+    await flushMicrotasks();
     expect(Instance.of(provider).claimed).toBe(true);
   });
 
@@ -96,12 +119,14 @@ describe('orphans under a host', () => {
     Context.root.pop();
   });
 
-  it('will orphan the children of an orphan, and claim them with a mounted owner', async () => {
-    const owner = Owner.new() as Owner & { mount(): void };
+  it('will orphan the children of an orphan, and claim them with a placed owner', async () => {
+    const placed = mockPromise<void>();
+    const owner = Owner.new(() => placed);
     await flushMicrotasks();
     expect(orphans().map((o) => o.type)).toEqual(['Owner', 'Plain']);
     expect(Instance.of(owner.child).claimed).toBe(false);
-    owner.mount();
+    placed.resolve();
+    await flushMicrotasks();
     expect(orphans()).toEqual([]);
     expect(Instance.of(owner.child).claimed).toBe(true);
   });
@@ -143,14 +168,6 @@ describe('orphans under a host', () => {
     expect(find('Widget')!.claimed).toBe(false);
     expect(find('Owner')!.id).toBe(String(owner));
     expect(find('Nope')).toBeUndefined();
-  });
-
-  it('will ignore a mount after destruction', async () => {
-    const plain = Plain.new() as Plain & { mount(): unknown };
-    plain.set(null);
-    expect(plain.mount()).toBeUndefined();
-    expect(Instance.of(plain).alive).toBe(false);
-    expect(Instance.of(plain).claimed).toBe(true);
   });
 
   it('will count an unclaimed instance the collector reaped', async () => {

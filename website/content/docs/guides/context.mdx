@@ -53,7 +53,7 @@ The bare `Component` class - not a subclass - given a `for` attribute puts one i
 </Component>
 ```
 
-The element constructs an instance, owns it, and destroys it on unmount. Its `mount()` runs with the element's. Other attributes are typed from the provided instance and assigned to it on every render:
+The element constructs an instance, owns it, and destroys it on unmount. Its effects wait for the element's commit. Other attributes are typed from the provided instance and assigned to it on every render:
 
 ```tsx
 <Component for={Theme} color="red">
@@ -82,7 +82,7 @@ function Pane({ index }: { index: number }) {
 
 `Toolbar` and `Canvas` call `Doc.get()` and see the pane's document; changing `index` swaps what they read.
 
-An instance passed in is **not** destroyed when the element unmounts, and its `mount()` is not called - its owner manages its lifetime.
+An instance passed in is **not** destroyed when the element unmounts, and its effects are not held - its owner manages its lifetime.
 
 ### Providing several instances
 
@@ -191,7 +191,7 @@ function CartSummary() {
 }
 ```
 
-Side effects belong in the Model - `mount()`, or an instance effect with `state.get(effect)`.
+Side effects belong in the Model - an instance effect with `state.get(effect)`, declared in `new()`.
 
 ### Custom lookup
 

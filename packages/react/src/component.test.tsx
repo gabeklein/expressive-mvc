@@ -1,6 +1,5 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { beforeEach, vi, expect, it, describe } from 'vitest';
-import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
 import { collect, mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly, suspender } from '../test.setup';
@@ -161,45 +160,22 @@ describe('new method', () => {
   });
 });
 
-describe('mount method', () => {
-  it.each([false, true])('will call once on commit and cleanup on unmount (strict: %s)', (reactStrictMode) => {
-    const didMount = vi.fn();
-    const didUnmount = vi.fn();
+describe('effects at commit', () => {
+  it.each([false, true])('will run an effect from new() once committed (strict: %s)', async (reactStrictMode) => {
+    const effect = vi.fn();
 
     class Test extends Component {
-      mount() {
-        didMount();
-        return didUnmount;
+      protected new() {
+        this.get(effect);
       }
     }
 
-    const element = render(<Test />, { reactStrictMode });
+    render(<Test />, { reactStrictMode });
 
-    element.rerender(<Test />);
+    expect(effect).not.toBeCalled();
 
-    expect(didMount).toBeCalledTimes(1);
-    expect(didUnmount).not.toBeCalled();
-
-    element.unmount();
-
-    expect(didUnmount).toBeCalledTimes(1);
-  });
-
-  it('will not call during server render', () => {
-    const didMount = vi.fn();
-
-    class Test extends Component {
-      mount() {
-        didMount();
-      }
-
-      render() {
-        return <span>hello</span>;
-      }
-    }
-
-    expect(renderToString(<Test />)).toContain('<span>hello</span>');
-    expect(didMount).not.toBeCalled();
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
   });
 });
 
@@ -375,6 +351,7 @@ describe('props property', () => {
 
     const { rerender } = render(<Control value="foo" />);
 
+    await flushMicrotasks();
     expect(didUpdate).toBeCalledWith({ value: 'foo' });
 
     await act(async () => {
@@ -1290,6 +1267,7 @@ describe('strict mode', () => {
       effect($.foo);
     });
 
+    await flushMicrotasks();
     expect(effect).toBeCalledWith('foo');
     instance.foo = 'bar';
 
@@ -1331,13 +1309,13 @@ describe('for', () => {
     return <>{Session.get().name}</>;
   }
 
-  it('will construct, provide, mount and destroy a class', () => {
+  it('will construct, provide, release and destroy a class', async () => {
     const released = vi.fn();
     let session!: Owned;
 
     class Owned extends Session {
-      mount() {
-        return released;
+      protected new() {
+        this.get(() => released);
       }
     }
 
@@ -1349,10 +1327,28 @@ describe('for', () => {
 
     expect(screen).toHaveText('Ada');
 
+    await flushMicrotasks();
     view.unmount();
 
     expect(released).toBeCalledTimes(1);
     expect(session.get(null)).toBe(true);
+  });
+
+  it('will hold a constructed class until the provider commits', async () => {
+    const effect = vi.fn();
+
+    class Owned extends Session {
+      protected new() {
+        this.get(effect);
+      }
+    }
+
+    render(<Component for={Owned} />);
+
+    expect(effect).not.toBeCalled();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
   });
 
   it('will provide an instance without owning it', async () => {
@@ -1601,6 +1597,32 @@ reactOnly.describe('abandoned render', () => {
     await act(collect);
 
     expect(live.size).toBe(1);
+  });
+
+  it('will not run effects of an attempt superseded by a commit', async () => {
+    const { Wait, resolve } = suspender();
+    const effect = vi.fn();
+    const constructed = vi.fn();
+
+    class Effects extends Component {
+      protected new() {
+        constructed();
+        this.get(effect);
+      }
+    }
+
+    render(
+      <Suspense fallback={null}>
+        <Effects />
+        <Wait />
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+    await act(collect);
+
+    expect(constructed.mock.calls.length).toBeGreaterThan(1);
+    expect(effect).toBeCalledTimes(1);
   });
 
   it('will destroy a dropped transition render', async () => {

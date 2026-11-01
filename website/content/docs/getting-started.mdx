@@ -166,16 +166,18 @@ class TodoList extends Component {
     return this.items.filter((i) => !i.done).length;
   }
 
-  mount() {
-    const saved = localStorage.getItem('todos');
+  protected new() {
+    this.get(() => {
+      const saved = localStorage.getItem('todos');
 
-    if (saved) {
-      this.items = JSON.parse(saved);
-      this.nextId = Math.max(0, ...this.items.map((i) => i.id)) + 1;
-    }
+      if (saved) {
+        this.items = JSON.parse(saved);
+        this.nextId = Math.max(0, ...this.items.map((i) => i.id)) + 1;
+      }
 
-    return this.set('items', () => {
-      localStorage.setItem('todos', JSON.stringify(this.items));
+      return this.set('items', () => {
+        localStorage.setItem('todos', JSON.stringify(this.items));
+      });
     });
   }
 
@@ -223,7 +225,7 @@ class TodoList extends Component {
 }
 ```
 
-> Notice what `render()` *doesn't* have: no effects, no memoization, no derived state, no setup. It's a pure projection of the fields above it - [`mount()`](/docs/api/component#lifecycle-hooks) handles persistence once the component commits (client-only, so `localStorage` is safe even under server render), `remaining` keeps itself current, and `set('items', ...)` runs whenever the list changes.
+> Notice what `render()` *doesn't* have: no effects, no memoization, no derived state, no setup. It's a pure projection of the fields above it - the [effect in `new()`](/docs/api/component#lifecycle-hooks) handles persistence once the component commits (client-only, so `localStorage` is safe even under server render), `remaining` keeps itself current, and `set('items', ...)` runs whenever the list changes.
 
 <br />
 

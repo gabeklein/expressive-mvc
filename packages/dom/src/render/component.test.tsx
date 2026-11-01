@@ -5,6 +5,73 @@ import { render } from '../index';
 import { flushMicrotasks, mockPromise, mount, place } from '../../test.setup';
 
 describe('component', () => {
+  it('will run an effect from new() once inserted', async () => {
+    const effect = vi.fn();
+
+    class App extends Component {
+      protected new() {
+        this.get(effect);
+      }
+
+      render() {
+        return <b>app</b>;
+      }
+    }
+
+    mount(App);
+
+    expect(effect).not.toBeCalled();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+  });
+
+  it('will run effects after descendants, as any parent commits', async () => {
+    const order: string[] = [];
+
+    class Inner extends Component {
+      protected new() {
+        this.get(() => void order.push('child'));
+      }
+
+      render() {
+        return <i>inner</i>;
+      }
+    }
+
+    class Outer extends Component {
+      protected new() {
+        this.get(() => void order.push('parent'));
+      }
+
+      render() {
+        return <Inner />;
+      }
+    }
+
+    mount(Outer);
+
+    await flushMicrotasks();
+    expect(order).toEqual(['child', 'parent']);
+  });
+
+  it('will hold a constructed class until the provider is inserted', async () => {
+    const effect = vi.fn();
+
+    class Owned extends Model {
+      protected new() {
+        this.get(effect);
+      }
+    }
+
+    place(<Component for={Owned} />);
+
+    expect(effect).not.toBeCalled();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+  });
+
   it('will retain a class Component when its VNode props object is unchanged', async () => {
     class Child extends Component {
       label = '';
@@ -35,8 +102,8 @@ describe('component', () => {
     const cleanup = vi.fn();
 
     class Message extends Component {
-      mount() {
-        return cleanup;
+      protected new() {
+        this.get(() => cleanup);
       }
 
       render() {
@@ -111,9 +178,11 @@ describe('class element', () => {
       label = 'idle';
       count = 0;
 
-      mount() {
-        lifecycle.push('mount');
-        return () => lifecycle.push('unmount');
+      protected new() {
+        this.get(() => {
+          lifecycle.push('effect');
+          return () => lifecycle.push('cleanup');
+        });
       }
 
       render() {
@@ -125,14 +194,16 @@ describe('class element', () => {
     const release = render(<Panel label="busy" is={(value) => void (panel = value)} />, root);
 
     expect(root.textContent).toBe('busy:0');
-    expect(lifecycle).toEqual(['mount']);
+
+    await flushMicrotasks();
+    expect(lifecycle).toEqual(['effect']);
 
     panel.count = 2;
     await flushMicrotasks();
     expect(root.textContent).toBe('busy:2');
 
     release();
-    expect(lifecycle).toEqual(['mount', 'unmount']);
+    expect(lifecycle).toEqual(['effect', 'cleanup']);
     expect(panel.get(null)).toBe(true);
   });
 

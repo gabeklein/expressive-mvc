@@ -4,17 +4,6 @@ import { Runtime, useWatch } from './runtime';
 
 declare module '@expressive/mvc' {
   interface Component {
-    /**
-     * Optional hook called once this Component commits. Return a function to
-     * run when it unmounts.
-     *
-     * Not called during server render, nor for an instance placed as
-     * `{component}` - a placement does not own what it renders. Client-only
-     * effects belong here; setup which must accompany the instance itself
-     * belongs in `new()`.
-     */
-    mount?(): (() => void) | void;
-
     /** @deprecated Only to satisfy host JSX. Use `this.get(Model)` instead. */
     readonly context: Context;
     /** @deprecated Only to satisfy host JSX. Use `this.get()` instead. */
@@ -29,6 +18,8 @@ declare module '@expressive/mvc' {
 // Host-agnostic seams: `state` is a read-only values bag; `context`'s setter
 // pushes a child context, registers the instance for teardown, and installs its
 // per-instance render host. Host-specific descriptors stay in each adapter.
+const PLACING = new WeakMap<Component, { placed: Promise<void>; place(): void }>();
+
 Object.defineProperties(Component.prototype, {
   state: {
     set() {},
@@ -62,10 +53,16 @@ Component.on({
   },
   setup(self) {
     subcomponents(self);
+    return PLACING.get(self)?.placed;
   }
 });
 
 function bootstrap(this: Component, parent: Context){
+  const placing = {} as { placed: Promise<void>; place(): void };
+
+  placing.placed = new Promise((resolve) => (placing.place = resolve));
+  PLACING.set(this, placing);
+
   const context = parent.push(this, () => this.set(null));
 
   Object.defineProperties(this, {
@@ -127,11 +124,8 @@ function render(from: Component, context: Context) {
   const Render = () => (own || Object.getPrototypeOf(owner).render).call(from, from.props);
   const Component = () => {
     from = useWatch(from, () => {
-      const release = owner.mount?.();
-
+      PLACING.get(owner)!.place();
       attempt?.commit();
-
-      return release;
     }, teardown);
 
     return createFrame(from, context, createElement(Render));

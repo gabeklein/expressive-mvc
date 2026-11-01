@@ -207,38 +207,13 @@ Component.on({
 function provide(self: Component<any>) {
   let input: unknown;
   let target: Model | undefined;
-  let owned: (Model & { mount?(): unknown }) | undefined;
-  let mounted = false;
-  let release: unknown;
+  let owned: Model | undefined;
   let provided: (() => void) | undefined;
 
   function remove() {
     if (provided) provided();
     provided = undefined;
   }
-
-  function unmount() {
-    if (typeof release == 'function') release();
-    release = undefined;
-  }
-
-  const inherited = (self as { mount?(): unknown }).mount;
-
-  Object.defineProperty(self, 'mount', {
-    configurable: true,
-    value() {
-      const done = inherited?.call(self);
-
-      mounted = true;
-      release = owned?.mount?.();
-
-      return () => {
-        mounted = false;
-        unmount();
-        if (typeof done == 'function') done();
-      };
-    }
-  });
 
   function sync() {
     const { for: next, is, children, fallback, catch: _catch, ...rest } = self.props as Record<string, any>;
@@ -247,7 +222,6 @@ function provide(self: Component<any>) {
 
     if (next !== input) {
       input = next;
-      unmount();
       remove();
 
       if (Model.is(next)) {
@@ -264,7 +238,6 @@ function provide(self: Component<any>) {
         const out = is?.(owned);
 
         if (plain(out)) owned.set(out);
-        if (mounted) release = owned.mount?.();
 
         return;
       }

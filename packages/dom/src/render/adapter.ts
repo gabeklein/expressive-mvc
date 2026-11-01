@@ -63,12 +63,6 @@ function tracked<T extends object>(target: T, required?: boolean): T {
   return proxy;
 }
 
-declare module '@expressive/mvc' {
-  interface Component {
-    mount?(): (() => void) | void;
-  }
-}
-
 const normal = resolver((Type, compute) => {
   if (!current) return normal(Type, compute);
 

@@ -321,7 +321,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### React
 
-- [react/react.md](react/react.md) - Model.get() (optional lookup, presence boundaries, custom lookup), mount(), providing state, transparent writes, SSR, Vite hot reload
+- [react/react.md](react/react.md) - Model.get() (optional lookup, presence boundaries, custom lookup), effects at commit, providing state, transparent writes, SSR, Vite hot reload
 - [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
 - [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controls, router bridge, host-agnostic domain model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 

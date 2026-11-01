@@ -14,7 +14,7 @@ Premise: **the class tree is the app; rendering is a projection of it.** `App.ne
 
 Rule of thumb: use `Component` when state is intrinsic to display logic - usually meaning it defines `render()`. Intrinsic to *this* display concern, not the surface - a second concern (a resize handle beside send) is a second class, composed as a mounted wrapper, not more fields on the first.
 
-`render()` is optional: without one, a Component passes children through while placement, `mount()`, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controls throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. A mount-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
+`render()` is optional: without one, a Component passes children through while placement, effects at commit, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controls throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. An effect-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
 
 Same rule as the pass-through demotion: a ref plus a DOM-sync reaction never earns the *paint's* instance - but that behavior, separated under its own name, earns its own:
 
@@ -24,7 +24,7 @@ class Transcript extends Component {
   session = get(Session);
   box = ref<HTMLDivElement>();
 
-  mount() { /* scroll box to bottom as messages arrive */ }
+  new() { /* effect: scroll box to bottom as messages arrive */ }
   render() { /* paint messages from session */ }
 }
 
@@ -37,7 +37,7 @@ function Transcript() {
 class Stick extends Component {
   on = true;
 
-  mount() { /* pin scroll to bottom while on */ }
+  new() { /* effect: pin scroll to bottom while on */ }
 }
 
 <Stick>
@@ -49,7 +49,7 @@ The fused class demotes because scroll-sync was incidental to its paint. `Stick`
 
 Use `Model` for headless domain models/controls, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
 
-Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
+Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in effects declared in `new()` or `set` callbacks.
 
 For one-shot feature builds and hook refactors, don't create `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form input is often clearer as `class Foo extends Component` - the state is intrinsic to the rendered unit. A page or route Component stays one thru region extraction - regions become its fields; only chrome owning nothing demotes to an FC.
 
@@ -183,12 +183,14 @@ class ChatRoom extends Component {
   messages: Message[] = [];
   url = '';
 
-  mount() {
-    const socket = new WebSocket(this.url);
-    socket.onmessage = (e) => {
-      this.messages = [...this.messages, JSON.parse(e.data)];
-    };
-    return () => socket.close();
+  protected new() {
+    this.get(() => {
+      const socket = new WebSocket(this.url);
+      socket.onmessage = (e) => {
+        this.messages = [...this.messages, JSON.parse(e.data)];
+      };
+      return () => socket.close();
+    });
   }
 
   render() {
@@ -410,24 +412,26 @@ function SidebarItems() {
 
 - `new()` - once after init, synchronously; runs during server render. Return cleanup for teardown.
 - `render(props)` - every render.
-- `mount()` - once when `<MyComponent />` commits, client only. Return cleanup for unmount. Not called for an instance placed as `{instance}` - the placing component does not own it (see [react.md](react.md)).
+- an effect declared in `new()` - first runs once `<MyComponent />` commits, client only; its cleanup runs on destroy. Not held for an instance placed as `{instance}` - the placing component does not own it ([react.md](react.md#effects-run-once-committed)).
 - `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `Model.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
 A Component is rendered (`<MyComponent />` or `{instance}`); for a bare instance use `MyComponent.new()`.
 
-Anything touching `window`, timers or subscriptions belongs in `mount()`, not `new()`:
+Anything touching `window`, timers or subscriptions is an effect declared in `new()` - it waits for commit, so it never runs on the server ([react.md](react.md#effects-run-once-committed)):
 
 ```tsx
 class Viewport extends Component {
   width = 0;
 
-  mount() {
-    const measure = () => (this.width = window.innerWidth);
+  protected new() {
+    this.get(() => {
+      const measure = () => (this.width = window.innerWidth);
 
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+      measure();
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    });
   }
 
   render() {

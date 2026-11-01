@@ -101,12 +101,14 @@ Write the class beside the existing component. Nothing renders it yet, so the ap
 
 ### 4b. Move effects
 
-For a `useEffect` that opens a client resource - a timer, a listener, a socket - move it into `mount()`. It runs once when the owning component commits, never during server render, and its returned function runs on unmount:
+For a `useEffect` that opens a client resource - a timer, a listener, a socket - declare an effect in `new()`. Its first run waits until the owning component commits, never during server render, and its returned function runs on destroy:
 
 ```tsx
-mount() {
-  const id = setInterval(() => this.poll(), 5000);
-  return () => clearInterval(id);
+protected new() {
+  this.get(() => {
+    const id = setInterval(() => this.poll(), 5000);
+    return () => clearInterval(id);
+  });
 }
 ```
 
@@ -154,19 +156,21 @@ class Viewport extends Model {
     return this.width < 720;
   }
 
-  mount() {
-    const update = () => {
-      this.width = window.innerWidth;
-    };
+  protected new() {
+    this.get(() => {
+      const update = () => {
+        this.width = window.innerWidth;
+      };
 
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+      update();
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    });
   }
 }
 ```
 
-`mount()` runs once when the owning component commits - and never during server render, which is why `window` is safe inside it where a field initializer or `new()` would crash on the server. See [lifecycle hooks](/docs/api/state#lifecycle-hooks).
+The effect first runs once the owning component commits - and never during server render, which is why `window` is safe inside it where a field initializer or the `new()` body would crash on the server. Reading `this` inside it is untracked, so it runs once. See [lifecycle hooks](/docs/api/state#lifecycle-hooks).
 
 ### 4c. Move handlers to methods
 
@@ -440,7 +444,7 @@ class Checkout extends Component {
 }
 ```
 
-Keep hook calls out of methods and getters - they run outside render. For one-shot setup, use `mount()` for client resources and `new()` for setup that accompanies the instance itself.
+Keep hook calls out of methods and getters - they run outside render. For one-shot setup, use `new()`: its body for setup that accompanies the instance itself, an effect declared there for client resources.
 
 <br />
 
@@ -494,7 +498,7 @@ Inside React, `<Counter />` and `<Component for={Counter}>` handle activation fo
 
 ### Treating `render()` as a lifecycle
 
-`render()` runs on every render - a place to read state and call bridging hooks, not to start work. Client resources - timers, listeners, anything touching `window` - go in `mount()`; setup that accompanies the instance itself goes in `new()`. For reactive side effects, use `this.get(effect)` inside `new()`.
+`render()` runs on every render - a place to read state and call bridging hooks, not to start work. Client resources - timers, listeners, anything touching `window` - go in an effect declared in `new()`; setup that accompanies the instance itself goes in its body. The same `this.get(effect)` covers reactive side effects.
 
 ### Expecting state to survive destructured variables
 
