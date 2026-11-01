@@ -1294,6 +1294,16 @@ describe('conditions', () => {
     expect(root.className).toBe('Wide Panel-group Wide-group');
   });
 
+  it('will throw for a rule inside a pseudo-element', () => {
+    function Quote() {
+      return <q _mark />;
+    }
+
+    style(Quote, { _mark: { '::before': { _inner: { color: 'red' } } } });
+
+    expect(() => place(<Quote />)).toThrow('Rules cannot nest inside pseudo-element "::before".');
+  });
+
   it('will throw for a bare value or a class inside a condition', () => {
     function Bare() {
       return <div />;

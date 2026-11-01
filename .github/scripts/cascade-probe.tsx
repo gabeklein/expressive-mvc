@@ -146,8 +146,10 @@ style(Late, { _late: { color: 'rgb(5, 5, 5)' } });
 
 const second = document.createElement('div');
 document.body.append(second);
-render(<Late />, second);
+render(<><Late /><Field /></>, second);
 
 check('stylesheet recreated', getComputedStyle(second.querySelector('u')!).color, 'rgb(5, 5, 5)');
+second.querySelector('input')!.focus();
+check('group anchor recreated', getComputedStyle(second.querySelector('label b')!).color, 'rgb(14, 14, 14)');
 
 report();

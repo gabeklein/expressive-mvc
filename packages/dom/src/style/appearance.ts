@@ -168,10 +168,10 @@ function extendContext(parent: AppearanceContext | undefined, maps: readonly Sty
   for (const map of maps) {
     scope = createStyleScope(scope, map, label, defines);
     Object.assign(base, mergeRule(base, scope!.own));
-    anchors.add(ownGroups.get(scope!)!);
+    const own = ownGroups.get(scope!);
+    if (own) anchors.add(own);
   }
 
-  anchors.delete(undefined!);
   if (Object.keys(base).length) bases.set(scope!, base);
   if (anchors.size) groups.set(scope!, [...anchors]);
 
@@ -342,6 +342,9 @@ function toBlocks({ declarations, variants }: Expansion, { group, name }: Frame,
 
 function hoist(frame: Frame, condition: string) {
   if (condition[0] != ':') return condition;
+
+  if (condition.includes('::'))
+    throw new Error(`Rules cannot nest inside pseudo-element "${condition}".`);
 
   frame.group ||= { declarations: {}, group: true, name: frame.name, ordinal: 0 };
 
