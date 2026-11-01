@@ -66,7 +66,7 @@ class Timer extends Model {
 - `function` - called with `this` as the instance; may return a cleanup function, a plain object to assign, an array to process, a `Context` to add the instance to (its home only if it has none), or a Promise - any other object, the instance included, is ignored
 - `object` - assigned to instance properties
 - `array` - flattened and re-processed
-- `Context` - home context; the last one wins, ignored if already placed ([context.md](context.md#context-arguments))
+- `Context` - home context; the first one wins, ignored if already placed ([context.md](context.md#context-arguments))
 - `Promise` (returned by a callback) - a rejection is reported with kind `setup` ([Error Handling](#error-handling))
 
 > **Timing:** args (and assigned props, in adapters) apply during activation, *after* field initializers and `Model.on` setup. A trailing arg callback, `new()` and an `on({ ready })` handler see applied values. The JS constructor body and `on({ setup })` run *before* the merge and see only field defaults; don't read an applied prop there.

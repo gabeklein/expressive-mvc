@@ -224,7 +224,7 @@ Model.on({
 type Args<T> = (Args<T> | Init<T> | Assign<T> | Context | void)[];
 ```
 
-Nested arrays (flattened at runtime), objects (assigned), callbacks (lifecycle), and contexts (home - the last wins; [context.md](context.md#context-arguments)).
+Nested arrays (flattened at runtime), objects (assigned), callbacks (lifecycle), and contexts (home - the first wins; [context.md](context.md#context-arguments)).
 
 ## Observable / Event System
 

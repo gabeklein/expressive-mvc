@@ -18,28 +18,30 @@ An owned instance's home is its owner's - lookups follow ownership, not where it
 
 ### Context Arguments
 
-A `Context` among `.new()` or constructor arguments chooses the home: the instance is added there as it activates, before its instructions and arguments apply, and removed when destroyed - `ctx.pop()` removes the entry, not the instance. What a context does depends on where it comes from:
+A `Context` among `.new()` or constructor arguments claims the home: the instance is added there as it activates, before its instructions and arguments apply, and removed when destroyed - `ctx.pop()` removes the entry, not the instance. The first claim wins, in this order:
 
 | Source                                                     | Effect                                  |
 | ---------------------------------------------------------- | --------------------------------------- |
-| Home given before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, a placed owner | Wins - context arguments are ignored |
-| Context arguments                                          | Last one becomes home                   |
+| Home given before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, a placed owner | Home - context arguments are ignored |
+| Context arguments                                          | First one becomes home; the rest are ignored |
 | Context returned from a callback or `setup` handler        | Adds an entry - home only if it has none |
 
-Arguments compose like overlays - later overrides earlier, so a helper's default context yields to the caller's. Several entries are opt-in, by returning them:
+An argument only claims; a context that loses has no effect. A returned context is a grant - it always lists the instance. A default goes last, like a fallback:
 
 ```ts
 FormState.new(context);                         // home: context
 FormState.new(Context.root);                    // findable from anywhere until destroyed
-FormState.new([Context.root, ...args]);         // default home; a context in args overrides it
-FormState.new(context, () => [Context.root]);   // home: context; also listed in root
+FormState.new(...args, Context.root);           // root unless args brought a context
+FormState.new(context, () => Context.root);     // home: context; also listed in root
 ```
+
+A subclass enforces its placement with `super(context, ...args)`, or offers a default with `super(...args, context)`.
 
 An owned child's home is its owner's, so only a returned context reaches it. `Child.new(ctx)` in a field is a guest - homed in `ctx`, never destroyed with the parent:
 
 ```ts
 class App extends Model {
-  session = new Session(() => [Context.root]);  // owned; also listed in root until destroyed
+  session = new Session(() => Context.root);    // owned; also listed in root until destroyed
 }
 ```
 
@@ -204,7 +206,7 @@ ctx.get(Type, callback, false);        // upstream only
 ctx.add(state, explicit?);             // register an instance
 ctx.push(input?, cleanup?);            // child context; input as constructor; owns classes, adopts instances; cleanup runs once on pop
 ctx.pop();                             // destroy this and descendants
-Type.new(context, ...args);            // home: last context argument - see Context Arguments
+Type.new(context, ...args);            // home: first context argument - see Context Arguments
 Context.get(state);                    // static: state's home context
 Context.get();                         // static: current context, else root
 Context.root;                          // process-wide registry
