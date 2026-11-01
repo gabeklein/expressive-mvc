@@ -649,13 +649,6 @@ function init(state: Model, ...args: Model.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
-  let target: Context | undefined;
-
-  args.forEach(function find(arg) {
-    if (Array.isArray(arg)) arg.forEach(find);
-    else if (arg instanceof Context && !target) target = arg;
-  });
-
   function observe() {
     for (const key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
@@ -675,7 +668,10 @@ function init(state: Model, ...args: Model.Args) {
 
     if (key === null) return null;
 
-    if (target) place(state, target);
+    args.forEach(function find(arg) {
+      if (Array.isArray(arg)) arg.forEach(find);
+      else if (arg instanceof Context) place(state, arg);
+    });
 
     if (!PARENT.has(state)) parent(state, host(state) || null);
 
