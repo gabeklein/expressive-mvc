@@ -1,4 +1,4 @@
-import { Context, HOME, host, join, within } from './context';
+import { Context, host, join, place, within } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -677,7 +677,7 @@ function init(state: Model, ...args: Model.Args) {
 
     if (key === null) return null;
 
-    if (target && !parent(state) && !HOME.has(state)) place(state, target);
+    if (target) place(state, target);
 
     if (!PARENT.has(state)) parent(state, host(state) || null);
 
@@ -734,15 +734,6 @@ function init(state: Model, ...args: Model.Args) {
   }
 
   PENDING.add(state);
-}
-
-function place(state: Model, context: Context, grant?: boolean) {
-  const homed = HOME.has(state);
-  const remove = context.add(state, true);
-
-  if (grant && !homed) HOME.delete(state);
-
-  listener(state, () => void remove(), null);
 }
 
 function unmanaged(state: Model, key: string, value: unknown) {

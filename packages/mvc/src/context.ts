@@ -388,6 +388,19 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
   };
 }
 
+/** Add `state` to `context` until destroyed - as its home unless owned or already placed. A grant only adds the entry. */
+function place(state: Model, context: Context, grant?: boolean) {
+  const homed = HOME.has(state);
+
+  if (!grant && (homed || parent(state))) return;
+
+  const remove = context.add(state, true);
+
+  if (grant && !homed) HOME.delete(state);
+
+  listener(state, () => void remove(), null);
+}
+
 function above(ctx: Context) {
   return ctx.parent && touch(ctx, "parent", ctx.parent);
 }
@@ -436,4 +449,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, HOME, host, join, resolver, within };
+export { Context, host, join, place, resolver, within };
