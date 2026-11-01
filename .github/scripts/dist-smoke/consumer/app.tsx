@@ -26,6 +26,11 @@ class List extends Component {
     this.draft = '';
   }
 
+  mount() {
+    document.body.dataset.mounted = 'list';
+    return () => delete document.body.dataset.mounted;
+  }
+
   render() {
     return (
       <section>
@@ -36,6 +41,15 @@ class List extends Component {
     );
   }
 }
+
+class Wrong extends Component {
+  // @ts-expect-error
+  mount() {
+    return 1;
+  }
+}
+
+void Wrong;
 
 const Frame = (props: { children?: Component.Node }) => (
   <main>
