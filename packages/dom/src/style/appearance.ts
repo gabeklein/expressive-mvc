@@ -110,8 +110,8 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   for (const name of own) {
     const rule = source[name];
     const inherited = parent?.rules[name];
-    const merge = isObject(inherited) && isObject(rule) && (defines || inherited !== parent!.globals?.rules[name]);
-    rules[name] = merge ? mergeRule(inherited, rule) : rule;
+    const extend = isObject(inherited) && isObject(rule) && (defines || inherited !== parent!.globals?.rules[name]);
+    rules[name] = extend ? mergeRule(inherited, rule) : rule;
     labels[name] = scopeLabel;
   }
 

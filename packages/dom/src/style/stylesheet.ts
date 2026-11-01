@@ -131,8 +131,11 @@ function emit(block: Block, depth: number, document: Document) {
 
   if (!sheet.names.has(name)) {
     const { positions } = sheet;
-    const states = when.filter((condition) => condition[0] == ':').join('');
-    const selector = states ? `.${name}:where(${states})` : `.${name}`;
+    const pseudo = when.filter((condition) => condition[0] == ':').join('');
+    const split = pseudo.indexOf('::');
+    const states = split < 0 ? pseudo : pseudo.slice(0, split);
+    const element = split < 0 ? '' : pseudo.slice(split);
+    const selector = `.${name}${states ? `:where(${states})` : ''}${element}`;
     let at = positions.findIndex(([d, o]) => d > depth || d == depth && o > block.ordinal);
     if (at < 0) at = positions.length;
 

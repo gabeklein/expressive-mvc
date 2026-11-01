@@ -1081,6 +1081,27 @@ describe('conditions', () => {
     ]);
   });
 
+  it('will place pseudo-elements after the state', () => {
+    function Entry() {
+      return <input _field />;
+    }
+
+    style(Entry, {
+      _field: {
+        '::placeholder': { color: 'gray' },
+        ':hover': { '::after': { content: '"!"' } },
+        ':focus::before': { content: '"?"' }
+      }
+    });
+
+    place(<Entry />);
+    expect(sheet('.Entry')).toEqual([
+      '.Entry_field-placeholder::placeholder { color: gray; }',
+      '.Entry_field-focus_before:where(:focus)::before { content: "?"; }',
+      '.Entry_field-hover-after:where(:hover)::after { content: "!"; }'
+    ]);
+  });
+
   it('will wrap media blocks and hoist rules into them', () => {
     function Grid() {
       return <div _grid />;

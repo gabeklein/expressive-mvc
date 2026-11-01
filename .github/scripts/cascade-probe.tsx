@@ -82,9 +82,15 @@ function Picker() {
 
 style(Picker, { _pick: { color: 'rgb(12, 12, 12)' } });
 
+function Tip() {
+  return <span _tip>tip</span>;
+}
+
+style(Tip, { _tip: { '::before': { content: '"x"' } } });
+
 const root = document.getElementById('app')!;
 
-render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /></>, root);
+render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /></>, root);
 
 const leaf = root.querySelector('b')!;
 const inline = root.querySelector('i')!;
@@ -112,6 +118,7 @@ check('caller door beats callee state', getComputedStyle(picked).color, 'rgb(12,
 check('callee state still applies under a door', getComputedStyle(picked).outlineColor, 'rgb(11, 11, 11)');
 check('matching media applies', getComputedStyle(toggle).letterSpacing, '2px');
 check('other media does not', getComputedStyle(toggle).wordSpacing, '0px');
+check('pseudo-element applies', getComputedStyle(root.querySelector('span[class*=Tip]')!, '::before').content, '"x"');
 check('leaf carries door classes', String(leaf.className.includes('-d1') && leaf.className.includes('-d2')), 'true');
 
 document.querySelector('style[data-expressive]')!.remove();

@@ -124,9 +124,10 @@ style(Select, {
 
 - Each condition is its own block, sorted right after the block it modifies. It adds no specificity, so doors and inline style win over it as over any rule.
 - A `,` in a `:` key lists alternatives (`:is(...)` stays whole); an `@` key is never split.
+- A pseudo-element (`'::placeholder'`, `':hover::after'`) styles that part of the element.
 - `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope. `_rule` inside a `:` condition (hover a parent, style a child) throws - not supported yet.
 - Macros expand inside a condition; one producing a class there throws.
-- The host decides what a condition means; CSS names are the vocabulary. Raw strings are fine in host-bound code. For maps meant to move between hosts, export named conditions (`mobile` above) from one style module, so another host can supply its own value under the same name.
+- CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`mobile` above) exported from one style module.
 - Layers and subclasses merge a condition's body key by key, like a rule.
 
 The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and`.
