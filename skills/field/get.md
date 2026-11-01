@@ -19,6 +19,8 @@ class Child extends Model {
 }
 ```
 
+Owner and siblings win; otherwise the field follows its context provider - a closer one arriving replaces it. On removal an optional field reads `undefined`; a required one suspends until another arrives.
+
 ### Upstream with callback
 
 ```ts
@@ -30,7 +32,7 @@ class Child extends Model {
 }
 ```
 
-Receives `(state, subject)`. Runs when the upstream resolves, and again when it is replaced. A returned cleanup runs when the subject is destroyed.
+Receives `(state, subject)`. Runs when the upstream resolves, and again when it is replaced. A returned cleanup runs when that upstream is replaced or leaves, or the subject is destroyed.
 
 ### Key
 
