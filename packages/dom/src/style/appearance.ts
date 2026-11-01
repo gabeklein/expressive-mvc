@@ -25,6 +25,7 @@ interface StyleScope {
   globals?: StyleScope;
   label: string;
   labels: Record<string, string>;
+  local: readonly string[];
   names: readonly string[];
   own: Declaration;
   routes: Map<string, AppearanceRoute>;
@@ -82,6 +83,8 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const names = parent
     ? [...parent.names, ...own.filter((name) => !parent.names.includes(name))]
     : own;
+  const before = parent && parent !== parent.globals ? parent.local : [];
+  const local = defines ? [] : [...before, ...own.filter((name) => !before.includes(name))];
   const rules = Object.create(parent?.rules || null) as StyleMap;
   const labels = Object.create(parent?.labels || null) as Record<string, string>;
   const scopeLabel = label || parent?.label || 'style';
@@ -100,6 +103,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
     globals: parent?.globals,
     label: scopeLabel,
     labels,
+    local,
     names,
     own: base,
     routes: new Map(),
@@ -294,9 +298,9 @@ function shared(scope: StyleScope) {
 }
 
 function ordinal(scope: StyleScope, name: string) {
-  const index = scope.names.indexOf(name);
-
-  return scope.rules[name] === scope.globals?.rules[name] ? index : shared(scope) + index;
+  return scope.rules[name] === scope.globals?.rules[name]
+    ? scope.names.indexOf(name)
+    : shared(scope) + scope.local.indexOf(name);
 }
 
 function expandShadowed(scope: StyleScope, name: string, parts: Expansion[]) {

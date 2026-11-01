@@ -374,6 +374,17 @@ describe('appearance', () => {
     expect(getComputedStyle(gauge).padding).toBe('6px');
   });
 
+  it('will order a rule shadowing a global by its own registration', () => {
+    function Gauge() {
+      return <output _wide />;
+    }
+
+    style(Gauge, { _wide: { padding: '1px' }, _output: { padding: '2px' } });
+
+    const node = place(<Gauge />).querySelector('output')!;
+    expect(getComputedStyle(node).padding).toBe('2px');
+  });
+
   it('will not activate a rule for a falsy flag', () => {
     function Gate() {
       return <><kbd _on={0} /><samp _on={''} /><var _on={1} /></>;
