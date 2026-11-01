@@ -24,6 +24,7 @@ declare module './stylesheet' {
       bare(value?: any): unknown;
       globalTone(value: any): unknown;
       selfish(value?: any): unknown;
+      glowOn(value?: any): unknown;
     }
   }
 }
@@ -39,6 +40,7 @@ macro({
   bare: () => 'bare',
   globalTone: (value?: unknown) => ({ color: value }),
   selfish: () => ({ selfish: true }),
+  glowOn: (value?: unknown) => ({ ':hover': { tone: value } }),
   _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 },
   _output: { color: 'gray', padding: '5px' }
 });
@@ -1188,20 +1190,118 @@ describe('conditions', () => {
     ]);
   });
 
-  it('will throw for a rule inside a state', () => {
+  it('will style a descendant while a rule holds a state', () => {
+    function Gallery() {
+      return <div _thumb><button _delete /></div>;
+    }
+
+    style(Gallery, {
+      _thumb: { position: 'relative', ':hover': { _delete: { opacity: 1 } } },
+      _delete: { opacity: 0 }
+    });
+
+    const thumb = place(<Gallery />).querySelector('div')!;
+    const button = thumb.querySelector('button')!;
+    expect(thumb.className).toBe('Gallery_thumb Gallery_thumb-group');
+    expect(button.className).toBe('Gallery_div_delete Gallery_div_delete-Gallery_thumb_hover');
+    expect(sheet('Gallery')).toEqual([
+      '.Gallery_thumb { position: relative; }',
+      '.Gallery_div_delete { opacity: 0; }',
+      ':where(.Gallery_thumb-group:hover) .Gallery_div_delete-Gallery_thumb_hover { opacity: 1; }'
+    ]);
+  });
+
+  it('will style a descendant while the root holds a state', () => {
+    function Tile() {
+      return <div><b _label /></div>;
+    }
+
+    style(Tile, { ':hover': { _label: { color: 'blue' } } });
+
+    const root = place(<Tile />).querySelector('div')!;
+    expect(root.className).toBe('Tile-group');
+    expect(root.querySelector('b')!.className).toBe('Tile_label-Tile_hover');
+    expect(sheet('Tile')).toEqual([':where(.Tile-group:hover) .Tile_label-Tile_hover { color: blue; }']);
+  });
+
+  it('will split a root state list before grouping', () => {
     function Thumb() {
-      return <div _thumb />;
+      return <div><button _delete /></div>;
     }
 
-    function Root() {
-      return <div />;
+    style(Thumb, { ':hover, :focus-within': { _delete: { opacity: 1 } } });
+
+    place(<Thumb />);
+    expect(sheet('Thumb')).toEqual([
+      ':where(.Thumb-group:hover) .Thumb_delete-Thumb_hover { opacity: 1; }',
+      ':where(.Thumb-group:focus-within) .Thumb_delete-Thumb_focus-within { opacity: 1; }'
+    ]);
+  });
+
+  it('will expand a condition returned by a macro', () => {
+    function Lit() {
+      return <a />;
     }
 
-    style(Thumb, { _thumb: { ':hover': { _delete: { opacity: 1 } } } });
-    style(Root, { ':hover': { _delete: { opacity: 1 } } });
+    style(Lit, { tone: 'red', glowOn: 'blue' });
 
-    expect(() => place(<Thumb />)).toThrow('Rule "_delete" inside ":hover" is not supported.');
-    expect(() => place(<Root />)).toThrow('Rule "_delete" inside ":hover" is not supported.');
+    place(<Lit />);
+    expect(sheet('.Lit')).toEqual([
+      '.Lit { color: red; }',
+      '.Lit-hover:where(:hover) { color: blue; }'
+    ]);
+  });
+
+  it('will chain ancestor states and media', () => {
+    function Menu() {
+      return <ul _list><li _item><span _icon /></li></ul>;
+    }
+
+    style(Menu, {
+      _list: {
+        ':focus-within': {
+          _item: { ':hover': { _icon: { color: 'red' } } },
+          '@media print': { _icon: { display: 'none' } }
+        }
+      }
+    });
+
+    const root = place(<Menu />);
+    const classes = ['ul', 'li', 'span'].map((tag) => root.querySelector(tag)!.className);
+    expect(classes).toEqual([
+      'Menu_list-group',
+      'Menu_ul_item-group',
+      'Menu_ul_li_icon-Menu_list_focus-within-media_print Menu_ul_li_icon-Menu_list_focus-within-Menu_ul_item_hover'
+    ]);
+    expect(sheet('Menu')).toEqual([
+      '@media print { :where(.Menu_list-group:focus-within) .Menu_ul_li_icon-Menu_list_focus-within-media_print { display: none; } }',
+      ':where(.Menu_list-group:focus-within) :where(.Menu_ul_item-group:hover) .Menu_ul_li_icon-Menu_list_focus-within-Menu_ul_item_hover { color: red; }'
+    ]);
+  });
+
+  it('will keep root groups across layers and subclasses', () => {
+    class Panel extends Component {
+      render() {
+        return <div><b _title /><i _note /></div>;
+      }
+    }
+    class Wide extends Panel {}
+
+    style(Panel, { ':hover': { _title: { color: 'red' } } });
+    style(Wide, { padding: '1px' }, { ':focus-within': { _note: { color: 'blue' } } });
+
+    const root = place(<Wide />).querySelector('div')!;
+    expect(root.className).toBe('Wide Panel-group Wide-group');
+  });
+
+  it('will throw for a rule inside a pseudo-element', () => {
+    function Quote() {
+      return <q _mark />;
+    }
+
+    style(Quote, { _mark: { '::before': { _inner: { color: 'red' } } } });
+
+    expect(() => place(<Quote />)).toThrow('Rules cannot nest inside pseudo-element "::before".');
   });
 
   it('will throw for a bare value or a class inside a condition', () => {

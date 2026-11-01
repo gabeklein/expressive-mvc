@@ -96,7 +96,7 @@ Macros are defined only by `macro()`. A function inside a `style()` map is a val
 
 Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead.
 
-Where shared style lives (convention): a macro groups declarations; a global `_rule` sets element defaults and app roles; a shared map holds rules for one kind of thing, layered as an extra `style()` argument. Share a component before sharing a map. Within a scope, global rules come first, then base declarations, then rules by base class, derived class, and registration order - a rule shadowing a global one stacks on it rather than absorbing it. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered. `macro()` is global and closes at the first render of anything.
+Within a scope, global rules come first, then base declarations, then rules by base class, derived class, and registration order - a rule shadowing a global one stacks on it rather than absorbing it. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered. `macro()` is global and closes at the first render of anything.
 
 Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins - for classes and for which nested rules reach descendants - independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
 
@@ -124,8 +124,9 @@ style(Select, {
 
 - Each condition is its own block, sorted right after the block it modifies. It adds no specificity, so doors and inline style win over it as over any rule.
 - A `,` in a `:` key lists alternatives (`:is(...)` stays whole); an `@` key is never split.
-- A pseudo-element (`'::placeholder'`, `':hover::after'`) styles that part of the element.
-- `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope. `_rule` inside a `:` condition (hover a parent, style a child) throws - not supported yet.
+- A pseudo-element (`'::placeholder'`, `':hover::after'`) styles that part of the element and cannot hold a `_rule`.
+- `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope.
+- `_rule` inside a `:` condition styles descendants while the enclosing element holds the state - `_thumb: { ':hover': { _delete: { opacity: 1 } } }` shows `_delete` while its thumb is hovered; at the top of a map, the state is the component root's. The element holding the state gets a `-group` class. Groups chain and combine with `@`.
 - Macros expand inside a condition; one producing a class there throws.
 - CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`mobile` above) exported from one style module.
 - Layers and subclasses merge a condition's body key by key, like a rule.
@@ -203,6 +204,17 @@ function Field({ style }: { style?: JSX.IntrinsicElements['div']['style'] }) {
 ```
 
 A component reading `style` receives a frozen object, or `undefined` when nothing was passed. Its own keys are the caller's inline declarations, flattened in written order; classes travel hidden with it. Override with a spread (`{ ...style, color: 'blue' }`), drop a key with rest (`const { width, ...rest } = style`), or merge two with `{ ...a, ...b }` - classes survive all three. Combine style values with arrays (`[a, b, 'local']`); spread to edit declarations. Do not branch on its shape, and do not clone it - `structuredClone` and JSON drop the classes.
+
+### Conventions
+
+Opinionated, applied by default:
+
+- `style(X, …)` sits directly below `X`, never gathered at the end of a file. Shared maps go above their first use.
+- One style module, imported in the entry before the app renders (`import './style'`), holds `macro(css)`, the app's macros as one object typed with `macro.From`, global `_rule`s, shared maps, and named conditions (`mobile = media({ maxWidth: 900 })`).
+- A declaration group repeated in two or three places becomes a macro named for its job (`row`, `line`, `ellipsis`), not its CSS. What varies is its argument; an optional one makes it a flag (`row: true`). Fold repeats as you find them.
+- Shared style: a macro groups declarations; a global `_rule` sets element defaults (`_button`) and app roles (`_muted`); a shared map holds rules for one kind of thing, layered as an extra `style()` argument. Share a component before sharing a map.
+- Values under `css`: `rem()` / `em()` for type-relative sizes, bare numbers for px, strings for mixed values (`'0 auto'`, `calc()`, `var()`) - not hand-written `'0.2rem 0.45rem'`.
+- App elements are styled with `_rule` attributes; `className` is for classes defined outside `style()`. A hover or media hook class in app CSS belongs in a map as a condition.
 
 ## MVC render scopes
 

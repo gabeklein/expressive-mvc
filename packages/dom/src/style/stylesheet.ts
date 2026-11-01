@@ -89,6 +89,7 @@ interface Sheet {
 }
 
 const sheets = new WeakMap<Document, Sheet>();
+let groups = 0;
 
 function style<T extends object>(type: T, ...maps: (style.Map | false | null | undefined)[]): T {
   for (const rules of maps) if (rules) appearance.style(type, rules);
@@ -113,6 +114,8 @@ function emit(block: Block, depth: number, document: Document) {
     sheets.set(document, sheet);
   }
 
+  if (block.group) depth = 0;
+
   let byDepth = sheet.emitted.get(block);
   if (!byDepth) sheet.emitted.set(block, (byDepth = new Map()));
 
@@ -120,9 +123,22 @@ function emit(block: Block, depth: number, document: Document) {
   if (cached) return cached;
 
   const when = block.when || [];
-  const css = serialize(document, block.declarations);
-  const key = [...when, css].join('\0');
-  const label = [depth ? `${block.name}-d${depth}` : block.name, ...when].join('-');
+  const at = when.filter((condition) => typeof condition == 'string' && condition[0] == '@') as string[];
+  const pseudo = when.filter((condition) => typeof condition == 'string' && condition[0] == ':').join('');
+  const split = pseudo.indexOf('::');
+  const states = split < 0 ? pseudo : pseudo.slice(0, split);
+  const element = split < 0 ? '' : pseudo.slice(split);
+  const scope = when.map((condition) =>
+    typeof condition == 'string' ? '' : `:where(.${emit(condition.on, 0, document)}${condition.state}) `
+  ).join('');
+  const selector = `${scope}.%${states ? `:where(${states})` : ''}${element}`;
+  const css = block.group ? `\0${groups++}` : serialize(document, block.declarations);
+  const key = [...at, selector, css].join('\0');
+  const label = [
+    depth ? `${block.name}-d${depth}` : block.name,
+    ...when.map((condition) => typeof condition == 'string' ? condition : condition.on.name + condition.state),
+    ...block.group ? ['group'] : []
+  ].join('-');
   const base = label.replace(/[^\w-]+/g, '_').replace(/_*(-)_*|_+$/g, '$1');
   let name = base;
 
@@ -130,21 +146,19 @@ function emit(block: Block, depth: number, document: Document) {
     name = `${base}-${index}`;
 
   if (!sheet.names.has(name)) {
-    const { positions } = sheet;
-    const pseudo = when.filter((condition) => condition[0] == ':').join('');
-    const split = pseudo.indexOf('::');
-    const states = split < 0 ? pseudo : pseudo.slice(0, split);
-    const element = split < 0 ? '' : pseudo.slice(split);
-    const selector = `.${name}${states ? `:where(${states})` : ''}${element}`;
-    let at = positions.findIndex(([d, o]) => d > depth || d == depth && o > block.ordinal);
-    if (at < 0) at = positions.length;
-
     sheet.names.set(name, key);
-    positions.splice(at, 0, [depth, block.ordinal]);
-    sheet.element.sheet!.insertRule(
-      when.reduceRight((rule, condition) => condition[0] == '@' ? `${condition}{${rule}}` : rule, `${selector}{${css}}`),
-      at
-    );
+
+    if (!block.group) {
+      const { positions } = sheet;
+      let index = positions.findIndex(([d, o]) => d > depth || d == depth && o > block.ordinal);
+      if (index < 0) index = positions.length;
+
+      positions.splice(index, 0, [depth, block.ordinal]);
+      sheet.element.sheet!.insertRule(
+        at.reduceRight((rule, condition) => `${condition}{${rule}}`, `${selector.replace('%', name)}{${css}}`),
+        index
+      );
+    }
   }
 
   byDepth.set(depth, name);

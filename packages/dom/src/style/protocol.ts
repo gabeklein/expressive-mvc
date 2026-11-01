@@ -2,10 +2,13 @@ type Declaration = Record<string, unknown>;
 
 interface Block {
   declarations: Declaration;
+  group?: true;
   name: string;
   ordinal: number;
-  when?: readonly string[];
+  when?: readonly Condition[];
 }
+
+type Condition = string | { on: Block; state: string };
 
 interface ResolvedAppearance {
   blocks?: Block[];
@@ -102,4 +105,4 @@ export {
   SUBCOMPONENT
 };
 
-export type { AppearanceContext, Block, Declaration, ResolvedAppearance };
+export type { AppearanceContext, Block, Condition, Declaration, ResolvedAppearance };
