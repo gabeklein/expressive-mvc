@@ -388,15 +388,15 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
   };
 }
 
-/** Add `state` to `context` until destroyed - as its home unless owned or already placed. A grant only adds the entry. */
-function place(state: Model, context: Context, grant?: boolean) {
+/** Add `state` to `context` until destroyed - as its home unless owned or already placed. With `listOnly`, only adds the entry. */
+function place(state: Model, context: Context, listOnly?: boolean) {
   const homed = HOME.has(state);
 
-  if (!grant && (homed || parent(state))) return;
+  if (!listOnly && (homed || parent(state))) return;
 
   const remove = context.add(state, true);
 
-  if (grant && !homed) HOME.delete(state);
+  if (listOnly && !homed) HOME.delete(state);
 
   listener(state, () => void remove(), null);
 }

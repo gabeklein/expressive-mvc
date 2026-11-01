@@ -25,7 +25,7 @@ A `Context` among `.new()` or constructor arguments claims the home: the instanc
 | Before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, or an owner (field child) | Home - context arguments are ignored |
 | Context arguments                                           | First one becomes home; the rest are ignored |
 
-A context that loses has no effect. A context returned from a callback or `setup` handler is a grant, not a claim - it always adds an entry and never sets the home, so `get` fields do not resolve through it. A default goes last, like a fallback - unlike overlays, where later wins:
+A context that loses has no effect. A context returned from a callback or `setup` handler only lists the instance - it always adds an entry and never sets the home, so `get` fields do not resolve through it. A default goes last, like a fallback - unlike overlays, where later wins:
 
 ```ts
 FormState.new(context);                         // home: context
