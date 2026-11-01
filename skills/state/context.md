@@ -25,13 +25,12 @@ A `Context` among `.new()` or constructor arguments claims the home: the instanc
 | Before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, or an owner (field child) | Home - context arguments are ignored |
 | Context arguments                                           | First one becomes home; the rest are ignored |
 
-A context that loses has no effect. A context returned from a callback or `setup` handler adds the instance there, even if owned, but never as its home, so `get` fields do not resolve through it. A default goes last, like a fallback - unlike overlays, where later wins:
+A context that loses has no effect. A default goes last, like a fallback - unlike overlays, where later wins:
 
 ```ts
 FormState.new(context);                         // home: context
 FormState.new(Context.root);                    // findable from anywhere until destroyed
 FormState.new(...args, Context.root);           // root unless args brought a context
-FormState.new(context, () => Context.root);     // home: context; also added to root
 ```
 
 A subclass enforces its placement by passing the context first, or offers a default by passing it last - after props for a `Component`:
@@ -42,11 +41,11 @@ super(...args, context);                        // Model: default
 super(props, context, ...rest);                 // Component: enforce
 ```
 
-An owned child's home is always its owner's - the owner claims it before it activates, so its context arguments are ignored. Pick by intent:
+An owned child's home is always its owner's - the owner claims it before it activates, so its context arguments are ignored:
 
 ```ts
 class App extends Model {
-  session = new Session(() => Context.root);    // owned; also added to root until destroyed
+  session = new Session();                      // owned - homed where App is
   guest = Session.new(context);                 // guest - homed in context, not owned
 }
 ```

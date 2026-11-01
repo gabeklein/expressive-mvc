@@ -355,16 +355,13 @@ When more than one context is in play, the first claim wins:
 - **Claimed before activation** - a host mounting the instance, `ctx.add` / `ctx.push` before it activates, or an owner adopting it as a field child (an owned child always lives where its owner does). That claim decides the home, and context arguments are ignored. This is how a component rendered by React keeps its own layer even though React hands its constructor the parent context.
 - **Context arguments** - the first one becomes the home, and later ones are ignored. So a default goes last, like a fallback (the opposite of initial values, where later wins), and a subclass that must decide its placement passes its context first: `super(context, ...args)`, or `super(props, context, ...rest)` for a component.
 
-A context **returned from a callback or `setup` handler** adds the instance to that context too, even if owned, but never makes it the home, so `get` fields don't resolve through it - use an argument for that.
-
 When a context "didn't take", something earlier had the claim - the host, the owner, or an earlier argument.
 
 ```ts
 Cart.new(...args, Context.root); // root unless args brought a context
-Cart.new(context, () => Context.root); // home is context; also added to root
 ```
 
-To list an owned child somewhere else too, return the context: `session = new Session(() => Context.root)`. Writing `Session.new(context)` in a field instead makes a guest - homed there, but not owned, so it is never destroyed with the parent. Created in a field initializer, nothing ever releases it; make guests where their lifetime is held and pass them in.
+An owned child - `session = new Session()` - always lives where its owner does. Writing `Session.new(context)` in a field instead makes a guest - homed there, but not owned, so it is never destroyed with the parent. Created in a field initializer, nothing ever releases it; make guests where their lifetime is held and pass them in.
 
 A component given a context this way - `Panel.new(props, context)` - is added to it like any instance, visible to its siblings there - two of one class in the same context make a lookup throw. To mount one as a host would, under its own layer, push it with a cleanup: `context.push(panel, () => panel.set(null))`.
 
