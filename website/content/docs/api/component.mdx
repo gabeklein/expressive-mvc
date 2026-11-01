@@ -241,6 +241,7 @@ declare class Component extends Model {
 
   render(props?: {}): Component.Node;
   catch?(error: Error, instance: this): Promise<void> | void;
+  /** @deprecated - an effect declared in new() waits for the same commit */
   mount?(): (() => void) | void;
 }
 ```

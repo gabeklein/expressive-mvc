@@ -28,9 +28,11 @@ class Cart extends Model {
 class Timer extends Model {
   elapsed = 0;
 
-  mount() {                      // client resources go here, not new()
-    const id = setInterval(() => this.elapsed++, 1000);
-    return () => clearInterval(id);
+  protected new() {
+    this.get(() => {             // client resources: runs once the host commits
+      const id = setInterval(() => this.elapsed++, 1000);
+      return () => clearInterval(id);
+    });
   }
 }
 ```
@@ -55,7 +57,7 @@ settle     release children → ready handlers → parked effects replay
 
 `new()` is a typed optional member of `Model` (`protected new?(): void | (() => void) | Promise<void>`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. `mount()` on a plain `Model` - run by either host - is not declared on `Model`; a class satisfies the host's interface structurally: optional and unadvertised on never-rendered Models, at the cost of a looser check than a declared override.
 
-> **`new()` runs on the server.** It is part of activation, so it fires wherever the instance is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook: `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for an instance some component owns.
+> **`new()` runs on the server.** It is part of activation, so it fires wherever the instance is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in an effect declared in `new()` - a host holds it until the owning component commits ([../react/react.md](../react/react.md#effects-run-once-committed)), so it never runs on the server. `mount()` is deprecated in its favour.
 
 > **`new()` is for consumers and own-state.** Avoid it in reusable classes meant to be subclassed: it's a public method, so a subclass defining its own `new()` silently replaces yours. For internal init in a shippable base class, pass a trailing init callback to `super` - same phase as `new()`, but can't be clobbered:
 >

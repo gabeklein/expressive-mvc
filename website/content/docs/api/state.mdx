@@ -422,22 +422,24 @@ class Cart extends Model {
 }
 ```
 
-Runs once after activation, wherever the instance is created - including during server render. Return a cleanup function to run on destruction, or `void`. `new?()` is declared as an optional protected member of `Model`, so its signature is type-checked and `override` catches a misspelling. If it returns a promise that rejects, the rejection is reported with kind `setup`. Setup that must accompany the instance itself goes here; client-only resources (DOM, timers, subscriptions) belong in `mount()`.
+Runs once after activation, wherever the instance is created - including during server render. Return a cleanup function to run on destruction, or `void`. `new?()` is declared as an optional protected member of `Model`, so its signature is type-checked and `override` catches a misspelling. If it returns a promise that rejects, the rejection is reported with kind `setup`. Setup that must accompany the instance itself goes here; client-only resources (DOM, timers, subscriptions) go in an effect declared here - `this.get(() => { ...; return cleanup })` - which a host holds until the owning component commits.
 
-### `mount()` <small>(host)</small> [#mount]
+### `mount()` <small>(host, deprecated)</small> [#mount]
 
 ```ts
 class Ticker extends Model {
   elapsed = 0;
 
-  mount() {
-    const id = setInterval(() => this.elapsed++, 1000);
-    return () => clearInterval(id);
+  protected new() {
+    this.get(() => {
+      const id = setInterval(() => this.elapsed++, 1000);
+      return () => clearInterval(id);
+    });
   }
 }
 ```
 
-Runs once when the component that **owns** the instance commits - a Component rendered as JSX, or a `<Component for={StateClass}>` that created it. Return a function to run on unmount.
+Deprecated: an effect declared in `new()`, as above, waits for the same commit. `mount()` runs once when the component that **owns** the instance commits - a Component rendered as JSX, or a `<Component for={StateClass}>` that created it. Return a function to run on unmount.
 
 Never runs during server render, and never for an instance merely observed or placed - `.get()` and `{instance}` reach an instance the component does not own, and `Model.new()` has no component at all. Client-only effects (DOM, timers, subscriptions) belong here; setup that must accompany the instance itself belongs in `new()`.
 

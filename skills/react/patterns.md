@@ -279,8 +279,8 @@ class ComposePage extends Component {
   threadId?: string;     // working identity - survives route changes
   urlThreadId?: string;  // route param - undefined off /t/:id
 
-  mount() {
-    return this.get(($) => {
+  protected new() {
+    this.get(($) => {
       void $.urlThreadId;  // declare the trigger - legitimate in get() effects, never in renders
       this.syncRoute();
     });
@@ -580,7 +580,7 @@ Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback run
 
 ## Refactoring Hooks Into a Class
 
-Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in `mount()`, event handlers in methods.
+Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in an effect declared in `new()`, event handlers in methods.
 
 ```tsx
 // Before: width is source state, compact is derived state kept in sync.
@@ -613,14 +613,16 @@ class LayoutBadge extends Component {
     return this.width < 720;
   }
 
-  mount() {
-    const update = () => {
-      this.width = window.innerWidth;
-    };
+  protected new() {
+    this.get(() => {
+      const update = () => {
+        this.width = window.innerWidth;
+      };
 
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+      update();
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    });
   }
 
   render() {
@@ -643,9 +645,11 @@ class Timer extends Model {
     this.elapsed++;
   }
 
-  mount() {
-    const id = setInterval(this.tick, 1000); // methods are auto-bound - no arrow wrapper
-    return () => clearInterval(id);
+  protected new() {
+    this.get(() => {
+      const id = setInterval(this.tick, 1000); // methods are auto-bound - no arrow wrapper
+      return () => clearInterval(id);
+    });
   }
 }
 ```

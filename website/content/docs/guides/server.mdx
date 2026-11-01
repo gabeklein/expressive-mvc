@@ -39,10 +39,11 @@ Server components compose these normally - fetch on the server, pass serializabl
 | constructor, field initializers | ✓ | ✓ |
 | `new()` | ✓ | ✓ |
 | `render()` | ✓ | ✓ |
-| `mount()` | never | ✓ |
+| effects declared in `new()` | never | ✓ |
+| `mount()` (deprecated) | never | ✓ |
 | `new()`'s returned teardown | never | ✓ |
 
-The last two rows are the rules that matter. There is no unmount on the server, so a resource opened in `new()` - a socket, a subscription, a file handle - leaks there. `mount()` is the client-only hook for exactly that work, and it is where effects belong.
+The last three rows are the rules that matter. There is no unmount on the server, so a resource opened in the `new()` body - a socket, a subscription, a file handle - leaks there. An effect declared in `new()` waits for the owning component to commit, which never happens on the server, so that is where such work belongs.
 
 <br />
 
@@ -52,7 +53,7 @@ The last two rows are the rules that matter. There is no unmount on the server, 
 
 **An instance held in `Context.root` is process-wide - and on the server, that means shared across requests.** Root suits process state: config, feature flags, a warmed cache. Keep per-request data out of it; provide it with `<Component for>` instead.
 
-**Resources belong in `mount()` or the framework's request scope, never `new()`.** `mount()` never fires on the server, so client resources stay client-side for free. Anything the server itself must open and close belongs to the request handler, which actually has a close.
+**Resources belong in an effect or the framework's request scope, never the `new()` body.** An effect never fires on the server, so client resources stay client-side for free. Anything the server itself must open and close belongs to the request handler, which actually has a close.
 
 <br />
 
