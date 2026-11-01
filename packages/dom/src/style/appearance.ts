@@ -97,7 +97,8 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
         if (inner[0] == '_') {
           const name = inner.slice(1);
           if (!own.includes(name)) own.push(name);
-          source[name] = merge(source[name], { [hoist(root, key)]: entry[inner] });
+          for (const when of split(key))
+            source[name] = merge(source[name], { [hoist(root, when)]: entry[inner] });
         } else rest[inner] = entry[inner];
 
       base[key] = merge(base[key], rest);

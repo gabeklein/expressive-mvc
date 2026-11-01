@@ -24,6 +24,7 @@ declare module './stylesheet' {
       bare(value?: any): unknown;
       globalTone(value: any): unknown;
       selfish(value?: any): unknown;
+      glowOn(value?: any): unknown;
     }
   }
 }
@@ -39,6 +40,7 @@ macro({
   bare: () => 'bare',
   globalTone: (value?: unknown) => ({ color: value }),
   selfish: () => ({ selfish: true }),
+  glowOn: (value?: unknown) => ({ ':hover': { tone: value } }),
   _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 },
   _output: { color: 'gray', padding: '5px' }
 });
@@ -1220,6 +1222,34 @@ describe('conditions', () => {
     expect(root.className).toBe('Tile-group');
     expect(root.querySelector('b')!.className).toBe('Tile_label-Tile_hover');
     expect(sheet('Tile')).toEqual([':where(.Tile-group:hover) .Tile_label-Tile_hover { color: blue; }']);
+  });
+
+  it('will split a root state list before grouping', () => {
+    function Thumb() {
+      return <div><button _delete /></div>;
+    }
+
+    style(Thumb, { ':hover, :focus-within': { _delete: { opacity: 1 } } });
+
+    place(<Thumb />);
+    expect(sheet('Thumb')).toEqual([
+      ':where(.Thumb-group:hover) .Thumb_delete-Thumb_hover { opacity: 1; }',
+      ':where(.Thumb-group:focus-within) .Thumb_delete-Thumb_focus-within { opacity: 1; }'
+    ]);
+  });
+
+  it('will expand a condition returned by a macro', () => {
+    function Lit() {
+      return <a />;
+    }
+
+    style(Lit, { tone: 'red', glowOn: 'blue' });
+
+    place(<Lit />);
+    expect(sheet('.Lit')).toEqual([
+      '.Lit { color: red; }',
+      '.Lit-hover:where(:hover) { color: blue; }'
+    ]);
   });
 
   it('will chain ancestor states and media', () => {
