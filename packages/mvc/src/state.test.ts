@@ -1923,6 +1923,26 @@ describe('get method', () => {
         expect(didUpdate).toBeCalledWith('foo');
         expect(willUpdate).toBeCalledTimes(2);
       });
+
+      it('will report a throw on retry to catch', async () => {
+        const handler = vi.fn();
+
+        class Failing extends Test {}
+
+        Failing.on({ catch: handler });
+
+        const test = Failing.new();
+
+        test.get(($) => {
+          void $.value;
+          throw new Error('retry');
+        });
+
+        test.value = 'foo';
+
+        await expect(test).toHaveUpdated();
+        expect(handler).toBeCalledWith(expect.objectContaining({ message: 'retry' }), 'effect', undefined);
+      });
     });
 
     describe('before ready', () => {

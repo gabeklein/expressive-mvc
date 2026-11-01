@@ -320,7 +320,7 @@ function watch<T extends object, R>(
 
   function suspend(on: Promise<unknown>) {
     reset = undefined;
-    const suspended = suspense = hold(true, transition)!;
+    const suspended = suspense = hold(true, transition, target)!;
     const replay = () => {
       if (suspense !== suspended) return;
       suspense = undefined;
