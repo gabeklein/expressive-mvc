@@ -124,7 +124,7 @@ Union type accepted by `Model.new()`:
 type Args<T> = (Args<T> | Init<T> | Assign<T> | Context | void)[];
 ```
 
-Arrays are flattened recursively at runtime. A `Context` claims the home - the first one wins, unless the instance was already placed. A `Context` returned from an `Init` adds an entry, becoming the home only if there is none.
+Arrays are flattened recursively at runtime. A `Context` claims the home - the first one wins, unless the instance was already placed. A `Context` returned from an `Init` adds an entry but never sets the home.
 
 ### `Model.Init<T>`
 

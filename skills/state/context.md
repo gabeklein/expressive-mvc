@@ -4,7 +4,7 @@ Hierarchical registry through which Model instances find each other. Every activ
 
 ## Home Context
 
-An owned instance's home is its owner's - lookups follow ownership, not where it was provided. Otherwise recorded per instance; first explicit claim wins, and no later context can transfer it.
+An owned instance's home is its owner's - lookups follow ownership, not where it was provided or which context its arguments name. Otherwise recorded per instance; first explicit claim wins, and no later context can transfer it.
 
 | Activation path                              | Home becomes     |
 | -------------------------------------------- | ---------------- |
@@ -18,15 +18,14 @@ An owned instance's home is its owner's - lookups follow ownership, not where it
 
 ### Context Arguments
 
-A `Context` among `.new()` or constructor arguments claims the home: the instance is added there as it activates, before its instructions and arguments apply, and removed when destroyed - `ctx.pop()` removes the entry, not the instance. The first claim wins, in this order:
+A `Context` among `.new()` or constructor arguments claims the home: the instance is added there as it activates, before its instructions and arguments apply, and removed when destroyed. The first claim wins:
 
-| Source                                                     | Effect                                  |
-| ---------------------------------------------------------- | --------------------------------------- |
-| Home given before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, a placed owner | Home - context arguments are ignored |
-| Context arguments                                          | First one becomes home; the rest are ignored |
-| Context returned from a callback or `setup` handler        | Adds an entry - home only if it has none |
+| Claim                                                       | Effect                                       |
+| ----------------------------------------------------------- | -------------------------------------------- |
+| Before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, or an owner (field child) | Home - context arguments are ignored |
+| Context arguments                                           | First one becomes home; the rest are ignored |
 
-An argument only claims; a context that loses has no effect. A returned context is a grant - it always lists the instance. A default goes last, like a fallback:
+A context that loses has no effect. A context returned from a callback or `setup` handler is a grant, not a claim - it always adds an entry and never sets the home; it arrives after instructions apply, so a `get` field cannot resolve through it. A default goes last, like a fallback - unlike overlays, where later wins:
 
 ```ts
 FormState.new(context);                         // home: context
@@ -35,17 +34,26 @@ FormState.new(...args, Context.root);           // root unless args brought a co
 FormState.new(context, () => Context.root);     // home: context; also listed in root
 ```
 
-A subclass enforces its placement with `super(context, ...args)`, or offers a default with `super(...args, context)`.
+A subclass enforces its placement by passing the context first, or offers a default by passing it last - after props for a `Component`:
 
-An owned child's home is its owner's, so only a returned context reaches it. `Child.new(ctx)` in a field is a guest - homed in `ctx`, never destroyed with the parent:
+```ts
+super(context, ...args);                        // Model: enforce
+super(...args, context);                        // Model: default
+super(props, context, ...rest);                 // Component: enforce
+```
+
+An owned child's home is always its owner's - the owner claims it before it activates, so its context arguments are ignored. Pick by intent:
 
 ```ts
 class App extends Model {
   session = new Session(() => Context.root);    // owned; also listed in root until destroyed
+  guest = Session.new(context);                 // guest - homed in context, not owned
 }
 ```
 
-A `Component` takes the context after props - added like any Model, so its siblings there see it. To mount one as a host does, under its own child context, push it:
+A guest is never destroyed with the parent - created in a field, nothing releases it. Create it where its lifetime is held and assign it, or return `() => this.guest.set(null)` from `new()`.
+
+A `Component` takes the context after props - added like any Model, so its siblings there see it; two in one context make `context.get(Panel)` throw. To mount one as a host does, under its own child context, push it:
 
 ```ts
 Panel.new(props, context);                      // entry in context
@@ -54,6 +62,8 @@ const panel = new Panel(props);
 const layer = context.push(panel, () => panel.set(null)); // own layer, as hosts mount
 layer.pop();                                    // unmount
 ```
+
+`ctx.pop()` removes the entry, not the instance - `Context.get(instance)` still returns the popped context until the instance is destroyed.
 
 ### Construct vs Activate
 
