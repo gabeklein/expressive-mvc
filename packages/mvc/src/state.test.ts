@@ -3290,12 +3290,25 @@ describe('context argument', () => {
     expect(b.get(Theme, false)).toBeUndefined();
   });
 
-  it('will place from a returned context', () => {
+  it('will list but not home from a returned context', () => {
     const context = new Context();
     const theme = Theme.new(() => context);
 
     expect(context.get(Theme)).toBe(theme);
-    expect(Context.get(theme)).toBe(context);
+    expect(Context.get(theme)).toBe(Context.root);
+  });
+
+  it('will not home from a context returned by setup', () => {
+    class Local extends Model {}
+
+    const context = new Context();
+    const stop = Local.on(() => context);
+    const local = Local.new();
+
+    stop();
+
+    expect(context.get(Local)).toBe(local);
+    expect(Context.get(local)).toBe(Context.root);
   });
 
   it('will resolve a consumer placed before its provider', async () => {
@@ -3330,18 +3343,36 @@ describe('context argument', () => {
     expect(ignored.get(Child, false)).toBeUndefined();
   });
 
-  it('will place child under an owner with no home', () => {
+  it('will ignore context argument of child under an owner with no home', () => {
     class Child extends Model {}
 
-    const context = new Context();
+    const ignored = new Context();
 
     class Owner extends Model {
-      child = new Child(context);
+      child = new Child(ignored);
     }
 
     const owner = Owner.new();
+    const context = new Context(owner);
 
     expect(Context.get(owner.child)).toBe(context);
+    expect(ignored.get(Child, false)).toBeUndefined();
+  });
+
+  it('will list owned child from a returned context', () => {
+    class Child extends Model {}
+
+    const listed = new Context();
+
+    class Owner extends Model {
+      child = new Child(() => listed);
+    }
+
+    const owner = Owner.new();
+    const context = new Context(owner);
+
+    expect(Context.get(owner.child)).toBe(context);
+    expect(listed.get(Child)).toBe(owner.child);
   });
 
   it('will add a returned context without changing home', () => {

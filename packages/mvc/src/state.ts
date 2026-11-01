@@ -1,4 +1,4 @@
-import { Context, home, host, join, within } from './context';
+import { Context, HOME, host, join, within } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -96,7 +96,7 @@ declare namespace Model {
    * Model constructor callback - runs during activation, in argument order,
    * before the `new()` lifecycle hook (so it may configure state `new()`
    * will observe). Returned function will run when state is destroyed;
-   * a returned `Context` lists the instance there too.
+   * a returned `Context` lists the instance there too, never as its home.
    */
   type Init<T extends Model = Model> = (
     this: T,
@@ -677,7 +677,7 @@ function init(state: Model, ...args: Model.Args) {
 
     if (key === null) return null;
 
-    if (target && !home(state)) place(state, target);
+    if (target && !parent(state) && !HOME.has(state)) place(state, target);
 
     if (!PARENT.has(state)) parent(state, host(state) || null);
 
@@ -696,7 +696,7 @@ function init(state: Model, ...args: Model.Args) {
         const called = typeof arg == 'function';
         const out = called ? arg.call(state, state) : arg;
 
-        if (out instanceof Context) place(state, out);
+        if (out instanceof Context) place(state, out, true);
         else if (out instanceof Promise)
           out.catch((err) => report('setup', state, err));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
@@ -736,8 +736,12 @@ function init(state: Model, ...args: Model.Args) {
   PENDING.add(state);
 }
 
-function place(state: Model, context: Context) {
+function place(state: Model, context: Context, grant?: boolean) {
+  const keep = !grant || HOME.has(state);
   const remove = context.add(state, true);
+
+  if (!keep) HOME.delete(state);
+
   listener(state, () => void remove(), null);
 }
 
