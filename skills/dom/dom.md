@@ -125,7 +125,8 @@ style(Select, {
 - Each condition is its own block, sorted right after the block it modifies. It adds no specificity, so doors and inline style win over it as over any rule.
 - A `,` in a `:` key lists alternatives (`:is(...)` stays whole); an `@` key is never split.
 - A pseudo-element (`'::placeholder'`, `':hover::after'`) styles that part of the element.
-- `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope. `_rule` inside a `:` condition (hover a parent, style a child) throws - not supported yet.
+- `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope.
+- `_rule` inside a `:` condition styles descendants while the enclosing element holds the state - `_thumb: { ':hover': { _delete: { opacity: 1 } } }` shows `_delete` while its thumb is hovered; at the top of a map, the state is the component root's. The element holding the state gets a `-group` class. Groups chain and combine with `@`.
 - Macros expand inside a condition; one producing a class there throws.
 - CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`mobile` above) exported from one style module.
 - Layers and subclasses merge a condition's body key by key, like a rule.

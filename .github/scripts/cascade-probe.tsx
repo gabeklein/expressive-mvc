@@ -82,6 +82,15 @@ function Picker() {
 
 style(Picker, { _pick: { color: 'rgb(12, 12, 12)' } });
 
+function Field() {
+  return <label _box><input /><b _hint>hint</b></label>;
+}
+
+style(Field, {
+  _box: { ':focus-within': { _hint: { color: 'rgb(14, 14, 14)' } } },
+  _hint: { color: 'rgb(13, 13, 13)' }
+});
+
 function Tip() {
   return <span _tip>tip</span>;
 }
@@ -90,7 +99,7 @@ style(Tip, { _tip: { '::before': { content: '"x"' } } });
 
 const root = document.getElementById('app')!;
 
-render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /></>, root);
+render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /><Field /></>, root);
 
 const leaf = root.querySelector('b')!;
 const inline = root.querySelector('i')!;
@@ -119,6 +128,12 @@ check('callee state still applies under a door', getComputedStyle(picked).outlin
 check('matching media applies', getComputedStyle(toggle).letterSpacing, '2px');
 check('other media does not', getComputedStyle(toggle).wordSpacing, '0px');
 check('pseudo-element applies', getComputedStyle(root.querySelector('span[class*=Tip]')!, '::before').content, '"x"');
+
+const hint = root.querySelector('label b')!;
+
+check('group state off', getComputedStyle(hint).color, 'rgb(13, 13, 13)');
+root.querySelector<HTMLInputElement>('label input')!.focus();
+check('group state styles descendant', getComputedStyle(hint).color, 'rgb(14, 14, 14)');
 check('leaf carries door classes', String(leaf.className.includes('-d1') && leaf.className.includes('-d2')), 'true');
 
 document.querySelector('style[data-expressive]')!.remove();
