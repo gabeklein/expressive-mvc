@@ -97,7 +97,7 @@ Only render errors arrive here. Lifecycle and effect failures of the instance go
 Component inherits the full Model lifecycle. See [Model](/docs/api/state) for details.
 
 - `new()` - one-shot setup on activation (runs on the server too), return cleanup.
-- `mount()` - client-only effects, once on commit; return a function to run on unmount. Never runs during server render, nor for an instance placed as `{component}` - a placement does not own what it renders.
+- An effect declared in `new()` first runs once the component commits, client-only; its cleanup runs on destroy. Never runs during server render, nor is it held for an instance placed as `{component}` - a placement does not own what it renders.
 - `catch(error, instance)` - error boundary, above.
 - Destruction runs on unmount or `this.set(null)`.
 
@@ -218,7 +218,7 @@ The bare `Component` class - not a subclass - with a `for` attribute provides on
 | `catch`    | Error boundary for children, `(error, instance)`                                            |
 | `[field]`  | Typed from the provided instance; assigned to it on every render                               |
 
-A provided class's `mount()` runs with the element's; an instance passed in is never mounted or destroyed by it. Changing `for` releases the previous item and provides the next. One instance per element - compose several as fields of a parent instance. See [Context](/docs/guides/context#providing-with-component-for).
+A provided class's effects wait for the element's commit; an instance passed in is never held or destroyed by it. Changing `for` releases the previous item and provides the next. One instance per element - compose several as fields of a parent instance. See [Context](/docs/guides/context#providing-with-component-for).
 
 There is no `Consumer` or render-prop form. A function component below reads the instance with [`Model.get()`](/docs/api/state#modelget):
 
