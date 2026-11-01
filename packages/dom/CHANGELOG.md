@@ -1,5 +1,35 @@
 # @expressive/dom
 
+## 0.8.0
+
+### Minor Changes
+
+- [#589](https://github.com/gabeklein/expressive-mvc/pull/589) [`bdee9a1`](https://github.com/gabeklein/expressive-mvc/commit/bdee9a1715f9b080e9376022237b3a56a8b7cc12) An effect declared during construction of a Component the renderer owns holds its first run until the component is inserted. `mount()` is removed: declare the effect in `new()` instead.
+
+- [#587](https://github.com/gabeklein/expressive-mvc/pull/587) [`22fc3c5`](https://github.com/gabeklein/expressive-mvc/commit/22fc3c5308c6eff4e8fc9d1e0921cfcbe2ed1348) JSX now resolves `style()` rules in the component that wrote it. `children` passed to a wrapper - a router `Link`, a provider Component with no `render()`, any FC that places `children` - keep the author's rules, including rules nested in a `_rule` on the wrapper element. The wrapper's own rules no longer reach them; its base declarations still apply where they are its roots.
+
+- [#595](https://github.com/gabeklein/expressive-mvc/pull/595) [`e1d6fde`](https://github.com/gabeklein/expressive-mvc/commit/e1d6fde1cf8c2c48eebcf1ae911fc3cad69e9775) The `css` pack drops its `mx`, `my`, `px` and `py` macros - use the logical properties `marginInline`, `marginBlock`, `paddingInline` and `paddingBlock`, which `css` sizes like any other. `size` stays.
+
+- [#593](https://github.com/gabeklein/expressive-mvc/pull/593) [`daded68`](https://github.com/gabeklein/expressive-mvc/commit/daded68fc124fbdb177c572cdab3cc9d1e8f9462) Add `macro.From<typeof pack>` to declare a macro pack's `Registry` entries from its value: `interface Registry extends macro.From<typeof app> {}`.
+
+  A macro whose argument is optional now type-checks as a flag: `row: true`.
+
+- [#594](https://github.com/gabeklein/expressive-mvc/pull/594) [`55fb14c`](https://github.com/gabeklein/expressive-mvc/commit/55fb14c6e146d1dfcfdc105613a398dd81a0a3cf) Style maps take conditions: a `:state` or `@media …` key holds a map applied while it holds - at the top of a map, inside a rule, or nested. `:` keys split on commas into alternatives, and pseudo-elements (`::placeholder`) apply to that part; `_rule` inside an `@` condition applies that rule under it. Condition blocks sort after the block they modify and add no specificity, so doors still win. Adds `media({ maxWidth: 900 })` and the `style.Condition` type.
+
+- [#596](https://github.com/gabeklein/expressive-mvc/pull/596) [`d6eb0c7`](https://github.com/gabeklein/expressive-mvc/commit/d6eb0c74b98868930669cfff0ae21dcb55fc229c) A `_rule` inside a `:state` condition styles descendants while the enclosing element holds that state: `_thumb: { ':hover': { _delete: { opacity: 1 } } }`.
+
+- [#592](https://github.com/gabeklein/expressive-mvc/pull/592) [`9fd7144`](https://github.com/gabeklein/expressive-mvc/commit/9fd71442b71dc22fd46084680c6065fccbfdd5a2) `style()` takes several maps, layered in order as repeated calls would, skipping falsy entries: `style(Meta, shared, wide && compact, { whiteSpace: 'normal' })`.
+
+- [#591](https://github.com/gabeklein/expressive-mvc/pull/591) [`dbc7b86`](https://github.com/gabeklein/expressive-mvc/commit/dbc7b862c3df2b3446af3f6a1e8583880f884ff1) Add `rem`, `em` and `px` value helpers: `rem(0.2, 0.45)` is `'0.2rem 0.45rem'`.
+
+### Patch Changes
+
+- [#585](https://github.com/gabeklein/expressive-mvc/pull/585) [`99dadb9`](https://github.com/gabeklein/expressive-mvc/commit/99dadb9a81c59e1b371fc9b412830b10d7ec6115) Published types now include the `Component.mount` augmentation. It was emitted in a declaration chunk nothing referenced, so a `mount()` method went unchecked against its signature.
+
+- [#584](https://github.com/gabeklein/expressive-mvc/pull/584) [`cbe3280`](https://github.com/gabeklein/expressive-mvc/commit/cbe32803504813cc634543fc6909c838f89a0769) Base declarations in a `style()` map now beat `macro()` global rules, as documented. A component's own rule shadowing a global one stacks on it instead of merging it in. A component instance placed as `{child}` no longer inherits the placing component's base declarations or rules. A macro returning its own name as `true` with nothing below it now throws `Macro "name" returned itself.`, and the host rejects a bare `true` value.
+- Updated dependencies [[`c2a6b40`](https://github.com/gabeklein/expressive-mvc/commit/c2a6b4064fac8000e0cb7b0212d02345a87f6621), [`bdee9a1`](https://github.com/gabeklein/expressive-mvc/commit/bdee9a1715f9b080e9376022237b3a56a8b7cc12), [`d37a20d`](https://github.com/gabeklein/expressive-mvc/commit/d37a20d917767705c18b445c036ab74f432bd3e7), [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7), [`776243b`](https://github.com/gabeklein/expressive-mvc/commit/776243b0ce94bd7b4b81d4ad1a290d33abe4b8bb), [`ac2cd5c`](https://github.com/gabeklein/expressive-mvc/commit/ac2cd5caca0ad91777fb23d038bfbec67e88ea93), [`a183961`](https://github.com/gabeklein/expressive-mvc/commit/a183961f28b4124049700fb9e2442723fe3ec7ab), [`4d0c270`](https://github.com/gabeklein/expressive-mvc/commit/4d0c270b0914ba39e5f8b549fac962d9be5aff87), [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7), [`245e59a`](https://github.com/gabeklein/expressive-mvc/commit/245e59ac0f0ac0b33e586219e6ee188a5d7cbe07)]:
+  - @expressive/mvc@0.93.0
+
 ## 0.7.0
 
 ### Minor Changes
