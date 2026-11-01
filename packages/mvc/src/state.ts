@@ -400,7 +400,7 @@ abstract class Model {
       return typeof arg2 == 'function'
         ? Context.get(self).get(arg1, arg2, args[0], self)
         : within(this, () => (arg1.get as Function)(arg2, ...args));
-    if (typeof arg1 == 'function') return watch(self, unbind(arg1));
+    if (typeof arg1 == 'function') return watch(self, unbind(arg1), undefined, undefined, true);
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1, arg2);
@@ -663,6 +663,11 @@ function init(state: Model, ...args: Model.Args) {
   }
 
   function settle() {
+    const o = observer(state, true);
+    const { wait } = o;
+
+    o.wait = undefined;
+
     capture((release) => {
       listener(state, () => release(null), null);
 
@@ -670,6 +675,14 @@ function init(state: Model, ...args: Model.Args) {
         const out = handler.call(state, state);
 
         if (typeof out == 'function') listener(state, out, null);
+      }
+    });
+
+    wait?.forEach((fn) => {
+      try {
+        fn();
+      } catch (err) {
+        report('effect', state, err);
       }
     });
   }
@@ -716,13 +729,14 @@ function init(state: Model, ...args: Model.Args) {
       }
     });
 
-    if (waits.length)
+    if (waits.length) {
+      observer(state, true).wait = new Set();
       Promise.all(waits).then(() => {
         if (observer(state) !== null) settle();
       }, () => {
         event(state, null);
       });
-    else settle();
+    } else settle();
 
     if (owns) {
       owns.add(state);

@@ -4140,6 +4140,7 @@ describe('on setup / ready stages (static)', () => {
 
   it('will destroy the instance if an async new() rejects', async () => {
     const handler = vi.fn();
+    const effect = vi.fn();
 
     class Test extends Model {
       protected async new() {
@@ -4150,10 +4151,128 @@ describe('on setup / ready stages (static)', () => {
     Test.on({ catch: handler });
 
     const test = Test.new();
+    const settled = test.get(effect);
 
     await flushMicrotasks();
     expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
     expect(test.get(null)).toBe(true);
+    expect(effect).not.toBeCalled();
+    await expect(Promise.resolve(settled)).rejects.toThrow(`${test} is destroyed.`);
+  });
+
+  it('will defer effects until an async new() resolves', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+    const later = vi.fn();
+
+    class Test extends Model {
+      value = 0;
+
+      protected async new() {
+        this.get(($) => void effect($.value));
+        await done;
+        this.value = 1;
+      }
+    }
+
+    const test = Test.new();
+
+    test.get(($) => void later($.value));
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+    expect(later).not.toBeCalled();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+    expect(effect).toBeCalledWith(1);
+    expect(later).toBeCalledWith(1);
+  });
+
+  it('will resolve an awaited effect once an async new() resolves', async () => {
+    const done = mockPromise();
+    let ready = false;
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+    const settled = test.get(() => {}).then(() => { ready = true; });
+
+    await flushMicrotasks();
+    expect(ready).toBe(false);
+
+    done.resolve();
+    await settled;
+    expect(ready).toBe(true);
+  });
+
+  it('will not run deferred effects if destroyed before an async new() resolves', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+    const settled = test.get(effect);
+
+    test.set(null);
+    await expect(Promise.resolve(settled)).rejects.toThrow(`${test} is destroyed.`);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+  });
+
+  it('will not run a deferred effect cancelled before an async new() resolves', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const stop = Test.new().get(effect);
+
+    stop();
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+  });
+
+  it('will run remaining deferred effects if one throws', async () => {
+    const done = mockPromise();
+    const handler = vi.fn();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ catch: handler });
+
+    const test = Test.new();
+
+    test.get(() => { throw new Error('first run'); });
+    test.get(effect);
+
+    done.resolve();
+    await flushMicrotasks();
+
+    expect(effect).toBeCalledTimes(1);
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'first run' }), 'effect', undefined);
   });
 
   it('will release effects a deferred ready creates when destroyed', async () => {

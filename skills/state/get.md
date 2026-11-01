@@ -70,7 +70,7 @@ const stop = state.get((current, update) => {
 
 **Suspense:** an effect that throws a Promise (e.g. reading an unset `set<T>()`) - synchronously or after an `await` - pauses and retries when it resolves. While pending, updates to other tracked properties do not trigger re-runs.
 
-**Before ready:** effects registered in constructors wait for activation before first run.
+**Before ready:** effects registered during construction wait for the instance to settle - activation, plus any async setup (an `async new()`, a setup step returning a promise) - before first run. So does one registered while that setup is pending.
 
 **Await the release:** `await state.get(effect)` cancels the effect once it settles and yields the latest clean run - a one-shot read of tracked state that suspends until it can complete. Only an async effect yields a value; a sync one resolves `undefined`, its cleanup called with `false`.
 
