@@ -68,7 +68,7 @@ declare namespace style {
   type Map = {
     [K in Key]?:
       K extends `_${string}` ? Map :
-      K extends keyof macro.Registry ? Argument<K> :
+      K extends keyof macro.Registry ? Argument<K> | (undefined extends Argument<K> ? true : never) :
       Value;
   };
 }

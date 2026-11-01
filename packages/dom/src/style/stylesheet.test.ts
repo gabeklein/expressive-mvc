@@ -4,6 +4,7 @@ import type { macro, style } from './stylesheet';
 
 const sides = {
   edge: (side: 'Top' | 'Left') => ({ [`border${side}`]: '1px solid' }),
+  row: (gap?: string) => ({ display: 'flex', gap }),
   _raised: { boxShadow: '0 1px 2px black' },
   '*': (value: unknown, key: string) => ({ [key]: value })
 };
@@ -58,12 +59,14 @@ describe('style map types', () => {
   });
 
   it('will declare a pack from its value', () => {
-    const map: style.Map = { edge: 'Top', pill: 2 };
+    const map: style.Map = { edge: 'Top', pill: 2, row: true };
+    // @ts-expect-error - pill takes a number, so true is not a flag
+    const flag: style.Map = { pill: true };
     // @ts-expect-error - edge declared from its implementation
     const wrong: style.Map = { edge: 'Bottom' };
     // @ts-expect-error - rules and '*' are not macros
     const rule: style.Map = { raised: true };
 
-    expect([map, wrong, rule, sides]).toHaveLength(4);
+    expect([map, flag, wrong, rule, sides]).toHaveLength(5);
   });
 });
