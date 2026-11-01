@@ -35,7 +35,7 @@ declare namespace Observer {
 interface Observer {
   /** Becomes `true` once the subject has emitted its initial event. */
   ready?: true;
-  /** First runs parked until the subject settles. */
+  /** Resolvers parked until the subject settles. */
   wait?: Set<() => void>;
   listeners: Map<Observer.Notify, Set<Observer.Signal> | undefined>;
   /** Recursion guard for an in-progress emit pass. */
@@ -265,16 +265,14 @@ function watch<T extends object, R = void>(
   target: T,
   callback: Observer.Effect<T, Observer.EffectOutput | Promise<R>>,
   recursive?: boolean,
-  transition?: (work: () => void) => void,
-  defer?: boolean
+  transition?: (work: () => void) => void
 ): Observer.Release<R>;
 
 function watch<T extends object, R>(
   target: T,
   callback: Observer.Effect<T, unknown>,
   argument?: boolean,
-  transition?: (work: () => void) => void,
-  defer?: boolean
+  transition?: (work: () => void) => void
 ): Observer.Release<R> {
   const o = observer(target, true);
   let events: readonly Observer.Event[] = [];
@@ -436,7 +434,7 @@ function watch<T extends object, R>(
   }
 
   const unlisten = listener(target, (key) => {
-    if (key === true) defer && o.wait ? o.wait.add(invoke) : invoke();
+    if (key === true) invoke();
     else if (key === null) {
       stop(null);
       fail('is destroyed.');
