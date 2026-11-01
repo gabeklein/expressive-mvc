@@ -53,6 +53,28 @@ describe('server render', () => {
     expect(effect).not.toBeCalled();
   });
 
+  it('will not run ready handlers or resolve readiness', async () => {
+    const ready = vi.fn();
+    const resolved = vi.fn();
+    let store!: Store;
+
+    class Store extends Component {
+      render() {
+        return <span>hello</span>;
+      }
+    }
+
+    Store.on({ ready });
+
+    expect(onServer(() => renderToString(<Store is={(s: Store) => void (store = s)} />))).toContain('hello');
+
+    store.get(() => {}).then(resolved);
+
+    await flushMicrotasks();
+    expect(ready).not.toBeCalled();
+    expect(resolved).not.toBeCalled();
+  });
+
   it('will isolate provided state per request', () => {
     class Session extends Model {
       user = 'anon';

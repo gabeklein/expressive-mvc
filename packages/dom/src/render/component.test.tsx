@@ -26,6 +26,52 @@ describe('component', () => {
     expect(effect).toBeCalledTimes(1);
   });
 
+  it('will run effects after descendants, as any parent commits', async () => {
+    const order: string[] = [];
+
+    class Inner extends Component {
+      protected new() {
+        this.get(() => void order.push('child'));
+      }
+
+      render() {
+        return <i>inner</i>;
+      }
+    }
+
+    class Outer extends Component {
+      protected new() {
+        this.get(() => void order.push('parent'));
+      }
+
+      render() {
+        return <Inner />;
+      }
+    }
+
+    mount(Outer);
+
+    await flushMicrotasks();
+    expect(order).toEqual(['child', 'parent']);
+  });
+
+  it('will hold a constructed class until the provider is inserted', async () => {
+    const effect = vi.fn();
+
+    class Owned extends Model {
+      protected new() {
+        this.get(effect);
+      }
+    }
+
+    place(<Component for={Owned} />);
+
+    expect(effect).not.toBeCalled();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+  });
+
   it('will retain a class Component when its VNode props object is unchanged', async () => {
     class Child extends Component {
       label = '';

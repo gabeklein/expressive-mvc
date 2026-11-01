@@ -136,6 +136,38 @@ describe('Component for', () => {
       expect(cleanup).toBeCalledTimes(1);
     });
 
+    it('will not hold an instance it is given', async () => {
+      const effect = vi.fn();
+      const cleanup = vi.fn();
+
+      class Guest extends Model {
+        protected new() {
+          this.get(() => {
+            effect();
+            return cleanup;
+          });
+        }
+      }
+
+      const guest = Guest.new();
+
+      expect(effect).toBeCalledTimes(1);
+
+      const element = render(
+        <Component for={guest}>
+          <span />
+        </Component>
+      );
+
+      await flushMicrotasks();
+      expect(effect).toBeCalledTimes(1);
+
+      element.unmount();
+
+      expect(cleanup).not.toBeCalled();
+      expect(guest.get(null)).toBe(false);
+    });
+
     it('will release a replacement class at once', async () => {
       const events: string[] = [];
 

@@ -143,7 +143,9 @@ function claim(state: Model) {
   const span = spans.get(state)!;
   if (span.claimed) return;
   span.claimed = true;
-  live.get(String(state))!.held = state;
+  const row = live.get(String(state));
+  if (!row) return;
+  row.held = state;
   reaper.unregister(state);
   version++;
 }

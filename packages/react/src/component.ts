@@ -18,8 +18,7 @@ declare module '@expressive/mvc' {
 // Host-agnostic seams: `state` is a read-only values bag; `context`'s setter
 // pushes a child context, registers the instance for teardown, and installs its
 // per-instance render host. Host-specific descriptors stay in each adapter.
-const PLACED = new WeakMap<Component, Promise<void>>();
-const PLACE = new WeakMap<Component, () => void>();
+const PLACING = new WeakMap<Component, { placed: Promise<void>; place(): void }>();
 
 Object.defineProperties(Component.prototype, {
   state: {
@@ -54,12 +53,15 @@ Component.on({
   },
   setup(self) {
     subcomponents(self);
-    return PLACED.get(self);
+    return PLACING.get(self)?.placed;
   }
 });
 
 function bootstrap(this: Component, parent: Context){
-  PLACED.set(this, new Promise((resolve) => PLACE.set(this, resolve)));
+  const placing = {} as { placed: Promise<void>; place(): void };
+
+  placing.placed = new Promise((resolve) => (placing.place = resolve));
+  PLACING.set(this, placing);
 
   const context = parent.push(this, () => this.set(null));
 
@@ -122,7 +124,7 @@ function render(from: Component, context: Context) {
   const Render = () => (own || Object.getPrototypeOf(owner).render).call(from, from.props);
   const Component = () => {
     from = useWatch(from, () => {
-      PLACE.get(owner)!();
+      PLACING.get(owner)!.place();
       attempt?.commit();
     }, teardown);
 

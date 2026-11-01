@@ -61,16 +61,18 @@ Commit is an **ownership** signal - it reaches an instance where a component cre
 | `<Component for={instance}>`  | no      | nothing               |
 | `Model.get()`                 | no      | nothing               |
 | `{instance}`                  | no      | nothing               |
-| `Model.new()`                 | no host | nothing - activation  |
+| `Model.new()`                 | no host | its own settle        |
 
 `<Component for={Model}>` releases the instance it constructed with its own commit:
 
 - Like any parent, it commits *after* its descendants (React commits bottom-up) - a descendant reacts to a provided instance by subscription, not by reading it imperatively in its own effect.
-- Replacing `for` with another class destroys the previous instance and holds the new one until placed.
+- Replacing `for` with another class destroys the previous instance and releases the new one at once - the provider is already placed, or, swapped before its first commit, treated as such.
 
 The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. To react to an instance a component does not own, subscribe with `Model.get()` or an event.
 
 Nothing commits during server render, so these effects never run there. Children owned as fields follow their root ([../state/lifecycle.md](../state/lifecycle.md#the-new-hook)).
+
+The effect is tracked: a read of `$` subscribes, and each change re-runs it after its cleanup - a socket opened on `$.url` reopens per change. A one-shot resource reads `this`, which is untracked, and runs once.
 
 | Seam              | Phase        | Runs                                    | On the server |
 | ----------------- | ------------ | --------------------------------------- | ------------- |
@@ -83,7 +85,7 @@ React can discard a render before committing it - a suspended first mount, a dro
 
 ## Server render (SSR / RSC)
 
-Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Nothing commits, so effects declared in `new()` never run; the `new()` body does. Request-safety rules:
+Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Nothing commits, so for a host-owned Component and the children it owns, effects declared in `new()` never run, `on({ ready })` never fires and `await state.get(() => {})` never resolves; the `new()` body does. Request-safety rules:
 
 - **Request state goes in a `<Component for>`.** Each render builds its own context, so provided instances are isolated per request.
 - **An instance held in `Context.root` is process-wide, *shared across requests* on the server** - fit for config, flags or a warmed cache. Keep per-request data out; provide it with `<Component for>`.

@@ -3,7 +3,7 @@ import { host } from '@expressive/mvc/jsx-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { flushMicrotasks, mockPromise } from '../test.setup';
-import { attach, find, health, Instance, instances, models, orphans } from './index';
+import { attach, detach, find, health, Instance, instances, models, orphans } from './index';
 import { collected } from './inspect';
 
 host({
@@ -68,6 +68,17 @@ describe('orphans under a host', () => {
     await flushMicrotasks();
     expect(Instance.of(plain).alive).toBe(false);
     expect(Instance.of(plain).claimed).toBe(false);
+  });
+
+  it('will ignore a held instance settling after detach', async () => {
+    const placed = mockPromise<void>();
+    const widget = Widget.new(() => placed);
+    await flushMicrotasks();
+    detach();
+    placed.resolve();
+    await flushMicrotasks();
+    expect(widget.get(null)).toBe(false);
+    attach();
   });
 
   it('will claim once an instance held in root and placed', async () => {
