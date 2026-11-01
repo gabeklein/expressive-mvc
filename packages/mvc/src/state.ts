@@ -267,7 +267,7 @@ abstract class Model {
    *
    * It is recommended you protect this method.
    */
-  protected new?(): void | (() => void);
+  protected new?(): void | (() => void) | Promise<void>;
 
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
@@ -311,14 +311,14 @@ abstract class Model {
   /**
    * Check if state is destroyed.
    *
-   * @param status - `null` to check if state is destroyed.
-   * @returns `true` if state is destroyed, `false` otherwise.
+   * @param status - `null` for destroy.
    */
   get(status: null): boolean;
 
   /**
-   * Callback when state is to be destroyed.
+   * Callback when state is destroyed.
    *
+   * @param status - `null` for destroy.
    * @param callback - Function to call when state is destroyed.
    * @returns Function to cancel listener.
    */
@@ -631,6 +631,16 @@ function callback<T extends Model>(
   return listener(self, (key) => cb.call(self, key, self), select);
 }
 
+function ready(state: Model, handler: NonNullable<Model.On['ready']>) {
+  capture((release) => {
+    listener(state, () => release(null), null);
+
+    const out = handler.call(state, state);
+
+    if (typeof out == 'function') listener(state, out, null);
+  });
+}
+
 /**
  * Apply state arguemnts, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
@@ -681,7 +691,9 @@ function init(state: Model, ...args: Model.Args) {
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const queue = [...before, observe, ...args, ...after];
+    const queue = [...before, observe, ...args];
+    const waits: Promise<unknown>[] = [];
+    const settle = () => after.forEach((handler) => ready(state, handler));
 
     capture((release) => {
       listener(state, () => release(null), null);
@@ -693,13 +705,21 @@ function init(state: Model, ...args: Model.Args) {
 
         if (out instanceof Context) continue;
 
-        if (out instanceof Promise)
+        if (out instanceof Promise) {
+          waits.push(out);
           out.catch((err) => report('setup', state, err));
+        }
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
         else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
       }
     });
+
+    if (waits.length)
+      Promise.all(waits).then(() => {
+        if (observer(state) !== null) settle();
+      }, () => event(state, null));
+    else settle();
 
     if (owns) {
       owns.add(state);
@@ -750,7 +770,7 @@ function unmanaged(state: Model, key: string, value: unknown) {
 function bootstrap(T: Model.Extends) {
   const chain = [] as Model.Extends[];
   const before = new Set<Model.Init>();
-  const after = new Set<Model.Init>();
+  const after = new Set<NonNullable<Model.On['ready']>>();
   const onType = new Set<NonNullable<Model.On['type']>>();
   let keys = new Map<string, (value: any) => void>();
   let getters = new Map<string, () => unknown>();

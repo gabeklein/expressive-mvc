@@ -90,23 +90,13 @@ To watch a specific property or event, use [`set(event, callback)`](set.md).
 
 ```ts
 get(status: null): boolean
-```
-
-`true` if destroyed.
-
-```ts
-if (state.get(null)) console.log('state is dead');
-```
-
-### Destroy callback
-
-```ts
 get(status: null, callback: () => void): () => void
 ```
 
-Runs `callback` on destruction. Returns unsubscribe.
+Without a callback, whether the instance is destroyed; with one, runs `callback` when it is. Returns unsubscribe.
 
 ```ts
+if (state.get(null)) console.log('state is dead');
 const stop = state.get(null, () => console.log('destroyed'));
 ```
 
