@@ -95,13 +95,12 @@ declare namespace Model {
   /**
    * Model constructor callback - runs during activation, in argument order,
    * before the `new()` lifecycle hook (so it may configure state `new()`
-   * will observe). Returned function will run when state is destroyed;
-   * a returned `Context` adds the instance there too, never as its home.
+   * will observe). Returned function will run when state is destroyed.
    */
   type Init<T extends Model = Model> = (
     this: T,
     thisArg: T
-  ) => Promise<void> | (() => void) | Args<T> | Overlay<T> | Context | void;
+  ) => Promise<void> | (() => void) | Args<T> | Overlay<T> | void;
 
   /** Lifecycle handlers for `Model.on`, keyed by when they run. */
   interface On<T extends Model = Model> {
@@ -118,7 +117,7 @@ declare namespace Model {
      * before constructor args and `new()`. May return a cleanup, constructor
      * args, or an assign overlay.
      */
-    setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Overlay<T> | Context;
+    setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Overlay<T>;
 
     /**
      * Per-instance, once ready - after own values are observed, constructor
@@ -696,8 +695,9 @@ function init(state: Model, ...args: Model.Args) {
         const called = typeof arg == 'function';
         const out = called ? arg.call(state, state) : arg;
 
-        if (out instanceof Context) place(state, out, true);
-        else if (out instanceof Promise)
+        if (out instanceof Context) continue;
+
+        if (out instanceof Promise)
           out.catch((err) => report('setup', state, err));
         else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);

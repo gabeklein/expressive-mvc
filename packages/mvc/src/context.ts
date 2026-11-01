@@ -388,15 +388,11 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
   };
 }
 
-/** Add `state` to `context` until destroyed - as its home unless owned or already placed. With `add`, adds it regardless but never as its home. */
-function place(state: Model, context: Context, add?: boolean) {
-  const homed = HOME.has(state);
-
-  if (!add && (homed || parent(state))) return;
+/** Add `state` to `context` as its home until destroyed - unless owned or already placed. */
+function place(state: Model, context: Context) {
+  if (HOME.has(state) || parent(state)) return;
 
   const remove = context.add(state, true);
-
-  if (add && !homed) HOME.delete(state);
 
   listener(state, () => void remove(), null);
 }

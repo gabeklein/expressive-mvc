@@ -3290,27 +3290,6 @@ describe('context argument', () => {
     expect(b.get(Theme, false)).toBeUndefined();
   });
 
-  it('will list but not home from a returned context', () => {
-    const context = new Context();
-    const theme = Theme.new(() => context);
-
-    expect(context.get(Theme)).toBe(theme);
-    expect(Context.get(theme)).toBe(Context.root);
-  });
-
-  it('will not home from a context returned by setup', () => {
-    class Local extends Model {}
-
-    const context = new Context();
-    const stop = Local.on(() => context);
-    const local = Local.new();
-
-    stop();
-
-    expect(context.get(Local)).toBe(local);
-    expect(Context.get(local)).toBe(Context.root);
-  });
-
   it('will resolve a consumer placed before its provider', async () => {
     class Panel extends Model {
       theme = get(Theme, false);
@@ -3359,43 +3338,12 @@ describe('context argument', () => {
     expect(ignored.get(Child, false)).toBeUndefined();
   });
 
-  it('will list owned child from a returned context', () => {
-    class Child extends Model {}
+  it('will ignore a returned context', () => {
+    const context = new Context();
+    const theme = Theme.new(() => [context]);
 
-    const listed = new Context();
-
-    class Owner extends Model {
-      child = new Child(() => listed);
-    }
-
-    const owner = Owner.new();
-    const context = new Context(owner);
-
-    expect(Context.get(owner.child)).toBe(context);
-    expect(listed.get(Child)).toBe(owner.child);
-  });
-
-  it('will add a returned context without changing home', () => {
-    const a = new Context();
-    const b = new Context();
-    const theme = Theme.new(a, () => [b]);
-
-    expect(Context.get(theme)).toBe(a);
-    expect(b.get(Theme)).toBe(theme);
-  });
-
-  it('will add a context returned by setup', () => {
-    class Local extends Model {}
-
-    const a = new Context();
-    const b = new Context();
-    const stop = Local.on(() => [b]);
-    const local = Local.new(a);
-
-    stop();
-
-    expect(Context.get(local)).toBe(a);
-    expect(b.get(Local)).toBe(local);
+    expect(context.get(Theme, false)).toBeUndefined();
+    expect(Context.get(theme)).toBe(Context.root);
   });
 
   it('will defer to a home given before activation', () => {
@@ -3408,22 +3356,6 @@ describe('context argument', () => {
 
     expect(Context.get(theme)).toBe(a);
     expect(b.get(Theme, false)).toBeUndefined();
-  });
-
-  it('will remove a returned context entry when destroyed', () => {
-    const context = new Context();
-    const theme = Theme.new(() => context);
-
-    theme.set(null);
-
-    expect(context.get(Theme, false)).toBeUndefined();
-  });
-
-  it('will resolve when also returned from a callback', () => {
-    const context = new Context();
-    const theme = Theme.new(context, () => context);
-
-    expect(context.get(Theme)).toBe(theme);
   });
 
   it('will link to host of the context without owning', () => {
