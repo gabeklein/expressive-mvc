@@ -25,7 +25,7 @@ A `Context` among `.new()` or constructor arguments claims the home: the instanc
 | Before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, or an owner (field child) | Home - context arguments are ignored |
 | Context arguments                                           | First one becomes home; the rest are ignored |
 
-A context that loses has no effect. A context returned from a callback or `setup` handler is a grant, not a claim - it always adds an entry and never sets the home; it arrives after instructions apply, so a `get` field cannot resolve through it. A default goes last, like a fallback - unlike overlays, where later wins:
+A context that loses has no effect. A context returned from a callback or `setup` handler is a grant, not a claim - it always adds an entry and never sets the home, so `get` fields do not resolve through it. A default goes last, like a fallback - unlike overlays, where later wins:
 
 ```ts
 FormState.new(context);                         // home: context
@@ -63,19 +63,21 @@ const layer = context.push(panel, () => panel.set(null)); // own layer, as hosts
 layer.pop();                                    // unmount
 ```
 
-`ctx.pop()` removes the entry, not the instance - `Context.get(instance)` still returns the popped context until the instance is destroyed.
+An instance placed in a host's layer - `X.new(layer)` - takes that host as owner for `get()`, but is not destroyed with it.
+
+`ctx.pop()` removes the entry, not the instance - `Context.get(instance)` still returns the popped context.
 
 ### Construct vs Activate
 
 ```ts
 // .new() alone activates immediately - init runs, and resolves get(), against root
-const b = FormState.new();
-new Context(b); // b's home from here, after init already ran without it
+const a = FormState.new();
+new Context(a); // a's home from here, after init already ran without it
 
 // new FormState() constructs without activating
 // - the first explicit Context claims it before init runs
-const c = new FormState();
-new Context(c); // c's home is this context
+const b = new FormState();
+new Context(b); // b's home is this context
 ```
 
 Matters in tests and in code that prepares an instance before placing it in a context tree. Placement is an ordering constraint, not a deferral - an instance not activated by the end of the tick warns. Release one you no longer want with `set(null)`.
