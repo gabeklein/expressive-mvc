@@ -5,8 +5,10 @@ import type { AppearanceContext, ResolvedAppearance } from './protocol';
 type Style = string | Record<string, unknown> | false | null | undefined | readonly Style[];
 
 interface Appearance {
+  author?: object;
   context?: AppearanceContext;
   entries: Forwarded[];
+  lexical?: AppearanceContext;
 }
 
 interface Forwarded {
@@ -50,14 +52,16 @@ function componentProps(
   if (!context || typeof type != 'function') return { appearance, props };
 
   const value = context.resolve(props);
-  const entries = appearance!.entries;
+  const { author, entries } = appearance!;
 
-  if (!value) return { appearance: { entries }, props };
+  if (!value) return { appearance: { author, entries, lexical: context }, props };
 
   return {
     appearance: {
+      author,
       context: value.context,
-      entries
+      entries,
+      lexical: value.context || context
     },
     props: { ...props, style: [createAppearanceToken(value), props.style] }
   };

@@ -1,3 +1,4 @@
+import { authoring, authorOf } from '../node/vnode';
 import type { Node as RenderNode } from '../node/vnode';
 import { door } from '../style/claim';
 import type { Appearance, Style } from '../style/claim';
@@ -11,6 +12,7 @@ let rendering: object | undefined;
 let touched = false;
 
 const observed = new WeakMap<object, Record<string, any>>();
+const bare = new WeakMap<Fiber, Appearance>();
 
 function observe(props: Record<string, any>) {
   if (!('style' in props)) return props;
@@ -47,7 +49,7 @@ function consume(fiber: Fiber, render: () => RenderNode) {
   touched = false;
 
   try {
-    const output = render();
+    const output = authoring(fiber, render);
     fiber.consumed = touched;
     return output;
   } finally {
@@ -72,7 +74,23 @@ function renderedAppearance(fiber: Fiber): Appearance | undefined {
 
   if (style && !fiber.consumed && !(fiber.instance && 'style' in fiber.instance)) entries.push({ hops: 0, style });
 
-  return entries.length || context ? { context, entries } : undefined;
+  if (entries.length || context) return { author: fiber, context, entries };
+
+  let empty = bare.get(fiber);
+  if (!empty) bare.set(fiber, (empty = { author: fiber, entries }));
+  return empty;
 }
 
-export { consume, observe, renderedAppearance };
+function authored(value: RenderNode, appearance: Appearance | undefined): Appearance | undefined {
+  const author = authorOf(value);
+
+  if (!author || !appearance || author === appearance.author) return appearance;
+
+  for (let fiber = appearance.author as Fiber | undefined; fiber; fiber = fiber.appearance?.author as Fiber | undefined)
+    if (fiber.appearance?.author === author)
+      return { author, context: fiber.appearance.lexical, entries: appearance.entries };
+
+  return appearance;
+}
+
+export { authored, consume, observe, renderedAppearance };

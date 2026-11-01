@@ -4,6 +4,8 @@ import type { JSX as Runtime } from '../jsx-runtime';
 
 const VNODE = Symbol('@expressive/dom.vnode');
 const PORTAL = Symbol('@expressive/dom.portal');
+const authors = new WeakMap<object, object>();
+let author: object | undefined;
 
 type Key = string | number | null | undefined;
 type FunctionComponent<P = any> = (props: P) => Node;
@@ -34,12 +36,30 @@ interface VNode<P = any> {
 }
 
 function vnode<P>(type: VNode<P>['type'], props: P, key?: unknown): VNode<P> {
-  return {
+  const node: VNode<P> = {
     [VNODE]: true,
     type,
     props: (props || {}) as VNode<P>['props'],
     key: key as Key
   };
+
+  if (author) authors.set(node, author);
+  return node;
+}
+
+function authoring<T>(fiber: object, run: () => T) {
+  const previous = author;
+  author = fiber;
+
+  try {
+    return run();
+  } finally {
+    author = previous;
+  }
+}
+
+function authorOf(value: unknown) {
+  return isVNode(value) ? authors.get(value) : undefined;
 }
 
 function createElement(type: VNode['type'], props?: Record<string, unknown> | null, ...children: unknown[]): VNode {
@@ -95,6 +115,8 @@ const Portal = PORTAL as unknown as (props: { into: Element | DocumentFragment |
 export {
   VNODE,
   PORTAL,
+  authoring,
+  authorOf,
   childrenOf,
   createElement,
   Fragment,
