@@ -6,10 +6,10 @@ Positioning for the adoption question: whether to render Expressive MVC with `@e
 
 A browser renderer for MVC components with no React underneath. `Model`, `Component`, instructions, context and `@expressive/router` are the same packages; what changes is the host. [Measured per import shape](https://expressive.dev/docs/guides/bundle-size/), gzip, including `@expressive/mvc`:
 
-- `Component` + `render` alone: ~17.1 kB
-- the renderer and all of mvc: ~18.1 kB
-- the same with the styling system: ~21.6 kB
-- the same with `@expressive/router`: ~25.7 kB
+- `Component` + `render` alone: ~17.3 kB
+- the renderer and all of mvc: ~18.3 kB
+- the same with the styling system: ~21.7 kB
+- the same with `@expressive/router`: ~25.9 kB
 
 These replace `react` + `react-dom`; they don't add to them. Every pull request checks them against budget; budgets are re-set each release.
 
