@@ -8,7 +8,7 @@ import type { ModuleRunner } from "vite/module-runner";
 import type { AppConfig } from "../server/config";
 import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project } from "./project";
 import { runtime } from "../client/call";
-import { Exposure, type Exposed } from "./remote";
+import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
 import { dispatch, isCall, verify, type Endpoint, type Exports, type Pooled, type Seats } from "../server/call";
 import { isStream, stream } from "../server/stream";
@@ -284,10 +284,10 @@ function endpointOf(host: ModuleRunner, root: string, exposure: Exposure, group:
 
         for (const name of remote.calls) calls[exposure.callId(remote, name)] = mod[name];
         for (const name of remote.classes) own[exposure.classId(remote, name)] = mod[name];
-        if (remote.seat) seat = { fields: remote.seat.fields, methods: Object.fromEntries(remote.seat.methods.map(name => [exposure.callId(remote, `default.${name}`), name])) };
+        if (remote.seat) seat = { ...shapeOf(remote.seat), methods: exposure.methodIds(remote, remote.seat, false) };
 
         for (const twin of remote.pooled)
-          pool[exposure.classId(remote, twin.name)] = { Type: mod[twin.name], fields: twin.fields, methods: exposure.methodIds(remote, twin) };
+          pool[exposure.classId(remote, twin.name)] = { Type: mod[twin.name], ...shapeOf(twin), methods: exposure.methodIds(remote, twin, true) };
 
         verify(relative(root, remote.file), { calls, classes: own });
         Object.assign(classes, own);
@@ -311,24 +311,24 @@ function seatsOf(host: ModuleRunner, project: Project): Seats {
   };
 }
 
-function invert(methods: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(methods).map(([id, name]) => [name, id]));
-}
-
-function methodIds(exposure: Exposure, remote: Exposed): Record<string, string> {
-  return Object.fromEntries(remote.seat!.methods.map(name => [name, exposure.callId(remote, `default.${name}`)]));
-}
-
 function stub(exposure: Exposure, remote: Exposed): string {
   const json = JSON.stringify;
+  const twinOf = (definition: Definition, pool?: string) => {
+    const args = [json(definition.methods), json(definition.fields), json(definition.name)];
+
+    if (pool || definition.children) args.push(pool ? json(pool) : "undefined");
+    if (definition.children) args.push(json(definition.children));
+
+    return `twin(at, ${args.join(", ")})`;
+  };
 
   return [
     `import { call, define, twin } from "/${GENERATED}/${CALL}";`,
     `const at = ${json(remote.pattern)};`,
     ...remote.calls.map(name => `export const ${name} = (...args) => call(at, ${json(exposure.callId(remote, name))}, args);`),
     ...remote.classes.map(name => `export const ${name} = define(${json(exposure.classId(remote, name))}, ${json(name)});`),
-    ...remote.pooled.map(twin => `export const ${twin.name} = twin(at, ${json(invert(exposure.methodIds(remote, twin)))}, ${json(twin.fields)}, ${json(twin.name)}, ${json(exposure.classId(remote, twin.name))});`),
-    ...(remote.seat ? [`export default twin(at, ${json(methodIds(exposure, remote))}, ${json(remote.seat.fields)}, ${json(remote.seat.name)});`] : []),
+    ...remote.pooled.map(twin => `export const ${twin.name} = ${twinOf(exposure.definition(remote, twin, true), exposure.classId(remote, twin.name))};`),
+    ...(remote.seat ? [`export default ${twinOf(exposure.definition(remote, remote.seat, false))};`] : []),
     "",
   ].join("\n");
 }

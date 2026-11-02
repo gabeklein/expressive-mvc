@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import type { Exposed, Exposure } from "./remote";
+import { shapeOf, type Exposed, type Exposure } from "./remote";
 import type { Remote } from "./routes";
 
 export interface Project {
@@ -97,12 +97,9 @@ export function serverEntry(project: Project, from: string, exposure: Exposure, 
     const calls = pick(remote => remote.calls, (remote, name) => exposure.callId(remote, name));
     const classes = pick(remote => remote.classes, (remote, name) => exposure.classId(remote, name));
     const pool = group.flatMap(remote => remote.pooled.map(twin =>
-      `${JSON.stringify(exposure.classId(remote, twin.name))}: { Type: ${alias(remote)}.${twin.name}, fields: ${JSON.stringify(twin.fields)}, methods: ${JSON.stringify(exposure.methodIds(remote, twin))} }`)).join(", ");
+      `${JSON.stringify(exposure.classId(remote, twin.name))}: { Type: ${alias(remote)}.${twin.name}, ${props({ ...shapeOf(twin), methods: exposure.methodIds(remote, twin, true) })} }`)).join(", ");
     const seated = group.find(remote => remote.seat);
-    const seat = seated && JSON.stringify({
-      fields: seated.seat!.fields,
-      methods: Object.fromEntries(seated.seat!.methods.map(name => [exposure.callId(seated, `default.${name}`), name])),
-    });
+    const seat = seated && JSON.stringify({ ...shapeOf(seated.seat!), methods: exposure.methodIds(seated, seated.seat!, false) });
 
     return `    { pattern: ${JSON.stringify(group[0].pattern)}, async exports() { return { calls: { ${calls} }, classes: { ${classes} }, pool: { ${pool} }${seat ? `, seat: ${seat}` : ""} }; } },`;
   });
@@ -121,6 +118,10 @@ export function serverEntry(project: Project, from: string, exposure: Exposure, 
     "});",
     "",
   ].join("\n");
+}
+
+function props(object: object): string {
+  return Object.entries(object).map(([key, value]) => `${key}: ${JSON.stringify(value)}`).join(", ");
 }
 
 export function importRel(from: string, file: string): string {
