@@ -1300,13 +1300,10 @@ class Frame extends Model {
         const value = Reflect.get(target, prop, target);
 
         if (value === _runner) return this.view();
-        if (typeof value != 'function') {
-          let managed = !this._undo && !this._settled && collection(value);
 
-          return managed ? this.wrap(prop as string, value) : value;
-        }
+        let managed = !this._undo && !this._settled && collection(value);
 
-        return Object.hasOwn(target, prop) ? value : value.bind(target);
+        return managed ? this.wrap(prop as string, value) : value;
       },
       set: (target, prop, value) => {
         const key = String(prop);

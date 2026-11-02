@@ -1,4 +1,4 @@
-import { has, map, set, Model } from '@expressive/mvc';
+import { Context, has, map, set, Model } from '@expressive/mvc';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { flushMicrotasks, Journal, mockPromise, mockUncaught, mockWarn, record } from '../test.setup';
@@ -390,6 +390,31 @@ describe('steps', () => {
 
     expectTypeOf(result).toEqualTypeOf<string>();
     expect(result).toBe('x');
+  });
+
+  it('will resolve context and owner from inside a step', async () => {
+    const found: Model[] = [];
+
+    class Service extends Model {}
+
+    class Test extends Steps {
+      async next() {
+        found.push(this.get(Service), this.get(Model));
+      }
+    }
+
+    class Host extends Model {
+      service = new Service();
+      test = new Test();
+    }
+
+    const host = Host.new();
+
+    new Context(host);
+    await host.test.next();
+
+    expect(found[0]).toBe(host.service);
+    expect(found[1]).toBe(host);
   });
 });
 
