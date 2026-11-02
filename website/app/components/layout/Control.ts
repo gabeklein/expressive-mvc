@@ -1,4 +1,4 @@
-import Model, { Component, get, ref, set } from '@expressive/react';
+import { Model, Component, get, ref, set } from '@expressive/mvc';
 import React, { type MouseEventHandler, type ReactNode } from 'react';
 
 const AXIS = ['gridTemplateRows', 'gridTemplateColumns'] as const;
@@ -175,18 +175,17 @@ function onDrag(...handle: DragEvent[]) {
 }
 
 function Spacer({ index }: { index: number }) {
-  return Control.get((layout) => {
-    const { grab, pull, push } = layout.resize(index);
-    const { Handle, row, gap } = layout;
+  const layout = Control.get();
+  const { grab, pull, push } = layout.resize(index);
+  const { Handle, row, gap, dragging } = layout;
 
-    return React.createElement(Handle, {
-      pull,
-      push,
-      grab,
-      vertical: row,
-      width: gap,
-      active: layout.dragging === index
-    });
+  return React.createElement(Handle, {
+    pull,
+    push,
+    grab,
+    vertical: row,
+    width: gap,
+    active: dragging === index
   });
 }
 

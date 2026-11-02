@@ -30,7 +30,9 @@ import { Model } from '@expressive/mvc';
 
 class Counter extends Model {
   count = 0;
-  increment = () => this.count++;
+  increment() {
+    this.count++;
+  }
 
   get doubled() {
     return this.count * 2;     // recomputes only when count changes
@@ -87,6 +89,8 @@ const timer = Timer.new();   // construct + activate
 timer.set(null);             // destroy - runs cleanup, freezes state
 ```
 
+Under a host that renders on the server, `new()` still runs there but its cleanup never does - so client resources like this interval go in `mount()` instead, which runs only on the client; see the host's docs.
+
 ## Context & composition
 
 Instances find each other through context, and compose by holding one another:
@@ -104,7 +108,7 @@ class Profile extends Model {
 }
 ```
 
-An adapter (e.g. [`@expressive/react`](https://www.npmjs.com/package/@expressive/react)) supplies the provider that places a `Model` in a tree; `get()` pulls it back out.
+`<Component for={Model}>` - part of this package - places a `Model` in a tree; a host such as [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) renders it, and `get()` pulls the instance back out.
 
 ## Events
 
@@ -130,11 +134,11 @@ off();                                                // stop listening
 }
 ```
 
-`Component` - a `Model` usable in JSX - lives here as the agnostic base. For using it in an app (rendering, props, subcomponents, suspense), see **[`@expressive/react`](https://www.npmjs.com/package/@expressive/react)**.
+`Component` - a `Model` usable in JSX - lives here, along with `<Component for>`: props, subcomponents, suspense and context placement are all core. A host only renders them; for how that looks in an app, see **[`@expressive/react`](https://www.npmjs.com/package/@expressive/react)**.
 
 ---
 
-To render state in a UI framework, add an adapter: [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) or `@expressive/preact`.
+To render state in a UI, add a host: [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) or [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom).
 
 Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**
 

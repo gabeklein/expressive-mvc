@@ -1,6 +1,11 @@
-import { vi, describe, it, expect } from 'vitest';
-import { Context } from './context';
+import { vi, describe, it, expect, expectTypeOf, onTestFinished } from 'vitest';
+import { Context, resolver, within } from './context';
 import { Model } from './state';
+import { get } from './field/get';
+import { has } from './field/has';
+import { map } from './field/map';
+import { Observer, watch } from './observable';
+import { flushMicrotasks, mockUncaught } from '../test.setup';
 
 class Example extends Model {}
 class Example2 extends Example {}
@@ -322,14 +327,13 @@ describe('has method', () => {
 
   it('will notify has-subscriber for state created before context', () => {
     const parent = new Context();
-    const child = parent.push();
     const cb = vi.fn();
 
     parent.get(DownstreamModel, cb, true);
 
     const state = DownstreamModel.new();
 
-    child.set(state);
+    parent.push(state);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(state, true);
@@ -348,7 +352,7 @@ describe('get callback (upstream subscription)', () => {
 
     expect(cb).not.toBeCalled();
 
-    parent.set(Upstream);
+    parent.add(Upstream.new(), true);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(expect.any(Upstream), false);
@@ -361,7 +365,7 @@ describe('get callback (upstream subscription)', () => {
 
     const cancel = child.get(Upstream, cb);
     cancel();
-    parent.set(Upstream);
+    parent.add(Upstream.new(), true);
 
     expect(cb).not.toBeCalled();
   });
@@ -373,7 +377,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn(() => cleanup);
 
     child.get(Upstream, cb);
-    parent.set(Upstream);
+    parent.add(Upstream.new(), true);
 
     expect(cb).toBeCalledTimes(1);
 
@@ -391,7 +395,7 @@ describe('get callback (upstream subscription)', () => {
     const cb = vi.fn();
 
     child.get(Upstream, cb);
-    parent.set(shared);
+    parent.add(shared, true);
 
     expect(cb).toBeCalledTimes(1);
     expect(cb).toBeCalledWith(shared, false);
@@ -435,7 +439,203 @@ describe('context helper', () => {
   });
 });
 
-describe('set method', () => {
+describe('static get', () => {
+  class Test extends Model {
+    value = 1;
+  }
+
+  it('will return root outside set', () => {
+    const context = Context.get();
+
+    expectTypeOf(context).toEqualTypeOf<Context>();
+
+    expect(context).toBe(Context.root);
+  });
+
+  it('will compute against root', () => {
+    const compute = vi.fn((context: Context) => context.id);
+    const id = Context.get(Test, compute);
+
+    expectTypeOf(id).toEqualTypeOf<string>();
+
+    expect(id).toBe(Context.root.id);
+    expect(compute).toBeCalledWith(Context.root);
+  });
+
+  it('will not accept a third argument', () => {
+    const compute = vi.fn(() => 'value');
+
+    // @ts-expect-error
+    expect(Context.get(Test, compute, true)).toBe('value');
+  });
+
+  it('will compute with a Model as origin', () => {
+    const test = Test.new();
+    const context = new Context(test);
+    const compute = vi.fn((_context: Context, from?: Model) => from);
+
+    expect(within(test, () => Context.get(Test, compute))).toBe(test);
+    expect(compute).toBeCalledWith(context, test);
+  });
+
+  it('will pass the real instance from a tracking proxy', () => {
+    const test = Test.new();
+    const compute = vi.fn((_context: Context, from?: Model) => from);
+
+    test.get((proxy) => {
+      within(proxy, () => Context.get(Test, compute));
+    });
+
+    expect(compute.mock.calls[0][1]).toBe(test);
+  });
+
+  it('will pass a tracked context from a tracking proxy', async () => {
+    class Other extends Model {}
+
+    const test = Test.new();
+    const context = new Context(test);
+    const didFind = vi.fn();
+
+    test.get((proxy) => {
+      didFind(within(proxy, () => Context.get(Other, (ctx) => ctx.get(Other, false))));
+    });
+
+    expect(didFind).toBeCalledWith(undefined);
+
+    const other = Other.new();
+
+    context.add(other);
+    await flushMicrotasks();
+
+    expect(didFind).toHaveBeenLastCalledWith(other);
+  });
+
+  it('will subscribe a tracking origin to its result', async () => {
+    const test = Test.new();
+    const other = Test.new();
+    const effect = vi.fn();
+
+    test.get((proxy) => {
+      effect(within(proxy, () => Context.get(Test, () => other)).value);
+    });
+
+    other.value = 2;
+    await expect(other).toHaveUpdated();
+
+    expect(effect).toBeCalledTimes(2);
+    expect(effect).toHaveBeenLastCalledWith(2);
+  });
+});
+
+describe('within', () => {
+  class Test extends Model {}
+
+  it('will return result of function', () => {
+    const result = within(Test.new(), () => 1);
+
+    expectTypeOf(result).toEqualTypeOf<number>();
+
+    expect(result).toBe(1);
+  });
+
+  it('will set home context of a Model', () => {
+    const test = Test.new();
+    const context = new Context(test);
+
+    expect(within(test, () => Context.get())).toBe(context);
+  });
+
+  it('will set root for a Model without context', () => {
+    const test = Test.new();
+
+    expect(within(test, () => Context.get())).toBe(Context.root);
+  });
+
+  it('will nest', () => {
+    const outer = Test.new();
+    const inner = Test.new();
+    const outerContext = new Context(outer);
+    const innerContext = new Context(inner);
+    const seen: Context[] = [];
+
+    within(outer, () => {
+      seen.push(Context.get());
+      within(inner, () => seen.push(Context.get()));
+      seen.push(Context.get());
+    });
+
+    expect(seen).toEqual([outerContext, innerContext, outerContext]);
+    expect(Context.get()).toBe(Context.root);
+  });
+
+  it('will restore on throw', () => {
+    expect(() =>
+      within(Test.new(), () => {
+        throw new Error('oops');
+      })
+    ).toThrow('oops');
+
+    expect(Context.get()).toBe(Context.root);
+  });
+});
+
+describe('resolver', () => {
+  class Test extends Model {}
+
+  function assign(next: Parameters<typeof resolver>[0]) {
+    const previous = resolver(next);
+
+    onTestFinished(() => {
+      resolver(previous);
+    });
+  }
+
+  it('will resolve a static get outside within', () => {
+    const context = new Context();
+    const resolve = vi.fn((_Type: unknown, compute: (context: Context) => unknown) => compute(context));
+
+    assign(resolve);
+
+    expect(Context.get(Test, (context) => context)).toBe(context);
+    expect(resolve).toBeCalledWith(Test, expect.any(Function));
+  });
+
+  it('will resolve bare get without a type', () => {
+    const context = new Context();
+    const resolve = vi.fn((_Type: unknown, compute: (context: Context) => unknown) => compute(context));
+
+    assign(resolve);
+
+    expect(Context.get()).toBe(context);
+    expect(resolve).toBeCalledWith(undefined, expect.any(Function));
+  });
+
+  it('will return what resolve returns', () => {
+    assign(() => 'wrapped');
+
+    expect(Context.get(Test, () => 'value')).toBe('wrapped');
+  });
+
+  it('will not be called within', () => {
+    const resolve = vi.fn();
+
+    assign(resolve);
+    within(Test.new(), () => Context.get(Test, () => 'value'));
+
+    expect(resolve).not.toBeCalled();
+  });
+
+  it('will not be called for a Model', () => {
+    const resolve = vi.fn();
+
+    assign(resolve);
+    Context.get(Test.new());
+
+    expect(resolve).not.toBeCalled();
+  });
+});
+
+describe('inputs', () => {
   it('will register multiple', () => {
     class Foo extends Model {}
     class Bar extends Model {}
@@ -478,9 +678,7 @@ describe('set method', () => {
 
     const foo = new Foo();
     const foobar = new Bar();
-    const context = new Context();
-
-    context.set({ foo, Bar: foobar });
+    const context = new Context({ foo, Bar: foobar });
 
     expect(context.get(Bar)).toBe(foobar);
     expect(context.get(Foo)).not.toBe(foobar.foo);
@@ -542,145 +740,16 @@ describe('set method', () => {
   });
 
   it('will throw on base Model include', () => {
-    const context = new Context();
-
     // @ts-ignore
-    expect(() => context.set({ Model })).toThrow('Cannot create base Model.');
+    expect(() => new Context({ Model })).toThrow('Cannot create base Model.');
   });
 
   it.each([
     ["will throw on bad include property", { Thing: { toString: () => 'Foobar' } }, " but got Foobar (as 'Thing')."],
-    ['will throw on bad include property (no alias)', { [0]: { toString: () => 'Thing' } }, ' but got Thing.']
+    ['will throw on bad single include (no alias)', Object.assign(function Thing() {}, { toString: () => 'Thing' }), ' but got Thing.']
   ])('%s', (_, include, message) => {
     // @ts-ignore
-    expect(() => new Context().set(include)).toThrow('Context can only include an instance or class of Model' + message);
-  });
-
-  it('will remove implicit children when parent removed via set', () => {
-    class Parent extends Model {
-      child = new Example();
-    }
-
-    const context = new Context({ Parent });
-    const { child } = context.get(Parent);
-
-    expect(Context.get(child)).toBe(context);
-
-    context.set({});
-
-    expect(Context.get(child)).toBe(context);
-    expect(context.get(Example, false)).toBeUndefined();
-  });
-
-  it('will remove multiple implicit children when parent is removed', () => {
-    class Parent extends Model {
-      a = new Example();
-      b = new Example2();
-    }
-
-    const context = new Context({ Parent });
-
-    expect(context.get(Example)).toBeNull();
-    expect(context.get(Example2)).toBeInstanceOf(Example2);
-
-    context.set({});
-
-    expect(context.get(Example, false)).toBeUndefined();
-    expect(context.get(Example2, false)).toBeUndefined();
-  });
-
-  it('will callback once per unique added', () => {
-    class Foo extends Model {}
-    class Bar extends Model {}
-
-    const foo = Foo.new();
-    const bar = Bar.new();
-    const cb = vi.fn();
-
-    const context = new Context();
-
-    context.set({ foo, bar }, cb);
-
-    expect(cb).toBeCalledWith(foo, false);
-    expect(cb).toBeCalledWith(bar, false);
-    expect(cb).toBeCalledTimes(2);
-
-    context.set({ foo, bar }, cb);
-
-    expect(cb).toBeCalledTimes(2);
-
-    const foo2 = Foo.new();
-
-    context.set({ foo, bar, foo2 }, cb);
-
-    expect(cb).toBeCalledWith(foo2, false);
-    expect(cb).toBeCalledTimes(3);
-  });
-
-  it('will ignore subsequent if callback', () => {
-    class Foo extends Model {}
-
-    const cb = vi.fn();
-    const context = new Context();
-
-    context.set(Foo, cb);
-    context.set(Foo, cb);
-
-    expect(context.get(Foo)).toBeInstanceOf(Foo);
-    expect(cb).toBeCalledTimes(1);
-  });
-
-  it('will remove and delete state of type absent', () => {
-    class Bar extends Model {
-      didDie = vi.fn();
-
-      protected new() {
-        return this.didDie;
-      }
-    }
-
-    const context = new Context({ Bar });
-    const bar = context.get(Bar);
-
-    context.set({});
-
-    expect(bar.didDie).toBeCalled();
-    expect(context.get(Bar, false)).toBeUndefined();
-  });
-
-  it('will replace owned instance when key changes', () => {
-    class Baz extends Model {
-      didDie = vi.fn();
-
-      protected new() {
-        return this.didDie;
-      }
-    }
-
-    class Baz2 extends Model {}
-
-    const context = new Context({ Baz });
-    const baz = context.get(Baz);
-
-    context.set({ Baz: Baz2 });
-
-    expect(baz.didDie).toBeCalled();
-    expect(context.get(Baz, false)).toBeUndefined();
-    expect(context.get(Baz2)).toBeInstanceOf(Baz2);
-  });
-
-  it('will remove non-owned instance without destroying it', () => {
-    class Bar extends Model {}
-
-    const bar = Bar.new();
-    const context = new Context({ bar });
-
-    expect(context.get(Bar)).toBe(bar);
-
-    context.set({});
-
-    expect(context.get(Bar, false)).toBeUndefined();
-    expect(bar.get(null)).toBe(false);
+    expect(() => new Context(include)).toThrow('Context can only include an instance or class of Model' + message);
   });
 
   it('will set multiple types and cleanup all', () => {
@@ -697,83 +766,124 @@ describe('set method', () => {
     expect(ctx.get(A, false)).toBeUndefined();
     expect(ctx.get(B, false)).toBeUndefined();
   });
+});
 
-  it('will call forEach cleanup for each state removed or replaced', () => {
-    class Foo extends Model {}
-    class Bar extends Model {}
-    class Foo2 extends Model {}
+describe('push', () => {
+  it('will run cleanup on pop', () => {
+    const cleanup = vi.fn();
+    const context = new Context().push(undefined, cleanup);
 
-    const didCleanup = vi.fn();
-    const context = new Context();
-
-    context.set({ x: Foo, Bar }, (state) => () => didCleanup(state.constructor.name));
-
-    expect(didCleanup).not.toBeCalled();
-
-    context.set({ x: Foo2 });
-
-    expect(didCleanup.mock.calls).toEqual([['Foo'], ['Bar']]);
-    expect(context.get(Foo, false)).toBeUndefined();
-    expect(context.get(Foo2)).toBeInstanceOf(Foo2);
-  });
-
-  it('will ignore a non-function returned by forEach', () => {
-    class Foo extends Model {}
-
-    const context = new Context();
-
-    context.set(Foo, (state) => (state as any));
-
-    expect(() => context.set({})).not.toThrow();
-  });
-
-  it('will tell forEach whether context owns the state', () => {
-    class Foo extends Model {}
-    class Bar extends Model {}
-
-    const bar = Bar.new();
-    const didCall = vi.fn();
-    const context = new Context();
-
-    context.set({ Foo, bar }, (state, owned) => {
-      didCall(state.constructor.name, owned);
-    });
-
-    expect(didCall).toBeCalledWith('Foo', true);
-    expect(didCall).toBeCalledWith('Bar', false);
+    expect(cleanup).not.toBeCalled();
 
     context.pop();
-
-    expect(context.get(Foo, false)).toBeUndefined();
-    expect(bar.get(null)).toBe(false);
-  });
-
-  it('will call forEach cleanup on pop', () => {
-    class Foo extends Model {}
-
-    const cleanup = vi.fn();
-    const parent = new Context();
-    const child = parent.push();
-
-    child.set(Foo, () => cleanup);
-    child.pop();
 
     expect(cleanup).toBeCalledTimes(1);
   });
 
-  it('will clean up subtype keys on delete', () => {
-    class Base extends Model {}
-    class Child extends Base {}
+  it('will run cleanup when parent pops', () => {
+    const cleanup = vi.fn();
+    const parent = new Context();
 
-    const context = new Context({ Child });
+    parent.push().push(Example, cleanup);
+    parent.pop();
 
-    expect(context.get(Child)).toBeInstanceOf(Child);
-    expect(context.get(Base)).toBeInstanceOf(Child);
+    expect(cleanup).toBeCalledTimes(1);
+  });
 
-    context.set({});
+  it('will run cleanup once', () => {
+    const cleanup = vi.fn();
+    const parent = new Context();
+    const context = parent.push(Example, cleanup);
 
-    expect(context.get(Child, false)).toBeUndefined();
-    expect(context.get(Base, false)).toBeUndefined();
+    context.pop();
+    context.pop();
+    parent.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will run cleanup once for multiple inputs', () => {
+    class A extends Model {}
+    class B extends Model {}
+
+    const cleanup = vi.fn();
+    const context = new Context().push({ A, B }, cleanup);
+
+    context.pop();
+    context.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+  });
+
+  it('will run cleanup before removing input', () => {
+    class Test extends Model {
+      destroyed = vi.fn();
+
+      new() {
+        return this.destroyed;
+      }
+    }
+
+    const found = vi.fn();
+    const context = new Context().push(Test, () => {
+      const test = context.get(Test);
+
+      expect(test.destroyed).not.toBeCalled();
+      found(test);
+    });
+
+    const test = context.get(Test);
+
+    context.pop();
+
+    expect(found).toBeCalledWith(test);
+    expect(test.destroyed).toBeCalledTimes(1);
+    expect(context.get(Test, false)).toBeUndefined();
+  });
+
+  it('will not destroy adopted instance on cleanup', () => {
+    const example = Example.new();
+    const cleanup = vi.fn();
+    const context = new Context().push(example, cleanup);
+
+    context.pop();
+
+    expect(cleanup).toBeCalledTimes(1);
+    expect(context.get(Example, false)).toBeUndefined();
+    expect(example.get(null)).toBe(false);
+  });
+
+  it('will destroy adopted instance from cleanup', () => {
+    const example = Example.new();
+    const context = new Context().push(example, () => example.set(null));
+
+    context.pop();
+
+    expect(example.get(null)).toBe(true);
+  });
+
+  it('will destroy owned but not adopted inputs', () => {
+    class Owned extends Model {}
+
+    const example = Example.new();
+    const context = new Context().push({ Owned, example });
+    const owned = context.get(Owned);
+
+    context.pop();
+
+    expect(owned.get(null)).toBe(true);
+    expect(example.get(null)).toBe(false);
+  });
+
+  it('will register all inputs before any activates', () => {
+    class Sibling extends Model {}
+    class Test extends Model {
+      sibling = get(Sibling);
+    }
+
+    const context = new Context().push({ Test, Sibling });
+
+    expect(context.get(Test).sibling).toBe(context.get(Sibling));
   });
 });
 
@@ -868,13 +978,12 @@ describe('add method listener lookup', () => {
 
     const grandparent = new Context();
     const parent = grandparent.push();
-    const child = parent.push();
     const cb = vi.fn();
 
     grandparent.get(Foo, cb, true);
     parent.get(Foo, cb, true);
 
-    child.set(Foo);
+    parent.push(Foo);
 
     expect(cb).toBeCalledTimes(1);
   });
@@ -888,7 +997,7 @@ describe('add method listener lookup', () => {
 
     child.get(Bar, vi.fn());
 
-    parent.set(Foo);
+    parent.add(Foo.new(), true);
 
     expect(parent.get(Foo)).toBeInstanceOf(Foo);
   });
@@ -904,7 +1013,7 @@ describe('add method listener lookup', () => {
     parent.get(Foo, cb);
     child.get(Foo, cb);
 
-    middle.set(Foo);
+    middle.add(Foo.new(), true);
 
     expect(cb).toBeCalledTimes(1);
   });
@@ -982,27 +1091,19 @@ it('will skip consumer if filter does not match downstream', () => {
   expect(cb).toBeCalledWith(bar, true);
 });
 
-describe('root global', () => {
+describe('root', () => {
   const { root } = Context;
 
-  class Global extends Model {
-    static readonly global: Model.Global = true;
-  }
+  it('will throw for a class still declaring static global', () => {
+    class Legacy extends Model {
+      static global = true;
+    }
+    class Sub extends Legacy {}
 
-  it('will register a global .new() instance in root, again once destroyed', () => {
-    const first = Global.new();
+    const message = 'Legacy declares `static global`, which was removed - provide it with <Component for>, or create it with .new(Context.root).';
 
-    expect(root.get(Global)).toBe(first);
-
-    first.set(null);
-
-    expect(root.get(Global, false)).toBeUndefined();
-
-    const second = Global.new();
-
-    expect(root.get(Global)).toBe(second);
-
-    second.set(null);
+    expect(() => Legacy.new()).toThrow(message);
+    expect(() => Sub.new()).toThrow(message);
   });
 
   it('will not register children of a private instance in root', () => {
@@ -1017,62 +1118,6 @@ describe('root global', () => {
     expect(root.get(Child, false)).toBeUndefined();
 
     parent.set(null);
-  });
-
-  it('will register descendants of a global instance in root', () => {
-    class Grandchild extends Model {}
-    class Child extends Model {
-      grandchild = new Grandchild();
-    }
-    class Parent extends Model {
-      static readonly global = true;
-      child = new Child();
-    }
-
-    const parent = Parent.new();
-
-    expect(root.get(Child)).toBe(parent.child);
-    expect(root.get(Grandchild)).toBe(parent.child.grandchild);
-
-    parent.set(null);
-
-    expect(root.get(Child, false)).toBeUndefined();
-  });
-
-  it('will register a child assigned after a global joins root', () => {
-    class Child extends Model {}
-    class Parent extends Model {
-      static readonly global = true;
-      child?: Child = undefined;
-    }
-
-    const parent = Parent.new();
-
-    parent.child = new Child();
-
-    expect(root.get(Child)).toBe(parent.child);
-
-    parent.set(null);
-  });
-
-  it('will not register a late child of a private sibling of a global', () => {
-    class Child extends Model {}
-    class Parent extends Model {
-      static readonly global: Model.Global<Parent> = (self) => self.shared;
-      shared = false;
-      child?: Child = undefined;
-    }
-
-    const shared = Parent.new({ shared: true });
-    const alone = Parent.new();
-
-    alone.child = new Child();
-
-    expect(root.get(Parent)).toBe(shared);
-    expect(root.get(Child, false)).toBeUndefined();
-
-    shared.set(null);
-    alone.set(null);
   });
 
   it('will provide children of a private instance where it is provided', () => {
@@ -1099,233 +1144,15 @@ describe('root global', () => {
   });
 
   it('will keep instance when re-added implicitly', () => {
-    const instance = Global.new();
+    class Thing extends Model {}
+
+    const instance = Thing.new();
 
     root.add(instance);
 
-    expect(root.get(Global)).toBe(instance);
+    expect(root.get(Thing)).toBe(instance);
 
     instance.set(null);
-  });
-
-  it('will throw when a subclass inherits global without re-declaring', () => {
-    class Sub extends Global {}
-
-    expect(() => Sub.new()).toThrow(
-      /would register as a global by inheritance alone/
-    );
-  });
-
-  it.each([
-    ['will register when a subclass re-declares global', true],
-    ['will allow a subclass to opt out of a global', false]
-  ])('%s', (_, global) => {
-    class Sub extends Global {
-      static readonly global = global;
-    }
-
-    const instance = Sub.new();
-
-    expect(root.get(Sub, false)).toBe(global ? instance : undefined);
-
-    instance.set(null);
-  });
-
-  it('will resolve global from a function at activation', () => {
-    let allow = false;
-
-    class Conditional extends Model {
-      static readonly global: Model.Global = () => allow;
-    }
-
-    const off = Conditional.new();
-    expect(root.get(Conditional, false)).toBeUndefined();
-    off.set(null);
-
-    allow = true;
-
-    const on = Conditional.new();
-    expect(root.get(Conditional)).toBe(on);
-    on.set(null);
-  });
-
-  it('will pass the instance to a global resolver', () => {
-    class Instanced extends Model {
-      persistent = true;
-      static readonly global: Model.Global<Instanced> = (self) => self.persistent;
-    }
-
-    const instance = Instanced.new();
-
-    expect(root.get(Instanced)).toBe(instance);
-
-    instance.set(null);
-  });
-
-  it('will enforce global inheritance through static types', () => {
-    void function () {
-      class SealedGlobal extends Model {
-        static readonly global = true;
-      }
-      class Floor extends Model {
-        static readonly global = false;
-      }
-
-      // @ts-expect-error - cannot opt out of a sealed (literal true) global
-      class OptOut extends SealedGlobal {
-        static readonly global = false;
-      }
-
-      // @ts-expect-error - cannot opt in against a literal-false floor
-      class OptIn extends Floor {
-        static readonly global = true;
-      }
-
-      class Open extends Model {
-        static readonly global: Model.Global = true;
-      }
-      class Scoped extends Open {
-        static readonly global = false;
-      }
-
-      return [OptOut, OptIn, Scoped];
-    };
-  });
-
-  it('will lock state ownership to root after init', () => {
-    const instance = Global.new();
-
-    expect(Context.get(instance)).toBe(root);
-
-    const ctx = new Context(instance);
-
-    expect(ctx.get(Global)).toBe(instance);
-    expect(Context.get(instance)).toBe(root);
-
-    instance.set(null);
-  });
-
-  it.each<[string, Model.Global]>([
-    ['will throw on duplicate global of same type', true],
-    ['will throw on duplicate global from a resolver', () => true]
-  ])('%s', (_, global) => {
-    class Multi extends Model {
-      static global = global;
-    }
-
-    const first = Multi.new();
-
-    expect(() => Multi.new()).toThrow(/already exists in root/);
-    expect(root.get(Multi)).toBe(first);
-
-    first.set(null);
-  });
-
-  it('will throw if a subtype would hide a supertype global', () => {
-    class Base extends Model {
-      static readonly global: Model.Global = true;
-    }
-    class Sub extends Base {
-      static readonly global = true;
-    }
-
-    const base = Base.new();
-
-    expect(() => Sub.new()).toThrow(
-      `as a global - ${base} already exists in root.`
-    );
-    expect(root.get(Base)).toBe(base);
-    expect(root.get(Sub, false)).toBeUndefined();
-
-    base.set(null);
-  });
-
-  it('will throw if a subtype global already resolves the type', () => {
-    class Base extends Model {
-      static readonly global: Model.Global = true;
-    }
-    class Sub extends Base {
-      static readonly global = true;
-    }
-
-    const sub = Sub.new();
-
-    expect(() => Base.new()).toThrow(
-      `as a global - ${sub} already exists in root.`
-    );
-    expect(root.get(Base)).toBe(sub);
-
-    sub.set(null);
-  });
-
-  it('will register a supertype after the subtype is destroyed', () => {
-    class Base extends Model {
-      static readonly global: Model.Global = true;
-    }
-    class Sub extends Base {
-      static readonly global = true;
-    }
-
-    Sub.new().set(null);
-
-    const base = Base.new();
-
-    expect(root.get(Base)).toBe(base);
-
-    base.set(null);
-  });
-
-  it('will preserve subtype entries on eviction', () => {
-    class Base extends Model {}
-    class SubA extends Base {
-      static global = true;
-    }
-    class SubB extends Base {
-      static global = true;
-    }
-
-    const a = SubA.new();
-
-    expect(root.get(Base)).toBe(a);
-    expect(root.get(SubA)).toBe(a);
-
-    const b = SubB.new();
-
-    expect(root.get(Base, false)).toBeUndefined();
-    expect(root.get(SubA)).toBe(a);
-    expect(root.get(SubB)).toBe(b);
-
-    a.set(null);
-    b.set(null);
-  });
-
-  it('will register fresh sibling cleanly after ancestor eviction', () => {
-    class Base extends Model {}
-    class SubA extends Base {
-      static global = true;
-    }
-    class SubB extends Base {
-      static global = true;
-    }
-    class SubC extends Base {
-      static global = true;
-    }
-
-    const a = SubA.new();
-    const b = SubB.new();
-
-    expect(root.get(Base, false)).toBeUndefined();
-
-    const c = SubC.new();
-
-    expect(root.get(Base)).toBe(c);
-    expect(root.get(SubA)).toBe(a);
-    expect(root.get(SubB)).toBe(b);
-    expect(root.get(SubC)).toBe(c);
-
-    a.set(null);
-    b.set(null);
-    c.set(null);
   });
 
   it('will not auto-register state created under an explicit context', () => {
@@ -1339,14 +1166,14 @@ describe('root global', () => {
     ctx.pop();
   });
 
-  it('will not apply global eviction to explicit add', () => {
+  it('will prefer an explicit entry in root', () => {
     class Base extends Model {}
-    class SubA extends Base {
-      static global = true;
-    }
+    class SubA extends Base {}
     class SubB extends Base {}
 
     const a = SubA.new();
+
+    root.add(a);
 
     expect(root.get(Base)).toBe(a);
 
@@ -1378,5 +1205,268 @@ describe('root global', () => {
 
     removeA();
     b.set(null);
+  });
+});
+
+describe('lookup origin', () => {
+  class Peer extends Model {}
+  class Child extends Model {}
+  class Parent extends Model {
+    child = new Child();
+    rows = has(Child);
+    values = map<string, Child>();
+  }
+
+  it('will look up from owner for an owned child', () => {
+    const parent = Parent.new();
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(parent.child)).toBe(context);
+    expect(parent.child.get(Peer)).toBe(context.get(Peer));
+  });
+
+  it('will look up from owner for a has row', () => {
+    const parent = Parent.new();
+    const row = parent.rows.add();
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(row)).toBe(context);
+    expect(row.get(Peer)).toBe(context.get(Peer));
+
+    parent.set(null);
+  });
+
+  it('will look up from owner for a map value', () => {
+    const parent = Parent.new();
+    const value = new Child();
+
+    parent.values.set('a', value);
+
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(value)).toBe(context);
+    expect(value.get(Peer)).toBe(context.get(Peer));
+
+    parent.set(null);
+  });
+
+  it('will look up from owner for an assigned reference', () => {
+    class Holder extends Model {
+      ref?: Child = undefined;
+    }
+
+    const parent = Parent.new();
+    const holder = new Holder();
+
+    Context.root.push(holder);
+    holder.ref = parent.child;
+
+    expect(Context.get(parent.child)).toBe(Context.root);
+
+    const context = Context.root.push(new Peer()).push(parent);
+
+    expect(Context.get(parent.child)).toBe(context);
+  });
+
+  it('will look up from where an owned child is placed if owner has no context', () => {
+    const parent = Parent.new();
+    const context = Context.root.push(new Peer()).push(parent.child);
+
+    expect(Context.get(parent.child)).toBe(context);
+    expect(parent.child.get(Peer)).toBe(context.get(Peer));
+  });
+
+  it('will look up from root for an unplaced instance and its child', () => {
+    class Loose extends Model {
+      child = new Child();
+    }
+
+    const loose = Loose.new();
+
+    expect(Context.get(loose)).toBe(Context.root);
+    expect(Context.get(loose.child)).toBe(Context.root);
+
+    loose.set(null);
+  });
+});
+
+describe('placed instance', () => {
+  it('will not move an instance from its home', () => {
+    class Other extends Model {}
+
+    const example = Example.new();
+    const home = Context.root.push(example);
+    const level = Context.root.push(new Other()).push(example);
+
+    expect(Context.get(example)).toBe(home);
+    expect(level.get(Other)).toBeInstanceOf(Other);
+    expect(home.get(Other, false)).toBeUndefined();
+  });
+});
+
+describe('tracked lookup', () => {
+  class Test extends Model {}
+
+  function follow(context: Context, Type: Model.Extends = Test) {
+    const found: unknown[] = [];
+    const release = watch(context, (ctx) => {
+      found.push(ctx.get(Type, false));
+    });
+
+    return { found, release };
+  }
+
+  it('will refresh for a provider arriving upstream', async () => {
+    const root = new Context();
+    const leaf = root.push().push();
+    const { found } = follow(leaf);
+    const test = Test.new();
+
+    root.add(test);
+    await flushMicrotasks();
+
+    expect(found).toEqual([undefined, test]);
+  });
+
+  it('will refresh for a closer provider', async () => {
+    const outer = Test.new();
+    const root = new Context({ outer });
+    const middle = root.push();
+    const { found } = follow(middle.push());
+    const inner = Test.new();
+
+    middle.add(inner);
+    await flushMicrotasks();
+
+    expect(found).toEqual([outer, inner]);
+  });
+
+  it('will refresh when the provider is removed', async () => {
+    const test = Test.new();
+    const root = new Context();
+    const remove = root.add(test);
+    const { found } = follow(root.push());
+
+    remove();
+    await flushMicrotasks();
+
+    expect(found).toEqual([test, undefined]);
+  });
+
+  it('will not refresh for a provider above the one found', async () => {
+    const root = new Context();
+    const middle = root.push({ test: Test.new() });
+    const { found } = follow(middle.push());
+
+    root.add(Test.new());
+    await flushMicrotasks();
+
+    expect(found).toHaveLength(1);
+  });
+
+  it('will not refresh for another type', async () => {
+    class Other extends Model {}
+
+    const root = new Context();
+    const { found } = follow(root.push());
+
+    root.add(Other.new());
+    await flushMicrotasks();
+
+    expect(found).toHaveLength(1);
+  });
+
+  it('will not refresh for a sibling provider', async () => {
+    const root = new Context();
+    const { found } = follow(root.push());
+
+    root.push(Test.new());
+    await flushMicrotasks();
+
+    expect(found).toHaveLength(1);
+  });
+
+  it('will not observe an untracked context', () => {
+    const root = new Context();
+    const child = root.push();
+    const remove = root.add(Test.new());
+
+    expect(child.get(Test)).toBeInstanceOf(Test);
+    remove();
+
+    expect(Object.getOwnPropertyDescriptor(root, Observer)).toBeUndefined();
+    expect(Object.getOwnPropertyDescriptor(child, Observer)).toBeUndefined();
+  });
+
+  it('will observe a context once tracked', async () => {
+    const root = new Context();
+    const middle = root.push();
+    const outer = Test.new();
+
+    root.add(outer);
+
+    const { found } = follow(middle.push());
+    const inner = Test.new();
+
+    middle.add(inner);
+    await flushMicrotasks();
+
+    expect(found).toEqual([outer, inner]);
+    expect(Object.getOwnPropertyDescriptor(root, Observer)).toBeDefined();
+  });
+
+  it('will refresh an effect using this.get', async () => {
+    class Host extends Model {}
+
+    const host = Host.new();
+    const root = new Context({ host });
+    const found: unknown[] = [];
+
+    host.get(($) => {
+      found.push($.get(Test, false));
+    });
+
+    const test = Test.new();
+    root.add(test);
+    await flushMicrotasks();
+
+    expect(found).toEqual([undefined, test]);
+  });
+
+  it('will refresh across a popped provider', async () => {
+    const test = Test.new();
+    const root = new Context();
+    const provider = root.push(test);
+    const { found } = follow(provider.push());
+
+    provider.pop();
+    await flushMicrotasks();
+
+    const next = Test.new();
+    root.add(next);
+    await flushMicrotasks();
+
+    expect(found).toEqual([test, undefined, next]);
+  });
+
+  it('will throw from an effect using this.get when the provider is removed', async () => {
+    class Host extends Model {}
+
+    const caught = mockUncaught();
+    const host = Host.new();
+    const root = new Context({ host });
+    const test = Test.new();
+    const remove = root.add(test);
+    const found: unknown[] = [];
+
+    host.get(($) => {
+      found.push($.get(Test));
+    });
+
+    remove();
+    await flushMicrotasks();
+
+    expect(found).toEqual([test]);
+    expect(caught).toEqual([new Error(`Could not find ${Test} in context.`)]);
   });
 });

@@ -1,90 +1,40 @@
 import { Model, Context } from '@expressive/mvc';
 import { observer, watch } from '@expressive/mvc/observable';
+import { resolver } from '@expressive/mvc/jsx-runtime';
+import { useAmbient } from './context';
 import { Runtime, useFactory, useSettle, useSetup, useWeak } from './runtime';
 
-/** Type may not be undefined - instead will be null.  */
-type NoVoid<T> = T extends undefined | void ? null : T;
+const normal = resolver((Type, compute) => {
+  const idle = Runtime.idle();
 
-declare module '@expressive/mvc' {
-  namespace Model {
-    type ForceRefresh = {
-      /** Request a refresh for current component. */
-      (): void;
+  if (idle) return normal(Type, compute);
 
-      /**
-       * Request a refresh and again after promise either resolves or rejects.
-       *
-       * @param waitFor Promise to wait for.
-       * @returns Promise which resolves, after refresh, to same value as `waitFor`.
-       */
-      <T = void>(waitFor: Promise<T>): Promise<T>;
+  let ambient: Context;
 
-      /**
-       * Request refresh before and after async function.
-       * A refresh will occur both before and after the given function.
-       *
-       * **Note:** Any actions performed before first `await` will occur prior to refresh.
-       *
-       * @param invoke Async function to invoke.
-       * @returns Promise which resolves returned value after refresh.
-       */
-      <T = void>(invoke: () => Promise<T>): Promise<T>;
-    };
+  if (idle === undefined)
+    try {
+      ambient = useAmbient();
+    } catch {
+      return normal(Type, compute);
+    }
+  else ambient = useAmbient();
 
-    type GetFactory<T extends Model, R> = (
-      this: T,
-      current: T,
-      refresh: ForceRefresh
-    ) => R;
+  return Type ? use(ambient, compute) : compute(ambient);
+});
 
-    type GetEffect<T extends Model> = (
-      this: T,
-      current: T,
-      refresh: ForceRefresh
-    ) => null;
-
-    /** Fetch instance of this class from context. */
-    function get<T extends Model>(this: Model.Extends<T>): T;
-
-    /** Fetch instance of this class optionally. */
-    function get<T extends Model>(
-      this: Model.Extends<T>,
-      required: false
-    ): T | undefined;
-
-    /** Fetch instance of this class from context. */
-    function get<T extends Model>(
-      this: Model.Extends<T>,
-      requireValues: true
-    ): Required<T>;
-
-    function get<T extends Model, R>(
-      this: Model.Extends<T>,
-      factory: GetFactory<T, Promise<R> | R>
-    ): NoVoid<R>;
-
-    function get<T extends Model>(
-      this: Model.Extends<T>,
-      factory: GetEffect<T>
-    ): null;
-  }
-}
-
-Model.get = function get<T extends Model>(
-  this: Model.Extends<T>,
-  argument?: boolean | Model.GetFactory<T, unknown>
-) {
-  const Type = this;
+function use(local: Context, compute: (context: Context) => unknown) {
   const [tick, next] = Runtime.useState(0);
   const claim = useSettle(tick);
-  const local = Context.get();
   const dispatch = useWeak(next);
   const render = useFactory(() => {
-    let unwatch: (() => void) | undefined;
+    let latest = compute;
     let mounted = false;
     let pending = false;
-    let value: any;
     let force!: () => void;
+    let target: unknown;
+    let value: unknown;
+    let unwatch: (() => void) | undefined;
+    let thrown: [unknown] | undefined;
 
     function update() {
       pending = false;
@@ -99,97 +49,63 @@ Model.get = function get<T extends Model>(
       else pending = true;
     }
 
-    function refresh<T>(action?: Promise<T> | (() => Promise<T>)): any {
-      if (typeof action == 'function') action = action();
-      update();
-      if (action instanceof Promise) return action.finally(update);
+    function follow(found: unknown) {
+      if (found === target) return;
+
+      unwatch?.();
+      unwatch = undefined;
+      target = value = found;
+
+      if (found instanceof Model && observer(found) !== null) {
+        let first = true;
+
+        unwatch = watch(
+          found,
+          (current) => {
+            value = current;
+
+            if (!first) observed();
+            first = false;
+
+            return (update) => {
+              if (update === true) force();
+            };
+          },
+          false,
+          Runtime.startTransition
+        );
+      }
+
+      return true;
     }
 
     function release() {
-      unsubscribe();
+      unfollow();
       unwatch?.();
-      unwatch = undefined;
+      unwatch = target = undefined;
     }
 
-    function attach(next: T) {
-      if (local.get(Type, false) !== next) return;
+    let first = true;
 
-      unwatch?.();
-
-      if (observer(next) === null) {
-        value = typeof argument === 'function'
-          ? argument.call(next, next, refresh)
-          : next;
-        unwatch = () => {};
-        return release;
+    const unfollow = watch(local, (ctx) => {
+      try {
+        if (follow(latest(ctx)) && !first) observed();
+      } catch (error) {
+        thrown = [error];
+        if (!first) observed();
       }
+    }, false);
 
-      let first = true;
+    first = false;
 
-      unwatch = watch(
-        next,
-        (current) => {
-          if (typeof argument === 'function') {
-            const next = argument.call(current, current, refresh);
-            if (next === value) return;
-            value = next;
-          } else {
-            value = current;
-          }
-
-          if (!first) observed();
-          first = false;
-
-          return (update) => {
-            if (update === true) force();
-          };
-        },
-        argument === true,
-        Runtime.startTransition
-      );
-
-      if (mounted) {
-        pending = true;
-        queueMicrotask(() => pending && update());
-      }
-
-      return release;
+    if (thrown) {
+      unfollow();
+      throw thrown[0];
     }
 
-    const unsubscribe = local.get(Type, attach);
+    let fresh = true;
 
-    if (!unwatch) {
-      unsubscribe();
-      if (argument === false) return () => undefined;
-      throw new Error(`Could not find ${Type} in context.`);
-    }
-
-    if (value === null) {
-      release();
-      return () => null;
-    }
-
-    if (value instanceof Promise) {
-      let error: Error | undefined;
-
-      release();
-
-      value
-        .then(
-          (x) => (value = x),
-          (e) => (error = e)
-        )
-        .finally(update);
-
-      value = null;
-
-      return () => {
-        if (error) throw error;
-        return value === undefined ? null : value;
-      };
-    }
-
-    return () => {
+    return (next: typeof compute) => {
       pending = false;
       useSetup((_self, reset) => {
         force = reset;
@@ -200,9 +116,14 @@ Model.get = function get<T extends Model>(
           return release;
         };
       });
-      return value === undefined ? null : value;
+
+      if (!fresh) follow((latest = next)(local));
+
+      fresh = false;
+
+      return value;
     };
   });
 
-  return render();
-};
+  return render(compute);
+}

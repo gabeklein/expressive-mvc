@@ -32,14 +32,10 @@ function sized(property: string, value: unknown): unknown {
 
 /**
  * Web macro pack. Register with `macro(css)` to opt into pixel units for
- * numbers and the axis shorthands CSS itself does not provide.
+ * numbers and the `size` shorthand.
  */
 const css = {
   '*': (value: unknown, key: string) => ({ [key]: sized(key, value) }),
-  mx: (value: style.Value) => ({ marginLeft: value, marginRight: value }),
-  my: (value: style.Value) => ({ marginTop: value, marginBottom: value }),
-  px: (value: style.Value) => ({ paddingLeft: value, paddingRight: value }),
-  py: (value: style.Value) => ({ paddingTop: value, paddingBottom: value }),
   size: (value: style.Value) =>
     Array.isArray(value)
       ? { width: value[0], height: value[1] }
@@ -48,13 +44,7 @@ const css = {
 
 declare module '@expressive/dom' {
   namespace macro {
-    interface Registry {
-      mx(value: style.Value): style.Map;
-      my(value: style.Value): style.Map;
-      px(value: style.Value): style.Map;
-      py(value: style.Value): style.Map;
-      size(value: style.Value): style.Map;
-    }
+    interface Registry extends macro.From<typeof css> {}
   }
 }
 

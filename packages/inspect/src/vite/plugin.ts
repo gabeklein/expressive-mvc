@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin, WebSocketClient, WebSocketServer } from 'vite';
 
 import type { Call } from '../dispatch';
+import { body, CALL_TIMEOUT, headers, local, parse, reply, type Answer } from '../protocol';
 
 const VIRTUAL = 'virtual:expressive-inspect';
 const RESOLVED = '\0' + VIRTUAL;
@@ -13,7 +14,6 @@ if (import.meta.hot) connect(import.meta.hot);
 `;
 
 export const LIST_TIMEOUT = 1000;
-export const CALL_TIMEOUT = 10000;
 
 const USAGE = 'GET /__inspect lists pages; POST /__inspect/:id with [method, ...args] calls one.';
 
@@ -49,8 +49,6 @@ export function plugin(url: string): Plugin {
     }
   };
 }
-
-type Answer = { value?: unknown; error?: string };
 
 export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
   const pages = new Map<string, WebSocketClient>();
@@ -96,7 +94,7 @@ export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
   }
 
   return async (req: IncomingMessage, res: ServerResponse) => {
-    if (!local(req)) return reply(res, 403, { error: 'Local callers only; browser and proxied requests are refused.' });
+    if (!local(req.socket.remoteAddress, headers(req))) return reply(res, 403, { error: 'Local callers only; browser and proxied requests are refused.' });
 
     const id = decodeURIComponent(req.url!.split('?')[0].slice(1));
 
@@ -118,37 +116,8 @@ export function relay(ws: Pick<WebSocketServer, 'on' | 'clients'>) {
     const answer = await ask(client, call, CALL_TIMEOUT);
 
     if (!answer) return reply(res, 504, { error: 'Page did not answer.' });
-    if (answer.error) return reply(res, 500, { error: answer.error });
+    if (answer.error) return reply(res, answer.status ?? 500, { error: answer.error });
 
     reply(res, 200, answer.value);
   };
-}
-
-const FOREIGN = ['origin', 'sec-fetch-site', 'forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'];
-
-function local(req: IncomingMessage) {
-  return (
-    !FOREIGN.some((header) => header in req.headers) &&
-    /^(::ffff:)?127\.|^::1$/.test(req.socket.remoteAddress ?? '')
-  );
-}
-
-function parse(text: string): Call | undefined {
-  try {
-    const input: unknown = JSON.parse(text);
-
-    if (Array.isArray(input) && typeof input[0] == 'string') return [input[0].split('.'), input.slice(1)];
-  } catch {}
-}
-
-async function body(req: IncomingMessage) {
-  let text = '';
-  for await (const chunk of req) text += chunk;
-  return text;
-}
-
-function reply(res: ServerResponse, status: number, data: unknown) {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(data ?? null));
 }

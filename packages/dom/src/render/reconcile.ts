@@ -12,6 +12,7 @@ import type { Boundary, Fiber } from './fiber';
 import { same } from './hot';
 import { mount, patchFragment, patchText, unmountFiber } from './mount';
 import { patchPortal } from './portal';
+import { authored } from './style';
 import { gather } from './suspense';
 
 function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
@@ -44,7 +45,7 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
       if (child && used.has(child)) child = undefined;
       if (child) used.add(child);
 
-      const fiber = patch(child, value, parent, before, context, boundary, appearance);
+      const fiber = patch(child, value, parent, before, context, boundary, authored(value, appearance));
 
       if (fiber !== child) used.delete(child!);
       next.push(fiber);

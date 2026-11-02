@@ -1,6 +1,6 @@
-import { vi, expect, it, describe } from 'vitest';
+import { vi, expect, expectTypeOf, it, describe } from 'vitest';
 import { flushMicrotasks, mockError, mockPromise, mockUncaught, mockWarn } from '../test.setup';
-import { Context } from './context';
+import { Context, resolver, within } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
 import { set } from './field/set';
@@ -407,6 +407,25 @@ describe('methods', () => {
     const test = Test.new();
 
     expect(inside).toBe(test.is);
+  });
+
+  it('will run an async new()', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {
+      value = 0;
+
+      protected async new() {
+        await done;
+        this.value = 1;
+      }
+    }
+
+    const test = Test.new();
+
+    done.resolve();
+
+    await expect(test).toHaveUpdated('value');
   });
 
   it('will allow overwrite', () => {
@@ -865,6 +884,234 @@ describe('get method', () => {
       auth.name = 'baz';
       await expect(auth).toHaveUpdated();
       expect(effect).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('static get', () => {
+    class Foo extends Model {}
+
+    class Bar extends Model {
+      value = 'bar';
+    }
+
+    class Record extends Model {
+      id = 0;
+
+      static get<T extends Record>(this: Model.Extends<T>, id?: T['id'] | false): T {
+        return Context.get(this, (context) => {
+          const found = context.get(this, id !== false);
+          return found?.id === id ? found : undefined;
+        }) as T;
+      }
+    }
+
+    class User extends Record {
+      name = 'user';
+    }
+
+    it('will throw if not found', () => {
+      expect(() => Foo.get()).toThrow('Could not find Foo in context.');
+    });
+
+    it('will return undefined if optional', () => {
+      expect(Foo.get(false)).toBeUndefined();
+    });
+
+    it('will not accept true', () => {
+      // @ts-expect-error
+      expectTypeOf(Foo.get).toBeCallableWith(true);
+    });
+
+    it('will not resolve an ambiguous lookup', () => {
+      const context = new Context();
+
+      context.add(Foo.new());
+      context.add(Foo.new());
+
+      under(context, () => {
+        expect(Foo.get(false)).toBeUndefined();
+        expect(() => Foo.get()).toThrow('Could not find Foo in context.');
+      });
+    });
+
+    it('will get from current context', () => {
+      const foo = Foo.new();
+      const context = new Context(foo);
+
+      expect(under(context, () => Foo.get())).toBe(foo);
+    });
+
+    it('will not pass required to Context.get', () => {
+      const spy = vi.spyOn(Context, 'get');
+
+      Foo.get(false);
+      expect(() => Foo.get()).toThrow('Could not find Foo in context.');
+
+      const lengths = spy.mock.calls.map((call) => call.length);
+
+      spy.mockRestore();
+
+      expect(lengths).toEqual([2, 2]);
+    });
+
+    it('will pass base forms through an override delegating to super', () => {
+      class Keyed extends Model {
+        id = 0;
+
+        static get<T extends Keyed>(this: Model.Extends<T>, arg?: T['id'] | false): T {
+          if (typeof arg != 'number') return super.get(arg as false) as T;
+
+          return Context.get(this, (context) => {
+            const found = context.get(this);
+            return found.id === arg ? found : undefined;
+          }) as T;
+        }
+      }
+
+      const keyed = Keyed.new({ id: 5 });
+      const foo = Foo.new();
+
+      new Context({ keyed, foo });
+
+      expect(within(foo, () => Keyed.get())).toBe(keyed);
+      expect(within(foo, () => Keyed.get(5))).toBe(keyed);
+      expect(Keyed.get(false)).toBeUndefined();
+    });
+
+    it('will resolve upstream of origin', () => {
+      const outer = Foo.new();
+      const inner = Foo.new();
+
+      new Context(outer).push(inner);
+
+      expect(inner.get(Foo)).toBe(outer);
+      expect(within(inner, () => Foo.get())).toBe(outer);
+    });
+
+    it('will route standalone form through override', () => {
+      const user = User.new({ id: 5 });
+      const context = new Context(user);
+      const found: User = under(context, () => User.get(5));
+
+      expect(found).toBe(user);
+      expect(under(context, () => User.get(6))).toBeUndefined();
+    });
+
+    it('will route instance form through override', () => {
+      const user = User.new({ id: 5 });
+      const foo = Foo.new();
+
+      new Context({ user, foo });
+
+      const found: User = foo.get(User, 5);
+
+      expect(found).toBe(user);
+      expect(foo.get(User, 6)).toBeUndefined();
+    });
+
+    it('will route instruction form through override', () => {
+      class Test extends Model {
+        user = get(User, 5);
+      }
+
+      const user = User.new({ id: 5 });
+      const context = new Context({ user, Test });
+      const found = context.get(Test).user;
+
+      expectTypeOf(found).toEqualTypeOf<User>();
+
+      expect(found).toBe(user);
+    });
+
+    it('will type an override', () => {
+      const lookup = () => {
+        const user = User.get(5);
+        expectTypeOf(user).toEqualTypeOf<User>();
+        // @ts-expect-error - key is a number
+        User.get('5');
+        return user;
+      };
+
+      expect(lookup).toThrow('Could not find User in context.');
+    });
+
+    it('will type instance form of an override', () => {
+      const foo = Foo.new();
+      const lookup = () => {
+        const user = foo.get(User, 5);
+        expectTypeOf(user).toEqualTypeOf<User>();
+        // @ts-expect-error - key is a number
+        foo.get(User, '5');
+        return user;
+      };
+
+      expect(lookup).toThrow('Could not find User in context.');
+    });
+
+    it('will resolve a nested get locally', () => {
+      const inner = vi.fn();
+
+      class Baz extends Model {
+        static get(): any {
+          return Context.get(this, (context, from) => {
+            inner(Bar.get(false), Context.get());
+            return from;
+          });
+        }
+      }
+
+      const bar = Bar.new();
+      const foo = Foo.new();
+      const context = new Context(bar).push(foo);
+
+      expect(foo.get(Baz)).toBe(foo);
+      expect(inner).toBeCalledWith(bar, context);
+
+      bar.set(null);
+    });
+
+    it('will subscribe nested get through tracking origin', async () => {
+      class Baz extends Model {
+        static get(): any {
+          return Context.get(this, () => Bar.get().value);
+        }
+      }
+
+      const bar = Bar.new();
+      const foo = Foo.new();
+      const effect = vi.fn();
+
+      new Context(bar).push(foo);
+
+      foo.get((self) => {
+        effect(self.get(Baz));
+      });
+
+      bar.value = 'baz';
+      await expect(bar).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenLastCalledWith('baz');
+
+      bar.set(null);
+    });
+
+    it('will subscribe through override from tracking proxy', async () => {
+      const user = User.new({ id: 5 });
+      const foo = Foo.new();
+      const effect = vi.fn();
+
+      new Context({ user, foo });
+
+      foo.get((self) => {
+        effect(self.get(User, 5).name);
+      });
+
+      user.name = 'other';
+      await expect(user).toHaveUpdated();
+
+      expect(effect).toBeCalledTimes(2);
+      expect(effect).toHaveBeenLastCalledWith('other');
     });
   });
 
@@ -1675,6 +1922,26 @@ describe('get method', () => {
         await expect(test).toHaveUpdated();
         expect(didUpdate).toBeCalledWith('foo');
         expect(willUpdate).toBeCalledTimes(2);
+      });
+
+      it('will report a throw on retry to catch', async () => {
+        const handler = vi.fn();
+
+        class Failing extends Test {}
+
+        Failing.on({ catch: handler });
+
+        const test = Failing.new();
+
+        test.get(($) => {
+          void $.value;
+          throw new Error('retry');
+        });
+
+        test.value = 'foo';
+
+        await expect(test).toHaveUpdated();
+        expect(handler).toBeCalledWith(expect.objectContaining({ message: 'retry' }), 'effect', undefined);
       });
     });
 
@@ -2513,6 +2780,56 @@ describe('unmanaged keys', () => {
     });
   });
 
+  it('will not manage or enumerate a then field', async () => {
+    class Test extends Model {
+      value = 1;
+      then = (resolve: (value: number) => void) => resolve(this.value);
+    }
+
+    const test = Test.new();
+    const then = test.then;
+
+    expect(await test).toBe(1);
+    expect(test.then).toBe(then);
+    expect(test.get()).toEqual({ value: 1 });
+    expect(Object.keys(test)).toEqual(['value']);
+    expect(Object.getOwnPropertyDescriptor(test, 'then')).toMatchObject({
+      enumerable: false,
+      configurable: true
+    });
+  });
+
+  it('will not overlay a then field', async () => {
+    class Test extends Model {
+      value = 1;
+      then = (resolve: (value: string) => void) => resolve('own');
+    }
+
+    const test = Test.new({ value: 2, then: () => {} } as Model.Assign<Test>);
+
+    expect(test.value).toBe(2);
+    expect(await test).toBe('own');
+
+    test.set({ then: () => {} } as Model.Assign<Test>);
+
+    expect(await test).toBe('own');
+    await expect(test).not.toHaveUpdated();
+  });
+
+  it('will not overlay a then method', async () => {
+    class Test extends Model {
+      value = 1;
+
+      then(resolve: (value: string) => void) {
+        resolve('own');
+      }
+    }
+
+    const test = Test.new({ then: () => {} } as Model.Assign<Test>);
+
+    expect(await test).toBe('own');
+  });
+
   it('will write _ keys thru a subscriber', async () => {
     class Test extends Model {
       value = 1;
@@ -2692,6 +3009,91 @@ describe('unmanaged keys', () => {
     expect(written).toBe(test);
   });
 
+  it('will run _ methods on the instance', () => {
+    class Test extends Model {
+      value = 1;
+      #secret = 10;
+
+      _whoami() {
+        return this;
+      }
+
+      _secret() {
+        return this.#secret;
+      }
+    }
+
+    const test = Test.new();
+    const effect = vi.fn((self: Test) => {
+      expect(self._whoami()).toBe(test.is);
+      expect(self._secret()).toBe(10);
+    });
+
+    test.get(effect);
+
+    expect(effect).toBeCalledTimes(1);
+  });
+
+  it('will not subscribe thru _ methods', async () => {
+    class Test extends Model {
+      value = 1;
+
+      _value() {
+        return this.value;
+      }
+
+      get total() {
+        return this._value();
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.total).toBe(1);
+
+    test.value = 2;
+
+    await expect(test).toHaveUpdated('value');
+    expect(test.total).toBe(1);
+  });
+
+  it('will not bind _ methods', () => {
+    const method = vi.fn();
+
+    class Test extends Model {
+      _method() {
+        return this;
+      }
+    }
+
+    Test.on({ method });
+
+    const test = Test.new();
+    const { _method } = test;
+
+    expect(_method).toBe(Test.prototype._method);
+    expect(Object.getOwnPropertyDescriptor(test, '_method')).toBeUndefined();
+    const plain = {};
+
+    expect(_method.call(plain)).toBe(plain);
+    expect(method).not.toBeCalled();
+  });
+
+  it('will accept _ methods from overlay', () => {
+    class Test extends Model {
+      _method() {
+        return 'before';
+      }
+    }
+
+    const test = Test.new();
+
+    test.set({ _method: () => 'after' });
+
+    expect(test._method()).toBe('after');
+    expect(Test.prototype._method.call(test)).toBe('before');
+  });
+
   it('will exclude _ keys from field types', () => {
     class Test extends Model {
       value = 1;
@@ -2835,6 +3237,29 @@ describe('new method (static)', () => {
     expect(order).toEqual([1, 2, 3, 4]);
   });
 
+  it('will assign an object a callback returns', () => {
+    class Test extends Model {
+      value = 0;
+    }
+
+    const test = Test.new(() => ({ value: 1 }));
+
+    expect(test.value).toBe(1);
+  });
+
+  it('will not assign a class instance a callback returns', () => {
+    let held: Model | undefined;
+
+    class Test extends Model {
+      rows = map<string, number>();
+    }
+
+    const test = Test.new((self) => (held = self) as any, () => new Map() as any);
+
+    expect(held).toBe(test);
+    expect(test.rows.size).toBe(0);
+  });
+
   it('will run callbacks in order', () => {
     const willDestroy2 = vi.fn();
     const willDestroy1 = vi.fn(() => {
@@ -2939,6 +3364,146 @@ describe('new method (static)', () => {
 
     expect(test).not.toHaveProperty('notManaged');
     expect(test).not.toHaveProperty('notMethod');
+  });
+});
+
+describe('context argument', () => {
+  class Theme extends Model {}
+  class Panel extends Model {
+    theme = get(Theme);
+  }
+
+  it('will add instance to the context', () => {
+    const context = new Context();
+    const theme = Theme.new(context);
+
+    expect(context.get(Theme)).toBe(theme);
+    expect(Context.get(theme)).toBe(context);
+  });
+
+  it('will resolve get against the context', () => {
+    const context = new Context({ Theme });
+    const panel = Panel.new(context);
+
+    expect(panel.theme).toBe(context.get(Theme));
+  });
+
+  it('will accept a context nested in arguments', () => {
+    const context = new Context();
+    const theme = Theme.new([context]);
+
+    expect(context.get(Theme)).toBe(theme);
+  });
+
+  it('will remove instance when destroyed', () => {
+    const theme = Theme.new(Context.root);
+
+    expect(Context.root.get(Theme)).toBe(theme);
+
+    theme.set(null);
+
+    expect(Context.root.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will use the first context argument', () => {
+    const a = new Context();
+    const b = new Context();
+    const theme = Theme.new(a, [b]);
+
+    expect(Context.get(theme)).toBe(a);
+    expect(b.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will resolve a consumer placed before its provider', async () => {
+    class Panel extends Model {
+      theme = get(Theme, false);
+    }
+
+    const context = new Context();
+    const panel = Panel.new(context);
+
+    expect(panel.theme).toBe(undefined);
+
+    const theme = Theme.new(context);
+
+    await expect(panel).toHaveUpdated('theme');
+    expect(panel.theme).toBe(theme);
+  });
+
+  it('will ignore context argument of child under a homed owner', () => {
+    class Child extends Model {}
+
+    const ignored = new Context();
+
+    class Owner extends Model {
+      child = new Child(ignored);
+    }
+
+    const context = new Context();
+    const owner = Owner.new(context);
+
+    expect(Context.get(owner.child)).toBe(context);
+    expect(ignored.get(Child, false)).toBeUndefined();
+  });
+
+  it('will ignore context argument of child under an owner with no home', () => {
+    class Child extends Model {}
+
+    const ignored = new Context();
+
+    class Owner extends Model {
+      child = new Child(ignored);
+    }
+
+    const owner = Owner.new();
+    const context = new Context(owner);
+
+    expect(Context.get(owner.child)).toBe(context);
+    expect(ignored.get(Child, false)).toBeUndefined();
+  });
+
+  it('will ignore a returned context', () => {
+    const context = new Context();
+    const theme = Theme.new(() => [context]);
+
+    expect(context.get(Theme, false)).toBeUndefined();
+    expect(Context.get(theme)).toBe(Context.root);
+  });
+
+  it('will defer to a home given before activation', () => {
+    const a = new Context();
+    const b = new Context();
+    const theme = new Theme(b);
+
+    a.add(theme, true);
+    event(theme);
+
+    expect(Context.get(theme)).toBe(a);
+    expect(b.get(Theme, false)).toBeUndefined();
+  });
+
+  it('will link to host of the context without owning', () => {
+    class Host extends Model {}
+
+    const host = Host.new();
+    const layer = new Context().push(host);
+    const theme = Theme.new(layer);
+
+    expect(theme.get(Model)).toBe(host);
+
+    host.set(null);
+
+    expect(layer.get(Theme)).toBe(theme);
+  });
+
+  it('will not throw if destroyed after context is popped', () => {
+    const context = new Context();
+    const theme = Theme.new(context);
+
+    context.pop();
+
+    expect(context.get(Theme, false)).toBeUndefined();
+    expect(() => theme.set(null)).not.toThrow();
   });
 });
 
@@ -3455,6 +4020,570 @@ describe('on setup / ready stages (static)', () => {
     Test.new();
 
     expect(order).toEqual(['setup', 'new', 'ready']);
+  });
+
+  it('will run ready once an async new() resolves', async () => {
+    const done = mockPromise();
+    const order: string[] = [];
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+        order.push('new');
+      }
+    }
+
+    Test.on({ ready: () => void order.push('ready') });
+    Test.new();
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(order).toEqual(['new', 'ready']);
+  });
+
+  it('will not run ready if an async new() rejects, handing the rejection to catch', async () => {
+    const ready = vi.fn();
+    const handler = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        throw new Error('failed');
+      }
+    }
+
+    Test.on({ ready, catch: handler });
+    Test.new();
+
+    await flushMicrotasks();
+    expect(ready).not.toBeCalled();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+  });
+
+  it('will not run ready if destroyed before an async new() resolves', async () => {
+    const done = mockPromise();
+    const ready = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ ready });
+    Test.new().set(null);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(ready).not.toBeCalled();
+  });
+
+  it('will run effects after a synchronous new()', () => {
+    const order: string[] = [];
+
+    class Test extends Model {
+      protected new() {
+        this.get(() => void order.push('effect'));
+        order.push('new');
+      }
+    }
+
+    Test.on({ ready: () => void order.push('ready') });
+    Test.new();
+
+    expect(order).toEqual(['new', 'ready', 'effect']);
+  });
+
+  it('will compute getters while an async new() is pending', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {
+      value = 1;
+
+      get double() {
+        return this.value * 2;
+      }
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+
+    expect(test.double).toBe(2);
+    test.value = 2;
+    await expect(test).toHaveUpdated('value');
+    expect(test.double).toBe(4);
+
+    done.resolve();
+  });
+
+  it('will place in a context argument before an async setup resolves', async () => {
+    const done = mockPromise();
+
+    class Test extends Model {}
+
+    Test.on({ setup: () => done });
+
+    const test = Test.new(Context.root);
+
+    expect(Context.root.get(Test)).toBe(test);
+
+    done.resolve();
+    await flushMicrotasks();
+    test.set(null);
+  });
+
+  it('will destroy the instance if a setup handler rejects', async () => {
+    const handler = vi.fn();
+    const create = vi.fn();
+
+    class Test extends Model {
+      protected new() {
+        create();
+      }
+    }
+
+    Test.on({ catch: handler, setup: () => Promise.reject(new Error('failed')) });
+
+    const test = Test.new();
+
+    expect(create).toBeCalled();
+
+    await flushMicrotasks();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+    expect(test.get(null)).toBe(true);
+  });
+
+  it('will destroy the instance if an async new() rejects', async () => {
+    const handler = vi.fn();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        throw new Error('failed');
+      }
+    }
+
+    Test.on({ catch: handler });
+
+    const test = Test.new();
+    const settled = test.get(effect);
+
+    await flushMicrotasks();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+    expect(test.get(null)).toBe(true);
+    expect(effect).not.toBeCalled();
+    await expect(Promise.resolve(settled)).rejects.toThrow(`${test} is destroyed.`);
+  });
+
+  it('will defer effects until an async new() resolves', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+    const later = vi.fn();
+
+    class Test extends Model {
+      value = 0;
+
+      protected async new() {
+        this.get(($) => void effect($.value));
+        await done;
+        this.value = 1;
+      }
+    }
+
+    const test = Test.new();
+
+    test.get(($) => void later($.value));
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+    expect(later).not.toBeCalled();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+    expect(effect).toBeCalledWith(1);
+    expect(later).toBeCalledWith(1);
+  });
+
+  it('will resolve an awaited effect once an async new() resolves', async () => {
+    const done = mockPromise();
+    let ready = false;
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+    const settled = test.get(() => {}).then(() => { ready = true; });
+
+    await flushMicrotasks();
+    expect(ready).toBe(false);
+
+    done.resolve();
+    await settled;
+    expect(ready).toBe(true);
+  });
+
+  it('will not run deferred effects if destroyed before an async new() resolves', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+    const settled = test.get(effect);
+
+    test.set(null);
+    await expect(Promise.resolve(settled)).rejects.toThrow(`${test} is destroyed.`);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+  });
+
+  it('will not run a deferred effect cancelled before an async new() resolves', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    const stop = Test.new().get(effect);
+
+    stop();
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+  });
+
+  it('will run remaining deferred effects if one throws', async () => {
+    const done = mockPromise();
+    const handler = vi.fn();
+    const effect = vi.fn();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ catch: handler });
+
+    const test = Test.new();
+
+    test.get(() => { throw new Error('first run'); });
+    test.get(effect);
+
+    done.resolve();
+    await flushMicrotasks();
+
+    expect(effect).toBeCalledTimes(1);
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'first run' }), 'effect', undefined);
+  });
+
+  it('will hold ready until an owned child settles', async () => {
+    const done = mockPromise();
+    const order: string[] = [];
+
+    class Child extends Model {
+      protected async new() {
+        await done;
+        order.push('child new');
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    Child.on({ ready: () => void order.push('child ready') });
+    Parent.on({ ready: () => void order.push('parent ready') });
+    Parent.new();
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(order).toEqual(['child new', 'child ready', 'parent ready']);
+  });
+
+  it('will hold a child and grandchild for a hold the root carries', async () => {
+    const done = mockPromise();
+    const order: string[] = [];
+
+    class Leaf extends Model {
+      value = 0;
+
+      constructor() {
+        super();
+        this.get(($) => void order.push(`leaf effect ${$.value}`));
+      }
+    }
+
+    class Child extends Model {
+      leaf = new Leaf();
+    }
+
+    class Root extends Model {
+      child = new Child();
+    }
+
+    Leaf.on({ ready: () => void order.push('leaf ready') });
+    Child.on({ ready: () => void order.push('child ready') });
+    Root.on({ ready: () => void order.push('root ready'), setup: () => done });
+
+    const root = Root.new();
+
+    root.child.leaf.value = 1;
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(order).toEqual(['leaf ready', 'child ready', 'root ready', 'leaf effect 1']);
+  });
+
+  it('will not hold a child for the parent\'s own async new()', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+    const ready = vi.fn();
+
+    class Child extends Model {
+      constructor() {
+        super();
+        this.get(effect);
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    Child.on({ ready });
+    Parent.new();
+
+    expect(effect).toBeCalledTimes(1);
+    expect(ready).toBeCalledTimes(1);
+    done.resolve();
+  });
+
+  it('will settle a child with nothing to wait on inline', () => {
+    const order: string[] = [];
+
+    class Child extends Model {
+      constructor() {
+        super();
+        this.get(() => void order.push('child effect'));
+      }
+
+      protected new() {
+        order.push('child new');
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+
+      constructor() {
+        super();
+        this.get(() => void order.push('parent effect'));
+      }
+
+      protected new() {
+        order.push('parent new');
+      }
+    }
+
+    Child.on({ ready: () => void order.push('child ready') });
+    Parent.on({ ready: () => void order.push('parent ready') });
+    Parent.new();
+
+    expect(order).toEqual(['child new', 'child ready', 'child effect', 'parent new', 'parent ready', 'parent effect']);
+  });
+
+  it('will park an effect a parent registers on its held child', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+
+    class Child extends Model {
+      value = 1;
+    }
+
+    class Root extends Model {
+      child = new Child();
+
+      protected new() {
+        this.child.get(($) => void effect($.value));
+      }
+    }
+
+    Root.on({ setup: () => done });
+    Root.new();
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).toBeCalledWith(1);
+  });
+
+  it('will suspend a parked effect again on an unset field', async () => {
+    const done = mockPromise();
+    const seen = vi.fn();
+
+    class Test extends Model {
+      value = set<string>();
+
+      protected async new() {
+        await done;
+      }
+    }
+
+    const test = Test.new();
+
+    test.get(($) => void seen($.value));
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(seen).not.toBeCalled();
+
+    test.value = 'ready';
+    await expect(test).toHaveUpdated();
+    expect(seen).toBeCalledWith('ready');
+  });
+
+  it('will settle a child adopted after ready on its own', async () => {
+    const done = mockPromise();
+    const ready = vi.fn();
+
+    class Child extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    class Parent extends Model {
+      child?: Child = undefined;
+    }
+
+    Child.on({ ready });
+    Parent.on({ ready });
+
+    const parent = Parent.new();
+
+    expect(ready).toBeCalledTimes(1);
+
+    parent.child = new Child();
+
+    await flushMicrotasks();
+    expect(ready).toBeCalledTimes(1);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(ready).toBeCalledTimes(2);
+  });
+
+  it('will destroy a child whose setup rejects without failing the parent', async () => {
+    const handler = vi.fn();
+    const ready = vi.fn();
+
+    class Child extends Model {
+      protected async new() {
+        throw new Error('failed');
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    Child.on({ catch: handler });
+    Parent.on({ ready });
+
+    const parent = Parent.new();
+
+    await flushMicrotasks();
+    expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
+    expect(parent.child.get(null)).toBe(true);
+    expect(parent.get(null)).toBe(false);
+    expect(ready).toBeCalledTimes(1);
+  });
+
+  it('will not settle children if the parent is destroyed first', async () => {
+    const done = mockPromise();
+    const effect = vi.fn();
+    const ready = vi.fn();
+
+    class Child extends Model {
+      constructor() {
+        super();
+        this.get(effect);
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    Child.on({ ready });
+    Parent.on({ setup: () => done });
+
+    Parent.new().set(null);
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+    expect(ready).not.toBeCalled();
+  });
+
+  it('will release effects a deferred ready creates when destroyed', async () => {
+    const done = mockPromise();
+    const seen = vi.fn();
+
+    class Other extends Model {
+      value = 0;
+    }
+
+    const other = Other.new();
+
+    class Test extends Model {
+      protected async new() {
+        await done;
+      }
+    }
+
+    Test.on({ ready: () => void other.get(($) => seen($.value)) });
+
+    const test = Test.new();
+
+    done.resolve();
+    await flushMicrotasks();
+    expect(seen).toBeCalledTimes(1);
+
+    test.set(null);
+    other.value = 1;
+    await flushMicrotasks();
+    expect(seen).toBeCalledTimes(1);
   });
 
 });
@@ -4607,3 +5736,13 @@ describe('computed (getters)', () => {
     });
   });
 });
+
+function under<R>(context: Context, fn: () => R): R {
+  const previous = resolver((_Type, compute) => compute(context));
+
+  try {
+    return fn();
+  } finally {
+    resolver(previous);
+  }
+}

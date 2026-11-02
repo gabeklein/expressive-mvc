@@ -1,6 +1,8 @@
-import { Context } from './context';
+import { join } from './context';
+import { element } from './element';
+import { listener } from './observable';
 import { set } from './field/set';
-import { Model, adopt, trailing } from './state';
+import { Model, adopt, plain, trailing } from './state';
 
 import type { Host } from './jsx-runtime';
 
@@ -24,9 +26,9 @@ type ForProps<T extends Model> = {
   fallback?: Component.Node | false;
   catch?: (error: Error, instance: Component) => Promise<void> | void;
 } & (
-  | { for: Model.Extends<T>; is?: (instance: T) => void }
+  | { for: Model.Extends<T>; is?: (instance: T) => Model.Assign<T> | void }
   | { for: T | undefined; is?: never }
-) & { [K in Exclude<keyof T, keyof Model> & Acceptable<T>]?: T[K] };
+) & { [K in Acceptable<Pick<T, Exclude<keyof T, keyof Model>>>]?: T[K] };
 
 declare namespace Component {
   /**
@@ -44,10 +46,11 @@ declare namespace Component {
      * Callback for newly created instance. Only called once.
      *
      * Runs after props apply but **before** the `new()` lifecycle hook - so it
-     * may configure state that `new()` then observes. To react to a fully
-     * initialized instance instead, use `watch` or an effect.
+     * may configure state that `new()` then observes. A returned object is
+     * assigned, like props. To react to a fully initialized instance instead,
+     * use `watch` or an effect.
      */
-    is?(instance: T): void;
+    is?(instance: T): Model.Assign<T> | void;
 
     /**
      * Fallback to show when suspended or in error recovery.
@@ -64,7 +67,7 @@ declare namespace Component {
   }
 
   type ModelProps<T extends Model> = {
-    [K in Exclude<keyof T, keyof Component> & Acceptable<T>]?: T[K];
+    [K in Acceptable<Pick<T, Exclude<keyof T, keyof Component>>>]?: T[K];
   };
 
   /** @deprecated Renamed to `ModelProps`. */
@@ -121,7 +124,7 @@ class Component<P = unknown> extends Model {
 
     super([
       props,
-      rest.filter((x) => !(x instanceof Context)),
+      rest,
       () => {
         const other = twin || PENDING.get(props)!;
 
@@ -130,11 +133,15 @@ class Component<P = unknown> extends Model {
           other.set(null);
         }
 
+        let out: unknown;
+
         if (provider) provide(this);
-        else props.is?.(this);
+        else out = props.is?.(this);
 
         Object.defineProperty(this, 'props', { enumerable: false });
         PENDING.delete(props);
+
+        if (plain(out)) return out;
       }
     ]);
 
@@ -200,32 +207,13 @@ Component.on({
 function provide(self: Component<any>) {
   let input: unknown;
   let target: Model | undefined;
-  let owned: { mount?(): unknown } | undefined;
-  let mounted = false;
-  let release: unknown;
+  let owned: Model | undefined;
+  let provided: (() => void) | undefined;
 
-  function unmount() {
-    if (typeof release == 'function') release();
-    release = undefined;
+  function remove() {
+    if (provided) provided();
+    provided = undefined;
   }
-
-  const inherited = (self as { mount?(): unknown }).mount;
-
-  Object.defineProperty(self, 'mount', {
-    configurable: true,
-    value() {
-      const done = inherited?.call(self);
-
-      mounted = true;
-      release = owned?.mount?.();
-
-      return () => {
-        mounted = false;
-        unmount();
-        if (typeof done == 'function') done();
-      };
-    }
-  });
 
   function sync() {
     const { for: next, is, children, fallback, catch: _catch, ...rest } = self.props as Record<string, any>;
@@ -234,18 +222,25 @@ function provide(self: Component<any>) {
 
     if (next !== input) {
       input = next;
-      unmount();
+      remove();
 
       if (Model.is(next)) {
-        adopt(self, 'for', (target = new (next as Model.Type)(rest)));
-        owned = target as typeof owned;
-        is?.(target);
-        if (mounted) release = owned!.mount?.();
-        return;
+        owned = target = new (next as Model.Type)(rest);
+      } else {
+        owned = undefined;
+        target = next instanceof Model ? next : undefined;
       }
 
-      owned = undefined;
-      adopt(self, 'for', (target = next instanceof Model ? next : undefined));
+      if (target) provided = join(self, target, true);
+      adopt(self, 'for', target);
+
+      if (owned) {
+        const out = is?.(owned);
+
+        if (plain(out)) owned.set(out);
+
+        return;
+      }
     }
 
     target?.set(rest);
@@ -253,6 +248,9 @@ function provide(self: Component<any>) {
 
   sync();
   self.set('props', sync);
+  listener(self, remove, null);
 }
+
+element(Component);
 
 export { Component };

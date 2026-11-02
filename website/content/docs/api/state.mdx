@@ -9,9 +9,7 @@ description: The base Model class - every method, static, and lifecycle hook
 import { Model } from '@expressive/mvc';
 ```
 
-`Model` was named `State` before; `State` remains exported as a deprecated alias of the same class.
-
-Methods marked <small>(React)</small> exist once the adapter is loaded - import `'@expressive/react'` once in your entry.
+Members marked <small>(host)</small> exist once a host is loaded - import `'@expressive/react'` once in your entry, or render with `@expressive/dom`. Those marked <small>(React)</small> are React-only.
 
 <br />
 
@@ -51,7 +49,7 @@ Counter.is(subCounter); // true if subCounter extends Counter
 
 ### `Model.on(handler)`
 
-Register lifecycle handlers, keyed by stage, for this class and its subclasses. Returns a function to remove them. It takes an object of stages only - passing a bare function throws.
+Register lifecycle handlers, keyed by stage, for this class and its subclasses. Returns a function to remove them. A bare function registers as the `setup` stage.
 
 ```ts
 const stop = Counter.on({
@@ -80,8 +78,8 @@ Activation is a queue: `setup` handlers, then own fields become managed, then co
 
 - `type` - runs once when the class first bootstraps, before its members are classified and bound. Receives the class itself, so a handler can inspect or reshape the prototype first. Registered on a base class, it runs for each subclass too.
 - `setup` - per-instance, before properties are observed and before `new()`. May return a cleanup, further constructor args, or an object of values to assign.
-- `ready` - per-instance, after the instance's `new()` - own values are observed and constructor args applied by then. May return a cleanup.
-- `method(key, fn, self)` - each time a method is bound to an instance: first read, an assigned replacement, the rebind after a hot patch. `fn` is the bound function. A handler registered later misses existing bindings. Meant for tooling.
+- `ready` - per-instance, after the instance's `new()` - own values are observed and constructor args applied by then. May return a cleanup. When `new()` is async, or any earlier step returns a promise, `ready` waits for it to resolve, after context placement; a rejection (reported to `catch` as `setup`) or a destroy first skips it. Readiness is per tree: a parent waits for the children it owned at activation to settle, a hold on the parent when they activate reaches them, and children settle first.
+- `method(key, fn, self)` - each time a method is bound to an instance: first read, an assigned replacement, the rebind after a hot patch. `fn` is the bound function. A handler registered later misses existing bindings. `_` methods are never bound, so never reach it. Meant for tooling.
 - `catch(error, kind, key?)` - see [Error handling](#error-handling).
 
 ### Error handling
@@ -111,13 +109,65 @@ Model.on({
 
 A getter that throws on its _first_ read throws to the reader instead. `Component.catch()` is a separate, per-instance boundary for child render errors - see [Component](/docs/api/component).
 
-### `Model.use(...args)` <small>(React)</small>
+### `Model.get(...)` <small>(host)</small> [#modelget]
 
-Create an instance scoped to a React component. Covered in [Hooks](/docs/api/hooks).
+Fetches an instance of this class from context and subscribes the reading component to the properties it accesses. In React, context is what a [`Component`](/docs/api/component) renders or a `<Component for>` element provides.
 
-### `Model.get(...)` <small>(React)</small>
+```tsx
+function Profile() {
+  const { user } = UserProfile.get();
+  return <h1>{user.name}</h1>;
+}
+```
 
-Look up an instance from React context. Covered in [Hooks](/docs/api/hooks).
+- Throws `Could not find UserProfile in context.` if the instance is not provided above.
+- Re-subscribes (and refreshes) if the upstream instance is replaced or arrives after mount.
+- Outside a render it reads the root context, untracked; through `state.get(Type)`, that instance's context.
+- A React hook: call it unconditionally at the top of a function component or `render()`.
+
+#### Optional lookup
+
+```tsx
+const maybe = Theme.get(false); // Theme | undefined
+```
+
+#### Values that may be unset
+
+Hold the value as a Model field - it joins its owner's context. Destructure it and render conditionally; the child reads it with `Draft.get()`:
+
+```tsx
+const { draft } = Settings.get();
+if (draft) return <Editor />;
+return <Spinner />;
+```
+
+#### Deriving values
+
+Destructure and derive in render, declare a getter on the Model for a shared derivation, or move side effects to an effect declared in `new()`.
+
+#### Overriding `get`
+
+A subclass may override static `get` with one signature of its own. It handles its own keys and delegates the base forms with `super.get(arg)` - ordinary inheritance, so `get()` and `get(false)` keep working. For its own key it calls `Context.get(this, compute)` exactly once, synchronously; `compute(context, from?)` returns the result, `from` being the calling instance for `session.get(User, 5)` and the `get` instruction.
+
+```ts
+import { Context, Model } from '@expressive/mvc';
+
+class User extends Model {
+  id = 0;
+
+  static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | false): T {
+    if (typeof id != 'number') return (id === false ? super.get(false) : super.get()) as T;
+
+    return Context.get(this, (context) => context.get(Directory).find(id) as T);
+  }
+}
+```
+
+`compute` should look up the same types whatever the key - branch on what it finds, not on which types to look up. React follows the lookups a component made on its first render.
+
+Type the parameter from the instance (`T['id'] | false`) so the base forms stay callable - a plain `key?: string` won't type-check against the base `get`. Delegate each base form with its own `super.get` call - a `false | undefined` argument matches no single base overload.
+
+`User.get(5)` in a component keeps context and tracking. `session.get(User, 5)` and the instruction `get(User, 5)` route through the same override from that instance's context. The instruction resolves once; a thrown Promise suspends the field until it settles, then retries.
 
 <br />
 
@@ -173,6 +223,7 @@ state.get(null, () => console.log('destroyed')); // register callback
 ```ts
 const parent = child.get(Parent); // throws if not found
 const maybe = child.get(Parent, false); // undefined if not found
+const user = session.get(User, 5); // User.get(5), from session's context
 ```
 
 ### `get(Type, callback, downstream?)` - subscribe to context availability
@@ -371,41 +422,7 @@ class Cart extends Model {
 }
 ```
 
-Runs once after activation, wherever the instance is created - including during server render. Return a cleanup function to run on destruction, or `void`. `new?()` is declared as an optional protected member of `Model`, so its signature is type-checked and `override` catches a misspelling. If it returns a promise that rejects, the rejection is reported with kind `setup`. Setup that must accompany the instance itself goes here; client-only resources (DOM, timers, subscriptions) belong in `mount()`.
-
-### `use(...props)` <small>(React)</small>
-
-```ts
-class SearchState extends Model {
-  query = '';
-
-  use(props: { initialQuery: string }) {
-    const { pathname } = useLocation();
-    this.query = props.initialQuery;
-  }
-}
-```
-
-Runs on every render when used via `Model.use()`. Parameter types define the argument types of `Model.use()` itself. Use for bridging external React hooks.
-
-### `mount()` <small>(React)</small>
-
-```ts
-class Ticker extends Model {
-  elapsed = 0;
-
-  mount() {
-    const id = setInterval(() => this.elapsed++, 1000);
-    return () => clearInterval(id);
-  }
-}
-```
-
-Runs once when the component that **owns** the instance commits - `Model.use()`, a `<Component for={StateClass}>` that created it, or a Component rendered as JSX. Return a function to run on unmount.
-
-Never runs during server render, and never for an instance merely observed or placed - `.get()` and `{instance}` reach an instance the component does not own, and `Model.new()` has no component at all. Client-only effects (DOM, timers, subscriptions) belong here; setup that must accompany the instance itself belongs in `new()`.
-
-<br />
+Runs once after activation, wherever the instance is created - including during server render. Return a cleanup function to run on destruction, or `void`. `new?()` is declared as an optional protected member of `Model`, so its signature is type-checked and `override` catches a misspelling. If it returns a promise that rejects, the rejection is reported with kind `setup`. Setup that must accompany the instance itself goes here; client-only resources (DOM, timers, subscriptions) go in an effect declared here - `this.get(() => { ...; return cleanup })` - which a host holds until the owning component commits.
 
 ## Iteration
 

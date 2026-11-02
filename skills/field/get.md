@@ -19,6 +19,8 @@ class Child extends Model {
 }
 ```
 
+Owner and siblings win; otherwise the field follows its context provider - a closer one arriving replaces it. On removal an optional field reads `undefined`; a required one suspends until another arrives.
+
 ### Upstream with callback
 
 ```ts
@@ -30,7 +32,17 @@ class Child extends Model {
 }
 ```
 
-Receives `(state, subject)`. Runs when the upstream resolves, and again when it is replaced. A returned cleanup runs when the subject is destroyed.
+Receives `(state, subject)`. Runs when the upstream resolves, and again when it is replaced. A returned cleanup runs when that upstream is replaced or leaves, or the subject is destroyed.
+
+### Key
+
+```ts
+class Order extends Model {
+  buyer = get(User, 5); // User.get(5) as defined, this as origin
+}
+```
+
+A first argument that is neither boolean nor function forwards every argument to `Type.get` - for a class overriding static `get` ([../state/get.md](../state/get.md#static-get)). Resolves once, as the field is defined - `new()` can read it. A thrown Promise suspends the field and retries once settled; an Error throws from construction.
 
 ### Downstream collection
 

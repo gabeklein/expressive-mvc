@@ -1,5 +1,85 @@
 # @expressive/mvc
 
+## 0.93.0
+
+### Minor Changes
+
+- [#538](https://github.com/gabeklein/expressive-mvc/pull/538) [`c2a6b40`](https://github.com/gabeklein/expressive-mvc/commit/c2a6b4064fac8000e0cb7b0212d02345a87f6621) `new()` may be async: its declared return admits `Promise<void>`, and a promise returned by `new()` - or by any activation step, a setup handler or a constructor callback - holds the `ready` stage (`on({ ready })`) until it resolves. A rejection reports to `catch` as `setup`, then destroys the instance. Synchronous activation is unchanged.
+
+- [#589](https://github.com/gabeklein/expressive-mvc/pull/589) [`bdee9a1`](https://github.com/gabeklein/expressive-mvc/commit/bdee9a1715f9b080e9376022237b3a56a8b7cc12) `<Component for={Type}>` no longer defines `mount` on the provider or calls it on the instance it constructs - that instance is a child of the provider, so its effects wait for the provider's commit and a replacement while committed is released at once.
+
+- [#583](https://github.com/gabeklein/expressive-mvc/pull/583) [`d37a20d`](https://github.com/gabeklein/expressive-mvc/commit/d37a20d917767705c18b445c036ab74f432bd3e7) A `Context` is a valid constructor argument: `X.new(context)` makes it the instance's home - added explicitly as it activates, so `get()` resolves there, and removed when destroyed; `ctx.pop()` removes the entry, not the instance. `X.new(Context.root)` replaces adding an instance to root by hand.
+
+  - The first claim wins: a claim before activation - a host mounting the instance, `ctx.add`, `ctx.push`, or an owner adopting a field child - then the first context argument. Later context arguments are ignored, so an owned child's home is always its owner's.
+  - An instance placed in a host's context takes that host as owner for `get()`, as with `ctx.push`, but is not destroyed with it.
+  - `Component` no longer discards a context among its constructor arguments: `Panel.new(props, context)` adds it to that context. Under a host, the host's placement still wins.
+
+- [#586](https://github.com/gabeklein/expressive-mvc/pull/586) [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7) An effect registered before an instance is ready - during construction, in `new()`, or while an async setup step is pending - holds its first run until the instance settles. Readiness is per tree: a parent's `ready` waits for the children it owned at activation to settle, and a hold on a parent when its children activate (an async `setup` handler) holds their `ready` and effects too; children settle first. Destroying the instance first rejects an awaited release instead of hanging it; one deferred effect throwing does not stop the rest.
+
+- [#576](https://github.com/gabeklein/expressive-mvc/pull/576) [`ac2cd5c`](https://github.com/gabeklein/expressive-mvc/commit/ac2cd5caca0ad91777fb23d038bfbec67e88ea93) `get(Type)` fields follow their context provider, as `Model.get()` and tracked lookups do. A field no longer holds a provider that left context: an optional field reads `undefined` and a required one suspends until another arrives. Owner and siblings still win. A callback's returned cleanup now runs when its upstream is replaced or leaves, not only on destroy.
+
+- [#578](https://github.com/gabeklein/expressive-mvc/pull/578) [`a183961`](https://github.com/gabeklein/expressive-mvc/commit/a183961f28b4124049700fb9e2442723fe3ec7ab) Remove `static global` and the `Model.Global` type. An instance no longer registers itself into `Context.root`; own shared state from a render-less `Global` Component mounted at the app's top - readers still call `Session.get()` - or add an instance to root explicitly - `X.new(Context.root)` removes the entry when it is destroyed. A class that still declares `static global` throws on construction, naming the class. Root's implicit-add eviction goes with it - root now resolves like any other context.
+
+  `Router` and `BrowserRouter` no longer declare `global`, so a top-level `BrowserRouter.new()` is no longer found by every `Route`; mount `<BrowserRouter>` at the app's root, or add it to root explicitly. Inspect counts any instance held in root as claimed.
+
+- [#579](https://github.com/gabeklein/expressive-mvc/pull/579) [`4d0c270`](https://github.com/gabeklein/expressive-mvc/commit/4d0c270b0914ba39e5f8b549fac962d9be5aff87) `then` is a reserved key: a `then` field is unmanaged - non-enumerable, absent from `get()` and `Model.Values`, never notifying - and neither a `then` field nor method is overlaid by constructor args or `set({ ... })`. A class may make its instances thenable without that function becoming state.
+
+- [#582](https://github.com/gabeklein/expressive-mvc/pull/582) [`245e59a`](https://github.com/gabeklein/expressive-mvc/commit/245e59ac0f0ac0b33e586219e6ee188a5d7cbe07) `_` methods are no longer auto-bound. Like `_` accessors, they run on the instance when called through it or a tracking subject - so they never subscribe and can reach `#private` members - but a detached reference keeps the caller's `this`, and the `method` stage skips them.
+
+### Patch Changes
+
+- [#580](https://github.com/gabeklein/expressive-mvc/pull/580) [`776243b`](https://github.com/gabeklein/expressive-mvc/commit/776243b0ce94bd7b4b81d4ad1a290d33abe4b8bb) Generic `Component` subclasses now type in JSX - `<Table rows={rows} />` infers `T` and `<Table<Row> />` accepts explicit arguments, where both previously failed with a circular mapped type (TS2615).
+
+- [#586](https://github.com/gabeklein/expressive-mvc/pull/586) [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7) An effect that throws when retried after suspending now reports to `catch` as `effect` instead of escaping uncaught.
+
+## 0.92.0
+
+### Minor Changes
+
+- [#551](https://github.com/gabeklein/expressive-mvc/pull/551) [`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f) `Model.get` is defined in core and may be overridden: an override handles its own arguments, delegates base forms to `super.get(arg)`, and resolves its own by calling `Context.get(this, compute)` once, synchronously, to keep host context and render tracking - `User.get(id)`. `Context.get(Type, compute)` resolves such a lookup; bare `Context.get()` returns the current context, else root. `state.get(Type, ...args)` and a `get(Type, key, ...)` instruction call `Type.get` with that instance's context current and the instance as origin, so they follow an override. Elsewhere `Context.get` defers to the host's resolver - root by default; hosts install one with `resolver` from `@expressive/mvc/jsx-runtime` to supply render context and tracking. A tracked caller - a render, or `state.get(Type, ...)` through a tracking proxy - follows every lookup `compute` makes, so an override reading another type refreshes when that type's provider changes. An ambiguous `Model.get()` throws `Could not find` and `get(false)` returns `undefined` - `state.get(Type)` included, which returned `null`.
+
+- [#571](https://github.com/gabeklein/expressive-mvc/pull/571) [`c052455`](https://github.com/gabeklein/expressive-mvc/commit/c0524556b85ad598b2f6db774b639627b61cb337) A `get(Type, key, ...)` instruction resolves as its field is defined, so `new()` can read it; it ran after `new()` before. A `Type.get` that throws a Promise no longer throws it from construction - the field suspends readers and resolves once the Promise settles.
+
+## 0.91.0
+
+### Minor Changes
+
+- [#554](https://github.com/gabeklein/expressive-mvc/pull/554) [`5e6689c`](https://github.com/gabeklein/expressive-mvc/commit/5e6689c8c18ec34323fccd881552e76b4354d11e) An `is` callback's returned object is assigned to the instance, once, before `new()` - a seed, where props reassign every render: `<Counter is={() => ({ count: start })} />`. The same holds for `<Component for={Type} is>`.
+
+  **Breaking (types):** `is` is typed `(instance) => Model.Assign<T> | void`. A concise arrow capturing the instance returns it and no longer type-checks - discard the result with `void` or braces:
+
+  ```tsx
+  <Counter is={(c) => void (counter = c)} />
+  ```
+
+  **Fix:** a constructor callback returning anything other than a plain object - the instance itself, a `Map` - is no longer assigned. `Model.new((self) => (held = self))` threw on read-only fields such as `map()`.
+
+- [#558](https://github.com/gabeklein/expressive-mvc/pull/558) [`a55605b`](https://github.com/gabeklein/expressive-mvc/commit/a55605b2439078b2694abc2ac9361ca30fa2e119) **Breaking:** the deprecated `State` alias of `Model` is removed.
+
+- [#562](https://github.com/gabeklein/expressive-mvc/pull/562) [`aeb0787`](https://github.com/gabeklein/expressive-mvc/commit/aeb07871c5cfe30df9fd945f6c5f2c2832d94168) Context lookups are observable.
+
+  - A tracked lookup re-runs when a change can alter its result - a closer provider arriving, the found one removed - and not for providers above the one found, other types or siblings.
+  - `this.get(Type)` inside an effect or render now refreshes when its provider changes. A required lookup whose provider is removed throws.
+  - dom: `Model.get` follows a provider replaced by a field assignment, arriving after mount or removed.
+  - react: `Model.get` follows a provider arriving after mount, including an optional `Model.get(false)` that first found nothing, and one removed.
+  - dom and react: once its instance leaves context, `Model.get(false)` returns `undefined` and a required `Model.get()` throws `Could not find`. Unmount consumers before destroying their provider.
+
+- [#560](https://github.com/gabeklein/expressive-mvc/pull/560) [`f5fc45a`](https://github.com/gabeklein/expressive-mvc/commit/f5fc45ae6105876438b3c17a87f1da2546fe0d63) Renderable classes declare themselves to the core as they load - `Component`, `has` lists and pools, and `map` collections - and a host seams every declared class through `elements`, exported from `@expressive/mvc/jsx-runtime`, with one element seam. Each promises the same protocol: `is` names the instance behind a derived view and `render()` returns what to show; the collections gain both members. The React adapter no longer imports `has` or `map` to patch them, so collection code ships only in apps that import a collection: `Model` only 12.1 → 10.4 kB, a typical app 12.9 → 11.3 kB, an app using collections 12.1 kB. Declarations made before the host loaded are replayed, so import order does not matter.
+
+### Patch Changes
+
+- [#561](https://github.com/gabeklein/expressive-mvc/pull/561) [`2bef0ed`](https://github.com/gabeklein/expressive-mvc/commit/2bef0ed387aa4060725644a90d1def7221117810) Context provision follows ownership.
+
+  - A Model's own lookups (`get` fields, `this.get(Type)`) start from its ownership chain, not from wherever it was first provided.
+  - `has` and `map` rows register with their owner like any owned child, held until the owner joins a context - they no longer land at root.
+  - `<Component for>` provides its target explicitly at its own level unless an explicit provider above already holds it. An instance that was already provided above - by a field referencing it - no longer disappears from below the provider when that field is cleared.
+
+## 0.90.0
+
+### Minor Changes
+
+- [#550](https://github.com/gabeklein/expressive-mvc/pull/550) [`d0b9cf6`](https://github.com/gabeklein/expressive-mvc/commit/d0b9cf6a29916f5db4c9eca23668c208540f9923) `context.set(inputs, forEach?)` is removed. `push(input?, cleanup?)` and the `Context` constructor register a class, an instance, or an object of them once - no reconciliation across calls. Every input is registered before any activates. `cleanup` runs once when the new context pops, before its inputs are removed.
+
 ## 0.89.0
 
 ### Minor Changes

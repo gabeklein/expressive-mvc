@@ -23,6 +23,8 @@ declare module './stylesheet' {
       tint(value: any): unknown;
       bare(value?: any): unknown;
       globalTone(value: any): unknown;
+      selfish(value?: any): unknown;
+      glowOn(value?: any): unknown;
     }
   }
 }
@@ -37,7 +39,10 @@ macro({
   tint: (value?: unknown) => ['tinted', { color: value }],
   bare: () => 'bare',
   globalTone: (value?: unknown) => ({ color: value }),
-  _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 }
+  selfish: () => ({ selfish: true }),
+  glowOn: (value?: unknown) => ({ ':hover': { tone: value } }),
+  _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 },
+  _output: { color: 'gray', padding: '5px' }
 });
 
 macro({
@@ -310,6 +315,20 @@ describe('appearance', () => {
     const fn = createStyleScope(undefined, { _fn: { margin: () => '1px' } })!;
     expect(() => resolveAppearance(fn, { _fn: true }))
       .toThrow('No macro handles "margin".');
+
+    const flag = createStyleScope(undefined, { _flag: { margin: true } })!;
+    expect(() => resolveAppearance(flag, { _flag: true }))
+      .toThrow('No macro handles "margin".');
+  });
+
+  it('will throw for a macro that returns itself', () => {
+    function Selfish() {
+      return <i _loop />;
+    }
+
+    style(Selfish, { _loop: { selfish: true } });
+
+    expect(() => place(<Selfish />)).toThrow('Macro "selfish" returned itself.');
   });
 
   it('will apply base declarations to each component root', () => {
@@ -334,6 +353,40 @@ describe('appearance', () => {
     expect(place(<Bare />).querySelector('wbr')!.className).toBe('bare');
   });
 
+  it('will let base declarations beat global rules', () => {
+    function Readout() {
+      return <output>out</output>;
+    }
+
+    function Gauge() {
+      return <output _shared>gauge</output>;
+    }
+
+    style(Readout, { color: 'black' });
+    style(Gauge, { color: 'black', letterSpacing: '1px', padding: '1px', _output: { padding: '6px' } });
+
+    const readout = place(<Readout />).querySelector('output')!;
+    const gauge = place(<Gauge />).querySelector('output')!;
+
+    expect(getComputedStyle(readout).color).toBe('black');
+    expect(getComputedStyle(readout).padding).toBe('5px');
+    expect(gauge.className.split(' ')).toEqual(['global_output', 'Gauge_output', 'global_shared', 'Gauge']);
+    expect(getComputedStyle(gauge).color).toBe('black');
+    expect(getComputedStyle(gauge).letterSpacing).toBe('1px');
+    expect(getComputedStyle(gauge).padding).toBe('6px');
+  });
+
+  it('will order a rule shadowing a global by its own registration', () => {
+    function Gauge() {
+      return <output _wide />;
+    }
+
+    style(Gauge, { _wide: { padding: '1px' }, _output: { padding: '2px' } });
+
+    const node = place(<Gauge />).querySelector('output')!;
+    expect(getComputedStyle(node).padding).toBe('2px');
+  });
+
   it('will not activate a rule for a falsy flag', () => {
     function Gate() {
       return <><kbd _on={0} /><samp _on={''} /><var _on={1} /></>;
@@ -351,7 +404,8 @@ describe('appearance', () => {
   it.each([
     ['a rule is a function', { _bad: () => null }, 'Rule "_bad" must be an object. Macros are defined by macro().'],
     ['a rule is a token', { _also: 'token' }, 'Rule "_also" must be an object.'],
-    ['a map uses a reserved key', { $hover: { color: 'red' } }, 'Reserved key "$hover" in style map.']
+    ['a map uses a reserved key', { $hover: { color: 'red' } }, 'Reserved key "$hover" in style map.'],
+    ['a subcomponent is nested', { _Title: { color: 'red' } }, 'Subcomponent "_Title" must be at the top of a style() map.']
   ])('will throw if %s', (_, map, message) => {
     expect(() => createStyleScope(undefined, map as any)).toThrow(message);
   });
@@ -382,6 +436,21 @@ describe('appearance', () => {
     expect(node.className).toBe('Styled_tone');
     expect(getComputedStyle(node).color).toBe('blue');
     expect(getComputedStyle(node).marginLeft).toBe('3px');
+    expect(getComputedStyle(node).padding).toBe('2px');
+  });
+
+  it('will layer several maps from one call and skip falsy ones', () => {
+    function Meta() {
+      return <div _name />;
+    }
+
+    const shared = { _name: { color: 'red', padding: '2px' } };
+    const wide = false as boolean;
+
+    style(Meta, shared, wide && { padding: '9px' }, null, { _name: { color: 'blue' } });
+
+    const node = place(<Meta />).querySelector('div')!;
+    expect(getComputedStyle(node).color).toBe('blue');
     expect(getComputedStyle(node).padding).toBe('2px');
   });
 
@@ -436,6 +505,34 @@ describe('appearance', () => {
     expect(getComputedStyle(root.querySelector('i')!).padding).toBe('9px');
     expect(getComputedStyle(root.querySelector('b')!).padding).toBe('');
     expect(getComputedStyle(root.querySelector('b')!).color).toBe('blue');
+  });
+
+  it('will not leak a base rule into a placed component instance', () => {
+    class Card extends Component {
+      render() {
+        return <b>card</b>;
+      }
+    }
+
+    class Deck extends Component {
+      cards = [new Card()];
+
+      render() {
+        return <i>{this.cards}</i>;
+      }
+    }
+
+    style(Card, { color: 'blue' });
+    style(Deck, { padding: '9px', _b: { margin: '3px' } });
+
+    const root = place(<Deck />);
+    const card = root.querySelector('b')!;
+
+    expect(getComputedStyle(root.querySelector('i')!).padding).toBe('9px');
+    expect(card.className).toBe('Card');
+    expect(getComputedStyle(card).padding).toBe('');
+    expect(getComputedStyle(card).margin).toBe('');
+    expect(getComputedStyle(card).color).toBe('blue');
   });
 
   it('will not merge a same-named rule across a component', () => {
@@ -632,6 +729,291 @@ describe('appearance', () => {
   });
 });
 
+describe('authoring scope', () => {
+  it('will style children by the component that wrote them', () => {
+    class Page extends Component {}
+
+    function Wrap({ children }: { children?: Component.Node }) {
+      return <section>{children}</section>;
+    }
+
+    function Author() {
+      return (
+        <Page>
+          <div _grid />
+          <Wrap><p _note>note</p></Wrap>
+        </Page>
+      );
+    }
+
+    style(Wrap, { _p: { color: 'red' }, _note: { color: 'red' } });
+    style(Author, { _grid: { display: 'grid' }, _note: { color: 'green' } });
+
+    const root = place(<Author />);
+    const note = root.querySelector('p')!;
+
+    expect(root.querySelector('div')!.className).toBe('Author_grid');
+    expect(note.className).toBe('Author_note');
+    expect(getComputedStyle(note).color).toBe('green');
+  });
+
+  it('will keep rules nested under the wrapper element', () => {
+    function Link({ children, style: appearance }: { children?: Component.Node; style?: any }) {
+      return <a style={appearance}>{children}</a>;
+    }
+
+    function Preview() {
+      return (
+        <Link _link>
+          <img />
+          <span _caption>caption</span>
+          <em _frame><b>deep</b></em>
+        </Link>
+      );
+    }
+
+    style(Link, { _img: { display: 'inline' } });
+    style(Preview, {
+      _img: { display: 'block' },
+      _link: { color: 'blue', _caption: { fontWeight: 700 } },
+      _frame: { _b: { color: 'red' } }
+    });
+
+    const root = place(<Preview />);
+
+    expect(getComputedStyle(root.querySelector('a')!).color).toBe('blue');
+    expect(root.querySelector('img')!.className).toBe('Preview_img');
+    expect(getComputedStyle(root.querySelector('span')!).fontWeight).toBe('700');
+    expect(getComputedStyle(root.querySelector('b')!).color).toBe('red');
+  });
+
+  it('will resolve children passed through several wrappers', () => {
+    function Inner({ children }: { children?: Component.Node }) {
+      return <ins>{children}</ins>;
+    }
+
+    function Outer({ children }: { children?: Component.Node }) {
+      return <Inner _inner>{children}</Inner>;
+    }
+
+    function Writer() {
+      return <Outer><mark _hit>hit</mark></Outer>;
+    }
+
+    style(Outer, { _inner: { _hit: { color: 'red' } } });
+    style(Inner, { _hit: { color: 'red' } });
+    style(Writer, { _hit: { color: 'purple' } });
+
+    const mark = place(<Writer />).querySelector('mark')!;
+
+    expect(mark.className).toBe('Writer_hit');
+    expect(getComputedStyle(mark).color).toBe('purple');
+  });
+
+  it('will style a node written elsewhere by where it is placed', () => {
+    let made: Component.Node;
+
+    function Maker() {
+      made = <dfn _term>term</dfn>;
+      return null;
+    }
+
+    function Shower() {
+      return made;
+    }
+
+    style(Maker, { _term: { color: 'red' } });
+    style(Shower, { _term: { color: 'teal' } });
+
+    const term = place(<><Maker /><Shower /></>).querySelector('dfn')!;
+
+    expect(term.className).toBe('Shower_term');
+  });
+
+  it('will keep base declarations of a wrapper on its roots', () => {
+    function Shell({ children }: { children?: Component.Node }) {
+      return <>{children}</>;
+    }
+
+    function Uses() {
+      return <Shell><h6 _title>title</h6></Shell>;
+    }
+
+    style(Shell, { padding: '4px' });
+    style(Uses, { _title: { color: 'navy' } });
+
+    const title = place(<Uses />).querySelector('h6')!;
+
+    expect(title.className.split(' ')).toEqual(['Uses_title', 'Shell']);
+    expect(getComputedStyle(title).padding).toBe('4px');
+  });
+});
+
+describe('subcomponent', () => {
+  it('will not reach a subcomponent with owner rules', () => {
+    class Card extends Component {
+      Title() {
+        return <h1 _active>sub</h1>;
+      }
+
+      render() {
+        return <div><h1 _active>own</h1><this.Title /></div>;
+      }
+    }
+
+    style(Card, { padding: '1px', _active: { color: 'red' }, _h1: { margin: 0 } });
+
+    const root = place(<Card />);
+    const [own, sub] = root.querySelectorAll('h1');
+
+    expect(root.querySelector('div')!.className).toBe('Card');
+    expect(own.className).toBe('Card_h1 Card_active');
+    expect(sub.className).toBe('');
+  });
+
+  it('will style a subcomponent by its key', () => {
+    class Card extends Component {
+      Title() {
+        return <h1><b _active>title</b><i>note</i></h1>;
+      }
+
+      render() {
+        return <div><b _active>own</b><this.Title /></div>;
+      }
+    }
+
+    style(Card, { _active: { color: 'red' } });
+    style(Card, {
+      _Title: {
+        padding: '1px',
+        _active: { color: 'blue' },
+        _i: { margin: 0 }
+      }
+    });
+
+    const root = place(<Card />);
+    const [own, sub] = root.querySelectorAll('b');
+
+    expect(own.className).toBe('Card_active');
+    expect(root.querySelector('h1')!.className).toBe('Card_Title');
+    expect(sub.className).toBe('Card_Title_active');
+    expect(root.querySelector('i')!.className).toBe('Card_Title_i');
+  });
+
+  it('will style only subcomponents from a map of keys', () => {
+    class Card extends Component {
+      Title() {
+        return <h1>title</h1>;
+      }
+
+      render() {
+        return <div><this.Title /></div>;
+      }
+    }
+
+    style(Card, { _Title: { padding: '1px' } });
+
+    const root = place(<Card />);
+
+    expect(root.querySelector('div')!.className).toBe('');
+    expect(root.querySelector('h1')!.className).toBe('Card_Title');
+  });
+
+  it('will style a subcomponent by its owner wherever placed', () => {
+    class Card extends Component {
+      Title() {
+        return <h1 _active>title</h1>;
+      }
+    }
+
+    class Page extends Component {
+      card = new Card();
+
+      render() {
+        return <section><this.card.Title /></section>;
+      }
+    }
+
+    style(Card, { _active: { color: 'red' }, _Title: { _active: { color: 'blue' } } });
+    style(Page, { _active: { color: 'green' }, _Title: { _active: { color: 'pink' } } });
+
+    const root = place(<Page />);
+
+    expect(root.querySelector('h1')!.className).toBe('Card_Title_active');
+  });
+
+  it('will compose subcomponent maps through the class chain', () => {
+    class Card extends Component {
+      Title() {
+        return <h1 _active _muted>title</h1>;
+      }
+
+      render() {
+        return <div><this.Title /><this.Badge /></div>;
+      }
+
+      Badge() {
+        return null as Component.Node;
+      }
+    }
+
+    class Fancy extends Card {
+      Badge() {
+        return <b _active>badge</b>;
+      }
+    }
+
+    style(Card, { _active: { color: 'red' }, _Title: { _active: { color: 'blue' } } });
+    style(Fancy, { _Title: { _muted: { opacity: 0.5 } } });
+
+    const root = place(<Fancy />);
+
+    expect(root.querySelector('h1')!.className).toBe('Card_Title_active Fancy_Title_muted');
+    expect(root.querySelector('b')!.className).toBe('');
+  });
+
+  it('will still apply rules a caller hands a subcomponent', () => {
+    class Card extends Component {
+      Title() {
+        return <h1>title</h1>;
+      }
+
+      render() {
+        return <div><this.Title _accent /></div>;
+      }
+    }
+
+    style(Card, { _accent: { color: 'red' } });
+
+    const root = place(<Card />);
+
+    expect(root.querySelector('h1')!.className).toBe('Card_accent-d1');
+  });
+
+  it('will throw for a subcomponent key on an element', () => {
+    function Host() {
+      return <div {...{ _Title: true }} />;
+    }
+
+    function Child() {
+      return null;
+    }
+
+    function Caller() {
+      return <Child {...{ _Title: true }} />;
+    }
+
+    expect(() => place(<Host />)).toThrow('"_Title" is reserved for subcomponents in style() maps.');
+    expect(() => place(<Caller />)).toThrow('"_Title" is reserved for subcomponents in style() maps.');
+  });
+
+  it('will throw if a subcomponent map is not an object', () => {
+    class Card extends Component {}
+
+    expect(() => style(Card, { _Title: 'title' } as any)).toThrow('Subcomponent "_Title" must be an object.');
+  });
+});
+
 describe('hot patch', () => {
   it('will carry a style map to the patched class', async () => {
     const version = (color: string) => {
@@ -663,5 +1045,278 @@ describe('hot patch', () => {
     await flushMicrotasks();
 
     expect(rule()).toContain('blue');
+  });
+});
+
+describe('conditions', () => {
+  function sheet(match: string) {
+    const { sheet } = document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!;
+    return [...sheet!.cssRules]
+      .map((rule) => rule.cssText.replace(/\s+/g, ' '))
+      .filter((rule) => rule.includes(match));
+  }
+
+  it('will emit a state block after its rule', () => {
+    function Field() {
+      return <div _control />;
+    }
+
+    style(Field, {
+      ':hover': { opacity: 1 },
+      _control: {
+        color: 'gray',
+        ':hover': { color: 'blue' },
+        ':focus-within, :is(:active, :checked)': { color: 'navy' }
+      }
+    });
+
+    const node = place(<Field />).querySelector('div')!;
+    expect(node.className).toBe(
+      'Field_control Field_control-hover Field_control-focus-within Field_control-is_active_checked Field-hover'
+    );
+    expect(sheet('.Field')).toEqual([
+      '.Field-hover:where(:hover) { opacity: 1; }',
+      '.Field_control { color: gray; }',
+      '.Field_control-hover:where(:hover) { color: blue; }',
+      '.Field_control-focus-within:where(:focus-within) { color: navy; }',
+      '.Field_control-is_active_checked:where(:is(:active, :checked)) { color: navy; }'
+    ]);
+  });
+
+  it('will place pseudo-elements after the state', () => {
+    function Entry() {
+      return <input _field />;
+    }
+
+    style(Entry, {
+      _field: {
+        '::placeholder': { color: 'gray' },
+        ':hover': { '::after': { content: '"!"' } },
+        ':focus::before': { content: '"?"' }
+      }
+    });
+
+    place(<Entry />);
+    expect(sheet('.Entry')).toEqual([
+      '.Entry_field-placeholder::placeholder { color: gray; }',
+      '.Entry_field-focus_before:where(:focus)::before { content: "?"; }',
+      '.Entry_field-hover-after:where(:hover)::after { content: "!"; }'
+    ]);
+  });
+
+  it('will wrap media blocks and hoist rules into them', () => {
+    function Grid() {
+      return <div _grid />;
+    }
+
+    style(Grid, {
+      _grid: {
+        gridTemplateColumns: '1fr 1fr',
+        '@media (max-width: 900px)': { gridTemplateColumns: '1fr', ':hover': { opacity: 0.5 } }
+      },
+      '@media (max-width: 600px)': { padding: '4px', _grid: { gap: '2px' } }
+    });
+
+    const node = place(<Grid />).querySelector('div')!;
+    expect(node.className).toBe(
+      'Grid_grid Grid_grid-media_max-width_900px Grid_grid-media_max-width_900px-hover Grid_grid-media_max-width_600px Grid-media_max-width_600px'
+    );
+    expect(sheet('.Grid')).toEqual([
+      '@media (max-width: 600px) { .Grid-media_max-width_600px { padding: 4px; } }',
+      '.Grid_grid { grid-template-columns: 1fr 1fr; }',
+      '@media (max-width: 900px) { .Grid_grid-media_max-width_900px { grid-template-columns: 1fr; } }',
+      '@media (max-width: 600px) { .Grid_grid-media_max-width_600px { gap: 2px; } }',
+      '@media (max-width: 900px) { .Grid_grid-media_max-width_900px-hover:where(:hover) { opacity: 0.5; } }'
+    ]);
+  });
+
+  it('will hoist media into rules declared before or after it', () => {
+    function Sheet() {
+      return <div _page _only />;
+    }
+
+    style(Sheet, {
+      '@media print': { _page: { margin: '0px' }, _only: { display: 'block' } },
+      _page: { margin: '8px' }
+    });
+
+    const node = place(<Sheet />).querySelector('div')!;
+    expect(node.className).toBe('Sheet_page Sheet_page-media_print Sheet_only-media_print');
+  });
+
+  it('will hoist media around a descendant scope', () => {
+    function List() {
+      return <ul _list><li _item /></ul>;
+    }
+
+    style(List, {
+      _list: { '@media print': { _item: { color: 'black' } } }
+    });
+
+    const item = place(<List />).querySelector('li')!;
+    expect(item.className).toBe('List_ul_item-media_print');
+    expect(sheet('List_ul_item')).toEqual(['@media print { .List_ul_item-media_print { color: black; } }']);
+  });
+
+  it('will merge conditions across layers and classes', () => {
+    class Base extends Component {
+      render() {
+        return <div _tone />;
+      }
+    }
+    class Derived extends Base {}
+
+    style(Base, { ':hover': { color: 'red' }, _tone: { ':hover': { color: 'red', padding: '2px' } } });
+    style(Derived, { _tone: { ':hover': { color: 'blue' } } });
+    style(Derived, { ':hover': { padding: '3px' } });
+
+    place(<Derived />);
+    expect(sheet('Derived')).toEqual([
+      '.Derived-hover:where(:hover) { color: red; padding: 3px; }',
+      '.Derived_tone-hover:where(:hover) { color: blue; padding: 2px; }'
+    ]);
+  });
+
+  it('will run macros and skip falsy bodies inside a condition', () => {
+    function Lift() {
+      return <div />;
+    }
+
+    style(Lift, { ':hover': { mex: 2 }, ':focus': false as any, ':active': null as any });
+
+    place(<Lift />);
+    expect(sheet('.Lift')).toEqual([
+      '.Lift-hover:where(:hover) { margin-left: 2px; margin-right: 2px; }'
+    ]);
+  });
+
+  it('will style a descendant while a rule holds a state', () => {
+    function Gallery() {
+      return <div _thumb><button _delete /></div>;
+    }
+
+    style(Gallery, {
+      _thumb: { position: 'relative', ':hover': { _delete: { opacity: 1 } } },
+      _delete: { opacity: 0 }
+    });
+
+    const thumb = place(<Gallery />).querySelector('div')!;
+    const button = thumb.querySelector('button')!;
+    expect(thumb.className).toBe('Gallery_thumb Gallery_thumb-group');
+    expect(button.className).toBe('Gallery_div_delete Gallery_div_delete-Gallery_thumb_hover');
+    expect(sheet('Gallery')).toEqual([
+      '.Gallery_thumb { position: relative; }',
+      '.Gallery_div_delete { opacity: 0; }',
+      ':where(.Gallery_thumb-group:hover) .Gallery_div_delete-Gallery_thumb_hover { opacity: 1; }'
+    ]);
+  });
+
+  it('will style a descendant while the root holds a state', () => {
+    function Tile() {
+      return <div><b _label /></div>;
+    }
+
+    style(Tile, { ':hover': { _label: { color: 'blue' } } });
+
+    const root = place(<Tile />).querySelector('div')!;
+    expect(root.className).toBe('Tile-group');
+    expect(root.querySelector('b')!.className).toBe('Tile_label-Tile_hover');
+    expect(sheet('Tile')).toEqual([':where(.Tile-group:hover) .Tile_label-Tile_hover { color: blue; }']);
+  });
+
+  it('will split a root state list before grouping', () => {
+    function Thumb() {
+      return <div><button _delete /></div>;
+    }
+
+    style(Thumb, { ':hover, :focus-within': { _delete: { opacity: 1 } } });
+
+    place(<Thumb />);
+    expect(sheet('Thumb')).toEqual([
+      ':where(.Thumb-group:hover) .Thumb_delete-Thumb_hover { opacity: 1; }',
+      ':where(.Thumb-group:focus-within) .Thumb_delete-Thumb_focus-within { opacity: 1; }'
+    ]);
+  });
+
+  it('will expand a condition returned by a macro', () => {
+    function Lit() {
+      return <a />;
+    }
+
+    style(Lit, { tone: 'red', glowOn: 'blue' });
+
+    place(<Lit />);
+    expect(sheet('.Lit')).toEqual([
+      '.Lit { color: red; }',
+      '.Lit-hover:where(:hover) { color: blue; }'
+    ]);
+  });
+
+  it('will chain ancestor states and media', () => {
+    function Menu() {
+      return <ul _list><li _item><span _icon /></li></ul>;
+    }
+
+    style(Menu, {
+      _list: {
+        ':focus-within': {
+          _item: { ':hover': { _icon: { color: 'red' } } },
+          '@media print': { _icon: { display: 'none' } }
+        }
+      }
+    });
+
+    const root = place(<Menu />);
+    const classes = ['ul', 'li', 'span'].map((tag) => root.querySelector(tag)!.className);
+    expect(classes).toEqual([
+      'Menu_list-group',
+      'Menu_ul_item-group',
+      'Menu_ul_li_icon-Menu_list_focus-within-media_print Menu_ul_li_icon-Menu_list_focus-within-Menu_ul_item_hover'
+    ]);
+    expect(sheet('Menu')).toEqual([
+      '@media print { :where(.Menu_list-group:focus-within) .Menu_ul_li_icon-Menu_list_focus-within-media_print { display: none; } }',
+      ':where(.Menu_list-group:focus-within) :where(.Menu_ul_item-group:hover) .Menu_ul_li_icon-Menu_list_focus-within-Menu_ul_item_hover { color: red; }'
+    ]);
+  });
+
+  it('will keep root groups across layers and subclasses', () => {
+    class Panel extends Component {
+      render() {
+        return <div><b _title /><i _note /></div>;
+      }
+    }
+    class Wide extends Panel {}
+
+    style(Panel, { ':hover': { _title: { color: 'red' } } });
+    style(Wide, { padding: '1px' }, { ':focus-within': { _note: { color: 'blue' } } });
+
+    const root = place(<Wide />).querySelector('div')!;
+    expect(root.className).toBe('Wide Panel-group Wide-group');
+  });
+
+  it('will throw for a rule inside a pseudo-element', () => {
+    function Quote() {
+      return <q _mark />;
+    }
+
+    style(Quote, { _mark: { '::before': { _inner: { color: 'red' } } } });
+
+    expect(() => place(<Quote />)).toThrow('Rules cannot nest inside pseudo-element "::before".');
+  });
+
+  it('will throw for a bare value or a class inside a condition', () => {
+    function Bare() {
+      return <div />;
+    }
+
+    function Classy() {
+      return <div />;
+    }
+
+    style(Bare, { ':hover': 'red' as any });
+    style(Classy, { ':hover': { bare: true } });
+
+    expect(() => place(<Bare />)).toThrow('Condition ":hover" must be an object.');
+    expect(() => place(<Classy />)).toThrow('Classes are not supported inside ":hover".');
   });
 });

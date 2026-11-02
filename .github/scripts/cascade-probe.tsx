@@ -3,6 +3,7 @@ import { Component } from '@expressive/mvc';
 import { css, macro, render, style } from '@expressive/dom';
 
 macro(css);
+macro({ _output: { color: 'rgb(5, 5, 5)', padding: '5px' } });
 
 const out: string[] = [];
 
@@ -48,7 +49,7 @@ function Units() {
   return <span _box>units</span>;
 }
 
-style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, mx: 4 } });
+style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, marginInline: 4 } });
 
 function Nested() {
   return <section _frame><em>deep</em></section>;
@@ -58,9 +59,47 @@ style(Nested, {
   _frame: { '--depth': '7', _em: { color: 'rgb(6, 6, 6)', paddingTop: '3px' } }
 });
 
+function Readout() {
+  return <output>readout</output>;
+}
+
+style(Readout, { color: 'rgb(7, 7, 7)', padding: '1px', _output: { padding: '6px' } });
+
+function Toggle() {
+  return <input type="checkbox" checked readOnly />;
+}
+
+style(Toggle, {
+  color: 'rgb(10, 10, 10)',
+  ':checked': { color: 'rgb(11, 11, 11)', outlineColor: 'rgb(11, 11, 11)' },
+  '@media (min-width: 1px)': { letterSpacing: '2px' },
+  '@media (max-width: 1px)': { wordSpacing: '9px' }
+});
+
+function Picker() {
+  return <Toggle _pick />;
+}
+
+style(Picker, { _pick: { color: 'rgb(12, 12, 12)' } });
+
+function Field() {
+  return <label _box><input /><b _hint>hint</b></label>;
+}
+
+style(Field, {
+  _box: { ':focus-within': { _hint: { color: 'rgb(14, 14, 14)' } } },
+  _hint: { color: 'rgb(13, 13, 13)' }
+});
+
+function Tip() {
+  return <span _tip>tip</span>;
+}
+
+style(Tip, { _tip: { '::before': { content: '"x"' } } });
+
 const root = document.getElementById('app')!;
 
-render(<><Outer /><Inline /><Nested /><Units /></>, root);
+render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /><Field /></>, root);
 
 const leaf = root.querySelector('b')!;
 const inline = root.querySelector('i')!;
@@ -72,11 +111,29 @@ check('inline beats class', getComputedStyle(inline).color, 'rgb(9, 9, 9)');
 check('descendant scope applies', getComputedStyle(em).color, 'rgb(6, 6, 6)');
 check('custom property', getComputedStyle(frame).getPropertyValue('--depth').trim(), '7');
 const box = root.querySelector('span')!;
+const readout = root.querySelector('output')!;
+
+check('base beats global rule', getComputedStyle(readout).color, 'rgb(7, 7, 7)');
+check('own rule beats base', getComputedStyle(readout).padding, '6px');
 
 check('px appended where required', getComputedStyle(box).paddingTop, '5px');
 check('unitless left alone', getComputedStyle(box).zIndex, '3');
 check('logical property sized', getComputedStyle(box).marginBlockEnd, '2px');
-check('axis shorthand', getComputedStyle(box).marginLeft, '4px');
+check('logical axis sized', getComputedStyle(box).marginLeft, '4px');
+const [toggle, picked] = root.querySelectorAll('input');
+
+check('state beats base', getComputedStyle(toggle).color, 'rgb(11, 11, 11)');
+check('caller door beats callee state', getComputedStyle(picked).color, 'rgb(12, 12, 12)');
+check('callee state still applies under a door', getComputedStyle(picked).outlineColor, 'rgb(11, 11, 11)');
+check('matching media applies', getComputedStyle(toggle).letterSpacing, '2px');
+check('other media does not', getComputedStyle(toggle).wordSpacing, '0px');
+check('pseudo-element applies', getComputedStyle(root.querySelector('span[class*=Tip]')!, '::before').content, '"x"');
+
+const hint = root.querySelector('label b')!;
+
+check('group state off', getComputedStyle(hint).color, 'rgb(13, 13, 13)');
+root.querySelector<HTMLInputElement>('label input')!.focus();
+check('group state styles descendant', getComputedStyle(hint).color, 'rgb(14, 14, 14)');
 check('leaf carries door classes', String(leaf.className.includes('-d1') && leaf.className.includes('-d2')), 'true');
 
 document.querySelector('style[data-expressive]')!.remove();
@@ -89,8 +146,10 @@ style(Late, { _late: { color: 'rgb(5, 5, 5)' } });
 
 const second = document.createElement('div');
 document.body.append(second);
-render(<Late />, second);
+render(<><Late /><Field /></>, second);
 
 check('stylesheet recreated', getComputedStyle(second.querySelector('u')!).color, 'rgb(5, 5, 5)');
+second.querySelector('input')!.focus();
+check('group anchor recreated', getComputedStyle(second.querySelector('label b')!).color, 'rgb(14, 14, 14)');
 
 report();

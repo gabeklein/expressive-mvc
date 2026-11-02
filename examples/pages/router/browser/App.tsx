@@ -60,9 +60,11 @@ const Projects = (props: { children?: Component.Node }) => (
 const ProjectIndex = () => <p>Select a project.</p>;
 
 const Project = () => {
-  const { match } = Route.get(true);
+  const { match } = Route.get();
 
-  return <p>Project: {match!.id}</p>;
+  if (match) return <p>Project: {match.id}</p>;
+
+  return null;
 };
 
 const ProjectNotFound = () => <p>No project page matches this URL.</p>;

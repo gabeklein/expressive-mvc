@@ -1,5 +1,5 @@
 import { Context, Model, unbind } from '@expressive/mvc';
-import { listener } from '@expressive/mvc/observable';
+import { listener, observer } from '@expressive/mvc/observable';
 import { isElement } from '@expressive/mvc/jsx-runtime';
 
 import { journal, note, noteCall, noteCaught, noteDestroy, notePatch, type Frame, type Query } from './journal';
@@ -28,6 +28,7 @@ interface Span {
   until?: number;
   claimed: boolean;
   settled: boolean;
+  held?: boolean;
 }
 
 interface Row {
@@ -143,18 +144,14 @@ function claim(state: Model) {
   if (span.claimed) return;
   span.claimed = true;
   const row = live.get(String(state));
-  if (row) {
-    row.held = state;
-    reaper.unregister(state);
-  }
+  if (!row) return;
+  row.held = state;
+  reaper.unregister(state);
   version++;
 }
 
-/** A `static global` instance currently holding its slot in the root context. */
+/** An instance held in the root context. */
 function provided(state: Model): boolean {
-  const type = state.constructor as typeof Model;
-  const global = typeof type.global === 'function' ? type.global(state) : type.global;
-  if (!global) return false;
   for (const set of Context.root.provide.values())
     if (set) for (const [member] of set) if (member === state) return true;
   return false;
@@ -198,7 +195,7 @@ export class Instance {
     return live.has(this.id);
   }
 
-  /** Reached by a host commit (`mount`), a claimed owner, or `static global`. Always true without a host. */
+  /** Reached by a host commit (`mount`), a claimed owner, or the root context. Always true without a host. */
   get claimed() {
     return !orphaned(this.state, reach());
   }
@@ -275,6 +272,10 @@ export function attach(Type: typeof Model = Model): () => void {
     const stopCatch = Type.on({ catch: unhandled });
     const stopCall = Type.on({ type: trace, method: retrace });
     const stopSetup = Type.on({
+      ready(this: Model) {
+        const self = this.is;
+        if (spans.get(self)!.held) claim(self);
+      },
       setup(this: Model) {
         const self = this.is;
         const T = self.constructor as typeof Model;
@@ -288,8 +289,10 @@ export function attach(Type: typeof Model = Model): () => void {
         setTimeout(() => {
           span.settled = true;
         }, 0);
+        queueMicrotask(() => {
+          span.held = !!observer(self)?.wait;
+        });
         version++;
-        mounts(self);
         const unpatch = listener(self, () => notePatch(self), REFRESH);
         const stop = self.set((key) => {
           const store = entries(self);
@@ -500,21 +503,6 @@ function traced(key: string, fn: Function) {
   TRACED.add(wrapper);
 
   return wrapper;
-}
-
-/** Observe the host commit: adapters call `mount?.()` once an instance is placed. */
-function mounts(state: Model) {
-  const target = state as Model & { mount?: (...args: unknown[]) => unknown };
-  const original = target.mount;
-
-  Object.defineProperty(target, 'mount', {
-    configurable: true,
-    writable: true,
-    value(this: unknown, ...args: unknown[]) {
-      claim(state);
-      return typeof original === 'function' ? original.apply(this, args) : undefined;
-    }
-  });
 }
 
 function describe(state: Model, parents: Map<Model, Model>): ModelInfo {

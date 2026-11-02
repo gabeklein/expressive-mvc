@@ -5,7 +5,7 @@
 | Phase        | Trigger             | What Happens                                                                  |    Ready?    |
 | ------------ | ------------------- | ----------------------------------------------------------------------------- | :----------: |
 | Construction | `new Timer()`       | Listeners registered, nothing activated. Home context claimable.              |      NO      |
-| Activation   | `Model.new()`       | Properties managed, constructor args run, `new()` hook runs; a global's home locks to root | YES |
+| Activation   | `Model.new()`       | Properties managed, constructor args run, `new()` hook runs                   |     YES      |
 | Operation    | Property assignment | Batched updates via `queueMicrotask()`, effects re-run                        |     YES      |
 | Destruction  | `state.set(null)`   | Children destroyed first, listeners called, dispatch stops                    |  DESTROYED   |
 
@@ -14,23 +14,50 @@
 ## The `new()` Hook
 
 ```ts
+class Cart extends Model {
+  items: string[] = [];
+  updatedAt = 0;
+
+  protected new() {
+    return this.set('items', () => {
+      this.updatedAt = Date.now();
+    });
+  }
+}
+
 class Timer extends Model {
   elapsed = 0;
 
   protected new() {
-    const id = setInterval(() => this.elapsed++, 1000);
-    return () => clearInterval(id);
+    this.get(() => {             // client resources: runs once the host commits
+      const id = setInterval(() => this.elapsed++, 1000);
+      return () => clearInterval(id);
+    });
   }
 }
 ```
 
 - Runs once, after all properties and child instances are set up.
 - Return nothing, or `() => void` to run on destruction.
-- `this` is the instance, not a tracking proxy - closures made here (a listener, an interval) capture it and may use it as a `Map`/`Set` key.
+- `async new()` is allowed: `on({ ready })` handlers and effects registered before it resolves wait for it, as for a promise from any activation step. Its rejection reports to `catch` as `setup`, then destroys the instance - recovery belongs inside `new()`, around the await. Setup cannot lean on an effect to finish. Its cleanup cannot be returned - a promise's value is ignored.
+- Readiness is per tree. A parent is ready once its own steps and every child it owned at activation have settled - a child whose setup rejects is destroyed and the parent settles without it. A hold already on the parent when its children activate (an async `setup` handler, a host's placement) reaches them: their `ready` and effects wait for the root. The parent's own `async new()` runs after its children and does not hold them. Children settle before their parent; effects run after the `ready` handlers. A child adopted later settles on its own.
+- Readiness gates effects and `ready` only - never render, getters or `set(key, cb)` listeners, so a held instance still renders from the values it has. A render that must wait names the field it waits for: `data = set(() => this.load())` suspends reads until the async factory resolves. To wait for an instance from outside, await an empty effect: `await state.get(() => {})` ([get.md](get.md#await-the-release)).
 
-`new()` is a typed optional member of `Model` (`protected new?(): void | (() => void)`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` and `mount()` on `Component`. Adapter hooks reached only through `Model.use()` - `use()` and `mount()` on a plain `Model` - are declared on the `UseModel` interface instead, which a class satisfies structurally: optional and unadvertised on never-rendered Models, at the cost of a looser check than a declared override.
+How an instance settles:
 
-> **`new()` runs on the server.** It is part of activation, so it fires wherever the instance is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in the adapter's commit hook: `mount()` in [../react/react.md](../react/react.md), which runs only on the client and only for an instance some component owns.
+```
+activate   setup handlers → fields (children activate here) → args → new()
+collect    own promises + each owned child's settle
+parent activating?
+  yes      waits join the parent's; the parent releases this instance
+  no       nothing to wait on: settle now, inline - else hold until all resolve
+settle     release children → ready handlers → parked effects replay
+```
+- `this` is the instance, not a tracking proxy - closures made here (a listener) capture it and may use it as a `Map`/`Set` key.
+
+`new()` is a typed optional member of `Model` (`protected new?(): void | (() => void) | Promise<void>`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` on `Component`.
+
+> **`new()` runs on the server.** It is part of activation, so it fires wherever the instance is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in an effect declared in `new()` - a host holds it until the owning component commits ([../react/react.md](../react/react.md#effects-run-once-committed)), so it never runs on the server.
 
 > **`new()` is for consumers and own-state.** Avoid it in reusable classes meant to be subclassed: it's a public method, so a subclass defining its own `new()` silently replaces yours. For internal init in a shippable base class, pass a trailing init callback to `super` - same phase as `new()`, but can't be clobbered:
 >
@@ -52,9 +79,10 @@ class Timer extends Model {
 
 `Model.new()` accepts `Model.Args`, processed in order during activation:
 
-- `function` - called with `this` as the instance; may return a cleanup function, an object to assign, an array to process, or a Promise
+- `function` - called with `this` as the instance; may return a cleanup function, a plain object to assign, an array to process, or a Promise - any other object, the instance included, is ignored
 - `object` - assigned to instance properties
 - `array` - flattened and re-processed
+- `Context` - home context; the first one wins, ignored if already placed ([context.md](context.md#context-arguments))
 - `Promise` (returned by a callback) - a rejection is reported with kind `setup` ([Error Handling](#error-handling))
 
 > **Timing:** args (and assigned props, in adapters) apply during activation, *after* field initializers and `Model.on` setup. A trailing arg callback, `new()` and an `on({ ready })` handler see applied values. The JS constructor body and `on({ setup })` run *before* the merge and see only field defaults; don't read an applied prop there.
@@ -139,7 +167,7 @@ An instance failing out of turn - not at a call that could catch it - reaches th
 | `dead` | `Error` (`Tried to update {state}.{key} but state is destroyed.`) | write to a destroyed instance - stored without dispatch; unhandled, no output |
 | `unused`  | `Error` (`{state} was constructed but never activated.`) | constructed, never activated in that tick                              |
 | `getter`    | what the getter threw; `key`  | getter threw while refreshing - value becomes `undefined`              |
-| `setup`      | the rejection                 | async initializer or `new()` rejected - instance still created            |
+| `setup`      | the rejection                 | async setup step or `new()` rejected - instance destroyed                 |
 | `effect`    | what was thrown               | effect or listener threw during a flush - collections resolve to their owner |
 
 `catch` is class-level policy. `Component.catch()` is a separate per-instance boundary for child render errors - a Component's own effect errors reach `Model.on({ catch })`, not its boundary.
