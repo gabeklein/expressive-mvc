@@ -53,12 +53,18 @@ describe('server render', () => {
     expect(effect).not.toBeCalled();
   });
 
-  it('will not run ready handlers or resolve readiness', async () => {
+  it('will hold readiness until the request context pops', async () => {
     const ready = vi.fn();
-    const resolved = vi.fn();
+    const settled = vi.fn();
+    const teardown = vi.fn();
+    const request = Context.root.push();
     let store!: Store;
 
     class Store extends Component {
+      protected new() {
+        return teardown;
+      }
+
       render() {
         return <span>hello</span>;
       }
@@ -66,13 +72,27 @@ describe('server render', () => {
 
     Store.on({ ready });
 
-    expect(onServer(() => renderToString(<Store is={(s: Store) => void (store = s)} />))).toContain('hello');
+    const html = onServer(() =>
+      renderToString(
+        <Component for={request}>
+          <Store is={(s: Store) => void (store = s)} />
+        </Component>
+      )
+    );
 
-    store.get(() => {}).then(resolved, () => {});
+    expect(html).toContain('hello');
+
+    const readiness = store.get(() => {}).then(settled, settled);
 
     await flushMicrotasks();
+    expect(settled).not.toBeCalled();
+
+    request.pop();
+    await readiness;
+
+    expect(settled).toBeCalledWith(expect.objectContaining({ message: `${store} is destroyed.` }));
+    expect(teardown).toBeCalledTimes(1);
     expect(ready).not.toBeCalled();
-    expect(resolved).not.toBeCalled();
   });
 
   it('will isolate provided state per request', () => {

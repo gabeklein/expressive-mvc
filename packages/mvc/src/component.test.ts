@@ -422,6 +422,35 @@ describe('for', () => {
     expect(context.get(Session)).toBe(session);
   });
 
+  it('will render within a context it is given', () => {
+    const request = Context.root.push();
+    const outer = Context.root.push();
+    const provider = new Component({ for: request } as any);
+    const inner = outer.push(provider, () => provider.set(null));
+    const session = inner.push(Session).get(Session);
+
+    expect(inner.parent).toBe(request);
+    expect(outer.scope.has(inner)).toBe(false);
+
+    request.pop();
+
+    expect(session.get(null)).toBe(true);
+    expect(provider.get(null)).toBe(true);
+  });
+
+  it('will return to its parent when for changes from a context', async () => {
+    const request = Context.root.push();
+    const outer = Context.root.push();
+    const provider = new Component({ for: request } as any);
+    const inner = outer.push(provider);
+
+    (provider as any).props = { for: Session };
+    await flushMicrotasks();
+
+    expect(inner.parent).toBe(outer);
+    expect(request.scope.has(inner)).toBe(false);
+  });
+
   it('will release the previous item when for changes', async () => {
     const provider = Component.new({ for: Session } as any);
     const context = new Context().push(provider);

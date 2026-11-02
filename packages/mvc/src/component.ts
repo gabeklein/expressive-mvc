@@ -1,4 +1,4 @@
-import { join } from './context';
+import { Context, home, join, place } from './context';
 import { element } from './element';
 import { listener } from './observable';
 import { set } from './field/set';
@@ -21,11 +21,13 @@ type Acceptable<T> = {
   >;
 }[keyof T];
 
-type ForProps<T extends Model> = {
+type FrameProps = {
   children?: Component.Node;
   fallback?: Component.Node | false;
   catch?: (error: Error, instance: Component) => Promise<void> | void;
-} & (
+};
+
+type ForProps<T extends Model> = FrameProps & (
   | { for: Model.Extends<T>; is?: (instance: T) => Model.Assign<T> | void }
   | { for: T | undefined; is?: never }
 ) & { [K in Acceptable<Pick<T, Exclude<keyof T, keyof Model>>>]?: T[K] };
@@ -92,7 +94,11 @@ class Component<P = unknown> extends Model {
    *
    * Will incorperate extra props you declare as props parameter in `render` method.
    */
-  declare readonly props: [P] extends [Model] ? ForProps<P> : Component.Props<this>;
+  declare readonly props: [P] extends [Model]
+    ? ForProps<P>
+    : [P] extends [Context]
+    ? FrameProps & { for: Context }
+    : Component.Props<this>;
 
   /** Stable identity used when this instance is rendered in a collection. */
   declare readonly key: string;
@@ -209,6 +215,7 @@ function provide(self: Component<any>) {
   let target: Model | undefined;
   let owned: Model | undefined;
   let provided: (() => void) | undefined;
+  let restore: (() => void) | undefined;
 
   function remove() {
     if (provided) provided();
@@ -223,8 +230,13 @@ function provide(self: Component<any>) {
     if (next !== input) {
       input = next;
       remove();
+      restore?.();
+      restore = undefined;
 
-      if (Model.is(next)) {
+      if (next instanceof Context) {
+        owned = target = undefined;
+        restore = place(home(self)!, next);
+      } else if (Model.is(next)) {
         owned = target = new (next as Model.Type)(rest);
       } else {
         owned = undefined;

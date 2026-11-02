@@ -81,6 +81,37 @@ describe('Component for', () => {
     expect(seen[1].get(null)).toBe(false);
   });
 
+  it('will render within a context it is given', () => {
+    class Session extends Model {
+      user = 'ada';
+    }
+
+    class Greet extends Component {
+      session = get(Session);
+
+      render() {
+        return <span>{this.session.user}</span>;
+      }
+    }
+
+    const request = Context.root.push(Session);
+    let greet!: Greet;
+
+    const element = render(
+      <Component for={request}>
+        <Greet is={(g) => void (greet = g)} />
+      </Component>
+    );
+
+    screen.getByText('ada');
+
+    act(() => request.pop());
+
+    expect(greet.get(null)).toBe(true);
+
+    element.unmount();
+  });
+
   it('will destroy from bottom-up', async () => {
     const didDestroy = vi.fn();
 

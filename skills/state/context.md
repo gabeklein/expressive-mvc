@@ -147,10 +147,12 @@ Bare `Component` (not a subclass) given `for` provides one instance to its child
 ```tsx
 <Component for={Session} name="Ada" is={(session) => …}>…</Component>  // constructed, owned
 <Component for={session} name="Ada">…</Component>                      // provided as-is
+<Component for={request}>…</Component>                                 // a Context: renders within it
 ```
 
 - A class is constructed, owned and destroyed with the element; `is` receives it; its effects wait for the element's commit, and a replacement class while committed is released at once.
 - An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted like a field - `for={new X()}` in render gives an instance that lives for one render.
+- A `Context` places the subtree in it - its Models resolve below, and its `pop()` destroys every instance the host constructed there. The caller owns its lifetime: `Context.root.push()` keeps root's Models in reach. Popping destroys instances, not the host tree.
 - Other attributes are typed from the provided instance and assign to it on every render.
 - Changing `for` releases the previous item, then provides the next.
 - No suspense boundary unless `fallback` or `catch` is passed. Bare `<Component>` without `for` keeps `fallback = null`.

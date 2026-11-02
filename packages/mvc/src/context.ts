@@ -388,6 +388,19 @@ function join(state: Model, value: Model, explicit?: boolean): () => void {
   };
 }
 
+function place(ctx: Context, to: Context) {
+  const from = ctx.parent!;
+  const move = (from: Context, to: Context) => {
+    from.scope.delete(ctx);
+    to.scope.add(ctx);
+    ctx.parent = to;
+  };
+
+  move(from, to);
+
+  return () => move(to, from);
+}
+
 function above(ctx: Context) {
   return ctx.parent && touch(ctx, "parent", ctx.parent);
 }
@@ -448,4 +461,4 @@ function insert(into: Context, input: Accept) {
   for (const state of init) event(state);
 }
 
-export { Context, home, host, join, resolver, within };
+export { Context, home, host, join, place, resolver, within };
