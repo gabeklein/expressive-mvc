@@ -66,6 +66,22 @@ describe('style map types', () => {
     expect([map, bare, key]).toHaveLength(3);
   });
 
+  it('will accept arrays of maps as rule and condition bodies', () => {
+    const shared: Map = { color: 'gray', ':hover': { color: 'black' } };
+    const wide = false as boolean;
+    const map: Map = {
+      _select: [shared, wide && { padding: '8px' }, { color: 'red' }],
+      _list: { _item: [shared, [null, { pill: 2 }]] },
+      ':focus-within': [shared, { outline: 'none' }]
+    };
+    // @ts-expect-error - entries are maps
+    const token: Map = { _select: [shared, 'yes'] };
+    // @ts-expect-error - entries are checked like any map
+    const typo: Map = { _select: [{ colr: 'red' }] };
+
+    expect([map, token, typo]).toHaveLength(3);
+  });
+
   it('will declare a pack from its methods', () => {
     const map: Map = { edge: 'Top', pill: 2, row: true };
     // @ts-expect-error - pill takes a number, so true is not a flag
