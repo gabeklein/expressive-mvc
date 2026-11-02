@@ -193,6 +193,37 @@ declare module '@expressive/dom' {
 
 Declaration merging is whole-program, so the augmentation may sit anywhere - above the registration, below it, or in another module. Leave macro return types inferred - `style.Map` depends on `Registry`, so a macro annotated with it makes `Registry` reference itself. A declared name is checked where it registers *and* where it is called - a macro whose argument is optional also takes `true` (`row: true` calls it with none); an undeclared one still registers, but a typed map cannot call it. With no pack at all, CSS properties, rules and `--variables` work as they are.
 
+A macro may take a CSS property's name - its declaration replaces the property's type, and returning the property hands the result to the host. Use one for structured values: comma-separated lists (`transition`, `boxShadow`), which a plain array would space-join, or a factory handed its own helpers:
+
+```ts
+const fx = {
+  translateX: (x: number) => `translateX(${x}px)`,
+  scaleY: (y: number) => `scaleY(${y})`
+};
+
+const motion = {
+  transform: (value: string | ((_: typeof fx) => string | readonly string[])) =>
+    ({ transform: typeof value == 'function' ? [value(fx)].flat().join(' ') : value }),
+  transition: (value: string | readonly string[]) =>
+    ({ transition: typeof value == 'string' ? value : value.join(', ') })
+};
+
+macro(motion);
+
+declare module '@expressive/dom' {
+  namespace macro {
+    interface Registry extends macro.From<typeof motion> {}
+  }
+}
+
+style(Card, {
+  transform: (_) => [_.translateX(10), _.scaleY(2)],
+  transition: ['transform 0.2s', 'opacity 0.2s']
+});
+```
+
+The factory runs once, at expansion - rules are static.
+
 `className` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 
 ```tsx
