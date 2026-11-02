@@ -95,17 +95,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
       if (!own.includes(name)) own.push(name);
       source[name] = merge(source[name], entry);
     } else if (isCondition(key) && isObject(entry)) {
-      const rest: StyleMap = {};
-
-      for (const inner of Object.keys(entry))
-        if (inner[0] == '_') {
-          const name = inner.slice(1);
-          if (!own.includes(name)) own.push(name);
-          for (const when of split(key))
-            source[name] = merge(source[name], { [hoist(root, when)]: entry[inner] });
-        } else rest[inner] = entry[inner];
-
-      base[key] = merge(base[key], rest);
+      base[key] = merge(base[key], lift(root, split(key).map((when) => [when]), entry, own, source));
     } else if (pack && typeof entry == 'function') macros[key] = entry;
     else base[key] = entry;
   }
@@ -139,6 +129,30 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
 
   cache.set(value, scope);
   return scope;
+}
+
+function lift(frame: Frame, paths: string[][], body: StyleMap, own: string[], source: StyleMap) {
+  const rest: StyleMap = {};
+
+  for (const key of Object.keys(body)) {
+    const entry = body[key];
+
+    if (key[0] == '_') {
+      const name = key.slice(1);
+      if (!own.includes(name)) own.push(name);
+
+      for (const path of paths)
+        source[name] = merge(source[name], path.reduceRight<StyleMap>(
+          (rule, when) => ({ [hoist(frame, when)]: rule }),
+          entry as StyleMap
+        ));
+    } else if (isCondition(key) && isObject(entry)) {
+      const inner = paths.flatMap((path) => split(key).map((when) => [...path, when]));
+      rest[key] = lift(frame, inner, entry, own, source);
+    } else rest[key] = entry;
+  }
+
+  return rest;
 }
 
 function createContext(scope: StyleScope): AppearanceContext {
