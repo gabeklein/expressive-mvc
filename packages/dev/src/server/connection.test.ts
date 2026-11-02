@@ -228,6 +228,23 @@ describe("connection", () => {
       expect(Object.keys(catchUp(connection, "A"))).toEqual(["A", "A.cart"]);
     });
 
+    it("will announce a child replaced outside a call, and follow the new one", async () => {
+      const { connection, shop } = held();
+      const events: [string, any][] = [];
+
+      listen(connection, (event, data) => events.push([event, data]));
+      catchUp(connection, "A");
+      await tick();
+
+      shop.cart = new Cart();
+      await tick();
+      expect(events.slice(1)).toEqual([["stale", { A: ["cart"], "A.cart": ["items", "line"] }]]);
+
+      shop.cart.items = 5;
+      await tick();
+      expect(events.slice(2)).toEqual([["stale", { A: ["cart"], "A.cart": ["items", "line"] }]]);
+    });
+
     it("will announce a child's stale keys under its path, and stop once released", async () => {
       const { connection, shop } = held();
       const events: [string, any][] = [];

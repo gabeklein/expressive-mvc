@@ -126,13 +126,16 @@ function announce(connection: Connection): void {
 export function staleOf(connection: Connection): Record<string, string[]> {
   const stale: Record<string, string[]> = {};
 
-  for (const [twin, held] of connection.twins)
+  for (const [twin, held] of connection.twins) {
+    follow(connection, twin);
+
     for (const { key, path, instance, shape } of entriesOf(twin, held)) {
       const seen = held.seen.get(path);
       const keys = seen ? changedSince(instance, seen, shape.fields) : [];
 
       if (keys.length) stale[key] = keys;
     }
+  }
 
   return stale;
 }
