@@ -65,7 +65,9 @@ function read(instance: Model, field: string): unknown {
   try {
     return (instance as any)[field];
   } catch (error) {
-    if (error instanceof Promise) return { $pending: true };
-    throw error;
+    if (!(error instanceof Promise)) throw error;
+
+    error.catch(() => {});
+    return { $pending: true };
   }
 }

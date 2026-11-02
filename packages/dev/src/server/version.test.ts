@@ -69,6 +69,20 @@ describe("versions", () => {
     expect(snapshot(user, ["name", "greeting"])).toEqual({ name: "ada", greeting: "hi ada" });
   });
 
+  it("will not leave a pending read's rejection unhandled when its instance is destroyed", async () => {
+    class User extends Model {
+      name = set<string>();
+      get greeting() { return "hi " + this.name; }
+    }
+
+    const user = User.new();
+
+    snapshot(user, ["name", "greeting"]);
+    user.set(null);
+
+    await new Promise(resolve => setTimeout(resolve));
+  });
+
   it("will call a watcher once per flush until it stops watching", async () => {
     const tally = Tally.new();
     const watcher = vi.fn();
