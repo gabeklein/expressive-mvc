@@ -35,6 +35,8 @@ declare namespace Observer {
 interface Observer {
   /** Becomes `true` once the subject has emitted its initial event. */
   ready?: true;
+  /** Resolvers parked until the subject settles. */
+  wait?: Set<() => void>;
   listeners: Map<Observer.Notify, Set<Observer.Signal> | undefined>;
   /** Recursion guard for an in-progress emit pass. */
   pending: Set<Observer.Signal>;
@@ -316,7 +318,7 @@ function watch<T extends object, R>(
 
   function suspend(on: Promise<unknown>) {
     reset = undefined;
-    const suspended = suspense = hold(true, transition)!;
+    const suspended = suspense = hold({ transition, owner: target })!;
     const replay = () => {
       if (suspense !== suspended) return;
       suspense = undefined;

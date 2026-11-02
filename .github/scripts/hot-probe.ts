@@ -343,7 +343,7 @@ export class Deck extends Component {
   }
 }
 `,
-  'folio.tsx': `import { Model } from '@expressive/mvc';
+  'folio.tsx': `import { Component, Model } from '@expressive/mvc';
 
 class Hits extends Model {
   count = 0;
@@ -351,16 +351,20 @@ class Hits extends Model {
 
 export class Folio extends Model {
   title = 'folio';
+  hits = new Hits();
 
   Header() {
-    const { title } = this;
-    const hits = Hits.use();
+    const { title, hits } = this;
 
     return <h3 id="folio" onClick={() => hits.count++}>{title} head {hits.count}</h3>;
   }
+}
+
+export class Shelf extends Component {
+  folio = new Folio();
 
   render() {
-    return <this.Header />;
+    return <this.folio.Header />;
   }
 }
 `,
@@ -482,7 +486,7 @@ import { Vault } from './vault';
 import { Deck } from './deck';
 import { Guard } from './guard';
 import { Stage } from './stage';
-${badge ? "import { Wrapper } from './badge';\nimport { Folio } from './folio';\n" : ''}
+${badge ? "import { Wrapper } from './badge';\nimport { Shelf } from './folio';\n" : ''}
 export const App = () => (
   <Component for={Settings}>
   <Component for={Theme}>
@@ -505,7 +509,7 @@ export const App = () => (
     <Deck />
     <Guard />
     <Stage />
-    ${badge ? '<Wrapper /><Folio />' : ''}
+    ${badge ? '<Wrapper /><Shelf />' : ''}
   </Component>
   </Component>
 );
@@ -1010,7 +1014,7 @@ async function run(mode: Mode) {
     });
 
     if (mode == 'dom')
-      await scenario('plain Model subcomponent takes an edit, its owner and slots kept (dom)', async () => {
+      await scenario('plain Model subcomponent takes an edit, its owner and child kept (dom)', async () => {
         await browser.eval(`document.getElementById('folio').click()`);
         await see('#folio', 'folio head 1');
         await edit('folio.tsx', 'head {hits.count}', 'top {hits.count}');

@@ -1,0 +1,92 @@
+import { bracket } from './bracket';
+import { dispatch, type Call } from './dispatch';
+import type { Options, Query } from './journal';
+import { tick, type Act } from './settle';
+
+export const CALL_TIMEOUT = 10000;
+
+export type Answer = { value?: unknown; error?: string; status?: number };
+
+export interface NodeRequest extends AsyncIterable<unknown> {
+  method?: string;
+  headers: object;
+  socket: { remoteAddress?: string };
+  body?: unknown;
+}
+
+export interface NodeResponse {
+  headersSent?: boolean;
+  statusCode: number;
+  setHeader(name: string, value: string): unknown;
+  end(data: string): unknown;
+}
+
+const FOREIGN = ['origin', 'sec-fetch-site', 'forwarded', 'x-forwarded-for', 'x-real-ip', 'cf-connecting-ip'];
+const LOOPBACK = /^((::ffff:)?127(\.\d{1,3}){3}|::1)$/;
+const MISSING = Symbol.for('expressive-inspect.missing');
+const FAILED = 'Call failed.';
+
+export function local(ip: string | null | undefined, headers: { has(name: string): boolean }) {
+  return !FOREIGN.some((header) => headers.has(header)) && LOOPBACK.test(ip ?? '');
+}
+
+export function parse(text: string): Call | undefined {
+  try {
+    const input: unknown = JSON.parse(text);
+
+    if (Array.isArray(input) && typeof input[0] == 'string') return [input[0].split('.'), input.slice(1)];
+  } catch {}
+}
+
+export const journalCall = (method: string, ...args: unknown[]) => dispatch([['journal', method], args]) as any;
+
+async function act(step: unknown, options?: Act) {
+  if (!Array.isArray(step) || typeof step[0] != 'string')
+    throw new Error('act takes one call: ["act", [method, ...args], options?].');
+
+  const remote = {
+    record: (...options: Options[]) => journalCall('record', ...options),
+    seq: () => journalCall('seq'),
+    frames: (query: Query) => journalCall('frames', query),
+    get: (address: string) => dispatch([['get'], [address]])
+  };
+
+  const { value, frames, settled, pending, missing } = await bracket(remote, () => dispatch([step[0].split('.'), step.slice(1)]), tick, options, true);
+
+  return { value: value ?? null, frames, settled, pending, missing };
+}
+
+export async function answer(call: Call): Promise<Answer> {
+  try {
+    const value = call[0].join('.') == 'act' ? await act(call[1][0], call[1][1] as Act) : await dispatch(call);
+
+    return { value: JSON.parse(JSON.stringify(value) ?? 'null') };
+  } catch (error) {
+    if (!(error instanceof Error)) return { error: String(error) || FAILED };
+
+    return { error: error.message || FAILED, status: MISSING in error ? 404 : undefined };
+  }
+}
+
+export function headers({ headers }: NodeRequest) {
+  const fetched = typeof (headers as Headers).has == 'function';
+
+  return { has: (name: string) => (fetched ? (headers as Headers).has(name) : name in headers) };
+}
+
+export async function body(req: NodeRequest) {
+  const decoder = new TextDecoder();
+  let text = '';
+
+  for await (const chunk of req) text += typeof chunk == 'string' ? chunk : decoder.decode(chunk as Uint8Array, { stream: true });
+
+  return text + decoder.decode();
+}
+
+export function reply(res: NodeResponse, status: number, data: unknown) {
+  if (res.headersSent) return;
+
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(data ?? null));
+}

@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { flushMicrotasks, mockWarn } from '../test.setup';
+import { flushMicrotasks, mockPromise, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
 import { Model, event } from './state';
+import { map } from './field/map';
 
 it('will default fallback to null and accept it as prop', () => {
   expect(Component.new().fallback).toBe(null);
@@ -55,6 +56,35 @@ it('will call is callback once with instance', () => {
   (foo as any).props = { is };
 
   expect(is).toHaveBeenCalledTimes(1);
+});
+
+it('will assign an object is returns before new()', () => {
+  const seen = vi.fn();
+
+  class Foo extends Component {
+    value = 0;
+
+    new() {
+      seen(this.value);
+    }
+  }
+
+  const foo = Foo.new({ is: () => ({ value: 2 }) });
+
+  expect(foo.value).toBe(2);
+  expect(seen).toBeCalledWith(2);
+});
+
+it('will not assign an instance is returns', () => {
+  let held: Foo | undefined;
+
+  class Foo extends Component {
+    rows = map<string, number>();
+  }
+
+  const foo = Foo.new({ is: (x: Foo) => (held = x) } as any);
+
+  expect(held).toBe(foo);
 });
 
 it('will merge state and reset omitted props when reassigned', async () => {
@@ -135,15 +165,28 @@ describe('twin construction', () => {
   });
 });
 
-it('will ignore Context passed as constructor argument', () => {
+describe('context argument', () => {
   class Foo extends Component {
     value?: number = 10;
   }
 
-  const foo = Foo.new({ value: 5 }, new Context() as any);
+  it('will place instance in a context after props', () => {
+    const context = new Context();
+    const foo = Foo.new({ value: 5 }, context);
 
-  expect(foo.value).toBe(5);
-  expect(Object.keys(foo.get())).not.toContain('0');
+    expect(foo.value).toBe(5);
+    expect(context.get(Foo)).toBe(foo);
+    expect(Object.keys(foo.get())).not.toContain('0');
+  });
+
+  it('will defer to a host context', () => {
+    const parent = new Context();
+    const foo = new Foo({}, parent);
+    const child = parent.push(foo);
+
+    expect(Context.get(foo)).toBe(child);
+    expect(parent.get(Foo, false)).toBeUndefined();
+  });
 });
 
 describe('render', () => {
@@ -269,6 +312,52 @@ describe('for', () => {
     name = 'none';
   }
 
+  it('will provide a class swapped in for once', async () => {
+    class Other extends Model {}
+
+    const provider = Component.new({ for: Session } as any);
+    const context = Context.root.push(provider);
+    const found = vi.fn();
+
+    context.get(Other, found);
+
+    (provider as any).props = { for: Other };
+    await flushMicrotasks();
+
+    expect(found).toBeCalledTimes(1);
+    expect(found).toBeCalledWith(context.get(Other), true);
+  });
+
+  it('will provide an instance already provided above', () => {
+    class Holder extends Model {
+      session?: Session = undefined;
+    }
+
+    const session = Session.new();
+    const holder = new Holder();
+    const outer = Context.root.push(holder);
+
+    holder.session = session;
+
+    const inner = outer.push(new Component({ for: session } as any));
+
+    holder.session = undefined;
+
+    expect(outer.get(Session, false)).toBeUndefined();
+    expect(inner.get(Session)).toBe(session);
+  });
+
+  it('will release an instance when the provider is destroyed', () => {
+    const session = Session.new();
+    const provider = Component.new({ for: session } as any);
+    const context = Context.root.push(provider);
+
+    provider.set(null);
+
+    expect(context.get(Session, false)).toBeUndefined();
+    expect(session.get(null)).toBe(false);
+  });
+
   it('will construct and provide a class', () => {
     const is = vi.fn();
     const provider = Component.new({ for: Session, name: 'Ada', is } as any);
@@ -278,6 +367,13 @@ describe('for', () => {
     expect(session.name).toBe('Ada');
     expect(is).toBeCalledWith(session);
     expect(is).not.toBeCalledWith(provider);
+  });
+
+  it('will assign an object is returns to a provided class', () => {
+    const provider = Component.new({ for: Session, is: () => ({ name: 'Grace' }) } as any);
+    const context = new Context().push(provider);
+
+    expect(context.get(Session).name).toBe('Grace');
   });
 
   it('will destroy a provided class with the provider', () => {
@@ -345,44 +441,94 @@ describe('for', () => {
     expect(context.get(Session, false)).toBeUndefined();
   });
 
-  it('will mount only a class it constructed', () => {
-    const cleanup = vi.fn();
+  it('will provide the next instance when for changes', async () => {
+    const first = Session.new();
+    const next = Session.new();
+    const provider = Component.new({ for: first } as any);
+    const context = new Context().push(provider);
+
+    (provider as any).props = { for: next };
+    await flushMicrotasks();
+
+    expect(context.get(Session)).toBe(next);
+    expect(first.get(null)).toBe(false);
+  });
+
+  it('will hold a constructed class until mount', async () => {
+    const effect = vi.fn();
 
     class Owned extends Model {
-      mount() {
-        return cleanup;
+      protected new() {
+        this.get(effect);
       }
     }
 
-    const owned = Component.new({ for: Owned } as any) as any;
-    const placed = Component.new({ for: Owned.new() } as any) as any;
-    const plain = Component.new({ for: Session } as any) as any;
+    const placed = mockPromise<void>();
 
-    owned.mount()();
-    placed.mount()();
-    plain.mount()();
+    const stop = Component.on({ setup: () => placed });
 
-    expect(cleanup).toBeCalledTimes(1);
+    Component.new({ for: Owned } as any);
+    stop();
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+
+    placed.resolve();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
   });
 
-  it('will hand mount to the next class when for changes', async () => {
+  it('will hold only a class it constructed', async () => {
+    const effect = vi.fn();
+
+    class Owned extends Model {
+      protected new() {
+        this.get(effect);
+      }
+    }
+
+    const placed = mockPromise<void>();
+
+    const stop = Component.on({ setup: () => placed });
+
+    Component.new({ for: Owned } as any);
+    Component.new({ for: Owned.new() } as any);
+    stop();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+
+    placed.resolve();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(2);
+  });
+
+  it('will release the next class at once when for changes', async () => {
     const log: string[] = [];
 
     const tracked = (name: string) => class extends Model {
-      mount() {
-        log.push(name + ':mount');
-        return () => log.push(name + ':unmount');
-      }
-
       protected new() {
+        this.get(() => {
+          log.push(name + ':effect');
+          return () => log.push(name + ':release');
+        });
         return () => log.push(name + ':destroy');
       }
     };
 
     const First = tracked('first');
     const Second = tracked('second');
+    const placed = mockPromise<void>();
+
+    const stop = Component.on({ setup: () => placed });
     const provider = Component.new({ for: First } as any) as any;
-    const release = provider.mount();
+
+    stop();
+    placed.resolve();
+    await flushMicrotasks();
+    expect(log).toEqual(['first:effect']);
 
     provider.props = { for: Second };
     await flushMicrotasks();
@@ -390,46 +536,14 @@ describe('for', () => {
     provider.props = { for: Session };
     await flushMicrotasks();
 
-    release();
-
     expect(log).toEqual([
-      'first:mount',
-      'first:unmount',
+      'first:effect',
+      'first:release',
       'first:destroy',
-      'second:mount',
-      'second:unmount',
+      'second:effect',
+      'second:release',
       'second:destroy'
     ]);
-  });
-
-  it('will keep a mount defined before it provides', () => {
-    const order: string[] = [];
-
-    class Owned extends Model {
-      mount() {
-        order.push('owned');
-        return () => order.push('owned:done');
-      }
-    }
-
-    const stop = Component.on({
-      setup(self) {
-        Object.defineProperty(self, 'mount', {
-          configurable: true,
-          value: () => {
-            order.push('inherited');
-            return () => order.push('inherited:done');
-          }
-        });
-      }
-    });
-
-    const provider = Component.new({ for: Owned } as any) as any;
-
-    stop();
-    provider.mount()();
-
-    expect(order).toEqual(['inherited', 'owned', 'owned:done', 'inherited:done']);
   });
 
   it('will not default a boundary', () => {

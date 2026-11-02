@@ -1,7 +1,8 @@
-import { Context } from '../context';
+import { join } from '../context';
+import { def } from './def';
+import { element } from '../element';
 import { event, listener, touch } from '../observable';
 import { Model, parent } from '../state';
-import { def } from './def';
 
 const LENGTH = Symbol('length');
 const SHAPE = Symbol('shape');
@@ -55,6 +56,16 @@ class List<T> {
     OWNED.set(this, new Map());
 
     event(this);
+  }
+
+  /** The instance to render - this, or the source behind a derived view. */
+  get is(): this {
+    return source(this);
+  }
+
+  /** Members to render, as a host sees them. */
+  render(): T[] {
+    return [...this];
   }
 
   get size(): number {
@@ -201,6 +212,16 @@ class Pool<T, A extends unknown[] = unknown[], R = T> {
     event(this);
   }
 
+  /** The instance to render - this, or the source behind a derived view. */
+  get is(): this {
+    return source(this);
+  }
+
+  /** Members to render, as a host sees them. */
+  render(): T[] {
+    return [...this];
+  }
+
   get size(): number {
     return touch(this, SHAPE, members<T>(this).size);
   }
@@ -311,7 +332,7 @@ function adopt(
   let detach: (() => void) | undefined;
 
   if (fresh && owner)
-    detach = Context.get(owner).add(value);
+    detach = join(owner, value);
 
   OWNED.get(target)!.set(key, () => {
     evict();
@@ -393,5 +414,8 @@ function filterOf<T>(self: Iterable<T>, fn: Predicate<T>): T[] {
 }
 
 Object.assign(has, { List, Pool });
+
+element(List);
+element(Pool);
 
 export { has };

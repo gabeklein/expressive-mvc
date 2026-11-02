@@ -5,7 +5,8 @@ import { expect, it, describe, vi } from 'vitest';
 
 import { flushMicrotasks, mockPromise } from '../test.setup';
 import { Model } from '@expressive/mvc';
-import { Component, pending } from '.';
+import '.';
+import { Component, pending } from '@expressive/mvc';
 
 describe('Component', () => {
   it('will expose a base render for class detection', () => {
@@ -41,7 +42,7 @@ describe('Component', () => {
     }
 
     let instance!: Control;
-    render(<Control is={(c) => (instance = c)} />);
+    render(<Control is={(c) => void (instance = c)} />);
 
     expect(Object.keys(instance).sort()).toEqual(['baz', 'foo']);
   });
@@ -71,14 +72,16 @@ describe('Component', () => {
 });
 
 describe('Component for', () => {
-  it('will mount an instance it creates', () => {
+  it('will run effects of an instance it creates once committed', async () => {
     const didMount = vi.fn();
     const didUnmount = vi.fn();
 
     class Test extends Model {
-      mount() {
-        didMount();
-        return didUnmount;
+      protected new() {
+        this.get(() => {
+          didMount();
+          return didUnmount;
+        });
       }
     }
 
@@ -88,6 +91,7 @@ describe('Component for', () => {
       </Component>
     );
 
+    await flushMicrotasks();
     expect(didMount).toBeCalledTimes(1);
     expect(didUnmount).not.toBeCalled();
 

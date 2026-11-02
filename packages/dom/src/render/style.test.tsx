@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { Component, has } from '@expressive/mvc';
-import { render } from '../index';
+import { render, style } from '../index';
 import { flushMicrotasks, mount, place } from '../../test.setup';
 
 describe('style prop', () => {
@@ -260,5 +260,37 @@ describe('style prop', () => {
     const root = place(<Pair style="shared" />);
 
     expect([...root.children].map((node) => node.className)).toEqual(['shared', 'shared']);
+  });
+});
+
+describe('authoring scope without macros', () => {
+  it('will keep the author through an unstyled wrapper', () => {
+    function Wrap({ children }: { children?: Component.Node }) {
+      return <div>{children}</div>;
+    }
+
+    function Author() {
+      return <Wrap><p _note /></Wrap>;
+    }
+
+    style(Author, { _note: { color: 'green' } });
+
+    expect(place(<Author />).querySelector('p')!.className).toBe('Author_note');
+  });
+
+  it('will render children of a styled wrapper under an unstyled root', () => {
+    function Box({ children }: { children?: Component.Node }) {
+      return <section _box>{children}</section>;
+    }
+
+    function Root() {
+      return <Box><p _note /></Box>;
+    }
+
+    style(Box, { _box: { color: 'red' } });
+
+    const root = place(<Root />);
+    expect(root.querySelector('section')!.className).toBe('Box_box');
+    expect(root.querySelector('p')!.className).toBe('');
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@expressive/dom",
-  "version": "0.4.0",
+  "version": "0.8.0",
   "description": "MVC-native DOM renderer.",
   "license": "MIT",
   "author": {
@@ -19,6 +19,7 @@
   "sideEffects": [
     "./src/*.ts",
     "./src/render/adapter.ts",
+    "./src/render/component.ts",
     "./dist/index.js",
     "./dist/jsx-runtime.js",
     "./dist/jsx-dev-runtime.js"
@@ -56,7 +57,7 @@
     "test": "bun run typecheck && bun run coverage"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.89.0",
+    "@expressive/mvc": "^0.93.0",
     "vite": ">=5"
   },
   "peerDependenciesMeta": {

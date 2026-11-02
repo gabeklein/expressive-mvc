@@ -10,6 +10,7 @@ import {
 } from 'react-router';
 import type { Route } from './+types/root';
 import './app.css';
+import '@expressive/react';
 import SearchDialog from '@/components/Search';
 import NotFound from './routes/not-found';
 

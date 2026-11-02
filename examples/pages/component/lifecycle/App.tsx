@@ -9,9 +9,10 @@ export default () => (
     <p>
       Three seams, three phases. <code>new()</code> runs at construction,
       synchronously and during server render too, so it belongs to setup the
-      instance carries with it. <code>mount()</code> runs at commit and only on
-      the client - where timers, listeners and anything reaching for{' '}
-      <code>window</code> go. <code>ref()</code> fires when its element attaches.
+      instance carries with it. An effect declared there waits for commit and
+      runs only on the client - where timers, listeners and anything reaching
+      for <code>window</code> go. <code>ref()</code> fires when its element
+      attaches.
     </p>
     <Demo />
     <small>
@@ -61,23 +62,24 @@ class Probe extends Component {
 
   protected new() {
     this.demo.log('new() · constructed');
+
+    this.get(() => {
+      this.demo.log('effect · committed');
+
+      const measure = () => (this.width = window.innerWidth);
+      const timer = setInterval(() => this.ticks++, 1000);
+
+      measure();
+      window.addEventListener('resize', measure);
+
+      return () => {
+        this.demo.log('effect cleanup · unmounted');
+        clearInterval(timer);
+        window.removeEventListener('resize', measure);
+      };
+    });
+
     return () => this.demo.log('new() cleanup · destroyed');
-  }
-
-  mount() {
-    this.demo.log('mount() · committed');
-
-    const measure = () => (this.width = window.innerWidth);
-    const timer = setInterval(() => this.ticks++, 1000);
-
-    measure();
-    window.addEventListener('resize', measure);
-
-    return () => {
-      this.demo.log('mount() cleanup · unmounted');
-      clearInterval(timer);
-      window.removeEventListener('resize', measure);
-    };
   }
 
   box = ref<HTMLDivElement>(() => {

@@ -77,9 +77,9 @@ A page reads its nearest `Route` like any contextual instance:
 import { Route } from '@expressive/router';
 
 function Mission() {
-  const { match, query, goto } = Route.get(true);
+  const { match, query, goto } = Route.get();
 
-  return (
+  if (match) return (
     <article>
       <h2>Operation {match.codename}</h2>
       <button onClick={() => goto({ codename: 'thunderball' })}>
@@ -88,6 +88,8 @@ function Mission() {
       <p>view: {query.get('view') ?? 'summary'}</p>
     </article>
   );
+
+  return null;
 }
 ```
 
@@ -291,9 +293,8 @@ the owning instance should use `AbortController` or its own generation check.
   non-browser hosts.
 - `BrowserRouter` binds `window.location` and `window.history`. It is for
   client-routed browser applications.
-- Server rendering is safe from shared global router state, but request-path
-  routing, redirects, loader serialization, and hydration are not a supported
-  SSR routing system today.
+- Request-path routing, redirects, loader serialization, and hydration are not
+  a supported SSR routing system today.
 - On React Native, use `Router` and render navigation UI from native host
   components that call `goto`. `BrowserRouter`, `Link`, and `NavLinks` are
   DOM-facing.

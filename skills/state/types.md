@@ -11,7 +11,7 @@ Namespace types on `Model` used throughout the API.
 | `Model.Property<T>` | Keys of T excluding inherited Model members                             |
 | `Model.Field<T>`    | Managed keys - `Property<T>` less unmanaged `_` keys                    |
 | `Model.Event<T>`    | Valid event keys: `Field<T> \| number \| symbol \| (string & {})`       |
-| `Model.Args<T>`     | Constructor argument union: `(Args \| Init \| Assign \| void)[]`        |
+| `Model.Args<T>`     | Constructor argument union: `(Args \| Init \| Assign \| Context \| void)[]` |
 | `Model.Assign<T>`   | Object overlay - maps properties preserving function `this`             |
 | `Model.Values<T>`   | All fields with child instances and ref objects unwrapped via `Export<R>`  |
 | `Model.Export<R>`   | Model R: recursive `Values<R>`; else R with `.get()`: its return type; else R |

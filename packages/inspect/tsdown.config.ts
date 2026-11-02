@@ -9,6 +9,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     install: 'src/install.ts',
+    http: 'src/http.ts',
     bridge: 'src/bridge.ts',
     vite: 'src/vite/index.ts',
     'vite/client': 'src/vite/client.ts'

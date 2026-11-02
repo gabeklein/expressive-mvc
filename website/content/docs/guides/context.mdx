@@ -53,7 +53,7 @@ The bare `Component` class - not a subclass - given a `for` attribute puts one i
 </Component>
 ```
 
-The element constructs an instance, owns it, and destroys it on unmount. Its `mount()` runs with the element's. Other attributes are typed from the provided instance and assigned to it on every render:
+The element constructs an instance, owns it, and destroys it on unmount. Its effects wait for the element's commit. Other attributes are typed from the provided instance and assigned to it on every render:
 
 ```tsx
 <Component for={Theme} color="red">
@@ -65,21 +65,24 @@ Changing `for` to another class releases the previous instance and provides a ne
 
 ### Providing an existing instance
 
-Pass an instance only when something else owns it - for example, one a component created with `Model.use()`:
+Pass an instance only when something else owns it - for example, documents created with `Doc.new()` and shown by whichever pane is pointed at them:
 
 ```tsx
-function Page() {
-  const theme = Theme.use();
+const docs = [Doc.new(), Doc.new()];
 
+function Pane({ index }: { index: number }) {
   return (
-    <Component for={theme}>
-      <App />
+    <Component for={docs[index]}>
+      <Toolbar />
+      <Canvas />
     </Component>
   );
 }
 ```
 
-An instance passed in is **not** destroyed when the element unmounts, and its `mount()` is not called - its owner manages its lifetime.
+`Toolbar` and `Canvas` call `Doc.get()` and see the pane's document; changing `index` swaps what they read.
+
+An instance passed in is **not** destroyed when the element unmounts, and its effects are not held - its owner manages its lifetime.
 
 ### Providing several instances
 
@@ -148,62 +151,51 @@ function ThemeToggle() {
 const theme = Theme.get(false); // Theme | undefined
 ```
 
-### Required values
+### Values that may be unset
+
+Hold the value as a Model field - a field instance joins its owner's context. Destructure it and render conditionally; the child reads it from context, so it only ever renders where the value exists:
 
 ```tsx
-const profile = UserProfile.get(true); // Required<UserProfile>
+class Settings extends Model {
+  draft?: Draft = undefined;
+}
+
+function SettingsPanel() {
+  const { draft } = Settings.get();
+
+  if (draft) return <Editor />;
+
+  return <Spinner />;
+}
+
+function Editor() {
+  const { name } = Draft.get();
+
+  return <input value={name} />;
+}
 ```
 
-With `true`, reading a property that is currently `undefined` throws an Error (`UserProfile-XXXXXX.name is required in this context.`). That surfaces at the nearest **error boundary** - not Suspense - so use it where a missing value would be a bug, not a loading state.
+If the value has a single view of its own, make it a `Component` and place it directly: `if (draft) return <>{draft}</>`.
 
-### Computed selector
+### Deriving values
 
-Pass a factory to derive a value from context. The component only re-renders when the derived value changes (compared by `===`):
+Destructure what the component renders and derive inline, or declare a getter on the Model so the derivation is memoized and shared:
 
 ```tsx
 function CartSummary() {
-  const summary = Cart.get((cart) => ({
-    total: cart.total,
-    count: cart.count,
-    empty: cart.items.length === 0
-  }));
+  const { items, total } = Cart.get();
 
-  if (summary.empty) return <p>Cart is empty</p>;
-  return (
-    <p>
-      {summary.count} items - ${summary.total}
-    </p>
-  );
+  if (items.length) return <p>{items.length} items - ${total}</p>;
+
+  return <p>Cart is empty</p>;
 }
 ```
 
-The factory receives a tracking proxy and a `refresh` function (see below).
+Side effects belong in the Model - an instance effect with `state.get(effect)`, declared in `new()`.
 
-### Effect mode
+### Custom lookup
 
-Return `null` from the factory to run a side effect once, on first render, without subscribing - the factory never runs again and the component doesn't re-render for this instance:
-
-```tsx
-AppState.get((app) => {
-  analytics.track('page', app.page);
-  return null;
-});
-```
-
-### ForceRefresh
-
-The second argument to a factory is a `refresh` function. Call it to force the component to re-render, pass it a promise to re-render after resolution, or pass it an async function to re-render before and after:
-
-```tsx
-function DataView() {
-  const data = DataService.get((svc, refresh) => {
-    const reload = () => refresh(svc.fetch());
-    return { items: svc.items, reload };
-  });
-
-  return <button onClick={data.reload}>Reload</button>;
-}
-```
+A class may override static `get` with its own arguments - `User.get(id)` - and keep context and render tracking. See the [Model.get reference](/docs/api/state#overriding-get) for how an override delegates to `super.get` and calls `Context.get`.
 
 <br />
 
@@ -298,44 +290,58 @@ const Themed = () => {
 
 <br />
 
-## Globals and the root context
+## App-wide state and the root context
 
-Not everything wants a `<Component for>`. Some state is genuinely global - the session, the viewport, app settings. Declare those with `static global` and call `Model.new()` at module scope:
+Some state belongs to the whole app - the session, the viewport, settings. Give it to a component at the top - no `render()` needed, it renders its children:
 
-```ts
-// session.ts
-import { Model } from '@expressive/mvc';
+```tsx
+// app.tsx
+import { Component } from '@expressive/mvc';
 
-class Session extends Model {
-  static global = true;
-
-  user = 'gabe';
-  logout() {
-    this.user = '';
-  }
+class Global extends Component {
+  session = new Session();
+  theme = new Theme();
 }
 
-export default Session.new();
+export default () => (
+  <Global>
+    <Layout />
+  </Global>
+);
 ```
 
-`Model.new()` activates the instance against `Context.root`, the global registry every context ultimately inherits from - and because `Session` declares `static global`, it registers there too. Any component, anywhere, can now call `Session.get()` - nothing to provide:
+A component provides itself and what it owns to everything below, so any component there can call `Session.get()`:
 
 ```tsx
 function Avatar() {
-  const { user } = Session.get(); // found via the root context
+  const { user } = Session.get(); // found through Global
   return <img src={`/avatars/${user}.png`} />;
 }
 ```
 
-The declaration is the opt-in. Without it, a context-less `Model.new()` instance is fully functional but private - it can read declared globals, but nothing can find *it*. And `static global` must be declared per class: a subclass of a global that doesn't redeclare it throws on activation, so an extended global can't leak into the shared root by accident.
+That's the point of `Global` - it makes each piece of shared state available by its own type. Components ask for `Session`, not for `Global` and then its `session`; `Global.get()` works, but nothing below should need to know where `Session` lives.
 
-A full app built this way (viewport, session, and theme as globals) is at [composition/globals](/examples/composition/globals).
+Every context descends from `Context.root`. A `Model.new()` outside any context resolves its own lookups against root, but never registers there - nothing can find it until something provides it. To make an instance findable without a provider, pass root when creating it - it's removed again when the instance is destroyed:
 
-### Homes are permanent
+```ts
+Session.new(Context.root);
+```
 
-Where an instance activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A global's `Model.new()` registers it at root, which claims it immediately and permanently; wrapping the instance in a context afterward won't move it. A private instance only *falls back* to root, so the first explicit context to claim it later still becomes its home.
+A full app built the provided way (viewport, session, and theme) is at [composition/globals](/examples/composition/globals).
 
-The escape hatch is plain construction. `new Model()` builds the instance without activating it, so the first explicit placement gets to claim it:
+<br />
+
+## Placing instances
+
+Where an instance activates decides where its own `get()` lookups originate - its *home context* - and that assignment is first-wins. A `Model.new()` only *falls back* to root, so the first explicit context to claim it later still becomes its home, though its initialization already ran without it.
+
+To choose the home up front, pass the context to `.new()` - the instance is placed before its initialization runs:
+
+```ts
+const cart = Cart.new(context); // cart's home is context
+```
+
+Or construct without activating - `new Model()` builds the instance, so the first explicit placement gets to claim it before anything runs:
 
 ```ts
 const cart = new Cart(); // constructed, not yet activated
@@ -344,10 +350,24 @@ new Context(cart); // cart's home is this context
 
 Useful in tests, and in code that prepares an instance before mounting it into a tree.
 
-> **Good to know:** <br/>
-> A global may not shadow another. A second `Model.new()` of the same global class throws, and so does a global subclass or supertype of one already in root - destroy the first (`set(null)`) before creating another. Two *different* subclasses of a shared global base don't throw; they collide only at the base, where both are evicted - `Base.get()` finds neither rather than one silently winning, while each subclass stays findable by its own type. Explicit registration (`<Component for>`, or `Context.root.add(state, true)`) bypasses both rules.
+When more than one context is in play, the first claim wins:
 
-That's the short version - constructor forms, `ctx.add`, eviction and subtype rules are all in [API: Utilities](/docs/api/utilities).
+- **Claimed before activation** - a host mounting the instance, `ctx.add` / `ctx.push` before it activates, or an owner adopting it as a field child (an owned child always lives where its owner does). That claim decides the home, and context arguments are ignored. This is how a component rendered by React keeps its own layer even though React hands its constructor the parent context.
+- **Context arguments** - the first one becomes the home, and later ones are ignored. So a default goes last, like a fallback (the opposite of initial values, where later wins), and a subclass that must decide its placement passes its context first: `super(context, ...args)`, or `super(props, context, ...rest)` for a component.
+
+When a context "didn't take", something earlier had the claim - the host, the owner, or an earlier argument.
+
+```ts
+Cart.new(...args, Context.root); // root unless args brought a context
+```
+
+An owned child - `session = new Session()` - always lives where its owner does. Writing `Session.new(context)` in a field instead makes a guest - homed there, but not owned, so it is never destroyed with the parent. Created in a field initializer, nothing ever releases it; make guests where their lifetime is held and pass them in.
+
+A component given a context this way - `Panel.new(props, context)` - is added to it like any instance, visible to its siblings there - two of one class in the same context make a lookup throw. To mount one as a host would, under its own layer, push it with a cleanup: `context.push(panel, () => panel.set(null))`.
+
+An entry lasts until the instance is destroyed. Popping the context removes the entry but leaves the instance alive, and `Context.get(instance)` still returns the popped context - destroy it with `set(null)` to release it.
+
+That's the short version - constructor forms and `ctx.add` are in [API: Utilities](/docs/api/utilities).
 
 <br />
 

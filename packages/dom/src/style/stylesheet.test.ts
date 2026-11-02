@@ -2,9 +2,16 @@ import { describe, it, expect } from 'vitest';
 
 import type { macro, style } from './stylesheet';
 
+const sides = {
+  edge: (side: 'Top' | 'Left') => ({ [`border${side}`]: '1px solid' }),
+  row: (gap?: string) => ({ display: 'flex', gap }),
+  _raised: { boxShadow: '0 1px 2px black' },
+  '*': (value: unknown, key: string) => ({ [key]: value })
+};
+
 declare module './stylesheet' {
   namespace macro {
-    interface Registry {
+    interface Registry extends macro.From<typeof sides> {
       pill(value: number): { marginLeft: string };
     }
   }
@@ -49,5 +56,30 @@ describe('style map types', () => {
     const wrong: macro.Map = { pill: (value: string) => ({ marginLeft: value }) };
 
     expect([pack, wrong]).toHaveLength(2);
+  });
+
+  it('will accept conditions holding maps', () => {
+    const map: style.Map = {
+      ':hover': { color: 'blue' },
+      '@media (max-width: 900px)': { _grid: { gap: '2px' } },
+      _control: { ':focus-within, :active': { color: 'navy' } }
+    };
+    // @ts-expect-error - a condition holds a map
+    const bare: style.Map = { ':hover': 'blue' };
+    const key: style.Condition = '@media print';
+
+    expect([map, bare, key]).toHaveLength(3);
+  });
+
+  it('will declare a pack from its value', () => {
+    const map: style.Map = { edge: 'Top', pill: 2, row: true };
+    // @ts-expect-error - pill takes a number, so true is not a flag
+    const flag: style.Map = { pill: true };
+    // @ts-expect-error - edge declared from its implementation
+    const wrong: style.Map = { edge: 'Bottom' };
+    // @ts-expect-error - rules and '*' are not macros
+    const rule: style.Map = { raised: true };
+
+    expect([map, flag, wrong, rule, sides]).toHaveLength(5);
   });
 });

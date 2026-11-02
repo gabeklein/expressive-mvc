@@ -2,9 +2,10 @@ import { render, screen, act, fireEvent, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, describe, vi, type MockInstance } from 'vitest';
 import React, { Suspense } from 'react';
 
-import { mockError, mockPromise, revisions } from '../test.setup';
+import { flushMicrotasks, mockError, mockPromise, revisions } from '../test.setup';
 import { Model } from '@expressive/mvc';
-import { Component, get, has, map } from '.';
+import '.';
+import { Component, get, has, map } from '@expressive/mvc';
 import { pending } from '@expressive/mvc';
 
 let error: MockInstance<Console['error']>;
@@ -68,6 +69,39 @@ describe('instance element', () => {
 
     element.unmount();
 
+    expect(instance.get(null)).toBe(false);
+  });
+
+  it('will not hold a placed instance', async () => {
+    const effect = vi.fn();
+    const cleanup = vi.fn();
+
+    class Test extends Component {
+      protected new() {
+        this.get(() => {
+          effect();
+          return cleanup;
+        });
+      }
+    }
+
+    const instance = Test.new();
+
+    expect(effect).toBeCalledTimes(1);
+
+    const element = render(
+      <>
+        <section>{instance}</section>
+        <aside>{instance}</aside>
+      </>
+    );
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
+
+    element.unmount();
+
+    expect(cleanup).not.toBeCalled();
     expect(instance.get(null)).toBe(false);
   });
 
@@ -255,7 +289,7 @@ describe('instance element', () => {
 
     const element = render(
       <Component for={Theme} color="red">
-        <Store is={(x) => (store = x)} />
+        <Store is={(x) => void (store = x)} />
       </Component>
     );
 
@@ -384,33 +418,6 @@ describe('instance element', () => {
     expect(instance.get(null)).toBe(false);
   });
 
-  it('will not mount a placed instance', () => {
-    const didMount = vi.fn();
-
-    class Test extends Component {
-      mount() {
-        didMount();
-      }
-
-      render() {
-        return <span>hello</span>;
-      }
-    }
-
-    const instance = Test.new();
-    const element = render(
-      <>
-        <section>{instance}</section>
-        <aside>{instance}</aside>
-      </>
-    );
-
-    expect(didMount).not.toBeCalled();
-
-    element.unmount();
-
-    expect(instance.get(null)).toBe(false);
-  });
 
   it('will resolve ancestor provided at placement', async () => {
     class Theme extends Model {

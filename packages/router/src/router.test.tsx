@@ -6,7 +6,6 @@ import { Router as CoreRouter } from './router';
 type Gate = ReturnType<typeof mockPromise<void>>;
 
 class Router extends CoreRouter {
-  static readonly global: (typeof CoreRouter)['global'] = false;
   declare public entries: string[];
   declare public index: number;
 }
