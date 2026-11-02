@@ -131,7 +131,7 @@ style(Select, {
 - CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`mobile` above) exported from one style module.
 - Layers and subclasses merge a condition's body key by key, like a rule.
 
-The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and` in that order. Its result is a literal type, so `[mobile]` beside other keys stays a typed map - a value typed `number` or `string` instead of a literal widens it to a pattern, which does not.
+The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and` in that order. The result is a literal type, so `[mobile]` beside other keys stays a typed map; a value typed `number` or `string` rather than a literal, or a `Query`-typed variable, yields a pattern and widens the map again.
 
 ### The web pack
 

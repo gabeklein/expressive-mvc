@@ -8,7 +8,7 @@ const order = [
   'pointer',
   'prefersColorScheme',
   'prefersReducedMotion'
-] as const;
+] as const satisfies readonly (keyof Query)[];
 
 interface Query {
   minWidth?: number | string;
@@ -43,7 +43,14 @@ type Join<T extends readonly string[]> =
     ? R extends [] ? H : `${H} and ${Join<R>}`
     : '';
 
-type Media<Q extends Query> = `@media ${Join<Features<Q, typeof order>>}`;
+type Optional<Q> = {
+  [K in keyof Q]-?: Q[K] extends undefined ? never : undefined extends Q[K] ? K : never;
+}[keyof Q];
+
+type Media<Q extends Query> =
+  [Optional<Q>] extends [never]
+    ? `@media ${Join<Features<Q, typeof order>>}`
+    : `@media ${string}`;
 
 function media<const Q extends Query>(query: Q): Media<Q> {
   const features = [];
