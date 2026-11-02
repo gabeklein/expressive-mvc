@@ -3,7 +3,8 @@ import "@expressive/dom";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import type { IncomingMessage } from "node:http";
-import { Context, State } from "@expressive/mvc";
+import { Context, Model } from "@expressive/mvc";
+import { resolver } from "@expressive/mvc/jsx-runtime";
 
 import { track } from "./version";
 
@@ -12,7 +13,6 @@ interface Layer {
   context: Context;
   parent?: Layer;
   children: Map<string, Layer>;
-  states: Map<Owned, Entry>;
   seat?: Entry;
   calls: number;
   pooled: number;
@@ -22,7 +22,7 @@ interface Entry {
   Type: Owned;
   layer: Layer;
   context: Context;
-  instance: State;
+  instance: Model;
   remove(): void;
   refs: number;
   timer?: ReturnType<typeof setTimeout>;
@@ -34,7 +34,7 @@ interface Frame {
   held: Set<Entry>;
 }
 
-type Owned = State.Type & { ttl?: number };
+type Owned = Model.Type & { ttl?: number };
 
 export type Seat = Owned & { key?(): string | number | undefined };
 
@@ -45,22 +45,21 @@ let top: Layer | undefined;
 
 function frame(): Frame {
   const frame = store.getStore();
-  if (!frame) throw new Error("Server State resolves only within a sidecar call.");
+  if (!frame) throw new Error("Server Model resolves only within a sidecar call.");
   return frame;
 }
 
 function newLayer(prefix: string, parent?: Layer): Layer {
-  const context = parent ? parent.context.push() : Context.root.push();
-  return { prefix, context, parent, children: new Map(), states: new Map(), calls: 0, pooled: 0 };
+  const context = parent ? scope(parent).push() : Context.root.push(Current);
+  return { prefix, context, parent, children: new Map(), calls: 0, pooled: 0 };
+}
+
+function scope(layer: Layer): Context {
+  return layer.seat ? layer.seat.context : layer.context;
 }
 
 function root(): Layer {
-  if (!top) {
-    top = newLayer("");
-    top.context.set({ 0: Current });
-  }
-
-  return top;
+  return (top ??= newLayer(""));
 }
 
 function hash(text: string): string {
@@ -96,13 +95,15 @@ function enter(parent: Layer, segment?: string, Seat?: Seat): Layer {
 }
 
 function seat(layer: Layer, Seat: Seat) {
-  const entry = layer.states.get(Seat) ?? create(Seat, layer);
+  if (layer.seat?.Type !== Seat) {
+    if (layer.seat) evict(layer, true);
+    layer.seat = create(Seat, layer);
+  }
 
-  layer.seat = entry;
-  hold(frame().held, entry);
+  hold(frame().held, layer.seat);
 }
 
-const isEmpty = (layer: Layer) => !layer.calls && !layer.pooled && !layer.states.size && !layer.children.size;
+const isEmpty = (layer: Layer) => !layer.calls && !layer.pooled && !layer.seat && !layer.children.size;
 
 function prune(layer: Layer) {
   let at = layer;
@@ -115,28 +116,22 @@ function prune(layer: Layer) {
 }
 
 function drop(entry: Entry) {
-  const { layer } = entry;
-  if (layer.states.get(entry.Type) !== entry) return;
-
-  if (layer.seat === entry) return evict(layer);
-
-  discard(entry);
-  prune(layer);
+  if (entry.layer.seat === entry) evict(entry.layer);
 }
 
-function discard(entry: Entry) {
-  entry.layer.states.delete(entry.Type);
-  clearTimeout(entry.timer);
-  entry.remove();
-  entry.context.pop();
-}
+function evict(layer: Layer, keep = false) {
+  const entry = layer.seat;
 
-function evict(layer: Layer) {
   layer.seat = undefined;
-  layer.children.forEach(evict);
-  layer.states.forEach(discard);
+  layer.children.forEach(child => evict(child));
 
-  if (!layer.parent) return;
+  if (entry) {
+    clearTimeout(entry.timer);
+    entry.remove();
+    entry.context.pop();
+  }
+
+  if (keep || !layer.parent) return;
 
   layer.context.pop();
   layer.parent.children.delete(layer.prefix);
@@ -178,15 +173,12 @@ export async function within<T>(request: IncomingMessage, segments: string[], ru
 }
 
 function create(Type: Owned, layer: Layer): Entry {
-  const context = layer.context.push();
-  let instance!: State;
-
-  context.set({ 0: Type }, state => { instance = state; });
+  const context = layer.context.push(Type);
+  const instance = context.get(Type)!;
 
   const remove = layer.context.add(instance, true);
   const entry: Entry = { Type, layer, context, instance, remove, refs: 0 };
 
-  layer.states.set(Type, entry);
   track(instance);
   instance.set(null, () => drop(entry));
 
@@ -194,39 +186,26 @@ function create(Type: Owned, layer: Layer): Entry {
 }
 
 function hold(held: Set<Entry>, entry: Entry) {
-  if (held.has(entry)) return;
-
   held.add(entry);
   entry.refs++;
   clearTimeout(entry.timer);
-}
-
-function use(this: Owned) {
-  const { layer, held } = frame();
-  const entry = layer.states.get(this) ?? create(this, layer);
-
-  hold(held, entry);
-
-  return entry.instance;
 }
 
 let detached: Context | undefined;
 
 function detachedContext(): Context {
   if (!detached) {
-    detached = Context.root.push();
-    detached.set({ 0: Current });
+    detached = Context.root.push(Current);
   }
 
   return detached;
 }
 
-export function construct(Type: State.Type, off = false): { instance: State; drop(): void; current(): boolean } {
+export function construct(Type: Model.Type, off = false): { instance: Model; drop(): void; current(): boolean } {
   const layer = off ? undefined : frame().layer;
-  const context = (layer ? layer.context : detachedContext()).push();
-  let instance!: State;
+  const context = (layer ? scope(layer) : detachedContext()).push(Type);
+  const instance = context.get(Type)!;
 
-  context.set({ 0: Type }, state => { instance = state; });
   track(instance);
 
   if (layer) {
@@ -244,16 +223,15 @@ export function construct(Type: State.Type, off = false): { instance: State; dro
   };
 }
 
-export function seated(): State | undefined {
+export function seated(): Model | undefined {
   return frame().layer.seat?.instance;
 }
 
-function get(this: typeof State, required?: boolean) {
-  return frame().layer.context.get(this, required !== false);
-}
-
 export function install() {
-  Object.assign(State, { use, get });
+  const previous = resolver((Type, compute) => {
+    if (!Type && !store.getStore()) return previous(Type, compute);
+    return compute(scope(frame().layer));
+  });
 }
 
 function parseCookies(header = ""): Record<string, string> {
@@ -272,7 +250,7 @@ const readOnly = () => {
   throw new Error("Current is read-only.");
 };
 
-export class Current extends State {
+export class Current extends Model {
   get request(): IncomingMessage {
     return frame().request;
   }

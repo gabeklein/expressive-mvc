@@ -1,9 +1,13 @@
 /** @jsxRuntime classic */
 import * as React from '@expressive/dom';
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class Card extends Model {
+class Card extends Component {
   title = '';
+
+  render() {
+    return <b>{this.title}</b>;
+  }
 }
 
 export const defaults = (

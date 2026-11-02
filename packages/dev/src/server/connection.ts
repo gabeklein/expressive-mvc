@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { State } from "@expressive/mvc";
+import { Model } from "@expressive/mvc";
 
 import { changedSince, snapshot, track, versionOf, watch } from "./version";
 
@@ -10,17 +10,17 @@ export interface Shape {
 
 interface Held {
   address: string;
-  instance: State;
+  instance: Model;
   shape: Shape;
   seen: Map<string, string>;
-  watching: Map<string, { instance: State; stop(): void }>;
+  watching: Map<string, { instance: Model; stop(): void }>;
   pool?: Pool;
 }
 
 interface Entry {
   key: string;
   path: string;
-  instance: State;
+  instance: Model;
   shape: Shape;
 }
 
@@ -172,7 +172,7 @@ export function release(connection: Connection, twins: unknown): void {
   }
 }
 
-export function hold(connection: Connection, twin: string, address: string, instance: State, shape: Shape, seen?: string, pool?: Pool): void {
+export function hold(connection: Connection, twin: string, address: string, instance: Model, shape: Shape, seen?: string, pool?: Pool): void {
   const held = connection.twins.get(twin);
   const kept = seen && held?.instance === instance ? held.seen : new Map<string, string>();
 
@@ -183,7 +183,7 @@ export function hold(connection: Connection, twin: string, address: string, inst
   follow(connection, twin);
 }
 
-export function renew(connection: Connection, address: string, instance: State): void {
+export function renew(connection: Connection, address: string, instance: Model): void {
   for (const [twin, held] of connection.twins) {
     if (held.pool || held.address !== address || held.instance === instance) continue;
 
@@ -224,12 +224,12 @@ export function frameOf(connection: Connection): Frame {
 function entriesOf(twin: string, held: Held): Entry[] {
   const entries: Entry[] = [];
 
-  (function walk(path: string, instance: State, shape: Shape) {
+  (function walk(path: string, instance: Model, shape: Shape) {
     entries.push({ key: path ? `${twin}.${path}` : twin, path, instance, shape });
 
     for (const [field, child] of Object.entries(shape.children ?? {})) {
       const value = snapshot(instance, [field])[field];
-      if (value instanceof State) walk(path ? `${path}.${field}` : field, value, child);
+      if (value instanceof Model) walk(path ? `${path}.${field}` : field, value, child);
     }
   })("", held.instance, held.shape);
 
@@ -266,14 +266,14 @@ function isPending(value: unknown): boolean {
   return (value as { $pending?: unknown } | null)?.$pending === true;
 }
 
-function patchOf(instance: State, shape: Shape, keys: string[]): Record<string, unknown> {
+function patchOf(instance: Model, shape: Shape, keys: string[]): Record<string, unknown> {
   const patch = snapshot(instance, keys);
 
   for (const field of keys) {
     if (!shape.children?.[field]) continue;
 
     const child = patch[field];
-    if (child instanceof State) patch[field] = { $child: versionOf(child).split(":")[0] };
+    if (child instanceof Model) patch[field] = { $child: versionOf(child).split(":")[0] };
     else if (!isPending(child)) patch[field] = null;
   }
 

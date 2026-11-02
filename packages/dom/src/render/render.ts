@@ -79,7 +79,7 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
   const run = () => pass(() => {
     try {
       const output = probed ? probed.output as RenderNode : consume(fiber, render);
-      reconcile(fiber, output, scope.childContext, fiber.boundary, renderedAppearance(fiber));
+      reconcile(fiber, output, scope.context, fiber.boundary, renderedAppearance(fiber));
 
       if (fiber.staging) {
         fiber.end.parentNode!.insertBefore(fiber.staging, fiber.end);

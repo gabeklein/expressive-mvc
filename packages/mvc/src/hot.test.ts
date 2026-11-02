@@ -826,6 +826,24 @@ describe('accept', () => {
 
     expect(test._label).toBe('after 1');
   });
+  it('will patch an unmanaged method', () => {
+    const version = (label: string) =>
+      class Test extends Model {
+        value = 1;
+        _label() {
+          return `${label} ${this.value}`;
+        }
+      };
+
+    const Test = version('before');
+    const next = hmr(Test);
+    const test = Test.new() as any;
+    expect(test._label()).toBe('before 1');
+
+    next(version('after'));
+
+    expect(test._label()).toBe('after 1');
+  });
 });
 
 describe('replaced', () => {

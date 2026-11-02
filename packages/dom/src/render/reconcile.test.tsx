@@ -66,7 +66,7 @@ describe('reconcile', () => {
 
       render() {
         if (this.bump) child.count = 5;
-        return <Child label={this.label} is={(value) => (child = value)} />;
+        return <Child label={this.label} is={(value) => void (child = value)} />;
       }
     }
 

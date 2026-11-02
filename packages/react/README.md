@@ -11,36 +11,44 @@
 
 ---
 
-The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Define state as a class, use it in a component, and reads automatically subscribe - components re-render only when accessed values change.
+The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Define state as a class, render it as a component, and reads automatically subscribe - components re-render only when accessed values change.
 
 ```bash
 npm install @expressive/mvc @expressive/react
 ```
 
-`@expressive/mvc` is a peer dependency: import `Model`, `Component` and instructions from it, and import `@expressive/react` once from your entry so the host registers. Provide an instance to a subtree with `<Component for={Model}>` - `Provider` and `Consumer` were removed. The adapter's re-exports of the core are deprecated.
+`@expressive/mvc` is a peer dependency: import `Model`, `Component` and instructions from it, and import `@expressive/react` once from your entry so the host registers. Provide an instance to a subtree with `<Component for={Model}>` - `Provider` and `Consumer` were removed. The adapter exports nothing for app code.
 
 Works on React DOM, and on React Native and Expo - the adapter imports only `react` and `react/jsx-runtime`, so there is nothing renderer-specific to port. Exercised on an iOS simulator and an Android emulator in both Debug and Release builds, and gated per release on Metro resolution and a Hermes build (Expo SDK 57, React Native 0.86). Under Jest, add `@expressive` to `transformIgnorePatterns`.
 
 ```tsx
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class Counter extends Model {
+class Counter extends Component {
   count = 0;
-  increment = () => this.count++;
-  decrement = () => this.count--;
+
+  increment() {
+    this.count++;
+  }
+
+  decrement() {
+    this.count--;
+  }
+
+  render() {
+    const { count, increment, decrement } = this;
+
+    return (
+      <div>
+        <button onClick={decrement}>-</button>
+        <span>{count}</span>
+        <button onClick={increment}>+</button>
+      </div>
+    );
+  }
 }
 
-function CounterWidget() {
-  const { count, increment, decrement } = Counter.use();
-
-  return (
-    <div>
-      <button onClick={decrement}>-</button>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
-    </div>
-  );
-}
+<Counter count={5} />;
 ```
 
 ## Component
@@ -70,9 +78,9 @@ PascalCase members become their own reactive React components scoped to the live
 abstract class Toggle extends Component {
   active = false;
 
-  toggle = () => {
+  toggle() {
     this.active = !this.active;
-  };
+  }
 
   Active() { return null; }       // subclasses fill these in
   Inactive() { return null; }
@@ -143,11 +151,12 @@ class Greeting extends Component {
 <Greeting name="React" loud />;
 ```
 
-Every Component also accepts three special props:
+Every Component also accepts four special props:
 
-- **`is`** - callback handed the instance once, at creation.
+- **`is`** - callback handed the instance once, at creation; an object it returns is assigned to the instance.
 - **`ref`** - standard React ref; set after mount, cleared on unmount.
 - **`fallback`** - Suspense/error UI, overriding the instance's own.
+- **`catch`** - error boundary for this element's children, called `(error, instance)`.
 
 ### Suspense
 
@@ -171,7 +180,7 @@ class Profile extends Component {
 Provide an instance once; descendants read it with `Model.get()` - no props, no selectors.
 
 ```tsx
-import { Component } from '@expressive/mvc';
+import { Model, Component } from '@expressive/mvc';
 
 class Session extends Model {
   user = 'guest';
@@ -193,10 +202,9 @@ function Profile() {
 
 **At a glance**
 
-- **`Model.use()`** - create an instance bound to a component's lifecycle.
+- **`Component`** - a class that renders: owns its state, lifecycle and boundaries.
 - **`Model.get()`** - read shared state from context, no prop drilling.
 - **`<Component for={Model}>`** - explicit hierarchical dependency injection.
-- **`Component`** - smart widgets and shells whose behavior lives in the tree.
 - **Suspense & error boundaries** - async values suspend; `catch()` handles child errors.
 
 Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**

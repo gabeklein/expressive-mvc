@@ -1,4 +1,4 @@
-import { Component, ref } from '@expressive/react';
+import { Component, ref } from '@expressive/mvc';
 import { DynamicCodeBlock, type DynamicCodeblockProps } from 'fumadocs-ui/components/dynamic-codeblock';
 import type { ReactNode } from 'react';
 

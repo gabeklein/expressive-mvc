@@ -3,17 +3,22 @@ import { Component, get } from "@expressive/mvc";
 import Activity from "../remote";
 import Remote, { Tap } from "./remote";
 
-function Tapper(props: { label: string }) {
-  const tap = Tap.use();
+class Tapper extends Component {
+  label = "";
+  tap = new Tap();
 
-  return (
-    <p>
-      <button onClick={() => tap.tap()}>{props.label} {tap.taps}</button>
-      <button onClick={() => tap.log.clear()}>Clear {props.label}</button>
-      <button onClick={() => tap.restart()}>Restart {props.label}</button>
-      <small>{props.label} since clear: {tap.log.count}</small>
-    </p>
-  );
+  render() {
+    const { label, tap } = this;
+
+    return (
+      <p>
+        <button onClick={() => tap.tap()}>{label} {tap.taps}</button>
+        <button onClick={() => tap.log.clear()}>Clear {label}</button>
+        <button onClick={() => tap.restart()}>Restart {label}</button>
+        <small>{label} since clear: {tap.log.count}</small>
+      </p>
+    );
+  }
 }
 
 export class Page extends Component {

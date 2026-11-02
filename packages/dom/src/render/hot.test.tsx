@@ -19,40 +19,27 @@ class Counter extends Model {
   value = 1;
 }
 
-class Other extends Model {
-  label = 'other';
-}
-
 describe('hot', () => {
   it('will refresh a component in place', async () => {
     const id = module();
-    const instances = new Set<Counter>();
+    const counter = Counter.new();
 
-    const Before = () => {
-      const counter = Counter.use();
-      instances.add(counter.is);
-      return <b>before {counter.value}</b>;
-    };
-
-    const After = () => {
-      const counter = Counter.use();
-      instances.add(counter.is);
-      return <b>after {counter.value}</b>;
-    };
+    const Before = () => <b>before {Counter.get().value}</b>;
+    const After = () => <b>after {Counter.get().value}</b>;
 
     hot(id, { View: Before });
 
-    const root = mount(<Before />);
-    const [instance] = instances;
+    const root = mount(<Component for={counter}><Before /></Component>);
+    const node = root.querySelector('b');
 
-    instance.value = 2;
+    counter.value = 2;
     await flushMicrotasks();
 
     hot(id, { View: After });
     await flushMicrotasks();
 
     expect(root.textContent).toBe('after 2');
-    expect(instances.size).toBe(1);
+    expect(root.querySelector('b')).toBe(node);
   });
 
   it('will keep a component a parent renders anew', async () => {
@@ -60,7 +47,6 @@ describe('hot', () => {
     const mounted = vi.fn();
 
     const version = (label: string) => () => {
-      Counter.use();
       mounted();
       return <b>{label}</b>;
     };
@@ -87,35 +73,6 @@ describe('hot', () => {
     await flushMicrotasks();
 
     expect(root.textContent).toBe('after');
-  });
-
-  it.each([
-    ['whose order changed', () => <b>{Other.use().label}</b>, 'other'],
-    ['no longer called', () => <b>after</b>, 'after']
-  ])('will replace Model.use() slots %s', async (_, After, text) => {
-    const id = module();
-    const destroyed = vi.fn();
-
-    class Tracked extends Model {
-      new() {
-        return destroyed;
-      }
-    }
-
-    const Before = () => {
-      Tracked.use();
-      return <b>before</b>;
-    };
-
-    hot(id, { View: Before });
-
-    const root = mount(<Before />);
-
-    hot(id, { View: After });
-    await flushMicrotasks();
-
-    expect(root.textContent).toBe(text);
-    expect(destroyed).toHaveBeenCalled();
   });
 
   it('will not refresh an unmounted component', async () => {

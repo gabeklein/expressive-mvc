@@ -1,12 +1,12 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { beforeEach, vi, expect, it, describe } from 'vitest';
-import { renderToString } from 'react-dom/server';
 import React, { Suspense } from 'react';
 
 import { collect, mockError, mockPromise, mockWarn, flushMicrotasks, revisions, preactDiffers, reactOnly, suspender } from '../test.setup';
 import * as hot from '@expressive/mvc/hot';
-import { Model } from '@expressive/mvc';
-import { Component, pending, set } from '.';
+import { Context, Model } from '@expressive/mvc';
+import '.';
+import { Component, pending, set } from '@expressive/mvc';
 
 it('will create and provide instance', () => {
   class Control extends Component {
@@ -31,7 +31,7 @@ it('will not enumerate react internals on instance', () => {
   }
 
   let instance!: Control;
-  render(<Control is={(c) => (instance = c)} />);
+  render(<Control is={(c) => void (instance = c)} />);
 
   expect(Object.keys(instance).sort()).toEqual(['baz', 'foo']);
 });
@@ -160,55 +160,22 @@ describe('new method', () => {
   });
 });
 
-describe('mount method', () => {
-  it.each([false, true])('will call once on commit and cleanup on unmount (strict: %s)', (reactStrictMode) => {
-    const didMount = vi.fn();
-    const didUnmount = vi.fn();
+describe('effects at commit', () => {
+  it.each([false, true])('will run an effect from new() once committed (strict: %s)', async (reactStrictMode) => {
+    const effect = vi.fn();
 
     class Test extends Component {
-      mount() {
-        didMount();
-        return didUnmount;
+      protected new() {
+        this.get(effect);
       }
     }
 
-    const element = render(<Test />, { reactStrictMode });
+    render(<Test />, { reactStrictMode });
 
-    element.rerender(<Test />);
+    expect(effect).not.toBeCalled();
 
-    expect(didMount).toBeCalledTimes(1);
-    expect(didUnmount).not.toBeCalled();
-
-    element.unmount();
-
-    expect(didUnmount).toBeCalledTimes(1);
-  });
-
-  it('will not call during server render', () => {
-    const didMount = vi.fn();
-
-    class Test extends Component {
-      mount() {
-        didMount();
-      }
-
-      render() {
-        return <span>hello</span>;
-      }
-    }
-
-    expect(renderToString(<Test />)).toContain('<span>hello</span>');
-    expect(didMount).not.toBeCalled();
-  });
-});
-
-describe('use method', () => {
-  it('will throw if called as a hook', () => {
-    class Test extends Component {}
-
-    expect(() => (Test as any).use()).toThrow(
-      'Test is a Component - render as an element instead of calling use().'
-    );
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
   });
 });
 
@@ -246,6 +213,19 @@ describe('element props', () => {
 
     // @ts-expect-error - readonly field is not a settable prop
     (() => <Bar id={2} />);
+  });
+
+  it('will infer generic props', () => {
+    class Table<T> extends Component {
+      rows: T[] = [];
+      pick?: (row: T) => void = undefined;
+    }
+
+    render(<Table rows={[{ name: 'a' }]} pick={(row) => row.name} />);
+    render(<Table<{ name: string }> rows={[]} pick={(row) => row.name} />);
+
+    // @ts-expect-error - row is inferred from rows
+    (() => <Table rows={[{ name: 'a' }]} pick={(row) => row.age} />);
   });
 
   it('will trigger set instruction', () => {
@@ -371,6 +351,7 @@ describe('props property', () => {
 
     const { rerender } = render(<Control value="foo" />);
 
+    await flushMicrotasks();
     expect(didUpdate).toBeCalledWith({ value: 'foo' });
 
     await act(async () => {
@@ -431,7 +412,6 @@ describe('render method', () => {
 
   it('will update when a Model fetched via this.get changes', async () => {
     class Auth extends Model {
-      static readonly global = true;
       name = 'foo';
     }
 
@@ -441,7 +421,7 @@ describe('render method', () => {
       }
     }
 
-    const auth = Auth.new();
+    const auth = Auth.new(Context.root);
     const screen = render(<Control />);
 
     expect(screen).toHaveText('foo');
@@ -452,6 +432,7 @@ describe('render method', () => {
     });
 
     expect(screen).toHaveText('bar');
+    screen.unmount();
     auth.set(null);
   });
 
@@ -545,7 +526,7 @@ describe('render method', () => {
     }
 
     let control: Control;
-    const screen = render(<Control is={(x) => (control = x)} />);
+    const screen = render(<Control is={(x) => void (control = x)} />);
 
     expect(screen).toHaveText('bar');
 
@@ -569,7 +550,7 @@ describe('suspense', () => {
     const Consumer = () => Foo.get().value;
 
     const element = render(
-      <Foo is={(x) => (foo = x)}>
+      <Foo is={(x) => void (foo = x)}>
         <Consumer />
       </Foo>
     );
@@ -607,7 +588,7 @@ describe('suspense', () => {
 
     let foo!: Foo;
 
-    const element = render(<Foo is={(x) => (foo = x)} />);
+    const element = render(<Foo is={(x) => void (foo = x)} />);
 
     expect(element).toHaveText('Loading!');
 
@@ -705,7 +686,7 @@ describe('state props on rerender', () => {
     }
 
     let instance!: Control;
-    const view = render(<Control value="bar" is={(c) => (instance = c)} />);
+    const view = render(<Control value="bar" is={(c) => void (instance = c)} />);
 
     expect(screen).toHaveText('bar');
 
@@ -767,7 +748,7 @@ describe('render override', () => {
     }
 
     let instance!: Page;
-    render(<Page is={(x) => (instance = x)} />);
+    render(<Page is={(x) => void (instance = x)} />);
 
     expect(screen).toHaveText('Base');
     expect(screen).toHaveText('Hello');
@@ -822,7 +803,7 @@ describe('subcomponents', () => {
     }
 
     let instance!: Control;
-    const view = render(<Control is={(c) => (instance = c)} />);
+    const view = render(<Control is={(c) => void (instance = c)} />);
 
     expect(screen).toHaveText('foo');
 
@@ -864,7 +845,7 @@ describe('subcomponents', () => {
     }
 
     let instance!: Dashboard;
-    render(<Dashboard is={(x) => (instance = x)} />, { reactStrictMode });
+    render(<Dashboard is={(x) => void (instance = x)} />, { reactStrictMode });
 
     await flushMicrotasks();
 
@@ -940,7 +921,7 @@ describe('subcomponents', () => {
     ])('will wrap a function assigned in %s', async (_, Type, assign) => {
       let instance!: Dashboard;
 
-      render(<Type is={(x: any) => ((instance = x), assign?.(x))} />);
+      render(<Type is={(x: any) => void ((instance = x), assign?.(x))} />);
 
       expect(screen).toHaveText('Sidebar value');
 
@@ -966,7 +947,7 @@ describe('subcomponents', () => {
     }
 
     let instance!: Dashboard;
-    render(<Dashboard is={(x) => (instance = x)} />);
+    render(<Dashboard is={(x) => void (instance = x)} />);
 
     expect(screen).toHaveText('Original');
 
@@ -1078,7 +1059,7 @@ describe('subcomponents', () => {
     }
 
     let instance!: Dashboard;
-    render(<Dashboard is={(x) => (instance = x)} />);
+    render(<Dashboard is={(x) => void (instance = x)} />);
 
     expect(screen).toHaveText('a: Hello');
     expect(screen).toHaveText('b: Hello');
@@ -1116,7 +1097,7 @@ describe('subcomponents', () => {
     }
 
     let instance!: Dashboard;
-    render(<Dashboard is={(x) => (instance = x)} />);
+    render(<Dashboard is={(x) => void (instance = x)} />);
 
     expect(screen).toHaveText('x');
     expect(screen).toHaveText('y');
@@ -1275,7 +1256,7 @@ describe('strict mode', () => {
     let instance!: Control;
     render(
       <React.StrictMode>
-        <Control is={(is) => (instance = is)} />
+        <Control is={(is) => void (instance = is)} />
       </React.StrictMode>
     );
 
@@ -1286,6 +1267,7 @@ describe('strict mode', () => {
       effect($.foo);
     });
 
+    await flushMicrotasks();
     expect(effect).toBeCalledWith('foo');
     instance.foo = 'bar';
 
@@ -1327,28 +1309,46 @@ describe('for', () => {
     return <>{Session.get().name}</>;
   }
 
-  it('will construct, provide, mount and destroy a class', () => {
+  it('will construct, provide, release and destroy a class', async () => {
     const released = vi.fn();
     let session!: Owned;
 
     class Owned extends Session {
-      mount() {
-        return released;
+      protected new() {
+        this.get(() => released);
       }
     }
 
     const view = render(
-      <Component for={Owned} name="Ada" is={(s: Owned) => (session = s)}>
+      <Component for={Owned} name="Ada" is={(s: Owned) => void (session = s)}>
         <Name />
       </Component>
     );
 
     expect(screen).toHaveText('Ada');
 
+    await flushMicrotasks();
     view.unmount();
 
     expect(released).toBeCalledTimes(1);
     expect(session.get(null)).toBe(true);
+  });
+
+  it('will hold a constructed class until the provider commits', async () => {
+    const effect = vi.fn();
+
+    class Owned extends Session {
+      protected new() {
+        this.get(effect);
+      }
+    }
+
+    render(<Component for={Owned} />);
+
+    expect(effect).not.toBeCalled();
+
+    await flushMicrotasks();
+    expect(effect).toBeCalledTimes(1);
   });
 
   it('will provide an instance without owning it', async () => {
@@ -1445,7 +1445,7 @@ describe('for', () => {
 
     void (() => [
       list,
-      <Component for={Typed} name="Ada" is={(typed) => typed.age.toFixed()} />,
+      <Component for={Typed} name="Ada" is={(typed) => void typed.age.toFixed()} />,
       <Component for={Typed.new()} age={2} />,
       <Component fallback={null} />,
       // @ts-expect-error
@@ -1486,15 +1486,32 @@ describe('owner', () => {
     class Inner extends Component {}
     class Outer extends Component {
       render() {
-        return <Inner is={(i) => (inner = i)} />;
+        return <Inner is={(i) => void (inner = i)} />;
       }
     }
 
-    render(<Outer is={(o) => (outer = o)} />);
+    render(<Outer is={(o) => void (outer = o)} />);
 
     expect(outer.get(Model, false)).toBeUndefined();
     expect(inner.get(Model)).toBe(outer);
     expect(inner.get(Component)).toBe(outer);
+  });
+
+  it('will not add hosted Component to its parent context', () => {
+    let outer!: Outer;
+    let inner!: Inner;
+
+    class Inner extends Component {}
+    class Outer extends Component {
+      render() {
+        return <Inner is={(i) => void (inner = i)} />;
+      }
+    }
+
+    render(<Outer is={(o) => void (outer = o)} />);
+
+    expect(Context.get(outer).get(Inner, false)).toBeUndefined();
+    expect(Context.get(inner).parent).toBe(Context.get(outer));
   });
 
   it('will report and drop hosted Components', async () => {
@@ -1511,7 +1528,7 @@ describe('owner', () => {
       }
     }
 
-    render(<Outer is={(o) => (outer = o)} />);
+    render(<Outer is={(o) => void (outer = o)} />);
 
     outer.get(Model, (child) => {
       owned(child);
@@ -1534,11 +1551,11 @@ describe('owner', () => {
     class Session extends Model {}
     class Host extends Component {
       render() {
-        return <Component for={Session} is={(s) => (session = s)} />;
+        return <Component for={Session} is={(s) => void (session = s)} />;
       }
     }
 
-    render(<Host is={(h) => (host = h)} />);
+    render(<Host is={(h) => void (host = h)} />);
 
     const wrapper = session.get(Model);
 
@@ -1565,6 +1582,92 @@ reactOnly.describe('abandoned render', () => {
   }
 
   beforeEach(() => live.clear());
+
+  it('will destroy attempts superseded by a commit', async () => {
+    const { Wait, resolve } = suspender();
+
+    render(
+      <Suspense fallback={null}>
+        <Test />
+        <Wait />
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+    await act(collect);
+
+    expect(live.size).toBe(1);
+  });
+
+  it('will not run effects of an attempt superseded by a commit', async () => {
+    const { Wait, resolve } = suspender();
+    const effect = vi.fn();
+    const constructed = vi.fn();
+
+    class Effects extends Component {
+      protected new() {
+        constructed();
+        this.get(effect);
+      }
+    }
+
+    render(
+      <Suspense fallback={null}>
+        <Effects />
+        <Wait />
+      </Suspense>
+    );
+
+    await act(async () => resolve());
+    await act(collect);
+
+    expect(constructed.mock.calls.length).toBeGreaterThan(1);
+    expect(effect).toBeCalledTimes(1);
+  });
+
+  it('will destroy a dropped transition render', async () => {
+    const { Wait } = suspender();
+    let show!: (shown: boolean) => void;
+
+    const App = () => {
+      const [shown, setShown] = React.useState(false);
+      show = setShown;
+
+      return (
+        <Suspense fallback={null}>
+          {shown && <><Test /><Wait /></>}
+        </Suspense>
+      );
+    };
+
+    render(<App />);
+
+    await act(async () => React.startTransition(() => show(true)));
+    await act(async () => React.startTransition(() => show(false)));
+    await act(collect);
+
+    expect(live.size).toBe(0);
+  });
+
+  it('will keep an instance hidden by Activity', async () => {
+    const element = render(
+      <React.Activity mode="hidden">
+        <Test />
+      </React.Activity>
+    );
+
+    await act(collect);
+    expect(live.size).toBe(1);
+
+    element.rerender(
+      <React.Activity mode="visible">
+        <Test />
+      </React.Activity>
+    );
+
+    await act(collect);
+    expect(live.size).toBe(1);
+  });
 
   it('will destroy a first mount removed while suspended', async () => {
     const { Wait } = suspender();

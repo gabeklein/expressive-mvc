@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { IncomingMessage } from "node:http";
-import { Context, get, State } from "@expressive/mvc";
+import { Context, get, set, Model } from "@expressive/mvc";
 
 import { construct, Current, install, within, type Seat } from "./context";
 
@@ -10,86 +10,16 @@ const call = <T>(segments: string[], run: () => T) => within(request("/" + segme
 beforeAll(install);
 afterEach(() => vi.useRealTimers());
 
-describe("server use", () => {
-  it("will throw outside a call", () => {
-    class Tally extends State {}
-    expect(() => Tally.use()).toThrow("Server State resolves only within a sidecar call.");
-  });
-
-  it("will give one instance per layer within a call", async () => {
-    class Tally extends State {}
-
-    await call(["tally"], () => {
-      expect(Tally.use()).toBe(Tally.use());
-    });
-  });
-
-  it("will keep an instance five minutes after its last call by default", async () => {
-    vi.useFakeTimers();
-    class Tally extends State {}
-
-    const first = await call(["tally"], () => Tally.use());
-
-    vi.advanceTimersByTime(299_000);
-    expect(await call(["tally"], () => Tally.use())).toBe(first);
-
-    vi.advanceTimersByTime(300_000);
-    expect(first.get(null)).toBe(true);
-    expect(await call(["tally"], () => Tally.use())).not.toBe(first);
-  });
-
-  it("will keep an instance between calls for its ttl", async () => {
-    vi.useFakeTimers();
-    class Tally extends State { static ttl = 60; }
-
-    const first = await call(["tally"], () => Tally.use());
-    expect(await call(["tally"], () => Tally.use())).toBe(first);
-
-    vi.advanceTimersByTime(60_000);
-    expect(first.get(null)).toBe(true);
-    expect(await call(["tally"], () => Tally.use())).not.toBe(first);
-  });
-
-  it("will drop an instance after its call with a ttl of zero", async () => {
-    class Tally extends State { static ttl = 0; }
-
-    const first = await call(["tally"], () => Tally.use());
-
-    expect(first.get(null)).toBe(true);
-    expect(await call(["tally"], () => Tally.use())).not.toBe(first);
-  });
-
-  it("will give each layer its own instance", async () => {
-    class Page extends State { static ttl = 60; }
-
-    const a = await call(["blog", "a"], () => Page.use());
-    const b = await call(["blog", "b"], () => Page.use());
-
-    expect(b).not.toBe(a);
-    expect(await call(["blog", "a"], () => Page.use())).toBe(a);
-  });
-
-  it("will drop an instance the app destroys", async () => {
-    class Tally extends State { static ttl = 60; }
-
-    const first = await call(["tally"], () => Tally.use());
-    first.set(null);
-
-    await expect(call(["tally"], () => Tally.get())).rejects.toThrow("Could not find Tally in context.");
-    expect(await call(["tally"], () => Tally.use())).not.toBe(first);
-  });
-
-  it("will resolve fields from the context the instance lives in", async () => {
-    class Tally extends State { current = get(Current); }
-
-    const url = await call(["tally"], () => Tally.use().current.url.pathname);
-    expect(url).toBe("/tally");
-  });
-});
+const walk = <T>(req: IncomingMessage, segments: string[], seats: (Seat | undefined)[], run: () => T) => within(req, segments, run, seats);
 
 describe("server get", () => {
+  it("will throw outside a call", () => {
+    class Tally extends Model {}
+    expect(() => Tally.get()).toThrow("Server Model resolves only within a sidecar call.");
+  });
+
   it("will find what context provides, or throw if missing unless optional", async () => {
-    class Missing extends State {}
+    class Missing extends Model {}
 
     await call([], () => {
       expect(Current.get()).toBeInstanceOf(Current);
@@ -97,92 +27,159 @@ describe("server get", () => {
       expect(() => Missing.get()).toThrow("Could not find");
     });
   });
-
-  it("will not find a class before use() makes it", async () => {
-    class Tally extends State {}
-
-    await expect(call(["tally"], () => Tally.get())).rejects.toThrow("Could not find Tally in context.");
-  });
-
-  it("will find what use() made, in its layer and below", async () => {
-    class Tally extends State { static ttl = 60; }
-
-    const made = await call(["blog"], () => {
-      const tally = Tally.use();
-      expect(Tally.get()).toBe(tally);
-      return tally;
-    });
-
-    expect(await call(["blog"], () => Tally.get())).toBe(made);
-    expect(await call(["blog", "a"], () => Tally.get())).toBe(made);
-    await expect(call(["docs"], () => Tally.get())).rejects.toThrow("Could not find Tally in context.");
-  });
-
-  it("will find what a deeper use() made over one above", async () => {
-    class Tally extends State { static ttl = 60; }
-
-    const above = await call(["blog"], () => Tally.use());
-    const below = await call(["blog", "a"], () => Tally.use());
-
-    expect(below).not.toBe(above);
-    expect(await call(["blog", "a", "x"], () => Tally.get())).toBe(below);
-    expect(await call(["blog", "b"], () => Tally.get())).toBe(above);
-  });
-
-  it("will not find what use() made once it expires", async () => {
-    vi.useFakeTimers();
-    class Tally extends State { static ttl = 60; }
-
-    await call(["tally"], () => Tally.use());
-    vi.advanceTimersByTime(60_000);
-
-    await expect(call(["tally"], () => Tally.get())).rejects.toThrow("Could not find Tally in context.");
-  });
 });
 
 describe("seats", () => {
   const as = (user: string) => request("/", `user=${user}`);
-  const walk = <T>(req: IncomingMessage, segments: string[], seats: (Seat | undefined)[], run: () => T) => within(req, segments, run, seats);
 
   it("will seat a layer's default as a call walks through it, found by get() there and below", async () => {
-    class Blog extends State {}
+    class Blog extends Model {}
 
     const here = await walk(request(), ["blog"], [undefined, Blog], () => Blog.get());
     const below = await walk(request(), ["blog", "a"], [undefined, Blog], () => Blog.get());
 
     expect(below).toBe(here);
-    expect(await walk(request(), ["blog"], [undefined, Blog], () => Blog.use())).toBe(here);
+    await expect(walk(request(), ["docs"], [], () => Blog.get())).rejects.toThrow("Could not find Blog in context.");
+  });
+
+  it("will keep a seat five minutes after its last call by default", async () => {
+    vi.useFakeTimers();
+    class Tally extends Model {}
+
+    const first = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
+
+    vi.advanceTimersByTime(299_000);
+    expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).toBe(first);
+
+    vi.advanceTimersByTime(300_000);
+    expect(first.get(null)).toBe(true);
+    expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).not.toBe(first);
+  });
+
+  it("will keep a seat between calls for its ttl", async () => {
+    vi.useFakeTimers();
+    class Tally extends Model { static ttl = 60; }
+
+    const first = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
+    expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).toBe(first);
+
+    vi.advanceTimersByTime(60_000);
+    expect(first.get(null)).toBe(true);
+    expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).not.toBe(first);
+  });
+
+  it("will drop a seat after its call with a ttl of zero", async () => {
+    class Tally extends Model { static ttl = 0; }
+
+    const first = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
+
+    expect(first.get(null)).toBe(true);
+    expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).not.toBe(first);
+  });
+
+  it("will keep a seat while another call holds it", async () => {
+    class Tally extends Model { static ttl = 0; }
+    let finish!: () => void;
+    const open = new Promise<void>(resolve => (finish = resolve));
+
+    const held = walk(request(), ["tally"], [undefined, Tally], async () => {
+      await open;
+      return Tally.get();
+    });
+    const quick = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
+
+    expect(quick.get(null)).toBe(false);
+    finish();
+    expect(await held).toBe(quick);
+    expect(quick.get(null)).toBe(true);
+  });
+
+  it("will replace a seat whose class changed, evicting the layers below", async () => {
+    class Before extends Model { static ttl = 60; }
+    class After extends Model { static ttl = 60; }
+    class Post extends Model { static ttl = 60; }
+
+    const [before, post] = await walk(request(), ["blog", "a"], [undefined, Before, Post], () => [Before.get(), Post.get()]);
+    const after = await walk(request(), ["blog"], [undefined, After], () => After.get());
+
+    expect(before.get(null)).toBe(true);
+    expect(post.get(null)).toBe(true);
+    expect(after).toBeInstanceOf(After);
+    expect(await walk(request(), ["blog", "a"], [undefined, After, Post], () => Post.get())).not.toBe(post);
+  });
+
+  it("will give each layer its own seat, a deeper one over one above", async () => {
+    class Page extends Model { static ttl = 60; }
+
+    const above = await walk(request(), ["blog"], [undefined, Page], () => Page.get());
+    const a = await walk(request(), ["blog", "a"], [undefined, Page, Page], () => Page.get());
+    const b = await walk(request(), ["blog", "b"], [undefined, Page, Page], () => Page.get());
+
+    expect(a).not.toBe(above);
+    expect(b).not.toBe(a);
+    expect(await walk(request(), ["blog", "a", "x"], [undefined, Page, Page], () => Page.get())).toBe(a);
+    expect(await walk(request(), ["blog", "c"], [undefined, Page], () => Page.get())).toBe(above);
+  });
+
+  it("will resolve fields from the context the seat lives in", async () => {
+    class Tally extends Model { current = get(Current); }
+
+    const url = await walk(request("/tally"), ["tally"], [undefined, Tally], () => Tally.get().current.url.pathname);
+    expect(url).toBe("/tally");
+  });
+
+  it("will provide a seat's children there and below, a lazy one once its owner reads it", async () => {
+    class Total extends Model { value = 0; }
+    class Draft extends Model {}
+    class Tally extends Model {
+      total = new Total();
+      draft = set(() => new Draft());
+    }
+
+    const [tally, total] = await walk(request(), ["tally"], [undefined, Tally], () => [Tally.get(), Total.get()] as const);
+
+    expect(total).toBe(tally.total);
+    expect(await walk(request(), ["tally", "x"], [undefined, Tally], () => Total.get())).toBe(total);
+
+    await expect(walk(request(), ["tally"], [undefined, Tally], () => Draft.get())).rejects.toThrow("Could not find Draft in context.");
+
+    const draft = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get().draft);
+    expect(await walk(request(), ["tally"], [undefined, Tally], () => Draft.get())).toBe(draft);
+
+    tally.set(null);
+    expect(total.get(null)).toBe(true);
+    expect(draft.get(null)).toBe(true);
   });
 
   it("will narrow everything below by a seat's key", async () => {
-    class Session extends State { static key() { return Current.get().cookies.user; } }
-    class Cart extends State {}
+    class Session extends Model { static key() { return Current.get().cookies.user; } }
+    class Cart extends Model {}
 
-    const a = await walk(as("a"), ["shop"], [Session], () => [Session.get(), Cart.use()]);
-    const b = await walk(as("b"), ["shop"], [Session], () => [Session.get(), Cart.use()]);
+    const a = await walk(as("a"), ["shop"], [Session, Cart], () => [Session.get(), Cart.get()]);
+    const b = await walk(as("b"), ["shop"], [Session, Cart], () => [Session.get(), Cart.get()]);
 
     expect(b[0]).not.toBe(a[0]);
     expect(b[1]).not.toBe(a[1]);
-    expect(await walk(as("a"), ["shop"], [Session], () => [Session.get(), Cart.use()])).toEqual(a);
+    expect(await walk(as("a"), ["shop"], [Session, Cart], () => [Session.get(), Cart.get()])).toEqual(a);
   });
 
   it("will pass the location through when a key is undefined", async () => {
-    class Shared extends State { static key() { return undefined; } }
+    class Shared extends Model { static key() { return undefined; } }
 
     const a = await walk(as("a"), ["docs"], [undefined, Shared], () => Shared.get());
     expect(await walk(as("b"), ["docs"], [undefined, Shared], () => Shared.get())).toBe(a);
   });
 
   it("will run a key with the seats above it in reach", async () => {
-    class Session extends State { static key() { return Current.get().cookies.user; } org = "acme"; }
-    class Org extends State { static key() { return Session.get().org; } }
+    class Session extends Model { static key() { return Current.get().cookies.user; } org = "acme"; }
+    class Org extends Model { static key() { return Session.get().org; } }
 
     const org = await walk(as("a"), ["org"], [Session, Org], () => Org.get());
     expect(org).toBeInstanceOf(Org);
   });
 
   it("will deny a call whose key throws, creating nothing", async () => {
-    class Gate extends State { static key(): string { throw new Error("Denied"); } }
+    class Gate extends Model { static key(): string { throw new Error("Denied"); } }
     const run = vi.fn();
 
     await expect(walk(request(), ["gate"], [undefined, Gate], run)).rejects.toThrow("Denied");
@@ -190,21 +187,21 @@ describe("seats", () => {
   });
 
   it("will throw if a key is not a string, a number or undefined", async () => {
-    class Bad extends State { static key() { return {} as any; } }
+    class Bad extends Model { static key() { return {} as any; } }
 
     await expect(walk(request(), ["bad"], [undefined, Bad], () => {})).rejects.toThrow("Bad.key() returned [object Object] - a key is a string, a number or undefined.");
   });
 
   it("will evict a seat's layer and everything below when it ends", async () => {
-    class Blog extends State {}
-    class Post extends State { static ttl = 60; }
+    class Blog extends Model {}
+    class Post extends Model { static ttl = 60; }
 
-    const [blog, post] = await walk(request(), ["blog", "a"], [undefined, Blog], () => [Blog.get(), Post.use()]);
+    const [blog, post] = await walk(request(), ["blog", "a"], [undefined, Blog, Post], () => [Blog.get(), Post.get()]);
     blog.set(null);
 
     expect(post.get(null)).toBe(true);
 
-    const [again, fresh] = await walk(request(), ["blog", "a"], [undefined, Blog], () => [Blog.get(), Post.use()]);
+    const [again, fresh] = await walk(request(), ["blog", "a"], [undefined, Blog, Post], () => [Blog.get(), Post.get()]);
     expect(again).not.toBe(blog);
     expect(fresh).not.toBe(post);
   });
@@ -231,9 +228,9 @@ describe("Current", () => {
 });
 
 describe("pool", () => {
-  class Cart extends State {}
+  class Cart extends Model {}
 
-  const parentOf = (state: State) => Context.get(state).parent;
+  const parentOf = (state: Model) => Context.get(state).parent;
 
   it("will build an instance of its own in the call's layer, holding the layer alive", async () => {
     const a = await call(["shop"], () => construct(Cart));

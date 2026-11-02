@@ -1,6 +1,7 @@
-import { capture, listener, observer } from '../observable';
-import { Context } from '../context';
+import { capture, listener, observer, watch } from '../observable';
+import { Context, within } from '../context';
 import { Model, children, owned, parent, STORE, update } from '../state';
+import type { Got, Keyed } from '../state';
 import { def } from './def';
 
 declare namespace get {
@@ -24,8 +25,6 @@ function get<T extends Model>(
 
 /**
  * Fetches and assigns the controller which spawned this host.
- * When parent assigns an instance via `use()` directive, it
- * will be made available to child upon this request.
  *
  * @param Type - Type of controller compatible with this class.
  * @param required - If false, property may be undefined. Otherwise will throw.
@@ -81,12 +80,49 @@ function get<T extends Model>(
   required: false
 ): T | undefined;
 
+/**
+ * Fetches through `Type.get(...args)` as this field is defined, with this
+ * Model as origin. Resolves once; a thrown Promise suspends the field and
+ * retries once settled. Applies where the first argument is neither boolean
+ * nor function - a key for a class overriding static `get`.
+ *
+ * @param Type - Class to fetch from.
+ * @param args - Arguments for `Type.get`.
+ */
+function get<C extends Model.Extends>(
+  Type: C,
+  ...args: Keyed<C>
+): Got<C>;
+
 function get<T extends Model>(
   Type: Model.Extends<T>,
-  arg1?: get.Callback<T> | boolean,
-  arg2?: get.Callback<T> | boolean
-) {
-  return arg1 === true ? below(Type, arg2) : above(Type, arg1);
+  arg1?: any,
+  ...args: any[]
+): any {
+  if (arg1 === true) return below(Type, args[0]);
+
+  if (arg1 === undefined || typeof arg1 == 'boolean' || typeof arg1 == 'function')
+    return above(Type, arg1);
+
+  return def((key, subject) => {
+    const resolve = () => update(subject, key, within(subject, () => (Type.get as Function)(arg1, ...args)));
+
+    try {
+      resolve();
+    } catch (error) {
+      if (!(error instanceof Promise)) throw error;
+
+      watch(subject, () => {
+        resolve();
+        return null;
+      });
+    }
+
+    return {
+      get: true,
+      enumerable: false
+    };
+  });
 }
 
 function above<T extends Model>(
@@ -100,15 +136,21 @@ function above<T extends Model>(
         ? (argument as get.Callback<T>)
         : undefined;
 
-    function assign(value: T) {
+    let release: (() => void) | undefined;
+
+    function assign(value: T | undefined) {
       if (STORE.get(subject)![key] === value) return;
 
-      if (callback) {
-        const result = callback(value, subject);
-        if (typeof result === 'function') subject.set(null, result);
-      }
+      if (release) release();
+
+      const result = callback && value && callback(value, subject);
+
+      release = typeof result === 'function' ? result : undefined;
       update(subject, key, value);
     }
+
+    if (callback)
+      subject.set(null, () => release?.());
 
     if (hasParent && hasParent instanceof Type) {
       assign(hasParent as T);
@@ -147,15 +189,17 @@ function above<T extends Model>(
       subject.set(null, () => { remove(); });
     }
 
-    if (!found) {
-      const remove = Context.get(subject).get(Type, (state) => {
-        if (depth !== Infinity) return;
-        found = true;
-        assign(state);
-      }, false, subject) as () => void;
+    if (!found)
+      subject.set(null, watch(Context.get(subject), (ctx) => {
+        if (depth !== Infinity) return null;
 
-      subject.set(null, () => { remove(); });
-    }
+        const state = ctx.get(Type, false, undefined, subject);
+
+        if (state) {
+          found = true;
+          assign(state as T);
+        } else if (found) assign(undefined);
+      }, false));
 
     if (!found && argument !== false) {
       const missing = () =>

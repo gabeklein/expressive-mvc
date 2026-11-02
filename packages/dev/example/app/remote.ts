@@ -1,5 +1,5 @@
-import { State } from "@expressive/mvc";
+import { Model } from "@expressive/mvc";
 
-export default class Activity extends State {
+export default class Activity extends Model {
   clicks = 0;
 }

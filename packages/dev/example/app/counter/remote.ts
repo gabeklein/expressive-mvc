@@ -1,8 +1,8 @@
-import { State, get } from "@expressive/mvc";
+import { Model, get } from "@expressive/mvc";
 
 import Activity from "../remote";
 
-export default class Counter extends State {
+export default class Counter extends Model {
   protected activity = get(Activity);
   count = 0;
 
@@ -16,7 +16,7 @@ export default class Counter extends State {
   }
 }
 
-class Log extends State {
+class Log extends Model {
   count = 0;
 
   async clear() {
@@ -24,7 +24,7 @@ class Log extends State {
   }
 }
 
-export class Tap extends State {
+export class Tap extends Model {
   protected activity = get(Activity);
   taps = 0;
   log = new Log();

@@ -1,6 +1,6 @@
-import { State, set } from "@expressive/mvc";
+import { Model, set } from "@expressive/mvc";
 
-export class Fortune extends State {
+export class Fortune extends Model {
   text = set<string>();
 
   protected new() {

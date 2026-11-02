@@ -9,9 +9,6 @@ import { Model } from './state';
 
 export { Model, unbind } from './state';
 
-/** @deprecated Renamed to `Model`. */
-export { Model as State } from './state';
-
 /** @deprecated Import `{ Model }` as a named export. Adapter-augmented `Model.*` types are not visible through the default alias. */
 export default Model;
 export { Context } from './context';

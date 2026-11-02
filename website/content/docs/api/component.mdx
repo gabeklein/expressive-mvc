@@ -61,7 +61,7 @@ class Card extends Component {
 
 - The `= {} as T` default satisfies TypeScript's JSX inference and is safely ignored at runtime.
 - Non-optional parameter fields become required JSX attributes.
-- Without `render()` altogether, children pass through - the instance still provides context, runs `mount()`, and places its boundaries.
+- Without `render()` altogether, children pass through - the instance still provides context, runs its effects at commit, and places its boundaries.
 
 A subclass `render()` replaces the base's like any method override - call `super.render(props)` to wrap it. To keep base chrome around subclass content, render a [subcomponent](#subcomponents) the subclass overrides.
 
@@ -97,11 +97,11 @@ Only render errors arrive here. Lifecycle and effect failures of the instance go
 Component inherits the full Model lifecycle. See [Model](/docs/api/state) for details.
 
 - `new()` - one-shot setup on activation (runs on the server too), return cleanup.
-- `mount()` - client-only effects, once on commit; return a function to run on unmount. Never runs during server render, nor for an instance placed as `{component}` - a placement does not own what it renders.
+- An effect declared in `new()` first runs once the component commits, client-only; its cleanup runs on destroy. Never runs during server render, nor is it held for an instance placed as `{component}` - a placement does not own what it renders.
 - `catch(error, instance)` - error boundary, above.
 - Destruction runs on unmount or `this.set(null)`.
 
-> A Component is rendered, not used - `MyComponent.use()` throws, and a `use()` method never runs. For an instance outside the tree, use `MyComponent.new()`.
+> For an instance outside the tree, use `MyComponent.new()`.
 
 <br />
 
@@ -113,7 +113,11 @@ Settable state fields become optional JSX props, applied to the instance on ever
 <Counter count={5} />
 ```
 
-A field passed on one render and omitted on the next is cleared - reset to `undefined`, not left at its previous value. Props are a live binding, not one-time seeds.
+A field passed on one render and omitted on the next is cleared - reset to `undefined`, not left at its previous value. Props are a live binding, not one-time seeds. To seed a value the user then edits, return it from `is` - it runs once, so the seed is computed once:
+
+```tsx
+<ContactForm is={() => ({ email: user.email })} />
+```
 
 ### Special props
 
@@ -121,13 +125,13 @@ Every `Component` also accepts these, regardless of state fields:
 
 | Prop       | Type                     | Description                                                          |
 | ---------- | ------------------------ | -------------------------------------------------------------------- |
-| `is`       | `(instance: T) => void`  | Called once with the created instance                                |
+| `is`       | `(instance: T) => Model.Assign<T> \| void` | Called once with the created instance; a returned object is assigned |
 | `ref`      | `Ref<T>`                 | Standard React ref - the instance after mount, `null` on unmount     |
 | `fallback` | `ReactNode \| false`     | Overrides `this.fallback`; `false` defers to an ancestor boundary    |
 | `catch`    | `(error, instance) => void \| Promise<void>` | Handles this element's errors in place of the `catch()` method |
 | `children` | `ReactNode`              | Passed through when no `render()` is declared; otherwise read from the render parameter or `this.props` |
 
-`is` runs after props apply but **before** the `new()` lifecycle hook - so it may configure state that `new()` then observes. Use `ref` (object or callback, per React convention) for post-mount imperative access instead.
+`is` runs after props apply but **before** the `new()` lifecycle hook - so it may configure state that `new()` then observes. A plain object it returns is assigned, once - `is={() => ({ count: start })}`. To capture the instance, discard the result with `void` or braces: `is={(c) => void (counter = c)}`. Use `ref` (object or callback, per React convention) for post-mount imperative access instead.
 
 <br />
 
@@ -191,7 +195,7 @@ const items = [Item.new({ label: 'First' }), Item.new({ label: 'Second' })];
 ```
 
 - Each is keyed by [`key`](#thiskey).
-- Placing subscribes, provides context and installs the instance's boundaries, but doesn't own it: `mount()` doesn't run, and unmounting only detaches. Whoever created it destroys it with `instance.set(null)`.
+- Placing subscribes, provides context and installs the instance's boundaries, but doesn't own it: its effects are not held for the placement, and unmounting only detaches. Whoever created it destroys it with `instance.set(null)`.
 - The same instance may be placed beneath separate parents.
 
 <br />
@@ -201,7 +205,7 @@ const items = [Item.new({ label: 'First' }), Item.new({ label: 'Second' })];
 The bare `Component` class - not a subclass - with a `for` attribute provides one instance to its children. This replaces the removed `Provider`.
 
 ```tsx
-<Component for={Session} name="Ada" is={(session) => session.load()}>
+<Component for={Session} name="Ada" is={(session) => void session.load()}>
   <App />
 </Component>
 ```
@@ -214,7 +218,16 @@ The bare `Component` class - not a subclass - with a `for` attribute provides on
 | `catch`    | Error boundary for children, `(error, instance)`                                            |
 | `[field]`  | Typed from the provided instance; assigned to it on every render                               |
 
-A provided class's `mount()` runs with the element's; an instance passed in is never mounted or destroyed by it. Changing `for` releases the previous item and provides the next. One instance per element - compose several as fields of a parent instance. See [Context](/docs/guides/context#providing-with-component-for).
+A provided class's effects wait for the element's commit; an instance passed in is never held or destroyed by it. Changing `for` releases the previous item and provides the next. One instance per element - compose several as fields of a parent instance. See [Context](/docs/guides/context#providing-with-component-for).
+
+There is no `Consumer` or render-prop form. A function component below reads the instance with [`Model.get()`](/docs/api/state#modelget):
+
+```tsx
+const Themed = () => {
+  const { color } = Theme.get();
+  return <p style={{ color }}>Themed</p>;
+};
+```
 
 <br />
 
@@ -228,7 +241,6 @@ declare class Component extends Model {
 
   render(props?: {}): Component.Node;
   catch?(error: Error, instance: this): Promise<void> | void;
-  mount?(): (() => void) | void;
 }
 ```
 
@@ -242,4 +254,4 @@ Props are inferred automatically from state fields plus any `render(props)` decl
 
 - [Components guide](/docs/guides/components) - patterns, subclass composition, children, context.
 - [Model](/docs/api/state) - the base class.
-- [Hooks](/docs/api/hooks) - `Model.use` and `Model.get`.
+- [`Model.get()`](/docs/api/state#modelget) - reading a provided instance from a function component.

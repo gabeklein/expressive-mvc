@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { set, State } from "@expressive/mvc";
+import { set, Model } from "@expressive/mvc";
 
 import { begin, catchUp, checksum, connect, end, frameOf, hold, listen, release, renew, twinOf } from "./connection";
 import { track } from "./version";
 
-class Tally extends State {
+class Tally extends Model {
   total = 0;
 }
 
@@ -145,7 +145,7 @@ describe("connection", () => {
   });
 
   it("will send a pending field as pending, then its value once it lands", async () => {
-    class User extends State {
+    class User extends Model {
       name = set<string>();
       get greeting() { return "hi " + this.name; }
     }
@@ -169,8 +169,8 @@ describe("connection", () => {
   });
 
   it("will mark a pending child field as pending", () => {
-    class Cart extends State {}
-    class Shop extends State {
+    class Cart extends Model {}
+    class Shop extends Model {
       cart = set<Cart>();
     }
 
@@ -181,16 +181,16 @@ describe("connection", () => {
   });
 
   describe("children", () => {
-    class Line extends State {
+    class Line extends Model {
       qty = 1;
     }
 
-    class Cart extends State {
+    class Cart extends Model {
       items = 0;
       line?: Line = undefined;
     }
 
-    class Shop extends State {
+    class Shop extends Model {
       name = "shop";
       cart?: Cart = new Cart();
     }

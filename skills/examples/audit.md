@@ -58,8 +58,8 @@ function UserSettings() {
 ```
 
 ```tsx
-// After - cohesive state class, testable independently
-class UserSettings extends Model {
+// After - one class owns state and view; testable headless via UserSettings.new()
+class UserSettings extends Component {
   name = '';
   email = '';
   saving = false;
@@ -81,11 +81,11 @@ class UserSettings extends Model {
       this.saving = false;
     }
   }
-}
 
-function UserSettingsView() {
-  const { name, email, saving, error, dirty, save } = UserSettings.use();
-  // ... render (pure presentation)
+  render() {
+    const { name, email, saving, error, dirty, save } = this;
+    // ... pure presentation
+  }
 }
 ```
 

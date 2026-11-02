@@ -1,14 +1,11 @@
 import { act, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Component } from '@expressive/react';
+import '@expressive/react';
+import { Component } from '@expressive/mvc';
 
 import { location, browserRouter } from '../test.setup';
 import { Route } from './route';
-import { Router as CoreRouter } from './router';
-
-class Router extends CoreRouter {
-  static readonly global: (typeof CoreRouter)['global'] = false;
-}
+import { Router } from './router';
 
 const router = browserRouter();
 
@@ -72,10 +69,10 @@ describe('acceptance: nested file-routing tree', () => {
 });
 
 describe('acceptance: nested Router', () => {
-  const Page = () => <span>{CoreRouter.get().path}</span>;
+  const Page = () => <span>{Router.get().path}</span>;
 
   class Flow extends Component {
-    router = new CoreRouter({ path: '/one' });
+    router = new Router({ path: '/one' });
 
     render() {
       return (
@@ -103,7 +100,7 @@ describe('acceptance: nested Router', () => {
 
   it('will isolate inner location and history from the outer Router', async () => {
     let outer!: Router;
-    let inner!: CoreRouter;
+    let inner!: Router;
     const view = render(
       <Router path="/shell" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>
@@ -129,7 +126,7 @@ describe('acceptance: nested Router', () => {
 
   it('will not bubble an out-of-bounds back to the outer Router', async () => {
     let outer!: Router;
-    let inner!: CoreRouter;
+    let inner!: Router;
     render(
       <Router path="/first" is={(router) => { outer = router; }}>
         <Route as={RootLayout}>

@@ -4,7 +4,8 @@ import React from 'react';
 import { observer } from '@expressive/mvc/observable';
 
 import { mockError, mockPromise } from '../test.setup';
-import { Component } from '.';
+import '.';
+import { Component } from '@expressive/mvc';
 
 const Throws = () => {
   throw new Error('boom');
@@ -67,7 +68,7 @@ describe('error boundary', () => {
       render: () => <child.Child />
     });
 
-    render(<Boundary is={(i) => (instance = i)} catch={via === 'attribute' ? onCatch : undefined} />);
+    render(<Boundary is={(i) => void (instance = i)} catch={via === 'attribute' ? onCatch : undefined} />);
 
     expect(received).toHaveBeenCalledTimes(1);
     expect(received.mock.calls[0][0]).toBeInstanceOf(Error);
@@ -112,7 +113,7 @@ describe('error boundary', () => {
       }
     });
 
-    render(<Boundary is={(i) => (instance = i)} />);
+    render(<Boundary is={(i) => void (instance = i)} />);
     await act(async () => {});
 
     if (mode === 'async') {
@@ -180,7 +181,7 @@ describe('error boundary', () => {
       }
     });
 
-    render(<Boundary is={(i) => (instance = i)} />);
+    render(<Boundary is={(i) => void (instance = i)} />);
 
     expect(screen).toHaveText('Oops');
     expect(onCatch).toBeCalledTimes(1);
@@ -213,7 +214,7 @@ describe('error boundary', () => {
     const Boundary = boundary({ catch: () => gate });
     let instance!: Component;
 
-    const element = render(<Boundary is={(i) => (instance = i)} />);
+    const element = render(<Boundary is={(i) => void (instance = i)} />);
 
     expect(screen).toHaveText('Oops');
 

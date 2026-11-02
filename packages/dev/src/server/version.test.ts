@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { set, State } from "@expressive/mvc";
+import { set, Model } from "@expressive/mvc";
 
 import { changedSince, snapshot, track, versionOf, watch } from "./version";
 
-class Tally extends State {
+class Tally extends Model {
   total = 0;
   label = "";
   get double() { return this.total * 2; }
@@ -53,7 +53,7 @@ describe("versions", () => {
   });
 
   it("will mark a field still pending, and a getter waiting on one, and throw anything else", async () => {
-    class User extends State {
+    class User extends Model {
       name = set<string>();
       get greeting() { return "hi " + this.name; }
       get broken(): string { throw new Error("broken"); }

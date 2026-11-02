@@ -1,9 +1,13 @@
+import { Component } from "@expressive/mvc";
+
 import { Fortune } from "./remote";
 
-function Reading() {
-  const { text } = Fortune.use();
+class Reading extends Component {
+  fortune = new Fortune();
 
-  return <p>{text}</p>;
+  render() {
+    return <p>{this.fortune.text}</p>;
+  }
 }
 
 export function Page() {

@@ -1,4 +1,4 @@
-import { Context, host, join } from './context';
+import { Context, home, host, join, within } from './context';
 import { REPORT } from './dispatch';
 import {
   capture,
@@ -61,7 +61,21 @@ let ANNOUNCED = false;
 const ADOPT = new WeakMap<Model, Map<unknown, (value: unknown) => void>>();
 const CHILDREN = new WeakMap<Model, Set<(child: Model) => void>>();
 const OWNS = new WeakMap<Model, Set<Model>>();
+
+/** Instances mid-activation. */
+const ACTIVE = new WeakMap<Model, { waits: Promise<unknown>[]; held: boolean; children: (() => void)[] }>();
 const OWNED = new WeakMap<Model, Set<(child: Model) => void>>();
+
+type Got<C extends { get(...args: any[]): any }> = ReturnType<C['get']> extends infer R
+  ? NonNullable<R> extends Model
+    ? C extends abstract new (...args: any[]) => infer I ? I | Extract<R, undefined> : R
+    : R
+  : never;
+
+type Keyed<C extends { get(...args: any[]): any }> = [
+  key: Exclude<Parameters<C['get']>[0], boolean | Function | undefined>,
+  ...rest: Parameters<C['get']> extends [any?, ...infer R] ? R : []
+];
 
 type Overlay<T> = Record<string, unknown> & {
   [K in Model.Property<T>]?: T[K] extends (...args: infer A) => infer R
@@ -78,18 +92,8 @@ declare namespace Model {
   type Type<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
-  /** Model constructor arguments */
-  type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | void)[];
-
-  /**
-   * Value of `static global`. A boolean opts a Model in or out of the
-   * process-global root; a resolver decides at activation, receiving the
-   * instance and returning whether it registers - use it to make the choice
-   * conditional (e.g. per environment). A bare literal (`= true` / `= false`)
-   * seals the choice for subclasses; widen a subclass's `static global` type to
-   * `Model.Global` to permit a resolver or a later override.
-   */
-  type Global<T extends Model = any> = boolean | ((self: T) => boolean);
+  /** Model constructor arguments - the first `Context` given becomes the home, unless already placed. */
+  type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | Context | void)[];
 
   /**
    * Model constructor callback - runs during activation, in argument order,
@@ -120,14 +124,16 @@ declare namespace Model {
 
     /**
      * Per-instance, once ready - after own values are observed, constructor
-     * args applied and `new()` has run. May return a cleanup function.
+     * args applied, `new()` has run and any promise those returned resolved.
+     * May return a cleanup function.
      */
     ready?(this: T, self: T): void | (() => void);
 
     /**
      * Runs each time a method is bound to an instance - first access,
      * reassignment, and the rebind after a hot patch - with the key, the bound
-     * function and the instance. Tooling and development use.
+     * function and the instance. Not run for unbound `_` methods. Tooling and
+     * development use.
      */
     method?(this: T, key: string, fn: Function, self: T): void;
 
@@ -152,7 +158,7 @@ declare namespace Model {
   type Property<T> = Exclude<keyof T, keyof Model>;
 
   /** Managed subset of Property<T> - excludes unmanaged `_` keys. **/
-  type Field<T> = Exclude<Property<T>, `_${string}`>;
+  type Field<T> = Exclude<Property<T>, `_${string}` | 'then'>;
 
   /** Any valid key for state, including but not limited to Field<T>. */
   type Event<T = Model> = Field<T> | number | symbol | (string & {});
@@ -247,18 +253,6 @@ declare namespace Model {
 }
 
 abstract class Model {
-  /**
-   * Whether an instance activated with no enclosing context registers itself
-   * to the process-global root, where `get()` can resolve it from anywhere.
-   * `false` (the default) keeps a context-less instance fully functional but
-   * private - not injectable, though it can still read declared globals. Opt in
-   * with `static readonly global = true`; a resolver (see {@link Model.Global})
-   * makes the choice conditional. It must be declared per class - a subclass
-   * that would inherit a global without its own declaration throws on
-   * activation, so an accidental global (a forgotten `<Component for>`, an
-   * extended global) cannot leak into the shared root.
-   */
-  static readonly global: Model.Global = false;
 
   /**
    * Loopback to instance of this state. This is useful when in a subscribed context,
@@ -277,7 +271,7 @@ abstract class Model {
    *
    * It is recommended you protect this method.
    */
-  protected new?(): void | (() => void);
+  protected new?(): void | (() => void) | Promise<void>;
 
   /**
    * Pull current values from state. Flattens all states and exotic values recursively.
@@ -321,14 +315,14 @@ abstract class Model {
   /**
    * Check if state is destroyed.
    *
-   * @param status - `null` to check if state is destroyed.
-   * @returns `true` if state is destroyed, `false` otherwise.
+   * @param status - `null` for destroy.
    */
   get(status: null): boolean;
 
   /**
-   * Callback when state is to be destroyed.
+   * Callback when state is destroyed.
    *
+   * @param status - `null` for destroy.
    * @param callback - Function to call when state is destroyed.
    * @returns Function to cancel listener.
    */
@@ -387,10 +381,16 @@ abstract class Model {
     downstream: true
   ): () => void;
 
+  /**
+   * Fetch through `Type.get(...args)` with this instance as origin - its
+   * context, and its subscription when this is a tracking proxy.
+   */
+  get<C extends Model.Extends>(Type: C, ...args: Keyed<C>): Got<C>;
+
   get(
     arg1?: Model.Effect<this> | Model.Type | typeof Model | string | null,
     arg2?: boolean | Context.Expect | (() => void),
-    arg3?: boolean
+    ...args: any[]
   ) {
     const self = this.is;
 
@@ -400,8 +400,17 @@ abstract class Model {
         ? owned(self, arg2 as (child: Model) => void)
         : observed(this, arg1, owner(self, arg2 as boolean));
     if (Model.is(arg1))
-      return observed(this, arg1, Context.get(self).get(arg1, arg2, arg3, self));
-    if (typeof arg1 == 'function') return watch(self, unbind(arg1));
+      return typeof arg2 == 'function'
+        ? Context.get(self).get(arg1, arg2, args[0], self)
+        : within(this, () => (arg1.get as Function)(arg2, ...args));
+    if (typeof arg1 == 'function')
+      return watch(self, function (current, update) {
+        const { wait } = observer(self, true);
+
+        if (wait) throw new Promise<void>((resolve) => wait.add(resolve));
+
+        return unbind(arg1).call(this, current, update);
+      });
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
     return access(self, arg1, arg2);
@@ -530,12 +539,35 @@ abstract class Model {
    *
    * **Important** - Unlike `new this(...)` - this method also activates state.
    *
-   * @param args - arguments sent to constructor
+   * @param args - arguments sent to constructor; a `Context` among them becomes its home
    */
   static new<T extends Model>(this: Model.Type<T>, ...args: Model.Args<T>): T {
     const instance = new this(...args);
     event(instance);
     return instance;
+  }
+
+  /**
+   * Fetch instance of this class from context. Throws if not found.
+   *
+   * Override with a single signature to accept other arguments - delegate
+   * base forms to `super.get(arg)`, and resolve others by calling
+   * `Context.get(this, compute)` once, synchronously, so host context and
+   * tracking still apply.
+   */
+  static get<T extends Model>(this: Model.Extends<T>): T;
+
+  /** Fetch instance of this class from context. Undefined if not found. */
+  static get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
+
+  static get(this: Model.Extends, required?: false): any {
+    return Context.get(this, (context, from) => {
+      const found = context.get(this, required !== false, undefined, from);
+
+      if (found || required === false) return found || undefined;
+
+      throw new Error(`Could not find ${this} in context.`);
+    });
   }
 
   /**
@@ -611,7 +643,7 @@ function callback<T extends Model>(
 }
 
 /**
- * Apply state arguemnts, run callbacks and observe properties.
+ * Apply state arguments, run callbacks and observe properties.
  * Accumulate and handle cleanup events.
  **/
 function init(state: Model, ...args: Model.Args) {
@@ -629,40 +661,41 @@ function init(state: Model, ...args: Model.Args) {
   ID.set(state, `${T}-${uid()}`);
   STORE.set(state, {});
 
+  const waits: Promise<unknown>[] = [];
+  const children: (() => void)[] = [];
+  const active = { waits, children, held: false };
+
   function observe() {
+    if (waits.length) active.held = true;
+
     for (const key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
 
       if (!('value' in desc) || !desc.configurable) continue;
 
-      if (key[0] == '_') unmanaged(state, key, desc.value);
+      if (key[0] == '_' || key == 'then') unmanaged(state, key, desc.value);
       else apply(state, key, desc, true);
     }
   }
 
-  function register() {
-    if (Context.get(state) !== Context.root) return;
+  function settle() {
+    const o = observer(state, true);
+    const { wait } = o;
 
-    const type = state.constructor as typeof Model;
-    const g = type.global;
+    o.wait = undefined;
+    children.forEach((release) => release());
 
-    if (!(typeof g == 'function' ? g(state) : g)) return;
+    capture((release) => {
+      listener(state, () => release(null), null);
 
-    if (!Object.prototype.hasOwnProperty.call(type, 'global'))
-      throw new Error(
-        `${state} would register as a global by inheritance alone - re-declare \`static global\` on ${type.name} (\`true\` to keep it, \`false\` to opt out).`
-      );
+      for (const handler of after) {
+        const out = handler.call(state, state);
 
-    for (let T: Model.Extends = type; T !== Model; T = Object.getPrototypeOf(T)) {
-      const found = Context.root.get(T, false);
+        if (typeof out == 'function') listener(state, out, null);
+      }
+    });
 
-      if (found && (T === type || found.constructor === T))
-        throw new Error(
-          `Cannot register ${state} as a global - ${found} already exists in root. Destroy the existing instance first, or provide additional ones via explicit context.`
-        );
-    }
-
-    return Context.root.add(state);
+    wait?.forEach((resolve) => resolve());
   }
 
   listener(state, (key) => {
@@ -672,29 +705,60 @@ function init(state: Model, ...args: Model.Args) {
 
     if (key === null) return null;
 
+    args.forEach(function find(arg) {
+      if (Array.isArray(arg)) arg.forEach(find);
+      else if (arg instanceof Context) home(state, arg);
+    });
+
     if (!PARENT.has(state)) parent(state, host(state) || null);
 
     const above = PARENT.get(state);
     const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
+    const up = above ? ACTIVE.get(above) : undefined;
 
     if (owns) listener(state, () => void owns.delete(state), null);
 
-    const queue = [...before, observe, ...args, ...after, register];
+    active.held = !!up?.held;
+    ACTIVE.set(state, active);
 
     capture((release) => {
+      const queue = [...before, observe, ...args];
+
       listener(state, () => release(null), null);
 
       for (let i = 0; i < queue.length; i++) {
         const arg = queue[i];
-        const out = typeof arg == 'function' ? arg.call(state, state) : arg;
+        const called = typeof arg == 'function';
+        const out = called ? arg.call(state, state) : arg;
 
-        if (out instanceof Promise)
+        if (out instanceof Context) continue;
+
+        if (out instanceof Promise) {
+          waits.push(out);
           out.catch((err) => report('setup', state, err));
-        else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
+        } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
         else if (typeof out == 'function') listener(state, out, null);
-        else if (typeof out == 'object') assign(state, out, true);
+        else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
       }
     });
+
+    const settled = waits.length ? Promise.all(waits) : undefined;
+    const hold = active.held || !!settled;
+    const failed = () => event(state, null);
+    const release = () => {
+      if (observer(state) !== null) settle();
+    };
+
+    ACTIVE.delete(state);
+
+    if (hold) observer(state, true).wait = new Set();
+
+    if (up && hold) {
+      if (settled) up.waits.push(settled.then(undefined, failed));
+      up.children.push(release);
+    }
+    else if (settled) settled.then(release, failed);
+    else settle();
 
     if (owns) {
       owns.add(state);
@@ -745,7 +809,7 @@ function unmanaged(state: Model, key: string, value: unknown) {
 function bootstrap(T: Model.Extends) {
   const chain = [] as Model.Extends[];
   const before = new Set<Model.Init>();
-  const after = new Set<Model.Init>();
+  const after = new Set<NonNullable<Model.On['ready']>>();
   const onType = new Set<NonNullable<Model.On['type']>>();
   let keys = new Map<string, (value: any) => void>();
   let getters = new Map<string, () => unknown>();
@@ -772,6 +836,11 @@ function bootstrap(T: Model.Extends) {
     }
 
     for (const setupType of onType) setupType(type);
+
+    if (Object.prototype.hasOwnProperty.call(type, 'global'))
+      throw new Error(
+        `${type.name} declares \`static global\`, which was removed - provide it with <Component for>, or create it with .new(Context.root).`
+      );
 
     METHODS.set(type, (keys = new Map(keys)));
     GETTERS.set(type, (getters = new Map(getters)));
@@ -817,6 +886,15 @@ function classify(
     const { value } = desc;
 
     if (typeof value !== 'function') continue;
+
+    if (key[0] == '_') {
+      const run = function (this: Model, ...args: unknown[]) { return value.apply(this.is || this, args) };
+
+      UNBIND.set(run, value);
+      define(type.prototype, key, { ...desc, value: run });
+
+      continue;
+    }
 
     function bind(this: Model, original?: Function) {
       const { is } = this;
@@ -1180,6 +1258,14 @@ function access(state: Model, property: string, required?: boolean) {
   });
 }
 
+function plain(value: unknown): value is Model.Assign<Model> {
+  if (!value || typeof value != 'object') return false;
+
+  const proto = Object.getPrototypeOf(value);
+
+  return proto === Object.prototype || proto === null;
+}
+
 function assign(state: Model, data: Model.Assign<Model>, silent?: boolean) {
   if (!silent && observer(state) !== null) event(state);
 
@@ -1189,9 +1275,10 @@ function assign(state: Model, data: Model.Assign<Model>, silent?: boolean) {
   for (const key in data) {
     const bind = methods.get(key);
 
-    if (bind) bind.call(state, data[key]);
+    if (key === 'is' || key === 'then') continue;
+    else if (bind) bind.call(state, data[key]);
     else if (getters?.has(key)) continue;
-    else if (key in state && key !== 'is') {
+    else if (key in state) {
       const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
       const set = desc.set as (value: any, silent?: boolean) => void;
 
@@ -1322,5 +1409,5 @@ function parent(child: object, value?: Model | null) {
   return true;
 }
 
-export type { Handler };
-export { adopt, event, unbind, Model, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
+export type { Got, Handler, Keyed };
+export { adopt, event, plain, unbind, Model, observed, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };

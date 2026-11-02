@@ -1,11 +1,15 @@
 /** @jsxRuntime classic */
 /** @jsx createElement */
 /** @jsxFrag Fragment */
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 import { Fragment, createElement } from '@expressive/dom';
 
-class Card extends Model {
+class Card extends Component {
   title = '';
+
+  render() {
+    return <b>{this.title}</b>;
+  }
 }
 
 export const classic = (

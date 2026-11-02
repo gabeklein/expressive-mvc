@@ -1,5 +1,43 @@
 # @expressive/inspect
 
+## 0.6.1
+
+### Patch Changes
+
+- [#589](https://github.com/gabeklein/expressive-mvc/pull/589) [`bdee9a1`](https://github.com/gabeklein/expressive-mvc/commit/bdee9a1715f9b080e9376022237b3a56a8b7cc12) An instance is claimed once a host places it - held at activation, then ready - instead of when a host called `mount`.
+
+- [#578](https://github.com/gabeklein/expressive-mvc/pull/578) [`a183961`](https://github.com/gabeklein/expressive-mvc/commit/a183961f28b4124049700fb9e2442723fe3ec7ab) Remove `static global` and the `Model.Global` type. An instance no longer registers itself into `Context.root`; own shared state from a render-less `Global` Component mounted at the app's top - readers still call `Session.get()` - or add an instance to root explicitly - `X.new(Context.root)` removes the entry when it is destroyed. A class that still declares `static global` throws on construction, naming the class. Root's implicit-add eviction goes with it - root now resolves like any other context.
+
+  `Router` and `BrowserRouter` no longer declare `global`, so a top-level `BrowserRouter.new()` is no longer found by every `Route`; mount `<BrowserRouter>` at the app's root, or add it to root explicitly. Inspect counts any instance held in root as claimed.
+
+- Updated dependencies [[`c2a6b40`](https://github.com/gabeklein/expressive-mvc/commit/c2a6b4064fac8000e0cb7b0212d02345a87f6621), [`bdee9a1`](https://github.com/gabeklein/expressive-mvc/commit/bdee9a1715f9b080e9376022237b3a56a8b7cc12), [`d37a20d`](https://github.com/gabeklein/expressive-mvc/commit/d37a20d917767705c18b445c036ab74f432bd3e7), [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7), [`776243b`](https://github.com/gabeklein/expressive-mvc/commit/776243b0ce94bd7b4b81d4ad1a290d33abe4b8bb), [`ac2cd5c`](https://github.com/gabeklein/expressive-mvc/commit/ac2cd5caca0ad91777fb23d038bfbec67e88ea93), [`a183961`](https://github.com/gabeklein/expressive-mvc/commit/a183961f28b4124049700fb9e2442723fe3ec7ab), [`4d0c270`](https://github.com/gabeklein/expressive-mvc/commit/4d0c270b0914ba39e5f8b549fac962d9be5aff87), [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7), [`245e59a`](https://github.com/gabeklein/expressive-mvc/commit/245e59ac0f0ac0b33e586219e6ee188a5d7cbe07)]:
+  - @expressive/mvc@0.93.0
+
+## 0.6.0
+
+### Minor Changes
+
+- [#577](https://github.com/gabeklein/expressive-mvc/pull/577) [`2efd070`](https://github.com/gabeklein/expressive-mvc/commit/2efd070b08bde93fdf6bfe57a9440a269667c46c) Add `@expressive/inspect/http`: importing it installs the inspector, and its `handle` serves it over HTTP from a backend's own server. It takes each host's native handler arguments - Bun's `(req, server)`, Deno's `(req, info)`, Node/Express/Connect's `(req, res)`, or `(req, { ip })` - and reads the caller's address from them. Same body and answers as the Vite relay; `GET` describes the process (`pid`, `cwd`, `started`, `runtime`, `title`). Refuses non-loopback, browser, and proxied callers. The Vite relay now answers 404 for an unknown method, where it answered 500.
+
+### Patch Changes
+
+- Updated dependencies [[`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f), [`c052455`](https://github.com/gabeklein/expressive-mvc/commit/c0524556b85ad598b2f6db774b639627b61cb337)]:
+  - @expressive/mvc@0.92.0
+
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [[`2bef0ed`](https://github.com/gabeklein/expressive-mvc/commit/2bef0ed387aa4060725644a90d1def7221117810), [`5e6689c`](https://github.com/gabeklein/expressive-mvc/commit/5e6689c8c18ec34323fccd881552e76b4354d11e), [`a55605b`](https://github.com/gabeklein/expressive-mvc/commit/a55605b2439078b2694abc2ac9361ca30fa2e119), [`aeb0787`](https://github.com/gabeklein/expressive-mvc/commit/aeb07871c5cfe30df9fd945f6c5f2c2832d94168), [`f5fc45a`](https://github.com/gabeklein/expressive-mvc/commit/f5fc45ae6105876438b3c17a87f1da2546fe0d63)]:
+  - @expressive/mvc@0.91.0
+
+## 0.5.1
+
+### Patch Changes
+
+- Updated dependencies [[`d0b9cf6`](https://github.com/gabeklein/expressive-mvc/commit/d0b9cf6a29916f5db4c9eca23668c208540f9923)]:
+  - @expressive/mvc@0.90.0
+
 ## 0.5.0
 
 ### Minor Changes

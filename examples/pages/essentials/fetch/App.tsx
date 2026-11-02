@@ -1,5 +1,7 @@
 import './App.css';
 
+import { Component } from '@expressive/mvc';
+
 import { Query } from './Query';
 
 // Extending Query gives us all the request bookkeeping for free.
@@ -15,9 +17,9 @@ class HelloQuery extends Query {
 }
 
 const Example = () => {
-  // `.use()` creates an instance scoped to App.
+  // `.get()` reads the instance provided above.
   // Destructuring subscribes us to those fields.
-  const { response, error, waiting, reset, run } = HelloQuery.use();
+  const { response, error, waiting, reset, run } = HelloQuery.get();
 
   if (response) 
     return (
@@ -46,6 +48,8 @@ const Example = () => {
 export default () => (
   <div className="container">
     <h1>Fetch Example</h1>
-    <Example />
+    <Component for={HelloQuery}>
+      <Example />
+    </Component>
   </div>
 );
