@@ -13,14 +13,6 @@ interface Definition {
   children?: Record<string, Definition>;
 }
 
-interface Meta {
-  id: string;
-  name: string;
-  pattern: string[];
-  pool?: string;
-  path?: string;
-}
-
 interface Shape {
   fields: string[];
   children?: Record<string, Definition>;
@@ -28,30 +20,44 @@ interface Shape {
 
 type Patch = { patch: Record<string, unknown>; version: string };
 
+interface Entry {
+  root: Model;
+  shape: Shape;
+  configs: Map<string, Model.Apply>;
+  kids: Map<string, { generation: string; child: Model }>;
+  version?: string;
+}
+
+interface Root extends Entry {
+  id: string;
+  name: string;
+  pattern: string[];
+  pool?: string;
+  path?: string;
+  attaching?: Promise<void>;
+  early?: Map<string, Patch>;
+  refreshing?: Promise<void>;
+  again?: boolean;
+}
+
 export function runtime(Base: typeof Model, def: typeof instruction, Context: typeof Contexts, Route: Model.Type<Routed>) {
   const classes = new Map<string, ErrorConstructor>();
-  const versions = new WeakMap<Model, string>();
-  const configs = new WeakMap<Model, Map<string, Model.Apply>>();
-  const meta = new WeakMap<Model, Meta>();
-  const shapes = new WeakMap<Model, Shape>();
-  const kids = new WeakMap<Model, Map<string, { generation: string; child: Model }>>();
-  const roots = new WeakMap<Model, Model>();
+  const entries = new WeakMap<Model, Entry>();
   const made = new WeakMap<Definition, Model.Type>();
-  const attaching = new WeakMap<Model, Promise<void>>();
-  const early = new WeakMap<Model, Map<string, Patch>>();
-  const dropped = new WeakSet<Model>();
   const twins = new Map<string, WeakRef<Model>>();
   const released = new Set<string>();
   const lost = new FinalizationRegistry<string>(id => {
     twins.delete(id);
     released.add(id);
   });
-  const refreshing = new WeakMap<Model, Promise<void>>();
-  const again = new WeakSet<Model>();
   const connection = crypto.randomUUID();
   let source: EventSource | undefined;
   let epoch: string | undefined;
   let syncing = false;
+
+  function of(twin: Model): Root {
+    return entries.get(twin) as Root;
+  }
 
   function uid(): string {
     return (0.278 + Math.random() * 0.722).toString(36).substring(2, 8).toUpperCase();
@@ -126,29 +132,33 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
   }
 
   function refresh(twin: Model, whole?: boolean): void {
-    if (refreshing.has(twin)) return void again.add(twin);
+    const entry = of(twin);
 
-    const done = attach(twin, whole)
+    if (entry.refreshing) return void (entry.again = true);
+
+    entry.refreshing = attach(twin, whole)
       .catch(() => {})
       .then(() => {
-        refreshing.delete(twin);
-        if (again.delete(twin)) refresh(twin);
-      });
+        entry.refreshing = undefined;
 
-    refreshing.set(twin, done);
+        if (entry.again) {
+          entry.again = false;
+          refresh(twin);
+        }
+      });
   }
 
   function checksum(): number {
     let sum = 0;
 
     const add = (state: Model, key: string) => {
-      const version = versions.get(state);
+      const { version, kids } = of(state);
 
       if (version) sum = (sum ^ fnv(`${key}@${version}`)) >>> 0;
-      kids.get(state)?.forEach(({ child }, field) => add(child, `${key}.${field}`));
+      kids.forEach(({ child }, field) => add(child, `${key}.${field}`));
     };
 
-    for (const twin of held()) add(twin, meta.get(twin)!.id);
+    for (const twin of held()) add(twin, of(twin).id);
 
     return sum;
   }
@@ -182,16 +192,17 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
 
       if (!twin) continue;
 
-      if (twin !== ready && !versions.has(twin)) {
-        const held = early.get(twin) ?? new Map<string, Patch>();
-        const prior = held.get(key);
+      const entry = of(twin);
 
-        held.set(key, { patch: { ...prior?.patch, ...patch }, version });
-        early.set(twin, held);
+      if (twin !== ready && !entry.version) {
+        const early = (entry.early ??= new Map());
+        const prior = early.get(key);
+
+        early.set(key, { patch: { ...prior?.patch, ...patch }, version });
         continue;
       }
 
-      const held = path.reduce<{ child: Model; generation?: string } | undefined>((at, field) => at && kids.get(at.child)?.get(field), { child: twin });
+      const held = path.reduce<{ child: Model; generation?: string } | undefined>((at, field) => at && of(at.child).kids.get(field), { child: twin });
       const generation = version.split(":")[0];
 
       if (held && (held.generation ?? generation) === generation) sync(held.child, patch, version);
@@ -215,22 +226,21 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
         },
       };
 
-      configs.get(twin)!.set(key, config);
+      of(twin).configs.set(key, config);
 
       return config;
     });
   }
 
   function sync(twin: Model, values: Record<string, unknown>, version: string): void {
+    const entry = of(twin);
     const [generation, counter] = version.split(":");
-    const [held, at] = versions.get(twin)?.split(":") ?? [];
+    const [held, at] = entry.version?.split(":") ?? [];
     const whole = held !== generation;
 
     if (!whole && Number(counter) < Number(at)) return;
 
-    const { fields, children } = shapes.get(twin)!;
-
-    const own = configs.get(twin)!;
+    const { shape: { fields, children }, configs: own } = entry;
     const rearmed = new Set<string>();
 
     if (whole) values = Object.fromEntries(fields.map(field => [field, values[field]]));
@@ -248,7 +258,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
 
     if (children) values = nest(twin, values, children);
 
-    versions.set(twin, version);
+    entry.version = version;
     syncing = true;
 
     try {
@@ -266,30 +276,29 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
   }
 
   function since(twin: Model): Record<string, string> {
-    const version = versions.get(twin);
+    const { version } = of(twin);
     return version ? { "if-none-match": version } : {};
   }
 
   async function attach(twin: Model, whole?: boolean): Promise<void> {
-    const { id, pool } = meta.get(twin)!;
+    const entry = of(twin);
+    const { id, pool } = entry;
     const reply = await send(where(twin), { "x-expressive-get": pool ?? "default", "x-expressive-twin": id, ...(whole ? {} : since(twin)) }, []);
 
-    if (dropped.has(twin)) return void released.add(id);
+    if (twin.get(null)) return void released.add(id);
     if (reply) apply(reply.frame, twin);
 
-    const pending = early.get(twin);
+    const { early } = entry;
 
-    if (pending) {
-      early.delete(twin);
-      apply(Object.fromEntries(pending));
+    if (early) {
+      entry.early = undefined;
+      apply(Object.fromEntries(early));
     }
   }
 
   function nest(owner: Model, values: Record<string, unknown>, children: Record<string, Definition>): Record<string, unknown> {
-    const held = kids.get(owner) ?? new Map<string, { generation: string; child: Model }>();
+    const { kids: held, root } = of(owner);
     const out = { ...values };
-
-    kids.set(owner, held);
 
     for (const field of Object.keys(children)) {
       if (!(field in values)) continue;
@@ -305,7 +314,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
       const current = held.get(field);
 
       if (current?.generation !== marker.$child)
-        held.set(field, { generation: marker.$child, child: new (classOf(children[field]) as any)(roots.get(owner) ?? owner) });
+        held.set(field, { generation: marker.$child, child: new (classOf(children[field]) as any)(root) });
 
       out[field] = held.get(field)!.child;
     }
@@ -323,9 +332,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
         constructor(root: Model) {
           super();
 
-          configs.set(this, new Map());
-          shapes.set(this, definition);
-          roots.set(this, root);
+          entries.set(this, { root, shape: definition, configs: new Map(), kids: new Map() });
 
           for (const field of definition.fields) (this as any)[field] = served();
         }
@@ -345,7 +352,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
         configurable: true,
         writable: true,
         value(this: Model, ...args: unknown[]) {
-          return invoke(roots.get(this) ?? this, id, args);
+          return invoke(of(this).root, id, args);
         },
       });
   }
@@ -355,18 +362,18 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
   }
 
   function leave(twin: Model): void {
-    const { id } = meta.get(twin)!;
+    const { id } = of(twin);
 
-    dropped.add(twin);
     lost.unregister(twin);
     twins.delete(id);
     released.add(id);
   }
 
   async function invoke(twin: Model, name: string, args: unknown[]): Promise<unknown> {
-    await attaching.get(twin);
+    const { id, attaching } = of(twin);
 
-    const { id } = meta.get(twin)!;
+    await attaching;
+
     const reply = await send(where(twin, name), { "x-expressive-call": name, "x-expressive-twin": id, ...since(twin) }, args);
 
     apply(reply.frame);
@@ -379,15 +386,15 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
   }
 
   function where(twin: Model, name = "default"): string {
-    const { pattern, pool, path } = meta.get(twin)!;
+    const { pattern, pool, path } = of(twin);
     return pool ? path! : pathOf(pattern, name);
   }
 
   function place(twin: Model): void {
-    const info = meta.get(twin)!;
+    const entry = of(twin);
     const route = Context.get(twin).get(Route, false);
 
-    info.path = route ? pathOf(split(route.base + route.router.segment(route.to)), info.name) : "/.expressive/detached";
+    entry.path = route ? pathOf(split(route.base + route.router.segment(route.to)), entry.name) : "/.expressive/detached";
   }
 
   function split(path: string): string[] {
@@ -401,10 +408,9 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
           super(...args);
 
           const id = `${name}-${uid()}`;
+          const entry: Root = { root: this, id, name, pattern, pool, shape: { fields, children }, configs: new Map(), kids: new Map() };
 
-          configs.set(this, new Map());
-          meta.set(this, { id, name, pattern, pool });
-          shapes.set(this, { fields, children });
+          entries.set(this, entry);
           twins.set(id, new WeakRef(this));
           lost.register(this, id, this);
           listen();
@@ -412,7 +418,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
           for (const field of fields) (this as any)[field] = served();
 
           this.set(null, () => leave(this));
-          attaching.set(this, pool ? Promise.resolve().then(() => (place(this), attach(this))) : attach(this));
+          entry.attaching = pool ? Promise.resolve().then(() => (place(this), attach(this))) : attach(this);
         }
       },
     };
