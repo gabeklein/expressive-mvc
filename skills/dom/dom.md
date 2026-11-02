@@ -22,10 +22,10 @@ import { Portal, render } from '@expressive/dom';
 
 ## Render
 
-`render(node, container)` replaces an existing root in the container and returns an idempotent unmount function.
+`render(node, container, ...packs)` replaces an existing root in the container and returns an idempotent unmount function. Each pack is a macro map (see Styles) applied to that root only.
 
 ```tsx
-const unmount = render(<App />, document.getElementById('app')!);
+const unmount = render(<App />, document.getElementById('app')!, css, app);
 unmount();
 ```
 
@@ -56,16 +56,16 @@ Classes use React's `className` - the DOM property name. The attribute spelling 
 
 ### Component appearance rules
 
-Register immutable maps with `style(Component, map)`; `macro(map)` registers global ones. A `_name` entry is a **rule** - a static block. Bare keys are declarations, or **macro** calls where a macro owns the name.
+Register immutable maps with `style(Component, map)`; a pack passed to `render()` holds global ones for that root, and `macro(map)` registers a pack for every root. A `_name` entry is a **rule** - a static block. Bare keys are declarations, or **macro** calls where a macro owns the name.
 
 ```tsx
 function Button({ active }: { active: boolean }) {
   return <button _active={active}>Save</button>;
 }
 
-macro({
+const app = {
   gutter: (value: unknown) => ({ paddingInline: `${value}px` })
-});
+};
 
 style(Button, {
   padding: '8px',
@@ -92,11 +92,11 @@ style(Card, {
 - `$name` is reserved for host instructions and throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 
-Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
+Macros are defined only in a pack. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
 Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead.
 
-Within a scope, global rules come first, then base declarations, then rules by base class, derived class, and registration order - a rule shadowing a global one stacks on it rather than absorbing it. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered. `macro()` is global and closes at the first render of anything.
+Within a scope, global rules come first, then base declarations, then rules by base class, derived class, and registration order - a rule shadowing a global one stacks on it rather than absorbing it. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered. A root's packs are fixed when it renders; `macro()` reaches roots rendered after it.
 
 Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins - for classes and for which nested rules reach descendants - independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
 
@@ -135,12 +135,12 @@ The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported co
 
 ### The web pack
 
-`css` is a macro pack shipped with the renderer. Registering it opts into pixel units for numbers and a `size` shorthand:
+`css` is a macro pack shipped with the renderer. Passing it to `render()` opts the root into pixel units for numbers and a `size` shorthand:
 
-```ts
-import { css, macro } from '@expressive/dom';
+```tsx
+import { css, render } from '@expressive/dom';
 
-macro(css);
+render(<App />, root, css);
 ```
 
 A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
@@ -177,12 +177,10 @@ macro({ gutter: (value: number) => ({ paddingInline: `${value}px` }) });
 To declare a whole pack from its value, extend `macro.From` - it copies each macro's signature and skips rules and `'*'`:
 
 ```ts
-const app = {
+export const app = {
   row: (gap?: string) => ({ display: 'flex', alignItems: 'center', gap }),
   edge: (side: 'Top' | 'Left') => ({ [`border${side}`]: '1px solid' })
 };
-
-macro(app);
 
 declare module '@expressive/dom' {
   namespace macro {
@@ -210,7 +208,7 @@ A component reading `style` receives a frozen object, or `undefined` when nothin
 Opinionated, applied by default:
 
 - `style(X, …)` sits directly below `X`, never gathered at the end of a file. Shared maps go above their first use.
-- One style module, imported in the entry before the app renders (`import './style'`), holds `macro(css)`, the app's macros as one object typed with `macro.From`, global `_rule`s, shared maps, and named conditions (`mobile = media({ maxWidth: 900 })`).
+- One style module holds the app's pack - macros and global `_rule`s as one object typed with `macro.From` - plus shared maps and named conditions (`mobile = media({ maxWidth: 900 })`). The entry passes the packs to the root: `render(<App />, el, css, app)`.
 - A declaration group repeated in two or three places becomes a macro named for its job (`row`, `line`, `ellipsis`), not its CSS. What varies is its argument; an optional one makes it a flag (`row: true`). Fold repeats as you find them.
 - Shared style: a macro groups declarations; a global `_rule` sets element defaults (`_button`) and app roles (`_muted`); a shared map holds rules for one kind of thing, layered as an extra `style()` argument. Share a component before sharing a map.
 - Values under `css`: `rem()` / `em()` for type-relative sizes, bare numbers for px, strings for mixed values (`'0 auto'`, `calc()`, `var()`) - not hand-written `'0.2rem 0.45rem'`.
