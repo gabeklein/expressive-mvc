@@ -18,7 +18,7 @@ class Crawl extends Steps {
 ```
 
 - `max` - a number, or a function read live - `limit` above, raised or lowered mid-run. Lowering it lets holders finish; nothing new starts until fewer are held. `0` pauses. Default: no limit, so `slot({ after })` alone is a delay.
-  - `($) => …` - `$` is the instance's tracking proxy, as in `get(effect)`: re-read when anything read through it changes - `$.limit`, or `$.settings.limit` on a Model it holds. Tracked only while the slot waits.
+  - `($) => …` - `$` is the instance's tracking proxy, as in `get(effect)`: re-read when anything read through it changes - `$.limit`, or `$.settings.limit` on a Model it holds. Tracked only while the slot waits, and read at once - not held until the instance is ready, as an effect is.
   - `() => …` - re-read when a slot frees and on any update of the instance. A closure over `this` or another Model refreshes only then - prefer `$`.
 - `after` - milliseconds from reaching the slot before it queues (`setTimeout`). A backoff that does not block other waiters.
 - `key` - which queue:

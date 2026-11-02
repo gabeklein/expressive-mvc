@@ -19,7 +19,7 @@ const reply = await agent.next('ship it');
 
 `next`'s parameters also decide whether awaiting an idle instance can start a run - see [Awaiting the instance](#awaiting-the-instance---start-or-join); an optional parameter needs a default.
 
-Nothing starts on its own. A class wanting a run on creation writes `new() { this.next(); }`.
+Nothing starts on its own. A class wanting a run on creation writes `new() { this.next(); }`. An `async new()` holds the instance's `ready` and its effects, not a run it starts - so `async new() { await this.next(); }` works, and effects watching `then` start once it resolves.
 
 ## Runs repeat
 

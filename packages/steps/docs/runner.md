@@ -58,7 +58,7 @@ const Status = () => {
 };
 ```
 
-A tracking read of `then` is an observable view - not callable, so not awaitable. `await` the instance outside tracking contexts; inside one, read its members. `instance.get()` exports the Runner itself under its field.
+A tracking read of `then` is a callable view of the Runner: its members subscribe, and calling it joins as the instance's `then` does. mvc reserves `then` - it is not in `Object.keys(instance)` or `instance.get()`; `then.get()` snapshots the Runner.
 
 ## Steering
 
