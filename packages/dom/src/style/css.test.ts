@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { css } from './css';
@@ -31,3 +33,12 @@ describe('css pack', () => {
     expect(glob(4, 'zIndex')).toEqual({ zIndex: 4 });
   });
 });
+
+it('will typecheck a program that reaches the package through its entry alone', () => {
+  const root = join(__dirname, '../..');
+  const config = ts.getParsedCommandLineOfConfigFile(join(root, 'tsconfig.json'), {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic() {} })!;
+  const program = ts.createProgram([join(root, 'src/index.ts')], { ...config.options, noEmit: true });
+  const errors = ts.getPreEmitDiagnostics(program).map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'));
+
+  expect(errors).toEqual([]);
+}, 60_000);
