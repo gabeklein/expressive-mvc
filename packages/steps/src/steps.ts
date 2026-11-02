@@ -270,7 +270,7 @@ declare namespace Steps {
   type Runner<T extends Model = Model> = Controller<T> & Thenable<T>;
 }
 
-function run<T extends Steps>(self: T): Steps.Runner<T> {
+function run<T extends Steps>(self: T) {
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
     if (onfulfilled && typeof onfulfilled == 'object') throw new Error('then(steps) must be called inside a step.');
 
@@ -312,6 +312,15 @@ function run<T extends Steps>(self: T): Steps.Runner<T> {
 
   event(runner);
 
+  Object.defineProperty(self, 'then', {
+    configurable: true,
+    get(this: object) {
+      const view = touch(this, 'then', runner);
+
+      return view === runner ? runner : Object.setPrototypeOf((...args: [any?, any?]) => runner(...args), view);
+    }
+  });
+
   const { _hooks: hooks } = control;
 
   for (let proto = Object.getPrototypeOf(self); proto !== Model.prototype; proto = Object.getPrototypeOf(proto))
@@ -351,8 +360,6 @@ function run<T extends Steps>(self: T): Steps.Runner<T> {
   }
 
   self.get(null, () => control.stop());
-
-  return runner;
 }
 
 /**
@@ -361,7 +368,12 @@ function run<T extends Steps>(self: T): Steps.Runner<T> {
  */
 class Steps extends Model {
   /** The controller - status, journal, queue, waits; awaiting the instance awaits it. */
-  readonly then = run(this);
+  declare readonly then: Steps.Runner<this>;
+
+  constructor(...args: Model.Args) {
+    super(...args);
+    run(this);
+  }
 
   /** The entry: starts a run, or queues one while a run is active. Settles with its run. */
   next?(...args: any[]): unknown;

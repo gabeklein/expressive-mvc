@@ -1577,7 +1577,7 @@ describe('then', () => {
     expect(awaited).toEqual({ n: 1 });
   });
 
-  it('will observe then as a view which is not callable', async () => {
+  it('will observe then as a callable view', async () => {
     const seen: string[] = [];
     let view: unknown;
 
@@ -1594,12 +1594,14 @@ describe('then', () => {
       seen.push(self.then.status);
     });
 
-    expect(typeof view).toBe('object');
+    expect(typeof view).toBe('function');
+    expect(view).not.toBe(test.then);
 
     await test.next();
     await flushMicrotasks();
 
     expect(seen).toEqual(['idle', 'running', 'idle']);
+    await expect(Promise.resolve({ then: view })).resolves.toEqual({});
   });
 
   it('will resolve a set factory to the result', async () => {
@@ -1626,7 +1628,7 @@ describe('then', () => {
     expect(other.value).toBe('x');
   });
 
-  it('will export then as a field and exclude it from the dump', async () => {
+  it('will not export then', async () => {
     class Test extends Steps {
       count = 1;
 
@@ -1635,8 +1637,8 @@ describe('then', () => {
 
     const test = Test.new();
 
-    expect(Object.keys(test)).toContain('then');
-    expect(test.get().then).toBe(test.then);
+    expect(Object.keys(test)).not.toContain('then');
+    expect(test.get()).toEqual({ count: 1 });
     expect(await test.next()).toEqual({ count: 1 });
   });
 
