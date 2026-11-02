@@ -23,7 +23,7 @@ type Patch = { patch: Record<string, unknown>; version: string };
 interface Entry {
   root: Model;
   shape: Shape;
-  configs: Map<string, Model.Apply>;
+  pending: Set<string>;
   kids: Map<string, { generation: string; child: Model }>;
   version?: string;
 }
@@ -219,16 +219,18 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
 
   function served(): unknown {
     return def((key, twin) => {
-      const config: Model.Apply = {
-        get: true,
+      const { pending } = of(twin);
+
+      pending.add(key);
+
+      return {
+        get get() {
+          return pending.has(key);
+        },
         set() {
           if (!syncing) throw new Error(`${twin}.${key} is read-only - change it through a method.`);
         },
       };
-
-      of(twin).configs.set(key, config);
-
-      return config;
     });
   }
 
@@ -240,21 +242,17 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
 
     if (!whole && Number(counter) < Number(at)) return;
 
-    const { shape: { fields, children }, configs: own } = entry;
-    const rearmed = new Set<string>();
+    const { shape: { fields, children }, pending } = entry;
 
     if (whole) values = Object.fromEntries(fields.map(field => [field, values[field]]));
 
-    for (const [field, value] of Object.entries(values)) {
-      if (!isPending(value)) continue;
-
-      if (whole) {
-        own.get(field)!.get = true;
+    for (const field of Object.keys(values))
+      if (!isPending(values[field])) pending.delete(field);
+      else if (whole) {
+        pending.add(field);
         values[field] = undefined;
-        rearmed.add(field);
       }
       else delete values[field];
-    }
 
     if (children) values = nest(twin, values, children);
 
@@ -266,9 +264,6 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
     } finally {
       syncing = false;
     }
-
-    for (const field of Object.keys(values))
-      if (!rearmed.has(field)) own.get(field)!.get = false;
   }
 
   function isPending(value: unknown): boolean {
@@ -332,7 +327,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
         constructor(root: Model) {
           super();
 
-          entries.set(this, { root, shape: definition, configs: new Map(), kids: new Map() });
+          entries.set(this, { root, shape: definition, pending: new Set(), kids: new Map() });
 
           for (const field of definition.fields) (this as any)[field] = served();
         }
@@ -408,7 +403,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
           super(...args);
 
           const id = `${name}-${uid()}`;
-          const entry: Root = { root: this, id, name, pattern, pool, shape: { fields, children }, configs: new Map(), kids: new Map() };
+          const entry: Root = { root: this, id, name, pattern, pool, shape: { fields, children }, pending: new Set(), kids: new Map() };
 
           entries.set(this, entry);
           twins.set(id, new WeakRef(this));
