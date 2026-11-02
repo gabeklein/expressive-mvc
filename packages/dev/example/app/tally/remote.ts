@@ -1,4 +1,4 @@
-import { State } from "@expressive/mvc";
+import { Model } from "@expressive/mvc";
 import { Current } from "@expressive/dev/server";
 
 export class Overflow extends Error {
@@ -9,7 +9,7 @@ export class Overflow extends Error {
   }
 }
 
-export default class Tally extends State {
+export default class Tally extends Model {
   static ttl = 3600;
   total = 0;
 }

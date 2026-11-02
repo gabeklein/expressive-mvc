@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { State } from "@expressive/mvc";
+import { Model } from "@expressive/mvc";
 
 import { changedSince, snapshot, track, versionOf, watch } from "./version";
 
-class Tally extends State {
+class Tally extends Model {
   total = 0;
   label = "";
   get double() { return this.total * 2; }

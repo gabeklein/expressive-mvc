@@ -1,6 +1,6 @@
-import type { Context as Contexts, State, def as instruction } from "@expressive/mvc";
+import type { Context as Contexts, Model, def as instruction } from "@expressive/mvc";
 
-interface Routed extends State {
+interface Routed extends Model {
   base: string;
   to: string;
   router: { segment(to: string): string };
@@ -15,22 +15,22 @@ interface Meta {
   path?: string;
 }
 
-export function runtime(Base: typeof State, def: typeof instruction, Context: typeof Contexts, Route: State.Type<Routed>) {
+export function runtime(Base: typeof Model, def: typeof instruction, Context: typeof Contexts, Route: Model.Type<Routed>) {
   const classes = new Map<string, ErrorConstructor>();
-  const versions = new WeakMap<State, string>();
-  const pending = new WeakMap<State, State.Apply[]>();
-  const meta = new WeakMap<State, Meta>();
-  const attaching = new WeakMap<State, Promise<void>>();
-  const early = new WeakMap<State, { patch: Record<string, unknown>; version: string }>();
-  const dropped = new WeakSet<State>();
-  const twins = new Map<string, WeakRef<State>>();
+  const versions = new WeakMap<Model, string>();
+  const pending = new WeakMap<Model, Model.Apply[]>();
+  const meta = new WeakMap<Model, Meta>();
+  const attaching = new WeakMap<Model, Promise<void>>();
+  const early = new WeakMap<Model, { patch: Record<string, unknown>; version: string }>();
+  const dropped = new WeakSet<Model>();
+  const twins = new Map<string, WeakRef<Model>>();
   const released = new Set<string>();
   const lost = new FinalizationRegistry<string>(id => {
     twins.delete(id);
     released.add(id);
   });
-  const refreshing = new WeakMap<State, Promise<void>>();
-  const again = new WeakSet<State>();
+  const refreshing = new WeakMap<Model, Promise<void>>();
+  const again = new WeakSet<Model>();
   const connection = crypto.randomUUID();
   let source: EventSource | undefined;
   let epoch: string | undefined;
@@ -108,7 +108,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
     on("beat", ({ sum }) => sum !== checksum() && held().forEach(refresh));
   }
 
-  function refresh(twin: State): void {
+  function refresh(twin: Model): void {
     if (refreshing.has(twin)) return void again.add(twin);
 
     const done = attach(twin)
@@ -174,7 +174,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
 
   function served(): unknown {
     return def((key, twin) => {
-      const config: State.Apply = {
+      const config: Model.Apply = {
         get: true,
         set() {
           if (!syncing) throw new Error(`${twin}.${key} is read-only - change it through a method.`);
@@ -187,7 +187,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
     });
   }
 
-  function sync(twin: State, values: Record<string, unknown>, version: string): void {
+  function sync(twin: Model, values: Record<string, unknown>, version: string): void {
     const [generation, counter] = version.split(":");
     const [held, at] = versions.get(twin)?.split(":") ?? [];
     const configs = held === generation ? undefined : pending.get(twin);
@@ -207,12 +207,12 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
     configs?.splice(0).forEach(config => (config.get = false));
   }
 
-  function since(twin: State): Record<string, string> {
+  function since(twin: Model): Record<string, string> {
     const version = versions.get(twin);
     return version ? { "if-none-match": version } : {};
   }
 
-  async function attach(twin: State): Promise<void> {
+  async function attach(twin: Model): Promise<void> {
     const { id, pool } = meta.get(twin)!;
     const reply = await send(where(twin), { "x-expressive-get": pool ?? "default", "x-expressive-twin": id, ...since(twin) }, []);
 
@@ -231,7 +231,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
     await Promise.all(held().map(attach));
   }
 
-  function leave(twin: State): void {
+  function leave(twin: Model): void {
     const { id } = meta.get(twin)!;
 
     dropped.add(twin);
@@ -240,7 +240,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
     released.add(id);
   }
 
-  async function invoke(twin: State, name: string, args: unknown[]): Promise<unknown> {
+  async function invoke(twin: Model, name: string, args: unknown[]): Promise<unknown> {
     await attaching.get(twin);
 
     const { id } = meta.get(twin)!;
@@ -251,16 +251,16 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
     return reply.value;
   }
 
-  function held(): State[] {
+  function held(): Model[] {
     return [...twins.values()].map(ref => ref.deref()).filter(twin => twin !== undefined);
   }
 
-  function where(twin: State, name = "default"): string {
+  function where(twin: Model, name = "default"): string {
     const { pattern, pool, path } = meta.get(twin)!;
     return pool ? path! : pathOf(pattern, name);
   }
 
-  function place(twin: State): void {
+  function place(twin: Model): void {
     const info = meta.get(twin)!;
     const route = Context.get(twin).get(Route, false);
 
@@ -271,7 +271,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
     return path.split("/").filter(Boolean);
   }
 
-  function twin(pattern: string[], methods: Record<string, string>, fields: string[], name: string, pool?: string): State.Type {
+  function twin(pattern: string[], methods: Record<string, string>, fields: string[], name: string, pool?: string): Model.Type {
     const named = {
       [name]: class extends Base {
         constructor(...args: any[]) {
@@ -298,7 +298,7 @@ export function runtime(Base: typeof State, def: typeof instruction, Context: ty
       Object.defineProperty(Twin.prototype, method, {
         configurable: true,
         writable: true,
-        value(this: State, ...args: unknown[]) {
+        value(this: Model, ...args: unknown[]) {
           return invoke(this, id, args);
         },
       });

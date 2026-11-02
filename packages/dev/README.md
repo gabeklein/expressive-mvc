@@ -28,7 +28,7 @@ express nesting. dev's `Route` owns no suspense boundary unless given a `fallbac
 page's waits show its slot's `Loading`.
 
 The `default` export is read by kind. A function is the entry hook: it runs with the Route before
-it renders, and a returned string redirects (`null` falls through to the 404). A class - State or
+it renders, and a returned string redirects (`null` falls through to the 404). A class - Model or
 Component - renders around the route's content and is provided to everything below it; with a
 `Layout`, it wraps the `Layout`.
 
@@ -37,7 +37,7 @@ there that cannot show anything yet - its code, its entry hook or its data still
 it in place, inside the layout. It reaches pages at any depth until a nested `Layout`, which starts
 its own slot. A page's own `Loading` covers that page first. Navigation inside the app never shows
 it - the current page holds until the next is ready (`Router.get().navigating` meanwhile); it is
-for arriving cold, by link or refresh. A Component or a State with its own `fallback` keeps its
+for arriving cold, by link or refresh. A Component or a Model with its own `fallback` keeps its
 waits to itself.
 
 Each route module becomes its own chunk, loaded when the route is first entered - `default`
@@ -45,8 +45,8 @@ included - unless it is the root or exports `Loading` or `Catch`, which must be 
 anything below them can wait or fail.
 
 JSX compiles against `@expressive/dev`'s runtime, which is `@expressive/dom`'s. Set
-`"jsxImportSource": "@expressive/dev"` in the app's tsconfig; the types carry dom's `State`
-augmentation (`State.get()` and friends), so nothing else is needed.
+`"jsxImportSource": "@expressive/dev"` in the app's tsconfig; the types carry dom's `Model`
+augmentation (`Model.get()` and friends), so nothing else is needed.
 
 ## Server
 
@@ -100,9 +100,9 @@ The build refuses any other export - a sync function, a value, a class without `
 re-export - since the client could not use it; a default is the folder's twin (below). A class whose base is not an `Error`
 fails its first call in dev and the built service at startup.
 
-### Server State
+### Server Model
 
-Server State is a folder's `default` class - its seat, built at the call's location - and the
+Server Model is a folder's `default` class - its seat, built at the call's location - and the
 children it owns. Inside a call, `X.get()` finds the nearest seat or owned child at that location
 or above; it throws outside a call. `/blog/a` and `/blog/b` hold separate seats, every visitor to a
 location shares one, and a seat further down shadows one above. A seat lives while a call holds it,
@@ -111,7 +111,7 @@ created lazily (`draft = set(() => new Draft())`) is found once its owner has re
 through the owner (`Tally.get().draft`).
 
 ```ts
-export default class Tally extends State {
+export default class Tally extends Model {
   static ttl = 3600;
   total = 0;
 }
@@ -122,20 +122,20 @@ export async function add(by: number) {
 ```
 
 `Current` (from `@expressive/dev/server`) is the request in progress, readable from any server
-State or function in a call: `Current.get().url`, `.cookies`, `.request`. Its accessors read the
+Model or function in a call: `Current.get().url`, `.cookies`, `.request`. Its accessors read the
 call live, so a reused instance may hold it in a field (`current = get(Current)`) but should not
 copy its values into its own.
 
 ### Twins
 
-A folder's remote entry (`remote.ts` or `remote/index.ts`) may default-export a State class. Every
+A folder's remote entry (`remote.ts` or `remote/index.ts`) may default-export a Model class. Every
 call walking through the folder seats one instance in its context - `get()` finds it there and below
 - and the route tree provides its twin around the folder's routes on the client. The twin's methods
 are the class's public `async` methods, each a call to that instance.
 
 ```ts
 // app/counter/remote.ts
-export default class Counter extends State {
+export default class Counter extends Model {
   count = 0;
   async increment() { return ++this.count; }
 }
@@ -162,7 +162,7 @@ its last call; when it ends, its context and everything below go with it.
 
 Methods a seat inherits cross too: the build follows its bases by import - source, or a package's
 `.d.ts` - up to `@expressive`'s classes, and the nearest declaration's `private`/`protected` wins. A
-base it cannot follow, such as `extends mixin(State)`, fails the build.
+base it cannot follow, such as `extends mixin(Model)`, fails the build.
 
 A twin holds the seat's public values too. It attaches on construction and suspends until the
 snapshot arrives. Every call's reply - a twin's method or a plain function - carries everything that
@@ -172,7 +172,7 @@ assigning a twin field throws. Changes made elsewhere - another tab, a timer on 
 on a stream the tab opens with its first twin: the server names what went stale and the twin pulls
 it.
 
-A remote module may also export State classes. Each is a twin built per construction: every one a
+A remote module may also export Model classes. Each is a twin built per construction: every one a
 Component owns as a field (`cart = new Cart()`), or `Cart.new()` anywhere, gets a server instance of
 its own, alive while the client holds the twin. Build twins through those two - not a standalone
 `new Cart()`. It is built under the component's nearest route, so its `get()` fields reach the seats
@@ -180,13 +180,13 @@ above it and every `key()` above it runs on each call; off any route it has no s
 
 ```ts
 // app/shop/remote.ts
-import { State, get } from "@expressive/mvc";
+import { Model, get } from "@expressive/mvc";
 
-export default class Shop extends State {
+export default class Shop extends Model {
   name = "Shop";
 }
 
-export class Cart extends State {
+export class Cart extends Model {
   protected shop = get(Shop);
   items = 0;
   async add() { return ++this.items; }

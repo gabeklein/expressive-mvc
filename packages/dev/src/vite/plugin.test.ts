@@ -103,9 +103,9 @@ describe("vite host", () => {
   it("will share linked Expressive packages between the host and the module runner", async () => {
     const root = project({
       "app/index.tsx": PAGE,
-      "probe.ts": 'export { State } from "@expressive/mvc";',
+      "probe.ts": 'export { Model } from "@expressive/mvc";',
       "linked/mvc/package.json": JSON.stringify({ name: "@expressive/mvc", type: "module", exports: "./index.js" }),
-      "linked/mvc/index.js": "export class State {}",
+      "linked/mvc/index.js": "export class Model {}",
     });
     mkdirSync(join(root, "node_modules/@expressive"), { recursive: true });
     symlinkSync(join(root, "linked/mvc"), join(root, "node_modules/@expressive/mvc"), "dir");
@@ -120,10 +120,10 @@ describe("vite host", () => {
     servers.push(server);
 
     const runner = createServerModuleRunner(server.environments.ssr);
-    const { State } = await runner.import(join(root, "probe.ts"));
+    const { Model } = await runner.import(join(root, "probe.ts"));
     await runner.close();
 
-    expect(State).toBe(createRequire(join(root, "index.js"))("@expressive/mvc").State);
+    expect(Model).toBe(createRequire(join(root, "index.js"))("@expressive/mvc").Model);
   });
 
   const SIDECAR = `
@@ -163,7 +163,7 @@ describe("vite host", () => {
     await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow("only modules in app/tally/ and below may call it");
   });
 
-  const HOST = 'import { State } from "@expressive/mvc";';
+  const HOST = 'import { Model } from "@expressive/mvc";';
 
   function hostMvc(root: string): InlineConfig["resolve"] {
     const shim = join(root, "host-mvc.ts");
@@ -174,7 +174,7 @@ describe("vite host", () => {
   }
   const SEAT = `
     ${HOST}
-    export default class Tally extends State {
+    export default class Tally extends Model {
       static ttl = 60;
       total = 0;
       async add(by: number) { return (this.total += by); }
@@ -194,7 +194,7 @@ describe("vite host", () => {
   it("will twin the methods a seat inherits through imports", async () => {
     const root = project({
       "app/index.tsx": PAGE,
-      "app/lib/counter.ts": `${HOST} export class Counter extends State { count = 0; async increment() { return ++this.count; } protected async secret() {} }`,
+      "app/lib/counter.ts": `${HOST} export class Counter extends Model { count = 0; async increment() { return ++this.count; } protected async secret() {} }`,
       "app/tally/remote.ts": `import { Counter } from "../lib/counter"; export default class Tally extends Counter { async add(by: number) { return by; } }`,
     });
     const server = await serve(root);
@@ -205,7 +205,7 @@ describe("vite host", () => {
   });
 
   it("will throw if a seat's base cannot be followed", async () => {
-    const root = project({ "app/index.tsx": PAGE, "app/tally/remote.ts": `const mixin = (B: any) => B; ${HOST} export default class Tally extends mixin(State) {}` });
+    const root = project({ "app/index.tsx": PAGE, "app/tally/remote.ts": `const mixin = (B: any) => B; ${HOST} export default class Tally extends mixin(Model) {}` });
     const server = await serve(root);
 
     await expect(server.transformRequest("/app/tally/remote.ts")).rejects.toThrow("Tally extends an expression");
@@ -244,7 +244,7 @@ describe("vite host", () => {
   it("will seat a folder's default for calls below it, imported by the client or not", async () => {
     const root = project({
       "app/index.tsx": PAGE,
-      "app/remote.ts": `${HOST} export default class Site extends State { static ttl = 60; name = "site"; }`,
+      "app/remote.ts": `${HOST} export default class Site extends Model { static ttl = 60; name = "site"; }`,
       "app/tally/remote.ts": `import Site from "../remote"; export async function site() { return Site.get().name; }`,
     });
     const server = await serve(root, expressive(), hostMvc(root));
@@ -269,14 +269,14 @@ describe("vite host", () => {
 
   const POOLED = `
     ${HOST}
-    export class Cart extends State {
+    export class Cart extends Model {
       items = 0;
       async add() { return ++this.items; }
     }
     export class Over extends Error {}
   `;
 
-  it("will serve an exported State class to the browser as a twin built per use", async () => {
+  it("will serve an exported Model class to the browser as a twin built per use", async () => {
     const root = project({ "app/index.tsx": PAGE, "app/shop/index.tsx": "import { Cart } from './remote'; export const Page = () => Cart", "app/shop/remote.ts": POOLED });
     const server = await serve(root);
 
@@ -422,7 +422,7 @@ describe("vite host", () => {
     const { server } = await buildBoth({
       "index.ts": "export default { remote: { opaque: false } };",
       "app/index.tsx": PAGE,
-      "app/remote.ts": `${HOST} export default class Site extends State {}`,
+      "app/remote.ts": `${HOST} export default class Site extends Model {}`,
       "app/tally/index.tsx": "import Tally from './remote'; export const Page = () => Tally",
       "app/tally/remote.ts": SEAT,
     });

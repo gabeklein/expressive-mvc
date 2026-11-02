@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { Component, State } from "@expressive/mvc";
+import { Component, Model } from "@expressive/mvc";
 
 import { browserRouter, location, mount, settle } from "../../test.setup";
 import { Route } from "../client";
@@ -45,7 +45,7 @@ describe("app/ routing (codegen)", () => {
   const CATCH = "export function Catch(){ return null }";
   const NOTFOUND = "export function NotFound(){ return null }";
   const ENTER = "export default () => '/login'";
-  const SCOPE = "export default class Session extends State {}";
+  const SCOPE = "export default class Session extends Model {}";
 
   it("root is always a scope; lone index becomes the \"/\" page + implicit 404", async () => {
     const out = await generate({ "index.tsx": PAGE });
@@ -208,7 +208,7 @@ describe("app/ routing (codegen)", () => {
   });
 
   it("a default class makes a lone page a scope", async () => {
-    const out = await generate({ "index.tsx": PAGE, "(settings).tsx": `${PAGE}\nclass Panel extends State {}\nexport { Panel as default }` });
+    const out = await generate({ "index.tsx": PAGE, "(settings).tsx": `${PAGE}\nclass Panel extends Model {}\nexport { Panel as default }` });
     expect(out).toMatch(/<Route to="settings" as={SettingsScope}>\s*<Route as={Settings} \/>/);
   });
 
@@ -316,10 +316,10 @@ describe("app/ routing (runtime)", () => {
 describe("app/ routing (scope)", () => {
   browserRouter();
 
-  it("provides a default State to the layout and pages while the route is matched", async () => {
+  it("provides a default Model to the layout and pages while the route is matched", async () => {
     const lives: string[] = [];
 
-    class Session extends State {
+    class Session extends Model {
       user = "ada";
       protected new() {
         lives.push("new");
@@ -356,7 +356,7 @@ describe("app/ routing (scope)", () => {
   });
 
   it("provides a default class loaded on demand", async () => {
-    class Session extends State {
+    class Session extends Model {
       user = "ada";
     }
 

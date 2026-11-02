@@ -131,7 +131,7 @@ function check(scan: SidecarScan, name: string, value: Value): void {
 
 function seat(scan: SidecarScan, value: Value, entry: boolean): void {
   if (!entry) return void scan.problems.push("Only a folder's remote entry - remote.ts or remote/index.ts - may export a default.");
-  if (!isClass(value) || !value.superClass) return void scan.problems.push("A remote default is a State subclass - its methods are what the client calls.");
+  if (!isClass(value) || !value.superClass) return void scan.problems.push("A remote default is a Model subclass - its methods are what the client calls.");
 
   scan.seat = value.id?.name ?? "default";
 }

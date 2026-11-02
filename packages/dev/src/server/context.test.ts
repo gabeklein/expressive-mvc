@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { IncomingMessage } from "node:http";
-import { Context, get, set, State } from "@expressive/mvc";
+import { Context, get, set, Model } from "@expressive/mvc";
 
 import { construct, Current, install, within, type Seat } from "./context";
 
@@ -14,12 +14,12 @@ const walk = <T>(req: IncomingMessage, segments: string[], seats: (Seat | undefi
 
 describe("server get", () => {
   it("will throw outside a call", () => {
-    class Tally extends State {}
-    expect(() => Tally.get()).toThrow("Server State resolves only within a sidecar call.");
+    class Tally extends Model {}
+    expect(() => Tally.get()).toThrow("Server Model resolves only within a sidecar call.");
   });
 
   it("will find what context provides, or throw if missing unless optional", async () => {
-    class Missing extends State {}
+    class Missing extends Model {}
 
     await call([], () => {
       expect(Current.get()).toBeInstanceOf(Current);
@@ -33,7 +33,7 @@ describe("seats", () => {
   const as = (user: string) => request("/", `user=${user}`);
 
   it("will seat a layer's default as a call walks through it, found by get() there and below", async () => {
-    class Blog extends State {}
+    class Blog extends Model {}
 
     const here = await walk(request(), ["blog"], [undefined, Blog], () => Blog.get());
     const below = await walk(request(), ["blog", "a"], [undefined, Blog], () => Blog.get());
@@ -44,7 +44,7 @@ describe("seats", () => {
 
   it("will keep a seat five minutes after its last call by default", async () => {
     vi.useFakeTimers();
-    class Tally extends State {}
+    class Tally extends Model {}
 
     const first = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
 
@@ -58,7 +58,7 @@ describe("seats", () => {
 
   it("will keep a seat between calls for its ttl", async () => {
     vi.useFakeTimers();
-    class Tally extends State { static ttl = 60; }
+    class Tally extends Model { static ttl = 60; }
 
     const first = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
     expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).toBe(first);
@@ -69,7 +69,7 @@ describe("seats", () => {
   });
 
   it("will drop a seat after its call with a ttl of zero", async () => {
-    class Tally extends State { static ttl = 0; }
+    class Tally extends Model { static ttl = 0; }
 
     const first = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
 
@@ -78,7 +78,7 @@ describe("seats", () => {
   });
 
   it("will keep a seat while another call holds it", async () => {
-    class Tally extends State { static ttl = 0; }
+    class Tally extends Model { static ttl = 0; }
     let finish!: () => void;
     const open = new Promise<void>(resolve => (finish = resolve));
 
@@ -95,9 +95,9 @@ describe("seats", () => {
   });
 
   it("will replace a seat whose class changed, evicting the layers below", async () => {
-    class Before extends State { static ttl = 60; }
-    class After extends State { static ttl = 60; }
-    class Post extends State { static ttl = 60; }
+    class Before extends Model { static ttl = 60; }
+    class After extends Model { static ttl = 60; }
+    class Post extends Model { static ttl = 60; }
 
     const [before, post] = await walk(request(), ["blog", "a"], [undefined, Before, Post], () => [Before.get(), Post.get()]);
     const after = await walk(request(), ["blog"], [undefined, After], () => After.get());
@@ -109,7 +109,7 @@ describe("seats", () => {
   });
 
   it("will give each layer its own seat, a deeper one over one above", async () => {
-    class Page extends State { static ttl = 60; }
+    class Page extends Model { static ttl = 60; }
 
     const above = await walk(request(), ["blog"], [undefined, Page], () => Page.get());
     const a = await walk(request(), ["blog", "a"], [undefined, Page, Page], () => Page.get());
@@ -122,16 +122,16 @@ describe("seats", () => {
   });
 
   it("will resolve fields from the context the seat lives in", async () => {
-    class Tally extends State { current = get(Current); }
+    class Tally extends Model { current = get(Current); }
 
     const url = await walk(request("/tally"), ["tally"], [undefined, Tally], () => Tally.get().current.url.pathname);
     expect(url).toBe("/tally");
   });
 
   it("will provide a seat's children there and below, a lazy one once its owner reads it", async () => {
-    class Total extends State { value = 0; }
-    class Draft extends State {}
-    class Tally extends State {
+    class Total extends Model { value = 0; }
+    class Draft extends Model {}
+    class Tally extends Model {
       total = new Total();
       draft = set(() => new Draft());
     }
@@ -152,8 +152,8 @@ describe("seats", () => {
   });
 
   it("will narrow everything below by a seat's key", async () => {
-    class Session extends State { static key() { return Current.get().cookies.user; } }
-    class Cart extends State {}
+    class Session extends Model { static key() { return Current.get().cookies.user; } }
+    class Cart extends Model {}
 
     const a = await walk(as("a"), ["shop"], [Session, Cart], () => [Session.get(), Cart.get()]);
     const b = await walk(as("b"), ["shop"], [Session, Cart], () => [Session.get(), Cart.get()]);
@@ -164,22 +164,22 @@ describe("seats", () => {
   });
 
   it("will pass the location through when a key is undefined", async () => {
-    class Shared extends State { static key() { return undefined; } }
+    class Shared extends Model { static key() { return undefined; } }
 
     const a = await walk(as("a"), ["docs"], [undefined, Shared], () => Shared.get());
     expect(await walk(as("b"), ["docs"], [undefined, Shared], () => Shared.get())).toBe(a);
   });
 
   it("will run a key with the seats above it in reach", async () => {
-    class Session extends State { static key() { return Current.get().cookies.user; } org = "acme"; }
-    class Org extends State { static key() { return Session.get().org; } }
+    class Session extends Model { static key() { return Current.get().cookies.user; } org = "acme"; }
+    class Org extends Model { static key() { return Session.get().org; } }
 
     const org = await walk(as("a"), ["org"], [Session, Org], () => Org.get());
     expect(org).toBeInstanceOf(Org);
   });
 
   it("will deny a call whose key throws, creating nothing", async () => {
-    class Gate extends State { static key(): string { throw new Error("Denied"); } }
+    class Gate extends Model { static key(): string { throw new Error("Denied"); } }
     const run = vi.fn();
 
     await expect(walk(request(), ["gate"], [undefined, Gate], run)).rejects.toThrow("Denied");
@@ -187,14 +187,14 @@ describe("seats", () => {
   });
 
   it("will throw if a key is not a string, a number or undefined", async () => {
-    class Bad extends State { static key() { return {} as any; } }
+    class Bad extends Model { static key() { return {} as any; } }
 
     await expect(walk(request(), ["bad"], [undefined, Bad], () => {})).rejects.toThrow("Bad.key() returned [object Object] - a key is a string, a number or undefined.");
   });
 
   it("will evict a seat's layer and everything below when it ends", async () => {
-    class Blog extends State {}
-    class Post extends State { static ttl = 60; }
+    class Blog extends Model {}
+    class Post extends Model { static ttl = 60; }
 
     const [blog, post] = await walk(request(), ["blog", "a"], [undefined, Blog, Post], () => [Blog.get(), Post.get()]);
     blog.set(null);
@@ -228,9 +228,9 @@ describe("Current", () => {
 });
 
 describe("pool", () => {
-  class Cart extends State {}
+  class Cart extends Model {}
 
-  const parentOf = (state: State) => Context.get(state).parent;
+  const parentOf = (state: Model) => Context.get(state).parent;
 
   it("will build an instance of its own in the call's layer, holding the layer alive", async () => {
     const a = await call(["shop"], () => construct(Cart));

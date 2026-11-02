@@ -1,11 +1,11 @@
 import { randomBytes } from "node:crypto";
-import type { State } from "@expressive/mvc";
+import type { Model } from "@expressive/mvc";
 
 import { changedSince, snapshot, versionOf, watch } from "./version";
 
 interface Held {
   address: string;
-  instance: State;
+  instance: Model;
   fields: string[];
   seen?: string;
   stop: () => void;
@@ -154,14 +154,14 @@ export function release(connection: Connection, twins: unknown): void {
   }
 }
 
-export function hold(connection: Connection, twin: string, address: string, instance: State, fields: string[], seen?: string, pool?: Pool): void {
+export function hold(connection: Connection, twin: string, address: string, instance: Model, fields: string[], seen?: string, pool?: Pool): void {
   const held = connection.twins.get(twin);
 
   held?.stop();
   connection.twins.set(twin, { address, instance, fields, seen, pool, stop: watch(instance, () => announce(connection)) });
 }
 
-export function renew(connection: Connection, address: string, instance: State): void {
+export function renew(connection: Connection, address: string, instance: Model): void {
   for (const held of connection.twins.values()) {
     if (held.pool || held.address !== address || held.instance === instance) continue;
 

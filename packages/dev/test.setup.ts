@@ -27,8 +27,9 @@ export function browserRouter() {
 
   beforeEach(async () => {
     const { BrowserRouter } = await import("@expressive/router");
+    const { Context } = await import("@expressive/mvc");
     window.history.replaceState(null, "", "/");
-    ctx.current = BrowserRouter.new();
+    ctx.current = BrowserRouter.new(Context.root);
   });
 
   afterEach(() => ctx.current && ctx.current.set(null));

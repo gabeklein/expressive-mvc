@@ -3,7 +3,8 @@ import "@expressive/dom";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import type { IncomingMessage } from "node:http";
-import { Context, State } from "@expressive/mvc";
+import { Context, Model } from "@expressive/mvc";
+import { resolver } from "@expressive/mvc/jsx-runtime";
 
 import { track } from "./version";
 
@@ -21,7 +22,7 @@ interface Entry {
   Type: Owned;
   layer: Layer;
   context: Context;
-  instance: State;
+  instance: Model;
   remove(): void;
   refs: number;
   timer?: ReturnType<typeof setTimeout>;
@@ -33,7 +34,7 @@ interface Frame {
   held: Set<Entry>;
 }
 
-type Owned = State.Type & { ttl?: number };
+type Owned = Model.Type & { ttl?: number };
 
 export type Seat = Owned & { key?(): string | number | undefined };
 
@@ -44,12 +45,12 @@ let top: Layer | undefined;
 
 function frame(): Frame {
   const frame = store.getStore();
-  if (!frame) throw new Error("Server State resolves only within a sidecar call.");
+  if (!frame) throw new Error("Server Model resolves only within a sidecar call.");
   return frame;
 }
 
 function newLayer(prefix: string, parent?: Layer): Layer {
-  const context = parent ? scope(parent).push() : Context.root.push();
+  const context = parent ? scope(parent).push() : Context.root.push(Current);
   return { prefix, context, parent, children: new Map(), calls: 0, pooled: 0 };
 }
 
@@ -58,12 +59,7 @@ function scope(layer: Layer): Context {
 }
 
 function root(): Layer {
-  if (!top) {
-    top = newLayer("");
-    top.context.set({ 0: Current });
-  }
-
-  return top;
+  return (top ??= newLayer(""));
 }
 
 function hash(text: string): string {
@@ -177,10 +173,8 @@ export async function within<T>(request: IncomingMessage, segments: string[], ru
 }
 
 function create(Type: Owned, layer: Layer): Entry {
-  const context = layer.context.push();
-  let instance!: State;
-
-  context.set({ 0: Type }, state => { instance = state; });
+  const context = layer.context.push(Type);
+  const instance = context.get(Type)!;
 
   const remove = layer.context.add(instance, true);
   const entry: Entry = { Type, layer, context, instance, remove, refs: 0 };
@@ -201,19 +195,17 @@ let detached: Context | undefined;
 
 function detachedContext(): Context {
   if (!detached) {
-    detached = Context.root.push();
-    detached.set({ 0: Current });
+    detached = Context.root.push(Current);
   }
 
   return detached;
 }
 
-export function construct(Type: State.Type, off = false): { instance: State; drop(): void; current(): boolean } {
+export function construct(Type: Model.Type, off = false): { instance: Model; drop(): void; current(): boolean } {
   const layer = off ? undefined : frame().layer;
-  const context = (layer ? scope(layer) : detachedContext()).push();
-  let instance!: State;
+  const context = (layer ? scope(layer) : detachedContext()).push(Type);
+  const instance = context.get(Type)!;
 
-  context.set({ 0: Type }, state => { instance = state; });
   track(instance);
 
   if (layer) {
@@ -231,16 +223,15 @@ export function construct(Type: State.Type, off = false): { instance: State; dro
   };
 }
 
-export function seated(): State | undefined {
+export function seated(): Model | undefined {
   return frame().layer.seat?.instance;
 }
 
-function get(this: typeof State, required?: boolean) {
-  return scope(frame().layer).get(this, required !== false);
-}
-
 export function install() {
-  Object.assign(State, { get });
+  const previous = resolver((Type, compute) => {
+    if (!Type && !store.getStore()) return previous(Type, compute);
+    return compute(scope(frame().layer));
+  });
 }
 
 function parseCookies(header = ""): Record<string, string> {
@@ -259,7 +250,7 @@ const readOnly = () => {
   throw new Error("Current is read-only.");
 };
 
-export class Current extends State {
+export class Current extends Model {
   get request(): IncomingMessage {
     return frame().request;
   }

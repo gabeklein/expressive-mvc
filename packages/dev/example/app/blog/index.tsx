@@ -1,6 +1,6 @@
-import { State } from "@expressive/mvc";
+import { Model } from "@expressive/mvc";
 
-export default class Blog extends State {
+export default class Blog extends Model {
   posts = ["hello", "world"];
 }
 
