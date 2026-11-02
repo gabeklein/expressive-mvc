@@ -31,7 +31,7 @@ type Patch = { patch: Record<string, unknown>; version: string };
 export function runtime(Base: typeof Model, def: typeof instruction, Context: typeof Contexts, Route: Model.Type<Routed>) {
   const classes = new Map<string, ErrorConstructor>();
   const versions = new WeakMap<Model, string>();
-  const waiting = new WeakMap<Model, Map<string, Model.Apply>>();
+  const configs = new WeakMap<Model, Map<string, Model.Apply>>();
   const meta = new WeakMap<Model, Meta>();
   const shapes = new WeakMap<Model, Shape>();
   const kids = new WeakMap<Model, Map<string, { generation: string; child: Model }>>();
@@ -215,7 +215,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
         },
       };
 
-      waiting.get(twin)!.set(key, config);
+      configs.get(twin)!.set(key, config);
 
       return config;
     });
@@ -230,9 +230,21 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
 
     const { fields, children } = shapes.get(twin)!;
 
+    const own = configs.get(twin)!;
+    const rearmed = new Set<string>();
+
     if (whole) values = Object.fromEntries(fields.map(field => [field, values[field]]));
 
-    values = Object.fromEntries(Object.entries(values).filter(([, value]) => !isPending(value)));
+    for (const [field, value] of Object.entries(values)) {
+      if (!isPending(value)) continue;
+
+      if (whole) {
+        own.get(field)!.get = true;
+        values[field] = undefined;
+        rearmed.add(field);
+      }
+      else delete values[field];
+    }
 
     if (children) values = nest(twin, values, children);
 
@@ -245,16 +257,8 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
       syncing = false;
     }
 
-    const unset = waiting.get(twin)!;
-
-    for (const field of Object.keys(values)) {
-      const config = unset.get(field);
-
-      if (!config) continue;
-
-      config.get = false;
-      unset.delete(field);
-    }
+    for (const field of Object.keys(values))
+      if (!rearmed.has(field)) own.get(field)!.get = false;
   }
 
   function isPending(value: unknown): boolean {
@@ -319,7 +323,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
         constructor(root: Model) {
           super();
 
-          waiting.set(this, new Map());
+          configs.set(this, new Map());
           shapes.set(this, definition);
           roots.set(this, root);
 
@@ -398,7 +402,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
 
           const id = `${name}-${uid()}`;
 
-          waiting.set(this, new Map());
+          configs.set(this, new Map());
           meta.set(this, { id, name, pattern, pool });
           shapes.set(this, { fields, children });
           twins.set(id, new WeakRef(this));
