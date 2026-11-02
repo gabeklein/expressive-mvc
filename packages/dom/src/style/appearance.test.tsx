@@ -296,10 +296,26 @@ describe('appearance', () => {
     expect(getComputedStyle(node).padding).toBe('2px');
     expect(getComputedStyle(node).letterSpacing).toBe('2px');
     expect(getComputedStyle(node).fontSize).toBe('3px');
-    expect(() => macro({ _late: { color: 'red' } })).toThrow('after rendering');
     expect(() => macro({ bad: { color: 'red' } }))
       .toThrow('Macro "bad" must be a function. Use "_bad" to register a rule.');
     expect(() => style(Global, { _late: { color: 'red' } })).toThrow('after a component');
+  });
+
+  it('will layer a render pack over global macros', () => {
+    function Packed() {
+      return <i _shared>x</i>;
+    }
+
+    style(Packed, { pad: 2 });
+
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<Packed />, root, { pad: (value: unknown) => ({ paddingLeft: `${value}px` }) });
+    const node = root.querySelector('i')!;
+
+    expect(node.className).toBe('global_shared Packed');
+    expect(getComputedStyle(node).color).toBe('purple');
+    expect(getComputedStyle(node).paddingLeft).toBe('2px');
+    expect(getComputedStyle(node).paddingTop).toBe('');
   });
 
   it('will join array values and throw for unhandled keys', () => {

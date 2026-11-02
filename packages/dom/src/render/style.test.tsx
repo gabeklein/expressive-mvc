@@ -294,3 +294,61 @@ describe('authoring scope without macros', () => {
     expect(root.querySelector('p')!.className).toBe('');
   });
 });
+
+describe('render packs', () => {
+  it('will apply a pack to its own root only', () => {
+    const pack = { tone: (value: unknown) => ({ color: value }), _note: { padding: '2px' } };
+
+    function Note() {
+      return <p _note>note</p>;
+    }
+
+    style(Note, { tone: 'red' });
+
+    const packed = document.body.appendChild(document.createElement('main'));
+    render(<Note />, packed, pack);
+    const note = packed.querySelector('p')!;
+
+    expect(note.className).toBe('global_note Note');
+    expect(getComputedStyle(note).color).toBe('red');
+    expect(getComputedStyle(note).padding).toBe('2px');
+
+    const plain = document.body.appendChild(document.createElement('main'));
+    render(<Note />, plain);
+    const other = plain.querySelector('p')!;
+
+    expect(other.className).not.toContain('global_note');
+    expect(getComputedStyle(other).color).toBe('');
+    expect(getComputedStyle(other).padding).toBe('');
+  });
+
+  it('will resolve a placed instance against its root', () => {
+    class Card extends Component {
+      render() {
+        return <b _card>card</b>;
+      }
+    }
+
+    class Deck extends Component {
+      cards = [new Card()];
+
+      render() {
+        return <i>{this.cards}</i>;
+      }
+    }
+
+    style(Deck, { padding: '9px' });
+
+    const root = document.body.appendChild(document.createElement('main'));
+    render(<Deck />, root, { _card: { color: 'blue' } });
+    const card = root.querySelector('b')!;
+
+    expect(card.className).toBe('global_card');
+    expect(getComputedStyle(card).color).toBe('blue');
+  });
+
+  it('will throw for a pack entry that is neither macro nor rule', () => {
+    expect(() => render(<p />, document.createElement('main'), { bad: {} } as any))
+      .toThrow('Macro "bad" must be a function. Use "_bad" to register a rule.');
+  });
+});
