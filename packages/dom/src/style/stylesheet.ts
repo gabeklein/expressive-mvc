@@ -26,7 +26,7 @@ type Key<T> =
   | `_${string}`
   | style.Condition;
 
-type Layers<T> = readonly (style.Map<T> | Layers<T> | false | null | undefined)[];
+type Layers<T> = readonly (style.Map<T> | Layers<T> | false | null | undefined)[] & { [K in style.Property | Macro<T>]?: unknown };
 
 type Body<T> = style.Map<T> | Layers<T>;
 

@@ -82,6 +82,13 @@ describe('style map types', () => {
     expect([map, token, typo]).toHaveLength(3);
   });
 
+  it('will keep property and macro names on a rule body for typo suggestions', () => {
+    type Named<T> = T extends unknown ? 'paddingTop' | 'pill' extends keyof T ? true : false : never;
+    const named: false extends Named<NonNullable<Map['_select']>> ? never : true = true;
+
+    expect(named).toBe(true);
+  });
+
   it('will declare a pack from its methods', () => {
     const map: Map = { edge: 'Top', pill: 2, row: true };
     // @ts-expect-error - pill takes a number, so true is not a flag
