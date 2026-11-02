@@ -60,6 +60,8 @@ const Status = () => {
 
 A tracking read of `then` is a callable view of the Runner: its members subscribe, and calling it joins as the instance's `then` does. mvc reserves `then` - it is not in `Object.keys(instance)` or `instance.get()`; `then.get()` snapshots the Runner.
 
+Effects wait for the instance to be ready and, under a component, for the host to commit - the run does not: a `Steps` owned by a component not yet committed runs, and its watchers attach on commit.
+
 ## Steering
 
 Writes from outside are allowed. They steer whichever step reads the field next and appear in no entry:
