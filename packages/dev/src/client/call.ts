@@ -31,7 +31,7 @@ type Patch = { patch: Record<string, unknown>; version: string };
 export function runtime(Base: typeof Model, def: typeof instruction, Context: typeof Contexts, Route: Model.Type<Routed>) {
   const classes = new Map<string, ErrorConstructor>();
   const versions = new WeakMap<Model, string>();
-  const pending = new WeakMap<Model, Model.Apply[]>();
+  const configs = new WeakMap<Model, Map<string, Model.Apply>>();
   const meta = new WeakMap<Model, Meta>();
   const shapes = new WeakMap<Model, Shape>();
   const kids = new WeakMap<Model, Map<string, { generation: string; child: Model }>>();
@@ -215,7 +215,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
         },
       };
 
-      pending.get(twin)!.push(config);
+      configs.get(twin)!.set(key, config);
 
       return config;
     });
@@ -224,13 +224,28 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
   function sync(twin: Model, values: Record<string, unknown>, version: string): void {
     const [generation, counter] = version.split(":");
     const [held, at] = versions.get(twin)?.split(":") ?? [];
-    const configs = held === generation ? undefined : pending.get(twin);
+    const whole = held !== generation;
 
-    if (!configs && Number(counter) < Number(at)) return;
+    if (!whole && Number(counter) < Number(at)) return;
 
     const { fields, children } = shapes.get(twin)!;
 
-    if (configs) values = Object.fromEntries(fields.map(field => [field, values[field]]));
+    const own = configs.get(twin)!;
+    const rearmed = new Set<string>();
+
+    if (whole) values = Object.fromEntries(fields.map(field => [field, values[field]]));
+
+    for (const [field, value] of Object.entries(values)) {
+      if (!isPending(value)) continue;
+
+      if (whole) {
+        own.get(field)!.get = true;
+        values[field] = undefined;
+        rearmed.add(field);
+      }
+      else delete values[field];
+    }
+
     if (children) values = nest(twin, values, children);
 
     versions.set(twin, version);
@@ -242,7 +257,12 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
       syncing = false;
     }
 
-    configs?.splice(0).forEach(config => (config.get = false));
+    for (const field of Object.keys(values))
+      if (!rearmed.has(field)) own.get(field)!.get = false;
+  }
+
+  function isPending(value: unknown): boolean {
+    return (value as { $pending?: unknown } | null)?.$pending === true;
   }
 
   function since(twin: Model): Record<string, string> {
@@ -303,7 +323,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
         constructor(root: Model) {
           super();
 
-          pending.set(this, []);
+          configs.set(this, new Map());
           shapes.set(this, definition);
           roots.set(this, root);
 
@@ -382,7 +402,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
 
           const id = `${name}-${uid()}`;
 
-          pending.set(this, []);
+          configs.set(this, new Map());
           meta.set(this, { id, name, pattern, pool });
           shapes.set(this, { fields, children });
           twins.set(id, new WeakRef(this));

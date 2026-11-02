@@ -178,6 +178,10 @@ call through the owner (`order.line.bump()`). Assigning a new instance on the se
 child twin; clearing the field leaves it `undefined`. A public `get()` field fails the build - make
 it `protected` or `private`.
 
+A value still pending on the server - a `set()` field not yet assigned, or a getter waiting on one -
+is pending on the twin too: reading it suspends until the server assigns it. A value the twin already
+holds stays, unless the server rebuilt the instance.
+
 A remote module may also export Model classes. Each is a twin built per construction: every one a
 Component owns as a field (`cart = new Cart()`), or `Cart.new()` anywhere, gets a server instance of
 its own, alive while the client holds the twin. Build twins through those two - not a standalone

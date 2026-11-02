@@ -262,6 +262,49 @@ describe("twin", () => {
     expect(tally.user).toBeUndefined();
   });
 
+  it("will keep a field the server holds pending suspended until its value arrives, then keep it", async () => {
+    const fetch = serve(
+      { body: snap({ total: 1, user: { $pending: true } }, "g:1") },
+      { body: () => ({ frame: { [idOf(fetch, 0)]: { patch: { user: "ada" }, version: "g:2" } } }) },
+      { body: () => ({ frame: { [idOf(fetch, 0)]: { patch: { user: { $pending: true } }, version: "g:3" } } }) },
+    );
+    const tally = twin(["tally"], { touch: "default.touch" }, ["total", "user"], "Tally").new() as any;
+
+    await vi.waitFor(() => expect(tally.total).toBe(1));
+
+    let thrown: unknown;
+    try { tally.user; } catch (error) { thrown = error; }
+    expect(thrown).toBeInstanceOf(Promise);
+
+    await tally.touch();
+    await thrown;
+    expect(tally.user).toBe("ada");
+
+    await tally.touch();
+    expect(tally.user).toBe("ada");
+  });
+
+  it("will suspend a field again when the server's rebuilt instance holds it pending", async () => {
+    const fetch = serve(
+      { body: snap({ total: 1, user: "ada" }, "g:1") },
+      { body: () => ({ frame: { [idOf(fetch, 0)]: { patch: { total: 0, user: { $pending: true } }, version: "h:1" } } }) },
+      { body: () => ({ frame: { [idOf(fetch, 0)]: { patch: { user: "bob" }, version: "h:2" } } }) },
+    );
+    const tally = twin(["tally"], { touch: "default.touch" }, ["total", "user"], "Tally").new() as any;
+
+    await vi.waitFor(() => expect(tally.user).toBe("ada"));
+    await tally.touch();
+    expect(tally.total).toBe(0);
+
+    let thrown: unknown;
+    try { tally.user; } catch (error) { thrown = error; }
+    expect(thrown).toBeInstanceOf(Promise);
+
+    await tally.touch();
+    await thrown;
+    expect(tally.user).toBe("bob");
+  });
+
   it("will ignore a patch older than the version it holds", async () => {
     const fetch = serve(
       { body: snap({ total: 3 }, "g:3") },

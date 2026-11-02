@@ -229,7 +229,7 @@ function entriesOf(twin: string, held: Held): Entry[] {
     entries.push({ key: path ? `${twin}.${path}` : twin, path, instance, shape });
 
     for (const [field, child] of Object.entries(shape.children ?? {})) {
-      const value = (instance as any)[field];
+      const value = snapshot(instance, [field])[field];
       if (value instanceof Model) walk(path ? `${path}.${field}` : field, value, child);
     }
   })("", held.instance, held.shape);
@@ -263,6 +263,10 @@ function unwatch(held: Held): void {
   held.watching.clear();
 }
 
+function isPending(value: unknown): boolean {
+  return (value as { $pending?: unknown } | null)?.$pending === true;
+}
+
 function patchOf(instance: Model, shape: Shape, keys: string[]): Record<string, unknown> {
   const patch = snapshot(instance, keys);
 
@@ -270,7 +274,8 @@ function patchOf(instance: Model, shape: Shape, keys: string[]): Record<string, 
     if (!shape.children?.[field]) continue;
 
     const child = patch[field];
-    patch[field] = child instanceof Model ? { $child: versionOf(child).split(":")[0] } : null;
+    if (child instanceof Model) patch[field] = { $child: versionOf(child).split(":")[0] };
+    else if (!isPending(child)) patch[field] = null;
   }
 
   return patch;

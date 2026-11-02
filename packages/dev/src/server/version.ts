@@ -58,5 +58,16 @@ export function changedSince(instance: Model, version: string | undefined, field
 }
 
 export function snapshot(instance: Model, fields: string[]): Record<string, unknown> {
-  return Object.fromEntries(fields.map(field => [field, (instance as any)[field]]));
+  return Object.fromEntries(fields.map(field => [field, read(instance, field)]));
+}
+
+function read(instance: Model, field: string): unknown {
+  try {
+    return (instance as any)[field];
+  } catch (error) {
+    if (!(error instanceof Promise)) throw error;
+
+    error.catch(() => {});
+    return { $pending: true };
+  }
 }

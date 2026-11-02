@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Model } from "@expressive/mvc";
+import { set, Model } from "@expressive/mvc";
 
 import { changedSince, snapshot, track, versionOf, watch } from "./version";
 
@@ -50,6 +50,37 @@ describe("versions", () => {
     tally.total = 3;
 
     expect(snapshot(tally, ["total", "double"])).toEqual({ total: 3, double: 6 });
+  });
+
+  it("will mark a field still pending, and a getter waiting on one, and throw anything else", async () => {
+    class User extends Model {
+      name = set<string>();
+      get greeting() { return "hi " + this.name; }
+      get broken(): string { throw new Error("broken"); }
+    }
+
+    const user = User.new();
+
+    expect(snapshot(user, ["name", "greeting"])).toEqual({ name: { $pending: true }, greeting: { $pending: true } });
+    expect(() => snapshot(user, ["broken"])).toThrow("broken");
+
+    user.name = "ada";
+    await user.set();
+    expect(snapshot(user, ["name", "greeting"])).toEqual({ name: "ada", greeting: "hi ada" });
+  });
+
+  it("will not leave a pending read's rejection unhandled when its instance is destroyed", async () => {
+    class User extends Model {
+      name = set<string>();
+      get greeting() { return "hi " + this.name; }
+    }
+
+    const user = User.new();
+
+    snapshot(user, ["name", "greeting"]);
+    user.set(null);
+
+    await new Promise(resolve => setTimeout(resolve));
   });
 
   it("will call a watcher once per flush until it stops watching", async () => {
