@@ -398,9 +398,7 @@ function place(ctx: Context, to: Context) {
 
   move(from, to);
 
-  return () => {
-    if (to.scope.has(ctx)) move(to, from);
-  };
+  return () => move(to, from);
 }
 
 function above(ctx: Context) {

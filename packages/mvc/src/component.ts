@@ -215,6 +215,7 @@ function provide(self: Component<any>) {
   let target: Model | undefined;
   let owned: Model | undefined;
   let provided: (() => void) | undefined;
+  let restore: (() => void) | undefined;
 
   function remove() {
     if (provided) provided();
@@ -229,10 +230,12 @@ function provide(self: Component<any>) {
     if (next !== input) {
       input = next;
       remove();
+      restore?.();
+      restore = undefined;
 
       if (next instanceof Context) {
         owned = target = undefined;
-        provided = place(home(self)!, next);
+        restore = place(home(self)!, next);
       } else if (Model.is(next)) {
         owned = target = new (next as Model.Type)(rest);
       } else {

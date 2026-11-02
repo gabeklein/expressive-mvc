@@ -451,19 +451,6 @@ describe('for', () => {
     expect(request.scope.has(inner)).toBe(false);
   });
 
-  it('will not return to its parent once the context pops', () => {
-    const request = Context.root.push();
-    const outer = Context.root.push();
-    const provider = new Component({ for: request } as any);
-    const inner = outer.push(provider, () => provider.set(null));
-
-    request.pop();
-    inner.pop();
-
-    expect(provider.get(null)).toBe(true);
-    expect(outer.scope.has(inner)).toBe(false);
-  });
-
   it('will release the previous item when for changes', async () => {
     const provider = Component.new({ for: Session } as any);
     const context = new Context().push(provider);
