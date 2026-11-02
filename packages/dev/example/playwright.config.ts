@@ -10,6 +10,7 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     browserName: "chromium",
+    trace: process.env.CI ? "retain-on-failure" : "off",
     launchOptions: process.env.CHROME ? { executablePath: process.env.CHROME } : {},
   },
   projects: [
