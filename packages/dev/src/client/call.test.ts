@@ -86,6 +86,12 @@ function serve(...replies: Reply[]) {
 
 const snap = (patch: Record<string, unknown>, version: string) => (sent: Record<string, string>) => ({ frame: { [sent["x-expressive-twin"]]: { patch, version } } });
 
+function fnv(text: string) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+  return hash >>> 0;
+}
+
 const headers = (fetch: { mock: { calls: unknown[][] } }, at: number) => (fetch.mock.calls[at][1] as RequestInit).headers as Record<string, string>;
 const idOf = (fetch: { mock: { calls: unknown[][] } }, at: number) => headers(fetch, at)["x-expressive-twin"];
 
@@ -356,12 +362,6 @@ describe("twin", () => {
 describe("stream", () => {
   const settle = () => new Promise(resolve => setTimeout(resolve));
 
-  function fnv(text: string) {
-    let hash = 0x811c9dc5;
-    for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
-    return hash >>> 0;
-  }
-
   async function attached(...replies: Reply[]) {
     const fetch = serve({ body: snap({ total: 0 }, "g:1") }, ...replies);
     const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
@@ -578,6 +578,26 @@ describe("child twin", () => {
     await order.touch();
     expect(order.line).toBeUndefined();
     expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("will sum its children's versions into the heartbeat, and re-pull whole when they differ", async () => {
+    const fetch = serve(
+      { body: reply({ "": { patch: { line: { $child: "l" } }, version: "o:1" }, line: { patch: { qty: 1 }, version: "l:1" } }) },
+      { body: reply({ "": { patch: { line: { $child: "l" } }, version: "o:1" }, line: { patch: { qty: 2 }, version: "l:2" } }) },
+    );
+    const order = Order().new() as any;
+
+    await vi.waitFor(() => expect(order.line.qty).toBe(1));
+
+    const id = idOf(fetch, 0);
+
+    Source.opened[0].emit("beat", { sum: (fnv(`${id}@o:1`) ^ fnv(`${id}.line@l:1`)) >>> 0 });
+    await new Promise(resolve => setTimeout(resolve));
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    Source.opened[0].emit("beat", { sum: fnv(`${id}@o:1`) });
+    await vi.waitFor(() => expect(order.line.qty).toBe(2));
+    expect(headers(fetch, 1)).not.toHaveProperty("if-none-match");
   });
 
   it("will drop a late entry for a child since replaced, or one it does not hold", async () => {

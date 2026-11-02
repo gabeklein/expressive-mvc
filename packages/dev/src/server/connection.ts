@@ -143,10 +143,8 @@ export function staleOf(connection: Connection): Record<string, string[]> {
 export function checksum(connection: Connection): number {
   let sum = 0;
 
-  for (const [twin, { seen }] of connection.twins) {
-    const root = seen.get("");
-    if (root) sum = (sum ^ fnv(`${twin}@${root}`)) >>> 0;
-  }
+  for (const [twin, { seen }] of connection.twins)
+    for (const [path, version] of seen) sum = (sum ^ fnv(`${path ? `${twin}.${path}` : twin}@${version}`)) >>> 0;
 
   return sum;
 }
