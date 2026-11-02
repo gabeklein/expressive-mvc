@@ -1,5 +1,13 @@
 # @expressive/dom
 
+## 0.8.2
+
+### Patch Changes
+
+- [#600](https://github.com/gabeklein/expressive-mvc/pull/600) [`c20f54e`](https://github.com/gabeklein/expressive-mvc/commit/c20f54e815da87c137b4f7ba04ebdf5c70b5d3f9) `media()` returns a literal type built from the query, so its result works as a computed key in a typed `style()` map. Features are joined in the order of the query interface rather than insertion order.
+
+- [#603](https://github.com/gabeklein/expressive-mvc/pull/603) [`de29195`](https://github.com/gabeklein/expressive-mvc/commit/de291952b8696897a8792e558888bf74f5482d89) Popping a context destroys the Components the renderer constructed within it, as in the React and Preact hosts.
+
 ## 0.8.1
 
 ### Patch Changes
