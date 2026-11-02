@@ -1041,7 +1041,7 @@ class Run extends Model {
 
       this._entries.push({ id, key: 'end', args: [], next: [], wrote: [], implicit: true });
 
-      return this.finish(dump(this.control));
+      return this.finish(this.control._self.get());
     }
 
     const frame = await this.invoke(item);
@@ -1535,7 +1535,7 @@ class Frame extends Model {
     if (key == 'end') {
       if (items.length) throw new Error(`end cannot schedule ${items[0].key}.`);
 
-      this._result = out !== undefined ? out : args.length ? args[0] : dump(run.control);
+      this._result = out !== undefined ? out : args.length ? args[0] : run.control._self.get();
     }
     else if (typeof out == 'function') undo = out;
     else if (token) {
@@ -1723,12 +1723,6 @@ function adopt(parents: Map<string, string>, items: Steps.Node[], parent: string
 
 function capital(key: string) {
   return key[0].toUpperCase() + key.slice(1);
-}
-
-function dump({ _self: self, _runner }: Control) {
-  const values = self.get() as Record<string, unknown>;
-
-  return Object.fromEntries(Object.entries(values).filter(([key]) => (self as any)[key] !== _runner));
 }
 
 function collection(value: unknown): value is Collection {
