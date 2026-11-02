@@ -1,4 +1,4 @@
-import { Context, has, map, set, Model } from '@expressive/mvc';
+import { Component, Context, has, map, set, Model } from '@expressive/mvc';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { flushMicrotasks, Journal, mockPromise, mockUncaught, mockWarn, record } from '../test.setup';
@@ -415,6 +415,35 @@ describe('steps', () => {
 
     expect(found[0]).toBe(host.service);
     expect(found[1]).toBe(host);
+  });
+
+  it('will run under a component its host has not committed', async () => {
+    const statuses: string[] = [];
+    const placed = mockPromise<void>();
+
+    class Test extends Steps {
+      async next() {}
+    }
+
+    class Host extends Component {
+      test = new Test();
+    }
+
+    const stop = Component.on({ setup: () => placed });
+    const host = Host.new();
+
+    stop();
+
+    host.test.get((self) => void statuses.push(self.then.status));
+
+    await host.test.next();
+    expect(host.test.then.runs).toBe(1);
+    expect(statuses).toEqual([]);
+
+    placed.resolve();
+    await flushMicrotasks();
+
+    expect(statuses).toEqual(['idle']);
   });
 });
 
