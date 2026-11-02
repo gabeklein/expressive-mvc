@@ -1,23 +1,42 @@
-import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot } from './protocol';
-import type { AppearanceContext, Block, Declaration, ResolvedAppearance } from './protocol';
+import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot, SUBCOMPONENT } from './protocol';
+import type { AppearanceContext, Block, Condition, Declaration, ResolvedAppearance } from './protocol';
 
 type StyleMap = Record<string, unknown>;
 
+interface Styles {
+  own: StyleMap[];
+  subs: Record<string, StyleMap[]>;
+}
+
 type Macro = (value: unknown, key: string) => unknown;
+type Chain = Macro[] & { named: number };
 type Depths = ReadonlyMap<string, number>;
 
+interface Frame {
+  group?: Block;
+  name: string;
+}
+
+interface Variant {
+  declarations: Declaration;
+  when: string[];
+}
+
 interface Expansion {
-  block?: Block;
+  blocks: Block[];
   classes: string[];
   declarations: Declaration;
   nested: StyleMap[];
+  variants: Variant[];
 }
 
 interface StyleScope {
   children: WeakMap<object, StyleScope>;
   expansions: Map<string, Expansion>;
+  globals?: StyleScope;
   label: string;
   labels: Record<string, string>;
+  local: readonly string[];
   names: readonly string[];
   own: Declaration;
   routes: Map<string, AppearanceRoute>;
@@ -31,7 +50,10 @@ interface AppearanceRoute {
 }
 
 const bases = new WeakMap<StyleScope, Declaration>();
-const chains = new WeakMap<StyleScope, Map<string, Macro[]>>();
+const groups = new WeakMap<StyleScope, Block[]>();
+const ownGroups = new WeakMap<StyleScope, Block>();
+const ancestors = new Map<string, Condition>();
+const chains = new WeakMap<StyleScope, Map<string, Chain>>();
 const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
 const STYLES = Symbol('@expressive/dom.styles');
@@ -49,6 +71,8 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const own: string[] = [];
   const source: StyleMap = {};
   const base: Declaration = {};
+  const scopeLabel = label || parent?.label || 'style';
+  const root: Frame = { name: scopeLabel };
 
   for (const key of Object.keys(value)) {
     const entry = (value as StyleMap)[key];
@@ -56,13 +80,28 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
     if (key[0] == '$')
       throw new Error(`Reserved key "${key}" in style map.`);
 
+    if (SUBCOMPONENT.test(key))
+      throw new Error(`Subcomponent "${key}" must be at the top of a style() map.`);
+
     if (key[0] == '_') {
       if (!isObject(entry))
         throw new Error(`Rule "${key}" must be an object. Macros are defined by macro().`);
 
       const name = key.slice(1);
-      own.push(name);
-      source[name] = entry;
+      if (!own.includes(name)) own.push(name);
+      source[name] = merge(source[name], entry);
+    } else if (isCondition(key) && isObject(entry)) {
+      const rest: StyleMap = {};
+
+      for (const inner of Object.keys(entry))
+        if (inner[0] == '_') {
+          const name = inner.slice(1);
+          if (!own.includes(name)) own.push(name);
+          for (const when of split(key))
+            source[name] = merge(source[name], { [hoist(root, when)]: entry[inner] });
+        } else rest[inner] = entry[inner];
+
+      base[key] = merge(base[key], rest);
     } else if (defines && typeof entry == 'function') {
       own.push(key);
       source[key] = entry;
@@ -72,27 +111,34 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const names = parent
     ? [...parent.names, ...own.filter((name) => !parent.names.includes(name))]
     : own;
+  const before = parent && parent !== parent.globals ? parent.local : [];
+  const local = defines ? [] : [...before, ...own.filter((name) => !before.includes(name))];
   const rules = Object.create(parent?.rules || null) as StyleMap;
   const labels = Object.create(parent?.labels || null) as Record<string, string>;
-  const scopeLabel = label || parent?.label || 'style';
 
   for (const name of own) {
     const rule = source[name];
     const inherited = parent?.rules[name];
-    rules[name] = isObject(inherited) && isObject(rule) ? { ...inherited, ...rule } : rule;
+    const extend = isObject(inherited) && isObject(rule) && (defines || inherited !== parent!.globals?.rules[name]);
+    rules[name] = extend ? mergeRule(inherited, rule) : rule;
     labels[name] = scopeLabel;
   }
 
   const scope: StyleScope = {
     children: new WeakMap(),
     expansions: new Map(),
+    globals: parent?.globals,
     label: scopeLabel,
     labels,
+    local,
     names,
     own: base,
     routes: new Map(),
     rules
   };
+
+  if (defines) scope.globals = scope;
+  if (root.group) ownGroups.set(scope, root.group);
 
   cache.set(value, scope);
   return scope;
@@ -117,26 +163,32 @@ function createContext(scope: StyleScope): AppearanceContext {
 function extendContext(parent: AppearanceContext | undefined, maps: readonly StyleMap[], label: string, defines?: boolean) {
   let scope = parent?.scope as StyleScope | undefined;
   const base: Declaration = { ...(scope && bases.get(scope)) };
+  const anchors = new Set(scope && groups.get(scope));
 
   for (const map of maps) {
     scope = createStyleScope(scope, map, label, defines);
-    Object.assign(base, scope!.own);
+    Object.assign(base, mergeRule(base, scope!.own));
+    const own = ownGroups.get(scope!);
+    if (own) anchors.add(own);
   }
 
   if (Object.keys(base).length) bases.set(scope!, base);
+  if (anchors.size) groups.set(scope!, [...anchors]);
 
   return createContext(scope!);
 }
 
 function baseToken(scope: StyleScope) {
   const base = bases.get(scope);
-  if (!base) return undefined;
+  const anchors = groups.get(scope);
+  if (!base && !anchors) return undefined;
 
-  const expansion = expand(scope, base, new Map());
+  const frame: Frame = { name: scope.label };
+  const expansion = expand(scope, base, new Map(), frame);
+  const blocks = [...toBlocks(expansion, frame, shared(scope) - 0.5), ...anchors || []];
   const appearance: ResolvedAppearance = {};
 
-  if (Object.keys(expansion.declarations).length)
-    appearance.blocks = [{ declarations: expansion.declarations, name: scope.label, ordinal: -1 }];
+  if (blocks.length) appearance.blocks = blocks;
 
   if (expansion.classes.length) appearance.classes = expansion.classes;
 
@@ -146,17 +198,32 @@ function baseToken(scope: StyleScope) {
 function style<T extends object>(type: T, rules: StyleMap): T {
   if (entered.has(type)) throw new Error('Cannot add styles after a component has rendered.');
 
-  if (Object.hasOwn(type, STYLES)) (type as any)[STYLES].push(rules);
-  else {
+  if (!Object.hasOwn(type, STYLES)) {
     const label = (type as { displayName?: string }).displayName || (type as Function).name;
 
-    Object.defineProperty(type, STYLES, { configurable: true, value: [rules] });
-    registerAppearance(type, (parent) => {
+    Object.defineProperty(type, STYLES, { configurable: true, value: { own: [], subs: {} } });
+    registerAppearance(type, (parent, key) => {
+      const { own, subs } = (type as any)[STYLES] as Styles;
       entered.add(type);
-      return extendContext(parent, (type as any)[STYLES], label);
+
+      if (!key) return extendContext(parent, own, label);
+
+      return subs[key] ? extendContext(parent, subs[key], `${label}_${key}`) : parent;
     });
   }
 
+  const { own, subs } = (type as any)[STYLES] as Styles;
+  const rest: StyleMap = {};
+
+  for (const key of Object.keys(rules))
+    if (SUBCOMPONENT.test(key)) {
+      if (!isObject(rules[key]))
+        throw new Error(`Subcomponent "${key}" must be an object.`);
+
+      (subs[key.slice(1)] ||= []).push(rules[key] as StyleMap);
+    } else rest[key] = rules[key];
+
+  own.push(rest);
   return type;
 }
 
@@ -220,9 +287,9 @@ function resolveAppearance(
     if (props[`_${name}`]) names.push(name);
 
   for (const name of names)
-    parts.push(expandRule(route.scope, name));
+    expandShadowed(route.scope, name, parts);
 
-  const blocks = parts.flatMap((part) => part.block ? [part.block] : []);
+  const blocks = parts.flatMap((part) => part.blocks);
   const classes = parts.flatMap((part) => part.classes);
   let child: StyleScope | undefined = route.scope;
 
@@ -245,19 +312,64 @@ function expandRule(scope: StyleScope, name: string) {
   let expansion = scope.expansions.get(name);
 
   if (!expansion) {
-    expansion = expand(scope, scope.rules[name], new Map());
-
-    if (Object.keys(expansion.declarations).length)
-      expansion.block = {
-        declarations: expansion.declarations,
-        name: `${scope.labels[name]}_${name}`,
-        ordinal: scope.names.indexOf(name)
-      };
+    const frame: Frame = { name: `${scope.labels[name]}_${name}` };
+    expansion = expand(scope, scope.rules[name], new Map(), frame);
+    expansion.blocks = toBlocks(expansion, frame, ordinal(scope, name));
 
     scope.expansions.set(name, expansion);
   }
 
   return expansion;
+}
+
+function toBlocks({ declarations, variants }: Expansion, { group, name }: Frame, ordinal: number) {
+  const blocks: Block[] = [];
+
+  if (Object.keys(declarations).length) blocks.push({ declarations, name, ordinal });
+
+  for (const { declarations, when } of variants)
+    blocks.push({
+      declarations,
+      name,
+      ordinal: ordinal + 0.5 - 0.25 / when.length,
+      when: when.map((condition) => ancestors.get(condition) || condition)
+    });
+
+  if (group) blocks.push(group);
+
+  return blocks;
+}
+
+function hoist(frame: Frame, condition: string) {
+  if (condition[0] != ':') return condition;
+
+  if (condition.includes('::'))
+    throw new Error(`Rules cannot nest inside pseudo-element "${condition}".`);
+
+  frame.group ||= { declarations: {}, group: true, name: frame.name, ordinal: 0 };
+
+  const key = `\0${ancestors.size}`;
+  ancestors.set(key, { on: frame.group, state: condition });
+  return key;
+}
+
+function shared(scope: StyleScope) {
+  return scope.globals ? scope.globals.names.length : 0;
+}
+
+function ordinal(scope: StyleScope, name: string) {
+  return scope.rules[name] === scope.globals?.rules[name]
+    ? scope.names.indexOf(name)
+    : shared(scope) + scope.local.indexOf(name);
+}
+
+function expandShadowed(scope: StyleScope, name: string, parts: Expansion[]) {
+  const { globals } = scope;
+
+  if (globals && isObject(globals.rules[name]) && globals.rules[name] !== scope.rules[name])
+    parts.push(expandRule(globals, name));
+
+  parts.push(expandRule(scope, name));
 }
 
 function handlers(scope: StyleScope, name: string) {
@@ -267,13 +379,16 @@ function handlers(scope: StyleScope, name: string) {
   let chain = known.get(name);
 
   if (!chain) {
-    chain = [];
+    chain = Object.assign([], { named: 0 });
 
-    for (const key of [name, '*'])
+    for (const key of [name, '*']) {
       for (let rules: object | null = scope.rules; rules; rules = Object.getPrototypeOf(rules)) {
         const own = Object.getOwnPropertyDescriptor(rules, key);
         if (own && typeof own.value == 'function') chain.push(own.value as Macro);
       }
+
+      if (key == name) chain.named = chain.length;
+    }
 
     known.set(name, chain);
   }
@@ -281,9 +396,10 @@ function handlers(scope: StyleScope, name: string) {
   return chain;
 }
 
-function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
-  const output: Expansion = { classes: [], declarations: {}, nested: [] };
+function expand(scope: StyleScope, value: unknown, depths: Depths, frame: Frame): Expansion {
+  const output: Expansion = { blocks: [], classes: [], declarations: {}, nested: [], variants: [] };
   const nested: StyleMap = {};
+  const conditions: [string, StyleMap][] = [];
 
   function walk(value: unknown, depths: Depths) {
     if (!value) return;
@@ -300,12 +416,21 @@ function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
 
     for (const [name, entry] of Object.entries(value as Declaration)) {
       if (name[0] == '_') {
-        if (isObject(entry)) nested[name] = entry;
+        if (isObject(entry)) nested[name] = merge(nested[name], entry);
+        continue;
+      }
+
+      if (isCondition(name)) {
+        if (isObject(entry)) conditions.push([name, entry]);
+        else if (isPresent(entry)) throw new Error(`Condition "${name}" must be an object.`);
         continue;
       }
 
       const chain = handlers(scope, name);
       const depth = depths.get(name) || 0;
+
+      if (depth && depth >= chain.named && entry === true)
+        throw new Error(`Macro "${name}" returned itself.`);
 
       if (depth < chain.length) {
         if (isPresent(entry))
@@ -318,6 +443,28 @@ function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
   }
 
   walk(value, depths);
+
+  for (const [key, body] of conditions)
+    for (const when of split(key)) {
+      const inner = expand(scope, body, depths, frame);
+
+      if (inner.classes.length)
+        throw new Error(`Classes are not supported inside "${when}".`);
+
+      for (const map of inner.nested) {
+        const key = hoist(frame, when);
+
+        for (const rule of Object.keys(map))
+          nested[rule] = merge(nested[rule], { [key]: map[rule] });
+      }
+
+      if (Object.keys(inner.declarations).length)
+        output.variants.push({ declarations: inner.declarations, when: [when] });
+
+      for (const variant of inner.variants)
+        output.variants.push({ declarations: variant.declarations, when: [when, ...variant.when] });
+    }
+
   if (Object.keys(nested).length) output.nested.push(nested);
   return output;
 }
@@ -325,10 +472,50 @@ function expand(scope: StyleScope, value: unknown, depths: Depths): Expansion {
 function terminal(name: string, value: unknown) {
   if (Array.isArray(value)) return value.join(' ');
 
-  if (typeof value == 'function' || isObject(value))
+  if (value === true || typeof value == 'function' || isObject(value))
     throw new Error(`No macro handles "${name}".`);
 
   return typeof value == 'number' ? String(value) : value;
+}
+
+function isCondition(key: string) {
+  return key[0] == ':' || key[0] == '@' || key[0] == '\0';
+}
+
+function split(key: string) {
+  if (key[0] != ':') return [key];
+
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+
+  for (let index = 0; index < key.length; index++) {
+    const char = key[index];
+
+    if (char == '(') depth++;
+    else if (char == ')') depth--;
+    else if (char == ',' && !depth) {
+      parts.push(key.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+
+  parts.push(key.slice(start).trim());
+  return parts;
+}
+
+function merge(left: unknown, right: StyleMap): StyleMap {
+  return isObject(left) ? mergeRule(left, right) : right;
+}
+
+function mergeRule(left: StyleMap, right: StyleMap): StyleMap {
+  const output = { ...left, ...right };
+
+  for (const key of Object.keys(right))
+    if (isCondition(key) && isObject(left[key]) && isObject(right[key]))
+      output[key] = mergeRule(left[key] as StyleMap, right[key] as StyleMap);
+
+  return output;
 }
 
 function isPresent(value: unknown) {

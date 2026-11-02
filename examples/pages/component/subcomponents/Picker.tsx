@@ -11,14 +11,6 @@ export class Picker extends Component {
     this.selected = index;
   }
 
-  Item({ index }: { index: number }) {
-    return <>{this.names[index]}</>;
-  }
-
-  Summary() {
-    return <small>Selected: {this.names[this.selected]}</small>;
-  }
-
   render() {
     return (
       <div className={`pane picker ${this.className}`}>
@@ -36,5 +28,13 @@ export class Picker extends Component {
         <this.Summary />
       </div>
     );
+  }
+
+  protected Item({ index }: { index: number }) {
+    return <>{this.names[index]}</>;
+  }
+
+  protected Summary() {
+    return <small>Selected: {this.names[this.selected]}</small>;
   }
 }

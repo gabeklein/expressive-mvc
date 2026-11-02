@@ -1,8 +1,9 @@
-import { Context, Model } from '@expressive/mvc';
+import { Component, Context, Model } from '@expressive/mvc';
 import { Fragment } from '@expressive/mvc/jsx-runtime';
 
 import { isVNode, PORTAL } from '../node/vnode';
 import type { Node as RenderNode, VNode } from '../node/vnode';
+import { placed } from '../style/claim';
 import type { Appearance } from '../style/claim';
 import { dispose } from './adapter';
 import { isCollection, mountCollection } from './collection';
@@ -34,7 +35,8 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
     return { kind: 'text', value, context, start: text, end: text, children: [] };
   }
 
-  if (renderable(value)) return mountComponent(value, parent, before, context, boundary, appearance);
+  if (renderable(value)) return mountComponent(value, parent, before, context, boundary, placed(appearance));
+  if (value instanceof Model) notRenderable(value.constructor);
   if (isCollection(value))
     return mountCollection(value, parent, before, context, boundary, appearance);
 
@@ -46,8 +48,10 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
   if (typeof value.type != 'function')
     throw new Error(`Cannot render ${String(value.type)}.`);
 
-  if (value.type.prototype instanceof Model)
+  if (value.type === Component || value.type.prototype instanceof Component)
     return mountOwnedComponent(value, parent, before, context, boundary, appearance);
+
+  if (value.type.prototype instanceof Model) notRenderable(value.type);
 
   return mountFunction(value, parent, before, context, boundary, appearance);
 }
@@ -94,6 +98,10 @@ function unmountFiber(fiber: Fiber) {
   else if (fiber.kind == 'portal') unmountPortal(fiber);
 
   removeRange(fiber.start, fiber.end);
+}
+
+function notRenderable(type: Function): never {
+  throw new Error(`${type.name} is a Model - extend Component to render it, or provide it with <Component for={${type.name}}>.`);
 }
 
 export { complete, mount, patchFragment, patchText, unmountFiber };

@@ -173,6 +173,10 @@ describe('dispatch', () => {
     expect(held).toBeUndefined();
   });
 
+  it('will not hold outside a replay', () => {
+    expect(pending()).toBeUndefined();
+  });
+
   it('will let urgent priority win for one handler', async () => {
     const log: string[] = [];
     const host = scheduler(log);

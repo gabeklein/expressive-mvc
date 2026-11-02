@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Readable } from "node:stream";
 
-import { get, State } from "@expressive/mvc";
+import { get, Model } from "@expressive/mvc";
 
 import { DETACHED, dispatch, isCall, resolve, verify, walkOf, type Endpoint, type Seats } from "./call";
 import { connect, listen } from "./connection";
@@ -146,12 +146,12 @@ describe("call dispatch", () => {
 });
 
 describe("seat dispatch", () => {
-  class Visits extends State {
+  class Visits extends Model {
     static ttl = 60;
     count = 0;
   }
 
-  class Tally extends State {
+  class Tally extends Model {
     static ttl = 60;
     total = 0;
     visits = get(Visits);
@@ -160,7 +160,7 @@ describe("seat dispatch", () => {
     async slow() { this.total++; await new Promise(resolve => setTimeout(resolve, 5)); }
   }
 
-  const seats: Seats = async pattern => ({ "": Visits, tally: Tally } as Record<string, State.Type>)[pattern.join("/")] as any;
+  const seats: Seats = async pattern => ({ "": Visits, tally: Tally } as Record<string, Model.Type>)[pattern.join("/")] as any;
   const endpoints: Endpoint[] = [
     {
       pattern: [],
@@ -308,7 +308,7 @@ describe("seat dispatch", () => {
 });
 
 describe("pool dispatch", () => {
-  class Shop extends State {
+  class Shop extends Model {
     static ttl = 60;
     name = "shop";
 
@@ -320,7 +320,7 @@ describe("pool dispatch", () => {
     }
   }
 
-  class Cart extends State {
+  class Cart extends Model {
     protected shop = get(Shop);
     items = 0;
     async add() { this.items++; return this.shop.name; }
@@ -331,7 +331,7 @@ describe("pool dispatch", () => {
   const seats: Seats = async pattern => (pattern.join("/") === "shop" ? (Shop as any) : undefined);
   const endpoints: Endpoint[] = [
     { pattern: ["shop"], exports: async () => ({ calls: { end: async () => { Shop.get().set(null); } }, classes: {}, pool: POOL }) },
-    { pattern: ["detached"], exports: async () => ({ calls: {}, classes: {}, pool: { "/x#Note": { Type: class Note extends State { async seat() { return this.get(Shop, false) === undefined ? "none" : "shop"; } }, fields: [], methods: { "/x#Note.seat": "seat" } } } }) },
+    { pattern: ["detached"], exports: async () => ({ calls: {}, classes: {}, pool: { "/x#Note": { Type: class Note extends Model { async seat() { return this.get(Shop, false) === undefined ? "none" : "shop"; } }, fields: [], methods: { "/x#Note.seat": "seat" } } } }) },
   ];
 
   function tab() {
@@ -437,18 +437,18 @@ describe("pool dispatch", () => {
 });
 
 describe("child dispatch", () => {
-  class Line extends State {
+  class Line extends Model {
     qty = 1;
     async bump(by: number) { return (this.qty += by); }
   }
 
-  class Order extends State {
+  class Order extends Model {
     static ttl = 60;
     line?: Line = new Line();
     async drop() { this.line = undefined; }
   }
 
-  class Basket extends State {
+  class Basket extends Model {
     line?: Line = undefined;
     async fill() { this.line = new Line(); }
   }

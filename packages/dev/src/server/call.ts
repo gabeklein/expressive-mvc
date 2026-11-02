@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { State } from "@expressive/mvc";
+import { Model } from "@expressive/mvc";
 
 import { begin, catchUp, connect, end, frameOf, hold, release, renew, twinOf, type Connection, type Shape } from "./connection";
 import { construct, seated, within, type Seat } from "./context";
@@ -13,7 +13,7 @@ export interface Exports {
 }
 
 export interface Pooled extends Shape {
-  Type: State.Type;
+  Type: Model.Type;
   methods: Record<string, string>;
 }
 
@@ -200,14 +200,14 @@ function caughtUp(connection: Connection, twin: string) {
   return Object.keys(frame).length ? { frame } : undefined;
 }
 
-function invoke(instance: State, method: string, args: unknown[]): unknown {
+function invoke(instance: Model, method: string, args: unknown[]): unknown {
   const path = method.split(".");
   const name = path.pop()!;
   let target: unknown = instance;
 
   for (const field of path) target = (target as any)[field];
 
-  if (!(target instanceof State)) throw new Error(`${path.join(".")} is not set on ${instance}.`);
+  if (!(target instanceof Model)) throw new Error(`${path.join(".")} is not set on ${instance}.`);
 
   return (target as any)[name](...args);
 }

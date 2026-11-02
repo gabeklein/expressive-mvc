@@ -4,25 +4,74 @@ Hierarchical registry through which Model instances find each other. Every activ
 
 ## Home Context
 
-Recorded per instance (internal `LOOKUP` map); first explicit claim wins, and no later context can transfer it.
+An owned instance's home is its owner's - lookups follow ownership, not where it was provided or which context its arguments name. Otherwise recorded per instance; first explicit claim wins, and no later context can transfer it.
 
 | Activation path                              | Home becomes     |
 | -------------------------------------------- | ---------------- |
 | `Model.new()`                                | `Context.root`   |
+| `Model.new(context)`                         | That context     |
 | `new Context(StateClass)`                    | That context     |
 | `new Model()` then `new Context(instance)`   | That context     |
 | `<Component for={StateClass}>`               | Component context |
 
-> A bare `Model.new()` resolves its `get()` lookups against root either way, but only *registers* into root - becoming findable by others - when the class opts in with `static global`. Registering is what locks a global's home to root; a private instance only falls back to root, so the first explicit context to claim it later still becomes its home. See [Root Context](#root-context).
+> A bare `Model.new()` resolves its `get()` lookups against root but never registers there, so the first explicit context to claim it later still becomes its home. See [Root Context](#root-context).
+
+### Context Arguments
+
+A `Context` among `.new()` or constructor arguments claims the home: the instance is added there as it activates, before its instructions and arguments apply, and removed when destroyed. The first claim wins:
+
+| Claim                                                       | Effect                                       |
+| ----------------------------------------------------------- | -------------------------------------------- |
+| Before activation - host, `new Context(instance)`, `ctx.add`, `ctx.push`, or an owner (field child) | Home - context arguments are ignored |
+| Context arguments                                           | First one becomes home; the rest are ignored |
+
+A context that loses has no effect. A default goes last, like a fallback - unlike overlays, where later wins:
+
+```ts
+FormState.new(context);                         // home: context
+FormState.new(Context.root);                    // findable from anywhere until destroyed
+FormState.new(...args, Context.root);           // root unless args brought a context
+```
+
+A subclass enforces its placement by passing the context first, or offers a default by passing it last - after props for a `Component`:
+
+```ts
+super(context, ...args);                        // Model: enforce
+super(...args, context);                        // Model: default
+super(props, context, ...rest);                 // Component: enforce
+```
+
+An owned child's home is always its owner's - the owner claims it before it activates, so its context arguments are ignored:
+
+```ts
+class App extends Model {
+  session = new Session();                      // owned - homed where App is
+  guest = Session.new(context);                 // guest - homed in context, not owned
+}
+```
+
+A guest is never destroyed with the parent - created in a field, nothing releases it. Create it where its lifetime is held and assign it, or return `() => this.guest.set(null)` from `new()`.
+
+A `Component` takes the context after props - added like any Model, so its siblings there see it; two in one context make `context.get(Panel)` throw. To mount one as a host does, under its own child context, push it:
+
+```ts
+Panel.new(props, context);                      // entry in context
+
+const panel = new Panel(props);
+const layer = context.push(panel, () => panel.set(null)); // own layer, as hosts mount
+layer.pop();                                    // unmount
+```
+
+An instance placed in a host's layer - `X.new(layer)` - takes that host as owner for `get()`, but is not destroyed with it.
+
+`ctx.pop()` removes the entry, not the instance - `Context.get(instance)` still returns the popped context.
 
 ### Construct vs Activate
 
-To choose a home other than root, construct with `new Model()` and place it in the same tick:
-
 ```ts
-// .new() activates immediately - a global registers to root, home locked
-const a = MyGlobal.new();
-new Context(a); // does NOT change a's home
+// .new() alone activates immediately - init runs, and resolves get(), against root
+const a = FormState.new();
+new Context(a); // a's home from here, after init already ran without it
 
 // new FormState() constructs without activating
 // - the first explicit Context claims it before init runs
@@ -47,86 +96,19 @@ ctx.get(Child); // child instance - registered in ctx, not root
 
 - Recursive: grandchildren inherit through their immediate parent.
 - Siblings resolve each other through their parent regardless of field order, so two parents never cross-resolve.
+- `has` rows and `map` values join like child fields - with their owner, held until it has a context, never root.
 - Reassigning a child field destroys the old child if owned (`new Child()` syntax) and adds the replacement to the same context; externally-assigned children survive replacement.
 
 ## Root Context
 
-`Context.root` is the process-global registry; `Context.get(state)` falls back to it when an instance has no recorded home. An instance *reads* from root either way, but only *registers* - becoming findable via `get(Type)` - when it opts in with `static global`.
+`Context.root` is the process-wide registry, parent of every host's contexts; `Context.get(state)` falls back to it when an instance has no recorded home. An instance reads from root but never registers itself there. Prefer a render-less `Global` Component at the app's top owning shared state - it provides what it owns to everything below, so readers call `Session.get()` rather than reaching through `Global`. To make an instance findable from anywhere, pass root to `.new()` - it is added explicitly and removed when destroyed:
 
 ```ts
-class Flags extends Model {
-  static readonly global = true;
-}
-Flags.new();
-Context.root.get(Flags); // the instance
-
-class Private extends Model {}
-Private.new();
-Context.root.get(Private, false); // undefined - private, not a global
+const flags = Flags.new(Context.root);
+Context.root.get(Flags); // flags, until destroyed
 ```
 
-### Declaring a global
-
-`static global` is `readonly`, typed `Model.Global` - a boolean, or a resolver `(self) => boolean` evaluated at activation (after props apply) to decide per instance or environment.
-
-| Declaration                                       | Meaning                                                        |
-| ------------------------------------------------- | -------------------------------------------------------------- |
-| *(none)*                                          | private - reads globals, isn't one                             |
-| `static readonly global = true`                   | global, **sealed** - subclasses inherit the type, can't opt out|
-| `static readonly global = false`                  | not global, a **lockout** - subclasses can't opt in            |
-| `static readonly global: Model.Global = true`     | global, but subclasses may re-declare or opt out               |
-| `static readonly global: Model.Global = self => …`| conditional - e.g. `() => typeof window !== 'undefined'`        |
-
-Two rules keep a global deliberate:
-
-- **Re-declare on extend (runtime).** A subclass that would be global purely by inheriting `true` throws on activation; it must re-declare (`true` to keep, `false` to opt out). Checked only where the instance would actually register at root - a `<Component for>`-scoped one never trips it.
-- **Lockout (compile-time).** A bare-literal `false` makes TypeScript reject a subclass `= true` (`TS2417`). Best-effort: a subclass escapes with a resolver (`static global = (() => true) as any`) or a wide cast - the sanctioned "I'm overriding the vendor" move. A plain `any`-cast boolean cannot.
-
-A context-claimed instance never consults `global` - an instance provided by `<Component for>` (or any explicit context) is unaffected by it.
-
-> **Server render:** root is process-global, so a declared global is *shared across requests* on the server (it is not sealed). Keep per-request data in a `<Component for>`. See [Server render](../react/react.md#server-render-ssr--rsc).
-
-### Global Collision
-
-A global may not shadow another. Activation throws if root already resolves the type (same class or a subclass instance), or if it would hide an instance whose class is one of its supertypes:
-
-```ts
-const a = Sub.new(); // Sub and Base both declare `static global`
-Sub.new();           // throws - a already exists in root
-Base.new();          // throws - a resolves Base
-Context.root.get(Sub); // a - first instance unaffected
-```
-
-Destroy the existing one first (`a.set(null)`) and a fresh instance registers cleanly - including a subclass replacing its base. To hold several deliberately, register them explicitly ([Explicit Bypass](#explicit-bypass)).
-
-### Subtype Eviction
-
-Sibling subtypes are different types - they don't throw; they collide only at their shared supertype, where both evict. Subtype lookups stay unambiguous:
-
-```ts
-// Base is a widened global; each subtype re-declares (required on extend)
-class SubA extends Base { static readonly global = true; }
-class SubB extends Base { static readonly global = true; }
-
-const a = SubA.new();
-const b = SubB.new();
-
-Context.root.get(Base, false); // undefined - contested at Base
-Context.root.get(SubA);        // a
-Context.root.get(SubB);        // b
-```
-
-### Explicit Bypass
-
-Explicit registration (`new Context(state)`, `ctx.add(state, true)`, `<Component for>`) bypasses collision handling - no throw, no eviction. Global and explicit entries coexist; explicit wins on lookup.
-
-```ts
-const a = Sub.new();          // global, in root
-const b = new Sub();
-Context.root.add(b, true);    // explicit, no eviction
-
-Context.root.get(Sub); // b - explicit wins
-```
+> **Server render:** root is process-wide, so anything held there is *shared across requests*. Keep per-request data in a `<Component for>`. See [Server render](../react/react.md#server-render-ssr--rsc).
 
 ## Hierarchical Contexts
 
@@ -136,11 +118,11 @@ import { Context } from '@expressive/mvc';
 const ctx = new Context({ AppState, UserState });
 const app = ctx.get(AppState);
 
-const child = ctx.push({ PageControl });
-child.pop(); // destroy child context
+const child = ctx.push({ PageControl }, () => console.log('page closed'));
+child.pop(); // runs cleanup, destroys PageControl
 ```
 
-`get(Type)` walks parents toward root.
+`get(Type)` walks parents toward root. A tracked lookup - `state.get(Type)` in an effect or render, a host's `Model.get()` - refreshes when a closer provider arrives or the found one leaves; providers above the one found, other types and siblings do not trigger it. It follows the context it ran in - an instance placed into a context later does not re-run it.
 
 ### Ambiguity at Non-Root
 
@@ -158,8 +140,6 @@ ctx.get(Parent).foo = undefined;
 ctx.get(Foo); // Bar instance - heals
 ```
 
-Unlike root - where shadowing a global throws and sibling contests evict permanently - scoped contexts model "candidates available here," root models "the global instance."
-
 ## Providing with Component
 
 Bare `Component` (not a subclass) given `for` provides one instance to its children, in any host:
@@ -169,7 +149,7 @@ Bare `Component` (not a subclass) given `for` provides one instance to its child
 <Component for={session} name="Ada">…</Component>                      // provided as-is
 ```
 
-- A class is constructed, owned and destroyed with the element; `is` receives it; its `mount()` runs with the element's, and a replacement class takes over the mount.
+- A class is constructed, owned and destroyed with the element; `is` receives it; its effects wait for the element's commit, and a replacement class while committed is released at once.
 - An active instance is provided, never destroyed; `is` is rejected. An unactivated one is adopted like a field - `for={new X()}` in render gives an instance that lives for one render.
 - Other attributes are typed from the provided instance and assign to it on every render.
 - Changing `for` releases the previous item, then provides the next.
@@ -182,7 +162,7 @@ Context is where an instance registers to be found; ownership is who constructed
 
 - A `has()` pool, `map()` entry or field child registers into the owner's *home* context, which may be several owners up - every instance a root owns sits in the one context the root was provided into. Context cannot say which of them constructed which.
 - Two siblings of one type are ambiguous to context (`get(Foo)` is `null`) but each has exactly one owner.
-- A host-mounted Component, `use()` instance or `<Component for>` is owned by the Component rendering it, with no field between them.
+- A host-mounted Component or `<Component for>` is owned by the Component rendering it, with no field between them.
 
 `state.get(Model)` reads the owner and `get(Model, true)` lists what an instance owns directly; neither consults context. Use a type to find a collaborator; use `Model` to find structure - the thing that constructed you, or the things you will destroy. See [state.get()](get.md#owner).
 
@@ -206,6 +186,20 @@ a.get(Scene) === scene;           // a type resolves its direct owner too
 scene.get(Model, (node) => attach(node), true); // direct members only - a, not b
 ```
 
+## Static Context
+
+```ts
+Context.get(): Context                       // current context, else root; a render returns its own
+Context.get(state): Context                  // state's home context
+Context.get(Type, compute): R                // resolve a static get - see get.md#overriding
+```
+
+`state.get(Type, ...args)` and the `get(Type, ...)` instruction make the instance's home context current and the instance the origin of each static `get` they reach: `compute` receives it as `from`. When it is a tracking proxy, `compute` gets a tracked view of the context - each `context.get` in it follows that context - and a returned Model is tracked through it. There hosts do not track, and React runs no hooks.
+
+### Writing a host
+
+A host installs `resolver((Type, compute) => ...)` from `@expressive/mvc/jsx-runtime`, which runs for every `Context.get` outside an origin - `Type` is undefined for bare `Context.get()`. `resolver` returns the previous one; the host calls it where it is not rendering, so installs stack. Its return value is what the caller receives. In render the host runs `compute` against a tracked view of its own context, so a provider any lookup in `compute` reads arriving, replaced or leaving renders again, and tracks a returned Model, one subscription per instance per render.
+
 ## API Surface
 
 ```ts
@@ -213,7 +207,7 @@ new Context();                         // empty
 new Context(parentContext);            // child of parent
 new Context(StateClass);               // create + register an instance
 new Context(stateInstance);            // register existing instance
-new Context({ a: A, b: B });           // multi-instance
+new Context({ a: A, b: B });           // several, registered before any activates
 
 ctx.get(Type);                         // upstream lookup, throws if missing
 ctx.get(Type, false);                  // optional, returns undefined
@@ -221,11 +215,12 @@ ctx.get(Type, callback);               // watch, upstream and downstream
 ctx.get(Type, callback, true);         // downstream only
 ctx.get(Type, callback, false);        // upstream only
 ctx.add(state, explicit?);             // register an instance
-ctx.set(inputs, forEach?);             // register multiple
-ctx.push(inputs?);                     // create child context
+ctx.push(input?, cleanup?);            // child context; input as constructor; owns classes, adopts instances; cleanup runs once on pop
 ctx.pop();                             // destroy this and descendants
+Type.new(context, ...args);            // home: first context argument - see Context Arguments
 Context.get(state);                    // static: state's home context
-Context.root;                          // global registry
+Context.get();                         // static: current context, else root
+Context.root;                          // process-wide registry
 ```
 
 Primarily consumed via the [`get` instruction](../field/get.md) and [`<Component for>`](#providing-with-component).

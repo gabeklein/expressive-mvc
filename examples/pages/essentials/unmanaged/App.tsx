@@ -34,7 +34,7 @@ class Draft extends Component {
     return saved ? 'Saved' : 'Nothing to save';
   }
 
-  mount() {
+  protected new() {
     this.get((current) => {
       const { text, saved, is } = current;
 
@@ -42,9 +42,9 @@ class Draft extends Component {
 
       if (text !== saved)
         current._timer = setTimeout(this.save, is.delay);
-    });
 
-    return () => clearTimeout(this._timer);
+      return () => clearTimeout(current._timer);
+    });
   }
 
   save() {

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { State } from "@expressive/mvc";
+import type { Model } from "@expressive/mvc";
 
 interface Tracker {
   generation: string;
@@ -9,9 +9,9 @@ interface Tracker {
   watchers: Set<() => void>;
 }
 
-const trackers = new WeakMap<State, Tracker>();
+const trackers = new WeakMap<Model, Tracker>();
 
-export function track(instance: State): void {
+export function track(instance: Model): void {
   if (trackers.has(instance)) return;
 
   const tracker: Tracker = { generation: randomBytes(6).toString("base64url"), counter: 0, dirty: false, keys: new Map(), watchers: new Set() };
@@ -34,7 +34,7 @@ export function track(instance: State): void {
   });
 }
 
-export function watch(instance: State, watcher: () => void): () => void {
+export function watch(instance: Model, watcher: () => void): () => void {
   const { watchers } = trackers.get(instance)!;
 
   watchers.add(watcher);
@@ -42,12 +42,12 @@ export function watch(instance: State, watcher: () => void): () => void {
   return () => watchers.delete(watcher);
 }
 
-export function versionOf(instance: State): string {
+export function versionOf(instance: Model): string {
   const { generation, counter } = trackers.get(instance)!;
   return `${generation}:${counter}`;
 }
 
-export function changedSince(instance: State, version: string | undefined, fields: string[]): string[] {
+export function changedSince(instance: Model, version: string | undefined, fields: string[]): string[] {
   const tracker = trackers.get(instance)!;
   const [generation, counter] = version?.split(":") ?? [];
 
@@ -57,6 +57,6 @@ export function changedSince(instance: State, version: string | undefined, field
   return fields.filter(field => (tracker.keys.get(field) ?? 0) > since);
 }
 
-export function snapshot(instance: State, fields: string[]): Record<string, unknown> {
+export function snapshot(instance: Model, fields: string[]): Record<string, unknown> {
   return Object.fromEntries(fields.map(field => [field, (instance as any)[field]]));
 }

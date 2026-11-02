@@ -12,8 +12,9 @@ import {
 
 import { act, render, screen } from '@testing-library/react';
 import { Model } from '@expressive/mvc';
-import { Component, Context, get, set } from '.';
-import { flushMicrotasks, preactDiffers } from '../test.setup';
+import '.';
+import { Component, Context, get, set } from '@expressive/mvc';
+import { flushMicrotasks, preactDiffers, reactOnly } from '../test.setup';
 
 let error: MockInstance<Console['error']>;
 
@@ -39,7 +40,7 @@ class Baz extends Bar {}
 function within(assert: () => void, wrap: (check: React.ReactNode) => React.ReactNode) {
   const Check = vi.fn(() => (assert(), null));
 
-  render(<>{wrap(<Check />)}</>);
+  render(<>{wrap(<Check />)}</>).unmount();
 
   expect(Check).toHaveBeenCalled();
 }
@@ -64,13 +65,13 @@ describe('Component for', () => {
     const seen: Model[] = [];
 
     const element = render(
-      <Component for={First} is={(first) => seen.push(first)}>
+      <Component for={First} is={(first) => void seen.push(first)}>
         <span />
       </Component>
     );
 
     element.rerender(
-      <Component for={Second} is={(second) => seen.push(second)}>
+      <Component for={Second} is={(second) => void seen.push(second)}>
         <span />
       </Component>
     );
@@ -103,15 +104,17 @@ describe('Component for', () => {
     expect(didDestroy.mock.calls).toEqual([['Child'], ['Parent']]);
   });
 
-  describe('mount method', () => {
-    it.each([false, true])('will call for an instance it creates (strict: %s)', (reactStrictMode) => {
-      const didMount = vi.fn();
-      const didUnmount = vi.fn();
+  describe('effects at commit', () => {
+    it.each([false, true])('will run for an instance it creates (strict: %s)', async (reactStrictMode) => {
+      const effect = vi.fn();
+      const cleanup = vi.fn();
 
       class Test extends Model {
-        mount() {
-          didMount();
-          return didUnmount;
+        protected new() {
+          this.get(() => {
+            effect();
+            return cleanup;
+          });
         }
       }
 
@@ -122,53 +125,63 @@ describe('Component for', () => {
         { reactStrictMode }
       );
 
-      expect(didMount).toBeCalledTimes(1);
-      expect(didUnmount).not.toBeCalled();
+      expect(effect).not.toBeCalled();
+
+      await flushMicrotasks();
+      expect(effect).toBeCalledTimes(1);
+      expect(cleanup).not.toBeCalled();
 
       element.unmount();
 
-      expect(didUnmount).toBeCalledTimes(1);
+      expect(cleanup).toBeCalledTimes(1);
     });
 
-    it('will not call for an instance it is given', () => {
-      const didMount = vi.fn();
+    it('will not hold an instance it is given', async () => {
+      const effect = vi.fn();
+      const cleanup = vi.fn();
 
       class Guest extends Model {
-        mount() {
-          didMount();
+        protected new() {
+          this.get(() => {
+            effect();
+            return cleanup;
+          });
         }
       }
 
       const guest = Guest.new();
+
+      expect(effect).toBeCalledTimes(1);
+
       const element = render(
         <Component for={guest}>
           <span />
         </Component>
       );
 
-      expect(didMount).not.toBeCalled();
+      await flushMicrotasks();
+      expect(effect).toBeCalledTimes(1);
 
       element.unmount();
 
+      expect(cleanup).not.toBeCalled();
       expect(guest.get(null)).toBe(false);
     });
 
-    it('will hand the mount to a replacement class', () => {
+    it('will release a replacement class at once', async () => {
       const events: string[] = [];
 
-      class First extends Model {
-        mount() {
-          events.push('mount first');
-          return () => events.push('release first');
+      const tracked = (name: string) => class extends Model {
+        protected new() {
+          this.get(() => {
+            events.push(`effect ${name}`);
+            return () => events.push(`release ${name}`);
+          });
         }
-      }
+      };
 
-      class Second extends Model {
-        mount() {
-          events.push('mount second');
-          return () => events.push('release second');
-        }
-      }
+      const First = tracked('first');
+      const Second = tracked('second');
 
       const element = render(
         <Component for={First}>
@@ -176,50 +189,46 @@ describe('Component for', () => {
         </Component>
       );
 
+      await flushMicrotasks();
       element.rerender(
         <Component for={Second}>
           <span />
         </Component>
       );
 
-      expect(events).toEqual(['mount first', 'release first', 'mount second']);
+      await flushMicrotasks();
+      expect(events).toEqual(['effect first', 'release first', 'effect second']);
 
       element.unmount();
 
-      expect(events).toEqual([
-        'mount first',
-        'release first',
-        'mount second',
-        'release second'
-      ]);
+      await flushMicrotasks();
+      expect(events).toEqual(['effect first', 'release first', 'effect second', 'release second']);
     });
 
-    it('will mount after descendants, as any parent does', () => {
+    it('will run after descendants, as any parent commits', async () => {
       const order: string[] = [];
 
       class Outer extends Model {
-        mount() {
-          order.push('provided');
+        protected new() {
+          this.get(() => void order.push('provided'));
         }
       }
 
       class Inner extends Model {
-        mount() {
-          order.push('child');
+        protected new() {
+          this.get(() => void order.push('child'));
         }
       }
 
-      const Child = () => {
-        Inner.use();
-        return <span />;
-      };
-
       render(
         <Component for={Outer}>
-          <Child />
+          <Component for={Inner}>
+            <span />
+          </Component>
         </Component>
       );
 
+      await flushMicrotasks();
       expect(order).toEqual(['child', 'provided']);
     });
   });
@@ -355,7 +364,7 @@ describe('context', () => {
   });
 
   it('will not select nested instance from outer sibling on server', () => {
-    const Value = () => Foo.get(({ value }) => value);
+    const Value = () => Foo.get().value;
 
     const html = renderToString(
       <Component for={Foo} value="outer">
@@ -372,6 +381,31 @@ describe('context', () => {
 
   it('will return root context if called outside render', () => {
     expect(Context.get()).toBe(Context.root);
+  });
+
+  reactOnly.it('will return root context without logging before any render', () => {
+    const internals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+    const dispatcher = internals.H;
+
+    internals.H = null;
+
+    try {
+      expect(Context.get()).toBe(Context.root);
+    } finally {
+      internals.H = dispatcher;
+    }
+  });
+
+  it('will return context of render', () => {
+    within(
+      () => {
+        const context = Context.get();
+
+        expect(context).not.toBe(Context.root);
+        expect(context.get(Foo)).toBeInstanceOf(Foo);
+      },
+      (check) => <Component for={Foo}>{check}</Component>
+    );
   });
 
   it('will handle complex arrangement', () => {
@@ -416,7 +450,7 @@ describe('get instruction', () => {
 
   it('will maintain hook', async () => {
     const Inner: React.FC = vi.fn(() => {
-      Foo.use();
+      Bar.get();
       return null;
     });
 
@@ -467,11 +501,13 @@ describe('get instruction', () => {
       foo = get(Foo);
     }
 
-    const FooBar = () => <>{Bar.use().foo.value}</>;
+    const FooBar = () => <>{Bar.get().foo.value}</>;
 
     render(
       <Component for={Foo}>
-        <FooBar />
+        <Component for={Bar}>
+          <FooBar />
+        </Component>
       </Component>
     );
 
@@ -490,45 +526,18 @@ describe('has instruction', () => {
     }
 
     const didGetBar = vi.fn();
-    const FooBar = () => void Bar.use();
     const foo = new Foo();
 
     render(
       <Component for={foo}>
-        <FooBar />
-        <FooBar />
+        <Component for={Bar} />
+        <Component for={Bar} />
       </Component>
     );
 
     expect(didGetBar).toBeCalledTimes(2);
     expect(foo.value).toEqual([expect.any(Bar), expect.any(Bar)]);
     expect(foo.value.map((i) => i.foo)).toEqual([foo, foo]);
-  });
-
-  it.skip('will notify parent of instance', () => {
-    class Foo extends Model {
-      value = get(Bar, true, didGetBar);
-    }
-
-    class Bar extends Model {
-      foo = get(Foo);
-    }
-
-    const didGetBar = vi.fn();
-    const FooBar = () => void Bar.use();
-
-    const Parent = () => {
-      const foo = Foo.use();
-
-      return (
-        <Component for={foo}>
-          <FooBar />
-        </Component>
-      );
-    };
-
-    render(<Parent />);
-    expect(didGetBar).toBeCalled();
   });
 });
 
@@ -601,14 +610,13 @@ describe('HMR', () => {
   it.todo("will updated consumer if context's instance is replaced", () => {});
 });
 
-describe('root global', () => {
+describe('root', () => {
   class Global extends Model {
-    static global = true;
     value = 'root';
   }
 
   it('will get from root unless provided', () => {
-    const instance = Global.new();
+    const instance = Global.new(Context.root);
 
     within(() => expect(Global.get().is).toBe(instance), (check) => check);
 

@@ -66,21 +66,21 @@ describe("sidecar scan", () => {
   });
 
   it("will take a default subclass as the seat, however exported", () => {
-    expect(scan(`export default class Tally extends State {}`).seat).toBe("Tally");
-    expect(scan(`class A extends State {} export { A as default }`).seat).toBe("A");
-    expect(scan(`class B extends State {} export default B`).seat).toBe("B");
-    expect(scan(`export default class extends State {}`).seat).toBe("default");
+    expect(scan(`export default class Tally extends Model {}`).seat).toBe("Tally");
+    expect(scan(`class A extends Model {} export { A as default }`).seat).toBe("A");
+    expect(scan(`class B extends Model {} export default B`).seat).toBe("B");
+    expect(scan(`export default class extends Model {}`).seat).toBe("default");
   });
 
   it("will refuse a default that is not a subclass", () => {
-    const problem = "A remote default is a State subclass - its methods are what the client calls.";
+    const problem = "A remote default is a Model subclass - its methods are what the client calls.";
 
     expect(scan(`export default async () => {}`).problems).toEqual([problem]);
     expect(scan(`export default class {}`).problems).toEqual([problem]);
   });
 
   it("will refuse a default outside the folder's remote entry", () => {
-    expect(scanSidecar(`export default class A extends State {}`, "remote/bar.ts", false).problems).toEqual([
+    expect(scanSidecar(`export default class A extends Model {}`, "remote/bar.ts", false).problems).toEqual([
       "Only a folder's remote entry - remote.ts or remote/index.ts - may export a default.",
     ]);
   });
@@ -103,11 +103,11 @@ describe("twin scan", () => {
   });
 
   const twin = (source: string, map: Record<string, string> = {}) => scanTwin(source, "/app/remote.ts", files(map));
-  const HEAD = `import { State } from "@expressive/mvc";`;
+  const HEAD = `import { Model } from "@expressive/mvc";`;
 
   it("will take a seat's public async methods and public values", async () => {
     expect(await twin(`${HEAD}
-      export default class Tally extends State {
+      export default class Tally extends Model {
         static ttl = 60;
         static async reset() {}
         total = 0;
@@ -127,14 +127,14 @@ describe("twin scan", () => {
   });
 
   it("will refuse a public method that is not async", async () => {
-    expect((await twin(`${HEAD} export default class Tally extends State { add() {} }`)).problems).toEqual([
+    expect((await twin(`${HEAD} export default class Tally extends Model { add() {} }`)).problems).toEqual([
       "Tally.add() is not async - every call to it crosses the wire.",
     ]);
   });
 
   it("will take members a seat inherits from a class in its module", async () => {
     const { twin: found } = await twin(`${HEAD}
-      class Base extends State { count = 0; async increment() {} }
+      class Base extends Model { count = 0; async increment() {} }
       export default class Tally extends Base { async add() {} }
     `);
 
@@ -147,7 +147,7 @@ describe("twin scan", () => {
       export default class Tally extends Counter { protected async reset() {} async add() {} }
     `, {
       "/app/counter.ts": `import { Base } from "./base"; export class Counter extends Base { count = 0; async increment() {} }`,
-      "/app/base.ts": `${HEAD} export class Base extends State { async reset() {} label = "" }`,
+      "/app/base.ts": `${HEAD} export class Base extends Model { async reset() {} label = "" }`,
     });
 
     expect(found).toEqual({ name: "Tally", methods: ["add", "increment"], fields: ["count", "label"] });
@@ -157,8 +157,8 @@ describe("twin scan", () => {
   it("will read a compiled base through its declarations", async () => {
     const { twin: found } = await twin(`import { Base } from "./lib/base.js"; export default class Tally extends Base {}`, {
       "/app/lib/base.d.ts": `
-        import { State } from "@expressive/mvc";
-        export declare class Base extends State {
+        import { Model } from "@expressive/mvc";
+        export declare class Base extends Model {
           count: number;
           increment(): Promise<number>;
           private secret;
@@ -172,7 +172,7 @@ describe("twin scan", () => {
   it("will report a base it cannot follow", async () => {
     const problems = async (source: string, map: Record<string, string> = {}) => (await twin(source, map)).problems;
 
-    expect(await problems(`${HEAD} const mix = (B: any) => B; export default class A extends mix(State) {}`)).toEqual([
+    expect(await problems(`${HEAD} const mix = (B: any) => B; export default class A extends mix(Model) {}`)).toEqual([
       "A extends an expression - a twin's bases must be classes reached by name.",
     ]);
     expect(await problems(`export default class A extends Missing {}`)).toEqual([
@@ -188,7 +188,7 @@ describe("twin scan", () => {
 
   it("will report a sync method a seat inherits", async () => {
     const { problems } = await twin(`import { Base } from "./base"; export default class A extends Base {}`, {
-      "/app/base.ts": `${HEAD} export class Base extends State { tick() {} }`,
+      "/app/base.ts": `${HEAD} export class Base extends Model { tick() {} }`,
     });
 
     expect(problems).toEqual(["Base.tick() is not async - every call to it crosses the wire."]);
@@ -201,20 +201,20 @@ describe("twin scan", () => {
   it("will scan an owned child by its initializer or declared type, with its own members and children", async () => {
     const { twin: scanned, problems } = await twin(`${HEAD}
       import { Line } from "./line";
-      class Cart extends State {
+      class Cart extends Model {
         items = 0;
         last = new Line();
         async add() {}
         protected secret = 1;
       }
-      export default class Shop extends State {
+      export default class Shop extends Model {
         cart = new Cart();
         spare?: Cart = undefined;
         made = Cart.new();
         stamp: Date = new Date();
         label = "shop";
       }
-    `, { "/app/line.ts": `${HEAD} export class Line extends State { qty = 1; async bump() {} }` });
+    `, { "/app/line.ts": `${HEAD} export class Line extends Model { qty = 1; async bump() {} }` });
 
     const cart = { name: "Cart", methods: ["add"], fields: ["items", "last"], children: { last: { name: "Line", methods: ["bump"], fields: ["qty"] } } };
 
@@ -227,10 +227,10 @@ describe("twin scan", () => {
     });
   });
 
-  it("will leave a field plain when its class is not a State", async () => {
+  it("will leave a field plain when its class is not a Model", async () => {
     const { twin: scanned } = await twin(`${HEAD}
       class Point { x = 0; }
-      export default class Shop extends State { at = new Point(); when?: Date; other?: Cart | Point; }
+      export default class Shop extends Model { at = new Point(); when?: Date; other?: Cart | Point; }
     `);
 
     expect(scanned).toEqual({ name: "Shop", methods: [], fields: ["at", "when", "other"] });
@@ -238,10 +238,10 @@ describe("twin scan", () => {
 
   it("will refuse a public reference and a child that holds itself", async () => {
     const { problems } = await twin(`
-      import { State, get } from "@expressive/mvc";
-      class Node extends State { next?: Node; }
-      class Session extends State {}
-      export default class Shop extends State {
+      import { Model, get } from "@expressive/mvc";
+      class Node extends Model { next?: Node; }
+      class Session extends Model {}
+      export default class Shop extends Model {
         session = get(Session);
         protected kept = get(Session);
         node = new Node();
@@ -254,9 +254,9 @@ describe("twin scan", () => {
     ]);
   });
 
-  it("will scan a named class as a State class when its bases reach an Expressive one", async () => {
+  it("will scan a named class as a Model class when its bases reach an Expressive one", async () => {
     const source = `${HEAD}
-      export class Cart extends State { items = 0; async add() {} }
+      export class Cart extends Model { items = 0; async add() {} }
       export class Over extends Error { status = 409; toJSON() {} }
     `;
     const named = (name: string) => scanTwin(source, "/app/remote.ts", files({}), name);

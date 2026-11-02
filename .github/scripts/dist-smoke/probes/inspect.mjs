@@ -4,6 +4,7 @@ import Model from '@expressive/mvc';
 import { find, journal } from '@expressive/inspect';
 import { inspect } from '@expressive/inspect/bridge';
 import vite from '@expressive/inspect/vite';
+import { handle } from '@expressive/inspect/http';
 
 class Composer extends Model {
   draft = '';
@@ -24,4 +25,9 @@ assert.equal(composer.draft, 'hi');
 assert.equal(journal.record().level, 'off');
 assert.equal(vite().name, 'expressive-inspect');
 
-console.log('inspect: install + act + bridge + vite ok');
+const served = await handle(new Request('http://localhost/__inspect', { method: 'POST', body: '["get", "Composer.draft"]' }), { ip: '127.0.0.1' });
+
+assert.equal(served.status, 200);
+assert.equal(await served.json(), 'hi');
+
+console.log('inspect: install + act + bridge + vite + http ok');

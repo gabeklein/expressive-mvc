@@ -1,4 +1,4 @@
-import { Component, ref } from '@expressive/react';
+import { Component, ref } from '@expressive/mvc';
 import type React from 'react';
 import './Burst.css';
 

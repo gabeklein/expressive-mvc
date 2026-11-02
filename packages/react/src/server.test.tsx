@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderToString } from 'react-dom/server';
-import { Model } from '@expressive/mvc';
-import { Component } from '.';
+import { flushMicrotasks } from '../test.setup';
+import { Context, Model } from '@expressive/mvc';
+import '.';
+import { Component } from '@expressive/mvc';
 
 function onServer<T>(fn: () => T): T {
   const saved = (globalThis as any).window;
@@ -17,17 +19,60 @@ function onServer<T>(fn: () => T): T {
 describe('server render', () => {
   it('will run new() and render state', () => {
     let ran = false;
-    class Store extends Model {
+    class Store extends Component {
       value = 5;
       protected new() {
         ran = true;
         return () => {};
       }
+      render() {
+        return <span>{this.value}</span>;
+      }
     }
-    const View = () => <span>{Store.use().value}</span>;
 
-    expect(onServer(() => renderToString(<View />))).toContain('>5<');
+    expect(onServer(() => renderToString(<Store />))).toContain('>5<');
     expect(ran).toBe(true);
+  });
+
+  it('will not run an effect from new()', async () => {
+    const effect = vi.fn();
+
+    class Store extends Component {
+      protected new() {
+        this.get(effect);
+      }
+
+      render() {
+        return <span>hello</span>;
+      }
+    }
+
+    expect(onServer(() => renderToString(<Store />))).toContain('hello');
+
+    await flushMicrotasks();
+    expect(effect).not.toBeCalled();
+  });
+
+  it('will not run ready handlers or resolve readiness', async () => {
+    const ready = vi.fn();
+    const resolved = vi.fn();
+    let store!: Store;
+
+    class Store extends Component {
+      render() {
+        return <span>hello</span>;
+      }
+    }
+
+    Store.on({ ready });
+
+    expect(onServer(() => renderToString(<Store is={(s: Store) => void (store = s)} />))).toContain('hello');
+
+    store.get(() => {}).then(resolved, () => {});
+
+    await flushMicrotasks();
+    expect(ready).not.toBeCalled();
+    expect(resolved).not.toBeCalled();
   });
 
   it('will isolate provided state per request', () => {
@@ -54,15 +99,14 @@ describe('server render', () => {
     expect(r2).not.toContain('alice');
   });
 
-  it('will share a declared global across requests', () => {
+  it('will share an instance held in root across requests', () => {
     class Flags extends Model {
-      static global = true;
       enabled = false;
     }
     const Show = () => <i>{String(Flags.get().enabled)}</i>;
 
     onServer(() => {
-      const flags = Flags.new();
+      const flags = Flags.new(Context.root);
       const a = renderToString(<Show />);
 
       flags.enabled = true;

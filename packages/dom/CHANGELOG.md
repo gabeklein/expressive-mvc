@@ -1,5 +1,82 @@
 # @expressive/dom
 
+## 0.8.0
+
+### Minor Changes
+
+- [#589](https://github.com/gabeklein/expressive-mvc/pull/589) [`bdee9a1`](https://github.com/gabeklein/expressive-mvc/commit/bdee9a1715f9b080e9376022237b3a56a8b7cc12) An effect declared during construction of a Component the renderer owns holds its first run until the component is inserted. `mount()` is removed: declare the effect in `new()` instead.
+
+- [#587](https://github.com/gabeklein/expressive-mvc/pull/587) [`22fc3c5`](https://github.com/gabeklein/expressive-mvc/commit/22fc3c5308c6eff4e8fc9d1e0921cfcbe2ed1348) JSX now resolves `style()` rules in the component that wrote it. `children` passed to a wrapper - a router `Link`, a provider Component with no `render()`, any FC that places `children` - keep the author's rules, including rules nested in a `_rule` on the wrapper element. The wrapper's own rules no longer reach them; its base declarations still apply where they are its roots.
+
+- [#595](https://github.com/gabeklein/expressive-mvc/pull/595) [`e1d6fde`](https://github.com/gabeklein/expressive-mvc/commit/e1d6fde1cf8c2c48eebcf1ae911fc3cad69e9775) The `css` pack drops its `mx`, `my`, `px` and `py` macros - use the logical properties `marginInline`, `marginBlock`, `paddingInline` and `paddingBlock`, which `css` sizes like any other. `size` stays.
+
+- [#593](https://github.com/gabeklein/expressive-mvc/pull/593) [`daded68`](https://github.com/gabeklein/expressive-mvc/commit/daded68fc124fbdb177c572cdab3cc9d1e8f9462) Add `macro.From<typeof pack>` to declare a macro pack's `Registry` entries from its value: `interface Registry extends macro.From<typeof app> {}`.
+
+  A macro whose argument is optional now type-checks as a flag: `row: true`.
+
+- [#594](https://github.com/gabeklein/expressive-mvc/pull/594) [`55fb14c`](https://github.com/gabeklein/expressive-mvc/commit/55fb14c6e146d1dfcfdc105613a398dd81a0a3cf) Style maps take conditions: a `:state` or `@media …` key holds a map applied while it holds - at the top of a map, inside a rule, or nested. `:` keys split on commas into alternatives, and pseudo-elements (`::placeholder`) apply to that part; `_rule` inside an `@` condition applies that rule under it. Condition blocks sort after the block they modify and add no specificity, so doors still win. Adds `media({ maxWidth: 900 })` and the `style.Condition` type.
+
+- [#596](https://github.com/gabeklein/expressive-mvc/pull/596) [`d6eb0c7`](https://github.com/gabeklein/expressive-mvc/commit/d6eb0c74b98868930669cfff0ae21dcb55fc229c) A `_rule` inside a `:state` condition styles descendants while the enclosing element holds that state: `_thumb: { ':hover': { _delete: { opacity: 1 } } }`.
+
+- [#592](https://github.com/gabeklein/expressive-mvc/pull/592) [`9fd7144`](https://github.com/gabeklein/expressive-mvc/commit/9fd71442b71dc22fd46084680c6065fccbfdd5a2) `style()` takes several maps, layered in order as repeated calls would, skipping falsy entries: `style(Meta, shared, wide && compact, { whiteSpace: 'normal' })`.
+
+- [#591](https://github.com/gabeklein/expressive-mvc/pull/591) [`dbc7b86`](https://github.com/gabeklein/expressive-mvc/commit/dbc7b862c3df2b3446af3f6a1e8583880f884ff1) Add `rem`, `em` and `px` value helpers: `rem(0.2, 0.45)` is `'0.2rem 0.45rem'`.
+
+### Patch Changes
+
+- [#585](https://github.com/gabeklein/expressive-mvc/pull/585) [`99dadb9`](https://github.com/gabeklein/expressive-mvc/commit/99dadb9a81c59e1b371fc9b412830b10d7ec6115) Published types now include the `Component.mount` augmentation. It was emitted in a declaration chunk nothing referenced, so a `mount()` method went unchecked against its signature.
+
+- [#584](https://github.com/gabeklein/expressive-mvc/pull/584) [`cbe3280`](https://github.com/gabeklein/expressive-mvc/commit/cbe32803504813cc634543fc6909c838f89a0769) Base declarations in a `style()` map now beat `macro()` global rules, as documented. A component's own rule shadowing a global one stacks on it instead of merging it in. A component instance placed as `{child}` no longer inherits the placing component's base declarations or rules. A macro returning its own name as `true` with nothing below it now throws `Macro "name" returned itself.`, and the host rejects a bare `true` value.
+- Updated dependencies [[`c2a6b40`](https://github.com/gabeklein/expressive-mvc/commit/c2a6b4064fac8000e0cb7b0212d02345a87f6621), [`bdee9a1`](https://github.com/gabeklein/expressive-mvc/commit/bdee9a1715f9b080e9376022237b3a56a8b7cc12), [`d37a20d`](https://github.com/gabeklein/expressive-mvc/commit/d37a20d917767705c18b445c036ab74f432bd3e7), [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7), [`776243b`](https://github.com/gabeklein/expressive-mvc/commit/776243b0ce94bd7b4b81d4ad1a290d33abe4b8bb), [`ac2cd5c`](https://github.com/gabeklein/expressive-mvc/commit/ac2cd5caca0ad91777fb23d038bfbec67e88ea93), [`a183961`](https://github.com/gabeklein/expressive-mvc/commit/a183961f28b4124049700fb9e2442723fe3ec7ab), [`4d0c270`](https://github.com/gabeklein/expressive-mvc/commit/4d0c270b0914ba39e5f8b549fac962d9be5aff87), [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7), [`245e59a`](https://github.com/gabeklein/expressive-mvc/commit/245e59ac0f0ac0b33e586219e6ee188a5d7cbe07)]:
+  - @expressive/mvc@0.93.0
+
+## 0.7.0
+
+### Minor Changes
+
+- [#551](https://github.com/gabeklein/expressive-mvc/pull/551) [`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f) Outside render, `Model.get()` no longer throws - it reads the root context, untracked, which may not be the instance the component rendered. Read it in render and use that in handlers. A class overriding static `get` keeps tracking.
+
+- [#567](https://github.com/gabeklein/expressive-mvc/pull/567) [`afd750c`](https://github.com/gabeklein/expressive-mvc/commit/afd750c8e6d3a35321daeb29e8e4c10a1e824d9d) `Model.get` no longer accepts a function: the computed (`Model.get(fn)`), effect (`fn` returning `null`) and async forms are removed, with `Model.ForceRefresh`, `Model.GetFactory` and `Model.GetEffect` (react) and `Model.ForceRefresh` and `Model.GetFactory` (dom). Destructure and derive in render, declare a getter on the Model, or move side effects to `mount()`.
+
+  `Model.get(true)` (required values, `Required<T>`) is removed. Hold a value that may be unset as a Model field - it joins its owner's context. Destructure it and render conditionally (`if (draft) return <Editor />`); the child reads it with `Draft.get()`. A value with its own view is a `Component`, placed as `{draft}`. `Model.get()` and `Model.get(false)` are unchanged.
+
+- [#565](https://github.com/gabeklein/expressive-mvc/pull/565) [`a6341f7`](https://github.com/gabeklein/expressive-mvc/commit/a6341f781df6bf5bddd61fd9bf50b6086e171583) `style()` maps address subcomponents by key. `_Title: { ... }` is the `Title` subcomponent's own map - base declarations for its roots, rules and tag matches for its output - resolved through the owner's class wherever it renders and composed through the class chain. Top-level rules still style `render()` output only. `_` plus a capital letter is reserved for this and throws when nested in a rule or written as an attribute on an element.
+
+### Patch Changes
+
+- Updated dependencies [[`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f), [`c052455`](https://github.com/gabeklein/expressive-mvc/commit/c0524556b85ad598b2f6db774b639627b61cb337)]:
+  - @expressive/mvc@0.92.0
+
+## 0.6.0
+
+### Minor Changes
+
+- [#562](https://github.com/gabeklein/expressive-mvc/pull/562) [`aeb0787`](https://github.com/gabeklein/expressive-mvc/commit/aeb07871c5cfe30df9fd945f6c5f2c2832d94168) Context lookups are observable.
+
+  - A tracked lookup re-runs when a change can alter its result - a closer provider arriving, the found one removed - and not for providers above the one found, other types or siblings.
+  - `this.get(Type)` inside an effect or render now refreshes when its provider changes. A required lookup whose provider is removed throws.
+  - dom: `Model.get` follows a provider replaced by a field assignment, arriving after mount or removed.
+  - react: `Model.get` follows a provider arriving after mount, including an optional `Model.get(false)` that first found nothing, and one removed.
+  - dom and react: once its instance leaves context, `Model.get(false)` returns `undefined` and a required `Model.get()` throws `Could not find`. Unmount consumers before destroying their provider.
+
+### Patch Changes
+
+- Updated dependencies [[`2bef0ed`](https://github.com/gabeklein/expressive-mvc/commit/2bef0ed387aa4060725644a90d1def7221117810), [`5e6689c`](https://github.com/gabeklein/expressive-mvc/commit/5e6689c8c18ec34323fccd881552e76b4354d11e), [`a55605b`](https://github.com/gabeklein/expressive-mvc/commit/a55605b2439078b2694abc2ac9361ca30fa2e119), [`aeb0787`](https://github.com/gabeklein/expressive-mvc/commit/aeb07871c5cfe30df9fd945f6c5f2c2832d94168), [`f5fc45a`](https://github.com/gabeklein/expressive-mvc/commit/f5fc45ae6105876438b3c17a87f1da2546fe0d63)]:
+  - @expressive/mvc@0.91.0
+
+## 0.5.0
+
+### Minor Changes
+
+- [#544](https://github.com/gabeklein/expressive-mvc/pull/544) [`86fee85`](https://github.com/gabeklein/expressive-mvc/commit/86fee85646b20548384a028940254e9deb466ae3) Remove `Model.use()` from `@expressive/dom`. Function components own no state - put owned state on a class: a Component field, a Model element, or `<Component for={Type}>` above a function component that reads it with `Model.get()`. Per-render arguments become attributes, which assign fields. `use` is no longer a reserved member on rendered instances. `@expressive/react` keeps `Model.use()`.
+
+- [#546](https://github.com/gabeklein/expressive-mvc/pull/546) [`fdf2116`](https://github.com/gabeklein/expressive-mvc/commit/fdf211636b05788a233e16ddb5709028a042c076) Only a `Component` renders. A plain `Model` is no longer a JSX element or inline-renderable - `<Session />` and `{session}` throw, naming the fix: extend `Component` to render, or provide with `<Component for={Session}>`. `fallback`, `catch`, `mount`, `key` and `render` are no longer read from plain Models. Matches `@expressive/react`, where only Components render. PascalCase subcomponents on any Model are unchanged.
+
+### Patch Changes
+
+- Updated dependencies [[`d0b9cf6`](https://github.com/gabeklein/expressive-mvc/commit/d0b9cf6a29916f5db4c9eca23668c208540f9923)]:
+  - @expressive/mvc@0.90.0
+
 ## 0.4.0
 
 ### Minor Changes

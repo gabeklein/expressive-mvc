@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { css } from './css';
@@ -19,11 +21,7 @@ describe('css pack', () => {
     expect(glob([1, 'auto'], 'margin')).toEqual({ margin: ['1px', 'auto'] });
   });
 
-  it('will expand the axis and size shorthands', () => {
-    expect(css.mx(4)).toEqual({ marginLeft: 4, marginRight: 4 });
-    expect(css.my(4)).toEqual({ marginTop: 4, marginBottom: 4 });
-    expect(css.px(4)).toEqual({ paddingLeft: 4, paddingRight: 4 });
-    expect(css.py(4)).toEqual({ paddingTop: 4, paddingBottom: 4 });
+  it('will expand the size shorthand', () => {
     expect(css.size(4)).toEqual({ width: 4, height: 4 });
     expect(css.size([1, 2])).toEqual({ width: 1, height: 2 });
   });
@@ -35,3 +33,12 @@ describe('css pack', () => {
     expect(glob(4, 'zIndex')).toEqual({ zIndex: 4 });
   });
 });
+
+it('will typecheck a program that reaches the package through its entry alone', () => {
+  const root = join(__dirname, '../..');
+  const config = ts.getParsedCommandLineOfConfigFile(join(root, 'tsconfig.json'), {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic() {} })!;
+  const program = ts.createProgram([join(root, 'src/index.ts')], { ...config.options, noEmit: true });
+  const errors = ts.getPreEmitDiagnostics(program).map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'));
+
+  expect(errors).toEqual([]);
+}, 60_000);

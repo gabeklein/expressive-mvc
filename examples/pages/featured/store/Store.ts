@@ -1,11 +1,12 @@
 import { map, Model } from '@expressive/mvc';
 
 import { Line } from './Line';
+import { Receipt } from './Receipt';
 
 export class Cart extends Model {
   items = map((id: string) => new Line(id));
 
-  receipt?: { count: number; total: number };
+  receipt?: Receipt;
 
   get count() {
     return sum(this.items.values((line) => line.qty));
@@ -24,7 +25,7 @@ export class Cart extends Model {
   checkout() {
     if (!this.count) return;
 
-    this.receipt = { count: this.count, total: this.total };
+    this.receipt = new Receipt({ count: this.count, total: this.total });
     this.items.clear();
   }
 

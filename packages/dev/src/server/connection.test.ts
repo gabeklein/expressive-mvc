@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { State } from "@expressive/mvc";
+import { Model } from "@expressive/mvc";
 
 import { begin, catchUp, checksum, connect, end, frameOf, hold, listen, release, renew, twinOf } from "./connection";
 import { track } from "./version";
 
-class Tally extends State {
+class Tally extends Model {
   total = 0;
 }
 
@@ -145,16 +145,16 @@ describe("connection", () => {
   });
 
   describe("children", () => {
-    class Line extends State {
+    class Line extends Model {
       qty = 1;
     }
 
-    class Cart extends State {
+    class Cart extends Model {
       items = 0;
       line?: Line = undefined;
     }
 
-    class Shop extends State {
+    class Shop extends Model {
       name = "shop";
       cart?: Cart = new Cart();
     }

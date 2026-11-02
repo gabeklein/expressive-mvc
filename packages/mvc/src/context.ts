@@ -1,9 +1,12 @@
-import { listener } from "./observable";
-import { event, Model, uid } from "./state";
+import { event as signal, listener, Observer, touch } from "./observable";
+import { event, Model, observed, parent, uid } from "./state";
 
-const LOOKUP = new WeakMap<Model, Context>();
-const HELD = new WeakMap<Model, Map<Model, Set<() => void>>>();
+const CONTEXT = Symbol("context");
+const STACK: [Context, Model][] = [];
+const HOME = new WeakMap<Model, Context>();
+const HELD = new WeakMap<Model, Map<Model, [Set<() => void>, boolean?]>>();
 const HOST = new WeakMap<Context, Model>();
+const CLEANUP = new WeakMap<Context, Set<() => void>>();
 let ROOT: Context;
 
 type Accept<T extends Model = Model> =
@@ -25,9 +28,42 @@ class Context {
     return ROOT ??= new Context();
   }
 
-  /** Get the context for a Model. Adapters may override to provide framework context. */
-  static get(state?: Model): Context {
-    return state && LOOKUP.get(state.is) || Context.root;
+  /** Current context - innermost set by `state.get(Type)` or the `get` instruction, otherwise as the host's {@link resolver} returns it. */
+  static get(): Context;
+
+  /** Get the context a Model was added to - root if none. */
+  static get(state: Model): Context;
+
+  /**
+   * Resolve a static `get` of `Type` by running `compute` against the current
+   * context. Inside `state.get(Type)` or the `get` instruction, `from` is that
+   * Model and a returned Model is tracked through it; otherwise
+   * the host's {@link resolver} decides.
+   *
+   * @param Type - Class `get` was called on.
+   * @param compute - Resolves the value from a context.
+   */
+  static get<R>(
+    Type: Model.Extends,
+    compute: (context: Context, from?: Model) => R,
+  ): R;
+
+  static get(
+    arg?: Model | Model.Extends,
+    compute: (context: Context, from?: Model) => unknown = (context) => context,
+  ): unknown {
+    if (!arg || typeof arg == "function") {
+      const top = STACK[STACK.length - 1];
+
+      if (!top) return current(arg, compute);
+
+      const [context, from] = top;
+      const view = arg ? touch(from, CONTEXT, context) : context;
+
+      return observed(from, arg, compute(view, from.is));
+    }
+
+    return home(arg.is) || Context.root;
   }
 
   public id = uid();
@@ -39,16 +75,14 @@ class Context {
   >();
   public provide = new Map<Model.Extends, Set<[Model, boolean]> | null>();
 
-  protected inputs: Record<string | number, Model | Model.Extends> = {};
-
-  private cleanup = new Map<string | number | Function, () => void>();
-
   constructor(arg?: Context | Accept) {
+    CLEANUP.set(this, new Set());
+
     if (arg instanceof Context) {
       this.parent = arg;
       arg.scope.add(this);
     } else if (arg) {
-      this.set(arg);
+      insert(this, arg);
     }
   }
 
@@ -105,7 +139,7 @@ class Context {
     Type: Model.Extends<T>,
     arg: boolean | Expect<T> | undefined,
     downstream: boolean | undefined,
-    skip: Model,
+    skip?: Model,
   ): T | undefined | (() => void);
 
   public get<T extends Model>(
@@ -117,7 +151,8 @@ class Context {
     let found: T | null | undefined;
     let priority = false;
 
-    for (let ctx: Context | undefined = this; ctx; ctx = ctx.parent) {
+    for (let ctx: Context | undefined = this; ctx; ctx = above(ctx)) {
+      touch(ctx, Type);
       const entries = ctx.provide.get(Type);
       if (!entries) continue;
 
@@ -159,99 +194,24 @@ class Context {
     if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
   }
 
-  /**
-   * Register one or more Models to this context.
-   *
-   * Context will add or remove Models as needed to keep with provided input.
-   *
-   * @param inputs Model, Model class, or map of Models / Model classes to register.
-   * @param forEach Optional callback to run for each Model registered. Receives
-   *   whether this context created the Model - and so will destroy it - as
-   *   opposed to it having been provided already active. May return a callback
-   *   to run before that entry is dropped.
-   */
-  public set<T extends Model>(
-    inputs: Accept<T>,
-    forEach?: (state: T, owned: boolean) => (() => void) | void,
-  ) {
-    const init = new Set<() => void>();
-    const { cleanup } = this;
-
-    const single = typeof inputs == "function" || inputs instanceof Model;
-
-    if (typeof inputs == "function" || inputs instanceof Model)
-      inputs = { [0]: inputs };
-
-    for (const K of Object.keys({ ...this.inputs, ...inputs })) {
-      const V = inputs[K];
-      const E = this.inputs[K];
-
-      if (E === V) continue;
-
-      if (E) {
-        cleanup.get(K)?.();
-        cleanup.delete(K);
-      }
-
-      if (!V) continue;
-
-      // a class is constructed here - and so destroyed here; an instance is
-      // adopted as-is and outlives this context
-      const owned = Model.is(V);
-
-      if (!(owned || V instanceof Model)) {
-        const as = K == "0" || K == String(V) ? V : `${V} (as '${K}')`;
-        throw new Error(
-          `Context can only include an instance or class of Model but got ${as}.`,
-        );
-      }
-
-      const state = owned ? new (V as Model.Type)() : V.is;
-      const remove = this.add(state, true);
-
-      if (single && this !== ROOT) HOST.set(this, state);
-
-      init.add(() => {
-        event(state);
-        const dispose = forEach?.(state as T, owned);
-        cleanup.set(K, () => {
-          if (typeof dispose == "function") dispose();
-          remove();
-          if (owned) event(state, null);
-        });
-      });
-    }
-
-    for (const i of init) i();
-
-    this.inputs = inputs;
-
-    return this;
-  }
-
   add(I: Model, explicit = false) {
-    const { cleanup, provide } = this;
-    const root = this === Context.root;
     const TT: Model.Extends[] = [];
-
-    function conflict(T: Model.Extends) {
-      const entries = provide.get(T);
-      if (entries)
-        for (const entry of entries)
-          if (!entry[1] && entry[0] !== I) return entries.delete(entry);
-    }
 
     for (
       let T = I.constructor as Model.Extends;
       T !== Model;
       T = Object.getPrototypeOf(T)
     )
-      if (explicit || !root || !conflict(T)) TT.push(T);
+      TT.push(T);
 
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
 
-    for (const T of TT) onDone.add(this.register(T, [I, explicit]));
+    for (const T of TT) {
+      onDone.add(this.register(T, [I, explicit]));
+      onDone.add(() => emit(this, T));
+      emit(this, T);
+    }
 
     function queue(ctx: Context, downstream: boolean, same?: boolean) {
       let found = false;
@@ -273,7 +233,10 @@ class Context {
     for (let ctx = this.parent; ctx; ctx = ctx.parent) queue(ctx, true);
     this.traverse((ctx) => queue(ctx, false));
 
-    if (!LOOKUP.has(I)) LOOKUP.set(I, this);
+    const owner = parent(I);
+    const placed = explicit && !(owner && home(owner));
+
+    if (!HOME.has(I) && (!owner || placed)) HOME.set(I, this);
 
     listener(I, () => {
       expects.forEach((f) => f());
@@ -286,8 +249,9 @@ class Context {
       onDone.clear();
     }
 
-    const held = Array.from(HELD.get(I) || [], ([child, added]) => {
-      const done = this.add(child);
+    const cleanup = CLEANUP.get(this)!;
+    const held = Array.from(HELD.get(I) || [], ([child, [added, explicit]]) => {
+      const done = this.add(child, explicit);
       added.add(done);
       return () => {
         if (added.delete(done)) done();
@@ -300,19 +264,23 @@ class Context {
       flush();
     }
 
-    cleanup.set(remove, remove);
+    cleanup.add(remove);
 
     return remove;
   }
 
   /**
-   * Create a child context, optionally registering one or more Models to it.
+   * Create a child context, optionally registering Models to it.
    *
-   * @param inputs Model, Model class, or map of Models / Model classes to register.
+   * @param input Model instance to adopt, Model class to create - and destroy when the context pops - or an object of them, all registered before any activates.
+   * @param cleanup Called once when the context pops, before its Models are removed.
    */
-  public push(inputs?: Accept) {
+  public push(input?: Accept, cleanup?: () => void) {
     const next = new Context(this);
-    if (inputs) next.set(inputs);
+
+    if (cleanup) CLEANUP.get(next)!.add(cleanup);
+    if (input) insert(next, input);
+
     return next;
   }
 
@@ -322,11 +290,11 @@ class Context {
    * Will also run any cleanup callbacks registered when Models were added.
    */
   public pop() {
-    this.inputs = {};
     this.scope.forEach((x) => x.pop());
     this.scope.clear();
-    this.cleanup.forEach((cb) => cb());
-    this.cleanup.clear();
+    const cleanup = CLEANUP.get(this)!;
+    cleanup.forEach((cb) => cb());
+    cleanup.clear();
     this.consume.clear();
     this.provide.clear();
     if (this.parent) {
@@ -335,25 +303,81 @@ class Context {
   }
 }
 
-Object.defineProperty(Context.prototype, "toString", {
-  value() {
-    return `Context-${this.id}`;
+Object.defineProperties(Context.prototype, {
+  toString: {
+    value() {
+      return `Context-${this.id}`;
+    },
+  },
+  [Observer]: {
+    get(this: Context) {
+      Object.defineProperty(this, Observer, { writable: true });
+      signal(this);
+      return (this as any)[Observer];
+    },
   },
 });
 
+function emit(ctx: Context, T: Model.Extends) {
+  if (Object.getOwnPropertyDescriptor(ctx, Observer)) signal(ctx, T as any);
+}
+
+type Resolve = (
+  Type: Model.Extends | undefined,
+  compute: (context: Context) => unknown,
+) => unknown;
+
+let current: Resolve = (_Type, compute) => compute(Context.root);
+
 /**
- * Add `value` to the context `state` was added to. A context-less `state` holds
+ * Install how a host runs `compute` for a `Context.get` outside any origin -
+ * `Type` is undefined for bare `Context.get()`. Its return value is what the
+ * caller receives, so a host may track or wrap it. Returns the previous
+ * resolver, for the host to call where it is not rendering.
+ */
+function resolver(next: Resolve): Resolve {
+  const previous = current;
+  current = next;
+  return previous;
+}
+
+/**
+ * Run `fn` with the context of `origin` current, and `origin` as origin of
+ * any `get` resolved within. Nests.
+ */
+function within<R>(origin: Model, fn: () => R): R {
+  STACK.push([Context.get(origin), origin]);
+
+  try {
+    return fn();
+  } finally {
+    STACK.pop();
+  }
+}
+
+/**
+ * Add `value` to the lookup origin of `state`. A context-less `state` holds
  * it instead - every context adding `state` later adds its held children too.
  */
-function join(state: Model, value: Model): () => void {
-  const ctx = LOOKUP.get(state.is);
+function join(state: Model, value: Model, explicit?: boolean): () => void {
+  const ctx = home(state.is);
+  const none = () => {};
 
-  if (ctx) return ctx.add(value);
+  if (ctx) {
+    for (let at: Context | undefined = ctx; at; at = at.parent)
+      for (const [x, is] of at.provide.get(value.constructor as Model.Extends) || [])
+        if (x === value && is) return none;
 
-  const held = HELD.get(state) || new Map();
+    return ctx.add(value, explicit);
+  }
+
+  const held = HELD.get(state) || new Map<Model, [Set<() => void>, boolean?]>();
+
+  if (held.get(value)?.[1]) return none;
+
   const added = new Set<() => void>();
 
-  HELD.set(state, held.set(value, added));
+  HELD.set(state, held.set(value, [added, explicit]));
 
   return () => {
     held.delete(value);
@@ -364,12 +388,64 @@ function join(state: Model, value: Model): () => void {
   };
 }
 
+function above(ctx: Context) {
+  return ctx.parent && touch(ctx, "parent", ctx.parent);
+}
+
+/** Home context of `state` - its own, else its owner's. */
+function home(state: Model): Context | undefined;
+/** Set home context for state. Noop and returns false if has one. */
+function home(state: Model, context: Context): boolean;
+function home(state: Model, context?: Context): Context | boolean | undefined {
+  const owner = parent(state);
+
+  if (context) {
+    if (owner || HOME.has(state)) return false;
+
+    listener(state, context.add(state, true), null);
+    return true;
+  }
+
+  return HOME.get(state) || (owner ? home(owner) : undefined);
+}
+
 /** The Model a host mounted `state` under - the one its nearest enclosing context was set up for. */
 function host(state: Model) {
-  for (let ctx = LOOKUP.get(state); ctx; ctx = ctx.parent) {
+  for (let ctx = home(state); ctx; ctx = ctx.parent) {
     const found = HOST.get(ctx);
     if (found && found !== state) return found;
   }
 }
 
-export { Context, host, join };
+function insert(into: Context, input: Accept) {
+  const single = typeof input == "function" || input instanceof Model;
+  const entries = Object.entries(single ? { input } : input);
+  const init: Model[] = [];
+  const owns: Model[] = [];
+
+  for (const [K, V] of entries) {
+    const owned = Model.is(V);
+
+    if (!(owned || V instanceof Model)) {
+      const as = single || K == String(V) ? V : `${V} (as '${K}')`;
+      throw new Error(
+        `Context can only include an instance or class of Model but got ${as}.`,
+      );
+    }
+
+    const state = owned ? new V() : V.is;
+
+    into.add(state, true);
+    init.push(state);
+
+    if (single) HOST.set(into, state);
+    if (owned) owns.push(state);
+  }
+
+  const cleanup = CLEANUP.get(into)!;
+
+  for (const state of owns) cleanup.add(() => event(state, null));
+  for (const state of init) event(state);
+}
+
+export { Context, home, host, join, resolver, within };
