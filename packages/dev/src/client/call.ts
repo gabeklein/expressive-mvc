@@ -122,13 +122,13 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
       const twin = twins.get(key.split(".")[0])?.deref();
       if (twin) refresh(twin);
     }));
-    on("beat", ({ sum }) => sum !== checksum() && held().forEach(refresh));
+    on("beat", ({ sum }) => sum !== checksum() && held().forEach(twin => refresh(twin, true)));
   }
 
-  function refresh(twin: Model): void {
+  function refresh(twin: Model, whole?: boolean): void {
     if (refreshing.has(twin)) return void again.add(twin);
 
-    const done = attach(twin)
+    const done = attach(twin, whole)
       .catch(() => {})
       .then(() => {
         refreshing.delete(twin);
@@ -141,11 +141,14 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
   function checksum(): number {
     let sum = 0;
 
-    for (const twin of held()) {
-      const { id } = meta.get(twin)!;
-      const version = versions.get(twin);
-      if (version) sum = (sum ^ fnv(`${id}@${version}`)) >>> 0;
-    }
+    const add = (state: Model, key: string) => {
+      const version = versions.get(state);
+
+      if (version) sum = (sum ^ fnv(`${key}@${version}`)) >>> 0;
+      kids.get(state)?.forEach(({ child }, field) => add(child, `${key}.${field}`));
+    };
+
+    for (const twin of held()) add(twin, meta.get(twin)!.id);
 
     return sum;
   }
@@ -263,9 +266,9 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
     return version ? { "if-none-match": version } : {};
   }
 
-  async function attach(twin: Model): Promise<void> {
+  async function attach(twin: Model, whole?: boolean): Promise<void> {
     const { id, pool } = meta.get(twin)!;
-    const reply = await send(where(twin), { "x-expressive-get": pool ?? "default", "x-expressive-twin": id, ...since(twin) }, []);
+    const reply = await send(where(twin), { "x-expressive-get": pool ?? "default", "x-expressive-twin": id, ...(whole ? {} : since(twin)) }, []);
 
     if (dropped.has(twin)) return void released.add(id);
     if (reply) apply(reply.frame, twin);
@@ -344,7 +347,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
   }
 
   async function rejoin(): Promise<void> {
-    await Promise.all(held().map(attach));
+    await Promise.all(held().map(twin => attach(twin)));
   }
 
   function leave(twin: Model): void {

@@ -254,6 +254,19 @@ describe("twin scan", () => {
     ]);
   });
 
+  it("will refuse a child that holds itself across modules", async () => {
+    const { problems } = await twin(`
+      import { Model } from "@expressive/mvc";
+      import { A } from "./a";
+      export default class Shop extends Model { a = new A(); }
+    `, {
+      "/app/a.ts": `import { Model } from "@expressive/mvc"; import { B } from "./b"; export class A extends Model { b?: B; }`,
+      "/app/b.ts": `import { Model } from "@expressive/mvc"; import { A } from "./a"; export class B extends Model { a?: A; }`,
+    });
+
+    expect(problems).toEqual(["B.a holds a A, which holds itself - a twin's children cannot recurse."]);
+  });
+
   it("will scan a named class as a Model class when its bases reach an Expressive one", async () => {
     const source = `${HEAD}
       export class Cart extends Model { items = 0; async add() {} }

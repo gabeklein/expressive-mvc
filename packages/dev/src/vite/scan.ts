@@ -180,7 +180,7 @@ export async function scanTwin(source: string, path: string, sources: Sources, n
   return { twin, state, problems };
 }
 
-async function twinOf(found: Found, name: string, sources: Sources, problems: string[], stack: ESTree.Class[]): Promise<{ twin: Twin; end?: Base }> {
+async function twinOf(found: Found, name: string, sources: Sources, problems: string[], stack: string[]): Promise<{ twin: Twin; end?: Base }> {
   const twin: Twin = { name, methods: [], fields: [] };
   const seen = new Set<string>();
   const pending: Pending[] = [];
@@ -192,16 +192,16 @@ async function twinOf(found: Found, name: string, sources: Sources, problems: st
   }
 
   if (at?.library)
-    for (const field of pending) await childOf(field, twin, sources, problems, [...stack, found.cls]);
+    for (const field of pending) await childOf(field, twin, sources, problems, [...stack, identity(found)]);
 
   return { twin, end: at };
 }
 
-async function childOf({ field, type, module, owner }: Pending, twin: Twin, sources: Sources, problems: string[], stack: ESTree.Class[]): Promise<void> {
+async function childOf({ field, type, module, owner }: Pending, twin: Twin, sources: Sources, problems: string[], stack: string[]): Promise<void> {
   const found = await classNamed(type, module, sources);
 
   if (!found) return;
-  if (stack.includes(found.cls)) return void problems.push(`${owner}.${field} holds a ${type}, which holds itself - a twin's children cannot recurse.`);
+  if (stack.includes(identity(found))) return void problems.push(`${owner}.${field} holds a ${type}, which holds itself - a twin's children cannot recurse.`);
 
   const own: string[] = [];
   const child = await twinOf(found, type, sources, own, stack);
@@ -210,6 +210,10 @@ async function childOf({ field, type, module, owner }: Pending, twin: Twin, sour
 
   problems.push(...own);
   (twin.children ??= {})[field] = child.twin;
+}
+
+function identity({ cls, module }: Found): string {
+  return `${module.file}#${cls.id?.name}`;
 }
 
 async function classNamed(name: string, module: Module, sources: Sources): Promise<Found | undefined> {

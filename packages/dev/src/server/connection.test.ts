@@ -264,6 +264,35 @@ describe("connection", () => {
       expect(Object.keys(catchUp(connection, "A"))).toEqual(["A", "A.cart"]);
     });
 
+    it("will announce a child replaced outside a call, and follow the new one", async () => {
+      const { connection, shop } = held();
+      const events: [string, any][] = [];
+
+      listen(connection, (event, data) => events.push([event, data]));
+      catchUp(connection, "A");
+      await tick();
+
+      shop.cart = new Cart();
+      await tick();
+      expect(events.slice(1)).toEqual([["stale", { A: ["cart"], "A.cart": ["items", "line"] }]]);
+
+      shop.cart.items = 5;
+      await tick();
+      expect(events.slice(2)).toEqual([["stale", { A: ["cart"], "A.cart": ["items", "line"] }]]);
+    });
+
+    it("will sum every path a twin has seen into the checksum", () => {
+      const { connection } = held();
+      const frame = catchUp(connection, "A");
+      const fnv = (text: string) => {
+        let hash = 0x811c9dc5;
+        for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+        return hash >>> 0;
+      };
+
+      expect(checksum(connection)).toBe((fnv(`A@${frame.A.version}`) ^ fnv(`A.cart@${frame["A.cart"].version}`)) >>> 0);
+    });
+
     it("will announce a child's stale keys under its path, and stop once released", async () => {
       const { connection, shop } = held();
       const events: [string, any][] = [];
