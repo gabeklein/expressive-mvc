@@ -35,13 +35,15 @@ class Ticker extends Component {
     return (this.elapsed / 1000).toFixed(1);
   }
 
-  mount() {
-    const started = Date.now();
-    const timer = setInterval(() => {
-      this.elapsed = Date.now() - started;
-    }, this.rate);
+  protected new() {
+    this.get(() => {
+      const started = Date.now();
+      const timer = setInterval(() => {
+        this.elapsed = Date.now() - started;
+      }, this.rate);
 
-    return () => clearInterval(timer);
+      return () => clearInterval(timer);
+    });
   }
 }
 

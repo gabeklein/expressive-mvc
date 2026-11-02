@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { browserRouter, location, mockPromise, renderAct, withWindow } from '../test.setup';
 import { Context } from '@expressive/mvc';
-import { Component } from '@expressive/react';
+import '@expressive/react';
+import { Component } from '@expressive/mvc';
 import { BrowserRouter } from './browser';
 import { Route } from './route';
 
@@ -143,13 +144,10 @@ describe('BrowserRouter', () => {
     remove.mockRestore();
   });
 
-  it('will be global on the client but not without a window', () => {
-    expect(Context.root.get(BrowserRouter)).toBe(router.current);
-
+  it('will start at / without a window', () => {
     withWindow(undefined, () => {
       const server = BrowserRouter.new();
       expect(server.path).toBe('/');
-      expect(Context.root.get(BrowserRouter)).toBe(router.current);
       server.set(null);
     });
   });
@@ -216,7 +214,7 @@ describe('BrowserRouter navigation settlement', () => {
     };
 
     const view = await renderAct(
-      <BrowserRouter is={(value) => (router = value)}>
+      <BrowserRouter is={(value) => void (router = value)}>
         <Route>
           <Route to="" as={() => <h1>home</h1>} />
           <Route to="a" fallback={<i>loading</i>} as={A} />
@@ -252,7 +250,7 @@ describe('BrowserRouter navigation settlement', () => {
     };
 
     const view = await renderAct(
-      <BrowserRouter is={(value) => (router = value)}>
+      <BrowserRouter is={(value) => void (router = value)}>
         <Status />
         <Route to="page" as={Page} />
       </BrowserRouter>
@@ -305,8 +303,6 @@ describe('BrowserRouter navigation settlement', () => {
     const gates = [goto, external];
 
     class Test extends BrowserRouter {
-      static global = false;
-
       protected navigate(work: () => void) {
         const gate = gates.shift()!;
         gate.then(work);

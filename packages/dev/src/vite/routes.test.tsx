@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { Component, State } from "@expressive/mvc";
+import { Component, Model } from "@expressive/mvc";
 
 import { browserRouter, location, mount, settle } from "../../test.setup";
 import { Route } from "../client";
@@ -45,7 +45,7 @@ describe("app/ routing (codegen)", () => {
   const CATCH = "export function Catch(){ return null }";
   const NOTFOUND = "export function NotFound(){ return null }";
   const ENTER = "export default () => '/login'";
-  const SCOPE = "export default class Session extends State {}";
+  const SCOPE = "export default class Session extends Model {}";
 
   it("root is always a scope; lone index becomes the \"/\" page + implicit 404", async () => {
     const out = await generate({ "index.tsx": PAGE });
@@ -121,7 +121,7 @@ describe("app/ routing (codegen)", () => {
     const out = await generate({ "index.tsx": PAGE, "tally/index.tsx": PAGE, "tally/remote.ts": SCOPE });
 
     expect(out).toContain('import TallyRemote from "../app/tally/remote.ts";');
-    expect(out).toContain("const TallyRemoted = props => <TallyRemote>{props.children}</TallyRemote>;");
+    expect(out).toContain("const TallyRemoted = props => <Component for={TallyRemote}>{props.children}</Component>;");
     expect(out).toMatch(/<Route to="tally" as=\{TallyRemoted\}>\s*<Route as=\{Tally\} \/>/);
   });
 
@@ -129,7 +129,7 @@ describe("app/ routing (codegen)", () => {
     const out = await generate({ "index.tsx": PAGE, "tally/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}`, "tally/remote/index.ts": SCOPE });
 
     expect(out).toContain('import TallyRemote from "../app/tally/remote/index.ts";');
-    expect(out).toContain("const TallyRemoted = props => <TallyRemote><TallyScoped {...props} /></TallyRemote>;");
+    expect(out).toContain("const TallyRemoted = props => <Component for={TallyRemote}><TallyScoped {...props} /></Component>;");
     expect(out).toContain('<Route to="tally" as={TallyRemoted}>');
   });
 
@@ -174,7 +174,7 @@ describe("app/ routing (codegen)", () => {
 
   it("a module with a default loads on first entry", async () => {
     const out = await generate({ "index.tsx": PAGE, "(account).tsx": `${PAGE}\n${SCOPE}` });
-    expect(out).toContain('const AccountScope = () => import("../app/(account).tsx").then(m => m.default);');
+    expect(out).toContain('const AccountScope = () => import("../app/(account).tsx").then(m => props => <Component for={m.default}>{props.children}</Component>);');
     expect(out).toContain('const Account = () => import("../app/(account).tsx").then(m => m.Page);');
   });
 
@@ -202,13 +202,13 @@ describe("app/ routing (codegen)", () => {
       "account/settings/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}`,
       "void/index.tsx": `${LAYOUT}\n${SCOPE}`,
     });
-    const wrappers = out.split("\n").filter(line => line.includes("props =>")).map(line => line.split(" ")[1]);
+    const wrappers = out.split("\n").filter(line => line.includes(" = props =>")).map(line => line.split(" ")[1]);
 
     expect(wrappers).toEqual(["AccountSettingsScoped", "AccountScoped", "RootScoped"]);
   });
 
   it("a default class makes a lone page a scope", async () => {
-    const out = await generate({ "index.tsx": PAGE, "(settings).tsx": `${PAGE}\nclass Panel extends State {}\nexport { Panel as default }` });
+    const out = await generate({ "index.tsx": PAGE, "(settings).tsx": `${PAGE}\nclass Panel extends Model {}\nexport { Panel as default }` });
     expect(out).toMatch(/<Route to="settings" as={SettingsScope}>\s*<Route as={Settings} \/>/);
   });
 
@@ -316,10 +316,10 @@ describe("app/ routing (runtime)", () => {
 describe("app/ routing (scope)", () => {
   browserRouter();
 
-  it("provides a default State to the layout and pages while the route is matched", async () => {
+  it("provides a default Model to the layout and pages while the route is matched", async () => {
     const lives: string[] = [];
 
-    class Session extends State {
+    class Session extends Model {
       user = "ada";
       protected new() {
         lives.push("new");
@@ -328,7 +328,7 @@ describe("app/ routing (scope)", () => {
     }
 
     const Shell = (props: { children?: any }) => <div data-shell>{Session.get().user}:{props.children}</div>;
-    const Scoped = (props: { children?: any }) => <Session><Shell {...props} /></Session>;
+    const Scoped = (props: { children?: any }) => <Component for={Session}><Shell {...props} /></Component>;
     const Account = () => <span>{Session.get().user}</span>;
     const Home = () => <span>home</span>;
 
@@ -356,11 +356,11 @@ describe("app/ routing (scope)", () => {
   });
 
   it("provides a default class loaded on demand", async () => {
-    class Session extends State {
+    class Session extends Model {
       user = "ada";
     }
 
-    const Scope = () => Promise.resolve({ default: Session }).then(m => m.default);
+    const Scope = () => Promise.resolve({ default: Session }).then(m => (props: { children?: any }) => <Component for={m.default}>{props.children}</Component>);
     const Account = () => <span>{Session.get().user}</span>;
 
     const Tree = () => (

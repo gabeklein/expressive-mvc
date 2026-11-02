@@ -7,14 +7,14 @@ Runnable source (complete programs, served as HTML): [`props`](https://expressiv
 ## When to use Component vs Model vs function components
 
 - **Function components** present data or define local implementation scopes. They may read contextual state with `.get()`; they own no persistent Expressive instance.
-- **Model** is display-agnostic - data and logic, no render. Use with `Model.use()` in FCs.
-- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form inputs, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. Exception - the **app/route entrypoint** is a Component even when `render()` is pure composition: owning the construction graph is the state. Replica and region fields provide implicitly, and the instance ships the last-resort `catch` and `fallback` an FC root would hand-roll as `<Component for>` + ErrorBoundary + Suspense in `main`.
+- **Model** is display-agnostic - data and logic, no render. Provide it with `<Component for>` or hold it as a field; FCs read it with `.get()`.
+- **Component** is for custom components/primitives owning their display logic - reusable, extensible behavior + UI: form inputs, media players, data grids, modals. A layout shell earns Component only with owned state; a stateless shell is an FC mounting its children. House style: the **app entry** is an FC, pure composition. Its last-resort boundary is `fallback`/`catch` on the top Component it mounts, whichever that is; on an FC they are ordinary props and do nothing. App-wide state is Models owned by a render-less `Global` Component the app entry mounts at the top - it provides them to everything below. Its job is making `Session.get()` work anywhere, not being read itself - `Global.get().session` works but isn't the goal.
 
 Premise: **the class tree is the app; rendering is a projection of it.** `App.new()` stands the UX up headless - every feature's status reads off the instance (`inbox.archive.open`, a pool's members, an import's progress) with no DOM. Keep that true: regions as fields rather than `<Component for>` elements, `has()` subtrees contributing to macro-state whether or not placed, render-less Components. Tests, devtools, and agents consume this surface as much as views do.
 
 Rule of thumb: use `Component` when state is intrinsic to display logic - usually meaning it defines `render()`. Intrinsic to *this* display concern, not the surface - a second concern (a resize handle beside send) is a second class, composed as a mounted wrapper, not more fields on the first.
 
-`render()` is optional: without one, a Component passes children through while placement, `mount()`, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controls throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. A mount-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
+`render()` is optional: without one, a Component passes children through while placement, effects at commit, implicit provide, `catch`, and `fallback` all still run. Omit `render()` unless the class paints - never write `render() { return this.props.children; }`. Headless examples (not a closed set): route controls throughout an app, progressive `Boundary` wrappers, the app root's last-resort boundary, and mount-only ancestors - a stick-to-bottom scroller, a focus trap, a resize listener that must sit above what it measures. An effect-only ancestor owning fields or a reaction stays a Component; no JSX does not demote it to FC-plus-`useEffect`.
 
 Same rule as the pass-through demotion: a ref plus a DOM-sync reaction never earns the *paint's* instance - but that behavior, separated under its own name, earns its own:
 
@@ -24,7 +24,7 @@ class Transcript extends Component {
   session = get(Session);
   box = ref<HTMLDivElement>();
 
-  mount() { /* scroll box to bottom as messages arrive */ }
+  new() { /* effect: scroll box to bottom as messages arrive */ }
   render() { /* paint messages from session */ }
 }
 
@@ -37,7 +37,7 @@ function Transcript() {
 class Stick extends Component {
   on = true;
 
-  mount() { /* pin scroll to bottom while on */ }
+  new() { /* effect: pin scroll to bottom while on */ }
 }
 
 <Stick>
@@ -49,9 +49,9 @@ The fused class demotes because scroll-sync was incidental to its paint. `Stick`
 
 Use `Model` for headless domain models/controls, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
 
-Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in `mount()` or `set` callbacks.
+Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in effects declared in `new()` or `set` callbacks.
 
-For one-shot feature builds and hook refactors, don't create `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form input is often clearer as `class Foo extends Component` - the state is intrinsic to the rendered unit. An app or route entrypoint stays a Component thru region extraction - regions become its fields; only chrome owning nothing demotes to an FC.
+For one-shot feature builds and hook refactors, don't create `FooState` plus `FooView` by reflex. A local router, tab panel, menu, editor surface, media player, or custom form input is often clearer as `class Foo extends Component` - the state is intrinsic to the rendered unit. A page or route Component stays one thru region extraction - regions become its fields; only chrome owning nothing demotes to an FC.
 
 ## Basic Usage
 
@@ -90,7 +90,7 @@ const items = [first, second];
 - Mounting subscribes and provides context as usual; unmounting only detaches. The external owner destroys it with `instance.set(null)`.
 - One instance may appear beneath separate parents. Repeating it within one sibling collection repeats the key and intentionally produces the host's duplicate-key warning.
 
-When a render reads more than a value or two, destructure everything it reads from `this` at the top - the dependency-snapshot rule of `.get()` / `Model.use()` ([react.md](react.md)). Rendering shares the hooks' subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
+When a render reads more than a value or two, destructure everything it reads from `this` at the top - the dependency-snapshot rule of `.get()` ([react.md](react.md)). Rendering shares the hooks' subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
 
 ```tsx
 render() {
@@ -129,14 +129,6 @@ abstract class Toggle extends Component {
     this.active = !this.active;
   }
 
-  // Subclasses override to customize each state
-  Active(): ReactNode {
-    return null;
-  }
-  Inactive(): ReactNode {
-    return null;
-  }
-
   render() {
     return (
       <div onClick={this.toggle}>
@@ -144,13 +136,17 @@ abstract class Toggle extends Component {
       </div>
     );
   }
+
+  // Subclasses override to customize each state
+  protected abstract Active(): ReactNode;
+  protected abstract Inactive(): ReactNode;
 }
 
 class DarkModeSwitch extends Toggle {
-  Active() {
+  protected Active() {
     return <span>Dark</span>;
   }
-  Inactive() {
+  protected Inactive() {
     return <span>Light</span>;
   }
 }
@@ -158,10 +154,10 @@ class DarkModeSwitch extends Toggle {
 class Accordion extends Toggle {
   title = 'Details';
 
-  Inactive() {
+  protected Inactive() {
     return <h3>{this.title}</h3>;
   }
-  Active() {
+  protected Active() {
     return (
       <>
         <h3>{this.title}</h3>
@@ -187,12 +183,14 @@ class ChatRoom extends Component {
   messages: Message[] = [];
   url = '';
 
-  mount() {
-    const socket = new WebSocket(this.url);
-    socket.onmessage = (e) => {
-      this.messages = [...this.messages, JSON.parse(e.data)];
-    };
-    return () => socket.close();
+  protected new() {
+    this.get(() => {
+      const socket = new WebSocket(this.url);
+      socket.onmessage = (e) => {
+        this.messages = [...this.messages, JSON.parse(e.data)];
+      };
+      return () => socket.close();
+    });
   }
 
   render() {
@@ -207,7 +205,7 @@ class ChatRoom extends Component {
 }
 ```
 
-- `is` prop - construction-time, fires once: `<ChatRoom is={c => controller = c} />`. Use when the instance is needed during construction.
+- `is` prop - construction-time, fires once: `<ChatRoom is={(c) => void (controller = c)} />`. Use when the instance is needed during construction.
 - `ref` - Component is a real class component, so `ref` receives the instance after mount and clears to `null` on unmount: `<ChatRoom ref={chatRef} />`. Use for post-mount imperative access.
 
 ## Props
@@ -245,7 +243,7 @@ Non-optional render props become required JSX attributes. All props (field + ren
 
 ### Special Props
 
-- `is` - callback receiving the instance on creation: `<Counter is={c => ref = c} />`
+- `is` - callback receiving the instance on creation, before `new()`. A returned object is assigned once - a seed, where props reassign every render: `<Counter is={() => ({ count: start })} />`. Capturing the instance needs `void` or braces: `is={(c) => void (ref = c)}`.
 - `ref` - standard React ref (object or callback), attached after mount, cleared on unmount
 - `fallback` - ReactNode for suspense/error UI, overrides the instance property; `false` opts out of the component's own boundary so suspension bubbles to an ancestor
 - `catch` - `(error, instance)` handler for this placement, replacing the member `catch`; a returned promise retries once settled
@@ -364,7 +362,16 @@ class Dashboard extends Component {
   items = ['a', 'b', 'c'];
   title = 'My Dashboard';
 
-  Sidebar() {
+  render() {
+    return (
+      <div>
+        <this.Header />
+        <this.Sidebar />
+      </div>
+    );
+  }
+
+  protected Sidebar() {
     return (
       <ul>
         {this.items.map((i) => (
@@ -374,27 +381,18 @@ class Dashboard extends Component {
     );
   }
 
-  Header() {
+  protected Header() {
     return <h1>{this.title}</h1>;
-  }
-
-  render() {
-    return (
-      <div>
-        <this.Header />
-        <this.Sidebar />
-      </div>
-    );
   }
 }
 ```
 
 - Each usage subscribes to the parent and accepts props like any component.
-- Reachable from context: `Dashboard.get()` then `<dashboard.Sidebar />`.
-- **Overridable by subclasses.**
+- **Overridable by subclasses.** `protected` by default - a seam for subclasses, not a second public surface. Public only when an FC outside the class is meant to place `<dashboard.Sidebar />` from context.
+- Declared after `render()` - read the assembly, then the pieces it names.
 - Destructure what the body reads from `this` at the top, as in `render()`.
 
-Subcomponents are **extension points**, not a general decomposition tool. Test: **would a subclass reasonably replace or wrap this renderer?** If yes - `Toggle.Active`, a grid's `Row`, chrome a theme variant swaps - use a subcomponent. If no, it is an implementation scope: a freestanding FC calling `Dashboard.get()`, keeping dependencies local without the override machinery. Decomposing a busy `render()` into those costs nothing:
+Subcomponents are **extension points**, not a general decomposition tool. Test: **would a subclass reasonably replace or wrap this renderer?** Yes for the element or row a variant swaps - `Toggle.Active`, a grid's `Row`, a combobox's `Input`, `Option` or `Empty`. No for layout that only places those slots - a styled `div` holding `<this.Input />` and a clear button is assembly, and stays in `render()`; a subclass changes assembly by overriding `render()`. A wrapper taking `children` is a slot only when the wrapper itself is the swap - a listbox that is a popover in one variant and a portal in another - not for every grouping `div`. If no, it is an implementation scope: a freestanding FC calling `Dashboard.get()`, keeping dependencies local without the override machinery. Decomposing a busy `render()` into those costs nothing. Either way, presence stays at the call site - `{open && <this.Menu>…</this.Menu>}`, `{selected && <this.Value />}` - and the slot always paints:
 
 ```tsx
 function SidebarItems() {
@@ -414,24 +412,26 @@ function SidebarItems() {
 
 - `new()` - once after init, synchronously; runs during server render. Return cleanup for teardown.
 - `render(props)` - every render.
-- `mount()` - once when `<MyComponent />` commits, client only. Return cleanup for unmount. Not called for an instance placed as `{instance}` - the placing component does not own it (see [react.md](react.md)).
+- an effect declared in `new()` - first runs once `<MyComponent />` commits, client only; its cleanup runs on destroy. Not held for an instance placed as `{instance}` - the placing component does not own it ([react.md](react.md#effects-run-once-committed)).
 - `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `Model.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
-`MyComponent.use()` throws - a Component is rendered (`<MyComponent />` or `{instance}`), not used. For a bare instance use `MyComponent.new()`.
+A Component is rendered (`<MyComponent />` or `{instance}`); for a bare instance use `MyComponent.new()`.
 
-Anything touching `window`, timers or subscriptions belongs in `mount()`, not `new()`:
+Anything touching `window`, timers or subscriptions is an effect declared in `new()` - it waits for commit, so it never runs on the server ([react.md](react.md#effects-run-once-committed)):
 
 ```tsx
 class Viewport extends Component {
   width = 0;
 
-  mount() {
-    const measure = () => (this.width = window.innerWidth);
+  protected new() {
+    this.get(() => {
+      const measure = () => (this.width = window.innerWidth);
 
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+      measure();
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    });
   }
 
   render() {

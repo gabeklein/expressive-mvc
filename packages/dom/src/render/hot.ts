@@ -1,10 +1,10 @@
-import type { Scope } from './adapter';
 import { owner } from './adapter';
 import { schedule } from './scheduler';
+import type { Schedulable } from './scheduler';
 
 interface Family {
   current: Function;
-  scopes: Set<Scope>;
+  scopes: Set<Schedulable>;
 }
 
 const FAMILIES = new Map<string, Family>();
@@ -31,11 +31,11 @@ function same(a: unknown, b: unknown) {
   return !!family && family === FAMILY.get(b as Function);
 }
 
-function track(type: Function, scope: Scope) {
+function track(type: Function, scope: Schedulable) {
   FAMILY.get(type)?.scopes.add(scope);
 }
 
-function untrack(type: Function, scope: Scope) {
+function untrack(type: Function, scope: Schedulable) {
   FAMILY.get(type)?.scopes.delete(scope);
 }
 
@@ -58,10 +58,7 @@ function hot(id: string, components: Record<string, unknown>) {
 
     family.current = type;
 
-    for (const scope of family.scopes) {
-      scope.hot = true;
-      schedule(scope);
-    }
+    for (const scope of family.scopes) schedule(scope);
   }
 }
 

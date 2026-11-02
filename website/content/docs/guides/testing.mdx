@@ -282,9 +282,9 @@ test('panel reads theme from parent', () => {
 });
 ```
 
-### Cleaning up globals
+### Cleaning up the root context
 
-A module-scope `Model.new()` of a [`static global` class](/docs/guides/context#globals-and-the-root-context) registers the instance into the global root context. Without cleanup, a global created in one test file (or at module load) leaks into every test that follows. Reset the root between tests:
+An instance [added to the root context](/docs/guides/context#app-wide-state-and-the-root-context) stays there until removed. Without cleanup, one added in a test file (or at module load) leaks into every test that follows. Reset the root between tests:
 
 ```ts
 import { afterEach } from 'vitest';
@@ -293,7 +293,7 @@ import { Context } from '@expressive/mvc';
 afterEach(() => Context.root.pop());
 ```
 
-`pop()` removes every instance registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch globals you won't miss it - the first time one does, you will.
+`pop()` removes every instance registered in the root context and runs their cleanup callbacks. This library's own test suite does exactly this, globally. If your tests never touch root you won't miss it - the first time one does, you will.
 
 <br />
 
@@ -373,7 +373,7 @@ test('refreshes on update', async () => {
   }
 
   let control!: Control;
-  render(<Control is={(x) => (control = x)} />);
+  render(<Control is={(x) => void (control = x)} />);
 
   await act(async () => {
     control.value = 'foo';
@@ -393,7 +393,7 @@ test('refreshes on update', async () => {
 - **`act()`** - unless a component is actually mounted, there's no renderer to flush.
 - **`@testing-library/react`** - you're not rendering anything.
 - **`jsdom`** - same deal; `Model` classes never touch the DOM on their own.
-- **Mocks for hooks** - Model classes don't call hooks. A `use()` method only runs on the `Model.use()` hook path, which `.new()` sidesteps entirely.
+- **Mocks for hooks** - `.new()` never renders, so a hook bridged in a Component's `render()` - or in a function component passing props - never runs in a logic test. Assign the field the hook would have supplied.
 
 Most of your logic tests end up as plain synchronous functions. That was the point of the classes all along.
 

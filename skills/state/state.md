@@ -4,7 +4,7 @@
 import { Model } from '@expressive/mvc';
 ```
 
-`@expressive/mvc` - framework-agnostic reactive state built on classes. `State` is a deprecated alias of `Model`.
+`@expressive/mvc` - framework-agnostic reactive state built on classes.
 
 ## Creating a Model
 
@@ -94,7 +94,9 @@ class Job extends Model {
 }
 ```
 
-`#private` is for logic only. Computeds and effects run against the tracking subject, not the instance, so `this.#x` there throws. Methods and `_` accessors are bound to the instance - a `_` getter is the bridge from `#private` to reactive code:
+`then` is reserved the same way, without the prefix: a `then` field or method is unmanaged, non-enumerable and never overlaid, so a class may make its instances thenable without the function becoming state.
+
+`#private` is for logic only. Computeds and effects run against the tracking subject, not the instance, so `this.#x` there throws. Methods are bound to the instance; `_` methods and accessors run on it unbound - a `_` getter is the bridge from `#private` to reactive code:
 
 ```ts
 class Session extends Model {
@@ -106,7 +108,7 @@ class Session extends Model {
 }
 ```
 
-- A `_` accessor is never computed or cached and never subscribes - running on the instance, its reads bypass the tracking subject, managed fields included. Deliberate: a subscribing `_` getter would be an uncached computed hidden behind the unmanaged prefix. Derived from managed state → a plain getter (computed); a computed reads its managed dependencies directly.
+- A `_` method or accessor never subscribes - running on the instance, its reads bypass the tracking subject, managed fields included. A `_` accessor is never computed or cached. Deliberate: a subscribing `_` getter would be an uncached computed hidden behind the unmanaged prefix. Derived from managed state → a plain getter (computed); a computed reads its managed dependencies directly.
 - An instruction on a `_` key throws.
 - TypeScript `private` does not opt out.
 - A handle only lifecycle touches is simpler as a `new()` closure variable.
@@ -117,7 +119,7 @@ Circular self-reference. Destructure it to keep instance access alongside values
 
 ```tsx
 const Component = () => {
-  const { is: counter, count } = Counter.use();
+  const { is: counter, count } = Counter.get();
 
   return <button onClick={() => counter.count++}>{count}</button>;
 };
@@ -147,7 +149,7 @@ class Parent extends Model {
 
 ## Methods
 
-Auto-bound on first access - safe to destructure.
+Auto-bound on first access - safe to destructure. `_` methods are not bound: called through the instance or a tracking subject, `this` is the instance; detached, `this` is the caller's.
 
 ```ts
 const { increment } = Counter.new();
@@ -163,7 +165,7 @@ increment(); // `this` is bound
 
 ### `Model.new()`
 
-Creates and activates an instance. Takes `Model.Args` - objects (initial values) and callbacks (lifecycle), processed in order; return handling in [Constructor Arguments](lifecycle.md#constructor-arguments).
+Creates and activates an instance. Takes `Model.Args` - objects (initial values), callbacks (lifecycle) and contexts (home), processed in order; return handling in [Constructor Arguments](lifecycle.md#constructor-arguments).
 
 ```ts
 const test = Test.new(
@@ -200,7 +202,7 @@ const stop = Counter.on({
 });
 ```
 
-- `type(Class)` runs once per class at bootstrap. `setup` runs per instance once constructed, before own values are observed, args and `new()` - may return a cleanup, args, or an assign overlay. `ready` runs per instance after args apply and its `new()` runs - may return a cleanup.
+- `type(Class)` runs once per class at bootstrap. `setup` runs per instance once constructed, before own values are observed, args and `new()` - may return a cleanup, args, or an assign overlay. `ready` runs per instance after args apply and its `new()` runs - may return a cleanup. An async `new()` (or any setup step returning a promise) holds `ready` until it resolves; a rejection skips it, as does a destroy first. Ready is per tree - [lifecycle.md](lifecycle.md#the-new-hook).
 - Handlers run ancestor-first. A function runs once per stage, however often or on however many classes it is registered.
 - `method(key, fn, self)` runs, `this` and `self` the instance, each time a method binds - first read, an assigned replacement (through `set()`, or `=` before first read), the rebind after a hot patch; `fn` is the bound function. A handler registered later misses existing bindings. Tooling use.
 - `catch(error, kind, key?)` runs when an instance fails out of turn - `kind` is where in its lifecycle: `setup` (async construction), `effect` or `getter` (an update), `dead` (a write after teardown), `unused` (never activated) - [lifecycle.md](lifecycle.md#error-handling). `this` is the instance - like nested `catch` blocks: most-derived class first, last registered first; one registered on several classes runs once, at the outermost. Return the error (or another) to pass it on; return nothing to handle it; throw to escape uncaught at once. Passed off the end, a destroyed write outputs nothing, `unused` warns, and anything else escapes uncaught.
@@ -219,10 +221,10 @@ Model.on({
 ## Constructor Args (`Model.Args`)
 
 ```ts
-type Args<T> = (Args<T> | Init<T> | Assign<T> | void)[];
+type Args<T> = (Args<T> | Init<T> | Assign<T> | Context | void)[];
 ```
 
-Nested arrays (flattened at runtime), objects (assigned), and callbacks (lifecycle).
+Nested arrays (flattened at runtime), objects (assigned), callbacks (lifecycle), and contexts (home - the first wins; [context.md](context.md#context-arguments)).
 
 ## Observable / Event System
 
@@ -255,7 +257,7 @@ All events batch and flush via `queueMicrotask()`.
 
 ## Context
 
-Every active instance has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It registers into root (findable by others) only with `static global`; a global's home locks to root at activation, while a private instance's stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
+Every active instance has a home context where its `state.get(Type)` lookups originate - `Context.root` unless a context claims it. It never registers into root by itself; its home stays claimable by the first explicit context. Largely advanced/internal - see [context.md](context.md).
 
 Primarily consumed via the [`get` instruction](../field/get.md) and [`<Component for>`](context.md#providing-with-component).
 

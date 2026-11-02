@@ -1,12 +1,14 @@
 import { applyDeclarations } from './declarations';
-import { appearanceToken, createAppearanceToken, emitClass } from './protocol';
+import { appearanceToken, createAppearanceToken, emitClass, reserved } from './protocol';
 import type { AppearanceContext, ResolvedAppearance } from './protocol';
 
 type Style = string | Record<string, unknown> | false | null | undefined | readonly Style[];
 
 interface Appearance {
+  author?: object;
   context?: AppearanceContext;
   entries: Forwarded[];
+  lexical?: AppearanceContext;
 }
 
 interface Forwarded {
@@ -44,20 +46,29 @@ function componentProps(
   appearance: Appearance | undefined
 ) {
   const context = appearance?.context;
+
+  for (const key of Object.keys(props)) reserved(key);
+
   if (!context || typeof type != 'function') return { appearance, props };
 
   const value = context.resolve(props);
-  const entries = appearance!.entries;
+  const { author, entries } = appearance!;
 
-  if (!value) return { appearance: { entries }, props };
+  if (!value) return { appearance: { author, entries, lexical: context }, props };
 
   return {
     appearance: {
+      author,
       context: value.context,
-      entries
+      entries,
+      lexical: value.context || context
     },
     props: { ...props, style: [createAppearanceToken(value), props.style] }
   };
+}
+
+function placed(appearance: Appearance | undefined): Appearance | undefined {
+  return appearance && { entries: appearance.entries };
 }
 
 function door(value: Style) {
@@ -157,5 +168,5 @@ function appendClasses(classes: string[], value: unknown) {
   if (typeof value == 'string') classes.push(...value.split(/\s+/).filter(Boolean));
 }
 
-export { applyClaim, claim, componentProps, door };
+export { applyClaim, claim, componentProps, door, placed };
 export type { Appearance, Claim, Style };

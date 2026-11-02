@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { State } from "@expressive/mvc";
+import { Model } from "@expressive/mvc";
 
 import { begin, catchUp, checksum, connect, end, frameOf, hold, listen, release, renew, twinOf } from "./connection";
 import { track } from "./version";
 
-class Tally extends State {
+class Tally extends Model {
   total = 0;
 }
 

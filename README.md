@@ -31,9 +31,9 @@ npm install @expressive/mvc @expressive/react
 ## Quick start
 
 ```tsx
-import { Model } from '@expressive/mvc';
+import { Component } from '@expressive/mvc';
 
-class Counter extends Model {
+class Counter extends Component {
   count = 0;
 
   increment() {
@@ -43,18 +43,18 @@ class Counter extends Model {
   decrement() {
     this.count--;
   }
-}
 
-function CounterWidget() {
-  const { count, increment, decrement } = Counter.use();
+  render() {
+    const { count, increment, decrement } = this;
 
-  return (
-    <div>
-      <button onClick={decrement}>-</button>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
-    </div>
-  );
+    return (
+      <div>
+        <button onClick={decrement}>-</button>
+        <span>{count}</span>
+        <button onClick={increment}>+</button>
+      </div>
+    );
+  }
 }
 ```
 

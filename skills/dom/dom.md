@@ -31,7 +31,7 @@ unmount();
 
 Classic JSX (`"jsx": "react"`, or a toolchain without an automatic runtime) uses `createElement(type, props, ...children)` and `Fragment` from the package root - set `jsxFactory: "createElement"` and `jsxFragmentFactory: "Fragment"`, or `import * as React from '@expressive/dom'` under tool defaults (the root also exports the `JSX` namespace type). Attribute typing matches the automatic runtime. `Fragment` also serves keyed fragments: `<Fragment key={id}>…</Fragment>`.
 
-Supported output: intrinsic HTML/SVG elements, fragments, strings/numbers/bigints, FCs, `Model` classes and instances with `render` (`Component` included), `Model` classes without one, `has.List` / `has.Pool`, `map.Managed`, portals, arrays, and empty boolean/null/undefined values. Keys preserve DOM ranges across reorder.
+Supported output: intrinsic HTML/SVG elements, fragments, strings/numbers/bigints, FCs, `Component` classes and instances, `has.List` / `has.Pool`, `map.Managed`, portals, arrays, and empty boolean/null/undefined values. Keys preserve DOM ranges across reorder.
 
 Events are native `addEventListener` listeners (`onClick`, `onKeyDown`, `onClickCapture`) with native event objects and propagation. There is no synthetic event layer: `onChange` on a text field fires on commit - use `onInput` per keystroke. Names are native event names; `onDoubleClick` is also accepted for `onDblClick`. `event.currentTarget` is typed as the element; `event.target` is not, since it may be a descendant.
 
@@ -64,34 +64,78 @@ function Button({ active }: { active: boolean }) {
 }
 
 macro({
-  mx: (value: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` })
+  gutter: (value: unknown) => ({ paddingInline: `${value}px` })
 });
 
 style(Button, {
   padding: '8px',
   _active: { fontWeight: 700 },
-  _raised: { mx: 4, boxShadow: '0 1px 2px black' }
+  _raised: { gutter: 4, boxShadow: '0 1px 2px black' }
 });
 ```
 
 - A rule applies when `_name` is truthy on an element, or when the element's host tag is `name`. `0` and `''` do not activate - a rule is on or off, while a macro still treats `0` as a value. Each applied rule is one class named after its source, such as `Button_active`. Nested inside a rule body, `_name` opens a descendant scope.
 - Bare keys at the top of a map form a **base rule** applied to each of the component's host roots - `padding` above styles every root `Button` renders, through fragments.
-- A map never reaches inside a child component. Rules, base declarations and tag matches apply to the elements that component renders; a descendant scope handed to a child through `style` covers that child's own output and stops there. Only the class chain inherits - `Derived` sees `Base`'s rules.
+- A map never reaches inside a child component, placed as an element or an instance. Rules, base declarations and tag matches apply to the elements that component renders; a descendant scope handed to a child through `style` covers that child's own output and stops there. JSX resolves in the scope that wrote it: `children` passed to a wrapper keep the author's rules - including rules nested in a `_rule` on the wrapper element - and the wrapper's rules do not reach them; its base declarations still apply where they are its roots. Only the class chain inherits - `Derived` sees `Base`'s rules.
+- A map styles `render()` output only, not subcomponents ([component.md](../react/component.md#subcomponents)). `_` plus a capital letter addresses one by key: its body is that subcomponent's own map - base declarations for its roots, rules and tag matches for its output - resolved through the owner's class wherever it renders. A `_Title` body composes through the class chain like the top-level map; `_Title` nested in a rule, or as an attribute on any element, throws. To share rules, pass one map to both: `style(Card, shared, { _Title: shared })`.
+
+```tsx
+style(Card, {
+  _active: { color: 'red' },        // render() only
+  _Title: {
+    fontWeight: 700,                // Title's roots
+    _active: { color: 'blue' }      // Title's output; class Card_Title_active
+  }
+});
+```
 - Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door. A class Component declaring a matching unmanaged `_` field also receives the value ([state.md](../state/state.md#unmanaged-instance-data)). The value is not reactive, and writing it does not restyle - style is resolved in the caller's render. A component styles its own output through `_rule` in its own render; anything driving behavior belongs in a managed prop.
 - `$name` is reserved for host instructions and throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 
-Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. The host joins arrays with spaces, rejects a function or object (`No macro handles "mx"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
+Macros are defined only by `macro()`. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place. A key resolves at its topmost definition; a macro returning its own name falls to the next definition down, then through any `'*'` handler, then to the host. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
-Repeated `style()` calls add layers and return the component unchanged. Within a scope, globals come first, then base class, derived class, and registration order. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered. `macro()` is global and closes at the first render of anything.
+Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead.
+
+Within a scope, global rules come first, then base declarations, then rules by base class, derived class, and registration order - a rule shadowing a global one stacks on it rather than absorbing it. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered. `macro()` is global and closes at the first render of anything.
 
 Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins - for classes and for which nested rules reach descendants - independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
 
 Build-time extraction is not part of the `0.1` experiment.
 
+### Conditions
+
+A key starting with `:` (state) or `@` (environment) holds a map that applies while the condition holds - at the top of a map (the component's roots), inside a rule, or nested in another condition:
+
+```tsx
+import { media } from '@expressive/dom';
+
+const mobile = media({ maxWidth: 900 });   // '@media (max-width: 900px)'
+
+style(Select, {
+  ':hover': { opacity: 1 },
+  _control: {
+    border: '1px solid var(--border)',
+    ':hover, :focus-within': { borderColor: 'var(--accent)' }
+  },
+  _grid: { gridTemplateColumns: '1fr 1fr' },
+  [mobile]: { padding: '4px', _grid: { gridTemplateColumns: '1fr' } }
+});
+```
+
+- Each condition is its own block, sorted right after the block it modifies. It adds no specificity, so doors and inline style win over it as over any rule.
+- A `,` in a `:` key lists alternatives (`:is(...)` stays whole); an `@` key is never split.
+- A pseudo-element (`'::placeholder'`, `':hover::after'`) styles that part of the element and cannot hold a `_rule`.
+- `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope.
+- `_rule` inside a `:` condition styles descendants while the enclosing element holds the state - `_thumb: { ':hover': { _delete: { opacity: 1 } } }` shows `_delete` while its thumb is hovered; at the top of a map, the state is the component root's. The element holding the state gets a `-group` class. Groups chain and combine with `@`.
+- Macros expand inside a condition; one producing a class there throws.
+- CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`mobile` above) exported from one style module.
+- Layers and subclasses merge a condition's body key by key, like a rule.
+
+The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and`.
+
 ### The web pack
 
-`css` is a macro pack shipped with the renderer. Registering it opts into pixel units for numbers and the axis shorthands CSS lacks:
+`css` is a macro pack shipped with the renderer. Registering it opts into pixel units for numbers and a `size` shorthand:
 
 ```ts
 import { css, macro } from '@expressive/dom';
@@ -99,13 +143,22 @@ import { css, macro } from '@expressive/dom';
 macro(css);
 ```
 
-A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. `mx` / `my` / `px` / `py` set an axis, and `size` sets width and height.
+A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
 
 Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged.
 
+For other units, `rem`, `em` and `px` suffix each number and join with spaces - plain strings, usable anywhere:
+
+```ts
+import { px, rem } from '@expressive/dom';
+
+style(Heading, { padding: rem(0.2, 0.45), border: `${px(1)} solid` });
+// padding: '0.2rem 0.45rem'
+```
+
 ### Typing
 
-Maps are typed: a bare key must be a CSS property or a macro declared in `macro.Registry`, `_name` opens a rule, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
+Maps are typed: a bare key must be a CSS property or a macro declared in `macro.Registry`, `_name` opens a rule, a `:` or `@` key holds a condition's map, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
 
 A pack declares what it registers:
 
@@ -113,15 +166,32 @@ A pack declares what it registers:
 declare module '@expressive/dom' {
   namespace macro {
     interface Registry {
-      mx(value: number): style.Map;
+      gutter(value: number): style.Map;
     }
   }
 }
 
-macro({ mx: (value: number) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }) });
+macro({ gutter: (value: number) => ({ paddingInline: `${value}px` }) });
 ```
 
-Declaration merging is whole-program, so the augmentation may sit anywhere - above the registration, below it, or in another module. A declared name is checked where it registers *and* where it is called; an undeclared one still registers, but a typed map cannot call it. With no pack at all, CSS properties, rules and `--variables` work as they are.
+To declare a whole pack from its value, extend `macro.From` - it copies each macro's signature and skips rules and `'*'`:
+
+```ts
+const app = {
+  row: (gap?: string) => ({ display: 'flex', alignItems: 'center', gap }),
+  edge: (side: 'Top' | 'Left') => ({ [`border${side}`]: '1px solid' })
+};
+
+macro(app);
+
+declare module '@expressive/dom' {
+  namespace macro {
+    interface Registry extends macro.From<typeof app> {}
+  }
+}
+```
+
+Declaration merging is whole-program, so the augmentation may sit anywhere - above the registration, below it, or in another module. A declared name is checked where it registers *and* where it is called - a macro whose argument is optional also takes `true` (`row: true` calls it with none); an undeclared one still registers, but a typed map cannot call it. With no pack at all, CSS properties, rules and `--variables` work as they are.
 
 `className` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 
@@ -135,6 +205,17 @@ function Field({ style }: { style?: JSX.IntrinsicElements['div']['style'] }) {
 
 A component reading `style` receives a frozen object, or `undefined` when nothing was passed. Its own keys are the caller's inline declarations, flattened in written order; classes travel hidden with it. Override with a spread (`{ ...style, color: 'blue' }`), drop a key with rest (`const { width, ...rest } = style`), or merge two with `{ ...a, ...b }` - classes survive all three. Combine style values with arrays (`[a, b, 'local']`); spread to edit declarations. Do not branch on its shape, and do not clone it - `structuredClone` and JSON drop the classes.
 
+### Conventions
+
+Opinionated, applied by default:
+
+- `style(X, …)` sits directly below `X`, never gathered at the end of a file. Shared maps go above their first use.
+- One style module, imported in the entry before the app renders (`import './style'`), holds `macro(css)`, the app's macros as one object typed with `macro.From`, global `_rule`s, shared maps, and named conditions (`mobile = media({ maxWidth: 900 })`).
+- A declaration group repeated in two or three places becomes a macro named for its job (`row`, `line`, `ellipsis`), not its CSS. What varies is its argument; an optional one makes it a flag (`row: true`). Fold repeats as you find them.
+- Shared style: a macro groups declarations; a global `_rule` sets element defaults (`_button`) and app roles (`_muted`); a shared map holds rules for one kind of thing, layered as an extra `style()` argument. Share a component before sharing a map.
+- Values under `css`: `rem()` / `em()` for type-relative sizes, bare numbers for px, strings for mixed values (`'0 auto'`, `calc()`, `var()`) - not hand-written `'0.2rem 0.45rem'`.
+- App elements are styled with `_rule` attributes; `className` is for classes defined outside `style()`. A hover or media hook class in app CSS belongs in a map as a condition.
+
 ## MVC render scopes
 
 FCs have no renderer-owned state cells or effects. Treat them as pre-hooks stateless components whose MVC reads declare a dependency snapshot:
@@ -146,41 +227,38 @@ function Total() {
 }
 ```
 
-`Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it.
+`Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent; outside render it reads the root context, untracked. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it. The lookup follows context - a provider replaced, arriving after mount or leaving renders the scope. Once the provider leaves, `get(false)` returns `undefined` and a required `get()` throws.
 
-`Model.use()` creates an MVC-owned instance in an FC slot. Calls must remain top-level and in stable order. The instance persists across renders, receives `use(...args)` each render when defined, runs `mount()` after its first DOM commit, and is destroyed on unmount. `Model.use()` in `Component.render()` is an error—put owned state on the Component as a field. The instance is provided to the FC's output: descendants resolve it with `Model.get()`, siblings do not.
-
-Any `Model` class renders as an element. With `render(props)` it produces content like a Component: attributes assign matching fields (a dropped attribute resets its field to `undefined`), `is` receives the instance after fields apply, `render` receives the attributes, `mount()` runs after first commit, and the instance is destroyed on unmount. Without `render` it passes `children` through. Either way the instance is in context for its subtree - `<Session name="x">…</Session>` provides like `<Component for={Session} name="x">`. A client class may extend a server Model and add `render`; the server class stays host-free. An instance with `render` also renders inline. A PascalCase method rendered as an element (`<this.Label />`, or passed on and rendered elsewhere) is a subcomponent tracking its owner; called directly it stays a plain method. A PascalCase function field is plain data and renders as an ordinary FC. `render` overrides like any method, as on a Component. Component-only: `this.props`. Host-read members are reserved on any rendered instance - `render`, `fallback`, `catch`, `key`, `mount`, `use`; a field or method by one of these names opts into that behavior.
+An FC owns nothing - same as React. Owned state is a class: a field on a Component, or `<Component for={Type}>` above an FC that reads it with `Model.get()`. Arguments a hook would take per render are attributes, which assign fields:
 
 ```tsx
-class Selection extends Model {
-  selected = '';
+class Row extends Component {
+  id = '';
+  selected = false;
 
-  use(selected: string) {
-    this.selected = selected;
+  render() {
+    const { id, selected } = this;
+    return <span className={selected ? 'on' : undefined}>{id}</span>;
   }
 }
 
-function Row({ id }: { id: string }) {
-  const { selected } = Selection.use(id);
-  return <span>{selected}</span>;
-}
+<Row id={id} selected={id == current} />
 ```
 
-`<Component for>` ([context.md](../state/context.md#providing-with-component)), Model elements, `Model.use()`, implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
+Only a `Component` renders - as an element or placed inline (`{page}`). A plain `Model` is data: `<Session />` or `{session}` throws; extend `Component` to render, or provide it with `<Component for={Session} name="x">`. A view of a Model owns it as a field. A PascalCase method on any Model rendered as an element (`<this.Label />`, `<session.Badge />`, or passed on and rendered elsewhere) is a subcomponent tracking its owner; called directly it stays a plain method. A PascalCase function field is plain data and renders as an ordinary FC. Host-read members on a Component are `render`, `fallback`, `catch` and `key`; a field or method by one of these names opts into that behavior.
+
+`<Component for>` ([context.md](../state/context.md#providing-with-component)), implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
 
 ## Code splitting, boundaries, transitions
 
-A function component returning a promise renders what it resolves to - a module's default export or a component itself (function, Model or Component class): `const Settings = () => import('./Settings')`. Its first render suspends on the load; later renders and placements reuse the result without calling it again. Attributes pass to, and are typed from, the loaded component. It takes no parameters - props never change what loads. Declare it at module scope - one created per render loads every render. There is no `lazy`. A failed load rejects to the nearest `catch`; the next render after recovery loads again. A Component supplies a suspense boundary unless `fallback = false`. A Model element has one only when it declares `fallback` or `catch`, or receives either as an attribute - `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence over the member and still passes through to a field of that name. The boundary exists from mount: a placement mounted with neither attribute nor member never gains one, though a present `fallback` or `catch` may change. The attribute types narrow to a declared member's type, so a mismatch fails at the element. Function components never own a boundary; `fallback` on them is an ordinary prop. A placed instance (`{page}`) uses its members. `<Component fallback={…}>` adds one explicitly, with or without `for`. With no boundary above, a suspension throws from `render()` - give the root one: `render(<App fallback={null} />, el)`. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders.
+A function component returning a promise renders what it resolves to - a module's default export or a component itself (function or Component class): `const Settings = () => import('./Settings')`. Its first render suspends on the load; later renders and placements reuse the result without calling it again. Attributes pass to, and are typed from, the loaded component. It takes no parameters - props never change what loads. Declare it at module scope - one created per render loads every render. There is no `lazy`. A failed load rejects to the nearest `catch`; the next render after recovery loads again. A Component supplies a suspense boundary unless `fallback = false`; `fallback` and `catch` are members or attributes - `<Page fallback={<Spinner />} catch={(error, page) => …} />`. An attribute takes precedence over the member and still passes through to a field of that name. Function components never own a boundary; `fallback` on them is an ordinary prop. A placed instance (`{page}`) uses its members. `<Component fallback={…}>` adds one explicitly, with or without `for`. With no boundary above, a suspension throws from `render()` - give the root one: `fallback` on the top Component an FC `App` mounts (`<Layout fallback={null}>`), or `render(<App fallback={null} />, el)` when `App` is itself a Component. A suspension or caught error anywhere below replaces the whole boundary with one fallback; its content stays mounted off-document, keeps updating, and reveals at once when every waiting scope renders.
 
-Suspending destroys nothing. Instances below a boundary - including one that suspends itself - keep their state and retry in place, so an instance may own its loading and error state and suspend in its own `render`. This holds on first mount and in a transition: new content a `pending()` update reveals waits off the page with the instance it created - `Model.use()` slots, Model elements, owned children - while the current screen holds, then commits with it. That instance is created once, `mount()` runs after it reaches the page, and it is destroyed only if a later render drops its position. A boundary for plain content is an empty Model:
+Suspending destroys nothing. Instances below a boundary - including one that suspends itself - keep their state and retry in place, so an instance may own its loading and error state and suspend in its own `render`. This holds on first mount and in a transition: new content a `pending()` update reveals waits off the page with the instances it created - Components, owned children - while the current screen holds, then commits with it. Each is created once, its effects run after it reaches the page, and it is destroyed only if a later render drops its position. A boundary for plain content is a bare Component:
 
 ```tsx
-class Boundary extends Model {}
-
-<Boundary fallback={<Spinner />}>
+<Component fallback={<Spinner />}>
   <Report />
-</Boundary>;
+</Component>;
 ```
 
 `catch(error, instance)` - member or attribute - handles render failures and retries after it completes (lifecycle failures go to `Model.on({ catch })` instead); until then the boundary holds its fallback, even if state written inside `catch()` would render cleanly. A rejected `catch()` escalates to the next boundary, which holds likewise. Handled errors are not logged. A boundary nested in a hidden one keeps its own state - an inner fallback still showing when the outer hides is still showing when it reveals.
@@ -226,7 +304,7 @@ export default defineConfig({ plugins: [expressive()] });
 
 Editing a `Model` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members. Dev server only. A class must be top-level `class X` or `let X = class`; `export default X;` exports a snapshot, so prefer `export default class X` or `export { X as default }`.
 
-A top-level function component (`function View()`, `const View = () => …`, PascalCase) re-renders in place with its `Model.use()` instances kept; if its `Model.use()` calls change order, the slots from the first change on are recreated. An anonymous `export default` is not refreshed - the module reloads.
+A top-level function component (`function View()`, `const View = () => …`, PascalCase) re-renders in place. An anonymous `export default` is not refreshed - the module reloads.
 
 ## Boundaries
 

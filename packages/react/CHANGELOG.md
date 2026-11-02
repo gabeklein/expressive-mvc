@@ -1,5 +1,98 @@
 # @expressive/react
 
+## 0.94.0
+
+### Minor Changes
+
+- [#589](https://github.com/gabeklein/expressive-mvc/pull/589) [`bdee9a1`](https://github.com/gabeklein/expressive-mvc/commit/bdee9a1715f9b080e9376022237b3a56a8b7cc12) An effect declared during construction of a Component the host owns - rendered as JSX, or constructed by `<Component for>` - holds its first run until that component commits. It never runs during server render or for a render React discards. `mount()` is removed: declare the effect in `new()` instead; its cleanup runs on destroy.
+
+### Patch Changes
+
+- Updated dependencies [[`c2a6b40`](https://github.com/gabeklein/expressive-mvc/commit/c2a6b4064fac8000e0cb7b0212d02345a87f6621), [`bdee9a1`](https://github.com/gabeklein/expressive-mvc/commit/bdee9a1715f9b080e9376022237b3a56a8b7cc12), [`d37a20d`](https://github.com/gabeklein/expressive-mvc/commit/d37a20d917767705c18b445c036ab74f432bd3e7), [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7), [`776243b`](https://github.com/gabeklein/expressive-mvc/commit/776243b0ce94bd7b4b81d4ad1a290d33abe4b8bb), [`ac2cd5c`](https://github.com/gabeklein/expressive-mvc/commit/ac2cd5caca0ad91777fb23d038bfbec67e88ea93), [`a183961`](https://github.com/gabeklein/expressive-mvc/commit/a183961f28b4124049700fb9e2442723fe3ec7ab), [`4d0c270`](https://github.com/gabeklein/expressive-mvc/commit/4d0c270b0914ba39e5f8b549fac962d9be5aff87), [`1c2c81f`](https://github.com/gabeklein/expressive-mvc/commit/1c2c81fc43b437b55797e91043245d95b1662aa7), [`245e59a`](https://github.com/gabeklein/expressive-mvc/commit/245e59ac0f0ac0b33e586219e6ee188a5d7cbe07)]:
+  - @expressive/mvc@0.93.0
+
+## 0.93.0
+
+### Minor Changes
+
+- [#551](https://github.com/gabeklein/expressive-mvc/pull/551) [`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f) A class overriding static `Model.get` keeps tracking. Bare `Context.get()` returns the render's context as before. Outside a render, `Model.get()` and overrides of static `get` no longer throw an invalid hook call - they resolve from root, untracked, which may not be the instance the component rendered. Read it in render and use that in handlers.
+
+- [#567](https://github.com/gabeklein/expressive-mvc/pull/567) [`afd750c`](https://github.com/gabeklein/expressive-mvc/commit/afd750c8e6d3a35321daeb29e8e4c10a1e824d9d) `Model.get` no longer accepts a function: the computed (`Model.get(fn)`), effect (`fn` returning `null`) and async forms are removed, with `Model.ForceRefresh`, `Model.GetFactory` and `Model.GetEffect` (react) and `Model.ForceRefresh` and `Model.GetFactory` (dom). Destructure and derive in render, declare a getter on the Model, or move side effects to `mount()`.
+
+  `Model.get(true)` (required values, `Required<T>`) is removed. Hold a value that may be unset as a Model field - it joins its owner's context. Destructure it and render conditionally (`if (draft) return <Editor />`); the child reads it with `Draft.get()`. A value with its own view is a `Component`, placed as `{draft}`. `Model.get()` and `Model.get(false)` are unchanged.
+
+### Patch Changes
+
+- [#551](https://github.com/gabeklein/expressive-mvc/pull/551) [`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f) `Model.get()` refreshes on mount when its provider changed, or its lookup started failing, between render and commit; the change was dropped before.
+- Updated dependencies [[`3cefd2d`](https://github.com/gabeklein/expressive-mvc/commit/3cefd2d95f3e6a344b7f2d4c82d03ae2dd89b55f), [`c052455`](https://github.com/gabeklein/expressive-mvc/commit/c0524556b85ad598b2f6db774b639627b61cb337)]:
+  - @expressive/mvc@0.92.0
+
+## 0.92.0
+
+### Minor Changes
+
+- [#562](https://github.com/gabeklein/expressive-mvc/pull/562) [`aeb0787`](https://github.com/gabeklein/expressive-mvc/commit/aeb07871c5cfe30df9fd945f6c5f2c2832d94168) Context lookups are observable.
+
+  - A tracked lookup re-runs when a change can alter its result - a closer provider arriving, the found one removed - and not for providers above the one found, other types or siblings.
+  - `this.get(Type)` inside an effect or render now refreshes when its provider changes. A required lookup whose provider is removed throws.
+  - dom: `Model.get` follows a provider replaced by a field assignment, arriving after mount or removed.
+  - react: `Model.get` follows a provider arriving after mount, including an optional `Model.get(false)` that first found nothing, and one removed.
+  - dom and react: once its instance leaves context, `Model.get(false)` returns `undefined` and a required `Model.get()` throws `Could not find`. Unmount consumers before destroying their provider.
+
+- [#558](https://github.com/gabeklein/expressive-mvc/pull/558) [`a55605b`](https://github.com/gabeklein/expressive-mvc/commit/a55605b2439078b2694abc2ac9361ca30fa2e119) **Breaking:** the deprecated re-exports are gone - `Model`, `State`, the default export, `Component`, `Context`, `def`, `get`, `has`, `map`, `ref`, `set` and `pending`. `@expressive/react` now exports nothing for app code: import it once for its side effect and take everything from `@expressive/mvc`.
+
+  The one thing left on the entry is a type-only `Runtime` re-export, which keeps its declarations linked to the adapter's `Model` and `Component` augmentations; nothing is exported at runtime.
+
+  ```ts
+  // before
+  import Model, { Component, get } from '@expressive/react';
+
+  // after
+  import '@expressive/react';
+  import { Model, Component, get } from '@expressive/mvc';
+  ```
+
+- [#556](https://github.com/gabeklein/expressive-mvc/pull/556) [`dcf70be`](https://github.com/gabeklein/expressive-mvc/commit/dcf70be211ae92d54462ae9edf991b5ee81c5cf6) **Breaking:** `Model.use()` is removed, along with the `use()` instance method it called, `UseModel` and `Model.UseArgs`. A function component owns no state - on React as on `@expressive/dom`. Move owned state to a Component, or provide it and read with `.get()`:
+
+  ```tsx
+  // before
+  function Counter() {
+    const { count, increment } = CounterState.use();
+    return <button onClick={increment}>{count}</button>;
+  }
+
+  // after
+  class Counter extends Component {
+    count = 0;
+    increment() {
+      this.count++;
+    }
+    render() {
+      const { count, increment } = this;
+      return <button onClick={increment}>{count}</button>;
+    }
+  }
+  ```
+
+  Shared state: `<Component for={CounterState}>` above function components calling `CounterState.get()`. Hooks a `use()` method bridged move to an outer function component passing props, or to the top of `render()`. `mount()` still runs for a Component, or a Model placed with `<Component for>`. `Component.use()` no longer throws a dedicated error - it is simply absent.
+
+### Patch Changes
+
+- [#560](https://github.com/gabeklein/expressive-mvc/pull/560) [`f5fc45a`](https://github.com/gabeklein/expressive-mvc/commit/f5fc45ae6105876438b3c17a87f1da2546fe0d63) Renderable classes declare themselves to the core as they load - `Component`, `has` lists and pools, and `map` collections - and a host seams every declared class through `elements`, exported from `@expressive/mvc/jsx-runtime`, with one element seam. Each promises the same protocol: `is` names the instance behind a derived view and `render()` returns what to show; the collections gain both members. The React adapter no longer imports `has` or `map` to patch them, so collection code ships only in apps that import a collection: `Model` only 12.1 → 10.4 kB, a typical app 12.9 → 11.3 kB, an app using collections 12.1 kB. Declarations made before the host loaded are replayed, so import order does not matter.
+- Updated dependencies [[`2bef0ed`](https://github.com/gabeklein/expressive-mvc/commit/2bef0ed387aa4060725644a90d1def7221117810), [`5e6689c`](https://github.com/gabeklein/expressive-mvc/commit/5e6689c8c18ec34323fccd881552e76b4354d11e), [`a55605b`](https://github.com/gabeklein/expressive-mvc/commit/a55605b2439078b2694abc2ac9361ca30fa2e119), [`aeb0787`](https://github.com/gabeklein/expressive-mvc/commit/aeb07871c5cfe30df9fd945f6c5f2c2832d94168), [`f5fc45a`](https://github.com/gabeklein/expressive-mvc/commit/f5fc45ae6105876438b3c17a87f1da2546fe0d63)]:
+  - @expressive/mvc@0.91.0
+
+## 0.91.0
+
+### Minor Changes
+
+- [#552](https://github.com/gabeklein/expressive-mvc/pull/552) [`387ef66`](https://github.com/gabeklein/expressive-mvc/commit/387ef6650dba59b11ce03004f8d9c2ab49963d1a) `Context.get()` outside a render no longer calls into React's hooks. React's development build logged "Invalid hook call" for it before any render, and on the server between renders. The adapter `Runtime` gains a required `idle(): boolean | undefined` - `true` when the host is certainly not rendering, `undefined` when it cannot tell, in which case the hook probe runs as before. React reads its dispatcher; Preact returns `undefined`.
+
+### Patch Changes
+
+- Updated dependencies [[`d0b9cf6`](https://github.com/gabeklein/expressive-mvc/commit/d0b9cf6a29916f5db4c9eca23668c208540f9923)]:
+  - @expressive/mvc@0.90.0
+
 ## 0.90.0
 
 ### Minor Changes

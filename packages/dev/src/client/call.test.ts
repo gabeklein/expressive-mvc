@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Context, def, State } from "@expressive/mvc";
+import { Context, def, Model } from "@expressive/mvc";
 
 import { runtime } from "./call";
 
@@ -34,7 +34,7 @@ class Source {
   }
 }
 
-class Spot extends State {
+class Spot extends Model {
   base = "";
   to = "";
   router = { segment: (to: string) => (to ? "/" + to : "") };
@@ -62,7 +62,7 @@ beforeEach(() => {
   Registry.made = [];
   vi.stubGlobal("EventSource", Source);
   vi.stubGlobal("FinalizationRegistry", Registry);
-  ({ call, define, twin } = runtime(State, def, Context, Spot));
+  ({ call, define, twin } = runtime(Model, def, Context, Spot));
   history.replaceState(null, "", "/tally");
 });
 
@@ -159,13 +159,13 @@ describe("call", () => {
 });
 
 describe("twin", () => {
-  it("will make a named State that attaches on creation under its own id and holds the snapshot", async () => {
+  it("will make a named Model that attaches on creation under its own id and holds the snapshot", async () => {
     const fetch = serve({ body: { values: { total: 4 }, version: "g:1" } });
     const Tally = twin(["tally"], {}, ["total"], "Tally");
     const tally = Tally.new() as any;
 
     expect(Tally.name).toBe("Tally");
-    expect(tally).toBeInstanceOf(State);
+    expect(tally).toBeInstanceOf(Model);
     expect(fetch).toHaveBeenCalledWith("/tally", expect.objectContaining({ body: "[]" }));
     expect(headers(fetch, 0)).toMatchObject({ "x-expressive-get": "default", "x-expressive-twin": expect.stringMatching(/^Tally-[\dA-Z]{6}$/) });
     expect(headers(fetch, 0)).not.toHaveProperty("if-none-match");

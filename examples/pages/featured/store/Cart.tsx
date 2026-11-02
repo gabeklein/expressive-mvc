@@ -9,7 +9,7 @@ export const CartPage = () => {
     count
   } = Cart.get();
 
-  if (receipt) return <Receipt />;
+  if (receipt) return <>{receipt}</>;
 
   if (count)
     return (
@@ -21,29 +21,6 @@ export const CartPage = () => {
     );
 
   return <Empty />;
-};
-
-const Receipt = () => {
-  const {
-    reset,
-    receipt: {
-      count,
-      total
-    }
-  } = Cart.get(true);
-
-  return (
-    <div className="notice">
-      <span className="big-emoji">✅</span>
-      <h2>Order placed!</h2>
-      <p>
-        {count} {count === 1 ? 'item' : 'items'} · {usd(total)}
-      </p>
-      <Link to="/" onClick={reset}>
-        Continue shopping
-      </Link>
-    </div>
-  );
 };
 
 const Empty = () => (

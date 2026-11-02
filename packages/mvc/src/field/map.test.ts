@@ -1,4 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
+import { Context } from '../context';
 import { Model } from '../state';
 import { fires } from '../../test.setup';
 import { get } from './get';
@@ -392,6 +393,59 @@ describe('adoption', () => {
     first.set(null);
 
     expect(item.get(null)).toBe(true);
+  });
+});
+
+describe('context', () => {
+  class User extends Model {
+    id = '';
+  }
+
+  class Connection extends Model {
+    users = map((id: string) => new User({ id }));
+  }
+
+  it('will not provide rows of an owner without a level', () => {
+    const connection = Connection.new();
+
+    connection.users.set('a');
+
+    expect(Context.root.get(User, false)).toBeUndefined();
+
+    connection.users.set('b');
+
+    expect(Context.root.get(User, false)).toBeUndefined();
+  });
+
+  it('will not change lookup as rows are added', () => {
+    class Reader extends Model {}
+
+    const connection = Connection.new();
+    const reader = Reader.new();
+
+    connection.users.set('a');
+    expect(reader.get(User, false)).toBeUndefined();
+
+    connection.users.set('b');
+    expect(reader.get(User, false)).toBeUndefined();
+  });
+
+  it('will provide held rows once the owner has a level', () => {
+    const connection = Connection.new();
+    const a = connection.users.set('a').get('a')!;
+    const context = Context.root.push(connection);
+
+    expect(context.get(User)).toBe(a);
+    expect(Context.root.get(User, false)).toBeUndefined();
+
+    connection.users.set('b');
+
+    expect(context.get(User, false)).toBeNull();
+    expect(Context.root.get(User, false)).toBeUndefined();
+
+    context.pop();
+
+    expect(Context.root.get(User, false)).toBeUndefined();
   });
 });
 

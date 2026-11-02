@@ -256,7 +256,7 @@ Children of a region `.get()` the region, never the page above it and back down.
 
 ## Bridging an Existing Router
 
-Bridge, don't replace: a conversion keeps the app's router; adopting `@expressive/router` needs explicit go-ahead. An outer FC reads router hooks and passes props, or the class encapsulates hooks with `use()` ([react.md](react.md)):
+Bridge, don't replace: a conversion keeps the app's router; adopting `@expressive/router` needs explicit go-ahead. An outer FC reads router hooks and passes props - fields take them - or a Component calls them at the top of `render()`, which runs as a function component:
 
 ```tsx
 function InboxRoute() {
@@ -279,8 +279,8 @@ class ComposePage extends Component {
   threadId?: string;     // working identity - survives route changes
   urlThreadId?: string;  // route param - undefined off /t/:id
 
-  mount() {
-    return this.get(($) => {
+  protected new() {
+    this.get(($) => {
       void $.urlThreadId;  // declare the trigger - legitimate in get() effects, never in renders
       this.syncRoute();
     });
@@ -324,7 +324,7 @@ Session.on({
 });
 ```
 
-Construction stays with the consumer - `session = new Session()` on the entrypoint. No subclass (`class ViewSession extends Session`), no `Session.new()` in the adapter. Inbound snapshots land with `set(values)` - a superset payload is fine, extra keys drop ([set.md](../state/set.md)).
+Construction stays with the consumer - `session = new Session()` on the owning Component. No subclass (`class ViewSession extends Session`), no `Session.new()` in the adapter. Inbound snapshots land with `set(values)` - a superset payload is fine, extra keys drop ([set.md](../state/set.md)).
 
 ## Context Sharing
 
@@ -409,11 +409,11 @@ Pure presentation components (a `Metric`, a badge) may still take plain props - 
 
 ## Presence Boundary
 
-The parent owns whether an optional child exists; the child asserts its requirements with `.get(true)` - `SettingsContent` / `SettingsEditor` in [react.md](react.md#required-values--presence-boundaries). Declare the gated field optional (`draft?: T`), not `| null`:
+The parent owns whether an optional child exists - it destructures the gated field and renders conditionally; the child reads the field's instance with `.get()`: `SettingsContent` / `SettingsEditor` in [react.md](react.md#presence-boundaries).
 
 ```tsx
 class SettingsState extends Model {
-  draft?: SettingsLocation = undefined;
+  draft?: Draft = undefined;
   saving = false;
 
   async saveSettings() { ... }
@@ -550,7 +550,7 @@ class TabGroup extends Component {
 
 ## Owned Collection
 
-Register what a Component constructs - rendered children, `use()` instances, pool members - without a type, and release each when it is destroyed:
+Register what a Component constructs - rendered children, pool members - without a type, and release each when it is destroyed:
 
 ```tsx
 import { Model, Component } from '@expressive/mvc';
@@ -578,9 +578,9 @@ class Canvas extends Component {
 
 Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(Model)` - see [context.md](../state/context.md#ownership-vs-context).
 
-## Refactoring Hooks Into a Model
+## Refactoring Hooks Into a Class
 
-Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in `mount()`, event handlers in methods.
+Avoid a literal hook-for-field rewrite. Mutable inputs go in fields, derived values in getters, client setup/cleanup in an effect declared in `new()`, event handlers in methods.
 
 ```tsx
 // Before: width is source state, compact is derived state kept in sync.
@@ -603,31 +603,33 @@ function LayoutBadge() {
 ```
 
 ```tsx
-// After: width is the source field, compact is a getter, and resize belongs to Viewport.
-import { Model } from '@expressive/mvc';
+// After: width is the source field, compact is a getter, and resize belongs to the class.
+import { Component } from '@expressive/mvc';
 
-class Viewport extends Model {
+class LayoutBadge extends Component {
   width = 0;
 
   get compact() {
     return this.width < 720;
   }
 
-  mount() {
-    const update = () => {
-      this.width = window.innerWidth;
-    };
+  protected new() {
+    this.get(() => {
+      const update = () => {
+        this.width = window.innerWidth;
+      };
 
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+      update();
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    });
   }
-}
 
-function LayoutBadge() {
-  const { width, compact } = Viewport.use();
+  render() {
+    const { compact, width } = this;
 
-  return <span>{compact ? 'Compact' : `Wide (${width}px)`}</span>;
+    return <span>{compact ? 'Compact' : `Wide (${width}px)`}</span>;
+  }
 }
 ```
 
@@ -643,29 +645,39 @@ class Timer extends Model {
     this.elapsed++;
   }
 
-  mount() {
-    const id = setInterval(this.tick, 1000); // methods are auto-bound - no arrow wrapper
-    return () => clearInterval(id);
+  protected new() {
+    this.get(() => {
+      const id = setInterval(this.tick, 1000); // methods are auto-bound - no arrow wrapper
+      return () => clearInterval(id);
+    });
   }
 }
 ```
 
-## Using Model.get() with Computed Hook
+## Deriving from Model.get()
+
+Destructure what renders and derive inline; move a reused derivation to a getter on the Model:
 
 ```tsx
-function OrderSummary() {
-  const summary = Cart.get(($) => ({
-    total: $.total,
-    count: $.count,
-    empty: $.items.length === 0
-  }));
+class Cart extends Model {
+  items = [] as Item[];
 
-  if (summary.empty) return <p>Cart is empty</p>;
-  return (
-    <div>
-      <p>{summary.count} items</p>
-      <p>Total: ${summary.total}</p>
-    </div>
-  );
+  get total() {
+    return this.items.reduce((sum, item) => sum + item.price, 0);
+  }
+}
+
+function OrderSummary() {
+  const { items, total } = Cart.get();
+
+  if (items.length)
+    return (
+      <div>
+        <p>{items.length} items</p>
+        <p>Total: ${total}</p>
+      </div>
+    );
+
+  return <p>Cart is empty</p>;
 }
 ```

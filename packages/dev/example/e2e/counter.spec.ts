@@ -1,5 +1,7 @@
 import { expect, test } from "./fixture";
 
+test.describe.configure({ mode: "serial" });
+
 test("reads a route default's values through its twin, kept current by its calls", async ({ page, open }) => {
   await open("/counter");
   const output = page.locator("output");
@@ -38,7 +40,7 @@ test("shows another tab's change without a call of its own", async ({ page, cont
   await expect.poll(async () => Number(await output.textContent())).toBeGreaterThan(before);
 });
 
-test("gives each use() of a remote class its own server instance, for the life of the page", async ({ page, open }) => {
+test("gives each construction of a remote class its own server instance, for the life of the page", async ({ page, open }) => {
   await open("/counter");
   const left = page.getByRole("button", { name: /^Left/ });
   const right = page.getByRole("button", { name: /^Right/ });

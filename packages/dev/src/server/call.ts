@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import type { State } from "@expressive/mvc";
+import type { Model } from "@expressive/mvc";
 
 import { begin, catchUp, connect, end, frameOf, hold, release, renew, twinOf, type Connection } from "./connection";
 import { construct, seated, within, type Seat } from "./context";
@@ -13,7 +13,7 @@ export interface Exports {
 }
 
 export interface Pooled {
-  Type: State.Type;
+  Type: Model.Type;
   fields: string[];
   methods: Record<string, string>;
 }

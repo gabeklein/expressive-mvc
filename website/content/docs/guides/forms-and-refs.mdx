@@ -106,8 +106,11 @@ The callback receives the previous value too, so transitions are easy to detect:
 
 ```tsx
 class Field extends Model {
+  touched = false;
+
   value = set('', (next, prev) => {
-    if (next === '' && prev !== '') throw false; // prevent clearing
+    if (next.length > 280) throw false; // never storable - write rejected
+    if (next !== '' && prev === '') this.touched = true;
   });
 }
 ```
@@ -121,7 +124,7 @@ Neither needs library machinery - both are ordinary state.
 **Touched** - mark fields on blur, and gate error display on it so pristine fields stay quiet:
 
 ```tsx
-class SignupForm extends Model {
+class Signup extends Component {
   email = '';
   touched = {} as Record<string, boolean>;
 
@@ -133,21 +136,21 @@ class SignupForm extends Model {
     if (!this.email) return 'Email is required.';
     return /^.+@.+\..+$/.test(this.email) ? undefined : 'Enter a valid email.';
   }
-}
 
-function Signup() {
-  const form = SignupForm.use();
+  render() {
+    const { email, touched, emailError } = this;
 
-  return (
-    <>
-      <input
-        value={form.email}
-        onChange={(e) => (form.email = e.target.value)}
-        onBlur={() => form.touch('email')}
-      />
-      {form.touched.email && form.emailError && <p>{form.emailError}</p>}
-    </>
-  );
+    return (
+      <>
+        <input
+          value={email}
+          onChange={(e) => (this.email = e.target.value)}
+          onBlur={() => this.touch('email')}
+        />
+        {touched.email && emailError && <p>{emailError}</p>}
+      </>
+    );
+  }
 }
 ```
 
@@ -185,9 +188,10 @@ class ProfileForm extends Model {
 The `ref` instruction creates a mutable holder that does **not** trigger re-renders on change. It's the `useRef` equivalent, but declared on the class and wired into the state event stream.
 
 ```tsx
-import { Model, ref } from '@expressive/mvc';
+import { Component, ref } from '@expressive/mvc';
 
-class VideoPlayer extends Model {
+class VideoPlayer extends Component {
+  src = '';
   video = ref<HTMLVideoElement>();
 
   play() {
@@ -197,21 +201,21 @@ class VideoPlayer extends Model {
   pause() {
     this.video.current?.pause();
   }
+
+  render() {
+    const { src, video, play, pause } = this;
+
+    return (
+      <div>
+        <video ref={video} src={src} />
+        <button onClick={play}>Play</button>
+        <button onClick={pause}>Pause</button>
+      </div>
+    );
+  }
 }
 
-function Player() {
-  const { video, play, pause } = VideoPlayer.use();
-
-  return (
-    <div>
-      <video ref={video}>
-        <source src="movie.mp4" />
-      </video>
-      <button onClick={play}>Play</button>
-      <button onClick={pause}>Pause</button>
-    </div>
-  );
-}
+<VideoPlayer src="movie.mp4" />;
 ```
 
 > Notice the ref object passes straight to JSX `ref=` - it's callable, so React treats it as a ref callback. [Try it live](/examples/instructions/ref).
@@ -279,9 +283,9 @@ The map function runs lazily once per key and its result is cached. This is the 
 Putting it together - validation, focus, submission state, all in one class:
 
 ```tsx
-import { Model, set, ref } from '@expressive/mvc';
+import { Component, set, ref } from '@expressive/mvc';
 
-class ContactForm extends Model {
+class ContactForm extends Component {
   name = set('', (v) => {
     if (v.length > 50) throw false;
   });
@@ -313,7 +317,8 @@ class ContactForm extends Model {
     this.submitting = true;
     this.error = null;
     try {
-      await api.submitContact(this.get());
+      const { name, email, message } = this;
+      await api.submitContact({ name, email, message });
       this.submitted = true;
     } catch (e) {
       this.error = (e as Error).message;
@@ -321,42 +326,45 @@ class ContactForm extends Model {
       this.submitting = false;
     }
   }
-}
 
-function Contact() {
-  const form = ContactForm.use();
+  render() {
+    const {
+      firstField, name, email, message,
+      error, valid, submitting, submitted, submit
+    } = this;
 
-  if (form.submitted) return <p>Thanks for reaching out.</p>;
+    if (submitted) return <p>Thanks for reaching out.</p>;
 
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        form.submit();
-      }}>
-      <input
-        ref={form.firstField}
-        value={form.name}
-        onChange={(e) => (form.name = e.target.value)}
-      />
-      <input
-        value={form.email}
-        onChange={(e) => (form.email = e.target.value)}
-      />
-      <textarea
-        value={form.message}
-        onChange={(e) => (form.message = e.target.value)}
-      />
-      {form.error && <p className="error">{form.error}</p>}
-      <button disabled={!form.valid || form.submitting}>
-        {form.submitting ? 'Sending...' : 'Send'}
-      </button>
-    </form>
-  );
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}>
+        <input
+          ref={firstField}
+          value={name}
+          onChange={(e) => (this.name = e.target.value)}
+        />
+        <input
+          value={email}
+          onChange={(e) => (this.email = e.target.value)}
+        />
+        <textarea
+          value={message}
+          onChange={(e) => (this.message = e.target.value)}
+        />
+        {error && <p className="error">{error}</p>}
+        <button disabled={!valid || submitting}>
+          {submitting ? 'Sending...' : 'Send'}
+        </button>
+      </form>
+    );
+  }
 }
 ```
 
-> Every concern lives in the class; the component just renders it. And because the class is portable, a reusable `Form` base your whole team extends is one refactor away - that's the [featured/forms](/examples/featured/forms) example. 🚀
+> Every concern lives in the class, and `render()` is the last method in it - a projection of the fields above. And because the class is portable, a reusable `Form` base your whole team extends is one refactor away - that's the [featured/forms](/examples/featured/forms) example. 🚀
 
 <br />
 

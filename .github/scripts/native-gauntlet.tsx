@@ -1,4 +1,5 @@
-import Model, { Component, get, has, map, ref, set } from '@expressive/react';
+import '@expressive/react';
+import { Model, Component, get, has, map, ref, set } from '@expressive/mvc';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -274,7 +275,7 @@ const CHECKS: [string, (report: Report) => Promise<void>][] = [
 ];
 
 function Renderer() {
-  const counter = Counter.use();
+  const counter = Counter.get();
   const renders = useRef(0);
   const reported = useRef(false);
 
@@ -361,7 +362,9 @@ export default function App() {
       <Text testID="summary" style={styles.summary}>
         {done ? failed ? `FAIL ${failed}` : `PASS ${log.length}` : 'running'}
       </Text>
-      <Renderer />
+      <Component for={Counter}>
+        <Renderer />
+      </Component>
       <View style={styles.block}>
         <Text style={styles.heading}>Checks</Text>
         {log.map(([name, pass, detail], i) => (

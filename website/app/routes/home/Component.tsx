@@ -1,4 +1,4 @@
-import Model, { Component as ModelComponent, get, ref } from '@expressive/react';
+import { Model, Component as ModelComponent, get, ref } from '@expressive/mvc';
 import Playground from '@/components/Playground';
 import code from '@/components/Snippet';
 
