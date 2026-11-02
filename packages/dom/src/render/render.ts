@@ -1,13 +1,14 @@
 import { Context } from '@expressive/mvc';
 
 import type { Node as RenderNode } from '../node/vnode';
-import { appearanceRoot } from '../style/protocol';
+import { root } from '../style/stylesheet';
+import type { macro } from '../style/stylesheet';
 import { attach, batched, fragment } from './commits';
 import { range } from './fiber';
 import type { Container, Fiber } from './fiber';
 import { unmountFiber } from './mount';
 import { reconcile } from './reconcile';
-import { consume, renderedAppearance } from './style';
+import { consume, renderedAppearance, rooted } from './style';
 import { settle, suspend, unwait } from './suspense';
 
 const roots = new WeakMap<Container, () => void>();
@@ -15,17 +16,17 @@ const focusing: Element[] = [];
 let passiveRender = false;
 let depth = 0;
 
-function render(node: RenderNode, container: Container): () => void {
+function render(node: RenderNode, container: Container, ...packs: macro.Map[]): () => void {
   roots.get(container)?.();
   container.replaceChildren();
 
   const context = new Context(Context.root);
   const fiber = range('fragment', container, null, context);
+  const appearance = rooted(context, root(packs));
 
   try {
     pass(() => {
-      const appearanceContext = appearanceRoot();
-      reconcile(fiber, node, context, undefined, appearanceContext ? { context: appearanceContext, entries: [] } : undefined);
+      reconcile(fiber, node, context, undefined, appearance && { context: appearance, entries: [] });
     });
   } catch (error) {
     unmountFiber(fiber);

@@ -1,4 +1,4 @@
-import { appearanceSealed, createAppearanceToken, registerAppearance, registerAppearanceRoot, SUBCOMPONENT } from './protocol';
+import { createAppearanceToken, registerAppearance, SUBCOMPONENT } from './protocol';
 import type { AppearanceContext, Block, Condition, Declaration, ResolvedAppearance } from './protocol';
 
 type StyleMap = Record<string, unknown>;
@@ -59,7 +59,6 @@ const rootScopes = new WeakMap<object, StyleScope>();
 const STYLES = Symbol('@expressive/dom.styles');
 const entered = new WeakSet<object>();
 const globals: StyleMap[] = [];
-let globalContext: AppearanceContext | undefined;
 
 function createStyleScope(parent: StyleScope | undefined, value: unknown, label?: string, defines?: boolean): StyleScope | undefined {
   if (!isObject(value)) return parent;
@@ -227,18 +226,22 @@ function style<T extends object>(type: T, rules: StyleMap): T {
   return type;
 }
 
-function macro(rules: StyleMap): StyleMap {
+function pack(rules: StyleMap) {
   for (const key of Object.keys(rules))
     if (key[0] != '_' && key[0] != '$' && typeof rules[key] != 'function')
       throw new Error(`Macro "${key}" must be a function. Use "_${key}" to register a rule.`);
 
-  if (appearanceSealed())
-    throw new Error('Cannot add macros after rendering has started.');
-
-  globals.push(rules);
-  globalContext = undefined;
-  registerAppearanceRoot(() => globalContext ||= extendContext(undefined, globals, 'global', true));
   return rules;
+}
+
+function macro(rules: StyleMap): StyleMap {
+  globals.push(pack(rules));
+  return rules;
+}
+
+function root(packs: readonly StyleMap[]): AppearanceContext | undefined {
+  const maps = [...globals, ...packs.map(pack)];
+  return maps.length ? extendContext(undefined, maps, 'global', true) : undefined;
 }
 
 function createAppearanceRoute(
@@ -526,5 +529,5 @@ function isObject(value: unknown): value is Declaration {
   return !!value && typeof value == 'object' && !Array.isArray(value);
 }
 
-export { createAppearanceRoute, createStyleScope, macro, resolveAppearance, style };
+export { createAppearanceRoute, createStyleScope, macro, resolveAppearance, root, style };
 export type { AppearanceRoute, StyleMap, StyleScope };

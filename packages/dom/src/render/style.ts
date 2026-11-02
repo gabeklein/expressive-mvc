@@ -1,8 +1,11 @@
+import type { Context } from '@expressive/mvc';
+
 import { authoring, authorOf } from '../node/vnode';
 import type { Node as RenderNode } from '../node/vnode';
 import { door } from '../style/claim';
 import type { Appearance, Style } from '../style/claim';
-import { appearanceRoot, enterAppearance } from '../style/protocol';
+import { enterAppearance } from '../style/protocol';
+import type { AppearanceContext } from '../style/protocol';
 import { owner } from './adapter';
 import type { Fiber } from './fiber';
 import { latest } from './hot';
@@ -13,6 +16,17 @@ let touched = false;
 
 const observed = new WeakMap<object, Record<string, any>>();
 const bare = new WeakMap<Fiber, Appearance>();
+const roots = new WeakMap<Context, AppearanceContext | undefined>();
+
+function rooted(context: Context, appearance: AppearanceContext | undefined) {
+  roots.set(context, appearance);
+  return appearance;
+}
+
+function rootOf(context: Context | undefined) {
+  while (context && !roots.has(context)) context = context.parent;
+  return context && roots.get(context);
+}
 
 function observe(props: Record<string, any>) {
   if (!('style' in props)) return props;
@@ -63,7 +77,7 @@ function renderedAppearance(fiber: Fiber): Appearance | undefined {
 
   const style = fiber.props?.style as Style;
   const entries = (fiber.appearance?.entries || []).map(({ hops, style }) => ({ hops: hops + 1, style }));
-  const inherited = fiber.appearance?.context || appearanceRoot();
+  const inherited = fiber.appearance?.context || rootOf(fiber.context);
   const sub = owner(fiber.type);
   const context = sub
     ? enterAppearance(inherited, latest(sub.owner.constructor), sub.key)
@@ -93,4 +107,4 @@ function authored(value: RenderNode, appearance: Appearance | undefined): Appear
   return appearance;
 }
 
-export { authored, consume, observe, renderedAppearance };
+export { authored, consume, observe, renderedAppearance, rooted };

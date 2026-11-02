@@ -103,6 +103,11 @@ function macro(rules: macro.Map): macro.Map {
   return rules;
 }
 
+function root(packs: readonly macro.Map[]) {
+  registerEmitter(emit);
+  return appearance.root(packs);
+}
+
 function emit(block: Block, depth: number, document: Document) {
   let sheet = sheets.get(document);
 
@@ -171,4 +176,4 @@ function serialize(document: Document, declarations: Declaration) {
   return value.cssText;
 }
 
-export { macro, style };
+export { macro, root, style };
