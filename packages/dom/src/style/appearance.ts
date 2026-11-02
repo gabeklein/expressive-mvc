@@ -79,7 +79,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const macros = pack ? Object.create(parent?.macros || null) as StyleMap : parent?.macros || Object.create(null);
 
   for (const key of Object.keys(value)) {
-    const entry = (value as StyleMap)[key];
+    const entry = flatten((value as StyleMap)[key], key);
 
     if (key[0] == '$')
       throw new Error(`Reserved key "${key}" in style map.`);
@@ -135,7 +135,7 @@ function lift(frame: Frame, paths: string[][], body: StyleMap, own: string[], so
   const rest: StyleMap = {};
 
   for (const key of Object.keys(body)) {
-    const entry = body[key];
+    const entry = flatten(body[key], key);
 
     if (key[0] == '_') {
       const name = key.slice(1);
@@ -237,10 +237,12 @@ function style<T extends object>(type: T, rules: StyleMap, pack?: Pack): T {
 
   for (const key of Object.keys(rules))
     if (SUBCOMPONENT.test(key)) {
-      if (!isObject(rules[key]))
+      const body = flatten(rules[key], key);
+
+      if (!isObject(body))
         throw new Error(`Subcomponent "${key}" must be an object.`);
 
-      (styles.subs[key.slice(1)] ||= []).push(rules[key] as StyleMap);
+      (styles.subs[key.slice(1)] ||= []).push(body);
     } else rest[key] = rules[key];
 
   styles.own.push(rest);
@@ -399,7 +401,9 @@ function expand(scope: StyleScope, value: unknown, depths: Depths, frame: Frame)
       return;
     }
 
-    for (const [name, entry] of Object.entries(value as Declaration)) {
+    for (const [name, raw] of Object.entries(value as Declaration)) {
+      const entry = flatten(raw, name);
+
       if (name[0] == '_') {
         if (isObject(entry)) nested[name] = merge(nested[name], entry);
         continue;
@@ -496,9 +500,30 @@ function merge(left: unknown, right: StyleMap): StyleMap {
 function mergeRule(left: StyleMap, right: StyleMap): StyleMap {
   const output = { ...left, ...right };
 
-  for (const key of Object.keys(right))
-    if (isCondition(key) && isObject(left[key]) && isObject(right[key]))
-      output[key] = mergeRule(left[key] as StyleMap, right[key] as StyleMap);
+  for (const key of Object.keys(right)) {
+    if (key[0] != '_' && !isCondition(key)) continue;
+
+    const before = flatten(left[key], key);
+    const after = flatten(right[key], key);
+
+    if (isObject(before) && isObject(after))
+      output[key] = mergeRule(before, after);
+  }
+
+  return output;
+}
+
+function flatten(value: unknown, key: string): unknown {
+  if (!Array.isArray(value) || key[0] != '_' && !isCondition(key)) return value;
+
+  let output: StyleMap = {};
+
+  for (const entry of value) {
+    const map = flatten(entry, key);
+
+    if (isObject(map)) output = mergeRule(output, map);
+    else if (isPresent(map)) return map;
+  }
 
   return output;
 }
