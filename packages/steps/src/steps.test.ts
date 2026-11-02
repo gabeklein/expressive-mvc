@@ -2971,6 +2971,35 @@ describe('slot', () => {
     expect(reads).toHaveBeenCalledTimes(1);
   });
 
+  it('will read max before the instance is ready', async () => {
+    const ready = mockPromise();
+    const scan = vi.fn();
+
+    class Test extends Steps {
+      limit = 1;
+
+      protected async new() {
+        await this.next();
+        await ready;
+      }
+
+      async next() {
+        this.then.slot({ max: ($) => $.limit });
+        this.scan();
+      }
+
+      protected async scan() {
+        scan();
+      }
+    }
+
+    Test.new();
+    await flushMicrotasks();
+
+    expect(scan).toHaveBeenCalledTimes(1);
+    ready.resolve();
+  });
+
   it('will wait after ms before taking a slot', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 

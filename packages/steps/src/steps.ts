@@ -1,5 +1,5 @@
 import { get, has, map, Model, unbind } from '@expressive/mvc';
-import { event, listener, touch } from '@expressive/mvc/observable';
+import { event, listener, touch, watch } from '@expressive/mvc/observable';
 
 type Collection = has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, unknown>;
 type Change = [out: unknown, changed: boolean, undo?: () => void, lost?: boolean];
@@ -860,7 +860,7 @@ class Run extends Model {
 
         if (typeof max == 'function')
           quiet = max.length
-            ? self.get(($) => {
+            ? watch(self, ($) => {
                 limit = max($);
                 pump(gate);
 
