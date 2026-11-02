@@ -40,10 +40,37 @@ Server components compose these normally - fetch on the server, pass serializabl
 | `new()` | ✓ | ✓ |
 | `render()` | ✓ | ✓ |
 | effects declared in `new()` | never | ✓ |
-| `on({ ready })`, `await state.get(() => {})` | never for a host-owned instance | ✓ |
-| `new()`'s returned teardown | never | ✓ |
+| `on({ ready })` | never for a host-owned instance | ✓ |
+| `await state.get(() => {})` | pending for a host-owned instance; rejects once it is destroyed | ✓ |
+| `new()`'s returned teardown | at garbage collection, or when the request's `Context` pops | ✓ |
 
-The last three rows are the rules that matter. There is no unmount on the server, so a resource opened in the `new()` body - a socket, a subscription, a file handle - leaks there. An effect declared in `new()` waits for the owning component to commit, which never happens on the server, so that is where such work belongs.
+The last four rows are the rules that matter. There is no unmount on the server, so a resource opened in the `new()` body - a socket, a subscription, a file handle - outlives the response. An effect declared in `new()` waits for the owning component to commit, which never happens on the server, so that is where such work belongs.
+
+<br />
+
+## Ending a request
+
+Without an unmount, the adapter destroys server-rendered instances whenever they are garbage collected. To end a request at a moment you choose, render it within a `Context` and pop it:
+
+```tsx
+import { Component, Context } from '@expressive/mvc';
+
+const request = Context.root.push();
+
+try {
+  html = renderToString(
+    <Component for={request}>
+      <App />
+    </Component>
+  );
+} finally {
+  request.pop();
+}
+```
+
+`pop()` destroys every instance the render built: `new()` teardowns run, and anything awaiting a host-owned instance's readiness rejects with `is destroyed.` instead of waiting indefinitely. For a streaming render, pop when the stream ends. `Context.root.push()` keeps process-wide instances in reach; pushing Models into the request context provides them to the whole render.
+
+To await readiness during a server render, await an instance the server built itself - `Model.new()`, or one passed as `<Component for={instance}>`. Those never wait on a commit.
 
 <br />
 
