@@ -1309,6 +1309,24 @@ describe('conditions', () => {
     ]);
   });
 
+  it('will merge a scope nested in a condition from a shared map', () => {
+    function Bar() {
+      return <nav _tabs><button _button /></nav>;
+    }
+
+    const wide = '@media (min-width: 600px)';
+    const tabs = { display: 'flex', [wide]: { gap: '2px', _button: { fontSize: '12px', height: '20px' } } };
+
+    style(Bar, { _tabs: [tabs, { display: 'none', [wide]: { display: 'grid', _button: { height: '30px' } } }] });
+
+    place(<Bar />);
+    expect(sheet('Bar')).toEqual([
+      '.Bar_tabs { display: none; }',
+      '@media (min-width: 600px) { .Bar_tabs-media_min-width_600px { gap: 2px; display: grid; } }',
+      '@media (min-width: 600px) { .Bar_nav_button-media_min-width_600px { font-size: 12px; height: 30px; } }'
+    ]);
+  });
+
   it('will split a root state list before grouping', () => {
     function Thumb() {
       return <div><button _delete /></div>;

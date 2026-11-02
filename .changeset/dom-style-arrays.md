@@ -2,4 +2,6 @@
 "@expressive/dom": minor
 ---
 
-A rule, condition or subcomponent body in a `style()` or `macro()` map may be an array of maps, merged in order with falsy entries skipped - `_select: [field, { color: 'red' }]` instead of a spread. Layers now merge a descendant scope rule by rule rather than the later layer replacing it.
+A rule, condition or subcomponent body in a `style()` or `macro()` map may be an array of maps, merged in order at every depth with falsy entries skipped - `_bar: [tabs, { [wide]: { _button: { height: '30px' } } }]` instead of re-spreading each nested level.
+
+Repeated `style()` layers now merge nested `_` scopes rule by rule; previously a later layer's `_item` replaced an earlier layer's.
