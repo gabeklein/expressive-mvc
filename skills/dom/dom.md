@@ -131,7 +131,7 @@ style(Select, {
 - CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`mobile` above) exported from one style module.
 - Layers and subclasses merge a condition's body key by key, like a rule.
 
-The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and`.
+The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and` in that order. The result is a literal type, so `[mobile]` beside other keys stays a typed map; a value typed `number` or `string` rather than a literal, or a `Query`-typed variable, yields a pattern and widens the map again.
 
 ### The web pack
 
@@ -191,7 +191,7 @@ declare module '@expressive/dom' {
 }
 ```
 
-Declaration merging is whole-program, so the augmentation may sit anywhere - above the registration, below it, or in another module. A declared name is checked where it registers *and* where it is called - a macro whose argument is optional also takes `true` (`row: true` calls it with none); an undeclared one still registers, but a typed map cannot call it. With no pack at all, CSS properties, rules and `--variables` work as they are.
+Declaration merging is whole-program, so the augmentation may sit anywhere - above the registration, below it, or in another module. Leave macro return types inferred - `style.Map` depends on `Registry`, so a macro annotated with it makes `Registry` reference itself. A declared name is checked where it registers *and* where it is called - a macro whose argument is optional also takes `true` (`row: true` calls it with none); an undeclared one still registers, but a typed map cannot call it. With no pack at all, CSS properties, rules and `--variables` work as they are.
 
 `className` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 
