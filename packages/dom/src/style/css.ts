@@ -40,7 +40,7 @@ const css = {
     Array.isArray(value)
       ? { width: value[0], height: value[1] }
       : { width: value, height: value }
-} satisfies macro.Map;
+} satisfies Record<string, macro.Fn>;
 
 declare module '@expressive/dom' {
   namespace macro {
