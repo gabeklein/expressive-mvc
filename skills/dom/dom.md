@@ -104,9 +104,20 @@ style(Card, {
 - `$name` is a condition named on the pack ([Conditions](#conditions)); an unknown one throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 
-Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. A pack extends `Style` or another pack; a getter, a `_`/`$` method, or a field other than a `$name` condition throws. Every public method is a macro - keep helpers `private` or at module level. Methods bind to one instance, so a macro may call a private helper on `this`. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place.
+Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. A pack extends `Style` or another pack; a getter, a `_`/`$` method, or a field other than a `$name` condition throws. Every public method is a macro - keep helpers `private` or at module level. Methods bind to one instance, so a macro may call a private helper on `this`. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. `style(X)` with no map joins the pack; subclasses and subcomponents inherit their owner's. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place.
 
 A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down (or calls `super`), then through any `default(value, key)` method, then to the host. `default` is not a map key. An override must stay assignable to the method it overrides - annotate the base's return as `object` when shapes differ. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
+
+**Pack rules.** Maps passed to `use()` hold rules for every component that `style` styles - element defaults (`_button`), app roles (`_muted`), condition blocks (`$dark: { _button: … }`):
+
+```ts
+export const style = App.use(base, {
+  _button: { padding: '8px', color: text },
+  _muted: { color: muted }
+});
+```
+
+They apply only to elements written by a component styled through it, below that component's base declarations and rules; a component's own `_button` merges with the pack's. A declaration outside a rule throws. Each `use()` with maps is a separate scope - one class can serve an app shell and an embeddable widget - while `use()` without maps is shared per class. Children an app passes into a library component keep the app's rules. A component rendering host elements calls `style()`, even with no map - the pack is never inferred from context.
 
 Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule at every depth - conditions and nested `_` scopes included; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead. A rule, condition or subcomponent body may be an array, merged the same way, falsy entries skipped - a shared map with nothing to add needs none (`_tabs: tabs`). Prefer it to spreads for overriding a shared map - a spread replaces each nested level, so every level must re-spread its shared counterpart, and a level later added to the shared map is dropped:
 
@@ -218,7 +229,7 @@ Opinionated, applied by default:
 - `style(X, …)` sits directly below `X`, never gathered at the end of a file. Shared maps go above their first use.
 - One style module defines the app's pack - a `Css` subclass holding its macros - with its named conditions (`$mobile`), and exports its `style` and shared maps typed `style.Map<App>`. Components import `style` from it.
 - A declaration group repeated in two or three places becomes a macro named for its job (`row`, `line`, `ellipsis`), not its CSS. What varies is its argument; an optional one makes it a flag (`row: true`). Fold repeats as you find them.
-- Shared style: a macro groups declarations; a shared map holds rules for one kind of thing - element defaults (`_button`), app roles (`_muted`) - layered as an extra `style()` argument. Share a component before sharing a map.
+- Shared style: a macro groups declarations; app-wide rules - element defaults (`_button`), app roles (`_muted`) - go in `use()`; a shared map for one kind of thing is layered as an extra `style()` argument. Share a component before sharing a map.
 - Values under `Css`: `rem()` / `em()` for type-relative sizes, bare numbers for px, strings for mixed values (`'0 auto'`, `calc()`, `var()`) - not hand-written `'0.2rem 0.45rem'`.
 - App elements are styled with `_rule` attributes; `className` is for classes defined outside `style()`. A hover or media hook class in app CSS belongs in a map as a condition.
 

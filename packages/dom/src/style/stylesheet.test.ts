@@ -319,18 +319,134 @@ describe('Style', () => {
     expect(() => place(createElement(Fallback, {}))).toThrow('"default" is not a style key.');
   });
 
+  it('will create a separate style() for each use() with maps', () => {
+    class Kit extends Style {}
+
+    expect(Kit.use({ _a: { color: 'red' } })).not.toBe(Kit.use({ _a: { color: 'red' } }));
+    expect(Kit.use(false, null)).not.toBe(Kit.use());
+  });
+
+  describe('pack rules', () => {
+    class Kit extends Style {
+      $print = '@media print';
+      row() { return { display: 'flex' }; }
+    }
+
+    const shell = Kit.use(false, {
+      _button: { color: 'blue', row: true },
+      _muted: { opacity: 0.5 },
+      $print: { _muted: { opacity: 1 } }
+    });
+
+    it('will style elements written by components it styles', () => {
+      const Bar = () => createElement('nav', {}, createElement('button', {}), createElement('i', { _muted: true }));
+
+      shell(Bar);
+
+      const root = place(createElement(Bar, {}));
+      const button = root.querySelector('button')!;
+
+      expect(button.className).toBe('Kit_button');
+      expect(getComputedStyle(button).display).toBe('flex');
+      expect(root.querySelector('i')!.className).toBe('Kit_muted Kit_muted-media_print');
+    });
+
+    it('will not style elements of other components', () => {
+      const Plain = () => createElement('button', {});
+      const Other = () => createElement('button', {});
+
+      style(Plain, { padding: '1px' });
+      Kit.use()(Other, { padding: '1px' });
+
+      const root = place(createElement('div', {}, createElement(Plain, {}), createElement(Other, {}), createElement('button', {})));
+
+      expect([...root.querySelectorAll('button')].map((node) => node.className)).toEqual(['Plain', 'Other', '']);
+    });
+
+    it('will sort below the component', () => {
+      const Base = () => createElement('button', {}, createElement('button', { _hot: true }));
+      const Merged = () => createElement('button', {});
+
+      shell(Base, { color: 'red', _hot: { color: 'green' } });
+      shell(Merged, { _button: { color: 'green' } });
+
+      const root = place(createElement('div', {}, createElement(Base, {}), createElement(Merged, {})));
+      const [outer, inner, merged] = [...root.querySelectorAll('button')];
+
+      expect(getComputedStyle(outer).color).toBe('red');
+      expect(getComputedStyle(inner).color).toBe('green');
+      expect(getComputedStyle(merged).color).toBe('green');
+    });
+
+    it('will reach subclasses and subcomponents without a call of their own', () => {
+      class Card extends Component {
+        Title() {
+          return createElement('i', { _muted: true });
+        }
+
+        render() {
+          return createElement('button', {}, createElement(this.Title, {}));
+        }
+      }
+
+      class Wide extends Card {}
+
+      shell(Card);
+
+      const root = place(createElement(Wide, {}));
+
+      expect(root.querySelector('button')!.className).toBe('Kit_button');
+      expect(root.querySelector('i')!.className).toContain('Kit_muted');
+    });
+
+    it('will keep the rules of the component that wrote the children', () => {
+      class Lib extends Style {}
+
+      const Frame = ({ children }: { children?: any }) => createElement('div', {}, createElement('button', {}), children);
+      const Page = () => createElement(Frame, {}, createElement('button', {}));
+
+      Lib.use({ _button: { color: 'red' } })(Frame);
+      shell(Page);
+
+      const [own, passed] = [...place(createElement(Page, {})).querySelectorAll('button')];
+
+      expect(own.className).toBe('Lib_button');
+      expect(passed.className).toBe('Kit_button');
+    });
+
+    it('will keep two scopes of one class apart', () => {
+      const widget = Kit.use({ _button: { color: 'green' } });
+      const Embed = () => createElement('button', {});
+      const Shared = () => null;
+
+      widget(Embed);
+      shell(Shared);
+
+      expect(getComputedStyle(place(createElement(Embed, {})).querySelector('button')!).color).toBe('green');
+      expect(() => widget(Shared)).toThrow('"Shared" is already styled by another pack.');
+    });
+
+    it('will throw for a declaration outside a rule', () => {
+      const Loose = () => createElement('b', {});
+
+      Kit.use({ color: 'red' })(Loose);
+
+      expect(() => place(createElement(Loose, {}))).toThrow('Pack rules must be _rules; "color" would style every root.');
+    });
+  });
+
   it('will throw for a component styled by two packs', () => {
     class Other extends Style {}
     const Twice = () => null;
 
     Sides.use()(Twice, { pill: 1 });
 
-    expect(() => Other.use()(Twice, { color: 'red' })).toThrow('"Twice" is already styled by another Style class.');
+    expect(() => Other.use()(Twice, { color: 'red' })).toThrow('"Twice" is already styled by another pack.');
 
     const Named = Object.assign(() => null, { displayName: 'Shown' });
     Sides.use()(Named, { pill: 1 });
 
-    expect(() => Other.use()(Named, { color: 'red' })).toThrow('"Shown" is already styled by another Style class.');
+    expect(() => Other.use()(Named, { color: 'red' })).toThrow('"Shown" is already styled by another pack.');
   });
 
   it.each([

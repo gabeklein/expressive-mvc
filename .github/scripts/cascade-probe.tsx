@@ -96,9 +96,17 @@ function Tip() {
 
 style(Tip, { _tip: { '::before': { content: '"x"' } } });
 
+const shell = Css.use({ _kbd: { color: 'rgb(20, 20, 20)', padding: '9px' } });
+
+function Keys() {
+  return <kbd _key><kbd /></kbd>;
+}
+
+shell(Keys, { color: 'rgb(21, 21, 21)', _key: { padding: '3px' } });
+
 const root = document.getElementById('app')!;
 
-render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /><Field /></>, root);
+render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /><Field /><Keys /></>, root);
 
 const leaf = root.querySelector('b')!;
 const inline = root.querySelector('i')!;
@@ -132,6 +140,10 @@ const hint = root.querySelector('label b')!;
 check('group state off', getComputedStyle(hint).color, 'rgb(13, 13, 13)');
 root.querySelector<HTMLInputElement>('label input')!.focus();
 check('group state styles descendant', getComputedStyle(hint).color, 'rgb(14, 14, 14)');
+const [key, inner] = root.querySelectorAll('kbd');
+check('base beats pack rule', getComputedStyle(key).color, 'rgb(21, 21, 21)');
+check('own rule beats pack rule', getComputedStyle(key).padding, '3px');
+check('pack rule applies', getComputedStyle(inner).color, 'rgb(20, 20, 20)');
 check('leaf carries door classes', String(leaf.className.includes('-d1') && leaf.className.includes('-d2')), 'true');
 
 document.querySelector('style[data-expressive]')!.remove();
