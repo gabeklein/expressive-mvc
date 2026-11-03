@@ -3,7 +3,7 @@ import type { Context as Contexts, Model, def as instruction } from "@expressive
 interface Routed extends Model {
   base: string;
   to: string;
-  router: { segment(to: string): string };
+  router: { path: string; segment(to: string): string };
 }
 
 interface Definition {
@@ -68,15 +68,15 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
     return Type;
   }
 
-  function pathOf(pattern: string[], name: string): string {
-    const at = location.pathname.split("/").filter(Boolean);
+  function pathOf(pattern: string[], name: string, from = location.pathname): string {
+    const at = from.split("/").filter(Boolean);
     const path = pattern.map((part, i) => {
       if (part === "*") return at.slice(i).join("/");
 
       const matches = at[i] !== undefined && (part.startsWith(":") || part === at[i]);
 
       if (!matches)
-        throw new Error(`${name}() belongs to /${pattern.join("/")} and cannot be called from ${location.pathname}.`);
+        throw new Error(`${name}() belongs to /${pattern.join("/")} and cannot be called from ${from}.`);
 
       return at[i];
     });
@@ -380,14 +380,18 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
 
   function where(twin: Model, name = "default"): string {
     const { pattern, pool, path } = meta.get(twin)!;
-    return pool ? path! : pathOf(pattern, name);
+    return pool ? path! : pathOf(pattern, name, routeOf(twin)?.router.path);
+  }
+
+  function routeOf(twin: Model): Routed | undefined {
+    return Context.get(twin).get(Route, false);
   }
 
   function place(twin: Model): void {
     const info = meta.get(twin)!;
-    const route = Context.get(twin).get(Route, false);
+    const route = routeOf(twin);
 
-    info.path = route ? pathOf(split(route.base + route.router.segment(route.to)), info.name) : "/.expressive/detached";
+    info.path = route ? pathOf(split(route.base + route.router.segment(route.to)), info.name, route.router.path) : "/.expressive/detached";
   }
 
   function split(path: string): string[] {
@@ -398,7 +402,7 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
     const named = {
       [name]: class extends Base {
         constructor(...args: any[]) {
-          super(...args);
+          super(...args, ...(pool ? [] : [(self: Model) => attaching.get(self)]));
 
           const id = `${name}-${uid()}`;
 
@@ -412,13 +416,15 @@ export function runtime(Base: typeof Model, def: typeof instruction, Context: ty
           for (const field of fields) (this as any)[field] = served();
 
           this.set(null, () => leave(this));
-          attaching.set(this, pool ? Promise.resolve().then(() => (place(this), attach(this))) : attach(this));
+          attaching.set(this, Promise.resolve().then(() => (pool && place(this), attach(this))));
         }
       },
     };
     const Twin = named[name];
 
     methods(Twin, ids);
+
+    if (!pool) Twin.on({ catch: (error, kind) => (kind == "setup" ? undefined : error) });
 
     return Twin;
   }
