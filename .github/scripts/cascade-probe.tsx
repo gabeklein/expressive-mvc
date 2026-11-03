@@ -1,8 +1,8 @@
 /** @jsxImportSource @expressive/dom */
 import { Component } from '@expressive/mvc';
-import { Css, render } from '@expressive/dom';
+import { StyleSheet, render } from '@expressive/dom';
 
-const style = Css.use();
+const style = StyleSheet.use();
 
 const out: string[] = [];
 
@@ -96,7 +96,7 @@ function Tip() {
 
 style(Tip, { _tip: { '::before': { content: '"x"' } } });
 
-const shell = Css.use({ _kbd: { color: 'rgb(20, 20, 20)', padding: '9px' } });
+const shell = StyleSheet.use({ _kbd: { color: 'rgb(20, 20, 20)', padding: '9px' } });
 
 function Keys() {
   return <kbd _key><kbd /></kbd>;

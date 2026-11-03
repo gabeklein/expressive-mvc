@@ -4,7 +4,7 @@ import { Component } from '@expressive/mvc';
 
 import { createElement, render } from '../index';
 
-import { Css } from './css';
+import { StyleSheet } from './sheet';
 import { Style, style } from './stylesheet';
 
 class Sides extends Style {
@@ -137,10 +137,10 @@ describe('style map types', () => {
   });
 
   it('will type macros a pack inherits', () => {
-    class App extends Css {}
+    class App extends StyleSheet {}
 
     const map: style.Map<App> = { size: 4 };
-    // @ts-expect-error - not a macro of Css
+    // @ts-expect-error - not a macro of StyleSheet
     const typo: style.Map<App> = { size2: 4 };
 
     expect([map, typo]).toHaveLength(2);
@@ -305,7 +305,10 @@ describe('Style', () => {
 
     class Grid extends Base {
       $gap(value: number) { return super.$gap(value * 4); }
-      spaced(value: number) { return { padding: this.$gap(value) }; }
+      spaced(value: number) {
+        const { $gap } = this;
+        return { padding: $gap(value) };
+      }
     }
 
     const Cell = () => createElement('p', { _cell: true });

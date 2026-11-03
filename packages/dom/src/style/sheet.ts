@@ -22,12 +22,12 @@ function bare(property: string) {
   return known;
 }
 
-function sized(property: string, value: unknown): unknown {
+function sized(property: string, value: unknown, pack: StyleSheet): unknown {
   if (Array.isArray(value))
-    return value.map((entry) => sized(property, entry));
+    return value.map((entry) => sized(property, entry, pack));
 
   return typeof value == 'number' && value !== 0 && !bare(property)
-    ? `${value}px`
+    ? pack.$length(value)
     : value;
 }
 
@@ -35,13 +35,29 @@ function unit(values: number[], suffix: string) {
   return values.map((value) => value + suffix).join(' ');
 }
 
+function ms(value: Time) {
+  return typeof value == 'number' ? `${value}ms` : value;
+}
+
+function time(property: string, value: Time | readonly Time[]) {
+  return { [property]: typeof value == 'object' ? value.map(ms).join(', ') : ms(value) };
+}
+
+type Time = number | string;
+
 /**
- * Web macro pack - pixel units for numbers, the `size` shorthand, and `rem`,
- * `em` and `px` helpers. Extend it, or use it as is with `Css.use()`.
+ * Web macro pack - numbers sized by `$length` (px) where a property needs a
+ * unit, milliseconds for durations and delays, the `size` shorthand, and
+ * `rem`, `em` and `px` helpers. Extend it, or use it as is with
+ * `StyleSheet.use()`.
  */
-class Css extends Style {
+class StyleSheet extends Style {
   default(value: unknown, key: string) {
-    return { [key]: sized(key, value) };
+    return { [key]: sized(key, value, this) };
+  }
+
+  $length(value: number) {
+    return `${value}px`;
   }
 
   $rem(...values: number[]) {
@@ -61,6 +77,22 @@ class Css extends Style {
       ? { width: value[0], height: value[1] }
       : { width: value, height: value };
   }
+
+  transitionDuration(value: Time | readonly Time[]) {
+    return time('transitionDuration', value);
+  }
+
+  transitionDelay(value: Time | readonly Time[]) {
+    return time('transitionDelay', value);
+  }
+
+  animationDuration(value: Time | readonly Time[]) {
+    return time('animationDuration', value);
+  }
+
+  animationDelay(value: Time | readonly Time[]) {
+    return time('animationDelay', value);
+  }
 }
 
-export { Css };
+export { StyleSheet };

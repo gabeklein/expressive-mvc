@@ -178,8 +178,12 @@ function layers(type: Function) {
       if (typeof value != 'function' || key[0] == '_')
         throw new Error(`"${key}" on ${type.name} must be a method with a bare name.`);
 
-      if (key[0] == '$') helpers[key.slice(1)] ||= value.bind(instance);
-      else map[key] = value.bind(instance);
+      if (key[0] != '$') map[key] = value.bind(instance);
+      else if (!Object.hasOwn(instance, key)) {
+        const helper = value.bind(instance);
+        helpers[key.slice(1)] = helper;
+        Object.defineProperty(instance, key, { value: helper });
+      }
     }
 
     maps.unshift(map);

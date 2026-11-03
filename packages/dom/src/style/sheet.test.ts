@@ -2,12 +2,20 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { Css } from './css';
+import { createElement, render } from '../index';
 
-const css = new Css();
+import { StyleSheet } from './sheet';
+
+const css = new StyleSheet();
 const glob = (value: unknown, key: string) => css.default(value, key);
 
-describe('css pack', () => {
+function place(node: any) {
+  const root = document.body.appendChild(document.createElement('main'));
+  render(node, root);
+  return root;
+}
+
+describe('StyleSheet', () => {
   it('will append px only where the CSSOM rejects a bare number', () => {
     expect(glob(8, 'paddingTop')).toEqual({ paddingTop: '8px' });
     expect(glob(10, 'zIndex')).toEqual({ zIndex: 10 });
@@ -32,6 +40,32 @@ describe('css pack', () => {
     expect(css.$rem(0.2, 0.45)).toBe('0.2rem 0.45rem');
     expect(css.$em(1.5)).toBe('1.5em');
     expect(css.$px(0, 4, 8)).toBe('0px 4px 8px');
+  });
+
+  it('will size lengths through an overridden $length', () => {
+    class Rem extends StyleSheet {
+      $length(value: number) {
+        const { $rem } = this;
+        return $rem(value);
+      }
+    }
+
+    const Box = () => createElement('div', {});
+
+    Rem.use()(Box, { paddingTop: 8, zIndex: 2, margin: [16, 0] });
+
+    const node = place(createElement(Box, {})).querySelector('div')!;
+
+    expect(getComputedStyle(node).paddingTop).toBe('128px');
+    expect(getComputedStyle(node).zIndex).toBe('2');
+    expect(getComputedStyle(node).marginTop).toBe('256px');
+  });
+
+  it('will give durations and delays milliseconds', () => {
+    expect(css.transitionDuration(200)).toEqual({ transitionDuration: '200ms' });
+    expect(css.transitionDelay(0)).toEqual({ transitionDelay: '0ms' });
+    expect(css.animationDuration([200, '1s'])).toEqual({ animationDuration: '200ms, 1s' });
+    expect(css.animationDelay('2s')).toEqual({ animationDelay: '2s' });
   });
 
   it('will decide a property once and stay consistent', () => {

@@ -1,7 +1,7 @@
 import './render/adapter';
 import './jsx-runtime';
 
-export { Css } from './style/css';
+export { StyleSheet } from './style/sheet';
 export { Style, style } from './style/stylesheet';
 export { render } from './render/render';
 export { Fragment, Portal, createElement } from './node/vnode';
