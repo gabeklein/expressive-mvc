@@ -29,7 +29,7 @@ class Base extends Style {
 
 class Pack extends Base {
   layered(value: unknown) { return { layered: value == 'brand' ? 'purple' : value }; }
-  '*'(value: unknown, key: string) { return { [key]: value === 3 ? '3px' : value }; }
+  default(value: unknown, key: string) { return { [key]: value === 3 ? '3px' : value }; }
 }
 
 const style = Pack.use();

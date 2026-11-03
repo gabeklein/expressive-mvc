@@ -36,7 +36,7 @@ function sized(property: string, value: unknown): unknown {
  * it, or use it as is with `Css.use()`.
  */
 class Css extends Style {
-  '*'(value: unknown, key: string) {
+  default(value: unknown, key: string) {
     return { [key]: sized(key, value) };
   }
 

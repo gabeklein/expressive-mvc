@@ -67,7 +67,7 @@ style(Button, {
 });
 ```
 
-Register styles before the component's first render. A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down, then through any `'*'` method. Unhandled keys reach the host, which joins arrays and rejects functions and objects - units belong to a macro, never a guess.
+Register styles before the component's first render. A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down, then through any `default(value, key)` method. Unhandled keys reach the host, which joins arrays and rejects functions and objects - units belong to a macro, never a guess.
 
 Inline style always beats classes; among classes, a caller's rule beats the callee's, and a rule carried through more component `style` props wins - independent of render order. `false`, `null`, and `undefined` omit an entry; `0` remains a macro argument.
 

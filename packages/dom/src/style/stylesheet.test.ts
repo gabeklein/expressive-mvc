@@ -12,7 +12,7 @@ class Sides extends Style {
   row(gap?: string) { return { display: 'flex', gap }; }
   pill(value: number) { return { marginLeft: `${value}px` }; }
   flat() { return { display: 'flex' }; }
-  '*'(value: unknown, key: string) { return { [key]: value }; }
+  default(value: unknown, key: string) { return { [key]: value }; }
 }
 
 type Map = style.Map<Sides>;
@@ -95,8 +95,8 @@ describe('style map types', () => {
     const flag: Map = { pill: true };
     // @ts-expect-error - edge declared from its implementation
     const wrong: Map = { edge: 'Bottom' };
-    // @ts-expect-error - '*' is not a macro
-    const fallback: Map = { '*': true };
+    // @ts-expect-error - default is not a macro
+    const fallback: Map = { default: true };
     const bare: Map = { flat: true };
     // @ts-expect-error - a macro without a parameter only takes true
     const value: Map = { flat: 'x' };
@@ -189,11 +189,11 @@ describe('Style', () => {
 
   it('will layer a subclass pack over the pack of its base', () => {
     class Cool extends Style {
-      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'blue' : value }; }
+      default(value: unknown, key: string) { return { [key]: value == 'tone' ? 'blue' : value }; }
     }
 
     class Loud extends Style {
-      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'red' : value == 'blue' ? 'green' : value }; }
+      default(value: unknown, key: string) { return { [key]: value == 'tone' ? 'red' : value == 'blue' ? 'green' : value }; }
     }
 
     class Base extends Component {
@@ -263,6 +263,14 @@ describe('Style', () => {
     expect(left('b')).toBe('20px');
     expect(left('u')).toBe('4px');
     expect(left('i')).toBe('5px');
+  });
+
+  it('will throw for default as a map key', () => {
+    const Fallback = () => createElement('i', {});
+
+    Sides.use()(Fallback, { default: 1 } as Map);
+
+    expect(() => place(createElement(Fallback, {}))).toThrow('"default" is not a style key.');
   });
 
   it('will throw for a component styled by two packs', () => {

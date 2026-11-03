@@ -11,7 +11,7 @@ type Settable = {
 }[Member];
 
 type Macro<T> = Extract<
-  Exclude<{ [K in keyof T]-?: T[K] extends (...args: any[]) => unknown ? K : never }[keyof T], '*'>,
+  Exclude<{ [K in keyof T]-?: T[K] extends (...args: any[]) => unknown ? K : never }[keyof T], 'default'>,
   string
 >;
 
@@ -70,7 +70,7 @@ declare namespace style {
 
 /**
  * Base class for a macro pack. Each method is a macro, layered over the class
- * it extends; `'*'` handles any key no macro owns.
+ * it extends; `default` handles any key no macro owns.
  */
 class Style {
   /** The `style()` for this pack, created once per class. */

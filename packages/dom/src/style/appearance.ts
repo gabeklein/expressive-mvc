@@ -368,7 +368,7 @@ function handlers(scope: StyleScope, name: string) {
   if (!chain) {
     chain = Object.assign([], { named: 0 });
 
-    for (const key of [name, '*']) {
+    for (const key of [name, 'default']) {
       for (let macros: object | null = scope.macros; macros; macros = Object.getPrototypeOf(macros)) {
         const own = Object.getOwnPropertyDescriptor(macros, key);
         if (own) chain.push(own.value as Macro);
@@ -414,6 +414,9 @@ function expand(scope: StyleScope, value: unknown, depths: Depths, frame: Frame)
         else if (isPresent(entry)) throw new Error(`Condition "${name}" must be an object.`);
         continue;
       }
+
+      if (name == 'default')
+        throw new Error('"default" is not a style key.');
 
       const chain = handlers(scope, name);
       const depth = depths.get(name) || 0;
