@@ -15,7 +15,9 @@ type Macro<T> = Extract<
   string
 >;
 
-type Argument<F> = F extends (value: infer A, ...rest: any[]) => any ? A : never;
+type Argument<F> = F extends (...args: infer P) => any
+  ? P extends [] ? true : P[0] | (undefined extends P[0] ? true : never)
+  : never;
 
 type Key<T> =
   | style.Property
@@ -51,7 +53,7 @@ declare namespace style {
   type Map<T = {}> = {
     [K in Key<T>]?:
       K extends `_${string}` | Condition ? Map<T> :
-      K extends Macro<T> ? Argument<T[K]> | (undefined extends Argument<T[K]> ? true : never) :
+      K extends Macro<T> ? Argument<T[K]> :
       Value;
   };
 
@@ -115,8 +117,10 @@ function layers(type: Function): appearance.Pack | undefined {
   const instance = new (type as new () => object)();
   const maps: appearance.StyleMap[] = [];
 
-  for (const key of Object.keys(instance))
-    throw new Error(`Field "${key}" on ${type.name} is reserved. Define macros as methods.`);
+  const [field] = Object.keys(instance);
+
+  if (field)
+    throw new Error(`Field "${field}" on ${type.name} is reserved. Define macros as methods.`);
 
   for (let proto = type.prototype; proto !== Style.prototype; proto = Object.getPrototypeOf(proto)) {
     const map: appearance.StyleMap = {};

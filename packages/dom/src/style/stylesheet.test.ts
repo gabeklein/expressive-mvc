@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest';
 
+import { Component } from '@expressive/mvc';
+
 import { createElement, render } from '../index';
 
+import { Css } from './css';
 import { Style, style } from './stylesheet';
 
 class Sides extends Style {
   edge(side: 'Top' | 'Left') { return { [`border${side}`]: '1px solid' }; }
   row(gap?: string) { return { display: 'flex', gap }; }
   pill(value: number) { return { marginLeft: `${value}px` }; }
+  flat() { return { display: 'flex' }; }
   '*'(value: unknown, key: string) { return { [key]: value }; }
 }
 
@@ -70,8 +74,21 @@ describe('style map types', () => {
     const wrong: Map = { edge: 'Bottom' };
     // @ts-expect-error - '*' is not a macro
     const fallback: Map = { '*': true };
+    const bare: Map = { flat: true };
+    // @ts-expect-error - a macro without a parameter only takes true
+    const value: Map = { flat: 'x' };
 
-    expect([map, flag, wrong, fallback]).toHaveLength(4);
+    expect([map, flag, wrong, fallback, bare, value]).toHaveLength(6);
+  });
+
+  it('will type macros a pack inherits', () => {
+    class App extends Css {}
+
+    const map: style.Map<App> = { size: 4 };
+    // @ts-expect-error - not a macro of Css
+    const typo: style.Map<App> = { size2: 4 };
+
+    expect([map, typo]).toHaveLength(2);
   });
 
   it('will type style() from its pack', () => {
@@ -128,6 +145,42 @@ describe('Style', () => {
     expect(getComputedStyle(node).color).toBe('red');
   });
 
+  it('will extend a macro it overrides through super', () => {
+    class Wide extends Sides {
+      pill(value: number) { return { ...super.pill(value), paddingLeft: '1px' }; }
+    }
+
+    const Pill = () => createElement('i', {});
+    Wide.use()(Pill, { pill: 3 });
+
+    const node = place(createElement(Pill, {})).querySelector('i')!;
+
+    expect(getComputedStyle(node).marginLeft).toBe('3px');
+    expect(getComputedStyle(node).paddingLeft).toBe('1px');
+  });
+
+  it('will layer a subclass pack over the pack of its base', () => {
+    class Loud extends Style {
+      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'red' : value }; }
+    }
+
+    class Base extends Component {
+      render() {
+        return createElement('b', { _label: true });
+      }
+    }
+
+    class Derived extends Base {}
+
+    Sides.use()(Base, { _label: { pill: 2 } });
+    Loud.use()(Derived, { _label: { color: 'tone' } });
+
+    const node = place(createElement(Derived, {})).querySelector('b')!;
+
+    expect(getComputedStyle(node).color).toBe('red');
+    expect(getComputedStyle(node).marginLeft).toBe('2px');
+  });
+
   it('will throw for a component styled by two packs', () => {
     class Other extends Style {}
     const Twice = () => null;
@@ -135,6 +188,11 @@ describe('Style', () => {
     Sides.use()(Twice, { pill: 1 });
 
     expect(() => Other.use()(Twice, { color: 'red' })).toThrow('"Twice" is already styled by another Style class.');
+
+    const Named = Object.assign(() => null, { displayName: 'Shown' });
+    Sides.use()(Named, { pill: 1 });
+
+    expect(() => Other.use()(Named, { color: 'red' })).toThrow('"Shown" is already styled by another Style class.');
   });
 
   it.each([

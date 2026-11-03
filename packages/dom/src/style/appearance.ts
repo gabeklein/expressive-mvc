@@ -41,7 +41,6 @@ interface StyleScope {
   label: string;
   labels: Record<string, string>;
   local: readonly string[];
-  names: readonly string[];
   own: Declaration;
   pack?: Pack;
   routes: Map<string, AppearanceRoute>;
@@ -111,9 +110,6 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
     } else base[key] = entry;
   }
 
-  const names = parent
-    ? [...parent.names, ...own.filter((name) => !parent.names.includes(name))]
-    : own;
   const before = parent ? parent.local : [];
   const local = pack ? before : [...before, ...own.filter((name) => !before.includes(name))];
   const rules = Object.create(parent?.rules || null) as StyleMap;
@@ -133,7 +129,6 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
     label: scopeLabel,
     labels,
     local,
-    names,
     own: base,
     pack: pack || parent?.pack,
     routes: new Map(),
@@ -201,7 +196,7 @@ function style<T extends object>(type: T, rules: StyleMap, pack?: Pack): T {
   if (entered.has(type)) throw new Error('Cannot add styles after a component has rendered.');
 
   if (!Object.hasOwn(type, STYLES)) {
-    const label = (type as { displayName?: string }).displayName || (type as Function).name;
+    const name = label(type);
 
     Object.defineProperty(type, STYLES, { configurable: true, value: { own: [], subs: {} } });
     registerAppearance(type, (parent, key) => {
@@ -212,9 +207,9 @@ function style<T extends object>(type: T, rules: StyleMap, pack?: Pack): T {
       if (!maps) return parent;
 
       if (pack && (parent?.scope as StyleScope | undefined)?.pack !== pack)
-        parent = extendContext(parent, pack.layers, label, pack);
+        parent = extendContext(parent, pack.layers, name, pack);
 
-      return extendContext(parent, maps, key ? `${label}_${key}` : label);
+      return extendContext(parent, maps, key ? `${name}_${key}` : name);
     });
   }
 
@@ -222,7 +217,7 @@ function style<T extends object>(type: T, rules: StyleMap, pack?: Pack): T {
   const rest: StyleMap = {};
 
   if (pack && styles.pack && styles.pack !== pack)
-    throw new Error(`"${(type as Function).name}" is already styled by another Style class.`);
+    throw new Error(`"${label(type)}" is already styled by another Style class.`);
 
   styles.pack ||= pack;
 
@@ -253,10 +248,8 @@ function createAppearanceRoute(
   const present = new Set(keys.map((key) => key.slice(1)));
   const flags: string[] = [];
 
-  for (const name of scope.names) {
-    if (!present.has(name) || name == tag) continue;
-    if (isObject(scope.rules[name])) flags.push(name);
-  }
+  for (const name of scope.local)
+    if (present.has(name) && name != tag) flags.push(name);
 
   const route: AppearanceRoute = {
     flags,
@@ -311,7 +304,7 @@ function expandRule(scope: StyleScope, name: string) {
   if (!expansion) {
     const frame: Frame = { name: `${scope.labels[name]}_${name}` };
     expansion = expand(scope, scope.rules[name], new Map(), frame);
-    expansion.blocks = toBlocks(expansion, frame, ordinal(scope, name));
+    expansion.blocks = toBlocks(expansion, frame, scope.local.indexOf(name));
 
     scope.expansions.set(name, expansion);
   }
@@ -348,10 +341,6 @@ function hoist(frame: Frame, condition: string) {
   const key = `\0${ancestors.size}`;
   ancestors.set(key, { on: frame.group, state: condition });
   return key;
-}
-
-function ordinal(scope: StyleScope, name: string) {
-  return scope.local.indexOf(name);
 }
 
 function handlers(scope: StyleScope, name: string) {
@@ -498,6 +487,10 @@ function mergeRule(left: StyleMap, right: StyleMap): StyleMap {
       output[key] = mergeRule(left[key] as StyleMap, right[key] as StyleMap);
 
   return output;
+}
+
+function label(type: object) {
+  return (type as { displayName?: string }).displayName || (type as Function).name;
 }
 
 function isPresent(value: unknown) {
