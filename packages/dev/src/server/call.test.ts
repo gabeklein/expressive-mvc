@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { Readable } from "node:stream";
 
 import { get, Model } from "@expressive/mvc";
 
@@ -14,20 +13,18 @@ const TAB = crypto.randomUUID();
 function request(url: string, name: string | undefined, body: string, type = "application/json", extra: Record<string, string> = {}) {
   const headers: Record<string, string> = { "content-type": type, "x-expressive-connection": TAB, ...extra };
   if (name) headers["x-expressive-call"] = name;
-  return Object.assign(Readable.from([body]), { method: "POST", url, headers });
+  return { method: "POST", url, headers, body };
+}
+
+function fetched({ method, url, headers, body }: ReturnType<typeof request>) {
+  return new Request(`http://localhost${url}`, { method, headers, body: method === "GET" ? undefined : body });
 }
 
 async function sent(endpoints: Endpoint[], req: ReturnType<typeof request>, dev = false, seats?: Seats) {
-  const headers: Record<string, string> = {};
-  const res = {
-    statusCode: 0,
-    body: undefined as string | undefined,
-    setHeader(name: string, value: string) { headers[name.toLowerCase()] = value; },
-    end(body?: string) { this.body = body; },
-  };
+  const response = await dispatch(fetched(req), () => endpoints, dev, seats);
+  const text = await response.text();
 
-  await dispatch(req as any, res as any, () => endpoints, dev, seats);
-  return { status: res.statusCode, body: res.body && JSON.parse(res.body), headers };
+  return { status: response.status, body: text ? JSON.parse(text) : undefined, headers: Object.fromEntries(response.headers) };
 }
 
 async function send(endpoints: Endpoint[], req: ReturnType<typeof request>, dev = false, seats?: Seats) {
@@ -103,10 +100,10 @@ describe("call dispatch", () => {
   });
 
   it("will identify a call by method, name header and JSON body", () => {
-    expect(isCall(request("/tally", "add", "[]") as any)).toBe(true);
-    expect(isCall(request("/tally", undefined, "[]") as any)).toBe(false);
-    expect(isCall(request("/tally", "add", "[]", "text/plain") as any)).toBe(false);
-    expect(isCall(Object.assign(request("/tally", "add", "[]"), { method: "GET" }) as any)).toBe(false);
+    expect(isCall(fetched(request("/tally", "add", "[]")))).toBe(true);
+    expect(isCall(fetched(request("/tally", undefined, "[]")))).toBe(false);
+    expect(isCall(fetched(request("/tally", "add", "[]", "text/plain")))).toBe(false);
+    expect(isCall(fetched(Object.assign(request("/tally", "add", "[]"), { method: "GET" })))).toBe(false);
   });
 
   it("will reply 404 alike to an unknown path, an unknown name and a non-function", async () => {
@@ -303,7 +300,7 @@ describe("seat dispatch", () => {
   });
 
   it("will identify a pull as a call", () => {
-    expect(isCall(request("/tally", undefined, "[]", "application/json", { "x-expressive-get": "default" }) as any)).toBe(true);
+    expect(isCall(fetched(request("/tally", undefined, "[]", "application/json", { "x-expressive-get": "default" })))).toBe(true);
   });
 });
 
@@ -315,8 +312,8 @@ describe("pool dispatch", () => {
     static key() {
       const { headers } = Current.get().request;
 
-      if (headers["x-deny"]) throw new Error("Denied");
-      return headers["x-user"] as string | undefined;
+      if (headers.get("x-deny")) throw new Error("Denied");
+      return headers.get("x-user") ?? undefined;
     }
   }
 
