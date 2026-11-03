@@ -161,7 +161,7 @@ describe('appearance', () => {
     expect(getComputedStyle(node).color).toBe('purple');
   });
 
-  it('will take descendant scopes from the token with the most doors', () => {
+  it('will not take descendant scopes from forwarded tokens', () => {
     const handles: any[] = [];
 
     function Capture({ style: forwarded }: { style?: any }) {
@@ -188,8 +188,10 @@ describe('appearance', () => {
 
     const [deep, shallow] = handles;
     const root = place(<section style={{ ...deep, ...shallow }}><strong>deep</strong></section>);
+    const { color } = getComputedStyle(root.querySelector('strong')!);
 
-    expect(getComputedStyle(root.querySelector('strong')!).color).toBe('red');
+    expect(color).not.toBe('red');
+    expect(color).not.toBe('blue');
   });
 
   it('will compose rules from macros without expanding a macro into itself', () => {
@@ -263,7 +265,7 @@ describe('appearance', () => {
     const root = place(<Parent />);
     expect(root.querySelector('section')?.className).toBe('');
     expect(getComputedStyle(root.querySelector('span')!).color).toBe('red');
-    expect(getComputedStyle(root.querySelector('b')!).fontWeight).toBe('700');
+    expect(getComputedStyle(root.querySelector('b')!).fontWeight).not.toBe('700');
     expect(getComputedStyle(root.querySelector('i')!).color).toBe('blue');
   });
 
@@ -518,24 +520,25 @@ describe('appearance', () => {
     expect(getComputedStyle(leaf).color).not.toBe('red');
   });
 
-  it('will carry a descendant scope one component deep', () => {
+  it('will not carry a descendant scope into a child component', () => {
     function Deep() {
       return <em>deep</em>;
     }
 
-    function Mid() {
-      return <><q _mark>mid</q><Deep /></>;
+    function Top() {
+      return <Mid _wrap><s _mark>own</s></Mid>;
     }
 
-    function Top() {
-      return <Mid _wrap />;
+    function Mid({ children }: { children?: Component.Node }) {
+      return <><q _mark>mid</q><Deep />{children}</>;
     }
 
     style(Top, { _wrap: { _mark: { color: 'orange' }, _em: { color: 'teal' } } });
 
     const root = place(<Top />);
 
-    expect(getComputedStyle(root.querySelector('q')!).color).toBe('orange');
+    expect(getComputedStyle(root.querySelector('s')!).color).toBe('orange');
+    expect(getComputedStyle(root.querySelector('q')!).color).not.toBe('orange');
     expect(getComputedStyle(root.querySelector('em')!).color).not.toBe('teal');
   });
 

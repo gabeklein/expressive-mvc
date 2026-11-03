@@ -132,14 +132,19 @@ describe('Style', () => {
     expect(getComputedStyle(place(createElement(Bare, {})).querySelector('i')!).color).toBe('red');
   });
 
-  it('will keep its macros under a caller without them', () => {
-    const Card = () => createElement('b', { _label: true });
-    const Parent = () => createElement(Card, { _card: true });
+  it('will layer its macros over a base styled without them', () => {
+    class Base extends Component {
+      render() {
+        return createElement('b', { _label: true });
+      }
+    }
 
-    Sides.use()(Card, { _label: { pill: 2 } });
-    style(Parent, { _card: { _label: { color: 'red' } } });
+    class Derived extends Base {}
 
-    const node = place(createElement(Parent, {})).querySelector('b')!;
+    style(Base, { _label: { color: 'red' } });
+    Sides.use()(Derived, { _label: { pill: 2 } });
+
+    const node = place(createElement(Derived, {})).querySelector('b')!;
 
     expect(getComputedStyle(node).marginLeft).toBe('2px');
     expect(getComputedStyle(node).color).toBe('red');
