@@ -27,6 +27,13 @@ describe('css pack', () => {
     expect(css.size([1, 2])).toEqual({ width: 1, height: 2 });
   });
 
+  it('will join numbers with a unit', () => {
+    expect(css.$rem(0.45)).toBe('0.45rem');
+    expect(css.$rem(0.2, 0.45)).toBe('0.2rem 0.45rem');
+    expect(css.$em(1.5)).toBe('1.5em');
+    expect(css.$px(0, 4, 8)).toBe('0px 4px 8px');
+  });
+
   it('will decide a property once and stay consistent', () => {
     expect(glob(1, 'marginTop')).toEqual({ marginTop: '1px' });
     expect(glob(2, 'marginTop')).toEqual({ marginTop: '2px' });

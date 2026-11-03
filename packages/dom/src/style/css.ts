@@ -31,13 +31,29 @@ function sized(property: string, value: unknown): unknown {
     : value;
 }
 
+function unit(values: number[], suffix: string) {
+  return values.map((value) => value + suffix).join(' ');
+}
+
 /**
- * Web macro pack - pixel units for numbers and the `size` shorthand. Extend
- * it, or use it as is with `Css.use()`.
+ * Web macro pack - pixel units for numbers, the `size` shorthand, and `rem`,
+ * `em` and `px` helpers. Extend it, or use it as is with `Css.use()`.
  */
 class Css extends Style {
   default(value: unknown, key: string) {
     return { [key]: sized(key, value) };
+  }
+
+  $rem(...values: number[]) {
+    return unit(values, 'rem');
+  }
+
+  $em(...values: number[]) {
+    return unit(values, 'em');
+  }
+
+  $px(...values: number[]) {
+    return unit(values, 'px');
   }
 
   size(value: style.Value) {

@@ -4,6 +4,7 @@ import type { AppearanceContext, Block, Condition, Declaration, ResolvedAppearan
 type StyleMap = Record<string, unknown>;
 
 interface Pack {
+  helpers: object;
   label: string;
   layers: readonly StyleMap[];
   rules: readonly StyleMap[];

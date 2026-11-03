@@ -11,7 +11,7 @@ type Settable = {
 }[Member];
 
 type Macro<T> = Extract<
-  Exclude<{ [K in keyof T]-?: T[K] extends (...args: any[]) => unknown ? K : never }[keyof T], 'default'>,
+  Exclude<{ [K in keyof T]-?: T[K] extends (...args: any[]) => unknown ? K : never }[keyof T], 'default' | `$${string}`>,
   string
 >;
 
@@ -68,9 +68,17 @@ declare namespace style {
       Value;
   };
 
+  /** The `$name` methods of `T`, by name, as a function map receives them. */
+  type Helpers<T> = {
+    [K in keyof T as K extends `$${infer N}` ? T[K] extends (...args: any[]) => unknown ? N : never : never]: T[K];
+  };
+
+  /** A map, or a function returning one from the pack's helpers. */
+  type Source<T> = Map<T> | ((helpers: Helpers<T>) => Map<T> | false | null | undefined) | false | null | undefined;
+
   /** A `style()` whose maps may call the macros of `T`. */
   interface Apply<T> {
-    <C extends object>(type: C, ...maps: (Map<T> | false | null | undefined)[]): C;
+    <C extends object>(type: C, ...maps: Source<T>[]): C;
   }
 }
 
@@ -87,7 +95,7 @@ class Style {
    */
   static use<T extends Style>(
     this: new () => T,
-    ...rules: (style.Map<T> | false | null | undefined)[]
+    ...rules: style.Source<T>[]
   ): style.Apply<T> {
     const shared = !rules.length;
     let apply = shared ? bound.get(this) : undefined;
@@ -96,11 +104,10 @@ class Style {
       let pack: appearance.Pack | undefined;
 
       apply = (type, ...maps) => {
-        pack ||= {
-          label: this.name,
-          layers: layers(this),
-          rules: rules.filter(Boolean) as appearance.StyleMap[]
-        };
+        if (!pack) {
+          const { helpers, maps } = layers(this);
+          pack = { helpers, label: this.name, layers: maps, rules: resolve(rules, helpers) };
+        }
 
         return register(type, maps, pack);
       };
@@ -123,21 +130,28 @@ const sheets = new WeakMap<Document, Sheet>();
 const bound = new WeakMap<Function, style.Apply<any>>();
 let groups = 0;
 
-function style<T extends object>(type: T, ...maps: (style.Map | false | null | undefined)[]): T {
+function style<T extends object>(type: T, ...maps: style.Source<{}>[]): T {
   return register(type, maps);
 }
 
 function register<T extends object>(type: T, maps: readonly unknown[], pack?: appearance.Pack): T {
-  const present = maps.filter(Boolean) as appearance.StyleMap[];
+  const present = resolve(maps, pack ? pack.helpers : {});
 
   for (const rules of present.length ? present : [{}]) appearance.style(type, rules, pack);
   registerEmitter(emit);
   return type;
 }
 
+function resolve(maps: readonly unknown[], helpers: object) {
+  return maps
+    .map((map) => typeof map == 'function' ? map(helpers) : map)
+    .filter(Boolean) as appearance.StyleMap[];
+}
+
 function layers(type: Function) {
   const instance = new (type as new () => object)();
   const maps: appearance.StyleMap[] = [];
+  const helpers: Record<string, Function> = {};
   const conditions: appearance.StyleMap = {};
 
   for (const [key, value] of Object.entries(instance)) {
@@ -158,16 +172,20 @@ function layers(type: Function) {
 
       const { value } = Object.getOwnPropertyDescriptor(proto, key)!;
 
-      if (typeof value != 'function' || key[0] == '_' || key[0] == '$')
+      if (key == '$')
+        throw new Error(`"$" on ${type.name} is reserved.`);
+
+      if (typeof value != 'function' || key[0] == '_')
         throw new Error(`"${key}" on ${type.name} must be a method with a bare name.`);
 
-      map[key] = value.bind(instance);
+      if (key[0] == '$') helpers[key.slice(1)] ||= value.bind(instance);
+      else map[key] = value.bind(instance);
     }
 
     maps.unshift(map);
   }
 
-  return maps;
+  return { helpers, maps };
 }
 
 function emit(block: Block, depth: number, document: Document) {

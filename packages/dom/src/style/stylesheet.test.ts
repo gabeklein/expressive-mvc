@@ -14,6 +14,7 @@ class Sides extends Style {
   row(gap?: string) { return { display: 'flex', gap }; }
   pill(value: number) { return { marginLeft: `${value}px` }; }
   flat() { return { display: 'flex' }; }
+  $gap(value: number) { return `${value * 2}px`; }
   default(value: unknown, key: string) { return { [key]: value }; }
 }
 
@@ -79,6 +80,22 @@ describe('style map types', () => {
     const plain: style.Map = { $wide: { color: 'red' } };
 
     expect([map, bare, plain]).toHaveLength(3);
+  });
+
+  it('will type function maps from the pack helpers', () => {
+    const apply = Sides.use();
+    const type = {};
+
+    apply(type, ({ gap }) => ({ padding: gap(2) }), false);
+    // @ts-expect-error - gap takes a number
+    apply(type, ({ gap }) => ({ padding: gap('x') }));
+    // @ts-expect-error - no helper named wide
+    apply(type, ({ wide }) => ({ padding: wide }));
+    // @ts-expect-error - a helper is not a macro
+    const helper: Map = { $gap: 1 };
+    const shared = ({ gap }: style.Helpers<Sides>): Map => ({ margin: gap(1) });
+
+    expect([helper, shared]).toHaveLength(2);
   });
 
   it('will accept arrays of maps as rule and condition bodies', () => {
@@ -280,6 +297,39 @@ describe('Style', () => {
     expect(left('i')).toBe('5px');
   });
 
+  it('will pass the pack helpers to function maps', () => {
+    class Base extends Style {
+      $gap(value: number) { return `${value}px`; }
+      $edge(value: number) { return `${value}px solid`; }
+    }
+
+    class Grid extends Base {
+      $gap(value: number) { return super.$gap(value * 4); }
+      spaced(value: number) { return { padding: this.$gap(value) }; }
+    }
+
+    const Cell = () => createElement('p', { _cell: true });
+
+    Grid.use(({ edge }) => ({ _p: { border: edge(1) } }))(Cell,
+      ({ gap }) => ({ margin: gap(1), _cell: { spaced: 2 } }),
+      () => null
+    );
+
+    const node = place(createElement(Cell, {})).querySelector('p')!;
+
+    expect(getComputedStyle(node).marginLeft).toBe('4px');
+    expect(getComputedStyle(node).paddingLeft).toBe('8px');
+    expect(getComputedStyle(node).borderLeftWidth).toBe('1px');
+  });
+
+  it('will pass plain style() no helpers', () => {
+    const Bare = () => createElement('i', {});
+
+    style(Bare, (helpers) => ({ color: Object.keys(helpers).length ? 'red' : 'green' }));
+
+    expect(getComputedStyle(place(createElement(Bare, {})).querySelector('i')!).color).toBe('green');
+  });
+
   it('will apply conditions named on the pack', () => {
     class Base extends Style {
       $wide = '@media (min-width: 600px)';
@@ -454,7 +504,8 @@ describe('Style', () => {
     ['a condition without a prefix', class Bare extends Style { $tone = 'red'; }, 'Condition "$tone" on Bare must start with "@" or ":".'],
     ['a condition that is not a string', class Count extends Style { $size = 2; }, 'Condition "$size" on Count must start with "@" or ":".'],
     ['a prefixed method', class Prefixed extends Style { _rule() { return {}; } }, '"_rule" on Prefixed must be a method with a bare name.'],
-    ['a getter', class Getter extends Style { get tone() { return {}; } }, '"tone" on Getter must be a method with a bare name.']
+    ['a getter', class Getter extends Style { get tone() { return {}; } }, '"tone" on Getter must be a method with a bare name.'],
+    ['a bare $ method', class Hook extends Style { $() { return {}; } }, '"$" on Hook is reserved.']
   ] as [string, typeof Style, string][])('will throw for %s', (_, type, message) => {
     expect(() => type.use()({}, { color: 'red' })).toThrow(message);
   });

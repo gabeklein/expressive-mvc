@@ -104,7 +104,13 @@ style(Card, {
 - `$name` is a condition named on the pack ([Conditions](#conditions)); an unknown one throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 
-Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. A pack extends `Style` or another pack; a getter, a `_`/`$` method, or a field other than a `$name` condition throws. Every public method is a macro - keep helpers `private` or at module level. Methods bind to one instance, so a macro may call a private helper on `this`. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. `style(X)` with no map joins the pack; subclasses and subcomponents inherit their owner's. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place.
+Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. Apps extend `Css` (or their own subclass of it); `Style` is the base for a new host's pack. A getter, a `_` method, a method named `$`, or a field other than a `$name` condition throws. Every public method is a macro, except `$name` methods - **helpers** returning a value; keep other helpers `private` or at module level. Methods bind to one instance, so a macro may call a private helper on `this`. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. `style(X)` with no map joins the pack; subclasses and subcomponents inherit their owner's. A map passed as a function receives the pack's helpers, prefix dropped, and runs once at registration - keep it pure and destructure what it uses:
+
+```ts
+style(Heading, ({ rem, px }) => ({ padding: rem(0.2, 0.45), border: `${px(1)} solid` }));
+```
+
+`App.use()` takes function maps too; type a shared one `({ rem }: style.Helpers<App>): style.Map<App> => …`. A macro calls a helper on `this` (`this.$rem(1)`); a subclass overrides one and reaches the base through `super`. A function inside a map is a value, not a definition - rules are static, so call a plain function in place.
 
 A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down (or calls `super`), then through any `default(value, key)` method, then to the host. `default` is not a map key. An override must stay assignable to the method it overrides - annotate the base's return as `object` when shapes differ. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
@@ -137,10 +143,10 @@ Build-time extraction is not part of the `0.1` experiment.
 A key starting with `:` (state) or `@` (environment) holds a map that applies while the condition holds - at the top of a map (the component's roots), inside a rule, or nested in another condition. A `$name` field on the pack names one; `$name` keys resolve to it, and a subclass overrides it like a macro:
 
 ```tsx
-import { Css, media } from '@expressive/dom';
+import { Css } from '@expressive/dom';
 
 class App extends Css {
-  $mobile = media({ maxWidth: 900 });   // '@media (max-width: 900px)'
+  $mobile = '@media (max-width: 900px)';
   $open = ':is([open])';
 }
 
@@ -167,7 +173,7 @@ style(Select, {
 - CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`$mobile` above).
 - Layers and subclasses merge a condition's body key by key, like a rule.
 
-The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and` in that order. Its result is a literal type, so a computed `[media(…)]` key beside other keys stays a typed map; a value typed `number` or `string` rather than a literal, or a `Query`-typed variable, yields a pattern and widens the map again. A `$name` field must start with `@` or `:`.
+A `$name` field must start with `@` or `:`. The `style.Condition` type (`` `:${string}` | `@${string}` ``) types a condition held elsewhere.
 
 ### The web pack
 
@@ -183,14 +189,7 @@ A number gets `px` only where the CSSOM rejects a bare one - probed once per pro
 
 Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged.
 
-For other units, `rem`, `em` and `px` suffix each number and join with spaces - plain strings, usable anywhere:
-
-```ts
-import { px, rem } from '@expressive/dom';
-
-style(Heading, { padding: rem(0.2, 0.45), border: `${px(1)} solid` });
-// padding: '0.2rem 0.45rem'
-```
+For other units, the `rem`, `em` and `px` helpers suffix each number and join with spaces - `rem(0.2, 0.45)` is `'0.2rem 0.45rem'`.
 
 ### Typing
 
@@ -230,7 +229,7 @@ Opinionated, applied by default:
 - One style module defines the app's pack - a `Css` subclass holding its macros - with its named conditions (`$mobile`), and exports its `style` and shared maps typed `style.Map<App>`. Components import `style` from it.
 - A declaration group repeated in two or three places becomes a macro named for its job (`row`, `line`, `ellipsis`), not its CSS. What varies is its argument; an optional one makes it a flag (`row: true`). Fold repeats as you find them.
 - Shared style: a macro groups declarations; app-wide rules - element defaults (`_button`), app roles (`_muted`) - go in `use()`; a shared map for one kind of thing is layered as an extra `style()` argument. Share a component before sharing a map.
-- Values under `Css`: `rem()` / `em()` for type-relative sizes, bare numbers for px, strings for mixed values (`'0 auto'`, `calc()`, `var()`) - not hand-written `'0.2rem 0.45rem'`.
+- Values under `Css`: the `rem` / `em` helpers for type-relative sizes, bare numbers for px, strings for mixed values (`'0 auto'`, `calc()`, `var()`) - not hand-written `'0.2rem 0.45rem'`.
 - App elements are styled with `_rule` attributes; `className` is for classes defined outside `style()`. A hover or media hook class in app CSS belongs in a map as a condition.
 
 ## MVC render scopes
