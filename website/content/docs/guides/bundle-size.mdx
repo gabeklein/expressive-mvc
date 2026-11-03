@@ -38,7 +38,7 @@ If a third-party size service quotes something different from this table, the me
 
 The headless core shakes properly: importing only `Model` costs ~6.9 kB against ~10.8 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
 
-The appearance system is likewise optional: renderer imports measure ~18.3 kB; adding `style` and `macro` raises the total to ~21.7 kB. The renderer retains only the small token protocol needed to accept styles registered elsewhere. Unlike the React rows, these figures include `@expressive/mvc`, which `@expressive/dom` does not re-export and an app therefore imports directly.
+The appearance system is likewise optional: renderer imports measure ~18.3 kB; adding `style` and `Style` raises the total to ~21.7 kB. The renderer retains only the small token protocol needed to accept styles registered elsewhere. Unlike the React rows, these figures include `@expressive/mvc`, which `@expressive/dom` does not re-export and an app therefore imports directly.
 
 The React adapter has a **floor you cannot shake below: ~10.8 kB**, reached by importing it at all. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 
