@@ -104,13 +104,7 @@ style(Card, {
 - `$name` is a condition named on the pack ([Conditions](#conditions)); an unknown one throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 
-Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. Apps extend `StyleSheet` (or their own subclass of it); `Style` is the base for a new host's pack. A getter, a `_` method, a method named `$`, or a field other than a `$name` condition throws. Every public method is a macro, except `$name` methods - **helpers** returning a value; keep other helpers `private` or at module level. Methods bind to one instance, so a macro may call a private helper on `this`. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. `style(X)` with no map joins the pack; subclasses and subcomponents inherit their owner's. A map passed as a function receives the pack's helpers, prefix dropped, and runs once at registration - keep it pure and destructure what it uses:
-
-```ts
-style(Heading, ({ rem, px }) => ({ padding: rem(0.2, 0.45), border: `${px(1)} solid` }));
-```
-
-`App.use()` takes function maps too; type a shared one `({ rem }: style.Helpers<App>): style.Map<App> => …`. Helpers are bound to the pack instance, so a macro destructures them from `this` (`const { $rem } = this`); a subclass overrides one and reaches the base through `super`. A function inside a map is a value, not a definition - rules are static, so call a plain function in place.
+Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. Apps extend `StyleSheet` (or their own subclass of it); `Style` is the base for a new host's pack. A getter, a `_` or `$` method, or a field other than a `$name` condition throws. Every method is a macro - TypeScript's `private` included, since it only hides the name from types. Keep utilities in `#private` methods or at module level; methods bind to one instance, so a macro may call `this.#helper()`. Statics are never macros - a pack configures itself there (`static unit`). A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. `style(X)` with no map joins the pack; subclasses and subcomponents inherit their owner's. A macro's parameter may be an object - a bare key is never a scope, so `transform: { translateY: -2 }` reaches a `transform(value: Transform)` macro whole, typed by its interface, and a layer replaces it whole. A function inside a map is a value, not a definition - rules are static, so call a plain function in place.
 
 A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down (or calls `super`), then through any `default(value, key)` method, then to the host. `default` is not a map key. An override must stay assignable to the method it overrides - annotate the base's return as `object` when shapes differ. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
@@ -177,7 +171,7 @@ A `$name` field must start with `@` or `:`. The `style.Condition` type (`` `:${s
 
 ### The web pack
 
-`StyleSheet` is the web pack shipped with the renderer - units for numbers, milliseconds for durations, a `size` shorthand and unit helpers. Apps extend it, or use it as is:
+`StyleSheet` is the web pack shipped with the renderer - units for numbers, milliseconds for durations and a `size` shorthand. Apps extend it, or use it as is:
 
 ```ts
 import { StyleSheet } from '@expressive/dom';
@@ -185,11 +179,9 @@ import { StyleSheet } from '@expressive/dom';
 export const style = StyleSheet.use();
 ```
 
-A number goes through `$length` (`px` by default) only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. Override `$length` for another unit policy - `$length(n: number) { return this.$rem(n); }` makes every length rem; prefer one policy per app. `transitionDuration`, `transitionDelay`, `animationDuration` and `animationDelay` take numbers as milliseconds, `0` included; an array joins with commas. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
+A number goes through `static unit` (`px` by default) only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. Override `unit` for another policy - `static unit(n: number) { return `${n}rem`; }` makes every length rem; prefer one policy per app, and write other units as strings (`'0.85rem'`). `transitionDuration`, `transitionDelay`, `animationDuration` and `animationDelay` take numbers as milliseconds, `0` included; an array joins with commas. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
 
 Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged.
-
-For other units, the `rem`, `em` and `px` helpers suffix each number and join with spaces - `rem(0.2, 0.45)` is `'0.2rem 0.45rem'`.
 
 ### Typing
 
@@ -229,7 +221,7 @@ Opinionated, applied by default:
 - One style module defines the app's pack - a `StyleSheet` subclass holding its macros - with its named conditions (`$mobile`), and exports its `style` and shared maps typed `style.Map<App>`. Components import `style` from it.
 - A declaration group repeated in two or three places becomes a macro named for its job (`row`, `line`, `ellipsis`), not its CSS. What varies is its argument; an optional one makes it a flag (`row: true`). Fold repeats as you find them.
 - Shared style: a macro groups declarations; app-wide rules - element defaults (`_button`), app roles (`_muted`) - go in `use()`; a shared map for one kind of thing is layered as an extra `style()` argument. Share a component before sharing a map.
-- Values under `StyleSheet`: the `rem` / `em` helpers for type-relative sizes, bare numbers for `$length` units, strings for mixed values (`'0 auto'`, `calc()`, `var()`) - not hand-written `'0.2rem 0.45rem'`.
+- Values under `StyleSheet`: bare numbers in the pack's `unit`, strings for any other unit or mixed value (`'0.2rem 0.45rem'`, `'0 auto'`, `calc()`, `var()`). Structured values that need typing or unit policy get a macro taking an object.
 - App elements are styled with `_rule` attributes; `className` is for classes defined outside `style()`. A hover or media hook class in app CSS belongs in a map as a condition.
 
 ## MVC render scopes

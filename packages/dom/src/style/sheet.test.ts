@@ -35,19 +35,9 @@ describe('StyleSheet', () => {
     expect(css.size([1, 2])).toEqual({ width: 1, height: 2 });
   });
 
-  it('will join numbers with a unit', () => {
-    expect(css.$rem(0.45)).toBe('0.45rem');
-    expect(css.$rem(0.2, 0.45)).toBe('0.2rem 0.45rem');
-    expect(css.$em(1.5)).toBe('1.5em');
-    expect(css.$px(0, 4, 8)).toBe('0px 4px 8px');
-  });
-
-  it('will size lengths through an overridden $length', () => {
+  it('will size numbers through an overridden unit', () => {
     class Rem extends StyleSheet {
-      $length(value: number) {
-        const { $rem } = this;
-        return $rem(value);
-      }
+      static unit(value: number) { return `${value}rem`; }
     }
 
     const Box = () => createElement('div', {});

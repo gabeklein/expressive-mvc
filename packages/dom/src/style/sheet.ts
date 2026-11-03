@@ -22,17 +22,13 @@ function bare(property: string) {
   return known;
 }
 
-function sized(property: string, value: unknown, pack: StyleSheet): unknown {
+function sized(property: string, value: unknown, pack: typeof StyleSheet): unknown {
   if (Array.isArray(value))
     return value.map((entry) => sized(property, entry, pack));
 
   return typeof value == 'number' && value !== 0 && !bare(property)
-    ? pack.$length(value)
+    ? pack.unit(value)
     : value;
-}
-
-function unit(values: number[], suffix: string) {
-  return values.map((value) => value + suffix).join(' ');
 }
 
 function ms(value: Time) {
@@ -46,30 +42,18 @@ function time(property: string, value: Time | readonly Time[]) {
 type Time = number | string;
 
 /**
- * Web macro pack - numbers sized by `$length` (px) where a property needs a
- * unit, milliseconds for durations and delays, the `size` shorthand, and
- * `rem`, `em` and `px` helpers. Extend it, or use it as is with
- * `StyleSheet.use()`.
+ * Web macro pack - numbers sized by `unit` where a property needs one,
+ * milliseconds for durations and delays, and the `size` shorthand. Extend it,
+ * or use it as is with `StyleSheet.use()`.
  */
 class StyleSheet extends Style {
-  default(value: unknown, key: string) {
-    return { [key]: sized(key, value, this) };
-  }
-
-  $length(value: number) {
+  /** Unit for a number given to a property that needs one; px by default. */
+  static unit(value: number) {
     return `${value}px`;
   }
 
-  $rem(...values: number[]) {
-    return unit(values, 'rem');
-  }
-
-  $em(...values: number[]) {
-    return unit(values, 'em');
-  }
-
-  $px(...values: number[]) {
-    return unit(values, 'px');
+  default(value: unknown, key: string) {
+    return { [key]: sized(key, value, this.constructor as typeof StyleSheet) };
   }
 
   size(value: style.Value) {
