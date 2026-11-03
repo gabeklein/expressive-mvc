@@ -352,6 +352,7 @@ describe('appearance', () => {
   it.each([
     ['a rule is a function', { _bad: () => null }, 'Rule "_bad" must be an object. Macros are defined on a Style class.'],
     ['a rule is a token', { _also: 'token' }, 'Rule "_also" must be an object.'],
+    ['a rule array holds a token', { _also: [{ color: 'red' }, 'token'] }, 'Rule "_also" must be an object.'],
     ['a map uses a reserved key', { $hover: { color: 'red' } }, 'Reserved key "$hover" in style map.'],
     ['a subcomponent is nested', { _Title: { color: 'red' } }, 'Subcomponent "_Title" must be at the top of a style() map.']
   ])('will throw if %s', (_, map, message) => {
@@ -400,6 +401,64 @@ describe('appearance', () => {
     const node = place(<Meta />).querySelector('div')!;
     expect(getComputedStyle(node).color).toBe('blue');
     expect(getComputedStyle(node).padding).toBe('2px');
+  });
+
+  it('will merge an array rule body in order and skip falsy entries', () => {
+    function Pick() {
+      return <ul _select><li _item /></ul>;
+    }
+
+    const shared = { color: 'gray', padding: '2px', ':hover': { color: 'black' } };
+    const wide = false as boolean;
+
+    style(Pick, {
+      _select: [shared, wide && { padding: '9px' }, [null, { color: 'red', ':hover': { opacity: 0.5 } }]]
+    });
+
+    const node = place(<Pick />).querySelector('ul')!;
+    expect(node.className).toBe('Pick_select Pick_select-hover');
+    expect(getComputedStyle(node).color).toBe('red');
+    expect(getComputedStyle(node).padding).toBe('2px');
+  });
+
+  it('will merge an array descendant scope and subcomponent body', () => {
+    class Menu extends Component {
+      Title() {
+        return <b _mark />;
+      }
+
+      render() {
+        return <ul _list><li _item /><this.Title /></ul>;
+      }
+    }
+
+    const shared = { color: 'gray', padding: '2px' };
+
+    style(Menu, {
+      _list: { _item: [shared, { color: 'red' }] },
+      _Title: [{ _mark: shared }, { _mark: { color: 'blue' } }]
+    });
+
+    const root = place(<Menu />);
+    const item = root.querySelector('li')!;
+    const title = root.querySelector('b')!;
+
+    expect(getComputedStyle(item).color).toBe('red');
+    expect(getComputedStyle(item).padding).toBe('2px');
+    expect(getComputedStyle(title).color).toBe('blue');
+    expect(getComputedStyle(title).padding).toBe('2px');
+  });
+
+  it('will merge descendant scopes across layers', () => {
+    function Rows() {
+      return <ul _list><li _item /></ul>;
+    }
+
+    style(Rows, { _list: { _item: { color: 'red' } } }, { _list: { _item: { padding: '2px' } } });
+
+    const item = place(<Rows />).querySelector('li')!;
+    expect(getComputedStyle(item).color).toBe('red');
+    expect(getComputedStyle(item).padding).toBe('2px');
   });
 
   it('will apply rules from every class in the chain', () => {
@@ -1227,6 +1286,44 @@ describe('conditions', () => {
       '@media print { .Capsule-media_print-hover:where(:hover) { opacity: 0.5; } }',
       '@media print { :where(.Capsule-group:hover) .Capsule_label-media_print-Capsule_hover { color: blue; } }',
       '@media print { @media (min-width: 1px) { .Capsule_label-media_print-media_min-width_1px { color: red; } } }'
+    ]);
+  });
+
+  it('will merge array condition bodies at the top and inside a rule', () => {
+    function Ledger() {
+      return <div _page><b _label /></div>;
+    }
+
+    const quiet = { opacity: 0.5 };
+
+    style(Ledger, {
+      ':hover': [{ '@media print': [{ _label: { color: 'blue' } }, { _label: quiet }] }],
+      _page: { ':focus-within': [quiet, { color: 'red' }] }
+    });
+
+    const root = place(<Ledger />).querySelector('div')!;
+    expect(root.querySelector('b')!.className).toBe('Ledger_label-Ledger_hover-media_print');
+    expect(sheet('Ledger')).toEqual([
+      '@media print { :where(.Ledger-group:hover) .Ledger_label-Ledger_hover-media_print { color: blue; opacity: 0.5; } }',
+      '.Ledger_page-focus-within:where(:focus-within) { opacity: 0.5; color: red; }'
+    ]);
+  });
+
+  it('will merge a scope nested in a condition from a shared map', () => {
+    function Bar() {
+      return <nav _tabs><button _button /></nav>;
+    }
+
+    const wide = '@media (min-width: 600px)';
+    const tabs = { display: 'flex', [wide]: { gap: '2px', _button: { fontSize: '12px', height: '20px' } } };
+
+    style(Bar, { _tabs: [tabs, { display: 'none', [wide]: { display: 'grid', _button: { height: '30px' } } }] });
+
+    place(<Bar />);
+    expect(sheet('Bar')).toEqual([
+      '.Bar_tabs { display: none; }',
+      '@media (min-width: 600px) { .Bar_tabs-media_min-width_600px { gap: 2px; display: grid; } }',
+      '@media (min-width: 600px) { .Bar_nav_button-media_min-width_600px { font-size: 12px; height: 30px; } }'
     ]);
   });
 

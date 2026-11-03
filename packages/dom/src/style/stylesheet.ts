@@ -26,6 +26,10 @@ type Key<T> =
   | `_${string}`
   | style.Condition;
 
+type Layers<T> = readonly (style.Map<T> | Layers<T> | false | null | undefined)[] & { [K in style.Property | Macro<T>]?: unknown };
+
+type Body<T> = style.Map<T> | Layers<T>;
+
 declare namespace style {
   /** CSS property names, minus the CSSOM's own members. */
   type Property = Exclude<Settable, 'length' | 'parentRule' | 'cssText'>;
@@ -48,11 +52,12 @@ declare namespace style {
   /**
    * Body of a `style()` map. Bare keys are declarations or calls to a macro
    * of `T`, `_name` opens a rule or descendant scope, `:state` and `@media …`
-   * apply their body conditionally, and `$name` is reserved.
+   * apply their body conditionally, and `$name` is reserved. A rule or
+   * condition body may be an array of maps, merged in order.
    */
   type Map<T = {}> = {
     [K in Key<T>]?:
-      K extends `_${string}` | Condition ? Map<T> :
+      K extends `_${string}` | Condition ? Body<T> :
       K extends Macro<T> ? Argument<T[K]> :
       Value;
   };

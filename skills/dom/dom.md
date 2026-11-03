@@ -108,7 +108,12 @@ Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `s
 
 A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down (or calls `super`), then through any `'*'` method, then to the host. An override must stay assignable to the method it overrides - annotate the base's return as `object` when shapes differ. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
-Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead.
+Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule at every depth - conditions and nested `_` scopes included; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead. A rule, condition or subcomponent body may be an array, merged the same way, falsy entries skipped - a shared map with nothing to add needs none (`_tabs: tabs`). Prefer it to spreads for overriding a shared map - a spread replaces each nested level, so every level must re-spread its shared counterpart, and a level later added to the shared map is dropped:
+
+```tsx
+_bar: [tabs, { [wide]: { _button: { height: '30px' } } }]
+// not: { ...tabs, [wide]: { ...tabs[wide], _button: { ...tabs[wide]._button, height: '30px' } } }
+```
 
 Within a scope, base declarations come first, then rules by base class, derived class, and registration order. A rule first named inside a descendant scope (`_list: { _item: … }`) sorts after every rule of the enclosing scope, wherever it is written; a top-level rule meant to override it belongs in the same scope. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered.
 
