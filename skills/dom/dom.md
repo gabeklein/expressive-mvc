@@ -87,7 +87,7 @@ style(Button, {
 
 - A rule applies when `_name` is truthy on an element, or when the element's host tag is `name`. `0` and `''` do not activate - a rule is on or off, while a macro still treats `0` as a value. Each applied rule is one class named after its source, such as `Button_active`. Nested inside a rule body, `_name` opens a descendant scope.
 - Bare keys at the top of a map form a **base rule** applied to each of the component's host roots - `padding` above styles every root `Button` renders, through fragments.
-- A map never reaches inside a child component, placed as an element or an instance. Rules, base declarations and tag matches apply to the elements that component renders; a descendant scope handed to a child through `style` covers that child's own output and stops there. JSX resolves in the scope that wrote it: `children` passed to a wrapper keep the author's rules - including rules nested in a `_rule` on the wrapper element - and the wrapper's rules do not reach them; its base declarations still apply where they are its roots. Only the class chain inherits - `Derived` sees `Base`'s rules.
+- A map never reaches inside a child component, placed as an element or an instance. Rules, base declarations, tag matches and descendant scopes apply only to elements the component's own JSX writes - a `_rule` on a child component element styles that child's root, never its internals. JSX resolves in the scope that wrote it: `children` passed to a wrapper keep the author's rules - including rules nested in a `_rule` on the wrapper element - and the wrapper's rules do not reach them; its base declarations still apply where they are its roots. Only the class chain inherits - `Derived` sees `Base`'s rules.
 - A map styles `render()` output only, not subcomponents ([component.md](../react/component.md#subcomponents)). `_` plus a capital letter addresses one by key: its body is that subcomponent's own map - base declarations for its roots, rules and tag matches for its output - resolved through the owner's class wherever it renders. A `_Title` body composes through the class chain like the top-level map; `_Title` nested in a rule, or as an attribute on any element, throws. To share rules, pass one map to both: `style(Card, shared, { _Title: shared })`.
 
 ```tsx
@@ -111,7 +111,7 @@ Repeated `style()` calls add layers and return the component unchanged. One call
 
 Within a scope, base declarations come first, then rules by base class, derived class, and registration order. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered.
 
-Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins - for classes and for which nested rules reach descendants - independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
+Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins, independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
 
 Build-time extraction is not part of the `0.1` experiment.
 

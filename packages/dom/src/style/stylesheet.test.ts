@@ -132,14 +132,19 @@ describe('Style', () => {
     expect(getComputedStyle(place(createElement(Bare, {})).querySelector('i')!).color).toBe('red');
   });
 
-  it('will keep its macros under a caller without them', () => {
-    const Card = () => createElement('b', { _label: true });
-    const Parent = () => createElement(Card, { _card: true });
+  it('will layer its macros over a base styled without them', () => {
+    class Base extends Component {
+      render() {
+        return createElement('b', { _label: true });
+      }
+    }
 
-    Sides.use()(Card, { _label: { pill: 2 } });
-    style(Parent, { _card: { _label: { color: 'red' } } });
+    class Derived extends Base {}
 
-    const node = place(createElement(Parent, {})).querySelector('b')!;
+    style(Base, { _label: { color: 'red' } });
+    Sides.use()(Derived, { _label: { pill: 2 } });
+
+    const node = place(createElement(Derived, {})).querySelector('b')!;
 
     expect(getComputedStyle(node).marginLeft).toBe('2px');
     expect(getComputedStyle(node).color).toBe('red');
@@ -206,6 +211,35 @@ describe('Style', () => {
     expect(node.className).toContain('Base_row');
     expect(getComputedStyle(node).color).toBe('red');
     expect(getComputedStyle(node).display).toBe('flex');
+  });
+
+  it('will keep packs apart across a component boundary with colliding names', () => {
+    class Lib extends Style {
+      gutter(value: number) { return { marginLeft: `${value * 10}px` }; }
+    }
+
+    class App extends Style {
+      gutter(value: number) { return { marginLeft: `${value}px` }; }
+    }
+
+    const Card = ({ children }: { children?: any }) =>
+      createElement('section', {}, createElement('b', { _label: true }), children);
+
+    const Page = () => createElement('div', {},
+      createElement(Card, { _card: true }, createElement('u', { _label: true })),
+      createElement('i', { _label: true })
+    );
+
+    Lib.use()(Card, { gutter: 1, _label: { gutter: 2 } });
+    App.use()(Page, { _card: { gutter: 3, _label: { gutter: 4 } }, _label: { gutter: 5 } });
+
+    const root = place(createElement(Page, {}));
+    const left = (selector: string) => getComputedStyle(root.querySelector(selector)!).marginLeft;
+
+    expect(left('section')).toBe('3px');
+    expect(left('b')).toBe('20px');
+    expect(left('u')).toBe('4px');
+    expect(left('i')).toBe('5px');
   });
 
   it('will throw for a component styled by two packs', () => {

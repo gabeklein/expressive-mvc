@@ -63,13 +63,12 @@ function renderedAppearance(fiber: Fiber): Appearance | undefined {
 
   const style = fiber.props?.style as Style;
   const entries = (fiber.appearance?.entries || []).map(({ hops, style }) => ({ hops: hops + 1, style }));
-  const inherited = fiber.appearance?.context;
   const sub = owner(fiber.type);
   const context = sub
-    ? enterAppearance(inherited, latest(sub.owner.constructor), sub.key)
-    : enterAppearance(inherited, latest(fiber.type as Function));
+    ? enterAppearance(latest(sub.owner.constructor), sub.key)
+    : enterAppearance(latest(fiber.type as Function));
 
-  if (context?.base && context !== inherited)
+  if (context?.base)
     entries.push({ hops: 0, style: context.base as Style });
 
   if (style && !fiber.consumed && !(fiber.instance && 'style' in fiber.instance)) entries.push({ hops: 0, style });
