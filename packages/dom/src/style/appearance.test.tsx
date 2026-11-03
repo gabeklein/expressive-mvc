@@ -1188,6 +1188,48 @@ describe('conditions', () => {
     expect(sheet('Tile')).toEqual([':where(.Tile-group:hover) .Tile_label-Tile_hover { color: blue; }']);
   });
 
+  it('will style a descendant while the root holds a state under media', () => {
+    function Dock() {
+      return <div><b _label /></div>;
+    }
+
+    style(Dock, { ':hover, :focus-within': { '@media print': { _label: { color: 'blue' } } } });
+
+    const root = place(<Dock />).querySelector('div')!;
+    expect(root.className).toBe('Dock-group');
+    expect(root.querySelector('b')!.className).toBe(
+      'Dock_label-Dock_hover-media_print Dock_label-Dock_focus-within-media_print'
+    );
+    expect(sheet('Dock')).toEqual([
+      '@media print { :where(.Dock-group:hover) .Dock_label-Dock_hover-media_print { color: blue; } }',
+      '@media print { :where(.Dock-group:focus-within) .Dock_label-Dock_focus-within-media_print { color: blue; } }'
+    ]);
+  });
+
+  it('will style a descendant under media while the root holds a state', () => {
+    function Capsule() {
+      return <div><b _label /></div>;
+    }
+
+    style(Capsule, {
+      '@media print': {
+        ':hover': { _label: { color: 'blue' }, opacity: 0.5 },
+        '@media (min-width: 1px)': { _label: { color: 'red' } }
+      }
+    });
+
+    const root = place(<Capsule />).querySelector('div')!;
+    expect(root.className).toBe('Capsule-media_print-hover Capsule-group');
+    expect(root.querySelector('b')!.className).toBe(
+      'Capsule_label-media_print-Capsule_hover Capsule_label-media_print-media_min-width_1px'
+    );
+    expect(sheet('Capsule')).toEqual([
+      '@media print { .Capsule-media_print-hover:where(:hover) { opacity: 0.5; } }',
+      '@media print { :where(.Capsule-group:hover) .Capsule_label-media_print-Capsule_hover { color: blue; } }',
+      '@media print { @media (min-width: 1px) { .Capsule_label-media_print-media_min-width_1px { color: red; } } }'
+    ]);
+  });
+
   it('will split a root state list before grouping', () => {
     function Thumb() {
       return <div><button _delete /></div>;

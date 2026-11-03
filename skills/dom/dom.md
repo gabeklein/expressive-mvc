@@ -86,6 +86,7 @@ style(Button, {
 ```
 
 - A rule applies when `_name` is truthy on an element, or when the element's host tag is `name`. `0` and `''` do not activate - a rule is on or off, while a macro still treats `0` as a value. Each applied rule is one class named after its source, such as `Button_active`. Nested inside a rule body, `_name` opens a descendant scope.
+- A rule named for a tag (`_label`, `_small`, `_time`) also styles every such element the component renders - pick another name for a flag-only rule.
 - Bare keys at the top of a map form a **base rule** applied to each of the component's host roots - `padding` above styles every root `Button` renders, through fragments.
 - A map never reaches inside a child component, placed as an element or an instance. Rules, base declarations, tag matches and descendant scopes apply only to elements the component's own JSX writes - a `_rule` on a child component element styles that child's root, never its internals. JSX resolves in the scope that wrote it: `children` passed to a wrapper keep the author's rules - including rules nested in a `_rule` on the wrapper element - and the wrapper's rules do not reach them; its base declarations still apply where they are its roots. Only the class chain inherits - `Derived` sees `Base`'s rules.
 - A map styles `render()` output only, not subcomponents ([component.md](../react/component.md#subcomponents)). `_` plus a capital letter addresses one by key: its body is that subcomponent's own map - base declarations for its roots, rules and tag matches for its output - resolved through the owner's class wherever it renders. A `_Title` body composes through the class chain like the top-level map; `_Title` nested in a rule, or as an attribute on any element, throws. To share rules, pass one map to both: `style(Card, shared, { _Title: shared })`.
@@ -109,9 +110,9 @@ A key resolves at its topmost definition, the subclass first; a macro returning 
 
 Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead.
 
-Within a scope, base declarations come first, then rules by base class, derived class, and registration order. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered.
+Within a scope, base declarations come first, then rules by base class, derived class, and registration order. A rule first named inside a descendant scope (`_list: { _item: … }`) sorts after every rule of the enclosing scope, wherever it is written; a top-level rule meant to override it belongs in the same scope. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered.
 
-Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins, independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix.
+Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins, independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix. Generated classes are not a selector contract - code and tests find elements by `data-*`, `id` or role.
 
 Build-time extraction is not part of the `0.1` experiment.
 
@@ -137,6 +138,7 @@ style(Select, {
 
 - Each condition is its own block, sorted right after the block it modifies. It adds no specificity, so doors and inline style win over it as over any rule.
 - A `,` in a `:` key lists alternatives (`:is(...)` stays whole); an `@` key is never split.
+- `':is([data-mode="dark"] *)'` holds while an ancestor or `<html>` matches - the zero-specificity form of `[data-mode="dark"] .thing`.
 - A pseudo-element (`'::placeholder'`, `':hover::after'`) styles that part of the element and cannot hold a `_rule`.
 - `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope.
 - `_rule` inside a `:` condition styles descendants while the enclosing element holds the state - `_thumb: { ':hover': { _delete: { opacity: 1 } } }` shows `_delete` while its thumb is hovered; at the top of a map, the state is the component root's. The element holding the state gets a `-group` class. Groups chain and combine with `@`.
@@ -184,6 +186,8 @@ class App extends Css {
 export const style = App.use();
 export const toolbar: style.Map<App> = { row: '4px', edge: 'Top' };
 ```
+
+Property keys follow lib.dom's `CSSStyleDeclaration`, which omits some vendor properties. Add a pack method returning one under its own name (`WebkitTapHighlightColor(value: string) { return { WebkitTapHighlightColor: value }; }`) - the key falls through to the host as a declaration.
 
 `className` is element-only. `style` on a component forwards through component and transparent boundaries to its host root; fragment output applies it to every host root. Reading `style` during render - destructuring, a spread, `this.props.style`, or a declared `style` field on a Component - takes ownership and suppresses forwarding for that render. Forwarded style overrides the root's own, and the outermost caller wins; a component wanting the last word consumes `style` and places it first:
 
