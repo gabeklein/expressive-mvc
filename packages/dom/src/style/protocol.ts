@@ -32,16 +32,10 @@ type Emit = (block: Block, depth: number, document: Document) => string;
 const SUBCOMPONENT = /^_[A-Z]/;
 const registrations = new WeakMap<object, EnterAppearance>();
 const tokens = new WeakMap<object, ResolvedAppearance>();
-let root: (() => AppearanceContext | undefined) | undefined;
 let emitter: Emit | undefined;
-let rendered = false;
 
 function registerAppearance(type: object, enter: EnterAppearance) {
   registrations.set(type, enter);
-}
-
-function registerAppearanceRoot(factory: () => AppearanceContext | undefined) {
-  root = factory;
 }
 
 function registerEmitter(emit: Emit) {
@@ -50,16 +44,6 @@ function registerEmitter(emit: Emit) {
 
 function emitClass(block: Block, depth: number, document: Document) {
   return emitter!(block, depth, document);
-}
-
-function appearanceRoot() {
-  rendered = true;
-  return root?.();
-}
-
-/** Has anything rendered yet - global registration is closed after it has. */
-function appearanceSealed() {
-  return rendered;
 }
 
 function enterAppearance(parent: AppearanceContext | undefined, type: Function, key?: string) {
@@ -92,14 +76,11 @@ function appearanceToken(value: unknown) {
 }
 
 export {
-  appearanceRoot,
-  appearanceSealed,
   appearanceToken,
   createAppearanceToken,
   emitClass,
   enterAppearance,
   registerAppearance,
-  registerAppearanceRoot,
   registerEmitter,
   reserved,
   SUBCOMPONENT
