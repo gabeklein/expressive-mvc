@@ -1,4 +1,4 @@
-import { enqueue, hold, REPORT } from './dispatch';
+import { CAUSE, enqueue, hold, REPORT } from './dispatch';
 
 declare namespace Observer {
   /**
@@ -303,7 +303,7 @@ function watch<T extends object, R>(
   }
 
   function fail(reason: string) {
-    if (!outcome) outcome = { ok: false, value: new Error(`${target} ${reason}`) };
+    if (!outcome) outcome = { ok: false, value: CAUSE.has(target) ? CAUSE.get(target) : new Error(`${target} ${reason}`) };
     finish();
   }
 

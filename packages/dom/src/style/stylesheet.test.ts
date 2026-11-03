@@ -1,25 +1,25 @@
 import { describe, it, expect } from 'vitest';
 
-import type { macro, style } from './stylesheet';
+import { Component } from '@expressive/mvc';
 
-const sides = {
-  edge: (side: 'Top' | 'Left') => ({ [`border${side}`]: '1px solid' }),
-  row: (gap?: string) => ({ display: 'flex', gap }),
-  _raised: { boxShadow: '0 1px 2px black' },
-  '*': (value: unknown, key: string) => ({ [key]: value })
-};
+import { createElement, render } from '../index';
 
-declare module './stylesheet' {
-  namespace macro {
-    interface Registry extends macro.From<typeof sides> {
-      pill(value: number): { marginLeft: string };
-    }
-  }
+import { Css } from './css';
+import { Style, style } from './stylesheet';
+
+class Sides extends Style {
+  edge(side: 'Top' | 'Left') { return { [`border${side}`]: '1px solid' }; }
+  row(gap?: string) { return { display: 'flex', gap }; }
+  pill(value: number) { return { marginLeft: `${value}px` }; }
+  flat() { return { display: 'flex' }; }
+  '*'(value: unknown, key: string) { return { [key]: value }; }
 }
+
+type Map = style.Map<Sides>;
 
 describe('style map types', () => {
   it('will accept declarations, macros, scopes and variables', () => {
-    const map: style.Map = {
+    const map: Map = {
       color: 'red',
       paddingTop: '4px',
       pill: 2,
@@ -32,30 +32,25 @@ describe('style map types', () => {
 
   it('will reject unknown keys, objects and bad macro arguments', () => {
     // @ts-expect-error - not a CSS property or macro
-    const typo: style.Map = { colr: 'red' };
+    const typo: Map = { colr: 'red' };
     // @ts-expect-error - reserved for host instructions
-    const reserved: style.Map = { $hover: { color: 'red' } };
+    const reserved: Map = { $hover: { color: 'red' } };
     // @ts-expect-error - a bare key may not open a scope
-    const scoped: style.Map = { margin: { top: 1 } };
+    const scoped: Map = { margin: { top: 1 } };
     // @ts-expect-error - macro declares a number
-    const macro: style.Map = { pill: 'wide' };
+    const macro: Map = { pill: 'wide' };
     // @ts-expect-error - a rule must be a map
-    const rule: style.Map = { _active: 'yes' };
+    const rule: Map = { _active: 'yes' };
 
     expect([typo, reserved, scoped, macro, rule]).toHaveLength(5);
   });
 
-  it('will check a declared macro against its declaration', () => {
-    const pack: macro.Map = {
-      pill: (value: number) => ({ marginLeft: `${value}px` }),
-      pad: (value: unknown) => ({ padding: value }),
-      _raised: { boxShadow: '0 1px 2px black' }
-    };
+  it('will type a map without a pack', () => {
+    const plain: style.Map = { color: 'red', _active: { opacity: 0.5 } };
+    // @ts-expect-error - no pack declares pill
+    const pill: style.Map = { pill: 2 };
 
-    // @ts-expect-error - Registry declares pill as (value: number)
-    const wrong: macro.Map = { pill: (value: string) => ({ marginLeft: value }) };
-
-    expect([pack, wrong]).toHaveLength(2);
+    expect([plain, pill]).toHaveLength(2);
   });
 
   it('will accept conditions holding maps', () => {
@@ -71,15 +66,224 @@ describe('style map types', () => {
     expect([map, bare, key]).toHaveLength(3);
   });
 
-  it('will declare a pack from its value', () => {
-    const map: style.Map = { edge: 'Top', pill: 2, row: true };
-    // @ts-expect-error - pill takes a number, so true is not a flag
-    const flag: style.Map = { pill: true };
-    // @ts-expect-error - edge declared from its implementation
-    const wrong: style.Map = { edge: 'Bottom' };
-    // @ts-expect-error - rules and '*' are not macros
-    const rule: style.Map = { raised: true };
+  it('will accept arrays of maps as rule and condition bodies', () => {
+    const shared: Map = { color: 'gray', ':hover': { color: 'black' } };
+    const wide = false as boolean;
+    const map: Map = {
+      _select: [shared, wide && { padding: '8px' }, { color: 'red' }],
+      _list: { _item: [shared, [null, { pill: 2 }]] },
+      ':focus-within': [shared, { outline: 'none' }]
+    };
+    // @ts-expect-error - entries are maps
+    const token: Map = { _select: [shared, 'yes'] };
+    // @ts-expect-error - entries are checked like any map
+    const typo: Map = { _select: [{ colr: 'red' }] };
 
-    expect([map, flag, wrong, rule, sides]).toHaveLength(5);
+    expect([map, token, typo]).toHaveLength(3);
+  });
+
+  it('will keep property and macro names on a rule body for typo suggestions', () => {
+    type Named<T> = T extends unknown ? 'paddingTop' | 'pill' extends keyof T ? true : false : never;
+    const named: false extends Named<NonNullable<Map['_select']>> ? never : true = true;
+
+    expect(named).toBe(true);
+  });
+
+  it('will declare a pack from its methods', () => {
+    const map: Map = { edge: 'Top', pill: 2, row: true };
+    // @ts-expect-error - pill takes a number, so true is not a flag
+    const flag: Map = { pill: true };
+    // @ts-expect-error - edge declared from its implementation
+    const wrong: Map = { edge: 'Bottom' };
+    // @ts-expect-error - '*' is not a macro
+    const fallback: Map = { '*': true };
+    const bare: Map = { flat: true };
+    // @ts-expect-error - a macro without a parameter only takes true
+    const value: Map = { flat: 'x' };
+
+    expect([map, flag, wrong, fallback, bare, value]).toHaveLength(6);
+  });
+
+  it('will type macros a pack inherits', () => {
+    class App extends Css {}
+
+    const map: style.Map<App> = { size: 4 };
+    // @ts-expect-error - not a macro of Css
+    const typo: style.Map<App> = { size2: 4 };
+
+    expect([map, typo]).toHaveLength(2);
+  });
+
+  it('will type style() from its pack', () => {
+    const apply: style.Apply<Sides> = Sides.use();
+    const type = {};
+
+    expect(apply(type, { pill: 2 }, false)).toBe(type);
+    // @ts-expect-error - pill takes a number
+    apply(type, { pill: 'wide' });
+  });
+});
+
+function place(node: any) {
+  const root = document.body.appendChild(document.createElement('main'));
+  render(node, root);
+  return root;
+}
+
+describe('Style', () => {
+  it('will create one style() per class', () => {
+    expect(Sides.use()).toBe(Sides.use());
+    expect(Style.use()).not.toBe(Sides.use());
+  });
+
+  it('will bind macros to one instance of the pack', () => {
+    class Bound extends Style {
+      gap(value: number) { return { marginLeft: this.px(value) }; }
+      px(value: number) { return `${value * 4}px`; }
+    }
+
+    const Gap = () => createElement('i', {});
+    Bound.use()(Gap, { gap: 2 });
+
+    expect(getComputedStyle(place(createElement(Gap, {})).querySelector('i')!).marginLeft).toBe('8px');
+  });
+
+  it('will style with a bare Style like plain style()', () => {
+    const Bare = () => createElement('i', {});
+    Style.use()(Bare, { color: 'red' });
+
+    expect(getComputedStyle(place(createElement(Bare, {})).querySelector('i')!).color).toBe('red');
+  });
+
+  it('will layer its macros over a base styled without them', () => {
+    class Base extends Component {
+      render() {
+        return createElement('b', { _label: true });
+      }
+    }
+
+    class Derived extends Base {}
+
+    style(Base, { _label: { color: 'red' } });
+    Sides.use()(Derived, { _label: { pill: 2 } });
+
+    const node = place(createElement(Derived, {})).querySelector('b')!;
+
+    expect(getComputedStyle(node).marginLeft).toBe('2px');
+    expect(getComputedStyle(node).color).toBe('red');
+  });
+
+  it('will extend a macro it overrides through super', () => {
+    class Wide extends Sides {
+      pill(value: number) { return { ...super.pill(value), paddingLeft: '1px' }; }
+    }
+
+    const Pill = () => createElement('i', {});
+    Wide.use()(Pill, { pill: 3 });
+
+    const node = place(createElement(Pill, {})).querySelector('i')!;
+
+    expect(getComputedStyle(node).marginLeft).toBe('3px');
+    expect(getComputedStyle(node).paddingLeft).toBe('1px');
+  });
+
+  it('will layer a subclass pack over the pack of its base', () => {
+    class Cool extends Style {
+      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'blue' : value }; }
+    }
+
+    class Loud extends Style {
+      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'red' : value == 'blue' ? 'green' : value }; }
+    }
+
+    class Base extends Component {
+      render() {
+        return createElement('b', { _label: true });
+      }
+    }
+
+    class Derived extends Base {}
+
+    Cool.use()(Base, { _label: { marginLeft: '2px' } });
+    Loud.use()(Derived, { _label: { color: 'tone' } });
+
+    const node = place(createElement(Derived, {})).querySelector('b')!;
+
+    expect(getComputedStyle(node).color).toBe('red');
+    expect(getComputedStyle(node).marginLeft).toBe('2px');
+  });
+
+  it('will keep a base rule beside a pack macro of the same name', () => {
+    class Rowed extends Style {
+      row() { return { display: 'flex' }; }
+    }
+
+    class Base extends Component {
+      render() {
+        return createElement('b', { _row: true });
+      }
+    }
+
+    class Derived extends Base {}
+
+    style(Base, { _row: { color: 'red' } });
+    Rowed.use()(Derived, { row: true });
+
+    const node = place(createElement(Derived, {})).querySelector('b')!;
+
+    expect(node.className).toContain('Base_row');
+    expect(getComputedStyle(node).color).toBe('red');
+    expect(getComputedStyle(node).display).toBe('flex');
+  });
+
+  it('will keep packs apart across a component boundary with colliding names', () => {
+    class Lib extends Style {
+      gutter(value: number) { return { marginLeft: `${value * 10}px` }; }
+    }
+
+    class App extends Style {
+      gutter(value: number) { return { marginLeft: `${value}px` }; }
+    }
+
+    const Card = ({ children }: { children?: any }) =>
+      createElement('section', {}, createElement('b', { _label: true }), children);
+
+    const Page = () => createElement('div', {},
+      createElement(Card, { _card: true }, createElement('u', { _label: true })),
+      createElement('i', { _label: true })
+    );
+
+    Lib.use()(Card, { gutter: 1, _label: { gutter: 2 } });
+    App.use()(Page, { _card: { gutter: 3, _label: { gutter: 4 } }, _label: { gutter: 5 } });
+
+    const root = place(createElement(Page, {}));
+    const left = (selector: string) => getComputedStyle(root.querySelector(selector)!).marginLeft;
+
+    expect(left('section')).toBe('3px');
+    expect(left('b')).toBe('20px');
+    expect(left('u')).toBe('4px');
+    expect(left('i')).toBe('5px');
+  });
+
+  it('will throw for a component styled by two packs', () => {
+    class Other extends Style {}
+    const Twice = () => null;
+
+    Sides.use()(Twice, { pill: 1 });
+
+    expect(() => Other.use()(Twice, { color: 'red' })).toThrow('"Twice" is already styled by another Style class.');
+
+    const Named = Object.assign(() => null, { displayName: 'Shown' });
+    Sides.use()(Named, { pill: 1 });
+
+    expect(() => Other.use()(Named, { color: 'red' })).toThrow('"Shown" is already styled by another Style class.');
+  });
+
+  it.each([
+    ['a field', class Field extends Style { tone = 'red'; }, 'Field "tone" on Field is reserved. Define macros as methods.'],
+    ['a prefixed method', class Prefixed extends Style { _rule() { return {}; } }, '"_rule" on Prefixed must be a method with a bare name.'],
+    ['a getter', class Getter extends Style { get tone() { return {}; } }, '"tone" on Getter must be a method with a bare name.']
+  ] as [string, typeof Style, string][])('will throw for %s', (_, type, message) => {
+    expect(() => type.use()({}, { color: 'red' })).toThrow(message);
   });
 });

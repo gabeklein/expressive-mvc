@@ -2,9 +2,10 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { css } from './css';
+import { Css } from './css';
 
-const glob = css['*'];
+const css = new Css();
+const glob = (value: unknown, key: string) => css['*'](value, key);
 
 describe('css pack', () => {
   it('will append px only where the CSSOM rejects a bare number', () => {

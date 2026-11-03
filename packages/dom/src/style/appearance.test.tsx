@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component } from '@expressive/mvc';
-import { macro, render, style } from '../index';
+import { render, Style } from '../index';
 import * as hot from '@expressive/mvc/hot';
 import { flushMicrotasks, mount } from '../../test.setup';
 import { createAppearanceRoute, createStyleScope, resolveAppearance } from './appearance';
@@ -13,42 +13,26 @@ function place(node: Component.Node) {
   return root;
 }
 
-declare module './stylesheet' {
-  namespace macro {
-    interface Registry {
-      mex(value: any): unknown;
-      pad(value: any): unknown;
-      tone(value: any): unknown;
-      glow(value?: any): unknown;
-      tint(value: any): unknown;
-      bare(value?: any): unknown;
-      globalTone(value: any): unknown;
-      selfish(value?: any): unknown;
-      glowOn(value?: any): unknown;
-    }
-  }
-}
-
 const called = vi.fn(() => 'zero');
 
-macro({
-  mex: (value?: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }),
-  pad: (value?: unknown) => ({ mex: value, paddingTop: `${value}px` }),
-  tone: (value?: unknown) => ({ color: value }),
-  glow: () => ['glow', { outlineStyle: 'solid' }],
-  tint: (value?: unknown) => ['tinted', { color: value }],
-  bare: () => 'bare',
-  globalTone: (value?: unknown) => ({ color: value }),
-  selfish: () => ({ selfish: true }),
-  glowOn: (value?: unknown) => ({ ':hover': { tone: value } }),
-  _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 },
-  _output: { color: 'gray', padding: '5px' }
-});
+class Base extends Style {
+  mex(value?: unknown) { return { marginLeft: `${value}px`, marginRight: `${value}px` }; }
+  pad(value?: unknown) { return { mex: value, paddingTop: `${value}px` }; }
+  tone(value?: unknown) { return { color: value }; }
+  glow() { return ['glow', { outlineStyle: 'solid' }]; }
+  tint(value?: unknown) { return ['tinted', { color: value }]; }
+  bare() { return 'bare'; }
+  layered(value?: unknown): object { return { color: value }; }
+  selfish() { return { selfish: true }; }
+  glowOn(value?: unknown) { return { ':hover': { tone: value } }; }
+}
 
-macro({
-  globalTone: (value: unknown) => ({ globalTone: value == 'brand' ? 'purple' : value }),
-  '*': (value: unknown, key: string) => ({ [key]: value === 3 ? '3px' : value })
-});
+class Pack extends Base {
+  layered(value: unknown) { return { layered: value == 'brand' ? 'purple' : value }; }
+  '*'(value: unknown, key: string) { return { [key]: value === 3 ? '3px' : value }; }
+}
+
+const style = Pack.use();
 
 describe('appearance', () => {
   it('will emit named blocks for rules', async () => {
@@ -177,7 +161,7 @@ describe('appearance', () => {
     expect(getComputedStyle(node).color).toBe('purple');
   });
 
-  it('will take descendant scopes from the token with the most doors', () => {
+  it('will not take descendant scopes from forwarded tokens', () => {
     const handles: any[] = [];
 
     function Capture({ style: forwarded }: { style?: any }) {
@@ -204,8 +188,10 @@ describe('appearance', () => {
 
     const [deep, shallow] = handles;
     const root = place(<section style={{ ...deep, ...shallow }}><strong>deep</strong></section>);
+    const { color } = getComputedStyle(root.querySelector('strong')!);
 
-    expect(getComputedStyle(root.querySelector('strong')!).color).toBe('red');
+    expect(color).not.toBe('red');
+    expect(color).not.toBe('blue');
   });
 
   it('will compose rules from macros without expanding a macro into itself', () => {
@@ -279,27 +265,23 @@ describe('appearance', () => {
     const root = place(<Parent />);
     expect(root.querySelector('section')?.className).toBe('');
     expect(getComputedStyle(root.querySelector('span')!).color).toBe('red');
-    expect(getComputedStyle(root.querySelector('b')!).fontWeight).toBe('700');
+    expect(getComputedStyle(root.querySelector('b')!).fontWeight).not.toBe('700');
     expect(getComputedStyle(root.querySelector('i')!).color).toBe('blue');
   });
 
-  it('will layer global macros and fall through to the layer below', () => {
-    function Global() {
-      return <i _shared />;
+  it('will layer a subclass over its pack and fall through to the layer below', () => {
+    function Layered() {
+      return <i />;
     }
 
-    style(Global, { padding: '2px' });
-    const node = place(<Global />).querySelector('i')!;
+    style(Layered, { padding: '2px', layered: 'brand', fontSize: 3 });
+    const node = place(<Layered />).querySelector('i')!;
 
-    expect(node.className).toBe('global_shared Global');
+    expect(node.className).toBe('Layered');
     expect(getComputedStyle(node).color).toBe('purple');
     expect(getComputedStyle(node).padding).toBe('2px');
-    expect(getComputedStyle(node).letterSpacing).toBe('2px');
     expect(getComputedStyle(node).fontSize).toBe('3px');
-    expect(() => macro({ _late: { color: 'red' } })).toThrow('after rendering');
-    expect(() => macro({ bad: { color: 'red' } }))
-      .toThrow('Macro "bad" must be a function. Use "_bad" to register a rule.');
-    expect(() => style(Global, { _late: { color: 'red' } })).toThrow('after a component');
+    expect(() => style(Layered, { _late: { color: 'red' } })).toThrow('after a component');
   });
 
   it('will join array values and throw for unhandled keys', () => {
@@ -353,40 +335,6 @@ describe('appearance', () => {
     expect(place(<Bare />).querySelector('wbr')!.className).toBe('bare');
   });
 
-  it('will let base declarations beat global rules', () => {
-    function Readout() {
-      return <output>out</output>;
-    }
-
-    function Gauge() {
-      return <output _shared>gauge</output>;
-    }
-
-    style(Readout, { color: 'black' });
-    style(Gauge, { color: 'black', letterSpacing: '1px', padding: '1px', _output: { padding: '6px' } });
-
-    const readout = place(<Readout />).querySelector('output')!;
-    const gauge = place(<Gauge />).querySelector('output')!;
-
-    expect(getComputedStyle(readout).color).toBe('black');
-    expect(getComputedStyle(readout).padding).toBe('5px');
-    expect(gauge.className.split(' ')).toEqual(['global_output', 'Gauge_output', 'global_shared', 'Gauge']);
-    expect(getComputedStyle(gauge).color).toBe('black');
-    expect(getComputedStyle(gauge).letterSpacing).toBe('1px');
-    expect(getComputedStyle(gauge).padding).toBe('6px');
-  });
-
-  it('will order a rule shadowing a global by its own registration', () => {
-    function Gauge() {
-      return <output _wide />;
-    }
-
-    style(Gauge, { _wide: { padding: '1px' }, _output: { padding: '2px' } });
-
-    const node = place(<Gauge />).querySelector('output')!;
-    expect(getComputedStyle(node).padding).toBe('2px');
-  });
-
   it('will not activate a rule for a falsy flag', () => {
     function Gate() {
       return <><kbd _on={0} /><samp _on={''} /><var _on={1} /></>;
@@ -402,8 +350,9 @@ describe('appearance', () => {
   });
 
   it.each([
-    ['a rule is a function', { _bad: () => null }, 'Rule "_bad" must be an object. Macros are defined by macro().'],
+    ['a rule is a function', { _bad: () => null }, 'Rule "_bad" must be an object. Macros are defined on a Style class.'],
     ['a rule is a token', { _also: 'token' }, 'Rule "_also" must be an object.'],
+    ['a rule array holds a token', { _also: [{ color: 'red' }, 'token'] }, 'Rule "_also" must be an object.'],
     ['a map uses a reserved key', { $hover: { color: 'red' } }, 'Reserved key "$hover" in style map.'],
     ['a subcomponent is nested', { _Title: { color: 'red' } }, 'Subcomponent "_Title" must be at the top of a style() map.']
   ])('will throw if %s', (_, map, message) => {
@@ -452,6 +401,64 @@ describe('appearance', () => {
     const node = place(<Meta />).querySelector('div')!;
     expect(getComputedStyle(node).color).toBe('blue');
     expect(getComputedStyle(node).padding).toBe('2px');
+  });
+
+  it('will merge an array rule body in order and skip falsy entries', () => {
+    function Pick() {
+      return <ul _select><li _item /></ul>;
+    }
+
+    const shared = { color: 'gray', padding: '2px', ':hover': { color: 'black' } };
+    const wide = false as boolean;
+
+    style(Pick, {
+      _select: [shared, wide && { padding: '9px' }, [null, { color: 'red', ':hover': { opacity: 0.5 } }]]
+    });
+
+    const node = place(<Pick />).querySelector('ul')!;
+    expect(node.className).toBe('Pick_select Pick_select-hover');
+    expect(getComputedStyle(node).color).toBe('red');
+    expect(getComputedStyle(node).padding).toBe('2px');
+  });
+
+  it('will merge an array descendant scope and subcomponent body', () => {
+    class Menu extends Component {
+      Title() {
+        return <b _mark />;
+      }
+
+      render() {
+        return <ul _list><li _item /><this.Title /></ul>;
+      }
+    }
+
+    const shared = { color: 'gray', padding: '2px' };
+
+    style(Menu, {
+      _list: { _item: [shared, { color: 'red' }] },
+      _Title: [{ _mark: shared }, { _mark: { color: 'blue' } }]
+    });
+
+    const root = place(<Menu />);
+    const item = root.querySelector('li')!;
+    const title = root.querySelector('b')!;
+
+    expect(getComputedStyle(item).color).toBe('red');
+    expect(getComputedStyle(item).padding).toBe('2px');
+    expect(getComputedStyle(title).color).toBe('blue');
+    expect(getComputedStyle(title).padding).toBe('2px');
+  });
+
+  it('will merge descendant scopes across layers', () => {
+    function Rows() {
+      return <ul _list><li _item /></ul>;
+    }
+
+    style(Rows, { _list: { _item: { color: 'red' } } }, { _list: { _item: { padding: '2px' } } });
+
+    const item = place(<Rows />).querySelector('li')!;
+    expect(getComputedStyle(item).color).toBe('red');
+    expect(getComputedStyle(item).padding).toBe('2px');
   });
 
   it('will apply rules from every class in the chain', () => {
@@ -572,24 +579,40 @@ describe('appearance', () => {
     expect(getComputedStyle(leaf).color).not.toBe('red');
   });
 
-  it('will carry a descendant scope one component deep', () => {
+  it('will keep the descendant scope an element owns under a forwarded one', () => {
+    function Child({ style: forwarded }: { style?: any }) {
+      return <section _frame style={forwarded}><em>own</em></section>;
+    }
+
+    function Parent() {
+      return <Child _outer />;
+    }
+
+    style(Child, { _frame: { _em: { color: 'green' } } });
+    style(Parent, { _outer: { _em: { color: 'red' } } });
+
+    expect(getComputedStyle(place(<Parent />).querySelector('em')!).color).toBe('green');
+  });
+
+  it('will not carry a descendant scope into a child component', () => {
     function Deep() {
       return <em>deep</em>;
     }
 
-    function Mid() {
-      return <><q _mark>mid</q><Deep /></>;
+    function Top() {
+      return <Mid _wrap><s _mark>own</s></Mid>;
     }
 
-    function Top() {
-      return <Mid _wrap />;
+    function Mid({ children }: { children?: Component.Node }) {
+      return <><q _mark>mid</q><Deep />{children}</>;
     }
 
     style(Top, { _wrap: { _mark: { color: 'orange' }, _em: { color: 'teal' } } });
 
     const root = place(<Top />);
 
-    expect(getComputedStyle(root.querySelector('q')!).color).toBe('orange');
+    expect(getComputedStyle(root.querySelector('s')!).color).toBe('orange');
+    expect(getComputedStyle(root.querySelector('q')!).color).not.toBe('orange');
     expect(getComputedStyle(root.querySelector('em')!).color).not.toBe('teal');
   });
 
@@ -673,7 +696,7 @@ describe('appearance', () => {
       empty: () => null,
       token: () => 'one  two',
       zero: called
-    }, 'style', true)!;
+    }, 'style', { layers: [] })!;
     const scope = createStyleScope(defined, {
       _classes: { token: true, zero: true },
       _blank: { empty: true, token: false },
@@ -1222,6 +1245,86 @@ describe('conditions', () => {
     expect(root.className).toBe('Tile-group');
     expect(root.querySelector('b')!.className).toBe('Tile_label-Tile_hover');
     expect(sheet('Tile')).toEqual([':where(.Tile-group:hover) .Tile_label-Tile_hover { color: blue; }']);
+  });
+
+  it('will style a descendant while the root holds a state under media', () => {
+    function Dock() {
+      return <div><b _label /></div>;
+    }
+
+    style(Dock, { ':hover, :focus-within': { '@media print': { _label: { color: 'blue' } } } });
+
+    const root = place(<Dock />).querySelector('div')!;
+    expect(root.className).toBe('Dock-group');
+    expect(root.querySelector('b')!.className).toBe(
+      'Dock_label-Dock_hover-media_print Dock_label-Dock_focus-within-media_print'
+    );
+    expect(sheet('Dock')).toEqual([
+      '@media print { :where(.Dock-group:hover) .Dock_label-Dock_hover-media_print { color: blue; } }',
+      '@media print { :where(.Dock-group:focus-within) .Dock_label-Dock_focus-within-media_print { color: blue; } }'
+    ]);
+  });
+
+  it('will style a descendant under media while the root holds a state', () => {
+    function Capsule() {
+      return <div><b _label /></div>;
+    }
+
+    style(Capsule, {
+      '@media print': {
+        ':hover': { _label: { color: 'blue' }, opacity: 0.5 },
+        '@media (min-width: 1px)': { _label: { color: 'red' } }
+      }
+    });
+
+    const root = place(<Capsule />).querySelector('div')!;
+    expect(root.className).toBe('Capsule-media_print-hover Capsule-group');
+    expect(root.querySelector('b')!.className).toBe(
+      'Capsule_label-media_print-Capsule_hover Capsule_label-media_print-media_min-width_1px'
+    );
+    expect(sheet('Capsule')).toEqual([
+      '@media print { .Capsule-media_print-hover:where(:hover) { opacity: 0.5; } }',
+      '@media print { :where(.Capsule-group:hover) .Capsule_label-media_print-Capsule_hover { color: blue; } }',
+      '@media print { @media (min-width: 1px) { .Capsule_label-media_print-media_min-width_1px { color: red; } } }'
+    ]);
+  });
+
+  it('will merge array condition bodies at the top and inside a rule', () => {
+    function Ledger() {
+      return <div _page><b _label /></div>;
+    }
+
+    const quiet = { opacity: 0.5 };
+
+    style(Ledger, {
+      ':hover': [{ '@media print': [{ _label: { color: 'blue' } }, { _label: quiet }] }],
+      _page: { ':focus-within': [quiet, { color: 'red' }] }
+    });
+
+    const root = place(<Ledger />).querySelector('div')!;
+    expect(root.querySelector('b')!.className).toBe('Ledger_label-Ledger_hover-media_print');
+    expect(sheet('Ledger')).toEqual([
+      '@media print { :where(.Ledger-group:hover) .Ledger_label-Ledger_hover-media_print { color: blue; opacity: 0.5; } }',
+      '.Ledger_page-focus-within:where(:focus-within) { opacity: 0.5; color: red; }'
+    ]);
+  });
+
+  it('will merge a scope nested in a condition from a shared map', () => {
+    function Bar() {
+      return <nav _tabs><button _button /></nav>;
+    }
+
+    const wide = '@media (min-width: 600px)';
+    const tabs = { display: 'flex', [wide]: { gap: '2px', _button: { fontSize: '12px', height: '20px' } } };
+
+    style(Bar, { _tabs: [tabs, { display: 'none', [wide]: { display: 'grid', _button: { height: '30px' } } }] });
+
+    place(<Bar />);
+    expect(sheet('Bar')).toEqual([
+      '.Bar_tabs { display: none; }',
+      '@media (min-width: 600px) { .Bar_tabs-media_min-width_600px { gap: 2px; display: grid; } }',
+      '@media (min-width: 600px) { .Bar_nav_button-media_min-width_600px { font-size: 12px; height: 30px; } }'
+    ]);
   });
 
   it('will split a root state list before grouping', () => {

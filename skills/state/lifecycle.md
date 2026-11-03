@@ -39,7 +39,7 @@ class Timer extends Model {
 
 - Runs once, after all properties and child instances are set up.
 - Return nothing, or `() => void` to run on destruction.
-- `async new()` is allowed: `on({ ready })` handlers and effects registered before it resolves wait for it, as for a promise from any activation step. Its rejection reports to `catch` as `setup`, then destroys the instance - recovery belongs inside `new()`, around the await. Setup cannot lean on an effect to finish. Its cleanup cannot be returned - a promise's value is ignored.
+- `async new()` is allowed: `on({ ready })` handlers and effects registered before it resolves wait for it, as for a promise from any activation step. Its rejection reports to `catch` as `setup`, then destroys the instance; awaited effects and pending reads reject with that error - recovery belongs inside `new()`, around the await. Setup cannot lean on an effect to finish. Its cleanup cannot be returned - a promise's value is ignored.
 - Readiness is per tree. A parent is ready once its own steps and every child it owned at activation have settled - a child whose setup rejects is destroyed and the parent settles without it. A hold already on the parent when its children activate (an async `setup` handler, a host's placement) reaches them: their `ready` and effects wait for the root. The parent's own `async new()` runs after its children and does not hold them. Children settle before their parent; effects run after the `ready` handlers. A child adopted later settles on its own.
 - Readiness gates effects and `ready` only - never render, getters or `set(key, cb)` listeners, so a held instance still renders from the values it has. A render that must wait names the field it waits for: `data = set(() => this.load())` suspends reads until the async factory resolves. To wait for an instance from outside, await an empty effect: `await state.get(() => {})` ([get.md](get.md#await-the-release)).
 
@@ -204,7 +204,7 @@ stop();
 
 Other failures:
 
-- **Reading uninitialized required values** - throws a Suspense-compatible error (Promise with Error properties) that resolves when the value is assigned, or rejects if the instance is destroyed first.
+- **Reading uninitialized required values** - throws a Suspense-compatible error (Promise with Error properties) that resolves when the value is assigned, or rejects if the instance is destroyed first - with the setup error, when that destroyed it.
 - **Circular updates** - an effect updating a property it reads does not re-trigger in the same cycle; the update lands in the next batch.
 
 ## Hot Patching

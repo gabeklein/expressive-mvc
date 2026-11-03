@@ -74,7 +74,7 @@ const stop = state.get((current, update) => {
 
 **Await the release:** `await state.get(effect)` cancels the effect once it settles and yields the latest clean run - a one-shot read of tracked state that suspends until it can complete. Only an async effect yields a value; a sync one resolves `undefined`, its cleanup called with `false`.
 
-**Readiness:** an empty effect awaited is the wait for an instance to be ready - built, placed, its subtree included ([lifecycle.md](lifecycle.md#the-new-hook)). It rejects if the instance is destroyed first.
+**Readiness:** an empty effect awaited is the wait for an instance to be ready - built, placed, its subtree included ([lifecycle.md](lifecycle.md#the-new-hook)). It rejects if the instance is destroyed first - with the error its setup rejected, when that destroyed it, so `await user.get(() => {})` surfaces a failed load.
 
 ```ts
 await state.get(() => {});

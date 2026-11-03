@@ -1,5 +1,12 @@
 # @expressive/react
 
+## 0.94.1
+
+### Patch Changes
+
+- Updated dependencies [[`0eba921`](https://github.com/gabeklein/expressive-mvc/commit/0eba921db3ef0f10fda222b42ef270c8de0cb781)]:
+  - @expressive/mvc@0.94.0
+
 ## 0.94.0
 
 ### Minor Changes
