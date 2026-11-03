@@ -73,7 +73,7 @@ Agreed direction, staged below. The stateless call lane carved out of dev as a V
 - **Ids.** Library output needs ids stable across deploys (readable, or hashed per major) and a version header the server refuses cleanly on mismatch; embedded keeps per-build salted hashes.
 - **dev on rpc.** dev depends on rpc: `remote` sidecars are the plugin pointed at `app/**/remote.ts`, with `app/` supplying paths; twins, the stream and route admission stay in dev.
 - **Stages.**
-  1. A fetch-native handler (`(Request) => Promise<Response>`) behind dev's lane, with a Node adapter - no behavior change.
+  1. A fetch-native handler (`(Request) => Promise<Response>`) behind dev's lane, with a Node adapter - no behavior change (#622).
   2. Split the server and client `call.ts` into plain-call and twin halves.
   3. `rpc()` carved from dev's plugin - embedded, calls only - proven by a plain Vite example whose server bundle runs under `serve` and `wrangler dev`.
   4. Extract `@expressive/rpc`.
