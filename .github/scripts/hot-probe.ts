@@ -237,8 +237,18 @@ export const Routed = () => (
   </Route>
 );
 `,
+  'pack.ts': `import { Style } from '@expressive/dom';
+
+class Pack extends Style {
+  tone(value: string) {
+    return { color: value };
+  }
+}
+
+export const style = Pack.use();
+`,
   'badge.tsx': `import { Component } from '@expressive/mvc';
-import { style } from '@expressive/dom';
+import { style } from './pack';
 
 export class Badge extends Component {
   clicks = 0;
@@ -248,7 +258,7 @@ export class Badge extends Component {
   }
 }
 
-style(Badge, { color: 'rgb(255, 0, 0)' });
+style(Badge, { tone: 'rgb(255, 0, 0)' });
 
 export const Wrapper = () => <div id="wrapper"><Badge /></div>;
 `,
@@ -678,6 +688,7 @@ async function run(mode: Mode) {
 
   if (mode != 'dom') {
     delete files['badge.tsx'];
+    delete files['pack.ts'];
     delete files['folio.tsx'];
   }
 
@@ -866,9 +877,19 @@ async function run(mode: Mode) {
       await scenario('style map edit applies without a reset (dom)', async () => {
         await relay('set', 'Badge.clicks', 5);
         await see('#badge', 'badge 5');
-        await edit('badge.tsx', "style(Badge, { color: 'rgb(255, 0, 0)' });", "style(Badge, { color: 'rgb(0, 128, 0)' });");
+        await edit('badge.tsx', "style(Badge, { tone: 'rgb(255, 0, 0)' });", "style(Badge, { tone: 'rgb(0, 128, 0)' });");
         await until(async () => (await browser.color('#badge')) == 'rgb(0, 128, 0)');
         check((await browser.text('#badge')) == 'badge 5', 'clicks reset');
+        check(await alive(), 'page reloaded');
+      });
+
+    if (mode == 'dom')
+      await scenario('style pack edit rebinds its components without a reset (dom)', async () => {
+        await relay('set', 'Badge.clicks', 6);
+        await see('#badge', 'badge 6');
+        await edit('pack.ts', 'return { color: value };', "return { color: value == 'rgb(0, 128, 0)' ? 'rgb(0, 0, 255)' : value };");
+        await until(async () => (await browser.color('#badge')) == 'rgb(0, 0, 255)');
+        check((await browser.text('#badge')) == 'badge 6', 'clicks reset');
         check(await alive(), 'page reloaded');
       });
 
