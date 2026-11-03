@@ -520,6 +520,21 @@ describe('appearance', () => {
     expect(getComputedStyle(leaf).color).not.toBe('red');
   });
 
+  it('will keep the descendant scope an element owns under a forwarded one', () => {
+    function Child({ style: forwarded }: { style?: any }) {
+      return <section _frame style={forwarded}><em>own</em></section>;
+    }
+
+    function Parent() {
+      return <Child _outer />;
+    }
+
+    style(Child, { _frame: { _em: { color: 'green' } } });
+    style(Parent, { _outer: { _em: { color: 'red' } } });
+
+    expect(getComputedStyle(place(<Parent />).querySelector('em')!).color).toBe('green');
+  });
+
   it('will not carry a descendant scope into a child component', () => {
     function Deep() {
       return <em>deep</em>;
