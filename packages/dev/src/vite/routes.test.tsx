@@ -117,20 +117,27 @@ describe("app/ routing (codegen)", () => {
     expect(out).toContain('import { Page as Root } from "../app/index.tsx";');
   });
 
-  it("will provide a folder's remote default around its routes", async () => {
+  it("will hand a folder's remote default to its Route", async () => {
     const out = await generate({ "index.tsx": PAGE, "tally/index.tsx": PAGE, "tally/remote.ts": SCOPE });
 
     expect(out).toContain('import TallyRemote from "../app/tally/remote.ts";');
-    expect(out).toContain("const TallyRemoted = props => <Component for={TallyRemote}>{props.children}</Component>;");
-    expect(out).toMatch(/<Route to="tally" as=\{TallyRemoted\}>\s*<Route as=\{Tally\} \/>/);
+    expect(out).not.toContain("<Component for={TallyRemote}>");
+    expect(out).toMatch(/<Route to="tally" remote=\{TallyRemote\}>\s*<Route as=\{Tally\} \/>/);
   });
 
-  it("will provide a remote default outside the folder's own layout and scope", async () => {
+  it("will hand a remote default to the Route outside the folder's own layout and scope", async () => {
     const out = await generate({ "index.tsx": PAGE, "tally/index.tsx": `${PAGE}\n${LAYOUT}\n${SCOPE}`, "tally/remote/index.ts": SCOPE });
 
     expect(out).toContain('import TallyRemote from "../app/tally/remote/index.ts";');
-    expect(out).toContain("const TallyRemoted = props => <Component for={TallyRemote}><TallyScoped {...props} /></Component>;");
-    expect(out).toContain('<Route to="tally" as={TallyRemoted}>');
+    expect(out).toContain("const TallyScoped = props => <TallyScope><TallyLayout {...props} /></TallyScope>;");
+    expect(out).toContain('<Route to="tally" as={TallyScoped} remote={TallyRemote}>');
+  });
+
+  it("will hand the root's remote default to the root Route", async () => {
+    const out = await generate({ "index.tsx": PAGE, "remote.ts": SCOPE });
+
+    expect(out).toContain('import RootRemote from "../app/remote.ts";');
+    expect(out).toMatch(/<Route remote=\{RootRemote\} NotFound=\{NotFound\}>\s*<Route as=\{Root\} \/>/);
   });
 
   it("will not provide a remote module without a default class", async () => {
