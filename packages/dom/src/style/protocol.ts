@@ -46,8 +46,9 @@ function emitClass(block: Block, depth: number, document: Document) {
   return emitter!(block, depth, document);
 }
 
-function enterAppearance(parent: AppearanceContext | undefined, type: Function, key?: string) {
+function enterAppearance(type: Function, key?: string) {
   const chain: EnterAppearance[] = [];
+  let parent: AppearanceContext | undefined;
   let current: object | null = type;
 
   while (current && current !== Function.prototype) {

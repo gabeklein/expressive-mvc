@@ -65,8 +65,8 @@ function renderedAppearance(fiber: Fiber): Appearance | undefined {
   const entries = (fiber.appearance?.entries || []).map(({ hops, style }) => ({ hops: hops + 1, style }));
   const sub = owner(fiber.type);
   const context = sub
-    ? enterAppearance(undefined, latest(sub.owner.constructor), sub.key)
-    : enterAppearance(undefined, latest(fiber.type as Function));
+    ? enterAppearance(latest(sub.owner.constructor), sub.key)
+    : enterAppearance(latest(fiber.type as Function));
 
   if (context?.base)
     entries.push({ hops: 0, style: context.base as Style });
