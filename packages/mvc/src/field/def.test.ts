@@ -118,6 +118,24 @@ describe('instruction', () => {
       await expect(test).toHaveUpdated();
       expect(effect).toBeCalledTimes(2);
     });
+
+    it('will read get (required) on each access', () => {
+      const config = { get: true };
+
+      class Test extends Model {
+        value = def(() => config);
+      }
+
+      const test = Test.new();
+
+      expect(() => test.value).toThrow(expect.any(Promise));
+
+      config.get = false;
+      expect(test.value).toBeUndefined();
+
+      config.get = true;
+      expect(() => test.value).toThrow(expect.any(Promise));
+    });
   });
 
   describe('setter', () => {
