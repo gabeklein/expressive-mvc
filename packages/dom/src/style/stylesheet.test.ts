@@ -213,6 +213,35 @@ describe('Style', () => {
     expect(getComputedStyle(node).display).toBe('flex');
   });
 
+  it('will keep packs apart across a component boundary with colliding names', () => {
+    class Lib extends Style {
+      gutter(value: number) { return { marginLeft: `${value * 10}px` }; }
+    }
+
+    class App extends Style {
+      gutter(value: number) { return { marginLeft: `${value}px` }; }
+    }
+
+    const Card = ({ children }: { children?: any }) =>
+      createElement('section', {}, createElement('b', { _label: true }), children);
+
+    const Page = () => createElement('div', {},
+      createElement(Card, { _card: true }, createElement('u', { _label: true })),
+      createElement('i', { _label: true })
+    );
+
+    Lib.use()(Card, { gutter: 1, _label: { gutter: 2 } });
+    App.use()(Page, { _card: { gutter: 3, _label: { gutter: 4 } }, _label: { gutter: 5 } });
+
+    const root = place(createElement(Page, {}));
+    const left = (selector: string) => getComputedStyle(root.querySelector(selector)!).marginLeft;
+
+    expect(left('section')).toBe('3px');
+    expect(left('b')).toBe('20px');
+    expect(left('u')).toBe('4px');
+    expect(left('i')).toBe('5px');
+  });
+
   it('will throw for a component styled by two packs', () => {
     class Other extends Style {}
     const Twice = () => null;
