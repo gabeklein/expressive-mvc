@@ -4,7 +4,7 @@ import { Component } from '@expressive/mvc';
 
 import { createElement, render } from '../index';
 
-import { StyleSheet } from './sheet';
+import { Css } from './css';
 import { Style, style } from './stylesheet';
 
 class Sides extends Style {
@@ -120,10 +120,10 @@ describe('style map types', () => {
   });
 
   it('will type macros a pack inherits', () => {
-    class App extends StyleSheet {}
+    class App extends Css {}
 
     const map: style.Map<App> = { size: 4 };
-    // @ts-expect-error - not a macro of StyleSheet
+    // @ts-expect-error - not a macro of Css
     const typo: style.Map<App> = { size2: 4 };
 
     expect([map, typo]).toHaveLength(2);
@@ -438,7 +438,7 @@ describe('Style', () => {
   it('will pass an object to a macro whole and keep private methods out', () => {
     interface Shift { x?: number; y?: number }
 
-    class Moves extends StyleSheet {
+    class Moves extends Css {
       #px(value = 0) { return `${value}px`; }
 
       shift({ x, y }: Shift) {

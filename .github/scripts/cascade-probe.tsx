@@ -1,8 +1,8 @@
 /** @jsxImportSource @expressive/dom */
 import { Component } from '@expressive/mvc';
-import { StyleSheet, render } from '@expressive/dom';
+import { Css, render } from '@expressive/dom';
 
-const style = StyleSheet.use();
+const style = Css.use();
 
 const out: string[] = [];
 
@@ -48,7 +48,7 @@ function Units() {
   return <span _box>units</span>;
 }
 
-style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, marginInline: 4 } });
+style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, marginInline: 4, rotate: 45, transitionDuration: [200, 0] } });
 
 function Nested() {
   return <section _frame><em>deep</em></section>;
@@ -96,7 +96,7 @@ function Tip() {
 
 style(Tip, { _tip: { '::before': { content: '"x"' } } });
 
-const shell = StyleSheet.use({ _kbd: { color: 'rgb(20, 20, 20)', padding: '9px' } });
+const shell = Css.use({ _kbd: { color: 'rgb(20, 20, 20)', padding: '9px' } });
 
 function Keys() {
   return <kbd _key><kbd /></kbd>;
@@ -126,6 +126,8 @@ check('px appended where required', getComputedStyle(box).paddingTop, '5px');
 check('unitless left alone', getComputedStyle(box).zIndex, '3');
 check('logical property sized', getComputedStyle(box).marginBlockEnd, '2px');
 check('logical axis sized', getComputedStyle(box).marginLeft, '4px');
+check('rotate in degrees', getComputedStyle(box).rotate, '45deg');
+check('durations in ms', getComputedStyle(box).transitionDuration, '0.2s, 0s');
 const [toggle, picked] = root.querySelectorAll('input');
 
 check('state beats base', getComputedStyle(toggle).color, 'rgb(11, 11, 11)');

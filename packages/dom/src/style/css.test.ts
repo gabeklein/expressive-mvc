@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 import { createElement, render } from '../index';
 
-import { StyleSheet } from './sheet';
+import { Css } from './css';
+import type { style } from './stylesheet';
 
-const css = new StyleSheet();
+const css = new Css();
 const glob = (value: unknown, key: string) => css.default(value, key);
 
 function place(node: any) {
@@ -15,7 +16,7 @@ function place(node: any) {
   return root;
 }
 
-describe('StyleSheet', () => {
+describe('Css', () => {
   it('will append px only where the CSSOM rejects a bare number', () => {
     expect(glob(8, 'paddingTop')).toEqual({ paddingTop: '8px' });
     expect(glob(10, 'zIndex')).toEqual({ zIndex: 10 });
@@ -35,27 +36,33 @@ describe('StyleSheet', () => {
     expect(css.size([1, 2])).toEqual({ width: 1, height: 2 });
   });
 
-  it('will size numbers through an overridden unit', () => {
-    class Rem extends StyleSheet {
-      static unit(value: number) { return `${value}rem`; }
-    }
-
-    const Box = () => createElement('div', {});
-
-    Rem.use()(Box, { paddingTop: 8, zIndex: 2, margin: [16, 0] });
-
-    const node = place(createElement(Box, {})).querySelector('div')!;
-
-    expect(getComputedStyle(node).paddingTop).toBe('128px');
-    expect(getComputedStyle(node).zIndex).toBe('2');
-    expect(getComputedStyle(node).marginTop).toBe('256px');
-  });
-
   it('will give durations and delays milliseconds', () => {
     expect(css.transitionDuration(200)).toEqual({ transitionDuration: '200ms' });
     expect(css.transitionDelay(0)).toEqual({ transitionDelay: '0ms' });
     expect(css.animationDuration([200, '1s'])).toEqual({ animationDuration: '200ms, 1s' });
     expect(css.animationDelay('2s')).toEqual({ animationDelay: '2s' });
+  });
+
+  it('will give rotate degrees', () => {
+    expect(css.rotate(45)).toEqual({ rotate: '45deg' });
+    expect(css.rotate('0.25turn')).toEqual({ rotate: '0.25turn' });
+  });
+
+  it('will type time and angle keys from their macros', () => {
+    const Clip = () => createElement('i', {});
+    const map: style.Map<Css> = { transitionDuration: [200, '1s'], animationDelay: 0, rotate: 90 };
+    // @ts-expect-error - a duration is a number or string
+    const flag: style.Map<Css> = { transitionDuration: true };
+    // @ts-expect-error - rotate takes no array
+    const list: style.Map<Css> = { rotate: [1, 2] };
+
+    Css.use()(Clip, map);
+
+    const node = place(createElement(Clip, {})).querySelector('i')!;
+
+    expect([flag, list]).toHaveLength(2);
+    expect(getComputedStyle(node).transitionDuration).toBe('200ms, 1s');
+    expect(getComputedStyle(node).animationDelay).toBe('0ms');
   });
 
   it('will decide a property once and stay consistent', () => {

@@ -22,12 +22,12 @@ function bare(property: string) {
   return known;
 }
 
-function sized(property: string, value: unknown, pack: typeof StyleSheet): unknown {
+function sized(property: string, value: unknown): unknown {
   if (Array.isArray(value))
-    return value.map((entry) => sized(property, entry, pack));
+    return value.map((entry) => sized(property, entry));
 
   return typeof value == 'number' && value !== 0 && !bare(property)
-    ? pack.unit(value)
+    ? `${value}px`
     : value;
 }
 
@@ -42,18 +42,13 @@ function time(property: string, value: Time | readonly Time[]) {
 type Time = number | string;
 
 /**
- * Web macro pack - numbers sized by `unit` where a property needs one,
- * milliseconds for durations and delays, and the `size` shorthand. Extend it,
- * or use it as is with `StyleSheet.use()`.
+ * Web macro pack - pixels for numbers where a property needs a unit,
+ * milliseconds for durations and delays, degrees for `rotate`, and the `size`
+ * shorthand. Extend it, or use it as is with `Css.use()`.
  */
-class StyleSheet extends Style {
-  /** Unit for a number given to a property that needs one; px by default. */
-  static unit(value: number) {
-    return `${value}px`;
-  }
-
+class Css extends Style {
   default(value: unknown, key: string) {
-    return { [key]: sized(key, value, this.constructor as typeof StyleSheet) };
+    return { [key]: sized(key, value) };
   }
 
   size(value: style.Value) {
@@ -77,6 +72,10 @@ class StyleSheet extends Style {
   animationDelay(value: Time | readonly Time[]) {
     return time('animationDelay', value);
   }
+
+  rotate(value: number | string) {
+    return { rotate: typeof value == 'number' ? `${value}deg` : value };
+  }
 }
 
-export { StyleSheet };
+export { Css };
