@@ -160,8 +160,12 @@ describe('Style', () => {
   });
 
   it('will layer a subclass pack over the pack of its base', () => {
+    class Cool extends Style {
+      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'blue' : value }; }
+    }
+
     class Loud extends Style {
-      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'red' : value }; }
+      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'red' : value == 'blue' ? 'green' : value }; }
     }
 
     class Base extends Component {
@@ -172,13 +176,36 @@ describe('Style', () => {
 
     class Derived extends Base {}
 
-    Sides.use()(Base, { _label: { pill: 2 } });
+    Cool.use()(Base, { _label: { marginLeft: '2px' } });
     Loud.use()(Derived, { _label: { color: 'tone' } });
 
     const node = place(createElement(Derived, {})).querySelector('b')!;
 
     expect(getComputedStyle(node).color).toBe('red');
     expect(getComputedStyle(node).marginLeft).toBe('2px');
+  });
+
+  it('will keep a base rule beside a pack macro of the same name', () => {
+    class Rowed extends Style {
+      row() { return { display: 'flex' }; }
+    }
+
+    class Base extends Component {
+      render() {
+        return createElement('b', { _row: true });
+      }
+    }
+
+    class Derived extends Base {}
+
+    style(Base, { _row: { color: 'red' } });
+    Rowed.use()(Derived, { row: true });
+
+    const node = place(createElement(Derived, {})).querySelector('b')!;
+
+    expect(node.className).toContain('Base_row');
+    expect(getComputedStyle(node).color).toBe('red');
+    expect(getComputedStyle(node).display).toBe('flex');
   });
 
   it('will throw for a component styled by two packs', () => {

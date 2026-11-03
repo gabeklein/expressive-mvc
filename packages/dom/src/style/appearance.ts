@@ -41,6 +41,7 @@ interface StyleScope {
   label: string;
   labels: Record<string, string>;
   local: readonly string[];
+  macros: StyleMap;
   own: Declaration;
   pack?: Pack;
   routes: Map<string, AppearanceRoute>;
@@ -75,6 +76,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const base: Declaration = {};
   const scopeLabel = label || parent?.label || 'style';
   const root: Frame = { name: scopeLabel };
+  const macros = pack ? Object.create(parent?.macros || null) as StyleMap : parent?.macros || Object.create(null);
 
   for (const key of Object.keys(value)) {
     const entry = (value as StyleMap)[key];
@@ -104,22 +106,19 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
         } else rest[inner] = entry[inner];
 
       base[key] = merge(base[key], rest);
-    } else if (pack && typeof entry == 'function') {
-      own.push(key);
-      source[key] = entry;
-    } else base[key] = entry;
+    } else if (pack && typeof entry == 'function') macros[key] = entry;
+    else base[key] = entry;
   }
 
   const before = parent ? parent.local : [];
-  const local = pack ? before : [...before, ...own.filter((name) => !before.includes(name))];
+  const local = [...before, ...own.filter((name) => !before.includes(name))];
   const rules = Object.create(parent?.rules || null) as StyleMap;
   const labels = Object.create(parent?.labels || null) as Record<string, string>;
 
   for (const name of own) {
     const rule = source[name];
-    const inherited = parent?.rules[name];
-    const extend = isObject(inherited) && isObject(rule);
-    rules[name] = extend ? mergeRule(inherited, rule) : rule;
+    const inherited = parent?.rules[name] as StyleMap | undefined;
+    rules[name] = inherited ? mergeRule(inherited, rule as StyleMap) : rule;
     labels[name] = scopeLabel;
   }
 
@@ -129,6 +128,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
     label: scopeLabel,
     labels,
     local,
+    macros,
     own: base,
     pack: pack || parent?.pack,
     routes: new Map(),
@@ -254,7 +254,7 @@ function createAppearanceRoute(
   const route: AppearanceRoute = {
     flags,
     scope,
-    tag: tag && isObject(scope.rules[tag]) ? tag : undefined
+    tag: tag && scope.rules[tag] ? tag : undefined
   };
 
   scope.routes.set(id, route);
@@ -353,9 +353,9 @@ function handlers(scope: StyleScope, name: string) {
     chain = Object.assign([], { named: 0 });
 
     for (const key of [name, '*']) {
-      for (let rules: object | null = scope.rules; rules; rules = Object.getPrototypeOf(rules)) {
-        const own = Object.getOwnPropertyDescriptor(rules, key);
-        if (own && typeof own.value == 'function') chain.push(own.value as Macro);
+      for (let macros: object | null = scope.macros; macros; macros = Object.getPrototypeOf(macros)) {
+        const own = Object.getOwnPropertyDescriptor(macros, key);
+        if (own) chain.push(own.value as Macro);
       }
 
       if (key == name) chain.named = chain.length;
