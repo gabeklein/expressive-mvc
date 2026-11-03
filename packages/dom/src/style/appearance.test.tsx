@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component } from '@expressive/mvc';
-import { macro, render, style } from '../index';
+import { render, Style } from '../index';
 import * as hot from '@expressive/mvc/hot';
 import { flushMicrotasks, mount } from '../../test.setup';
 import { createAppearanceRoute, createStyleScope, resolveAppearance } from './appearance';
@@ -13,42 +13,26 @@ function place(node: Component.Node) {
   return root;
 }
 
-declare module './stylesheet' {
-  namespace macro {
-    interface Registry {
-      mex(value: any): unknown;
-      pad(value: any): unknown;
-      tone(value: any): unknown;
-      glow(value?: any): unknown;
-      tint(value: any): unknown;
-      bare(value?: any): unknown;
-      globalTone(value: any): unknown;
-      selfish(value?: any): unknown;
-      glowOn(value?: any): unknown;
-    }
-  }
-}
-
 const called = vi.fn(() => 'zero');
 
-macro({
-  mex: (value?: unknown) => ({ marginLeft: `${value}px`, marginRight: `${value}px` }),
-  pad: (value?: unknown) => ({ mex: value, paddingTop: `${value}px` }),
-  tone: (value?: unknown) => ({ color: value }),
-  glow: () => ['glow', { outlineStyle: 'solid' }],
-  tint: (value?: unknown) => ['tinted', { color: value }],
-  bare: () => 'bare',
-  globalTone: (value?: unknown) => ({ color: value }),
-  selfish: () => ({ selfish: true }),
-  glowOn: (value?: unknown) => ({ ':hover': { tone: value } }),
-  _shared: { letterSpacing: '2px', globalTone: 'brand', fontSize: 3 },
-  _output: { color: 'gray', padding: '5px' }
-});
+class Base extends Style {
+  mex(value?: unknown) { return { marginLeft: `${value}px`, marginRight: `${value}px` }; }
+  pad(value?: unknown) { return { mex: value, paddingTop: `${value}px` }; }
+  tone(value?: unknown) { return { color: value }; }
+  glow() { return ['glow', { outlineStyle: 'solid' }]; }
+  tint(value?: unknown) { return ['tinted', { color: value }]; }
+  bare() { return 'bare'; }
+  layered(value?: unknown): object { return { color: value }; }
+  selfish() { return { selfish: true }; }
+  glowOn(value?: unknown) { return { ':hover': { tone: value } }; }
+}
 
-macro({
-  globalTone: (value: unknown) => ({ globalTone: value == 'brand' ? 'purple' : value }),
-  '*': (value: unknown, key: string) => ({ [key]: value === 3 ? '3px' : value })
-});
+class Pack extends Base {
+  layered(value: unknown) { return { layered: value == 'brand' ? 'purple' : value }; }
+  '*'(value: unknown, key: string) { return { [key]: value === 3 ? '3px' : value }; }
+}
+
+const style = Pack.use();
 
 describe('appearance', () => {
   it('will emit named blocks for rules', async () => {
@@ -283,23 +267,19 @@ describe('appearance', () => {
     expect(getComputedStyle(root.querySelector('i')!).color).toBe('blue');
   });
 
-  it('will layer global macros and fall through to the layer below', () => {
-    function Global() {
-      return <i _shared />;
+  it('will layer a subclass over its pack and fall through to the layer below', () => {
+    function Layered() {
+      return <i />;
     }
 
-    style(Global, { padding: '2px' });
-    const node = place(<Global />).querySelector('i')!;
+    style(Layered, { padding: '2px', layered: 'brand', fontSize: 3 });
+    const node = place(<Layered />).querySelector('i')!;
 
-    expect(node.className).toBe('global_shared Global');
+    expect(node.className).toBe('Layered');
     expect(getComputedStyle(node).color).toBe('purple');
     expect(getComputedStyle(node).padding).toBe('2px');
-    expect(getComputedStyle(node).letterSpacing).toBe('2px');
     expect(getComputedStyle(node).fontSize).toBe('3px');
-    expect(() => macro({ _late: { color: 'red' } })).toThrow('after rendering');
-    expect(() => macro({ bad: { color: 'red' } }))
-      .toThrow('Macro "bad" must be a function. Use "_bad" to register a rule.');
-    expect(() => style(Global, { _late: { color: 'red' } })).toThrow('after a component');
+    expect(() => style(Layered, { _late: { color: 'red' } })).toThrow('after a component');
   });
 
   it('will join array values and throw for unhandled keys', () => {
@@ -353,40 +333,6 @@ describe('appearance', () => {
     expect(place(<Bare />).querySelector('wbr')!.className).toBe('bare');
   });
 
-  it('will let base declarations beat global rules', () => {
-    function Readout() {
-      return <output>out</output>;
-    }
-
-    function Gauge() {
-      return <output _shared>gauge</output>;
-    }
-
-    style(Readout, { color: 'black' });
-    style(Gauge, { color: 'black', letterSpacing: '1px', padding: '1px', _output: { padding: '6px' } });
-
-    const readout = place(<Readout />).querySelector('output')!;
-    const gauge = place(<Gauge />).querySelector('output')!;
-
-    expect(getComputedStyle(readout).color).toBe('black');
-    expect(getComputedStyle(readout).padding).toBe('5px');
-    expect(gauge.className.split(' ')).toEqual(['global_output', 'Gauge_output', 'global_shared', 'Gauge']);
-    expect(getComputedStyle(gauge).color).toBe('black');
-    expect(getComputedStyle(gauge).letterSpacing).toBe('1px');
-    expect(getComputedStyle(gauge).padding).toBe('6px');
-  });
-
-  it('will order a rule shadowing a global by its own registration', () => {
-    function Gauge() {
-      return <output _wide />;
-    }
-
-    style(Gauge, { _wide: { padding: '1px' }, _output: { padding: '2px' } });
-
-    const node = place(<Gauge />).querySelector('output')!;
-    expect(getComputedStyle(node).padding).toBe('2px');
-  });
-
   it('will not activate a rule for a falsy flag', () => {
     function Gate() {
       return <><kbd _on={0} /><samp _on={''} /><var _on={1} /></>;
@@ -402,7 +348,7 @@ describe('appearance', () => {
   });
 
   it.each([
-    ['a rule is a function', { _bad: () => null }, 'Rule "_bad" must be an object. Macros are defined by macro().'],
+    ['a rule is a function', { _bad: () => null }, 'Rule "_bad" must be an object. Macros are defined on a Style class.'],
     ['a rule is a token', { _also: 'token' }, 'Rule "_also" must be an object.'],
     ['a map uses a reserved key', { $hover: { color: 'red' } }, 'Reserved key "$hover" in style map.'],
     ['a subcomponent is nested', { _Title: { color: 'red' } }, 'Subcomponent "_Title" must be at the top of a style() map.']
@@ -673,7 +619,7 @@ describe('appearance', () => {
       empty: () => null,
       token: () => 'one  two',
       zero: called
-    }, 'style', true)!;
+    }, 'style', { layers: [] })!;
     const scope = createStyleScope(defined, {
       _classes: { token: true, zero: true },
       _blank: { empty: true, token: false },

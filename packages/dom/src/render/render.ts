@@ -1,7 +1,6 @@
 import { Context } from '@expressive/mvc';
 
 import type { Node as RenderNode } from '../node/vnode';
-import { appearanceRoot } from '../style/protocol';
 import { attach, batched, fragment } from './commits';
 import { range } from './fiber';
 import type { Container, Fiber } from './fiber';
@@ -23,10 +22,7 @@ function render(node: RenderNode, container: Container): () => void {
   const fiber = range('fragment', container, null, context);
 
   try {
-    pass(() => {
-      const appearanceContext = appearanceRoot();
-      reconcile(fiber, node, context, undefined, appearanceContext ? { context: appearanceContext, entries: [] } : undefined);
-    });
+    pass(() => reconcile(fiber, node, context, undefined, undefined));
   } catch (error) {
     unmountFiber(fiber);
     context.pop();

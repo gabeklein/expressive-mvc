@@ -1,5 +1,5 @@
 import { Component, has } from '@expressive/mvc';
-import { css, macro, render, style } from '@expressive/dom';
+import { Css, render } from '@expressive/dom';
 import { Link, Route, Router } from '@expressive/router';
 
 class Item extends Component {
@@ -10,7 +10,8 @@ class Item extends Component {
   }
 }
 
-macro(css);
+const style = Css.use();
+
 style(Item, { size: 4, _first: { size: [1, 2] } });
 
 class List extends Component {
