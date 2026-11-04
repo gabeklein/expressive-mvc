@@ -1,7 +1,7 @@
 import { basename } from "node:path";
 import { parseSync, type ESTree } from "vite";
 
-import { ERRORS } from "../http/errors";
+import { ERRORS } from "../errors";
 
 export interface Sources {
   resolve(spec: string, importer: string): Promise<string | undefined>;

@@ -1,4 +1,4 @@
-import { registry } from "../registry";
+import { registry } from "./registry";
 import { ERRORS } from "./errors";
 
 export {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import * as client from "../http/client";
-import * as server from "../http/server";
+import * as client from "../client";
+import * as server from "../server";
 import { guard, guardScript, SERVER_ONLY } from "./guard";
 
 describe("server-only names", () => {
