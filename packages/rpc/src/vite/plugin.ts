@@ -75,10 +75,14 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
           [ENV]: {
             consumer: "server",
             resolve: command === "build" ? { noExternal: true } : { external: SHARED },
-            build: { outDir: "dist/server", rollupOptions: { input: { index: ENTRY } } },
+            build: { outDir: "dist/server" },
           },
         },
       };
+    },
+
+    configEnvironment(name, config) {
+      if (name === ENV) config.build!.rolldownOptions = { input: { index: ENTRY } };
     },
 
     configResolved(config) {

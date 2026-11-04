@@ -276,8 +276,8 @@ describe("dev server", () => {
 });
 
 describe("build", () => {
-  async function build(root: string, options?: Options) {
-    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc(options)], resolve: SOURCES }, null);
+  async function build(root: string, options?: Options, config: InlineConfig = {}) {
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc(options)], resolve: SOURCES, ...config }, null);
 
     await builder.buildApp();
 
@@ -324,6 +324,16 @@ describe("build", () => {
     expect(await post("/admin", "stats:stats", "a")).toMatchObject({ status: 403 });
     expect(await post("/admin", "stats:stats", "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
     expect(await (await server.fetch(new Request("http://localhost/"), { ASSETS })).text()).toBe("asset");
+  });
+
+  it("will keep the client's rollup options out of the server bundle", async () => {
+    const root = project({ "other.html": APP["index.html"] });
+    const rollupOptions = { input: { main: join(root, "index.html"), other: join(root, "other.html") }, output: { entryFileNames: "assets/[name]-entry.js" } };
+    const { post } = await build(root, { opaque: false }, { build: { rollupOptions } });
+
+    expect(readdirSync(join(root, "dist/client")).sort()).toEqual(["assets", "index.html", "other.html"]);
+    expect(readdirSync(join(root, "dist/server"))).toEqual(["index.js"]);
+    expect(await post("/", "todos:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
   });
 
   it("will build calls with no gate in their folders", async () => {
