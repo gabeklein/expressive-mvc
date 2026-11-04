@@ -156,6 +156,19 @@ describe("vite host", () => {
     expect((await server.transformRequest("/app/tally/remote.ts"))?.code).not.toContain("a + b");
   });
 
+  it("will throw if client code imports a server-only name from @expressive/rpc/http, but not server code", async () => {
+    const server = await serve(project({
+      "app/index.tsx": 'import { Current } from "@expressive/rpc/http"; export const Page = () => Current',
+      "app/ok.tsx": 'import { NotFound } from "@expressive/rpc/http"; export const Page = () => NotFound',
+    }));
+
+    await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow(
+      "app/index.tsx imports Current from @expressive/rpc/http, which only a server has - its browser build does not export it.",
+    );
+    expect((await server.transformRequest("/app/ok.tsx"))?.code).toContain("NotFound");
+    expect((await server.environments.ssr.transformRequest("/app/index.tsx"))?.code).toContain("Current");
+  });
+
   it("will throw if a module outside its folder imports a sidecar", async () => {
     const root = project({ "app/index.tsx": "import { add } from './tally/remote'; export const Page = () => add", "app/tally/remote.ts": SIDECAR });
     const server = await serve(root);

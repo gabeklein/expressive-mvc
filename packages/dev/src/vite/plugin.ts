@@ -12,7 +12,7 @@ import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
 import { verify, type Seats } from "@expressive/rpc";
 import { isCall, send, toRequest } from "@expressive/rpc/http";
-import { dispatch } from "@expressive/rpc/internal";
+import { dispatch, guard } from "@expressive/rpc/internal";
 import { isStream, stream } from "../server/stream";
 import { install } from "../server/install";
 import { twins, type Endpoint, type Exports, type Pooled } from "../server/twin";
@@ -207,6 +207,14 @@ export function expressive(): Plugin<Host> {
         case htmlId:
           return SHELL;
       }
+    },
+
+    transform(code, id, options) {
+      if (options?.ssr) return;
+
+      const problem = guard(code);
+
+      if (problem) this.error(`${relative(root, id.split("?")[0])} ${problem}`);
     },
 
     transformIndexHtml: {
