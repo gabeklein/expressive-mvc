@@ -37,10 +37,6 @@
       "types": "./dist/protocol.d.ts",
       "default": "./dist/protocol.js"
     },
-    "./protocol/vite": {
-      "types": "./dist/protocol/vite.d.ts",
-      "default": "./dist/protocol/vite.js"
-    },
     "./vite": {
       "types": "./dist/vite.d.ts",
       "default": "./dist/vite.js"

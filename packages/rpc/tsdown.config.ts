@@ -14,7 +14,6 @@ export default defineConfig({
     'index.client': 'src/client.ts',
     http: 'src/http.ts',
     protocol: 'src/protocol.ts',
-    'protocol/vite': 'src/protocol/vite.ts',
     vite: 'src/vite/index.ts'
   },
   platform: 'neutral',

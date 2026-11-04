@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Sources } from "@expressive/rpc/protocol/vite";
+import type { Sources } from "@expressive/rpc/vite";
 
 import { remoteOf } from "./routes";
 import { scanRemote, scanTwin } from "./scan";

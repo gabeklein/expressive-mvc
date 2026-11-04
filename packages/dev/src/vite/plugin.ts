@@ -12,7 +12,7 @@ import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
 import { isCall, toNode } from "@expressive/rpc/http";
 import { dispatch, verify, type Seats } from "@expressive/rpc/protocol";
-import { SCRIPT, guardScript, type Sources } from "@expressive/rpc/protocol/vite";
+import { SCRIPT, guardScript, type Sources } from "@expressive/rpc/vite";
 import { isStream, stream } from "../server/stream";
 import { install } from "../server/install";
 import { twins, type Endpoint, type Exports, type Pooled } from "../server/twin";
