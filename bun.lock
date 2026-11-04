@@ -45,7 +45,7 @@
     },
     "packages/dom": {
       "name": "@expressive/dom",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "devDependencies": {
         "@expressive/mvc": "workspace:^",
         "@types/node": "^25.2.0",
@@ -53,7 +53,7 @@
         "vite": "^7.3.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.0",
+        "@expressive/mvc": "^0.94.1",
         "vite": ">=5",
       },
       "optionalPeers": [
@@ -69,7 +69,7 @@
         "vite": "^7.3.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.0",
+        "@expressive/mvc": "^0.94.1",
         "vite": ">=5",
       },
       "optionalPeers": [
@@ -78,7 +78,7 @@
     },
     "packages/mvc": {
       "name": "@expressive/mvc",
-      "version": "0.94.0",
+      "version": "0.94.1",
       "devDependencies": {
         "@types/node": "^18.19.0",
         "tsdown": "^0.20.1",
@@ -99,7 +99,7 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.0",
+        "@expressive/mvc": "^0.94.1",
         "preact": "^10.0.0",
       },
     },
@@ -129,9 +129,9 @@
     },
     "packages/router": {
       "name": "@expressive/router",
-      "version": "0.10.1",
+      "version": "0.10.2",
       "devDependencies": {
-        "@expressive/mvc": "^0.94.0",
+        "@expressive/mvc": "^0.94.1",
         "@expressive/react": "^0.94.1",
         "@testing-library/react": "^16.3.0",
         "@types/react": "^19",
@@ -141,7 +141,7 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.0",
+        "@expressive/mvc": "^0.94.1",
       },
     },
     "website": {
