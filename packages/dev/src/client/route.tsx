@@ -20,7 +20,7 @@ export class Route extends Base {
     if (!SEATS.has(this)) arm(this);
   });
 
-  remote?: Model = def((_key, route: Route) => {
+  remote?: Model = def<Model | undefined>((_key, route: Route) => {
     const config: Model.Apply = {
       get: self => ((self as Route).parent as Route | undefined)?.remote,
       set(next) {
