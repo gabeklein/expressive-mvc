@@ -60,19 +60,31 @@ describe('Css', () => {
     const valid: style.Map<Css> = {
       zIndex: 2,
       boxShadow: [0, 2, 4, 'black'],
-      font: [16, 'serif'],
       webkitLineClamp: 2,
+      flex: 1,
       '--gap': 4,
       color: 'red'
     };
     // @ts-expect-error - color takes no number
     const color: style.Map<Css> = { color: 5 };
     // @ts-expect-error - a number in animation could be a time or a count
-    const animation: style.Map<Css> = { animation: ['spin', 1] };
-    // @ts-expect-error - a counter's number would get px
-    const counter: style.Map = { counterReset: ['item', 1] };
+    const animation: style.Map<Css> = { webkitAnimation: ['spin', 1] };
+    // @ts-expect-error - a number in font could be a weight or a size
+    const font: style.Map<Css> = { font: [16, 'serif'] };
+    // @ts-expect-error - one unit for every number would break the basis
+    const flex: style.Map<Css> = { flex: [1, 1, 200] };
 
-    expect([valid, color, animation, counter]).toHaveLength(4);
+    expect([valid, color, animation, font, flex]).toHaveLength(5);
+  });
+
+  it('will accept only unitless numbers and zero without a default', () => {
+    const valid: style.Map = { zIndex: 2, opacity: 0.5, margin: [0, '8px'], padding: 0 };
+    // @ts-expect-error - without a default, padding gets no px
+    const padding: style.Map = { padding: 8 };
+    // @ts-expect-error - a counter's number would get px
+    const counter: style.Map<Css> = { counterReset: ['item', 1] };
+
+    expect([valid, padding, counter]).toHaveLength(3);
   });
 
   it('will type time and angle keys from their macros', () => {
