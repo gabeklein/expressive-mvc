@@ -1,6 +1,7 @@
 import { authoring, authorOf } from '../node/vnode';
 import type { Node as RenderNode } from '../node/vnode';
 import { door } from '../style/claim';
+import { unmatched } from '../style/diagnose';
 import type { Appearance, Style } from '../style/claim';
 import { enterAppearance } from '../style/protocol';
 import { owner } from './adapter';
@@ -67,6 +68,8 @@ function renderedAppearance(fiber: Fiber): Appearance | undefined {
   const context = sub
     ? enterAppearance(latest(sub.owner.constructor), sub.key)
     : enterAppearance(latest(fiber.type as Function));
+
+  unmatched(fiber.props!, [fiber.appearance?.lexical, context], fiber.appearance?.author, fiber.instance);
 
   if (context?.base)
     entries.push({ hops: 0, style: context.base as Style });

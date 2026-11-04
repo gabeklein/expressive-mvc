@@ -101,12 +101,24 @@ style(Card, {
 });
 ```
 - Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door. A class Component declaring a matching unmanaged `_` field also receives the value ([state.md](../state/state.md#unmanaged-instance-data)). The value is not reactive, and writing it does not restyle - style is resolved in the caller's render. A component styles its own output through `_rule` in its own render; anything driving behavior belongs in a managed prop.
-- `$name` is reserved and throws.
+- `$name` is a condition named on the pack ([Conditions](#conditions)); an unknown one throws, as does one written as a value (`color: '$brand'`).
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
+- Under the dev JSX runtime, a `_name` attribute that no rule matches warns once with the nearest rule name. It counts the writing component's rules, the receiving component's own, and a class Component's `_` field; a `_name` a component received and spreads on is checked where it was written. A rule supplied conditionally (`App.use(wide && rules)`) warns while absent - declare it empty (`_cell: {}`) where it is always present.
 
-Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. A pack extends `Style` or another pack; a field, getter, or `_`/`$` name on it throws. Every public method is a macro - keep helpers `private` or at module level. Methods bind to one instance, so a macro may call a private helper on `this`. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place.
+Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. Apps extend `Css` (or their own subclass of it); `Style` is the base for a new host's pack. A getter, a `_` or `$` method, or a field other than a `$name` condition throws. Every method is a macro - TypeScript's `private` included, since it only hides the name from types. Keep utilities in `#private` methods or at module level; methods bind to one instance, so a macro may call `this.#helper()`. Statics are never macros. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. `style(X)` with no map joins the pack; subclasses and subcomponents inherit their owner's. A macro's parameter may be an object - a bare key is never a scope, so `transform: { translateY: -2 }` reaches a `transform(value: Transform)` macro whole, typed by its interface, and a layer replaces it whole. A function inside a map is a value, not a definition - rules are static, so call a plain function in place.
 
-A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down (or calls `super`), then through any `'*'` method, then to the host. An override must stay assignable to the method it overrides - annotate the base's return as `object` when shapes differ. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
+A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down (or calls `super`), then through any `default(value, key)` method, then to the host. `default` is not a map key. An override must stay assignable to the method it overrides - annotate the base's return as `object` when shapes differ. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
+
+**Pack rules.** Maps passed to `use()` hold rules for every component that `style` styles - element defaults (`_button`), app roles (`_muted`), condition blocks (`$dark: { _button: … }`):
+
+```ts
+export const style = App.use(base, {
+  _button: { padding: '8px', color: text },
+  _muted: { color: muted }
+});
+```
+
+They apply only to elements written by a component styled through it, below that component's base declarations and rules; a component's own `_button` merges with the pack's. A declaration outside a rule throws. Each `use()` with maps is a separate scope - one class can serve an app shell and an embeddable widget - while `use()` without maps is shared per class. Children an app passes into a library component keep the app's rules. A component rendering host elements calls `style()`, even with no map - the pack is never inferred from context.
 
 Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule at every depth - conditions and nested `_` scopes included; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead. A rule, condition or subcomponent body may be an array, merged the same way, falsy entries skipped - a shared map with nothing to add needs none (`_tabs: tabs`). Prefer it to spreads for overriding a shared map - a spread replaces each nested level, so every level must re-spread its shared counterpart, and a level later added to the shared map is dropped:
 
@@ -123,12 +135,17 @@ Build-time extraction is not part of the `0.1` experiment.
 
 ### Conditions
 
-A key starting with `:` (state) or `@` (environment) holds a map that applies while the condition holds - at the top of a map (the component's roots), inside a rule, or nested in another condition:
+A key starting with `:` (state) or `@` (environment) holds a map that applies while the condition holds - at the top of a map (the component's roots), inside a rule, or nested in another condition. A `$name` field on the pack names one; `$name` keys resolve to it, and a subclass overrides it like a macro:
 
 ```tsx
-import { media } from '@expressive/dom';
+import { Css } from '@expressive/dom';
 
-const mobile = media({ maxWidth: 900 });   // '@media (max-width: 900px)'
+class App extends Css {
+  $mobile = '@media (max-width: 900px)';
+  $open = ':is([open])';
+}
+
+export const style = App.use();
 
 style(Select, {
   ':hover': { opacity: 1 },
@@ -137,7 +154,7 @@ style(Select, {
     ':hover, :focus-within': { borderColor: 'var(--accent)' }
   },
   _grid: { gridTemplateColumns: '1fr 1fr' },
-  [mobile]: { padding: '4px', _grid: { gridTemplateColumns: '1fr' } }
+  $mobile: { padding: '4px', _grid: { gridTemplateColumns: '1fr' } }
 });
 ```
 
@@ -148,14 +165,14 @@ style(Select, {
 - `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope.
 - `_rule` inside a `:` condition styles descendants while the enclosing element holds the state - `_thumb: { ':hover': { _delete: { opacity: 1 } } }` shows `_delete` while its thumb is hovered; at the top of a map, the state is the component root's. The element holding the state gets a `-group` class. Groups chain and combine with `@`.
 - Macros expand inside a condition; one producing a class there throws.
-- CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`mobile` above) exported from one style module.
+- CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`$mobile` above).
 - Layers and subclasses merge a condition's body key by key, like a rule.
 
-The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and` in that order. The result is a literal type, so `[mobile]` beside other keys stays a typed map; a value typed `number` or `string` rather than a literal, or a `Query`-typed variable, yields a pattern and widens the map again.
+A `$name` field must start with `@` or `:` The `style.Condition` type (`` `:${string}` | `@${string}` ``) types a condition held elsewhere.
 
 ### The web pack
 
-`Css` is a pack shipped with the renderer - pixel units for numbers and a `size` shorthand. Extend it, or use it as is:
+`Css` is the web pack shipped with the renderer - units for numbers, milliseconds for durations and a `size` shorthand. Apps extend it, or use it as is:
 
 ```ts
 import { Css } from '@expressive/dom';
@@ -163,18 +180,9 @@ import { Css } from '@expressive/dom';
 export const style = Css.use();
 ```
 
-A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
+A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. Write other units as strings (`'0.85rem'`). `transitionDuration`, `transitionDelay`, `animationDuration` and `animationDelay` are macros taking numbers as milliseconds, `0` included - an array joins with commas. `transition` takes an object keyed by property - `{ opacity: 200, transform: { duration: 300, easing: 'ease-out', delay: 50 } }` is `opacity 200ms, transform 300ms ease-out 50ms`; a string passes through, and a layer replaces the object whole. `rotate` and `offsetRotate` take degrees. A property where px is wrong gets a macro with its own unit, never a bare number. Maps accept a number only for a property where one is valid CSS - `color: 5` is a type error. Strings only where a number's role is ambiguous: `animation` (a time or a count), `font` (a weight or a size), `counterReset` (the count would get px). `flex` and `columns` take one number, not a sequence - write `flex: '1 1 200px'`. happy-dom accepts bare numbers browsers reject, so unit behavior is verified by the cascade probe, not unit tests. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
 
-Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged.
-
-For other units, `rem`, `em` and `px` suffix each number and join with spaces - plain strings, usable anywhere:
-
-```ts
-import { px, rem } from '@expressive/dom';
-
-style(Heading, { padding: rem(0.2, 0.45), border: `${px(1)} solid` });
-// padding: '0.2rem 0.45rem'
-```
+Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged - so a map for a pack with no `default` accepts numbers only where a bare one is valid, plus `0`.
 
 ### Typing
 
@@ -211,10 +219,10 @@ A component reading `style` receives a frozen object, or `undefined` when nothin
 Opinionated, applied by default:
 
 - `style(X, …)` sits directly below `X`, never gathered at the end of a file. Shared maps go above their first use.
-- One style module defines the app's pack - a `Css` subclass holding its macros - and exports its `style`, shared maps typed `style.Map<App>`, and named conditions (`mobile = media({ maxWidth: 900 })`). Components import `style` from it.
+- One style module defines the app's pack - a `Css` subclass holding its macros - with its named conditions (`$mobile`), and exports its `style` and shared maps typed `style.Map<App>`. Components import `style` from it.
 - A declaration group repeated in two or three places becomes a macro named for its job (`row`, `line`, `ellipsis`), not its CSS. What varies is its argument; an optional one makes it a flag (`row: true`). Fold repeats as you find them.
-- Shared style: a macro groups declarations; a shared map holds rules for one kind of thing - element defaults (`_button`), app roles (`_muted`) - layered as an extra `style()` argument. Share a component before sharing a map.
-- Values under `Css`: `rem()` / `em()` for type-relative sizes, bare numbers for px, strings for mixed values (`'0 auto'`, `calc()`, `var()`) - not hand-written `'0.2rem 0.45rem'`.
+- Shared style: a macro groups declarations; app-wide rules - element defaults (`_button`), app roles (`_muted`) - go in `use()`; a shared map for one kind of thing is layered as an extra `style()` argument. Share a component before sharing a map.
+- Values under `Css`: bare numbers for px, strings for any other unit or mixed value (`'0.2rem 0.45rem'`, `'0 auto'`, `calc()`, `var()`). A structured value that needs typing or units gets a macro taking an object.
 - App elements are styled with `_rule` attributes; `className` is for classes defined outside `style()`. A hover or media hook class in app CSS belongs in a map as a condition.
 
 ## MVC render scopes

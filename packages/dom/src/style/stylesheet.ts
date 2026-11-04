@@ -3,6 +3,7 @@ import { registerEmitter } from './protocol';
 import type { Block } from './protocol';
 import { applyDeclarations } from './declarations';
 import type { Declaration } from './declarations';
+import type { Numeric, Single, Unitless } from './numeric';
 
 type Member = Extract<keyof CSSStyleDeclaration, string>;
 
@@ -11,7 +12,12 @@ type Settable = {
 }[Member];
 
 type Macro<T> = Extract<
-  Exclude<{ [K in keyof T]-?: T[K] extends (...args: any[]) => unknown ? K : never }[keyof T], '*'>,
+  Exclude<{ [K in keyof T]-?: T[K] extends (...args: any[]) => unknown ? K : never }[keyof T], 'default'>,
+  string
+>;
+
+type Named<T> = Extract<
+  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends string ? K : never : never }[keyof T],
   string
 >;
 
@@ -24,11 +30,18 @@ type Key<T> =
   | Macro<T>
   | `--${string}`
   | `_${string}`
+  | Named<T>
   | style.Condition;
 
 type Layers<T> = readonly (style.Map<T> | Layers<T> | false | null | undefined)[] & { [K in style.Property | Macro<T>]?: unknown };
 
 type Body<T> = style.Map<T> | Layers<T>;
+
+type Literal = string | boolean | null | undefined | readonly Literal[];
+
+type Zero = Literal | 0 | readonly Zero[];
+
+type Numbers<T> = T extends { default(...args: any[]): unknown } ? Numeric : Unitless;
 
 declare namespace style {
   /** CSS property names, minus the CSSOM's own members. */
@@ -52,14 +65,17 @@ declare namespace style {
   /**
    * Body of a `style()` map. Bare keys are declarations or calls to a macro
    * of `T`, `_name` opens a rule or descendant scope, `:state` and `@media …`
-   * apply their body conditionally, and `$name` is reserved. A rule or
-   * condition body may be an array of maps, merged in order.
+   * apply their body conditionally, as does `$name` for a condition named on
+   * `T`. A rule or condition body may be an array of maps, merged in order.
    */
   type Map<T = {}> = {
     [K in Key<T>]?:
-      K extends `_${string}` | Condition ? Body<T> :
+      K extends `_${string}` | Condition | Named<T> ? Body<T> :
       K extends Macro<T> ? Argument<T[K]> :
-      Value;
+      K extends Single ? number | Literal :
+      K extends Numbers<T> | `--${string}` ? Value :
+      K extends Numeric ? Zero :
+      Literal;
   };
 
   /** A `style()` whose maps may call the macros of `T`. */
@@ -70,27 +86,37 @@ declare namespace style {
 
 /**
  * Base class for a macro pack. Each method is a macro, layered over the class
- * it extends; `'*'` handles any key no macro owns.
+ * it extends; `default` handles any key no macro owns. A `$name` field holds
+ * a condition (`'@media …'` or `':state'`) maps may use as a key.
  */
 class Style {
-  /** The `style()` for this pack, created once per class. */
-  static use<T extends Style>(this: new () => T): style.Apply<T> {
-    let apply = bound.get(this);
+  /**
+   * The `style()` for this pack. Without maps, one per class. Each call with
+   * maps is its own scope - their rules style only elements written by
+   * components it styles, below their own declarations.
+   */
+  static use<T extends Style>(
+    this: new () => T,
+    ...rules: (style.Map<T> | false | null | undefined)[]
+  ): style.Apply<T> {
+    const given = rules.filter(Boolean) as appearance.StyleMap[];
+    const shared = !given.length;
+    let apply = shared ? bound.get(this) : undefined;
 
     if (!apply) {
       let pack: appearance.Pack | undefined;
-      let built = false;
 
       apply = (type, ...maps) => {
-        if (!built) {
-          pack = layers(this);
-          built = true;
-        }
+        pack ||= {
+          label: this.name,
+          layers: layers(this),
+          rules: given
+        };
 
         return register(type, maps, pack);
       };
 
-      bound.set(this, apply);
+      if (shared) bound.set(this, apply);
     }
 
     return apply;
@@ -113,22 +139,30 @@ function style<T extends object>(type: T, ...maps: (style.Map | false | null | u
 }
 
 function register<T extends object>(type: T, maps: readonly unknown[], pack?: appearance.Pack): T {
-  for (const rules of maps) if (rules) appearance.style(type, rules as appearance.StyleMap, pack);
+  const present = maps.filter(Boolean) as appearance.StyleMap[];
+
+  for (const rules of present.length || !pack ? present : [{}]) appearance.style(type, rules, pack);
   registerEmitter(emit);
   return type;
 }
 
-function layers(type: Function): appearance.Pack | undefined {
+function layers(type: Function) {
   const instance = new (type as new () => object)();
   const maps: appearance.StyleMap[] = [];
+  const conditions: appearance.StyleMap = {};
 
-  const [field] = Object.keys(instance);
+  for (const [key, value] of Object.entries(instance)) {
+    if (key[0] != '$')
+      throw new Error(`Field "${key}" on ${type.name} is reserved. Define macros as methods.`);
 
-  if (field)
-    throw new Error(`Field "${field}" on ${type.name} is reserved. Define macros as methods.`);
+    if (typeof value != 'string' || value[0] != '@' && value[0] != ':')
+      throw new Error(`Condition "${key}" on ${type.name} must start with "@" or ":".`);
+
+    conditions[key] = value;
+  }
 
   for (let proto = type.prototype; proto !== Style.prototype; proto = Object.getPrototypeOf(proto)) {
-    const map: appearance.StyleMap = {};
+    const map = proto === type.prototype ? conditions : {};
 
     for (const key of Object.getOwnPropertyNames(proto)) {
       if (key == 'constructor') continue;
@@ -144,7 +178,7 @@ function layers(type: Function): appearance.Pack | undefined {
     maps.unshift(map);
   }
 
-  return maps.length ? { layers: maps } : undefined;
+  return maps;
 }
 
 function emit(block: Block, depth: number, document: Document) {

@@ -237,6 +237,12 @@ jobs:
           CHROME: /usr/bin/google-chrome
         run: bun .github/scripts/hot-probe.ts
 
+      - name: Number table matches Chrome
+        continue-on-error: true
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: bun .github/scripts/numeric-properties.ts --check
+
   native:
     if: >-
       contains(github.event.pull_request.labels.*.name, 'react-native') && (
