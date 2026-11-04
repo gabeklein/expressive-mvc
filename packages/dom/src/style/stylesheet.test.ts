@@ -8,11 +8,13 @@ import { Css } from './css';
 import { Style, style } from './stylesheet';
 
 class Sides extends Style {
+  $wide = '@media (min-width: 600px)';
+  $lit = ':hover';
   edge(side: 'Top' | 'Left') { return { [`border${side}`]: '1px solid' }; }
   row(gap?: string) { return { display: 'flex', gap }; }
   pill(value: number) { return { marginLeft: `${value}px` }; }
   flat() { return { display: 'flex' }; }
-  '*'(value: unknown, key: string) { return { [key]: value }; }
+  default(value: unknown, key: string) { return { [key]: value }; }
 }
 
 type Map = style.Map<Sides>;
@@ -33,7 +35,7 @@ describe('style map types', () => {
   it('will reject unknown keys, objects and bad macro arguments', () => {
     // @ts-expect-error - not a CSS property or macro
     const typo: Map = { colr: 'red' };
-    // @ts-expect-error - reserved for host instructions
+    // @ts-expect-error - no condition named on the pack
     const reserved: Map = { $hover: { color: 'red' } };
     // @ts-expect-error - a bare key may not open a scope
     const scoped: Map = { margin: { top: 1 } };
@@ -66,6 +68,19 @@ describe('style map types', () => {
     expect([map, bare, key]).toHaveLength(3);
   });
 
+  it('will accept conditions named on the pack', () => {
+    const map: Map = {
+      $wide: { pill: 2, _grid: { $lit: { color: 'blue' } } },
+      _item: { $lit: [{ flat: true }] }
+    };
+    // @ts-expect-error - a condition holds a map
+    const bare: Map = { $wide: 'red' };
+    // @ts-expect-error - a plain map names no conditions
+    const plain: style.Map = { $wide: { color: 'red' } };
+
+    expect([map, bare, plain]).toHaveLength(3);
+  });
+
   it('will accept arrays of maps as rule and condition bodies', () => {
     const shared: Map = { color: 'gray', ':hover': { color: 'black' } };
     const wide = false as boolean;
@@ -95,8 +110,8 @@ describe('style map types', () => {
     const flag: Map = { pill: true };
     // @ts-expect-error - edge declared from its implementation
     const wrong: Map = { edge: 'Bottom' };
-    // @ts-expect-error - '*' is not a macro
-    const fallback: Map = { '*': true };
+    // @ts-expect-error - default is not a macro
+    const fallback: Map = { default: true };
     const bare: Map = { flat: true };
     // @ts-expect-error - a macro without a parameter only takes true
     const value: Map = { flat: 'x' };
@@ -189,11 +204,11 @@ describe('Style', () => {
 
   it('will layer a subclass pack over the pack of its base', () => {
     class Cool extends Style {
-      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'blue' : value }; }
+      default(value: unknown, key: string) { return { [key]: value == 'tone' ? 'blue' : value }; }
     }
 
     class Loud extends Style {
-      '*'(value: unknown, key: string) { return { [key]: value == 'tone' ? 'red' : value == 'blue' ? 'green' : value }; }
+      default(value: unknown, key: string) { return { [key]: value == 'tone' ? 'red' : value == 'blue' ? 'green' : value }; }
     }
 
     class Base extends Component {
@@ -265,6 +280,45 @@ describe('Style', () => {
     expect(left('i')).toBe('5px');
   });
 
+  it('will apply conditions named on the pack', () => {
+    class Base extends Style {
+      $wide = '@media (min-width: 600px)';
+      $lit = ':hover';
+    }
+
+    class Narrow extends Base {
+      $wide = '@media (max-width: 300px)';
+    }
+
+    const Panel = () => createElement('div', { _grid: true });
+
+    Narrow.use()(Panel, {
+      $wide: { padding: '4px', $lit: { color: 'red' } },
+      _grid: { $lit: { opacity: 0.5 } }
+    });
+
+    const node = place(createElement(Panel, {})).querySelector('div')!;
+    const { sheet } = document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!;
+    const rules = [...sheet!.cssRules]
+      .map((rule) => rule.cssText.replace(/\s+/g, ' '))
+      .filter((rule) => rule.includes('.Panel'));
+
+    expect(node.className).toBe('Panel_grid-hover Panel-media_max-width_300px Panel-media_max-width_300px-hover');
+    expect(rules).toEqual([
+      '@media (max-width: 300px) { .Panel-media_max-width_300px { padding: 4px; } }',
+      '@media (max-width: 300px) { .Panel-media_max-width_300px-hover:where(:hover) { color: red; } }',
+      '.Panel_grid-hover:where(:hover) { opacity: 0.5; }'
+    ]);
+  });
+
+  it('will throw for default as a map key', () => {
+    const Fallback = () => createElement('i', {});
+
+    Sides.use()(Fallback, { default: 1 } as Map);
+
+    expect(() => place(createElement(Fallback, {}))).toThrow('"default" is not a style key.');
+  });
+
   it('will throw for a component styled by two packs', () => {
     class Other extends Style {}
     const Twice = () => null;
@@ -281,6 +335,8 @@ describe('Style', () => {
 
   it.each([
     ['a field', class Field extends Style { tone = 'red'; }, 'Field "tone" on Field is reserved. Define macros as methods.'],
+    ['a condition without a prefix', class Bare extends Style { $tone = 'red'; }, 'Condition "$tone" on Bare must start with "@" or ":".'],
+    ['a condition that is not a string', class Count extends Style { $size = 2; }, 'Condition "$size" on Count must start with "@" or ":".'],
     ['a prefixed method', class Prefixed extends Style { _rule() { return {}; } }, '"_rule" on Prefixed must be a method with a bare name.'],
     ['a getter', class Getter extends Style { get tone() { return {}; } }, '"tone" on Getter must be a method with a bare name.']
   ] as [string, typeof Style, string][])('will throw for %s', (_, type, message) => {

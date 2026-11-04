@@ -54,7 +54,7 @@ const unmount = render(
 
 `style` on a component automatically reaches its rendered host root, including through component, fragment, provider, portal, and collection boundaries. A fragment applies it to each host root. Forwarded style overrides the root's own, with the outermost caller winning. A component which reads its `style` prop while rendering owns placement, and nothing is forwarded. It receives a frozen object of the caller's inline declarations - spread, pluck or merge it freely; the caller's classes travel hidden with it. `className` applies to elements only.
 
-A component may register immutable maps with `style(Component, map)`. A `_name` entry is a rule, applied by a truthy `_name` attribute or a matching host tag and emitted as one class named after its source; nested inside a rule it opens a descendant scope. Component names never match - they do not survive minification. Bare keys are declarations, or macro calls where a macro owns the name, and those at the top of a map form a base rule applied to each of the component's host roots. Macros are methods of a `Style` subclass, whose `use()` returns the `style` resolving them; a function inside a map is a value, not a definition. `$name` is reserved. `_` attributes never reach the DOM, and `0` or `''` leaves a rule off. A map never reaches inside a child component; only the class chain inherits.
+A component may register immutable maps with `style(Component, map)`. A `_name` entry is a rule, applied by a truthy `_name` attribute or a matching host tag and emitted as one class named after its source; nested inside a rule it opens a descendant scope. Component names never match - they do not survive minification. Bare keys are declarations, or macro calls where a macro owns the name, and those at the top of a map form a base rule applied to each of the component's host roots. Macros are methods of a `Style` subclass, whose `use()` returns the `style` resolving them; a function inside a map is a value, not a definition. `$name` keys apply a condition named by a `$name` field on the pack. `_` attributes never reach the DOM, and `0` or `''` leaves a rule off. A map never reaches inside a child component; only the class chain inherits.
 
 ```tsx
 function Button({ active }: { active: boolean }) {
@@ -67,7 +67,7 @@ style(Button, {
 });
 ```
 
-Register styles before the component's first render. A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down, then through any `'*'` method. Unhandled keys reach the host, which joins arrays and rejects functions and objects - units belong to a macro, never a guess.
+Register styles before the component's first render. A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down, then through any `default(value, key)` method. Unhandled keys reach the host, which joins arrays and rejects functions and objects - units belong to a macro, never a guess.
 
 Inline style always beats classes; among classes, a caller's rule beats the callee's, and a rule carried through more component `style` props wins - independent of render order. `false`, `null`, and `undefined` omit an entry; `0` remains a macro argument.
 

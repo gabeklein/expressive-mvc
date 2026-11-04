@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { Css } from './css';
 
 const css = new Css();
-const glob = (value: unknown, key: string) => css['*'](value, key);
+const glob = (value: unknown, key: string) => css.default(value, key);
 
 describe('css pack', () => {
   it('will append px only where the CSSOM rejects a bare number', () => {

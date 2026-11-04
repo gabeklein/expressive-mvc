@@ -81,13 +81,11 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   for (const key of Object.keys(value)) {
     const entry = flatten((value as StyleMap)[key], key);
 
-    if (key[0] == '$')
-      throw new Error(`Reserved key "${key}" in style map.`);
-
     if (SUBCOMPONENT.test(key))
       throw new Error(`Subcomponent "${key}" must be at the top of a style() map.`);
 
-    if (key[0] == '_') {
+    if (pack && key[0] == '$') macros[key] = entry;
+    else if (key[0] == '_') {
       if (!isObject(entry))
         throw new Error(`Rule "${key}" must be an object. Macros are defined on a Style class.`);
 
@@ -95,7 +93,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
       if (!own.includes(name)) own.push(name);
       source[name] = merge(source[name], entry);
     } else if (isCondition(key) && isObject(entry)) {
-      base[key] = merge(base[key], lift(root, split(key).map((when) => [when]), entry, own, source));
+      base[key] = merge(base[key], lift(root, split(macros, key).map((when) => [when]), entry, own, source, macros));
     } else if (pack && typeof entry == 'function') macros[key] = entry;
     else base[key] = entry;
   }
@@ -131,7 +129,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   return scope;
 }
 
-function lift(frame: Frame, paths: string[][], body: StyleMap, own: string[], source: StyleMap) {
+function lift(frame: Frame, paths: string[][], body: StyleMap, own: string[], source: StyleMap, macros: StyleMap) {
   const rest: StyleMap = {};
 
   for (const key of Object.keys(body)) {
@@ -147,8 +145,8 @@ function lift(frame: Frame, paths: string[][], body: StyleMap, own: string[], so
           entry as StyleMap
         ));
     } else if (isCondition(key) && isObject(entry)) {
-      const inner = paths.flatMap((path) => split(key).map((when) => [...path, when]));
-      rest[key] = lift(frame, inner, entry, own, source);
+      const inner = paths.flatMap((path) => split(macros, key).map((when) => [...path, when]));
+      rest[key] = lift(frame, inner, entry, own, source, macros);
     } else rest[key] = entry;
   }
 
@@ -368,7 +366,7 @@ function handlers(scope: StyleScope, name: string) {
   if (!chain) {
     chain = Object.assign([], { named: 0 });
 
-    for (const key of [name, '*']) {
+    for (const key of [name, 'default']) {
       for (let macros: object | null = scope.macros; macros; macros = Object.getPrototypeOf(macros)) {
         const own = Object.getOwnPropertyDescriptor(macros, key);
         if (own) chain.push(own.value as Macro);
@@ -415,6 +413,9 @@ function expand(scope: StyleScope, value: unknown, depths: Depths, frame: Frame)
         continue;
       }
 
+      if (name == 'default')
+        throw new Error('"default" is not a style key.');
+
       const chain = handlers(scope, name);
       const depth = depths.get(name) || 0;
 
@@ -434,7 +435,7 @@ function expand(scope: StyleScope, value: unknown, depths: Depths, frame: Frame)
   walk(value, depths);
 
   for (const [key, body] of conditions)
-    for (const when of split(key)) {
+    for (const when of split(scope.macros, key)) {
       const inner = expand(scope, body, depths, frame);
 
       if (inner.classes.length)
@@ -468,10 +469,19 @@ function terminal(name: string, value: unknown) {
 }
 
 function isCondition(key: string) {
-  return key[0] == ':' || key[0] == '@' || key[0] == '\0';
+  return key[0] == ':' || key[0] == '@' || key[0] == '$' || key[0] == '\0';
 }
 
-function split(key: string) {
+function split(macros: StyleMap, key: string) {
+  if (key[0] == '$') {
+    const condition = macros[key];
+
+    if (typeof condition != 'string')
+      throw new Error(`Unknown condition "${key}".`);
+
+    key = condition;
+  }
+
   if (key[0] != ':') return [key];
 
   const parts: string[] = [];

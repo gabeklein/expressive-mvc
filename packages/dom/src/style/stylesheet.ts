@@ -11,7 +11,12 @@ type Settable = {
 }[Member];
 
 type Macro<T> = Extract<
-  Exclude<{ [K in keyof T]-?: T[K] extends (...args: any[]) => unknown ? K : never }[keyof T], '*'>,
+  Exclude<{ [K in keyof T]-?: T[K] extends (...args: any[]) => unknown ? K : never }[keyof T], 'default'>,
+  string
+>;
+
+type Named<T> = Extract<
+  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends string ? K : never : never }[keyof T],
   string
 >;
 
@@ -24,6 +29,7 @@ type Key<T> =
   | Macro<T>
   | `--${string}`
   | `_${string}`
+  | Named<T>
   | style.Condition;
 
 type Layers<T> = readonly (style.Map<T> | Layers<T> | false | null | undefined)[] & { [K in style.Property | Macro<T>]?: unknown };
@@ -52,12 +58,12 @@ declare namespace style {
   /**
    * Body of a `style()` map. Bare keys are declarations or calls to a macro
    * of `T`, `_name` opens a rule or descendant scope, `:state` and `@media …`
-   * apply their body conditionally, and `$name` is reserved. A rule or
-   * condition body may be an array of maps, merged in order.
+   * apply their body conditionally, as does `$name` for a condition named on
+   * `T`. A rule or condition body may be an array of maps, merged in order.
    */
   type Map<T = {}> = {
     [K in Key<T>]?:
-      K extends `_${string}` | Condition ? Body<T> :
+      K extends `_${string}` | Condition | Named<T> ? Body<T> :
       K extends Macro<T> ? Argument<T[K]> :
       Value;
   };
@@ -70,7 +76,8 @@ declare namespace style {
 
 /**
  * Base class for a macro pack. Each method is a macro, layered over the class
- * it extends; `'*'` handles any key no macro owns.
+ * it extends; `default` handles any key no macro owns. A `$name` field holds
+ * a condition (`'@media …'` or `':state'`) maps may use as a key.
  */
 class Style {
   /** The `style()` for this pack, created once per class. */
@@ -121,14 +128,20 @@ function register<T extends object>(type: T, maps: readonly unknown[], pack?: ap
 function layers(type: Function): appearance.Pack | undefined {
   const instance = new (type as new () => object)();
   const maps: appearance.StyleMap[] = [];
+  const conditions: appearance.StyleMap = {};
 
-  const [field] = Object.keys(instance);
+  for (const [key, value] of Object.entries(instance)) {
+    if (key[0] != '$')
+      throw new Error(`Field "${key}" on ${type.name} is reserved. Define macros as methods.`);
 
-  if (field)
-    throw new Error(`Field "${field}" on ${type.name} is reserved. Define macros as methods.`);
+    if (typeof value != 'string' || value[0] != '@' && value[0] != ':')
+      throw new Error(`Condition "${key}" on ${type.name} must start with "@" or ":".`);
+
+    conditions[key] = value;
+  }
 
   for (let proto = type.prototype; proto !== Style.prototype; proto = Object.getPrototypeOf(proto)) {
-    const map: appearance.StyleMap = {};
+    const map = proto === type.prototype ? conditions : {};
 
     for (const key of Object.getOwnPropertyNames(proto)) {
       if (key == 'constructor') continue;

@@ -101,12 +101,12 @@ style(Card, {
 });
 ```
 - Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door. A class Component declaring a matching unmanaged `_` field also receives the value ([state.md](../state/state.md#unmanaged-instance-data)). The value is not reactive, and writing it does not restyle - style is resolved in the caller's render. A component styles its own output through `_rule` in its own render; anything driving behavior belongs in a managed prop.
-- `$name` is reserved and throws.
+- `$name` is a condition named on the pack ([Conditions](#conditions)); an unknown one throws.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 
-Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. A pack extends `Style` or another pack; a field, getter, or `_`/`$` name on it throws. Every public method is a macro - keep helpers `private` or at module level. Methods bind to one instance, so a macro may call a private helper on `this`. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place.
+Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. A pack extends `Style` or another pack; a getter, a `_`/`$` method, or a field other than a `$name` condition throws. Every public method is a macro - keep helpers `private` or at module level. Methods bind to one instance, so a macro may call a private helper on `this`. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. A function inside a `style()` map is a value, not a definition - rules are static, so call a plain function in place.
 
-A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down (or calls `super`), then through any `'*'` method, then to the host. An override must stay assignable to the method it overrides - annotate the base's return as `object` when shapes differ. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
+A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down (or calls `super`), then through any `default(value, key)` method, then to the host. `default` is not a map key. An override must stay assignable to the method it overrides - annotate the base's return as `object` when shapes differ. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
 Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule at every depth - conditions and nested `_` scopes included; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead. A rule, condition or subcomponent body may be an array, merged the same way, falsy entries skipped - a shared map with nothing to add needs none (`_tabs: tabs`). Prefer it to spreads for overriding a shared map - a spread replaces each nested level, so every level must re-spread its shared counterpart, and a level later added to the shared map is dropped:
 
@@ -123,12 +123,17 @@ Build-time extraction is not part of the `0.1` experiment.
 
 ### Conditions
 
-A key starting with `:` (state) or `@` (environment) holds a map that applies while the condition holds - at the top of a map (the component's roots), inside a rule, or nested in another condition:
+A key starting with `:` (state) or `@` (environment) holds a map that applies while the condition holds - at the top of a map (the component's roots), inside a rule, or nested in another condition. A `$name` field on the pack names one; `$name` keys resolve to it, and a subclass overrides it like a macro:
 
 ```tsx
-import { media } from '@expressive/dom';
+import { Css, media } from '@expressive/dom';
 
-const mobile = media({ maxWidth: 900 });   // '@media (max-width: 900px)'
+class App extends Css {
+  $mobile = media({ maxWidth: 900 });   // '@media (max-width: 900px)'
+  $open = ':is([open])';
+}
+
+export const style = App.use();
 
 style(Select, {
   ':hover': { opacity: 1 },
@@ -137,7 +142,7 @@ style(Select, {
     ':hover, :focus-within': { borderColor: 'var(--accent)' }
   },
   _grid: { gridTemplateColumns: '1fr 1fr' },
-  [mobile]: { padding: '4px', _grid: { gridTemplateColumns: '1fr' } }
+  $mobile: { padding: '4px', _grid: { gridTemplateColumns: '1fr' } }
 });
 ```
 
@@ -148,10 +153,10 @@ style(Select, {
 - `_rule` inside an `@` condition applies that rule under it, at the top level or as a descendant scope.
 - `_rule` inside a `:` condition styles descendants while the enclosing element holds the state - `_thumb: { ':hover': { _delete: { opacity: 1 } } }` shows `_delete` while its thumb is hovered; at the top of a map, the state is the component root's. The element holding the state gets a `-group` class. Groups chain and combine with `@`.
 - Macros expand inside a condition; one producing a class there throws.
-- CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`mobile` above) exported from one style module.
+- CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`$mobile` above).
 - Layers and subclasses merge a condition's body key by key, like a rule.
 
-The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and` in that order. The result is a literal type, so `[mobile]` beside other keys stays a typed map; a value typed `number` or `string` rather than a literal, or a `Query`-typed variable, yields a pattern and widens the map again.
+The `style.Condition` type (`` `:${string}` | `@${string}` ``) types exported conditions. `media()` takes `minWidth`, `maxWidth`, `minHeight`, `maxHeight` (numbers are px), `orientation`, `hover`, `pointer`, `prefersColorScheme` and `prefersReducedMotion`, joined with `and` in that order. Its result is a literal type, so a computed `[media(…)]` key beside other keys stays a typed map; a value typed `number` or `string` rather than a literal, or a `Query`-typed variable, yields a pattern and widens the map again. A `$name` field must start with `@` or `:`.
 
 ### The web pack
 
@@ -211,7 +216,7 @@ A component reading `style` receives a frozen object, or `undefined` when nothin
 Opinionated, applied by default:
 
 - `style(X, …)` sits directly below `X`, never gathered at the end of a file. Shared maps go above their first use.
-- One style module defines the app's pack - a `Css` subclass holding its macros - and exports its `style`, shared maps typed `style.Map<App>`, and named conditions (`mobile = media({ maxWidth: 900 })`). Components import `style` from it.
+- One style module defines the app's pack - a `Css` subclass holding its macros - with its named conditions (`$mobile`), and exports its `style` and shared maps typed `style.Map<App>`. Components import `style` from it.
 - A declaration group repeated in two or three places becomes a macro named for its job (`row`, `line`, `ellipsis`), not its CSS. What varies is its argument; an optional one makes it a flag (`row: true`). Fold repeats as you find them.
 - Shared style: a macro groups declarations; a shared map holds rules for one kind of thing - element defaults (`_button`), app roles (`_muted`) - layered as an extra `style()` argument. Share a component before sharing a map.
 - Values under `Css`: `rem()` / `em()` for type-relative sizes, bare numbers for px, strings for mixed values (`'0 auto'`, `calc()`, `var()`) - not hand-written `'0.2rem 0.45rem'`.

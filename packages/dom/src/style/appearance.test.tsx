@@ -29,7 +29,7 @@ class Base extends Style {
 
 class Pack extends Base {
   layered(value: unknown) { return { layered: value == 'brand' ? 'purple' : value }; }
-  '*'(value: unknown, key: string) { return { [key]: value === 3 ? '3px' : value }; }
+  default(value: unknown, key: string) { return { [key]: value === 3 ? '3px' : value }; }
 }
 
 const style = Pack.use();
@@ -353,7 +353,7 @@ describe('appearance', () => {
     ['a rule is a function', { _bad: () => null }, 'Rule "_bad" must be an object. Macros are defined on a Style class.'],
     ['a rule is a token', { _also: 'token' }, 'Rule "_also" must be an object.'],
     ['a rule array holds a token', { _also: [{ color: 'red' }, 'token'] }, 'Rule "_also" must be an object.'],
-    ['a map uses a reserved key', { $hover: { color: 'red' } }, 'Reserved key "$hover" in style map.'],
+    ['a map uses an unknown condition', { $hover: { color: 'red' } }, 'Unknown condition "$hover".'],
     ['a subcomponent is nested', { _Title: { color: 'red' } }, 'Subcomponent "_Title" must be at the top of a style() map.']
   ])('will throw if %s', (_, map, message) => {
     expect(() => createStyleScope(undefined, map as any)).toThrow(message);
