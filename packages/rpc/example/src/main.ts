@@ -15,12 +15,18 @@ configure({
   },
 });
 
+let latest = 0;
+
 async function attempt(run: () => Promise<void>) {
+  const id = ++latest;
+
   $("error").textContent = "";
 
   try {
     await run();
   } catch (error) {
+    if (id !== latest) return;
+
     const kinds = Object.entries(KINDS).filter(([, Type]) => error instanceof Type).map(([name]) => name);
     $("error").textContent = `${kinds.join(" ") || "Error"}: ${(error as Error).message}`;
   }
@@ -41,9 +47,14 @@ function item(todo: Todo) {
 }
 
 async function render() {
+  const id = latest;
+
   $("who").textContent = localStorage.getItem("token") ?? "signed out";
   $("todos").replaceChildren();
-  $("todos").replaceChildren(...(await list()).map(item));
+
+  const todos = await list();
+
+  if (id === latest) $("todos").replaceChildren(...todos.map(item));
 }
 
 function signIn(token: string | null) {
@@ -72,4 +83,4 @@ $<HTMLFormElement>("new").onsubmit = event => {
   });
 };
 
-attempt(render);
+if (localStorage.getItem("token")) attempt(render);
