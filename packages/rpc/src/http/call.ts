@@ -1,4 +1,5 @@
 import { attempt, fault, inFolder, locate, type Call, type Endpoint, type Exports, type Match, type Outcome, type Seats } from "../call";
+import { ERRORS } from "./errors";
 
 export function isCall(request: Request): boolean {
   const { headers } = request;
@@ -54,7 +55,7 @@ export async function dispatch<E extends Exports>(request: Request, endpoints: (
 }
 
 function plain(incoming: Incoming, fn: Call): Handle {
-  return async args => respond(await attempt(() => inFolder(incoming, () => fn(...args)), incoming.list, incoming.dev));
+  return async args => respond(await attempt(() => inFolder(incoming, () => fn(...args)), incoming.list, incoming.dev, ERRORS));
 }
 
 async function readArgs(request: Request): Promise<unknown[] | undefined> {
@@ -67,7 +68,7 @@ async function readArgs(request: Request): Promise<unknown[] | undefined> {
 }
 
 export async function failure(error: unknown, endpoints: Endpoint[], dev: boolean, headers?: Record<string, string>): Promise<Response> {
-  return respond(await fault(error, endpoints, dev), headers);
+  return respond(await fault(error, endpoints, dev, ERRORS), headers);
 }
 
 function respond(outcome: Outcome, headers?: Record<string, string>): Response {

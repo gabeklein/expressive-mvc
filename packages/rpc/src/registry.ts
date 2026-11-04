@@ -1,6 +1,6 @@
 import type { Fault } from "./call";
 
-export function registry(known: Record<string, ErrorConstructor> = {}) {
+export function registry(known: Record<string, new (message: string) => Error> = {}) {
   const classes = new Map(Object.entries(known));
 
   function define(id: string, name: string): ErrorConstructor {

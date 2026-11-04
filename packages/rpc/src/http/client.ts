@@ -1,4 +1,24 @@
 import { registry } from "../registry";
+import { ERRORS } from "./errors";
+
+export {
+  BadRequest,
+  Conflict,
+  Forbidden,
+  Gone,
+  HttpError,
+  InternalError,
+  MethodNotAllowed,
+  NotFound,
+  NotImplemented,
+  PayloadTooLarge,
+  PaymentRequired,
+  Redirect,
+  ServiceUnavailable,
+  TooManyRequests,
+  Unauthorized,
+  UnprocessableEntity,
+} from "./errors";
 
 export interface Hooks {
   headers?(): Record<string, string>;
@@ -6,7 +26,7 @@ export interface Hooks {
 }
 
 export function client(hooks: Hooks = {}) {
-  const { define, rebuild } = registry();
+  const { define, rebuild } = registry(ERRORS);
 
   function pathOf(pattern: string[], name: string, from = location.pathname): string {
     const at = from.split("/").filter(Boolean);
