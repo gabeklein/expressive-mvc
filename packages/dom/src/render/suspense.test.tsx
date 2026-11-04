@@ -1116,6 +1116,34 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('ready');
   });
 
+  it('will show a fallback catch sets while its boundary is hidden', async () => {
+    const pending = mockPromise<void>();
+
+    function Wait(): Component.Node {
+      throw pending;
+    }
+
+    class App extends Component {
+      fallback: Component.Node = <i>loading</i>;
+
+      catch(error: Error) {
+        this.fallback = <b>{error.message}</b>;
+      }
+
+      render() {
+        return <Wait />;
+      }
+    }
+
+    const root = place(<App />);
+    expect(root.textContent).toBe('loading');
+
+    pending.reject(new Error('refused'));
+    await flushMicrotasks();
+
+    expect(root.textContent).toBe('refused');
+  });
+
   it('will bubble an unhandled child error to its parent boundary', async () => {
     let failed = true;
     const caught = vi.fn((_message: string) => {

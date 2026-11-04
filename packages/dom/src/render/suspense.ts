@@ -90,12 +90,13 @@ function hide(owner: Fiber, boundary: Boundary) {
 
   stashes.set(stash, owner);
 
-  const context = owner.childContext!;
-  const placeholder = range('fragment', owner.end.parentNode!, owner.end, context);
-
   owner.stash = stash;
-  owner.placeholder = placeholder;
-  reconcile(placeholder, boundary.fallback(), context, boundary.parent);
+  owner.placeholder = range('fragment', owner.end.parentNode!, owner.end, owner.childContext!);
+  draw(owner, boundary);
+}
+
+function draw(owner: Fiber, boundary: Boundary) {
+  reconcile(owner.placeholder!, boundary.fallback(), owner.childContext!, boundary.parent);
 }
 
 function reveal(owner: Fiber) {
@@ -177,7 +178,11 @@ function recover(fiber: Fiber, thrown: unknown, boundary: Boundary | undefined) 
   wait(fiber, handler);
   fiber.recovering = token;
 
-  Promise.resolve(handler.catch!(error)).then(
+  const caught = handler.catch!(error);
+
+  if (handler.owner!.placeholder) draw(handler.owner!, handler);
+
+  Promise.resolve(caught).then(
     () => {
       if (fiber.recovering !== token) return;
       fiber.recovering = undefined;
