@@ -53,3 +53,16 @@ test("redirects from the entry hook, which reads the fetched seat", async ({ pag
   await expect(page).toHaveURL("/login");
   await expect(page.getByRole("heading")).toHaveText("Login");
 });
+
+test("leaves the gate for another page while its admission is still pending", async ({ page, context, baseURL, open: _ }) => {
+  await pass(context, baseURL, "ada");
+  await page.route(url => url.pathname == "/gate", async route => {
+    if (route.request().method() != "POST") return route.continue();
+  });
+
+  await page.goto("/gate");
+  await expect(page.getByText("Loading…")).toBeVisible();
+
+  await page.getByRole("link", { name: "About" }).click();
+  await expect(page.getByRole("heading")).toHaveText("About");
+});
