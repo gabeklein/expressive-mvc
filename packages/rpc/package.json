@@ -1,0 +1,59 @@
+{
+  "name": "@expressive/rpc",
+  "version": "0.0.0",
+  "description": "Plain calls from an Expressive client to its server: a transport-neutral core and its HTTP flavor.",
+  "license": "MIT",
+  "private": true,
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@expressive.dev",
+    "url": "https://github.com/gabeklein"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "workerd": "./dist/http.server.js",
+      "worker": "./dist/http.server.js",
+      "node": "./dist/http.server.js",
+      "browser": "./dist/http.client.js",
+      "default": "./dist/http.server.js"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.ts",
+      "default": "./dist/internal.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit --incremental",
+    "coverage": "vitest run --coverage",
+    "test": "bun run typecheck && bun run coverage"
+  },
+  "peerDependencies": {
+    "@expressive/mvc": "^0.94.0"
+  },
+  "devDependencies": {
+    "@expressive/mvc": "workspace:*",
+    "@types/node": "^25.2.0",
+    "tsdown": "^0.20.1",
+    "vite": "^8.0.0"
+  }
+}
