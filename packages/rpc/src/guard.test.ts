@@ -5,12 +5,8 @@ import * as server from "./http/server";
 import { guard, SERVER_ONLY } from "./guard";
 
 describe("server-only names", () => {
-  it("will list what the server build exports and the browser build does not", () => {
-    expect([...SERVER_ONLY].sort()).toEqual(["Current", "handler", "isCall", "reply", "send", "toNode", "toRequest"]);
-
-    for (const name of SERVER_ONLY) expect(client).not.toHaveProperty(name);
-    for (const name of Object.keys(client)) expect(SERVER_ONLY).not.toContain(name);
-    expect(Object.keys(server)).toEqual(expect.arrayContaining([...SERVER_ONLY]));
+  it("will list exactly what the server build exports and the browser build does not", () => {
+    expect([...SERVER_ONLY].sort()).toEqual(Object.keys(server).filter(name => !(name in client)).sort());
   });
 });
 

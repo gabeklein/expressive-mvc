@@ -1,7 +1,4 @@
-import * as client from "./http/client";
-import * as server from "./http/server";
-
-export const SERVER_ONLY: readonly string[] = Object.keys(server).filter(name => !(name in client));
+export const SERVER_ONLY: readonly string[] = ["Current", "handler", "isCall", "reply", "send", "toNode", "toRequest"];
 
 const IMPORT = /\b(?:import|export)\s+(type\s+)?([^"'`;]*?)\s*from\s*["']@expressive\/rpc\/http["']/g;
 
