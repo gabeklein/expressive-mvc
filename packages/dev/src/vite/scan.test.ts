@@ -336,4 +336,13 @@ describe("twin scan", () => {
 
     expect(problems).toEqual(["Gate extends Forbidden, an error class - a folder's default must be a Model."]);
   });
+
+  it("will take a folder's default extending a root class that is not an http error, as Current", async () => {
+    const { problems, state } = await scanTwin(`
+      import { Current } from "@expressive/rpc";
+      export default class Gate extends Current {}
+    `, "/app/remote.ts", files({}));
+
+    expect({ problems, state }).toEqual({ problems: [], state: true });
+  });
 });
