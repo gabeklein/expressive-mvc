@@ -11,6 +11,7 @@ import { runtime } from "../client/call";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
 import { dispatch, isCall, verify, type Endpoint, type Exports, type Pooled, type Seats } from "../server/call";
+import { send, toRequest } from "../server/node";
 import { isStream, stream } from "../server/stream";
 import { install } from "../server/context";
 import { scanExports, scanSidecar, scanTwin, type Sources, type Twin } from "./scan";
@@ -217,10 +218,12 @@ export function expressive(): Plugin<Host> {
       const endpoints = () => exposure.byPattern().map(group => endpointOf(host, root, exposure, group));
 
       server.middlewares.use((req, res, next) => {
-        if (isStream(req)) return stream(req, res);
-        if (!isCall(req)) return next();
+        const request = toRequest(req, res);
 
-        dispatch(req, res, endpoints, true, seatsOf(host, project)).catch(next);
+        if (isStream(request)) return void send(res, stream(request)).catch(next);
+        if (!isCall(request)) return next();
+
+        dispatch(request, endpoints, true, seatsOf(host, project)).then(response => send(res, response)).catch(next);
       });
 
       return () => {

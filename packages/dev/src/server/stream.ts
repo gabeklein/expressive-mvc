@@ -1,25 +1,35 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-
 import { connect, listen } from "./connection";
 
 export const STREAM = "/.expressive/stream";
 
-export function isStream(req: IncomingMessage): boolean {
-  return req.method === "GET" && new URL(req.url ?? "/", "http://localhost").pathname === STREAM;
+export function isStream(request: Request): boolean {
+  return request.method === "GET" && new URL(request.url).pathname === STREAM;
 }
 
-export function stream(req: IncomingMessage, res: ServerResponse): void {
-  const connection = connect(new URL(req.url!, "http://localhost").searchParams.get("connection"));
+export function stream(request: Request): Response {
+  const connection = connect(new URL(request.url).searchParams.get("connection"));
 
-  if (!connection) {
-    res.statusCode = 400;
-    return void res.end();
-  }
+  if (!connection) return new Response(null, { status: 400 });
 
-  res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
-  res.flushHeaders();
+  const encode = new TextEncoder();
+  let close: (() => void) | undefined;
 
-  const close = listen(connection, (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      close = listen(connection, (event, data) => controller.enqueue(encode.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)));
 
-  req.on("close", close);
+      request.signal.addEventListener("abort", () => {
+        if (!close) return;
+        close();
+        close = undefined;
+        controller.close();
+      });
+    },
+    cancel() {
+      close?.();
+      close = undefined;
+    },
+  });
+
+  return new Response(body, { headers: { "content-type": "text/event-stream", "cache-control": "no-cache" } });
 }

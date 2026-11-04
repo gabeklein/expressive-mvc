@@ -1,16 +1,15 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { IncomingMessage } from "node:http";
 import { Context, get, set, Model } from "@expressive/mvc";
 
 import { construct, Current, install, within, type Seat } from "./context";
 
-const request = (url = "/", cookie = "") => ({ url, headers: { cookie } }) as IncomingMessage;
+const request = (url = "/", cookie = "") => new Request(`http://localhost${url}`, { headers: { cookie } });
 const call = <T>(segments: string[], run: () => T) => within(request("/" + segments.join("/")), segments, run);
 
 beforeAll(install);
 afterEach(() => vi.useRealTimers());
 
-const walk = <T>(req: IncomingMessage, segments: string[], seats: (Seat | undefined)[], run: () => T) => within(req, segments, run, seats);
+const walk = <T>(req: Request, segments: string[], seats: (Seat | undefined)[], run: () => T) => within(req, segments, run, seats);
 
 describe("server get", () => {
   it("will throw outside a call", () => {
@@ -286,7 +285,7 @@ describe("Current", () => {
   it("will read the request in progress", async () => {
     const seen = await within(request("/tally?x=1", "a=1; b=x%20y"), ["tally"], () => {
       const { url, cookies, request } = Current.get();
-      return { path: url.pathname, query: url.searchParams.get("x"), cookies, method: request.headers.cookie };
+      return { path: url.pathname, query: url.searchParams.get("x"), cookies, method: request.headers.get("cookie") };
     });
 
     expect(seen).toEqual({ path: "/tally", query: "1", cookies: { a: "1", b: "x y" }, method: "a=1; b=x%20y" });

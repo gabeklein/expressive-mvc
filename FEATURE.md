@@ -8,7 +8,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - Merge `main` into the trunk as it moves. Upstream fixes (mvc, dom, router) land on `main` as their own PRs, never only here.
 - `backup/dev-server-full` holds the pre-trunk prototype - source for the queued features below. Its POST dispatch and client stubs seed the MVP; its `app/api` lane becomes the rpc folder (RPC). Delete once nothing is left to carve.
 - Stack PRs: each targets the previous one's branch, the bottom one the trunk; merge a lower branch up into the ones above it as it moves.
-- Verify in a browser, not only unit tests: `bun run example:e2e` in `packages/dev` (set `CHROME`). After rebuilding a package, a dev server can serve a stale `@expressive/*` from `example/node_modules/.vite` - delete it (the E2E dev project always does).
+- Verify in a browser, not only unit tests: `bun run example:e2e` in `packages/dev` (set `CHROME`). After rebuilding a package, a dev server can serve a stale `@expressive/*` pre-bundle from `packages/dev/node_modules/.vite` - delete it (the E2E dev project always does).
 - Specs live in `example/e2e/` for now; colocating them beside routes is allowed later - the dependency scan already skips `*.spec.*`/`*.test.*` under `app/`.
 - Trunk commits carry no trailers.
 
@@ -74,7 +74,7 @@ Agreed direction, staged below. The stateless call lane carved out of dev as a V
 - **Ids.** Library output needs ids stable across deploys (readable, or hashed per major) and a version header the server refuses cleanly on mismatch; embedded keeps per-build salted hashes.
 - **dev on rpc.** dev depends on rpc: `remote` sidecars are the plugin pointed at `app/**/remote.ts`, with `app/` supplying paths; twins, the stream and route admission stay in dev.
 - **Stages.**
-  1. A fetch-native handler (`(Request) => Promise<Response>`) behind dev's lane, with a Node adapter - no behavior change.
+  1. A fetch-native handler (`(Request) => Promise<Response>`) behind dev's lane, with a Node adapter - no behavior change (#622).
   2. Split the server and client `call.ts` into plain-call and twin halves.
   3. `rpc()` carved from dev's plugin - embedded, calls only - proven by a plain Vite example whose server bundle runs under `serve` and `wrangler dev`.
   4. Extract `@expressive/rpc`.

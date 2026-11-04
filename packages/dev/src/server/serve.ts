@@ -1,10 +1,11 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
-import { createServer, type Server, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize } from "node:path";
 
 import type { AppConfig } from "./config";
 import { dispatch, isCall, verify, type Endpoint } from "./call";
 import { install, type Seat } from "./context";
+import { send, toRequest } from "./node";
 import { isStream, stream } from "./stream";
 
 const MIME: Record<string, string> = {
@@ -53,17 +54,24 @@ export function serve({ config, client, sidecars = [], seats = [] }: ServeOption
   const seated = new Map(seats.map(({ pattern, Type }) => [pattern.join("/"), Type]));
   const seatAt = async (pattern: string[]) => seated.get(pattern.join("/"));
 
-  const server = createServer(async (req, res) => {
-    if (isCall(req)) return dispatch(req, res, () => sidecars, false, seatAt);
-    if (isStream(req)) return stream(req, res);
+  const server = createServer((req, res) => void handle(req, res).catch(() => {
+    res.statusCode = 400;
+    res.end();
+  }));
 
-    const { pathname } = new URL(req.url ?? "/", "http://localhost");
+  async function handle(req: IncomingMessage, res: ServerResponse) {
+    const request = toRequest(req, res);
+
+    if (isCall(request)) return send(res, await dispatch(request, () => sidecars, false, seatAt));
+    if (isStream(request)) return send(res, stream(request));
+
+    const { pathname } = new URL(request.url);
 
     if (sendFile(res, client, pathname) || sendFile(res, client, "/index.html")) return;
 
     res.statusCode = 404;
     res.end("Not found");
-  });
+  }
 
   const port = config.port ?? 3000;
   const announce = () => console.log(`Expressive running at http://localhost:${port}/`);
