@@ -7,7 +7,8 @@ import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../server/config";
 import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project } from "./project";
-import { runtime } from "../client/call";
+import { client } from "../client/call";
+import { runtime } from "../client/twin";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
 import { dispatch, isCall, verify, type Seats } from "../server/call";
@@ -193,7 +194,7 @@ export function expressive(): Plugin<Host> {
           return [
             `import { Context, Model, def } from "@expressive/mvc";`,
             `import { Route } from "@expressive/dev";`,
-            `export const { call, define, twin } = (${runtime})(Model, def, Context, Route);`,
+            `export const { call, define, twin } = (${runtime})(${client}, Model, def, Context, Route);`,
           ].join("\n");
         case mainId:
           return bootstrap(project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!));
