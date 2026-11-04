@@ -39,12 +39,32 @@ function time(property: string, value: Time | readonly Time[]) {
   return { [property]: typeof value == 'object' ? value.map(ms).join(', ') : ms(value) };
 }
 
+function timing(value: Timing) {
+  if (typeof value != 'object') return ms(value);
+
+  const { duration, easing, delay } = value;
+
+  return [ms(duration), easing, delay != null && ms(delay)].filter(Boolean).join(' ');
+}
+
+function kebab(key: string) {
+  return key.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`).replace(/^webkit-/, '-webkit-');
+}
+
+function deg(value: number | string) {
+  return typeof value == 'number' ? `${value}deg` : value;
+}
+
 type Time = number | string;
+
+type Timing = Time | { duration: Time; easing?: string; delay?: Time };
+
+type Transitions = { [K in style.Property | 'all' | `--${string}`]?: Timing | false | null };
 
 /**
  * Web macro pack - pixels for numbers where a property needs a unit,
- * milliseconds for durations and delays, degrees for `rotate`, and the `size`
- * shorthand. Extend it, or use it as is with `Css.use()`.
+ * milliseconds for `transition`, durations and delays, degrees for `rotate`
+ * and `offsetRotate`, and the `size` shorthand. Extend it, or use it as is with `Css.use()`.
  */
 class Css extends Style {
   default(value: unknown, key: string) {
@@ -73,8 +93,20 @@ class Css extends Style {
     return time('animationDelay', value);
   }
 
+  transition(value: string | Transitions) {
+    if (typeof value == 'string') return { transition: value };
+
+    const list = Object.entries(value).filter(([, entry]) => entry != null && entry !== false);
+
+    return { transition: list.map(([key, entry]) => `${kebab(key)} ${timing(entry as Timing)}`).join(', ') };
+  }
+
   rotate(value: number | string) {
-    return { rotate: typeof value == 'number' ? `${value}deg` : value };
+    return { rotate: deg(value) };
+  }
+
+  offsetRotate(value: number | string) {
+    return { offsetRotate: deg(value) };
   }
 }
 

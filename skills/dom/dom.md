@@ -167,7 +167,7 @@ style(Select, {
 - CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`$mobile` above).
 - Layers and subclasses merge a condition's body key by key, like a rule.
 
-A `$name` field must start with `@` or `:`. The `style.Condition` type (`` `:${string}` | `@${string}` ``) types a condition held elsewhere.
+A `$name` field must start with `@` or `:` The `style.Condition` type (`` `:${string}` | `@${string}` ``) types a condition held elsewhere.
 
 ### The web pack
 
@@ -179,9 +179,9 @@ import { Css } from '@expressive/dom';
 export const style = Css.use();
 ```
 
-A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. Write other units as strings (`'0.85rem'`). `transitionDuration`, `transitionDelay`, `animationDuration` and `animationDelay` are macros taking numbers as milliseconds, `0` included - an array joins with commas; `rotate` takes degrees. A property where px is wrong gets a macro with its own unit, never a bare number. happy-dom accepts bare numbers browsers reject, so unit behavior is verified by the cascade probe, not unit tests. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
+A number gets `px` only where the CSSOM rejects a bare one - probed once per property, so `zIndex: 3`, `lineHeight: 1.5` and `fontWeight: 700` stay unitless while `paddingTop: 5` and `marginBlockEnd: 2` do not. Every entry of a sequence is sized, so `margin: [1, 2]` is `1px 2px`. Write other units as strings (`'0.85rem'`). `transitionDuration`, `transitionDelay`, `animationDuration` and `animationDelay` are macros taking numbers as milliseconds, `0` included - an array joins with commas. `transition` takes an object keyed by property - `{ opacity: 200, transform: { duration: 300, easing: 'ease-out', delay: 50 } }` is `opacity 200ms, transform 300ms ease-out 50ms`; a string passes through, and a layer replaces the object whole. `rotate` and `offsetRotate` take degrees. A property where px is wrong gets a macro with its own unit, never a bare number. Maps accept a number only for a property where one is valid CSS - `color: 5` is a type error. Strings only where a number's role is ambiguous: `animation` (a time or a count), `font` (a weight or a size), `counterReset` (the count would get px). `flex` and `columns` take one number, not a sequence - write `flex: '1 1 200px'`. happy-dom accepts bare numbers browsers reject, so unit behavior is verified by the cascade probe, not unit tests. `size` sets width and height; for an axis use the logical properties - `marginInline`, `paddingBlock`.
 
-Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged.
+Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and a bare number reaches CSS unchanged - so a map for a pack with no `default` accepts numbers only where a bare one is valid, plus `0`.
 
 ### Typing
 

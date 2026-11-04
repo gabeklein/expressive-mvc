@@ -3,6 +3,7 @@ import { registerEmitter } from './protocol';
 import type { Block } from './protocol';
 import { applyDeclarations } from './declarations';
 import type { Declaration } from './declarations';
+import type { Numeric, Single, Unitless } from './numeric';
 
 type Member = Extract<keyof CSSStyleDeclaration, string>;
 
@@ -36,6 +37,12 @@ type Layers<T> = readonly (style.Map<T> | Layers<T> | false | null | undefined)[
 
 type Body<T> = style.Map<T> | Layers<T>;
 
+type Literal = string | boolean | null | undefined | readonly Literal[];
+
+type Zero = Literal | 0 | readonly Zero[];
+
+type Numbers<T> = T extends { default(...args: any[]): unknown } ? Numeric : Unitless;
+
 declare namespace style {
   /** CSS property names, minus the CSSOM's own members. */
   type Property = Exclude<Settable, 'length' | 'parentRule' | 'cssText'>;
@@ -65,7 +72,10 @@ declare namespace style {
     [K in Key<T>]?:
       K extends `_${string}` | Condition | Named<T> ? Body<T> :
       K extends Macro<T> ? Argument<T[K]> :
-      Value;
+      K extends Single ? number | Literal :
+      K extends Numbers<T> | `--${string}` ? Value :
+      K extends Numeric ? Zero :
+      Literal;
   };
 
   /** A `style()` whose maps may call the macros of `T`. */
