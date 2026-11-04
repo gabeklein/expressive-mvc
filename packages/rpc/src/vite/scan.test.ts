@@ -144,6 +144,26 @@ describe("error classes", () => {
     expect(errors).toEqual([{ name: "Invalid" }]);
   });
 
+  it("will not take a base imported as a type only", async () => {
+    const others = { "/app/api/base.ts": `${HTTP} export class Base extends HttpError {} export default class Root extends HttpError {}` };
+    const { errors, problems } = await scan(`
+      import type { Base } from "./base";
+      import { type Base as Other } from "./base";
+      import type Root from "./base";
+      export class X extends Base {}
+      export class Y extends Other {}
+      export class Z extends Root {}
+      export async function list() {}
+    `, undefined, others);
+
+    expect(errors).toEqual([]);
+    expect(problems).toEqual([
+      "X extends Base, which is neither declared nor imported.",
+      "Y extends Other, which is neither declared nor imported.",
+      "Z extends Root, which is neither declared nor imported.",
+    ]);
+  });
+
   it("will refuse a class that is not an Error", async () => {
     const { problems } = await scan(`${HTTP} ${MVC}
       export class Cart extends Model {}

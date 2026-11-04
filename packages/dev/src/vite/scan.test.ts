@@ -63,6 +63,33 @@ describe("remote scan", () => {
     expect(errors).toEqual([{ name: "Over" }]);
   });
 
+  it("will not take a base imported as a type only", async () => {
+    const map = {
+      "/app/tally/errors.ts": `import { HttpError } from "@expressive/rpc/http"; export class Failed extends HttpError {}`,
+      "/app/tally/base.ts": `${MVC} export class Base extends Model { async add() {} }`,
+    };
+    const found = await scan(`
+      import type { Failed } from "./errors";
+      import type { Base } from "./base";
+      export class X extends Failed {}
+      export class Cart extends Base {}
+      export default class Tally extends Base {}
+      export async function list() {}
+    `, undefined, map);
+
+    expect(found).toEqual({
+      calls: ["list"],
+      errors: [],
+      pooled: [],
+      seat: { name: "Tally", methods: [], fields: [] },
+      problems: [
+        "X extends Failed, which is neither declared nor imported.",
+        "Cart extends Base, which is neither declared nor imported.",
+        "Tally extends Base, which is neither declared nor imported in /app/tally/remote.ts.",
+      ],
+    });
+  });
+
   it("will take an error's parent from a sidecar in its folder or above, and none from a sibling folder", async () => {
     const map = {
       "/app/remote.ts": `import { HttpError } from "@expressive/rpc/http"; export class Billing extends HttpError {}`,

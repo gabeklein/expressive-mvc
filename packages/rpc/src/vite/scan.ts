@@ -34,9 +34,15 @@ export interface Module {
   file: string;
   body: Statement[];
   locals: Map<string, Value>;
-  imports: Map<string, { from: string; name: string }>;
+  imports: Map<string, Import>;
   exports: Map<string, Value>;
   errors: string[];
+}
+
+interface Import {
+  from: string;
+  name: string;
+  type: boolean;
 }
 
 interface Found {
@@ -161,7 +167,7 @@ async function endOf(start: Found, sources: Sources, owned: (file: string) => bo
     let next: Found;
 
     if (isClass(local)) next = { cls: local, module };
-    else if (!imported) return globalEnd(owner, base.name, parent);
+    else if (!imported || imported.type) return globalEnd(owner, base.name, parent);
     else if (imported.from === HTTP) return `http:${imported.name}` in ERRORS ? { kind: "error", parent: parent ?? { id: `http:${imported.name}` } } : { kind: "plain" };
     else if (LIBRARY.test(imported.from)) return { kind: "model" };
     else if (!/^[./]/.test(imported.from)) return { kind: "error", parent };
@@ -200,7 +206,7 @@ function parentOf({ cls, module }: Found, owned: (file: string) => boolean): Par
 export function moduleOf(file: string, source: string): Module {
   const { program, errors } = parseSync(file, source);
   const locals = new Map<string, Value>();
-  const imports = new Map<string, { from: string; name: string }>();
+  const imports = new Map<string, Import>();
   const exports = new Map<string, Value>();
 
   for (const node of program.body) {
@@ -214,7 +220,11 @@ export function moduleOf(file: string, source: string): Module {
     if (node.type === "ImportDeclaration")
       for (const spec of node.specifiers) {
         if (spec.type === "ImportNamespaceSpecifier") continue;
-        imports.set(spec.local.name, { from: node.source.value, name: spec.type === "ImportDefaultSpecifier" ? "default" : nameOf(spec.imported) });
+
+        const named = spec.type === "ImportSpecifier";
+        const type = node.importKind === "type" || (named && spec.importKind === "type");
+
+        imports.set(spec.local.name, { from: node.source.value, name: named ? nameOf(spec.imported) : "default", type });
       }
   }
 

@@ -263,7 +263,7 @@ async function baseOf({ cls, module }: Found, sources: Sources, problems: string
 
   const imported = module.imports.get(base.name);
 
-  if (!imported) return { owner, global: base.name };
+  if (!imported || imported.type) return { owner, global: base.name };
   if (imported.from === ERRORS) return { owner, error: base.name };
   if (LIBRARY.test(imported.from)) return { owner, library: true };
 
