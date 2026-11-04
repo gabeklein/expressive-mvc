@@ -89,7 +89,7 @@ async function install(root: string) {
   };
 
   await lib("mvc", { index: "src/index.ts", "jsx-runtime": "src/jsx-runtime.ts" }, { ".": "./index.js", "./jsx-runtime": "./jsx-runtime.js" });
-  await lib("rpc", { index: "src/index.ts", http: "src/http/server.ts", client: "src/http/client.ts" }, { ".": "./index.js", "./http": { browser: "./client.js", default: "./http.js" } });
+  await lib("rpc", { index: "src/server.ts", client: "src/client.ts", http: "src/http.ts", protocol: "src/protocol.ts" }, { ".": { browser: "./client.js", default: "./index.js" }, "./http": "./http.js", "./protocol": "./protocol.js" });
 }
 
 async function serve(root: string, config: InlineConfig = {}) {
@@ -136,7 +136,7 @@ describe("client", () => {
     expect(stub).toContain('define("/#todos:Over", "Over", "http:HttpError")');
     expect(stub).toContain('import "/api/errors.ts";');
     expect(stub).toContain('define("/#todos:Late", "Late", "/#errors:Billing")');
-    expect(stub).toMatch(/import \{ call, define \} from ".*rpc\/src\/http/);
+    expect(stub).toMatch(/import \{ call, define \} from ".*rpc\/src\/index\.ts"/);
     expect(stub).not.toContain("Too long");
     expect((await server.transformRequest("/api/admin/stats.ts"))!.code).toContain('const at = "/admin"');
   });
@@ -149,17 +149,18 @@ describe("client", () => {
     );
   });
 
-  it("will throw if client code imports a server-only name from @expressive/rpc, but not server code", async () => {
+  it("will throw if client code imports a server-only name or the host adapter, but not server code", async () => {
     const server = await serve(project({
       "src/server.ts": `import { Current } from "@expressive/rpc"; export const a = Current;`,
+      "src/host.ts": `import { handler } from "@expressive/rpc/http"; export const a = handler;`,
       "src/ok.ts": `import { NotFound, type Current } from "@expressive/rpc"; export const a: Current | string = NotFound.name;`,
     }));
 
-    await expect(server.transformRequest("/src/server.ts")).rejects.toThrow(
-      "src/server.ts imports Current from @expressive/rpc, which only a server has - its browser build does not export it.",
-    );
+    await expect(server.transformRequest("/src/server.ts")).rejects.toThrow("src/server.ts imports Current from @expressive/rpc, which only its server build exports.");
+    await expect(server.transformRequest("/src/host.ts")).rejects.toThrow("src/host.ts imports @expressive/rpc/http, the host adapter - only a server entry uses it.");
     expect((await server.transformRequest("/src/ok.ts"))!.code).toContain("NotFound");
     expect((await server.environments.rpc.transformRequest("/src/server.ts"))!.code).toContain("Current");
+    expect((await server.environments.rpc.transformRequest("/src/host.ts"))!.code).toContain("handler");
   });
 
   it("will keep the dependency scan out of the folder", async () => {
