@@ -1,4 +1,7 @@
 import { initSync, parse } from "es-module-lexer";
+import { transformWithOxc } from "vite";
+
+import { SCRIPT } from "./manifest";
 
 export const SERVER_ONLY: readonly string[] = ["Current", "handler", "isCall", "reply", "send", "toNode", "toRequest"];
 
@@ -26,4 +29,8 @@ export function guard(code: string): string | undefined {
 
   if (found.size)
     return `imports ${[...found].join(", ")} from ${HTTP}, which only a server has - its browser build does not export ${found.size > 1 ? "them" : "it"}.`;
+}
+
+export async function guardScript(code: string, file: string): Promise<string | undefined> {
+  if (SCRIPT.test(file) && code.includes(HTTP)) return guard((await transformWithOxc(code, file, { jsx: { runtime: "automatic" } })).code);
 }

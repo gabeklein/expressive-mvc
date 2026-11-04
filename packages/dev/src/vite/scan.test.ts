@@ -1,107 +1,115 @@
 import { describe, expect, it } from "vitest";
+import type { Sources } from "@expressive/rpc/internal/vite";
 
-import { scanSidecar, scanTwin, type Sources } from "./scan";
+import { remoteOf } from "./routes";
+import { scanRemote, scanTwin } from "./scan";
 
-const scan = (source: string) => scanSidecar(source, "remote.ts");
+const files = (map: Record<string, string>): Sources => ({
+  resolve: async (spec, importer) => {
+    const file = new URL(spec.endsWith(".js") ? spec : `${spec}.ts`, `file://${importer}`).pathname;
+    return file in map || file.replace(/\.js$/, ".d.ts") in map ? file : undefined;
+  },
+  read: file => {
+    if (!(file in map)) throw new Error(`No ${file}`);
+    return map[file];
+  },
+});
 
-describe("sidecar scan", () => {
-  it("will allow exported async functions, however declared", () => {
-    expect(scan(`
-      export async function a() {}
-      export const b = async () => 1, c = async function () {};
-      const d = async (x: number) => x;
-      async function e() {}
-      export { d, e as f };
-    `)).toEqual({ calls: ["a", "b", "c", "d", "f"], classes: [], problems: [] });
+const MVC = `import { Model } from "@expressive/mvc";`;
+
+describe("remote scan", () => {
+  const at = (file: string) => remoteOf("/app", file);
+  const scan = (source: string, file = "/app/tally/remote.ts", map: Record<string, string> = {}) => scanRemote(at(file)!, source, files(map), at);
+
+  it("will leave calls and error classes to rpc's scanner", async () => {
+    expect(await scan(`
+      import { HttpError } from "@expressive/rpc/http";
+      export class Over extends Error {}
+      export class Payment extends HttpError {}
+      export async function add() {}
+    `)).toEqual({
+      calls: ["add"],
+      errors: [{ name: "Over" }, { name: "Payment", parent: { id: "http:HttpError" } }],
+      pooled: [],
+      seat: undefined,
+      problems: [],
+    });
   });
 
-  it("will ignore types", () => {
-    expect(scan(`
-      export interface A {}
-      export type B = string;
-      type C = number;
-      export type { C };
-      export async function d(): Promise<A> { return {} }
-    `)).toEqual({ calls: ["d"], classes: [], problems: [] });
+  it("will take a default subclass as the seat, however exported", async () => {
+    expect((await scan(`${MVC} export default class Tally extends Model {}`)).seat?.name).toBe("Tally");
+    expect((await scan(`${MVC} class A extends Model {} export { A as default }`)).seat?.name).toBe("A");
+    expect((await scan(`${MVC} class B extends Model {} export default B`)).seat?.name).toBe("B");
+    expect((await scan(`${MVC} export default class extends Model {}`)).seat?.name).toBe("default");
   });
 
-  it("will take an exported subclass as an error class", () => {
-    expect(scan(`
-      export class A extends Error {}
-      export const B = class extends A {};
-      class C extends RangeError {}
-      export { C };
-    `)).toEqual({ calls: [], classes: ["A", "B", "C"], problems: [] });
-  });
-
-  it("will refuse an export that is not an async function or a subclass", () => {
-    const { calls, classes, problems } = scan(`
-      export function a() {}
-      export const b = () => 1, c = 1;
-      export const { d } = { d: 1 };
-      const e = 1;
-      export { e };
-      export class F {}
-      export enum G { H }
-    `);
-
-    expect(calls).toEqual([]);
-    expect(classes).toEqual([]);
-    expect(problems).toEqual([
-      expect.stringMatching(/^a is neither an async function nor an Error subclass/),
-      expect.stringMatching(/^b is neither/),
-      expect.stringMatching(/^c is neither/),
-      expect.stringMatching(/^A destructured export is neither/),
-      expect.stringMatching(/^e is neither/),
-      expect.stringMatching(/^F is neither/),
-      "A sidecar exports async functions and Error subclasses only.",
-    ]);
-  });
-
-  it("will refuse re-exports", () => {
-    expect(scan(`export * from "./x"; export { y } from "./x";`).problems).toEqual([
-      "A sidecar cannot re-export from another module.",
-      "A sidecar cannot re-export from another module.",
-    ]);
-  });
-
-  it("will take a default subclass as the seat, however exported", () => {
-    expect(scan(`export default class Tally extends Model {}`).seat).toBe("Tally");
-    expect(scan(`class A extends Model {} export { A as default }`).seat).toBe("A");
-    expect(scan(`class B extends Model {} export default B`).seat).toBe("B");
-    expect(scan(`export default class extends Model {}`).seat).toBe("default");
-  });
-
-  it("will refuse a default that is not a subclass", () => {
+  it("will refuse a default that is not a subclass", async () => {
     const problem = "A remote default is a Model subclass - its methods are what the client calls.";
 
-    expect(scan(`export default async () => {}`).problems).toEqual([problem]);
-    expect(scan(`export default class {}`).problems).toEqual([problem]);
+    expect((await scan(`export default async () => {}`)).problems).toEqual([problem]);
+    expect((await scan(`export default class {}`)).problems).toEqual([problem]);
   });
 
-  it("will refuse a default outside the folder's remote entry", () => {
-    expect(scanSidecar(`export default class A extends Model {}`, "remote/bar.ts", false).problems).toEqual([
+  it("will refuse a default outside the folder's remote entry", async () => {
+    expect((await scan(`${MVC} export default class A extends Model {}`, "/app/tally/remote/bar.ts")).problems).toEqual([
       "Only a folder's remote entry - remote.ts or remote/index.ts - may export a default.",
     ]);
   });
 
-  it("will report a syntax error", () => {
-    expect(scan("export async function (").problems[0]).toBe("Expected function name");
+  it("will take an exported Model class as a pooled twin", async () => {
+    const { pooled, errors } = await scan(`${MVC} export class Cart extends Model { items = 0; async add() {} } export class Over extends Error {}`);
+
+    expect(pooled).toEqual([{ name: "Cart", methods: ["add"], fields: ["items"] }]);
+    expect(errors).toEqual([{ name: "Over" }]);
+  });
+
+  it("will not take a base imported as a type only", async () => {
+    const map = {
+      "/app/tally/errors.ts": `import { HttpError } from "@expressive/rpc/http"; export class Failed extends HttpError {}`,
+      "/app/tally/base.ts": `${MVC} export class Base extends Model { async add() {} }`,
+    };
+    const found = await scan(`
+      import type { Failed } from "./errors";
+      import type { Base } from "./base";
+      export class X extends Failed {}
+      export class Cart extends Base {}
+      export default class Tally extends Base {}
+      export async function list() {}
+    `, undefined, map);
+
+    expect(found).toEqual({
+      calls: ["list"],
+      errors: [],
+      pooled: [],
+      seat: { name: "Tally", methods: [], fields: [] },
+      problems: [
+        "X extends Failed, which is neither declared nor imported.",
+        "Cart extends Base, which is neither declared nor imported.",
+        "Tally extends Base, which is neither declared nor imported in /app/tally/remote.ts.",
+      ],
+    });
+  });
+
+  it("will take an error's parent from a sidecar in its folder or above, and none from a sibling folder", async () => {
+    const map = {
+      "/app/remote.ts": `import { HttpError } from "@expressive/rpc/http"; export class Billing extends HttpError {}`,
+      "/app/shop/remote.ts": `import { HttpError } from "@expressive/rpc/http"; export class Sold extends HttpError {}`,
+    };
+    const { errors } = await scan(`
+      import { Billing } from "../remote";
+      import { Sold } from "../shop/remote";
+      export class Late extends Billing {}
+      export class Gone extends Sold {}
+    `, undefined, map);
+
+    expect(errors).toEqual([
+      { name: "Late", parent: { file: "/app/remote.ts", name: "Billing" } },
+      { name: "Gone", parent: { id: "http:HttpError" } },
+    ]);
   });
 });
 
 describe("twin scan", () => {
-  const files = (map: Record<string, string>): Sources => ({
-    resolve: async (spec, importer) => {
-      const file = new URL(spec.endsWith(".js") ? spec : `${spec}.ts`, `file://${importer}`).pathname;
-      return file in map || file.replace(/\.js$/, ".d.ts") in map ? file : undefined;
-    },
-    read: file => {
-      if (!(file in map)) throw new Error(`No ${file}`);
-      return map[file];
-    },
-  });
-
   const twin = (source: string, map: Record<string, string> = {}) => scanTwin(source, "/app/remote.ts", files(map));
   const HEAD = `import { Model } from "@expressive/mvc";`;
 
@@ -186,6 +194,28 @@ describe("twin scan", () => {
     ]);
   });
 
+  it("will refuse a seat whose bases extend themselves", { timeout: 1000 }, async () => {
+    const map: Record<string, string> = {
+      "/app/a.ts": `import { B } from "./b"; export class A extends B { async a() {} }`,
+      "/app/b.ts": `import { A } from "./a"; export class B extends A { async b() {} }`,
+    };
+    const sources: Sources = {
+      resolve: spec => new Promise(done => setTimeout(done, 0, `/app/${spec.slice(2)}.ts`)),
+      read: file => map[file],
+    };
+
+    expect(await scanTwin(`import { A } from "./a"; export default class Tally extends A {}`, "/app/remote.ts", sources)).toEqual({
+      twin: { name: "Tally", methods: ["a", "b"], fields: [] },
+      state: false,
+      problems: ["A extends B, which extends A - a class cannot extend itself."],
+    });
+    expect(await twin(`${HEAD} const Base = class extends Model { async a() {} }; const Mid = class extends Base {}; export default class Tally extends Mid {}`)).toEqual({
+      twin: { name: "Tally", methods: ["a"], fields: [] },
+      state: true,
+      problems: [],
+    });
+  });
+
   it("will report a sync method a seat inherits", async () => {
     const { problems } = await twin(`import { Base } from "./base"; export default class A extends Base {}`, {
       "/app/base.ts": `${HEAD} export class Base extends Model { tick() {} }`,
@@ -225,6 +255,14 @@ describe("twin scan", () => {
       fields: ["cart", "spare", "made", "stamp", "label"],
       children: { cart, spare: cart, made: cart },
     });
+  });
+
+  it("will scan an owned child whose class is imported as a type only", async () => {
+    const { twin: scanned } = await twin(`${HEAD} import type { Line } from "./line"; export default class Shop extends Model { line?: Line; }`, {
+      "/app/line.ts": `${HEAD} export class Line extends Model { qty = 1; }`,
+    });
+
+    expect(scanned).toEqual({ name: "Shop", methods: [], fields: ["line"], children: { line: { name: "Line", methods: [], fields: ["qty"] } } });
   });
 
   it("will leave a field plain when its class is not a Model", async () => {

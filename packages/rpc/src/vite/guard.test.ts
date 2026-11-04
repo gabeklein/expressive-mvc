@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import * as client from "./http/client";
-import * as server from "./http/server";
-import { guard, SERVER_ONLY } from "./guard";
+import * as client from "../http/client";
+import * as server from "../http/server";
+import { guard, guardScript, SERVER_ONLY } from "./guard";
 
 describe("server-only names", () => {
   it("will list exactly what the server build exports and the browser build does not", () => {
@@ -37,5 +37,19 @@ describe("guard", () => {
     expect(guard(`// import { Current } from "@expressive/rpc/http";\nexport const a = 1;`)).toBeUndefined();
     expect(guard(`/** e.g. import { toNode } from "@expressive/rpc/http" */\nexport const b = 2;`)).toBeUndefined();
     expect(guard("export const doc = `import { Current } from \"@expressive/rpc/http\"`;")).toBeUndefined();
+  });
+});
+
+describe("guardScript", () => {
+  it("will guard a script after stripping its types and JSX", async () => {
+    const tsx = `import { Current, type Seat } from "@expressive/rpc/http";\nconst a: Seat = Current;\nexport const Page = () => <p>{a}</p>;`;
+
+    expect(await guardScript(tsx, "/app/page.tsx")).toMatch(/^imports Current from @expressive\/rpc\/http/);
+    expect(await guardScript(`import type { Current } from "@expressive/rpc/http";\nexport const a = 1;`, "/app/a.ts")).toBeUndefined();
+  });
+
+  it("will pass a file that is not a script, or a script that never names the http flavor", async () => {
+    expect(await guardScript(`{ "a": "import { Current } from \\"@expressive/rpc/http\\";" }`, "/app/notes.json")).toBeUndefined();
+    expect(await guardScript(`import { Current } from "@expressive/rpc";`, "/app/a.ts")).toBeUndefined();
   });
 });

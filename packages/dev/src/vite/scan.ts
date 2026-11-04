@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { sep } from "node:path";
 import { init, parse } from "es-module-lexer";
-import { parseSync, transformWithOxc, type ESTree } from "vite";
+import { transformWithOxc, type ESTree } from "vite";
+import { isClass, moduleOf, scanModule, type ErrorClass, type Module, type Sources, type Value } from "@expressive/rpc/internal/vite";
 
-import type { ExportScanner } from "./routes";
+import type { ExportScanner, Remote } from "./routes";
 
 export const scanExports: ExportScanner = async (source, path) => {
   const { code } = await transformWithOxc(source, path, { jsx: { runtime: "automatic" } });
@@ -31,129 +34,56 @@ interface Pending {
   owner: string;
 }
 
-export interface SidecarScan {
+export interface RemoteScan {
   calls: string[];
-  classes: string[];
-  seat?: string;
+  errors: ErrorClass[];
+  pooled: Twin[];
+  seat?: Twin;
   problems: string[];
 }
 
-export interface Sources {
-  resolve(spec: string, importer: string): Promise<string | undefined>;
-  read(file: string): string;
-}
-
-type Value = ESTree.Node | null | undefined;
-
-const isFunction = (value: Value): value is ESTree.Function | ESTree.ArrowFunctionExpression =>
-  value?.type === "FunctionDeclaration" || value?.type === "FunctionExpression" || value?.type === "ArrowFunctionExpression";
-
-const isClass = (value: Value): value is ESTree.Class =>
-  value?.type === "ClassDeclaration" || value?.type === "ClassExpression";
-
-const isType = (value: Value) =>
-  value?.type === "TSInterfaceDeclaration" || value?.type === "TSTypeAliasDeclaration";
-
-const nameOf = (node: ESTree.ModuleExportName) =>
-  node.type === "Identifier" ? node.name : String(node.value);
-
-type Statement = ESTree.Program["body"][number];
-type Exported = [name: string, value: Value];
-
 const RESERVED = new Set(["new", "use", "mount", "get", "set", "is"]);
 
-export function scanSidecar(source: string, path: string, entry = true): SidecarScan {
-  const { program, errors } = parseSync(path, source);
-  const scan: SidecarScan = { calls: [], classes: [], problems: errors.map(error => error.message) };
-  const locals = localBindings(program.body);
+export async function scanRemote(remote: Remote, source: string, sources: Sources, locate: (file: string) => Remote | undefined): Promise<RemoteScan> {
+  const pooled: Twin[] = [];
+  let seat: Twin | undefined;
 
-  for (const node of program.body) {
-    const problem = unsupported(node);
+  const owned = (file: string) => {
+    const other = locate(file);
+    return !!other && (remote.folder + sep).startsWith(other.folder + sep);
+  };
 
-    if (problem) scan.problems.push(problem);
-    else
-      for (const [name, value] of exportsOf(node, locals))
-        if (name === "default") seat(scan, value, entry);
-        else check(scan, name, value);
-  }
+  const { calls, errors, problems } = await scanModule(remote.file, source, sources, owned, {
+    async claim(name) {
+      const scan = await scanTwin(source, remote.file, sources, name);
 
-  return scan;
+      if (!scan.state) return;
+
+      pooled.push(scan.twin!);
+      return scan.problems;
+    },
+    async default(value) {
+      if (remote.module) return ["Only a folder's remote entry - remote.ts or remote/index.ts - may export a default."];
+      if (!isClass(value) || !value.superClass) return ["A remote default is a Model subclass - its methods are what the client calls."];
+
+      const scan = await scanTwin(source, remote.file, sources);
+      seat = scan.twin;
+
+      return scan.problems;
+    },
+  });
+
+  return { calls, errors, pooled, seat, problems };
 }
 
-function unsupported(node: Statement): string | undefined {
-  switch (node.type) {
-    case "ExportAllDeclaration":
-      return "A sidecar cannot re-export from another module.";
-    case "ExportNamedDeclaration": {
-      const { declaration } = node;
-
-      if (node.source) return "A sidecar cannot re-export from another module.";
-      if (node.exportKind === "type" || !declaration || isType(declaration)) return;
-
-      switch (declaration.type) {
-        case "FunctionDeclaration":
-        case "ClassDeclaration":
-        case "VariableDeclaration":
-          return;
-        default:
-          return "A sidecar exports async functions and Error subclasses only.";
-      }
-    }
-  }
-}
-
-function exportsOf(node: Statement, locals: Map<string, Value>): Exported[] {
-  if (node.type === "ExportDefaultDeclaration") {
-    const { declaration } = node;
-    return [["default", declaration.type === "Identifier" ? locals.get(declaration.name) : declaration as Value]];
-  }
-
-  if (node.type !== "ExportNamedDeclaration" || node.exportKind === "type") return [];
-
-  const { declaration } = node;
-
-  if (!declaration)
-    return node.specifiers
-      .filter(spec => spec.exportKind !== "type")
-      .map(spec => [nameOf(spec.exported), locals.get(nameOf(spec.local))]);
-
-  switch (declaration.type) {
-    case "FunctionDeclaration":
-    case "ClassDeclaration":
-      return [[declaration.id!.name, declaration]];
-    case "VariableDeclaration":
-      return declaration.declarations.map(({ id, init }) => [id.type === "Identifier" ? id.name : "A destructured export", init]);
-    default:
-      return [];
-  }
-}
-
-function check(scan: SidecarScan, name: string, value: Value): void {
-  const isAsyncFunction = isFunction(value) && value.async;
-  const isSubclass = isClass(value) && !!value.superClass;
-
-  if (isAsyncFunction) scan.calls.push(name);
-  else if (isSubclass) scan.classes.push(name);
-  else scan.problems.push(`${name} is neither an async function nor an Error subclass - the client could not use it.`);
-}
-
-function seat(scan: SidecarScan, value: Value, entry: boolean): void {
-  if (!entry) return void scan.problems.push("Only a folder's remote entry - remote.ts or remote/index.ts - may export a default.");
-  if (!isClass(value) || !value.superClass) return void scan.problems.push("A remote default is a Model subclass - its methods are what the client calls.");
-
-  scan.seat = value.id?.name ?? "default";
+export function hasSeat(file: string): boolean {
+  const value = moduleOf(file, readFileSync(file, "utf8")).exports.get("default");
+  return isClass(value) && !!value.superClass;
 }
 
 interface Found {
   cls: ESTree.Class;
   module: Module;
-}
-
-interface Module {
-  file: string;
-  locals: Map<string, Value>;
-  imports: Map<string, { from: string; name: string }>;
-  exports: Map<string, Value>;
 }
 
 const LIBRARY = /^@expressive\//;
@@ -166,7 +96,7 @@ export interface TwinScan {
 }
 
 export async function scanTwin(source: string, path: string, sources: Sources, name = "default"): Promise<TwinScan> {
-  const module = moduleOf(path, source);
+  const module = declaredOf(path, source);
   const value = module.exports.get(name);
 
   if (!isClass(value)) return { state: false, problems: [] };
@@ -186,11 +116,22 @@ async function twinOf(found: Found, name: string, sources: Sources, problems: st
   const twin: Twin = { name, methods: [], fields: [] };
   const seen = new Set<string>();
   const pending: Pending[] = [];
+  const chain: Found[] = [];
   let at: Found | Base | undefined = found;
 
   while (at && "cls" in at) {
-    collect(at.cls, at.module, twin, seen, pending, problems);
-    at = await baseOf(at, sources, problems);
+    const key = identity(at);
+    const loop = chain.findIndex(found => identity(found) === key);
+
+    if (loop >= 0) {
+      const [first, ...rest] = chain.slice(loop).map(({ cls }) => cls.id?.name ?? "default");
+      problems.push(`${first} extends ${[...rest, first].join(", which extends ")} - a class cannot extend itself.`);
+      at = undefined;
+    } else {
+      chain.push(at);
+      collect(at.cls, at.module, twin, seen, pending, problems);
+      at = await baseOf(at, sources, problems);
+    }
   }
 
   if (at?.library)
@@ -215,7 +156,7 @@ async function childOf({ field, type, module, owner }: Pending, twin: Twin, sour
 }
 
 function identity({ cls, module }: Found): string {
-  return `${module.file}#${cls.id?.name}`;
+  return `${module.file}#${cls.start}`;
 }
 
 async function classNamed(name: string, module: Module, sources: Sources): Promise<Found | undefined> {
@@ -232,7 +173,7 @@ async function classNamed(name: string, module: Module, sources: Sources): Promi
   if (!file) return;
 
   const typed = declarations(file, sources);
-  const next = moduleOf(typed, sources.read(typed));
+  const next = declaredOf(typed, sources.read(typed));
   const exported = next.exports.get(imported.name);
 
   return isClass(exported) ? { cls: exported, module: next } : undefined;
@@ -333,7 +274,7 @@ async function baseOf({ cls, module }: Found, sources: Sources, problems: string
 
   const imported = module.imports.get(base.name);
 
-  if (!imported) return { owner, global: base.name };
+  if (!imported || imported.type) return { owner, global: base.name };
   if (imported.from === ERRORS) return { owner, error: base.name };
   if (LIBRARY.test(imported.from)) return { owner, library: true };
 
@@ -342,7 +283,7 @@ async function baseOf({ cls, module }: Found, sources: Sources, problems: string
   if (!file) return void problems.push(`${owner} extends ${base.name} from "${imported.from}", which does not resolve.`);
 
   const typed = declarations(file, sources);
-  const next = moduleOf(typed, sources.read(typed));
+  const next = declaredOf(typed, sources.read(typed));
   const exported = next.exports.get(imported.name);
 
   if (!isClass(exported)) return void problems.push(`${owner} extends ${base.name}, which ${typed} does not export as a class.`);
@@ -363,43 +304,12 @@ function declarations(file: string, sources: Sources): string {
   }
 }
 
-function moduleOf(file: string, source: string): Module {
-  const { program } = parseSync(file, source);
-  const locals = localBindings(program.body);
-  const imports = new Map<string, { from: string; name: string }>();
-  const exports = new Map<string, Value>();
+function declaredOf(file: string, source: string): Module {
+  const module = moduleOf(file, source);
 
-  for (const node of program.body) {
-    if (node.type === "ImportDeclaration")
-      for (const spec of node.specifiers ?? []) {
-        if (spec.type === "ImportNamespaceSpecifier") continue;
-        const name = spec.type === "ImportDefaultSpecifier" ? "default" : nameOf(spec.imported);
-        imports.set(spec.local.name, { from: node.source.value, name });
-      }
+  for (const node of module.body)
+    if (node.type === "ExportNamedDeclaration" && node.declaration?.type === "ClassDeclaration" && node.declaration.id)
+      module.exports.set(node.declaration.id.name, node.declaration);
 
-    for (const [name, value] of exportsOf(node, locals)) exports.set(name, value);
-
-    const declared = node.type === "ExportNamedDeclaration" && node.declaration?.type === "ClassDeclaration" && node.declaration;
-
-    if (declared && declared.id) exports.set(declared.id.name, declared);
-  }
-
-  return { file, locals, imports, exports };
-}
-
-function localBindings(body: ESTree.Program["body"]): Map<string, Value> {
-  const locals = new Map<string, Value>();
-
-  for (const node of body) {
-    const decl = node.type === "ExportNamedDeclaration" ? node.declaration : node;
-    const named = (decl?.type === "FunctionDeclaration" || decl?.type === "ClassDeclaration") && decl.id;
-
-    if (named) locals.set(named.name, decl);
-
-    if (decl?.type === "VariableDeclaration")
-      for (const { id, init } of decl.declarations)
-        if (id.type === "Identifier") locals.set(id.name, init);
-  }
-
-  return locals;
+  return module;
 }

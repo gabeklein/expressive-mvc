@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { locate, Manifest, type Exposed } from "./manifest";
 
@@ -89,6 +89,50 @@ describe("stub", () => {
     expect(stub).toContain(`import "./errors.ts";\nimport "../errors.ts";\nconst at = "/admin";`);
     expect(stub).toContain(`define("/admin#users:Banned", "Banned", "/admin#errors:Denied")`);
     expect(stub).toContain(`define("/admin#users:Late", "Late", "/#errors:Billing")`);
+  });
+});
+
+describe("stub for a host", () => {
+  it("will import from the host's runtime, with its own path and lines after the errors", () => {
+    const stub = new Manifest().stub(exposed("/app/api/todos.ts", { calls: ["list"], errors: [{ name: "Over" }] }), at, {
+      from: "/runtime.ts",
+      at: ["blog", ":slug"],
+      imports: ["twin"],
+      lines: ["export default twin(at);"],
+    });
+
+    expect(stub).toBe([
+      `import { call, define, twin } from "/runtime.ts";`,
+      `const at = ["blog",":slug"];`,
+      `export const list = (...args) => call(at, "todos:list", args);`,
+      `export const Over = define("/#todos:Over", "Over");`,
+      "export default twin(at);",
+      "",
+    ].join("\n"));
+  });
+});
+
+describe("exports", () => {
+  it("will load each module of a folder under its ids, checking each module's classes", async () => {
+    const manifest = new Manifest();
+    const group = [
+      exposed("/app/api/todos.ts", { calls: ["list"], errors: [{ name: "Over" }] }),
+      exposed("/app/api/index.ts", { calls: ["ping"], errors: [{ name: "Down" }] }),
+    ];
+    const modules: Record<string, Record<string, unknown>> = {
+      "/app/api/todos.ts": { list: "list()", Over: "Over" },
+      "/app/api/index.ts": { ping: "ping()", Down: "Down" },
+    };
+    const check = vi.fn();
+
+    expect(await manifest.exports(group, async file => modules[file], check)).toEqual({
+      calls: { "todos:list": "list()", ping: "ping()" },
+      classes: { "/#todos:Over": "Over", "/#Down": "Down" },
+    });
+    expect(check.mock.calls.map(([file, { classes }]) => [file, classes])).toEqual([
+      ["/app/api/todos.ts", { "/#todos:Over": "Over" }],
+      ["/app/api/index.ts", { "/#Down": "Down" }],
+    ]);
   });
 });
 

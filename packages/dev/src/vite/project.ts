@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import { shapeOf, type Exposed, type Exposure } from "./remote";
+import { shapeOf, type Exposure } from "./remote";
 import type { Remote } from "./routes";
 
 export interface Project {
@@ -86,22 +86,17 @@ function injectBeforeBody(html: string, tag: string): string {
 
 export function serverEntry(project: Project, from: string, exposure: Exposure, seats: Remote[] = []): string {
   const configSpec = project.configPath && JSON.stringify(importRel(from, project.configPath));
-  const files = [...new Set([...exposure.remotes.keys(), ...seats.map(seat => seat.file)])];
+  const files = [...new Set([...exposure.modules.keys(), ...seats.map(seat => seat.file)])];
   const modules = files.map(file => JSON.stringify(importRel(from, file)));
-  const alias = (remote: Remote) => `s${files.indexOf(remote.file)}`;
+  const alias = (file: string) => `s${files.indexOf(file)}`;
 
   const entries = exposure.byPattern().map(group => {
-    const pick = (names: (remote: Exposed) => string[], id: (remote: Exposed, name: string) => string) =>
-      group.flatMap(remote => names(remote).map(name => `${JSON.stringify(id(remote, name))}: ${alias(remote)}.${name}`)).join(", ");
-
-    const calls = pick(remote => remote.calls, (remote, name) => exposure.callId(remote, name));
-    const classes = pick(remote => remote.classes, (remote, name) => exposure.classId(remote, name));
     const pool = group.flatMap(remote => remote.pooled.map(twin =>
-      `${JSON.stringify(exposure.classId(remote, twin.name))}: { Type: ${alias(remote)}.${twin.name}, ${props({ ...shapeOf(twin), methods: exposure.methodIds(remote, twin, true) })} }`)).join(", ");
+      `${JSON.stringify(exposure.classId(remote, twin.name))}: { Type: ${alias(remote.file)}.${twin.name}, ${props({ ...shapeOf(twin), methods: exposure.methodIds(remote, twin, true) })} }`)).join(", ");
     const seated = group.find(remote => remote.seat);
     const seat = seated && JSON.stringify({ ...shapeOf(seated.seat!), methods: exposure.methodIds(seated, seated.seat!, false) });
 
-    return `    { pattern: ${JSON.stringify(group[0].pattern)}, async exports() { return { calls: { ${calls} }, classes: { ${classes} }, pool: { ${pool} }${seat ? `, seat: ${seat}` : ""} }; } },`;
+    return `    { pattern: ${JSON.stringify(group[0].pattern)}, async exports() { return { ${exposure.table(group, alias)}, pool: { ${pool} }${seat ? `, seat: ${seat}` : ""} }; } },`;
   });
 
   return [
@@ -114,7 +109,7 @@ export function serverEntry(project: Project, from: string, exposure: Exposure, 
     "  config,",
     `  client: fileURLToPath(new URL("../client/", import.meta.url)),`,
     "  sidecars: [", ...entries, "  ],",
-    "  seats: [", ...seats.map(seat => `    { pattern: ${JSON.stringify(seat.pattern)}, Type: ${alias(seat)}.default },`), "  ],",
+    "  seats: [", ...seats.map(seat => `    { pattern: ${JSON.stringify(seat.pattern)}, Type: ${alias(seat.file)}.default },`), "  ],",
     "});",
     "",
   ].join("\n");

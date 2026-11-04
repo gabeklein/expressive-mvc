@@ -22,16 +22,27 @@ export interface Scan {
   problems: string[];
 }
 
-type Value = ESTree.Node | null | undefined;
+export interface Extension {
+  claim?(name: string): Promise<string[] | undefined>;
+  default?(value: Value): Promise<string[]>;
+}
+
+export type Value = ESTree.Node | null | undefined;
 type Statement = ESTree.Program["body"][number];
 
-interface Module {
+export interface Module {
   file: string;
   body: Statement[];
   locals: Map<string, Value>;
-  imports: Map<string, { from: string; name: string }>;
+  imports: Map<string, Import>;
   exports: Map<string, Value>;
   errors: string[];
+}
+
+interface Import {
+  from: string;
+  name: string;
+  type: boolean;
 }
 
 interface Found {
@@ -48,12 +59,12 @@ const INDEX = /^index\.[cm]?[jt]sx?$/;
 const isFunction = (value: Value): value is ESTree.Function | ESTree.ArrowFunctionExpression =>
   value?.type === "FunctionDeclaration" || value?.type === "FunctionExpression" || value?.type === "ArrowFunctionExpression";
 
-const isClass = (value: Value): value is ESTree.Class =>
+export const isClass = (value: Value): value is ESTree.Class =>
   value?.type === "ClassDeclaration" || value?.type === "ClassExpression";
 
 const nameOf = (node: ESTree.ModuleExportName) => (node.type === "Identifier" ? node.name : String(node.value));
 
-export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean): Promise<Scan> {
+export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean, extension: Extension = {}): Promise<Scan> {
   const module = moduleOf(file, source);
   const scan: Scan = { calls: [], errors: [], gate: false, problems: [...module.errors] };
   const found: [ErrorClass, number][] = [];
@@ -65,12 +76,13 @@ export async function scanModule(file: string, source: string, sources: Sources,
 
   for (const [name, value] of module.exports) {
     if (name === "default") {
-      await gate(scan, value, module, sources, owned);
+      if (extension.default) scan.problems.push(...(await extension.default(value)));
+      else await gate(scan, value, module, sources, owned);
       continue;
     }
 
     if (!isFunction(value) && !isClass(value)) {
-      scan.problems.push(`${name} is neither an async function nor an Error class - the client could not use it.`);
+      scan.problems.push(`${name} is neither an async function nor an Error subclass - the client could not use it.`);
       continue;
     }
 
@@ -85,10 +97,18 @@ export async function scanModule(file: string, source: string, sources: Sources,
       continue;
     }
 
-    const end = await endOf({ cls: value, module }, sources, owned);
+    const claimed = await extension.claim?.(name);
+
+    if (claimed) {
+      scan.problems.push(...claimed);
+      continue;
+    }
+
+    const end = await endOf({ cls: value, module }, name, sources, owned);
 
     if (end.kind === "error") found.push([{ name, ...(end.parent && { parent: end.parent }) }, value.start]);
     else if (end.kind === "problem") scan.problems.push(end.problem);
+    else if (end.kind === "plain") scan.problems.push(`${name} is a class but not an Error - only error classes reach the client.`);
     else scan.problems.push(`${name} is a class but not an Error - only error classes reach the client; a Model it constructs is a twin, which needs @expressive/dev.`);
   }
 
@@ -101,7 +121,7 @@ async function gate(scan: Scan, value: Value, module: Module, sources: Sources, 
   if (!INDEX.test(basename(module.file)))
     return void scan.problems.push("Only a folder's index may export a default - its gate.");
 
-  const end = isClass(value) ? await endOf({ cls: value, module }, sources, owned) : undefined;
+  const end = isClass(value) ? await endOf({ cls: value, module }, "default", sources, owned) : undefined;
 
   if (end?.kind === "problem") scan.problems.push(end.problem);
   else if (end?.kind === "model") scan.gate = true;
@@ -122,12 +142,13 @@ function unsupported(node: Statement): string | undefined {
     case "TSTypeAliasDeclaration":
       return;
     default:
-      return "A server module exports async functions and Error classes only.";
+      return "A server module exports async functions and Error subclasses only.";
   }
 }
 
-async function endOf(start: Found, sources: Sources, owned: (file: string) => boolean): Promise<End> {
-  const seen = new Set<ESTree.Class>();
+async function endOf(start: Found, name: string, sources: Sources, owned: (file: string) => boolean): Promise<End> {
+  const chain: Found[] = [];
+  const names: string[] = [];
   let parent: Parent | undefined;
   let at = start;
 
@@ -135,9 +156,11 @@ async function endOf(start: Found, sources: Sources, owned: (file: string) => bo
     const { cls, module } = at;
     const base = cls.superClass;
     const owner = cls.id?.name ?? "default";
+    const loop = chain.findIndex(found => found.module.file === module.file && found.cls.start === cls.start);
 
-    if (seen.has(cls)) return { kind: "problem", problem: `${owner} extends itself.` };
-    seen.add(cls);
+    if (loop >= 0) return { kind: "problem", problem: cycle(names.slice(loop)) };
+    chain.push(at);
+    names.push(name);
 
     if (!base) return { kind: "plain" };
     if (base.type !== "Identifier") return { kind: "problem", problem: `${owner} extends an expression - name its base class.` };
@@ -147,7 +170,7 @@ async function endOf(start: Found, sources: Sources, owned: (file: string) => bo
     let next: Found;
 
     if (isClass(local)) next = { cls: local, module };
-    else if (!imported) return globalEnd(owner, base.name, parent);
+    else if (!imported || imported.type) return globalEnd(owner, base.name, parent);
     else if (imported.from === HTTP) return `http:${imported.name}` in ERRORS ? { kind: "error", parent: parent ?? { id: `http:${imported.name}` } } : { kind: "plain" };
     else if (LIBRARY.test(imported.from)) return { kind: "model" };
     else if (!/^[./]/.test(imported.from)) return { kind: "error", parent };
@@ -165,8 +188,13 @@ async function endOf(start: Found, sources: Sources, owned: (file: string) => bo
     }
 
     parent ??= parentOf(next, owned);
+    name = base.name;
     at = next;
   }
+}
+
+function cycle([first, ...rest]: string[]): string {
+  return `${first} extends ${[...rest, first].join(", which extends ")} - a class cannot extend itself.`;
 }
 
 function globalEnd(owner: string, name: string, parent?: Parent): End {
@@ -183,10 +211,10 @@ function parentOf({ cls, module }: Found, owned: (file: string) => boolean): Par
   if (name && owned(module.file)) return { file: module.file, name };
 }
 
-function moduleOf(file: string, source: string): Module {
+export function moduleOf(file: string, source: string): Module {
   const { program, errors } = parseSync(file, source);
   const locals = new Map<string, Value>();
-  const imports = new Map<string, { from: string; name: string }>();
+  const imports = new Map<string, Import>();
   const exports = new Map<string, Value>();
 
   for (const node of program.body) {
@@ -197,10 +225,14 @@ function moduleOf(file: string, source: string): Module {
     if (decl?.type === "VariableDeclaration")
       for (const { id, init } of decl.declarations) if (id.type === "Identifier") locals.set(id.name, init);
 
-    if (node.type === "ImportDeclaration" && node.importKind !== "type")
+    if (node.type === "ImportDeclaration")
       for (const spec of node.specifiers) {
         if (spec.type === "ImportNamespaceSpecifier") continue;
-        imports.set(spec.local.name, { from: node.source.value, name: spec.type === "ImportDefaultSpecifier" ? "default" : nameOf(spec.imported) });
+
+        const named = spec.type === "ImportSpecifier";
+        const type = node.importKind === "type" || (named && spec.importKind === "type");
+
+        imports.set(spec.local.name, { from: node.source.value, name: named ? nameOf(spec.imported) : "default", type });
       }
   }
 
