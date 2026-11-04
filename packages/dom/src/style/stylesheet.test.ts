@@ -507,6 +507,6 @@ describe('Style', () => {
     ['a getter', class Getter extends Style { get tone() { return {}; } }, '"tone" on Getter must be a method with a bare name.'],
     ['a $ method', class Hook extends Style { $tone() { return {}; } }, '"$tone" on Hook must be a method with a bare name.']
   ] as [string, typeof Style, string][])('will throw for %s', (_, type, message) => {
-    expect(() => type.use()).toThrow(message);
+    expect(() => type.use()({}, { color: 'red' })).toThrow(message);
   });
 });
