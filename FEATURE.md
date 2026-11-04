@@ -6,7 +6,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 
 - `feat/dev-server` is the trunk. Each feature lands as its own PR into it, small enough to hand-review; the trunk merges to `main` when release-ready.
 - Merge `main` into the trunk as it moves. Upstream fixes (mvc, dom, router) land on `main` as their own PRs, never only here.
-- `backup/dev-server-full` holds the pre-trunk prototype - source for the queued features below. Its POST dispatch and client stubs seed the MVP; its `app/api` lane comes later, moved to `api/` beside `app/`. Delete once nothing is left to carve.
+- `backup/dev-server-full` holds the pre-trunk prototype - source for the queued features below. Its POST dispatch and client stubs seed the MVP; its `app/api` lane becomes the rpc folder (RPC). Delete once nothing is left to carve.
 - Stack PRs: each targets the previous one's branch, the bottom one the trunk; merge a lower branch up into the ones above it as it moves.
 - Verify in a browser, not only unit tests: `bun run example:e2e` in `packages/dev` (set `CHROME`). After rebuilding a package, a dev server can serve a stale `@expressive/*` from `example/node_modules/.vite` - delete it (the E2E dev project always does).
 - Specs live in `example/e2e/` for now; colocating them beside routes is allowed later - the dependency scan already skips `*.spec.*`/`*.test.*` under `app/`.
@@ -19,7 +19,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - **JSX.** `jsxImportSource: "@expressive/dev"` - dev's runtime re-exports dom's.
 - **Router.** dev exports its own `Router` (extends `BrowserRouter`) and `Route`, plus `Link`, `NavLinks`, `Redirect`. No `BrowserRouter` export.
 - **Config.** `index.ts` default-exports `config({...})` from `@expressive/dev/server`, read on the server.
-- **Server modules, one model.** Sidecars (`app/**/remote.ts`) and `api/**` (a peer of `app/`) share one invocation path from the bundled client and one context model (below). `api/` has its own root; a sidecar call never passes through `api/index.ts`. Process globals are the only layer both lanes share.
+- **Server modules, one model.** Sidecars (`app/**/remote.ts`) and the rpc folder (RPC) share one invocation path from the bundled client and one context model (below). The rpc folder has its own root; a sidecar call never passes through its `index.ts`. Process globals are the only layer both lanes share.
 - **Session is the app's concern.** dev does not detect or mint sessions or tabs; an app expresses identity through keys (Context model). Recipes may come later.
 - **dom on the server.** Needed for JSX rendered to HTML (responses, emails), not SSR.
 - **Monkey-patch first.** Where mvc or an adapter lacks a seam, dev patches it in one file, replaced when upstream catches up. Stress-tests the concept before committing upstream.
@@ -60,6 +60,26 @@ Not built yet, but the MVP must not cut against them.
 - **Remount on a replaced context.** Each server layer gets a random token at creation; replies carry the walk's token per depth; a client `Route` whose depth's token changes remounts its subtree, dropping its twins and client state, and seat twins move from re-pointing in place to that remount. Ends the identity-change exposure #508 documents (apps reload on identity change until then). Deferred, not scheduled.
 - **OAuth** - not built, anticipated: an `api/` slice (GET, `Set-Cookie`, redirect) for the callback, forwarding to a process-global client.
 
+## RPC (`@expressive/rpc`)
+
+Agreed direction, staged below. The stateless call lane carved out of dev as a Vite plugin any client build can use - a web app, dev itself, a native shell. `app/` routes, `remote` sidecars and twins stay dev's.
+
+- **Entries.** `@expressive/rpc` - the Vite plugin, `rpc({ dir, ... })`. `@expressive/rpc/server` - what the server bundle runs: the fetch handler, the gate, `Current`; a Node adapter beside it for `serve`. `@expressive/rpc/client` - the stub runtime (`base`, a headers hook), imported only by generated stubs, so no server code reaches a client.
+- **Folder.** One configurable folder (`api/` by default), anywhere. An import from it in client code is a stub that fetches per call; types come from the source. A call's id is its module path and export name, posted to one endpoint. No dynamic segments.
+- **Gate.** A folder's `index.ts` default class gates everything below through `key()` - the sidecar walk, minus URL params and the route table. Statelessness rule: a seat's state derives from the request (`key()` reads a bearer or cookie and loads); cached contexts are a per-isolate optimization, never relied on across calls.
+- **Outputs.** *Embedded* - the client build carries the stubs and emits a sibling server bundle (a second Vite environment), deployed to a Cloudflare Worker or run with `serve`; in dev it runs through the module runner as sidecars do. *Library* - the server bundle plus an installable client package: stubs, client runtime, `.d.ts` from the folder, `@expressive/mvc` as peer.
+- **Tiers.** Calls are stateless and run anywhere. Twins, versions, the stream and the pool need a long-lived host (`serve`, Node; Durable Objects later, one per pooled twin) - dev's extension over rpc. The plugin refuses twin-shaped exports for a stateless target.
+- **Cross-origin.** Native and packaged clients are not same-origin: stubs take a `base` and a headers hook for bearer identity, and the server takes a CORS allowlist - same-origin plus preflight stops being the CSRF answer for them.
+- **Ids.** Library output needs ids stable across deploys (readable, or hashed per major) and a version header the server refuses cleanly on mismatch; embedded keeps per-build salted hashes.
+- **dev on rpc.** dev depends on rpc: `remote` sidecars are the plugin pointed at `app/**/remote.ts`, with `app/` supplying paths; twins, the stream and route admission stay in dev.
+- **Stages.**
+  1. A fetch-native handler (`(Request) => Promise<Response>`) behind dev's lane, with a Node adapter - no behavior change.
+  2. Split the server and client `call.ts` into plain-call and twin halves.
+  3. `rpc()` carved from dev's plugin - embedded, calls only - proven by a plain Vite example whose server bundle runs under `serve` and `wrangler dev`.
+  4. Extract `@expressive/rpc`.
+  5. Codec - before any published artifact, since a package pins the wire.
+  6. Library mode.
+
 ## Transport
 
 - **Calls are HTTP POST in both lanes** - one invocation path, so where an app puts its server logic is a matter of style. Request/response gives timeouts, retries, logs and proxies for free.
@@ -78,7 +98,7 @@ content-type: application/json
 
 - **Path.** `app/blog/[slug]/remote.ts` → `/blog/a`; the root sidecar is `POST /`. The stub knows its folder's pattern from the generator and fills it from the current route match - the import rule guarantees the params exist. The folder, not the caller's deeper location: the walk runs `key()` down to the module's own layer, so calls from any page below land in the same context. The query string is ignored.
 - **Ids.** Readable in dev (`add`, `feed/latest:add`; error classes `/<folder>#<module:Class>`). Production hashes each with a per-build salt: no names on the wire or in the bundle's call sites, and a tab from an older build gets 404 rather than calling changed code. `remote: { opaque: false }` keeps readable ids, so a v1.0.0 client still works against v1.0.1 while names hold.
-- **Not a public API.** Remote calls exist for the bundled client; `api/**` is the lane meant to be called by hand. The allowlist - not the URL or header, which any sender controls - is the boundary.
+- **Not a public API.** Remote calls exist for the bundled client; the rpc folder (RPC) is the lane meant for other clients. The allowlist - not the URL or header, which any sender controls - is the boundary.
 - **A call is a POST with `x-expressive-call` and `content-type: application/json`.** Anything else falls through (GET still serves the app). Same-origin calls cost no preflight; a cross-site form cannot send either, and a cross-site script sending them triggers a preflight the server does not approve - so a forged call never arrives, whatever cookies the app uses.
 - **Reply.**
 
@@ -178,12 +198,11 @@ Principles the MVP must not contradict; most land after it.
 
 - **TTL sweeper.** One per process; best effort. Evicting an entry evicts the keys it owns.
 - **Warm rehydration.** A Model that packs its managed values into a token (JWT) or store and restores from it on a key miss - the same serialise/restore twins need for snapshots. Hot = in memory; warm = rebuilt without the source of truth; cold = the source of truth or the user. Stateless tokens cannot be revoked before expiry.
-- **`api/**` lane.** Calls from the bundled client work as in the MVP, walked from `api/`'s own root. For external clients: per-request identity (bearer), a `Call` Model for HTTP concerns (headers, status, cookies; `Fetch` considered - its instance name shadows global `fetch()`), the reply pipeline (string → `text/plain`, `undefined` → 204, other values → JSON, status helpers, data primitives; uncaught → 500, message in dev only), REST as `protected` uppercase verbs on dev's `Route` (params from `this.match`, body as the one parameter), HTML replies via a server DOM shim, OpenAPI.
+- **rpc folder, beyond calls** (RPC). For external clients: per-request identity (bearer), a `Call` Model for HTTP concerns (headers, status, cookies; `Fetch` considered - its instance name shadows global `fetch()`), the reply pipeline (string → `text/plain`, `undefined` → 204, other values → JSON, status helpers, data primitives; uncaught → 500, message in dev only), REST as `protected` uppercase verbs on dev's `Route` (params from `this.match`, body as the one parameter), HTML replies via a server DOM shim, OpenAPI.
 - The Reliability items above beyond the MVP.
 - **`set` - its own PR, after values.** A write to a twin field: immediate silent local write, confirmed by the returned frame as calls are. Which fields the client may write, and the gates covering writes, decided then; until then assigning a twin field throws. Tabled to keep the shape from churning.
 - **Build-time slot bitmasks.** Every seat and scanned field has a position known at build; a watchlist of arbitrary twins packs into bytes. Per-tab twin ids cover today's case; revisit if the pool grows large.
 - **Per-connection call ids.** Derive ids from the connection id issued by the connection's opening request, so a call is valid only on the connection that learned it. Also shared secrets between server and bundle.
-- **Versioned client artifacts.** A deployed `api/` published as a client library needs version control across builds - beyond `remote.opaque: false`.
 - **Build notice.** `expressive build` prints one line per non-root route module kept in the main bundle and why - e.g. it exports `Catch`; a `Catch` on its section's `index` covers it.
 - **Repo placement.** dev incubates here as a trunk while it drives changes into mvc and dom; it is the likeliest package to move to `gabeklein/expressive-dev` at its first release, once its PRs stop touching core.
 
@@ -234,7 +253,7 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - Reliability defaults: timeouts, the per-call wait-or-fail option, the strict-route flag, the pool's TTL after disconnect.
 - Hot reload retiring cached contexts.
 - Client parity for the `mount()` cascade: the server needs it (owned helpers have no other attach signal), so the maintainer cascades on the client too, upstream.
-- `api/**` is importable by the bundled client; whether its default (a REST `Route`) is twinned, and what a twin of a `Route` subclass carries, is assessed when the lane is built.
+- REST over the rpc folder (a `Route` default with uppercase verbs) - assessed after RPC stage 3. Twins of rpc classes are dev's, on stateful hosts only.
 - On the client only the layout chain stays mounted - sibling pages remount (per the generated route tree). Twins inherit that lifetime.
 
 ## Upstream (bullpen)

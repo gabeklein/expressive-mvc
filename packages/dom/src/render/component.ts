@@ -78,7 +78,7 @@ function mountComponent(
   place?: () => void
 ) {
   const fiber = range('component', parent, before, context);
-  const childContext = context.push(instance);
+  const childContext = context.push(instance, owned ? () => instance.set(null) : undefined);
   const element = (owned ? props : {}) as Placement;
   const { fallback } = instance;
   const ownBoundary: Boundary | undefined = fallback !== undefined && fallback !== false || element.catch || instance.catch
@@ -190,7 +190,6 @@ function rerun(fiber: Fiber, run: () => void) {
 
 function unmountComponent(fiber: Fiber) {
   fiber.childContext?.pop();
-  if (fiber.owned && !fiber.instance!.get(null)) fiber.instance!.set(null);
 }
 
 function renderable(value: unknown): value is Component {

@@ -1,8 +1,8 @@
-import { rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Browser, CHROME, until } from './chrome';
 import { withWorkspaceLinks } from './workspace-links';
-
-const CHROME = process.env.CHROME
-  ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 if (!await Bun.file(CHROME).exists()) {
   console.log(`No Chrome at ${CHROME} - set CHROME to run the cascade probe.`);
@@ -35,29 +35,25 @@ try {
       )
   });
 
-  const proc = Bun.spawn([
-    CHROME,
-    '--headless=new',
-    '--disable-gpu',
-    '--no-sandbox',
-    '--virtual-time-budget=3000',
-    '--dump-dom',
-    `http://localhost:${server.port}/`
-  ], { stdout: 'pipe', stderr: 'ignore' });
+  const profile = mkdtempSync(join(tmpdir(), 'cascade-probe-'));
+  const browser = new Browser();
+  let out: string | null = null;
 
-  const dom = await new Response(proc.stdout).text();
-  server.stop(true);
+  try {
+    await browser.open(`http://localhost:${server.port}/`, profile);
+    out = await until(() => browser.text('#out'), 10000).catch(() => null);
+  } finally {
+    await browser.close();
+    server.stop(true);
+    rmSync(profile, { recursive: true, force: true });
+  }
 
-  const match = /<pre id="out">([\s\S]*?)<\/pre>/.exec(dom);
-
-  if (!match) {
-    console.error('Probe produced no output. Chrome returned:\n' + dom.slice(0, 600));
+  if (!out) {
+    console.error('Probe produced no output.' + (browser.errors.length ? '\n' + browser.errors.join('\n') : ''));
     process.exit(1);
   }
 
-  const lines = match[1]
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
-    .trim().split('\n');
+  const lines = out.trim().split('\n');
 
   for (const line of lines) console.log(line);
 

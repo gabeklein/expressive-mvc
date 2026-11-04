@@ -57,12 +57,7 @@ function componentProps(
   if (!value) return { appearance: { author, entries, lexical: context }, props };
 
   return {
-    appearance: {
-      author,
-      context: value.context,
-      entries,
-      lexical: value.context || context
-    },
+    appearance: { author, entries, lexical: value.context || context },
     props: { ...props, style: [createAppearanceToken(value), props.style] }
   };
 }
@@ -94,8 +89,6 @@ function claim(
 ): Claim {
   const collected: Collected = { classes: [], declarations: {}, tokens: [] };
   const entries = appearance?.entries || [];
-  let context = appearance?.context;
-  let reach = -1;
 
   if (resolved) collect(createAppearanceToken(resolved), collected, 0);
   appendClasses(collected.classes, className);
@@ -108,15 +101,11 @@ function claim(
     for (const block of appearance.blocks || [])
       collected.classes.push(emitClass(block, doors, element.ownerDocument));
     if (appearance.classes) collected.classes.push(...appearance.classes);
-    if (appearance.context && doors >= reach) {
-      context = appearance.context;
-      reach = doors;
-    }
   }
 
   return {
     className: [...new Set(collected.classes)].join(' '),
-    context,
+    context: resolved?.context || appearance?.context,
     declarations: collected.declarations
   };
 }

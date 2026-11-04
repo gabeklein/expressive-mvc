@@ -1,9 +1,8 @@
 /** @jsxImportSource @expressive/dom */
 import { Component } from '@expressive/mvc';
-import { css, macro, render, style } from '@expressive/dom';
+import { Css, render } from '@expressive/dom';
 
-macro(css);
-macro({ _output: { color: 'rgb(5, 5, 5)', padding: '5px' } });
+const style = Css.use();
 
 const out: string[] = [];
 
@@ -113,7 +112,6 @@ check('custom property', getComputedStyle(frame).getPropertyValue('--depth').tri
 const box = root.querySelector('span')!;
 const readout = root.querySelector('output')!;
 
-check('base beats global rule', getComputedStyle(readout).color, 'rgb(7, 7, 7)');
 check('own rule beats base', getComputedStyle(readout).padding, '6px');
 
 check('px appended where required', getComputedStyle(box).paddingTop, '5px');

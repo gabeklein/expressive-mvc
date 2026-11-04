@@ -1,4 +1,5 @@
-import type { macro, style } from './stylesheet';
+import { Style } from './stylesheet';
+import type { style } from './stylesheet';
 
 const unitless = new Map<string, boolean>();
 
@@ -31,21 +32,19 @@ function sized(property: string, value: unknown): unknown {
 }
 
 /**
- * Web macro pack. Register with `macro(css)` to opt into pixel units for
- * numbers and the `size` shorthand.
+ * Web macro pack - pixel units for numbers and the `size` shorthand. Extend
+ * it, or use it as is with `Css.use()`.
  */
-const css = {
-  '*': (value: unknown, key: string) => ({ [key]: sized(key, value) }),
-  size: (value: style.Value) =>
-    Array.isArray(value)
-      ? { width: value[0], height: value[1] }
-      : { width: value, height: value }
-} satisfies Record<string, macro.Fn>;
+class Css extends Style {
+  '*'(value: unknown, key: string) {
+    return { [key]: sized(key, value) };
+  }
 
-declare module '@expressive/dom' {
-  namespace macro {
-    interface Registry extends macro.From<typeof css> {}
+  size(value: style.Value) {
+    return Array.isArray(value)
+      ? { width: value[0], height: value[1] }
+      : { width: value, height: value };
   }
 }
 
-export { css };
+export { Css };

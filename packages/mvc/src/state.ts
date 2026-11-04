@@ -1,5 +1,5 @@
 import { Context, home, host, join, within } from './context';
-import { REPORT } from './dispatch';
+import { CAUSE, REPORT } from './dispatch';
 import {
   capture,
   event,
@@ -744,7 +744,10 @@ function init(state: Model, ...args: Model.Args) {
 
     const settled = waits.length ? Promise.all(waits) : undefined;
     const hold = active.held || !!settled;
-    const failed = () => event(state, null);
+    const failed = (error: unknown) => {
+      CAUSE.set(state, error);
+      event(state, null);
+    };
     const release = () => {
       if (observer(state) !== null) settle();
     };
@@ -1245,7 +1248,7 @@ function access(state: Model, property: string, required?: boolean) {
       }
 
       if (key === null) {
-        reject(new Error(`${state} is destroyed.`));
+        reject(CAUSE.has(state) ? CAUSE.get(state) : new Error(`${state} is destroyed.`));
       }
     });
   });

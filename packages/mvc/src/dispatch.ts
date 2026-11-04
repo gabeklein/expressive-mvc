@@ -17,6 +17,7 @@ interface Scheduled {
 }
 
 const DISPATCH = new Map<Handler, Scheduled>();
+const CAUSE = new WeakMap<object, unknown>();
 
 /** Where errors caught in a flush go - `as` takes a report, `error` throws what is left uncaught. */
 const REPORT = {
@@ -179,4 +180,4 @@ function pending(work?: Handler): Promise<void> | (() => void) | undefined {
   return promise;
 }
 
-export { enqueue, hold, pending, REPORT };
+export { CAUSE, enqueue, hold, pending, REPORT };
