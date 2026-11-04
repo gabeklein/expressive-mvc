@@ -95,7 +95,11 @@ Agreed direction, staged below. The stateless call lane carved out of dev as a V
        - dev's twin scan walks a class's bases itself (`baseOf`) beside rpc's `endOf` - it collects members on the way, reads `.d.ts` beside compiled bases and follows package bases;
        - two server entries - rpc's Worker `fetch`, dev's `serve(...)` - sharing only `table`;
        - the dependency-scan external in each plugin's `resolveId` (dev's also enforces the folder import rule);
-       - folder defaults: rpc re-scans an index per call for its gate, dev reads `hasSeat` per entry.
+       - folder defaults: rpc re-scans an index per call for its gate, dev reads `hasSeat` per entry;
+       - the `Sources`/`Resolve` construction over `this.resolve` and `readFileSync`, in both plugins (`packages/rpc/src/vite/plugin.ts`, `packages/dev/src/vite/plugin.ts`);
+       - the `buildStart` salt - `randomBytes(16)` unless opaque is off;
+       - the `transform` guard wrapper and its `${relative(root, file)} ${problem}` formatting;
+       - the endpoint mapping `byPattern().map(group => ({ pattern: group[0].pattern, exports }))`.
   4. Workers. The core reaches Node only through `within` (`AsyncLocalStorage`, `createHash`) - `nodejs_compat` covers both, or they get replaced.
 - **Limits (3b).**
   - `vite build` alone emits both outputs through the app builder; the legacy `build()` API builds the client only - use `createBuilder().buildApp()`. Another environment (a user's `ssr`) is not built by the plugin's `buildApp`.
