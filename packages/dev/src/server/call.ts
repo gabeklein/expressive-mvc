@@ -1,29 +1,17 @@
-import { Model } from "@expressive/mvc";
-
-import { begin, catchUp, connect, end, frameOf, hold, release, renew, twinOf, type Connection, type Shape } from "./connection";
-import { construct, seated, within, type Seat } from "./context";
+import { within, type Seat } from "./context";
 
 export interface Exports {
   calls: Record<string, unknown>;
   classes: Record<string, unknown>;
-  seat?: Shape & { methods: Record<string, string> };
-  pool?: Record<string, Pooled>;
 }
 
-export interface Pooled extends Shape {
-  Type: Model.Type;
-  methods: Record<string, string>;
-}
-
-export const DETACHED = "/.expressive/detached";
-
-export interface Endpoint {
+export interface Endpoint<E extends Exports = Exports> {
   pattern: string[];
-  exports(): Promise<Exports>;
+  exports(): Promise<E>;
 }
 
-export interface Match {
-  endpoint: Endpoint;
+export interface Match<E extends Exports = Exports> {
+  endpoint: Endpoint<E>;
   segments: string[];
 }
 
@@ -50,8 +38,8 @@ function match(pattern: string[], at: string[]): string[] | undefined {
 const rank = (part: string) => (part === "*" ? 0 : part.startsWith(":") ? 1 : 2);
 const specificity = (pattern: string[]) => pattern.map(rank).join("");
 
-export function resolve(endpoints: Endpoint[], at: string[]): Match | undefined {
-  const matches: Match[] = [];
+export function resolve<E extends Exports>(endpoints: Endpoint<E>[], at: string[]): Match<E> | undefined {
+  const matches: Match<E>[] = [];
 
   for (const endpoint of endpoints) {
     const segments = match(endpoint.pattern, at);
@@ -68,162 +56,61 @@ export function isCall(request: Request): boolean {
   return request.method === "POST" && named && !!headers.get("content-type")?.startsWith("application/json");
 }
 
-type Call = (...args: unknown[]) => unknown;
+export type Call = (...args: unknown[]) => unknown;
 
 export type Seats = (pattern: string[]) => Promise<Seat | undefined>;
 
+export interface Incoming<E extends Exports = Exports> {
+  request: Request;
+  list: Endpoint<E>[];
+  at: string[];
+  pathname: string;
+  found?: Match<E>;
+  exports?: E;
+  dev: boolean;
+  seats: Seats;
+}
+
+export type Handle = (args: unknown[]) => Promise<Response>;
+
+export type Tier<E extends Exports> = (incoming: Incoming<E>, fn?: Call) => Promise<Handle | undefined>;
+
 const unseated: Seats = async () => undefined;
 
-export async function dispatch(request: Request, endpoints: () => Endpoint[], dev: boolean, seats = unseated): Promise<Response> {
-  const header = (name: string) => request.headers.get(name) ?? undefined;
+export async function dispatch<E extends Exports>(request: Request, endpoints: () => Endpoint<E>[], dev: boolean, seats = unseated, tier?: Tier<E>): Promise<Response> {
   const list = endpoints();
   const { pathname } = new URL(request.url);
   const at = pathname.split("/").filter(Boolean);
   const found = resolve(list, at);
   const exports = found && await found.endpoint.exports();
-  const pull = header("x-expressive-get");
-  const name = header("x-expressive-call")!;
-  const method = exports?.seat && Object.hasOwn(exports.seat.methods, name) ? exports.seat.methods[name] : undefined;
-  const fn = !pull && !method && exports ? callOf(exports, name) : undefined;
-  const seatPull = pull === "default" && !!exports?.seat;
-  const pooled = fn || method || seatPull ? undefined : await pooledOf(list, pull, name);
+  const name = request.headers.get("x-expressive-call");
+  const fn = exports && name !== null ? callOf(exports, name) : undefined;
+  const incoming = { request, list, at, pathname, found, exports, dev, seats };
+  const handle = tier ? await tier(incoming, fn) : fn && plain(incoming, fn);
 
-  if (!pooled && !(fn || method || seatPull)) return reply(404, { message: "Not found." });
+  if (!handle) return reply(404, { message: "Not found." });
 
   const args = await readArgs(request);
 
   if (!args) return reply(400, { message: "Expected a JSON array of arguments." });
 
-  const connection = connect(header("x-expressive-connection"));
-
-  if (!connection) return reply(400, { message: "Expected an x-expressive-connection id." });
-
-  const epoch = { "x-expressive-epoch": connection.epoch };
-
-  release(connection, header("x-expressive-release"));
-
-  const twin = pull || method || pooled ? twinOf(header("x-expressive-twin")) : undefined;
-
-  if ((pull || method || pooled) && !twin) return reply(400, { message: "Expected an x-expressive-twin id." }, epoch);
-
-  const held = twin ? connection.twins.get(twin) : undefined;
-  const mismatch = pooled ? held && held.pool?.id !== pooled.id || pooled.method && !held : held?.pool;
-
-  if (mismatch) return reply(404, { message: "Not found." }, epoch);
-
-  const since = header("if-none-match");
-
-  if (!pull) begin(connection);
-
-  try {
-    const result = pooled
-      ? await inPool(request, connection, pooled, twin!, since, args, list, seats, at)
-      : await atFolder(request, connection, found!, exports!, { pull, method, fn, twin, since, args, pathname }, seats);
-
-    return result ? reply(200, result, epoch) : reply(304, undefined, epoch);
-  } catch (error) {
-    if (error instanceof Moved) return reply(409, { message: error.message }, epoch);
-
-    const { status, body } = await failure(error, list, dev);
-    return reply(status, body, epoch);
-  } finally {
-    if (!pull) end(connection);
-  }
+  return handle(args);
 }
 
-class Moved extends Error {
-  message = "This twin's context was replaced - its instance is gone.";
-}
-
-interface Invocation {
-  pull?: string;
-  method?: string;
-  fn?: Call;
-  twin?: string;
-  since?: string;
-  args: unknown[];
-  pathname: string;
-}
-
-async function atFolder(request: Request, connection: Connection, found: Match, exports: Exports, invocation: Invocation, seats: Seats) {
-  const { pull, method, fn, twin, since, args, pathname } = invocation;
-  const shape = exports.seat ?? { fields: [] };
-  const along = await seatsAlong(seats, found.endpoint.pattern);
-
-  return within(request, found.segments, async () => {
-    const seat = seated();
-
-    if (seat) renew(connection, pathname, seat);
-    if (twin) hold(connection, twin, pathname, seat!, shape, since);
-    if (pull) return caughtUp(connection, twin!);
-
-    const value = await (method ? invoke(seat!, method, args) : fn!(...args));
-
-    return { value, frame: frameOf(connection) };
-  }, along);
-}
-
-interface Target extends Pooled {
-  id: string;
-  method?: string;
-}
-
-async function inPool(request: Request, connection: Connection, target: Target, twin: string, since: string | undefined, args: unknown[], list: Endpoint[], seats: Seats, at: string[]) {
-  const off = "/" + at.join("/") === DETACHED;
-  const walk = off ? { segments: [], pattern: [] } : walkOf(list, at);
-  const along = off ? [] : await seatsAlong(seats, walk.pattern);
-  const address = "/" + at.join("/");
-
-  return within(request, walk.segments, async () => {
-    const held = connection.twins.get(twin);
-
-    if (held && !held.pool!.current()) {
-      release(connection, twin);
-      throw new Moved();
+function plain(incoming: Incoming, fn: Call): Handle {
+  return async args => {
+    try {
+      return reply(200, { value: await inFolder(incoming, () => fn(...args)) });
+    } catch (error) {
+      return failure(error, incoming.list, incoming.dev);
     }
-
-    const built = held ? undefined : construct(target.Type, off);
-    const instance = held ? held.instance : built!.instance;
-
-    hold(connection, twin, address, instance, target, since, held?.pool ?? { id: target.id, drop: built!.drop, current: built!.current });
-
-    if (!target.method) return caughtUp(connection, twin);
-
-    const value = await invoke(instance, target.method, args);
-
-    return { value, frame: frameOf(connection) };
-  }, along);
+  };
 }
 
-function caughtUp(connection: Connection, twin: string) {
-  const frame = catchUp(connection, twin);
-  return Object.keys(frame).length ? { frame } : undefined;
-}
+export async function inFolder<T>({ request, found, seats }: Incoming, run: () => T): Promise<Awaited<T>> {
+  const along = await seatsAlong(seats, found!.endpoint.pattern);
 
-function invoke(instance: Model, method: string, args: unknown[]): unknown {
-  const path = method.split(".");
-  const name = path.pop()!;
-  let target: unknown = instance;
-
-  for (const field of path) target = (target as any)[field];
-
-  if (!(target instanceof Model)) throw new Error(`${path.join(".")} is not set on ${instance}.`);
-
-  return (target as any)[name](...args);
-}
-
-async function pooledOf(list: Endpoint[], pull: string | undefined, name: string): Promise<Target | undefined> {
-  for (const endpoint of list) {
-    const pool = (await endpoint.exports()).pool ?? {};
-
-    if (pull) {
-      if (Object.hasOwn(pool, pull)) return { id: pull, ...pool[pull] };
-      continue;
-    }
-
-    for (const [id, entry] of Object.entries(pool))
-      if (Object.hasOwn(entry.methods, name)) return { id, ...entry, method: entry.methods[name] };
-  }
+  return within(request, found!.segments, run, along);
 }
 
 export function walkOf(list: Endpoint[], at: string[]): { pattern: string[]; segments: string[] } {
@@ -248,7 +135,7 @@ export function walkOf(list: Endpoint[], at: string[]): { pattern: string[]; seg
   return { pattern, segments };
 }
 
-function seatsAlong(seats: Seats, pattern: string[]): Promise<(Seat | undefined)[]> {
+export function seatsAlong(seats: Seats, pattern: string[]): Promise<(Seat | undefined)[]> {
   return Promise.all(Array.from({ length: pattern.length + 1 }, (_, i) => seats(pattern.slice(0, i))));
 }
 
@@ -267,15 +154,15 @@ async function readArgs(request: Request): Promise<unknown[] | undefined> {
   }
 }
 
-async function failure(error: unknown, endpoints: Endpoint[], dev: boolean): Promise<{ status: number; body: unknown }> {
-  if (!(error instanceof Error)) return { status: 500, body: { message: "Internal error." } };
+export async function failure(error: unknown, endpoints: Endpoint[], dev: boolean, headers?: Record<string, string>): Promise<Response> {
+  if (!(error instanceof Error)) return reply(500, { message: "Internal error." }, headers);
 
   const id = await classId(endpoints, error);
 
-  if (id) return { status: statusOf(error), body: { ...error, error: id, message: error.message } };
-  if (dev) return { status: 500, body: { message: error.message, stack: error.stack } };
+  if (id) return reply(statusOf(error), { ...error, error: id, message: error.message }, headers);
+  if (dev) return reply(500, { message: error.message, stack: error.stack }, headers);
 
-  return { status: 500, body: { message: "Internal error." } };
+  return reply(500, { message: "Internal error." }, headers);
 }
 
 async function classId(endpoints: Endpoint[], error: Error): Promise<string | undefined> {
@@ -304,7 +191,7 @@ export function verify(path: string, { classes }: Exports): void {
   }
 }
 
-function reply(status: number, value?: unknown, headers: Record<string, string> = {}): Response {
+export function reply(status: number, value?: unknown, headers: Record<string, string> = {}): Response {
   if (value === undefined) return new Response(null, { status, headers });
 
   return new Response(JSON.stringify(value), { status, headers: { ...headers, "content-type": "application/json; charset=utf-8" } });
