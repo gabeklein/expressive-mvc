@@ -22,10 +22,15 @@ export interface Scan {
   problems: string[];
 }
 
-type Value = ESTree.Node | null | undefined;
+export interface Extension {
+  claim?(name: string): Promise<string[] | undefined>;
+  default?(value: Value): Promise<string[]>;
+}
+
+export type Value = ESTree.Node | null | undefined;
 type Statement = ESTree.Program["body"][number];
 
-interface Module {
+export interface Module {
   file: string;
   body: Statement[];
   locals: Map<string, Value>;
@@ -48,12 +53,12 @@ const INDEX = /^index\.[cm]?[jt]sx?$/;
 const isFunction = (value: Value): value is ESTree.Function | ESTree.ArrowFunctionExpression =>
   value?.type === "FunctionDeclaration" || value?.type === "FunctionExpression" || value?.type === "ArrowFunctionExpression";
 
-const isClass = (value: Value): value is ESTree.Class =>
+export const isClass = (value: Value): value is ESTree.Class =>
   value?.type === "ClassDeclaration" || value?.type === "ClassExpression";
 
 const nameOf = (node: ESTree.ModuleExportName) => (node.type === "Identifier" ? node.name : String(node.value));
 
-export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean): Promise<Scan> {
+export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean, extension: Extension = {}): Promise<Scan> {
   const module = moduleOf(file, source);
   const scan: Scan = { calls: [], errors: [], gate: false, problems: [...module.errors] };
   const found: [ErrorClass, number][] = [];
@@ -65,12 +70,13 @@ export async function scanModule(file: string, source: string, sources: Sources,
 
   for (const [name, value] of module.exports) {
     if (name === "default") {
-      await gate(scan, value, module, sources, owned);
+      if (extension.default) scan.problems.push(...(await extension.default(value)));
+      else await gate(scan, value, module, sources, owned);
       continue;
     }
 
     if (!isFunction(value) && !isClass(value)) {
-      scan.problems.push(`${name} is neither an async function nor an Error class - the client could not use it.`);
+      scan.problems.push(`${name} is neither an async function nor an Error subclass - the client could not use it.`);
       continue;
     }
 
@@ -85,10 +91,18 @@ export async function scanModule(file: string, source: string, sources: Sources,
       continue;
     }
 
+    const claimed = await extension.claim?.(name);
+
+    if (claimed) {
+      scan.problems.push(...claimed);
+      continue;
+    }
+
     const end = await endOf({ cls: value, module }, sources, owned);
 
     if (end.kind === "error") found.push([{ name, ...(end.parent && { parent: end.parent }) }, value.start]);
     else if (end.kind === "problem") scan.problems.push(end.problem);
+    else if (end.kind === "plain") scan.problems.push(`${name} is a class but not an Error - only error classes reach the client.`);
     else scan.problems.push(`${name} is a class but not an Error - only error classes reach the client; a Model it constructs is a twin, which needs @expressive/dev.`);
   }
 
@@ -122,7 +136,7 @@ function unsupported(node: Statement): string | undefined {
     case "TSTypeAliasDeclaration":
       return;
     default:
-      return "A server module exports async functions and Error classes only.";
+      return "A server module exports async functions and Error subclasses only.";
   }
 }
 
@@ -183,7 +197,7 @@ function parentOf({ cls, module }: Found, owned: (file: string) => boolean): Par
   if (name && owned(module.file)) return { file: module.file, name };
 }
 
-function moduleOf(file: string, source: string): Module {
+export function moduleOf(file: string, source: string): Module {
   const { program, errors } = parseSync(file, source);
   const locals = new Map<string, Value>();
   const imports = new Map<string, { from: string; name: string }>();
@@ -197,7 +211,7 @@ function moduleOf(file: string, source: string): Module {
     if (decl?.type === "VariableDeclaration")
       for (const { id, init } of decl.declarations) if (id.type === "Identifier") locals.set(id.name, init);
 
-    if (node.type === "ImportDeclaration" && node.importKind !== "type")
+    if (node.type === "ImportDeclaration")
       for (const spec of node.specifiers) {
         if (spec.type === "ImportNamespaceSpecifier") continue;
         imports.set(spec.local.name, { from: node.source.value, name: spec.type === "ImportDefaultSpecifier" ? "default" : nameOf(spec.imported) });

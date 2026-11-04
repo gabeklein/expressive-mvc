@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { scanModule, type Sources } from "./scan";
+import { isClass, scanModule, type Extension, type Sources } from "./scan";
 
 const HTTP = `import { Current, HttpError, NotFound } from "@expressive/rpc/http";`;
 const MVC = `import { Model } from "@expressive/mvc";`;
 
-function scan(source: string, file = "/app/api/todos.ts", others: Record<string, string> = {}) {
+function scan(source: string, file = "/app/api/todos.ts", others: Record<string, string> = {}, extension?: Extension) {
   const sources: Sources = {
     resolve: async (spec, importer) => {
       const file = new URL(spec, `file://${importer}`).pathname + ".ts";
@@ -14,7 +14,7 @@ function scan(source: string, file = "/app/api/todos.ts", others: Record<string,
     read: file => others[file],
   };
 
-  return scanModule(file, source, sources, file => file.startsWith("/app/api/"));
+  return scanModule(file, source, sources, file => file.startsWith("/app/api/"), extension);
 }
 
 describe("calls", () => {
@@ -29,9 +29,12 @@ describe("calls", () => {
       type Hidden = 1;
       export type { Hidden };
       export { list as "all" };
+      export const b = async () => 1, c = async function () {};
+      async function e() {}
+      export { e as f };
     `);
 
-    expect(found).toEqual({ calls: ["list", "add", "complete", "all"], errors: [], gate: false, problems: [] });
+    expect(found).toEqual({ calls: ["list", "add", "complete", "all", "b", "c", "f"], errors: [], gate: false, problems: [] });
   });
 
   it("will refuse a sync function, a value, and anything but functions and classes", async () => {
@@ -43,10 +46,10 @@ describe("calls", () => {
     `);
 
     expect(problems).toEqual([
-      "A server module exports async functions and Error classes only.",
+      "A server module exports async functions and Error subclasses only.",
       "list() is not async - every call to it crosses the wire.",
-      "count is neither an async function nor an Error class - the client could not use it.",
-      "A destructured export is neither an async function nor an Error class - the client could not use it.",
+      "count is neither an async function nor an Error subclass - the client could not use it.",
+      "A destructured export is neither an async function nor an Error subclass - the client could not use it.",
     ]);
   });
 
@@ -61,7 +64,7 @@ describe("calls", () => {
   });
 
   it("will report a syntax error", async () => {
-    expect((await scan("export async function (")).problems).not.toEqual([]);
+    expect((await scan("export async function (")).problems[0]).toBe("Expected function name");
   });
 });
 
@@ -107,11 +110,13 @@ describe("error classes", () => {
   it("will take a subclass of a global error without a parent", async () => {
     const { errors, problems } = await scan(`
       export class Over extends Error {}
-      export class Wrong extends TypeError {}
+      export const Wrong = class extends TypeError {};
+      class Range extends RangeError {}
+      export { Range };
     `);
 
     expect(problems).toEqual([]);
-    expect(errors).toEqual([{ name: "Over" }, { name: "Wrong" }]);
+    expect(errors).toEqual([{ name: "Over" }, { name: "Wrong" }, { name: "Range" }]);
   });
 
   it("will follow a base imported from another module, taking it as the parent if the folder exports it", async () => {
@@ -147,8 +152,10 @@ describe("error classes", () => {
       export class Request extends Current {}
     `);
 
-    expect(problems).toEqual(["Cart", "Plain", "Store", "Request"].map(name =>
-      `${name} is a class but not an Error - only error classes reach the client; a Model it constructs is a twin, which needs @expressive/dev.`));
+    expect(problems).toEqual([
+      "Cart is a class but not an Error - only error classes reach the client; a Model it constructs is a twin, which needs @expressive/dev.",
+      ...["Plain", "Store", "Request"].map(name => `${name} is a class but not an Error - only error classes reach the client.`),
+    ]);
   });
 
   it("will refuse a base it cannot follow", async () => {
@@ -199,5 +206,36 @@ describe("gates", () => {
     expect((await scan(`export default async function () {}`, "/app/api/index.ts")).problems).toEqual([problem]);
     expect((await scan(`export default class Oops extends Error {}`, "/app/api/index.ts")).problems).toEqual([problem]);
     expect((await scan(`export default class extends Undeclared {}`, "/app/api/index.ts")).problems).toEqual(["default extends Undeclared, which is neither declared nor imported."]);
+  });
+});
+
+describe("extension", () => {
+  it("will let the extension claim an exported class, leaving the rest to the error rules", async () => {
+    const offered: string[] = [];
+    const claim = async (name: string) => (offered.push(name), name === "Cart" ? [] : name === "Odd" ? ["Odd is odd"] : undefined);
+    const found = await scan(`${HTTP} ${MVC}
+      export class Cart extends Model {}
+      export class Odd extends Model {}
+      export class Over extends HttpError {}
+      export class Plain {}
+      export async function add() {}
+    `, undefined, undefined, { claim });
+
+    expect(offered).toEqual(["Cart", "Odd", "Over", "Plain"]);
+    expect(found).toEqual({
+      calls: ["add"],
+      errors: [{ name: "Over", parent: { id: "http:HttpError" } }],
+      gate: false,
+      problems: ["Odd is odd", "Plain is a class but not an Error - only error classes reach the client."],
+    });
+  });
+
+  it("will hand the default to the extension in place of the gate rules, in any module", async () => {
+    const seen: boolean[] = [];
+    const extension: Extension = { default: async value => (seen.push(isClass(value)), isClass(value) ? [] : ["not a class"]) };
+
+    expect(await scan(`${MVC} export default class Seat extends Model {}`, undefined, undefined, extension)).toEqual({ calls: [], errors: [], gate: false, problems: [] });
+    expect((await scan(`export default 1`, "/app/api/index.ts", undefined, extension)).problems).toEqual(["not a class"]);
+    expect(seen).toEqual([true, false]);
   });
 });
