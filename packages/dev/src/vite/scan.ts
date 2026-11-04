@@ -157,6 +157,7 @@ interface Module {
 }
 
 const LIBRARY = /^@expressive\//;
+const ERRORS = "@expressive/rpc/http";
 
 export interface TwinScan {
   twin?: Twin;
@@ -176,6 +177,7 @@ export async function scanTwin(source: string, path: string, sources: Sources, n
 
   if (name !== "default") return state ? { twin, state, problems } : { state, problems: [] };
   if (end?.global) problems.push(`${end.owner} extends ${end.global}, which is neither declared nor imported in ${module.file}.`);
+  if (end?.error) problems.push(`${end.owner} extends ${end.error}, an error class - a folder's default must be a Model.`);
 
   return { twin, state, problems };
 }
@@ -313,6 +315,7 @@ interface Base {
   owner: string;
   library?: boolean;
   global?: string;
+  error?: string;
 }
 
 async function baseOf({ cls, module }: Found, sources: Sources, problems: string[]): Promise<Found | Base | undefined> {
@@ -331,6 +334,7 @@ async function baseOf({ cls, module }: Found, sources: Sources, problems: string
   const imported = module.imports.get(base.name);
 
   if (!imported) return { owner, global: base.name };
+  if (imported.from === ERRORS) return { owner, error: base.name };
   if (LIBRARY.test(imported.from)) return { owner, library: true };
 
   const file = await sources.resolve(imported.from, module.file);

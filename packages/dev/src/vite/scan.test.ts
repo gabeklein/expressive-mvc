@@ -277,4 +277,25 @@ describe("twin scan", () => {
     expect(await named("Cart")).toEqual({ twin: { name: "Cart", methods: ["add"], fields: ["items"] }, state: true, problems: [] });
     expect(await named("Over")).toMatchObject({ state: false, problems: [] });
   });
+
+  it("will scan a class extending rpc's http errors as an error class, never a Model", async () => {
+    const source = `
+      import { HttpError, NotFound } from "@expressive/rpc/http";
+      export class Payment extends HttpError { status = 402; }
+      export class Missing extends NotFound {}
+    `;
+    const named = (name: string) => scanTwin(source, "/app/remote.ts", files({}), name);
+
+    expect(await named("Payment")).toEqual({ state: false, problems: [] });
+    expect(await named("Missing")).toEqual({ state: false, problems: [] });
+  });
+
+  it("will refuse a folder's default that extends an http error", async () => {
+    const { problems } = await twin(`
+      import { Forbidden } from "@expressive/rpc/http";
+      export default class Gate extends Forbidden {}
+    `);
+
+    expect(problems).toEqual(["Gate extends Forbidden, an error class - a folder's default must be a Model."]);
+  });
 });
