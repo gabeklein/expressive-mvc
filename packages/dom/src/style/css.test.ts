@@ -43,9 +43,36 @@ describe('Css', () => {
     expect(css.animationDelay('2s')).toEqual({ animationDelay: '2s' });
   });
 
-  it('will give rotate degrees', () => {
+  it('will give transition times milliseconds', () => {
+    expect(css.transition(200)).toEqual({ transition: '200ms' });
+    expect(css.transition(['opacity', 200, 'ease', 50])).toEqual({ transition: 'opacity 200ms ease 50ms' });
+    expect(css.transition([['opacity', 200], 'color 1s'])).toEqual({ transition: 'opacity 200ms, color 1s' });
+  });
+
+  it('will give rotations degrees', () => {
     expect(css.rotate(45)).toEqual({ rotate: '45deg' });
     expect(css.rotate('0.25turn')).toEqual({ rotate: '0.25turn' });
+    expect(css.offsetRotate(90)).toEqual({ offsetRotate: '90deg' });
+    expect(css.offsetRotate('auto 45deg')).toEqual({ offsetRotate: 'auto 45deg' });
+  });
+
+  it('will accept numbers only for properties where one is valid', () => {
+    const valid: style.Map<Css> = {
+      zIndex: 2,
+      boxShadow: [0, 2, 4, 'black'],
+      font: [16, 'serif'],
+      webkitLineClamp: 2,
+      '--gap': 4,
+      color: 'red'
+    };
+    // @ts-expect-error - color takes no number
+    const color: style.Map<Css> = { color: 5 };
+    // @ts-expect-error - a number in animation could be a time or a count
+    const animation: style.Map<Css> = { animation: ['spin', 1] };
+    // @ts-expect-error - a counter's number would get px
+    const counter: style.Map = { counterReset: ['item', 1] };
+
+    expect([valid, color, animation, counter]).toHaveLength(4);
   });
 
   it('will type time and angle keys from their macros', () => {

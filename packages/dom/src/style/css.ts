@@ -39,12 +39,20 @@ function time(property: string, value: Time | readonly Time[]) {
   return { [property]: typeof value == 'object' ? value.map(ms).join(', ') : ms(value) };
 }
 
+function phrase(value: Time | readonly Time[]) {
+  return typeof value == 'object' ? value.map(ms).join(' ') : ms(value);
+}
+
+function deg(value: number | string) {
+  return typeof value == 'number' ? `${value}deg` : value;
+}
+
 type Time = number | string;
 
 /**
  * Web macro pack - pixels for numbers where a property needs a unit,
- * milliseconds for durations and delays, degrees for `rotate`, and the `size`
- * shorthand. Extend it, or use it as is with `Css.use()`.
+ * milliseconds for `transition`, durations and delays, degrees for `rotate`
+ * and `offsetRotate`, and the `size` shorthand. Extend it, or use it as is with `Css.use()`.
  */
 class Css extends Style {
   default(value: unknown, key: string) {
@@ -73,8 +81,20 @@ class Css extends Style {
     return time('animationDelay', value);
   }
 
+  transition(value: Time | readonly (Time | readonly Time[])[]) {
+    return {
+      transition: typeof value == 'object' && value.some(Array.isArray)
+        ? value.map(phrase).join(', ')
+        : phrase(value as Time | readonly Time[])
+    };
+  }
+
   rotate(value: number | string) {
-    return { rotate: typeof value == 'number' ? `${value}deg` : value };
+    return { rotate: deg(value) };
+  }
+
+  offsetRotate(value: number | string) {
+    return { offsetRotate: deg(value) };
   }
 }
 
