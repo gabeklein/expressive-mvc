@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { createServer, type ViteDevServer } from "vite";
 
 const MANIFEST = fileURLToPath(new URL("../package.json", import.meta.url));
@@ -72,4 +73,31 @@ describe("./http conditions", () => {
   it("will give workerd the server build, though it resolves browser too", async () => {
     expect(await viaVite("workerd")).toBe("dist/http.server.js");
   });
+});
+
+describe("./http types", () => {
+  const SRC = fileURLToPath(new URL(".", import.meta.url));
+  const MVC = fileURLToPath(new URL("../../mvc/src/index.ts", import.meta.url));
+
+  it("will typecheck in a browser project without Node's types", () => {
+    const emitted = new Map<string, string>();
+    const options = { strict: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, paths: { "@expressive/mvc": [MVC], "@expressive/mvc/*": [join(dirname(MVC), "*")] } };
+
+    ts.createProgram([join(SRC, "http.ts")], { ...options, types: ["node"], declaration: true, emitDeclarationOnly: true, outDir: "/decl", rootDir: SRC }).emit(undefined, (file, text) => emitted.set(file, text));
+
+    const fixture = "/app/main.ts";
+    const files = new Map([...emitted, [fixture, `import { configure, NotFound, toNode } from "../decl/http";\nconfigure({ base: "https://api.example.com" });\nexport const node = toNode;\nexport const err: Error = new NotFound("x");\n`]]);
+    const host = ts.createCompilerHost({});
+    const program = ts.createProgram([fixture], { ...options, types: [], lib: ["lib.es2023.d.ts", "lib.dom.d.ts"], noEmit: true }, {
+      ...host,
+      fileExists: file => files.has(file) || host.fileExists(file),
+      directoryExists: dir => [...files.keys()].some(file => file.startsWith(dir + "/")) || ts.sys.directoryExists(dir),
+      readFile: file => files.get(file) ?? host.readFile(file),
+      getSourceFile: (file, version) => files.has(file) ? ts.createSourceFile(file, files.get(file)!, version) : host.getSourceFile(file, version),
+    });
+    const ours = [...files.keys()].flatMap(file => [...program.getSyntacticDiagnostics(program.getSourceFile(file)), ...program.getSemanticDiagnostics(program.getSourceFile(file))]);
+
+    expect([...emitted.keys()]).toContain("/decl/http/node.d.ts");
+    expect(ours.map(({ messageText }) => ts.flattenDiagnosticMessageText(messageText, "\n"))).toEqual([]);
+  }, 30_000);
 });

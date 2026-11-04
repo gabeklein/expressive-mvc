@@ -1,6 +1,19 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
+interface NodeRequest extends AsyncIterable<Uint8Array> {
+  method?: string;
+  url?: string;
+  headers: Record<string, string | string[] | undefined>;
+}
 
-export function toRequest(req: IncomingMessage, res: ServerResponse): Request {
+interface NodeResponse {
+  statusCode: number;
+  setHeader(name: string, value: string): unknown;
+  on(event: "close", listener: () => void): unknown;
+  flushHeaders(): void;
+  write(chunk: Uint8Array): unknown;
+  end(chunk?: Uint8Array): unknown;
+}
+
+export function toRequest(req: NodeRequest, res: NodeResponse): Request {
   const method = req.method ?? "GET";
   const aborted = new AbortController();
   const headers = new Headers();
@@ -10,7 +23,7 @@ export function toRequest(req: IncomingMessage, res: ServerResponse): Request {
 
   res.on("close", () => aborted.abort());
 
-  let chunks: AsyncIterator<Buffer> | undefined;
+  let chunks: AsyncIterator<Uint8Array> | undefined;
 
   const body = method === "GET" || method === "HEAD" ? null : new ReadableStream<Uint8Array>({
     async pull(controller) {
@@ -30,12 +43,12 @@ export function toRequest(req: IncomingMessage, res: ServerResponse): Request {
   } as RequestInit);
 }
 
-export async function send(res: ServerResponse, response: Response): Promise<void> {
+export async function send(res: NodeResponse, response: Response): Promise<void> {
   res.statusCode = response.status;
   response.headers.forEach((value, name) => res.setHeader(name, value));
 
   if (!response.body) return void res.end();
-  if (response.headers.get("content-type") !== "text/event-stream") return void res.end(Buffer.from(await response.arrayBuffer()));
+  if (response.headers.get("content-type") !== "text/event-stream") return void res.end(new Uint8Array(await response.arrayBuffer()));
 
   res.flushHeaders();
 
@@ -47,7 +60,7 @@ export async function send(res: ServerResponse, response: Response): Promise<voi
 }
 
 export function toNode(handler: (request: Request) => Promise<Response | undefined>) {
-  return (req: IncomingMessage, res: ServerResponse, next?: (error?: unknown) => void): void => {
+  return (req: NodeRequest, res: NodeResponse, next?: (error?: unknown) => void): void => {
     handler(toRequest(req, res))
       .then(response => {
         if (response) return send(res, response);
