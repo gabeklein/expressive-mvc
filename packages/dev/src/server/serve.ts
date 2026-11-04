@@ -3,10 +3,11 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join, normalize } from "node:path";
 
 import type { AppConfig } from "./config";
-import { dispatch, isCall, verify, type Endpoint } from "./call";
+import { dispatch, isCall, verify } from "./call";
 import { install, type Seat } from "./context";
 import { send, toRequest } from "./node";
 import { isStream, stream } from "./stream";
+import { twins, type Endpoint } from "./twin";
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -62,7 +63,7 @@ export function serve({ config, client, sidecars = [], seats = [] }: ServeOption
   async function handle(req: IncomingMessage, res: ServerResponse) {
     const request = toRequest(req, res);
 
-    if (isCall(request)) return send(res, await dispatch(request, () => sidecars, false, seatAt));
+    if (isCall(request)) return send(res, await dispatch(request, () => sidecars, false, seatAt, twins));
     if (isStream(request)) return send(res, stream(request));
 
     const { pathname } = new URL(request.url);
