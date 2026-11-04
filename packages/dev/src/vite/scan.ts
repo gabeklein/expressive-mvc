@@ -116,11 +116,22 @@ async function twinOf(found: Found, name: string, sources: Sources, problems: st
   const twin: Twin = { name, methods: [], fields: [] };
   const seen = new Set<string>();
   const pending: Pending[] = [];
+  const chain: Found[] = [];
   let at: Found | Base | undefined = found;
 
   while (at && "cls" in at) {
-    collect(at.cls, at.module, twin, seen, pending, problems);
-    at = await baseOf(at, sources, problems);
+    const key = identity(at);
+    const loop = chain.findIndex(found => identity(found) === key);
+
+    if (loop >= 0) {
+      const [first, ...rest] = chain.slice(loop).map(({ cls }) => cls.id?.name ?? "default");
+      problems.push(`${first} extends ${[...rest, first].join(", which extends ")} - a class cannot extend itself.`);
+      at = undefined;
+    } else {
+      chain.push(at);
+      collect(at.cls, at.module, twin, seen, pending, problems);
+      at = await baseOf(at, sources, problems);
+    }
   }
 
   if (at?.library)
@@ -145,7 +156,7 @@ async function childOf({ field, type, module, owner }: Pending, twin: Twin, sour
 }
 
 function identity({ cls, module }: Found): string {
-  return `${module.file}#${cls.id?.name}`;
+  return `${module.file}#${cls.start}`;
 }
 
 async function classNamed(name: string, module: Module, sources: Sources): Promise<Found | undefined> {

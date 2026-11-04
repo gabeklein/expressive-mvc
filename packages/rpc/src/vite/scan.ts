@@ -104,7 +104,7 @@ export async function scanModule(file: string, source: string, sources: Sources,
       continue;
     }
 
-    const end = await endOf({ cls: value, module }, sources, owned);
+    const end = await endOf({ cls: value, module }, name, sources, owned);
 
     if (end.kind === "error") found.push([{ name, ...(end.parent && { parent: end.parent }) }, value.start]);
     else if (end.kind === "problem") scan.problems.push(end.problem);
@@ -121,7 +121,7 @@ async function gate(scan: Scan, value: Value, module: Module, sources: Sources, 
   if (!INDEX.test(basename(module.file)))
     return void scan.problems.push("Only a folder's index may export a default - its gate.");
 
-  const end = isClass(value) ? await endOf({ cls: value, module }, sources, owned) : undefined;
+  const end = isClass(value) ? await endOf({ cls: value, module }, "default", sources, owned) : undefined;
 
   if (end?.kind === "problem") scan.problems.push(end.problem);
   else if (end?.kind === "model") scan.gate = true;
@@ -146,8 +146,9 @@ function unsupported(node: Statement): string | undefined {
   }
 }
 
-async function endOf(start: Found, sources: Sources, owned: (file: string) => boolean): Promise<End> {
-  const seen = new Set<ESTree.Class>();
+async function endOf(start: Found, name: string, sources: Sources, owned: (file: string) => boolean): Promise<End> {
+  const chain: Found[] = [];
+  const names: string[] = [];
   let parent: Parent | undefined;
   let at = start;
 
@@ -155,9 +156,11 @@ async function endOf(start: Found, sources: Sources, owned: (file: string) => bo
     const { cls, module } = at;
     const base = cls.superClass;
     const owner = cls.id?.name ?? "default";
+    const loop = chain.findIndex(found => found.module.file === module.file && found.cls.start === cls.start);
 
-    if (seen.has(cls)) return { kind: "problem", problem: `${owner} extends itself.` };
-    seen.add(cls);
+    if (loop >= 0) return { kind: "problem", problem: cycle(names.slice(loop)) };
+    chain.push(at);
+    names.push(name);
 
     if (!base) return { kind: "plain" };
     if (base.type !== "Identifier") return { kind: "problem", problem: `${owner} extends an expression - name its base class.` };
@@ -185,8 +188,13 @@ async function endOf(start: Found, sources: Sources, owned: (file: string) => bo
     }
 
     parent ??= parentOf(next, owned);
+    name = base.name;
     at = next;
   }
+}
+
+function cycle([first, ...rest]: string[]): string {
+  return `${first} extends ${[...rest, first].join(", which extends ")} - a class cannot extend itself.`;
 }
 
 function globalEnd(owner: string, name: string, parent?: Parent): End {

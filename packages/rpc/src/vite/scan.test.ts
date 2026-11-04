@@ -164,6 +164,25 @@ describe("error classes", () => {
     ]);
   });
 
+  it("will refuse a class that extends itself across modules", { timeout: 1000 }, async () => {
+    const others: Record<string, string> = {
+      "/app/api/a.ts": `import { B } from "./b"; export class A extends B {}`,
+      "/app/api/b.ts": `import { A } from "./a"; export class B extends A {}`,
+    };
+    const sources: Sources = {
+      resolve: spec => new Promise(done => setTimeout(done, 0, `/app/api/${spec.slice(2)}.ts`)),
+      read: file => others[file],
+    };
+    const { errors, problems } = await scanModule("/app/api/todos.ts", `import { A } from "./a"; export class X extends A {} export class Y extends Y {} export const Z = class extends Z {};`, sources, () => true);
+
+    expect(errors).toEqual([]);
+    expect(problems).toEqual([
+      "A extends B, which extends A - a class cannot extend itself.",
+      "Y extends Y - a class cannot extend itself.",
+      "Z extends Z - a class cannot extend itself.",
+    ]);
+  });
+
   it("will refuse a class that is not an Error", async () => {
     const { problems } = await scan(`${HTTP} ${MVC}
       export class Cart extends Model {}
@@ -198,7 +217,7 @@ describe("error classes", () => {
       `B extends Value, which "./values" does not export as a class.`,
       "C extends an expression - name its base class.",
       "D extends Undeclared, which is neither declared nor imported.",
-      "E extends itself.",
+      "E extends F, which extends E - a class cannot extend itself.",
     ]);
   });
 });

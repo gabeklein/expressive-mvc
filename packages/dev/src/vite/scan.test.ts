@@ -194,6 +194,28 @@ describe("twin scan", () => {
     ]);
   });
 
+  it("will refuse a seat whose bases extend themselves", { timeout: 1000 }, async () => {
+    const map: Record<string, string> = {
+      "/app/a.ts": `import { B } from "./b"; export class A extends B { async a() {} }`,
+      "/app/b.ts": `import { A } from "./a"; export class B extends A { async b() {} }`,
+    };
+    const sources: Sources = {
+      resolve: spec => new Promise(done => setTimeout(done, 0, `/app/${spec.slice(2)}.ts`)),
+      read: file => map[file],
+    };
+
+    expect(await scanTwin(`import { A } from "./a"; export default class Tally extends A {}`, "/app/remote.ts", sources)).toEqual({
+      twin: { name: "Tally", methods: ["a", "b"], fields: [] },
+      state: false,
+      problems: ["A extends B, which extends A - a class cannot extend itself."],
+    });
+    expect(await twin(`${HEAD} const Base = class extends Model { async a() {} }; const Mid = class extends Base {}; export default class Tally extends Mid {}`)).toEqual({
+      twin: { name: "Tally", methods: ["a"], fields: [] },
+      state: true,
+      problems: [],
+    });
+  });
+
   it("will report a sync method a seat inherits", async () => {
     const { problems } = await twin(`import { Base } from "./base"; export default class A extends Base {}`, {
       "/app/base.ts": `${HEAD} export class Base extends Model { tick() {} }`,
