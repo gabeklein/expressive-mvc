@@ -65,7 +65,11 @@ Not built yet, but the MVP must not cut against them.
 
 Agreed direction, staged below. The stateless call lane carved out of dev as a Vite plugin any client build can use - a web app, dev itself, a native shell. `app/` routes, `remote` sidecars and twins stay dev's.
 
-- **Entries.** `@expressive/rpc` - the Vite plugin, `rpc({ dir, ... })`. `@expressive/rpc/server` - what the server bundle runs: the fetch handler, the gate, `Current`; a Node adapter beside it for `serve`. `@expressive/rpc/client` - the stub runtime (`base`, a headers hook), imported only by generated stubs, so no server code reaches a client.
+- **Entries.**
+  - `@expressive/rpc` - the transport-neutral core: endpoint resolution, the folder walk and its `key()` gates (`within`, `install`), `Current`, error ids (`classId`, `verify`, `registry`), and `invoke({ request, at, name, args }, endpoints, { seats, dev, errors })` - `{ value }`, `{ error, status? }`, or `undefined` for no such call.
+  - `@expressive/rpc/http` - one specifier, two builds by export condition: `workerd`, `worker` and `node` get `http.server.js`, `browser` gets `http.client.js` (`workerd` first - wrangler resolves `browser` too); one `.d.ts` types both. Both carry the error family - `HttpError`, its 4xx and 5xx subclasses and `Redirect`, under fixed `http:<Name>` ids the client knows without an export. Server build: `handler(endpoints)` (`Request` → `Response`, `undefined` for a non-call), `isCall`, `reply`, the Node adapter (`toRequest`, `send`, `toNode`), `Current`. Client build: `client({ base, transport, headers, reply })` and a shared client's `call`, `define`, `configure`. A client import of a server-only name fails the build (`guard`; dev's plugin runs it until 3b).
+  - `@expressive/rpc/vite` - the plugin, `rpc({ dir, ... })` (stage 3b).
+  - `@expressive/rpc/internal` - dev's seam, not public: the tier-aware `dispatch`, `failure`, `inFolder`, `construct`, `seated`, `onBuild` (dev's version tracking), `guard`.
 - **Folder.** One configurable folder (`api/` by default), anywhere. An import from it in client code is a stub that fetches per call; types come from the source. A call's id is its module path and export name, posted to one endpoint. No dynamic segments.
 - **Gate.** A folder's `index.ts` default class gates everything below through `key()` - the sidecar walk, minus URL params and the route table. Statelessness rule: a seat's state derives from the request (`key()` reads a bearer or cookie and loads); cached contexts are a per-isolate optimization, never relied on across calls.
 - **Outputs.** *Embedded* - the client build carries the stubs and emits a sibling server bundle (a second Vite environment), deployed to a Cloudflare Worker or run with `serve`; in dev it runs through the module runner as sidecars do. *Library* - the server bundle plus an installable client package: stubs, client runtime, `.d.ts` from the folder, `@expressive/mvc` as peer.
@@ -76,8 +80,10 @@ Agreed direction, staged below. The stateless call lane carved out of dev as a V
 - **Stages.**
   1. A fetch-native handler (`(Request) => Promise<Response>`) behind dev's lane, with a Node adapter - no behavior change (#622).
   2. Split the server and client `call.ts` into plain-call and twin halves (#625).
-  3. `rpc()` carved from dev's plugin - embedded, calls only - proven by a plain Vite example whose server bundle runs under `serve` and `wrangler dev`.
-  4. Extract `@expressive/rpc`. The core reaches Node only through `within` (`AsyncLocalStorage`, `createHash`) - Workers' `nodejs_compat` covers both, or they get replaced.
+  3. The package, in two steps.
+     - *3a.* Extract `@expressive/rpc` - the plain-call core and its http flavor, with dev on it; dev's wire unchanged (#628).
+     - *3b.* `rpc()` carved from dev's plugin as `@expressive/rpc/vite` - embedded, calls only - proven by a plain Vite example whose server bundle runs under `serve` and `wrangler dev`.
+  4. Workers. The core reaches Node only through `within` (`AsyncLocalStorage`, `createHash`) - `nodejs_compat` covers both, or they get replaced.
   5. Codec - before any published artifact, since a package pins the wire.
   6. Library mode.
 
@@ -108,7 +114,7 @@ content-type: application/json
   | value | 200 | `{ value, frame }` - `value` left out for `undefined` |
   | name not in the allowlist, or no such module | 404 | the same for both |
   | malformed body, or no connection id | 400 | `{ message }` |
-  | an instance of an exported `Error` subclass | its `status` field in 400-599, else 500 | `{ error: "/<folder>#<Class>", message, ...own fields }` |
+  | an instance of an exported `Error` subclass, or of rpc's `HttpError` family | its `status` field in 400-599, else 500 (a `Redirect` is 500) | `{ error: "/<folder>#<Class>" or "http:<Name>", message, ...own fields }` |
   | anything else | 500 | production: a generic `message` only; development: `message` and the stack |
 
 - **Twin wire.** Every request carries `x-expressive-connection`: a `crypto.randomUUID()` the tab's runtime makes once per page load and holds in memory (the stream sends it in the query). HTTP has no tab identity - cookies and sockets are shared across tabs, and `sessionStorage` is copied when a tab is duplicated - and a server-minted id races the parallel attaches at boot. The server opens a connection on an id's first request; the id addresses the tab's twins and grants nothing, as every request re-runs the gates. Each twin has an id of its own, minted by the runtime at construction (class name and a uid - mvc's own ids differ per side and cannot be set) and sent as `x-expressive-twin`; naming it registers the twin under the tab. Never a server-assigned number: a client-minted id is known before the first reply and cannot alias another twin after the connection expires. A reload is a new connection, which costs nothing since twins rebuild on load.
