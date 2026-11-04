@@ -20,13 +20,22 @@ export {
   UnprocessableEntity,
 } from "./errors";
 
-export interface Hooks {
+export type Transport = (request: Request) => Promise<Response>;
+
+export interface ClientOptions {
+  base?: string;
+  transport?: Transport;
   headers?(): Record<string, string>;
   reply?(res: Response): Promise<void>;
 }
 
-export function client(hooks: Hooks = {}) {
+export function client(initial: ClientOptions = {}) {
+  const options = { ...initial };
   const { define, rebuild } = registry(ERRORS);
+
+  function configure(next: ClientOptions): void {
+    Object.assign(options, next);
+  }
 
   function pathOf(pattern: string[], name: string, from = location.pathname): string {
     const at = from.split("/").filter(Boolean);
@@ -45,13 +54,16 @@ export function client(hooks: Hooks = {}) {
   }
 
   async function send(path: string, headers: Record<string, string>, body: unknown): Promise<any> {
-    const res = await fetch(path, {
+    const { base = "", transport } = options;
+    const url = base + path;
+    const init = {
       method: "POST",
-      headers: { "content-type": "application/json", ...hooks.headers?.(), ...headers },
+      headers: { "content-type": "application/json", ...options.headers?.(), ...headers },
       body: JSON.stringify(body),
-    });
+    };
+    const res = await (transport ? transport(new Request(new URL(url, globalThis.location?.href), init)) : fetch(url, init));
 
-    await hooks.reply?.(res);
+    await options.reply?.(res);
 
     return settle(res);
   }
@@ -72,5 +84,7 @@ export function client(hooks: Hooks = {}) {
     return reply.value;
   }
 
-  return { call, define, pathOf, send };
+  return { call, configure, define, pathOf, send };
 }
+
+export const { call, configure, define } = client();
