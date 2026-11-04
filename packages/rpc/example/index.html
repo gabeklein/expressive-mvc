@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Todos</title>
+  </head>
+  <body>
+    <p>
+      <button id="alice">Sign in as alice</button>
+      <button id="admin">Sign in as admin</button>
+      <button id="out">Sign out</button>
+      <span id="who"></span>
+    </p>
+    <form id="new">
+      <input id="title" placeholder="What needs doing?" />
+      <button>Add</button>
+    </form>
+    <ul id="todos"></ul>
+    <p>
+      <button id="missing">Complete a missing todo</button>
+      <button id="stats">Stats</button>
+      <output id="count"></output>
+    </p>
+    <p id="error" role="alert"></p>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

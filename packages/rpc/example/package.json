@@ -1,0 +1,19 @@
+{
+  "name": "@expressive/rpc-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node server.js",
+    "worker": "wrangler dev",
+    "e2e": "tsc -p . && vite build && playwright test"
+  },
+  "devDependencies": {
+    "@expressive/mvc": "workspace:*",
+    "@expressive/rpc": "workspace:*",
+    "@playwright/test": "^1.63.0",
+    "vite": "^8.0.0",
+    "wrangler": "^4.157.0"
+  }
+}

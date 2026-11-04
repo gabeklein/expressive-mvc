@@ -4,6 +4,7 @@
   "license": "MIT",
   "workspaces": [
     "packages/*",
+    "packages/rpc/example",
     "website",
     "examples"
   ],
