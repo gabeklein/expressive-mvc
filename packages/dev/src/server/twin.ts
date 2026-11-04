@@ -19,7 +19,7 @@ export type Endpoint = Base<Exports>;
 export const DETACHED = "/.expressive/detached";
 
 export async function twins(incoming: Incoming<Exports>, fn?: Call): Promise<Handle | undefined> {
-  const { request, list, at, exports, dev } = incoming;
+  const { request, list, at, exports, dev, seats } = incoming;
   const header = (name: string) => request.headers.get(name) ?? undefined;
   const pull = header("x-expressive-get");
   const name = header("x-expressive-call")!;
@@ -54,7 +54,7 @@ export async function twins(incoming: Incoming<Exports>, fn?: Call): Promise<Han
 
     try {
       const result = pooled
-        ? await inPool(request, connection, pooled, twin!, since, args, list, incoming.seats, at)
+        ? await inPool(request, connection, pooled, twin!, since, args, list, seats, at)
         : await atFolder(incoming, connection, { pull, method, fn: plain, twin, since, args });
 
       return result ? reply(200, result, epoch) : reply(304, undefined, epoch);
