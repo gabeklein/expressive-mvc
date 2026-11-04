@@ -23,6 +23,7 @@ interface Runtime {
 
 const ENV = "rpc";
 const ENTRY = "\0@expressive/rpc/server";
+const RUNTIME = "\0@expressive/rpc/runtime";
 const HTTP = "@expressive/rpc/http";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
 const INDEX = ["ts", "js", "mts", "mjs"].map(ext => `index.${ext}`);
@@ -96,7 +97,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
     },
 
     async resolveId(id, importer, options) {
-      if (id === ENTRY) return ENTRY;
+      if (id === ENTRY || id === RUNTIME) return id;
       if (!("scan" in options && options.scan) || !/^[./]/.test(id)) return;
 
       const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
@@ -108,6 +109,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
       const resolve: Resolve = async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id;
 
       if (id === ENTRY) return manifest.entry(await gates(resolve));
+      if (id === RUNTIME) return `export { handler } from "${HTTP}";\nexport { install, verify } from "@expressive/rpc";\n`;
       if (this.environment.config.consumer !== "client") return;
 
       const at = located(id.split("?")[0]);
@@ -134,18 +136,17 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
       const environment = server.environments[ENV] as RunnableDevEnvironment;
       const { runner } = environment;
       const resolve: Resolve = async (spec, importer) => (await environment.pluginContainer.resolveId(spec, importer))?.id;
-      const installed = new WeakSet<object>();
+      let installed: unknown;
 
       const runtime = async (): Promise<Runtime> => {
-        const { handler } = await runner.import(HTTP);
-        const core = await runner.import("@expressive/rpc");
+        const { handler, install, verify } = await runner.import(RUNTIME);
 
-        if (!installed.has(core)) {
-          installed.add(core);
-          core.install();
+        if (installed !== install) {
+          installed = install;
+          install();
         }
 
-        return { handler, verify: core.verify };
+        return { handler, verify };
       };
 
       const endpoints = ({ verify }: Runtime): Endpoint[] =>

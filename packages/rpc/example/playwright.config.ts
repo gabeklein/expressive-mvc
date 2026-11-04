@@ -14,8 +14,10 @@ export default defineConfig({
     trace: process.env.CI ? "retain-on-failure" : "off",
     launchOptions: process.env.CHROME ? { executablePath: process.env.CHROME } : {},
   },
+  testIgnore: "edit.spec.ts",
   projects: [
     { name: "dev", use: { baseURL: `http://localhost:${dev}/` } },
+    { name: "dev edits", testMatch: "edit.spec.ts", testIgnore: [], dependencies: ["dev"], use: { baseURL: `http://localhost:${dev}/` } },
     { name: "node", use: { baseURL: `http://localhost:${node}/` } },
     { name: "worker", use: { baseURL: `http://localhost:${worker}/` } },
   ],

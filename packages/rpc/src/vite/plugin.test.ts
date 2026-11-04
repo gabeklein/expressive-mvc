@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpath
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createBuilder, createServer, type InlineConfig, type ViteDevServer } from "vite";
+import { build as bundle, createBuilder, createServer, type InlineConfig, type ViteDevServer } from "vite";
 
 import { rpc, type Options } from "./plugin";
 
@@ -68,6 +68,30 @@ function project(files: Record<string, string> = {}): string {
   return root;
 }
 
+async function install(root: string) {
+  const lib = async (name: string, entry: Record<string, string>, exports: Record<string, unknown>) => {
+    const outDir = join(root, "node_modules/@expressive", name);
+
+    await bundle({
+      root: join(PACKAGES, name),
+      configFile: false,
+      logLevel: "silent",
+      publicDir: false,
+      build: {
+        outDir,
+        minify: false,
+        lib: { entry, formats: ["es"], fileName: (_, name) => `${name}.js` },
+        rollupOptions: { external: [/^node:/, /^@expressive\//] },
+      },
+    });
+
+    writeFileSync(join(outDir, "package.json"), JSON.stringify({ name: `@expressive/${name}`, type: "module", exports }));
+  };
+
+  await lib("mvc", { index: "src/index.ts", "jsx-runtime": "src/jsx-runtime.ts" }, { ".": "./index.js", "./jsx-runtime": "./jsx-runtime.js" });
+  await lib("rpc", { index: "src/index.ts", http: "src/http/server.ts", client: "src/http/client.ts" }, { ".": "./index.js", "./http": { browser: "./client.js", default: "./http.js" } });
+}
+
 async function serve(root: string, config: InlineConfig = {}) {
   const server = await createServer({
     root,
@@ -84,8 +108,8 @@ async function serve(root: string, config: InlineConfig = {}) {
   return server;
 }
 
-async function listen(root: string) {
-  const server = await serve(root);
+async function listen(root: string, config?: InlineConfig) {
+  const server = await serve(root, config);
 
   await server.listen(0);
 
@@ -213,6 +237,26 @@ describe("dev server", () => {
 
     await vi.waitFor(async () => expect(await post("/", "todos:list", [], "a")).toMatchObject({ body: { value: ["two"] } }), { timeout: 5000 });
   }, 15_000);
+
+  it("will keep one copy of installed @expressive packages across a reload", async () => {
+    const root = project();
+
+    await install(root);
+
+    const { server, post } = await listen(root, { resolve: {} });
+    const edit = (file: string, from: string, to: string) => writeFileSync(join(root, file), readFileSync(join(root, file), "utf8").replace(from, to));
+
+    await server.transformRequest("/api/todos.ts");
+    expect(await post("/", "todos:list", [], "a")).toEqual({ status: 200, body: { value: ["one"] } });
+
+    await new Promise(ready => setTimeout(ready, 300));
+    edit("api/todos.ts", `["one"]`, `["two"]`);
+    await vi.waitFor(async () => expect(await post("/", "todos:list", [], "a")).toEqual({ status: 200, body: { value: ["two"] } }), { timeout: 5000 });
+
+    edit("api/index.ts", `"Refused."`, `"Sign in."`);
+    await vi.waitFor(async () => expect(await post("/", "todos:list")).toMatchObject({ status: 401, body: { message: "Sign in." } }), { timeout: 5000 });
+    expect(await post("/", "todos:list", [], "a")).toEqual({ status: 200, body: { value: ["two"] } });
+  }, 30_000);
 
   it("will refuse a call through a folder whose gate is not a Model", async () => {
     const { server, post } = await listen(project({ "api/odd/index.ts": `export default class Odd extends Error {}`, "api/odd/ping.ts": `export async function ping() {}` }));
