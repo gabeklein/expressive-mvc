@@ -450,7 +450,12 @@ function expand(scope: StyleScope, value: unknown, depths: Depths, frame: Frame)
             chain[depth](entry === true ? undefined : entry, name),
             new Map(depths).set(name, depth + 1)
           );
-      } else output.declarations[name] = terminal(name, entry);
+      } else {
+        if (typeof entry == 'string' && typeof scope.macros[entry] == 'string')
+          throw new Error(`Condition "${entry}" is not a value of "${name}".`);
+
+        output.declarations[name] = terminal(name, entry);
+      }
     }
   }
 
