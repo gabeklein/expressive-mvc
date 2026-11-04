@@ -319,6 +319,14 @@ describe('Style', () => {
     expect(() => place(createElement(Fallback, {}))).toThrow('"default" is not a style key.');
   });
 
+  it('will throw for a condition used as a value', () => {
+    const Misused = () => createElement('i', {});
+
+    Sides.use()(Misused, { color: '$wide' });
+
+    expect(() => place(createElement(Misused, {}))).toThrow('Condition "$wide" is not a value of "color".');
+  });
+
   it('will create a separate style() for each use() with maps', () => {
     class Kit extends Style {}
 
