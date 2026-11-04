@@ -6,7 +6,7 @@ import { transformWithOxc, type Plugin, type RunnableDevEnvironment } from "vite
 import type { Endpoint, Seats } from "../call";
 import { guard } from "../guard";
 import { toNode } from "../http/node";
-import { Manifest, locate, type Exposed, type Located } from "./manifest";
+import { Manifest, SCRIPT, locate, type Exposed, type Located } from "./manifest";
 import { scanModule } from "./scan";
 
 export interface Options {
@@ -128,9 +128,10 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
     },
 
     async transform(code, id) {
-      if (this.environment.config.consumer !== "client" || !code.includes(HTTP)) return;
-
       const file = id.split("?")[0];
+
+      if (this.environment.config.consumer !== "client" || !SCRIPT.test(file) || !code.includes(HTTP)) return;
+
       const problem = guard((await transformWithOxc(code, file, { jsx: { runtime: "automatic" } })).code);
 
       if (problem) this.error(`${relative(root, file)} ${problem}`);

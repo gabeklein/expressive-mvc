@@ -336,6 +336,16 @@ describe("build", () => {
     expect(await post("/", "todos:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
   });
 
+  it("will guard only scripts that mention @expressive/rpc/http", async () => {
+    const root = project({
+      "src/notes.json": `{ "server": "import { Current } from \\"@expressive/rpc/http\\";" }`,
+      "src/main.ts": `import notes from "./notes.json"; import { list } from "../api/todos"; console.log(notes.server, list);`,
+    });
+    const { client } = await build(root);
+
+    expect(client).toContain("import { Current } from");
+  });
+
   it("will build calls with no gate in their folders", async () => {
     const root = project({ "api/index.ts": `export async function ping() { return "pong"; }`, "src/main.ts": `import { ping } from "../api"; ping();` });
     const { post } = await build(root, { opaque: false });

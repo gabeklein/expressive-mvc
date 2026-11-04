@@ -171,6 +171,12 @@ describe("vite host", () => {
     expect((await server.environments.ssr.transformRequest("/app/index.tsx"))?.code).toContain("Current");
   });
 
+  it("will guard only scripts that mention @expressive/rpc/http", async () => {
+    const server = await serve(project({ "app/index.tsx": PAGE, "app/notes.json": `{ "server": "import { Current } from \\"@expressive/rpc/http\\";" }` }));
+
+    expect((await server.transformRequest("/app/notes.json"))?.code).toContain("import { Current } from");
+  });
+
   it("will throw if a module outside its folder imports a sidecar", async () => {
     const root = project({ "app/index.tsx": "import { add } from './tally/remote'; export const Page = () => add", "app/tally/remote.ts": SIDECAR });
     const server = await serve(root);

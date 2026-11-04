@@ -210,9 +210,10 @@ export function expressive(): Plugin<Host> {
     },
 
     async transform(code, id, options) {
-      if (options?.ssr || !code.includes("@expressive/rpc/http")) return;
-
       const path = id.split("?")[0];
+
+      if (options?.ssr || !SCRIPT.test(path) || !code.includes("@expressive/rpc/http")) return;
+
       const problem = guard((await transformWithOxc(code, path, { jsx: { runtime: "automatic" } })).code);
 
       if (problem) this.error(`${relative(root, path)} ${problem}`);
