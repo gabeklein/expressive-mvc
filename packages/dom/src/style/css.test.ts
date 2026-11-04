@@ -43,10 +43,25 @@ describe('Css', () => {
     expect(css.animationDelay('2s')).toEqual({ animationDelay: '2s' });
   });
 
-  it('will give transition times milliseconds', () => {
-    expect(css.transition(200)).toEqual({ transition: '200ms' });
-    expect(css.transition(['opacity', 200, 'ease', 50])).toEqual({ transition: 'opacity 200ms ease 50ms' });
-    expect(css.transition([['opacity', 200], 'color 1s'])).toEqual({ transition: 'opacity 200ms, color 1s' });
+  it('will list transitions by property with times in milliseconds', () => {
+    expect(css.transition({
+      opacity: 200,
+      backgroundColor: { duration: 150, delay: 0 },
+      webkitTransform: { duration: '1s', easing: 'ease-out', delay: 50 },
+      color: null,
+      width: { duration: 100, easing: 'linear' }
+    })).toEqual({ transition: 'opacity 200ms, background-color 150ms 0ms, -webkit-transform 1s ease-out 50ms, width 100ms linear' });
+    expect(css.transition('all 1s')).toEqual({ transition: 'all 1s' });
+  });
+
+  it('will type transitions by property', () => {
+    const map: style.Map<Css> = { transition: { all: '1s', '--tint': 100, opacity: { duration: 0 } } };
+    // @ts-expect-error - keys are property names
+    const typo: style.Map<Css> = { transition: { opacty: 200 } };
+    // @ts-expect-error - an array is not a transition
+    const list: style.Map<Css> = { transition: ['opacity', 200] };
+
+    expect([map, typo, list]).toHaveLength(3);
   });
 
   it('will give rotations degrees', () => {

@@ -39,8 +39,16 @@ function time(property: string, value: Time | readonly Time[]) {
   return { [property]: typeof value == 'object' ? value.map(ms).join(', ') : ms(value) };
 }
 
-function phrase(value: Time | readonly Time[]) {
-  return typeof value == 'object' ? value.map(ms).join(' ') : ms(value);
+function timing(value: Timing) {
+  if (typeof value != 'object') return ms(value);
+
+  const { duration, easing, delay } = value;
+
+  return [ms(duration), easing, delay != null && ms(delay)].filter(Boolean).join(' ');
+}
+
+function kebab(key: string) {
+  return key.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`).replace(/^webkit-/, '-webkit-');
 }
 
 function deg(value: number | string) {
@@ -48,6 +56,10 @@ function deg(value: number | string) {
 }
 
 type Time = number | string;
+
+type Timing = Time | { duration: Time; easing?: string; delay?: Time };
+
+type Transitions = { [K in style.Property | 'all' | `--${string}`]?: Timing | false | null };
 
 /**
  * Web macro pack - pixels for numbers where a property needs a unit,
@@ -81,12 +93,12 @@ class Css extends Style {
     return time('animationDelay', value);
   }
 
-  transition(value: Time | readonly (Time | readonly Time[])[]) {
-    return {
-      transition: typeof value == 'object' && value.some(Array.isArray)
-        ? value.map(phrase).join(', ')
-        : phrase(value as Time | readonly Time[])
-    };
+  transition(value: string | Transitions) {
+    if (typeof value == 'string') return { transition: value };
+
+    const list = Object.entries(value).filter(([, entry]) => entry != null && entry !== false);
+
+    return { transition: list.map(([key, entry]) => `${kebab(key)} ${timing(entry as Timing)}`).join(', ') };
   }
 
   rotate(value: number | string) {

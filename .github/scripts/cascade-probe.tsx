@@ -48,7 +48,7 @@ function Units() {
   return <span _box>units</span>;
 }
 
-style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, marginInline: 4, rotate: 45, animationDuration: [200, 0], offsetRotate: 30, transition: ['opacity', 300, 'linear', 100] } });
+style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, marginInline: 4, rotate: 45, animationDuration: [200, 0], offsetRotate: 30, transition: { opacity: { duration: 300, easing: 'linear', delay: 100 }, color: 50 } } });
 
 function Nested() {
   return <section _frame><em>deep</em></section>;
@@ -128,7 +128,7 @@ check('logical property sized', getComputedStyle(box).marginBlockEnd, '2px');
 check('logical axis sized', getComputedStyle(box).marginLeft, '4px');
 check('rotate in degrees', getComputedStyle(box).rotate, '45deg');
 check('durations in ms', getComputedStyle(box).animationDuration, '0.2s, 0s');
-check('transition times in ms', `${getComputedStyle(box).transitionDuration} ${getComputedStyle(box).transitionDelay}`, '0.3s 0.1s');
+check('transitions by property', `${getComputedStyle(box).transitionProperty} / ${getComputedStyle(box).transitionDuration} / ${getComputedStyle(box).transitionDelay}`, 'opacity, color / 0.3s, 0.05s / 0.1s, 0s');
 check('offset rotate in degrees', getComputedStyle(box).offsetRotate, '30deg');
 const [toggle, picked] = root.querySelectorAll('input');
 
