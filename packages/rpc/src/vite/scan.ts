@@ -69,14 +69,19 @@ export async function scanModule(file: string, source: string, sources: Sources,
       continue;
     }
 
-    if (isFunction(value)) {
-      if (value.async) scan.calls.push(name);
-      else scan.problems.push(`${name}() is not async - every call to it crosses the wire.`);
+    if (!isFunction(value) && !isClass(value)) {
+      scan.problems.push(`${name} is neither an async function nor an Error class - the client could not use it.`);
       continue;
     }
 
-    if (!isClass(value)) {
-      scan.problems.push(`${name} is neither an async function nor an Error class - the client could not use it.`);
+    if (!/^[A-Za-z_$][\w$]*$/.test(name)) {
+      scan.problems.push(`"${name}" is not an identifier - the client stub could not export it.`);
+      continue;
+    }
+
+    if (isFunction(value)) {
+      if (value.async) scan.calls.push(name);
+      else scan.problems.push(`${name}() is not async - every call to it crosses the wire.`);
       continue;
     }
 

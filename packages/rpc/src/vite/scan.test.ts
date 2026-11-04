@@ -50,6 +50,10 @@ describe("calls", () => {
     ]);
   });
 
+  it("will refuse an export name the stub could not declare", async () => {
+    expect((await scan(`async function list() {} export { list as "list-all" };`)).problems).toEqual([`"list-all" is not an identifier - the client stub could not export it.`]);
+  });
+
   it("will refuse a re-export", async () => {
     const { problems } = await scan(`export { list } from "./other"; export * from "./more";`);
 
