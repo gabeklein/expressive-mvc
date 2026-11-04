@@ -80,24 +80,32 @@ declare namespace style {
  * a condition (`'@media …'` or `':state'`) maps may use as a key.
  */
 class Style {
-  /** The `style()` for this pack, created once per class. */
-  static use<T extends Style>(this: new () => T): style.Apply<T> {
-    let apply = bound.get(this);
+  /**
+   * The `style()` for this pack. Without maps, one per class. Each call with
+   * maps is its own scope - their rules style only elements written by
+   * components it styles, below their own declarations.
+   */
+  static use<T extends Style>(
+    this: new () => T,
+    ...rules: (style.Map<T> | false | null | undefined)[]
+  ): style.Apply<T> {
+    const shared = !rules.length;
+    let apply = shared ? bound.get(this) : undefined;
 
     if (!apply) {
       let pack: appearance.Pack | undefined;
-      let built = false;
 
       apply = (type, ...maps) => {
-        if (!built) {
-          pack = layers(this);
-          built = true;
-        }
+        pack ||= {
+          label: this.name,
+          layers: layers(this),
+          rules: rules.filter(Boolean) as appearance.StyleMap[]
+        };
 
         return register(type, maps, pack);
       };
 
-      bound.set(this, apply);
+      if (shared) bound.set(this, apply);
     }
 
     return apply;
@@ -120,12 +128,14 @@ function style<T extends object>(type: T, ...maps: (style.Map | false | null | u
 }
 
 function register<T extends object>(type: T, maps: readonly unknown[], pack?: appearance.Pack): T {
-  for (const rules of maps) if (rules) appearance.style(type, rules as appearance.StyleMap, pack);
+  const present = maps.filter(Boolean) as appearance.StyleMap[];
+
+  for (const rules of present.length ? present : [{}]) appearance.style(type, rules, pack);
   registerEmitter(emit);
   return type;
 }
 
-function layers(type: Function): appearance.Pack | undefined {
+function layers(type: Function) {
   const instance = new (type as new () => object)();
   const maps: appearance.StyleMap[] = [];
   const conditions: appearance.StyleMap = {};
@@ -157,7 +167,7 @@ function layers(type: Function): appearance.Pack | undefined {
     maps.unshift(map);
   }
 
-  return maps.length ? { layers: maps } : undefined;
+  return maps;
 }
 
 function emit(block: Block, depth: number, document: Document) {

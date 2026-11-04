@@ -696,7 +696,7 @@ describe('appearance', () => {
       empty: () => null,
       token: () => 'one  two',
       zero: called
-    }, 'style', { layers: [] })!;
+    }, 'style', { label: 'style', layers: [], rules: [] })!;
     const scope = createStyleScope(defined, {
       _classes: { token: true, zero: true },
       _blank: { empty: true, token: false },
