@@ -65,7 +65,7 @@ Not built yet, but the MVP must not cut against them.
 
 Agreed direction, staged below. The stateless call lane carved out of dev as a Vite plugin any client build can use - a web app, dev itself, a native shell. `app/` routes, `remote` sidecars and twins stay dev's.
 
-- **Entries.** Four, since 3d (#STAGE3D):
+- **Entries.** Four, since 3d (#634):
   - `@expressive/rpc` - the app's API, two builds by export condition: `workerd`, `worker` and `node` get `index.server.js`, `browser` gets `index.client.js` (`workerd` first - wrangler resolves `browser` too); one `.d.ts` types both. Both carry the error family - `HttpError`, its 4xx and 5xx subclasses and `Redirect`, under fixed `http:<Name>` ids the client knows without an export. Server build: `Current`. Browser build: `client({ base, transport, headers, reply })` and a shared client's `call(path, name, args)`, `define(id, name, parent?)`, `configure` - the plugin's stubs call through it, `fetch` unless `configure({ transport })` replaces it. A relative `base` with no `location` throws, naming the fix. The browser build reaches no `node:` module.
   - `@expressive/rpc/http` - the host adapter, server-only, one build: `handler(endpoints)` (`Request` → `Response`, `undefined` for a non-call), `isCall`, `reply`, the Node adapter (`toRequest`, `send`, `toNode`, typed structurally - the `.d.ts` needs no `@types/node`). Generated server entries and dev's `serve`/middleware call it explicitly; app code never imports it.
   - `@expressive/rpc/vite` - the plugin as its default, `rpc({ dir = "api", opaque = true })`, Node-only. Calls only; twin-shaped exports are refused.
@@ -101,7 +101,7 @@ Agreed direction, staged below. The stateless call lane carved out of dev as a V
        - the `buildStart` salt - `randomBytes(16)` unless opaque is off;
        - the `transform` guard wrapper and its `${relative(root, file)} ${problem}` formatting;
        - the endpoint mapping `byPattern().map(group => ({ pattern: group[0].pattern, exports }))`.
-     - *3d.* One app-facing entry (#STAGE3D): the app's API moves to `@expressive/rpc` with server and browser builds, `./http` keeps only the host adapter, `./internal` becomes `./protocol` and its build-time half joins `./vite` as named host hooks.
+     - *3d.* One app-facing entry (#634): the app's API moves to `@expressive/rpc` with server and browser builds, `./http` keeps only the host adapter, `./internal` becomes `./protocol` and its build-time half joins `./vite` as named host hooks.
   4. Workers. The core reaches Node only through `within` (`AsyncLocalStorage`, `createHash`) - `nodejs_compat` covers both, or they get replaced.
 - **Limits (3b).**
   - `vite build` alone emits both outputs through the app builder; the legacy `build()` API builds the client only - use `createBuilder().buildApp()`. Another environment (a user's `ssr`) is not built by the plugin's `buildApp`.
