@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockPromise, mockWarn } from '../test.setup';
 import { Component } from './component';
 import { Context } from './context';
-import { Model, event } from './state';
+import { Model, event } from './model';
 import { map } from './field/map';
 
 it('will default fallback to null and accept it as prop', () => {

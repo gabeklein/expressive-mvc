@@ -1,7 +1,7 @@
 import { capture, listener, observer, watch } from '../observable';
 import { Context, within } from '../context';
-import { Model, children, owned, parent, STORE, update } from '../state';
-import type { Got, Keyed } from '../state';
+import { Model, children, owned, parent, STORE, update } from '../model';
+import type { Got, Keyed } from '../model';
 import { def } from './def';
 
 declare namespace get {
