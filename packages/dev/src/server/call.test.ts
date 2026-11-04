@@ -106,6 +106,7 @@ describe("call dispatch", () => {
     expect(await as("default.add", {})).toEqual(missing);
     expect(await as("/tally#Tally.add", {})).toEqual(missing);
     expect(await as("none", {})).toEqual({ status: 200, body: {} });
+    expect(await as("none", { "x-expressive-get": "default" })).toEqual(missing);
   });
 
   it("will identify a call by method, name header and JSON body", () => {

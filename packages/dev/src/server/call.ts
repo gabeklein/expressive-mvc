@@ -84,7 +84,7 @@ export async function dispatch<E extends Exports>(request: Request, endpoints: (
   const found = resolve(list, at);
   const exports = found && await found.endpoint.exports();
   const name = request.headers.get("x-expressive-call");
-  const fn = exports && name !== null ? callOf(exports, name) : undefined;
+  const fn = exports && name !== null && !request.headers.has("x-expressive-get") ? callOf(exports, name) : undefined;
   const incoming = { request, list, at, pathname, found, exports, dev, seats };
   const handle = tier ? await tier(incoming, fn) : fn && plain(incoming, fn);
 

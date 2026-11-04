@@ -24,7 +24,7 @@ export async function twins(incoming: Incoming<Exports>, fn?: Call): Promise<Han
   const pull = header("x-expressive-get");
   const name = header("x-expressive-call")!;
   const method = exports?.seat && Object.hasOwn(exports.seat.methods, name) ? exports.seat.methods[name] : undefined;
-  const plain = pull || method ? undefined : fn;
+  const plain = method ? undefined : fn;
   const seatPull = pull === "default" && !!exports?.seat;
   const pooled = plain || method || seatPull ? undefined : await pooledOf(list, pull, name);
 
