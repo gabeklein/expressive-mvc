@@ -323,7 +323,16 @@ describe('Style', () => {
     class Kit extends Style {}
 
     expect(Kit.use({ _a: { color: 'red' } })).not.toBe(Kit.use({ _a: { color: 'red' } }));
-    expect(Kit.use(false, null)).not.toBe(Kit.use());
+    expect(Kit.use(false, null)).toBe(Kit.use());
+  });
+
+  it('will not register a component style() gives no maps', () => {
+    const Bare = () => createElement('b', {});
+
+    style(Bare, false, null);
+    place(createElement(Bare, {}));
+
+    expect(() => style(Bare, { color: 'red' })).not.toThrow();
   });
 
   describe('pack rules', () => {
@@ -424,6 +433,23 @@ describe('Style', () => {
 
       expect(getComputedStyle(place(createElement(Embed, {})).querySelector('button')!).color).toBe('green');
       expect(() => widget(Shared)).toThrow('"Shared" is already styled by another pack.');
+    });
+
+    it('will keep pack rules in order across components', () => {
+      class Order extends Style {}
+
+      const apply = Order.use({ _a: { color: 'red' } }, { _b: { color: 'blue' } });
+      const One = () => createElement('i', { _a: true });
+      const Many = () => createElement('b', { _a: true, _b: true });
+
+      apply(One);
+      apply(Many, { _x: { order: 1 }, _y: { order: 2 }, _z: { order: 3 } });
+
+      place(createElement(One, {}));
+
+      const node = place(createElement(Many, {})).querySelector('b')!;
+
+      expect(getComputedStyle(node).color).toBe('blue');
     });
 
     it('will throw for a declaration outside a rule', () => {
