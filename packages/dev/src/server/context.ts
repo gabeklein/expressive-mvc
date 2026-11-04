@@ -22,6 +22,7 @@ interface Entry {
   layer: Layer;
   context: Context;
   instance: Model;
+  ready: Promise<void>;
   remove(): void;
   refs: number;
   timer?: ReturnType<typeof setTimeout>;
@@ -40,6 +41,7 @@ export type Seat = Owned & { key?(): string | number | undefined };
 const TTL = 300;
 
 const store = new AsyncLocalStorage<Frame>();
+const SEATED = new WeakSet<Owned>();
 let top: Layer | undefined;
 
 function frame(): Frame {
@@ -152,10 +154,10 @@ export async function within<T>(request: Request, segments: string[], run: () =>
 
   return await store.run(frame, async (): Promise<Awaited<T>> => {
     try {
-      frame.layer = enter(frame.layer, undefined, seats[0]);
-
-      for (const [i, segment] of segments.entries())
-        frame.layer = enter(frame.layer, segment, seats[i + 1]);
+      for (const [i, segment] of [undefined, ...segments].entries()) {
+        frame.layer = enter(frame.layer, segment, seats[i]);
+        await frame.layer.seat?.ready;
+      }
 
       frame.layer.calls++;
 
@@ -172,11 +174,17 @@ export async function within<T>(request: Request, segments: string[], run: () =>
 }
 
 function create(Type: Owned, layer: Layer): Entry {
+  if (!SEATED.has(Type)) {
+    SEATED.add(Type);
+    Type.on({ catch: (error, kind) => (kind == "setup" ? undefined : error) });
+  }
+
   const context = layer.context.push(Type);
   const instance = context.get(Type)!;
 
   const remove = layer.context.add(instance, true);
-  const entry: Entry = { Type, layer, context, instance, remove, refs: 0 };
+  const ready = Promise.resolve(instance.get(() => {}));
+  const entry: Entry = { Type, layer, context, instance, ready, remove, refs: 0 };
 
   track(instance);
   instance.set(null, () => drop(entry));
