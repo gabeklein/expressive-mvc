@@ -49,65 +49,69 @@ export function resolve<E extends Exports>(endpoints: Endpoint<E>[], at: string[
   return matches.sort((a, b) => specificity(b.endpoint.pattern).localeCompare(specificity(a.endpoint.pattern)))[0];
 }
 
-export function isCall(request: Request): boolean {
-  const { headers } = request;
-  const named = headers.has("x-expressive-call") || headers.has("x-expressive-get");
-
-  return request.method === "POST" && named && !!headers.get("content-type")?.startsWith("application/json");
-}
-
 export type Call = (...args: unknown[]) => unknown;
 
 export type Seats = (pattern: string[]) => Promise<Seat | undefined>;
 
-export interface Incoming<E extends Exports = Exports> {
+export interface Invocation {
   request: Request;
-  list: Endpoint<E>[];
   at: string[];
-  pathname: string;
+  name: string;
+  args: unknown[];
+}
+
+export interface Fault {
+  error?: string;
+  message: string;
+  stack?: string;
+  [field: string]: unknown;
+}
+
+export type Outcome = { value: unknown } | { error: Fault; status?: number };
+
+export interface Options {
+  seats?: Seats;
+  dev?: boolean;
+  errors?: Record<string, unknown>;
+}
+
+export interface Located<E extends Exports = Exports> {
   found?: Match<E>;
   exports?: E;
-  dev: boolean;
+  fn?: Call;
+}
+
+export interface Folder {
+  request: Request;
+  found?: Match;
   seats: Seats;
 }
 
-export type Handle = (args: unknown[]) => Promise<Response>;
-
-export type Tier<E extends Exports> = (incoming: Incoming<E>, fn?: Call) => Promise<Handle | undefined>;
-
 const unseated: Seats = async () => undefined;
 
-export async function dispatch<E extends Exports>(request: Request, endpoints: () => Endpoint<E>[], dev: boolean, seats = unseated, tier?: Tier<E>): Promise<Response> {
-  const list = endpoints();
-  const { pathname } = new URL(request.url);
-  const at = pathname.split("/").filter(Boolean);
+export async function locate<E extends Exports>(list: Endpoint<E>[], at: string[], name?: string): Promise<Located<E>> {
   const found = resolve(list, at);
   const exports = found && await found.endpoint.exports();
-  const name = request.headers.get("x-expressive-call");
-  const fn = exports && name !== null && !request.headers.has("x-expressive-get") ? callOf(exports, name) : undefined;
-  const incoming = { request, list, at, pathname, found, exports, dev, seats };
-  const handle = tier ? await tier(incoming, fn) : fn && plain(incoming, fn);
+  const fn = exports && name !== undefined ? callOf(exports, name) : undefined;
 
-  if (!handle) return reply(404, { message: "Not found." });
-
-  const args = await readArgs(request);
-
-  if (!args) return reply(400, { message: "Expected a JSON array of arguments." });
-
-  return handle(args);
+  return { found, exports, fn };
 }
 
-function plain(incoming: Incoming, fn: Call): Handle {
-  return async args => {
-    try {
-      return reply(200, { value: await inFolder(incoming, () => fn(...args)) });
-    } catch (error) {
-      return failure(error, incoming.list, incoming.dev);
-    }
-  };
+export async function invoke({ request, at, name, args }: Invocation, endpoints: Endpoint[], { seats = unseated, dev = false, errors }: Options = {}): Promise<Outcome | undefined> {
+  const { found, fn } = await locate(endpoints, at, name);
+
+  if (fn) return attempt(() => inFolder({ request, found, seats }, () => fn(...args)), endpoints, dev, errors);
 }
 
-export async function inFolder<T>({ request, found, seats }: Incoming, run: () => T): Promise<Awaited<T>> {
+export async function attempt(run: () => unknown, endpoints: Endpoint[], dev: boolean, errors?: Record<string, unknown>): Promise<Outcome> {
+  try {
+    return { value: await run() };
+  } catch (error) {
+    return fault(error, endpoints, dev, errors);
+  }
+}
+
+export async function inFolder<T>({ request, found, seats }: Folder, run: () => T): Promise<Awaited<T>> {
   const along = await seatsAlong(seats, found!.endpoint.pattern);
 
   return within(request, found!.segments, run, along);
@@ -145,41 +149,28 @@ function callOf({ calls }: Exports, name: string): Call | undefined {
   return typeof fn === "function" ? (fn as Call) : undefined;
 }
 
-async function readArgs(request: Request): Promise<unknown[] | undefined> {
-  try {
-    const args: unknown = JSON.parse(await request.text());
-    return Array.isArray(args) ? args : undefined;
-  } catch {
-    return undefined;
-  }
+export async function fault(error: unknown, endpoints: Endpoint[], dev: boolean, errors?: Record<string, unknown>): Promise<{ error: Fault; status?: number }> {
+  if (!(error instanceof Error)) return { error: { message: "Internal error." } };
+
+  const id = await classId(endpoints, error, errors);
+  const { status } = error as { status?: unknown };
+
+  if (id) return { error: { ...error, error: id, message: error.message }, status: typeof status == "number" ? status : undefined };
+  if (dev) return { error: { message: error.message, stack: error.stack } };
+
+  return { error: { message: "Internal error." } };
 }
 
-export async function failure(error: unknown, endpoints: Endpoint[], dev: boolean, headers?: Record<string, string>): Promise<Response> {
-  if (!(error instanceof Error)) return reply(500, { message: "Internal error." }, headers);
-
-  const id = await classId(endpoints, error);
-
-  if (id) return reply(statusOf(error), { ...error, error: id, message: error.message }, headers);
-  if (dev) return reply(500, { message: error.message, stack: error.stack }, headers);
-
-  return reply(500, { message: "Internal error." }, headers);
-}
-
-async function classId(endpoints: Endpoint[], error: Error): Promise<string | undefined> {
+export async function classId(endpoints: Endpoint[], error: Error, errors: Record<string, unknown> = {}): Promise<string | undefined> {
   const ids = new Map<unknown, string>();
 
   for (const { exports } of endpoints)
     for (const [id, Type] of Object.entries((await exports()).classes)) ids.set(Type, id);
 
+  for (const [id, Type] of Object.entries(errors)) ids.set(Type, id);
+
   for (let proto = Object.getPrototypeOf(error); proto; proto = Object.getPrototypeOf(proto))
     if (ids.has(proto.constructor)) return ids.get(proto.constructor);
-}
-
-function statusOf(error: Error): number {
-  const { status } = error as { status?: unknown };
-  const valid = typeof status == "number" && status >= 400 && status < 600;
-
-  return valid ? status : 500;
 }
 
 export function verify(path: string, { classes }: Exports): void {
@@ -189,10 +180,4 @@ export function verify(path: string, { classes }: Exports): void {
 
     if (!isError) throw new Error(`${path} exports ${name}, which is neither an async function nor an Error subclass.`);
   }
-}
-
-export function reply(status: number, value?: unknown, headers: Record<string, string> = {}): Response {
-  if (value === undefined) return new Response(null, { status, headers });
-
-  return new Response(JSON.stringify(value), { status, headers: { ...headers, "content-type": "application/json; charset=utf-8" } });
 }

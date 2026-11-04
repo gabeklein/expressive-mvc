@@ -14,6 +14,7 @@ export default defineConfig({
     'http.client': 'src/http/client.ts'
   },
   platform: 'neutral',
+  external: [/^node:/],
   format: ['esm'],
   outputOptions: {
     exports: 'named',

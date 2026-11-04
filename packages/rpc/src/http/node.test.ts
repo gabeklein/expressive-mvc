@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { Readable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 
-import { send, toRequest } from "./node";
+import { send, toNode, toRequest } from "./node";
 
 function incoming(method: string | undefined, url: string | undefined, headers: Record<string, string | string[] | undefined>, chunks: string[] = []) {
   return Object.assign(Readable.from(chunks.map(chunk => Buffer.from(chunk))), { method, url, headers }) as any;
@@ -90,6 +90,49 @@ describe("node response", () => {
 
     expect(res.flushHeaders).toHaveBeenCalled();
     expect(Buffer.concat(res.write.mock.calls.map(([chunk]: [Uint8Array]) => chunk)).toString()).toBe("event: hello\n\n");
+    expect(res.end).toHaveBeenCalled();
+  });
+});
+
+describe("node handler", () => {
+  const settled = () => new Promise(done => setTimeout(done, 0));
+
+  it("will send what the handler replies", async () => {
+    const res = outgoing();
+    const next = vi.fn();
+
+    toNode(async request => new Response(request.url, { status: 201 }))(incoming("GET", "/a", {}), res, next);
+    await settled();
+
+    expect(res.statusCode).toBe(201);
+    expect(res.end.mock.calls[0][0].toString()).toBe("http://localhost/a");
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("will pass on a request the handler leaves, or reply 404 with nowhere to pass it", async () => {
+    const next = vi.fn();
+    const res = outgoing();
+
+    toNode(async () => undefined)(incoming("GET", "/", {}), outgoing(), next);
+    toNode(async () => undefined)(incoming("GET", "/", {}), res);
+    await settled();
+
+    expect(next).toHaveBeenCalledWith();
+    expect(res.statusCode).toBe(404);
+    expect(res.end).toHaveBeenCalled();
+  });
+
+  it("will pass on a handler's error, or reply 500 with nowhere to pass it", async () => {
+    const error = new Error("Boom");
+    const next = vi.fn();
+    const res = outgoing();
+
+    toNode(async () => { throw error; })(incoming("GET", "/", {}), outgoing(), next);
+    toNode(async () => { throw error; })(incoming("GET", "/", {}), res);
+    await settled();
+
+    expect(next).toHaveBeenCalledWith(error);
+    expect(res.statusCode).toBe(500);
     expect(res.end).toHaveBeenCalled();
   });
 });

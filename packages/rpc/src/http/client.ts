@@ -1,21 +1,12 @@
+import { registry } from "../registry";
+
 export interface Hooks {
   headers?(): Record<string, string>;
   reply?(res: Response): Promise<void>;
 }
 
 export function client(hooks: Hooks = {}) {
-  const classes = new Map<string, ErrorConstructor>();
-
-  function define(id: string, name: string): ErrorConstructor {
-    // a computed key gives the anonymous class its name
-    const named = { [name]: class extends Error {} };
-    const Type = named[name] as ErrorConstructor;
-
-    Type.prototype.name = name;
-    classes.set(id, Type);
-
-    return Type;
-  }
+  const { define, rebuild } = registry();
 
   function pathOf(pattern: string[], name: string, from = location.pathname): string {
     const at = from.split("/").filter(Boolean);
@@ -52,10 +43,7 @@ export function client(hooks: Hooks = {}) {
 
     if (res.ok) return body;
 
-    const { error, message, stack, ...fields } = body;
-    const Type = classes.get(error) ?? Error;
-
-    throw Object.assign(new Type(message), fields);
+    throw rebuild(body);
   }
 
   async function call(pattern: string[], name: string, args: unknown[]): Promise<unknown> {

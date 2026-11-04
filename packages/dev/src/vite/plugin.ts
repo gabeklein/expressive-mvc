@@ -7,14 +7,14 @@ import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../server/config";
 import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project } from "./project";
-import { client } from "../client/call";
 import { runtime } from "../client/twin";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
-import { dispatch, isCall, verify, type Seats } from "../server/call";
-import { send, toRequest } from "../server/node";
+import { verify, type Seats } from "@expressive/rpc";
+import { isCall, send, toRequest } from "@expressive/rpc/http";
+import { dispatch } from "@expressive/rpc/internal";
 import { isStream, stream } from "../server/stream";
-import { install } from "../server/context";
+import { install } from "../server/install";
 import { twins, type Endpoint, type Exports, type Pooled } from "../server/twin";
 import { scanExports, scanSidecar, scanTwin, type Sources, type Twin } from "./scan";
 
@@ -37,6 +37,7 @@ const DEPS = [
   "@expressive/dom/jsx-runtime",
   "@expressive/dom/jsx-dev-runtime",
   "@expressive/router",
+  "@expressive/rpc/http",
   "@expressive/dev",
   "@expressive/dev/jsx-runtime",
   "@expressive/dev/jsx-dev-runtime",
@@ -46,7 +47,7 @@ const HOSTED = ["@expressive/inspect/vite/client", "@expressive/inspect/install"
 
 const builds = new Map<string, Exposure>();
 
-const SHARED = ["@expressive/mvc", "@expressive/dom", "@expressive/router", "@expressive/inspect", "@expressive/dev"];
+const SHARED = ["@expressive/mvc", "@expressive/dom", "@expressive/router", "@expressive/inspect", "@expressive/rpc", "@expressive/dev"];
 
 export function expressive(): Plugin<Host> {
   let root = process.cwd();
@@ -194,7 +195,8 @@ export function expressive(): Plugin<Host> {
           return [
             `import { Context, Model, def } from "@expressive/mvc";`,
             `import { Route } from "@expressive/dev";`,
-            `export const { call, define, twin } = (${runtime})(${client}, Model, def, Context, Route);`,
+            `import { client } from "@expressive/rpc/http";`,
+            `export const { call, define, twin } = (${runtime})(client, Model, def, Context, Route);`,
           ].join("\n");
         case mainId:
           return bootstrap(project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!));

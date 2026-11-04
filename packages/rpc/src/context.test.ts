@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Context, get, set, Model } from "@expressive/mvc";
 
-import { construct, Current, install, within, type Seat } from "./context";
+import { construct, Current, install, onBuild, seated, within, type Seat } from "./context";
 
 const request = (url = "/", cookie = "") => new Request(`http://localhost${url}`, { headers: { cookie } });
 const call = <T>(segments: string[], run: () => T) => within(request("/" + segments.join("/")), segments, run);
@@ -12,6 +12,11 @@ afterEach(() => vi.useRealTimers());
 const walk = <T>(req: Request, segments: string[], seats: (Seat | undefined)[], run: () => T) => within(req, segments, run, seats);
 
 describe("server get", () => {
+  it("will leave a bare context lookup outside a call to the host", async () => {
+    expect(Context.get()).toBe(Context.root);
+    expect(await call(["bare"], () => Context.get())).not.toBe(Context.root);
+  });
+
   it("will throw outside a call", () => {
     class Tally extends Model {}
     expect(() => Tally.get()).toThrow("Server Model resolves only within a sidecar call.");
@@ -279,6 +284,16 @@ describe("seats", () => {
     expect(again).not.toBe(blog);
     expect(fresh).not.toBe(post);
   });
+
+  it("will evict the unseated layers below a seat that ends", async () => {
+    class Shop extends Model {}
+    class Cart extends Model {}
+
+    const [shop, cart] = await walk(request(), ["shop", "a"], [undefined, Shop], () => [Shop.get(), construct(Cart)] as const);
+    shop.set(null);
+
+    expect(cart.instance.get(null)).toBe(true);
+  });
 });
 
 describe("Current", () => {
@@ -289,6 +304,10 @@ describe("Current", () => {
     });
 
     expect(seen).toEqual({ path: "/tally", query: "1", cookies: { a: "1", b: "x y" }, method: "a=1; b=x%20y" });
+  });
+
+  it("will read no cookies from a request without them", async () => {
+    expect(await within(new Request("http://localhost/"), [], () => Current.get().cookies)).toEqual({});
   });
 
   it("will refuse writes", async () => {
@@ -346,3 +365,25 @@ describe("pool", () => {
   });
 });
 
+describe("hooks", () => {
+  it("will find the seat of the call's layer", async () => {
+    class Blog extends Model {}
+
+    expect(await within(request(), ["unseated"], () => seated())).toBeUndefined();
+    expect(await walk(request(), ["blog"], [undefined, Blog], () => seated() === Blog.get())).toBe(true);
+  });
+
+  it("will hand each seat and construction it builds to the build hook", async () => {
+    class Blog extends Model {}
+    class Cart extends Model {}
+    const built = vi.fn();
+
+    onBuild(built);
+
+    const seat = await walk(request(), ["shelf"], [undefined, Blog], () => Blog.get());
+    const cart = await call(["shelf"], () => construct(Cart));
+
+    expect(built.mock.calls).toEqual([[seat], [cart.instance]]);
+    cart.drop();
+  });
+});

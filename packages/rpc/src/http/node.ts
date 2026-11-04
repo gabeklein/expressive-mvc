@@ -45,3 +45,23 @@ export async function send(res: ServerResponse, response: Response): Promise<voi
 
   res.end();
 }
+
+export function toNode(handler: (request: Request) => Promise<Response | undefined>) {
+  return (req: IncomingMessage, res: ServerResponse, next?: (error?: unknown) => void): void => {
+    handler(toRequest(req, res)).then(
+      response => {
+        if (response) return send(res, response);
+        if (next) return next();
+
+        res.statusCode = 404;
+        res.end();
+      },
+      error => {
+        if (next) return next(error);
+
+        res.statusCode = 500;
+        res.end();
+      },
+    );
+  };
+}

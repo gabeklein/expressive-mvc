@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { client } from "./call";
+import { client } from "./client";
 
 interface Reply {
   body: unknown;
@@ -88,5 +88,14 @@ describe("call", () => {
 
     expect(error.constructor).toBe(Error);
     expect(error).toMatchObject({ message: "No", status: 409 });
+  });
+});
+
+describe("send", () => {
+  it("will resolve nothing for a reply of not modified", async () => {
+    const fetch = vi.fn(async () => new Response(null, { status: 304 }));
+    vi.stubGlobal("fetch", fetch);
+
+    expect(await client().send("/tally", {}, [])).toBeUndefined();
   });
 });

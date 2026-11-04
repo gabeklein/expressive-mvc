@@ -20,6 +20,7 @@
       "@expressive/dom/*": ["../dom/src/*"],
       "@expressive/router/*": ["../router/src/*"],
       "@expressive/inspect/*": ["../inspect/src/*"],
+      "@expressive/rpc/*": ["../rpc/src/*"],
       "@expressive/*": ["../*/src"]
     }
   },
