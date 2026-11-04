@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { get, Model } from "@expressive/mvc";
 
-import { Current, type Seats } from "@expressive/rpc";
-import { dispatch } from "@expressive/rpc/protocol";
+import { Current } from "@expressive/rpc";
+import { dispatch, type Seats } from "@expressive/rpc/protocol";
 
 import { connect, listen } from "./connection";
 import { install } from "./install";

@@ -10,9 +10,8 @@ import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject
 import { runtime } from "../client/twin";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
-import { verify, type Seats } from "@expressive/rpc";
 import { isCall, toNode } from "@expressive/rpc/http";
-import { dispatch } from "@expressive/rpc/protocol";
+import { dispatch, verify, type Seats } from "@expressive/rpc/protocol";
 import { SCRIPT, guardScript, type Sources } from "@expressive/rpc/protocol/vite";
 import { isStream, stream } from "../server/stream";
 import { install } from "../server/install";

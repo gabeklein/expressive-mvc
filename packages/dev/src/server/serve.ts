@@ -2,9 +2,8 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize } from "node:path";
 
-import { verify, type Seat } from "@expressive/rpc";
 import { isCall, send, toRequest } from "@expressive/rpc/http";
-import { dispatch } from "@expressive/rpc/protocol";
+import { dispatch, verify, type Seat } from "@expressive/rpc/protocol";
 
 import type { AppConfig } from "./config";
 import { install } from "./install";

@@ -113,7 +113,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
       const resolve: Resolve = async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id;
 
       if (id === ENTRY) return manifest.entry(await gates(resolve));
-      if (id === RUNTIME) return `export { handler } from "${HTTP}";\nexport { install, verify } from "@expressive/rpc";\n`;
+      if (id === RUNTIME) return `export { handler } from "${HTTP}";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
       if (this.environment.config.consumer !== "client") return;
 
       const at = located(id.split("?")[0]);

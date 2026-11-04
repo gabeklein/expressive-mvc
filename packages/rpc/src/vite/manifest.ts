@@ -133,7 +133,7 @@ export class Manifest<E extends Exposed = Exposed> {
     });
 
     return [
-      `import { install, verify } from "@expressive/rpc";`,
+      `import { install, verify } from "@expressive/rpc/protocol";`,
       `import { handler } from "@expressive/rpc/http";`,
       ...files.map(file => `import * as ${alias(file)} from ${json(file)};`),
       "",
