@@ -33,7 +33,7 @@ function def<T>(arg1: def.Factory<T>) {
 
   APPLY.set(token, [arg1, [...PENDING].filter((x) => x instanceof Model) as Model[]]);
 
-  return token as T extends void ? unknown : T;
+  return token as [T] extends [void] ? unknown : T;
 }
 
 Model.on({
