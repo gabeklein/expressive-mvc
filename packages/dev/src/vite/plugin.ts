@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createServerModuleRunner, runnerImport, transformWithOxc, type Plugin, type ViteDevServer } from "vite";
+import { createServerModuleRunner, runnerImport, type Plugin, type ViteDevServer } from "vite";
 import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../server/config";
@@ -12,17 +12,17 @@ import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
 import { verify, type Seats } from "@expressive/rpc";
 import { isCall, toNode } from "@expressive/rpc/http";
-import { dispatch, guard } from "@expressive/rpc/internal";
+import { dispatch } from "@expressive/rpc/internal";
+import { SCRIPT, guardScript, type Sources } from "@expressive/rpc/internal/vite";
 import { isStream, stream } from "../server/stream";
 import { install } from "../server/install";
 import { twins, type Endpoint, type Exports, type Pooled } from "../server/twin";
-import { scanExports, scanSidecar, scanTwin, type Sources, type Twin } from "./scan";
+import { hasSeat, scanExports, scanRemote } from "./scan";
 
 const MAIN = "main.tsx";
 const ROUTES = "routes.tsx";
 const SERVER = "server.ts";
 const CALL = "call.ts";
-const SCRIPT = /\.[cm]?[jt]sx?$/;
 const REMOTE_IMPORT = /(^|\/)remote(\/|\.[cm]?[jt]s$|$)/;
 
 export interface Host {
@@ -161,33 +161,19 @@ export function expressive(): Plugin<Host> {
       const remote = !options?.ssr && remoteAt(file);
 
       if (remote) {
-        const source = readFileSync(file, "utf8");
         const sources: Sources = {
-          resolve: async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id,
+          resolve: async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id.split("?")[0],
           read: path => readFileSync(path, "utf8"),
         };
 
-        const { calls, classes, seat, problems } = scanSidecar(source, file, !remote.module);
-        const { twin, problems: inherited } = seat ? await scanTwin(source, file, sources) : { problems: [] };
-        const all = [...problems, ...inherited];
-        const errors: string[] = [];
-        const pooled: Twin[] = [];
+        const { problems, ...scanned } = await scanRemote(remote, readFileSync(file, "utf8"), sources, remoteAt);
 
-        for (const name of classes) {
-          const scan = await scanTwin(source, file, sources, name);
+        if (problems.length) this.error(`${relative(root, file)}: ${problems.join(" ")}`);
 
-          if (scan.state) pooled.push(scan.twin!);
-          else errors.push(name);
+        const exposed = { ...remote, ...scanned };
+        exposure.modules.set(file, exposed);
 
-          all.push(...scan.problems);
-        }
-
-        if (all.length) this.error(`${relative(root, file)}: ${all.join(" ")}`);
-
-        const exposed = { ...remote, calls, classes: errors, pooled, seat: twin };
-        exposure.remotes.set(file, exposed);
-
-        return stub(exposure, exposed);
+        return stub(exposure, exposed, remoteAt);
       }
 
       switch (id) {
@@ -211,10 +197,7 @@ export function expressive(): Plugin<Host> {
 
     async transform(code, id, options) {
       const path = id.split("?")[0];
-
-      if (options?.ssr || !SCRIPT.test(path) || !code.includes("@expressive/rpc/http")) return;
-
-      const problem = guard((await transformWithOxc(code, path, { jsx: { runtime: "automatic" } })).code);
+      const problem = !options?.ssr && (await guardScript(code, path));
 
       if (problem) this.error(`${relative(root, path)} ${problem}`);
     },
@@ -286,27 +269,20 @@ function endpointOf(host: ModuleRunner, root: string, exposure: Exposure, group:
   return {
     pattern: group[0].pattern,
     async exports() {
-      const calls: Record<string, unknown> = {};
-      const classes: Record<string, unknown> = {};
+      const plain = await exposure.exports(group, file => host.import(file), (file, exports) => verify(relative(root, file), exports));
       const pool: Record<string, Pooled> = {};
       let seat: Exports["seat"];
 
       for (const remote of group) {
         const mod = await host.import(remote.file);
-        const own: Record<string, unknown> = {};
 
-        for (const name of remote.calls) calls[exposure.callId(remote, name)] = mod[name];
-        for (const name of remote.classes) own[exposure.classId(remote, name)] = mod[name];
         if (remote.seat) seat = { ...shapeOf(remote.seat), methods: exposure.methodIds(remote, remote.seat, false) };
 
         for (const twin of remote.pooled)
           pool[exposure.classId(remote, twin.name)] = { Type: mod[twin.name], ...shapeOf(twin), methods: exposure.methodIds(remote, twin, true) };
-
-        verify(relative(root, remote.file), { calls, classes: own });
-        Object.assign(classes, own);
       }
 
-      return { calls, classes, seat, pool };
+      return { ...plain, seat, pool };
     },
   };
 }
@@ -314,7 +290,7 @@ function endpointOf(host: ModuleRunner, root: string, exposure: Exposure, group:
 function seated(project: Project): Remote[] {
   if (!project.appDir) return [];
 
-  return remoteEntries(project.appDir).filter(remote => scanSidecar(readFileSync(remote.file, "utf8"), remote.file).seat);
+  return remoteEntries(project.appDir).filter(remote => hasSeat(remote.file));
 }
 
 function seatsOf(host: ModuleRunner, project: Project): Seats {
@@ -324,7 +300,7 @@ function seatsOf(host: ModuleRunner, project: Project): Seats {
   };
 }
 
-function stub(exposure: Exposure, remote: Exposed): string {
+function stub(exposure: Exposure, remote: Exposed, locate: (file: string) => Remote | undefined): string {
   const json = JSON.stringify;
   const twinOf = (definition: Definition, pool?: string) => {
     const args = [json(definition.methods), json(definition.fields), json(definition.name)];
@@ -335,15 +311,15 @@ function stub(exposure: Exposure, remote: Exposed): string {
     return `twin(at, ${args.join(", ")})`;
   };
 
-  return [
-    `import { call, define, twin } from "/${GENERATED}/${CALL}";`,
-    `const at = ${json(remote.pattern)};`,
-    ...remote.calls.map(name => `export const ${name} = (...args) => call(at, ${json(exposure.callId(remote, name))}, args);`),
-    ...remote.classes.map(name => `export const ${name} = define(${json(exposure.classId(remote, name))}, ${json(name)});`),
-    ...remote.pooled.map(twin => `export const ${twin.name} = ${twinOf(exposure.definition(remote, twin, true), exposure.classId(remote, twin.name))};`),
-    ...(remote.seat ? [`export default ${twinOf(exposure.definition(remote, remote.seat, false))};`] : []),
-    "",
-  ].join("\n");
+  return exposure.stub(remote, locate, {
+    from: `/${GENERATED}/${CALL}`,
+    at: remote.pattern,
+    imports: ["twin"],
+    lines: [
+      ...remote.pooled.map(twin => `export const ${twin.name} = ${twinOf(exposure.definition(remote, twin, true), exposure.classId(remote, twin.name))};`),
+      ...(remote.seat ? [`export default ${twinOf(exposure.definition(remote, remote.seat, false))};`] : []),
+    ],
+  });
 }
 
 async function buildConfig(project: Project): Promise<AppConfig> {

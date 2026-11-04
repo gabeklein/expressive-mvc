@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, createServer, createServerModuleRunner, type InlineConfig, type ViteDevServer } from "vite";
+import { client, HttpError } from "@expressive/rpc/http";
 
 import { clientBuild, serverBuild } from "./build";
 import { expressive } from "./plugin";
@@ -363,8 +364,43 @@ describe("vite host", () => {
     const server = await serve(root);
 
     const stub = (await server.transformRequest("/app/shop/remote.ts"))?.code;
-    expect(stub).toContain('export const Payment = define("/shop#Payment", "Payment")');
+    expect(stub).toContain('export const Payment = define("/shop#Payment", "Payment", "http:HttpError")');
     expect(stub).not.toContain("twin(");
+  });
+
+  it("will define a sidecar's error under a parent from the sidecar above it, loading that stub first", async () => {
+    const root = project({
+      "app/index.tsx": PAGE,
+      "app/remote.ts": `import { HttpError } from "@expressive/rpc/http"; export class Billing extends HttpError { status = 402; }`,
+      "app/shop/index.tsx": "import { buy } from './remote'; export const Page = () => buy",
+      "app/shop/remote.ts": `import { Billing } from "../remote"; export class Late extends Billing {} export async function buy() {}`,
+    });
+    const server = await serve(root);
+
+    const stub = (await server.transformRequest("/app/shop/remote.ts"))?.code;
+    expect(stub).toMatch(/import "\/app\/remote\.ts(\?[^"]*)?";/);
+    expect(stub).toContain('export const Late = define("/shop#Late", "Late", "/#Billing")');
+    expect((await server.transformRequest("/app/remote.ts"))?.code).toContain('export const Billing = define("/#Billing", "Billing", "http:HttpError")');
+  });
+
+  it("will rebuild a sidecar's http error subclass on the client as an HttpError", async () => {
+    const remote = `import { HttpError } from "@expressive/rpc/http";
+      export class Payment extends HttpError { status = 402; }
+      export async function buy() { throw new Payment("upgrade"); }`;
+    const server = await serve(project({ "app/index.tsx": PAGE, "app/shop/remote.ts": remote }));
+    const stub = (await server.transformRequest("/app/shop/remote.ts"))!.code;
+    await server.listen(0);
+
+    const http = client({ base: server.resolvedUrls!.local[0].replace(/\/$/, ""), headers: () => ({ "x-expressive-connection": TAB }) });
+    const call = (at: string[], id: string, args: unknown[]) => http.call("/" + at.join("/"), id, args);
+    const exports: Record<string, any> = {};
+    new Function("call", "define", "exports", stub.replace(/^import .*$/gm, "").replace(/^export const (\w+) =/gm, "exports.$1 ="))(call, http.define, exports);
+
+    const error = await exports.buy().catch((error: unknown) => error);
+
+    expect(error).toBeInstanceOf(exports.Payment);
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error).toMatchObject({ message: "upgrade", status: 402 });
   });
 
   it("will build a twin's own instance on the module runner, under the route it names", async () => {
@@ -383,8 +419,19 @@ describe("vite host", () => {
     expect(await post({ "x-expressive-call": "/shop#Cart.add" })).toEqual({ value: 1, frame: { "Cart-A": { patch: { items: 1 }, version: expect.any(String) } } });
   });
 
-  it("will refuse in dev a sidecar class that is not an Error", async () => {
+  it("will throw if a sidecar class reaches no Error", async () => {
     const server = await serve(project({ "app/index.tsx": PAGE, "app/tally/remote.ts": "class Base {} export class Odd extends Base {} export async function a() {}" }));
+
+    await expect(server.transformRequest("/app/tally/remote.ts")).rejects.toThrow("Odd is a class but not an Error - only error classes reach the client.");
+  });
+
+  it("will refuse in dev a sidecar class that is not an Error", async () => {
+    const server = await serve(project({
+      "app/index.tsx": PAGE,
+      "app/tally/remote.ts": `import { Plain } from "plain"; export class Odd extends Plain {} export async function a() {}`,
+      "node_modules/plain/package.json": JSON.stringify({ name: "plain", type: "module", exports: "./index.js" }),
+      "node_modules/plain/index.js": "export class Plain {}",
+    }));
     await server.transformRequest("/app/tally/remote.ts");
     await server.listen(0);
 
