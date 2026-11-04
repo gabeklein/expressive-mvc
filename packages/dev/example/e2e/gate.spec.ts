@@ -66,3 +66,11 @@ test("leaves the gate for another page while its admission is still pending", as
   await page.getByRole("link", { name: "About" }).click();
   await expect(page.getByRole("heading")).toHaveText("About");
 });
+
+test("shows Catch when the gate refuses an in-app navigation", async ({ page, context, baseURL, open }) => {
+  await pass(context, baseURL, "banned");
+  await open("/");
+  await page.getByRole("link", { name: "Gate" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("Banned from the gate.");
+});

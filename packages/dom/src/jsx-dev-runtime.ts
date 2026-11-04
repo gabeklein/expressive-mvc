@@ -1,6 +1,7 @@
 import { Fragment } from '@expressive/mvc/jsx-runtime';
 
 import { vnode } from './node/vnode';
+import { develop } from './style/diagnose';
 import type { VNode } from './node/vnode';
 
 function jsxDEV(
@@ -11,6 +12,7 @@ function jsxDEV(
   _source?: object,
   _self?: unknown
 ) {
+  develop();
   return vnode(type, props, key);
 }
 

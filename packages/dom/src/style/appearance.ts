@@ -4,7 +4,9 @@ import type { AppearanceContext, Block, Condition, Declaration, ResolvedAppearan
 type StyleMap = Record<string, unknown>;
 
 interface Pack {
+  label: string;
   layers: readonly StyleMap[];
+  rules: readonly StyleMap[];
 }
 
 interface Styles {
@@ -41,6 +43,7 @@ interface StyleScope {
   label: string;
   labels: Record<string, string>;
   local: readonly string[];
+  low: Record<string, boolean>;
   macros: StyleMap;
   own: Declaration;
   pack?: Pack;
@@ -63,8 +66,9 @@ const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
 const STYLES = Symbol('@expressive/dom.styles');
 const entered = new WeakSet<object>();
+const LOW = 2 ** 20;
 
-function createStyleScope(parent: StyleScope | undefined, value: unknown, label?: string, pack?: Pack): StyleScope | undefined {
+function createStyleScope(parent: StyleScope | undefined, value: unknown, label?: string, pack?: Pack, low?: boolean): StyleScope | undefined {
   if (!isObject(value)) return parent;
 
   const cache = parent?.children || rootScopes;
@@ -76,18 +80,17 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const base: Declaration = {};
   const scopeLabel = label || parent?.label || 'style';
   const root: Frame = { name: scopeLabel };
-  const macros = pack ? Object.create(parent?.macros || null) as StyleMap : parent?.macros || Object.create(null);
+  const defines = pack && !low;
+  const macros = defines ? Object.create(parent?.macros || null) as StyleMap : parent?.macros || Object.create(null);
 
   for (const key of Object.keys(value)) {
     const entry = flatten((value as StyleMap)[key], key);
 
-    if (key[0] == '$')
-      throw new Error(`Reserved key "${key}" in style map.`);
-
     if (SUBCOMPONENT.test(key))
       throw new Error(`Subcomponent "${key}" must be at the top of a style() map.`);
 
-    if (key[0] == '_') {
+    if (defines && key[0] == '$') macros[key] = entry;
+    else if (key[0] == '_') {
       if (!isObject(entry))
         throw new Error(`Rule "${key}" must be an object. Macros are defined on a Style class.`);
 
@@ -95,8 +98,8 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
       if (!own.includes(name)) own.push(name);
       source[name] = merge(source[name], entry);
     } else if (isCondition(key) && isObject(entry)) {
-      base[key] = merge(base[key], lift(root, split(key).map((when) => [when]), entry, own, source));
-    } else if (pack && typeof entry == 'function') macros[key] = entry;
+      base[key] = merge(base[key], lift(root, split(macros, key).map((when) => [when]), entry, own, source, macros));
+    } else if (defines && typeof entry == 'function') macros[key] = entry;
     else base[key] = entry;
   }
 
@@ -104,8 +107,10 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const local = [...before, ...own.filter((name) => !before.includes(name))];
   const rules = Object.create(parent?.rules || null) as StyleMap;
   const labels = Object.create(parent?.labels || null) as Record<string, string>;
+  const lows = Object.create(parent?.low || null) as Record<string, boolean>;
 
   for (const name of own) {
+    lows[name] = !!low;
     const rule = source[name];
     const inherited = parent?.rules[name] as StyleMap | undefined;
     rules[name] = inherited ? mergeRule(inherited, rule as StyleMap) : rule;
@@ -118,6 +123,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
     label: scopeLabel,
     labels,
     local,
+    low: lows,
     macros,
     own: base,
     pack: pack || parent?.pack,
@@ -131,7 +137,7 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   return scope;
 }
 
-function lift(frame: Frame, paths: string[][], body: StyleMap, own: string[], source: StyleMap) {
+function lift(frame: Frame, paths: string[][], body: StyleMap, own: string[], source: StyleMap, macros: StyleMap) {
   const rest: StyleMap = {};
 
   for (const key of Object.keys(body)) {
@@ -147,8 +153,8 @@ function lift(frame: Frame, paths: string[][], body: StyleMap, own: string[], so
           entry as StyleMap
         ));
     } else if (isCondition(key) && isObject(entry)) {
-      const inner = paths.flatMap((path) => split(key).map((when) => [...path, when]));
-      rest[key] = lift(frame, inner, entry, own, source);
+      const inner = paths.flatMap((path) => split(macros, key).map((when) => [...path, when]));
+      rest[key] = lift(frame, inner, entry, own, source, macros);
     } else rest[key] = entry;
   }
 
@@ -171,13 +177,21 @@ function createContext(scope: StyleScope): AppearanceContext {
   return context;
 }
 
-function extendContext(parent: AppearanceContext | undefined, maps: readonly StyleMap[], label: string, pack?: Pack) {
+function extendContext(parent: AppearanceContext | undefined, maps: readonly StyleMap[], label: string, pack?: Pack, low?: boolean) {
+  if (!maps.length) return parent;
+
   let scope = parent?.scope as StyleScope | undefined;
   const base: Declaration = { ...(scope && bases.get(scope)) };
   const anchors = new Set(scope && groups.get(scope));
 
   for (const map of maps) {
-    scope = createStyleScope(scope, map, label, pack);
+    scope = createStyleScope(scope, map, label, pack, low);
+
+    const loose = low && declared(scope!.own);
+
+    if (loose)
+      throw new Error(`Pack rules must be _rules; "${loose}" would style every root.`);
+
     Object.assign(base, mergeRule(base, scope!.own));
     const own = ownGroups.get(scope!);
     if (own) anchors.add(own);
@@ -218,12 +232,17 @@ function style<T extends object>(type: T, rules: StyleMap, pack?: Pack): T {
       entered.add(type);
 
       const maps = key ? subs[key] : own;
-      if (!maps) return parent;
 
       if (pack && (parent?.scope as StyleScope | undefined)?.pack !== pack)
-        parent = extendContext(parent, pack.layers, name, pack);
+        parent = extendContext(
+          extendContext(parent, pack.layers, name, pack),
+          pack.rules,
+          pack.label,
+          pack,
+          true
+        );
 
-      return extendContext(parent, maps, key ? `${name}_${key}` : name);
+      return maps ? extendContext(parent, maps, key ? `${name}_${key}` : name) : parent;
     });
   }
 
@@ -231,7 +250,7 @@ function style<T extends object>(type: T, rules: StyleMap, pack?: Pack): T {
   const rest: StyleMap = {};
 
   if (pack && styles.pack && styles.pack !== pack)
-    throw new Error(`"${label(type)}" is already styled by another Style class.`);
+    throw new Error(`"${label(type)}" is already styled by another pack.`);
 
   styles.pack ||= pack;
 
@@ -320,7 +339,8 @@ function expandRule(scope: StyleScope, name: string) {
   if (!expansion) {
     const frame: Frame = { name: `${scope.labels[name]}_${name}` };
     expansion = expand(scope, scope.rules[name], new Map(), frame);
-    expansion.blocks = toBlocks(expansion, frame, scope.local.indexOf(name));
+    const index = scope.local.indexOf(name);
+    expansion.blocks = toBlocks(expansion, frame, scope.low[name] ? index - LOW : index);
 
     scope.expansions.set(name, expansion);
   }
@@ -368,7 +388,7 @@ function handlers(scope: StyleScope, name: string) {
   if (!chain) {
     chain = Object.assign([], { named: 0 });
 
-    for (const key of [name, '*']) {
+    for (const key of [name, 'default']) {
       for (let macros: object | null = scope.macros; macros; macros = Object.getPrototypeOf(macros)) {
         const own = Object.getOwnPropertyDescriptor(macros, key);
         if (own) chain.push(own.value as Macro);
@@ -415,6 +435,9 @@ function expand(scope: StyleScope, value: unknown, depths: Depths, frame: Frame)
         continue;
       }
 
+      if (name == 'default')
+        throw new Error('"default" is not a style key.');
+
       const chain = handlers(scope, name);
       const depth = depths.get(name) || 0;
 
@@ -427,14 +450,19 @@ function expand(scope: StyleScope, value: unknown, depths: Depths, frame: Frame)
             chain[depth](entry === true ? undefined : entry, name),
             new Map(depths).set(name, depth + 1)
           );
-      } else output.declarations[name] = terminal(name, entry);
+      } else {
+        if (typeof entry == 'string' && typeof scope.macros[entry] == 'string')
+          throw new Error(`Condition "${entry}" is not a value of "${name}".`);
+
+        output.declarations[name] = terminal(name, entry);
+      }
     }
   }
 
   walk(value, depths);
 
   for (const [key, body] of conditions)
-    for (const when of split(key)) {
+    for (const when of split(scope.macros, key)) {
       const inner = expand(scope, body, depths, frame);
 
       if (inner.classes.length)
@@ -468,10 +496,19 @@ function terminal(name: string, value: unknown) {
 }
 
 function isCondition(key: string) {
-  return key[0] == ':' || key[0] == '@' || key[0] == '\0';
+  return key[0] == ':' || key[0] == '@' || key[0] == '$' || key[0] == '\0';
 }
 
-function split(key: string) {
+function split(macros: StyleMap, key: string) {
+  if (key[0] == '$') {
+    const condition = macros[key];
+
+    if (typeof condition != 'string')
+      throw new Error(`Unknown condition "${key}".`);
+
+    key = condition;
+  }
+
   if (key[0] != ':') return [key];
 
   const parts: string[] = [];
@@ -526,6 +563,14 @@ function flatten(value: unknown, key: string): unknown {
   }
 
   return output;
+}
+
+function declared(map: StyleMap): string | undefined {
+  for (const key of Object.keys(map)) {
+    const entry = map[key];
+
+    if (isObject(entry) ? declared(entry) : isPresent(entry)) return key;
+  }
 }
 
 function label(type: object) {
