@@ -1,4 +1,4 @@
-import { event } from './observable';
+import { event, REFRESH } from './observable';
 import {
   Model,
   GETTERS,
@@ -42,7 +42,6 @@ const SUBCLASSES = new WeakMap<Function, Set<Model.Extends>>();
 
 const MODULES = new Map<string, Record<string, Entry>>();
 const LISTENERS = new Set<(event: Replaced) => void>();
-const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const PRIVATE = /(?:^|[\s;{}*])#[\w$]+(?=[\s=;(}])/;
 
 /** Begin tracking live instances, so a hot patch can reach them. */

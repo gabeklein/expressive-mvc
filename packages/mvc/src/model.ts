@@ -7,7 +7,9 @@ import {
   Observer,
   observer,
   queued,
+  REFRESH,
   touch,
+  unwrap,
   watch
 } from './observable';
 
@@ -42,9 +44,6 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
 /** Replacement for a getter captured by live computed properties, for hot patching. */
 const LATEST = new WeakMap<Function, Function>();
-
-/** Event every observer treats as watched, forcing a refresh after a hot patch. */
-const REFRESH = Symbol.for('@expressive/mvc.refresh');
 
 /** Stale flags for compute closures awaiting refresh on next access. */
 const STALE = new WeakSet<() => void>();
@@ -1310,7 +1309,7 @@ function update<T>(
 ) {
   const store = STORE.get(state)!;
 
-  if (value instanceof Model) value = value.is as T;
+  value = unwrap(value);
 
   if (observer(state) === null) {
     if (!silent) report('dead', state, new Error(`Tried to update ${state}.${String(key)} but state is destroyed.`), String(key));
