@@ -1,0 +1,291 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { createBuilder, createServer, type InlineConfig, type ViteDevServer } from "vite";
+
+import { rpc, type Options } from "./plugin";
+
+const PACKAGES = fileURLToPath(new URL("../../../", import.meta.url));
+
+const SOURCES: InlineConfig["resolve"] = {
+  alias: [
+    { find: /^@expressive\/([^/]+)$/, replacement: `${PACKAGES}$1/src` },
+    { find: /^@expressive\/([^/]+)\/(.+)$/, replacement: `${PACKAGES}$1/src/$2` },
+  ],
+};
+
+const GATE = (check: string, error: string) => `
+  import { Model } from "@expressive/mvc";
+  import { Current, ${error} } from "@expressive/rpc/http";
+  export default class Gate extends Model {
+    static key() {
+      const token = Current.get().request.headers.get("authorization");
+      if (${check}) throw new ${error}("Refused.");
+      return token ?? undefined;
+    }
+  }
+`;
+
+const APP = {
+  "package.json": `{ "type": "module" }`,
+  "index.html": `<!doctype html><html><body><script type="module" src="/src/main.ts"></script></body></html>`,
+  "src/main.ts": `import { list, Over } from "../api/todos"; import { stats } from "../api/admin/stats"; console.log(list, Over, stats);`,
+  "api/index.ts": GATE("!token", "Unauthorized"),
+  "api/errors.ts": `import { HttpError } from "@expressive/rpc/http"; export class Billing extends HttpError { status = 402 }`,
+  "api/todos.ts": `
+    import { HttpError, NotFound } from "@expressive/rpc/http";
+    import { Billing } from "./errors";
+    export class Over extends HttpError { status = 409 }
+    export class Late extends Billing {}
+    export async function list() { return ["one"]; }
+    export async function add(title: string) { if (title.length > 3) throw new Over("Too long"); return title; }
+    export async function done(id: string) { throw new NotFound(\`No todo \${id}\`); }
+  `,
+  "lib/admin.ts": GATE(`token !== "Bearer admin"`, "Forbidden").replace("export default class Gate", "export class Gate"),
+  "api/admin/index.ts": `import { Gate } from "../../lib/admin"; export default class Admin extends Gate {}`,
+  "api/admin/stats.ts": `export async function stats() { return { total: 1 }; }`,
+};
+
+const dirs: string[] = [];
+const servers: ViteDevServer[] = [];
+
+afterEach(async () => {
+  while (servers.length) await servers.pop()!.close();
+  while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true });
+});
+
+function project(files: Record<string, string> = {}): string {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "rpc-vite-")));
+  dirs.push(root);
+
+  for (const [path, src] of Object.entries({ ...APP, ...files })) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), src);
+  }
+
+  return root;
+}
+
+async function serve(root: string, config: InlineConfig = {}) {
+  const server = await createServer({
+    root,
+    configFile: false,
+    logLevel: "silent",
+    plugins: [rpc()],
+    resolve: SOURCES,
+    optimizeDeps: { noDiscovery: true, include: [] },
+    ...config,
+  });
+
+  servers.push(server);
+
+  return server;
+}
+
+async function listen(root: string) {
+  const server = await serve(root);
+
+  await server.listen(0);
+
+  const post = async (path: string, name: string, args: unknown[] = [], token?: string) => {
+    const response = await fetch(new URL(path, server.resolvedUrls!.local[0]), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-expressive-call": name, ...(token && { authorization: `Bearer ${token}` }) },
+      body: JSON.stringify(args),
+    });
+
+    return { status: response.status, body: response.headers.get("content-type")?.includes("json") ? await response.json() : undefined };
+  };
+
+  return { server, post };
+}
+
+describe("client", () => {
+  it("will serve a server module to the client as a stub of the shared client", async () => {
+    const server = await serve(project());
+    const stub = (await server.transformRequest("/api/todos.ts"))!.code;
+
+    expect(stub).toContain('const at = "/"');
+    expect(stub).toContain('call(at, "todos:list", args)');
+    expect(stub).toContain('define("/#todos:Over", "Over", "http:HttpError")');
+    expect(stub).toContain('import "/api/errors.ts";');
+    expect(stub).toContain('define("/#todos:Late", "Late", "/#errors:Billing")');
+    expect(stub).toMatch(/import \{ call, define \} from ".*rpc\/src\/http/);
+    expect(stub).not.toContain("Too long");
+    expect((await server.transformRequest("/api/admin/stats.ts"))!.code).toContain('const at = "/admin"');
+  });
+
+  it("will throw if a server module exports what the client cannot use", async () => {
+    const server = await serve(project({ "api/bad.ts": `export function sync() {}`, "src/bad.ts": `import { sync } from "../api/bad"; sync();` }));
+
+    await expect(server.transformRequest("/src/bad.ts").then(() => server.transformRequest("/api/bad.ts"))).rejects.toThrow(
+      "api/bad.ts: sync() is not async - every call to it crosses the wire.",
+    );
+  });
+
+  it("will throw if client code imports a server-only name from @expressive/rpc/http, but not server code", async () => {
+    const server = await serve(project({
+      "src/server.ts": `import { Current } from "@expressive/rpc/http"; export const a = Current;`,
+      "src/ok.ts": `import { NotFound, type Current } from "@expressive/rpc/http"; export const a: Current | string = NotFound.name;`,
+    }));
+
+    await expect(server.transformRequest("/src/server.ts")).rejects.toThrow(
+      "src/server.ts imports Current from @expressive/rpc/http, which only a server has - its browser build does not export it.",
+    );
+    expect((await server.transformRequest("/src/ok.ts"))!.code).toContain("NotFound");
+    expect((await server.environments.rpc.transformRequest("/src/server.ts"))!.code).toContain("Current");
+  });
+
+  it("will keep the dependency scan out of the folder", async () => {
+    const root = project();
+    const server = await serve(root);
+    const { pluginContainer } = server.environments.client;
+    const main = join(root, "src/main.ts");
+    const scan = (id: string, importer?: string) => pluginContainer.resolveId(id, importer, { scan: true } as {});
+
+    expect(await scan("../api/todos", main)).toMatchObject({ id: join(root, "api/todos.ts"), external: true });
+    expect(await scan("./main", main)).toMatchObject({ id: main });
+    expect((await scan("./missing", main))?.external).toBeFalsy();
+    expect(await scan("/api/todos.ts")).toMatchObject({ external: true });
+    expect((await scan("vite", main))?.external).toBeFalsy();
+  });
+
+  it("will build the client into dist/client unless told otherwise", async () => {
+    const root = project();
+
+    expect((await serve(root)).config.build.outDir).toBe("dist/client");
+    expect((await serve(root, { build: { outDir: "public" } })).config.build.outDir).toBe("public");
+  });
+});
+
+describe("dev server", () => {
+  it("will answer a call through its folder's gates", async () => {
+    const { server, post } = await listen(project());
+
+    await server.transformRequest("/src/main.ts");
+    await server.transformRequest("/api/todos.ts");
+    await server.transformRequest("/api/admin/stats.ts");
+
+    expect(await post("/", "todos:list")).toEqual({ status: 401, body: { error: "http:Unauthorized", message: "Refused.", status: 401 } });
+    expect(await post("/", "todos:list", [], "alice")).toEqual({ status: 200, body: { value: ["one"] } });
+    expect(await post("/admin", "stats:stats", [], "alice")).toEqual({ status: 403, body: { error: "http:Forbidden", message: "Refused.", status: 403 } });
+    expect(await post("/admin", "stats:stats", [], "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
+  });
+
+  it("will rebuild a thrown error as its id", async () => {
+    const { server, post } = await listen(project());
+
+    await server.transformRequest("/api/todos.ts");
+
+    expect(await post("/", "todos:add", ["long"], "a")).toEqual({ status: 409, body: { error: "/#todos:Over", message: "Too long", status: 409 } });
+    expect(await post("/", "todos:done", ["x"], "a")).toEqual({ status: 404, body: { error: "http:NotFound", message: "No todo x", status: 404 } });
+  });
+
+  it("will answer only what the client imported", async () => {
+    const { server, post } = await listen(project());
+
+    expect(await post("/", "todos:list", [], "a")).toEqual({ status: 404, body: { message: "Not found." } });
+
+    await server.transformRequest("/api/todos.ts");
+
+    expect(await post("/", "todos:list", [], "a")).toMatchObject({ status: 200 });
+    expect(await post("/admin", "stats:stats", [], "admin")).toEqual({ status: 404, body: { message: "Not found." } });
+  });
+
+  it("will leave other requests to Vite", async () => {
+    const { server } = await listen(project());
+    const response = await fetch(new URL("/src/main.ts", server.resolvedUrls!.local[0]));
+
+    expect(response.status).toBe(200);
+  });
+
+  it("will take an edit to a server module on the next call", async () => {
+    const root = project();
+    const { server, post } = await listen(root);
+
+    await server.transformRequest("/api/todos.ts");
+    expect(await post("/", "todos:list", [], "a")).toMatchObject({ body: { value: ["one"] } });
+
+    await new Promise(ready => setTimeout(ready, 300));
+    writeFileSync(join(root, "api/todos.ts"), readFileSync(join(root, "api/todos.ts"), "utf8").replace(`["one"]`, `["two"]`));
+
+    await vi.waitFor(async () => expect(await post("/", "todos:list", [], "a")).toMatchObject({ body: { value: ["two"] } }), { timeout: 5000 });
+  }, 15_000);
+
+  it("will refuse a call through a folder whose gate is not a Model", async () => {
+    const { server, post } = await listen(project({ "api/odd/index.ts": `export default class Odd extends Error {}`, "api/odd/ping.ts": `export async function ping() {}` }));
+
+    await server.transformRequest("/api/odd/ping.ts");
+
+    expect(await post("/odd", "ping:ping", [], "a")).toMatchObject({ status: 500, body: { message: expect.stringContaining("api/odd/index.ts: An index's default is its folder's gate") } });
+  });
+
+  it("will fail a call to a folder exporting a class that is not an Error", async () => {
+    const { server, post } = await listen(project({ "api/odd.ts": `import { EventEmitter } from "node:events"; export class Odd extends EventEmitter {} export async function ping() {}` }));
+
+    await server.transformRequest("/api/odd.ts");
+
+    expect((await post("/", "odd:ping", [], "a")).status).toBe(500);
+  });
+});
+
+describe("build", () => {
+  async function build(root: string, options?: Options) {
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc(options)], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const server = (await import(pathToFileURL(join(root, "dist/server/index.js")).href)).default;
+    const assets = join(root, "dist/client/assets");
+    const client = readdirSync(assets).map(file => readFileSync(join(assets, file), "utf8")).join("\n");
+    const post = async (path: string, name: string, token?: string, env?: unknown) => {
+      const request = new Request(new URL(path, "http://localhost"), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-expressive-call": name, ...(token && { authorization: `Bearer ${token}` }) },
+        body: "[]",
+      });
+      const response: Response = await server.fetch(request, env);
+
+      return { status: response.status, body: await response.json() };
+    };
+
+    return { server, client, post };
+  }
+
+  it("will emit the client and a server bundle answering the calls the client imports, by hashed id", async () => {
+    const root = project();
+    const { server, client, post } = await build(root);
+    const ids = [...client.matchAll(/[`"']([\w-]{16})[`"']/g)].map(([, id]) => id);
+
+    expect(existsSync(join(root, "dist/client/index.html"))).toBe(true);
+    expect(client).not.toContain("todos:list");
+    expect(client).not.toContain("Too long");
+
+    const answers = await Promise.all(ids.map(id => post("/", id, "a")));
+    const list = ids[answers.findIndex(answer => answer.status === 200 && answer.body.value?.[0] === "one")];
+
+    expect(list).toBeDefined();
+    expect(await post("/", list)).toMatchObject({ status: 401 });
+    expect(await post("/", "todos:list", "a")).toEqual({ status: 404, body: { message: "Not found." } });
+    expect((await server.fetch(new Request("http://localhost/"))).status).toBe(404);
+  });
+
+  it("will keep readable ids, and hand a request that is not a call to the Worker's assets", async () => {
+    const { server, post } = await build(project(), { opaque: false });
+    const ASSETS = { fetch: async () => new Response("asset") };
+
+    expect(await post("/", "todos:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
+    expect(await post("/admin", "stats:stats", "a")).toMatchObject({ status: 403 });
+    expect(await post("/admin", "stats:stats", "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
+    expect(await (await server.fetch(new Request("http://localhost/"), { ASSETS })).text()).toBe("asset");
+  });
+
+  it("will build calls with no gate in their folders", async () => {
+    const root = project({ "api/index.ts": `export async function ping() { return "pong"; }`, "src/main.ts": `import { ping } from "../api"; ping();` });
+    const { post } = await build(root, { opaque: false });
+
+    expect(await post("/", "ping")).toEqual({ status: 200, body: { value: "pong" } });
+  });
+});

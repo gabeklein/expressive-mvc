@@ -11,7 +11,8 @@ export default defineConfig({
     internal: 'src/internal.ts',
     http: 'src/http.ts',
     'http.server': 'src/http/server.ts',
-    'http.client': 'src/http/client.ts'
+    'http.client': 'src/http/client.ts',
+    vite: 'src/vite/index.ts'
   },
   platform: 'neutral',
   external: [/^node:/],
