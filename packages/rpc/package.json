@@ -33,13 +33,13 @@
       "browser": "./dist/http.client.js",
       "default": "./dist/http.server.js"
     },
-    "./internal": {
-      "types": "./dist/internal.d.ts",
-      "default": "./dist/internal.js"
+    "./protocol": {
+      "types": "./dist/protocol.d.ts",
+      "default": "./dist/protocol.js"
     },
-    "./internal/vite": {
-      "types": "./dist/internal/vite.d.ts",
-      "default": "./dist/internal/vite.js"
+    "./protocol/vite": {
+      "types": "./dist/protocol/vite.d.ts",
+      "default": "./dist/protocol/vite.js"
     },
     "./vite": {
       "types": "./dist/vite.d.ts",

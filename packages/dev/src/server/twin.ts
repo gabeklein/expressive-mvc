@@ -1,7 +1,7 @@
 import { Model } from "@expressive/mvc";
 
 import { seatsAlong, walkOf, within, type Call, type Endpoint as Base, type Exports as Plain, type Seats } from "@expressive/rpc";
-import { construct, failure, inFolder, seated, type Handle, type Incoming } from "@expressive/rpc/internal";
+import { construct, failure, inFolder, seated, type Handle, type Incoming } from "@expressive/rpc/protocol";
 import { reply } from "@expressive/rpc/http";
 
 import { begin, catchUp, connect, end, frameOf, hold, release, renew, twinOf, type Connection, type Shape } from "./connection";

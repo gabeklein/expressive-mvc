@@ -1,4 +1,4 @@
-import { Manifest, type Exposed as Plain } from "@expressive/rpc/internal/vite";
+import { Manifest, type Exposed as Plain } from "@expressive/rpc/protocol/vite";
 
 import type { Remote } from "./routes";
 import type { Shape } from "../server/connection";

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { sep } from "node:path";
 import { init, parse } from "es-module-lexer";
 import { transformWithOxc, type ESTree } from "vite";
-import { isClass, moduleOf, scanModule, type ErrorClass, type Module, type Sources, type Value } from "@expressive/rpc/internal/vite";
+import { isClass, moduleOf, scanModule, type ErrorClass, type Module, type Sources, type Value } from "@expressive/rpc/protocol/vite";
 
 import type { ExportScanner, Remote } from "./routes";
 

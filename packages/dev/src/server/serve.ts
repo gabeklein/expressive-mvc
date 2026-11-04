@@ -4,7 +4,7 @@ import { extname, join, normalize } from "node:path";
 
 import { verify, type Seat } from "@expressive/rpc";
 import { isCall, send, toRequest } from "@expressive/rpc/http";
-import { dispatch } from "@expressive/rpc/internal";
+import { dispatch } from "@expressive/rpc/protocol";
 
 import type { AppConfig } from "./config";
 import { install } from "./install";

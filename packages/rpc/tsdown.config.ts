@@ -8,8 +8,8 @@ export default defineConfig({
   outExtensions: () => ({ js: '.js' }),
   entry: {
     index: 'src/index.ts',
-    internal: 'src/internal.ts',
-    'internal/vite': 'src/internal/vite.ts',
+    protocol: 'src/protocol.ts',
+    'protocol/vite': 'src/protocol/vite.ts',
     http: 'src/http.ts',
     'http.server': 'src/http/server.ts',
     'http.client': 'src/http/client.ts',
