@@ -108,8 +108,12 @@ describe("build", () => {
   let dist: string;
   let exported: string[];
 
+  const emitted = () => readdirSync(dist, { recursive: true, encoding: "utf8" }).filter(file => /\.(js|d\.ts)$/.test(file));
+
   const importsOf = (file: string) =>
-    [...readFileSync(join(dist, file), "utf8").matchAll(/(?:from|import)\s*"([^"]+)"/g)].map(([, spec]) => spec);
+    existsSync(join(dist, file)) ? [...readFileSync(join(dist, file), "utf8").matchAll(/(?:from|import)\s*"([^"]+)"/g)].map(([, spec]) => spec) : [];
+
+  const target = (file: string, spec: string) => join(dirname(file), file.endsWith(".d.ts") ? spec.replace(/\.js$/, ".d.ts") : spec);
 
   const reach = (entries: string[]) => {
     const seen = new Set<string>();
@@ -117,8 +121,7 @@ describe("build", () => {
       if (seen.has(file)) return;
       seen.add(file);
 
-      for (const spec of importsOf(file))
-        if (spec.startsWith(".")) visit(join(dirname(file), file.endsWith(".d.ts") ? spec.replace(/\.js$/, ".d.ts") : spec));
+      for (const spec of importsOf(file)) if (spec.startsWith(".")) visit(target(file, spec));
     };
 
     entries.forEach(visit);
@@ -140,9 +143,15 @@ describe("build", () => {
 
   it("will emit no entry file the exports map cannot reach", () => {
     const reached = reach(exported);
-    const entries = readdirSync(dist, { recursive: true, encoding: "utf8" }).filter(file => /\.(js|d\.ts)$/.test(file) && !file.startsWith("chunk-"));
+    const entries = emitted().filter(file => !file.startsWith("chunk-"));
 
     expect(entries.filter(file => !reached.has(file))).toEqual([]);
+  });
+
+  it("will resolve every relative import to an emitted file", () => {
+    const missing = emitted().flatMap(file => importsOf(file).filter(spec => spec.startsWith(".")).map(spec => target(file, spec))).filter(file => !existsSync(join(dist, file)));
+
+    expect(missing).toEqual([]);
   });
 
   it("will keep node out of the browser build", () => {
