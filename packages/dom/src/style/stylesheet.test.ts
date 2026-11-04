@@ -323,7 +323,16 @@ describe('Style', () => {
     class Kit extends Style {}
 
     expect(Kit.use({ _a: { color: 'red' } })).not.toBe(Kit.use({ _a: { color: 'red' } }));
-    expect(Kit.use(false, null)).not.toBe(Kit.use());
+    expect(Kit.use(false, null)).toBe(Kit.use());
+  });
+
+  it('will not register a component style() gives no maps', () => {
+    const Bare = () => createElement('b', {});
+
+    style(Bare, false, null);
+    place(createElement(Bare, {}));
+
+    expect(() => style(Bare, { color: 'red' })).not.toThrow();
   });
 
   describe('pack rules', () => {
@@ -426,6 +435,23 @@ describe('Style', () => {
       expect(() => widget(Shared)).toThrow('"Shared" is already styled by another pack.');
     });
 
+    it('will keep pack rules in order across components', () => {
+      class Order extends Style {}
+
+      const apply = Order.use({ _a: { color: 'red' } }, { _b: { color: 'blue' } });
+      const One = () => createElement('i', { _a: true });
+      const Many = () => createElement('b', { _a: true, _b: true });
+
+      apply(One);
+      apply(Many, { _x: { order: 1 }, _y: { order: 2 }, _z: { order: 3 } });
+
+      place(createElement(One, {}));
+
+      const node = place(createElement(Many, {})).querySelector('b')!;
+
+      expect(getComputedStyle(node).color).toBe('blue');
+    });
+
     it('will throw for a declaration outside a rule', () => {
       const Loose = () => createElement('b', {});
 
@@ -433,6 +459,30 @@ describe('Style', () => {
 
       expect(() => place(createElement(Loose, {}))).toThrow('Pack rules must be _rules; "color" would style every root.');
     });
+  });
+
+  it('will pass an object to a macro whole and keep private methods out', () => {
+    interface Shift { x?: number; y?: number }
+
+    class Moves extends Css {
+      #px(value = 0) { return `${value}px`; }
+
+      shift({ x, y }: Shift) {
+        return { transform: `translate(${this.#px(x)}, ${this.#px(y)})` };
+      }
+    }
+
+    const Chip = () => createElement('i', { _lift: true });
+    const apply = Moves.use();
+    // @ts-expect-error - shift takes a Shift
+    const wrong: style.Map<Moves> = { shift: { z: 1 } };
+
+    apply(Chip, { _lift: { shift: { x: 1, y: 2 } } }, { _lift: { shift: { y: 3 } } });
+
+    const node = place(createElement(Chip, {})).querySelector('i')!;
+
+    expect(wrong).toBeTypeOf('object');
+    expect(getComputedStyle(node).transform).toBe('translate(0px, 3px)');
   });
 
   it('will throw for a component styled by two packs', () => {
@@ -454,7 +504,8 @@ describe('Style', () => {
     ['a condition without a prefix', class Bare extends Style { $tone = 'red'; }, 'Condition "$tone" on Bare must start with "@" or ":".'],
     ['a condition that is not a string', class Count extends Style { $size = 2; }, 'Condition "$size" on Count must start with "@" or ":".'],
     ['a prefixed method', class Prefixed extends Style { _rule() { return {}; } }, '"_rule" on Prefixed must be a method with a bare name.'],
-    ['a getter', class Getter extends Style { get tone() { return {}; } }, '"tone" on Getter must be a method with a bare name.']
+    ['a getter', class Getter extends Style { get tone() { return {}; } }, '"tone" on Getter must be a method with a bare name.'],
+    ['a $ method', class Hook extends Style { $tone() { return {}; } }, '"$tone" on Hook must be a method with a bare name.']
   ] as [string, typeof Style, string][])('will throw for %s', (_, type, message) => {
     expect(() => type.use()({}, { color: 'red' })).toThrow(message);
   });

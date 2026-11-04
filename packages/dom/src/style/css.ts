@@ -31,9 +31,20 @@ function sized(property: string, value: unknown): unknown {
     : value;
 }
 
+function ms(value: Time) {
+  return typeof value == 'number' ? `${value}ms` : value;
+}
+
+function time(property: string, value: Time | readonly Time[]) {
+  return { [property]: typeof value == 'object' ? value.map(ms).join(', ') : ms(value) };
+}
+
+type Time = number | string;
+
 /**
- * Web macro pack - pixel units for numbers and the `size` shorthand. Extend
- * it, or use it as is with `Css.use()`.
+ * Web macro pack - pixels for numbers where a property needs a unit,
+ * milliseconds for durations and delays, degrees for `rotate`, and the `size`
+ * shorthand. Extend it, or use it as is with `Css.use()`.
  */
 class Css extends Style {
   default(value: unknown, key: string) {
@@ -44,6 +55,26 @@ class Css extends Style {
     return Array.isArray(value)
       ? { width: value[0], height: value[1] }
       : { width: value, height: value };
+  }
+
+  transitionDuration(value: Time | readonly Time[]) {
+    return time('transitionDuration', value);
+  }
+
+  transitionDelay(value: Time | readonly Time[]) {
+    return time('transitionDelay', value);
+  }
+
+  animationDuration(value: Time | readonly Time[]) {
+    return time('animationDuration', value);
+  }
+
+  animationDelay(value: Time | readonly Time[]) {
+    return time('animationDelay', value);
+  }
+
+  rotate(value: number | string) {
+    return { rotate: typeof value == 'number' ? `${value}deg` : value };
   }
 }
 

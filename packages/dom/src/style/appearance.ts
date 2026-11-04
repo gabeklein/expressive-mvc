@@ -66,6 +66,7 @@ const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
 const STYLES = Symbol('@expressive/dom.styles');
 const entered = new WeakSet<object>();
+const LOW = 2 ** 20;
 
 function createStyleScope(parent: StyleScope | undefined, value: unknown, label?: string, pack?: Pack, low?: boolean): StyleScope | undefined {
   if (!isObject(value)) return parent;
@@ -339,7 +340,7 @@ function expandRule(scope: StyleScope, name: string) {
     const frame: Frame = { name: `${scope.labels[name]}_${name}` };
     expansion = expand(scope, scope.rules[name], new Map(), frame);
     const index = scope.local.indexOf(name);
-    expansion.blocks = toBlocks(expansion, frame, scope.low[name] ? index - scope.local.length - 1 : index);
+    expansion.blocks = toBlocks(expansion, frame, scope.low[name] ? index - LOW : index);
 
     scope.expansions.set(name, expansion);
   }

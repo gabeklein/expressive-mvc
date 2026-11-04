@@ -89,7 +89,8 @@ class Style {
     this: new () => T,
     ...rules: (style.Map<T> | false | null | undefined)[]
   ): style.Apply<T> {
-    const shared = !rules.length;
+    const given = rules.filter(Boolean) as appearance.StyleMap[];
+    const shared = !given.length;
     let apply = shared ? bound.get(this) : undefined;
 
     if (!apply) {
@@ -99,7 +100,7 @@ class Style {
         pack ||= {
           label: this.name,
           layers: layers(this),
-          rules: rules.filter(Boolean) as appearance.StyleMap[]
+          rules: given
         };
 
         return register(type, maps, pack);
@@ -130,7 +131,7 @@ function style<T extends object>(type: T, ...maps: (style.Map | false | null | u
 function register<T extends object>(type: T, maps: readonly unknown[], pack?: appearance.Pack): T {
   const present = maps.filter(Boolean) as appearance.StyleMap[];
 
-  for (const rules of present.length ? present : [{}]) appearance.style(type, rules, pack);
+  for (const rules of present.length || !pack ? present : [{}]) appearance.style(type, rules, pack);
   registerEmitter(emit);
   return type;
 }
