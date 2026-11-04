@@ -37,6 +37,20 @@ describe("node request", () => {
     expect(await request.json()).toEqual([1, 2]);
   });
 
+  it("will leave the incoming stream untouched until its body is read", async () => {
+    const req = incoming("POST", "/", {}, ["first", "second"]);
+
+    toRequest(req, outgoing());
+    await new Promise(done => setTimeout(done, 10));
+
+    expect(req.listenerCount("readable")).toBe(0);
+
+    let read = "";
+    for await (const chunk of req) read += chunk;
+
+    expect(read).toBe("firstsecond");
+  });
+
   it("will abort its signal when the response closes", () => {
     const res = outgoing();
     const request = toRequest(incoming("GET", "/", {}), res);
@@ -59,13 +73,23 @@ describe("node response", () => {
     expect(res.end).toHaveBeenCalled();
   });
 
-  it("will flush headers, then write the body as it streams", async () => {
+  it("will end a whole body at once, so it goes with its length", async () => {
     const res = outgoing();
 
-    await send(res, new Response("hello", { status: 200 }));
+    await send(res, new Response('{"a":1}', { status: 200, headers: { "content-type": "application/json" } }));
+
+    expect(res.flushHeaders).not.toHaveBeenCalled();
+    expect(res.write).not.toHaveBeenCalled();
+    expect(res.end.mock.calls[0][0].toString()).toBe('{"a":1}');
+  });
+
+  it("will flush an event stream's headers, then write its body as it streams", async () => {
+    const res = outgoing();
+
+    await send(res, new Response("event: hello\n\n", { status: 200, headers: { "content-type": "text/event-stream" } }));
 
     expect(res.flushHeaders).toHaveBeenCalled();
-    expect(Buffer.concat(res.write.mock.calls.map(([chunk]: [Uint8Array]) => chunk)).toString()).toBe("hello");
+    expect(Buffer.concat(res.write.mock.calls.map(([chunk]: [Uint8Array]) => chunk)).toString()).toBe("event: hello\n\n");
     expect(res.end).toHaveBeenCalled();
   });
 });

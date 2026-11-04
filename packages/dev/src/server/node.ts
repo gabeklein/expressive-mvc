@@ -19,7 +19,7 @@ export function toRequest(req: IncomingMessage, res: ServerResponse): Request {
       if (done) controller.close();
       else controller.enqueue(value);
     },
-  });
+  }, { highWaterMark: 0 });
 
   return new Request(new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`), {
     method,
@@ -35,6 +35,7 @@ export async function send(res: ServerResponse, response: Response): Promise<voi
   response.headers.forEach((value, name) => res.setHeader(name, value));
 
   if (!response.body) return void res.end();
+  if (response.headers.get("content-type") !== "text/event-stream") return void res.end(Buffer.from(await response.arrayBuffer()));
 
   res.flushHeaders();
 
