@@ -37,6 +37,10 @@
       "types": "./dist/internal.d.ts",
       "default": "./dist/internal.js"
     },
+    "./internal/vite": {
+      "types": "./dist/internal/vite.d.ts",
+      "default": "./dist/internal/vite.js"
+    },
     "./vite": {
       "types": "./dist/vite.d.ts",
       "default": "./dist/vite.js"

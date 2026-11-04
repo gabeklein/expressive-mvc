@@ -9,6 +9,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     internal: 'src/internal.ts',
+    'internal/vite': 'src/internal/vite.ts',
     http: 'src/http.ts',
     'http.server': 'src/http/server.ts',
     'http.client': 'src/http/client.ts',
