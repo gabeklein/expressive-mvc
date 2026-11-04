@@ -157,23 +157,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
       const endpoints = ({ verify }: Runtime): Endpoint[] =>
         manifest.byPattern().map(group => ({
           pattern: group[0].pattern,
-          async exports() {
-            const calls: Record<string, unknown> = {};
-            const classes: Record<string, unknown> = {};
-
-            for (const exposed of group) {
-              const mod = await runner.import(exposed.file);
-              const own: Record<string, unknown> = {};
-
-              for (const name of exposed.calls) calls[manifest.callId(exposed, name)] = mod[name];
-              for (const { name } of exposed.errors) own[manifest.classId(exposed, name)] = mod[name];
-
-              verify(relative(root, exposed.file), { calls, classes: own });
-              Object.assign(classes, own);
-            }
-
-            return { calls, classes };
-          },
+          exports: () => manifest.exports(group, file => runner.import(file), (file, exports) => verify(relative(root, file), exports)),
         }));
 
       const seats: Seats = async pattern => {
