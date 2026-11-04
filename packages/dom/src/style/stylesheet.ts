@@ -94,17 +94,9 @@ class Style {
     let apply = shared ? bound.get(this) : undefined;
 
     if (!apply) {
-      let pack: appearance.Pack | undefined;
+      const pack: appearance.Pack = { label: this.name, layers: layers(this), rules: given };
 
-      apply = (type, ...maps) => {
-        pack ||= {
-          label: this.name,
-          layers: layers(this),
-          rules: given
-        };
-
-        return register(type, maps, pack);
-      };
+      apply = (type, ...maps) => register(type, maps, pack);
 
       if (shared) bound.set(this, apply);
     }
