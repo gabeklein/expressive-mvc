@@ -239,6 +239,7 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - On the client only the layout chain stays mounted - sibling pages remount (per the generated route tree). Twins inherit that lifetime.
 - Entry follow-ups:
   - A refusal caught by the refusing folder's own `Catch` (a `Catch` in its own module) shows that Route's stale suspense fallback: dom renders a boundary's fallback once when it hides, and a `catch` setting `fallback` while already hidden is not shown. An ancestor's `Catch` works. Upstream dom fix proposed (re-render the placeholder when `catch` runs on a hidden boundary).
+  - A refusal during an in-app navigation is dropped - the current page stays and `Catch` never shows - until #624 lands: the router re-threw a rejected guard's promise, which a held navigation treats as still pending. Cold loads are unaffected.
   - `Catch`'s `retry` re-throws the cached refusal - the router keeps a rejected guard's promise for the space until the route is left.
   - A plain sidecar function called during a held navigation (from an entry hook, say) still fills its path from `location`, which lags the router's path until the page commits.
   - Nested seats attach one depth at a time - a child Route renders only once its parent is admitted.
