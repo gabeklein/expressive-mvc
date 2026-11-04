@@ -23,3 +23,10 @@ test("calls a sidecar's functions on the server", async ({ page, open }, { proje
   await page.getByRole("button", { name: "Fail" }).click();
   await expect(output).toHaveText(project.name == "dev" ? "Nope" : "Internal error.");
 });
+
+test("rebuilds a sidecar's http error subclass as an HttpError", async ({ page, open }) => {
+  await open("/tally");
+
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page.locator("output")).toHaveText("HttpError 423: The tally is closed.");
+});

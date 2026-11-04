@@ -1,6 +1,7 @@
 import { Component } from "@expressive/mvc";
+import { HttpError } from "@expressive/rpc/http";
 
-import { Overflow, add, fail, reset, where } from "./remote";
+import { Closed, Overflow, add, close, fail, reset, where } from "./remote";
 
 export class Page extends Component {
   shown = "";
@@ -9,7 +10,9 @@ export class Page extends Component {
     try {
       this.shown = String(await task());
     } catch (error) {
-      this.shown = error instanceof Overflow ? `Overflow at ${error.limit}` : (error as Error).message;
+      if (error instanceof Overflow) this.shown = `Overflow at ${error.limit}`;
+      else if (error instanceof Closed && error instanceof HttpError) this.shown = `HttpError ${error.status}: ${error.message}`;
+      else this.shown = (error as Error).message;
     }
   }
 
@@ -24,6 +27,7 @@ export class Page extends Component {
         <button onClick={() => run(reset)}>Reset</button>
         <button onClick={() => run(fail)}>Fail</button>
         <button onClick={() => run(where)}>Where</button>
+        <button onClick={() => run(close)}>Close</button>
         <output>{shown}</output>
       </>
     );
