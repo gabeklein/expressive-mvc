@@ -8,7 +8,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - Merge `main` into the trunk as it moves. Upstream fixes (mvc, dom, router) land on `main` as their own PRs, never only here.
 - `backup/dev-server-full` holds the pre-trunk prototype - source for the queued features below. Its POST dispatch and client stubs seed the MVP; its `app/api` lane becomes the rpc folder (RPC). Delete once nothing is left to carve.
 - Stack PRs: each targets the previous one's branch, the bottom one the trunk; merge a lower branch up into the ones above it as it moves.
-- Verify in a browser, not only unit tests: `bun run example:e2e` in `packages/dev` (set `CHROME`). After rebuilding a package, a dev server can serve a stale `@expressive/*` from `example/node_modules/.vite` - delete it (the E2E dev project always does).
+- Verify in a browser, not only unit tests: `bun run example:e2e` in `packages/dev` (set `CHROME`). After rebuilding a package, a dev server can serve a stale `@expressive/*` pre-bundle from `packages/dev/node_modules/.vite` - delete it (the E2E dev project always does).
 - Specs live in `example/e2e/` for now; colocating them beside routes is allowed later - the dependency scan already skips `*.spec.*`/`*.test.*` under `app/`.
 - Trunk commits carry no trailers.
 
