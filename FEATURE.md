@@ -105,7 +105,7 @@ Agreed direction, staged below. The stateless call lane carved out of dev as a V
   4. Workers. The core reaches Node only through `within` (`AsyncLocalStorage`, `createHash`) - `nodejs_compat` covers both, or they get replaced.
 - **Limits (3b).**
   - `vite build` alone emits both outputs through the app builder; the legacy `build()` API builds the client only - use `createBuilder().buildApp()`. Another environment (a user's `ssr`) is not built by the plugin's `buildApp`.
-  - Every non-`browser` condition of `@expressive/rpc` serves the server build: `client`, `call`, `configure` and `define` are browser-only, though `index.d.ts` declares them. Node code - vitest included - gets `undefined`. A Node client is out of scope for now (Open).
+  - Test runners that resolve `node` before `browser` (vitest) get the server build of `@expressive/rpc`, without the client API.
   - A Worker isolate holds module state per isolate; the example's in-memory store relies on `wrangler dev` keeping one.
   - An error class extending a package's export (`extends ZodError`) is not followed - the server checks it is an `Error` on boot (dev: per call).
   - Dev re-scans a folder's index for its gate on every call.
@@ -285,7 +285,6 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - Reliability defaults: timeouts, the per-call wait-or-fail option, the strict-route flag, the pool's TTL after disconnect.
 - Hot reload retiring cached contexts.
 - Client parity for the `mount()` cascade: the server needs it (owned helpers have no other attach signal), so the maintainer cascades on the client too, upstream.
-- A Node client of `@expressive/rpc` (a script or test calling an api) - the server build has no client API.
 - REST over the rpc folder (a `Route` default with uppercase verbs) - assessed after RPC stage 3. Twins of rpc classes are dev's, on stateful hosts only.
 - On the client only the layout chain stays mounted - sibling pages remount (per the generated route tree). Twins inherit that lifetime.
 - Entry follow-ups:
