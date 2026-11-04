@@ -17,6 +17,7 @@ export function guard(code: string): string | undefined {
   initSync();
 
   for (const { n, ss, se, d } of parse(code)[0]) {
+    if (n === HOST && d > -1) host = true;
     if ((n !== ROOT && n !== HOST) || d !== -1) continue;
 
     const statement = code.slice(ss, se);

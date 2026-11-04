@@ -26,6 +26,7 @@ describe("guard", () => {
     expect(guard(`import * as http from "@expressive/rpc/http";`)).toBe(refused);
     expect(guard(`import "@expressive/rpc/http";`)).toBe(refused);
     expect(guard(`export * from "@expressive/rpc/http";`)).toBe(refused);
+    expect(guard(`export const load = () => import("@expressive/rpc/http");`)).toBe(refused);
     expect(guard(`import { Current } from "@expressive/rpc";\nexport { reply } from "@expressive/rpc/http";`)).toBe(`imports Current from @expressive/rpc, which only its server build exports. ${refused}`);
   });
 
@@ -34,6 +35,7 @@ describe("guard", () => {
     expect(guard(`import type { Current } from "@expressive/rpc";`)).toBeUndefined();
     expect(guard(`import { type Current, call } from "@expressive/rpc";`)).toBeUndefined();
     expect(guard(`import * as rpc from "@expressive/rpc";`)).toBeUndefined();
+    expect(guard(`export const load = () => import("@expressive/rpc");\nexport const url = import.meta.url;`)).toBeUndefined();
     expect(guard(`import type { HandlerOptions } from "@expressive/rpc/http";`)).toBeUndefined();
     expect(guard(`import { type HandlerOptions } from "@expressive/rpc/http";`)).toBeUndefined();
     expect(guard(`import { Current } from "@expressive/rpc/protocol";\nimport { Current as C } from "@expressive/rpc/http/other";`)).toBeUndefined();
