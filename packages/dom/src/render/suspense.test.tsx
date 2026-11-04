@@ -1144,6 +1144,39 @@ describe('suspense and recovery', () => {
     expect(root.textContent).toBe('refused');
   });
 
+  it('will not draw a fallback for a boundary catch unmounts', async () => {
+    const pending = mockPromise<void>();
+    const rejected = vi.fn();
+
+    function Wait(): Component.Node {
+      throw pending;
+    }
+
+    class App extends Component {
+      fallback: Component.Node = <i>loading</i>;
+
+      catch() {
+        release();
+      }
+
+      render() {
+        return <Wait />;
+      }
+    }
+
+    const [, root, release] = mount(App);
+    expect(root.textContent).toBe('loading');
+
+    process.on('unhandledRejection', rejected);
+    pending.reject(new Error('refused'));
+    await flushMicrotasks();
+    await new Promise((resolve) => setTimeout(resolve));
+    process.off('unhandledRejection', rejected);
+
+    expect(rejected).not.toHaveBeenCalled();
+    expect(root.textContent).toBe('');
+  });
+
   it('will bubble an unhandled child error to its parent boundary', async () => {
     let failed = true;
     const caught = vi.fn((_message: string) => {

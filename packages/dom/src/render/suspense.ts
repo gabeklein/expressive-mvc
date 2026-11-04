@@ -180,7 +180,7 @@ function recover(fiber: Fiber, thrown: unknown, boundary: Boundary | undefined) 
 
   const caught = handler.catch!(error);
 
-  if (handler.owner!.placeholder) draw(handler.owner!, handler);
+  if (handler.owner!.placeholder && !handler.owner!.dead) draw(handler.owner!, handler);
 
   Promise.resolve(caught).then(
     () => {
