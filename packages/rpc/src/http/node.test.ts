@@ -80,7 +80,7 @@ describe("node response", () => {
 
     expect(res.flushHeaders).not.toHaveBeenCalled();
     expect(res.write).not.toHaveBeenCalled();
-    expect(res.end.mock.calls[0][0].toString()).toBe('{"a":1}');
+    expect(Buffer.from(res.end.mock.calls[0][0]).toString()).toBe('{"a":1}');
   });
 
   it("will flush an event stream's headers, then write its body as it streams", async () => {
@@ -105,7 +105,7 @@ describe("node handler", () => {
     await settled();
 
     expect(res.statusCode).toBe(201);
-    expect(res.end.mock.calls[0][0].toString()).toBe("http://localhost/a");
+    expect(Buffer.from(res.end.mock.calls[0][0]).toString()).toBe("http://localhost/a");
     expect(next).not.toHaveBeenCalled();
   });
 

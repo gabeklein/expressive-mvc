@@ -35,7 +35,7 @@ const throws = (error: unknown) => async () => { throw error; };
 function serve(fn: () => unknown) {
   const endpoints: Endpoint[] = [{ pattern: ["shop"], exports: async () => ({ calls: { fn }, classes: { "/shop#Payment": Payment } }) }];
   const handle = handler(endpoints);
-  const fetch = vi.fn(async (path: string, init: RequestInit) => (await handle(new Request(new URL(path, "http://localhost"), init)))!);
+  const fetch = vi.fn(async (url: string, init: RequestInit) => (await handle(new Request(new URL(url, "http://localhost"), init)))!);
 
   vi.stubGlobal("fetch", fetch);
 }
@@ -43,7 +43,7 @@ function serve(fn: () => unknown) {
 async function caught(fn: () => unknown, define?: (rpc: ReturnType<typeof client>) => void) {
   serve(fn);
 
-  const rpc = client();
+  const rpc = client({ base: "http://localhost" });
   define?.(rpc);
 
   return rpc.send("/shop", { "x-expressive-call": "fn" }, []).catch((error: Error) => error);
@@ -85,6 +85,13 @@ describe("http errors", () => {
 
     expect(error.constructor).not.toBe(Error);
     expect(error).toMatchObject({ name: "Payment", status: 402, plan: "pro", message: "Upgrade to pro" });
+  });
+
+  it("will rebuild an exported subclass under the built-in its client definition names", async () => {
+    const error = await caught(throws(new Payment("pro")), rpc => rpc.define("/shop#Payment", "Payment", "http:HttpError"));
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error).toMatchObject({ name: "Payment", status: 402, plan: "pro" });
   });
 
   it("will rebuild an unexported subclass as its nearest built-in", async () => {

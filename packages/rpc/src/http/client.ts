@@ -20,6 +20,8 @@ export {
   UnprocessableEntity,
 } from "./errors";
 
+const ABSOLUTE = /^[a-z][a-z\d+.-]*:/i;
+
 export type Transport = (request: Request) => Promise<Response>;
 
 export interface ClientOptions {
@@ -56,6 +58,10 @@ export function client(initial: ClientOptions = {}) {
   async function send(path: string, headers: Record<string, string>, body: unknown): Promise<any> {
     const { base = "", transport } = options;
     const url = base + path;
+
+    if (!ABSOLUTE.test(url) && !globalThis.location)
+      throw new Error(`Cannot send to ${url} - a relative base needs a page location to resolve against. Pass an absolute base: configure({ base: "https://api.example.com" }).`);
+
     const init = {
       method: "POST",
       headers: { "content-type": "application/json", ...options.headers?.(), ...headers },
@@ -78,8 +84,8 @@ export function client(initial: ClientOptions = {}) {
     throw rebuild(body);
   }
 
-  async function call(pattern: string[], name: string, args: unknown[]): Promise<unknown> {
-    const reply = await send(pathOf(pattern, name), { "x-expressive-call": name }, args);
+  async function call(path: string, name: string, args: unknown[]): Promise<unknown> {
+    const reply = await send(path, { "x-expressive-call": name }, args);
 
     return reply.value;
   }

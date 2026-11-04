@@ -40,45 +40,28 @@ function serve(...replies: Reply[]) {
 }
 
 describe("call", () => {
-  it("will POST the arguments to the sidecar's folder with no connection id, and resolve the value alone", async () => {
+  it("will POST the arguments to its path with no connection id, and resolve the value alone", async () => {
     history.replaceState(null, "", "/blog/hello/edit?draft=1");
     const fetch = serve({ body: { value: 3, frame: { "Tally-A": { patch: { total: 4 }, version: "g:2" } } } });
 
-    expect(await call(["blog", ":slug"], "add", [1, 2])).toBe(3);
-    expect(fetch).toHaveBeenCalledWith("/blog/hello", {
+    expect(await call("/admin", "users:add", [1, 2])).toBe(3);
+    expect(fetch).toHaveBeenCalledWith("/admin", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-expressive-call": "add" },
+      headers: { "content-type": "application/json", "x-expressive-call": "users:add" },
       body: "[1,2]",
     });
   });
 
-  it("will fill a catch-all with the rest of the location", async () => {
-    history.replaceState(null, "", "/docs/a/b");
-    const fetch = serve({ body: { frame: {} } });
-
-    expect(await call(["docs", "*"], "none", [])).toBeUndefined();
-    expect(fetch).toHaveBeenCalledWith("/docs/a/b", expect.anything());
-  });
-
   it("will throw a failed call's message", async () => {
     serve({ body: { message: "Internal error." }, status: 500, epoch: "" });
-    await expect(call([], "fail", [])).rejects.toThrow("Internal error.");
-  });
-
-  it("will throw if called from outside the sidecar's folder", async () => {
-    history.replaceState(null, "", "/about");
-    const fetch = serve();
-
-    await expect(call(["blog", ":slug"], "add", [])).rejects.toThrow("add() belongs to /blog/:slug and cannot be called from /about.");
-    await expect(call(["blog"], "add", [])).rejects.toThrow("belongs to /blog");
-    expect(fetch).not.toHaveBeenCalled();
+    await expect(call("/", "fail", [])).rejects.toThrow("Internal error.");
   });
 
   it("will rebuild an exported error class with its fields", async () => {
     const Limit = define("/tally#Limit", "Limit");
     serve({ body: { error: "/tally#Limit", message: "Over 3", status: 409, limit: 3 }, status: 409 });
 
-    const error = (await call([], "add", []).catch((e: Error) => e)) as Error;
+    const error = (await call("/", "add", []).catch((e: Error) => e)) as Error;
 
     expect(error).toBeInstanceOf(Limit);
     expect(error).toBeInstanceOf(Error);
@@ -88,10 +71,28 @@ describe("call", () => {
   it("will throw a plain Error for a class this client never imported", async () => {
     serve({ body: { error: "/other#Nope", message: "No", status: 409 }, status: 409 });
 
-    const error = (await call([], "add", []).catch((e: Error) => e)) as Error;
+    const error = (await call("/", "add", []).catch((e: Error) => e)) as Error;
 
     expect(error.constructor).toBe(Error);
     expect(error).toMatchObject({ message: "No", status: 409 });
+  });
+});
+
+describe("pathOf", () => {
+  const { pathOf } = client();
+
+  it("will fill a pattern's params from the location", () => {
+    history.replaceState(null, "", "/blog/hello/edit?draft=1");
+    expect(pathOf(["blog", ":slug"], "add")).toBe("/blog/hello");
+  });
+
+  it("will fill a catch-all with the rest of the location", () => {
+    expect(pathOf(["docs", "*"], "none", "/docs/a/b")).toBe("/docs/a/b");
+  });
+
+  it("will throw if called from outside the pattern's folder", () => {
+    expect(() => pathOf(["blog", ":slug"], "add", "/about")).toThrow("add() belongs to /blog/:slug and cannot be called from /about.");
+    expect(() => pathOf(["blog"], "add", "/about")).toThrow("belongs to /blog");
   });
 });
 
@@ -119,12 +120,12 @@ describe("configure", () => {
     const fetch = serve({ body: { value: 3 } }, { body: { value: 4 } });
     const rpc = client({ base: "https://api.example.com" });
 
-    expect(await rpc.call(["tally"], "add", [1, 2])).toBe(3);
+    expect(await rpc.call("/tally", "add", [1, 2])).toBe(3);
     expect(fetch).toHaveBeenLastCalledWith("https://api.example.com/tally", expect.objectContaining({ method: "POST" }));
 
     rpc.configure({ base: "https://other.example.com/v1" });
 
-    expect(await rpc.call(["tally"], "add", [2, 2])).toBe(4);
+    expect(await rpc.call("/tally", "add", [2, 2])).toBe(4);
     expect(fetch).toHaveBeenLastCalledWith("https://other.example.com/v1/tally", expect.anything());
   });
 
@@ -132,7 +133,7 @@ describe("configure", () => {
     const fetch = serve();
     const rpc = client({ transport, headers: () => ({ authorization: "Bearer a" }) });
 
-    expect(await rpc.call(["tally"], "add", [1, 2])).toBe(3);
+    expect(await rpc.call("/tally", "add", [1, 2])).toBe(3);
     expect(add).toHaveBeenCalledWith(1, 2);
     expect(fetch).not.toHaveBeenCalled();
 
@@ -151,25 +152,44 @@ describe("configure", () => {
     rpc.configure({ transport });
     rpc.configure({ headers: () => ({ authorization: `Bearer ${token}` }) });
 
-    await rpc.call(["tally"], "add", [1, 2]);
+    await rpc.call("/tally", "add", [1, 2]);
     token = "b";
-    await rpc.call(["tally"], "add", [1, 2]);
+    await rpc.call("/tally", "add", [1, 2]);
 
     const sent = transport.mock.calls.map(([request]) => [request.url, request.headers.get("authorization")]);
 
     expect(sent).toEqual([["http://rpc.test/tally", "Bearer a"], ["http://rpc.test/tally", "Bearer b"]]);
   });
 
+  it("will throw if a relative base has no page location to resolve against", async () => {
+    const fetch = serve();
+    vi.stubGlobal("location", undefined);
+
+    await expect(client({ base: "/api" }).call("/tally", "add", [])).rejects.toThrow(
+      'Cannot send to /api/tally - a relative base needs a page location to resolve against. Pass an absolute base: configure({ base: "https://api.example.com" }).',
+    );
+    await expect(client({ transport }).call("/tally", "add", [])).rejects.toThrow("Pass an absolute base");
+    expect(fetch).not.toHaveBeenCalled();
+    expect(transport).not.toHaveBeenCalled();
+  });
+
+  it("will send through a transport to an absolute base without a page location", async () => {
+    vi.stubGlobal("location", undefined);
+
+    expect(await client({ base: "http://rpc.test", transport }).call("/tally", "add", [2, 2])).toBe(4);
+    expect(transport.mock.calls[0][0].url).toBe("http://rpc.test/tally");
+  });
+
   it("will configure the shared client its exports call through", async () => {
     http.configure({ transport });
     const Limit = http.define("/tally#Limit", "Limit");
 
-    expect(await http.call(["tally"], "add", [2, 3])).toBe(5);
+    expect(await http.call("/tally", "add", [2, 3])).toBe(5);
     expect(transport).toHaveBeenCalledTimes(1);
 
     http.configure({ transport: undefined });
     serve({ body: { error: "/tally#Limit", message: "Over" }, status: 409 });
 
-    await expect(http.call(["tally"], "add", [])).rejects.toBeInstanceOf(Limit);
+    await expect(http.call("/tally", "add", [])).rejects.toBeInstanceOf(Limit);
   });
 });
