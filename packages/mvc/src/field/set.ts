@@ -1,5 +1,6 @@
 import { listener, capture, observer } from '../observable';
-import { access, compute, event, Model, update } from '../model';
+import { event, Model } from '../model';
+import { access, compute, update } from '../store';
 import { def } from './def';
 
 declare namespace set {

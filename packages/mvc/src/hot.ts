@@ -7,7 +7,7 @@ import {
   SETUP,
   UNBIND,
   classify,
-  compute,
+  getter,
   type Handler
 } from './model';
 
@@ -181,7 +181,7 @@ function patch(prev: Model.Extends, next: Model.Extends, own: Handler[]): Model[
       if (PAST.has(UNBIND.get(Object.getOwnPropertyDescriptor(state, key)?.value))) delete (state as any)[key];
 
     for (const [key, get] of GETTERS.get(state.constructor)!)
-      if (!knownGetters.has(key) && get === getters!.get(key)) compute.call(state, get, key);
+      if (!knownGetters.has(key) && get === getters!.get(key)) getter.call(state, get, key);
   }
 
   return live;

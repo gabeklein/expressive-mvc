@@ -9,17 +9,14 @@ import {
   queued,
   REFRESH,
   touch,
-  unwrap,
   watch
 } from './observable';
+import { access, apply, compute, entries, HELD, manage, store, values } from './store';
 
 const define = Object.defineProperty;
 
 /** Register for all active states via string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
-
-/** Internal state assigned to states. */
-const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
 /** Models under construction - added on `new`, removed when activated or released.
  *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
@@ -44,9 +41,6 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
 /** Replacement for a getter captured by live computed properties, for hot patching. */
 const LATEST = new WeakMap<Function, Function>();
-
-/** Stale flags for compute closures awaiting refresh on next access. */
-const STALE = new WeakSet<() => void>();
 
 /** Whether the deadline which drains `PENDING` is already queued for this tick. */
 let QUEUED = false;
@@ -412,6 +406,9 @@ abstract class Model {
       });
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
+    if (arg2 !== false && !(arg1 in store(self)) && METHODS.get(self.constructor)!.has(arg1))
+      return unbind((self as any)[arg1]);
+
     return access(self, arg1, arg2);
   }
 
@@ -530,7 +527,7 @@ abstract class Model {
    * Yeilds the key and current value for each property.
    */
   [Symbol.iterator](): Iterator<[string, unknown]> {
-    return Object.entries(STORE.get(this.is)!)[Symbol.iterator]();
+    return entries(this.is)[Symbol.iterator]();
   }
 
   /**
@@ -658,7 +655,6 @@ function init(state: Model, ...args: Model.Args) {
   const { before, after } = bootstrap(T);
 
   ID.set(state, `${T}-${uid()}`);
-  STORE.set(state, {});
 
   const waits: Promise<unknown>[] = [];
   const children: (() => void)[] = [];
@@ -667,14 +663,7 @@ function init(state: Model, ...args: Model.Args) {
   function observe() {
     if (waits.length) active.held = true;
 
-    for (const key in state) {
-      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
-
-      if (!('value' in desc) || !desc.configurable) continue;
-
-      if (key[0] == '_' || key == 'then') unmanaged(state, key, desc.value);
-      else apply(state, key, desc, true);
-    }
+    manage(state);
   }
 
   function settle() {
@@ -793,15 +782,6 @@ function init(state: Model, ...args: Model.Args) {
   PENDING.add(state);
 }
 
-function unmanaged(state: Model, key: string, value: unknown) {
-  define(state, key, {
-    configurable: true,
-    enumerable: false,
-    get: () => value,
-    set: (next) => { value = next }
-  });
-}
-
 /**
  * Apply instructions and inherited event listeners. Ensure class metadata is ready.
  *
@@ -851,7 +831,7 @@ function bootstrap(T: Model.Extends) {
   }
 
   if (getters.size)
-    before.add((self) => getters.forEach(compute, self));
+    before.add((self) => getters.forEach(getter, self));
 
   return { before, after };
 }
@@ -930,158 +910,9 @@ function stages<K extends 'method' | 'catch'>(T: Model.Extends, key: K): Set<Non
   return found;
 }
 
-/**
- * Install a reactive computed property on a state instance, derived from a prototype
- * getter or an arity-bearing `set` factory.
- *
- * The getter is invoked with the tracking proxy as both `this` and its first argument;
- * reads of managed properties through it create subscriptions. Result is cached and
- * emits a keyed event when stale.
- */
-function compute(this: Model, getter: (self: any) => unknown, key: string) {
-  const store = STORE.get(this)!;
-  let reset: (() => void) | undefined;
-  let isAsync: boolean;
-  let suspended = false;
-  let waiting: Promise<unknown> | undefined;
-  let proxy: any;
-
-  const connect = () => {
-    reset = watch(
-      this,
-      (current) => {
-        proxy = current;
-
-        if (!(key in store) || STALE.delete(run)) run(!reset);
-
-        return (didUpdate) => {
-          if (didUpdate) {
-            STALE.add(run);
-            event(this, key, true);
-          }
-        };
-      },
-      false
-    );
-  };
-
-  const run = (initial?: boolean) => {
-    let next: unknown;
-
-    waiting = undefined;
-
-    try {
-      next = latest(getter).call(proxy, proxy);
-    } catch (err) {
-      if (err instanceof Promise) {
-        if (initial) {
-          suspended = true;
-          throw err;
-        }
-
-        const retry = () => {
-          if (waiting === err && observer(this) !== null) run();
-        };
-
-        waiting = err;
-        err.then(retry, retry);
-
-        if (suspended) return;
-      } else if (initial) {
-        console.warn(`An exception was thrown while initializing ${this}.${key}.`);
-        throw err;
-      } else report('getter', this, err, key);
-    }
-
-    suspended = false;
-    update(this, key, next, !isAsync);
-  };
-
-  apply(
-    this,
-    key,
-    {
-      enumerable: true,
-      set: false,
-      get: () => {
-        if (!proxy) {
-          if (observer(this) === null) return store[key];
-
-          connect();
-          isAsync = true;
-        }
-
-        if (STALE.delete(run)) run();
-
-        return access(this, key, suspended);
-      }
-    },
-    true
-  );
-}
-
-/**
- * Define or update a managed property using a descriptor config.
- * If the property already is managed, config will only accept value.
- * If the property does not exist, it will be created and made reactive.
- *
- * @param state - Model to apply property to.
- * @param key - Property to define or update.
- * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
- * @param silent - If an update does occur, listeners will not be refreshed automatically.
- */
-function apply(
-  state: Model,
-  key: string,
-  config: Model.Apply,
-  silent?: boolean
-) {
-  const desc = Object.getOwnPropertyDescriptor(state, key);
-
-  if (desc && 'get' in desc) {
-    if (Object.keys(config).some((k) => k != 'value'))
-      throw new Error(`Property ${key} on ${state} is already defined.`);
-    if ('value' in config) update(state, key, config.value, silent);
-    return;
-  }
-
-  function set(value: unknown, silent?: boolean) {
-    update(state, key, value, silent, true);
-  }
-
-  define(state, key, {
-    configurable: true,
-    enumerable: config.enumerable !== false,
-    get(this: Model) {
-      const value =
-        typeof config.get == 'function'
-          ? config.get(this)
-          : access(state, key, config.get);
-
-      return touch(this, key, value);
-    },
-    set(next: any, silent?: boolean) {
-      if (config.set === false)
-        throw new Error(`${state}.${String(key)} is read-only.`);
-
-      if (typeof config.set == 'function')
-        try {
-          const output = config.set(next, STORE.get(state)![key]);
-          if (output !== undefined) next = output;
-        } catch (err: unknown) {
-          if (err === false) return;
-          if (err === true) {
-            set(next, true);
-            return;
-          }
-          throw err;
-        }
-
-      set(next, silent);
-    }
-  });
-
-  if ('value' in config) set(config.value, silent);
+/** Install a prototype getter as a computed property, following its hot-patched replacements. */
+function getter(this: Model, get: Function, key: string) {
+  compute.call(this, function (this: Model, self: Model) { return latest(get).call(this, self) }, key);
 }
 
 function provides(ctx: Context, value: Model) {
@@ -1145,12 +976,12 @@ function trailing(state: Model) {
  * claimed later. Returns a callback to stop watching.
  */
 function children(state: Model, callback: (child: Model) => void) {
-  const store = STORE.get(state)!;
+  const data = store(state);
   const keys = ADOPT.get(state);
 
   if (keys)
     for (const key of keys.keys()) {
-      const value = store[key as string];
+      const value = data[key as string];
       if (value instanceof Model) callback(value);
     }
 
@@ -1192,74 +1023,6 @@ function owned(state: Model, callback: (child: Model) => void | (() => void)) {
   return () => void set!.delete(each);
 }
 
-/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
-let EXPORT: Map<any, any> | undefined;
-
-function values<T extends Model>(state: T): Model.Values<T> {
-  const values = {} as any;
-  let notRecursive;
-
-  if (!EXPORT) {
-    notRecursive = true;
-    EXPORT = new Map();
-  }
-
-  EXPORT.set(state, values);
-
-  for (let [key, value] of state) {
-    if (EXPORT.has(value)) value = EXPORT.get(value);
-    else if (
-      value &&
-      typeof value == 'object' &&
-      'get' in value &&
-      typeof value.get === 'function'
-    )
-      value = value.get();
-
-    values[key] = value;
-  }
-
-  if (notRecursive) EXPORT = undefined;
-
-  return Object.freeze(values);
-}
-
-function access(state: Model, property: string, required?: boolean) {
-  const store = STORE.get(state)!;
-
-  if (property in store || required === false) {
-    const value = store[property];
-
-    if (value !== undefined || !required) return value;
-  }
-
-  if (METHODS.get(state.constructor)!.has(property))
-    return unbind((state as any)[property]);
-
-  if (observer(state) === null) return undefined;
-
-  const error = new Error(`${state}.${property} is not yet available.`);
-  const promise = new Promise<any>((resolve, reject) => {
-    listener(state, (key) => {
-      if (key === property) {
-        resolve(store[key]);
-        return null;
-      }
-
-      if (key === null) {
-        reject(CAUSE.has(state) ? CAUSE.get(state) : new Error(`${state} is destroyed.`));
-      }
-    });
-  });
-
-  throw Object.assign(promise, {
-    toString: () => String(error),
-    name: 'Suspense',
-    message: error.message,
-    stack: error.stack
-  });
-}
-
 function plain(value: unknown): value is Model.Assign<Model> {
   if (!value || typeof value != 'object') return false;
 
@@ -1294,41 +1057,6 @@ function assign(state: Model, data: Model.Assign<Model>, silent?: boolean) {
 }
 
 /**
- * Update a property on a state instance and notify listeners.
- *
- * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
- *
- * A destroyed state stores the write without dispatch, reports it unless `silent`, and returns `false`.
- */
-function update<T>(
-  state: Model,
-  key: Model.Event<T>,
-  value: T,
-  silent?: boolean,
-  own?: boolean
-) {
-  const store = STORE.get(state)!;
-
-  value = unwrap(value);
-
-  if (observer(state) === null) {
-    if (!silent) report('dead', state, new Error(`Tried to update ${state}.${String(key)} but state is destroyed.`), String(key));
-    store[key] = value;
-    return false;
-  }
-
-  if (key in store && value === store[key]) return false;
-
-  store[key] = value;
-
-  if (!silent) event(state, key);
-
-  if (own) adopt(state, key, value);
-
-  return true;
-}
-
-/**
  * Pass an error along `catch` handlers - most-derived class first, last registered
  * first, one on several classes once at the outermost - until one returns nothing. Passed off
  * the end, a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught;
@@ -1351,6 +1079,7 @@ function report(kind: Parameters<NonNullable<Model.On['catch']>>[1], owner: obje
 }
 
 REPORT.as = report;
+HELD.adopt = adopt;
 
 /**
  * Hand a value stored by an owning writer to that property's adopter,
@@ -1412,4 +1141,4 @@ function parent(child: object, value?: Model | null) {
 }
 
 export type { Got, Handler, Keyed };
-export { adopt, event, plain, unbind, Model, observed, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
+export { adopt, event, plain, unbind, Model, observed, parent, children, owned, trailing, PENDING, uid, getter, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
