@@ -3,6 +3,7 @@ import { Context } from '@expressive/mvc';
 import type { VNode } from '../node/vnode';
 import { applyClaim, claim } from '../style/claim';
 import type { Appearance } from '../style/claim';
+import { unmatched } from '../style/diagnose';
 import { reserved } from '../style/protocol';
 import { inserted } from './commits';
 import type { Boundary, Fiber } from './fiber';
@@ -53,6 +54,8 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
   const previous = fiber.props!;
   const raw = 'dangerouslySetInnerHTML' in next;
   const resolved = appearance?.context?.resolve(next, fiber.type as string);
+
+  unmatched(next, [appearance?.context], appearance?.author, undefined, fiber.type as string);
 
   if (raw) {
     for (let index = fiber.children.length - 1; index >= 0; index--)
