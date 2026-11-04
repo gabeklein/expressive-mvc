@@ -23,7 +23,7 @@ describe("remote scan", () => {
 
   it("will leave calls and error classes to rpc's scanner", async () => {
     expect(await scan(`
-      import { HttpError } from "@expressive/rpc/http";
+      import { HttpError } from "@expressive/rpc";
       export class Over extends Error {}
       export class Payment extends HttpError {}
       export async function add() {}
@@ -65,7 +65,7 @@ describe("remote scan", () => {
 
   it("will not take a base imported as a type only", async () => {
     const map = {
-      "/app/tally/errors.ts": `import { HttpError } from "@expressive/rpc/http"; export class Failed extends HttpError {}`,
+      "/app/tally/errors.ts": `import { HttpError } from "@expressive/rpc"; export class Failed extends HttpError {}`,
       "/app/tally/base.ts": `${MVC} export class Base extends Model { async add() {} }`,
     };
     const found = await scan(`
@@ -92,8 +92,8 @@ describe("remote scan", () => {
 
   it("will take an error's parent from a sidecar in its folder or above, and none from a sibling folder", async () => {
     const map = {
-      "/app/remote.ts": `import { HttpError } from "@expressive/rpc/http"; export class Billing extends HttpError {}`,
-      "/app/shop/remote.ts": `import { HttpError } from "@expressive/rpc/http"; export class Sold extends HttpError {}`,
+      "/app/remote.ts": `import { HttpError } from "@expressive/rpc"; export class Billing extends HttpError {}`,
+      "/app/shop/remote.ts": `import { HttpError } from "@expressive/rpc"; export class Sold extends HttpError {}`,
     };
     const { errors } = await scan(`
       import { Billing } from "../remote";
@@ -318,7 +318,7 @@ describe("twin scan", () => {
 
   it("will scan a class extending rpc's http errors as an error class, never a Model", async () => {
     const source = `
-      import { HttpError, NotFound } from "@expressive/rpc/http";
+      import { HttpError, NotFound } from "@expressive/rpc";
       export class Payment extends HttpError { status = 402; }
       export class Missing extends NotFound {}
     `;
@@ -330,7 +330,7 @@ describe("twin scan", () => {
 
   it("will refuse a folder's default that extends an http error", async () => {
     const { problems } = await twin(`
-      import { Forbidden } from "@expressive/rpc/http";
+      import { Forbidden } from "@expressive/rpc";
       export default class Gate extends Forbidden {}
     `);
 

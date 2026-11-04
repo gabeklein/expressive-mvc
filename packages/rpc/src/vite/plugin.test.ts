@@ -18,7 +18,7 @@ const SOURCES: InlineConfig["resolve"] = {
 
 const GATE = (check: string, error: string) => `
   import { Model } from "@expressive/mvc";
-  import { Current, ${error} } from "@expressive/rpc/http";
+  import { Current, ${error} } from "@expressive/rpc";
   export default class Gate extends Model {
     static key() {
       const token = Current.get().request.headers.get("authorization");
@@ -33,9 +33,9 @@ const APP = {
   "index.html": `<!doctype html><html><body><script type="module" src="/src/main.ts"></script></body></html>`,
   "src/main.ts": `import { list, Over } from "../api/todos"; import { stats } from "../api/admin/stats"; console.log(list, Over, stats);`,
   "api/index.ts": GATE("!token", "Unauthorized"),
-  "api/errors.ts": `import { HttpError } from "@expressive/rpc/http"; export class Billing extends HttpError { status = 402 }`,
+  "api/errors.ts": `import { HttpError } from "@expressive/rpc"; export class Billing extends HttpError { status = 402 }`,
   "api/todos.ts": `
-    import { HttpError, NotFound } from "@expressive/rpc/http";
+    import { HttpError, NotFound } from "@expressive/rpc";
     import { Billing } from "./errors";
     export class Over extends HttpError { status = 409 }
     export class Late extends Billing {}
@@ -149,14 +149,14 @@ describe("client", () => {
     );
   });
 
-  it("will throw if client code imports a server-only name from @expressive/rpc/http, but not server code", async () => {
+  it("will throw if client code imports a server-only name from @expressive/rpc, but not server code", async () => {
     const server = await serve(project({
-      "src/server.ts": `import { Current } from "@expressive/rpc/http"; export const a = Current;`,
-      "src/ok.ts": `import { NotFound, type Current } from "@expressive/rpc/http"; export const a: Current | string = NotFound.name;`,
+      "src/server.ts": `import { Current } from "@expressive/rpc"; export const a = Current;`,
+      "src/ok.ts": `import { NotFound, type Current } from "@expressive/rpc"; export const a: Current | string = NotFound.name;`,
     }));
 
     await expect(server.transformRequest("/src/server.ts")).rejects.toThrow(
-      "src/server.ts imports Current from @expressive/rpc/http, which only a server has - its browser build does not export it.",
+      "src/server.ts imports Current from @expressive/rpc, which only a server has - its browser build does not export it.",
     );
     expect((await server.transformRequest("/src/ok.ts"))!.code).toContain("NotFound");
     expect((await server.environments.rpc.transformRequest("/src/server.ts"))!.code).toContain("Current");
@@ -336,9 +336,9 @@ describe("build", () => {
     expect(await post("/", "todos:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
   });
 
-  it("will guard only scripts that mention @expressive/rpc/http", async () => {
+  it("will guard only scripts that mention @expressive/rpc", async () => {
     const root = project({
-      "src/notes.json": `{ "server": "import { Current } from \\"@expressive/rpc/http\\";" }`,
+      "src/notes.json": `{ "server": "import { Current } from \\"@expressive/rpc\\";" }`,
       "src/main.ts": `import notes from "./notes.json"; import { list } from "../api/todos"; console.log(notes.server, list);`,
     });
     const { client } = await build(root);

@@ -1,6 +1,6 @@
 import type { Context as Contexts, Model, def as instruction } from "@expressive/mvc";
 
-import type { client as Client } from "@expressive/rpc/http";
+import type { client as Client } from "@expressive/rpc";
 
 interface Routed extends Model {
   base: string;

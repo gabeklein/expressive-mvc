@@ -71,7 +71,7 @@ export class Manifest<E extends Exposed = Exposed> {
     return [...groups.values()];
   }
 
-  stub(exposed: E, locate: Locate, { from = "@expressive/rpc/http", at = pathOf(exposed), imports = [], lines = [] }: Stub = {}): string {
+  stub(exposed: E, locate: Locate, { from = "@expressive/rpc", at = pathOf(exposed), imports = [], lines = [] }: Stub = {}): string {
     const json = JSON.stringify;
     const before = new Set<string>();
 

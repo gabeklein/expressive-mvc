@@ -1,5 +1,5 @@
 import { Model } from "@expressive/mvc";
-import { Current, Unauthorized } from "@expressive/rpc/http";
+import { Current, Unauthorized } from "@expressive/rpc";
 
 export default class Session extends Model {
   static key() {

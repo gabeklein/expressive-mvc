@@ -1,4 +1,4 @@
-import { configure, Forbidden, HttpError, NotFound, Unauthorized } from "@expressive/rpc/http";
+import { configure, Forbidden, HttpError, NotFound, Unauthorized } from "@expressive/rpc";
 import { stats } from "../api/admin/stats";
 import { add, done, list, ProOnly, type Todo } from "../api/todos";
 

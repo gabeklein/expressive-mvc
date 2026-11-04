@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { isClass, scanModule, type Extension, type Sources } from "./scan";
 
-const HTTP = `import { Current, HttpError, NotFound } from "@expressive/rpc/http";`;
+const HTTP = `import { Current, HttpError, NotFound } from "@expressive/rpc";`;
 const MVC = `import { Model } from "@expressive/mvc";`;
 
 function scan(source: string, file = "/app/api/todos.ts", others: Record<string, string> = {}, extension?: Extension) {

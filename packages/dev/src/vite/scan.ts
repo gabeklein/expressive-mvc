@@ -87,7 +87,7 @@ interface Found {
 }
 
 const LIBRARY = /^@expressive\//;
-const ERRORS = "@expressive/rpc/http";
+const ERRORS = "@expressive/rpc";
 
 export interface TwinScan {
   twin?: Twin;
