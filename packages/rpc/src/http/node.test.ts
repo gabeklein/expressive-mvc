@@ -135,4 +135,15 @@ describe("node handler", () => {
     expect(res.statusCode).toBe(500);
     expect(res.end).toHaveBeenCalled();
   });
+
+  it("will pass on an error sending the reply", async () => {
+    const error = new Error("Closed");
+    const res = Object.assign(outgoing(), { setHeader: () => { throw error; } });
+    const next = vi.fn();
+
+    toNode(async () => new Response("a", { headers: { "x-a": "1" } }))(incoming("GET", "/", {}), res, next);
+    await settled();
+
+    expect(next).toHaveBeenCalledWith(error);
+  });
 });

@@ -11,7 +11,7 @@ import { runtime } from "../client/twin";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
 import { verify, type Seats } from "@expressive/rpc";
-import { isCall, send, toRequest } from "@expressive/rpc/http";
+import { isCall, toNode } from "@expressive/rpc/http";
 import { dispatch, guard } from "@expressive/rpc/internal";
 import { isStream, stream } from "../server/stream";
 import { install } from "../server/install";
@@ -229,14 +229,10 @@ export function expressive(): Plugin<Host> {
 
       const endpoints = () => exposure.byPattern().map(group => endpointOf(host, root, exposure, group));
 
-      server.middlewares.use((req, res, next) => {
-        const request = toRequest(req, res);
-
-        if (isStream(request)) return void send(res, stream(request)).catch(next);
-        if (!isCall(request)) return next();
-
-        dispatch(request, endpoints, true, seatsOf(host, project), twins).then(response => send(res, response)).catch(next);
-      });
+      server.middlewares.use(toNode(async request => {
+        if (isStream(request)) return stream(request);
+        if (isCall(request)) return dispatch(request, endpoints, true, seatsOf(host, project), twins);
+      }));
 
       return () => {
         server.middlewares.use(async (req, res, next) => {
