@@ -17,7 +17,7 @@ export class Route extends Base {
 
   enter = set<EntryHook | undefined>(undefined, hook => {
     HOOKS.set(this, hook);
-    arm(this);
+    if (!SEATS.has(this)) arm(this);
   });
 
   remote?: Model = def((_key, route: Route) => {
@@ -69,17 +69,30 @@ function arm(route: Route): void {
   }
 
   route.redirect = async () => {
-    try {
-      const seat = new Seat();
+    const at = space(route);
+    const seat = new Seat();
+    const stale = () => route.remote !== seat || space(route) !== at;
 
-      route.remote = seat;
+    route.remote = seat;
+
+    try {
       await seat.get(() => {});
 
-      return await hook?.(route);
+      return stale() ? undefined : await HOOKS.get(route)?.(route);
     } catch (error) {
-      return redirected(error);
+      return stale() ? undefined : redirected(error);
     }
   };
+}
+
+function space(route: Route): string {
+  const depth = split(route.base + route.router.segment(route.to)).length;
+
+  return split(route.router.path).slice(0, depth).join("/");
+}
+
+function split(path: string): string[] {
+  return path.split("/").filter(Boolean);
 }
 
 function redirected(error: unknown): string {
