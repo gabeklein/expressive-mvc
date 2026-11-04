@@ -37,7 +37,7 @@ class Source {
 class Spot extends Model {
   base = "";
   to = "";
-  router = { segment: (to: string) => (to ? "/" + to : "") };
+  router = { get path() { return location.pathname; }, segment: (to: string) => (to ? "/" + to : "") };
 }
 
 class Registry {
@@ -173,6 +173,7 @@ describe("twin", () => {
     const Tally = twin(["tally"], {}, ["total"], "Tally");
     const tally = Tally.new() as any;
 
+    await Promise.resolve();
     expect(Tally.name).toBe("Tally");
     expect(tally).toBeInstanceOf(Model);
     expect(fetch).toHaveBeenCalledWith("/tally", expect.objectContaining({ body: "[]" }));
@@ -182,12 +183,13 @@ describe("twin", () => {
     await vi.waitFor(() => expect(tally.total).toBe(4));
   });
 
-  it("will give each twin its own id", () => {
+  it("will give each twin its own id", async () => {
     const fetch = serve({ body: snap({}, "g:1") }, { body: snap({}, "g:1") });
     const Tally = twin(["tally"], {}, [], "Tally");
 
     Tally.new();
     Tally.new();
+    await Promise.resolve();
 
     expect(idOf(fetch, 0)).not.toBe(idOf(fetch, 1));
   });
@@ -232,6 +234,7 @@ describe("twin", () => {
 
     const tally = twin(["tally"], {}, ["total", "label"], "Tally").new() as any;
 
+    await Promise.resolve();
     await call(["tally"], "bump", []);
     await call(["tally"], "bump", []);
     attached(new Response(JSON.stringify({ frame: { [idOf(fetch, 0)]: { patch: { total: 1, label: "a" }, version: "g:2" } } }), epoch));
@@ -368,6 +371,7 @@ describe("twin", () => {
     vi.stubGlobal("fetch", fetch);
 
     const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
+    await Promise.resolve();
     const id = idOf(fetch, 0);
 
     tally.set(null);
@@ -378,6 +382,53 @@ describe("twin", () => {
 
     expect(headers(fetch, 1)).toMatchObject({ "x-expressive-release": id });
     expect(headers(fetch, 2)).toMatchObject({ "x-expressive-release": id });
+  });
+
+  it("will be ready once its snapshot lands", async () => {
+    let attached!: (res: Response) => void;
+    const fetch = vi.fn(() => new Promise<Response>(resolve => (attached = resolve)));
+    vi.stubGlobal("fetch", fetch);
+
+    const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
+    const ready = vi.fn();
+
+    Promise.resolve(tally.get(() => {})).then(ready);
+    await new Promise(resolve => setTimeout(resolve));
+    expect(ready).not.toHaveBeenCalled();
+
+    attached(new Response(JSON.stringify(snap({ total: 3 }, "g:1")({ "x-expressive-twin": idOf(fetch, 0) })), { headers: { "x-expressive-epoch": "e1" } }));
+    await vi.waitFor(() => expect(ready).toHaveBeenCalled());
+  });
+
+  it("will end, rejecting its readiness with the server's error, when its attach is refused", async () => {
+    const Denied = define("/#Denied", "Denied");
+    serve({ body: { error: "/#Denied", message: "Not yours", status: 403 }, status: 403 });
+
+    const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
+    const error = await Promise.resolve(tally.get(() => {})).catch((e: Error) => e);
+
+    expect(error).toBeInstanceOf(Denied);
+    expect(error).toMatchObject({ message: "Not yours", status: 403 });
+    expect(tally.get(null)).toBe(true);
+  });
+
+  it("will report its other errors as usual", async () => {
+    const fetch = serve({ body: snap({ total: 0 }, "g:1") }, { body: snap({ total: 1 }, "g:2") });
+    const caught = vi.fn();
+    const stop = Model.on({ catch: (_error, kind) => void caught(kind) });
+
+    try {
+      const tally = twin(["tally"], {}, ["total"], "Tally").new() as any;
+
+      tally.get(({ total }: { total: number }) => {
+        if (total) throw new Error("effect");
+      });
+      await vi.waitFor(() => expect(tally.total).toBe(0));
+      Source.opened[0].emit("stale", { [idOf(fetch, 0)]: ["total"] });
+      await vi.waitFor(() => expect(caught).toHaveBeenCalledWith("effect"));
+    } finally {
+      stop();
+    }
   });
 
   it("will re-attach every twin when the connection's epoch changes, before the call resolves, keeping one that is current", async () => {
@@ -698,6 +749,7 @@ describe("child twin", () => {
 
     const order = Order().new() as any;
 
+    await Promise.resolve();
     await call(["tally"], "bump", []);
     attached(new Response(JSON.stringify({ frame: entries(idOf(fetch, 0), { "": { patch: { line: { $child: "l" } }, version: "o:1" }, line: { patch: { qty: 1 }, version: "l:1" } }) }), epoch));
 

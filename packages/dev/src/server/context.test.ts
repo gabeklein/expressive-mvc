@@ -186,6 +186,81 @@ describe("seats", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
+  it("will wait for a new seat's async new() before the layers below and the call", async () => {
+    let done!: () => void;
+    class Session extends Model {
+      user?: string = undefined;
+
+      protected async new() {
+        await new Promise<void>(resolve => (done = resolve));
+        this.user = "ada";
+      }
+    }
+    class Account extends Model { static key() { return Session.get().user; } }
+
+    const ran = vi.fn(() => Session.get().user);
+    const first = walk(request(), ["account"], [Session, Account], ran);
+    const second = walk(request(), ["account"], [Session, Account], ran);
+
+    await new Promise(resolve => setTimeout(resolve));
+    expect(ran).not.toHaveBeenCalled();
+
+    done();
+    expect(await first).toBe("ada");
+    expect(await second).toBe("ada");
+  });
+
+  it("will deny the calls walking through a seat whose async new() rejects, unreported, and build afresh after", async () => {
+    let attempt = 0;
+    class Denied extends Error { status = 403; }
+    class Gate extends Model {
+      protected async new() {
+        if (!attempt++) throw new Denied("Not yours");
+      }
+    }
+    const run = vi.fn();
+    const failed = vi.fn();
+
+    process.on("uncaughtException", failed);
+
+    try {
+      const walks = [walk(request(), ["gate"], [undefined, Gate], run), walk(request(), ["gate"], [undefined, Gate], run)];
+
+      for (const denied of walks) await expect(denied).rejects.toBeInstanceOf(Denied);
+      expect(run).not.toHaveBeenCalled();
+
+      await walk(request(), ["gate"], [undefined, Gate], run);
+      await new Promise(resolve => setTimeout(resolve));
+    } finally {
+      process.off("uncaughtException", failed);
+    }
+
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(failed).not.toHaveBeenCalled();
+  });
+
+  it("will report a seat's other errors as usual", async () => {
+    class Tally extends Model {
+      total = 0;
+    }
+    const caught = vi.fn();
+    const stop = Model.on({ catch: (_error, kind) => void caught(kind) });
+
+    try {
+      const tally = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
+
+      tally.get(({ total }) => {
+        if (total) throw new Error("effect");
+      });
+      tally.total = 1;
+      await new Promise(resolve => setTimeout(resolve));
+    } finally {
+      stop();
+    }
+
+    expect(caught).toHaveBeenCalledWith("effect");
+  });
+
   it("will throw if a key is not a string, a number or undefined", async () => {
     class Bad extends Model { static key() { return {} as any; } }
 

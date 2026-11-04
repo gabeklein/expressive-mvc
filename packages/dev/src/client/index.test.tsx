@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
 // @vitest-environment-options { "url": "http://localhost/" }
 
-import { set } from "@expressive/mvc";
+import { Context, def, Model, set } from "@expressive/mvc";
 import { Link, Redirect } from "@expressive/router";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { browserRouter, location, mount, settle } from "../../test.setup";
 import { Route } from ".";
+import { runtime } from "./call";
 
 function Boom(): any {
   throw new Error("kaboom");
@@ -453,5 +454,384 @@ describe("Loading in a route's slot", () => {
     resolve();
     await settle();
     expect(root.textContent).toBe("layout:child");
+  });
+});
+
+describe("seat", () => {
+  browserRouter();
+
+  type Sent = { path: string; twin: string; reply(body: unknown, status?: number): void };
+
+  let twin: ReturnType<typeof runtime>["twin"];
+  let define: ReturnType<typeof runtime>["define"];
+  let sent: Sent[];
+
+  beforeEach(() => {
+    sent = [];
+    vi.stubGlobal("EventSource", class { addEventListener() {} });
+    vi.stubGlobal("fetch", vi.fn((path: string, init: RequestInit) => new Promise<Response>(resolve => sent.push({
+      path,
+      twin: (init.headers as Record<string, string>)["x-expressive-twin"],
+      reply: (body, status = 200) => resolve(new Response(JSON.stringify(body), { status, headers: { "x-expressive-epoch": "e1" } })),
+    }))));
+    ({ twin, define } = runtime(Model, def, Context, Route));
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const admit = (at: number, patch: Record<string, unknown>) => {
+    const { twin, reply } = sent[at];
+    reply({ frame: { [twin]: { patch, version: "g:1" } } });
+    return settle();
+  };
+
+  const go = (path: string) => {
+    window.history.pushState(null, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    return settle();
+  };
+
+  type Gate = Model & { user?: string };
+
+  const Login = () => <p>login</p>;
+
+  class Page extends Route {
+    declare remote: Gate;
+
+    render() {
+      return <p>page:{this.remote.user}</p>;
+    }
+  }
+
+  it("will build its seat on entry and render once the seat attaches, providing it below", async () => {
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const Below = () => <span>below:{(Gate.get() as Gate).user}</span>;
+    const Tree = () => (
+      <Route>
+        <Route to="gated" remote={Gate as any} fallback={<p>loading</p>}>
+          <Route as={Page} />
+          <Route to="below" as={Below} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    const root = await mount(Tree);
+
+    expect(root.textContent).toBe("loading");
+    expect(sent.map(request => request.path)).toEqual(["/gated"]);
+
+    await admit(0, { user: "ada" });
+    expect(root.textContent).toBe("page:ada");
+
+    await go("/gated/below");
+    expect(root.textContent).toBe("below:ada");
+    expect(sent).toHaveLength(1);
+  });
+
+  it("will hand its entry hook the seat, fetched", async () => {
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const enter = vi.fn((route: Route) => ((route.remote as Gate).user === "ada" ? undefined : "/login"));
+    const Tree = () => (
+      <Route>
+        <Route to="login" as={Login} />
+        <Route to="gated" remote={Gate as any} fallback={null} enter={enter}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    const root = await mount(Tree);
+    expect(enter).not.toHaveBeenCalled();
+
+    await admit(0, { user: "ada" });
+    expect(enter).toHaveBeenCalledTimes(1);
+    expect(root.textContent).toBe("page:ada");
+  });
+
+  it("will redirect where its entry hook says, once the seat attaches", async () => {
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const Tree = () => (
+      <Route>
+        <Route to="login" as={Login} />
+        <Route to="gated" remote={Gate as any} fallback={null} enter={route => ((route.remote as Gate).user ? undefined : "/login")}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    const root = await mount(Tree);
+
+    await admit(0, { user: undefined });
+    expect(root.textContent).toBe("login");
+    expect(window.location.pathname).toBe("/login");
+  });
+
+  it("will hold the current page while the seat attaches", async () => {
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const Home = () => <Link to="/gated">home</Link>;
+    const Tree = () => (
+      <Route>
+        <Route as={Home} />
+        <Route to="gated" remote={Gate as any} fallback={<p>loading</p>}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/");
+    const root = await mount(Tree);
+
+    await click(root, "home");
+    expect(sent).toHaveLength(1);
+    expect(root.textContent).toBe("home");
+
+    await admit(0, { user: "ada" });
+    expect(root.textContent).toBe("page:ada");
+  });
+
+  it("will reach Catch when the server refuses the seat", async () => {
+    define("/#Denied", "Denied");
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const Tree = () => (
+      <Route Catch={Err} fallback={null}>
+        <Route to="gated" remote={Gate as any} fallback={null}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    const root = await mount(Tree);
+
+    sent[0].reply({ error: "/#Denied", message: "Not yours", status: 403 }, 403);
+    await settle();
+
+    expect(root.textContent).toBe("caught: Not yours");
+  });
+
+  it("will redirect where the server's refusal carries a 3xx status and a location", async () => {
+    define("/#SignIn", "SignIn");
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const Tree = () => (
+      <Route>
+        <Route to="login" as={Login} />
+        <Route to="gated" remote={Gate as any} fallback={null} Catch={Err}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    const root = await mount(Tree);
+
+    sent[0].reply({ error: "/#SignIn", message: "Sign in first", status: 302, location: "/login" }, 500);
+    await settle();
+
+    expect(root.textContent).toBe("login");
+    expect(window.location.pathname).toBe("/login");
+  });
+
+  it("will end its seat on leaving and build a fresh one on return", async () => {
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const Home = () => <p>home</p>;
+    let route!: Route;
+    const Tree = () => (
+      <Route>
+        <Route as={Home} />
+        <Route to="gated" remote={Gate as any} fallback={null} is={(self: Route) => void (route = self)}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    const root = await mount(Tree);
+    await admit(0, { user: "ada" });
+    const first = route.remote!;
+
+    await go("/");
+    expect(root.textContent).toBe("home");
+    expect(first.get(null)).toBe(true);
+    expect(route.remote).toBeUndefined();
+
+    await go("/gated");
+    expect(sent).toHaveLength(2);
+    await admit(1, { user: "bob" });
+
+    expect(root.textContent).toBe("page:bob");
+    expect(route.remote).not.toBe(first);
+  });
+
+  it("will keep its seat when handed the same class again", async () => {
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    let route!: Route;
+    const Tree = () => (
+      <Route>
+        <Route to="gated" remote={Gate as any} fallback={null} is={(self: Route) => void (route = self)}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    await mount(Tree);
+    await admit(0, { user: "ada" });
+
+    const { redirect, remote } = route;
+
+    route.remote = Gate as any;
+    await settle();
+
+    expect(route.redirect).toBe(redirect);
+    expect(route.remote).toBe(remote);
+    expect(sent).toHaveLength(1);
+  });
+
+  it("will build a fresh seat when its own params change", async () => {
+    history.replaceState(null, "", "/");
+    const Gate = twin([":id"], {}, ["user"], "Gate");
+    const Tree = () => (
+      <Route>
+        <Route to=":id" remote={Gate as any} fallback={null}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/a");
+    const root = await mount(Tree);
+    await admit(0, { user: "ada" });
+
+    await go("/b");
+    expect(sent.map(request => request.path)).toEqual(["/a", "/b"]);
+    await admit(1, { user: "bob" });
+
+    expect(root.textContent).toBe("page:bob");
+  });
+
+  it("will not reach Catch when left before its seat attaches", async () => {
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const Home = () => <p>home</p>;
+    const Tree = () => (
+      <Route Catch={Err} fallback={null}>
+        <Route as={Home} />
+        <Route to="gated" remote={Gate as any} fallback={<p>loading</p>}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    const root = await mount(Tree);
+    expect(root.textContent).toBe("loading");
+
+    await go("/");
+    expect(root.textContent).toBe("home");
+  });
+
+  it("will drop a refusal its own params have moved past, and admit the new ones", async () => {
+    define("/#Denied", "Denied");
+    history.replaceState(null, "", "/");
+    const Gate = twin([":id"], {}, ["user"], "Gate");
+    const Tree = () => (
+      <Route Catch={Err} fallback={null}>
+        <Route to=":id" remote={Gate as any} fallback={<p>loading</p>}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/a");
+    const root = await mount(Tree);
+
+    await go("/b");
+    sent[0].reply({ error: "/#Denied", message: "Not yours at a", status: 403 }, 403);
+    await settle();
+
+    expect(root.textContent).toBe("loading");
+    expect(sent.map(request => request.path)).toEqual(["/a", "/b"]);
+
+    await admit(1, { user: "bob" });
+    expect(root.textContent).toBe("page:bob");
+  });
+
+  it("will skip its entry hook for an admission its own params have moved past", async () => {
+    history.replaceState(null, "", "/");
+    const Gate = twin([":id"], {}, ["user"], "Gate");
+    const enter = vi.fn((route: Route) => void (route.remote as Gate).user);
+    const Tree = () => (
+      <Route>
+        <Route to=":id" remote={Gate as any} fallback={<p>loading</p>} enter={enter}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/a");
+    const root = await mount(Tree);
+
+    await go("/b");
+    await admit(0, { user: "ada" });
+    expect(sent.map(request => request.path)).toEqual(["/a", "/b"]);
+
+    await admit(1, { user: "bob" });
+    expect(root.textContent).toBe("page:bob");
+    expect(enter).toHaveBeenCalledTimes(1);
+  });
+
+  it("will keep its seat when its entry hook changes", async () => {
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    let route!: Route;
+    const Tree = () => (
+      <Route>
+        <Route to="gated" remote={Gate as any} fallback={<p>loading</p>} is={(self: Route) => void (route = self)}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    const root = await mount(Tree);
+    await admit(0, { user: "ada" });
+    const seat = route.remote;
+
+    route.enter = () => undefined;
+    await settle();
+
+    expect(root.textContent).toBe("page:ada");
+    expect(route.remote).toBe(seat);
+    expect(sent).toHaveLength(1);
+  });
+
+  it("will read the nearest seat above from a route without one, and none where no route above has one", async () => {
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const seen: Record<string, unknown> = {};
+    const Probe = (name: string) =>
+      class extends Route {
+        render() {
+          seen[name] = this.remote;
+          return null;
+        }
+      };
+    const Tree = () => (
+      <Route>
+        <Route as={Probe("outside")} />
+        <Route to="gated" remote={Gate as any} fallback={null}>
+          <Route as={Probe("inside")} />
+        </Route>
+      </Route>
+    );
+
+    location("/");
+    await mount(Tree);
+    expect(seen.outside).toBeUndefined();
+
+    await go("/gated");
+    await admit(0, {});
+
+    expect(seen.inside).toBeInstanceOf(Gate);
   });
 });

@@ -28,7 +28,8 @@ express nesting. dev's `Route` owns no suspense boundary unless given a `fallbac
 page's waits show its slot's `Loading`.
 
 The `default` export is read by kind. A function is the entry hook: it runs with the Route before
-it renders, and a returned string redirects (`null` falls through to the 404). A class - Model or
+it renders, and a returned string redirects (`null` falls through to the 404). In a folder with a
+seat, it runs once the seat's twin is fetched (Entry, below). A class - Model or
 Component - renders around the route's content and is provided to everything below it; with a
 `Layout`, it wraps the `Layout`.
 
@@ -86,7 +87,8 @@ in `index.ts` keeps readable names, for clients that must outlive a deploy.
 
 A sidecar may also export `Error` subclasses. Thrown on the server, one rejects the call on the
 client as the same class - `instanceof` works - with its message and own fields; a numeric
-`status` field in 400-599 sets the reply's status (409 below, else 500). Any other thrown error
+`status` field in 400-599 sets the reply's status (409 below, else 500); a 3xx `status` with a
+`location` field redirects a refused entry (below) and replies 500. Any other thrown error
 rejects with its message in dev and a generic one in production.
 
 ```ts
@@ -130,7 +132,7 @@ copy its values into its own.
 
 A folder's remote entry (`remote.ts` or `remote/index.ts`) may default-export a Model class. Every
 call walking through the folder seats one instance in its context - `get()` finds it there and below
-- and the route tree provides its twin around the folder's routes on the client. The twin's methods
+- and on the client the folder's Route builds its twin and provides it below. The twin's methods
 are the class's public `async` methods, each a call to that instance.
 
 ```ts
@@ -160,11 +162,66 @@ the location through; throwing denies the call. Build the key from verified data
 lets the client pick its context - and declare it `protected`. The seat lives for `static ttl` after
 its last call; when it ends, its context and everything below go with it.
 
+#### Entry
+
+Entering a folder with a seat waits for the server. Its Route builds the twin and holds the page -
+the current one during in-app navigation, `Loading` on a cold load - until the twin's first pull
+returns. The pull walks every `key()` from the root down to the folder, and waits for each seat it
+newly builds - an `async new()` included. The folder's entry hook then runs with `route.remote`
+fetched. A refused pull reaches the nearest `Catch`; an exported error class carrying a 3xx `status`
+and a `location` field redirects there instead, as does one thrown by the hook. Leaving the route
+ends the twin; returning, or a change of the folder's own params, builds a fresh one.
+
+```ts
+// app/account/remote.ts
+export class SignIn extends Error {
+  status = 302;
+  location = "/login";
+}
+
+export default class Account extends Model {
+  name = "";
+  admin = false;
+
+  protected static key() {
+    const { session } = Current.get().cookies;
+    if (!session) throw new SignIn("Sign in first.");
+    return session;
+  }
+
+  protected async new() {
+    const user = await db.user(Current.get().cookies.session);
+
+    this.name = user.name;
+    this.admin = user.admin;
+  }
+}
+```
+
+```tsx
+// app/account/index.tsx
+import type Account from "./remote";
+
+export default (route: Route & { remote: Account }) => (route.remote.admin ? undefined : "/");
+
+export class Page extends Route {
+  declare remote: Account;
+
+  render() {
+    return <h1>{this.remote.name}</h1>;
+  }
+}
+```
+
+A `Route` below the folder reads the seat as `this.remote`; `declare remote: Account` types it.
+Declare it rather than `remote = get(Account)`, which replaces the field and, on the folder's own
+Route, looks past the twin that Route provides. Anything else below reaches it through `get(Account)`.
+
 Methods a seat inherits cross too: the build follows its bases by import - source, or a package's
 `.d.ts` - up to `@expressive`'s classes, and the nearest declaration's `private`/`protected` wins. A
 base it cannot follow, such as `extends mixin(Model)`, fails the build.
 
-A twin holds the seat's public values too. It attaches on construction and suspends until the
+A twin holds the seat's public values too. It attaches a microtask after construction and suspends until the
 snapshot arrives. Every call's reply - a twin's method or a plain function - carries everything that
 changed on any twin the tab holds since that twin last heard, so an awaited call never reads stale,
 even where it changed a parent folder's twin through `get()`. Values change on the server only -

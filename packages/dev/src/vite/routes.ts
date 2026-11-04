@@ -240,12 +240,6 @@ function provide(node: RouteNode, alias: string, content: string): string {
     : `<Component for={${alias}}>${content}</Component>`;
 }
 
-function wrapperOf(node: RouteNode): string | undefined {
-  if (!renders(node)) return;
-
-  return node.twin ? node.twin + "d" : scopedOf(node);
-}
-
 function collectWrappers(root: RouteNode): string[] {
   const wrappers: string[] = [];
 
@@ -260,13 +254,6 @@ function collectWrappers(root: RouteNode): string[] {
 
     if (scoped)
       wrappers.push(`const ${scoped} = props => ${provide(node, scope!, Layout ? `<${Layout} {...props} />` : "{props.children}")};`);
-
-    if (node.twin) {
-      const inner = scoped ?? scope ?? Layout;
-      const content = inner ? `<${inner} {...props} />` : "{props.children}";
-
-      wrappers.push(`const ${node.twin}d = props => <Component for={${node.twin}}>${content}</Component>;`);
-    }
   })(root);
 
   return wrappers;
@@ -294,12 +281,12 @@ function emitNode(node: RouteNode, isRoot: boolean, depth: number, slot: string)
 
   if (!inner.length) return [];
 
-  const as = wrapperOf(node) ?? scope ?? Layout;
+  const as = scopedOf(node) ?? scope ?? Layout;
   const fallbackPage = NotFound ?? (isRoot ? "NotFound" : undefined);
 
   return route(
     pad,
-    { to: isRoot ? undefined : node.segment, as, NotFound: fallbackPage, enter, fallback: slot, Catch },
+    { to: isRoot ? undefined : node.segment, as, remote: node.twin, NotFound: fallbackPage, enter, fallback: slot, Catch },
     inner,
   );
 }
@@ -307,6 +294,7 @@ function emitNode(node: RouteNode, isRoot: boolean, depth: number, slot: string)
 interface RouteProps {
   to?: string;
   as?: string;
+  remote?: string;
   NotFound?: string;
   enter?: string;
   fallback?: string;
