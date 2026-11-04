@@ -160,12 +160,14 @@ describe("vite host", () => {
     const server = await serve(project({
       "app/index.tsx": 'import { Current } from "@expressive/rpc/http"; export const Page = () => Current',
       "app/ok.tsx": 'import { NotFound } from "@expressive/rpc/http"; export const Page = () => NotFound',
+      "app/doc.tsx": '/** Server code reads `import { Current } from "@expressive/rpc/http"`. */\nexport const Page = () => <p>doc</p>',
     }));
 
     await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow(
       "app/index.tsx imports Current from @expressive/rpc/http, which only a server has - its browser build does not export it.",
     );
     expect((await server.transformRequest("/app/ok.tsx"))?.code).toContain("NotFound");
+    expect((await server.transformRequest("/app/doc.tsx"))?.code).toContain("doc");
     expect((await server.environments.ssr.transformRequest("/app/index.tsx"))?.code).toContain("Current");
   });
 
@@ -345,6 +347,18 @@ describe("vite host", () => {
 
     const runtime = (await server.transformRequest("/.expressive/call.ts"))?.code;
     expect(runtime).toMatch(/import \{ Route \} from "[^"]*dev\/src\/index[^"]*"/);
+  });
+
+  it("will serve an exported subclass of an http error to the browser as an error, not a twin", async () => {
+    const remote = `import { HttpError } from "@expressive/rpc/http";
+      export class Payment extends HttpError { status = 402; }
+      export async function buy() { throw new Payment("upgrade"); }`;
+    const root = project({ "app/index.tsx": PAGE, "app/shop/index.tsx": "import { buy } from './remote'; export const Page = () => buy", "app/shop/remote.ts": remote });
+    const server = await serve(root);
+
+    const stub = (await server.transformRequest("/app/shop/remote.ts"))?.code;
+    expect(stub).toContain('export const Payment = define("/shop#Payment", "Payment")');
+    expect(stub).not.toContain("twin(");
   });
 
   it("will build a twin's own instance on the module runner, under the route it names", async () => {

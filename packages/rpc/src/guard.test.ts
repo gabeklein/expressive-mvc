@@ -28,4 +28,14 @@ describe("guard", () => {
     expect(guard(`import { Current } from "@expressive/rpc";\nimport { call } from "@expressive/rpc/http";`)).toBeUndefined();
     expect(guard(`import { Current } from "@expressive/rpc/http/other";`)).toBeUndefined();
   });
+
+  it("will pass a module that never names the http flavor", () => {
+    expect(guard(`import { Current } from "@expressive/rpc";\nexport const a = Current;`)).toBeUndefined();
+  });
+
+  it("will ignore an import written only in a comment or a string", () => {
+    expect(guard(`// import { Current } from "@expressive/rpc/http";\nexport const a = 1;`)).toBeUndefined();
+    expect(guard(`/** e.g. import { toNode } from "@expressive/rpc/http" */\nexport const b = 2;`)).toBeUndefined();
+    expect(guard("export const doc = `import { Current } from \"@expressive/rpc/http\"`;")).toBeUndefined();
+  });
 });

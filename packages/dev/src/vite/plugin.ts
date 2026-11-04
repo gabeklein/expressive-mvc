@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createServerModuleRunner, runnerImport, type Plugin, type ViteDevServer } from "vite";
+import { createServerModuleRunner, runnerImport, transformWithOxc, type Plugin, type ViteDevServer } from "vite";
 import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../server/config";
@@ -209,12 +209,13 @@ export function expressive(): Plugin<Host> {
       }
     },
 
-    transform(code, id, options) {
-      if (options?.ssr) return;
+    async transform(code, id, options) {
+      if (options?.ssr || !code.includes("@expressive/rpc/http")) return;
 
-      const problem = guard(code);
+      const path = id.split("?")[0];
+      const problem = guard((await transformWithOxc(code, path, { jsx: { runtime: "automatic" } })).code);
 
-      if (problem) this.error(`${relative(root, id.split("?")[0])} ${problem}`);
+      if (problem) this.error(`${relative(root, path)} ${problem}`);
     },
 
     transformIndexHtml: {

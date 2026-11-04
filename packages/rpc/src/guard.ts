@@ -1,12 +1,21 @@
+import { initSync, parse } from "es-module-lexer";
+
 export const SERVER_ONLY: readonly string[] = ["Current", "handler", "isCall", "reply", "send", "toNode", "toRequest"];
 
-const IMPORT = /\b(?:import|export)\s+(type\s+)?([^"'`;]*?)\s*from\s*["']@expressive\/rpc\/http["']/g;
+const HTTP = "@expressive/rpc/http";
 
 export function guard(code: string): string | undefined {
   const found = new Set<string>();
 
-  for (const [, typeOnly, clause] of code.matchAll(IMPORT)) {
-    const named = !typeOnly && /\{([^}]*)\}/.exec(clause);
+  if (!code.includes(HTTP)) return;
+
+  initSync();
+
+  for (const { n, ss, se, d } of parse(code)[0]) {
+    if (n !== HTTP || d !== -1) continue;
+
+    const statement = code.slice(ss, se);
+    const named = !/^(?:import|export)\s+type\b/.test(statement) && /\{([^}]*)\}/.exec(statement);
 
     if (named)
       for (const binding of named[1].split(",")) {
@@ -16,5 +25,5 @@ export function guard(code: string): string | undefined {
   }
 
   if (found.size)
-    return `imports ${[...found].join(", ")} from @expressive/rpc/http, which only a server has - its browser build does not export ${found.size > 1 ? "them" : "it"}.`;
+    return `imports ${[...found].join(", ")} from ${HTTP}, which only a server has - its browser build does not export ${found.size > 1 ? "them" : "it"}.`;
 }

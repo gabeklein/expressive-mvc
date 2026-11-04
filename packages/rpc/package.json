@@ -47,6 +47,9 @@
     "coverage": "vitest run --coverage",
     "test": "bun run typecheck && bun run coverage"
   },
+  "dependencies": {
+    "es-module-lexer": "^1.6.0"
+  },
   "peerDependencies": {
     "@expressive/mvc": "^0.94.0"
   },
