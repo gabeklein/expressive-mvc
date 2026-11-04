@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { get, Model } from "@expressive/mvc";
 
-import { dispatch, type Seats } from "./call";
+import { Current, type Seats } from "@expressive/rpc";
+import { dispatch } from "@expressive/rpc/internal";
+
 import { connect, listen } from "./connection";
-import { Current, install } from "./context";
+import { install } from "./install";
 import { DETACHED, twins, type Endpoint } from "./twin";
 
 const TAB = crypto.randomUUID();

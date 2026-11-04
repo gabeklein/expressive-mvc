@@ -3,11 +3,11 @@
 
 import { Context, def, Model, set } from "@expressive/mvc";
 import { Link, Redirect } from "@expressive/router";
+import { client } from "@expressive/rpc/http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { browserRouter, location, mount, settle } from "../../test.setup";
 import { Route } from ".";
-import { client } from "./call";
 import { runtime } from "./twin";
 
 function Boom(): any {

@@ -2,19 +2,19 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createServerModuleRunner, runnerImport, type Plugin, type ViteDevServer } from "vite";
+import { createServerModuleRunner, runnerImport, transformWithOxc, type Plugin, type ViteDevServer } from "vite";
 import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../server/config";
 import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project } from "./project";
-import { client } from "../client/call";
 import { runtime } from "../client/twin";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
-import { dispatch, isCall, verify, type Seats } from "../server/call";
-import { send, toRequest } from "../server/node";
+import { verify, type Seats } from "@expressive/rpc";
+import { isCall, toNode } from "@expressive/rpc/http";
+import { dispatch, guard } from "@expressive/rpc/internal";
 import { isStream, stream } from "../server/stream";
-import { install } from "../server/context";
+import { install } from "../server/install";
 import { twins, type Endpoint, type Exports, type Pooled } from "../server/twin";
 import { scanExports, scanSidecar, scanTwin, type Sources, type Twin } from "./scan";
 
@@ -37,6 +37,7 @@ const DEPS = [
   "@expressive/dom/jsx-runtime",
   "@expressive/dom/jsx-dev-runtime",
   "@expressive/router",
+  "@expressive/rpc/http",
   "@expressive/dev",
   "@expressive/dev/jsx-runtime",
   "@expressive/dev/jsx-dev-runtime",
@@ -46,7 +47,7 @@ const HOSTED = ["@expressive/inspect/vite/client", "@expressive/inspect/install"
 
 const builds = new Map<string, Exposure>();
 
-const SHARED = ["@expressive/mvc", "@expressive/dom", "@expressive/router", "@expressive/inspect", "@expressive/dev"];
+const SHARED = ["@expressive/mvc", "@expressive/dom", "@expressive/router", "@expressive/inspect", "@expressive/rpc", "@expressive/dev"];
 
 export function expressive(): Plugin<Host> {
   let root = process.cwd();
@@ -194,7 +195,8 @@ export function expressive(): Plugin<Host> {
           return [
             `import { Context, Model, def } from "@expressive/mvc";`,
             `import { Route } from "@expressive/dev";`,
-            `export const { call, define, twin } = (${runtime})(${client}, Model, def, Context, Route);`,
+            `import { client } from "@expressive/rpc/http";`,
+            `export const { call, define, twin } = (${runtime})(client, Model, def, Context, Route);`,
           ].join("\n");
         case mainId:
           return bootstrap(project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!));
@@ -205,6 +207,15 @@ export function expressive(): Plugin<Host> {
         case htmlId:
           return SHELL;
       }
+    },
+
+    async transform(code, id, options) {
+      if (options?.ssr || !code.includes("@expressive/rpc/http")) return;
+
+      const path = id.split("?")[0];
+      const problem = guard((await transformWithOxc(code, path, { jsx: { runtime: "automatic" } })).code);
+
+      if (problem) this.error(`${relative(root, path)} ${problem}`);
     },
 
     transformIndexHtml: {
@@ -219,14 +230,10 @@ export function expressive(): Plugin<Host> {
 
       const endpoints = () => exposure.byPattern().map(group => endpointOf(host, root, exposure, group));
 
-      server.middlewares.use((req, res, next) => {
-        const request = toRequest(req, res);
-
-        if (isStream(request)) return void send(res, stream(request)).catch(next);
-        if (!isCall(request)) return next();
-
-        dispatch(request, endpoints, true, seatsOf(host, project), twins).then(response => send(res, response)).catch(next);
-      });
+      server.middlewares.use(toNode(async request => {
+        if (isStream(request)) return stream(request);
+        if (isCall(request)) return dispatch(request, endpoints, true, seatsOf(host, project), twins);
+      }));
 
       return () => {
         server.middlewares.use(async (req, res, next) => {
