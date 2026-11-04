@@ -279,7 +279,7 @@ function frame(this: Route): Component.Node {
   return allRoutes(children) ? children : null;
 }
 
-const GUARD = new WeakMap<Route, { redirect: Function; space: string; to?: string; promise?: Promise<string | undefined> }>();
+const GUARD = new WeakMap<Route, { redirect: Function; space: string; to?: string; promise?: Promise<string | undefined>; error?: unknown }>();
 
 /**
  * Resolve a function `redirect` guard for an entered route. Caches the verdict
@@ -302,6 +302,7 @@ function guard(route: Route, redirect: () => Async<string | void | null>): strin
     GUARD.set(route, g = { redirect, space: at });
 
   if ('to' in g) return g.to;
+  if ('error' in g) throw g.error;
   if (g.promise) throw g.promise;
 
   function gate(to: string | void | null): string | undefined {
@@ -315,7 +316,10 @@ function guard(route: Route, redirect: () => Async<string | void | null>): strin
   const result = redirect();
 
   if (result instanceof Promise)
-    throw g.promise = result.then(gate);
+    throw g.promise = result.then(gate, (error) => {
+      g!.error = error;
+      throw error;
+    });
 
   return gate(result);
 }

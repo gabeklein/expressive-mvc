@@ -1251,6 +1251,40 @@ describe('a lazy page as `as`', () => {
     expect(view.container.querySelector('main')!.textContent).toBe('roles');
   });
 
+  it('will reach the Route catch when an async redirect rejects after navigating', async () => {
+    mockError();
+    location('/');
+    const gate = mockPromise<string | void>();
+    const failure = new Error('refused');
+    const caught: Error[] = [];
+
+    class Admin extends Route {
+      fallback = (<span>checking</span>);
+
+      async catch(error: Error) {
+        caught.push(error);
+        this.fallback = <span>refused</span>;
+        await new Promise(() => {});
+      }
+    }
+
+    const view = await renderAct(
+      <>
+        <Route to="/" as={Home} />
+        <Admin to="/admin" redirect={() => gate} as={() => <h1>secret</h1>} />
+      </>
+    );
+
+    await visit('/admin');
+    await act(async () => {
+      gate.reject(failure);
+      await gate.catch(() => {});
+    });
+
+    expect(caught).toEqual([failure]);
+    expect(view.container.textContent).toBe('refused');
+  });
+
   it('will reach the Route catch when the module rejects', async () => {
     mockError();
     location('/posts/foo');
