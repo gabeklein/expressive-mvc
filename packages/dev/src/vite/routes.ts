@@ -115,7 +115,13 @@ async function scanDir(dir: string, segment: string, name: string, scan: ExportS
     }));
   }
 
+  node.children.sort((a, b) => precedence(a.segment) - precedence(b.segment));
+
   return node;
+}
+
+function precedence(segment: string) {
+  return segment === "*" ? 2 : segment.startsWith(":") ? 1 : 0;
 }
 
 async function twinIn(dir: string, entries: string[], scan: ExportScanner): Promise<string | undefined> {
