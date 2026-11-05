@@ -64,7 +64,15 @@ function arm(route: Route): void {
   const hook = HOOKS.get(route);
 
   if (!Seat) {
-    route.redirect = hook ? () => hook(route) : undefined;
+    route.redirect = hook && (() => {
+      try {
+        const verdict = hook(route);
+
+        return verdict instanceof Promise ? verdict.catch(redirected) : verdict;
+      } catch (error) {
+        return redirected(error);
+      }
+    });
     return;
   }
 
