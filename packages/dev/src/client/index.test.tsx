@@ -3,7 +3,7 @@
 
 import { Context, def, Model, set } from "@expressive/mvc";
 import { Link, Redirect } from "@expressive/router";
-import { client } from "@expressive/rpc";
+import { client, Redirect as Moved } from "@expressive/rpc";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { browserRouter, location, mount, settle } from "../../test.setup";
@@ -336,6 +336,77 @@ describe("default entry hook via `enter`", () => {
     const root = await mount(Tree);
     await settle();
     expect(root.textContent).toBe("login");
+  });
+
+  it("will redirect where a hook's thrown 3xx error points", async () => {
+    const hook = (): undefined => {
+      throw new Moved("/login");
+    };
+    const Tree = () => (
+      <Route>
+        <Route to="login" as={Login} />
+        <Route to="secret" as={Secret} enter={hook} />
+      </Route>
+    );
+
+    location("/secret");
+    const root = await mount(Tree);
+    await settle();
+
+    expect(root.textContent).toBe("login");
+    expect(window.location.pathname).toBe("/login");
+  });
+
+  it("will redirect where a hook's rejected 3xx error points", async () => {
+    const hook = () => Promise.reject(new Moved("/login", 303));
+    const Tree = () => (
+      <Route>
+        <Route to="login" as={Login} />
+        <Route to="secret" as={Secret} enter={hook} fallback={null} />
+      </Route>
+    );
+
+    location("/secret");
+    const root = await mount(Tree);
+    await settle();
+
+    expect(root.textContent).toBe("login");
+    expect(window.location.pathname).toBe("/login");
+  });
+
+  it("will throw a hook's error that is not a redirect to its Catch", async () => {
+    const hook = (): undefined => {
+      throw Object.assign(new Error("Not yours"), { status: 403, location: "/login" });
+    };
+    const Tree = () => (
+      <Route Catch={Err} fallback={null}>
+        <Route to="login" as={Login} />
+        <Route to="secret" as={Secret} enter={hook} />
+      </Route>
+    );
+
+    location("/secret");
+    const root = await mount(Tree);
+    await settle();
+
+    expect(root.textContent).toBe("caught: Not yours");
+  });
+
+  it("will throw a redirect with no location to its Catch", async () => {
+    const hook = (): undefined => {
+      throw new Moved("");
+    };
+    const Tree = () => (
+      <Route Catch={Err} fallback={null}>
+        <Route to="secret" as={Secret} enter={hook} />
+      </Route>
+    );
+
+    location("/secret");
+    const root = await mount(Tree);
+    await settle();
+
+    expect(root.textContent).toBe("caught: ");
   });
 
   it("clearing the hook clears the guard", async () => {
