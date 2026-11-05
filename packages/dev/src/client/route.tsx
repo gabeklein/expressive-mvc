@@ -106,7 +106,7 @@ function split(path: string): string[] {
 function redirected(error: unknown): string {
   const { status, location } = Object(error) as { status?: unknown; location?: unknown };
 
-  if (typeof status == "number" && status >= 300 && status < 400 && typeof location == "string") return location;
+  if (typeof status == "number" && status >= 300 && status < 400 && typeof location == "string" && location) return location;
 
   throw error;
 }

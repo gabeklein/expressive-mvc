@@ -392,6 +392,23 @@ describe("default entry hook via `enter`", () => {
     expect(root.textContent).toBe("caught: Not yours");
   });
 
+  it("will throw a redirect with no location to its Catch", async () => {
+    const hook = (): undefined => {
+      throw new Moved("");
+    };
+    const Tree = () => (
+      <Route Catch={Err} fallback={null}>
+        <Route to="secret" as={Secret} enter={hook} />
+      </Route>
+    );
+
+    location("/secret");
+    const root = await mount(Tree);
+    await settle();
+
+    expect(root.textContent).toBe("caught: ");
+  });
+
   it("clearing the hook clears the guard", async () => {
     const route = Route.new({ enter: () => "/login" });
     expect(route.redirect).toBeTypeOf("function");
