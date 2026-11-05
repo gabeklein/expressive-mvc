@@ -19,7 +19,7 @@ describe("server get", () => {
 
   it("will throw outside a call", () => {
     class Tally extends Model {}
-    expect(() => Tally.get()).toThrow("Server Model resolves only within a sidecar call.");
+    expect(() => Tally.get()).toThrow("Server Model resolves only within a call.");
   });
 
   it("will find what context provides, or throw if missing unless optional", async () => {
