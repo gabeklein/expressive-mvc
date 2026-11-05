@@ -451,7 +451,7 @@ class Control extends Model {
     if (this._current) this.queue.push(ticket);
     else this.begin(ticket);
 
-    return handle(ticket, ticket.promise.then());
+    return handle(ticket, (resolve, reject) => ticket.promise.then(resolve, reject));
   }
 
   begin(ticket: Ticket) {
@@ -914,7 +914,7 @@ class Run extends Model {
     let done!: () => void;
     let fail!: (error: unknown) => void;
 
-    const answered = new Promise<void>((res, rej) => {
+    const answered = handle<void>(_ticket, (res, rej) => {
       done = res;
       fail = rej;
     });
@@ -928,7 +928,7 @@ class Run extends Model {
     this.waits.delete(wait);
     answer.frame = this.invoke(node, wait.id, wait._undo);
 
-    return handle(_ticket, answered);
+    return answered;
   }
 
   release() {
@@ -1683,15 +1683,26 @@ function outside(key: string, verb = 'called'): never {
   throw new Error(`${key} must be ${verb} inside a step.`);
 }
 
-function handle<T>(ticket: Ticket, out: Promise<T>) {
-  out.catch(() => {});
+class Handled<T> extends Promise<T> {
+  static get [Symbol.species]() {
+    return Promise;
+  }
 
-  return Object.defineProperty(out, 'then', {
-    value(this: Promise<unknown>, ...args: Parameters<Promise<unknown>['then']>) {
-      ticket.awaited = true;
-      return Promise.prototype.then.apply(this, args);
-    }
-  });
+  declare _ticket: Ticket;
+
+  then<A = T, B = never>(...args: Parameters<Promise<T>['then']>): Promise<A | B> {
+    this._ticket.awaited = true;
+    return super.then(...args) as Promise<A | B>;
+  }
+}
+
+function handle<T>(ticket: Ticket, executor: ConstructorParameters<typeof Promise<T>>[0]) {
+  const handled = new Handled<T>(executor);
+
+  handled._ticket = ticket;
+  Promise.prototype.then.call(handled, undefined, () => {});
+
+  return handled;
 }
 
 function gate<K>(gates: { get(key: K): Gate | undefined; set(key: K, gate: Gate): unknown }, key: K) {

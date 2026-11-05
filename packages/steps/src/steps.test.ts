@@ -7602,6 +7602,28 @@ describe('failures', () => {
     expect(caught).toEqual([]);
   });
 
+  it('will not throw uncaught when next() is awaited', async () => {
+    const caught = mockUncaught();
+    let error: unknown;
+
+    class Test extends Steps {
+      next() {
+        throw new Error('awaited');
+      }
+    }
+
+    try {
+      await Test.new().next();
+    } catch (e) {
+      error = e;
+    }
+
+    await flushMicrotasks();
+
+    expect(error).toEqual(new Error('awaited'));
+    expect(caught).toEqual([]);
+  });
+
   it('will not throw uncaught when stopped', async () => {
     const caught = mockUncaught();
 
