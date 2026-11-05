@@ -3590,8 +3590,60 @@ describe('catch', () => {
         ]
       },
       expect.objectContaining({ id: 'a#1', undo: 'closure', undone: true }),
+      expect.objectContaining({ id: 'a1#1', error: new Error('boom') }),
       expect.objectContaining({ id: 'b#1' })
     ]);
+  });
+
+  it('will pass a caught try to after', async () => {
+    const seen: unknown[] = [];
+
+    class Test extends Steps {
+      async next() {
+        this.scan('x').catch(this.fallback);
+      }
+
+      protected async scan(site: string) {
+        throw new Error(`${site} is down`);
+      }
+
+      protected async fallback() {}
+
+      protected after(step: string, entry: Steps.Entry) {
+        seen.push([step, entry.error]);
+      }
+
+      protected afterScan(skip: boolean, entry: Steps.Entry) {
+        seen.push(['afterScan', entry.error]);
+      }
+    }
+
+    await Test.new().next();
+
+    expect(seen).toEqual([
+      ['next', undefined],
+      ['afterScan', new Error('x is down')],
+      ['scan', new Error('x is down')],
+      ['fallback', undefined]
+    ]);
+  });
+
+  it('will fail the run when after throws on a caught try', async () => {
+    class Test extends Steps {
+      async next() {
+        this.scan().catch();
+      }
+
+      protected async scan() {
+        throw new Error('down');
+      }
+
+      protected after(step: string, entry: Steps.Entry) {
+        if (entry.error) throw new Error('after');
+      }
+    }
+
+    await expect(Test.new().next()).rejects.toThrow('after');
   });
 
   it('will run a step in the caught branch\'s place with its args', async () => {
@@ -3621,7 +3673,7 @@ describe('catch', () => {
     await test.next();
     expect(seen.mock.calls).toEqual([['x', new Error('x is down'), 0], ['after']]);
     expect(record(test)[0].next[0]).toEqual({ id: 'scan#1', key: 'scan', args: ['x'], rescue: 'fallback' });
-    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'fallback#1', 'after1#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['next#1', 'scan#1', 'fallback#1', 'after1#1']);
   });
 
   it('will count retries of a step re-run from its own catch', async () => {
@@ -3652,7 +3704,10 @@ describe('catch', () => {
     expect(record(test).map(({ id, retry, error }) => [id, retry, (error as Error)?.message])).toEqual([
       ['next#1', undefined, undefined],
       ['visit#1', undefined, undefined],
-      ['visit#2', 1, undefined]
+      ['scan#1', undefined, 'a is down'],
+      ['visit#2', 1, undefined],
+      ['scan#2', undefined, 'a is down'],
+      ['visit#3', 2, 'give up']
     ]);
   });
 
@@ -3794,7 +3849,7 @@ describe('catch', () => {
 
     await result;
     expect(after).toHaveBeenCalledWith(0);
-    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([['next#1', undefined], ['a#1', true], ['d#1', undefined]]);
+    expect(record(test).map((entry) => [entry.id, entry.undone])).toEqual([['next#1', undefined], ['a#1', true], ['b#1', undefined], ['c#1', undefined], ['d#1', undefined]]);
   });
 
   it('will catch an answer or watcher of a caught wait', async () => {
@@ -4111,7 +4166,10 @@ describe('suspense', () => {
 
     await result;
     expect(retries).toEqual([0, 0, 1]);
-    expect(record(test).slice(1)).toEqual([{ id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], retry: 1 }]);
+    expect(record(test).slice(1)).toEqual([
+      { id: 'flaky#1', key: 'flaky', args: [], wrote: [], next: [], error: new Error('flaky') },
+      { id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], retry: 1 }
+    ]);
   });
 
   it('will catch a rejected pending value', async () => {
@@ -4136,7 +4194,7 @@ describe('suspense', () => {
 
     await result;
     expect(tries).toBe(2);
-    expect(record(test).slice(1).map(({ retry, error }) => [retry, error])).toEqual([[1, undefined]]);
+    expect(record(test).slice(1).map(({ retry, error }) => [retry, error])).toEqual([[undefined, new Error('gone')], [1, undefined]]);
   });
 
   it('will not fire hooks again', async () => {
@@ -4642,18 +4700,121 @@ describe('hooks', () => {
     expect(caught).toEqual([new Error('exit')]);
   });
 
+  it('will settle a run once an async exit has', async () => {
+    const work = mockPromise();
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async next() {}
+
+      async exit() {
+        await work;
+        order.push('exit');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next().then(() => void order.push('resolved'));
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+    expect(test.then.status).toBe('running');
+
+    work.resolve();
+    await result;
+
+    expect(order).toEqual(['exit', 'resolved']);
+    expect(test.then.status).toBe('idle');
+  });
+
+  it('will reject a failed run once an async exit has', async () => {
+    const work = mockPromise();
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async next() {
+        throw new Error('boom');
+      }
+
+      async exit() {
+        await work;
+        order.push('exit');
+      }
+    }
+
+    const result = Test.new().next().catch(() => void order.push('rejected'));
+
+    await flushMicrotasks();
+    expect(order).toEqual([]);
+
+    work.resolve();
+    await result;
+
+    expect(order).toEqual(['exit', 'rejected']);
+  });
+
+  it('will report an async exit that rejects, keeping the outcome', async () => {
+    const caught = mockUncaught();
+
+    class Test extends Steps {
+      async next() {
+        this.end('ok');
+      }
+
+      protected end(value: string) {
+        return value;
+      }
+
+      async exit() {
+        throw new Error('exit');
+      }
+    }
+
+    expect(await Test.new().next()).toBe('ok');
+    await flushMicrotasks();
+    expect(caught).toEqual([new Error('exit')]);
+  });
+
+  it('will not stop a run while its exit is pending', async () => {
+    const work = mockPromise();
+    const exit = vi.fn();
+
+    class Test extends Steps {
+      async next() {}
+
+      async exit(outcome: Steps.Outcome) {
+        exit(outcome);
+        await work;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.next();
+
+    await flushMicrotasks();
+    test.then.stop();
+    work.resolve();
+
+    await expect(result).resolves.toEqual({});
+    expect(exit).toHaveBeenCalledTimes(1);
+    expect(test.then.status).toBe('idle');
+  });
+
   it('will not wrap exit as a step', async () => {
+    const self = vi.fn();
+
     class Test extends Journal {
       next() {}
 
       exit() {
-        return this;
+        self(this);
       }
     }
 
     const test = Test.new();
 
-    expect(test.exit()).toBe(test);
+    test.exit();
+    expect(self).toHaveBeenCalledWith(test);
     await test.next();
     expect(record(test).map((entry) => entry.key)).toEqual(['next']);
   });
@@ -5445,7 +5606,7 @@ describe('collections', () => {
 
     await test.next();
     expect(test.items.get()).toEqual(['try 2']);
-    expect(record(test).map((entry) => entry.wrote)).toEqual([[], ['items']]);
+    expect(record(test).map((entry) => entry.wrote)).toEqual([[], [], ['items']]);
   });
 
   it('will attribute a change only to the step making it', async () => {

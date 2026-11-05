@@ -391,7 +391,7 @@ class Steps extends Model {
   protected back?(reason: unknown): void;
 
   /** Once per run on every outcome, last before the run settles. A throw is reported uncaught; the outcome stands. */
-  protected exit?(outcome: Steps.Outcome): void;
+  protected exit?(outcome: Steps.Outcome): void | Promise<void>;
 }
 
 class Control extends Model {
@@ -435,7 +435,7 @@ class Control extends Model {
   }
 
   hook(key: string, ...args: unknown[]) {
-    this._hooks.get(key)?.apply(this._self, args);
+    return this._hooks.get(key)?.apply(this._self, args);
   }
 
   start(args: unknown[]) {
@@ -553,6 +553,7 @@ class Run extends Model {
   _drained: (() => void)[] = [];
   _halted?: 'failed' | 'stopped' = undefined;
   _ending?: boolean = undefined;
+  _exiting?: boolean = undefined;
   _error?: unknown = undefined;
   _stopped?: Error = undefined;
   _warned?: boolean = undefined;
@@ -1002,9 +1003,18 @@ class Run extends Model {
       if (undo) throw error;
       if (signal.aborted && error === signal.reason) return;
 
-      if (body && !fixed && this.caught(error, id))
-        this._entries.push({ id, key, args, next: [], wrote: [], error, ...frame._retry && { retry: frame._retry } });
-      else this.halt('failed', error);
+      if (body && !fixed && this.caught(error, id)) {
+        const entry = { id, key, args, next: [], wrote: [], error, ...frame._retry && { retry: frame._retry } };
+
+        this._entries.push(entry);
+
+        try {
+          control.hook(`after${capital(key)}`, false, entry);
+          control.hook('after', key, entry, false);
+        } catch (thrown) {
+          this.halt('failed', thrown);
+        }
+      } else this.halt('failed', error);
     } finally {
       this.frames.delete(frame);
       control.active = this.flight().at(-1)?.key;
@@ -1054,9 +1064,17 @@ class Run extends Model {
   }
 
   finish(value: unknown) {
+    this._exiting = true;
+
+    const exiting = this.exit({ status: 'done', result: value });
+
+    if (exiting) exiting.then(() => this.settle(value));
+    else this.settle(value);
+  }
+
+  settle(value: unknown) {
     const { control } = this;
 
-    this.exit({ status: 'done', result: value });
     this.close();
     control.status = 'idle';
     this._ticket.resolve(value);
@@ -1078,7 +1096,7 @@ class Run extends Model {
   halt(status: 'failed' | 'stopped', error?: unknown, undo = status == 'failed') {
     const { control } = this;
 
-    if (this._halted) return;
+    if (this._halted || this._exiting) return;
 
     this._halted = status;
     control.status = status;
@@ -1109,7 +1127,7 @@ class Run extends Model {
     const { _cut: cut } = this;
     const error = this.reason();
 
-    this.exit(cut ? { status: 'failed', error, stopped: cut.reason } : { status: this._halted!, error });
+    await this.exit(cut ? { status: 'failed', error, stopped: cut.reason } : { status: this._halted!, error });
     this.reject();
   }
 
@@ -1192,11 +1210,11 @@ class Run extends Model {
 
   exit(outcome: Steps.Outcome) {
     try {
-      this.control.hook('exit', outcome);
+      const out = this.control.hook('exit', outcome);
+
+      if (out instanceof Promise) return out.then(() => {}, uncaught);
     } catch (cause) {
-      queueMicrotask(() => {
-        throw cause;
-      });
+      uncaught(cause);
     }
   }
 
@@ -1677,6 +1695,12 @@ function signal(key: unknown) {
 
 function iterable(value: unknown): value is Iterable<unknown> {
   return value != null && typeof (value as Iterable<unknown>)[Symbol.iterator] == 'function';
+}
+
+function uncaught(cause: unknown) {
+  queueMicrotask(() => {
+    throw cause;
+  });
 }
 
 function outside(key: string, verb = 'called'): never {

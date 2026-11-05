@@ -10,9 +10,9 @@ protected beforeShip(skip: boolean, chargeId: string) {}
 protected afterShip(skip: boolean, entry: Steps.Entry) {}
 ```
 
-Order around each step: `before` → `before<Step>` → step → `after<Step>` → `after`. The after hooks see the committed entry - the runner keeps none, so a log is built here ([runner.md](runner.md#entry)). `skip` is always `false` at this tier - it is reserved for replay in the durable tier.
+Order around each step: `before` → `before<Step>` → step → `after<Step>` → `after`. The after hooks see the committed entry - the runner keeps none, so a log is built here ([runner.md](runner.md#entry)). A try a [catch](catch.md) took reaches them too, its entry carrying `error` - a log shows the attempt that failed beside its replacement. `skip` is always `false` at this tier - it is reserved for replay in the durable tier.
 
-Hooks are `protected` by convention ([README.md](README.md#conventions)) and synchronous. Hooks run with the raw instance as `this`: their writes are in no entry and do not count as step work; their return is ignored and not awaited. A hook that throws fails the run. Hooks fire for `next`, `end`, steps answering a wait and inline steps (key `then`); once per step - a catch handler is its own step - and not for undos - an answer to a [returned wait](undo.md#a-returned-wait) included.
+Hooks are `protected` by convention ([README.md](README.md#conventions)) and synchronous - `exit` may be `async`. Hooks run with the raw instance as `this`: their writes are in no entry and do not count as step work; their return is ignored and not awaited. A hook that throws fails the run. Hooks fire for `next`, `end`, steps answering a wait and inline steps (key `then`); once per step - a catch handler is its own step - and not for undos - an answer to a [returned wait](undo.md#a-returned-wait) included.
 
 A per-step hook without its step throws when the instance is created: `afterShip has no step ship.` `before`/`after`/`back`/`exit` are declared on `Steps` - `override` checks their signatures ([contract.md](contract.md)); per-step hooks are unchecked.
 
@@ -29,8 +29,8 @@ Runs once after each unwind completes - halted at an irreversible entry or not. 
 ## `exit`
 
 ```ts
-protected exit(outcome: Steps.Outcome) {
-  if (outcome.status != 'done') this.session.close();
+protected async exit(outcome: Steps.Outcome) {
+  if (outcome.status != 'done') await this.session.close();
 }
 ```
 
@@ -43,9 +43,9 @@ type Outcome<R = unknown> =
   | { status: 'stopped'; error: unknown };
 ```
 
-`result` is the run's result; `error` is what the run rejects with - the failure, an undo's or `back`'s throw, or the `'Stopped'` error, carrying `stop`'s reason as `cause`. `stopped` - present when `stop(undo, reason)` came while the failure unwound: `reason`, else `undefined` ([undo.md](undo.md#a-returned-wait)). Runs for `stop()` with or without `undo`; not for queued runs dropped by `stop()` - they never started. Raw instance as `this`, writes unjournaled, return ignored.
+`result` is the run's result; `error` is what the run rejects with - the failure, an undo's or `back`'s throw, or the `'Stopped'` error, carrying `stop`'s reason as `cause`. `stopped` - present when `stop(undo, reason)` came while the failure unwound: `reason`, else `undefined` ([undo.md](undo.md#a-returned-wait)). Runs for `stop()` with or without `undo`; not for queued runs dropped by `stop()` - they never started. Raw instance as `this`, writes unjournaled. A returned Promise is awaited: the run settles, its status changes and the queue moves on once it does - cleanup an awaiter relies on, a row or a file, is done when the run settles. `stop()` while it is pending does nothing.
 
-A throw from it does not change the outcome - status, result and rejection stand. It is rethrown uncaught on a microtask, as an unawaited failure is.
+A throw or rejection from it does not change the outcome - status, result and rejection stand. It is rethrown uncaught on a microtask, as an unawaited failure is.
 
 Not `finally` - the instance is a thenable, so that name would read as `Promise.prototype.finally`. On a `Steps`, declare it `exit(outcome: Steps.Outcome<R>)` to type `result` - the declaration takes `Steps.Outcome`, so any `R` checks.
 

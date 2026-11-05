@@ -225,8 +225,13 @@ it('will retry a tool, keeping what the tool pushed from outside', async () => {
     'call_1_0: write notes ok',
     'done'
   ]);
-  // the failed try never commits, so after sees only the re-run - it carries retry 1
-  expect(record(agent).filter((entry) => entry.key == 'exec').map((entry) => entry.retry)).toEqual([1]);
+  // after sees the failed try with its error, then the re-run - it carries retry 1
+  const tries = record(agent).filter((entry) => entry.key == 'exec');
+
+  expect(tries.map((entry) => [entry.retry, (entry.error as Error)?.message])).toEqual([
+    [undefined, 'timeout'],
+    [1, undefined]
+  ]);
 });
 
 it('will deny a tool call nobody answers within a minute', async () => {

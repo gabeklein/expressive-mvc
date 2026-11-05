@@ -80,7 +80,7 @@ A step that throws, breaks a rule, or returns anything but an undo fails the run
 4. An undo that throws: `undone: 'failed'`, `error` replaced by what it threw, the unwind stops there.
 5. An `irreversible` or `committed` entry stops the unwind: it gets `halted: true` ([Collections](#collections), [Commit](#commit)). So does `stop()` while the unwind is parked on a [returned wait](#a-returned-wait).
 6. `back(reason)` runs with `error`, if declared ([hooks.md](hooks.md#back)); a throw from it replaces `error`.
-7. `exit({ status: 'failed', error })` runs, if declared ([hooks.md](hooks.md#exit)); a throw from it is reported uncaught, `error` unchanged.
+7. `exit({ status: 'failed', error })` runs, if declared, awaited when `async` ([hooks.md](hooks.md#exit)); a throw from it is reported uncaught, `error` unchanged.
 8. The run rejects with `error`.
 
 ```ts

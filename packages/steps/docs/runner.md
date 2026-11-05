@@ -29,7 +29,7 @@
 { id, key, args, next, wrote, undo?, undone?, wake?, retry?, error?, irreversible?, committed?, halted?, reason? }
 ```
 
-The Runner keeps no journal. Each step's entry is handed to `after(step, entry)` as it commits ([hooks.md](hooks.md)); a class wanting a log keeps them - `this.log.push(entry)`. A later unwind updates a kept entry in place: `undone`, `halted`, and `reason` when `stop(undo, reason)` halted a parked unwind there ([undo.md](undo.md#a-returned-wait)). See [steps.md](steps.md#entry).
+The Runner keeps no journal. Each step's entry is handed to `after(step, entry)` as it commits, a caught try's with `error` ([hooks.md](hooks.md)); a class wanting a log keeps them - `this.log.push(entry)`. A later unwind updates a kept entry in place: `undone`, `halted`, and `reason` when `stop(undo, reason)` halted a parked unwind there ([undo.md](undo.md#a-returned-wait)). See [steps.md](steps.md#entry).
 
 `wrote` names the fields the step wrote, collections changed in place included - no values.
 

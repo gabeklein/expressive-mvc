@@ -121,5 +121,5 @@ it('will end even when the report fails', async () => {
 
   expect(await crawl).toHaveLength(1);
   expect(stats.post).toHaveBeenCalled();
-  expect(record(crawl).some((entry) => entry.key == 'report')).toBe(false);
+  expect(record(crawl).find((entry) => entry.key == 'report')?.error).toEqual(new Error('offline'));
 });

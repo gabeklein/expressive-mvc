@@ -243,6 +243,6 @@ Each step that commits is one entry, handed to [`after`](hooks.md) - the runner 
 
 Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `error` - a caught failure ([catch.md](catch.md)), or a failing step that kept its writes; `retry` - a re-run from its own catch; `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit); `implicit` - an `end` the runtime added ([end](#end-is-terminal)).
 
-The runtime makes entries no hook is handed, for its own unwind: a failed try that was caught or kept its writes (`error`), a `back` (`to`, `reason` - [undo.md](undo.md#back)), an implicit `end`, and an unwind's answer to a returned wait (`wake`). An entry holds no values - an unwind restores fields from priors the runtime keeps for steps that opted in ([undo.md](undo.md#restoring-fields)).
+A try a catch took reaches `after` with `error`. The runtime makes entries no hook is handed, for its own unwind: a failed try that kept its writes (`error`), a `back` (`to`, `reason` - [undo.md](undo.md#back)), an implicit `end`, and an unwind's answer to a returned wait (`wake`). An entry holds no values - an unwind restores fields from priors the runtime keeps for steps that opted in ([undo.md](undo.md#restoring-fields)).
 
 Writes from outside the run, through `this.is`, in helpers, or in hooks are in no entry.
