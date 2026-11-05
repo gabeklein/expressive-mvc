@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { initSync, parse } from "es-module-lexer";
 import { build } from "tsdown";
 import ts from "typescript";
 import { createServer, type ViteDevServer } from "vite";
@@ -154,8 +155,18 @@ describe("build", () => {
     expect(missing).toEqual([]);
   });
 
+  it("will give the server build every name the browser build has, and Current", () => {
+    initSync();
+
+    const names = (file: string) => parse(readFileSync(join(dist, file), "utf8"))[1].map(({ n }) => n).sort();
+
+    expect(names("index.client.js")).toEqual(expect.arrayContaining(["HttpError", "call", "client", "configure", "define"]));
+    expect(names("index.server.js")).toEqual([...names("index.client.js"), "Current"].sort());
+  });
+
   it("will keep node out of the browser build", () => {
     const reached = [...reach(["index.client.js"])];
+    expect(reached.filter(file => /class Current\b/.test(readFileSync(join(dist, file), "utf8")))).toEqual([]);
 
     expect(reached.flatMap(importsOf).filter(spec => !spec.startsWith("."))).toEqual([]);
     expect(reached.filter(file => /AsyncLocalStorage/.test(readFileSync(join(dist, file), "utf8")))).toEqual([]);
