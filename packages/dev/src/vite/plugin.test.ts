@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { build, createServer, createServerModuleRunner, type InlineConfig, type ViteDevServer } from "vite";
+import { build, createServer, createServerModuleRunner, optimizeDeps, resolveConfig, type InlineConfig, type ViteDevServer } from "vite";
 import { client, HttpError } from "@expressive/rpc";
 
 import { clientBuild, serverBuild } from "./build";
@@ -155,6 +155,19 @@ describe("vite host", () => {
     await server.transformRequest("/app/tally/index.tsx");
 
     expect((await server.transformRequest("/app/tally/remote.ts"))?.code).not.toContain("a + b");
+  });
+
+  it("will not crawl sidecars during dependency discovery", async () => {
+    const root = project({
+      "app/index.ts": "export const Page = () => null",
+      "app/tally/index.ts": "import 'client-dep'; import { add } from './remote'; export const Page = () => add",
+      "app/tally/remote.ts": "import { db } from 'server-only-dep'; export async function add() { return db }",
+      "node_modules/client-dep/package.json": `{ "name": "client-dep", "type": "module", "main": "index.js" }`,
+      "node_modules/client-dep/index.js": "export default 1;",
+    });
+    const config = await resolveConfig({ root, configFile: false, logLevel: "silent", plugins: [expressive()], resolve: SOURCES }, "serve");
+
+    expect((await optimizeDeps(config, true)).optimized).toHaveProperty("client-dep");
   });
 
   it("will throw if client code imports a server-only name, the host adapter or the plumbing, but not server code", async () => {
