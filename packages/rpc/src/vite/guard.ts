@@ -6,19 +6,25 @@ import { SCRIPT } from "./manifest";
 export const SERVER_ONLY: readonly string[] = ["Current"];
 
 const ROOT = "@expressive/rpc";
-const HOST = "@expressive/rpc/http";
+
+const HOST_ONLY: Record<string, string> = {
+  "@expressive/rpc/http": "the host adapter - only a server entry uses it",
+  "@expressive/rpc/protocol": "server plumbing - only a server or host module uses it",
+};
 
 export function guard(code: string): string | undefined {
   const found = new Set<string>();
-  let host = false;
+  const hosted = new Set<string>();
 
   if (!code.includes(ROOT)) return;
 
   initSync();
 
   for (const { n, ss, se, d } of parse(code)[0]) {
-    if (n === HOST && d > -1) host = true;
-    if ((n !== ROOT && n !== HOST) || d !== -1) continue;
+    const host = n !== undefined && Object.hasOwn(HOST_ONLY, n);
+
+    if (host && d > -1) hosted.add(n);
+    if ((n !== ROOT && !host) || d !== -1) continue;
 
     const statement = code.slice(ss, se);
 
@@ -27,13 +33,13 @@ export function guard(code: string): string | undefined {
     const named = /\{([^}]*)\}/.exec(statement);
     const values = named ? named[1].split(",").map(binding => binding.trim().split(/\s+/)).filter(([name]) => name && name !== "type").map(([name]) => name) : [];
 
-    if (n === HOST) host ||= !/^(?:import|export)\s*\{/.test(statement) || values.length > 0;
-    else for (const name of values) if (SERVER_ONLY.includes(name)) found.add(name);
+    if (host && (!/^(?:import|export)\s*\{/.test(statement) || values.length > 0)) hosted.add(n);
+    if (!host) for (const name of values) if (SERVER_ONLY.includes(name)) found.add(name);
   }
 
   const problems = [
     found.size && `imports ${[...found].join(", ")} from ${ROOT}, which only its server build exports.`,
-    host && `imports ${HOST}, the host adapter - only a server entry uses it.`,
+    ...Object.entries(HOST_ONLY).map(([spec, what]) => hosted.has(spec) && `imports ${spec}, ${what}.`),
   ].filter(Boolean);
 
   if (problems.length) return problems.join(" ");

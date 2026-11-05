@@ -157,20 +157,23 @@ describe("vite host", () => {
     expect((await server.transformRequest("/app/tally/remote.ts"))?.code).not.toContain("a + b");
   });
 
-  it("will throw if client code imports a server-only name or the host adapter, but not server code", async () => {
+  it("will throw if client code imports a server-only name, the host adapter or the plumbing, but not server code", async () => {
     const server = await serve(project({
       "app/index.tsx": 'import { Current } from "@expressive/rpc"; export const Page = () => Current',
       "app/host.tsx": 'import { toNode } from "@expressive/rpc/http"; export const Page = () => toNode',
+      "app/plumbing.tsx": 'import { within } from "@expressive/rpc/protocol"; export const Page = () => within',
       "app/ok.tsx": 'import { NotFound } from "@expressive/rpc"; export const Page = () => NotFound',
       "app/doc.tsx": '/** Server code reads `import { Current } from "@expressive/rpc"`. */\nexport const Page = () => <p>doc</p>',
     }));
 
     await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow("app/index.tsx imports Current from @expressive/rpc, which only its server build exports.");
     await expect(server.transformRequest("/app/host.tsx")).rejects.toThrow("app/host.tsx imports @expressive/rpc/http, the host adapter - only a server entry uses it.");
+    await expect(server.transformRequest("/app/plumbing.tsx")).rejects.toThrow("app/plumbing.tsx imports @expressive/rpc/protocol, server plumbing - only a server or host module uses it.");
     expect((await server.transformRequest("/app/ok.tsx"))?.code).toContain("NotFound");
     expect((await server.transformRequest("/app/doc.tsx"))?.code).toContain("doc");
     expect((await server.environments.ssr.transformRequest("/app/index.tsx"))?.code).toContain("Current");
     expect((await server.environments.ssr.transformRequest("/app/host.tsx"))?.code).toContain("toNode");
+    expect((await server.environments.ssr.transformRequest("/app/plumbing.tsx"))?.code).toContain("within");
   });
 
   it("will guard only scripts that mention @expressive/rpc", async () => {

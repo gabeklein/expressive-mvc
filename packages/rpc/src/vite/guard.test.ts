@@ -30,6 +30,20 @@ describe("guard", () => {
     expect(guard(`import { Current } from "@expressive/rpc";\nexport { reply } from "@expressive/rpc/http";`)).toBe(`imports Current from @expressive/rpc, which only its server build exports. ${refused}`);
   });
 
+  it("will refuse any value import of the server plumbing", () => {
+    const refused = "imports @expressive/rpc/protocol, server plumbing - only a server or host module uses it.";
+
+    expect(guard(`import { within } from "@expressive/rpc/protocol";`)).toBe(refused);
+    expect(guard(`import protocol from "@expressive/rpc/protocol";`)).toBe(refused);
+    expect(guard(`import * as protocol from "@expressive/rpc/protocol";`)).toBe(refused);
+    expect(guard(`import "@expressive/rpc/protocol";`)).toBe(refused);
+    expect(guard(`export * from "@expressive/rpc/protocol";`)).toBe(refused);
+    expect(guard(`export const load = () => import("@expressive/rpc/protocol");`)).toBe(refused);
+    expect(guard(`import { handler } from "@expressive/rpc/http";\nimport { verify } from "@expressive/rpc/protocol";`)).toBe(
+      `imports @expressive/rpc/http, the host adapter - only a server entry uses it. ${refused}`,
+    );
+  });
+
   it("will allow what the browser build exports, types, and other modules", () => {
     expect(guard(`import { call, configure, NotFound, Redirect } from "@expressive/rpc";`)).toBeUndefined();
     expect(guard(`import type { Current } from "@expressive/rpc";`)).toBeUndefined();
@@ -38,7 +52,8 @@ describe("guard", () => {
     expect(guard(`export const load = () => import("@expressive/rpc");\nexport const url = import.meta.url;`)).toBeUndefined();
     expect(guard(`import type { HandlerOptions } from "@expressive/rpc/http";`)).toBeUndefined();
     expect(guard(`import { type HandlerOptions } from "@expressive/rpc/http";`)).toBeUndefined();
-    expect(guard(`import { Current } from "@expressive/rpc/protocol";\nimport { Current as C } from "@expressive/rpc/http/other";`)).toBeUndefined();
+    expect(guard(`import type { Seat } from "@expressive/rpc/protocol";\nimport { type Seats } from "@expressive/rpc/protocol";`)).toBeUndefined();
+    expect(guard(`import { Current } from "@expressive/rpc/protocol/other";\nimport { Current as C } from "@expressive/rpc/http/other";`)).toBeUndefined();
   });
 
   it("will pass a module that never names the package", () => {

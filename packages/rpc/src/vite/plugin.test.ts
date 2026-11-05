@@ -149,18 +149,21 @@ describe("client", () => {
     );
   });
 
-  it("will throw if client code imports a server-only name or the host adapter, but not server code", async () => {
+  it("will throw if client code imports a server-only name, the host adapter or the plumbing, but not server code", async () => {
     const server = await serve(project({
       "src/server.ts": `import { Current } from "@expressive/rpc"; export const a = Current;`,
       "src/host.ts": `import { handler } from "@expressive/rpc/http"; export const a = handler;`,
+      "src/plumbing.ts": `import { within } from "@expressive/rpc/protocol"; export const a = within;`,
       "src/ok.ts": `import { NotFound, type Current } from "@expressive/rpc"; export const a: Current | string = NotFound.name;`,
     }));
 
     await expect(server.transformRequest("/src/server.ts")).rejects.toThrow("src/server.ts imports Current from @expressive/rpc, which only its server build exports.");
     await expect(server.transformRequest("/src/host.ts")).rejects.toThrow("src/host.ts imports @expressive/rpc/http, the host adapter - only a server entry uses it.");
+    await expect(server.transformRequest("/src/plumbing.ts")).rejects.toThrow("src/plumbing.ts imports @expressive/rpc/protocol, server plumbing - only a server or host module uses it.");
     expect((await server.transformRequest("/src/ok.ts"))!.code).toContain("NotFound");
     expect((await server.environments.rpc.transformRequest("/src/server.ts"))!.code).toContain("Current");
     expect((await server.environments.rpc.transformRequest("/src/host.ts"))!.code).toContain("handler");
+    expect((await server.environments.rpc.transformRequest("/src/plumbing.ts"))!.code).toContain("within");
   });
 
   it("will keep the dependency scan out of the folder", async () => {
