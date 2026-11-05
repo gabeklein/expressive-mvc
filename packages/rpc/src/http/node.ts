@@ -6,7 +6,7 @@ interface NodeRequest extends AsyncIterable<Uint8Array> {
 
 interface NodeResponse {
   statusCode: number;
-  setHeader(name: string, value: string): unknown;
+  setHeader(name: string, value: string | string[]): unknown;
   on(event: "close", listener: () => void): unknown;
   flushHeaders(): void;
   write(chunk: Uint8Array): unknown;
@@ -44,11 +44,14 @@ export function toRequest(req: NodeRequest, res: NodeResponse): Request {
 }
 
 export async function send(res: NodeResponse, response: Response): Promise<void> {
-  res.statusCode = response.status;
-  response.headers.forEach((value, name) => res.setHeader(name, value));
+  const cookies = response.headers.getSetCookie();
 
+  res.statusCode = response.status;
+  response.headers.forEach((value, name) => name !== "set-cookie" && res.setHeader(name, value));
+
+  if (cookies.length) res.setHeader("set-cookie", cookies);
   if (!response.body) return void res.end();
-  if (response.headers.get("content-type") !== "text/event-stream") return void res.end(new Uint8Array(await response.arrayBuffer()));
+  if (response.headers.get("content-type")?.startsWith("application/json")) return void res.end(new Uint8Array(await response.arrayBuffer()));
 
   res.flushHeaders();
 

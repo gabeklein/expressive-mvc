@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpath
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { build as bundle, createBuilder, createServer, type InlineConfig, type ViteDevServer } from "vite";
+import { build as bundle, createBuilder, createServer, optimizeDeps, resolveConfig, type InlineConfig, type ViteDevServer } from "vite";
 
 import { rpc, type Options } from "./plugin";
 
@@ -173,11 +173,23 @@ describe("client", () => {
     const main = join(root, "src/main.ts");
     const scan = (id: string, importer?: string) => pluginContainer.resolveId(id, importer, { scan: true } as {});
 
-    expect(await scan("../api/todos", main)).toMatchObject({ id: join(root, "api/todos.ts"), external: true });
+    expect(await scan("../api/todos", main)).toMatchObject({ id: `\0${join(root, "api/todos.ts")}`, external: true });
     expect(await scan("./main", main)).toMatchObject({ id: main });
     expect((await scan("./missing", main))?.external).toBeFalsy();
     expect(await scan("/api/todos.ts")).toMatchObject({ external: true });
     expect((await scan("vite", main))?.external).toBeFalsy();
+  });
+
+  it("will not crawl server modules during dependency discovery", async () => {
+    const root = project({
+      "src/main.ts": `import "client-dep"; import { list } from "../api/todos"; console.log(list);`,
+      "api/todos.ts": `import { db } from "server-only-dep"; export async function list() { return db; }`,
+      "node_modules/client-dep/package.json": `{ "name": "client-dep", "type": "module", "main": "index.js" }`,
+      "node_modules/client-dep/index.js": `export default 1;`,
+    });
+    const config = await resolveConfig({ root, configFile: false, logLevel: "silent", plugins: [rpc()], resolve: SOURCES, optimizeDeps: { entries: ["src/main.ts"] } }, "serve");
+
+    expect((await optimizeDeps(config, true)).optimized).toHaveProperty("client-dep");
   });
 
   it("will build the client into dist/client unless told otherwise", async () => {
