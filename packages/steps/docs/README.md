@@ -60,6 +60,20 @@ const { orderId } = await order;      // runs next(), typed by end()
 
 A class that cannot extend `Steps` - it already extends another `Model` or a `Component` - holds a `Steps` subclass as a field: `pull = new Pull()`, which reaches its owner with `get()` ([contract.md](contract.md#composition)).
 
+## Coordination first
+
+Opinionated, opt-out: a `Steps` class is the process's template, not where its work lives. A step awaits the call that does its work, then schedules, groups, gates or catches what follows. Work with its own state or more than a few lines - building a request, streaming a response, parsing, choosing between sources - goes in a function, or a Model the run owns (a field), finds (`get()` - a peer or its owner) or reports to. Read top to bottom, the steps are the recipe.
+
+```ts
+protected async sample(body: RenderBody) {
+  const image = await this.engine.render(body, this.then.signal);
+
+  this.save(image);
+}
+```
+
+Reporting state - progress, a live preview - fits the same split: on an owned Model, or written through a `_` helper ([steps.md](steps.md#helpers)). Written through the step's proxy, it is the step's write - a failed or re-run try restores it.
+
 Entries of a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1 → end#1`. A `courier.book` failure unwinds every committed step, newest first: `refund('ch_42')`, then `charge` restored - `pay` returned an undo - then `inventory.release('hold_sku')`. A step that returns nothing keeps its fields through an unwind; one that returns an undo or `true` has them restored ([undo.md](undo.md#restoring-fields)).
 
 - [contract.md](contract.md) - the contract: members, visibility, when each runs; composition - a `Steps` model held as a field

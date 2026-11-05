@@ -175,7 +175,7 @@ A step called through the proxy of a step that has settled - from a timer, a wat
 
 ## Helpers
 
-A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no entry, pass the write guard, and are not restored on failure; a step it calls is an outside call. A helper computes; the step assigns.
+A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no entry, pass the write guard, and are not restored on failure; a step it calls is an outside call. A helper computes; the step assigns - except a report. A field the outside watches - progress, a status line - written through the proxy is restored when the try fails or re-runs, so the UI steps back; write it through a helper, or keep it on an owned Model.
 
 ```ts
 protected async first() {
