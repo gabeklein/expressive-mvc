@@ -106,7 +106,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
 
       const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
 
-      return resolved && located(resolved.id) ? { id: resolved.id, external: true } : resolved;
+      return resolved && located(resolved.id) ? { id: `\0${resolved.id}`, external: true } : resolved;
     },
 
     async load(id) {
