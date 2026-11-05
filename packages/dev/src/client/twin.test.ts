@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Context, def, Model } from "@expressive/mvc";
 
-import { client } from "@expressive/rpc/http";
+import { client } from "@expressive/rpc";
 import { runtime } from "./twin";
 
 interface Reply {

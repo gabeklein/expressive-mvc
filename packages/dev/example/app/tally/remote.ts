@@ -1,6 +1,6 @@
 import { Model } from "@expressive/mvc";
 import { Current } from "@expressive/dev/server";
-import { HttpError } from "@expressive/rpc/http";
+import { HttpError } from "@expressive/rpc";
 
 export class Overflow extends Error {
   status = 409;

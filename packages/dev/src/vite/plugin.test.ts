@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, createServer, createServerModuleRunner, type InlineConfig, type ViteDevServer } from "vite";
-import { client, HttpError } from "@expressive/rpc/http";
+import { client, HttpError } from "@expressive/rpc";
 
 import { clientBuild, serverBuild } from "./build";
 import { expressive } from "./plugin";
@@ -157,23 +157,27 @@ describe("vite host", () => {
     expect((await server.transformRequest("/app/tally/remote.ts"))?.code).not.toContain("a + b");
   });
 
-  it("will throw if client code imports a server-only name from @expressive/rpc/http, but not server code", async () => {
+  it("will throw if client code imports a server-only name, the host adapter or the plumbing, but not server code", async () => {
     const server = await serve(project({
-      "app/index.tsx": 'import { Current } from "@expressive/rpc/http"; export const Page = () => Current',
-      "app/ok.tsx": 'import { NotFound } from "@expressive/rpc/http"; export const Page = () => NotFound',
-      "app/doc.tsx": '/** Server code reads `import { Current } from "@expressive/rpc/http"`. */\nexport const Page = () => <p>doc</p>',
+      "app/index.tsx": 'import { Current } from "@expressive/rpc"; export const Page = () => Current',
+      "app/host.tsx": 'import { toNode } from "@expressive/rpc/http"; export const Page = () => toNode',
+      "app/plumbing.tsx": 'import { within } from "@expressive/rpc/protocol"; export const Page = () => within',
+      "app/ok.tsx": 'import { NotFound } from "@expressive/rpc"; export const Page = () => NotFound',
+      "app/doc.tsx": '/** Server code reads `import { Current } from "@expressive/rpc"`. */\nexport const Page = () => <p>doc</p>',
     }));
 
-    await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow(
-      "app/index.tsx imports Current from @expressive/rpc/http, which only a server has - its browser build does not export it.",
-    );
+    await expect(server.transformRequest("/app/index.tsx")).rejects.toThrow("app/index.tsx imports Current from @expressive/rpc, which only its server build exports.");
+    await expect(server.transformRequest("/app/host.tsx")).rejects.toThrow("app/host.tsx imports @expressive/rpc/http, the host adapter - only a server entry uses it.");
+    await expect(server.transformRequest("/app/plumbing.tsx")).rejects.toThrow("app/plumbing.tsx imports @expressive/rpc/protocol, server plumbing - only a server or host module uses it.");
     expect((await server.transformRequest("/app/ok.tsx"))?.code).toContain("NotFound");
     expect((await server.transformRequest("/app/doc.tsx"))?.code).toContain("doc");
     expect((await server.environments.ssr.transformRequest("/app/index.tsx"))?.code).toContain("Current");
+    expect((await server.environments.ssr.transformRequest("/app/host.tsx"))?.code).toContain("toNode");
+    expect((await server.environments.ssr.transformRequest("/app/plumbing.tsx"))?.code).toContain("within");
   });
 
-  it("will guard only scripts that mention @expressive/rpc/http", async () => {
-    const server = await serve(project({ "app/index.tsx": PAGE, "app/notes.json": `{ "server": "import { Current } from \\"@expressive/rpc/http\\";" }` }));
+  it("will guard only scripts that mention @expressive/rpc", async () => {
+    const server = await serve(project({ "app/index.tsx": PAGE, "app/notes.json": `{ "server": "import { Current } from \\"@expressive/rpc\\";" }` }));
 
     expect((await server.transformRequest("/app/notes.json"))?.code).toContain("import { Current } from");
   });
@@ -357,7 +361,7 @@ describe("vite host", () => {
   });
 
   it("will serve an exported subclass of an http error to the browser as an error, not a twin", async () => {
-    const remote = `import { HttpError } from "@expressive/rpc/http";
+    const remote = `import { HttpError } from "@expressive/rpc";
       export class Payment extends HttpError { status = 402; }
       export async function buy() { throw new Payment("upgrade"); }`;
     const root = project({ "app/index.tsx": PAGE, "app/shop/index.tsx": "import { buy } from './remote'; export const Page = () => buy", "app/shop/remote.ts": remote });
@@ -371,7 +375,7 @@ describe("vite host", () => {
   it("will define a sidecar's error under a parent from the sidecar above it, loading that stub first", async () => {
     const root = project({
       "app/index.tsx": PAGE,
-      "app/remote.ts": `import { HttpError } from "@expressive/rpc/http"; export class Billing extends HttpError { status = 402; }`,
+      "app/remote.ts": `import { HttpError } from "@expressive/rpc"; export class Billing extends HttpError { status = 402; }`,
       "app/shop/index.tsx": "import { buy } from './remote'; export const Page = () => buy",
       "app/shop/remote.ts": `import { Billing } from "../remote"; export class Late extends Billing {} export async function buy() {}`,
     });
@@ -384,7 +388,7 @@ describe("vite host", () => {
   });
 
   it("will rebuild a sidecar's http error subclass on the client as an HttpError", async () => {
-    const remote = `import { HttpError } from "@expressive/rpc/http";
+    const remote = `import { HttpError } from "@expressive/rpc";
       export class Payment extends HttpError { status = 402; }
       export async function buy() { throw new Payment("upgrade"); }`;
     const server = await serve(project({ "app/index.tsx": PAGE, "app/shop/remote.ts": remote }));

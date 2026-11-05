@@ -66,7 +66,7 @@ describe("stub", () => {
     }), at);
 
     expect(stub).toBe([
-      `import { call, define } from "@expressive/rpc/http";`,
+      `import { call, define } from "@expressive/rpc";`,
       `const at = "/";`,
       `export const list = (...args) => call(at, "todos:list", args);`,
       `export const Over = define("/#todos:Over", "Over");`,

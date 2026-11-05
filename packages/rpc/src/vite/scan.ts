@@ -1,7 +1,7 @@
 import { basename } from "node:path";
 import { parseSync, type ESTree } from "vite";
 
-import { ERRORS } from "../http/errors";
+import { ERRORS } from "../errors";
 
 export interface Sources {
   resolve(spec: string, importer: string): Promise<string | undefined>;
@@ -52,7 +52,7 @@ interface Found {
 
 type End = { kind: "error"; parent?: Parent } | { kind: "model" | "plain" } | { kind: "problem"; problem: string };
 
-const HTTP = "@expressive/rpc/http";
+const ROOT = "@expressive/rpc";
 const LIBRARY = /^@expressive\//;
 const INDEX = /^index\.[cm]?[jt]sx?$/;
 
@@ -171,7 +171,7 @@ async function endOf(start: Found, name: string, sources: Sources, owned: (file:
 
     if (isClass(local)) next = { cls: local, module };
     else if (!imported || imported.type) return globalEnd(owner, base.name, parent);
-    else if (imported.from === HTTP) return `http:${imported.name}` in ERRORS ? { kind: "error", parent: parent ?? { id: `http:${imported.name}` } } : { kind: "plain" };
+    else if (imported.from === ROOT && `http:${imported.name}` in ERRORS) return { kind: "error", parent: parent ?? { id: `http:${imported.name}` } };
     else if (LIBRARY.test(imported.from)) return { kind: "model" };
     else if (!/^[./]/.test(imported.from)) return { kind: "error", parent };
     else {

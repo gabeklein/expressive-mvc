@@ -1,5 +1,5 @@
 import { attempt, fault, inFolder, locate, type Call, type Endpoint, type Exports, type Match, type Outcome, type Seats } from "../call";
-import { ERRORS } from "./errors";
+import { ERRORS } from "../errors";
 
 export function isCall(request: Request): boolean {
   const { headers } = request;

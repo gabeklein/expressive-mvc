@@ -1,4 +1,4 @@
-import { HttpError, NotFound } from "@expressive/rpc/http";
+import { HttpError, NotFound } from "@expressive/rpc";
 import { todos, type Todo } from "../data/todos";
 
 export type { Todo };

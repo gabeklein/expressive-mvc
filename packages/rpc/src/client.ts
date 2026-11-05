@@ -1,4 +1,4 @@
-import { registry } from "../registry";
+import { registry } from "./registry";
 import { ERRORS } from "./errors";
 
 export {
@@ -39,7 +39,10 @@ export function client(initial: ClientOptions = {}) {
     Object.assign(options, next);
   }
 
-  function pathOf(pattern: string[], name: string, from = location.pathname): string {
+  function pathOf(pattern: string[], name: string, from = globalThis.location?.pathname): string {
+    if (from === undefined)
+      throw new Error(`Cannot fill /${pattern.join("/")} for ${name}() - a pattern needs a page location to read its params from. Pass the path to fill from as pathOf's third argument.`);
+
     const at = from.split("/").filter(Boolean);
     const path = pattern.map((part, i) => {
       if (part === "*") return at.slice(i).join("/");
