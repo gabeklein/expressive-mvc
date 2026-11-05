@@ -20,4 +20,11 @@ describe("server build", () => {
   it("will throw if a relative base has no page location to resolve against", async () => {
     await expect(server.client({ base: "/api" }).call("/tally", "add", [])).rejects.toThrow("a relative base needs a page location to resolve against");
   });
+
+  it("will throw if a pattern has no page location to fill its params from", () => {
+    expect(() => server.client().pathOf(["blog", ":slug"], "add")).toThrow(
+      "Cannot fill /blog/:slug for add() - a pattern needs a page location to read its params from. Pass the path to fill from as pathOf's third argument.",
+    );
+    expect(server.client().pathOf(["blog", ":slug"], "add", "/blog/a")).toBe("/blog/a");
+  });
 });
