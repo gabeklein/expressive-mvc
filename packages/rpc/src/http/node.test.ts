@@ -73,7 +73,20 @@ describe("node response", () => {
     expect(res.end).toHaveBeenCalled();
   });
 
-  it("will end a whole body at once, so it goes with its length", async () => {
+  it("will send each cookie as its own header", async () => {
+    const res = outgoing();
+    const headers = new Headers({ "x-a": "1" });
+    headers.append("set-cookie", "a=1; HttpOnly");
+    headers.append("set-cookie", "b=2");
+
+    await send(res, new Response(null, { status: 204, headers }));
+
+    expect(res.setHeader).toHaveBeenCalledWith("set-cookie", ["a=1; HttpOnly", "b=2"]);
+    expect(res.setHeader).toHaveBeenCalledWith("x-a", "1");
+    expect(res.setHeader).toHaveBeenCalledTimes(2);
+  });
+
+  it("will end a JSON body at once, so it goes with its length", async () => {
     const res = outgoing();
 
     await send(res, new Response('{"a":1}', { status: 200, headers: { "content-type": "application/json" } }));
@@ -83,13 +96,24 @@ describe("node response", () => {
     expect(Buffer.from(res.end.mock.calls[0][0]).toString()).toBe('{"a":1}');
   });
 
-  it("will flush an event stream's headers, then write its body as it streams", async () => {
+  it("will flush any other body's headers, then write each chunk as it arrives", async () => {
     const res = outgoing();
+    const encoder = new TextEncoder();
+    let next!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({ start: controller => void (next = controller) });
 
-    await send(res, new Response("event: hello\n\n", { status: 200, headers: { "content-type": "text/event-stream" } }));
+    next.enqueue(encoder.encode('{"done":1}\n'));
+    const sent = send(res, new Response(body, { status: 200, headers: { "content-type": "application/x-ndjson" } }));
 
+    await vi.waitFor(() => expect(res.write).toHaveBeenCalledTimes(1));
     expect(res.flushHeaders).toHaveBeenCalled();
-    expect(Buffer.concat(res.write.mock.calls.map(([chunk]: [Uint8Array]) => chunk)).toString()).toBe("event: hello\n\n");
+    expect(res.end).not.toHaveBeenCalled();
+
+    next.enqueue(encoder.encode('{"done":2}\n'));
+    next.close();
+    await sent;
+
+    expect(Buffer.concat(res.write.mock.calls.map(([chunk]: [Uint8Array]) => chunk)).toString()).toBe('{"done":1}\n{"done":2}\n');
     expect(res.end).toHaveBeenCalled();
   });
 });
@@ -105,7 +129,8 @@ describe("node handler", () => {
     await settled();
 
     expect(res.statusCode).toBe(201);
-    expect(Buffer.from(res.end.mock.calls[0][0]).toString()).toBe("http://localhost/a");
+    expect(Buffer.concat(res.write.mock.calls.map(([chunk]: [Uint8Array]) => chunk)).toString()).toBe("http://localhost/a");
+    expect(res.end).toHaveBeenCalled();
     expect(next).not.toHaveBeenCalled();
   });
 

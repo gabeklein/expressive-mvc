@@ -43,7 +43,7 @@ let built: ((instance: Model) => void) | undefined;
 
 function frame(): Frame {
   const frame = store.getStore();
-  if (!frame) throw new Error("Server Model resolves only within a sidecar call.");
+  if (!frame) throw new Error("Server Model resolves only within a call.");
   return frame;
 }
 
