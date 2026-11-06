@@ -1,5 +1,5 @@
 import { listener } from '../observable';
-import { PENDING, Model, STORE, uid, apply } from '../state';
+import { PENDING, Model, STORE, uid, apply } from '../model';
 
 declare namespace def {
   /**

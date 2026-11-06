@@ -1,5 +1,5 @@
 import { listener, capture, observer } from '../observable';
-import { access, compute, event, Model, update } from '../state';
+import { access, compute, event, Model, update } from '../model';
 import { def } from './def';
 
 declare namespace set {
