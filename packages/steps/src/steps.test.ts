@@ -7983,6 +7983,21 @@ describe('Steps', () => {
     ]);
   });
 
+  it('will throw if end is given a value', async () => {
+    class Test extends Steps {
+      async next() {
+        // @ts-expect-error - end takes no value
+        this.then.end('x');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.next()).rejects.toThrow('end() takes no value; the result is what next returns.');
+    // @ts-expect-error - end takes no value
+    expect(() => test.then.end('x')).toThrow('end() takes no value; the result is what next returns.');
+  });
+
   it('will require next to be async', () => {
     class Test extends Steps {
       // @ts-expect-error - next returns a Promise

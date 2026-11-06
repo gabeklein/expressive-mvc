@@ -292,7 +292,7 @@ function run<T extends Steps>(self: T) {
     then: { value: runner },
     on: { value: self },
     get: { value: () => Object.fromEntries(KEYS.map((key) => [key, read[key]()])) },
-    end: { value: () => control.conclude() },
+    end: { value: (...value: unknown[]) => void (valueless(value), control.conclude()) },
     stop: { value: (undo?: boolean, reason?: unknown) => control.stop(undo, reason) },
     commit: { value: () => outside('commit') },
     back: { value: () => outside('back') },
@@ -1478,7 +1478,7 @@ class Frame extends Model {
     Object.setPrototypeOf(view, this.run.control._runner);
     Object.defineProperties(view, {
       then: { value: view },
-      end: { value: () => this.issue('end', []) },
+      end: { value: (...value: unknown[]) => (valueless(value), this.issue('end', [])) },
       signal: { get: () => this._abort.signal },
       retry: { get: () => this._retry },
       caught: { get: () => this._caught },
@@ -1720,6 +1720,10 @@ function signal(key: unknown) {
 
 function iterable(value: unknown): value is Iterable<unknown> {
   return value != null && typeof (value as Iterable<unknown>)[Symbol.iterator] == 'function';
+}
+
+function valueless(args: unknown[]) {
+  if (args.length) throw new Error('end() takes no value; the result is what next returns.');
 }
 
 function outside(key: string, verb = 'called'): never {
