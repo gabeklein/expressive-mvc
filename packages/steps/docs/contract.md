@@ -13,8 +13,8 @@ class Steps extends Model {
 | `then` | public, `readonly` | the `Runner` ([runner.md](runner.md)) - `await instance` starts or joins a run ([runs.md](runs.md#awaiting-the-instance---start-or-join)) |
 | `next(...args)` | public | the entry - starts a run, or queues one ([runs.md](runs.md)); narrow its parameters freely |
 | `end(value?)` | `protected` | ends the run where the plan reaches it; its return types `await instance`, else its argument, else the values dump ([steps.md](steps.md#end-is-terminal)) |
-| `before(step, args, skip)` | `protected` | before each step ([hooks.md](hooks.md)) |
-| `after(step, entry, skip)` | `protected` | after each step commits ([hooks.md](hooks.md)) |
+| `before(step, args)` | `protected` | before each step ([hooks.md](hooks.md)) |
+| `after(step, entry)` | `protected` | after each step commits ([hooks.md](hooks.md)) |
 | `back(reason)` | `protected` | once an unwind completes - after `then.back(step, reason)`, or a failure before the run rejects ([hooks.md](hooks.md#back)) |
 | `exit(outcome)` | `protected` | once per run on every outcome - done, failed, stopped - last before it settles, awaited when `async` ([hooks.md](hooks.md#exit)) |
 

@@ -140,13 +140,13 @@ export class Deploy extends Steps {
     this.live.set(host, this.artifact);
   }
 
-  // a per-step hook gets the step's own args; skip is reserved for replay, always false here
-  protected beforeUpgrade(skip: boolean, host: string) {
+  // a per-step hook gets the step's own args
+  protected beforeUpgrade(host: string) {
     fleet.drain(host);
   }
 
   // after hooks run once the step commits - a host that failed stays drained
-  protected afterUpgrade(skip: boolean, entry: Steps.Entry) {
+  protected afterUpgrade(entry: Steps.Entry) {
     fleet.serve(entry.args[0] as string);
   }
 

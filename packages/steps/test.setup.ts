@@ -13,14 +13,14 @@ const OPEN = new WeakSet<object>();
  */
 export function journal<T extends new (...args: any[]) => Steps>(Base: T): T {
   class Journaled extends (Base as new (...args: any[]) => Steps) {
-    protected before(step: string, args: unknown[], skip: boolean) {
+    protected before(step: string, args: unknown[]) {
       current(this);
-      super.before?.(step, args, skip);
+      super.before?.(step, args);
     }
 
-    protected after(step: string, entry: Steps.Entry, skip: boolean) {
+    protected after(step: string, entry: Steps.Entry) {
       current(this).push(entry);
-      super.after?.(step, entry, skip);
+      super.after?.(step, entry);
     }
 
     protected exit(outcome: Steps.Outcome) {

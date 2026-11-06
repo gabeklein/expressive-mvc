@@ -82,7 +82,7 @@ A PR adding a feature extends an example and this table.
 | feature | where |
 | --- | --- |
 | `before` / `after` | `Deploy.before`, `Deploy.after` |
-| `before<Step>` / `after<Step>` with `skip` | `Deploy.beforeUpgrade`, `Deploy.afterUpgrade` |
+| `before<Step>` / `after<Step>` | `Deploy.beforeUpgrade`, `Deploy.afterUpgrade` |
 | `exit(outcome)` | `Deploy.exit` |
 | `exit` resetting a field on a failed run | `Pull.exit`; sync test `will start over after a failed sync` |
 | `this.then.signal`, aborted by `stop()` | `Agent.turn`, `Deploy.suite`, `Pull.page` |

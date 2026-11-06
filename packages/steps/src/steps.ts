@@ -381,11 +381,11 @@ class Steps extends Model {
   /** Ends the run where the plan reaches it, discarding what is left. Its return, else its argument, else a dump of public values, is the result. */
   protected end?(value?: any): unknown;
 
-  /** Before each step, once per step. `skip` is true when the step is replayed. */
-  protected before?(step: string, args: unknown[], skip: boolean): void;
+  /** Before each step, once per step. */
+  protected before?(step: string, args: unknown[]): void;
 
-  /** After each step commits, once per step. `skip` is true when the step is replayed. */
-  protected after?(step: string, entry: Steps.Entry, skip: boolean): void;
+  /** After each step commits, once per step. */
+  protected after?(step: string, entry: Steps.Entry): void;
 
   /** Once an unwind completes, halted or not: given `reason` from `then.back()`, else the error the run rejects with. */
   protected back?(reason: unknown): void;
@@ -954,8 +954,8 @@ class Run extends Model {
 
     try {
       if (hooks) {
-        control.hook('before', key, args, false);
-        control.hook(`before${capital(key)}`, false, ...args);
+        control.hook('before', key, args);
+        control.hook(`before${capital(key)}`, ...args);
       }
 
       for (;;)
@@ -967,8 +967,8 @@ class Run extends Model {
           const entry = frame.commit(out);
 
           if (hooks) {
-            control.hook(`after${capital(key)}`, false, entry);
-            control.hook('after', key, entry, false);
+            control.hook(`after${capital(key)}`, entry);
+            control.hook('after', key, entry);
           }
 
           return frame;
@@ -1009,8 +1009,8 @@ class Run extends Model {
         this._entries.push(entry);
 
         try {
-          control.hook(`after${capital(key)}`, false, entry);
-          control.hook('after', key, entry, false);
+          control.hook(`after${capital(key)}`, entry);
+          control.hook('after', key, entry);
         } catch (thrown) {
           this.halt('failed', thrown);
         }

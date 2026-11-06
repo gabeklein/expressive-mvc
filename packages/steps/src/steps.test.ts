@@ -3613,7 +3613,7 @@ describe('catch', () => {
         seen.push([step, entry.error]);
       }
 
-      protected afterScan(skip: boolean, entry: Steps.Entry) {
+      protected afterScan(entry: Steps.Entry) {
         seen.push(['afterScan', entry.error]);
       }
     }
@@ -4340,22 +4340,22 @@ describe('hooks', () => {
         order.push(['ship', id, n]);
       }
 
-      protected before(key: string, args: unknown[], skip: boolean) {
+      protected before(key: string, args: unknown[]) {
         this.value++;
-        order.push(['before', key, args, skip]);
+        order.push(['before', key, args]);
       }
 
-      protected after(key: string, entry: Steps.Entry, skip: boolean) {
-        order.push(['after', key, entry.id, skip]);
+      protected after(key: string, entry: Steps.Entry) {
+        order.push(['after', key, entry.id]);
         wrote.push(entry.wrote);
       }
 
-      protected beforeShip(skip: boolean, id: string, n: number) {
-        order.push(['beforeShip', skip, id, n]);
+      protected beforeShip(id: string, n: number) {
+        order.push(['beforeShip', id, n]);
       }
 
-      protected afterShip(skip: boolean, entry: Steps.Entry) {
-        order.push(['afterShip', skip, entry.id]);
+      protected afterShip(entry: Steps.Entry) {
+        order.push(['afterShip', entry.id]);
       }
     }
 
@@ -4363,13 +4363,13 @@ describe('hooks', () => {
 
     await test.next();
     expect(order).toEqual([
-      ['before', 'next', [], false],
-      ['after', 'next', 'next#1', false],
-      ['before', 'ship', ['a', 1], false],
-      ['beforeShip', false, 'a', 1],
+      ['before', 'next', []],
+      ['after', 'next', 'next#1'],
+      ['before', 'ship', ['a', 1]],
+      ['beforeShip', 'a', 1],
       ['ship', 'a', 1],
-      ['afterShip', false, 'ship#1'],
-      ['after', 'ship', 'ship#1', false]
+      ['afterShip', 'ship#1'],
+      ['after', 'ship', 'ship#1']
     ]);
     expect(test.value).toBe(2);
     expect(wrote).toEqual([[], []]);
