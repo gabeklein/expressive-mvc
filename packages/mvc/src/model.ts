@@ -646,6 +646,54 @@ function init(state: Model, ...args: Model.Args) {
 
   ID.set(state, `${T}-${uid()}`);
 
+  listener(state, (key) => {
+    const rest = trailing(state);
+
+    PENDING.delete(state);
+
+    if (key === null) return null;
+
+    activate(state, args, before, after);
+
+    let end = rest.length;
+
+    while (end-- > 0 && PENDING.has(rest[end]));
+
+    for (let i = 0; i < end; i++) PENDING.delete(rest[i]);
+
+    return null;
+  });
+
+  if (!QUEUED) {
+    QUEUED = true;
+    queueMicrotask(deadline);
+  }
+
+  PENDING.add(state);
+}
+
+/** Drain `PENDING` - run queued work and report Models never activated. */
+function deadline() {
+  QUEUED = false;
+
+  for (const item of PENDING)
+    if (typeof item == 'function') item();
+    else report('unused', item, new Error(`${item} was constructed but never activated.`));
+
+  PENDING.clear();
+}
+
+/**
+ * Bring a Model up within its parent and context - run setup handlers and
+ * arguments, then settle it now, after its own async setup, or with a parent
+ * still holding.
+ */
+function activate(
+  state: Model,
+  args: Model.Args,
+  before: Set<Model.Init>,
+  after: Set<NonNullable<Model.On['ready']>>
+) {
   const waits: Promise<unknown>[] = [];
   const children: (() => void)[] = [];
   const active = { waits, children, held: false };
@@ -676,100 +724,68 @@ function init(state: Model, ...args: Model.Args) {
     wait?.forEach((resolve) => resolve());
   }
 
-  listener(state, (key) => {
-    const rest = trailing(state);
-
-    PENDING.delete(state);
-
-    if (key === null) return null;
-
-    args.forEach(function find(arg) {
-      if (Array.isArray(arg)) arg.forEach(find);
-      else if (arg instanceof Context) home(state, arg);
-    });
-
-    if (!PARENT.has(state)) parent(state, host(state) || null);
-
-    const above = PARENT.get(state);
-    const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
-    const up = above ? ACTIVE.get(above) : undefined;
-
-    if (owns) listener(state, () => void owns.delete(state), null);
-
-    active.held = !!up?.held;
-    ACTIVE.set(state, active);
-
-    capture((release) => {
-      const queue = [...before, observe, ...args];
-
-      listener(state, () => release(null), null);
-
-      for (let i = 0; i < queue.length; i++) {
-        const arg = queue[i];
-        const called = typeof arg == 'function';
-        const out = called ? arg.call(state, state) : arg;
-
-        if (out instanceof Context) continue;
-
-        if (out instanceof Promise) {
-          waits.push(out);
-          out.catch((err) => report('setup', state, err));
-        } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
-        else if (typeof out == 'function') listener(state, out, null);
-        else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
-      }
-    });
-
-    const settled = waits.length ? Promise.all(waits) : undefined;
-    const hold = active.held || !!settled;
-    const failed = (error: unknown) => {
-      CAUSE.set(state, error);
-      event(state, null);
-    };
-    const release = () => {
-      if (observer(state) !== null) settle();
-    };
-
-    ACTIVE.delete(state);
-
-    if (hold) observer(state, true).wait = new Set();
-
-    if (up && hold) {
-      if (settled) up.waits.push(settled.then(undefined, failed));
-      up.children.push(release);
-    }
-    else if (settled) settled.then(release, failed);
-    else settle();
-
-    if (owns) {
-      owns.add(state);
-      OWNED.get(above)?.forEach((cb) => cb(state));
-    }
-
-    let end = rest.length;
-
-    while (end-- > 0 && PENDING.has(rest[end]));
-
-    for (let i = 0; i < end; i++) PENDING.delete(rest[i]);
-
-    return null;
+  args.forEach(function find(arg) {
+    if (Array.isArray(arg)) arg.forEach(find);
+    else if (arg instanceof Context) home(state, arg);
   });
 
-  if (!QUEUED) {
-    QUEUED = true;
+  if (!PARENT.has(state)) parent(state, host(state) || null);
 
-    queueMicrotask(() => {
-      QUEUED = false;
+  const above = PARENT.get(state);
+  const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
+  const up = above ? ACTIVE.get(above) : undefined;
 
-      for (const item of PENDING)
-        if (typeof item == 'function') item();
-        else report('unused', item, new Error(`${item} was constructed but never activated.`));
+  if (owns) listener(state, () => void owns.delete(state), null);
 
-      PENDING.clear();
-    });
+  active.held = !!up?.held;
+  ACTIVE.set(state, active);
+
+  capture((release) => {
+    const queue = [...before, observe, ...args];
+
+    listener(state, () => release(null), null);
+
+    for (let i = 0; i < queue.length; i++) {
+      const arg = queue[i];
+      const called = typeof arg == 'function';
+      const out = called ? arg.call(state, state) : arg;
+
+      if (out instanceof Context) continue;
+
+      if (out instanceof Promise) {
+        waits.push(out);
+        out.catch((err) => report('setup', state, err));
+      } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
+      else if (typeof out == 'function') listener(state, out, null);
+      else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
+    }
+  });
+
+  const settled = waits.length ? Promise.all(waits) : undefined;
+  const hold = active.held || !!settled;
+  const failed = (error: unknown) => {
+    CAUSE.set(state, error);
+    event(state, null);
+  };
+  const release = () => {
+    if (observer(state) !== null) settle();
+  };
+
+  ACTIVE.delete(state);
+
+  if (hold) observer(state, true).wait = new Set();
+
+  if (up && hold) {
+    if (settled) up.waits.push(settled.then(undefined, failed));
+    up.children.push(release);
   }
+  else if (settled) settled.then(release, failed);
+  else settle();
 
-  PENDING.add(state);
+  if (owns) {
+    owns.add(state);
+    OWNED.get(above)?.forEach((cb) => cb(state));
+  }
 }
 
 /**
