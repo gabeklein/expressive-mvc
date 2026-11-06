@@ -11,7 +11,7 @@ import {
   touch,
   watch
 } from './observable';
-import { access, apply, compute, entries, HELD, manage, store, values } from './store';
+import { access, apply, compute, entries, HELD, manage, store, values, type Config } from './store';
 
 const define = Object.defineProperty;
 
@@ -184,13 +184,7 @@ declare namespace Model {
   type Setter<T> = (value: T, previous: T) => T | void;
 
   /** Descriptor config for a managed property. */
-  type Apply<T = any> = {
-    value?: T;
-    get?: ((source: Model) => T) | boolean;
-    set?: Setter<T> | boolean;
-    enumerable?: boolean;
-    // destroy?: () => void;
-  };
+  type Apply<T = any> = Config<T, Model>;
 
   /** Descriptor config for set() overload - enforces type when key is a known field. */
   type Define<T, K> = K extends Field<T> ? Apply<T[K] | Export<T[K]>> : Apply;

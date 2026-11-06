@@ -3,9 +3,9 @@ import { event, listener, Observer, observer, touch, unwrap, watch } from './obs
 
 type Key = Observer.Event;
 
-type Config<T = any> = {
+type Config<T = any, S = any> = {
   value?: T;
-  get?: ((source: any) => T) | boolean;
+  get?: ((source: S) => T) | boolean;
   set?: ((value: T, previous: T) => T | void) | boolean;
   enumerable?: boolean;
 };
