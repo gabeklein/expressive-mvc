@@ -364,10 +364,10 @@ class Steps extends Model {
   }
 
   /**
-   * The entry: starts a run, or queues one while a run is active. Its return is the run's result.
+   * The entry, `async`: starts a run, or queues one while a run is active. Its return is the run's result.
    * It takes arguments and calls steps; `await this` inside it waits for the run, then it returns.
    */
-  next?(...args: any[]): unknown;
+  next?(...args: any[]): Promise<unknown>;
 
   /** Before each step, once per step. */
   protected before?(step: string, args: unknown[]): void;

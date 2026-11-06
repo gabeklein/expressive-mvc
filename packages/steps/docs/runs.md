@@ -96,7 +96,7 @@ async next(ref: LoraRef) {
 - The run settles with what `next` returns or throws. `then.status` and `then.error` record what the plan did, so the two can disagree: a tail catching a failure resolves the run while status stays `failed` - a handled rejection; one throwing after a clean plan fails it.
 - The tail is where cleanup on every outcome goes - `try`/`catch`/`finally` around `await this` ([hooks.md](hooks.md#cleanup)). A run without `await this`, or failing before `next` reaches it, has no tail.
 - Without `await this`, `next` settles at once and its return is the result - `void` for the chained style.
-- `x.next(...)` and `await x` are typed by `next`'s return. A sync `next()` types `x.next()` as its own return, not a Promise - declare it `async` to keep the call awaitable in TypeScript. Returning the awaited value - `return await this` - is circular (TS7023): `next` would be typed by itself.
+- `x.next(...)` and `await x` are typed by `next`'s return. `next` is declared `async` - a sync one is a type error, since `x.next()` must be awaitable. Returning the awaited value - `return await this` - is circular (TS7023): `next` would be typed by itself.
 
 ## End from outside
 

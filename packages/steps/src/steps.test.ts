@@ -50,7 +50,7 @@ describe('steps', () => {
 
   it('will not touch the prototype', () => {
     class Test extends Steps {
-      next() {}
+      async next() {}
     }
 
     Test.new();
@@ -77,7 +77,7 @@ describe('steps', () => {
         this.ready = true;
       }
 
-      next() {
+      async next() {
         this.value = this.double;
       }
     }
@@ -94,7 +94,7 @@ describe('steps', () => {
     const second = vi.fn();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -125,7 +125,7 @@ describe('steps', () => {
     const order: string[] = [];
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.a();
         this.b();
       }
@@ -177,7 +177,7 @@ describe('steps', () => {
     class Test extends Journal {
       count = 0;
 
-      next(until: number) {
+      async next(until: number) {
         let done = this.count == until;
 
         if (done) return;
@@ -199,7 +199,7 @@ describe('steps', () => {
       a = 0;
       b = '';
 
-      next() {
+      async next() {
         this.a = 1;
         this.first();
       }
@@ -245,7 +245,7 @@ describe('steps', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.value = this._double(2);
       }
 
@@ -268,7 +268,7 @@ describe('steps', () => {
       value = 0;
       label = '';
 
-      next() {
+      async next() {
         this.value = this._double(2);
       }
 
@@ -292,7 +292,7 @@ describe('steps', () => {
     class Test extends Steps {
       fn = fn;
 
-      next() {
+      async next() {
         seen = this.fn;
       }
     }
@@ -360,7 +360,7 @@ describe('steps', () => {
 
   it('will type a result returned without awaiting the run', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         return 'now';
       }
     }
@@ -540,7 +540,7 @@ describe('groups', () => {
     const b = mockPromise();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.then(this.a(), this.b());
         this.c();
       }
@@ -586,7 +586,7 @@ describe('groups', () => {
     const order: string[] = [];
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.a(), this.b());
         this.c();
       }
@@ -621,7 +621,7 @@ describe('groups', () => {
       x = 0;
       y = 0;
 
-      next() {
+      async next() {
         this.then(this.a(), this.b());
       }
 
@@ -650,7 +650,7 @@ describe('groups', () => {
     const seen: unknown[] = [];
 
     class Test extends Steps {
-      next(items: string[]) {
+      async next(items: string[]) {
         this.then(items, (item) => this.fetch(item));
       }
 
@@ -667,7 +667,7 @@ describe('groups', () => {
     const seen: unknown[][] = [];
 
     class Test extends Steps {
-      next(items: string[]) {
+      async next(items: string[]) {
         this.then(items, this.fetch);
       }
 
@@ -682,7 +682,7 @@ describe('groups', () => {
 
   it('will fail if a step calls then as a thenable', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         (this.then as Function)(() => {}, () => {});
       }
     }
@@ -696,7 +696,7 @@ describe('groups', () => {
     class Test extends Steps {
       items = new Set(['a', 'b']);
 
-      next() {
+      async next() {
         this.then(this.items, this.fetch);
       }
 
@@ -711,7 +711,7 @@ describe('groups', () => {
 
   it('will fail if a step other than next awaits its own run', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -725,7 +725,7 @@ describe('groups', () => {
 
   it('will fail if a group holds what the step did not call', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then({});
       }
     }
@@ -735,7 +735,7 @@ describe('groups', () => {
 
   it('will not take an array of tokens as a group', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then([this.a(), this.b()]);
       }
 
@@ -748,7 +748,7 @@ describe('groups', () => {
 
   it('will group a single token', async () => {
     class Test extends Journal {
-      next() {
+      async next() {
         this.then(this.a());
       }
 
@@ -776,7 +776,7 @@ describe('inline', () => {
     const order: string[] = [];
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.a();
         this.then(() => void order.push('inline'));
         this.b();
@@ -811,7 +811,7 @@ describe('inline', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.then(function (this: Test) {
           this.value = 1;
           this.later();
@@ -835,7 +835,7 @@ describe('inline', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.then(() => {
           this.value = 1;
           this.later();
@@ -860,7 +860,7 @@ describe('inline', () => {
     class Test extends Steps {
       value = 0;
 
-      next() {
+      async next() {
         this.then(async () => {
           this.value = 1;
           throw new Error('boom');
@@ -878,7 +878,7 @@ describe('inline', () => {
     let signal!: AbortSignal;
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.then(() => {
           signal = this.then.signal;
           this.then(this.a(), this.b());
@@ -901,7 +901,7 @@ describe('inline', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.then(() => {
           this.then(() => {
             this.value = 2;
@@ -926,7 +926,7 @@ describe('inline', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.then(
           this.load(),
           this.then(async () => {
@@ -954,7 +954,7 @@ describe('inline', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         const arrow = async () => {
           if (++ran == 2) both.resolve();
 
@@ -978,7 +978,7 @@ describe('inline', () => {
     let ran = 0;
 
     class Test extends Steps {
-      next() {
+      async next() {
         const arrow = async () => {
           if (++ran == 2) both.resolve();
 
@@ -1001,7 +1001,7 @@ describe('inline', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.then(
           this.then(this.allow, async () => {
             await work;
@@ -1033,7 +1033,7 @@ describe('inline', () => {
     let signal!: AbortSignal;
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.then(async (given) => {
           signal = given;
           await work;
@@ -1095,7 +1095,7 @@ describe('inline', () => {
 
   it('will fail if the function returns a value', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(() => 1);
       }
     }
@@ -1151,7 +1151,7 @@ describe('end', () => {
 
   it('will fail if a class declares end', () => {
     class Test extends Steps {
-      next() {}
+      async next() {}
 
       end() {}
     }
@@ -1163,7 +1163,7 @@ describe('end', () => {
     const a = vi.fn();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then.end();
         this.a();
       }
@@ -1258,7 +1258,7 @@ describe('end', () => {
     class Test extends Steps {
       count = 0;
 
-      next() {
+      async next() {
         this.count = 1;
       }
     }
@@ -1273,7 +1273,7 @@ describe('end', () => {
     const after = vi.fn();
 
     class Test extends Steps {
-      next() {}
+      async next() {}
 
       protected after(step: string) {
         after(step);
@@ -1307,7 +1307,7 @@ describe('end', () => {
 
   it('will fail if end is called twice in a step', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then.end();
         this.then.end();
       }
@@ -1411,7 +1411,7 @@ describe('end', () => {
     const work = mockPromise();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.load();
       }
 
@@ -1438,7 +1438,7 @@ describe('runs', () => {
     class Test extends Journal {
       count = 0;
 
-      next(by: number) {
+      async next(by: number) {
         this.count += by;
 
         return this.count;
@@ -1531,7 +1531,7 @@ describe('runs', () => {
     const next = vi.fn();
 
     class Test extends Steps {
-      next(value = 'x') {
+      async next(value = 'x') {
         next(value);
 
         return value;
@@ -1549,7 +1549,7 @@ describe('runs', () => {
 
   it('will reject an idle await when next takes arguments', async () => {
     class Test extends Steps {
-      next(prompt: string) {
+      async next(prompt: string) {
         return prompt;
       }
     }
@@ -1565,7 +1565,7 @@ describe('runs', () => {
 
   it('will join a run when next takes arguments', async () => {
     class Test extends Steps {
-      next(prompt: string) {
+      async next(prompt: string) {
         return prompt;
       }
     }
@@ -1579,7 +1579,7 @@ describe('runs', () => {
 
   it('will start on idle await when next has defaults', async () => {
     class Test extends Steps {
-      next(x = 1) {
+      async next(x = 1) {
         return x;
       }
     }
@@ -1589,7 +1589,7 @@ describe('runs', () => {
 
   it('will not start on idle await when next has an optional parameter', async () => {
     class Test extends Steps {
-      next(x?: number) {
+      async next(x?: number) {
         return x;
       }
     }
@@ -1601,7 +1601,7 @@ describe('runs', () => {
 
   it('will reject the instance when the last run failed', async () => {
     class Test extends Steps {
-      next(fail?: boolean) {
+      async next(fail?: boolean) {
         if (fail) throw new Error('boom');
 
         return 'ok';
@@ -1625,7 +1625,7 @@ describe('runs', () => {
 
   it('will reset error and status on the next run', async () => {
     class Test extends Steps {
-      next(fail: boolean) {
+      async next(fail: boolean) {
         if (fail) throw new Error('boom');
       }
     }
@@ -1644,7 +1644,7 @@ describe('runs', () => {
     const seen: string[] = [];
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -1712,7 +1712,7 @@ describe('then', () => {
         this.next();
       }
 
-      next() {
+      async next() {
         return { n: 1 };
       }
     }
@@ -1764,7 +1764,7 @@ describe('then', () => {
         this.next();
       }
 
-      next() {
+      async next() {
         return 'x';
       }
     }
@@ -1786,7 +1786,7 @@ describe('then', () => {
     class Test extends Steps {
       count = 1;
 
-      next() {}
+      async next() {}
     }
 
     const test = Test.new();
@@ -1798,7 +1798,7 @@ describe('then', () => {
 
   it('will spread to a snapshot', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.a();
       }
 
@@ -1833,7 +1833,7 @@ describe('stop', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.load();
       }
 
@@ -1893,7 +1893,7 @@ describe('stop', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.first();
       }
 
@@ -1925,7 +1925,7 @@ describe('stop', () => {
     const later = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.then.stop();
         this.later();
       }
@@ -2032,7 +2032,7 @@ describe('stop', () => {
 
   it('will run again after a stop', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then.stop();
       }
     }
@@ -2123,7 +2123,7 @@ describe('wait', () => {
     class Test extends Journal {
       answer = '';
 
-      next() {
+      async next() {
         this.ask('question');
         this.later();
       }
@@ -2164,7 +2164,7 @@ describe('wait', () => {
     const order: string[] = [];
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply);
         this.log('after');
       }
@@ -2195,7 +2195,7 @@ describe('wait', () => {
     class Test extends Journal {
       answers: string[] = [];
 
-      next() {
+      async next() {
         this.then(['a', 'b'], this.ask);
       }
 
@@ -2230,7 +2230,7 @@ describe('wait', () => {
 
   it('will expose a step only while a wait accepts it', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply);
       }
 
@@ -2262,7 +2262,7 @@ describe('wait', () => {
     class Test extends Steps {
       count = 0;
 
-      next() {
+      async next() {
         this.reply();
       }
 
@@ -2281,7 +2281,7 @@ describe('wait', () => {
     class Test extends Journal {
       answers: string[] = [];
 
-      next() {
+      async next() {
         this.then(['a', 'b'], this.ask);
       }
 
@@ -2316,7 +2316,7 @@ describe('wait', () => {
     const order: string[] = [];
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply);
         this.later();
       }
@@ -2358,7 +2358,7 @@ describe('wait', () => {
     const work = mockPromise();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply);
       }
 
@@ -2388,7 +2388,7 @@ describe('wait', () => {
 
   it('will reject an answer if its step fails', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply);
       }
 
@@ -2408,7 +2408,7 @@ describe('wait', () => {
 
   it('will not answer a wait with a step it does not list', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply);
       }
 
@@ -2428,7 +2428,7 @@ describe('wait', () => {
 
   it('will fail if next answers a wait', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.next);
       }
     }
@@ -2438,7 +2438,7 @@ describe('wait', () => {
 
   it('will not wait on a step of another instance', async () => {
     class Test extends Steps {
-      next(other?: Test) {
+      async next(other?: Test) {
         if (other) this.then(other.reply);
       }
 
@@ -2454,7 +2454,7 @@ describe('wait', () => {
     const warn = mockWarn();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.hold();
       }
 
@@ -2486,7 +2486,7 @@ describe('wait', () => {
 
   it('will release waits on stop', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply);
       }
 
@@ -2513,7 +2513,7 @@ describe('wait', () => {
     class Test extends Journal {
       answers: string[] = [];
 
-      next() {
+      async next() {
         this.then(['a', 'b'], this.ask);
       }
 
@@ -2551,7 +2551,7 @@ describe('wait', () => {
     class Test extends Steps {
       answer = '';
 
-      next() {
+      async next() {
         poke = () => this.reply('poked');
         this.ask();
       }
@@ -2579,7 +2579,7 @@ describe('wait', () => {
     let poke!: () => unknown;
 
     class Test extends Steps {
-      next() {
+      async next() {
         poke = () => this.reply();
         this.then(this.reply);
       }
@@ -2611,7 +2611,7 @@ describe('wait', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         write = () => void (this.value = 1);
         this.then(this.reply);
       }
@@ -2661,7 +2661,7 @@ describe('watchers', () => {
     class Test extends Journal {
       answer = '';
 
-      next() {
+      async next() {
         this.then(this.allow, this.deny, async (signal) => {
           await delay(100, { signal });
           this.deny('timeout');
@@ -2698,7 +2698,7 @@ describe('watchers', () => {
     const lost = vi.fn();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply, async (given) => {
           signal = given;
           await delay(100, { signal: given }).catch(lost);
@@ -2726,7 +2726,7 @@ describe('watchers', () => {
     const nudge = vi.fn();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply, async () => {
           nudge();
         });
@@ -2751,7 +2751,7 @@ describe('watchers', () => {
     const watcher = vi.fn();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.slow();
         this.ask();
       }
@@ -2810,7 +2810,7 @@ describe('watchers', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.then([200, 100], this.ask);
       }
 
@@ -2837,7 +2837,7 @@ describe('watchers', () => {
     class Test extends Steps {
       value = 0;
 
-      next() {
+      async next() {
         this.value = 1;
         this.then(this.reply, async () => {
           throw new Error('watcher');
@@ -2860,7 +2860,7 @@ describe('watchers', () => {
     const late = vi.fn();
 
     class Test extends Steps {
-      next(first: boolean) {
+      async next(first: boolean) {
         this.then(this.reply, async () => {
           if (!first) return;
 
@@ -2900,7 +2900,7 @@ describe('watchers', () => {
     let signal!: AbortSignal;
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply, (given) => void (signal = given));
       }
 
@@ -2919,7 +2919,7 @@ describe('watchers', () => {
 
   it('will fail if tokens are mixed with step references', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.a(), this.reply);
       }
 
@@ -3674,7 +3674,7 @@ describe('slot', () => {
     }
 
     class Returned extends Steps {
-      next() {
+      async next() {
         this.hold();
       }
 
@@ -4145,7 +4145,7 @@ describe('suspense', () => {
       price = set<number>();
       total = 0;
 
-      next() {
+      async next() {
         tries++;
         this.total = this.price * 2;
       }
@@ -4177,7 +4177,7 @@ describe('suspense', () => {
       price = set<number>();
       note = '';
 
-      next() {
+      async next() {
         this.quote();
       }
 
@@ -4219,7 +4219,7 @@ describe('suspense', () => {
         return this.price * 2;
       }
 
-      next() {
+      async next() {
         this.total = this.taxed;
       }
     }
@@ -4269,7 +4269,7 @@ describe('suspense', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.value = 1;
         throw pending;
       }
@@ -4349,7 +4349,7 @@ describe('suspense', () => {
     class Test extends Steps {
       price = set<number>();
 
-      next() {
+      async next() {
         order.push(`next:${this.price}`);
       }
 
@@ -4377,7 +4377,7 @@ describe('suspense', () => {
       price = set<number>();
       value = 0;
 
-      next() {
+      async next() {
         this.value = 1;
         this.value = this.price;
       }
@@ -4399,7 +4399,7 @@ describe('suspense', () => {
     class Test extends Journal {
       price = set<number>();
 
-      next() {
+      async next() {
         this.price;
       }
     }
@@ -4442,7 +4442,7 @@ describe('suspense', () => {
     const pending = mockPromise();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then.commit();
         throw pending;
       }
@@ -4458,7 +4458,7 @@ describe('suspense', () => {
     class Test extends Steps {
       price = set<number>();
 
-      next() {}
+      async next() {}
 
       after() {
         this.price;
@@ -4516,7 +4516,7 @@ describe('hooks', () => {
     const before = vi.fn();
 
     class Test extends Steps {
-      next() {}
+      async next() {}
 
       before(step: string) {
         before(step);
@@ -4534,7 +4534,7 @@ describe('hooks', () => {
 
   it('will fail when a hook throws', async () => {
     class Test extends Steps {
-      next() {}
+      async next() {}
 
       protected before() {
         throw new Error('hook');
@@ -4592,7 +4592,7 @@ describe('hooks', () => {
         this.items.add({});
       }
 
-      next() {
+      async next() {
         this.items.clear();
         this.fail();
       }
@@ -4678,7 +4678,7 @@ describe('hooks', () => {
 
   it('will not wrap back as a step', async () => {
     class Test extends Journal {
-      next() {}
+      async next() {}
 
       back() {
         return this;
@@ -4811,7 +4811,7 @@ describe('undo', () => {
       b = 0;
       c = 0;
 
-      next() {
+      async next() {
         this.zero();
       }
 
@@ -4852,7 +4852,7 @@ describe('undo', () => {
       b = 0;
       c = 0;
 
-      next() {
+      async next() {
         this.zero();
       }
 
@@ -4946,7 +4946,7 @@ describe('undo', () => {
       value = 0;
       count = 0;
 
-      next() {
+      async next() {
         this.zero();
       }
 
@@ -4980,7 +4980,7 @@ describe('undo', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.then(this.a(), this.b());
       }
 
@@ -5011,7 +5011,7 @@ describe('undo', () => {
     const undo = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -5041,7 +5041,7 @@ describe('undo', () => {
     const order: string[] = [];
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.first();
         return () => void order.push('undo next');
       }
@@ -5067,7 +5067,7 @@ describe('undo', () => {
 
   it('will throw if an undo schedules a step', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -5544,7 +5544,7 @@ describe('collections', () => {
       items = has(['a']);
       count = 0;
 
-      next() {
+      async next() {
         this.count = this.items.size;
       }
     }
@@ -5559,7 +5559,7 @@ describe('collections', () => {
     class Test extends Journal {
       items = has(Item);
 
-      next(name: string) {
+      async next(name: string) {
         this.items.add({ name });
       }
     }
@@ -5575,7 +5575,7 @@ describe('collections', () => {
     class Test extends Journal {
       items = has<string>();
 
-      next() {
+      async next() {
         this.is.items.push('a');
       }
     }
@@ -5616,7 +5616,7 @@ describe('collections', () => {
     class Test extends Journal {
       items = has(['a']);
 
-      next() {
+      async next() {
         this.then(this.write(), this.read());
         this.fail();
       }
@@ -5659,7 +5659,7 @@ describe('collections', () => {
     class Test extends Steps {
       items = has<string>();
 
-      next() {
+      async next() {
         this.then(this.good(), this.bad());
       }
 
@@ -5692,7 +5692,7 @@ describe('collections', () => {
     class Test extends Steps {
       items = has<string>();
 
-      next() {
+      async next() {
         this.then(this.flaky().catch(this.flaky), this.steady());
       }
 
@@ -5720,7 +5720,7 @@ describe('collections', () => {
     class Test extends Steps {
       items = has(['a', 'b']);
 
-      next() {
+      async next() {
         this.then(this.bad(), this.good());
       }
 
@@ -5756,7 +5756,7 @@ describe('collections', () => {
     class Test extends Steps {
       items = has(['a']);
 
-      next() {
+      async next() {
         this.then(this.bad(), this.good());
       }
 
@@ -5788,7 +5788,7 @@ describe('collections', () => {
     class Test extends Steps {
       items = has(['a', 'b', 'a', 'c', 'a']);
 
-      next() {
+      async next() {
         this.items.put(2, 'a');
         this.items.clear();
         throw new Error('boom');
@@ -5805,7 +5805,7 @@ describe('collections', () => {
     class Test extends Journal {
       items = has(['a']);
 
-      next() {
+      async next() {
         this.items.push();
         this.items.put(0);
         this.items.set(5, 'x');
@@ -5828,7 +5828,7 @@ describe('collections', () => {
     class Test extends Steps {
       items = has(['a']);
 
-      next() {
+      async next() {
         this.later();
         this.items.push('b');
       }
@@ -5846,7 +5846,7 @@ describe('collections', () => {
     class Test extends Steps {
       items = has<string>();
 
-      next() {
+      async next() {
         this.later();
         this.items.pop();
       }
@@ -5866,7 +5866,7 @@ describe('collections', () => {
     class Test extends Journal {
       list = has<string>();
 
-      next() {
+      async next() {
         items = this.list;
       }
     }
@@ -5884,7 +5884,7 @@ describe('collections', () => {
       items = has(['a']);
       same = false;
 
-      next() {
+      async next() {
         this.same = this.items === this.items && this.items.get(0) === 'a' && this.items.size == 1;
       }
     }
@@ -5902,7 +5902,7 @@ describe('collections', () => {
     class Test extends Steps {
       items = has(['a']);
 
-      next() {
+      async next() {
         this.then(this.early(), this.late());
         this.fail();
       }
@@ -6003,7 +6003,7 @@ describe('collections', () => {
         this.items.add({ name: 'kept' });
       }
 
-      next() {
+      async next() {
         this.add();
         this.fail();
       }
@@ -6033,7 +6033,7 @@ describe('collections', () => {
     class Test extends Steps {
       items = has(Item);
 
-      next() {
+      async next() {
         added = this.items.add({ name: 'a' });
         throw new Error('boom');
       }
@@ -6052,7 +6052,7 @@ describe('collections', () => {
     class Test extends Steps {
       values = map<string, number>([['a', 1], ['b', 2]]);
 
-      next() {
+      async next() {
         this.then(this.bad(), this.good());
       }
 
@@ -6086,7 +6086,7 @@ describe('collections', () => {
       values = map<string, number>([['a', 1], ['b', 2]]);
       empty = map<string, number>();
 
-      next() {
+      async next() {
         this.values.clear();
         this.values.set('c', 3);
         this.values.set('c', 3);
@@ -6107,7 +6107,7 @@ describe('collections', () => {
       values = map<string, Model>();
       plain = map<string, number>();
 
-      next() {
+      async next() {
         this.values.set('a', Item.new({ name: 'a' }));
         this.values.set('a', Item.new({ name: 'b' }));
         this.values.delete('a');
@@ -6137,7 +6137,7 @@ describe('collections', () => {
         this.items.add(kept);
       }
 
-      next() {
+      async next() {
         this.then(this.bad(), this.good());
       }
 
@@ -6170,7 +6170,7 @@ describe('collections', () => {
       items = has(Item);
       empty = has(Item);
 
-      next() {
+      async next() {
         const item = this.items.add({ name: 'a' });
 
         this.items.delete(item);
@@ -6205,7 +6205,7 @@ describe('irreversible', () => {
         this.items.add({ name: 'a' });
       }
 
-      next() {
+      async next() {
         this.value = 1;
         this.drop();
       }
@@ -6246,7 +6246,7 @@ describe('irreversible', () => {
         this.items.add({ name: 'a' });
       }
 
-      next() {
+      async next() {
         this.drop();
       }
 
@@ -6329,7 +6329,7 @@ describe('irreversible', () => {
         this.values.set('a', new Item({ name: 'a' }));
       }
 
-      next() {
+      async next() {
         this.values.set('a', new Item({ name: 'b' }));
         this.fail();
       }
@@ -6359,7 +6359,7 @@ describe('irreversible', () => {
         this.items.add({ name: 'a' });
       }
 
-      next() {
+      async next() {
         this.drop().catch(this.drop);
       }
 
@@ -6391,7 +6391,7 @@ describe('irreversible', () => {
         this.items.add({ name: 'a' });
       }
 
-      next() {
+      async next() {
         this.value = 1;
         this.drop();
       }
@@ -6422,7 +6422,7 @@ describe('commit', () => {
       charged = false;
       notified = false;
 
-      next() {
+      async next() {
         this.pay();
       }
 
@@ -6466,7 +6466,7 @@ describe('commit', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.pay().catch(this.pay);
       }
 
@@ -6495,7 +6495,7 @@ describe('commit', () => {
 
   it('will throw if commit is called after its step settled', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.reply, async () => {
           this.then.commit();
         });
@@ -6516,7 +6516,7 @@ describe('back', () => {
       a = 0;
       b = 0;
 
-      next() {
+      async next() {
         this.zero();
       }
 
@@ -6565,7 +6565,7 @@ describe('back', () => {
       a = 0;
       b = 0;
 
-      next() {
+      async next() {
         this.first();
 
         return () => undo('next');
@@ -6607,7 +6607,7 @@ describe('back', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.first();
       }
 
@@ -6634,7 +6634,7 @@ describe('back', () => {
     class Test extends Journal {
       charged = '';
 
-      next() {
+      async next() {
         this.pay('card1');
       }
 
@@ -6671,7 +6671,7 @@ describe('back', () => {
     const receipt = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.pay();
         this.more();
       }
@@ -6704,7 +6704,7 @@ describe('back', () => {
     const undo = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -6741,7 +6741,7 @@ describe('back', () => {
     const recall = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.pay();
       }
 
@@ -6786,7 +6786,7 @@ describe('back', () => {
 
   it('will release a wait opened by a step it unwinds', async () => {
     class Test extends Journal {
-      next() {
+      async next() {
         this.then(this.ask(), this.cancel());
       }
 
@@ -6813,7 +6813,7 @@ describe('back', () => {
     const order: unknown[] = [];
 
     class Test extends Steps {
-      next(fail: boolean) {
+      async next(fail: boolean) {
         this.first(fail);
       }
 
@@ -6908,7 +6908,7 @@ describe('back', () => {
 
   it('will fail if to has no committed entry', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -6927,7 +6927,7 @@ describe('back', () => {
 
   it('will not unwind the step calling back', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -6941,7 +6941,7 @@ describe('back', () => {
 
   it('will throw if to is not a step', async () => {
     class Test extends Steps {
-      next(step?: unknown) {
+      async next(step?: unknown) {
         this.then.back(step === 'call' ? (this.first() as never) : (step as () => void));
       }
 
@@ -6967,7 +6967,7 @@ describe('back', () => {
 
   it('will not group or return a back token', async () => {
     class Grouped extends Steps {
-      next() {
+      async next() {
         this.then(this.then.back(this.next) as never, this.first());
       }
 
@@ -6977,7 +6977,7 @@ describe('back', () => {
     await expect(Grouped.new().next()).rejects.toThrow('back() cannot be grouped.');
 
     class Returned extends Steps {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -6994,7 +6994,7 @@ describe('back', () => {
     const recall = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.pay('card1');
       }
 
@@ -7047,7 +7047,7 @@ describe('back', () => {
         this.items.add({});
       }
 
-      next() {
+      async next() {
         this.drop();
       }
 
@@ -7081,7 +7081,7 @@ describe('back', () => {
       card = '';
       tracking = '';
 
-      next() {
+      async next() {
         this.pay('card1');
       }
 
@@ -7128,7 +7128,7 @@ describe('back', () => {
     const undo = vi.fn();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -7158,7 +7158,7 @@ describe('back', () => {
     const back = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -7193,7 +7193,7 @@ describe('back', () => {
     const undo = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.first();
 
         return () => undo('next');
@@ -7227,7 +7227,7 @@ describe('back', () => {
     const reasons: unknown[] = [];
 
     class Test extends Steps {
-      next(reason: string) {
+      async next(reason: string) {
         this.first(reason);
       }
 
@@ -7256,7 +7256,7 @@ describe('back', () => {
     const order: string[] = [];
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.first();
 
         return () => void order.push('undo next');
@@ -7295,7 +7295,7 @@ describe('back', () => {
     const undo = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.zero();
       }
 
@@ -7337,7 +7337,7 @@ describe('back', () => {
     const order: string[] = [];
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.zero();
       }
 
@@ -7380,7 +7380,7 @@ describe('back', () => {
     const undo = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.zero();
       }
 
@@ -7423,7 +7423,7 @@ describe('back', () => {
     const undo = vi.fn();
 
     class Test extends Journal {
-      next() {
+      async next() {
         this.zero();
       }
 
@@ -7465,7 +7465,7 @@ describe('back', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.first();
 
         return undo;
@@ -7508,7 +7508,7 @@ describe('back', () => {
     const caught = mockUncaught();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.abort);
       }
 
@@ -7567,7 +7567,7 @@ describe('signal', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.slow();
       }
 
@@ -7592,7 +7592,7 @@ describe('signal', () => {
     let signal!: AbortSignal;
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then(this.slow(), this.fail());
       }
 
@@ -7644,7 +7644,7 @@ describe('signal', () => {
 describe('failures', () => {
   it('will reject when a step throws synchronously', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         throw new Error('sync');
       }
     }
@@ -7676,7 +7676,7 @@ describe('failures', () => {
 
   it('will reject when a step returns a value', async () => {
     class Test extends Steps {
-      next() {
+      async next() {
         this.first();
       }
 
@@ -7692,7 +7692,7 @@ describe('failures', () => {
     class Test extends Steps {
       value = 0;
 
-      next() {
+      async next() {
         this.first();
         this.value = 1;
       }
@@ -7710,7 +7710,7 @@ describe('failures', () => {
     class Test extends Journal {
       value = 0;
 
-      next() {
+      async next() {
         this.first();
         this._set();
       }
@@ -7747,7 +7747,7 @@ describe('failures', () => {
     let late: () => unknown = () => {};
 
     class Test extends Steps {
-      next() {
+      async next() {
         late = () => this.second();
       }
 
@@ -7762,7 +7762,7 @@ describe('failures', () => {
     let late: () => unknown = () => {};
 
     class Test extends Steps {
-      next() {
+      async next() {
         late = () => this.then.end();
       }
     }
@@ -7779,7 +7779,7 @@ describe('failures', () => {
         this.next();
       }
 
-      next() {
+      async next() {
         throw new Error('nobody listening');
       }
     }
@@ -7794,7 +7794,7 @@ describe('failures', () => {
     const caught = mockUncaught();
 
     class Test extends Steps {
-      next() {
+      async next() {
         throw new Error('late listener');
       }
     }
@@ -7813,7 +7813,7 @@ describe('failures', () => {
     let error: unknown;
 
     class Test extends Steps {
-      next() {
+      async next() {
         throw new Error('awaited');
       }
     }
@@ -7834,7 +7834,7 @@ describe('failures', () => {
     const caught = mockUncaught();
 
     class Test extends Steps {
-      next() {
+      async next() {
         this.then.stop();
       }
     }
@@ -7849,7 +7849,7 @@ describe('failures', () => {
     class Test extends Steps {
       items = has<string>();
 
-      next(item: string) {
+      async next(item: string) {
         this.items.push(item);
       }
     }
@@ -7981,6 +7981,17 @@ describe('Steps', () => {
       ['before', 'fail'],
       ['back', 'boom']
     ]);
+  });
+
+  it('will require next to be async', () => {
+    class Test extends Steps {
+      // @ts-expect-error - next returns a Promise
+      next() {
+        return 1;
+      }
+    }
+
+    void Test;
   });
 
   it('will check hooks by declaration', () => {
