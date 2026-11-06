@@ -6,7 +6,7 @@
 class Crawl extends Steps {
   limit = 2;                                   // a UI may change it mid-run
 
-  async next(sites: string[]) {
+  async run(sites: string[]) {
     this.then(sites, this.visit);
   }
 
@@ -29,4 +29,4 @@ class Crawl extends Steps {
 - A [catch](catch.md) handler re-running its issuer - `.catch(this.visit)` in `visit` - releases the issuer's slots before it starts: the re-run waits its `after`, then queues behind those already waiting. The issuer's later items run without the slot.
 - `stop()`, an outside `end` or a failure releases the run's held slots and cancels its waiting ones; a [`back`](undo.md#back) cancels waiting slots it discards.
 
-The token is journaled in the step's `next` - `{ id: 'slot#1', key: 'slot', args: [] }`; options are not journaled. A write after it fails the run as after any token. It cannot be grouped (`slot() cannot be grouped.`) or returned as an undo. Outside a step, `then.slot()` throws `slot must be called inside a step.`
+The token is journaled in the step's `run` - `{ id: 'slot#1', key: 'slot', args: [] }`; options are not journaled. A write after it fails the run as after any token. It cannot be grouped (`slot() cannot be grouped.`) or returned as an undo. Outside a step, `then.slot()` throws `slot must be called inside a step.`

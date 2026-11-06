@@ -11,8 +11,8 @@ export class Agent extends Steps {
   steers = has<string>();
 
   // one run per prompt; fields persist across runs, and a prompt sent mid-run queues -
-  // next takes the prompt, awaits the run and returns the last reply
-  async next(prompt: string) {
+  // run takes the prompt, awaits the run and returns the last reply
+  async run(prompt: string) {
     this.messages.push(user(prompt));
     this.turn();
 

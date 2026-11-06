@@ -11,7 +11,7 @@ class Steps extends Model {
 | member | visibility | when it runs |
 | --- | --- | --- |
 | `then` | public, `readonly` | the `Runner` ([runner.md](runner.md)) - `await instance` starts or joins a run ([runs.md](runs.md#awaiting-the-instance---start-or-join)) |
-| `next(...args)` | public | the entry - starts a run, or queues one; `await this` inside it waits for the run, its return is the result ([runs.md](runs.md#next-and-the-result)); narrow its parameters freely |
+| `run(...args)` | public | the entry - starts a run, or queues one; `await this` inside it waits for the run, its return is the result ([runs.md](runs.md#run-and-the-result)); narrow its parameters freely |
 | `before(step, args)` | `protected` | before each step ([hooks.md](hooks.md)) |
 | `after(step, entry)` | `protected` | after each step commits ([hooks.md](hooks.md)) |
 | `back(reason)` | `protected` | once an unwind completes - after `then.back(step, reason)`, or a failure before the run rejects ([hooks.md](hooks.md#back)) |
@@ -32,7 +32,7 @@ class Pull extends Steps {
   sync = get(Sync);
   cursor = '';
 
-  async next() {
+  async run() {
     this.page();
   }
 

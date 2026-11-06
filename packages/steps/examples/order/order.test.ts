@@ -14,11 +14,11 @@ afterEach(() => vi.restoreAllMocks());
 it('will run every step to end', async () => {
   const order = Order.new({ cart });
 
-  // awaiting an idle instance runs next(); the result is typed by end()
+  // awaiting an idle instance calls run(); the result is typed by its return
   expect(await order).toEqual({ orderId: 'ch_42', tracking: 'trk_c1_ch_42' });
   expect(order.then.status).toBe('idle');
   expect(record(order).map((entry) => entry.id)).toEqual([
-    'next#1',
+    'run#1',
     'reserve#1',
     'pay#1',
     'ship#1',
@@ -33,7 +33,7 @@ it('will ship and send the receipt together', async () => {
   vi.spyOn(mail, 'send');
 
   const order = Order.new({ cart });
-  const result = order.next();
+  const result = order.run();
 
   await vi.waitFor(() => expect(record(order).at(-1)?.id).toBe('receipt#1'));
   expect(mail.send).toHaveBeenCalled();
@@ -56,7 +56,7 @@ it('will expose progress as fields', async () => {
   order.set('tracking', () => void seen.push(order.tracking));
   order.get((self) => void seen.push(`step:${self.then.active}`));
 
-  const result = order.next();
+  const result = order.run();
 
   expect(order.charge).toBeUndefined();
   expect(stripe.charge).not.toHaveBeenCalled();
@@ -108,7 +108,7 @@ it('will unwind what succeeded when a step fails', async () => {
 
   const order = Order.new({ cart });
 
-  await expect(order.next()).rejects.toThrow('no couriers');
+  await expect(order.run()).rejects.toThrow('no couriers');
   expect(order.then.status).toBe('failed');
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(inventory.release).toHaveBeenCalledWith('hold_sku');
@@ -116,7 +116,7 @@ it('will unwind what succeeded when a step fails', async () => {
   expect(order.notice).toBe('Order c1 was not placed: no couriers');
   // each step with an undo is undone and its fields restored - receipt returned none, so nothing ran for it
   expect(record(order).map((entry) => [entry.id, entry.undo && (entry.undo == 'closure' ? 'closure' : entry.undo.key), entry.undone])).toEqual([
-    ['next#1', undefined, undefined],
+    ['run#1', undefined, undefined],
     ['reserve#1', 'closure', true],
     ['pay#1', 'refund', true],
     ['receipt#1', undefined, undefined]
@@ -130,7 +130,7 @@ it('will cancel the booking when the receipt fails', async () => {
 
   const order = Order.new({ cart });
 
-  await expect(order.next()).rejects.toThrow('mailbox full');
+  await expect(order.run()).rejects.toThrow('mailbox full');
   // ship committed beside the failing receipt, so its inline undo ran
   expect(courier.cancel).toHaveBeenCalledWith('trk_c1_ch_42');
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
@@ -146,7 +146,7 @@ it('will undo an order stopped mid-shipment', async () => {
   vi.spyOn(stripe, 'refund');
 
   const order = Order.new({ cart });
-  const result = order.next();
+  const result = order.run();
 
   await vi.waitFor(() => expect(order.then.active).toBe('ship'));
   order.then.stop(true);
@@ -171,7 +171,7 @@ it('will refund and backorder when no courier is free', async () => {
   const order = Order.new({ cart });
 
   // back() is not a failure: the run ends through backorder's end
-  expect(await order.next()).toEqual({ orderId: undefined, tracking: '' });
+  expect(await order.run()).toEqual({ orderId: undefined, tracking: '' });
   expect(order.then.status).toBe('idle');
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(inventory.release).not.toHaveBeenCalled();
@@ -180,7 +180,7 @@ it('will refund and backorder when no courier is free', async () => {
   expect(order.charge).toBeUndefined();
   expect(order.notice).toBe('Order c1 was not placed: no courier');
   expect(record(order).map((entry) => [entry.id, entry.undone])).toEqual([
-    ['next#1', undefined],
+    ['run#1', undefined],
     ['reserve#1', undefined],
     ['pay#1', true],
     ['ship#1', undefined],

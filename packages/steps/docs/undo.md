@@ -39,7 +39,7 @@ protected async refund(chargeId: string) {
 }
 ```
 
-Entry: `undo: { id: 'refund#1', key: 'refund', args: ['ch_42'] }`, `next` without it. `end` never registers an undo - its return is the result.
+Entry: `undo: { id: 'refund#1', key: 'refund', args: ['ch_42'] }`, `run` without it. `end` never registers an undo - its return is the result.
 
 Any token kind works - each is typed `Promise<void>`, so the step stays `Promise<void>`:
 
@@ -80,13 +80,13 @@ A step that throws, breaks a rule, or returns anything but an undo fails the run
 4. An undo that throws: `undone: 'failed'`, `error` replaced by what it threw, the unwind stops there.
 5. An `irreversible` or `committed` entry stops the unwind: it gets `halted: true` ([Collections](#collections), [Commit](#commit)). So does `stop()` while the unwind is parked on a [returned wait](#a-returned-wait).
 6. `back(reason)` runs with `error`, if declared ([hooks.md](hooks.md#back)); a throw from it replaces `error`.
-7. `await this` in `next` rejects with `error` - the tail runs ([runs.md](runs.md#next-and-the-result)); without one, the run rejects with `error`.
+7. `await this` in `run` rejects with `error` - the tail runs ([runs.md](runs.md#run-and-the-result)); without one, the run rejects with `error`.
 
 ```ts
 class Agent extends Steps {
   messages = has<Message>();
 
-  async next(prompt: string) {
+  async run(prompt: string) {
     this.messages.push(user(prompt));
     this.turn();
   }
@@ -94,14 +94,14 @@ class Agent extends Steps {
 
 vi.spyOn(model, 'create').mockRejectedValueOnce(new Error('overloaded'));
 
-await expect(agent.next('write tests')).rejects.toThrow('overloaded');
+await expect(agent.run('write tests')).rejects.toThrow('overloaded');
 
-agent.messages.get(-1);                // { role: 'user', content: 'write tests' } - next returned nothing, its push stays
+agent.messages.get(-1);                // { role: 'user', content: 'write tests' } - run returned nothing, its push stays
 ```
 
 Steps 3-5 are the unwind [`back`](#back) runs. Entries a `back` already undid are skipped.
 
-Undo frames cannot schedule: a step called from an undo throws (`… is failed; next cannot run.`), which fails that undo. `stop(true)` unwinds the same way with status `stopped` ([runs.md](runs.md#stop)). Hooks do not run for undos.
+Undo frames cannot schedule: a step called from an undo throws (`… is failed; run cannot run.`), which fails that undo. `stop(true)` unwinds the same way with status `stopped` ([runs.md](runs.md#stop)). Hooks do not run for undos.
 
 ## Back
 
@@ -190,17 +190,17 @@ A `has` list, `has` pool or `map` read by a step through `this` comes back wrapp
 - The entry's `wrote` lists the field when the step changed it; a read, or a call changing nothing, records nothing.
 - Attribution is per step: parallel steps changing one collection each record their own changes. Restoring a step - failing or aborted, or committed and unwound after returning an undo or `true` ([Restoring fields](#restoring-fields)), by failure, `back` or a [caught branch](catch.md) - replays its own inverses, newest first; siblings' changes stay, committed or not.
 - An inverse finds what the step left by identity: a pushed or put value is removed at the nearest equal item to where it went; a `set` is put back where its value now is; a popped or cleared value goes back at its old index; a pool member the step added is deleted - destroyed when owned; a map key the step added is deleted, a changed or removed one set back. A value a sibling already removed or replaced is skipped.
-- A change through the wrapper after the step's first token fails the run, as a field write does (`next wrote items after scheduling later.`).
+- A change through the wrapper after the step's first token fails the run, as a field write does (`run wrote items after scheduling later.`).
 - Changes not through a step's wrapper are unmanaged - from outside, through `this.is`, in `_` helpers, or through a wrapper kept after its step settled. A kept wrapper hands a change to the step's [inline arrow](steps.md#inline-steps) in flight, as the step's proxy does.
 
 ```ts
-async next(prompt: string) {
+async run(prompt: string) {
   this.messages.push(user(prompt));    // wrote: ['messages']
   this.turn();
 }
 ```
 
-A turn failing mid-step loses its own pushes; with `next` returning `true`, a failing run leaves `messages` as it was before `next`, less any outside pushes.
+A turn failing mid-step loses its own pushes; with `run` returning `true`, a failing run leaves `messages` as it was before `run`, less any outside pushes.
 
 ### Irreversible
 

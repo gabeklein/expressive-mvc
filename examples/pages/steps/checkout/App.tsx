@@ -15,7 +15,7 @@ export default () => (
   <div className="container">
     <h1>Checkout</h1>
     <p>
-      A <code>Steps</code> model, its methods steps: <code>next</code> reserves the
+      A <code>Steps</code> model, its methods steps: <code>run</code> reserves the
       cart, <code>reserve</code> schedules <code>pay</code>, and <code>pay</code>{' '}
       parks on <code>this.then(this.approve, this.decline, timeout)</code>. While
       that wait is open, <code>checkout.approve</code> and{' '}
@@ -44,7 +44,7 @@ class Storefront extends Component {
   }
 
   place() {
-    this.checkout.next(this.card);
+    this.checkout.run(this.card);
   }
 
   render() {
@@ -110,7 +110,7 @@ class Checkout extends Steps {
   notice = '';
   log = has<Steps.Entry>();
 
-  async next(card: string) {
+  async run(card: string) {
     this.tracking = '';
     this.receipt = '';
     this.notice = '';
@@ -170,7 +170,7 @@ class Checkout extends Steps {
   }
 
   protected before(step: string) {
-    if (step == 'next') this.log.clear();
+    if (step == 'run') this.log.clear();
   }
 
   protected after(step: string, entry: Steps.Entry) {

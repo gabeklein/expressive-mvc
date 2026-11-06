@@ -9,8 +9,8 @@ export class SubmitOrder extends Steps {
   tracking = '';
   notice = '';
 
-  // next takes the arguments, schedules, awaits the run and returns its result - typing `await order`
-  async next() {
+  // run takes the arguments, schedules, awaits the run and returns its result - typing `await order`
+  async run() {
     this.reserve();
 
     await this;

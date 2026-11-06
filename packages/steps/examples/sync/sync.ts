@@ -15,7 +15,7 @@ export class Feed extends Model {
 // Sync already extends Feed, so it cannot extend Steps - it holds a Steps model as a field, owned like any child Model
 export class Sync extends Feed {
   token = set<string>();                  // pending until assigned - a step reading it waits
-  pull = new Pull();                      // `sync.pull.next()` runs it; `await sync.pull` starts or joins
+  pull = new Pull();                      // `sync.pull.run()` runs it; `await sync.pull` starts or joins
 }
 
 export class Pull extends Steps {
@@ -23,7 +23,7 @@ export class Pull extends Steps {
   cursor = '';
   acked = '';
 
-  async next() {
+  async run() {
     this.page();
 
     // the tail runs on every outcome - a failed pull starts over
@@ -53,5 +53,5 @@ export class Pull extends Steps {
       });
   }
 
-  // next returns nothing - the run resolves with undefined; the data is in fields
+  // run returns nothing - the run resolves with undefined; the data is in fields
 }

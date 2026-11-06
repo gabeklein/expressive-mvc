@@ -30,7 +30,7 @@ it('will release through the gate', async () => {
   vi.spyOn(fleet, 'serve');
 
   const deploy = create();
-  const release = deploy.next();
+  const release = deploy.run();
 
   await untilGate(deploy);
 
@@ -52,7 +52,7 @@ it('will release through the gate', async () => {
   expect(fleet.drain).toHaveBeenCalledTimes(3);
   expect(fleet.serve).toHaveBeenCalledTimes(3);
   expect(record(deploy).map((entry) => entry.key)).toEqual([
-    'next',
+    'run',
     'build',
     'test',
     'suite',
@@ -73,13 +73,13 @@ it('will release through the gate', async () => {
 
 it('will log every step through before and after', async () => {
   const deploy = create();
-  const release = deploy.next();
+  const release = deploy.run();
 
   await untilGate(deploy);
   await deploy.promote('gabe');
   await release;
 
-  expect(deploy.log.get(0, 6)).toEqual(['next()', 'next#1 ok', 'build()', 'build#1 ok', 'test()', 'test#1 ok']);
+  expect(deploy.log.get(0, 6)).toEqual(['run()', 'run#1 ok', 'build()', 'build#1 ok', 'test()', 'test#1 ok']);
   expect(deploy.log.get((line) => line.startsWith('promote'))).toBe('promote(gabe)');
   // hooks write outside any entry
   expect(record(deploy).some((entry) => entry.wrote.includes('log'))).toBe(false);
@@ -91,7 +91,7 @@ it('will retry a flaky test suite with backoff', async () => {
   const test = vi.spyOn(ci, 'test').mockRejectedValueOnce(new Error('flaky')).mockRejectedValueOnce(new Error('flaky'));
   const deploy = create();
 
-  deploy.next();
+  deploy.run();
 
   await vi.advanceTimersByTimeAsync(SECOND - 1);
   expect(test).toHaveBeenCalledTimes(1);
@@ -121,7 +121,7 @@ it('will retry a flaky test suite with backoff', async () => {
 it('will abort the test suite when stopped', async () => {
   const test = vi.spyOn(ci, 'test').mockImplementation(async (_, { signal }) => delay(MINUTE, { signal }));
   const deploy = create();
-  const release = deploy.next();
+  const release = deploy.run();
 
   await vi.waitFor(() => expect(deploy.then.active).toBe('suite'));
   deploy.then.stop();
@@ -141,7 +141,7 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   vi.spyOn(db, 'migrate');
 
   const deploy = create();
-  const release = deploy.next();
+  const release = deploy.run();
 
   await untilGate(deploy);
   const stopped = { name: 'Stopped', message: 'canary rejected: error rate', cause: 'canary rejected: error rate' };
@@ -161,7 +161,7 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   expect(deploy.report).toBe('1.2.0 stopped: canary rejected: error rate');
   // only entries returning an undo or true are undone - their fields restored too
   expect(record(deploy).map((entry) => [entry.key, entry.undone])).toEqual([
-    ['next', undefined],
+    ['run', undefined],
     ['build', true],
     ['test', undefined],
     ['suite', undefined],
@@ -178,7 +178,7 @@ it('will nudge on-call, then abort a gate nobody answers', async () => {
   vi.spyOn(pager, 'nudge');
 
   const deploy = create();
-  const failed = expect(deploy.next()).rejects.toMatchObject({ name: 'Stopped', message: 'canary rejected: nobody approved' });
+  const failed = expect(deploy.run()).rejects.toMatchObject({ name: 'Stopped', message: 'canary rejected: nobody approved' });
 
   await vi.advanceTimersByTimeAsync(15 * MINUTE);
   expect(pager.nudge).toHaveBeenCalledWith('1.2.0 awaits approval');
@@ -198,7 +198,7 @@ it('will ask before reverting a failed rollout', async () => {
   vi.spyOn(registry, 'unpublish');
 
   const deploy = create();
-  const release = deploy.next();
+  const release = deploy.run();
 
   await untilGate(deploy);
   await deploy.promote('gabe');
@@ -232,7 +232,7 @@ it('will revert a failed rollout nobody answers', async () => {
   vi.spyOn(fleet, 'uninstall');
 
   const deploy = create();
-  const failed = expect(deploy.next()).rejects.toThrow('disk full');
+  const failed = expect(deploy.run()).rejects.toThrow('disk full');
 
   await vi.advanceTimersByTimeAsync(0);
   await deploy.promote('gabe');
@@ -253,7 +253,7 @@ it('will stop unwinding at the retired release', async () => {
   vi.spyOn(fleet, 'uninstall');
 
   const deploy = create();
-  const release = deploy.next();
+  const release = deploy.run();
 
   await untilGate(deploy);
   await deploy.promote('gabe');

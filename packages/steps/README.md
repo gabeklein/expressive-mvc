@@ -1,6 +1,6 @@
 # @expressive/steps
 
-Runnable Models: extend `Steps` and every method is a step, a step schedules the next by calling it, fields carry data between them. `next()` starts a run; runs repeat, queue, park on a wait - answered from outside or by a watcher - and resume. A run is atomic - all or nothing, by the undo each step returns - and the instance is awaitable. Unreleased.
+Runnable Models: extend `Steps` and every method is a step, a step schedules the next by calling it, fields carry data between them. `run()` starts a run; runs repeat, queue, park on a wait - answered from outside or by a watcher - and resume. A run is atomic - all or nothing, by the undo each step returns - and the instance is awaitable. Unreleased.
 
 ```ts
 class SubmitOrder extends Steps {
@@ -8,7 +8,7 @@ class SubmitOrder extends Steps {
   charge?: Charge = undefined;
   tracking = '';
 
-  async next() {
+  async run() {
     this.reserve();
   }
 
@@ -49,7 +49,7 @@ class SubmitOrder extends Steps {
 const order = SubmitOrder.new({ cart });
 
 order.then.status;             // 'idle' - reactive, like any field
-const receipt = await order;   // runs next(), then everything it schedules
+const receipt = await order;   // runs run(), then everything it schedules
 ```
 
 [docs/](docs/README.md) documents shipped behavior. Scope, decisions and status live in [FEATURE.md](../../FEATURE.md) on the `feat/run` trunk.

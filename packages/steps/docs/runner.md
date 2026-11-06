@@ -6,7 +6,7 @@
 | --- | --- |
 | `status` | `'idle' \| 'running' \| 'waiting' \| 'stopped' \| 'failed'` - `idle` from construction and after a run ends |
 | `active` | key of a step in flight, else `undefined`; with a group in flight, the latest invoked |
-| `queue` | argument arrays of queued `next()` calls |
+| `queue` | argument arrays of queued `run()` calls |
 | `waiting` | open waits, `{ id, step, args, answers }`, oldest first ([wait.md](wait.md)) |
 | `runs` | finished runs - ended, failed or stopped |
 | `error` | what failed the run, or what its last undo threw |
@@ -45,7 +45,7 @@ The members subscribe in a `get()` effect or a render, through the instance:
 order.get((self) => {
   console.log(self.then.status, self.then.active);
 });
-// idle undefined → running next → running undefined → running reserve → … → idle undefined
+// idle undefined → running run → running undefined → running reserve → … → idle undefined
 ```
 
 `active` is `undefined` between steps.

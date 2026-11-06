@@ -81,8 +81,8 @@ const TOKEN = {
 declare namespace Steps {
   type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'failed';
 
-  /** What `next` returns - the run's result. */
-  type Result<T> = T extends { next(...args: any[]): infer R } ? Awaited<R> : unknown;
+  /** What `run` returns - the run's result. */
+  type Result<T> = T extends { run(...args: any[]): infer R } ? Awaited<R> : unknown;
 
   /** A planned item: a step, a parallel group (`group`), or a wait (`answers`). */
   interface Node {
@@ -200,7 +200,7 @@ declare namespace Steps {
     readonly status: Steps.Status;
     /** Key of a step in flight - the latest invoked, with a group in flight. */
     readonly active: string | undefined;
-    /** Arguments of each `next()` waiting for the active run to finish. */
+    /** Arguments of each `run()` waiting for the active run to finish. */
     readonly queue: readonly unknown[][];
     /** Open waits, oldest first. */
     readonly waiting: readonly Steps.Wait[];
@@ -212,7 +212,7 @@ declare namespace Steps {
     get(): Steps.Snapshot;
     /**
      * End the run - inside a step, where the plan reaches it; from outside, now. Pending steps are
-     * discarded and steps in flight settle first; `next`, awaiting its run, then returns the result.
+     * discarded and steps in flight settle first; `run`, awaiting the plan, then returns the result.
      */
     end(): void;
     /**
@@ -246,7 +246,7 @@ declare namespace Steps {
   }
 
   interface Thenable<T extends Model = Model> {
-    /** Idle, runs `next()` - rejecting if it takes arguments; then settles once the active run and every queued one have, with the last one's result. */
+    /** Idle, calls `run()` - rejecting if it takes arguments; then settles once the active run and every queued one have, with the last one's result. */
     <R1 = Steps.Result<T>, R2 = never>(
       onfulfilled?: ((value: Steps.Result<T>) => R1 | PromiseLike<R1>) | null,
       onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null
@@ -257,12 +257,12 @@ declare namespace Steps {
 
   /**
    * The controller, and a thenable - so the instance with it as `then`. Awaiting it joins the
-   * active run; idle, it runs `next()`, or rejects if `next` takes arguments.
+   * active run; idle, it calls `run()`, or rejects if `run` takes arguments.
    */
   type Runner<T extends Model = Model> = Controller<T> & Thenable<T>;
 }
 
-function run<T extends Steps>(self: T) {
+function install<T extends Steps>(self: T) {
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
     if (onfulfilled && typeof onfulfilled == 'object') throw new Error('then(steps) must be called inside a step.');
 
@@ -322,7 +322,7 @@ function run<T extends Steps>(self: T) {
 
       if (skip) continue;
 
-      if (key == 'end') throw new Error(`${self.constructor.name} declares end; return the result from next, end early with this.then.end().`);
+      if (key == 'end') throw new Error(`${self.constructor.name} declares end; return the result from run, end early with this.then.end().`);
 
       if (HOOKS.has(key)) {
         if (!hooks.has(key)) hooks.set(key, unbind(desc.get!));
@@ -335,7 +335,7 @@ function run<T extends Steps>(self: T) {
       Object.defineProperty(
         self,
         key,
-        key == 'next'
+        key == 'run'
           ? { value: step, writable: true, configurable: true }
           : {
               configurable: true,
@@ -351,8 +351,8 @@ function run<T extends Steps>(self: T) {
 }
 
 /**
- * A runnable Model: its methods are steps, `next()` starts a run and awaiting the instance joins
- * it, resolving with the result of `end`. The members below are the contract - each optional.
+ * A runnable Model: its methods are steps, `run()` starts a run and awaiting the instance joins
+ * it, resolving with what `run` returns. The members below are the contract - each optional.
  */
 class Steps extends Model {
   /** The controller - status, journal, queue, waits; awaiting the instance awaits it. */
@@ -360,14 +360,14 @@ class Steps extends Model {
 
   constructor(...args: Model.Args) {
     super(...args);
-    run(this);
+    install(this);
   }
 
   /**
    * The entry, `async`: starts a run, or queues one while a run is active. Its return is the run's result.
    * It takes arguments and calls steps; `await this` inside it waits for the run, then it returns.
    */
-  next?(...args: any[]): Promise<unknown>;
+  run?(...args: any[]): Promise<unknown>;
 
   /** Before each step, once per step. */
   protected before?(step: string, args: unknown[]): void;
@@ -405,14 +405,14 @@ class Control extends Model {
   }
 
   call(key: string, args: unknown[]) {
-    if (key == 'next') return this.start(args);
+    if (key == 'run') return this.start(args);
 
     const { _current: current } = this;
     const wait = current && current.route(key, args);
 
     if (wait) return current!.wake(wait, key, args);
 
-    throw new Error(`${key} cannot be called from outside; call next() to run.`);
+    throw new Error(`${key} cannot be called from outside; call run() to start a run.`);
   }
 
   accepts(key: string) {
@@ -461,8 +461,8 @@ class Control extends Model {
 
   settled() {
     if (!this._current) {
-      if (this._steps.get('next')?.length)
-        return Promise.reject(new Error(`${this._self} is idle. next() takes arguments; call it to start a run.`));
+      if (this._steps.get('run')?.length)
+        return Promise.reject(new Error(`${this._self} is idle. run() takes arguments; call it to start a run.`));
 
       this.start([]);
     }
@@ -564,7 +564,7 @@ class Run extends Model {
   }
 
   start() {
-    const node = this.node('next', this._ticket.args);
+    const node = this.node('run', this._ticket.args);
 
     this._root = node.id;
     this.exec(node).then(() => {
@@ -1415,7 +1415,7 @@ class Frame extends Model {
     return new Promise((resolve, reject) => {
       this._point = (done, fail) => {
         if (this._late) {
-          const error = new Error('next awaited something other than its run - it takes arguments, calls steps and awaits this.');
+          const error = new Error('run awaited work before its plan - it takes arguments, calls steps and awaits this.');
 
           fail(error);
           return reject(error);
@@ -1556,7 +1556,7 @@ class Frame extends Model {
   }
 
   wait(answers: string[], watchers: Function[]) {
-    for (const key of answers) if (key == 'next') throw new Error('next cannot answer a wait.');
+    for (const key of answers) if (key == 'run') throw new Error('run cannot answer a wait.');
 
     const token = Object.assign(this.issue('wait', []), { answers });
 
@@ -1569,14 +1569,14 @@ class Frame extends Model {
     const { run, id, key, _items: items, _violation, _late, _wake, _lost } = this;
 
     if (_violation) throw new Error(`${key} wrote ${_violation} after scheduling ${items[0].key}.`);
-    if (_late && !items.length) throw new Error('next awaited something other than its run - it takes arguments, calls steps and awaits this.');
+    if (_late && !items.length) throw new Error('run awaited work before its plan - it takes arguments, calls steps and awaits this.');
     if (_late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
 
     let undo: Function | Steps.Node | undefined;
     let keep = false;
     let token = items.includes(out as Steps.Node) && !INERT.includes((out as Steps.Node).key);
 
-    if (key == 'next') void out;
+    if (key == 'run') void out;
     else if (typeof out == 'function') undo = out;
     else if (token) {
       undo = out as Steps.Node;
@@ -1723,7 +1723,7 @@ function iterable(value: unknown): value is Iterable<unknown> {
 }
 
 function valueless(args: unknown[]) {
-  if (args.length) throw new Error('end() takes no value; the result is what next returns.');
+  if (args.length) throw new Error('end() takes no value; the result is what run returns.');
 }
 
 function outside(key: string, verb = 'called'): never {

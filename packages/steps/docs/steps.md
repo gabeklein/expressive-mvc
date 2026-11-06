@@ -2,7 +2,7 @@
 
 Every method on the class is a step - its bases' up to `Steps` included, `Model`'s not ([contract.md](contract.md)). Steps are `protected async` by convention ([README.md](README.md#conventions)), each wrapped as an own non-enumerable property of the instance, the prototype untouched. Not steps: `new`, getters, `_`-prefixed helpers, and `before`/`after` hooks ([hooks.md](hooks.md)). A step runs with a proxy as `this`: writes through it are listed in the entry's `wrote` - and restored if the step fails; reads pass through.
 
-`next` is the entry ([runs.md](runs.md)). Inside a step, `this.next(x)` is an ordinary step call - how a loop repeats.
+`run` is the entry ([runs.md](runs.md)). Inside a step, `this.run(x)` is an ordinary step call - how a loop repeats.
 
 ## Calling a step schedules it
 
@@ -21,7 +21,7 @@ protected async reserve() {
 Tokens a step issues run one after another, in issue order. Each runs to completion - including everything it schedules, transitively - before the next sibling starts.
 
 ```ts
-async next() {
+async run() {
   this.a();                            // a, then all a schedules
   this.b();                            // then b
 }
@@ -32,16 +32,16 @@ protected async a() {
 }
 ```
 
-Loops are plain loops, or `this.next()` again:
+Loops are plain loops, or `this.run()` again:
 
 ```ts
-async next(until: number) {
+async run(until: number) {
   let done = this.count == until;
 
   if (done) return;
 
   this.count++;
-  this.next(until);
+  this.run(until);
 }
 ```
 
@@ -65,7 +65,7 @@ this.then(calls, (call) => this.tool(call));
 this.then(calls, this.tool);           // tool(call, index)
 ```
 
-Members must be tokens this step issued (`then() takes steps called by next.`). An array is not a group - `[]` is only the `items` of a mapped group.
+Members must be tokens this step issued (`then() takes steps called by run.`). An array is not a group - `[]` is only the `items` of a mapped group.
 
 ## Inline steps
 
@@ -171,7 +171,7 @@ A sync side effect after scheduling - a mailer call - is invisible to the guard.
 
 ## Calls after a step settles
 
-A step called through the proxy of a step that has settled - from a timer, a watcher - is an outside call: nothing is buffered. It answers an open wait accepting it - one the settled step opened first, else as any outside call ([wait.md](wait.md#answering-steps)) - or throws `next has settled; second cannot run.` It is bound to its run: once that run ends, every call through it throws. Writes through a settled proxy are unmanaged - in no entry, not restored. An [inline arrow](#inline-steps) in flight takes both over.
+A step called through the proxy of a step that has settled - from a timer, a watcher - is an outside call: nothing is buffered. It answers an open wait accepting it - one the settled step opened first, else as any outside call ([wait.md](wait.md#answering-steps)) - or throws `run has settled; second cannot run.` It is bound to its run: once that run ends, every call through it throws. Writes through a settled proxy are unmanaged - in no entry, not restored. An [inline arrow](#inline-steps) in flight takes both over.
 
 ## Helpers
 
@@ -191,10 +191,10 @@ private _double(n: number) {
 
 `end` is a token like any other - it runs at its place in the plan, depth-first, and running it ends the run. Whatever is still pending is discarded, not journaled; open waits and slots are released; steps in flight - other members of a group - have their [signals](#the-step-signal) aborted, settle and commit, and what they schedule never runs. The same as [`then.end()` from outside](runs.md#end-from-outside).
 
-`this.then.end()` takes no value - one throws: the result is what `next` returns once its run is done ([runs.md](runs.md#next-and-the-result)). A class may not declare `end` - it throws at construction. The end is journaled `{ id: 'end#n', key: 'end', args: [], next: [], wrote: [] }`, `implicit: true` when the plan drained - no hooks.
+`this.then.end()` takes no value - one throws: the result is what `run` returns once its run is done ([runs.md](runs.md#run-and-the-result)). A class may not declare `end` - it throws at construction. The end is journaled `{ id: 'end#n', key: 'end', args: [], next: [], wrote: [] }`, `implicit: true` when the plan drained - no hooks.
 
 ```ts
-async next() {
+async run() {
   this.build();
   this.test();                         // may end early
   this.ship();                         // dropped if test ended the run
@@ -221,7 +221,7 @@ From outside, `then.end()` ends the active run now ([runs.md](runs.md#end-from-o
 
 ## What a step returns
 
-Nothing, `true` or `false`, a closure (its undo), or a token it issued - a step, group, wait or inline step: `return this.release(id)` registers that step as its undo and removes it from the plan ([undo.md](undo.md)). An undo or `true` also has an unwind restore the step's fields ([undo.md](undo.md#restoring-fields)); nothing or `false`, not. Any other value fails the run (`first returned a value; a step returns nothing, true, or its undo.`). `next`'s return is the result, never an undo.
+Nothing, `true` or `false`, a closure (its undo), or a token it issued - a step, group, wait or inline step: `return this.release(id)` registers that step as its undo and removes it from the plan ([undo.md](undo.md)). An undo or `true` also has an unwind restore the step's fields ([undo.md](undo.md#restoring-fields)); nothing or `false`, not. Any other value fails the run (`first returned a value; a step returns nothing, true, or its undo.`). `run`'s return is the result, never an undo.
 
 ## Entry
 

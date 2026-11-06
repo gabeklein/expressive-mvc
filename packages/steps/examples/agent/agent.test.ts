@@ -12,22 +12,22 @@ afterEach(() => {
 it('will run a turn to end', async () => {
   const agent = journal(Agent).new({ mode: 'yolo' });
 
-  expect(await agent.next('write notes')).toBe('done');
+  expect(await agent.run('write notes')).toBe('done');
   expect([...agent.messages].map((message) => message.content)).toEqual([
     'write notes',
     '',
     'call_1_0: write notes ok',
     'done'
   ]);
-  expect(record(agent).map((entry) => entry.id)).toEqual(['next#1', 'turn#1', 'tool#1', 'exec#1', 'turn#2']);
+  expect(record(agent).map((entry) => entry.id)).toEqual(['run#1', 'turn#1', 'tool#1', 'exec#1', 'turn#2']);
 });
 
 it('will reject an idle await without a prompt', async () => {
   const agent = Agent.new({ mode: 'yolo' });
 
-  // next takes a prompt, so an idle await cannot start a run
+  // run takes a prompt, so an idle await cannot start a run
   await expect(agent.then((reply) => reply)).rejects.toThrow(
-    `${agent} is idle. next() takes arguments; call it to start a run.`
+    `${agent} is idle. run() takes arguments; call it to start a run.`
   );
   expect(agent.then.runs).toBe(0);
 });
@@ -35,7 +35,7 @@ it('will reject an idle await without a prompt', async () => {
 it('will join a turn in progress', async () => {
   const agent = Agent.new({ mode: 'yolo' });
 
-  agent.next('write notes');
+  agent.run('write notes');
 
   // a run is active, so awaiting the instance joins it
   expect(await agent).toBe('done');
@@ -44,7 +44,7 @@ it('will join a turn in progress', async () => {
 it('will run safe tools without asking in auto', async () => {
   const agent = Agent.new({ mode: 'auto' });
 
-  expect(await agent.next('read notes')).toBe('done');
+  expect(await agent.run('read notes')).toBe('done');
   expect(agent.then.waiting).toEqual([]);
 });
 
@@ -57,7 +57,7 @@ it('will offer allow only while a tool call waits', async () => {
 
   expect(agent.allow).toBeUndefined();
 
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   await vi.waitFor(() => expect(agent.allow).toBeDefined());
 
@@ -72,7 +72,7 @@ it('will offer allow only while a tool call waits', async () => {
 
 it('will resolve allow once its tool has run', async () => {
   const agent = Agent.new();
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
@@ -87,7 +87,7 @@ it('will resolve allow once its tool has run', async () => {
 
 it('will answer the tool call it is given', async () => {
   const agent = journal(Agent).new();
-  const reply = agent.next('write notes, write docs');
+  const reply = agent.run('write notes, write docs');
 
   await vi.waitFor(() => expect(agent.then.waiting).toHaveLength(2));
 
@@ -110,7 +110,7 @@ it('will answer the tool call it is given', async () => {
 
 it('will deny a tool call', async () => {
   const agent = Agent.new();
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
@@ -124,7 +124,7 @@ it('will deny a tool call', async () => {
 
 it('will throw if allow is called after its wait closed', async () => {
   const agent = Agent.new();
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
@@ -134,15 +134,15 @@ it('will throw if allow is called after its wait closed', async () => {
   allow(call);
 
   // nothing is buffered - a held reference throws once no wait accepts it
-  expect(() => allow(call)).toThrow('allow cannot be called from outside; call next() to run.');
+  expect(() => allow(call)).toThrow('allow cannot be called from outside; call run() to start a run.');
   expect(await reply).toBe('done');
 });
 
 it('will keep messages across runs', async () => {
   const agent = journal(Agent).new({ mode: 'yolo' });
 
-  await agent.next('write notes');
-  await agent.next('write tests');
+  await agent.run('write notes');
+  await agent.run('write tests');
 
   expect(agent.messages.size).toBe(8);
   expect(agent.then.runs).toBe(2);
@@ -151,8 +151,8 @@ it('will keep messages across runs', async () => {
 
 it('will queue a prompt sent mid-turn', async () => {
   const agent = Agent.new({ mode: 'yolo' });
-  const first = agent.next('write notes');
-  const second = agent.next('read docs');
+  const first = agent.run('write notes');
+  const second = agent.run('read docs');
 
   // each queued call settles with its own run
   expect(agent.then.queue).toEqual([['read docs']]);
@@ -176,12 +176,12 @@ it('will keep what a failing turn committed', async () => {
       throw new Error('overloaded');
     });
 
-  await expect(agent.next('write notes')).rejects.toThrow('overloaded');
+  await expect(agent.run('write notes')).rejects.toThrow('overloaded');
   // no step returns an undo or true: committed pushes stay, the failing turn's own draft chunks are restored
   expect([...agent.messages].map((message) => message.content)).toEqual(['write notes', '', 'call_1_0: write notes ok']);
   expect(agent.draft.size).toBe(0);
   expect(record(agent).map((entry) => [entry.id, entry.wrote, entry.undone])).toEqual([
-    ['next#1', ['messages'], undefined],
+    ['run#1', ['messages'], undefined],
     ['turn#1', ['messages'], undefined],
     ['tool#1', [], undefined],
     ['exec#1', ['messages'], undefined]
@@ -197,7 +197,7 @@ it('will abort the model call when stopped mid-turn', async () => {
     return { role: 'assistant', content: 'late' } as Message;
   });
 
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   await vi.waitFor(() => expect(agent.draft.get()).toEqual(['Writing']));
   agent.then.stop();
@@ -206,7 +206,7 @@ it('will abort the model call when stopped mid-turn', async () => {
   expect(create.mock.calls[0][1]!.signal!.aborted).toBe(true);
   expect(agent.draft.size).toBe(0);
   expect([...agent.messages].map((message) => message.content)).toEqual(['write notes']);
-  expect(record(agent).map((entry) => entry.id)).toEqual(['next#1']);
+  expect(record(agent).map((entry) => entry.id)).toEqual(['run#1']);
 });
 
 it('will retry a tool, keeping what the tool pushed from outside', async () => {
@@ -217,7 +217,7 @@ it('will retry a tool, keeping what the tool pushed from outside', async () => {
     throw new Error('timeout');
   });
 
-  expect(await agent.next('write notes')).toBe('done');
+  expect(await agent.run('write notes')).toBe('done');
   expect([...agent.messages].map((message) => message.content)).toEqual([
     'write notes',
     '',
@@ -238,7 +238,7 @@ it('will deny a tool call nobody answers within a minute', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
   const agent = Agent.new();
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   await vi.advanceTimersByTimeAsync(MINUTE - 1);
   expect(agent.then.status).toBe('waiting');
@@ -252,7 +252,7 @@ it('will time out each tool call on its own', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
   const agent = journal(Agent).new();
-  const reply = agent.next('write notes, write docs');
+  const reply = agent.run('write notes, write docs');
 
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
 
@@ -272,7 +272,7 @@ it('will time out parallel tool calls each against its own wait', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
   const agent = journal(Agent).new();
-  const reply = agent.next('write notes, write docs');
+  const reply = agent.run('write notes, write docs');
 
   await vi.advanceTimersByTimeAsync(MINUTE);
 
@@ -287,13 +287,13 @@ it('will not let a stale timeout deny the next turn', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
   const agent = Agent.new();
-  const first = agent.next('write notes');
+  const first = agent.run('write notes');
 
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
   await agent.allow(agent.then.waiting[0].args[0] as ToolCall);
   await first;
 
-  const second = agent.next('write docs');
+  const second = agent.run('write docs');
 
   // the first run's watcher was aborted when its wait closed; this wait gets a fresh minute
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
@@ -306,7 +306,7 @@ it('will not let a stale timeout deny the next turn', async () => {
 
 it('will pull steering sent mid-turn before ending', async () => {
   const agent = journal(Agent).new({ mode: 'yolo' });
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   // the push is unmanaged; the pull happens inside turn, so it is part of that turn's entry
   agent.steers.push('read docs');
@@ -328,7 +328,7 @@ it('will pull steering sent mid-turn before ending', async () => {
 
 it('will steer later tool calls by writing mode', async () => {
   const agent = journal(Agent).new();
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
@@ -348,11 +348,11 @@ it('will steer later tool calls by writing mode', async () => {
 
 it('will end a turn early from outside', async () => {
   const agent = Agent.new();
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   await vi.waitFor(() => expect(agent.allow).toBeDefined());
 
-  // the open wait is released and nothing is undone; next returns what it would anyway - the last message
+  // the open wait is released and nothing is undone; run returns what it would anyway - the last message
   agent.then.end();
 
   expect(await reply).toBe(agent.messages.get(-1)!.content);
@@ -363,7 +363,7 @@ it('will end a turn early from outside', async () => {
 
 it('will stop a turn when destroyed', async () => {
   const agent = Agent.new();
-  const reply = agent.next('write notes');
+  const reply = agent.run('write notes');
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 

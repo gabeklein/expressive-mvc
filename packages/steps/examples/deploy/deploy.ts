@@ -26,8 +26,8 @@ export class Deploy extends Steps {
   report = '';
 
   // the plan, in order - each step runs with everything it schedules before the next starts;
-  // next awaits the run and returns its result, typing `await deploy`
-  async next(): Promise<Released> {
+  // run awaits the plan and returns its result, typing `await deploy`
+  async run(): Promise<Released> {
     this.build();
     this.test();
     this.canary();

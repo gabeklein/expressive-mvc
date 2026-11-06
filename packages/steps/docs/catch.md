@@ -8,7 +8,7 @@ A token issued in a step - a step call, a group, an inline step, a wait - takes 
 4. The handler, if any, runs in the branch's place; then the plan continues with the next item, the branch counting as done.
 
 ```ts
-async next(query: string) {
+async run(query: string) {
   this.then(this.sites, this.visit);
   this.report().catch();                         // best effort - skipped on failure
   this.then.end();

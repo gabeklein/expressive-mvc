@@ -25,11 +25,11 @@ Status is `waiting` while any wait is open. `then.waiting` lists open waits, old
 agent.then.waiting;   // [{ id: 'wait#1', step: 'tool', args: [call, 0], answers: ['allow', 'deny'] }]
 ```
 
-Journal: the opening step's `next` holds `{ id: 'wait#1', key: 'wait', args: [], answers: ['allow', 'deny'] }`; the answer's entry carries `wake: 'wait#1'`.
+Journal: the opening step's `run` holds `{ id: 'wait#1', key: 'wait', args: [], answers: ['allow', 'deny'] }`; the answer's entry carries `wake: 'wait#1'`.
 
 ## Answering steps
 
-Every step but `next` reads `undefined` from outside, unless an open wait in the current run accepts it - then it reads the callable step. The read tracks: a `get()` effect or a render updates as it appears and disappears. Inside a step, every step is callable as usual - `this.allow(call)` schedules it. The declared type stays non-optional.
+Every step but `run` reads `undefined` from outside, unless an open wait in the current run accepts it - then it reads the callable step. The read tracks: a `get()` effect or a render updates as it appears and disappears. Inside a step, every step is callable as usual - `this.allow(call)` schedules it. The declared type stays non-optional.
 
 ```tsx
 const Approve = ({ call }: { call: ToolCall }) => {
@@ -44,7 +44,7 @@ A bare `if (agent.allow)` with no call to it inside trips TS2774 - the type says
 Called from outside, an answering step answers one wait: the one whose opening step's first argument is `===` its own first argument, else the oldest accepting it. It runs in that wait's place, the wait closes, and presence updates for every step it accepted. Its call returns a Promise which resolves (`undefined`) once that step and everything it scheduled have completed - not the whole run - and rejects with the run's error if the run fails or stops first. Awaiting it counts as awaiting the run for [unawaited failures](runs.md#unawaited-failures). Left unawaited, its rejection is not reported on its own - the run reports the failure.
 
 ```ts
-const reply = agent.next('write notes, write docs');
+const reply = agent.run('write notes, write docs');
 const [notes, docs] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
 
 await agent.allow(docs);              // docs' tool has run; notes still waits
@@ -52,7 +52,7 @@ await agent.deny(notes);
 await reply;
 ```
 
-Nothing is buffered. A step called from outside with no open wait accepting it - a held reference after its wait closed, say - throws `allow cannot be called from outside; call next() to run.`
+Nothing is buffered. A step called from outside with no open wait accepting it - a held reference after its wait closed, say - throws `allow cannot be called from outside; call run() to run.`
 
 A call through the proxy of a settled step - a timer or arrow inside the step that opened the wait - is an outside call too, with two scopes: it answers that step's own open wait first, so parallel waits on the same steps each take their own answer without the routing argument; and it is bound to its run - once that run ends, it throws (`tool has settled; deny cannot run.`), so a timer left behind cannot answer the next run's wait.
 
@@ -85,7 +85,7 @@ protected async tool(call: ToolCall) {
 
 ## Rules
 
-- `next` and `end` cannot answer a wait - listing one fails the run (`end cannot answer a wait.`).
+- `run` and `end` cannot answer a wait - listing one fails the run (`end cannot answer a wait.`).
 - A wait returned from a step is not in the plan: it parks the unwind on failure ([undo.md](undo.md#a-returned-wait)).
 - A wait reached while undo closures are held logs `console.warn` once per run - closures will not survive a resume in the durable tier; return a token as the undo instead ([undo.md](undo.md)).
 - `stop()`, a failure, and `then.end()` from outside release open waits and abort their watchers.

@@ -18,9 +18,9 @@ it('will dedupe products from every site', async () => {
 
   const crawl = Crawl.new({ sites: ['a', 'b', 'c'] });
 
-  crawl.next('office');
+  crawl.run('office');
 
-  // awaiting the instance joins the run, typed by next's return
+  // awaiting the instance joins the run, typed by run's return
   const found = await crawl;
 
   expect(found.map((item) => [item.sku, item.site])).toEqual([
@@ -41,7 +41,7 @@ it('will scan at most limit sites at once, following a limit changed mid-run', a
 
   const crawl = Crawl.new({ sites: ['a', 'b', 'c', 'd'] });
 
-  crawl.next('office');
+  crawl.run('office');
 
   await flushMicrotasks();
   expect(started).toEqual(['a', 'b']);
@@ -76,7 +76,7 @@ it('will retry a failing site with backoff, keeping what other sites found', asy
 
   const crawl = journal(Crawl).new({ sites: ['a', 'b'] });
 
-  crawl.next('office');
+  crawl.run('office');
 
   // joins the run now - it may end before the next await
   const found = Promise.resolve(crawl);
@@ -102,7 +102,7 @@ it('will skip a site after three retries', async () => {
 
   const crawl = Crawl.new({ sites: ['down', 'up'] });
 
-  crawl.next('office');
+  crawl.run('office');
 
   const found = Promise.resolve(crawl);
 
@@ -117,7 +117,7 @@ it('will end even when the report fails', async () => {
 
   const crawl = journal(Crawl).new({ sites: ['a'] });
 
-  crawl.next('office');
+  crawl.run('office');
 
   expect(await crawl).toHaveLength(1);
   expect(stats.post).toHaveBeenCalled();

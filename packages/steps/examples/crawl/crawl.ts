@@ -11,7 +11,7 @@ export class Crawl extends Steps {
   products = map<string, Product>();
   skipped = has<string>();
 
-  async next(query: string) {
+  async run(query: string) {
     this.query = query;
 
     // a mapped group - visit(site, index) per site, in parallel

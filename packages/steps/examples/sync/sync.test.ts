@@ -14,12 +14,12 @@ afterEach(() => vi.restoreAllMocks());
 it('will pull every page and end with its values', async () => {
   const sync = Logged.new({ token: 't1' });
 
-  // awaiting an idle instance runs next(); next returns nothing, so the data is read from fields
+  // awaiting an idle instance calls run(); run returns nothing, so the data is read from fields
   await sync.pull;
   expect(sync.pull.get()).toMatchObject({ cursor: 'p2', acked: 'p2' });
   expect(sync.items.get()).toEqual([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
   expect(record(sync.pull).map((entry) => [entry.id, entry.wrote])).toEqual([
-    ['next#1', []],
+    ['run#1', []],
     ['page#1', ['cursor']],
     ['page#2', ['cursor']],
     ['then#1', ['acked']]
@@ -47,7 +47,7 @@ it('will start over after a failed sync', async () => {
 
   const sync = Sync.new({ token: 't1' });
 
-  await expect(sync.pull.next()).rejects.toThrow('offline');
+  await expect(sync.pull.run()).rejects.toThrow('offline');
 
   // the feed keeps the first page - written to another Model; the tail forgot the cursor
   expect(sync.items.get()).toEqual([{ id: 'a' }, { id: 'b' }]);
@@ -56,17 +56,17 @@ it('will start over after a failed sync', async () => {
 
 it('will wait for a token before pulling', async () => {
   const sync = Logged.new();
-  const done = sync.pull.next();
+  const done = sync.pull.run();
 
   await new Promise((resolve) => setTimeout(resolve));
 
   // page read the pending token: no entry yet, still running
   expect(sync.pull.then.status).toBe('running');
   expect(sync.pull.then.active).toBe('page');
-  expect(record(sync.pull).map((entry) => entry.id)).toEqual(['next#1']);
+  expect(record(sync.pull).map((entry) => entry.id)).toEqual(['run#1']);
 
   sync.token = 't1';
 
   await done;
-  expect(record(sync.pull).map((entry) => entry.id)).toEqual(['next#1', 'page#1', 'page#2', 'then#1']);
+  expect(record(sync.pull).map((entry) => entry.id)).toEqual(['run#1', 'page#1', 'page#2', 'then#1']);
 });

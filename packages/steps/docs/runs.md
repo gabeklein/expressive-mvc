@@ -1,42 +1,42 @@
-# Runs - `next`, Repeat, Queue, Stop, Steering
+# Runs - `run`, Repeat, Queue, Stop, Steering
 
-## `next` starts a run
+## `run` starts a run
 
-From outside a step, `next(...args)` is the one callable step: it starts a run and returns a Promise settling with it - the result, or the error. Any other step reads `undefined` from outside, except one an open wait accepts ([wait.md](wait.md)); a held reference called with no wait accepting it throws `ship cannot be called from outside; call next() to run.`
+From outside a step, `run(...args)` is the one callable step: it starts a run and returns a Promise settling with it - the result, or the error. Any other step reads `undefined` from outside, except one an open wait accepts ([wait.md](wait.md)); a held reference called with no wait accepting it throws `ship cannot be called from outside; call run() to run.`
 
 ```ts
 class Agent extends Steps {
   messages = has<Message>();
 
-  async next(prompt: string) {
+  async run(prompt: string) {
     this.messages.push(user(prompt));
     this.turn();
   }
 }
 
-const reply = await agent.next('ship it');
+const reply = await agent.run('ship it');
 ```
 
-`next`'s parameters also decide whether awaiting an idle instance can start a run - see [Awaiting the instance](#awaiting-the-instance---start-or-join); an optional parameter needs a default.
+`run`'s parameters also decide whether awaiting an idle instance can start a run - see [Awaiting the instance](#awaiting-the-instance---start-or-join); an optional parameter needs a default.
 
-Nothing starts on its own. A class wanting a run on creation writes `new() { this.next(); }`. An `async new()` holds the instance's `ready` and its effects, not a run it starts - so `async new() { await this.next(); }` works, and effects watching `then` start once it resolves.
+Nothing starts on its own. A class wanting a run on creation writes `new() { this.run(); }`. An `async new()` holds the instance's `ready` and its effects, not a run it starts - so `async new() { await this.run(); }` works, and effects watching `then` start once it resolves.
 
 ## Runs repeat
 
-A finished run returns status to `idle`; the next `next()` starts a fresh run with its own ids. Instance fields persist across runs. `runs` counts finished runs - ended, failed or stopped. `status` `stopped`/`failed` and `error` hold until the next run starts.
+A finished run returns status to `idle`; the next `run()` starts a fresh run with its own ids. Instance fields persist across runs. `runs` counts finished runs - ended, failed or stopped. `status` `stopped`/`failed` and `error` hold until the next run starts.
 
 ```ts
-await agent.next('write notes');
-await agent.next('now the tests');     // messages kept, then.runs == 2
+await agent.run('write notes');
+await agent.run('now the tests');     // messages kept, then.runs == 2
 ```
 
 ## Queue
 
-`next()` from outside while a run is active queues a run, first in first out. `then.queue` lists the queued argument arrays, reactive. Each call's Promise settles with its own run. A failed run does not clear the queue.
+`run()` from outside while a run is active queues a run, first in first out. `then.queue` lists the queued argument arrays, reactive. Each call's Promise settles with its own run. A failed run does not clear the queue.
 
 ```ts
-const first = agent.next('write notes');
-const second = agent.next('read docs');
+const first = agent.run('write notes');
+const second = agent.run('read docs');
 
 agent.then.queue;                      // [['read docs']]
 ```
@@ -45,21 +45,21 @@ agent.then.queue;                      // [['read docs']]
 
 Named `then`, the Runner makes the instance a thenable. Awaiting it:
 
-- idle with nothing queued - calls `next()` with no arguments, as an outside call would, then joins that run; if `next` declares parameters, rejects instead: `Agent-… is idle. next() takes arguments; call it to start a run.`;
-- otherwise joins - settles once the active run and everything queued behind it have, with the last run's result; rejects if that last run failed or was stopped. Any `next` signature.
+- idle with nothing queued - calls `run()` with no arguments, as an outside call would, then joins that run; if `run` declares parameters, rejects instead: `Agent-… is idle. run() takes arguments; call it to start a run.`;
+- otherwise joins - settles once the active run and everything queued behind it have, with the last run's result; rejects if that last run failed or was stopped. Any `run` signature.
 
 ```ts
-const result = await SubmitOrder.new({ cart });   // runs next()
+const result = await SubmitOrder.new({ cart });   // runs run()
 await Promise.resolve(order);                     // same
 ```
 
 ```ts
-agent.next('ship it');
+agent.run('ship it');
 await agent;                                      // joins - 'done'
-await agent;                                      // idle - rejects; await agent.next(prompt)
+await agent;                                      // idle - rejects; await agent.run(prompt)
 ```
 
-> **Optional parameters.** The check is `next.length`, which counts a TS-optional parameter - `next(prompt?: string)` rejects on an idle await. Give it a default instead: `next(prompt = '')` has length 0, so an idle await starts it.
+> **Optional parameters.** The check is `run.length`, which counts a TS-optional parameter - `run(prompt?: string)` rejects on an idle await. Give it a default instead: `run(prompt = '')` has length 0, so an idle await starts it.
 
 A `set` factory returning the instance resolves to the result, suspending until then:
 
@@ -71,12 +71,12 @@ class Checkout extends Model {
 
 Named `run`, the controller is the thenable: `await x.run`.
 
-## `next` and the result
+## `run` and the result
 
-> Spike. `next` absorbs arguments, schedules steps, `await this` for the run, and returns the result:
+> Spike. `run` absorbs arguments, schedules steps, `await this` for the run, and returns the result:
 
 ```ts
-async next(ref: LoraRef) {
+async run(ref: LoraRef) {
   this.ref = ref;                      // setup: fields and step calls only
   this.lookup();
 
@@ -90,13 +90,13 @@ async next(ref: LoraRef) {
 }
 ```
 
-- Before `await this`, `next` is an ordinary step - its writes and calls are its entry, committed there; what it scheduled starts then. Awaiting anything else first fails the run (`next awaited something other than its run - it takes arguments, calls steps and awaits this.`) - work belongs in steps, so the durable tier can re-enter `next` without redoing any. The check is the [lateness guard](steps.md#the-first-step-call-ends-the-steps-work)'s: an await settling within a few microtasks slips through.
+- Before `await this`, `run` is an ordinary step - its writes and calls are its entry, committed there; what it scheduled starts then. Awaiting anything else first fails the run (`run awaited work before its plan - it takes arguments, calls steps and awaits this.`) - work belongs in steps, so the durable tier can re-enter `run` without redoing any. The check is the [lateness guard](steps.md#the-first-step-call-ends-the-steps-work)'s: an await settling within a few microtasks slips through.
 - `await this` resolves once the plan drains or `then.end()` ends it; it rejects with the failure or the `'Stopped'` error, after the unwind and `back`.
-- After it, `next` is the tail: it reads fields and returns or throws. Step calls throw, as through any settled step; writes are unmanaged.
-- The run settles with what `next` returns or throws. `then.status` and `then.error` record what the plan did, so the two can disagree: a tail catching a failure resolves the run while status stays `failed` - a handled rejection; one throwing after a clean plan fails it.
-- The tail is where cleanup on every outcome goes - `try`/`catch`/`finally` around `await this` ([hooks.md](hooks.md#cleanup)). A run without `await this`, or failing before `next` reaches it, has no tail.
-- Without `await this`, `next` settles at once and its return is the result - `void` for the chained style.
-- `x.next(...)` and `await x` are typed by `next`'s return. `next` is declared `async` - a sync one is a type error, since `x.next()` must be awaitable. Returning the awaited value - `return await this` - is circular (TS7023): `next` would be typed by itself.
+- After it, `run` is the tail: it reads fields and returns or throws. Step calls throw, as through any settled step; writes are unmanaged.
+- The run settles with what `run` returns or throws. `then.status` and `then.error` record what the plan did, so the two can disagree: a tail catching a failure resolves the run while status stays `failed` - a handled rejection; one throwing after a clean plan fails it.
+- The tail is where cleanup on every outcome goes - `try`/`catch`/`finally` around `await this` ([hooks.md](hooks.md#cleanup)). A run without `await this`, or failing before `run` reaches it, has no tail.
+- Without `await this`, `run` settles at once and its return is the result - `void` for the chained style.
+- `x.run(...)` and `await x` are typed by `run`'s return. `run` is declared `async` - a sync one is a type error, since `x.run()` must be awaitable. Returning the awaited value - `return await this` - is circular (TS7023): `run` would be typed by itself.
 
 ## End from outside
 
@@ -104,7 +104,7 @@ async next(ref: LoraRef) {
 
 - pending steps are discarded - not journaled; open waits are released;
 - in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
-- then `await this` in `next` resolves and the run settles with what `next` returns, as a normal end;
+- then `await this` in `run` resolves and the run settles with what `run` returns, as a normal end;
 - the queue proceeds - the next queued run starts.
 
 Idle, or with the run already ending, stopped or failed, it does nothing. A step in flight failing meanwhile fails the run as usual.
@@ -126,7 +126,7 @@ A stopped run is not rethrown uncaught.
 
 ## Unawaited failures
 
-A failed run nobody awaited - neither `next()`'s Promise nor the instance - rethrows uncaught two microtasks after rejecting. `await` it, or `.then` it, before then - or let it surface.
+A failed run nobody awaited - neither `run()`'s Promise nor the instance - rethrows uncaught two microtasks after rejecting. `await` it, or `.then` it, before then - or let it surface.
 
 ## Steering - a mailbox
 
@@ -137,7 +137,7 @@ class Agent extends Steps {
   messages = has<Message>();
   inbox = has<string>();
 
-  async next(prompt: string) {
+  async run(prompt: string) {
     this.messages.push(user(prompt));
     this.turn();
   }
@@ -155,4 +155,4 @@ class Agent extends Steps {
 agent.inbox.push('use pnpm, not npm');  // read at the end of the current turn
 ```
 
-The outside push is unmanaged; the pull happens inside a step, so it is in that step's entry and restored with it if the step fails. `next()` mid-run queues a whole run instead ([Queue](#queue)).
+The outside push is unmanaged; the pull happens inside a step, so it is in that step's entry and restored with it if the step fails. `run()` mid-run queues a whole run instead ([Queue](#queue)).
