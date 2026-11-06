@@ -587,10 +587,12 @@ abstract class Model {
     this: Model.Extends<T>,
     setup: NonNullable<Model.On<T>['setup']>
   ): () => boolean;
+
   static on<T extends Model>(
     this: Model.Extends<T>,
     handler: Model.On<T>
   ): () => boolean;
+
   static on<T extends Model>(
     this: Model.Extends<T>,
     handler: Model.On<T> | NonNullable<Model.On<T>['setup']>
@@ -864,7 +866,7 @@ function classify(
     if (typeof value !== 'function') continue;
 
     if (key[0] == '_') {
-      const run = function (this: Model, ...args: unknown[]) { return value.apply(this.is || this, args) };
+      function run(this: Model, ...args: unknown[]) { return value.apply(this.is || this, args) }
 
       UNBIND.set(run, value);
       define(type.prototype, key, { ...desc, value: run });
@@ -914,40 +916,6 @@ function provides(ctx: Context, value: Model) {
     const entries = ctx.provide.get(value.constructor as Model.Extends);
     if (entries) for (const [state] of entries) if (state === value) return true;
   }
-}
-
-function child(state: Model) {
-  let cleanup: (() => void) | undefined;
-  const ctx = Context.get(state);
-
-  function reset() {
-    if (cleanup) cleanup();
-    cleanup = undefined;
-  }
-
-  listener(state, reset, null);
-
-  return (value: unknown) => {
-    reset();
-
-    if (!(value instanceof Model)) return;
-
-    if (parent(value, state)) {
-      const remove = join(state, value);
-      cleanup = () => {
-        cancel();
-        remove();
-        event(value, null);
-      };
-      const cancel = listener(state, cleanup, null);
-    } else if (!provides(ctx, value)) {
-      cleanup = join(state, value);
-    }
-
-    event(value);
-
-    CHILDREN.get(state)?.forEach((cb) => cb(value));
-  };
 }
 
 /**
@@ -1091,11 +1059,43 @@ function adopt(state: Model, key: unknown, value: unknown) {
 
   let claim = keys.get(key);
 
-  if (!claim) {
-    if (!(value instanceof Model)) return;
-    keys.set(key, (claim = child(state)));
+  if (claim) return claim(value);
+  
+  if (!(value instanceof Model)) return;
+
+  let cleanup: (() => void) | undefined;
+  const ctx = Context.get(state);
+
+  function reset() {
+    if (cleanup) cleanup();
+    cleanup = undefined;
   }
 
+  listener(state, reset, null);
+
+  claim = (value: unknown) => {
+    reset();
+
+    if (!(value instanceof Model)) return;
+
+    if (parent(value, state)) {
+      const remove = join(state, value);
+      cleanup = () => {
+        cancel();
+        remove();
+        event(value, null);
+      };
+      const cancel = listener(state, cleanup, null);
+    } else if (!provides(ctx, value)) {
+      cleanup = join(state, value);
+    }
+
+    event(value);
+
+    CHILDREN.get(state)?.forEach((cb) => cb(value));
+  };
+
+  keys.set(key, claim);
   claim(value);
 }
 
