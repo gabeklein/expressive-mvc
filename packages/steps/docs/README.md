@@ -4,7 +4,9 @@
 import { Steps } from '@expressive/steps';
 ```
 
-`Steps` is a `Model` base whose subclasses' methods are steps: a step schedules the next by calling it, fields carry data between steps. `next(...args)` is the entry - called from outside, it starts a run; awaiting an idle instance starts it too, only if `next` takes no arguments (an optional one needs a default - [runs.md](runs.md#awaiting-the-instance---start-or-join)). `then` is the controller - status, queue, waits, result - so the instance itself is awaitable, typed by `end`. `Steps` declares the contract - `next`, `end`, hooks - as optional members ([contract.md](contract.md)).
+> **Spike (`spike/next-result`)** - the result is `next`'s return; the `end` hook is gone. See [runs.md](runs.md#next-and-the-result).
+
+`Steps` is a `Model` base whose subclasses' methods are steps: a step schedules the next by calling it, fields carry data between steps. `next(...args)` is the entry - called from outside, it starts a run; awaiting an idle instance starts it too, only if `next` takes no arguments (an optional one needs a default - [runs.md](runs.md#awaiting-the-instance---start-or-join)). `next` takes arguments, schedules, `await this` for the run, and returns the result - typing `x.next()` and `await x`. `then` is the controller - status, queue, waits - so the instance itself is awaitable. `Steps` declares the contract - `next`, hooks - as optional members ([contract.md](contract.md)).
 
 Inputs are fields - `X.new({ cart })` assigns them as any Model's constructor does - or `next`'s arguments. `new()` stays mvc's setup hook; nothing starts on its own.
 
@@ -16,6 +18,10 @@ class SubmitOrder extends Steps {
 
   async next() {
     this.reserve();
+
+    await this;
+
+    return { orderId: this.charge!.id, tracking: this.tracking };
   }
 
   protected async reserve() {
@@ -30,7 +36,7 @@ class SubmitOrder extends Steps {
     this.charge = await stripe.charge(this.cart.total);
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
-    this.end();
+    this.then.end();
 
     return this.refund(this.charge.id);
   }
@@ -46,16 +52,12 @@ class SubmitOrder extends Steps {
   protected async refund(chargeId: string) {
     await stripe.refund(chargeId);
   }
-
-  protected end() {
-    return { orderId: this.charge!.id, tracking: this.tracking };
-  }
 }
 
 const order = SubmitOrder.new({ cart });
 
 order.then.status;                    // 'idle' - reactive
-const { orderId } = await order;      // runs next(), typed by end()
+const { orderId } = await order;      // runs next(), typed by its return
 ```
 
 A class that cannot extend `Steps` - it already extends another `Model` or a `Component` - holds a `Steps` subclass as a field: `pull = new Pull()`, which reaches its owner with `get()` ([contract.md](contract.md#composition)).
@@ -74,7 +76,7 @@ protected async sample(body: RenderBody) {
 
 Reporting state - progress, a live preview - fits the same split: on an owned Model, or written through a `_` helper ([steps.md](steps.md#helpers)). Written through the step's proxy, it is the step's write - a failed or re-run try restores it.
 
-Entries of a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1 → end#1`. A `courier.book` failure unwinds every committed step, newest first: `refund('ch_42')`, then `charge` restored - `pay` returned an undo - then `inventory.release('hold_sku')`. A step that returns nothing keeps its fields through an unwind; one that returns an undo or `true` has them restored ([undo.md](undo.md#restoring-fields)).
+Entries of a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`, then `end`. A `courier.book` failure unwinds every committed step, newest first: `refund('ch_42')`, then `charge` restored - `pay` returned an undo - then `inventory.release('hold_sku')`. A step that returns nothing keeps its fields through an unwind; one that returns an undo or `true` has them restored ([undo.md](undo.md#restoring-fields)).
 
 - [contract.md](contract.md) - the contract: members, visibility, when each runs; composition - a `Steps` model held as a field
 - [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, inline steps, the step signal, pending values, the first-call rule, calls after a step settles, helpers, `end`, what a step may return
@@ -91,6 +93,6 @@ Entries of a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1
 Opinionated, opt-out: steps are `protected async`. Calling a step schedules it and yields no value - `protected` makes the type match the runtime (outside calls throw), `async` makes the declared `Promise<void>` say so uniformly. Neither is enforced.
 
 - Public: `next` - called from outside, its parameters type the call; answering steps (`allow`, `deny`) - called from outside while a wait accepts them. Still `async`.
-- `end` is `protected`, `async` only if it awaits - the result type is read from it either way.
+- `next` is `async` when it awaits its run; its return types the result.
 - Hooks are `protected` - nothing reads them through the type - and not `async`: their return is not awaited.
 - `_` helpers are `private` - not steps, called only from the class's own steps - and sync when they compute.

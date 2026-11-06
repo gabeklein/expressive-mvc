@@ -9,8 +9,13 @@ export class SubmitOrder extends Steps {
   tracking = '';
   notice = '';
 
+  // next takes the arguments, schedules, awaits the run and returns its result - typing `await order`
   async next() {
     this.reserve();
+
+    await this;
+
+    return { orderId: this.charge?.id, tracking: this.tracking };
   }
 
   protected async reserve() {
@@ -26,9 +31,9 @@ export class SubmitOrder extends Steps {
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
 
-    // one parallel group; end runs once it is done, ending the run - it must be the last call
+    // one parallel group; the run ends once it is done - then.end() must be the last call
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
-    this.end();
+    this.then.end();
 
     // a returned step token is the undo: refund never runs forward, only on unwind - and charge is restored after it
     return this.refund(this.charge.id);
@@ -52,7 +57,7 @@ export class SubmitOrder extends Steps {
 
   protected async backorder() {
     await mail.send(this.cart.email, `https://orders.test/${this.cart.id}/backorder`);
-    this.end();
+    this.then.end();
   }
 
   protected async receipt(url: string) {
@@ -61,11 +66,6 @@ export class SubmitOrder extends Steps {
 
   protected async refund(chargeId: string) {
     await stripe.refund(chargeId);
-  }
-
-  // its return types `await order`
-  protected end() {
-    return { orderId: this.charge?.id, tracking: this.tracking };
   }
 
   // after any unwind - given back()'s reason, else the error; writes here are in no entry, so no unwind restores them

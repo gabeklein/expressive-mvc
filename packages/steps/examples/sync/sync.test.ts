@@ -14,8 +14,9 @@ afterEach(() => vi.restoreAllMocks());
 it('will pull every page and end with its values', async () => {
   const sync = Logged.new({ token: 't1' });
 
-  // awaiting an idle instance runs next(); without end the result is its values - then excluded, its owner included
-  expect(await sync.pull).toMatchObject({ cursor: 'p2', acked: 'p2', sync: { items: sync.items.get() } });
+  // awaiting an idle instance runs next(); next returns nothing, so the data is read from fields
+  await sync.pull;
+  expect(sync.pull.get()).toMatchObject({ cursor: 'p2', acked: 'p2' });
   expect(sync.items.get()).toEqual([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
   expect(record(sync.pull).map((entry) => [entry.id, entry.wrote])).toEqual([
     ['next#1', []],

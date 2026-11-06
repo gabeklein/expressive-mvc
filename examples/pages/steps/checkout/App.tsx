@@ -115,6 +115,10 @@ class Checkout extends Steps {
     this.receipt = '';
     this.notice = '';
     this.reserve(card);
+
+    await this;
+
+    return { tracking: this.tracking, receipt: this.receipt };
   }
 
   protected async reserve(card: string) {
@@ -141,7 +145,7 @@ class Checkout extends Steps {
 
   async approve() {
     this.then(this.ship(), this.mail());
-    this.end();
+    this.then.end();
   }
 
   async decline(reason = 'declined') {
@@ -163,10 +167,6 @@ class Checkout extends Steps {
 
   protected async cancel(authorization: string) {
     await bank.cancel(authorization);
-  }
-
-  protected end() {
-    return { tracking: this.tracking, receipt: this.receipt };
   }
 
   protected before(step: string) {

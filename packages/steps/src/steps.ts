@@ -81,9 +81,8 @@ const TOKEN = {
 declare namespace Steps {
   type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'failed';
 
-  type Result<T> = (T & { end: unknown })['end'] extends (...args: infer A) => infer R
-    ? Awaited<R> extends void ? A[0] : Awaited<R>
-    : Model.Values<T>;
+  /** What `next` returns - the run's result. */
+  type Result<T> = T extends { next(...args: any[]): infer R } ? Awaited<R> : unknown;
 
   /** A planned item: a step, a parallel group (`group`), or a wait (`answers`). */
   interface Node {
@@ -219,10 +218,9 @@ declare namespace Steps {
     get(): Steps.Snapshot;
     /**
      * End the run - inside a step, where the plan reaches it; from outside, now. Pending steps are
-     * discarded and steps in flight settle first. The result is the class's `end` given this value,
-     * else the value, else a dump of its public values.
+     * discarded and steps in flight settle first; `next`, awaiting its run, then returns the result.
      */
-    end(value?: unknown): void;
+    end(): void;
     /**
      * Cancel: discard pending steps and queued runs; in-flight steps settle and commit.
      * `undo` - also unwind the run as a failure would. `reason` - the `cause` of the `'Stopped'`
@@ -300,7 +298,7 @@ function run<T extends Steps>(self: T) {
     then: { value: runner },
     on: { value: self },
     get: { value: () => Object.fromEntries(KEYS.map((key) => [key, read[key]()])) },
-    end: { value: (value?: unknown) => control.conclude(value) },
+    end: { value: () => control.conclude() },
     stop: { value: (undo?: boolean, reason?: unknown) => control.stop(undo, reason) },
     commit: { value: () => outside('commit') },
     back: { value: () => outside('back') },
@@ -329,6 +327,8 @@ function run<T extends Steps>(self: T) {
       let skip = !method || key == 'new' || key[0] == '_' || Object.hasOwn(self, key);
 
       if (skip) continue;
+
+      if (key == 'end') throw new Error(`${self.constructor.name} declares end; return the result from next, end early with this.then.end().`);
 
       if (HOOKS.has(key)) {
         if (!hooks.has(key)) hooks.set(key, unbind(desc.get!));
@@ -369,11 +369,11 @@ class Steps extends Model {
     run(this);
   }
 
-  /** The entry: starts a run, or queues one while a run is active. Settles with its run. */
+  /**
+   * The entry: starts a run, or queues one while a run is active. Its return is the run's result.
+   * It takes arguments and calls steps; `await this` inside it waits for the run, then it returns.
+   */
   next?(...args: any[]): unknown;
-
-  /** Ends the run where the plan reaches it, discarding what is left. Its return, else its argument, else a dump of public values, is the result. */
-  protected end?(value?: any): unknown;
 
   /** Before each step, once per step. */
   protected before?(step: string, args: unknown[]): void;
@@ -491,10 +491,10 @@ class Control extends Model {
     );
   }
 
-  conclude(value: unknown) {
+  conclude() {
     const { _current: run } = this;
 
-    if (run && !run.stale()) run.terminate(run.node('end', value === undefined ? [] : [value]));
+    if (run && !run.stale()) run.terminate(run.node('end', []));
   }
 
   stop(undo?: boolean, reason?: unknown) {
@@ -553,6 +553,10 @@ class Run extends Model {
   _warned?: boolean = undefined;
   _backed?: boolean = undefined;
   _cut?: { reason: unknown } = undefined;
+  _root?: string = undefined;
+  _result?: unknown = undefined;
+  _tail?: Promise<unknown> = undefined;
+  _await?: { resolve(value?: unknown): void; reject(error: unknown): void } = undefined;
 
   protected new() {
     const { control } = this;
@@ -569,7 +573,10 @@ class Run extends Model {
   }
 
   start() {
-    this.exec(this.node('next', this._ticket.args)).then(() => {
+    const node = this.node('next', this._ticket.args);
+
+    this._root = node.id;
+    this.exec(node).then(() => {
       if (!this._halted && !this._ending) this.end();
     });
   }
@@ -938,7 +945,7 @@ class Run extends Model {
     const { id, key, args } = node;
     const inline = this._inline.get(id);
     const lineage = this._lineage.get(id);
-    const fn = inline || control._steps.get(key) || (() => {});
+    const fn = inline || control._steps.get(key)!;
     const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), ...lineage && { _retry: lineage.retry, _caught: lineage.caught } });
     const input = inline ? [lineage ? lineage.caught : frame._abort.signal] : args;
     const hooks = !undo;
@@ -951,7 +958,8 @@ class Run extends Model {
 
       for (;;)
         try {
-          const out = await fn.apply(frame._proxy, input);
+          const call = fn.apply(frame._proxy, input);
+          const out = id == this._root ? await frame.open(call) : await call;
 
           frame._settled = true;
 
@@ -1033,30 +1041,43 @@ class Run extends Model {
 
     if (this._backing) await this._backing;
     if (this._halted) return;
-    if (!item) {
-      const { id } = this.node('end', []);
 
-      this._entries.push({ id, key: 'end', args: [], next: [], wrote: [], implicit: true });
+    const { id } = item || this.node('end', []);
 
-      return this.finish(this.control._self.get());
-    }
-
-    const frame = await this.invoke(item);
-
-    if (frame && !this._halted) this.finish(frame._result);
+    this._entries.push({ id, key: 'end', args: [], next: [], wrote: [], ...!item && { implicit: true as const } });
+    this.finish();
   }
 
   drain() {
     if (this.flight().length) return new Promise<void>((resolve) => this._drained.push(resolve));
   }
 
-  finish(value: unknown) {
+  finish() {
+    const { _tail: tail } = this;
+
     this._exiting = true;
 
+    if (!tail) return this.done(this._result);
+
+    this._await!.resolve();
+    tail.then((value) => this.done(value), (error) => this.broke(error));
+  }
+
+  done(value: unknown) {
     const exiting = this.exit({ status: 'done', result: value });
 
     if (exiting) exiting.then(() => this.settle(value));
     else this.settle(value);
+  }
+
+  async broke(error: unknown) {
+    const { control } = this;
+
+    this.blame(error);
+    control.status = 'failed';
+
+    await this.exit({ status: 'failed', error });
+    this.reject();
   }
 
   settle(value: unknown) {
@@ -1111,11 +1132,32 @@ class Run extends Model {
       if (!this._backed) this.fire('back', this.reason());
     }
 
-    const { _cut: cut } = this;
+    const { _cut: cut, _tail: tail } = this;
     const error = this.reason();
+    const outcome: Steps.Outcome = cut ? { status: 'failed', error, stopped: cut.reason } : { status: this._halted!, error };
 
-    await this.exit(cut ? { status: 'failed', error, stopped: cut.reason } : { status: this._halted!, error });
-    this.reject();
+    if (!tail) {
+      await this.exit(outcome);
+      return this.reject();
+    }
+
+    this._await!.reject(error);
+
+    try {
+      const value = await tail;
+
+      await this.exit(outcome);
+      this.salvage(value);
+    } catch (thrown) {
+      await this.exit(outcome);
+      this.reject(thrown);
+    }
+  }
+
+  salvage(value: unknown) {
+    this.close();
+    this._ticket.resolve(value);
+    this.control.advance();
   }
 
   reason() {
@@ -1124,15 +1166,16 @@ class Run extends Model {
     return error === undefined ? this._stopped : error;
   }
 
-  reject() {
-    const { _error: error, _ticket } = this;
+  reject(reason = this.reason()) {
+    const { _ticket } = this;
+    let stopped = reason === this._stopped;
 
     this.close();
-    _ticket.reject(this.reason());
+    _ticket.reject(reason);
 
-    if (error !== undefined)
+    if (!stopped)
       queueMicrotask(() => queueMicrotask(() => {
-        if (!_ticket.awaited) throw error;
+        if (!_ticket.awaited) throw reason;
       }));
 
     this.control.advance();
@@ -1290,6 +1333,7 @@ class Frame extends Model {
   _settled?: boolean = undefined;
   _result?: unknown = undefined;
   _left!: () => void;
+  _point?: (done: (value?: unknown) => void, fail: (error: unknown) => void) => void = undefined;
   _gone = new Promise<void>((resolve) => (this._left = resolve));
 
   protected new() {
@@ -1400,6 +1444,41 @@ class Frame extends Model {
     return failed;
   }
 
+  open(call: unknown) {
+    const { run } = this;
+    const body = Promise.resolve(call);
+
+    body.catch(() => {});
+    this.arm();
+
+    return new Promise((resolve, reject) => {
+      this._point = (done, fail) => {
+        if (this._late) {
+          const error = new Error('next awaited something other than its run - it takes arguments, calls steps and awaits this.');
+
+          fail(error);
+          return reject(error);
+        }
+
+        run._await = { resolve: done, reject: fail };
+        run._tail = body;
+        resolve(undefined);
+      };
+
+      body.then(
+        (value) => {
+          if (run._tail) return;
+
+          run._result = value;
+          resolve(undefined);
+        },
+        (error) => {
+          if (!run._tail) reject(error);
+        }
+      );
+    });
+  }
+
   arm() {
     const armed = ++this._armed;
     let hops = SLACK;
@@ -1430,6 +1509,7 @@ class Frame extends Model {
       if (functions && refs.length) return this.wait(refs, fns.filter((fn) => !this.keyOf(fn)));
       if (functions && args.length == 1) return this.inline(items as Function);
       if (mixed) throw new Error('then() takes called steps or step references, not both.');
+      if (functions && args.length == 2 && this._point && !this._settled) return this._point(fns[0] as any, fns[1] as any);
 
       throw new Error('a step cannot await its own run.');
     };
@@ -1437,7 +1517,7 @@ class Frame extends Model {
     Object.setPrototypeOf(view, this.run.control._runner);
     Object.defineProperties(view, {
       then: { value: view },
-      end: { value: (value?: unknown) => this.issue('end', value === undefined ? [] : [value]) },
+      end: { value: () => this.issue('end', []) },
       signal: { get: () => this._abort.signal },
       retry: { get: () => this._retry },
       caught: { get: () => this._caught },
@@ -1459,7 +1539,7 @@ class Frame extends Model {
     const { run } = this;
     const key = this.keyOf(step);
 
-    if (!key || key == 'end') throw new Error('back() takes a step to go back to; stop(true) unwinds the whole run.');
+    if (!key) throw new Error('back() takes a step to go back to; stop(true) unwinds the whole run.');
 
     const token = this.issue('back', []);
 
@@ -1515,7 +1595,7 @@ class Frame extends Model {
   }
 
   wait(answers: string[], watchers: Function[]) {
-    for (const key of answers) if (key == 'next' || key == 'end') throw new Error(`${key} cannot answer a wait.`);
+    for (const key of answers) if (key == 'next') throw new Error('next cannot answer a wait.');
 
     const token = Object.assign(this.issue('wait', []), { answers });
 
@@ -1525,20 +1605,17 @@ class Frame extends Model {
   }
 
   commit(out: unknown) {
-    const { run, id, key, args, _items: items, _violation, _late, _wake, _lost } = this;
+    const { run, id, key, _items: items, _violation, _late, _wake, _lost } = this;
 
     if (_violation) throw new Error(`${key} wrote ${_violation} after scheduling ${items[0].key}.`);
+    if (_late && !items.length) throw new Error('next awaited something other than its run - it takes arguments, calls steps and awaits this.');
     if (_late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
 
     let undo: Function | Steps.Node | undefined;
     let keep = false;
     let token = items.includes(out as Steps.Node) && !INERT.includes((out as Steps.Node).key);
 
-    if (key == 'end') {
-      if (items.length) throw new Error(`end cannot schedule ${items[0].key}.`);
-
-      this._result = out !== undefined ? out : args.length ? args[0] : run.control._self.get();
-    }
+    if (key == 'next') void out;
     else if (typeof out == 'function') undo = out;
     else if (token) {
       undo = out as Steps.Node;

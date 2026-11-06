@@ -25,8 +25,9 @@ export class Deploy extends Steps {
   log = has<string>();
   report = '';
 
-  // the plan, in order - each step runs with everything it schedules before the next starts
-  async next() {
+  // the plan, in order - each step runs with everything it schedules before the next starts;
+  // next awaits the run and returns its result, typing `await deploy`
+  async next(): Promise<Released> {
     this.build();
     this.test();
     this.canary();
@@ -34,7 +35,10 @@ export class Deploy extends Steps {
     this.rollout();
     this.retire();
     this.announce();
-    this.end();
+
+    await this;
+
+    return { version: this.version, hosts: [...this.live.keys()], approver: this.approver };
   }
 
   protected async build() {
@@ -166,11 +170,6 @@ export class Deploy extends Steps {
 
   protected async announce() {
     await chat.post(`${this.version} is live on ${this.live.size} hosts`);
-  }
-
-  // its return types `await deploy`
-  protected end(): Released {
-    return { version: this.version, hosts: [...this.live.keys()], approver: this.approver };
   }
 
   // before and after wrap every step, answers included; writes here are in no entry

@@ -71,13 +71,39 @@ class Checkout extends Model {
 
 Named `run`, the controller is the thenable: `await x.run`.
 
+## `next` and the result
+
+> Spike. `next` absorbs arguments, schedules steps, `await this` for the run, and returns the result:
+
+```ts
+async next(ref: LoraRef) {
+  this.ref = ref;                      // setup: fields and step calls only
+  this.lookup();
+
+  try {
+    await this;                        // the run - everything scheduled, to the end
+  } catch {
+    return { failed: true as const };  // a failure or stop, turned into a result
+  }
+
+  return { file: this.file, name: ref.name };
+}
+```
+
+- Before `await this`, `next` is an ordinary step - its writes and calls are its entry, committed there; what it scheduled starts then. Awaiting anything else first fails the run (`next awaited something other than its run - it takes arguments, calls steps and awaits this.`) - work belongs in steps, so the durable tier can re-enter `next` without redoing any.
+- `await this` resolves once the plan drains or `then.end()` ends it; it rejects with the failure or the `'Stopped'` error, after the unwind and `back`.
+- After it, `next` is the tail: it reads fields and returns or throws. Step calls throw, as through any settled step; writes are unmanaged.
+- The run settles with what `next` returns or throws, then `exit` runs. `then.status` and `then.error` record what the plan did - a tail catching a failure resolves the run while status stays `failed`; one throwing after a clean plan fails it.
+- Without `await this`, `next` settles at once and its return is the result - `void` for the chained style.
+- `x.next(...)` and `await x` are typed by `next`'s return. A sync `next()` types `x.next()` as its own return, not a Promise - declare it `async` to keep the call awaitable in TypeScript. Returning the awaited value - `return await this` - is circular (TS7023): `next` would be typed by itself.
+
 ## End from outside
 
-`then.end(value?)` from outside ends the active run now, without undoing anything - what an `end` token does when the plan reaches it ([steps.md](steps.md#end-is-terminal)):
+`then.end()` from outside ends the active run now, without undoing anything - what an `end` token does when the plan reaches it ([steps.md](steps.md#end-is-terminal)):
 
 - pending steps are discarded - not journaled; open waits are released;
 - in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
-- then `end` runs with `value` - the class's `end` if declared, else the result is `value`, else the dump - and the run resolves with the result as a normal end;
+- then `await this` in `next` resolves and the run settles with what `next` returns, as a normal end;
 - the queue proceeds - the next queued run starts.
 
 Idle, or with the run already ending, stopped or failed, it does nothing. A step in flight failing meanwhile fails the run as usual.
@@ -122,7 +148,6 @@ class Agent extends Steps {
     this.messages.push(reply, ...notes.map(user));
 
     if (toolCalls(reply).length || notes.length) this.turn();
-    else this.end(reply);
   }
 }
 

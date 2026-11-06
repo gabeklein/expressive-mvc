@@ -54,7 +54,7 @@ protected async pay() {
   this.charge = await stripe.charge(this.cart.total);
 
   this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
-  this.end();                          // once the group is done
+  this.then.end();                     // once the group is done
 }
 ```
 
@@ -124,7 +124,7 @@ Inside a step, `this.then`:
 - tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
-Its members, in a step: `then.end(value?)` ([end](#end-is-terminal)), `then.back(step, reason?)` ([undo.md](undo.md#back)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retry` and `then.caught` ([catch.md](catch.md)).
+Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.back(step, reason?)` ([undo.md](undo.md#back)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retry` and `then.caught` ([catch.md](catch.md)).
 
 Every token takes `.catch(handler?)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
 
@@ -191,34 +191,37 @@ private _double(n: number) {
 
 `end` is a token like any other - it runs at its place in the plan, depth-first, and running it ends the run. Whatever is still pending is discarded, not journaled; open waits and slots are released; steps in flight - other members of a group - have their [signals](#the-step-signal) aborted, settle and commit, and what they schedule never runs. The same as [`then.end()` from outside](runs.md#end-from-outside).
 
-A class-declared `end(value)` is a step that types the result: its return, else its argument. `this.then.end(value?)` is the controller form - an undeclared `end`; with a class `end`, `value` is its argument. With neither a return nor an argument, the result is a dump of the class's public values, the `Runner` excluded. A run whose plan drains without `end` ends with the dump, journaling `{ id: 'end#n', key: 'end', args: [], next: [], wrote: [], implicit: true }` - no hooks.
+`this.then.end()` takes no value: the result is what `next` returns once its run is done ([runs.md](runs.md#next-and-the-result)). A class may not declare `end` - it throws at construction. The end is journaled `{ id: 'end#n', key: 'end', args: [], next: [], wrote: [] }`, `implicit: true` when the plan drained - no hooks.
 
 ```ts
 async next() {
   this.build();
   this.test();                         // may end early
   this.ship();                         // dropped if test ended the run
+
+  await this;
+
+  return { shipped: !this.failures.length, failures: this.failures };
 }
 
 protected async test() {
-  const failures = await suite.run();
+  this.failures = await suite.run();
 
-  if (failures.length) this.end({ shipped: false, failures });
+  if (this.failures.length) this.then.end();
 }
 ```
 
 An early exit is calling `end` - no flag threaded through later steps.
 
-- `end` must be the last call in its step: a step call, group, wait or slot issued after it fails the run (`end must be the last call in a step.`) - a second `end` included. Returning a token as the undo is not a call - `this.end(); return this.refund(id);` stands.
+- `end` must be the last call in its step: a step call, group, wait or slot issued after it fails the run (`end must be the last call in a step.`) - a second `end` included. Returning a token as the undo is not a call - `this.then.end(); return this.refund(id);` stands.
 - Two branches of a group each scheduling `end`: the first the plan reaches ends the run; the other is discarded with the rest.
 - A failure or `stop()` takes precedence - `end` reached after either does nothing; a [`back`](undo.md#back) in progress stops, as for an outside `end`.
-- `end` scheduling a step fails the run (`end cannot schedule more.`).
 
-From outside, `instance.end` reads `undefined`; `then.end(value)` ends the active run now ([runs.md](runs.md#end-from-outside)).
+From outside, `then.end()` ends the active run now ([runs.md](runs.md#end-from-outside)).
 
 ## What a step returns
 
-Nothing, `true` or `false`, a closure (its undo), or a token it issued - a step, group, wait or inline step: `return this.release(id)` registers that step as its undo and removes it from the plan ([undo.md](undo.md)). An undo or `true` also has an unwind restore the step's fields ([undo.md](undo.md#restoring-fields)); nothing or `false`, not. Any other value fails the run (`first returned a value; a step returns nothing, true, or its undo.`). `end`'s return is the result.
+Nothing, `true` or `false`, a closure (its undo), or a token it issued - a step, group, wait or inline step: `return this.release(id)` registers that step as its undo and removes it from the plan ([undo.md](undo.md)). An undo or `true` also has an unwind restore the step's fields ([undo.md](undo.md#restoring-fields)); nothing or `false`, not. Any other value fails the run (`first returned a value; a step returns nothing, true, or its undo.`). `next`'s return is the result, never an undo.
 
 ## Entry
 

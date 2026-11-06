@@ -10,10 +10,15 @@ export class Agent extends Steps {
   draft = has<string>();
   steers = has<string>();
 
-  // one run per prompt; fields persist across runs, and a prompt sent mid-run queues
+  // one run per prompt; fields persist across runs, and a prompt sent mid-run queues -
+  // next takes the prompt, awaits the run and returns the last reply
   async next(prompt: string) {
     this.messages.push(user(prompt));
     this.turn();
+
+    await this;
+
+    return this.messages.get(-1)?.content;
   }
 
   protected async turn() {
@@ -38,9 +43,6 @@ export class Agent extends Steps {
     }
     else if (steers.length) {
       this.turn();
-    }
-    else {
-      this.end(reply);
     }
   }
 
@@ -70,9 +72,5 @@ export class Agent extends Steps {
 
   async deny(call: ToolCall) {
     this.messages.push(result(call, 'denied'));
-  }
-
-  protected end(reply: Message) {
-    return reply.content;
   }
 }

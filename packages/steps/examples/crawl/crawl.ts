@@ -19,7 +19,11 @@ export class Crawl extends Steps {
 
     // best effort - a failing post is caught and skipped, and the run still ends
     this.report().catch();
-    this.end();
+
+    // the run's result - typing `await crawl`
+    await this;
+
+    return [...this.products.values()];
   }
 
   protected async visit(site: string) {
@@ -50,9 +54,5 @@ export class Crawl extends Steps {
 
   protected async report() {
     await stats.post(this.query, this.products.size);
-  }
-
-  protected end() {
-    return [...this.products.values()];
   }
 }

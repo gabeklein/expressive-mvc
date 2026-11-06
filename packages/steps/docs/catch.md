@@ -11,7 +11,7 @@ A token issued in a step - a step call, a group, an inline step, a wait - takes 
 async next(query: string) {
   this.then(this.sites, this.visit);
   this.report().catch();                         // best effort - skipped on failure
-  this.end();
+  this.then.end();
 }
 
 protected async visit(site: string) {

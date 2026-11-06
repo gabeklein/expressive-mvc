@@ -11,8 +11,7 @@ class Steps extends Model {
 | member | visibility | when it runs |
 | --- | --- | --- |
 | `then` | public, `readonly` | the `Runner` ([runner.md](runner.md)) - `await instance` starts or joins a run ([runs.md](runs.md#awaiting-the-instance---start-or-join)) |
-| `next(...args)` | public | the entry - starts a run, or queues one ([runs.md](runs.md)); narrow its parameters freely |
-| `end(value?)` | `protected` | ends the run where the plan reaches it; its return types `await instance`, else its argument, else the values dump ([steps.md](steps.md#end-is-terminal)) |
+| `next(...args)` | public | the entry - starts a run, or queues one; `await this` inside it waits for the run, its return is the result ([runs.md](runs.md#next-and-the-result)); narrow its parameters freely |
 | `before(step, args)` | `protected` | before each step ([hooks.md](hooks.md)) |
 | `after(step, entry)` | `protected` | after each step commits ([hooks.md](hooks.md)) |
 | `back(reason)` | `protected` | once an unwind completes - after `then.back(step, reason)`, or a failure before the run rejects ([hooks.md](hooks.md#back)) |
@@ -53,4 +52,4 @@ await sync.pull;                       // starts or joins its run
 sync.pull.then.status;                 // reactive, as on any Steps model
 ```
 
-Writes to the owner are unmanaged - in no entry, not restored by its unwind; state that must come back lives on the `Steps` model. `get(Sync)` is a field, so it is in the values dump. A component renders its fields and Runner through the field: `const { pull } = this; pull.then.status`.
+Writes to the owner are unmanaged - in no entry, not restored by its unwind; state that must come back lives on the `Steps` model. `get(Sync)` is a field, so it is in `get()`. A component renders its fields and Runner through the field: `const { pull } = this; pull.then.status`.

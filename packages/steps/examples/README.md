@@ -8,7 +8,7 @@ A PR adding a feature extends an example and this table.
 
 | feature | where |
 | --- | --- |
-| `next(...args)` as the entry | `Agent.next` |
+| `next(...args)` as the entry - takes arguments, schedules, `await this`, returns the result | `Agent.next`, `SubmitOrder.next`, `Deploy.next`, `Crawl.next` |
 | runs repeat, fields persist, `runs` | agent test `will keep messages across runs` |
 | queue - `next()` mid-run, `then.queue` | agent test `will queue a prompt sent mid-turn` |
 | `await instance` starts an idle run | order test `will run every step to end`, `Sync` |
@@ -17,7 +17,7 @@ A PR adding a feature extends an example and this table.
 | `then.stop()` | agent test `will abort the model call when stopped mid-turn`, deploy test `will abort the test suite when stopped` |
 | `then.stop(true)` | order test `will undo an order stopped mid-shipment` |
 | `this.then.stop(true, reason)` - cancel and unwind from a step, the reason carried in the `'Stopped'` error | `Deploy.abort`; deploy test `will roll back the canaries and the build when the gate aborts` |
-| `then.end(value)` from outside | agent test `will end a turn early from outside` |
+| `then.end()` from outside | agent test `will end a turn early from outside` |
 | `set(null)` stops | agent test `will stop a turn when destroyed` |
 
 ## Steps
@@ -34,9 +34,9 @@ A PR adding a feature extends an example and this table.
 | a pending `set<T>()` read waits | `Sync.token`, read by `Pull.page`; sync test `will wait for a token before pulling` |
 | inline step returned as a `void`-typed undo | `SubmitOrder.ship` |
 | `_` helper - computes, the step assigns | `Deploy._spread`, `Deploy.canary` |
-| `end` typing the result | `SubmitOrder.end`, `Agent.end`, `Deploy.end` |
-| `end` is terminal - runs at its place, the last call in its step; a returned undo may follow | `SubmitOrder.pay`, `SubmitOrder.backorder` (after `back`), `Agent.turn` |
-| implicit end - the plan drains, the values dump | `Sync`, sync test `will pull every page and end with its values` |
+| `next`'s return typing the result | `SubmitOrder.next`, `Agent.next`, `Deploy.next`, `Crawl.next` |
+| `this.then.end()` is terminal - runs at its place, the last call in its step; a returned undo may follow | `SubmitOrder.pay`, `SubmitOrder.backorder` (after `back`) |
+| `next` returning nothing - the plan drains, the result is `undefined` | `Sync`, sync test `will pull every page and end with its values` |
 
 ## Undo
 

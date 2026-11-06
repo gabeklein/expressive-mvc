@@ -19,7 +19,7 @@ it('will run a turn to end', async () => {
     'call_1_0: write notes ok',
     'done'
   ]);
-  expect(record(agent).map((entry) => entry.id)).toEqual(['next#1', 'turn#1', 'tool#1', 'exec#1', 'turn#2', 'end#1']);
+  expect(record(agent).map((entry) => entry.id)).toEqual(['next#1', 'turn#1', 'tool#1', 'exec#1', 'turn#2']);
 });
 
 it('will reject an idle await without a prompt', async () => {
@@ -352,10 +352,10 @@ it('will end a turn early from outside', async () => {
 
   await vi.waitFor(() => expect(agent.allow).toBeDefined());
 
-  // end runs with this value; the open wait is released and nothing is undone
-  agent.then.end({ role: 'assistant', content: 'enough' });
+  // the open wait is released and nothing is undone; next returns what it would anyway - the last message
+  agent.then.end();
 
-  expect(await reply).toBe('enough');
+  expect(await reply).toBe(agent.messages.get(-1)!.content);
   expect(agent.allow).toBeUndefined();
   expect(agent.then.status).toBe('idle');
   expect(agent.messages.size).toBe(2);

@@ -20,7 +20,7 @@ it('will dedupe products from every site', async () => {
 
   crawl.next('office');
 
-  // awaiting the instance joins the run, typed by end
+  // awaiting the instance joins the run, typed by next's return
   const found = await crawl;
 
   expect(found.map((item) => [item.sku, item.site])).toEqual([

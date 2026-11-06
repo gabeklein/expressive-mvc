@@ -67,8 +67,7 @@ it('will release through the gate', async () => {
     'upgrade',
     'upgrade',
     'retire',
-    'announce',
-    'end'
+    'announce'
   ]);
 });
 

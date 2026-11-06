@@ -29,7 +29,7 @@ protected async pay() {
   this.charge = await stripe.charge(this.cart.total);
 
   this.ship(this.charge.id);
-  this.end();
+  this.then.end();
 
   return this.refund(this.charge.id);
 }
@@ -128,7 +128,7 @@ It is a token in the plan, like a step call. When the plan reaches it:
 2. Those entries unwind, newest first, as on failure: undos run, fields restored for steps that returned an undo or `true` ([Restoring fields](#restoring-fields)), `undone` marked. `step`'s entry stays. An irreversible or committed entry halts it there - `halted: true` - and the run still continues.
 3. The entry `{ id: 'back#1', key: 'back', args: [], next: [], wrote: [], to: 'reserve#1', reason: 'no courier' }` is journaled - `to` the entry kept, `reason` when given. Discarded items are not journaled.
 4. `back(reason)` runs ([hooks.md](hooks.md#back)).
-5. What the calling step scheduled after `back()` runs; nothing else, and the plan drains to `end`, or the values dump. The run does not fail.
+5. What the calling step scheduled after `back()` runs; nothing else, and the plan drains to its end. The run does not fail.
 
 - The calling step has not committed when it calls `back` - its own writes stay, and it is never a target: `this.then.back(this.ship)` from `ship` targets an earlier `ship`. Steps it scheduled before `back()` have run by then and are unwound.
 - Retry is a call after it - `this.then.back(this.reserve); this.pay(card2);` - or a wait for one: `this.then.back(this.reserve); this.then(this.pay);` parks until `order.pay(card2)` from outside.

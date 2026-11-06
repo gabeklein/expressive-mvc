@@ -50,5 +50,5 @@ export class Pull extends Steps {
     if (outcome.status != 'done') this.cursor = '';
   }
 
-  // no end(): once the plan drains, the run resolves with a dump of public values
+  // next returns nothing - the run resolves with undefined; the data is in fields
 }
