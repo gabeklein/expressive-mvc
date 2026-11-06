@@ -908,7 +908,13 @@ function stages<K extends 'method' | 'catch'>(T: Model.Extends, key: K): Set<Non
 
 /** Install a prototype getter as a computed property, following its hot-patched replacements. */
 function getter(this: Model, get: Function, key: string) {
-  compute.call(this, function (this: Model, self: Model) { return latest(get).call(this, self) }, key);
+  compute.call(this, function (this: Model, self: Model) {
+    let latest = get;
+
+    for (let next; (next = LATEST.get(latest)); ) latest = next;
+
+    return latest.call(this, self);
+  }, key);
 }
 
 function provides(ctx: Context, value: Model) {
@@ -1060,7 +1066,7 @@ function adopt(state: Model, key: unknown, value: unknown) {
   let claim = keys.get(key);
 
   if (claim) return claim(value);
-  
+
   if (!(value instanceof Model)) return;
 
   let cleanup: (() => void) | undefined;
@@ -1097,12 +1103,6 @@ function adopt(state: Model, key: unknown, value: unknown) {
 
   keys.set(key, claim);
   claim(value);
-}
-
-/** Resolve a getter to its latest hot-patched replacement. */
-function latest(getter: Function) {
-  for (let next; (next = LATEST.get(getter)); ) getter = next;
-  return getter;
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
