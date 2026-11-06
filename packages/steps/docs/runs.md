@@ -73,7 +73,7 @@ Named `run`, the controller is the thenable: `await x.run`.
 
 ## `run` and the result
 
-> Spike. `run` absorbs arguments, schedules steps, `await this` for the run, and returns the result:
+`run` absorbs arguments, schedules steps, `await this` for the run, and returns the result:
 
 ```ts
 async run(ref: LoraRef) {
