@@ -599,13 +599,7 @@ abstract class Model {
   ) {
     if (typeof handler == 'function') handler = { setup: handler };
 
-    let setup = SETUP.get(this);
-
-    if (!setup) SETUP.set(this, (setup = new Set()));
-
-    setup.add(handler);
-
-    return () => setup.delete(handler);
+    return subscribe(SETUP, this, handler);
   }
 }
 
@@ -953,13 +947,7 @@ function children(state: Model, callback: (child: Model) => void) {
       if (value instanceof Model) callback(value);
     }
 
-  let set = CHILDREN.get(state);
-
-  if (!set) CHILDREN.set(state, (set = new Set()));
-
-  set.add(callback);
-
-  return () => set!.delete(callback);
+  return subscribe(CHILDREN, state, callback);
 }
 
 function owner(state: Model, required?: boolean) {
@@ -982,13 +970,20 @@ function owned(state: Model, callback: (child: Model) => void | (() => void)) {
 
   OWNS.get(state)?.forEach(each);
 
-  let set = OWNED.get(state);
+  const remove = subscribe(OWNED, state, each);
 
-  if (!set) OWNED.set(state, (set = new Set()));
+  return () => void remove();
+}
 
-  set.add(each);
+/** Add an item to the set kept for a key, creating it if needed. Returns a callback to remove it. */
+function subscribe<K extends object, T>(map: WeakMap<K, Set<T>>, key: K, item: T) {
+  let set = map.get(key);
 
-  return () => void set!.delete(each);
+  if (!set) map.set(key, (set = new Set()));
+
+  set.add(item);
+
+  return () => set!.delete(item);
 }
 
 function plain(value: unknown): value is Model.Assign<Model> {
