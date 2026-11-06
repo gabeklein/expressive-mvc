@@ -666,21 +666,19 @@ function init(state: Model, ...args: Model.Args) {
 
   if (!QUEUED) {
     QUEUED = true;
-    queueMicrotask(deadline);
+
+    queueMicrotask(() => {
+      QUEUED = false;
+
+      for (const item of PENDING)
+        if (typeof item == 'function') item();
+        else report('unused', item, new Error(`${item} was constructed but never activated.`));
+
+      PENDING.clear();
+    });
   }
 
   PENDING.add(state);
-}
-
-/** Drain `PENDING` - run queued work and report Models never activated. */
-function deadline() {
-  QUEUED = false;
-
-  for (const item of PENDING)
-    if (typeof item == 'function') item();
-    else report('unused', item, new Error(`${item} was constructed but never activated.`));
-
-  PENDING.clear();
 }
 
 /**
