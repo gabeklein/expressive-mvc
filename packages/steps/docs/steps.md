@@ -175,7 +175,7 @@ A step called through the proxy of a step that has settled - from a timer, a wat
 
 ## Helpers
 
-A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no entry, pass the write guard, and are not restored on failure; a step it calls is an outside call. A helper computes; the step assigns - except a report. A field the outside watches - progress, a status line - written through the proxy is restored when the try fails or re-runs, so the UI steps back; write it through a helper, or keep it on an owned Model.
+A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no entry, pass the write guard, and are not restored on failure; a step it calls is an outside call. A helper computes; the step assigns.
 
 ```ts
 protected async first() {
@@ -191,7 +191,7 @@ private _double(n: number) {
 
 `end` is a token like any other - it runs at its place in the plan, depth-first, and running it ends the run. Whatever is still pending is discarded, not journaled; open waits and slots are released; steps in flight - other members of a group - have their [signals](#the-step-signal) aborted, settle and commit, and what they schedule never runs. The same as [`then.end()` from outside](runs.md#end-from-outside).
 
-`this.then.end()` takes no value: the result is what `next` returns once its run is done ([runs.md](runs.md#next-and-the-result)). A class may not declare `end` - it throws at construction. The end is journaled `{ id: 'end#n', key: 'end', args: [], next: [], wrote: [] }`, `implicit: true` when the plan drained - no hooks.
+`this.then.end()` takes no value - one throws: the result is what `next` returns once its run is done ([runs.md](runs.md#next-and-the-result)). A class may not declare `end` - it throws at construction. The end is journaled `{ id: 'end#n', key: 'end', args: [], next: [], wrote: [] }`, `implicit: true` when the plan drained - no hooks.
 
 ```ts
 async next() {

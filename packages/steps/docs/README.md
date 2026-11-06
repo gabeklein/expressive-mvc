@@ -72,7 +72,7 @@ protected async sample(body: RenderBody) {
 }
 ```
 
-Reporting state - progress, a live preview - fits the same split: on an owned Model, or written through a `_` helper ([steps.md](steps.md#helpers)). Written through the step's proxy, it is the step's write - a failed or re-run try restores it.
+Reporting state - progress, a status line - is ordinary fields, written in the steps; the UI reads them in a subscribed render or a `get()` effect. A failed or re-run try restores what it wrote - that try did not happen - and the catch handler or the next step writes fresh values. A value that must outlive a failed try lives on an owned Model.
 
 Entries of a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`, then `end`. A `courier.book` failure unwinds every committed step, newest first: `refund('ch_42')`, then `charge` restored - `pay` returned an undo - then `inventory.release('hold_sku')`. A step that returns nothing keeps its fields through an unwind; one that returns an undo or `true` has them restored ([undo.md](undo.md#restoring-fields)).
 
