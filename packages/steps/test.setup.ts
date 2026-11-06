@@ -5,7 +5,6 @@ import { Steps } from './src/steps';
 export { flushMicrotasks, mockPromise, mockUncaught, mockWarn } from '../mvc/test.setup';
 
 const RUNS = new WeakMap<object, Steps.Entry[][]>();
-const OPEN = new WeakSet<object>();
 
 /**
  * Extend a Steps class to keep every entry its `after` hook is handed, per run - read with
@@ -22,11 +21,6 @@ export function journal<T extends new (...args: any[]) => Steps>(Base: T): T {
       current(this).push(entry);
       super.after?.(step, entry);
     }
-
-    protected exit(outcome: Steps.Outcome) {
-      OPEN.delete(this);
-      super.exit?.(outcome);
-    }
   }
 
   Object.defineProperty(Journaled, 'name', { value: Base.name });
@@ -34,13 +28,13 @@ export function journal<T extends new (...args: any[]) => Steps>(Base: T): T {
   return Journaled as unknown as T;
 }
 
-function current(instance: object) {
-  if (!OPEN.has(instance)) {
-    OPEN.add(instance);
-    RUNS.set(instance, [...(RUNS.get(instance) || []), []]);
-  }
+function current(instance: Steps) {
+  const runs = RUNS.get(instance) || [];
+  const index = instance.then.runs;
 
-  return RUNS.get(instance)!.at(-1)!;
+  RUNS.set(instance, runs);
+
+  return (runs[index] ||= []);
 }
 
 /** A Steps base keeping the entries `after` is handed. */

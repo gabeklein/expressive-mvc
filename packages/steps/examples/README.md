@@ -1,6 +1,6 @@
 # Examples
 
-Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo restoring fields, failing forward with `back`; [agent](agent/agent.ts) - a long-lived instance whose steps return nothing, keeping what they wrote: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undo by group and by wait, hooks, `exit`; [crawl](crawl/crawl.ts) - many branches at once: `slot` with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - composition: a class that cannot extend `Steps` holds one as a field. Shipped behavior is documented in [docs/](../docs/README.md).
+Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undo restoring fields, failing forward with `back`; [agent](agent/agent.ts) - a long-lived instance whose steps return nothing, keeping what they wrote: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undo by group and by wait, hooks, cleanup in `next`'s tail; [crawl](crawl/crawl.ts) - many branches at once: `slot` with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - composition: a class that cannot extend `Steps` holds one as a field. Shipped behavior is documented in [docs/](../docs/README.md).
 
 A PR adding a feature extends an example and this table.
 
@@ -82,8 +82,8 @@ A PR adding a feature extends an example and this table.
 | feature | where |
 | --- | --- |
 | `before` / `after` | `Deploy.before`, `Deploy.after` |
-| `exit(outcome)` | `Deploy.exit` |
-| `exit` resetting a field on a failed run | `Pull.exit`; sync test `will start over after a failed sync` |
+| cleanup in `next`'s tail | `Deploy.next` |
+| a tail resetting a field on a failed run | `Pull.next`; sync test `will start over after a failed sync` |
 | `this.then.signal`, aborted by `stop()` | `Agent.turn`, `Deploy.suite`, `Pull.page` |
 
 ## Runner surface

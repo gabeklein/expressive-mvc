@@ -64,7 +64,7 @@ interface Waiter {
   grant(): void;
 }
 
-const HOOKS = new Set(['before', 'after', 'back', 'exit']);
+const HOOKS = new Set(['before', 'after', 'back']);
 const KEYS = ['status', 'active', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
 const GATES = new WeakMap<object, Gate>();
@@ -150,12 +150,6 @@ declare namespace Steps {
     /** Share the queue: an object across groups and instances, any other value across this instance. Default: the enclosing group's, else the instance's. */
     key?: unknown;
   }
-
-  /** How a run ended, given to `exit`. `error` is what the run rejects with; `stopped`, a `stop()` reason given while a failure unwound. */
-  type Outcome<R = unknown> =
-    | { status: 'done'; result: R }
-    | { status: 'failed'; error: unknown; stopped?: unknown }
-    | { status: 'stopped'; error: unknown };
 
   interface Snapshot {
     status: Status;
@@ -383,9 +377,6 @@ class Steps extends Model {
 
   /** Once an unwind completes, halted or not: given `reason` from `then.back()`, else the error the run rejects with. */
   protected back?(reason: unknown): void;
-
-  /** Once per run on every outcome, last before the run settles. A throw is reported uncaught; the outcome stands. */
-  protected exit?(outcome: Steps.Outcome): void | Promise<void>;
 }
 
 class Control extends Model {
@@ -547,7 +538,7 @@ class Run extends Model {
   _drained: (() => void)[] = [];
   _halted?: 'failed' | 'stopped' = undefined;
   _ending?: boolean = undefined;
-  _exiting?: boolean = undefined;
+  _settling?: boolean = undefined;
   _error?: unknown = undefined;
   _stopped?: Error = undefined;
   _warned?: boolean = undefined;
@@ -1055,28 +1046,17 @@ class Run extends Model {
   finish() {
     const { _tail: tail } = this;
 
-    this._exiting = true;
+    this._settling = true;
 
-    if (!tail) return this.done(this._result);
+    if (!tail) return this.settle(this._result);
 
     this._await!.resolve();
-    tail.then((value) => this.done(value), (error) => this.broke(error));
+    tail.then((value) => this.settle(value), (error) => this.broke(error));
   }
 
-  done(value: unknown) {
-    const exiting = this.exit({ status: 'done', result: value });
-
-    if (exiting) exiting.then(() => this.settle(value));
-    else this.settle(value);
-  }
-
-  async broke(error: unknown) {
-    const { control } = this;
-
+  broke(error: unknown) {
     this.blame(error);
-    control.status = 'failed';
-
-    await this.exit({ status: 'failed', error });
+    this.control.status = 'failed';
     this.reject();
   }
 
@@ -1104,7 +1084,7 @@ class Run extends Model {
   halt(status: 'failed' | 'stopped', error?: unknown, undo = status == 'failed') {
     const { control } = this;
 
-    if (this._halted || this._exiting) return;
+    if (this._halted || this._settling) return;
 
     this._halted = status;
     control.status = status;
@@ -1132,24 +1112,15 @@ class Run extends Model {
       if (!this._backed) this.fire('back', this.reason());
     }
 
-    const { _cut: cut, _tail: tail } = this;
-    const error = this.reason();
-    const outcome: Steps.Outcome = cut ? { status: 'failed', error, stopped: cut.reason } : { status: this._halted!, error };
+    const { _tail: tail } = this;
 
-    if (!tail) {
-      await this.exit(outcome);
-      return this.reject();
-    }
+    if (!tail) return this.reject();
 
-    this._await!.reject(error);
+    this._await!.reject(this.reason());
 
     try {
-      const value = await tail;
-
-      await this.exit(outcome);
-      this.salvage(value);
+      this.salvage(await tail);
     } catch (thrown) {
-      await this.exit(outcome);
       this.reject(thrown);
     }
   }
@@ -1235,16 +1206,6 @@ class Run extends Model {
     } catch (cause) {
       this.blame(cause);
       return { cause };
-    }
-  }
-
-  exit(outcome: Steps.Outcome) {
-    try {
-      const out = this.control.hook('exit', outcome);
-
-      if (out instanceof Promise) return out.then(() => {}, uncaught);
-    } catch (cause) {
-      uncaught(cause);
     }
   }
 
@@ -1759,12 +1720,6 @@ function signal(key: unknown) {
 
 function iterable(value: unknown): value is Iterable<unknown> {
   return value != null && typeof (value as Iterable<unknown>)[Symbol.iterator] == 'function';
-}
-
-function uncaught(cause: unknown) {
-  queueMicrotask(() => {
-    throw cause;
-  });
 }
 
 function outside(key: string, verb = 'called'): never {

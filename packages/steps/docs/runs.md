@@ -90,10 +90,11 @@ async next(ref: LoraRef) {
 }
 ```
 
-- Before `await this`, `next` is an ordinary step - its writes and calls are its entry, committed there; what it scheduled starts then. Awaiting anything else first fails the run (`next awaited something other than its run - it takes arguments, calls steps and awaits this.`) - work belongs in steps, so the durable tier can re-enter `next` without redoing any.
+- Before `await this`, `next` is an ordinary step - its writes and calls are its entry, committed there; what it scheduled starts then. Awaiting anything else first fails the run (`next awaited something other than its run - it takes arguments, calls steps and awaits this.`) - work belongs in steps, so the durable tier can re-enter `next` without redoing any. The check is the [lateness guard](steps.md#the-first-step-call-ends-the-steps-work)'s: an await settling within a few microtasks slips through.
 - `await this` resolves once the plan drains or `then.end()` ends it; it rejects with the failure or the `'Stopped'` error, after the unwind and `back`.
 - After it, `next` is the tail: it reads fields and returns or throws. Step calls throw, as through any settled step; writes are unmanaged.
-- The run settles with what `next` returns or throws, then `exit` runs. `then.status` and `then.error` record what the plan did - a tail catching a failure resolves the run while status stays `failed`; one throwing after a clean plan fails it.
+- The run settles with what `next` returns or throws. `then.status` and `then.error` record what the plan did, so the two can disagree: a tail catching a failure resolves the run while status stays `failed` - a handled rejection; one throwing after a clean plan fails it.
+- The tail is where cleanup on every outcome goes - `try`/`catch`/`finally` around `await this` ([hooks.md](hooks.md#cleanup)). A run without `await this`, or failing before `next` reaches it, has no tail.
 - Without `await this`, `next` settles at once and its return is the result - `void` for the chained style.
 - `x.next(...)` and `await x` are typed by `next`'s return. A sync `next()` types `x.next()` as its own return, not a Promise - declare it `async` to keep the call awaitable in TypeScript. Returning the awaited value - `return await this` - is circular (TS7023): `next` would be typed by itself.
 
@@ -117,11 +118,11 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 - queued runs are dropped: `queue` empties, each queued Promise rejects with an error named `'Stopped'`;
 - once in-flight steps have settled, the run's Promise rejects with that error.
 
-`reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. `back` and `exit` see the same error; `then.error` stays unset.
+`reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. `back` and the tail see the same error; `then.error` stays unset.
 
-`stop(true)` also unwinds the run as a failure would ([undo.md](undo.md)), `back` included; an undo or `back` that throws sets `error` and the run rejects with it. During an unwind parked on a [returned wait](undo.md#a-returned-wait), `stop()` halts the unwind there; the run rejects with the failure, `reason` recorded on the halted entry and in `exit`'s `stopped`. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
+`stop(true)` also unwinds the run as a failure would ([undo.md](undo.md)), `back` included; an undo or `back` that throws sets `error` and the run rejects with it. During an unwind parked on a [returned wait](undo.md#a-returned-wait), `stop()` halts the unwind there; the run rejects with the failure, `reason` recorded on the halted entry. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 
-`exit` runs last for every stopped run ([hooks.md](hooks.md#exit)). A stopped run is not rethrown uncaught.
+A stopped run is not rethrown uncaught.
 
 ## Unawaited failures
 

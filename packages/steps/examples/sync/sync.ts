@@ -25,6 +25,14 @@ export class Pull extends Steps {
 
   async next() {
     this.page();
+
+    // the tail runs on every outcome - a failed pull starts over
+    try {
+      await this;
+    } catch (error) {
+      this.cursor = '';
+      throw error;
+    }
   }
 
   protected async page() {
@@ -43,11 +51,6 @@ export class Pull extends Steps {
         await api.ack(this.cursor, { signal });
         this.acked = this.cursor;         // an arrow's writes are the inline step's - in then#1's wrote
       });
-  }
-
-  // once per run on every outcome - a failed pull starts over
-  protected exit(outcome: Steps.Outcome) {
-    if (outcome.status != 'done') this.cursor = '';
   }
 
   // next returns nothing - the run resolves with undefined; the data is in fields

@@ -15,7 +15,6 @@ class Steps extends Model {
 | `before(step, args)` | `protected` | before each step ([hooks.md](hooks.md)) |
 | `after(step, entry)` | `protected` | after each step commits ([hooks.md](hooks.md)) |
 | `back(reason)` | `protected` | once an unwind completes - after `then.back(step, reason)`, or a failure before the run rejects ([hooks.md](hooks.md#back)) |
-| `exit(outcome)` | `protected` | once per run on every outcome - done, failed, stopped - last before it settles, awaited when `async` ([hooks.md](hooks.md#exit)) |
 
 Other methods are steps, `protected async` by convention ([README.md](README.md#conventions)).
 

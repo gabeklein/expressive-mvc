@@ -36,9 +36,19 @@ export class Deploy extends Steps {
     this.retire();
     this.announce();
 
-    await this;
+    // the tail: after the run, on every outcome - cleanup and reports go here
+    try {
+      await this;
+    } catch (error) {
+      this.report = `${this.version} ${this.then.status}: ${(error as Error).message}`;
+      throw error;
+    }
 
-    return { version: this.version, hosts: [...this.live.keys()], approver: this.approver };
+    const hosts = [...this.live.keys()];
+
+    this.report = `${this.version} live on ${hosts.length} hosts`;
+
+    return { version: this.version, hosts, approver: this.approver };
   }
 
   protected async build() {
@@ -179,15 +189,6 @@ export class Deploy extends Steps {
 
   protected after(step: string, entry: Steps.Entry) {
     this.log.push(`${entry.id} ok`);
-  }
-
-  // once per run on every outcome - after the unwind and back, before the run settles
-  protected exit(outcome: Steps.Outcome<Released>) {
-    const message = outcome.status == 'done'
-      ? `live on ${outcome.result.hosts.length} hosts`
-      : `${outcome.status}: ${(outcome.error as Error).message}`;
-
-    this.report = `${this.version} ${message}`;
   }
 
   // a helper: `_` keeps it from being a step - runs normally on instance.

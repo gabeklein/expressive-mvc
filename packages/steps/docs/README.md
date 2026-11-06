@@ -4,8 +4,6 @@
 import { Steps } from '@expressive/steps';
 ```
 
-> **Spike (`spike/next-result`)** - the result is `next`'s return; the `end` hook is gone. See [runs.md](runs.md#next-and-the-result).
-
 `Steps` is a `Model` base whose subclasses' methods are steps: a step schedules the next by calling it, fields carry data between steps. `next(...args)` is the entry - called from outside, it starts a run; awaiting an idle instance starts it too, only if `next` takes no arguments (an optional one needs a default - [runs.md](runs.md#awaiting-the-instance---start-or-join)). `next` takes arguments, schedules, `await this` for the run, and returns the result - typing `x.next()` and `await x`. `then` is the controller - status, queue, waits - so the instance itself is awaitable. `Steps` declares the contract - `next`, hooks - as optional members ([contract.md](contract.md)).
 
 Inputs are fields - `X.new({ cart })` assigns them as any Model's constructor does - or `next`'s arguments. `new()` stays mvc's setup hook; nothing starts on its own.
@@ -84,7 +82,7 @@ Entries of a clean run: `next#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1
 - [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called - from outside or by a watcher; answering steps are present only while waited for
 - [slot.md](slot.md) - `this.then.slot({ max, after, key })`: concurrency per group, instance or shared key; a delay
 - [catch.md](catch.md) - `.catch(handler?)` on a token: a failing branch unwinds and the run continues - skipped, or a step in its place; `this.then.retry` counts re-runs
-- [hooks.md](hooks.md) - `before`/`after`, per step or for all; `back(reason)` after an unwind; `exit` on every outcome
+- [hooks.md](hooks.md) - `before`/`after` around every step; `back(reason)` after an unwind; cleanup in `next`'s tail
 - [undo.md](undo.md) - undo closures, returned tokens - a step, inline step, group or wait - the unwind on failure; `then.back(step)` - the same unwind on command; restoring fields by return; `commit()`
 - [runner.md](runner.md) - the controller: members, reactivity, snapshot
 

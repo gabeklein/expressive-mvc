@@ -49,7 +49,7 @@ it('will start over after a failed sync', async () => {
 
   await expect(sync.pull.next()).rejects.toThrow('offline');
 
-  // the feed keeps the first page - written to another Model; the exit hook forgot the cursor
+  // the feed keeps the first page - written to another Model; the tail forgot the cursor
   expect(sync.items.get()).toEqual([{ id: 'a' }, { id: 'b' }]);
   expect(sync.pull.cursor).toBe('');
 });

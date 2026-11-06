@@ -446,8 +446,6 @@ describe('steps', () => {
   });
 
   it('will reject with what next throws after its run', async () => {
-    const outcomes: Steps.Outcome[] = [];
-
     class Test extends Steps {
       async next() {
         this.first();
@@ -458,10 +456,6 @@ describe('steps', () => {
       }
 
       protected async first() {}
-
-      protected exit(outcome: Steps.Outcome) {
-        outcomes.push(outcome);
-      }
     }
 
     const test = Test.new();
@@ -469,7 +463,6 @@ describe('steps', () => {
     await expect(test.next()).rejects.toThrow('tail');
     expect(test.then.status).toBe('failed');
     expect(test.then.error).toEqual(new Error('tail'));
-    expect(outcomes).toEqual([{ status: 'failed', error: new Error('tail') }]);
   });
 
   it('will not type a result read from awaiting the run', () => {
@@ -2051,10 +2044,9 @@ describe('stop', () => {
     expect(test.then.runs).toBe(2);
   });
 
-  it('will carry a reason to the run, queue, back and exit', async () => {
+  it('will carry a reason to the run, queue and back', async () => {
     const work = mockPromise();
     const back = vi.fn();
-    const exit = vi.fn();
 
     class Test extends Steps {
       async next() {
@@ -2063,10 +2055,6 @@ describe('stop', () => {
 
       protected back(reason: unknown) {
         back(reason);
-      }
-
-      exit(outcome: Steps.Outcome) {
-        exit(outcome);
       }
     }
 
@@ -2083,7 +2071,6 @@ describe('stop', () => {
     await expect(first).rejects.toMatchObject(stopped);
     await expect(first).rejects.toBe(await second.catch((error) => error));
     expect(back.mock.calls[0][0]).toMatchObject(stopped);
-    expect(exit.mock.calls[0][0]).toMatchObject({ status: 'stopped', error: stopped });
     expect(test.then.error).toBeUndefined();
   });
 
@@ -4705,235 +4692,73 @@ describe('hooks', () => {
     expect(record(test).map((entry) => entry.key)).toEqual(['next']);
   });
 
-  it('will call exit last when a run ends', async () => {
-    const order: unknown[] = [];
+  it('will clean up in the tail on every outcome', async () => {
+    const cleaned: string[] = [];
 
     class Test extends Steps {
-      async next() {
-        this.first();
+      async next(outcome: 'done' | 'failed' | 'stopped') {
+        this.work(outcome);
 
-        await this;
+        try {
+          await this;
+        } finally {
+          cleaned.push(outcome);
+        }
 
-        order.push('next');
-        return 'ok';
+        return outcome;
       }
 
-      protected async first() {}
-
-      exit(outcome: Steps.Outcome) {
-        order.push(['exit', outcome]);
+      protected async work(outcome: string) {
+        if (outcome == 'failed') throw new Error('boom');
+        if (outcome == 'stopped') this.then.stop();
       }
     }
 
     const test = Test.new();
 
-    await test.next().then((result) => void order.push(['resolved', result]));
-    expect(order).toEqual(['next', ['exit', { status: 'done', result: 'ok' }], ['resolved', 'ok']]);
-    expect(test.then.status).toBe('idle');
+    expect(await test.next('done')).toBe('done');
+    await expect(test.next('failed')).rejects.toThrow('boom');
+    await expect(test.next('stopped')).rejects.toMatchObject({ name: 'Stopped' });
+    expect(cleaned).toEqual(['done', 'failed', 'stopped']);
   });
 
-  it('will call exit after back when a run fails', async () => {
-    const order: unknown[] = [];
+  it('will run the tail after back when a run fails', async () => {
+    const order: string[] = [];
 
     class Test extends Steps {
       async next() {
+        this.fail();
+
+        try {
+          await this;
+        } catch (error) {
+          order.push(`tail: ${(error as Error).message}`);
+          throw error;
+        }
+      }
+
+      protected async fail() {
         throw new Error('boom');
       }
 
-      back() {
+      protected back() {
         order.push('back');
       }
-
-      exit(outcome: Steps.Outcome) {
-        order.push(['exit', outcome]);
-      }
     }
 
-    await Test.new().next().catch((error: Error) => void order.push(['rejected', error.message]));
-    expect(order).toEqual(['back', ['exit', { status: 'failed', error: new Error('boom') }], ['rejected', 'boom']]);
+    await expect(Test.new().next()).rejects.toThrow('boom');
+    expect(order).toEqual(['back', 'tail: boom']);
   });
 
-  it('will call exit once when a run is stopped', async () => {
-    const exit = vi.fn();
+  it('will not stop a run while its tail is pending', async () => {
     const work = mockPromise();
 
     class Test extends Steps {
       async next() {
+        await this;
         await work;
-        this.then.end();
-      }
 
-      exit(outcome: Steps.Outcome) {
-        exit(outcome);
-      }
-    }
-
-    const test = Test.new();
-    const result = test.next();
-
-    test.then.stop();
-    work.resolve();
-
-    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
-    expect(exit).toHaveBeenCalledTimes(1);
-    expect(exit.mock.calls[0][0]).toMatchObject({ status: 'stopped', error: { name: 'Stopped' } });
-  });
-
-  it('will resolve a finished run when exit throws, reporting it', async () => {
-    const caught = mockUncaught();
-    const queued = vi.fn();
-
-    class Test extends Steps {
-      runs = 0;
-
-      next() {
-        this.runs++;
-
-        return this.runs;
-      }
-
-      exit() {
-        if (this.runs == 1) throw new Error('exit');
-        queued();
-      }
-    }
-
-    const test = Test.new();
-    const first = test.next();
-    const second = test.next();
-
-    expect(await first).toBe(1);
-    await second;
-    await flushMicrotasks();
-    expect(queued).toHaveBeenCalled();
-    expect(test.then.error).toBeUndefined();
-    expect(caught).toEqual([new Error('exit')]);
-  });
-
-  it('will keep the error when exit throws', async () => {
-    const caught = mockUncaught();
-
-    class Test extends Steps {
-      async next() {
-        throw new Error('boom');
-      }
-
-      exit() {
-        throw new Error('exit');
-      }
-    }
-
-    const test = Test.new();
-
-    await expect(test.next()).rejects.toThrow('boom');
-    await flushMicrotasks();
-    expect(test.then.status).toBe('failed');
-    expect(test.then.error).toEqual(new Error('boom'));
-    expect(caught).toEqual([new Error('exit')]);
-  });
-
-  it('will keep a stop when exit throws', async () => {
-    const caught = mockUncaught();
-
-    class Test extends Steps {
-      async next() {
-        this.then.stop();
-      }
-
-      exit() {
-        throw new Error('exit');
-      }
-    }
-
-    const test = Test.new();
-
-    await expect(test.next()).rejects.toMatchObject({ name: 'Stopped' });
-    await flushMicrotasks();
-    expect(test.then.status).toBe('stopped');
-    expect(caught).toEqual([new Error('exit')]);
-  });
-
-  it('will settle a run once an async exit has', async () => {
-    const work = mockPromise();
-    const order: string[] = [];
-
-    class Test extends Steps {
-      async next() {}
-
-      async exit() {
-        await work;
-        order.push('exit');
-      }
-    }
-
-    const test = Test.new();
-    const result = test.next().then(() => void order.push('resolved'));
-
-    await flushMicrotasks();
-    expect(order).toEqual([]);
-    expect(test.then.status).toBe('running');
-
-    work.resolve();
-    await result;
-
-    expect(order).toEqual(['exit', 'resolved']);
-    expect(test.then.status).toBe('idle');
-  });
-
-  it('will reject a failed run once an async exit has', async () => {
-    const work = mockPromise();
-    const order: string[] = [];
-
-    class Test extends Steps {
-      async next() {
-        throw new Error('boom');
-      }
-
-      async exit() {
-        await work;
-        order.push('exit');
-      }
-    }
-
-    const result = Test.new().next().catch(() => void order.push('rejected'));
-
-    await flushMicrotasks();
-    expect(order).toEqual([]);
-
-    work.resolve();
-    await result;
-
-    expect(order).toEqual(['exit', 'rejected']);
-  });
-
-  it('will report an async exit that rejects, keeping the outcome', async () => {
-    const caught = mockUncaught();
-
-    class Test extends Steps {
-      next() {
-        return 'ok';
-      }
-
-      async exit() {
-        throw new Error('exit');
-      }
-    }
-
-    expect(await Test.new().next()).toBe('ok');
-    await flushMicrotasks();
-    expect(caught).toEqual([new Error('exit')]);
-  });
-
-  it('will not stop a run while its exit is pending', async () => {
-    const work = mockPromise();
-    const exit = vi.fn();
-
-    class Test extends Steps {
-      async next() {}
-
-      async exit(outcome: Steps.Outcome) {
-        exit(outcome);
-        await work;
+        return 'kept';
       }
     }
 
@@ -4944,48 +4769,34 @@ describe('hooks', () => {
     test.then.stop();
     work.resolve();
 
-    await expect(result).resolves.toBeUndefined();
-    expect(exit).toHaveBeenCalledTimes(1);
+    expect(await result).toBe('kept');
     expect(test.then.status).toBe('idle');
-  });
-
-  it('will not wrap exit as a step', async () => {
-    const self = vi.fn();
-
-    class Test extends Journal {
-      next() {}
-
-      exit() {
-        self(this);
-      }
-    }
-
-    const test = Test.new();
-
-    test.exit();
-    expect(self).toHaveBeenCalledWith(test);
-    await test.next();
-    expect(record(test).map((entry) => entry.key)).toEqual(['next']);
   });
 
   it('will call an overridden hook once', async () => {
     const order: string[] = [];
 
     class Parent extends Steps {
-      next() {}
+      async next() {
+        this.fail();
+      }
 
-      protected exit() {
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected back() {
         order.push('parent');
       }
     }
 
     class Child extends Parent {
-      protected exit() {
+      protected back() {
         order.push('child');
       }
     }
 
-    await Child.new().next();
+    await Child.new().next().catch(() => {});
     expect(order).toEqual(['child']);
   });
 
@@ -5539,7 +5350,6 @@ describe('undo tokens', () => {
   });
 
   it('will record a stop reason on a parked unwind it halts', async () => {
-    const exit = vi.fn();
     const error = new Error('boom');
 
     class Test extends Journal {
@@ -5558,10 +5368,6 @@ describe('undo tokens', () => {
       }
 
       async refund() {}
-
-      protected exit(outcome: Steps.Outcome) {
-        exit(outcome);
-      }
     }
 
     const test = Test.new();
@@ -5573,12 +5379,9 @@ describe('undo tokens', () => {
     await expect(result).rejects.toBe(error);
     expect(error).not.toHaveProperty('cause');
     expect(record(test)[1]).toMatchObject({ id: 'charge#1', halted: true, reason: 'user left' });
-    expect(exit).toHaveBeenCalledWith({ status: 'failed', error, stopped: 'user left' });
   });
 
   it('will mark a parked unwind stopped without a reason', async () => {
-    const exit = vi.fn();
-
     class Test extends Journal {
       async next() {
         this.charge();
@@ -5595,10 +5398,6 @@ describe('undo tokens', () => {
       }
 
       async refund() {}
-
-      protected exit(outcome: Steps.Outcome) {
-        exit(outcome);
-      }
     }
 
     const test = Test.new();
@@ -5609,7 +5408,6 @@ describe('undo tokens', () => {
 
     await expect(result).rejects.toThrow('boom');
     expect(record(test)[1]).not.toHaveProperty('reason');
-    expect(exit.mock.calls[0][0]).toHaveProperty('stopped', undefined);
   });
 
   it('will answer an unwind wait from a watcher', async () => {
@@ -8183,23 +7981,6 @@ describe('Steps', () => {
       ['before', 'fail'],
       ['back', 'boom']
     ]);
-  });
-
-  it('will type exit by the result of next', async () => {
-    const outcomes: Steps.Outcome<{ n: number }>[] = [];
-
-    class Test extends Steps {
-      next() {
-        return { n: 1 };
-      }
-
-      protected override exit(outcome: Steps.Outcome<{ n: number }>) {
-        outcomes.push(outcome);
-      }
-    }
-
-    await Test.new();
-    expect(outcomes).toEqual([{ status: 'done', result: { n: 1 } }]);
   });
 
   it('will check hooks by declaration', () => {

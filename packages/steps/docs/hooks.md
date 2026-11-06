@@ -1,6 +1,6 @@
-# Hooks - Before, After, Back, Exit
+# Hooks - Before, After, Back
 
-Four names are hooks: `before`, `after`, `back` and `exit` - found on the same classes as steps, the most-derived declaration winning: never wrapped, never scheduled - from outside they are plain methods. Any other name, `beforeShip` included, is a step.
+Three names are hooks: `before`, `after` and `back` - found on the same classes as steps, the most-derived declaration winning: never wrapped, never scheduled - from outside they are plain methods. Any other name, `beforeShip` included, is a step.
 
 ```ts
 protected before(key: string, args: unknown[]) {}
@@ -9,9 +9,9 @@ protected after(key: string, entry: Steps.Entry) {}
 
 Order around each step: `before` → step → `after`. Work for one step belongs in the step, or a branch on `key`. The after hooks see the committed entry - the runner keeps none, so a log is built here ([runner.md](runner.md#entry)). A try a [catch](catch.md) took reaches them too, its entry carrying `error` - a log shows the attempt that failed beside its replacement.
 
-Hooks are `protected` by convention ([README.md](README.md#conventions)) and synchronous - `exit` may be `async`. Hooks run with the raw instance as `this`: their writes are in no entry and do not count as step work; their return is ignored and not awaited. A hook that throws fails the run. Hooks fire for `next`, `end`, steps answering a wait and inline steps (key `then`); once per step - a catch handler is its own step - and not for undos - an answer to a [returned wait](undo.md#a-returned-wait) included.
+Hooks are `protected` by convention ([README.md](README.md#conventions)) and synchronous. Hooks run with the raw instance as `this`: their writes are in no entry and do not count as step work; their return is ignored and not awaited. A hook that throws fails the run. Hooks fire for `next`, steps answering a wait and inline steps (key `then`); once per step - a catch handler is its own step - and not for undos - an answer to a [returned wait](undo.md#a-returned-wait) included.
 
-`before`/`after`/`back`/`exit` are declared on `Steps` - `override` checks their signatures ([contract.md](contract.md)).
+`before`/`after`/`back` are declared on `Steps` - `override` checks their signatures ([contract.md](contract.md)).
 
 ## `back`
 
@@ -23,26 +23,23 @@ protected back(reason: unknown) {
 
 Runs once after each unwind completes - halted at an irreversible entry or not. After [`this.then.back(step, reason)`](undo.md#back), `reason` is its second argument (else `undefined`) and the run continues; a throw from it fails the run, and that failure's unwind does not call `back` again. After a failure or `stop(true)` - not `stop()` - it runs before the run rejects, and `reason` is what the run rejects with: the failure, an undo's throw, or the `'Stopped'` error; a throw from it replaces that. Raw instance as `this`, writes unjournaled, return ignored.
 
-## `exit`
+## Cleanup
+
+There is no outcome hook - cleanup on every outcome is `next`'s tail ([runs.md](runs.md#next-and-the-result)): `try`/`catch`/`finally` around `await this`, run after the unwind and `back`:
 
 ```ts
-protected async exit(outcome: Steps.Outcome) {
-  if (outcome.status != 'done') await this.session.close();
+async next(id: string) {
+  this.render(id);
+
+  try {
+    await this;
+  } catch (error) {
+    await rows.mark(id, this.then.status);   // 'failed' or 'stopped'
+    throw error;
+  } finally {
+    this.preview.close();
+  }
 }
 ```
 
-Runs once per run, on every terminal outcome - last, after `end`, the unwind and `back`, before the run's Promise settles:
-
-```ts
-type Outcome<R = unknown> =
-  | { status: 'done'; result: R }
-  | { status: 'failed'; error: unknown; stopped?: unknown }
-  | { status: 'stopped'; error: unknown };
-```
-
-`result` is the run's result; `error` is what the run rejects with - the failure, an undo's or `back`'s throw, or the `'Stopped'` error, carrying `stop`'s reason as `cause`. `stopped` - present when `stop(undo, reason)` came while the failure unwound: `reason`, else `undefined` ([undo.md](undo.md#a-returned-wait)). Runs for `stop()` with or without `undo`; not for queued runs dropped by `stop()` - they never started. Raw instance as `this`, writes unjournaled. A returned Promise is awaited: the run settles, its status changes and the queue moves on once it does - cleanup an awaiter relies on, a row or a file, is done when the run settles. `stop()` while it is pending does nothing.
-
-A throw or rejection from it does not change the outcome - status, result and rejection stand. It is rethrown uncaught on a microtask, as an unawaited failure is.
-
-Not `finally` - the instance is a thenable, so that name would read as `Promise.prototype.finally`. On a `Steps`, declare it `exit(outcome: Steps.Outcome<R>)` to type `result` - the declaration takes `Steps.Outcome`, so any `R` checks.
-
+Two runs have no tail: one whose `next` never awaits `this` (the chained style), and one failing before `next` reaches `await this`. Put cleanup they need in the step that made the mess - its undo.
