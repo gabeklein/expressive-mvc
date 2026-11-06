@@ -64,7 +64,7 @@ interface Waiter {
   grant(): void;
 }
 
-const HOOK = /^(before|after)([A-Z]|$)/;
+const HOOKS = new Set(['before', 'after', 'back', 'exit']);
 const KEYS = ['status', 'active', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
 const GATES = new WeakMap<object, Gate>();
@@ -330,7 +330,7 @@ function run<T extends Steps>(self: T) {
 
       if (skip) continue;
 
-      if (HOOK.test(key) || key == 'back' || key == 'exit') {
+      if (HOOKS.has(key)) {
         if (!hooks.has(key)) hooks.set(key, unbind(desc.get!));
         continue;
       }
@@ -352,12 +352,6 @@ function run<T extends Steps>(self: T) {
             }
       );
     }
-
-  for (const hook of hooks.keys()) {
-    const target = HOOK.test(hook) && hook.replace(HOOK, (_, __, first: string) => first.toLowerCase());
-
-    if (target && !control._steps.has(target)) throw new Error(`${hook} has no step ${target}.`);
-  }
 
   self.get(null, () => control.stop());
 }
@@ -953,10 +947,7 @@ class Run extends Model {
     control.active = key;
 
     try {
-      if (hooks) {
-        control.hook('before', key, args);
-        control.hook(`before${capital(key)}`, ...args);
-      }
+      if (hooks) control.hook('before', key, args);
 
       for (;;)
         try {
@@ -966,10 +957,7 @@ class Run extends Model {
 
           const entry = frame.commit(out);
 
-          if (hooks) {
-            control.hook(`after${capital(key)}`, entry);
-            control.hook('after', key, entry);
-          }
+          if (hooks) control.hook('after', key, entry);
 
           return frame;
         } catch (thrown) {
@@ -1009,7 +997,6 @@ class Run extends Model {
         this._entries.push(entry);
 
         try {
-          control.hook(`after${capital(key)}`, entry);
           control.hook('after', key, entry);
         } catch (thrown) {
           this.halt('failed', thrown);
@@ -1751,10 +1738,6 @@ function adopt(parents: Map<string, string>, items: Steps.Node[], parent: string
 
     if (item.group) adopt(parents, item.group, item.id);
   }
-}
-
-function capital(key: string) {
-  return key[0].toUpperCase() + key.slice(1);
 }
 
 function collection(value: unknown): value is Collection {

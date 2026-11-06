@@ -1,20 +1,17 @@
 # Hooks - Before, After, Back, Exit
 
-Methods named `before`/`after`, or those followed by an uppercase letter (`beforeShip`), `back` and `exit`, are hooks - found on the same classes as steps, the most-derived declaration winning: never wrapped, never scheduled - from outside they are plain methods. `beforehand` is a step.
+Four names are hooks: `before`, `after`, `back` and `exit` - found on the same classes as steps, the most-derived declaration winning: never wrapped, never scheduled - from outside they are plain methods. Any other name, `beforeShip` included, is a step.
 
 ```ts
 protected before(key: string, args: unknown[]) {}
 protected after(key: string, entry: Steps.Entry) {}
-
-protected beforeShip(chargeId: string) {}
-protected afterShip(entry: Steps.Entry) {}
 ```
 
-Order around each step: `before` → `before<Step>` → step → `after<Step>` → `after`. The after hooks see the committed entry - the runner keeps none, so a log is built here ([runner.md](runner.md#entry)). A try a [catch](catch.md) took reaches them too, its entry carrying `error` - a log shows the attempt that failed beside its replacement.
+Order around each step: `before` → step → `after`. Work for one step belongs in the step, or a branch on `key`. The after hooks see the committed entry - the runner keeps none, so a log is built here ([runner.md](runner.md#entry)). A try a [catch](catch.md) took reaches them too, its entry carrying `error` - a log shows the attempt that failed beside its replacement.
 
 Hooks are `protected` by convention ([README.md](README.md#conventions)) and synchronous - `exit` may be `async`. Hooks run with the raw instance as `this`: their writes are in no entry and do not count as step work; their return is ignored and not awaited. A hook that throws fails the run. Hooks fire for `next`, `end`, steps answering a wait and inline steps (key `then`); once per step - a catch handler is its own step - and not for undos - an answer to a [returned wait](undo.md#a-returned-wait) included.
 
-A per-step hook without its step throws when the instance is created: `afterShip has no step ship.` `before`/`after`/`back`/`exit` are declared on `Steps` - `override` checks their signatures ([contract.md](contract.md)); per-step hooks are unchecked.
+`before`/`after`/`back`/`exit` are declared on `Steps` - `override` checks their signatures ([contract.md](contract.md)).
 
 ## `back`
 

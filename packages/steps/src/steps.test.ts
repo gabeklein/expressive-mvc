@@ -3612,17 +3612,12 @@ describe('catch', () => {
       protected after(step: string, entry: Steps.Entry) {
         seen.push([step, entry.error]);
       }
-
-      protected afterScan(entry: Steps.Entry) {
-        seen.push(['afterScan', entry.error]);
-      }
     }
 
     await Test.new().next();
 
     expect(seen).toEqual([
       ['next', undefined],
-      ['afterScan', new Error('x is down')],
       ['scan', new Error('x is down')],
       ['fallback', undefined]
     ]);
@@ -4349,14 +4344,6 @@ describe('hooks', () => {
         order.push(['after', key, entry.id]);
         wrote.push(entry.wrote);
       }
-
-      protected beforeShip(id: string, n: number) {
-        order.push(['beforeShip', id, n]);
-      }
-
-      protected afterShip(entry: Steps.Entry) {
-        order.push(['afterShip', entry.id]);
-      }
     }
 
     const test = Test.new();
@@ -4366,9 +4353,7 @@ describe('hooks', () => {
       ['before', 'next', []],
       ['after', 'next', 'next#1'],
       ['before', 'ship', ['a', 1]],
-      ['beforeShip', 'a', 1],
       ['ship', 'a', 1],
-      ['afterShip', 'ship#1'],
       ['after', 'ship', 'ship#1']
     ]);
     expect(test.value).toBe(2);
@@ -4376,40 +4361,35 @@ describe('hooks', () => {
   });
 
   it('will not wrap hooks as steps', async () => {
+    const before = vi.fn();
+
     class Test extends Steps {
       next() {}
 
-      beforeNext() {
-        return 'hook';
+      before(step: string) {
+        before(step);
       }
 
-      beforehand() {}
+      beforeNext() {}
     }
 
     const test = Test.new();
 
-    expect(test.beforeNext()).toBe('hook');
-    expect(test.beforehand).toBeUndefined();
+    test.before('outside');
+    expect(before).toHaveBeenCalledWith('outside');
+    expect(test.beforeNext).toBeUndefined();
   });
 
   it('will fail when a hook throws', async () => {
     class Test extends Steps {
       next() {}
 
-      beforeNext() {
+      protected before() {
         throw new Error('hook');
       }
     }
 
     await expect(Test.new().next()).rejects.toThrow('hook');
-  });
-
-  it('will throw if a hook has no step', () => {
-    class Test extends Steps {
-      afterShip() {}
-    }
-
-    expect(() => Test.new()).toThrow('afterShip has no step ship.');
   });
 
   it('will call back once the unwind completes', async () => {

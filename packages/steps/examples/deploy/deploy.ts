@@ -135,19 +135,12 @@ export class Deploy extends Steps {
     });
   }
 
+  // drained while it installs - a host that fails stays drained
   protected async upgrade(host: string) {
+    fleet.drain(host);
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
-  }
-
-  // a per-step hook gets the step's own args
-  protected beforeUpgrade(host: string) {
-    fleet.drain(host);
-  }
-
-  // after hooks run once the step commits - a host that failed stays drained
-  protected afterUpgrade(entry: Steps.Entry) {
-    fleet.serve(entry.args[0] as string);
+    fleet.serve(host);
   }
 
   // an unwind answer runs as an undo frame: no hooks, cannot schedule
