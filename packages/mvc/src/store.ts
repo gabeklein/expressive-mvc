@@ -18,7 +18,7 @@ const STALE = new WeakSet<() => void>();
 
 /** Receives values written through a managed accessor, for an owner to adopt. */
 const HELD = {
-  adopt(target: object, key: Key, value: unknown): void {}
+  adopt(target: object, key: Key, value: unknown): void { }
 };
 
 /** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
@@ -179,27 +179,20 @@ function compute(this: object, getter: (self: any) => unknown, key: string) {
     update(this, key, next, !isAsync);
   };
 
-  apply(
-    this,
-    key,
-    {
-      enumerable: true,
-      set: false,
-      get: () => {
-        if (!proxy) {
-          if (observer(this) === null) return data[key];
+  const get = () => {
+    if (!proxy) {
+      if (observer(this) === null) return data[key];
 
-          connect();
-          isAsync = true;
-        }
+      connect();
+      isAsync = true;
+    }
 
-        if (STALE.delete(run)) run();
+    if (STALE.delete(run)) run();
 
-        return access(this, key, suspended);
-      }
-    },
-    true
-  );
+    return access(this, key, suspended);
+  }
+
+  apply(this, key, { get, set: false, enumerable: true }, true);
 }
 
 /**
