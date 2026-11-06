@@ -1034,8 +1034,17 @@ class Run extends Model {
     if (this._halted) return;
 
     const { id } = item || this.node('end', []);
+    const entry = { id, key: 'end', args: [], next: [], wrote: [], ...!item && { implicit: true as const } };
 
-    this._entries.push({ id, key: 'end', args: [], next: [], wrote: [], ...!item && { implicit: true as const } });
+    this._entries.push(entry);
+
+    if (item)
+      try {
+        this.control.hook('after', 'end', entry);
+      } catch (thrown) {
+        return this.halt('failed', thrown);
+      }
+
     this.finish();
   }
 

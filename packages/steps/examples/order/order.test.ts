@@ -22,7 +22,8 @@ it('will run every step to end', async () => {
     'reserve#1',
     'pay#1',
     'ship#1',
-    'receipt#1'
+    'receipt#1',
+    'end#1'
   ]);
 });
 
@@ -185,6 +186,7 @@ it('will refund and backorder when no courier is free', async () => {
     ['pay#1', true],
     ['ship#1', undefined],
     ['receipt#1', undefined],
-    ['backorder#1', undefined]
+    ['backorder#1', undefined],
+    ['end#2', undefined]
   ]);
 });

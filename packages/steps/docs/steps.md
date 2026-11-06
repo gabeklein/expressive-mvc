@@ -191,7 +191,7 @@ private _double(n: number) {
 
 `end` is a token like any other - it runs at its place in the plan, depth-first, and running it ends the run. Whatever is still pending is discarded, not journaled; open waits and slots are released; steps in flight - other members of a group - have their [signals](#the-step-signal) aborted, settle and commit, and what they schedule never runs. The same as [`then.end()` from outside](runs.md#end-from-outside).
 
-`this.then.end()` takes no value - one throws: the result is what `run` returns once its run is done ([runs.md](runs.md#run-and-the-result)). A class may not declare `end` - it throws at construction. The end is journaled `{ id: 'end#n', key: 'end', args: [], next: [], wrote: [] }`, `implicit: true` when the plan drained - no hooks.
+`this.then.end()` takes no value - one throws: the result is what `run` returns once its run is done ([runs.md](runs.md#run-and-the-result)). A class may not declare `end` - it throws at construction. The end is journaled `{ id: 'end#n', key: 'end', args: [], next: [], wrote: [] }`, `implicit: true` when the plan drained. An `end` called - in a step or from outside - is handed to `after` like any entry, so a trace shows where a run was cut short; an implicit one is not.
 
 ```ts
 async run() {

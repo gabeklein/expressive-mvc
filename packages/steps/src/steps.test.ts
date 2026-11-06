@@ -1105,6 +1105,51 @@ describe('inline', () => {
 });
 
 describe('end', () => {
+  it('will pass an end to after, not an implicit one', async () => {
+    const seen: string[] = [];
+
+    class Test extends Steps {
+      cut = false;
+
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        if (this.cut) this.then.end();
+      }
+
+      protected after(step: string) {
+        seen.push(step);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run();
+    expect(seen).toEqual(['run', 'first']);
+
+    seen.length = 0;
+    test.cut = true;
+
+    await test.run();
+    expect(seen).toEqual(['run', 'first', 'end']);
+  });
+
+  it('will fail the run when after throws on end', async () => {
+    class Test extends Steps {
+      async run() {
+        this.then.end();
+      }
+
+      protected after(step: string) {
+        if (step == 'end') throw new Error('after end');
+      }
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('after end');
+  });
+
   it('will end at its place and drop what is left', async () => {
     const order: string[] = [];
 
@@ -1146,7 +1191,7 @@ describe('end', () => {
 
     expect(await test.run()).toBe('early');
     expect(order).toEqual(['a', 'b', 'b1', 'result']);
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'a#1', 'b#1', 'b1#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'a#1', 'b#1', 'b1#1', 'end#1']);
   });
 
   it('will fail if a class declares end', () => {
@@ -1251,7 +1296,7 @@ describe('end', () => {
 
     expect(await result).toBe('fast');
     expect(after).not.toHaveBeenCalled();
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'fast#1', 'slow#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'fast#1', 'slow#1', 'end#1']);
   });
 
   it('will resolve with nothing when run returns nothing', async () => {
@@ -1376,7 +1421,7 @@ describe('end', () => {
     more.resolve();
 
     expect(await queued).toBe('ended:1');
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'load#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'load#1', 'end#1']);
   });
 
   it('will end from outside while waiting', async () => {
@@ -6731,7 +6776,8 @@ describe('back', () => {
       ['run#1', undefined],
       ['first#1', undefined],
       ['early#1', true],
-      ['later#1', undefined]
+      ['later#1', undefined],
+      ['end#1', undefined]
     ]);
   });
 
@@ -7070,7 +7116,8 @@ describe('back', () => {
     expect(record(test).map((entry) => [entry.id, entry.halted])).toEqual([
       ['run#1', undefined],
       ['drop#1', true],
-      ['first#1', undefined]
+      ['first#1', undefined],
+      ['end#1', undefined]
     ]);
   });
 
@@ -7415,7 +7462,7 @@ describe('back', () => {
     await result;
     expect(test.then.status).toBe('idle');
     expect(undo).not.toHaveBeenCalled();
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'zero#1', 'first#1', 'quick#1', 'slow#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'zero#1', 'first#1', 'quick#1', 'slow#1', 'end#1']);
   });
 
   it('will stop unwinding when a discarded step fails', async () => {
@@ -7585,7 +7632,7 @@ describe('signal', () => {
 
     await result;
     expect(test.value).toBe(0);
-    expect(record(test).map((entry) => entry.key)).toEqual(['run']);
+    expect(record(test).map((entry) => entry.key)).toEqual(['run', 'end']);
   });
 
   it('will abort the signal of a step in flight when another fails', async () => {
