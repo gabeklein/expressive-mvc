@@ -120,8 +120,8 @@ function apply(target: object, key: string, config: Config, silent?: boolean) {
  * reads of managed properties through it create subscriptions. Result is cached and
  * emits a keyed event when stale.
  */
-function compute(this: object, getter: (self: any) => unknown, key: string) {
-  const data = store(this);
+function compute(target: object, key: string, getter: (self: any) => unknown) {
+  const data = store(target);
   let reset: (() => void) | undefined;
   let isAsync: boolean;
   let suspended = false;
@@ -130,7 +130,7 @@ function compute(this: object, getter: (self: any) => unknown, key: string) {
 
   const connect = () => {
     reset = watch(
-      this,
+      target,
       (current) => {
         proxy = current;
 
@@ -139,7 +139,7 @@ function compute(this: object, getter: (self: any) => unknown, key: string) {
         return (didUpdate) => {
           if (didUpdate) {
             STALE.add(run);
-            event(this, key, true);
+            event(target, key, true);
           }
         };
       },
@@ -162,7 +162,7 @@ function compute(this: object, getter: (self: any) => unknown, key: string) {
         }
 
         const retry = () => {
-          if (waiting === err && observer(this) !== null) run();
+          if (waiting === err && observer(target) !== null) run();
         };
 
         waiting = err;
@@ -170,18 +170,18 @@ function compute(this: object, getter: (self: any) => unknown, key: string) {
 
         if (suspended) return;
       } else if (initial) {
-        console.warn(`An exception was thrown while initializing ${this}.${key}.`);
+        console.warn(`An exception was thrown while initializing ${target}.${key}.`);
         throw err;
-      } else REPORT.as('getter', this, err, key);
+      } else REPORT.as('getter', target, err, key);
     }
 
     suspended = false;
-    update(this, key, next, !isAsync);
+    update(target, key, next, !isAsync);
   };
 
   const get = () => {
     if (!proxy) {
-      if (observer(this) === null) return data[key];
+      if (observer(target) === null) return data[key];
 
       connect();
       isAsync = true;
@@ -189,10 +189,10 @@ function compute(this: object, getter: (self: any) => unknown, key: string) {
 
     if (STALE.delete(run)) run();
 
-    return access(this, key, suspended);
+    return access(target, key, suspended);
   }
 
-  apply(this, key, { get, set: false, enumerable: true }, true);
+  apply(target, key, { get, set: false, enumerable: true }, true);
 }
 
 /**

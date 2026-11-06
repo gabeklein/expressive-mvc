@@ -916,13 +916,13 @@ function stages<K extends 'method' | 'catch'>(T: Model.Extends, key: K): Set<Non
 
 /** Install a prototype getter as a computed property, following its hot-patched replacements. */
 function getter(this: Model, get: Function, key: string) {
-  compute.call(this, function (this: Model, self: Model) {
+  compute(this, key, function (this: Model, self: Model) {
     let latest = get;
 
     for (let next; (next = LATEST.get(latest)); ) latest = next;
 
     return latest.call(this, self);
-  }, key);
+  });
 }
 
 function provides(ctx: Context, value: Model) {

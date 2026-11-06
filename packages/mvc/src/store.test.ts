@@ -73,7 +73,7 @@ describe('compute', () => {
   it('will derive from managed values', async () => {
     const { data } = managed({ foo: 1 } as { foo: number; double?: number });
 
-    store.compute.call(data, (self: typeof data) => self.foo * 2, 'double');
+    store.compute(data, 'double', (self: typeof data) => self.foo * 2);
 
     expect(data.double).toBe(2);
 

@@ -101,7 +101,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       );
 
     if (typeof value == 'function' && value.length > 0) {
-      compute.call(subject, value as () => unknown, key);
+      compute(subject, key, value as () => unknown);
       return;
     }
 
