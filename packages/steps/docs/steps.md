@@ -175,7 +175,7 @@ A step called through the proxy of a step that has settled - from a timer, a wat
 
 ## Helpers
 
-A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no entry, pass the write guard, and are not restored on failure; a step it calls is an outside call. A helper computes; the step assigns.
+A `_`-prefixed method is not a step - mvc's unmanaged prefix. Never wrapped, called inline, it runs on the instance (`this.is`), not the step's proxy. Its writes are in no entry, pass the write guard, and are not restored on failure; a step it calls is an outside call. A helper computes; the step assigns. A `_` setter is also how a value outlives a failed try - `_progress(p) { this.progress = p }` writes the instance, reactive and never restored; `this.is.progress = p` in the step does the same.
 
 ```ts
 protected async first() {
