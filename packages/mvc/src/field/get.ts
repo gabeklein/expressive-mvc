@@ -1,6 +1,7 @@
 import { capture, listener, observer, watch } from '../observable';
 import { Context, within } from '../context';
-import { Model, children, owned, parent, STORE, update } from '../model';
+import { Model, children, owned, parent } from '../model';
+import { store, update } from '../store';
 import type { Got, Keyed } from '../model';
 import { def } from './def';
 
@@ -139,7 +140,7 @@ function above<T extends Model>(
     let release: (() => void) | undefined;
 
     function assign(value: T | undefined) {
-      if (STORE.get(subject)![key] === value) return;
+      if (store(subject)[key] === value) return;
 
       if (release) release();
 

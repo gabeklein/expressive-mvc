@@ -4,7 +4,8 @@ import { Context, resolver, within } from './context';
 import { get } from './field/get';
 import { ref } from './field/ref';
 import { set } from './field/set';
-import { Model, update } from './model';
+import { Model } from './model';
+import { update } from './store';
 import { event, listener, watch } from './observable';
 
 import { has } from './field/has';
