@@ -84,6 +84,11 @@ const CASES = [
     code: `import '@expressive/inspect/install';`
   },
   {
+    name: 'steps: everything',
+    limit: 18320,
+    code: `import { Steps } from '@expressive/steps'; console.log(Steps);`
+  },
+  {
     name: 'react + router',
     limit: 17050,
     code: `import * as a from '@expressive/react';

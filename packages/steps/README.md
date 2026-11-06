@@ -1,8 +1,16 @@
 # @expressive/steps
 
-Runnable Models: extend `Steps` and every method is a step, a step schedules the next by calling it, fields carry data between them. `run()` starts a run; runs repeat, queue, park on a wait - answered from outside or by a watcher - and resume. A run is atomic - all or nothing, by the undo each step returns - and the instance is awaitable. Unreleased.
+Multi-step processes as Expressive Models. Extend `Steps` and every method is a step: a step schedules the next by calling it, fields carry data between them. `run()` takes the arguments, schedules, waits for the run with `await this`, and returns the result. Each step is atomic and returns its own undo, so a failure unwinds what committed. Runs repeat, queue and park on waits answered from outside; status is reactive on `this.then`.
+
+In-process only for now - no durable persistence.
+
+```bash
+npm install @expressive/steps @expressive/mvc
+```
 
 ```ts
+import { Steps } from '@expressive/steps';
+
 class SubmitOrder extends Steps {
   cart!: Cart;
   charge?: Charge = undefined;
@@ -10,6 +18,10 @@ class SubmitOrder extends Steps {
 
   async run() {
     this.reserve();
+
+    await this;
+
+    return { orderId: this.charge!.id, tracking: this.tracking };
   }
 
   protected async reserve() {
@@ -24,7 +36,6 @@ class SubmitOrder extends Steps {
     this.charge = await stripe.charge(this.cart.total);
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
-    this.end();
 
     return this.refund(this.charge.id);
   }
@@ -40,16 +51,14 @@ class SubmitOrder extends Steps {
   protected async refund(chargeId: string) {
     await stripe.refund(chargeId);
   }
-
-  protected end() {
-    return { orderId: this.charge!.id, tracking: this.tracking };
-  }
 }
 
 const order = SubmitOrder.new({ cart });
 
-order.then.status;             // 'idle' - reactive, like any field
-const receipt = await order;   // runs run(), then everything it schedules
+order.then.status;                     // 'idle' - reactive, like any field
+const { orderId } = await order;       // runs run(), typed by its return
 ```
 
-[docs/](docs/README.md) documents shipped behavior. Scope, decisions and status live in [FEATURE.md](../../FEATURE.md) on the `feat/run` trunk.
+A failed `courier.book` unwinds newest first: `refund`, then `pay`'s fields restored, then `release`.
+
+Reference: [docs/](docs/README.md), and the `steps` page of the Expressive skill ([skills/steps.md](../../skills/steps.md)).

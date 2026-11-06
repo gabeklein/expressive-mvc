@@ -6,11 +6,11 @@
     "expressive",
     "mvc",
     "workflow",
-    "durable",
+    "steps",
+    "undo",
     "state"
   ],
   "license": "MIT",
-  "private": true,
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@expressive.dev",
