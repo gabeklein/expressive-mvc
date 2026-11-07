@@ -1158,6 +1158,20 @@ export class Store extends Model {
   }
 }
 `,
+    'job.ts': `import { Steps } from '@expressive/steps';
+
+export class Job extends Steps {
+  log: string[] = [];
+
+  async run() {
+    this.a();
+  }
+
+  protected async a() {
+    this.log = [...this.log, 'old'];
+  }
+}
+`,
     'session.ts': `import { Base } from './base';
 
 export class Session extends Base {
@@ -1174,7 +1188,7 @@ export class Session extends Base {
     logLevel: 'silent',
     cacheDir: join(ROOT, '.vite-server'),
     plugins: [reactHot()],
-    resolve: { alias: { '@expressive/mvc': src('mvc') } },
+    resolve: { alias: { '@expressive/mvc': src('mvc'), '@expressive/steps': src('steps') } },
     server: { middlewareMode: true }
   });
 
@@ -1242,6 +1256,20 @@ export class Session extends Base {
       await until(async () => store.name() == 'store');
       check((await runner.import('/store.ts')).Store === store.constructor, 'class was replaced');
       check(store.count == 7 && store.max == 6, `state lost: count = ${store.count}, max = ${store.max}`);
+      check(!replaced.length, `reported replaced: ${replaced}`);
+    });
+
+    await scenario('step edit patches a live Steps instance, its steps re-wired', async () => {
+      const job = (await runner.import('/job.ts')).Job.new();
+
+      await job.run();
+      await edit('job.ts', "'old'", "'new'");
+      await until(async () => (await job.run(), job.log.at(-1) == 'new'));
+      check((await runner.import('/job.ts')).Job === job.constructor, 'class was replaced');
+
+      await edit('job.ts', 'this.a();\n  }', "this.a();\n    this.b();\n  }\n\n  protected async b() {\n    this.log = [...this.log, 'b'];\n  }");
+      await until(async () => (await job.run(), job.log.at(-1) == 'b'));
+      check(job.then.status == 'idle', `status: ${job.then.status}`);
       check(!replaced.length, `reported replaced: ${replaced}`);
     });
 
