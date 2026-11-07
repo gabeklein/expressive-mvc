@@ -28,9 +28,9 @@ export default () => (
       A decline throws <code>Declined</code>, caught where <code>reserve</code>{' '}
       called <code>this.pay(card).catch(this.declined)</code>: the unwind runs
       the compensation <code>pay</code> registered with{' '}
-      <code>this.then.catch(() =&gt; this.cancel(authorization))</code> - its
-      step journaled as it runs - and restores <code>pay</code>'s fields; the
-      hold stays. <code>declined</code> then waits on{' '}
+      <code>this.then.catch(this.cancel(authorization))</code> - a step called
+      for it, recorded with its args and journaled as it runs - and restores{' '}
+      <code>pay</code>'s fields; the hold stays. <code>declined</code> then waits on{' '}
       <code>this.then(this.pay)</code> for another card. Stop cancels and unwinds
       everything. The journal below is <code>checkout.log</code>, filled by the{' '}
       <code>after</code> hook with each step's entry.
@@ -133,9 +133,7 @@ class Checkout extends Steps {
     const hold = await inventory.hold(this.then.signal);
 
     this.hold = hold;
-    this.then.catch(() => {
-      this.release(hold);
-    });
+    this.then.catch(this.release(hold));
     this.pay(card).catch(this.declined);
   }
 
@@ -144,9 +142,7 @@ class Checkout extends Steps {
 
     this.authorization = authorization;
     this.notice = '';
-    this.then.catch(() => {
-      this.cancel(authorization);
-    });
+    this.then.catch(this.cancel(authorization));
     this.then(this.approve, this.decline, async (signal) => {
       await delay(APPROVAL, signal);
       this.decline('timed out');
