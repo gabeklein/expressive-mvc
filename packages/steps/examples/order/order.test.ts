@@ -116,7 +116,7 @@ it('will unwind what succeeded when a step fails', async () => {
   expect(order.charge).toBeUndefined();
   expect(order.notice).toBe('Order c1 was not placed: no couriers');
   // each step taken back runs its undo and has its fields restored - receipt had neither, so it is not marked
-  expect(record(order).map((entry) => [entry.id, entry.on?.undo?.length, entry.unwound])).toEqual([
+  expect(record(order).map((entry) => [entry.id, entry.on?.reset?.length, entry.unwound])).toEqual([
     ['run#1', undefined, undefined],
     ['reserve#1', 1, true],
     ['pay#1', 1, true],
@@ -138,7 +138,7 @@ it('will cancel the booking when the receipt fails', async () => {
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(order.tracking).toBe('');
   // a function handler is journaled as then - it lives in this process
-  expect(record(order).find((entry) => entry.key == 'ship')!.on?.undo).toEqual([{ id: 'then#4', key: 'then', args: [] }]);
+  expect(record(order).find((entry) => entry.key == 'ship')!.on?.reset).toEqual([{ id: 'then#4', key: 'then', args: [] }]);
 });
 
 it('will undo an order stopped mid-shipment', async () => {

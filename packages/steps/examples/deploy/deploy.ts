@@ -57,10 +57,10 @@ export class Deploy extends Steps {
     this.artifact = artifact;
     // undos run only on unwind, newest first - here steps called for them, recorded with their args:
     // the form for a durable run, whose compensation must survive a restart; a function is the default
-    this.then.on({ undo: this.unpublish(artifact) });
+    this.then.on({ reset: this.unpublish(artifact) });
 
     await git.tag(this.version);
-    this.then.on({ undo: this.untag(this.version) });
+    this.then.on({ reset: this.untag(this.version) });
   }
 
   protected async unpublish(artifact: string) {
@@ -102,7 +102,7 @@ export class Deploy extends Steps {
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
 
-    this.then.on({ undo: this.uninstall(host) });
+    this.then.on({ reset: this.uninstall(host) });
   }
 
   protected async uninstall(host: string) {
@@ -165,7 +165,7 @@ export class Deploy extends Steps {
     fleet.drain(host);
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
-    this.then.on({ undo: this.uninstall(host) });
+    this.then.on({ reset: this.uninstall(host) });
     fleet.serve(host);
   }
 
