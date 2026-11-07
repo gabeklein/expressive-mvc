@@ -2,7 +2,7 @@
 
 ## `run` starts a run
 
-From outside a step, `run(...args)` is the one callable step: it starts a run and returns a Promise settling with it - the result, or the error. Any other step reads `undefined` from outside, except one an open wait accepts ([wait.md](wait.md)); a held reference called with no wait accepting it throws `ship cannot be called from outside; call run() to run.`
+From outside a step, `run(...args)` is the one callable step: it starts a run and returns a Promise settling with it - the result, or the error. Any other step reads `undefined` from outside, except one an open wait accepts ([wait.md](wait.md)); a held reference called with no wait accepting it throws `ship cannot be called from outside; call run() to start a run.`
 
 ```ts
 class Agent extends Steps {
@@ -69,8 +69,6 @@ class Checkout extends Model {
 }
 ```
 
-Named `run`, the controller is the thenable: `await x.run`.
-
 ## `run` and the result
 
 `run` absorbs arguments, schedules steps, `await this` for the run, and returns the result:
@@ -91,7 +89,7 @@ async run(ref: LoraRef) {
 ```
 
 - Before `await this`, `run` is an ordinary step - its writes and calls are its entry, committed there; what it scheduled starts then. Awaiting anything else first fails the run (`run awaited work before its plan - it takes arguments, calls steps and awaits this.`) - work belongs in steps, so the durable tier can re-enter `run` without redoing any. The check is the [lateness guard](steps.md#the-first-step-call-ends-the-steps-work)'s: an await settling within a few microtasks slips through.
-- `await this` resolves once the plan drains or `then.end()` ends it; it rejects with the failure or the `'Stopped'` error, after the unwind and `back`.
+- `await this` resolves once the plan drains or `then.end()` ends it; it rejects with the failure or the `'Stopped'` error, after the unwind.
 - After it, `run` is the tail: it reads fields and returns or throws. Step calls throw, as through any settled step; writes are unmanaged.
 - The run settles with what `run` returns or throws. `then.status` and `then.error` record what the plan did, so the two can disagree: a tail catching a failure resolves the run while status stays `failed` - a handled rejection; one throwing after a clean plan fails it.
 - The tail is where cleanup on every outcome goes - `try`/`catch`/`finally` around `await this` ([hooks.md](hooks.md#cleanup)). A run without `await this`, or failing before `run` reaches it, has no tail.
@@ -118,7 +116,7 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 - queued runs are dropped: `queue` empties, each queued Promise rejects with an error named `'Stopped'`;
 - once in-flight steps have settled, the run's Promise rejects with that error.
 
-`reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. `back` and the tail see the same error; `then.error` stays unset.
+`reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. undos and the tail see the same error; `then.error` stays unset.
 
 `stop({ undo: true })` also unwinds the run as a failure would ([undo.md](undo.md)), undos given the `'Stopped'` error; an undo that throws sets `error` and the run rejects with it. During a [caught branch's](catch.md) unwind, `stop()` stops it between undos. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 

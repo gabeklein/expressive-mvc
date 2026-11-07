@@ -103,9 +103,9 @@ protected async turn() {
 }
 ```
 
-Aborted on `stop()`, on an outside [`end`](runs.md#end-from-outside), when the run fails elsewhere, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not caught, no entry. A different error thrown after the abort fails the run as usual.
+Aborted on `stop()`, on an outside [`end`](runs.md#end-from-outside), when the run fails elsewhere, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not caught, it reaches no hook. A different error thrown after the abort fails the run as usual.
 
-Inline steps and watchers also receive their signal as a parameter - a watcher's `this.then.signal` is the settled step's, already aborted. Outside a step, `then.signal` throws `signal must be read inside a step.`
+Inline steps and watchers also receive their signal as a parameter - a watcher's `this.then.signal` is the opening step's, not the wait's - use the parameter. Outside a step, `then.signal` throws `signal must be read inside a step.`
 
 ## `then` by argument
 
@@ -131,7 +131,7 @@ Writes are attributed per frame with members in flight: each member's entry list
 
 ## Pending values
 
-A step reading a pending value - an unset `set<T>()`, an async factory, a getter over one - waits for it instead of failing. mvc throws a suspense Promise; the step's try ends there: its writes are restored, its tokens dropped, then it runs again from the top once the Promise resolves. No entry for the suspended try, no hooks refired, no [`retry`](catch.md#retry) counted - though token ids it issued stay counted (`report#2` commits). Status stays `running`, `active` names the step.
+A step reading a pending value - an unset `set<T>()`, an async factory, a getter over one - waits for it instead of failing. mvc throws a suspense Promise; the step's try ends there: undos it registered run (newest first), its writes are restored, its tokens dropped, then it runs again from the top once the Promise resolves. No entry for the suspended try, no hooks refired, no [`retried`](catch.md#retry) counted - though token ids it issued stay counted (`report#2` commits). Status stays `running`, `active` names the step.
 
 ```ts
 class Checkout extends Steps {
@@ -216,7 +216,7 @@ From outside, `then.end()` ends the active run now ([runs.md](runs.md#end-from-o
 
 ## What a step returns
 
-Nothing. Any value fails the run (`first returned a value; a step returns nothing - its undo is this.then.undo(handler).`) - a step's undo is a [undo](undo.md#undos) it registers: `this.then.undo(this.release(hold))`. `run`'s return is the result.
+Nothing. Any value fails the run (`first returned a value; a step returns nothing - its undo is this.then.undo(...).`) - a step's undo is one it [registers](undo.md#undos): `this.then.undo(this.release(hold))`. `run`'s return is the result.
 
 ## Entry
 

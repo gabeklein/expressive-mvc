@@ -52,7 +52,7 @@ await agent.deny(notes);
 await reply;
 ```
 
-Nothing is buffered. A step called from outside with no open wait accepting it - a held reference after its wait closed, say - throws `allow cannot be called from outside; call run() to run.`
+Nothing is buffered. A step called from outside with no open wait accepting it - a held reference after its wait closed, say - throws `allow cannot be called from outside; call run() to start a run.`
 
 A call through the proxy of a settled step - a timer or arrow inside the step that opened the wait - is an outside call too, with two scopes: it answers that step's own open wait first, so parallel waits on the same steps each take their own answer without the routing argument; and it is bound to its run - once that run ends, it throws (`tool has settled; deny cannot run.`), so a timer left behind cannot answer the next run's wait.
 
@@ -85,6 +85,6 @@ protected async tool(call: ToolCall) {
 
 ## Rules
 
-- `run` and `end` cannot answer a wait - listing one fails the run (`end cannot answer a wait.`).
+- `run` cannot answer a wait - listing it fails the run (`run cannot answer a wait.`).
 - A wait reached while function undos are held logs `console.warn` once per run - closures will not survive a resume in the durable tier; register a step instead ([undo.md](undo.md#undos)).
 - `stop()`, a failure, and `then.end()` from outside release open waits and abort their watchers.

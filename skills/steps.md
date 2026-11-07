@@ -81,7 +81,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 - Must be `async` (a sync `run` is a type error).
 - `await this` inside `run` is its settle point. Before it: field writes and step calls only - awaiting anything else fails the run (`run awaited work before its plan…`). After it, the tail: read fields, return the result or throw. Step calls there throw; writes are unmanaged.
 - The run settles with what `run` returns or throws - that types `x.run()` and `await x`. `then.status`/`then.error` record what the plan did, so a tail catching a failure resolves the run while status stays `failed`.
-- Without `await this`, `run` settles at once - result `void` (chained style, still valid).
+- Without `await this`, `run` settles at once - result `void` (chained style).
 - `return await this` is a TS circularity (TS7023) - return from fields.
 - Cleanup on every outcome - done, failed, stopped - is `try`/`catch`/`finally` around `await this`. A run failing before `await this`, or without it, has no tail; that cleanup belongs in a step's undo.
 - Inside a step, `this.run(x)` is an ordinary step call - how a loop repeats.
@@ -120,7 +120,7 @@ Step references are recorded; functions belong to the process. A step returns no
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
 - An undo runs on any unwind through its step - its own failure after registering, a later failure caught by a `.catch` whose branch includes it, run failure, `stop({ undo: true })`. Order: failure → undos newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
 - Steps an undo calls run as part of the unwind (with what they schedule), before older undos, and reach `before`/`after`. `end`, gates and waits throw there.
-- An undo registered before its step fails runs for that failure too, seeing the step's partial writes. It sees the unwound state, its own writes are kept; it never recovers. `run` registers none - clean up in its tail.
+- Registered before its step fails, it runs for that failure too and sees the step's partial writes. Runs before fields are restored; keys it writes are kept; never recovers. `run` registers none - clean up in its tail.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
 - Removing a pool member or destroying a map value the step did not add is irreversible: the unwind stops there and warns.
 - Whole-run undo is `stop({ undo: true })`; partial is a [catch](#catch-and-retry).
@@ -161,13 +161,14 @@ protected async rescan(error: unknown) {
 }
 
 protected async scan(site: string) {                     // backoff lives in the retried step
-  this.then({ after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
+  this.then({ after: this.then.retried * SECOND });
   this.fetch(site);
 }
+```
 
 - A failure in the token's branch (it and its subtree): failing step restored, rest of the branch discarded, the branch's undos run - then the handler runs in its place and the plan continues.
 - Handlers replace the branch - retry, fall back, rethrow. `.catch()` skips.
-  - `.catch(this.noCourier)` - a step method: runs given the error; recorded with it as `{ name, message, cause }`.
+  - `.catch(this.noCourier)` - a step method: runs given the error; recorded with it as `{ name, message, cause }` (an Error; anything else as thrown).
   - `.catch((error) => { … })` - a function: `Promise.catch` semantics, its step calls scheduled; process-local - dropped on restart, so there the run fails instead of recovering.
 - The handler sees the branch's failed state; once its body returns, the branch's fields are restored except keys it wrote, then what it scheduled runs. `this.then.restore()` restores early.
 - It recovers by scheduling, or throws to keep failing - an expected failure is a typed error (`throw new NoCourier()`) the handler checks, rethrowing the rest. A wait in a handler asks for another try; put it under a caught step to catch the next failure too.
@@ -186,7 +187,7 @@ protected async scan(site: string) {                     // backoff lives in the
 
 - `then.stop({ undo?, reason? })` - cancels: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with an error named `'Stopped'` (`reason` as `cause`). `stop({ undo: true })` also unwinds. `set(null)` stops.
 - `then.end()` - ends early, keeping everything: in a step at its place in the plan, from outside now. `await this` resolves; the tail builds the result from fields. Why it ended early is data - write a field before calling it. Passing a value throws.
-- A failed run nobody awaited rethrows uncaught two microtasks later.
+- A failed run nobody awaited throws uncaught two microtasks later.
 
 ## Hooks
 
@@ -194,7 +195,7 @@ Only `before` and `after` are hooks (any other name is a step; `then`, `end`, `g
 
 - `before(step, args)` / `after(step, entry)` around every step. `after` gets each committed entry - the Runner keeps no journal, so a log is `this.log.push(entry)`. A try a catch took arrives with `entry.error`; a called `end` arrives too (an implicit one does not).
 
-Entry: `{ id: 'pay#1', key, args, wrote, next, undo?, unwound?, wake?, retry?, error?, irreversible?, committed?, halted? }` - no values. The shape is provisional until the durable tier.
+Entry: `{ id: 'pay#1', key, args, wrote, next, undo?, unwound?, wake?, retried?, error?, irreversible?, committed?, halted?, implicit? }` - no values.
 
 ## Runner - `this.then`
 

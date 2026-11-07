@@ -27,7 +27,7 @@ protected async noCourier(error: unknown) {
 - A handler's steps keep their own signatures and run in the branch's place.
 - A handler throwing - rethrowing included - fails like any step: the next caught token around it takes it, else the run fails. Entries the branch already took back are not taken back twice.
 - `this.then.restore()` in a handler restores the branch's fields now - writes after it stand: `this.then.restore(); this.notice = 'retrying';`. Outside a handler it throws `restore() must be called in a .catch handler.`
-- The token is journaled with `rescue` - steps called for it, a step method's key, `then` for a function, `true` for none: `{ id: 'then#1', key: 'then', args: [], group: [scan], rescue: [{ id: 'visit#2', key: 'visit', args: ['a'] }] }`.
+- The token is journaled with `rescue` - a step method's key, `then` for a function, `true` for none: `{ id: 'scan#1', key: 'scan', args: ['a'], rescue: 'rescan' }`.
 - Nested catches: the nearest enclosing caught token takes a failure; one in a handler belongs to the branch around it. A second failure in a branch already failing is journaled and absorbed.
 - A wait's branch is its answer and the answer's subtree; a watcher throwing is caught there too. A handler opening a wait - `this.then(this.pay)` - asks for another try; put that wait under a caught step to catch the next failure too.
 
@@ -41,7 +41,7 @@ Step references are recorded; functions belong to the process.
 
 | handler | runs on failure | recorded |
 | --- | --- | --- |
-| `.catch(this.noCourier)` - a step method | the step, given the error alone | its key; its entry's args hold the error as `{ name, message, cause }` |
+| `.catch(this.noCourier)` - a step method | the step, given the error alone | its key; its entry's args hold the error as `{ name, message, cause }` (an Error; anything else as thrown) |
 | `.catch((error) => { … })` - a function | given the error, as `Promise.catch` - an [inline step](steps.md#inline-steps) whose step calls schedule | `then` - process-local |
 
 - A step method runs given the error, whatever it declares. In process it gets the original; the durable tier will rebuild it from the record - `'Stopped'` included.
@@ -61,7 +61,7 @@ protected async rescan(error: unknown) {
 }
 
 protected async scan(site: string) {
-  this.then({ after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
+  this.then({ after: this.then.retried * 1000 });
   this.fetch(site);
 }
 ```

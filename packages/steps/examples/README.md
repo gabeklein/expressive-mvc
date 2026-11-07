@@ -24,7 +24,7 @@ A PR adding a feature extends an example and this table.
 
 | feature | where |
 | --- | --- |
-| sequence, depth-first | `Deploy.run`, `Deploy.canary` (schedules `gate`, which runs before `migrate`) |
+| sequence, depth-first | `Deploy.run`, `Deploy.canary` (schedules `approval`, which runs before `migrate`) |
 | variadic group `this.then(a, b)` | `SubmitOrder.pay` |
 | mapped group `this.then(items, this.step)` | `Agent.turn`, `Deploy.canary`, `Crawl.run` |
 | loop - a step scheduling itself | `Agent.turn`, `Pull.page` |

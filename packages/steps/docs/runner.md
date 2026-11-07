@@ -27,7 +27,7 @@
 ## Entry
 
 ```ts
-{ id, key, args, next, wrote, undo?, unwound?, wake?, retry?, error?, irreversible?, committed?, halted? }
+{ id, key, args, next, wrote, undo?, unwound?, wake?, retried?, error?, irreversible?, committed?, halted?, implicit? }
 ```
 
 The Runner keeps no journal. Each step's entry is handed to `after(step, entry)` as it commits, a caught try's with `error` ([hooks.md](hooks.md)); a class wanting a log keeps them - `this.log.push(entry)`. A later unwind updates a kept entry in place: `unwound`, `halted` ([undo.md](undo.md#the-unwind)). See [steps.md](steps.md#entry).

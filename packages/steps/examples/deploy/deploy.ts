@@ -179,7 +179,7 @@ export class Deploy extends Steps {
     this.log.push(`${entry.id} ok`);
   }
 
-  // a helper: `_` keeps it from being a step - runs normally on instance.
+  // a helper: `_` keeps it from being a step - runs normally on the instance.
   private _spread(count: number) {
     const every = Math.ceil(this.hosts.length / count);
 
