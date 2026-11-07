@@ -42,7 +42,6 @@ Step references are recorded; functions belong to the process.
 | handler | runs on failure | recorded |
 | --- | --- | --- |
 | `.catch(this.noCourier)` - a step method | the step, given the error alone | its key; its entry's args hold the error as `{ name, message, cause }` |
-| `.catch(this.then.retry)` | the caught token again - [retry](#retry) | `retry` |
 | `.catch((error) => { … })` - a function | given the error, as `Promise.catch` - an [inline step](steps.md#inline-steps) whose step calls schedule | `then` - process-local |
 
 - A step method runs given the error, whatever it declares. In process it gets the original; the durable tier will rebuild it from the record - `'Stopped'` included.
@@ -50,31 +49,29 @@ Step references are recorded; functions belong to the process.
 
 ## Retry
 
-`this.then.retry()` in a handler - a step method or a function - schedules what the catch is attached to again: the failed step, or the whole group for `this.then(a, b).catch(…)`, with its recorded args, caught by the same handler. The handler never needs the args; a replay is "run that node again".
+A retry is a handler calling `this.then.retry()` - the policy lives in the handler, coordination first:
 
 ```ts
+this.scan(site).catch(this.rescan);
+
 protected async rescan(error: unknown) {
   if (this.then.retried >= 3) throw error;
 
   this.then.retry();
 }
-```
 
-`.catch(this.then.retry)` retries unconditionally. The retried step ends the loop - give up by scheduling a fallback and returning; a throw there is caught and retried again:
-
-```ts
-protected async visit(site: string) {
-  if (this.then.retried > 3) return void this.skip(site);
-
-  this.then.slot({ max: ($) => $.limit, after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
-  this.scan(site);
+protected async scan(site: string) {
+  this.then.slot({ after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
+  this.fetch(site);
 }
 ```
+
+`retry()` schedules what the catch is attached to again - the failed step, or the whole group for `this.then(a, b).catch(…)` - with its recorded args, caught by the same handler. The handler never needs the args; a replay is "run that node again". Past the limit the handler throws - the failure goes on - or falls back by scheduling something else.
 
 - `this.then.retried` - how many times `retry()` replayed the step, `0` on a first run; in a handler, the failed one's. A replayed group's members carry it too. An entry past 0 carries `retried`.
 - Backoff belongs in the retried step: a [slot](slot.md) with `after` read from `retried`. The failed try's slots are released before the replay queues, so it waits `after`, then queues behind other waiters.
 - Calling a step again from a handler is a new step, not a replay - `retried` stays `0`.
-- `retry()` outside a handler throws `retry() must be called in a .catch handler.` A step waiting on a [pending value](steps.md#pending-values) is not replayed: the wait counts no retry.
+- `retry()` outside a handler throws `retry() must be called in a .catch handler.`; `.catch(this.then.retry)` throws, pointing to the handler form. A step waiting on a [pending value](steps.md#pending-values) is not replayed: the wait counts no retry.
 
 ## Not caught
 

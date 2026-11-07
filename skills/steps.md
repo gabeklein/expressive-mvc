@@ -168,13 +168,11 @@ protected async scan(site: string) {                     // backoff lives in the
 - A failure in the token's branch (it and its subtree): failing step restored, rest of the branch discarded, the branch's undos run - then the handler runs in its place and the plan continues.
 - Handlers replace the branch - retry, fall back, rethrow. `.catch()` skips.
   - `.catch(this.noCourier)` - a step method: runs given the error; recorded with it as `{ name, message, cause }`.
-  - `.catch(this.then.retry)` - replay unconditionally; recorded `retry`.
   - `.catch((error) => { … })` - a function: `Promise.catch` semantics, its step calls scheduled; process-local - dropped on restart, so there the run fails instead of recovering.
 - The handler sees the branch's failed state; once its body returns, the branch's fields are restored except keys it wrote, then what it scheduled runs. `this.then.reset()` restores early.
 - It recovers by scheduling, or throws to keep failing - an expected failure is a typed error (`throw new NoCourier()`) the handler checks, rethrowing the rest. A wait in a handler asks for another try; put it under a caught step to catch the next failure too.
-- `this.then.retry()` in a handler replays what the catch is attached to - the failed step or the whole group - with its recorded args, under the same handler. Throws outside a handler.
+- `this.then.retry()` in a handler replays what the catch is attached to - the failed step or the whole group - with its recorded args, under the same handler. The handler holds the policy; past it, throw or fall back. Throws outside a handler; `.catch(this.then.retry)` throws.
 - `this.then.retried` - replays so far, `0` on a first run; a handler reads the failed one's. Calling a step again from a handler is a new step - `0`.
-- With `.catch(this.then.retry)` the retried step ends its loop: `if (this.then.retried > 3) return void this.skip(site);` - a throw there is retried again.
 - Not caught: rule violations, past `commit()`/irreversible, aborts, failures while stopping or ending.
 
 ## Slot
