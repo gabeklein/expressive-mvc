@@ -1,6 +1,6 @@
 # Undo - Compensations and the Unwind
 
-A step returns nothing. One that changes the world registers its compensation with `this.then.catch(() => …)`, a closure calling the steps that undo it. An unwind - a failed run, `stop(true)`, or a failure a [`.catch`](catch.md) takes - goes through the committed steps newest first, running each one's compensations, then restores the fields of every step it took back. A half-done plan leaves nothing behind.
+A step returns nothing. One that changes the world registers its compensation with `this.then.catch(this.release(hold))` - the step that undoes it, called for it. An unwind - a failed run, `stop(true)`, or a failure a [`.catch`](catch.md) takes - goes through the committed steps newest first, running each one's compensations, then restores the fields of every step it took back. A half-done plan leaves nothing behind.
 
 Every step is atomic: one that throws or is aborted has its own writes restored - fields and [collections](#collections).
 
@@ -10,9 +10,7 @@ Every step is atomic: one that throws or is aborted has its own writes restored 
 protected async reserve() {
   const hold = await inventory.hold(this.cart.items);
 
-  this.then.catch(() => {
-    this.release(hold);
-  });
+  this.then.catch(this.release(hold));
   this.pay().catch(this.noCourier);
 }
 
@@ -21,15 +19,26 @@ protected async release(hold: string) {
 }
 ```
 
-- `handler` is a function given the error the unwind carries, or a step reference called with it alone. Steps it calls keep their own signatures - `this.release(hold)` - and run as part of the unwind, with what they schedule and groups, before older compensations. They reach `before`/`after`, so a log shows them; the closure itself does not.
-- A closure does not survive a resume in the durable tier - a wait reached while one is held warns ([wait.md](wait.md)).
-- Registration is synchronous and not a token: anywhere in the body, before or after scheduling, any number. A step's compensations run newest first.
+`this.then.catch(…)` takes:
+
+- steps called for it - `this.then.catch(this.release(hold))`; several, `this.then.catch(this.cancel(id), this.refund(charge))`, are one group. Claimed, not scheduled: the step may keep working and awaiting after;
+- or one handler, as a token's [`.catch`](catch.md#handlers) does - a function without parameters calling one step or a group, a step method given the error, or a function with parameters given the error.
+
+| handler | runs | recorded | durable |
+| --- | --- | --- | --- |
+| `() => { this.visit(site); }` - no parameters | now, at registration - it may only call steps; what it calls runs on failure | the steps it called, with their args | yes |
+| `this.noCourier` - a step method | on failure, given the error alone | the step, and the error as `{ name, message, cause }` | yes |
+| `(error) => { … }` - parameters | on failure, given the error | `then` | no - in memory |
+
+- Steps it runs keep their own signatures and run as part of the unwind, with what they schedule and groups, before older compensations. They reach `before`/`after`, so a log shows them.
+- A function with parameters does not survive a resume in the durable tier - a wait reached while one is held warns ([wait.md](wait.md)).
+- Registration is synchronous: anywhere in the body, before or after scheduling, any number. A step's compensations run newest first.
 - Registered before a step fails, a compensation runs for that failure too, and sees that step's partial writes - they are restored after it.
 - It runs before fields are restored, so it reads the state as the run left it. Keys it, or a step it calls, writes are kept.
 - It never recovers - the failure goes on. A step it calls throwing fails the unwind there. `end`, `slot` and waits throw in it: `end() cannot run in a compensation.`
 - `run` registers none - `run cleans up in its tail - try/catch around await this.` Cleanup there is a [tail](runs.md#run-and-the-result).
 
-Entry: `compensate: [{ id: 'then#1', key: 'then', args: [] }]` - a step reference's key in place of `then`. The steps it ran get their own entries.
+Entry: `compensate: [{ id: 'release#1', key: 'release', args: ['hold_sku'] }]` - a group node for several, `then` for a function with parameters. The steps it ran get their own entries. Ids are minted at registration, so one never run leaves a gap.
 
 ## The unwind
 

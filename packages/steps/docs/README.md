@@ -25,17 +25,13 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
-    this.then.catch(() => {
-      this.release(hold);
-    });
+    this.then.catch(this.release(hold));
     this.pay();
   }
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.catch(() => {
-      this.refund(this.charge!.id);
-    });
+    this.then.catch(this.refund(this.charge.id));
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.then.end();
@@ -87,9 +83,9 @@ Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`
 - [runs.md](runs.md) - `run`, repeating, the queue, awaiting, `end` from outside, `stop`, steering
 - [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called - from outside or by a watcher; answering steps are present only while waited for
 - [slot.md](slot.md) - `this.then.slot({ max, after, key })`: concurrency per group, instance or shared key; a delay
-- [catch.md](catch.md) - `.catch(handler?)` on a token: a failing branch unwinds and the run continues - skipped, or a handler given the error in its place; typed failures; `reset()`; `this.then.retry` counts re-runs
+- [catch.md](catch.md) - `.catch(handler?)` on a token: a failing branch unwinds and the run continues - skipped, or a handler in its place; durable handler forms; typed failures; `reset()`; `this.then.retry` counts re-runs
 - [hooks.md](hooks.md) - `before`/`after` around every step; cleanup in `run`'s tail
-- [undo.md](undo.md) - compensations registered with `this.then.catch(() => …)`, the unwind on failure, restored fields, keeping a value, `commit()`, collections
+- [undo.md](undo.md) - compensations registered with `this.then.catch(this.release(hold))`, the unwind on failure, restored fields, keeping a value, `commit()`, collections
 - [runner.md](runner.md) - the controller: members, reactivity, snapshot
 
 ## Conventions

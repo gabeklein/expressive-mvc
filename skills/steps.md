@@ -27,9 +27,7 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);   // the step's work
 
-    this.then.catch(() => {                               // its compensation - a closure calling steps
-      this.release(hold);
-    });
+    this.then.catch(this.release(hold));                  // its compensation - claimed, runs only on unwind
     this.pay().catch(this.noCourier);                     // then hand off
   }
 
@@ -40,9 +38,7 @@ class SubmitOrder extends Steps {
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.catch(() => {
-      this.refund(this.charge!.id);
-    });
+    this.then.catch(this.refund(this.charge.id));
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
   }
@@ -107,7 +103,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 | `this.then(this.allow, this.deny, watcher?)` | wait - parks until one of those steps is called |
 | `this.then.end()` | end the run here - pending discarded; takes no value |
 | `this.then.slot({ max, after, key })` | concurrency gate / delay |
-| `this.then.catch(() => { this.undo(x); })` | register this step's compensation |
+| `this.then.catch(this.undo(x))` | register this step's compensation - the step called for it, not scheduled |
 | `this.then.commit()` | point of no return |
 | `this.then.signal` | this step's `AbortSignal` - pass it to the call it awaits |
 
@@ -115,10 +111,10 @@ Tokens mixed with functions fail the run. Every token takes `.catch(handler?)`.
 
 ## Undo
 
-A step returns nothing - a value fails the run. Its undo is a compensation: `this.then.catch(() => { this.refund(chargeId); })` - a closure given the error, calling steps with their own signatures. Registered anywhere in the body, synchronously.
+A step returns nothing - a value fails the run. Its undo is a compensation: `this.then.catch(this.refund(chargeId))` - steps called for it (several make a group) are claimed, not scheduled, and recorded with their args; the step may keep working after. Or one [handler](#catch-and-retry). Registered anywhere in the body, synchronously.
 
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
-- On failure every committed step unwinds, newest first: its compensations run (newest first, given the error then their args), then the fields of every step taken back are restored. `run`'s writes never are.
+- On failure every committed step unwinds, newest first: its compensations run (newest first), then the fields of every step taken back are restored. `run`'s writes never are.
 - Steps a compensation calls run as part of the unwind (with what they schedule), before older compensations, and reach `before`/`after`. `end`, `slot` and waits throw there.
 - A compensation registered before its step fails runs for that failure too, seeing the step's partial writes. It sees the unwound state, its own writes are kept; it never recovers. `run` registers none - clean up in its tail.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
@@ -154,13 +150,8 @@ async deny(call: ToolCall) { this.messages.push(denied(call)); }
 
 ```ts
 protected async visit(site: string) {
-  const { retry } = this.then;                              // read in the step - a handler's this.then is its own
-
-  this.then.slot({ max: ($) => $.limit, after: retry && 1000 * 2 ** (retry - 1) });
-  this.scan(site).catch((error) => {
-    if (retry < 3) this.visit(site);
-    else this.skip(site, error);
-  });
+  this.then.slot({ max: ($) => $.limit, after: this.then.retry && 1000 * 2 ** (this.then.retry - 1) });
+  this.scan(site).catch(this.then.retry < 3 ? () => { this.visit(site); } : (error) => { this.skip(site, error); });
 }
 
 protected async skip(site: string, error: unknown) {
@@ -169,7 +160,10 @@ protected async skip(site: string, error: unknown) {
 ```
 
 - A failure in the token's branch (it and its subtree): failing step restored, rest of the branch discarded, the branch's compensations run - then the handler runs in its place and the plan continues.
-- A handler is a function given the error - steps it calls run in the branch's place - or a step reference called with the error alone. `.catch()` skips.
+- Handlers, on both catches - `.catch()` skips:
+  - `() => { this.visit(site); }` - no parameters: runs now, strict - only step calls; a field read or write, a promise, or `end`/`slot`/a wait throws. The steps it called run on failure and are recorded (`rescue`, `compensate`) with their args - durable.
+  - `this.noCourier` - a step method, whatever its parameters: runs on failure given the error; recorded with the error as `{ name, message, cause }` - durable.
+  - `(error) => { … }` - parameters: runs on failure as an inline step, its step calls scheduled; journaled `then` - in memory only.
 - The handler sees the branch's failed state; once its body returns, the branch's fields are restored except keys it wrote, then what it scheduled runs. `this.then.reset()` restores early.
 - It recovers by scheduling, or throws to keep failing - an expected failure is a typed error (`throw new NoCourier()`) the handler checks, rethrowing the rest. A wait in a handler asks for another try; put it under a caught step to catch the next failure too.
 - `this.then.retry` - re-run count, `0` on a first run; a step a handler calls counts one past the issuer when it is the issuing step, 1 when it is the caught step.

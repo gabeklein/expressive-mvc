@@ -41,7 +41,7 @@ A PR adding a feature extends an example and this table.
 
 | feature | where |
 | --- | --- |
-| `this.then.catch(() => { this.step(x); })` - a compensation calling steps, run in the unwind | `SubmitOrder.reserve` (`release`), `SubmitOrder.pay` (`refund`), `Deploy.install` (`uninstall`) |
+| `this.then.catch(this.step(x))` - a compensation: the step called for it, claimed, recorded with its args | `SubmitOrder.reserve` (`release`), `SubmitOrder.pay` (`refund`), `Deploy.install` (`uninstall`) |
 | a step owning its compensation - undone when a sibling fails | `SubmitOrder.ship` (`cancel`); order test `will cancel the booking when the receipt fails` |
 | several compensations in one step, newest first | `Deploy.build` |
 | every step taken back has its fields restored | `SubmitOrder`, `Deploy.canary`; deploy test `will roll back the canaries and the build when the gate aborts` |
@@ -50,7 +50,7 @@ A PR adding a feature extends an example and this table.
 | collection rollback - `has` list | `Agent.turn` (`draft`); agent test `will keep what a failing turn committed` |
 | per-step attribution - parallel steps writing one `map` | `Crawl.scan`; crawl test `will retry a failing site with backoff, keeping what other sites found` |
 | irreversible - pool deletion | `Deploy.retire`; deploy test `will stop unwinding at the retired release` |
-| a typed failure handled where the plan recovers - `.catch(this.noCourier)` rethrowing what it does not know | `SubmitOrder.reserve`, `SubmitOrder.noCourier`; order test `will refund and backorder when no courier is free` |
+| a typed failure handled where the plan recovers - `.catch(this.noCourier)`, a step method given the error, rethrowing what it does not know | `SubmitOrder.reserve`, `SubmitOrder.noCourier`; order test `will refund and backorder when no courier is free` |
 | a note written in `run`'s tail, after the unwind | `SubmitOrder.run`; order test `will unwind what succeeded when a step fails` |
 
 ## Wait
@@ -71,8 +71,8 @@ A PR adding a feature extends an example and this table.
 | `this.then.slot({ after })` - backoff, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
 | `.catch()` - skip a failing branch | `Crawl.run` (`report`); crawl test `will end even when the report fails` |
 | `.catch(this.step)` - retry by re-running the issuing step, `this.then.retry`; the re-run queues for its slot again | `Deploy.test`; deploy test `will retry a flaky test suite with backoff` |
-| `.catch((error) => …)` - a handler calling `visit` again or `skip`, `retry` read in the step | `Crawl.visit`; crawl test `will retry a failing site with backoff, keeping what other sites found` |
-| `.catch(() => { this.exec(call); })` - the caught step itself, once | `Agent.tool`, `Agent.allow`; agent test `will retry a tool, keeping what the tool pushed from outside` |
+| `.catch(() => { this.visit(site); })` - a handler without parameters, recorded as the retry it calls; `(error) => …` for the skip that needs the error | `Crawl.visit`; crawl test `will retry a failing site with backoff, keeping what other sites found` |
+| `.catch(() => { this.exec(call); })` - the caught step itself, once, recorded durably | `Agent.tool`, `Agent.allow`; agent test `will retry a tool, keeping what the tool pushed from outside` |
 | a handler passing the error to a step - a group settling with what succeeded | `Crawl.skip`; crawl test `will skip a site after three retries` |
 
 ## Hooks, signal
