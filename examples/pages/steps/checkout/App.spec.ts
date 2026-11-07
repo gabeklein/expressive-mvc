@@ -57,7 +57,7 @@ test('will run the checkout to end once approved', async ({ page }) => {
   await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'approve#1', 'mail#1', 'ship#1', 'end#1']);
 });
 
-test('will go back to reserve when the card is declined', async ({ page }) => {
+test('will unwind pay and wait for another card when declined', async ({ page }) => {
   await authorize(page);
   await page.getByRole('button', { name: 'Decline' }).click();
 
@@ -67,7 +67,7 @@ test('will go back to reserve when the card is declined', async ({ page }) => {
   await expect(page.locator('.status')).toHaveText('Status: waiting');
   await expect(field(page, 'Hold')).toHaveText('H-1');
   await expect(field(page, 'Authorization')).toHaveText('-');
-  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'decline#1']);
+  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'decline#1', 'declined#1', 'another#1']);
   await expect(page.locator('.record li', { hasText: 'pay#1' })).toContainText('undone');
 });
 
@@ -98,8 +98,21 @@ test('will retry with another card after a decline', async ({ page }) => {
   await expect(page.locator('.status')).toHaveText('Status: idle');
   await expect(field(page, 'Tracking')).toHaveText('T-H-1-1');
   await expect(ids(page)).toHaveText([
-    'run#1', 'reserve#1', 'pay#1', 'decline#1', 'pay#2', 'approve#1', 'mail#1', 'ship#1', 'end#1'
+    'run#1', 'reserve#1', 'pay#1', 'decline#1', 'declined#1', 'another#1', 'pay#2', 'approve#1', 'mail#1', 'ship#1', 'end#1'
   ]);
+});
+
+test('will wait for another card after a second decline', async ({ page }) => {
+  await authorize(page);
+  await page.getByRole('button', { name: 'Decline' }).click();
+  await page.getByRole('button', { name: 'Try another card' }).click();
+  await page.clock.runFor(600);
+  await page.getByRole('button', { name: 'Decline' }).click();
+
+  await expect(page.locator('.notice')).toHaveText('Card declined.');
+  await expect(page.getByRole('button', { name: 'Try another card' })).toBeVisible();
+  await expect(field(page, 'Authorization')).toHaveText('-');
+  await expect(field(page, 'Hold')).toHaveText('H-1');
 });
 
 test('will stop and unwind mid-run', async ({ page }) => {

@@ -25,9 +25,11 @@ export default () => (
     </p>
     <Storefront />
     <small>
-      A decline calls <code>this.then.back(this.reserve)</code> - the
-      authorization is cancelled by the undo <code>pay</code> returned, which
-      also restores its fields; the hold stays - then waits on{' '}
+      A decline throws <code>Declined</code>, caught where <code>reserve</code>{' '}
+      called <code>this.pay(card).catch(this.declined)</code>: the unwind runs
+      the compensation <code>pay</code> registered with{' '}
+      <code>this.then.catch(this.cancel, authorization)</code> and restores its
+      fields; the hold stays. <code>declined</code> then waits on{' '}
       <code>this.then(this.pay)</code> for another card. Stop cancels and unwinds
       everything. The journal below is <code>checkout.log</code>, filled by the{' '}
       <code>after</code> hook with each step's entry.
@@ -93,7 +95,7 @@ class Storefront extends Component {
             <li key={index}>
               <code>{entry.id}</code>
               {entry.wrote.length > 0 && <span> wrote {entry.wrote.join(', ')}</span>}
-              {entry.undone && <span className="undone"> undone</span>}
+              {entry.unwound && <span className="undone"> undone</span>}
             </li>
           ))}
         </ol>
@@ -116,7 +118,12 @@ class Checkout extends Steps {
     this.notice = '';
     this.reserve(card);
 
-    await this;
+    try {
+      await this;
+    } catch (error) {
+      this.notice = (error as Error).message;
+      throw error;
+    }
 
     return { tracking: this.tracking, receipt: this.receipt };
   }
@@ -125,9 +132,8 @@ class Checkout extends Steps {
     const hold = await inventory.hold(this.then.signal);
 
     this.hold = hold;
-    this.pay(card);
-
-    return this.release(hold);
+    this.then.catch(this.release, hold);
+    this.pay(card).catch(this.declined);
   }
 
   async pay(card: string) {
@@ -135,12 +141,11 @@ class Checkout extends Steps {
 
     this.authorization = authorization;
     this.notice = '';
+    this.then.catch(this.cancel, authorization);
     this.then(this.approve, this.decline, async (signal) => {
       await delay(APPROVAL, signal);
       this.decline('timed out');
     });
-
-    return this.cancel(authorization);
   }
 
   async approve() {
@@ -149,7 +154,17 @@ class Checkout extends Steps {
   }
 
   async decline(reason = 'declined') {
-    this.then.back(this.reserve, `Card ${reason}.`);
+    throw new Declined(`Card ${reason}.`);
+  }
+
+  protected async declined(error: unknown) {
+    if (!(error instanceof Declined)) throw error;
+
+    this.notice = error.message;
+    this.another().catch(this.declined);
+  }
+
+  protected async another() {
     this.then(this.pay);
   }
 
@@ -161,11 +176,11 @@ class Checkout extends Steps {
     this.receipt = await mailer.send(this.authorization, this.then.signal);
   }
 
-  protected async release(hold: string) {
+  protected async release(_error: unknown, hold: string) {
     await inventory.release(hold);
   }
 
-  protected async cancel(authorization: string) {
+  protected async cancel(_error: unknown, authorization: string) {
     await bank.cancel(authorization);
   }
 
@@ -176,11 +191,9 @@ class Checkout extends Steps {
   protected after(step: string, entry: Steps.Entry) {
     this.log.push(entry);
   }
-
-  protected back(reason: unknown) {
-    this.notice = reason instanceof Error ? reason.message : String(reason);
-  }
 }
+
+class Declined extends Error {}
 
 let holds = 0;
 let parcels = 0;
