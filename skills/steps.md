@@ -95,7 +95,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 | `this.then({ min: 1 })` | duration - parks for `ms`/`sec`/`min`/`hr`/`day`, summed |
 | `this.then.only(2)` / `.only(1, lock)` | gate - only so many at once |
 | `this.then.end()` | end the run here - pending discarded; takes no value |
-| `this.then.on({ undo() { … } })` | handlers for this step's subtree - `undo`, `error`, `abort`, `stop`, `done` |
+| `this.then.on({ undo: async () => { … } })` | handlers for this step's subtree - `undo`, `error`, `abort`, `stop`, `close` |
 | `this.then.commit()` | point of no return |
 | `this.then.signal` | this step's `AbortSignal` - pass it to the call it awaits |
 
@@ -103,21 +103,21 @@ A plain function fails the run - work is a step. Every token takes `.catch(handl
 
 ## Outcomes - `then.on`
 
-A step returns nothing - a value fails the run. `this.then.on({ … })` registers handlers for the step and everything it schedules (its subtree) - right after the effect, usually just above scheduling. A handler is a function called on the instance - method shorthand reads and writes fields; a returned Promise is awaited.
+A step returns nothing - a value fails the run. `this.then.on({ … })` registers handlers for the step and everything it schedules (its subtree) - right after the effect, usually just above scheduling. A handler is a function - an arrow, writing through the step's `this` - and may be async; it is awaited.
 
 ```ts
 this.then.on({
-  abort() {                                  // abort(), or a lost race
+  abort: async () => {                       // abort(), or a lost race
     this.status = 'cancelled';
-    return Image.delete(this.name);
+    await Image.delete(this.name);
   },
-  error(error) {                             // a failure below - observe, then undo
+  error: (error) => {                        // a failure below - observe, then undo
     this.error = String(error);
   },
-  undo: () => stripe.refund(chargeId),       // take back the effect
-  done() {                                   // the subtree ended, any way
-    this.preview.close();
-  }
+  undo: async () => {                        // take back the effect
+    await stripe.refund(chargeId);
+  },
+  close: () => this.preview.close()          // a finally over the subtree
 });
 ```
 
@@ -127,7 +127,7 @@ this.then.on({
 | `abort` | `abort()`, or the subtree lost a race; then `undo` | `'Aborted'` error |
 | `undo` | after `error`/`abort` | the error |
 | `stop` | `stop()` with the subtree unfinished - no undo | `'Stopped'` error |
-| `done` | subtree ended any way - last; alone on a clean finish, before the next sibling | nothing |
+| `close` | subtree ended any way - clean, failed, aborted, stopped, lost race: a finally over it, last; alone on a clean finish | nothing |
 
 - `error` observes, never recovers - recovery is `.catch`, which also stops a failure reaching handlers above it. A step finished earlier and taken back by a later failure gets `undo` only.
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.

@@ -11,24 +11,22 @@ protected async create(row: Row) {
   await Image.insert(row);
 
   this.then.on({
-    abort() {
+    abort: async () => {
       this.status = 'cancelled';
-      return Image.delete(this.name);
+      await Image.delete(this.name);
     },
-    error(error) {
+    error: async (error) => {
       this.error = String(error);
-      return Image.update(this.name, { status: 'error' });
+      await Image.update(this.name, { status: 'error' });
     },
-    done() {
-      this.preview.close();
-    }
+    close: () => this.preview.close()
   });
 
   this.start();
 }
 ```
 
-Register right after the effect - as `defer` would - usually just above what the step schedules. A handler is called on the instance - method shorthand reads and writes fields - and may return a Promise, awaited before the next.
+Register right after the effect - as `defer` would - usually just above what the step schedules. A handler is a function - an arrow, writing through the step's `this` - and may be async; it is awaited before the next.
 
 A handler covers its step and everything it schedules - the subtree. Outcomes, each firing as it reaches the subtree, deepest step first, newest first within a step:
 
@@ -38,12 +36,12 @@ A handler covers its step and everything it schedules - the subtree. Outcomes, e
 | `abort` | `abort()`, or the subtree lost a [race](wait.md#racers) - then `undo` | the `'Aborted'` error |
 | `undo` | after `error` or `abort`: take back what the step did | the error |
 | `stop` | `stop()` while the subtree was unfinished - nothing is undone | the `'Stopped'` error |
-| `done` | the subtree ended, any way - last, after the others; on a clean finish, alone | nothing |
+| `close` | the subtree ended, any way - clean, failed, aborted, stopped or a lost race: a finally over it, last | nothing |
 
 - `error` observes - it never recovers; the failure goes on. Recovery is [`.catch`](catch.md), which also keeps a failure from the handlers above it.
-- `done` on a clean finish runs before the next step in sequence. One that throws fails that subtree, as a step would.
+- `close` on a clean finish runs before the next step in sequence. One that throws fails that subtree, as a step would.
 - A step completed earlier, taken back by a later failure, gets `undo` only - `error` reaches the failing step's own line; `abort` reaches every step taken back.
-- Registration is synchronous, anywhere in the body, any number. An unknown key throws `then.on() takes undo, error, abort, stop and done - got finally.`; an `undefined` value is skipped.
+- Registration is synchronous, anywhere in the body, any number. An unknown key throws `then.on() takes undo, error, abort, stop and close - got finally.`; an `undefined` value is skipped.
 - Registered before its step fails, a handler runs for that failure too and sees the step's partial writes - restored after `undo`.
 - Handlers run before fields are restored, so they read the state as the run left it. Keys they write are kept.
 - A handler that throws fails the unwind there. `end`, gates and waits throw in one: `end() cannot run in an undo.`
@@ -61,13 +59,13 @@ A step that throws, breaks a rule, or returns a value fails the run:
 
 1. Status `failed`, `error` set; pending steps are discarded, open waits released, in-flight steps' [signals](steps.md#the-step-signal) aborted; the failing step's own writes are restored, unless it is [irreversible](#irreversible) or [committed](#commit).
 2. Steps still in flight - parallel members - settle; their commits are recorded.
-3. Every committed entry, newest first, runs its handlers - `error` on the failing step's line, then `undo`, then `done` where unfinished; a failed step that registered some runs them too.
+3. Every committed entry, newest first, runs its handlers - `error` on the failing step's line, then `undo`, then `close` where unfinished; a failed step that registered some runs them too.
 4. A handler that throws: `unwound: 'failed'`, `error` replaced by what it threw, the unwind stops there.
-5. An `irreversible` or `committed` entry stops the undoing: `halted: true` - it and older entries run no `undo`, though `error` and `done` still reach them ([Collections](#collections), [Commit](#commit)).
+5. An `irreversible` or `committed` entry stops the undoing: `halted: true` - it and older entries run no `undo`, though `error` and `close` still reach them ([Collections](#collections), [Commit](#commit)).
 6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys a handler wrote. Each taken-back entry that had an `undo` or wrote is marked `unwound: true`.
 7. `await this` in `run` rejects with `error` - the tail runs on the restored fields ([runs.md](runs.md#run-and-the-result)); without one, the run rejects with `error`.
 
-`run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `aborted`, `abort` in place of `error`, handlers given the `'Aborted'` error; `stop()` runs only `stop` and `done`, restoring nothing ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md) and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
+`run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `aborted`, `abort` in place of `error`, handlers given the `'Aborted'` error; `stop()` runs only `stop` and `close`, restoring nothing ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md) and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
 
 ## Keeping a value
 
