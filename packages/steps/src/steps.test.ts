@@ -5431,7 +5431,7 @@ describe('undo', () => {
     }
 
     await expect(Test.new().run({ undo: 'x' })).rejects.toThrow('then.on() takes steps called for it - { undo: this.release(id) } - or a function.');
-    await expect(Test.new().run({ finally: () => {} })).rejects.toThrow('then.on() takes undo, error, abort, stop and done - got finally.');
+    await expect(Test.new().run({ finally: () => {} })).rejects.toThrow('then.on() takes undo, error, abort, stop and close - got finally.');
   });
 
   it('will throw for a compensation once settled', async () => {
@@ -5464,7 +5464,7 @@ describe('on', () => {
       abort: (error: unknown) => void order.push(`abort ${name}: ${(error as Error).name}`),
       stop: (error: unknown) => void order.push(`stop ${name}: ${(error as Error).name}`),
       undo: () => void order.push(`undo ${name}`),
-      done: () => void order.push(`done ${name}`)
+      close: () => void order.push(`close ${name}`)
     };
   }
 
@@ -5492,7 +5492,7 @@ describe('on', () => {
     }
 
     await Test.new().run();
-    expect(order).toEqual(['b', 'done a', 'c']);
+    expect(order).toEqual(['b', 'close a', 'c']);
   });
 
   it('will fire error, undo and done deepest first on a failure', async () => {
@@ -5525,13 +5525,13 @@ describe('on', () => {
 
     await expect(Test.new().run()).rejects.toThrow('boom');
     expect(order).toEqual([
-      'done z',
+      'close z',
       'error b: boom',
       'undo b',
-      'done b',
+      'close b',
       'error a: boom',
       'undo a',
-      'done a',
+      'close a',
       'undo z'
     ]);
   });
@@ -5551,7 +5551,7 @@ describe('on', () => {
     }
 
     await expect(Test.new().run()).rejects.toThrow('own');
-    expect(order).toEqual(['error a: own', 'undo a', 'done a']);
+    expect(order).toEqual(['error a: own', 'undo a', 'close a']);
   });
 
   it('will not fire error above a catch which took it', async () => {
@@ -5578,7 +5578,7 @@ describe('on', () => {
     }
 
     await Test.new().run();
-    expect(order).toEqual(['error b: boom', 'undo b', 'done b', 'done a']);
+    expect(order).toEqual(['error b: boom', 'undo b', 'close b', 'close a']);
   });
 
   it('will fire abort and undo on abort, done where unfinished', async () => {
@@ -5613,7 +5613,7 @@ describe('on', () => {
     work.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Aborted' });
-    expect(order).toEqual(['done z', 'abort a: Aborted', 'undo a', 'done a', 'abort z: Aborted', 'undo z']);
+    expect(order).toEqual(['close z', 'abort a: Aborted', 'undo a', 'close a', 'abort z: Aborted', 'undo z']);
   });
 
   it('will fire stop and done where unfinished on stop, undoing nothing', async () => {
@@ -5648,7 +5648,7 @@ describe('on', () => {
     work.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
-    expect(order).toEqual(['done z', 'stop a: Stopped', 'done a']);
+    expect(order).toEqual(['close z', 'stop a: Stopped', 'close a']);
   });
 
   it('will fire abort, undo and done for a racer which lost', async () => {
@@ -5674,7 +5674,7 @@ describe('on', () => {
     test.reply();
     await result;
 
-    expect(order).toEqual(['abort watch: Aborted', 'undo watch', 'done watch']);
+    expect(order).toEqual(['abort watch: Aborted', 'undo watch', 'close watch']);
   });
 
   it('will fire done of an unfinished subtree when ended from outside', async () => {
@@ -5704,7 +5704,7 @@ describe('on', () => {
     work.resolve();
 
     await result;
-    expect(order).toEqual(['done a']);
+    expect(order).toEqual(['close a']);
   });
 
   it('will run steps called for a handler, recorded with their args', async () => {
@@ -5716,7 +5716,7 @@ describe('on', () => {
       }
 
       protected a() {
-        this.then.on({ done: [this.note('x'), this.note('y')], undo: undefined });
+        this.then.on({ close: [this.note('x'), this.note('y')], undo: undefined });
         this.b();
       }
 
@@ -5731,11 +5731,11 @@ describe('on', () => {
 
     await test.run();
     expect(notes).toEqual(['x', 'y']);
-    expect(record(test)[1].on).toMatchObject({ done: [{ key: 'then', group: [{ key: 'note', args: ['x'] }, { key: 'note', args: ['y'] }] }] });
+    expect(record(test)[1].on).toMatchObject({ close: [{ key: 'then', group: [{ key: 'note', args: ['x'] }, { key: 'note', args: ['y'] }] }] });
     expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'a#1', 'b#1', 'note#1', 'note#2']);
   });
 
-  it('will fail the run if done throws', async () => {
+  it('will fail the run if close throws', async () => {
     const work = mockPromise();
 
     class Clean extends Steps {
@@ -5744,7 +5744,7 @@ describe('on', () => {
       }
 
       protected a() {
-        this.then.on({ done: () => { throw new Error('done'); } });
+        this.then.on({ close: () => { throw new Error('close'); } });
       }
     }
 
@@ -5754,7 +5754,7 @@ describe('on', () => {
       }
 
       protected a() {
-        this.then.on({ done: () => { throw new Error('ended'); } });
+        this.then.on({ close: () => { throw new Error('ended'); } });
         this.slow();
       }
 
@@ -5763,7 +5763,7 @@ describe('on', () => {
       }
     }
 
-    await expect(Clean.new().run()).rejects.toThrow('done');
+    await expect(Clean.new().run()).rejects.toThrow('close');
 
     const caught = vi.fn();
 
@@ -5773,7 +5773,7 @@ describe('on', () => {
       }
 
       protected async a() {
-        this.then.on({ done: () => { throw new Error('caught'); } });
+        this.then.on({ close: () => { throw new Error('caught'); } });
       }
     }
 
@@ -5798,7 +5798,7 @@ describe('on', () => {
       }
 
       protected a() {
-        this.then.on({ undo: this.b(), error: (error) => void error, done: [this.b(), this.b()] });
+        this.then.on({ undo: this.b(), error: (error) => void error, close: [this.b(), this.b()] });
         // @ts-expect-error
         this.then.on({ finally: () => {} });
       }
@@ -5923,7 +5923,7 @@ describe('races and halts', () => {
       }
 
       protected async setup() {
-        this.then.on({ stop: () => void log.push('stop setup'), done: () => void log.push('done setup') });
+        this.then.on({ stop: () => void log.push('stop setup'), close: () => void log.push('close setup') });
         this.then(this.allow, this.timeout());
       }
 
@@ -5952,7 +5952,7 @@ describe('races and halts', () => {
     slow.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
-    expect(log).toEqual(['untimeout', 'untimeout done', 'stop setup', 'done setup']);
+    expect(log).toEqual(['untimeout', 'untimeout done', 'stop setup', 'close setup']);
   });
 
   it('will journal a step once when its after hook throws', async () => {
@@ -6012,7 +6012,7 @@ describe('races and halts', () => {
 
       protected async timeout() {
         this.then.on({
-          undo() {
+          undo: () => {
             throw new Error('undo');
           }
         });
@@ -6074,8 +6074,8 @@ describe('races and halts', () => {
       protected async a() {
         this.then.on({
           error: (error) => void log.push(`error ${(error as Error).message}`),
-          done() {
-            throw new Error('done');
+          close: () => {
+            throw new Error('close');
           }
         });
         this.then(this.allow);
@@ -6092,11 +6092,32 @@ describe('races and halts', () => {
     await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
     test.allow();
 
-    await expect(result).rejects.toThrow('done');
-    expect(log).toEqual(['error done']);
+    await expect(result).rejects.toThrow('close');
+    expect(log).toEqual(['error close']);
   });
 
-  it('will run handlers on the instance, with method shorthand', async () => {
+  it('will call a handler plainly, not on the instance', async () => {
+    let self: unknown = 'unset';
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({
+          close() {
+            self = this;
+          }
+        });
+      }
+    }
+
+    await Test.new().run();
+    expect(self).toBeUndefined();
+  });
+
+  it('will keep a key an arrow handler writes through the step', async () => {
     class Test extends Steps {
       status = '';
 
@@ -6105,19 +6126,31 @@ describe('races and halts', () => {
       }
 
       protected async a() {
+        this.status = 'running';
         this.then.on({
-          done() {
-            expectTypeOf(this.status).toEqualTypeOf<string>();
-            this.status = 'done';
+          abort: async () => {
+            this.status = 'cancelled';
+            await Promise.resolve();
           }
         });
+        this.slow();
+      }
+
+      protected async slow() {
+        const { signal } = this.then;
+
+        await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
       }
     }
 
     const test = Test.new();
+    const result = test.run();
 
-    await test.run();
-    expect(test.status).toBe('done');
+    await vi.waitFor(() => expect(test.then.active).toBe('slow'));
+    test.then.abort();
+
+    await expect(result).rejects.toMatchObject({ name: 'Aborted' });
+    expect(test.status).toBe('cancelled');
   });
 });
 

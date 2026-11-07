@@ -28,8 +28,8 @@ export default () => (
       A decline throws <code>Declined</code>, caught where <code>reserve</code>{' '}
       called <code>this.pay(card).catch(this.declined)</code>: the unwind runs
       the undo <code>pay</code> registered with{' '}
-      <code>{'this.then.on({ undo() { return bank.cancel(authorization); } })'}</code> - a
-      handler run on the instance - and restores{' '}
+      <code>{'this.then.on({ undo: async () => { await bank.cancel(authorization); } })'}</code>
+      - and restores{' '}
       <code>pay</code>'s fields; the hold stays. <code>declined</code> then waits on{' '}
       <code>this.then(this.pay)</code> for another card. Stop aborts - halts and
       unwinds everything. The journal below is <code>checkout.log</code>, filled by the{' '}
@@ -133,11 +133,7 @@ class Checkout extends Steps {
     const hold = await inventory.hold(this.then.signal);
 
     this.hold = hold;
-    this.then.on({
-      undo() {
-        return inventory.release(hold);
-      }
-    });
+    this.then.on({ undo: async () => { await inventory.release(hold); } });
     this.pay(card).catch(this.declined);
   }
 
@@ -146,11 +142,7 @@ class Checkout extends Steps {
 
     this.authorization = authorization;
     this.notice = '';
-    this.then.on({
-      undo() {
-        return bank.cancel(authorization);
-      }
-    });
+    this.then.on({ undo: async () => { await bank.cancel(authorization); } });
     this.then(this.approve, this.decline, this.timeout());
   }
 

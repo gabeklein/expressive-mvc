@@ -30,11 +30,7 @@ export class SubmitOrder extends Steps {
     const hold = await inventory.hold(this.cart.items);
 
     // its undo, registered right after the effect - runs only on unwind, on the instance
-    this.then.on({
-      undo() {
-        return inventory.release(hold);
-      }
-    });
+    this.then.on({ undo: async () => { await inventory.release(hold); } });
 
     // calling a step schedules it - pay runs once reserve settles; if pay or anything it schedules fails,
     // noCourier runs in its place, given the error - a step method as the handler is recorded with it
@@ -52,11 +48,7 @@ export class SubmitOrder extends Steps {
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.on({
-      undo() {
-        return stripe.refund(this.charge!.id);
-      }
-    });
+    this.then.on({ undo: async () => { await stripe.refund(this.charge!.id); } });
 
     // one parallel group; the run ends once it is done - then.end() must be the last call
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
@@ -72,11 +64,7 @@ export class SubmitOrder extends Steps {
     this.tracking = booking.id;
 
     // ship owns its compensation - cancelled if receipt, beside it, fails
-    this.then.on({
-      undo() {
-        return courier.cancel(booking.id);
-      }
-    });
+    this.then.on({ undo: async () => { await courier.cancel(booking.id); } });
   }
 
   protected async backorder() {
