@@ -16,7 +16,7 @@
 | `commit()` | in a step: a point of no return ([undo.md](undo.md#commit)) |
 | `undo(...steps)`, `undo(fn)` | in a step: register its undo ([undo.md](undo.md#undos)) |
 | `reset()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
-| `slot({ max?, after?, key? })` | in a step: wait for a free slot, then run what follows holding it ([slot.md](slot.md)) |
+| `then({ max?, after?, key? })` | in a step: a gate - wait for a free slot, then run what follows holding it ([gate.md](gate.md)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
 | `retried` | in a step: how many times `retry()` replayed it - `0` on a first run ([catch.md](catch.md#retry)) |
 | `retry()` | in a catch handler: replay what the catch is attached to ([catch.md](catch.md#retry)) |
@@ -34,7 +34,7 @@ The Runner keeps no journal. Each step's entry is handed to `after(step, entry)`
 
 `wrote` names the fields the step wrote, collections changed in place included - no values.
 
-`commit`, `undo`, `reset`, `retry`, `slot`, `signal` and `retried` outside a step throw.
+`commit`, `undo`, `reset`, `retry`, `signal` and `retried` outside a step throw; so does `then(steps)` or a gate.
 
 `status`, `active`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them.
 

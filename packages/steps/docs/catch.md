@@ -61,7 +61,7 @@ protected async rescan(error: unknown) {
 }
 
 protected async scan(site: string) {
-  this.then.slot({ after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
+  this.then({ after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
   this.fetch(site);
 }
 ```
@@ -69,7 +69,7 @@ protected async scan(site: string) {
 `retry()` schedules what the catch is attached to again - the failed step, or the whole group for `this.then(a, b).catch(…)` - with its recorded args, caught by the same handler. The handler never needs the args; a replay is "run that node again". Past the limit the handler throws - the failure goes on - or falls back by scheduling something else.
 
 - `this.then.retried` - how many times `retry()` replayed the step, `0` on a first run; in a handler, the failed one's. A replayed group's members carry it too. An entry past 0 carries `retried`.
-- Backoff belongs in the retried step: a [slot](slot.md) with `after` read from `retried`. The failed try's slots are released before the replay queues, so it waits `after`, then queues behind other waiters.
+- Backoff belongs in the retried step: a [gate](gate.md) with `after` read from `retried`. The failed try's slots are released before the replay queues, so it waits `after`, then queues behind other waiters.
 - Calling a step again from a handler is a new step, not a replay - `retried` stays `0`.
 - `retry()` outside a handler throws `retry() must be called in a .catch handler.`; `.catch(this.then.retry)` throws, pointing to the handler form. A step waiting on a [pending value](steps.md#pending-values) is not replayed: the wait counts no retry.
 
@@ -80,4 +80,4 @@ protected async scan(site: string) {
 - A step rejecting with its own aborted [signal](steps.md#the-step-signal)'s reason is no failure.
 - A hook's throw, an undo's throw, and any failure while the run is stopping or ending.
 
-`slot` and `end` tokens throw `slot() cannot be caught.`; a handler that is not a function throws `catch() takes a step, a function or nothing.` Outside a step, `then.retry()` and `then.retried` throw.
+Gates and `end` throw `a gate cannot be caught.` / `end() cannot be caught.`; a handler that is not a function throws `catch() takes a step, a function or nothing.` Outside a step, `then.retry()` and `then.retried` throw.

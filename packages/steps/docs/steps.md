@@ -115,14 +115,15 @@ Inside a step, `this.then`:
 - `(items, each)` - an iterable and a mapper, or a step: a mapped group;
 - `(...steps)` - steps of this instance (`this.allow`), plus any plain functions as watchers: a wait ([wait.md](wait.md));
 - `(fn)` - one plain function: an inline step;
+- `({ max, after, key })` - one plain object: a [gate](gate.md);
 - tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
-Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.undo(...steps)` ([undo.md](undo.md#undos)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retried`, `then.retry()` and `then.reset()` ([catch.md](catch.md)).
+Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.undo(...steps)` ([undo.md](undo.md#undos)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retried`, `then.retry()` and `then.reset()` ([catch.md](catch.md)).
 
 Every token takes `.catch(handler?)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
 
-Every form returns a token typed `Promise<void>`, as a step call is - not awaitable, `.catch` typed. `then.slot()` is typed `void`.
+Every form returns a token typed `Promise<void>`, as a step call is - not awaitable, `.catch` typed. A gate, `then({ max, after, key })` ([gate.md](gate.md)), is typed `void`.
 
 Outside a step, `then(f, r)` is the thenable ([runs.md](runs.md#awaiting-the-instance---start-or-join)); `then(steps)` throws `then(steps) must be called inside a step.`
 
@@ -207,7 +208,7 @@ protected async test() {
 
 An early exit is calling `end` - no flag threaded through later steps.
 
-- `end` must be the last call in its step: a step call, group, wait or slot issued after it fails the run (`end must be the last call in a step.`) - a second `end` included. Registering an undo is not a call - `this.then.end()` may precede `this.then.undo(…)`.
+- `end` must be the last call in its step: a step call, group, wait or gate issued after it fails the run (`end must be the last call in a step.`) - a second `end` included. Registering an undo is not a call - `this.then.end()` may precede `this.then.undo(…)`.
 - Two branches of a group each scheduling `end`: the first the plan reaches ends the run; the other is discarded with the rest.
 - A failure or `stop()` takes precedence - `end` reached after either does nothing; a [caught branch's](catch.md) unwind in progress stops, as for an outside `end`.
 

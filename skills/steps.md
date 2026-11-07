@@ -102,7 +102,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 | `this.then(async (signal) => …)` | inline step - a full step journaled `then#n`, not durable |
 | `this.then(this.allow, this.deny, watcher?)` | wait - parks until one of those steps is called |
 | `this.then.end()` | end the run here - pending discarded; takes no value |
-| `this.then.slot({ max, after, key })` | concurrency gate / delay |
+| `this.then({ max, after, key })` | a gate - concurrency / delay |
 | `this.then.undo(this.release(x))` | register this step's undo - the step called for it, claimed, not scheduled |
 | `this.then.commit()` | point of no return |
 | `this.then.signal` | this step's `AbortSignal` - pass it to the call it awaits |
@@ -119,7 +119,7 @@ Step references are recorded; functions belong to the process. A step returns no
 
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
 - An undo runs on any unwind through its step - its own failure after registering, a later failure caught by a `.catch` whose branch includes it, run failure, `stop(true)`. Order: failure → undos newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
-- Steps an undo calls run as part of the unwind (with what they schedule), before older undos, and reach `before`/`after`. `end`, `slot` and waits throw there.
+- Steps an undo calls run as part of the unwind (with what they schedule), before older undos, and reach `before`/`after`. `end`, gates and waits throw there.
 - An undo registered before its step fails runs for that failure too, seeing the step's partial writes. It sees the unwound state, its own writes are kept; it never recovers. `run` registers none - clean up in its tail.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
 - Removing a pool member or destroying a map value the step did not add is irreversible: the unwind stops there and warns.
@@ -161,7 +161,7 @@ protected async rescan(error: unknown) {
 }
 
 protected async scan(site: string) {                     // backoff lives in the retried step
-  this.then.slot({ after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
+  this.then({ after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
   this.fetch(site);
 }
 
@@ -175,12 +175,12 @@ protected async scan(site: string) {                     // backoff lives in the
 - `this.then.retried` - replays so far, `0` on a first run; a handler reads the failed one's. Calling a step again from a handler is a new step - `0`.
 - Not caught: rule violations, past `commit()`/irreversible, aborts, failures while stopping or ending.
 
-## Slot
+## Gate
 
-`this.then.slot({ max?, after?, key? })` - a token: waits `after` ms, then queues FIFO for one of `max` slots; what the step schedules after it runs holding the slot.
+`this.then({ max?, after?, key? })` - a plain object is a gate, a token: waits `after` ms, then queues FIFO for one of `max` slots; what the step schedules after it runs holding the slot. Stands alone - beside steps it throws.
 
-- `max` - number, or `($) => $.limit` read live through the tracking proxy (a UI can change it mid-run); `0` pauses; omitted = no limit, so `slot({ after })` is a delay.
-- `key` - none: the enclosing group's queue; an object (a shared Model): one queue across instances - `max: 1` is a mutex; a primitive: per instance.
+- `max` - number, or `($) => $.limit` read live through the tracking proxy (a UI can change it mid-run); `0` pauses; omitted = no limit, so `this.then({ after })` is a delay.
+- `key` - none: the enclosing group's queue; an object (a shared Model): one queue across instances - `max: 1` + key is a mutex; a primitive: per instance.
 
 ## Stop and end
 

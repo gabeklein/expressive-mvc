@@ -1,6 +1,6 @@
 # Examples
 
-Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undos, recovering from a typed failure with `.catch`; [agent](agent/agent.ts) - a long-lived instance whose steps commit, keeping what they wrote: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undos by step and args, hooks, cleanup in `run`'s tail; [crawl](crawl/crawl.ts) - many branches at once: `slot` with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - composition: a class that cannot extend `Steps` holds one as a field. Shipped behavior is documented in [docs/](../docs/README.md).
+Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undos, recovering from a typed failure with `.catch`; [agent](agent/agent.ts) - a long-lived instance whose steps commit, keeping what they wrote: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undos by step and args, hooks, cleanup in `run`'s tail; [crawl](crawl/crawl.ts) - many branches at once: a gate with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - composition: a class that cannot extend `Steps` holds one as a field. Shipped behavior is documented in [docs/](../docs/README.md).
 
 A PR adding a feature extends an example and this table.
 
@@ -63,14 +63,14 @@ A PR adding a feature extends an example and this table.
 | watcher timeout with `signal` | `Agent.tool`, `Deploy.gate` |
 | nudge - a watcher that does not answer | `Deploy.gate`; deploy test `will nudge on-call, then abort a gate nobody answers` |
 
-## Slot and catch
+## Gate and catch
 
 | feature | where |
 | --- | --- |
-| `this.then.slot({ max })` - a group's concurrency, `max: ($) => $.limit` tracked live | `Crawl.visit`; crawl test `will scan at most limit sites at once, following a limit changed mid-run` |
-| `this.then.slot({ after })` - backoff read from `this.then.retried`, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
+| `this.then({ max })` - a group's concurrency, `max: ($) => $.limit` tracked live | `Crawl.visit`; crawl test `will scan at most limit sites at once, following a limit changed mid-run` |
+| `this.then({ after })` - backoff read from `this.then.retried`, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
 | `.catch()` - skip a failing branch | `Crawl.run` (`report`); crawl test `will end even when the report fails` |
-| `.catch(this.retest)` - a step method calling `this.then.retry()` until `retried` reaches a limit; the replay queues for its slot again | `Deploy.test`, `Deploy.retest`; deploy test `will retry a flaky test suite with backoff` |
+| `.catch(this.retest)` - a step method calling `this.then.retry()` until `retried` reaches a limit; the replay queues at its gate again | `Deploy.test`, `Deploy.retest`; deploy test `will retry a flaky test suite with backoff` |
 | `.catch(this.revisit)` - a step-method handler replaying `visit` up to three times, then noting the error as data | `Crawl.run`, `Crawl.revisit`; crawl tests `will retry a failing site with backoff, keeping what other sites found`, `will skip a site after three retries` |
 | a step method retrying once - `if (this.then.retried) throw error;` | `Agent.reexec`; agent test `will retry a tool, keeping what the tool pushed from outside` |
 

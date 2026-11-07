@@ -31,7 +31,7 @@ Mixing them throws `then() takes called steps or step references, not both.`; a 
 - Registration is synchronous, anywhere in the body, any number. A step's undos run newest first.
 - Registered before its step fails, an undo runs for that failure too and sees the step's partial writes - restored after it.
 - It runs before fields are restored, so it reads the state as the run left it. Keys it, or a step it runs, writes are kept.
-- It never recovers - the failure goes on. A step it runs throwing fails the unwind there. `end`, `slot` and waits throw in it: `end() cannot run in an undo.`
+- It never recovers - the failure goes on. A step it runs throwing fails the unwind there. `end`, gates and waits throw in it: `end() cannot run in an undo.`
 - `run` registers none - `run cleans up in its tail - try/catch around await this.` Cleanup there is a [tail](runs.md#run-and-the-result).
 
 Entry: `undo: [{ id: 'release#1', key: 'release', args: ['hold_sku'] }]` - a group node for several, `then` for a function. The steps it ran get their own entries. Ids are minted at registration, so an undo never run leaves a gap.

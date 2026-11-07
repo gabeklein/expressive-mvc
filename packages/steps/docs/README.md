@@ -82,7 +82,7 @@ Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`
 - [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, inline steps, the step signal, pending values, the first-call rule, calls after a step settles, helpers, `end`, what a step may return
 - [runs.md](runs.md) - `run`, repeating, the queue, awaiting, `end` from outside, `stop`, steering
 - [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called - from outside or by a watcher; answering steps are present only while waited for
-- [slot.md](slot.md) - `this.then.slot({ max, after, key })`: concurrency per group, instance or shared key; a delay
+- [gate.md](gate.md) - `this.then({ max, after, key })`: a gate - concurrency per group, instance or shared key (`max: 1` + key = mutex); a delay
 - [catch.md](catch.md) - `.catch(handler?)` on a token: a failing branch unwinds and the run continues - skipped, or a handler in its place; recorded and process-local handlers; the unwind order; typed failures; `reset()`; `this.then.retry()` replays, `retried` counts
 - [hooks.md](hooks.md) - `before`/`after` around every step; cleanup in `run`'s tail
 - [undo.md](undo.md) - undos registered with `this.then.undo(this.release(hold))`, the unwind on failure, restored fields, keeping a value, `commit()`, collections
