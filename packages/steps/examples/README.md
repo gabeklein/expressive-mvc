@@ -41,7 +41,7 @@ A PR adding a feature extends an example and this table.
 
 | feature | where |
 | --- | --- |
-| `this.then.catch(this.step(x))` - a compensation: the step called for it, claimed, recorded with its args | `SubmitOrder.reserve` (`release`), `SubmitOrder.pay` (`refund`), `Deploy.install` (`uninstall`) |
+| `this.then.undo(this.step(x))` - a compensation: the step called for it, claimed, recorded with its args | `SubmitOrder.reserve` (`release`), `SubmitOrder.pay` (`refund`), `Deploy.install` (`uninstall`) |
 | a step owning its compensation - undone when a sibling fails | `SubmitOrder.ship` (`cancel`); order test `will cancel the booking when the receipt fails` |
 | several compensations in one step, newest first | `Deploy.build` |
 | every step taken back has its fields restored | `SubmitOrder`, `Deploy.canary`; deploy test `will roll back the canaries and the build when the gate aborts` |

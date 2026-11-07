@@ -1,6 +1,6 @@
 # Undo - Compensations and the Unwind
 
-A step returns nothing. One that changes the world registers its compensation with `this.then.catch(this.release(hold))` - the step that undoes it, called for it. An unwind - a failed run, `stop(true)`, or a failure a [`.catch`](catch.md) takes - goes through the committed steps newest first, running each one's compensations, then restores the fields of every step it took back. A half-done plan leaves nothing behind.
+A step returns nothing. One that changes the world registers its compensation with `this.then.undo(this.release(hold))` - the step that undoes it, called for it. An unwind - a failed run, `stop(true)`, or a failure a [`.catch`](catch.md) takes - goes through the committed steps newest first, running each one's compensations, then restores the fields of every step it took back. A half-done plan leaves nothing behind.
 
 Every step is atomic: one that throws or is aborted has its own writes restored - fields and [collections](#collections).
 
@@ -10,7 +10,7 @@ Every step is atomic: one that throws or is aborted has its own writes restored 
 protected async reserve() {
   const hold = await inventory.hold(this.cart.items);
 
-  this.then.catch(this.release(hold));
+  this.then.undo(this.release(hold));
   this.pay().catch(this.noCourier);
 }
 
@@ -19,9 +19,9 @@ protected async release(hold: string) {
 }
 ```
 
-`this.then.catch(…)` takes:
+`this.then.undo(…)` takes:
 
-- steps called for it - `this.then.catch(this.release(hold))`; several, `this.then.catch(this.cancel(id), this.refund(charge))`, are one group. Claimed, not scheduled: the step may keep working and awaiting after;
+- steps called for it - `this.then.undo(this.release(hold))`; several, `this.then.undo(this.cancel(id), this.refund(charge))`, are one group. Claimed, not scheduled: the step may keep working and awaiting after;
 - or one handler, as a token's [`.catch`](catch.md#handlers) does - a function without parameters calling one step or a group, a step method given the error, or a function with parameters given the error.
 
 | handler | runs | recorded | durable |

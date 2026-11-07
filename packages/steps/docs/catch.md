@@ -11,7 +11,7 @@ A token issued in a step - a step call, a group, an inline step, a wait - takes 
 protected async reserve() {
   const hold = await inventory.hold(this.cart.items);
 
-  this.then.catch(this.release(hold));
+  this.then.undo(this.release(hold));
   this.pay().catch(this.noCourier);
 }
 

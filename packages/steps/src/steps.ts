@@ -122,9 +122,9 @@ declare namespace Steps {
     next: Node[];
     /** Fields the step wrote, collections changed in place included. */
     wrote: string[];
-    /** Compensations the step registered with `then.catch()`, in order: the step's key, or `then` for a function. */
-    compensate?: Node[];
-    /** Taken back by an unwind - compensations run, fields restored; `'failed'` when a compensation threw. */
+    /** Undos the step registered with `then.undo()`, in order: steps called for it, or `then` for a function. */
+    undo?: Node[];
+    /** Taken back by an unwind - undos run, fields restored; `'failed'` when an undo threw. */
     unwound?: true | 'failed';
     /** Id of the wait this step answered. */
     wake?: string;
@@ -134,7 +134,7 @@ declare namespace Steps {
     error?: unknown;
     /** Collections changed in a way no restore can undo - the unwind stops here. */
     irreversible?: string[];
-    /** The step called `then.commit()` - not retried, restored or compensated; the unwind stops here. */
+    /** The step called `then.commit()` - not retried, restored or undone; the unwind stops here. */
     committed?: true;
     /** The unwind stopped at this entry; it and every entry before it stay applied. */
     halted?: true;
@@ -235,7 +235,7 @@ declare namespace Steps {
      * error the run and queue reject with, and its message when a string.
      */
     stop(undo?: boolean, reason?: unknown): void;
-    /** Inside a step: a point of no return - the step is not caught, restored or compensated, and the unwind stops here. */
+    /** Inside a step: a point of no return - the step is not caught, restored or undone, and the unwind stops here. */
     commit(): void;
     /**
      * Inside a step: its undo - run when an unwind passes through the step: its own failure after this
@@ -983,7 +983,7 @@ class Run extends Model {
       if (undo) throw error;
 
       if (comps) {
-        entry.compensate = comps;
+        entry.undo = comps;
         this._comps.set(id, comps);
         this._entries.push(entry);
       }
@@ -1641,7 +1641,7 @@ class Frame extends Model {
     if (this._retry) entry.retry = this._retry;
 
     if (_comps.length) {
-      entry.compensate = _comps;
+      entry.undo = _comps;
       run._comps.set(id, _comps);
     }
     else if (_lost.size) entry.irreversible = [..._lost];

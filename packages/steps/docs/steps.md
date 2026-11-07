@@ -118,7 +118,7 @@ Inside a step, `this.then`:
 - tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
-Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.catch(...steps)` ([undo.md](undo.md#compensations)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retry` and `then.reset()` ([catch.md](catch.md)).
+Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.undo(...steps)` ([undo.md](undo.md#compensations)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retry` and `then.reset()` ([catch.md](catch.md)).
 
 Every token takes `.catch(handler?)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
 
@@ -207,7 +207,7 @@ protected async test() {
 
 An early exit is calling `end` - no flag threaded through later steps.
 
-- `end` must be the last call in its step: a step call, group, wait or slot issued after it fails the run (`end must be the last call in a step.`) - a second `end` included. Registering a compensation is not a call - `this.then.end()` may precede `this.then.catch(…)`.
+- `end` must be the last call in its step: a step call, group, wait or slot issued after it fails the run (`end must be the last call in a step.`) - a second `end` included. Registering a compensation is not a call - `this.then.end()` may precede `this.then.undo(…)`.
 - Two branches of a group each scheduling `end`: the first the plan reaches ends the run; the other is discarded with the rest.
 - A failure or `stop()` takes precedence - `end` reached after either does nothing; a [caught branch's](catch.md) unwind in progress stops, as for an outside `end`.
 
@@ -215,7 +215,7 @@ From outside, `then.end()` ends the active run now ([runs.md](runs.md#end-from-o
 
 ## What a step returns
 
-Nothing. Any value fails the run (`first returned a value; a step returns nothing - its undo is this.then.catch(handler).`) - a step's undo is a [compensation](undo.md#compensations) it registers: `this.then.catch(this.release(hold))`. `run`'s return is the result.
+Nothing. Any value fails the run (`first returned a value; a step returns nothing - its undo is this.then.undo(handler).`) - a step's undo is a [compensation](undo.md#compensations) it registers: `this.then.undo(this.release(hold))`. `run`'s return is the result.
 
 ## Entry
 

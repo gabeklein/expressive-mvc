@@ -25,13 +25,13 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
-    this.then.catch(this.release(hold));
+    this.then.undo(this.release(hold));
     this.pay();
   }
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.catch(this.refund(this.charge.id));
+    this.then.undo(this.refund(this.charge.id));
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.then.end();
@@ -76,7 +76,7 @@ protected async sample(body: RenderBody) {
 
 Reporting state - progress, a status line - is ordinary fields, written in the steps; the UI reads them in a subscribed render or a `get()` effect. A failed or re-run try restores what it wrote - that try did not happen - and the catch handler or the next step writes fresh values. A value that must outlive a failed try is written unmanaged - `this.is.progress = p`, or through a `_` helper, which runs on `this.is` - or lives on an owned Model; still reactive, never restored.
 
-Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`, then `end`. A `courier.book` failure unwinds every committed step, newest first, running the compensations each registered with `this.then.catch(…)` - `refund('ch_42')`, then `inventory.release('hold_sku')` - then restoring the fields of every step it took back ([undo.md](undo.md#the-unwind)).
+Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`, then `end`. A `courier.book` failure unwinds every committed step, newest first, running the compensations each registered with `this.then.undo(…)` - `refund('ch_42')`, then `inventory.release('hold_sku')` - then restoring the fields of every step it took back ([undo.md](undo.md#the-unwind)).
 
 - [contract.md](contract.md) - the contract: members, visibility, when each runs; composition - a `Steps` model held as a field
 - [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, inline steps, the step signal, pending values, the first-call rule, calls after a step settles, helpers, `end`, what a step may return
@@ -85,7 +85,7 @@ Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`
 - [slot.md](slot.md) - `this.then.slot({ max, after, key })`: concurrency per group, instance or shared key; a delay
 - [catch.md](catch.md) - `.catch(handler?)` on a token: a failing branch unwinds and the run continues - skipped, or a handler in its place; durable handler forms; typed failures; `reset()`; `this.then.retry` counts re-runs
 - [hooks.md](hooks.md) - `before`/`after` around every step; cleanup in `run`'s tail
-- [undo.md](undo.md) - compensations registered with `this.then.catch(this.release(hold))`, the unwind on failure, restored fields, keeping a value, `commit()`, collections
+- [undo.md](undo.md) - compensations registered with `this.then.undo(this.release(hold))`, the unwind on failure, restored fields, keeping a value, `commit()`, collections
 - [runner.md](runner.md) - the controller: members, reactivity, snapshot
 
 ## Conventions

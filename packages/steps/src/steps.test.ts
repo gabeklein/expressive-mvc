@@ -1077,7 +1077,7 @@ describe('inline', () => {
 
     await expect(test.run()).rejects.toThrow('boom');
     expect(refund).toHaveBeenCalledWith(new Error('boom'));
-    expect(record(test)[1]).toMatchObject({ compensate: [{ id: 'then#1', key: 'then', args: [] }], unwound: true });
+    expect(record(test)[1]).toMatchObject({ undo: [{ id: 'then#1', key: 'then', args: [] }], unwound: true });
     expect(record(test)[1].next).toEqual([{ id: 'fail#1', key: 'fail', args: [] }]);
   });
 
@@ -1252,7 +1252,7 @@ describe('end', () => {
 
     expect(await test.run(false)).toBe('paid');
     expect(refund).not.toHaveBeenCalled();
-    expect(record(test)[1]).toMatchObject({ id: 'pay#1', next: [{ id: 'end#1', key: 'end' }], compensate: [{ id: 'refund#1', key: 'refund' }] });
+    expect(record(test)[1]).toMatchObject({ id: 'pay#1', next: [{ id: 'end#1', key: 'end' }], undo: [{ id: 'refund#1', key: 'refund' }] });
   });
 
   it('will end with the first end the plan reaches', async () => {
@@ -3782,7 +3782,7 @@ describe('catch', () => {
           { id: 'b#1', key: 'b', args: [] }
         ]
       },
-      expect.objectContaining({ id: 'a#1', compensate: [{ id: 'then#1', key: 'then', args: [] }], unwound: true }),
+      expect.objectContaining({ id: 'a#1', undo: [{ id: 'then#1', key: 'then', args: [] }], unwound: true }),
       expect.objectContaining({ id: 'a1#1', error: new Error('boom') }),
       expect.objectContaining({ id: 'b#1' })
     ]);
@@ -4697,7 +4697,7 @@ describe('hooks', () => {
 
 });
 
-describe('compensate', () => {
+describe('undo', () => {
   it('will run compensations newest first and restore every step', async () => {
     const order: string[] = [];
 
@@ -4733,7 +4733,7 @@ describe('compensate', () => {
     await expect(test.run()).rejects.toThrow('boom');
     expect(order).toEqual(['undo first b=2', 'undo zero a=1']);
     expect(test.get()).toMatchObject({ a: 0, b: 0, c: 0 });
-    expect(record(test).map((entry) => [entry.key, entry.compensate?.length, entry.unwound])).toEqual([
+    expect(record(test).map((entry) => [entry.key, entry.undo?.length, entry.unwound])).toEqual([
       ['run', undefined, undefined],
       ['zero', 1, true],
       ['first', 1, true]
@@ -4884,7 +4884,7 @@ describe('compensate', () => {
 
     await expect(test.run()).rejects.toThrow('boom');
     expect(undo).toHaveBeenCalledWith('r1');
-    expect(record(test)[1].compensate).toEqual([{ id: 'then#1', key: 'then', args: [] }]);
+    expect(record(test)[1].undo).toEqual([{ id: 'then#1', key: 'then', args: [] }]);
     expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'first#1', 'release#1']);
   });
 
@@ -5969,7 +5969,7 @@ describe('irreversible', () => {
     expect(undo).toHaveBeenCalledTimes(1);
     expect(test.items.size).toBe(0);
     expect([...test.values.keys()]).toEqual(['c']);
-    expect(record(test)[1]).toMatchObject({ compensate: [{ id: 'then#1', key: 'then', args: [] }], unwound: true });
+    expect(record(test)[1]).toMatchObject({ undo: [{ id: 'then#1', key: 'then', args: [] }], unwound: true });
     expect(record(test)[1].irreversible).toBeUndefined();
   });
 
@@ -6193,7 +6193,7 @@ describe('durable handlers', () => {
     await expect(test.run()).rejects.toThrow('boom');
     expect(released).toHaveBeenCalledWith('h1', 'h2');
     expect(test.hold).toBe('');
-    expect(record(test)[1]).toMatchObject({ next: [{ key: 'fail' }], compensate: [{ id: 'release#1', key: 'release', args: ['h1'] }] });
+    expect(record(test)[1]).toMatchObject({ next: [{ key: 'fail' }], undo: [{ id: 'release#1', key: 'release', args: ['h1'] }] });
     expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'reserve#1', 'release#1']);
   });
 
@@ -6229,7 +6229,7 @@ describe('durable handlers', () => {
 
     await expect(test.run()).rejects.toThrow('boom');
     expect(order).toEqual(['cancel a', 'refund b', 'cancelled']);
-    expect(record(test)[1].compensate).toMatchObject([{ key: 'then', group: [{ key: 'cancel' }, { key: 'refund' }] }]);
+    expect(record(test)[1].undo).toMatchObject([{ key: 'then', group: [{ key: 'cancel' }, { key: 'refund' }] }]);
   });
 
   it('will give a step method its error, recorded durably', async () => {
