@@ -48,7 +48,7 @@ interface Unwound {
 }
 
 interface Branch {
-  failed?: { cause: unknown; at: string };
+  failed?: { cause: unknown };
 }
 
 interface Lineage {
@@ -571,6 +571,7 @@ class Run extends Model {
   _counts = new Map<string, number>();
   _on = new Map<string, Handler[]>();
   _finished = new Set<string>();
+  _reset = new Set<string>();
   _writer = new Map<string, string>();
   _lost = new Set<string>();
   _losing = new Map<string, Promise<unknown>>();
@@ -705,20 +706,22 @@ class Run extends Model {
 
     if (!handler) return this.descend(frame);
 
-    const { id, key, args } = frame!;
+    const { id, key, args, _failed: failed } = frame!;
     const shield = id + '^';
-    const branch: Branch = {};
+    const branch: Branch = { failed };
 
     item ||= Object.assign(Object.create(TOKEN), { id, key, args });
 
-    this._branches.set(shield, branch);
-    await this.descend(frame);
-    this._branches.delete(shield);
+    if (!failed) {
+      this._branches.set(shield, branch);
+      await this.descend(frame);
+      this._branches.delete(shield);
+    }
 
     if (!branch.failed) return;
 
     const { cause } = branch.failed;
-    const restore = await this.serial(() => this.recover(item!, cause, 'error', false));
+    const restore = await this.serial(() => (failed ? this.rewind(id, cause) : this.recover(item!, cause, 'error', false)));
 
     this._dropped.delete(shield);
 
@@ -739,6 +742,29 @@ class Run extends Model {
 
     await this.exec(node, frame);
     restore();
+  }
+
+  async rewind(id: string, cause: unknown): Promise<Restore> {
+    const entry = this._entries.find((each) => each.id == id)!;
+    const { prior, log } = this._held.get(id)!;
+    const kept = new Set<string>();
+
+    this._reset.add(id);
+    this._held.delete(id);
+
+    try {
+      await this.fire(this._on.get(id), 'undo', cause, kept);
+      entry.unwound = true;
+    } catch (thrown) {
+      entry.unwound = 'failed';
+      this.halt('failed', thrown);
+    }
+
+    for (const key of kept) delete prior[key];
+
+    this.restore(prior, log);
+
+    return () => {};
   }
 
   async complete(frame?: Frame) {
@@ -939,7 +965,7 @@ class Run extends Model {
 
     if (branch.failed) return true;
 
-    branch.failed = { cause: error, at: id };
+    branch.failed = { cause: error };
     this._dropped.add(at);
 
     for (const frame of this.discard()) frame._abort.abort();
@@ -1179,6 +1205,20 @@ class Run extends Model {
       if (defer) this._held.set(id, { prior: frame._prior, log: frame._log });
       if (aborted) return;
 
+      let own = body && !fixed && !lost && !this.stale() && !RULES.has(error as Error) && !!on?.some(({ kind }) => kind == 'catch');
+
+      if (own) {
+        frame._failed = { cause: error };
+
+        try {
+          control.hook('after', key, entry);
+        } catch (thrown) {
+          this.halt('failed', thrown);
+        }
+
+        return frame;
+      }
+
       if (body && !fixed && (lost || this.caught(error, id))) {
         if (!on) this._entries.push(entry);
 
@@ -1395,7 +1435,7 @@ class Run extends Model {
       try {
         if (mode == 'abort') await this.fire(on, 'abort', cause, kept);
         if (mode == 'stop' && open) await this.fire(on, 'stop', cause, kept);
-        if (!halted) await this.fire(on, 'undo', cause, kept);
+        if (!halted && !this._reset.has(entry.id)) await this.fire(on, 'undo', cause, kept);
 
         this._finished.add(entry.id);
 
@@ -1509,6 +1549,7 @@ class Frame extends Model {
   _restore?: Restore = undefined;
   _caught?: Steps.Node = undefined;
   _cause?: { error: unknown } = undefined;
+  _failed?: { cause: unknown } = undefined;
   _committed?: boolean = undefined;
   _entry?: Steps.Entry = undefined;
   _violation?: string = undefined;

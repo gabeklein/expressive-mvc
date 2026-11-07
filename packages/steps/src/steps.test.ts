@@ -5991,17 +5991,16 @@ describe('on catch', () => {
     expect(caught).toHaveBeenCalledWith(new Error('boom'));
   });
 
-  it('will not catch its own step\'s failure, or take two', async () => {
+  it('will not see its step\'s throw before it was registered, or take two', async () => {
     const caught = vi.fn();
 
-    class Own extends Steps {
+    class Before extends Steps {
       async run() {
         this.a();
       }
 
       protected async a() {
-        this.then.on({ catch: caught });
-        throw new Error('own');
+        throw new Error('early');
       }
     }
 
@@ -6016,9 +6015,146 @@ describe('on catch', () => {
       }
     }
 
-    await expect(Own.new().run()).rejects.toThrow('own');
+    await expect(Before.new().run()).rejects.toThrow('early');
     await expect(Twice.new().run()).rejects.toThrow('then.on() takes one catch per step.');
     expect(caught).not.toHaveBeenCalled();
+  });
+
+  it('will recover its step\'s own body from registration on', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      value = 0;
+      note = '';
+
+      async run() {
+        this.a();
+        this.c();
+      }
+
+      protected async a() {
+        this.value = 1;
+        this.note = 'a';
+        this.then.on({
+          undo: () => {
+            order.push('undo a');
+            this.note = 'undone';
+          },
+          close: (reason) => void order.push(`close ${reason}`),
+          catch: (error) => {
+            order.push(`catch ${(error as Error).message}`);
+            this.b();
+          }
+        });
+        throw new Error('own');
+      }
+
+      protected async b() {
+        order.push('b');
+      }
+
+      protected async c() {
+        order.push('c');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run();
+    expect(order).toEqual(['undo a', 'catch own', 'b', 'close undefined', 'c']);
+    expect(test.value).toBe(0);
+    expect(test.note).toBe('undone');
+  });
+
+  it('will replay its step from a catch of its own body', async () => {
+    const tries: number[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.a('x');
+      }
+
+      protected async a(arg: string) {
+        tries.push(this.then.retried);
+        this.then.on({
+          catch: () => {
+            this.then.retry();
+          }
+        });
+
+        if (tries.length < 3) throw new Error(arg);
+      }
+    }
+
+    await Test.new().run();
+    expect(tries).toEqual([0, 1, 2]);
+  });
+
+  it('will fail the run if an undo throws resetting its own body', async () => {
+    const caught = vi.fn();
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({
+          undo: () => {
+            throw new Error('undo');
+          },
+          catch: caught
+        });
+        throw new Error('own');
+      }
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('undo');
+    expect(caught).not.toHaveBeenCalled();
+  });
+
+  it('will fail the run if after throws on a failure its own catch takes', async () => {
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({ catch: () => {} });
+        throw new Error('own');
+      }
+
+      protected after(key: string, entry: Steps.Entry) {
+        if (entry.error) throw new Error('after');
+      }
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('after');
+  });
+
+  it('will pass a rethrow of its own body on, closing with the error', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async run(caught: boolean) {
+        if (caught) this.a().catch((error) => void order.push(`caller ${(error as Error).message}`));
+        else this.a();
+      }
+
+      protected async a() {
+        this.then.on({
+          close: (reason) => void order.push(`close ${(reason as Error).message}`),
+          catch: (error) => {
+            throw error;
+          }
+        });
+        throw new Error('own');
+      }
+    }
+
+    await Test.new().run(true);
+    await expect(Test.new().run(false)).rejects.toThrow('own');
+    expect(order).toEqual(['close own', 'caller own', 'close own']);
   });
 
   it('will not catch a failure once the run is stopping', async () => {
