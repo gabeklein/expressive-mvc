@@ -71,8 +71,8 @@ export class Deploy extends Steps {
   }
 
   protected async test() {
-    // a replay waits 1s, then 2s - a slot without max is a plain delay; backoff lives in the retried step
-    this.then.slot({ after: this.then.retried * SECOND });
+    // a replay waits 1s, then 2s - a gate without max is a plain delay; backoff lives in the retried step
+    this.then({ after: this.then.retried * SECOND });
     this.suite();
   }
 

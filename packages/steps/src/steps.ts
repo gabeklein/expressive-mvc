@@ -138,14 +138,15 @@ declare namespace Steps {
     answers: string[];
   }
 
-  interface Slot<T = any> {
+  /** A gate in the plan - `this.then({ max, after, key })`. */
+  interface Gate<T = any> {
     /**
      * Slots held at once. Default: no limit. A function taking `$` - the instance's tracking proxy - is
      * re-read when anything it read through `$` changes, other Models included; one taking nothing,
      * when a slot frees and when the instance updates.
      */
     max?: number | (($: T) => number);
-    /** Milliseconds from reaching the slot before it queues. */
+    /** Milliseconds from reaching the gate before it queues. */
     after?: number;
     /** Share the queue: an object across groups and instances, any other value across this instance. Default: the enclosing group's, else the instance's. */
     key?: unknown;
@@ -161,6 +162,12 @@ declare namespace Steps {
   }
 
   interface Controller<T extends Model = Model> {
+    /**
+     * Inside a step: a gate at this point in the plan - wait `after` ms, then queue FIFO for one of
+     * `max` slots. What this step schedules after it runs holding the slot, until done.
+     */
+    <This>(this: This, gate: Steps.Gate<T>): void;
+
     /**
      * Inside a step: call `each` per item - a function issuing a step, or a step itself -
      * and run the tokens as one parallel group.
@@ -235,11 +242,6 @@ declare namespace Steps {
     /** Inside a `.catch` handler: restore the caught branch's fields now; writes after it stand. */
     reset(): void;
     /**
-     * Inside a step: wait at this point in the plan for a free slot in a FIFO queue, `after` ms
-     * from reaching it. What this step schedules after it runs holding the slot, until done.
-     */
-    slot(options?: Steps.Slot<T>): void;
-    /**
      * Inside a step: its `AbortSignal` - aborted on `stop()`, an outside `end`, a failure elsewhere,
      * and once the step settles. A step rejecting with its reason is not a failure.
      */
@@ -306,7 +308,6 @@ function install<T extends Steps>(self: T) {
     commit: { value: () => outside('commit') },
     undo: { value: () => outside('undo') },
     reset: { value: () => outside('reset') },
-    slot: { value: () => outside('slot') },
     signal: { get: () => outside('signal', 'read') },
     retry: { value: () => outside('retry') },
     retried: { get: () => outside('retried', 'read') }
@@ -528,7 +529,7 @@ class Run extends Model {
   _owner = new Map<string, Frame>();
   _watchers = new Map<string, Function[]>();
   _parent = new Map<string, string>();
-  _slots = new Map<string, Steps.Slot>();
+  _slots = new Map<string, Steps.Gate>();
   _catches = new Map<string, Rescue>();
   _branches = new Map<string, Branch>();
   _lineage = new Map<string, Lineage>();
@@ -1379,7 +1380,7 @@ class Frame extends Model {
   issue(key: string, args: unknown[]) {
     const { run } = this;
 
-    if (this._undo && UNPLANNED.includes(key)) throw new Error(`${key}() cannot run in an undo.`);
+    if (this._undo && UNPLANNED.includes(key)) throw new Error(`${named(key)} cannot run in an undo.`);
     if (this._settled) throw new Error(`${this.key} has settled; ${key} cannot run.`);
 
     const token = run.node(key, args);
@@ -1471,11 +1472,14 @@ class Frame extends Model {
       const [items, each] = args as [unknown, (item: unknown, index: number) => unknown];
       const fns = args.filter((arg) => typeof arg == 'function');
       const refs = fns.map((fn) => this.keyOf(fn)).filter(Boolean) as string[];
+      let gates = args.filter(plain);
       let mapped = args.length == 2 && iterable(items) && typeof each == 'function';
       let grouped = args.length && args.every((arg) => arg && typeof arg == 'object');
       let functions = args.length && fns.length == args.length;
       let mixed = fns.length && args.some((arg) => arg && typeof arg == 'object');
 
+      if (gates.length && args.length > 1) throw new Error('then() takes a gate alone - this.then({ max, after, key }).');
+      if (gates.length) return this.slot(items as Steps.Gate);
       if (mapped) return this.group(Array.from(items as Iterable<unknown>, each));
       if (grouped) return this.group(args);
       if (functions && refs.length) return this.wait(refs, fns.filter((fn) => !this.keyOf(fn)));
@@ -1501,7 +1505,6 @@ class Frame extends Model {
           this._restore(this, true);
         }
       },
-      slot: { value: (options: Steps.Slot = {}) => this.slot(options) },
       commit: {
         value: () => {
           if (this._settled) throw new Error(`${this.key} has settled; commit cannot run.`);
@@ -1565,7 +1568,7 @@ class Frame extends Model {
   rescue(token: Steps.Node, handler: unknown) {
     const key = this.keyOf(handler);
 
-    if (UNCAUGHT.includes(token.key)) throw new Error(`${token.key}() cannot be caught.`);
+    if (UNCAUGHT.includes(token.key)) throw new Error(`${named(token.key)} cannot be caught.`);
     if (handler && typeof handler != 'function') throw new Error('catch() takes a step, a function or nothing.');
     if (RETRY.has(handler as Function))
       throw new Error('catch() retries from a handler: .catch(this.rescan), rescan(error) { if (this.then.retried >= 3) throw error; this.then.retry(); }');
@@ -1586,7 +1589,7 @@ class Frame extends Model {
     this.arm();
   }
 
-  slot(options: Steps.Slot) {
+  slot(options: Steps.Gate) {
     const token = this.issue('slot', []);
 
     this.run._slots.set(token.id, options);
@@ -1597,7 +1600,7 @@ class Frame extends Model {
   group(members: unknown[]) {
     for (const member of members as Steps.Node[])
       if (!this._items.includes(member)) throw new Error(`then() takes steps called by ${this.key}.`);
-      else if (member.key == 'slot') throw new Error(`${member.key}() cannot be grouped.`);
+      else if (member.key == 'slot') throw new Error('a gate cannot be grouped.');
 
     const group = Object.assign(this.run.node('then', []), { group: members as Steps.Node[] });
 
@@ -1770,6 +1773,18 @@ function serial(error: unknown) {
   const { name, message, cause } = error;
 
   return { name, message, ...cause !== undefined && { cause } };
+}
+
+function named(key: string) {
+  return key == 'slot' ? 'a gate' : `${key}()`;
+}
+
+function plain(value: unknown) {
+  if (!value || typeof value != 'object') return false;
+
+  const proto = Object.getPrototypeOf(value);
+
+  return proto === Object.prototype || proto === null;
 }
 
 function signal(key: unknown) {

@@ -726,7 +726,7 @@ describe('groups', () => {
   it('will fail if a group holds what the step did not call', async () => {
     class Test extends Steps {
       async run() {
-        this.then({});
+        this.then(new Date() as never);
       }
     }
 
@@ -2994,7 +2994,7 @@ describe('watchers', () => {
   });
 });
 
-describe('slot', () => {
+describe('gate', () => {
   afterEach(() => void vi.useRealTimers());
 
   const gates = (...keys: string[]) => new Map(keys.map((key) => [key, mockPromise()]));
@@ -3009,7 +3009,7 @@ describe('slot', () => {
       }
 
       protected async visit(site: string) {
-        this.then.slot({ max: 2 });
+        this.then({ max: 2 });
         this.scan(site);
       }
 
@@ -3054,7 +3054,7 @@ describe('slot', () => {
       }
 
       protected async visit(site: string) {
-        this.then.slot({ max: () => this.limit });
+        this.then({ max: () => this.limit });
         this.scan(site);
       }
 
@@ -3104,7 +3104,7 @@ describe('slot', () => {
       }
 
       protected async visit(site: string) {
-        this.then.slot({ max: ($) => (reads(), $.settings.limit) });
+        this.then({ max: ($) => (reads(), $.settings.limit) });
         this.scan(site);
       }
 
@@ -3151,7 +3151,7 @@ describe('slot', () => {
       }
 
       protected async visit(site: string) {
-        this.then.slot({
+        this.then({
           max: ($) => {
             reads(site);
             return $.settings.limit;
@@ -3199,7 +3199,7 @@ describe('slot', () => {
       limit = 0;
 
       async run() {
-        this.then.slot({ max: ($) => (reads(), $.limit) });
+        this.then({ max: ($) => (reads(), $.limit) });
         this.run();
       }
     }
@@ -3231,7 +3231,7 @@ describe('slot', () => {
       }
 
       async run() {
-        this.then.slot({ max: ($) => $.limit });
+        this.then({ max: ($) => $.limit });
         this.scan();
       }
 
@@ -3254,7 +3254,7 @@ describe('slot', () => {
 
     class Test extends Steps {
       async run() {
-        this.then.slot({ after: 1000 });
+        this.then({ after: 1000 });
         this.scan();
       }
 
@@ -3284,7 +3284,7 @@ describe('slot', () => {
       name = '';
 
       async run() {
-        this.then.slot({ key: lock, max: 1 });
+        this.then({ key: lock, max: 1 });
         this.work();
       }
 
@@ -3327,7 +3327,7 @@ describe('slot', () => {
       }
 
       protected async work(name: string) {
-        this.then.slot({ key: 'db', max: 1 });
+        this.then({ key: 'db', max: 1 });
         this.query(name);
       }
 
@@ -3356,13 +3356,13 @@ describe('slot', () => {
 
     class Test extends Journal {
       async run() {
-        this.then.slot({ max: 1 });
+        this.then({ max: 1 });
         this.a();
         this.b();
       }
 
       protected async a() {
-        this.then.slot({ max: 1 });
+        this.then({ max: 1 });
         order.push('a');
       }
 
@@ -3387,12 +3387,12 @@ describe('slot', () => {
       }
 
       protected async visit(site: string) {
-        this.then.slot({ max: 1 });
+        this.then({ max: 1 });
         this.inner(site);
       }
 
       protected async inner(site: string) {
-        this.then.slot({ max: 1 });
+        this.then({ max: 1 });
         this.finish(site);
       }
 
@@ -3417,7 +3417,7 @@ describe('slot', () => {
       }
 
       protected async visit(site: string) {
-        this.then.slot({ max: 1 });
+        this.then({ max: 1 });
         this.scan(site);
       }
 
@@ -3452,7 +3452,7 @@ describe('slot', () => {
       }
 
       protected async visit(site: string) {
-        this.then.slot({ max: 1, after: this.then.retried && 1000 });
+        this.then({ max: 1, after: this.then.retried && 1000 });
         this.scan(site);
       }
 
@@ -3486,12 +3486,12 @@ describe('slot', () => {
 
     class Test extends Steps {
       async run() {
-        this.then.slot({ key: 'db', max: 1 });
+        this.then({ key: 'db', max: 1 });
         this.visit('a').catch(this.again);
       }
 
       protected async visit(site: string) {
-        this.then.slot({ key: 'db', max: 1 });
+        this.then({ key: 'db', max: 1 });
         this.scan(site);
       }
 
@@ -3520,9 +3520,9 @@ describe('slot', () => {
 
     class Failing extends Steps {
       async run() {
-        this.then.slot({ key: lock, max: 1 });
+        this.then({ key: lock, max: 1 });
         this.fail();
-        this.then.slot({ key: lock, max: 1 });
+        this.then({ key: lock, max: 1 });
         this.never();
       }
 
@@ -3538,7 +3538,7 @@ describe('slot', () => {
 
     class Other extends Steps {
       async run() {
-        this.then.slot({ key: lock, max: 1 });
+        this.then({ key: lock, max: 1 });
         this.work();
       }
 
@@ -3578,7 +3578,7 @@ describe('slot', () => {
       }
 
       protected async visit(site: string) {
-        this.then.slot({ key: lock, max: 1 });
+        this.then({ key: lock, max: 1 });
         this.hold(site);
       }
 
@@ -3590,7 +3590,7 @@ describe('slot', () => {
 
     class Other extends Steps {
       async run() {
-        this.then.slot({ key: lock, max: 1 });
+        this.then({ key: lock, max: 1 });
         this.work();
       }
 
@@ -3625,7 +3625,7 @@ describe('slot', () => {
 
     class Test extends Steps {
       async run() {
-        this.then.slot({ key: lock, max: 1 });
+        this.then({ key: lock, max: 1 });
         this.hold();
       }
 
@@ -3660,7 +3660,7 @@ describe('slot', () => {
       }
 
       protected async first() {
-        this.then.slot({ max: 0 });
+        this.then({ max: 0 });
         this.never();
       }
 
@@ -3669,7 +3669,7 @@ describe('slot', () => {
       }
 
       protected async waiter() {
-        this.then.slot({ max: 0, key: 'other' });
+        this.then({ max: 0, key: 'other' });
         this.never();
       }
 
@@ -3701,7 +3701,7 @@ describe('slot', () => {
 
       protected async slow() {
         await Promise.resolve();
-        this.then.slot();
+        this.then({});
         this.never();
       }
 
@@ -3716,10 +3716,10 @@ describe('slot', () => {
     expect(never).not.toHaveBeenCalled();
   });
 
-  it('will not group or return a slot', async () => {
+  it('will not group or return a gate', async () => {
     class Grouped extends Steps {
       async run() {
-        this.then(this.then.slot() as never);
+        this.then(this.then({}) as never);
       }
     }
 
@@ -3729,18 +3729,25 @@ describe('slot', () => {
       }
 
       protected async hold() {
-        return this.then.slot() as never;
+        return this.then({}) as never;
       }
     }
 
-    await expect(Grouped.new().run()).rejects.toThrow('slot() cannot be grouped.');
+    await expect(Grouped.new().run()).rejects.toThrow('a gate cannot be grouped.');
     await expect(Returned.new().run()).rejects.toThrow('hold returned a value; a step returns nothing - its undo is this.then.undo(...).');
   });
 
-  it('will throw outside a step', () => {
-    class Test extends Steps {}
+  it('will throw outside a step, or beside steps', async () => {
+    class Test extends Steps {
+      async run() {
+        this.then({ max: 1 }, this.a());
+      }
 
-    expect(() => Test.new().then.slot()).toThrow('slot must be called inside a step.');
+      protected async a() {}
+    }
+
+    expect(() => Test.new().then({} as never)).toThrow('then(steps) must be called inside a step.');
+    await expect(Test.new().run()).rejects.toThrow('then() takes a gate alone - this.then({ max, after, key }).');
   });
 });
 
@@ -4041,7 +4048,7 @@ describe('catch', () => {
       }
 
       protected async attempt() {
-        this.then.slot({ after: 100 * this.then.retried });
+        this.then({ after: 100 * this.then.retried });
         this.scan();
       }
 
@@ -4261,7 +4268,7 @@ describe('catch', () => {
 
     class Test extends Steps {
       async run() {
-        for (const token of [() => this.then.slot(), () => this.then.end()])
+        for (const token of [() => this.then({}), () => this.then.end()])
           try {
             (token() as unknown as Promise<void>).catch();
           } catch (error) {
@@ -4271,7 +4278,7 @@ describe('catch', () => {
     }
 
     await Test.new().run().catch(() => {});
-    expect(errors).toEqual([new Error('slot() cannot be caught.'), new Error('end() cannot be caught.')]);
+    expect(errors).toEqual([new Error('a gate cannot be caught.'), new Error('end() cannot be caught.')]);
   });
 
   it('will throw for a handler not a function', async () => {
@@ -6487,7 +6494,7 @@ describe('durable handlers', () => {
       protected async first() {
         const tries = [
           () => this.then.undo(this.a(), (() => {}) as never),
-          () => this.then.undo(this.then.slot() as never),
+          () => this.then.undo(this.then({}) as never),
           () => this.then.undo(),
           () => this.then.undo({} as never),
           () => this.then.undo(this.a as never),

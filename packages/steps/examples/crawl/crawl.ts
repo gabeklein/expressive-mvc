@@ -29,9 +29,9 @@ export class Crawl extends Steps {
   protected async visit(site: string) {
     const { retried } = this.then;
 
-    // at most `limit` sites at once - read through `$`, so a UI raising or lowering it mid-run takes effect
+    // a gate: at most `limit` sites at once - read through `$`, so a UI raising or lowering it mid-run takes effect
     // a replay waits 1s, 2s, then 4s first, then queues behind the sites already waiting
-    this.then.slot({
+    this.then({
       max: ($) => $.limit,
       after: retried && SECOND * 2 ** (retried - 1)
     });
