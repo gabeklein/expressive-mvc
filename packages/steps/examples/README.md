@@ -42,7 +42,7 @@ A PR adding a feature extends an example and this table.
 | --- | --- |
 | `this.then.on({ undo: async () => { … } })` - an undo | `SubmitOrder.reserve`, `SubmitOrder.pay`, `SubmitOrder.ship` |
 | `this.then.on({ undo: this.step(x) })` - a step called for an undo, recorded with its args: the durable form | `Deploy.build` (`unpublish`, `untag`), `Deploy.install` (`uninstall`) |
-| `this.then.on({ error: async () => { … } })` - observe a failure in the subtree, never recover | `Deploy.rollout`; deploy test `will uninstall upgraded hosts when the rollout fails` |
+| `this.then.on({ close: async (reason) => { … } })` - observe how the subtree ended, a failure included | `Deploy.rollout`; deploy test `will uninstall upgraded hosts when the rollout fails` |
 | a step owning its undo - undone when a sibling fails | `SubmitOrder.ship` (`cancel`); order test `will cancel the booking when the receipt fails` |
 | several undos in one step, newest first | `Deploy.build` |
 | every step taken back has its fields restored | `SubmitOrder`, `Deploy.canary`; deploy test `will roll back the canaries and the build when the gate aborts` |

@@ -341,7 +341,7 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### Steps
 
-- [steps.md](steps.md) - `@expressive/steps`: `run` as entry and result, `await this`, a step body as a plan, groups, waits and racers, durations, `then.on` outcome handlers (undo/error/abort/stop/close), `.catch` handlers, `then.retry()`, `then.only` gates, stop/abort/end, hooks, coordination-first conventions
+- [steps.md](steps.md) - `@expressive/steps`: `run` as entry and result, `await this`, a step body as a plan, groups, waits and racers, durations, `then.on` outcome handlers (undo/catch/abort/stop/close), `.catch` handlers, `then.retry()`, `then.only` gates, stop/abort/end, hooks, coordination-first conventions
 
 ### Examples
 

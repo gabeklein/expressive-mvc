@@ -45,6 +45,13 @@ A failure that is expected - no courier, a declined card - is a typed error thro
 - A function is the default. It lives in this process: under a durable host - future - a restart drops it, and the run fails instead of recovering.
 - A step method is for a durable run whose recovery must survive a restart. It runs given the error, whatever it declares - in process the original; the durable tier rebuilds it from the record, `'Stopped'` included.
 
+## A call's catch, or a step's own
+
+- `this.pay().catch(handler)` - the caller's recovery for that call: the branch is the call and all it schedules, `pay` included.
+- `this.then.on({ catch })` in `pay` - its own fallback: the branch is what `pay` scheduled; `pay`'s effects stay. See [on.md](on.md#handlers).
+
+Inner first: a failure meets the step's own `catch` before a `.catch` on its call - throwing there passes it to the caller's. `retry()` in either replays the step the catch belongs to.
+
 ## Retry
 
 A retry is a handler calling `this.then.retry()` - the policy lives in the handler, coordination first:

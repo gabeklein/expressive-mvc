@@ -15,7 +15,7 @@
 | `stop(reason?)` | halt, keeping what was done ([runs.md](runs.md#stop-and-abort)) |
 | `abort(reason?)` | halt and unwind ([runs.md](runs.md#stop-and-abort)) |
 | `commit()` | in a step: a point of no return ([on.md](on.md#commit)) |
-| `on({ undo, error, abort, stop, close })` | in a step: handlers for its subtree's outcomes ([on.md](on.md#handlers)) |
+| `on({ undo, catch, abort, stop, close })` | in a step: handlers for its subtree's outcomes ([on.md](on.md#handlers)) |
 | `restore()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
 | `only(max, key?)` | in a step: a gate - wait for a free slot, then run what follows holding it ([gate.md](gate.md)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
