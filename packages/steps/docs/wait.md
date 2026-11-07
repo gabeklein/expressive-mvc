@@ -86,6 +86,5 @@ protected async tool(call: ToolCall) {
 ## Rules
 
 - `run` and `end` cannot answer a wait - listing one fails the run (`end cannot answer a wait.`).
-- A wait returned from a step is not in the plan: it parks the unwind on failure ([undo.md](undo.md#a-returned-wait)).
-- A wait reached while undo closures are held logs `console.warn` once per run - closures will not survive a resume in the durable tier; return a token as the undo instead ([undo.md](undo.md)).
+- A wait reached while function compensations are held logs `console.warn` once per run - closures will not survive a resume in the durable tier; register a step instead ([undo.md](undo.md#compensations)).
 - `stop()`, a failure, and `then.end()` from outside release open waits and abort their watchers.

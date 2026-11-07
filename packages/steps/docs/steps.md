@@ -81,17 +81,11 @@ protected async pay() {
 }
 ```
 
-Like any step it returns nothing or its undo - an arrow returning `fetch(…)` fails the run.
+Like any step it returns nothing - an arrow returning `fetch(…)` fails the run.
 
 An arrow and a `function` are equivalent: a `function` gets the inline step's own proxy as `this`; an arrow's `this` is the enclosing step's settled proxy, which hands writes, step calls, collection reads and `this.then` to the inline step in flight - its writes are in its entry and restored on throw, its step calls schedule, `this.then.signal` is its own. Nested arrows resolve to the innermost.
 
 The hand-off needs exactly one inline step of that step in flight, and no wait that step opened still open. Two inline arrows of one step running at once - a group of them - see the settled proxy as is: writes unmanaged, step calls [settled calls](#calls-after-a-step-settles). Use `function`, or a method step, there. While the step's wait is open, its proxy stays its [watchers'](wait.md#watchers). Anything else calling through it meanwhile - a timer, a lost watcher - lands in the inline step.
-
-Returned, an inline step is the step's undo ([undo.md](undo.md#a-returned-token)), typed `Promise<void>` as a step call is, so the step stays `Promise<void>`:
-
-```ts
-return this.then(() => stripe.refund(this.charge!.id));
-```
 
 ## The step signal
 
@@ -124,11 +118,11 @@ Inside a step, `this.then`:
 - tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
-Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.back(step, reason?)` ([undo.md](undo.md#back)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retry` and `then.caught` ([catch.md](catch.md)).
+Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.catch(handler, ...args)` ([undo.md](undo.md#compensations)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retry` and `then.reset()` ([catch.md](catch.md)).
 
-Every token takes `.catch(handler?)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
+Every token takes `.catch(handler?, ...args)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
 
-Every form returns a token typed `Promise<void>`, as a step call is - not awaitable, `.catch` typed; returned from a step, it is the step's undo ([undo.md](undo.md#a-returned-token)). `then.slot()` is typed `void`.
+Every form returns a token typed `Promise<void>`, as a step call is - not awaitable, `.catch` typed. `then.slot()` is typed `void`.
 
 Outside a step, `then(f, r)` is the thenable ([runs.md](runs.md#awaiting-the-instance---start-or-join)); `then(steps)` throws `then(steps) must be called inside a step.`
 
@@ -213,15 +207,15 @@ protected async test() {
 
 An early exit is calling `end` - no flag threaded through later steps.
 
-- `end` must be the last call in its step: a step call, group, wait or slot issued after it fails the run (`end must be the last call in a step.`) - a second `end` included. Returning a token as the undo is not a call - `this.then.end(); return this.refund(id);` stands.
+- `end` must be the last call in its step: a step call, group, wait or slot issued after it fails the run (`end must be the last call in a step.`) - a second `end` included. Registering a compensation is not a call - `this.then.end()` may precede `this.then.catch(…)`.
 - Two branches of a group each scheduling `end`: the first the plan reaches ends the run; the other is discarded with the rest.
-- A failure or `stop()` takes precedence - `end` reached after either does nothing; a [`back`](undo.md#back) in progress stops, as for an outside `end`.
+- A failure or `stop()` takes precedence - `end` reached after either does nothing; a [caught branch's](catch.md) unwind in progress stops, as for an outside `end`.
 
 From outside, `then.end()` ends the active run now ([runs.md](runs.md#end-from-outside)).
 
 ## What a step returns
 
-Nothing, `true` or `false`, a closure (its undo), or a token it issued - a step, group, wait or inline step: `return this.release(id)` registers that step as its undo and removes it from the plan ([undo.md](undo.md)). An undo or `true` also has an unwind restore the step's fields ([undo.md](undo.md#restoring-fields)); nothing or `false`, not. Any other value fails the run (`first returned a value; a step returns nothing, true, or its undo.`). `run`'s return is the result, never an undo.
+Nothing. Any value fails the run (`first returned a value; a step returns nothing - its undo is this.then.catch(handler).`) - a step's undo is a [compensation](undo.md#compensations) it registers. `run`'s return is the result.
 
 ## Entry
 
@@ -240,12 +234,12 @@ Each step that commits is one entry, handed to [`after`](hooks.md) - the runner 
     ] },
     { id: 'end#1', key: 'end', args: [] }
   ],
-  undo: { id: 'refund#1', key: 'refund', args: ['ch_42'] }
+  compensate: [{ id: 'refund#1', key: 'refund', args: ['ch_42'] }]
 }
 ```
 
-Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `error` - a caught failure ([catch.md](catch.md)), or a failing step that kept its writes; `retry` - a re-run from its own catch; `undone` - the unwind ([undo.md](undo.md)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit); `implicit` - an `end` the runtime added ([end](#end-is-terminal)).
+Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `error` - a caught failure ([catch.md](catch.md)), or a failing step that kept its writes; `retry` - a re-run from its own catch; `unwound` - the unwind ([undo.md](undo.md#the-unwind)); `irreversible`, `halted` - collection changes no restore can undo ([undo.md](undo.md#irreversible)); `committed` - [`then.commit()`](undo.md#commit); `implicit` - an `end` the runtime added ([end](#end-is-terminal)).
 
-A try a catch took reaches `after` with `error`. The runtime makes entries no hook is handed, for its own unwind: a failed try that kept its writes (`error`), a `back` (`to`, `reason` - [undo.md](undo.md#back)), an implicit `end`, and an unwind's answer to a returned wait (`wake`). An entry holds no values - an unwind restores fields from priors the runtime keeps for steps that opted in ([undo.md](undo.md#restoring-fields)).
+A try a catch took reaches `after` with `error`. The runtime makes entries no hook is handed, for its own unwind: a failed try that kept its writes or registered compensations (`error`), and an implicit `end`. An entry holds no values - an unwind restores fields from priors the runtime keeps until the run ends ([undo.md](undo.md#the-unwind)).
 
 Writes from outside the run, through `this.is`, in helpers, or in hooks are in no entry.

@@ -27,6 +27,6 @@ class Crawl extends Steps {
   - any other value - one queue per value, across this instance's groups and runs.
 - A slot reached under a slot its own lineage holds in the same queue, while the holder is in progress, re-enters it: it waits `after` and takes no second slot, so a nested slot cannot deadlock.
 - A [catch](catch.md) handler re-running its issuer - `.catch(this.visit)` in `visit` - releases the issuer's slots before it starts: the re-run waits its `after`, then queues behind those already waiting. The issuer's later items run without the slot.
-- `stop()`, an outside `end` or a failure releases the run's held slots and cancels its waiting ones; a [`back`](undo.md#back) cancels waiting slots it discards.
+- `stop()`, an outside `end` or a failure releases the run's held slots and cancels its waiting ones; a [caught failure](catch.md) cancels waiting slots in its branch.
 
-The token is journaled in the step's `run` - `{ id: 'slot#1', key: 'slot', args: [] }`; options are not journaled. A write after it fails the run as after any token. It cannot be grouped (`slot() cannot be grouped.`) or returned as an undo. Outside a step, `then.slot()` throws `slot must be called inside a step.`
+The token is journaled in the step's `run` - `{ id: 'slot#1', key: 'slot', args: [] }`; options are not journaled. A write after it fails the run as after any token. It cannot be grouped (`slot() cannot be grouped.`) or caught. Outside a step, `then.slot()` throws `slot must be called inside a step.`

@@ -120,7 +120,7 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 
 `reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. `back` and the tail see the same error; `then.error` stays unset.
 
-`stop(true)` also unwinds the run as a failure would ([undo.md](undo.md)), `back` included; an undo or `back` that throws sets `error` and the run rejects with it. During an unwind parked on a [returned wait](undo.md#a-returned-wait), `stop()` halts the unwind there; the run rejects with the failure, `reason` recorded on the halted entry. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
+`stop(true)` also unwinds the run as a failure would ([undo.md](undo.md)), compensations given the `'Stopped'` error; a compensation that throws sets `error` and the run rejects with it. During a [caught branch's](catch.md) unwind, `stop()` stops it between compensations. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 
 A stopped run is not rethrown uncaught.
 

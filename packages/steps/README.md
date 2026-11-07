@@ -1,6 +1,6 @@
 # @expressive/steps
 
-Multi-step processes as Expressive Models. Extend `Steps` and every method is a step: a step schedules the next by calling it, fields carry data between them. `run()` takes the arguments, schedules, waits for the run with `await this`, and returns the result. Each step is atomic and returns its own undo, so a failure unwinds what committed. Runs repeat, queue and park on waits answered from outside; status is reactive on `this.then`.
+Multi-step processes as Expressive Models. Extend `Steps` and every method is a step: a step schedules the next by calling it, fields carry data between them. `run()` takes the arguments, schedules, waits for the run with `await this`, and returns the result. Each step is atomic and registers its own compensation, so a failure unwinds what committed. Runs repeat, queue and park on waits answered from outside; status is reactive on `this.then`.
 
 In-process only for now - no durable persistence.
 
@@ -27,17 +27,15 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
+    this.then.catch(this.release, hold);
     this.pay();
-
-    return () => inventory.release(hold);
   }
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
+    this.then.catch(this.refund, this.charge.id);
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
-
-    return this.refund(this.charge.id);
   }
 
   protected async ship(chargeId: string) {
@@ -48,7 +46,11 @@ class SubmitOrder extends Steps {
     await mail.send(this.cart.email, url);
   }
 
-  protected async refund(chargeId: string) {
+  protected async release(_error: unknown, hold: string) {
+    await inventory.release(hold);
+  }
+
+  protected async refund(_error: unknown, chargeId: string) {
     await stripe.refund(chargeId);
   }
 }
@@ -59,6 +61,6 @@ order.then.status;                     // 'idle' - reactive, like any field
 const { orderId } = await order;       // runs run(), typed by its return
 ```
 
-A failed `courier.book` unwinds newest first: `refund`, then `pay`'s fields restored, then `release`.
+A failed `courier.book` unwinds newest first: `refund`, then `release`, then every taken-back step's fields restored.
 
 Reference: [docs/](docs/README.md), and the `steps` page of the Expressive skill ([skills/steps.md](../../skills/steps.md)).

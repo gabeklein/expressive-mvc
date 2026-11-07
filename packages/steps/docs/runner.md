@@ -9,16 +9,16 @@
 | `queue` | argument arrays of queued `run()` calls |
 | `waiting` | open waits, `{ id, step, args, answers }`, oldest first ([wait.md](wait.md)) |
 | `runs` | finished runs - ended, failed or stopped |
-| `error` | what failed the run, or what its last undo threw |
+| `error` | what failed the run, or what a compensation threw |
 | `on` | the instance |
 | `end()` | in a step: end the run where the plan reaches it ([steps.md](steps.md#end-is-terminal)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |
 | `stop(undo?, reason?)` | cancel ([runs.md](runs.md#stop)) |
 | `commit()` | in a step: a point of no return ([undo.md](undo.md#commit)) |
+| `catch(handler, ...args)` | in a step: register its compensation ([undo.md](undo.md#compensations)) |
+| `reset()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
 | `slot({ max?, after?, key? })` | in a step: wait for a free slot, then run what follows holding it ([slot.md](slot.md)) |
-| `back(step, reason?)` | in a step: unwind what committed after `step`, then continue ([undo.md](undo.md#back)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
 | `retry` | in a step: `0`, or how many times it was re-run from its own catch ([catch.md](catch.md#retry)) |
-| `caught` | in a catch handler: the error it handles ([catch.md](catch.md)) |
 | `then(...tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
 | `then(fn)` | in a step: an inline step ([steps.md](steps.md#inline-steps)) |
 | `then(...steps, ...watchers)` | in a step: a wait answered by one of these steps ([wait.md](wait.md)) |
@@ -26,14 +26,14 @@
 ## Entry
 
 ```ts
-{ id, key, args, next, wrote, undo?, undone?, wake?, retry?, error?, irreversible?, committed?, halted?, reason? }
+{ id, key, args, next, wrote, compensate?, unwound?, wake?, retry?, error?, irreversible?, committed?, halted? }
 ```
 
-The Runner keeps no journal. Each step's entry is handed to `after(step, entry)` as it commits, a caught try's with `error` ([hooks.md](hooks.md)); a class wanting a log keeps them - `this.log.push(entry)`. A later unwind updates a kept entry in place: `undone`, `halted`, and `reason` when `stop(undo, reason)` halted a parked unwind there ([undo.md](undo.md#a-returned-wait)). See [steps.md](steps.md#entry).
+The Runner keeps no journal. Each step's entry is handed to `after(step, entry)` as it commits, a caught try's with `error` ([hooks.md](hooks.md)); a class wanting a log keeps them - `this.log.push(entry)`. A later unwind updates a kept entry in place: `unwound`, `halted` ([undo.md](undo.md#the-unwind)). See [steps.md](steps.md#entry).
 
 `wrote` names the fields the step wrote, collections changed in place included - no values.
 
-`commit`, `back`, `slot`, `signal`, `retry` and `caught` outside a step throw.
+`commit`, `catch`, `reset`, `slot`, `signal` and `retry` outside a step throw.
 
 `status`, `active`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them.
 
