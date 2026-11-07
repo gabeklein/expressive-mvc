@@ -247,9 +247,10 @@ declare namespace Steps {
     /** Inside a step: a point of no return - the step is not caught, restored or undone, and the unwind stops here. */
     commit(): void;
     /**
-     * Inside a step: handlers for the outcome of this step and all it schedules - each a step called for
-     * it (claimed, not scheduled; recorded with its args), several in an array (a group), or a function
-     * (process-local, dropped on restart; given the error or reason). Deepest step first, newest first:
+     * Inside a step: handlers for the outcome of this step and all it schedules - each a function, called
+     * on the instance (method shorthand works; keys it writes are kept) and given the error, or for a durable
+     * run, steps called for it (claimed, not scheduled; recorded with their args; several in an array run
+     * as a group). Deepest step first, newest first:
      * - `error` - a step in the subtree failed and no `.catch` below took it; observes, never recovers;
      * - `abort` - `abort()`, or the subtree lost a race;
      * - `undo` - after `error` or `abort`: take back what the step did; fields are restored after it;
@@ -257,7 +258,7 @@ declare namespace Steps {
      * - `done` - the subtree ended, any way - last.
      * Keys a handler writes are kept.
      */
-    on(handlers: { [K in 'undo' | 'error' | 'abort' | 'stop' | 'done']?: Promise<void> | readonly Promise<void>[] | ((reason: unknown) => unknown) }): void;
+    on(handlers: { [K in 'undo' | 'error' | 'abort' | 'stop' | 'done']?: ((reason: unknown) => unknown) | Promise<void> | readonly Promise<void>[] } & ThisType<T>): void;
     /** Inside a `.catch` handler: restore the caught branch's fields now; writes after it stand. */
     restore(): void;
     /**

@@ -225,12 +225,11 @@ it('will uninstall upgraded hosts when the rollout fails', async () => {
   expect(fleet.serve).not.toHaveBeenCalledWith('web-3');
   // migrate committed, so the unwind halts there: canaries and build stay
   expect(registry.unpublish).not.toHaveBeenCalled();
-  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.unwound]).slice(-5)).toEqual([
+  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.unwound]).slice(-4)).toEqual([
     ['migrate#1', true, true, undefined],
     ['rollout#1', undefined, undefined, undefined],
     ['upgrade#1', undefined, undefined, true],
-    ['uninstall#3', undefined, undefined, undefined],
-    ['alert#1', undefined, undefined, undefined]
+    ['uninstall#3', undefined, undefined, undefined]
   ]);
 });
 

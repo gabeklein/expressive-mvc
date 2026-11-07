@@ -67,7 +67,7 @@ test('will unwind pay and wait for another card when declined', async ({ page })
   await expect(page.locator('.status')).toHaveText('Status: waiting');
   await expect(field(page, 'Hold')).toHaveText('H-1');
   await expect(field(page, 'Authorization')).toHaveText('-');
-  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'timeout#1', 'decline#2', 'cancel#1', 'declined#1', 'another#1']);
+  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'timeout#1', 'decline#2', 'declined#1', 'another#1']);
   await expect(page.locator('.record li', { hasText: 'pay#1' })).toContainText('undone');
 });
 
@@ -77,7 +77,7 @@ test('will decline an approval nobody answers', async ({ page }) => {
 
   await expect(page.locator('.notice')).toHaveText('Card timed out.');
   await expect(page.getByRole('button', { name: 'Try another card' })).toBeVisible();
-  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'timeout#1', 'decline#1', 'cancel#1', 'declined#1', 'another#1']);
+  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'timeout#1', 'decline#1', 'declined#1', 'another#1']);
 });
 
 test('will retry with another card after a decline', async ({ page }) => {
@@ -99,7 +99,7 @@ test('will retry with another card after a decline', async ({ page }) => {
   await expect(page.locator('.status')).toHaveText('Status: idle');
   await expect(field(page, 'Tracking')).toHaveText('T-H-1-1');
   await expect(ids(page)).toHaveText([
-    'run#1', 'reserve#1', 'pay#1', 'timeout#1', 'decline#2', 'cancel#1', 'declined#1', 'another#1', 'pay#2', 'timeout#2', 'approve#1', 'mail#1', 'ship#1', 'end#1'
+    'run#1', 'reserve#1', 'pay#1', 'timeout#1', 'decline#2', 'declined#1', 'another#1', 'pay#2', 'timeout#2', 'approve#1', 'mail#1', 'ship#1', 'end#1'
   ]);
 });
 
@@ -126,7 +126,7 @@ test('will stop and unwind mid-run', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);
   await expect(field(page, 'Hold')).toHaveText('-');
   await expect(field(page, 'Authorization')).toHaveText('-');
-  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'timeout#1', 'cancel#1', 'release#1']);
+  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'timeout#1']);
 
   await page.getByRole('button', { name: 'Place order' }).click();
   await expect(page.locator('.status')).toHaveText('Status: running · reserve');

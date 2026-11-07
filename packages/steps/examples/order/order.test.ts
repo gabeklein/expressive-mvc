@@ -115,16 +115,13 @@ it('will unwind what succeeded when a step fails', async () => {
   expect(inventory.release).toHaveBeenCalledWith('hold_sku');
   expect(order.charge).toBeUndefined();
   expect(order.notice).toBe('Order c1 was not placed: no couriers');
-  // each step taken back runs its compensations and has its fields restored - receipt had neither, so it is not marked;
-  // the steps a compensation calls are journaled as they run
+  // each step taken back runs its undo and has its fields restored - receipt had neither, so it is not marked
   expect(record(order).map((entry) => [entry.id, entry.on?.undo?.length, entry.unwound])).toEqual([
     ['run#1', undefined, undefined],
     ['reserve#1', 1, true],
     ['pay#1', 1, true],
     ['ship#1', undefined, undefined],
-    ['receipt#1', undefined, undefined],
-    ['refund#1', undefined, undefined],
-    ['release#1', undefined, undefined]
+    ['receipt#1', undefined, undefined]
   ]);
 });
 
@@ -140,8 +137,8 @@ it('will cancel the booking when the receipt fails', async () => {
   expect(courier.cancel).toHaveBeenCalledWith('trk_c1_ch_42');
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(order.tracking).toBe('');
-  // the compensation is recorded as the step called for it, with its args
-  expect(record(order).find((entry) => entry.key == 'ship')!.on?.undo).toEqual([{ id: 'cancel#1', key: 'cancel', args: ['trk_c1_ch_42'] }]);
+  // a function handler is journaled as then - it lives in this process
+  expect(record(order).find((entry) => entry.key == 'ship')!.on?.undo).toEqual([{ id: 'then#4', key: 'then', args: [] }]);
 });
 
 it('will undo an order stopped mid-shipment', async () => {
@@ -191,7 +188,6 @@ it('will refund and backorder when no courier is free', async () => {
     ['pay#1', true],
     ['ship#1', undefined],
     ['receipt#1', undefined],
-    ['refund#1', undefined],
     ['noCourier#1', undefined],
     ['backorder#1', undefined],
     ['end#2', undefined]

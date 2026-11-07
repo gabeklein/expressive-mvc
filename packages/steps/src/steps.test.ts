@@ -6095,6 +6095,30 @@ describe('races and halts', () => {
     await expect(result).rejects.toThrow('done');
     expect(log).toEqual(['error done']);
   });
+
+  it('will run handlers on the instance, with method shorthand', async () => {
+    class Test extends Steps {
+      status = '';
+
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({
+          done() {
+            expectTypeOf(this.status).toEqualTypeOf<string>();
+            this.status = 'done';
+          }
+        });
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run();
+    expect(test.status).toBe('done');
+  });
 });
 
 describe('collections', () => {

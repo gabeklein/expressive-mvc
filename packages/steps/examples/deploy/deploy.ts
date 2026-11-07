@@ -55,7 +55,8 @@ export class Deploy extends Steps {
     const artifact = await ci.build(this.version);
 
     this.artifact = artifact;
-    // undos run only on unwind, newest first - steps called for them are claimed, recorded with their args
+    // undos run only on unwind, newest first - here steps called for them, recorded with their args:
+    // the form for a durable run, whose compensation must survive a restart; a function is the default
     this.then.on({ undo: this.unpublish(artifact) });
 
     await git.tag(this.version);
@@ -150,13 +151,13 @@ export class Deploy extends Steps {
     const rest = this.hosts.filter((host) => !this.canaries.includes(host));
 
     // outcomes of rollout and all it schedules - error observes a failure below, never recovers
-    this.then.on({ error: this.alert(`${this.version} rollout failed`) });
+    this.then.on({
+      error() {
+        return chat.post(`${this.version} rollout failed`);
+      }
+    });
 
     for (const host of rest) this.upgrade(host);     // a plain loop schedules in sequence - one host at a time
-  }
-
-  protected async alert(text: string) {
-    await chat.post(text);
   }
 
   // drained while it installs - a host that fails stays drained; one upgraded is uninstalled on unwind

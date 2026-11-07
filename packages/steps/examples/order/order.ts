@@ -29,16 +29,16 @@ export class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
-    // its undo, registered right after the effect: a step called for it is claimed, not scheduled - it runs only on unwind, recorded with its args
-    this.then.on({ undo: this.release(hold) });
+    // its undo, registered right after the effect - runs only on unwind, on the instance
+    this.then.on({
+      undo() {
+        return inventory.release(hold);
+      }
+    });
 
     // calling a step schedules it - pay runs once reserve settles; if pay or anything it schedules fails,
     // noCourier runs in its place, given the error - a step method as the handler is recorded with it
     this.pay().catch(this.noCourier);
-  }
-
-  protected async release(hold: string) {
-    await inventory.release(hold);
   }
 
   // a .catch handler runs once the failed branch is unwound - pay refunded; it recovers by scheduling, or throws to keep failing
@@ -52,15 +52,15 @@ export class SubmitOrder extends Steps {
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.on({ undo: this.refund(this.charge.id) });
+    this.then.on({
+      undo() {
+        return stripe.refund(this.charge!.id);
+      }
+    });
 
     // one parallel group; the run ends once it is done - then.end() must be the last call
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.then.end();
-  }
-
-  protected async refund(chargeId: string) {
-    await stripe.refund(chargeId);
   }
 
   protected async ship(chargeId: string) {
@@ -72,11 +72,11 @@ export class SubmitOrder extends Steps {
     this.tracking = booking.id;
 
     // ship owns its compensation - cancelled if receipt, beside it, fails
-    this.then.on({ undo: this.cancel(booking.id) });
-  }
-
-  protected async cancel(tracking: string) {
-    await courier.cancel(tracking);
+    this.then.on({
+      undo() {
+        return courier.cancel(booking.id);
+      }
+    });
   }
 
   protected async backorder() {
