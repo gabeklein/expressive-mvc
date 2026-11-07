@@ -129,7 +129,7 @@ this.then.on({
 | `close` | subtree ended any way, last; alone on a clean finish | `undefined` if clean (recovered or `then.end()` too), else the error / `'Aborted'` / `'Stopped'` |
 
 - To observe a failure without recovering, read `reason` in `close`; `catch` is for recovery.
-- `catch` returning recovers at its step: the failed part of the subtree unwinds, the step's effects stay, its `undo` does not run; steps it schedules replace the rest. It covers what the step schedules, not its own body; one per step; it runs before a `.catch` on the step's call (inner first); `this.then.retry()` replays the step. A step finished earlier and taken back by a later failure gets `undo` only.
+- `catch` returning recovers at its step: the failed part of the subtree unwinds, the step's effects stay, its `undo` does not run; steps it schedules replace the rest. It covers from registration on, the rest of the step's own body included (a throw there resets the step first); one per step; it runs before a `.catch` on the step's call (inner first); `this.then.retry()` replays the step. A step finished earlier and taken back by a later failure gets `undo` only.
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
 - Unwind order: failure → handlers newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
 - Registered before its step fails, handlers run for that failure too and see the step's partial writes. They run before fields are restored; keys they write are kept. An unknown key throws. `run` registers none - clean up in its tail.
