@@ -39,12 +39,12 @@ interface Rescue {
   fn?: Function;
 }
 
-type Restore = (into?: Frame, all?: boolean) => void;
+type Restore = (into?: Frame, all?: boolean, within?: string) => void;
 
 interface Unwound {
   undone: Steps.Entry[];
   kept: Set<string>;
-  failed?: { cause: unknown };
+  failed?: { cause: unknown; at: string };
 }
 
 interface Branch {
@@ -80,6 +80,7 @@ interface Waiter {
 const HOOKS = new Set(['before', 'after']);
 const KEYS = ['status', 'active', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
+const LONGEST = 2 ** 31 - 1;
 const GATES = new WeakMap<object, Gate>();
 const UNCAUGHT = ['gate', 'end'];
 const UNPLANNED = ['end', 'gate', 'wait'];
@@ -555,6 +556,9 @@ class Run extends Model {
   _counts = new Map<string, number>();
   _on = new Map<string, Handler[]>();
   _finished = new Set<string>();
+  _writer = new Map<string, string>();
+  _lost = new Set<string>();
+  _losing = new Map<string, Promise<unknown>>();
   _held = new Map<string, Held>();
   _inline = new Map<string, Function>();
   _errors = new Map<string, unknown>();
@@ -580,7 +584,6 @@ class Run extends Model {
   _settling?: boolean = undefined;
   _error?: unknown = undefined;
   _stopped?: Error = undefined;
-  _warned?: boolean = undefined;
   _root?: string = undefined;
   _result?: unknown = undefined;
   _tail?: Promise<unknown> = undefined;
@@ -686,14 +689,21 @@ class Run extends Model {
   async complete(frame?: Frame) {
     const on = frame && this._on.get(frame.id);
 
-    if (!on || this.stale() || this.dropped(frame!.id)) return;
+    if (!on) return;
 
-    this._finished.add(frame!.id);
+    const { id } = frame!;
+    const losing = [...this._losing].filter(([racer]) => this.line(racer).includes(id));
+
+    await Promise.all(losing.map(([, unwind]) => unwind));
+
+    if (this.stale() || this.dropped(id)) return;
+
+    this._finished.add(id);
 
     try {
       await this.fire(on, 'done', undefined, new Set());
     } catch (error) {
-      if (!this.caught(error, frame!.id)) this.halt('failed', error, frame!.id);
+      if (!this.caught(error, id)) this.halt('failed', error, id);
     }
   }
 
@@ -712,15 +722,22 @@ class Run extends Model {
     const losers = (race.group || [race]).filter((racer) => !won.includes(racer.id));
     const cause = Object.assign(new Error(`${answer.key} answered ${wait.id}.`), { name: 'Aborted' });
 
-    for (const racer of losers) this._dropped.add(racer.id);
+    for (const racer of losers) {
+      this._dropped.add(racer.id);
+      this._lost.add(racer.id);
+    }
+
     for (const frame of this.discard()) frame._abort.abort();
     for (const [release, from] of this._holding) if (this.dropped(from)) release();
 
     for (const racer of losers)
-      this.serial(async () => {
-        await this.quiet(racer.id);
-        (await this.recover(racer, cause, 'abort'))();
-      });
+      this._losing.set(
+        racer.id,
+        this.serial(async () => {
+          await this.quiet(racer.id);
+          (await this.recover(racer, cause, 'abort'))(undefined, false, racer.id);
+        })
+      );
   }
 
   quiet(id: string) {
@@ -831,16 +848,21 @@ class Run extends Model {
     const unwound = await this.unwind(cause, mode, new Set(ids.map((entry) => entry.id)), line);
     let done = false;
 
-    const restore: Restore = (into, all) => {
+    const restore: Restore = (into, all, within) => {
       if (done) return;
 
       done = true;
-      this.refill(unwound, into, all);
+      this.refill(unwound, into, all, within);
     };
 
     if (unwound.failed) {
+      const { cause: thrown, at } = unwound.failed;
+
       restore();
-      this.halt('failed', unwound.failed.cause);
+
+      if (mode == 'abort') chain(thrown, cause);
+
+      this.halt('failed', thrown, at);
     }
 
     return restore;
@@ -968,13 +990,6 @@ class Run extends Model {
   }
 
   park(item: Steps.Node, from: Frame) {
-    let closures = [...this._on.values()].some((list) => list.some(({ node }) => this._inline.has(node.id)));
-
-    if (closures && !this._warned) {
-      this._warned = true;
-      console.warn(`${this.control._self} is waiting with function handlers held; a closure does not survive a resume.`);
-    }
-
     return new Promise<Answer | undefined>((resolve) => {
       const { id, answers, race, args } = item;
       const until = answers!.length ? undefined : Date.now() + (args[0] as number);
@@ -1047,6 +1062,8 @@ class Run extends Model {
 
           return frame;
         } catch (thrown) {
+          if (frame._entry) throw thrown;
+
           let error = thrown;
           let irreversible = [...frame._lost];
           let fixed = irreversible.length || frame._committed;
@@ -1054,7 +1071,7 @@ class Run extends Model {
           body = !frame._settled;
 
           if (error instanceof Promise && body && !fixed) {
-            await this.fire(frame._on, 'undo', error, new Set());
+            await this.fire(frame._on, 'undo', undefined, new Set());
 
             this.reset(frame);
 
@@ -1070,8 +1087,14 @@ class Run extends Model {
           throw error;
         }
     } catch (error) {
+      if (frame._entry && !undo) {
+        frame._restore?.();
+        return void this.halt('failed', error, id);
+      }
+
       const { signal } = frame._abort;
       const fixed = frame._lost.size || frame._committed;
+      const lost = this.line(id).some((at) => this._lost.has(at));
       const aborted = signal.aborted && error === signal.reason;
       const on = !fixed && !undo && frame._on.length ? frame._on : undefined;
       const defer = on && !aborted && !this.stale();
@@ -1094,7 +1117,7 @@ class Run extends Model {
       if (defer) this._held.set(id, { prior: frame._prior, log: frame._log });
       if (aborted) return;
 
-      if (body && !fixed && this.caught(error, id)) {
+      if (body && !fixed && (lost || this.caught(error, id))) {
         if (!on) this._entries.push(entry);
 
         try {
@@ -1140,11 +1163,13 @@ class Run extends Model {
 
     const open = this._entries.filter((entry) => this._on.has(entry.id) && !this._finished.has(entry.id) && !this._spent.has(entry.id));
 
-    try {
-      for (const entry of open.reverse()) await this.fire(this._on.get(entry.id), 'done', undefined, new Set());
-    } catch (thrown) {
-      return this.halt('failed', thrown);
-    }
+    for (const entry of open.reverse())
+      try {
+        this._finished.add(entry.id);
+        await this.fire(this._on.get(entry.id), 'done', undefined, new Set());
+      } catch (thrown) {
+        return this.halt('failed', thrown, entry.id);
+      }
 
     const { id } = item || this.node('end', []);
     const entry = { id, key: 'end', args: [], next: [], wrote: [], ...!item && { implicit: true as const } };
@@ -1212,7 +1237,7 @@ class Run extends Model {
     this._at = at;
     control.status = status;
 
-    for (const frame of this.frames) frame._abort.abort();
+    for (const frame of this.flight()) frame._abort.abort();
 
     if (status == 'failed') {
       this._error = error;
@@ -1235,10 +1260,11 @@ class Run extends Model {
 
     if (unwound.failed) {
       const { cause } = unwound.failed;
-      const halted = mode != 'error';
 
-      if (halted && cause instanceof Error && cause.cause === undefined) cause.cause = this._stopped;
-      if (halted) this.control.status = 'failed';
+      if (mode != 'error') {
+        chain(cause, this._stopped);
+        this.control.status = 'failed';
+      }
 
       this.blame(cause);
     }
@@ -1317,7 +1343,7 @@ class Run extends Model {
         if (open) await this.fire(on, 'done', undefined, kept);
       } catch (thrown) {
         entry.unwound = 'failed';
-        return { undone, kept, failed: { cause: thrown } };
+        return { undone, kept, failed: { cause: thrown, at: entry.id } };
       }
 
       this._spent.add(entry.id);
@@ -1359,7 +1385,7 @@ class Run extends Model {
       }
   }
 
-  refill({ undone, kept }: Unwound, into?: Frame, all?: boolean) {
+  refill({ undone, kept }: Unwound, into?: Frame, all?: boolean, within?: string) {
     const self = this.control._self as any;
     const prior = new Map<string, unknown>();
     const log: Log = [];
@@ -1374,14 +1400,16 @@ class Run extends Model {
       log.push(...[...held.log].reverse());
     }
 
+    const since = (key: string) => !!within && !this.line(this._writer.get(key)!).includes(within);
+
     for (const [key, value] of prior) {
       const wrote = into?._wrote.has(key);
 
       if (wrote) into!._prior[key] = value;
-      if (all || (!wrote && !kept.has(key))) self[key] = value;
+      if (all || (!wrote && !kept.has(key) && !since(key))) self[key] = value;
     }
 
-    for (const [key, undo] of log) if (all || !into?._changed.has(key)) undo();
+    for (const [key, undo] of log) if (all || (!into?._changed.has(key) && !since(key))) undo();
   }
 
   blame(cause: unknown) {
@@ -1422,6 +1450,7 @@ class Frame extends Model {
   _restore?: Restore = undefined;
   _caught?: Steps.Node = undefined;
   _committed?: boolean = undefined;
+  _entry?: Steps.Entry = undefined;
   _violation?: string = undefined;
   _late?: boolean = undefined;
   _armed = 0;
@@ -1461,6 +1490,8 @@ class Frame extends Model {
         }
 
         if (this._items.length) this._violation ||= key;
+
+        this.run._writer.set(key, this.id);
 
         return Reflect.set(target, prop, value, target);
       }
@@ -1658,13 +1689,13 @@ class Frame extends Model {
         run._inline.set(node.id, value);
         run._owner.set(node.id, this);
       }
-      else [node] = this.claimed(Array.isArray(value) ? value : [value], usage);
+      else [node] = this.claimed(Array.isArray(value) ? value : [value], usage, 'then.on()');
 
       this._on.push({ kind: kind as Kind, node });
     }
   }
 
-  claimed(args: unknown[], usage: string) {
+  claimed(args: unknown[], usage: string, verb = 'then()') {
     const { _steps } = this.run.control;
     const fns = args.filter((arg) => typeof arg == 'function');
     const steps = args.every((arg) => {
@@ -1673,7 +1704,7 @@ class Frame extends Model {
       return this._items.includes(node) && !UNPLANNED.includes(node.key) && (node.group || _steps.has(node.key));
     });
 
-    if (fns.length && fns.length < args.length) throw rule('then() takes called steps or step references, not both.');
+    if (fns.length && fns.length < args.length) throw rule(`${verb} takes called steps or step references, not both.`);
     if (!args.length || !steps) throw rule(usage);
 
     return this.claim([args.length > 1 ? this.group(args) : (args[0] as Steps.Node)]);
@@ -1796,6 +1827,7 @@ class Frame extends Model {
     if (this._undo) run._spent.add(id);
 
     run._entries.push(entry);
+    this._entry = entry;
 
     return entry;
   }
@@ -1851,6 +1883,7 @@ class Frame extends Model {
     if (lost) at._lost.add(key);
 
     at._changed.add(key);
+    at.run._writer.set(key, at.id);
 
     return out;
   }
@@ -1873,7 +1906,15 @@ class Wait extends Model {
   protected new() {
     const { run, answers, until } = this;
     const { _self: self } = run.control;
-    const timer = until === undefined ? undefined : setTimeout(() => run.waits.delete(this), until - Date.now());
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const arm = () => {
+      const left = until! - Date.now();
+
+      timer = setTimeout(left > LONGEST ? arm : () => run.waits.delete(this), Math.min(left, LONGEST));
+    };
+
+    if (until !== undefined) arm();
 
     for (const key of answers) if (!run.accepts(key, this)) event(self, key);
 
@@ -1886,6 +1927,10 @@ class Wait extends Model {
       this._park(this._answer);
     };
   }
+}
+
+function chain(error: unknown, cause: unknown) {
+  if (error instanceof Error && error.cause === undefined) error.cause = cause;
 }
 
 function grouped(on: Handler[]) {

@@ -2351,40 +2351,6 @@ describe('wait', () => {
     await expect(Test.new().run(other)).rejects.toThrow('a step cannot await its own run.');
   });
 
-  it('will warn once if closure compensations are held', async () => {
-    const warn = mockWarn();
-
-    class Test extends Steps {
-      async run() {
-        this.hold();
-      }
-
-      protected hold() {
-        this.then.on({ undo: () => {} });
-        this.ask();
-        this.ask();
-      }
-
-      ask() {
-        this.then(this.reply);
-      }
-
-      reply() {}
-    }
-
-    const test = Test.new();
-    const result = test.run();
-
-    await flushMicrotasks();
-    test.reply();
-    await flushMicrotasks();
-    test.reply();
-    await result;
-
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith(`${test} is waiting with function handlers held; a closure does not survive a resume.`);
-  });
-
   it('will release waits on stop', async () => {
     class Test extends Steps {
       async run() {
@@ -5844,6 +5810,293 @@ describe('on', () => {
   });
 });
 
+describe('races and halts', () => {
+  afterEach(() => void vi.useRealTimers());
+
+  it('will not restore a loser\'s field over a write made since the race was decided', async () => {
+    class Test extends Steps {
+      note = 'start';
+
+      async run() {
+        this.then(this.allow, this.timeout());
+
+        await this;
+
+        return this.note;
+      }
+
+      protected async timeout() {
+        this.note = 'waiting';
+        this.then({ sec: 10 });
+      }
+
+      async allow() {
+        this.note = 'approved';
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.note).toBe('waiting'));
+    test.allow();
+
+    expect(await result).toBe('approved');
+  });
+
+  it('will wait a duration longer than a timer can hold', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+
+    const DAY = 86_400_000;
+
+    class Test extends Steps {
+      async run() {
+        this.then({ day: 30 });
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.advanceTimersByTimeAsync(25 * DAY);
+    expect(test.then.status).toBe('waiting');
+
+    await vi.advanceTimersByTimeAsync(5 * DAY);
+    await result;
+    expect(test.then.status).toBe('idle');
+  });
+
+  it('will let a loser\'s undo in flight finish when aborted, then undo the rest', async () => {
+    const log: string[] = [];
+    const slow = mockPromise();
+
+    class Test extends Steps {
+      async run() {
+        this.setup();
+      }
+
+      protected async setup() {
+        this.then.on({ undo: () => void log.push('unsetup') });
+        this.then(this.allow, this.timeout());
+      }
+
+      protected async timeout() {
+        this.then.on({ undo: this.untimeout() });
+        this.then({ sec: 10 });
+      }
+
+      protected async untimeout() {
+        const { signal } = this.then;
+
+        log.push('untimeout');
+        await new Promise((resolve, reject) => {
+          slow.then(resolve);
+          signal.addEventListener('abort', () => reject(signal.reason));
+        });
+        log.push('untimeout done');
+      }
+
+      async allow() {}
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.waiting).toHaveLength(2));
+    test.allow();
+    await vi.waitFor(() => expect(log).toEqual(['untimeout']));
+
+    test.then.abort();
+    slow.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Aborted' });
+    expect(log).toEqual(['untimeout', 'untimeout done', 'unsetup']);
+  });
+
+  it('will fire done above a race only once its losers are unwound', async () => {
+    const log: string[] = [];
+    const slow = mockPromise();
+
+    class Test extends Steps {
+      async run() {
+        this.setup();
+      }
+
+      protected async setup() {
+        this.then.on({ stop: () => void log.push('stop setup'), done: () => void log.push('done setup') });
+        this.then(this.allow, this.timeout());
+      }
+
+      protected async timeout() {
+        this.then.on({ undo: this.untimeout() });
+        this.then({ sec: 10 });
+      }
+
+      protected async untimeout() {
+        log.push('untimeout');
+        await slow;
+        log.push('untimeout done');
+      }
+
+      async allow() {}
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.waiting).toHaveLength(2));
+    test.allow();
+    await vi.waitFor(() => expect(log).toEqual(['untimeout']));
+
+    test.then.stop();
+    slow.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(log).toEqual(['untimeout', 'untimeout done', 'stop setup', 'done setup']);
+  });
+
+  it('will journal a step once when its after hook throws', async () => {
+    const undo = vi.fn();
+
+    class Test extends Steps {
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        this.then.on({ undo });
+      }
+
+      protected after(key: string) {
+        if (key == 'first') throw new Error('after');
+      }
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('after');
+    expect(undo).toHaveBeenCalledTimes(1);
+  });
+
+  it('will finish the run in its tail when stopped, rejecting the queue', async () => {
+    const work = mockPromise();
+    const tail = vi.fn();
+
+    class Test extends Steps {
+      async run(value: number) {
+        await this;
+        tail();
+        await work;
+
+        return value;
+      }
+    }
+
+    const test = Test.new();
+    const first = test.run(1);
+
+    await vi.waitFor(() => expect(tail).toHaveBeenCalled());
+
+    const second = test.run(2);
+
+    test.then.stop();
+    work.resolve();
+
+    expect(await first).toBe(1);
+    await expect(second).rejects.toMatchObject({ name: 'Stopped' });
+  });
+
+  it('will give a loser\'s throwing undo the race as cause', async () => {
+    class Test extends Steps {
+      async run() {
+        this.then(this.allow, this.timeout());
+      }
+
+      protected async timeout() {
+        this.then.on({
+          undo() {
+            throw new Error('undo');
+          }
+        });
+        this.then({ sec: 10 });
+      }
+
+      async allow() {}
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.waiting).toHaveLength(2));
+    test.allow();
+
+    const error = await result.catch((error) => error);
+
+    expect(error.message).toBe('undo');
+    expect(error.cause).toMatchObject({ name: 'Aborted', message: 'allow answered wait#1.' });
+    expect(test.then.status).toBe('failed');
+  });
+
+  it('will take a loser rejecting after the race as the loss', async () => {
+    const slow = mockPromise();
+
+    class Test extends Journal {
+      async run() {
+        this.then(this.allow, this.poll());
+      }
+
+      protected async poll() {
+        await slow;
+        throw new Error('poll');
+      }
+
+      async allow() {}
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.active).toBe('poll'));
+    test.allow();
+    slow.resolve();
+
+    await result;
+    expect(test.then.status).toBe('idle');
+    expect(record(test).find((entry) => entry.key == 'poll')).toMatchObject({ error: new Error('poll') });
+  });
+
+  it('will fire error handlers when done throws at the end', async () => {
+    const log: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({
+          error: (error) => void log.push(`error ${(error as Error).message}`),
+          done() {
+            throw new Error('done');
+          }
+        });
+        this.then(this.allow);
+      }
+
+      async allow() {
+        this.then.end();
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    test.allow();
+
+    await expect(result).rejects.toThrow('done');
+    expect(log).toEqual(['error done']);
+  });
+});
+
 describe('collections', () => {
   class Item extends Model {
     name = '';
@@ -7088,7 +7341,7 @@ describe('durable handlers', () => {
     const usage = 'then.on() takes steps called for it - { undo: this.release(id) } - or a function.';
 
     expect(errors).toEqual([
-      'then() takes called steps or step references, not both.',
+      'then.on() takes called steps or step references, not both.',
       'then() takes a duration of ms, sec, min, hr and day as numbers - got none.',
       usage,
       usage,
