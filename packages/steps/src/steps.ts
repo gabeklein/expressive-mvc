@@ -71,6 +71,7 @@ const GATES = new WeakMap<object, Gate>();
 const UNCAUGHT = ['gate', 'end'];
 const UNPLANNED = ['end', 'gate', 'wait'];
 const RESERVED = ['then', 'end', 'gate', 'wait'];
+const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const ISSUED = new WeakMap<object, Frame>();
 const RETRY = new WeakSet<Function>();
 
@@ -325,40 +326,50 @@ function install<T extends Steps>(self: T) {
     }
   });
 
-  const { _hooks: hooks } = control;
+  const { _hooks: hooks, _steps: steps } = control;
 
-  for (let proto = Object.getPrototypeOf(self); proto !== Model.prototype; proto = Object.getPrototypeOf(proto))
-    for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
-      let method = desc.get && unbind(desc.get) !== desc.get;
-      let skip = !method || key == 'new' || key[0] == '_' || Object.hasOwn(self, key);
+  const wire = () => {
+    for (const key of steps.keys()) delete (self as any)[key];
 
-      if (skip) continue;
+    steps.clear();
+    hooks.clear();
 
-      if (key == 'end') throw new Error(`${self.constructor.name} declares end; return the result from run, end early with this.then.end().`);
-      if (RESERVED.includes(key)) throw new Error(`${self.constructor.name} declares ${key}; then, end, gate and wait name plan tokens - rename the step.`);
+    for (let proto = Object.getPrototypeOf(self); proto !== Model.prototype; proto = Object.getPrototypeOf(proto))
+      for (const [key, desc] of Object.entries(Object.getOwnPropertyDescriptors(proto))) {
+        let method = desc.get && unbind(desc.get) !== desc.get;
+        let skip = !method || key == 'new' || key[0] == '_' || Object.hasOwn(self, key);
 
-      if (HOOKS.has(key)) {
-        if (!hooks.has(key)) hooks.set(key, unbind(desc.get!));
-        continue;
-      }
+        if (skip) continue;
 
-      const step = (...args: unknown[]) => control.call(key, args);
+        if (key == 'end') throw new Error(`${self.constructor.name} declares end; return the result from run, end early with this.then.end().`);
+        if (RESERVED.includes(key)) throw new Error(`${self.constructor.name} declares ${key}; then, end, gate and wait name plan tokens - rename the step.`);
 
-      control._steps.set(key, unbind(desc.get!));
-      Object.defineProperty(
-        self,
-        key,
-        key == 'run'
-          ? { value: step, writable: true, configurable: true }
-          : {
-              configurable: true,
-              get(this: object) {
-                touch(this, key);
-                return control.accepts(key) ? step : undefined;
+        if (HOOKS.has(key)) {
+          if (!hooks.has(key)) hooks.set(key, unbind(desc.get!));
+          continue;
+        }
+
+        const step = (...args: unknown[]) => control.call(key, args);
+
+        steps.set(key, unbind(desc.get!));
+        Object.defineProperty(
+          self,
+          key,
+          key == 'run'
+            ? { value: step, writable: true, configurable: true }
+            : {
+                configurable: true,
+                get(this: object) {
+                  touch(this, key);
+                  return control.accepts(key) ? step : undefined;
+                }
               }
-            }
-      );
-    }
+        );
+      }
+  };
+
+  wire();
+  listener(self, (key) => void (key === REFRESH && wire()));
 
   self.get(null, () => control.stop());
 }
@@ -941,6 +952,8 @@ class Run extends Model {
 
     try {
       control.hook('before', key, args);
+
+      if (!fn) throw new Error(`${key} was removed by a hot update.`);
 
       for (;;)
         try {

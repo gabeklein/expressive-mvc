@@ -2,6 +2,8 @@ import { Component, Context, has, map, set, Model } from '@expressive/mvc';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { flushMicrotasks, Journal, mockPromise, mockUncaught, mockWarn, record } from '../test.setup';
+import { accept } from '@expressive/mvc/hot';
+
 import { Steps } from './steps';
 
 describe('steps', () => {
@@ -7722,5 +7724,122 @@ describe('Steps', () => {
     }
 
     expect(Test.new().then.status).toBe('idle');
+  });
+});
+
+describe('hot update', () => {
+  let count = 0;
+
+  const hot = <T>(Test: T) => {
+    const id = `steps-hot-${count++}`;
+
+    accept(id, { Test });
+
+    return <N>(Next: N) => accept(id, { Test: Next }).Test;
+  };
+
+  function body(seen: string[], tag: string) {
+    class Test extends Journal {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        seen.push(tag);
+      }
+    }
+
+    return Test;
+  }
+
+  function added(seen: string[], tag: string, pause?: Promise<unknown>) {
+    class Test extends Steps {
+      async run() {
+        this.a();
+        this.b();
+      }
+
+      protected async a() {
+        await pause;
+        seen.push('a');
+      }
+
+      protected async b() {
+        seen.push('b');
+      }
+
+      protected after(step: string) {
+        seen.push(`${tag} ${step}`);
+      }
+    }
+
+    return Test;
+  }
+
+  function removed(seen: string[], tag: string, pause?: Promise<unknown>) {
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        await pause;
+        seen.push('a');
+      }
+
+      protected after(step: string) {
+        seen.push(`${tag} ${step}`);
+      }
+    }
+
+    return Test as unknown as ReturnType<typeof added>;
+  }
+
+  it('will run a patched step body on a live instance', async () => {
+    const seen: string[] = [];
+    const Test = body(seen, 'a1');
+    const patch = hot(Test);
+    const test = Test.new();
+
+    await test.run();
+
+    expect(patch(body(seen, 'a2'))).toBe(Test);
+
+    await flushMicrotasks();
+    await test.run();
+    expect(seen).toEqual(['a1', 'a2']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'a#1']);
+  });
+
+  it('will wire a step added by a patch, and a patched run and hook', async () => {
+    const seen: string[] = [];
+    const Test = removed(seen, 'after');
+    const patch = hot(Test);
+    const test = Test.new();
+
+    await test.run();
+    expect(patch(added(seen, 'after2'))).toBe(Test);
+
+    await flushMicrotasks();
+    await test.run();
+    expect(seen).toEqual(['after run', 'a', 'after a', 'after2 run', 'a', 'after2 a', 'b', 'after2 b']);
+  });
+
+  it('will stop treating a removed step as one, failing a pending call to it', async () => {
+    const seen: string[] = [];
+    const work = mockPromise();
+    const Test = added(seen, 'after', work);
+    const patch = hot(Test);
+    const test = Test.new();
+    const result = test.run();
+
+    await flushMicrotasks();
+    expect(patch(removed(seen, 'after', work))).toBe(Test);
+
+    await flushMicrotasks();
+    work.resolve();
+
+    await expect(result).rejects.toThrow('b was removed by a hot update.');
+    expect(seen).toEqual(['after run', 'a', 'after a']);
   });
 });
