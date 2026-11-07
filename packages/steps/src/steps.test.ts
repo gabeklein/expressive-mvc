@@ -175,17 +175,21 @@ describe('steps', () => {
     expect(order).toEqual(['run', 'a', 'b']);
   });
 
-  it('will loop by calling run inside a step', async () => {
+  it('will loop by scheduling a step again', async () => {
     class Test extends Journal {
       count = 0;
 
       async run(until: number) {
+        this.tick(until);
+      }
+
+      async tick(until: number) {
         let done = this.count == until;
 
         if (done) return;
 
         this.count++;
-        this.run(until);
+        this.tick(until);
       }
     }
 
@@ -193,7 +197,21 @@ describe('steps', () => {
 
     await test.run(3);
     expect(test.count).toBe(3);
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'run#2', 'run#3', 'run#4']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'tick#1', 'tick#2', 'tick#3', 'tick#4']);
+  });
+
+  it('will throw if a step calls run', async () => {
+    class Test extends Steps {
+      async run() {
+        this.again();
+      }
+
+      async again() {
+        this.run();
+      }
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('run is the entry - loop with a step: a step which schedules itself again.');
   });
 
   it('will record which fields each step wrote', async () => {
@@ -773,288 +791,15 @@ describe('groups', () => {
   });
 });
 
-describe('inline', () => {
-  it('will run a function as a step in its place in the plan', async () => {
-    const order: string[] = [];
-
-    class Test extends Journal {
-      async run() {
-        this.a();
-        this.then(() => void order.push('inline'));
-        this.b();
-      }
-
-      a() {
-        order.push('a');
-      }
-
-      b() {
-        order.push('b');
-      }
-
-      before(key: string) {
-        order.push(`before:${key}`);
-      }
-    }
-
-    const test = Test.new();
-
-    await test.run();
-    expect(order).toEqual(['before:run', 'before:a', 'a', 'before:then', 'inline', 'before:b', 'b']);
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'a#1', 'then#1', 'b#1']);
-    expect(record(test)[0].next).toEqual([
-      { id: 'a#1', key: 'a', args: [] },
-      { id: 'then#1', key: 'then', args: [] },
-      { id: 'b#1', key: 'b', args: [] }
-    ]);
-  });
-
-  it('will run a function with its own proxy as a full step', async () => {
-    class Test extends Journal {
-      value = 0;
-
-      async run() {
-        this.then(function (this: Test) {
-          this.value = 1;
-          this.later();
-        });
-      }
-
-      later() {}
-    }
-
-    const test = Test.new();
-
-    await test.run();
-    expect(record(test).map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
-      ['run#1', [], ['then#1']],
-      ['then#1', ['value'], ['later#1']],
-      ['later#1', [], []]
-    ]);
-  });
-
-  it('will journal the writes of an arrow as its own', async () => {
-    class Test extends Journal {
-      value = 0;
-
-      async run() {
-        this.then(() => {
-          this.value = 1;
-          this.later();
-        });
-      }
-
-      later() {}
-    }
-
-    const test = Test.new();
-
-    await test.run();
-    expect(test.value).toBe(1);
-    expect(record(test).map((entry) => [entry.id, entry.wrote, entry.next.map((node) => node.id)])).toEqual([
-      ['run#1', [], ['then#1']],
-      ['then#1', ['value'], ['later#1']],
-      ['later#1', [], []]
-    ]);
-  });
-
-  it('will restore the writes of an arrow that throws', async () => {
-    class Test extends Steps {
-      value = 0;
-
-      async run() {
-        this.then(async () => {
-          this.value = 1;
-          throw new Error('boom');
-        });
-      }
-    }
-
-    const test = Test.new();
-
-    await expect(test.run()).rejects.toThrow('boom');
-    expect(test.value).toBe(0);
-  });
-
-  it('will give an arrow its own controller', async () => {
-    let signal!: AbortSignal;
-
-    class Test extends Journal {
-      async run() {
-        this.then(() => {
-          signal = this.then.signal;
-          this.then(this.a(), this.b());
-        });
-      }
-
-      a() {}
-      b() {}
-    }
-
-    const test = Test.new();
-
-    await test.run();
-    expect(signal.aborted).toBe(true);
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'then#1', 'a#1', 'b#1']);
-    expect(record(test)[1].next).toMatchObject([{ key: 'then', group: [{ id: 'a#1' }, { id: 'b#1' }] }]);
-  });
-
-  it('will attribute a nested arrow to its own frame', async () => {
-    class Test extends Journal {
-      value = 0;
-
-      async run() {
-        this.then(() => {
-          this.then(() => {
-            this.value = 2;
-          });
-        });
-      }
-    }
-
-    const test = Test.new();
-
-    await test.run();
-    expect(record(test).map((entry) => [entry.id, entry.wrote])).toEqual([
-      ['run#1', []],
-      ['then#1', []],
-      ['then#2', ['value']]
-    ]);
-  });
-
-  it('will attribute an arrow beside a step in flight', async () => {
-    const slow = mockPromise();
-
-    class Test extends Journal {
-      value = 0;
-
-      async run() {
-        this.then(
-          this.load(),
-          this.then(async () => {
-            this.value = 1;
-            slow.resolve();
-          })
-        );
-      }
-
-      async load() {
-        await slow;
-      }
-    }
-
-    const test = Test.new();
-
-    await test.run();
-    expect(record(test).find((entry) => entry.id == 'then#1')!.wrote).toEqual(['value']);
-  });
-
-  it('will not attribute arrows in flight together', async () => {
-    const both = mockPromise();
-    let ran = 0;
-
-    class Test extends Journal {
-      value = 0;
-
-      async run() {
-        const arrow = async () => {
-          if (++ran == 2) both.resolve();
-
-          await both;
-          this.value++;
-        };
-
-        this.then(this.then(arrow), this.then(arrow));
-      }
-    }
-
-    const test = Test.new();
-
-    await test.run();
-    expect(test.value).toBe(2);
-    expect(record(test).filter((entry) => entry.key == 'then').map((entry) => entry.wrote)).toEqual([[], []]);
-  });
-
-  it('will not schedule from arrows in flight together', async () => {
-    const both = mockPromise();
-    let ran = 0;
-
+describe('functions', () => {
+  it('will throw if given a function in place of a step', async () => {
     class Test extends Steps {
       async run() {
-        const arrow = async () => {
-          if (++ran == 2) both.resolve();
-
-          await both;
-          this.later();
-        };
-
-        this.then(this.then(arrow), this.then(arrow));
-      }
-
-      later() {}
-    }
-
-    await expect(Test.new().run()).rejects.toThrow('run has settled; later cannot run.');
-  });
-
-  it('will keep a watcher an outside call beside an arrow', async () => {
-    const work = mockPromise();
-
-    class Test extends Journal {
-      value = 0;
-
-      async run() {
-        this.then(
-          this.then(this.allow, async () => {
-            await work;
-            this.allow();
-          }),
-          this.then(() => {
-            this.value = 1;
-            work.resolve();
-          })
-        );
-      }
-
-      allow() {}
-    }
-
-    const test = Test.new();
-
-    await test.run();
-    expect(test.value).toBe(1);
-    expect(record(test).map((entry) => [entry.id, entry.wrote])).toEqual([
-      ['run#1', []],
-      ['then#1', []],
-      ['allow#1', []]
-    ]);
-  });
-
-  it('will abort the signal when the run stops', async () => {
-    const work = mockPromise();
-    let signal!: AbortSignal;
-
-    class Test extends Journal {
-      async run() {
-        this.then(async (given) => {
-          signal = given;
-          await work;
-        });
+        this.then(() => {});
       }
     }
 
-    const test = Test.new();
-    const result = test.run();
-
-    await vi.waitFor(() => expect(signal).toBeDefined());
-    expect(signal.aborted).toBe(false);
-
-    test.then.stop();
-    expect(signal.aborted).toBe(true);
-
-    work.resolve();
-    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'then#1']);
+    await expect(Test.new().run()).rejects.toThrow('then() takes steps, not a function - declare the work as a step.');
   });
 
   it('will run a function compensation given the error', async () => {
@@ -1081,27 +826,6 @@ describe('inline', () => {
     expect(refund).toHaveBeenCalledWith(new Error('boom'));
     expect(record(test)[1]).toMatchObject({ undo: [{ id: 'then#1', key: 'then', args: [] }], unwound: true });
     expect(record(test)[1].next).toEqual([{ id: 'fail#1', key: 'fail', args: [] }]);
-  });
-
-  it('will type a returned function as no value', async () => {
-    class Test extends Steps {
-      async run() {
-        return this.then(() => {});
-      }
-    }
-
-    expectTypeOf<ReturnType<Test['run']>>().toEqualTypeOf<Promise<void>>();
-    await Test.new().run();
-  });
-
-  it('will fail if the function returns a value', async () => {
-    class Test extends Steps {
-      async run() {
-        this.then(() => 1);
-      }
-    }
-
-    await expect(Test.new().run()).rejects.toThrow('then returned a value; a step returns nothing - its undo is this.then.undo(...).');
   });
 });
 
@@ -1946,7 +1670,7 @@ describe('stop', () => {
     expect(test.then.runs).toBe(1);
   });
 
-  it('will unwind on stop with undo', async () => {
+  it('will unwind on abort', async () => {
     const work = mockPromise();
     const undo = vi.fn();
 
@@ -1972,13 +1696,120 @@ describe('stop', () => {
     const result = test.run();
 
     await flushMicrotasks();
-    test.then.stop({ undo: true });
+    test.then.abort();
+    expect(test.then.status).toBe('stopped');
+    work.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped', message: `${test} was aborted.` });
+    expect(undo).toHaveBeenCalledWith(expect.objectContaining({ name: 'Stopped' }));
+    expect(test.value).toBe(0);
+    expect(test.then.status).toBe('stopped');
+    expect(record(test).map((entry) => entry.unwound)).toEqual([undefined, true, undefined]);
+  });
+
+  it('will keep what was done on stop', async () => {
+    const work = mockPromise();
+    const undo = vi.fn();
+
+    class Test extends Steps {
+      value = 0;
+
+      async run() {
+        this.first();
+      }
+
+      protected first() {
+        this.value = 1;
+        this.then.undo(undo);
+        this.second();
+      }
+
+      async second() {
+        await work;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await flushMicrotasks();
+    test.then.stop();
     work.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
-    expect(undo).toHaveBeenCalledWith(expect.objectContaining({ name: 'Stopped' }));
-    expect(test.value).toBe(0);
-    expect(record(test).map((entry) => entry.unwound)).toEqual([undefined, true, undefined]);
+    expect(undo).not.toHaveBeenCalled();
+    expect(test.value).toBe(1);
+  });
+
+  it('will fail an abort whose undo throws, given the stop as cause', async () => {
+    const work = mockPromise();
+
+    class Test extends Steps {
+      async run() {
+        this.first();
+      }
+
+      protected first() {
+        this.then.undo(() => {
+          throw new Error('stuck');
+        });
+        this.second();
+      }
+
+      async second() {
+        await work;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await flushMicrotasks();
+    test.then.abort('cancelled');
+    work.resolve();
+
+    const error = await result.catch((error) => error);
+
+    expect(error.message).toBe('stuck');
+    expect(error.cause).toMatchObject({ name: 'Stopped', message: 'cancelled', cause: 'cancelled' });
+    expect(test.then.status).toBe('failed');
+    expect(test.then.error).toBe(error);
+  });
+
+  it('will not overwrite a cause, or set one on a value, when an aborted undo throws', async () => {
+    const thrown: unknown[] = [new Error('stuck', { cause: 'own' }), 'stuck'];
+
+    class Test extends Steps {
+      async run() {
+        this.first();
+      }
+
+      protected first() {
+        const error = thrown.shift();
+
+        this.then.undo(() => {
+          throw error;
+        });
+        this.second();
+      }
+
+      async second() {
+        const { signal } = this.then;
+
+        await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
+      }
+    }
+
+    for (const expected of [{ message: 'stuck', cause: 'own' }, 'stuck']) {
+      const test = Test.new();
+      const result = test.run();
+
+      await flushMicrotasks();
+      test.then.abort();
+
+      expect(await result.catch((error) => error)).toEqual(typeof expected == 'string' ? expected : expect.objectContaining(expected));
+      expect(test.then.status).toBe('failed');
+    }
   });
 
   it('will stop from inside a step', async () => {
@@ -2128,7 +1959,7 @@ describe('stop', () => {
     const second = test.run();
 
     await flushMicrotasks();
-    test.then.stop({ undo: true, reason: 'cancelled by user' });
+    test.then.abort('cancelled by user');
     work.resolve();
 
     const stopped = { name: 'Stopped', message: 'cancelled by user', cause: 'cancelled by user' };
@@ -2140,7 +1971,7 @@ describe('stop', () => {
     expect(test.then.error).toBeUndefined();
   });
 
-  it('will carry a reason without undo', async () => {
+  it('will carry a reason on stop', async () => {
     const work = mockPromise();
     const reason = { code: 499 };
 
@@ -2153,7 +1984,7 @@ describe('stop', () => {
     const test = Test.new();
     const result = test.run();
 
-    test.then.stop({ reason: reason });
+    test.then.stop(reason);
     work.resolve();
 
     const error = await result.catch((error) => error);
@@ -2707,10 +2538,10 @@ describe('wait', () => {
   });
 });
 
-describe('watchers', () => {
+describe('races', () => {
   afterEach(() => void vi.useRealTimers());
 
-  function delay(ms: number, { signal }: { signal: AbortSignal }) {
+  function delay(ms: number, signal: AbortSignal) {
     return new Promise<void>((resolve, reject) => {
       const timer = setTimeout(resolve, ms);
 
@@ -2721,17 +2552,19 @@ describe('watchers', () => {
     });
   }
 
-  it('will answer a wait from a watcher', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  it('will answer a wait from a racer', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
     class Test extends Journal {
       answer = '';
 
       async run() {
-        this.then(this.allow, this.deny, async (signal) => {
-          await delay(100, { signal });
-          this.deny('timeout');
-        });
+        this.then(this.allow, this.deny, this.timeout());
+      }
+
+      protected async timeout() {
+        this.then({ ms: 100 });
+        this.deny('timeout');
       }
 
       allow() {
@@ -2748,28 +2581,52 @@ describe('watchers', () => {
 
     await vi.advanceTimersByTimeAsync(99);
     expect(test.then.status).toBe('waiting');
+    expect(test.then.waiting.map((wait) => wait.id)).toEqual(['wait#1', 'wait#2']);
 
     await vi.advanceTimersByTimeAsync(1);
     await result;
     expect(test.answer).toBe('timeout');
     expect(record(test).map((entry) => [entry.id, entry.wake])).toEqual([
       ['run#1', undefined],
+      ['timeout#1', undefined],
       ['deny#1', 'wait#1']
     ]);
-    expect(record(test)[0].next).toEqual([{ id: 'wait#1', key: 'wait', args: [], answers: ['allow', 'deny'] }]);
+    expect(record(test)[0].next).toEqual([
+      { id: 'wait#1', key: 'wait', args: [], answers: ['allow', 'deny'], race: { id: 'timeout#1', key: 'timeout', args: [] } }
+    ]);
+    expect(record(test)[1].next).toEqual([
+      { id: 'wait#2', key: 'wait', args: [100], answers: [] },
+      { id: 'deny#1', key: 'deny', args: ['timeout'] }
+    ]);
   });
 
-  it('will abort watchers once answered from outside', async () => {
+  it('will cancel and unwind racers once answered from outside', async () => {
     let signal!: AbortSignal;
     const lost = vi.fn();
+    const later = vi.fn();
+    const undo = vi.fn();
 
     class Test extends Steps {
+      value = 0;
+
       async run() {
-        this.then(this.reply, async (given) => {
-          signal = given;
-          await delay(100, { signal: given }).catch(lost);
-          throw new Error('lost');
-        });
+        this.then(this.reply, this.watch());
+      }
+
+      protected async watch() {
+        this.value = 1;
+        this.then.undo(undo);
+        this.poll();
+      }
+
+      protected async poll() {
+        signal = this.then.signal;
+        await delay(100, signal).catch(lost);
+        this.later();
+      }
+
+      protected later() {
+        later();
       }
 
       reply() {}
@@ -2786,16 +2643,161 @@ describe('watchers', () => {
 
     await result;
     expect(lost).toHaveBeenCalled();
+    expect(later).not.toHaveBeenCalled();
+    expect(undo).toHaveBeenCalledWith(expect.objectContaining({ name: 'Stopped', message: 'reply answered wait#1.' }));
+    expect(test.value).toBe(0);
   });
 
-  it('will leave the wait open if a watcher settles without answering', async () => {
+  it('will keep what the winning racer did, unwinding the others', async () => {
+    const work = mockPromise();
+    const unpost = vi.fn();
+    const unwarn = vi.fn();
+    const posted: string[] = [];
+
+    class Test extends Journal {
+      warned = false;
+      post = '';
+
+      async run() {
+        this.then(this.reply, this.publish(), this.timeout());
+      }
+
+      protected async publish() {
+        this.post = 'draft';
+        posted.push('draft');
+        this.then.undo(unpost);
+        await work;
+      }
+
+      protected async timeout() {
+        this.warned = true;
+        this.then.undo(unwarn);
+        this.reply();
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.waiting).toEqual([]));
+    expect(unpost).not.toHaveBeenCalled();
+
+    // a racer mid-step settles first, then its branch unwinds
+    work.resolve();
+    await result;
+
+    expect(unpost).toHaveBeenCalled();
+    expect(test.post).toBe('');
+    expect(posted).toEqual(['draft']);
+    expect(unwarn).not.toHaveBeenCalled();
+    expect(test.warned).toBe(true);
+    expect(Object.fromEntries(record(test).map((entry) => [entry.id, entry.unwound]))).toEqual({
+      'run#1': undefined,
+      'timeout#1': undefined,
+      'reply#1': undefined,
+      'publish#1': true
+    });
+  });
+
+  it('will drop what a racer has yet to run', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+
+    const later = vi.fn();
+
+    class Test extends Steps {
+      async run() {
+        this.then(this.reply, this.timeout());
+      }
+
+      protected async timeout() {
+        this.then({ min: 1 });
+        this.later();
+      }
+
+      protected later() {
+        later();
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.waiting).toHaveLength(2));
+
+    test.reply();
+    expect(test.then.waiting).toEqual([]);
+
+    await result;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(later).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('will release a gate a racer holds once answered', async () => {
+    const lock = {};
+    const work = mockPromise();
+
+    class Test extends Steps {
+      async run(hold: boolean) {
+        if (!hold) return this.locked();
+
+        this.then.only(1);
+        this.then(this.reply, this.watch());
+      }
+
+      protected async watch() {
+        this.then.only(1, lock);
+        this.slow();
+      }
+
+      protected async slow() {
+        await work;
+      }
+
+      protected locked() {
+        this.then.only(1, lock);
+        this.done();
+      }
+
+      protected done() {}
+
+      reply() {}
+    }
+
+    const first = Test.new();
+    const second = Test.new();
+    const held = first.run(true);
+
+    await vi.waitFor(() => expect(first.then.active).toBe('slow'));
+
+    const queued = second.run(false);
+
+    await flushMicrotasks();
+    expect(second.then.active).toBe(undefined);
+    expect(second.then.status).toBe('running');
+
+    first.reply();
+    await queued;
+    expect(second.then.status).toBe('idle');
+
+    work.resolve();
+    await held;
+  });
+
+  it('will leave the wait open if racers finish without answering', async () => {
     const nudge = vi.fn();
 
     class Test extends Steps {
       async run() {
-        this.then(this.reply, async () => {
-          nudge();
-        });
+        this.then(this.reply, this.nudge());
+      }
+
+      protected nudge() {
+        nudge();
       }
 
       reply() {}
@@ -2812,23 +2814,29 @@ describe('watchers', () => {
     await result;
   });
 
-  it('will start watchers when the plan reaches the wait', async () => {
+  it('will start racers when the plan reaches the wait', async () => {
     const work = mockPromise();
-    const watcher = vi.fn();
+    const watch = vi.fn();
 
     class Test extends Steps {
       async run() {
         this.slow();
-        this.ask();
+        this.ask('question');
       }
 
       async slow() {
         await work;
       }
 
-      ask() {
-        this.then(this.reply, watcher);
+      ask(question: string) {
+        this.then(this.reply, this.watch(question), this.other());
       }
+
+      protected watch(question: string) {
+        watch(question);
+      }
+
+      protected other() {}
 
       reply() {}
     }
@@ -2837,16 +2845,16 @@ describe('watchers', () => {
     const result = test.run();
 
     await flushMicrotasks();
-    expect(watcher).not.toHaveBeenCalled();
+    expect(watch).not.toHaveBeenCalled();
 
     work.resolve();
-    await vi.waitFor(() => expect(watcher).toHaveBeenCalledWith(expect.any(AbortSignal)));
+    await vi.waitFor(() => expect(watch).toHaveBeenCalledWith('question'));
 
     test.reply();
     await result;
   });
 
-  it('will call a watcher function on the step which opened the wait', async () => {
+  it('will answer with the racer\'s args', async () => {
     class Test extends Steps {
       answer = '';
 
@@ -2859,9 +2867,11 @@ describe('watchers', () => {
       }
 
       ask(question: string) {
-        this.then(this.reply, function (this: Test) {
-          this.reply(`re: ${question}`);
-        });
+        this.then(this.reply, this.guess(question));
+      }
+
+      protected guess(question: string) {
+        this.reply(`re: ${question}`);
       }
 
       reply(answer: string) {
@@ -2872,8 +2882,8 @@ describe('watchers', () => {
     expect(await Test.new().run()).toBe('re: question');
   });
 
-  it('will answer each wait from its own watcher', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  it('will answer each wait from its own racer', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
     class Test extends Journal {
       async run() {
@@ -2881,10 +2891,12 @@ describe('watchers', () => {
       }
 
       ask(ms: number) {
-        this.then(this.reply, async (signal) => {
-          await delay(ms, { signal });
-          this.reply();
-        });
+        this.then(this.reply, this.timeout(ms));
+      }
+
+      protected timeout(ms: number) {
+        this.then({ ms });
+        this.reply();
       }
 
       reply() {}
@@ -2899,15 +2911,17 @@ describe('watchers', () => {
     expect(record(test).filter((entry) => entry.wake).map((entry) => entry.wake)).toEqual(['wait#2', 'wait#1']);
   });
 
-  it('will fail the run if a watcher throws before the wait closes', async () => {
+  it('will fail the run if a racer throws', async () => {
     class Test extends Steps {
       value = 0;
 
       async run() {
         this.value = 1;
-        this.then(this.reply, async () => {
-          throw new Error('watcher');
-        });
+        this.then(this.reply, this.watch());
+      }
+
+      protected async watch() {
+        throw new Error('racer');
       }
 
       reply() {}
@@ -2915,59 +2929,23 @@ describe('watchers', () => {
 
     const test = Test.new();
 
-    await expect(test.run()).rejects.toThrow('watcher');
+    await expect(test.run()).rejects.toThrow('racer');
     expect(test.value).toBe(1);
     expect(test.then.waiting).toEqual([]);
     expect(test.then.status).toBe('failed');
   });
 
-  it('will not let a stale watcher answer the next run', async () => {
-    const gate = mockPromise();
-    const late = vi.fn();
-
-    class Test extends Steps {
-      async run(first: boolean) {
-        this.then(this.reply, async () => {
-          if (!first) return;
-
-          await gate;
-
-          try {
-            this.reply();
-          } catch (error) {
-            late(error);
-            throw error;
-          }
-        });
-      }
-
-      reply() {}
-    }
-
-    const test = Test.new();
-    const first = test.run(true);
-
-    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
-    test.reply();
-    await first;
-
-    const second = test.run(false);
-
-    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
-    gate.resolve();
-    await vi.waitFor(() => expect(late).toHaveBeenCalledWith(new Error('run has settled; reply cannot run.')));
-    expect(test.then.waiting).toHaveLength(1);
-
-    test.reply();
-    await second;
-  });
-
-  it('will abort watchers when the run stops', async () => {
+  it('will abort racers when the run stops', async () => {
     let signal!: AbortSignal;
 
     class Test extends Steps {
       async run() {
-        this.then(this.reply, (given) => void (signal = given));
+        this.then(this.reply, this.watch());
+      }
+
+      protected async watch() {
+        signal = this.then.signal;
+        await delay(100, signal);
       }
 
       reply() {}
@@ -2983,31 +2961,200 @@ describe('watchers', () => {
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
   });
 
-  it('will fail if tokens are mixed with step references', async () => {
-    class Test extends Steps {
+  it('will race a group, and retry a caught race', async () => {
+    let tries = 0;
+
+    class Test extends Journal {
       async run() {
-        this.then(this.a(), this.reply);
+        this.ask().catch(this.again);
       }
 
-      a() {}
+      async ask() {
+        this.then(this.reply, this.a(), this.b());
+      }
+
+      protected a() {
+        if (!tries++) throw new Error('a');
+      }
+
+      protected b() {}
+
+      protected again() {
+        this.then.retry();
+      }
+
       reply() {}
     }
 
-    await expect(Test.new().run()).rejects.toThrow('then() takes called steps or step references, not both.');
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(tries).toBe(2));
+    await flushMicrotasks();
+
+    expect(test.then.waiting).toHaveLength(1);
+    test.reply();
+    await result;
+    expect(record(test).find((entry) => entry.id == 'ask#1')!.next).toMatchObject([
+      { key: 'wait', answers: ['reply'], race: { key: 'then', group: [{ id: 'a#1' }, { id: 'b#1' }] } }
+    ]);
   });
 
-  it('will type a watcher signal', () => {
+  it('will throw if racers are not steps called for it', async () => {
     class Test extends Steps {
       async run() {
-        this.then(this.reply, async (signal) => {
-          expectTypeOf(signal).toEqualTypeOf<AbortSignal>();
-        });
+        this.then(this.reply, this.then.end() as unknown as Promise<void>);
+      }
+
+      reply() {}
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('then() races steps called for it - this.then(this.allow, this.timeout(call)).');
+  });
+
+  it('will throw if given other functions beside answers', async () => {
+    class Test extends Steps {
+      async run() {
+        this.then(this.reply, () => {});
+      }
+
+      reply() {}
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('then() takes steps uncalled to answer and called ones to race - not other functions.');
+  });
+
+  it('will type racers beside answers', () => {
+    class Test extends Steps {
+      async run() {
+        expectTypeOf(this.then(this.reply, this.timeout(1))).toEqualTypeOf<Promise<void>>();
+      }
+
+      protected async timeout(ms: number) {
+        this.then({ ms });
+        this.reply();
       }
 
       async reply() {}
     }
 
     expect(Test.new().then.status).toBe('idle');
+  });
+});
+
+describe('durations', () => {
+  afterEach(() => void vi.useRealTimers());
+
+  it('will wait a duration, summing its units', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+
+    const later = vi.fn();
+
+    class Test extends Journal {
+      async run() {
+        this.then({ sec: 1, ms: 500 });
+        this.later();
+      }
+
+      protected later() {
+        later();
+      }
+    }
+
+    const test = Test.new();
+    const now = Date.now();
+    const result = test.run();
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(test.then.status).toBe('waiting');
+    expect(test.then.waiting).toEqual([{ id: 'wait#1', step: 'run', args: [], answers: [], until: now + 1500 }]);
+
+    await vi.advanceTimersByTimeAsync(1499);
+    expect(later).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    await result;
+    expect(later).toHaveBeenCalled();
+    expect(record(test)[0].next).toEqual([
+      { id: 'wait#1', key: 'wait', args: [1500], answers: [] },
+      { id: 'later#1', key: 'later', args: [] }
+    ]);
+  });
+
+  it('will take minutes, hours and days', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+
+    class Test extends Journal {
+      async run() {
+        this.then({ day: 1, hr: 1, min: 1 });
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.advanceTimersByTimeAsync(90_060_000);
+    await result;
+    expect(record(test)[0].next).toEqual([{ id: 'wait#1', key: 'wait', args: [90_060_000], answers: [] }]);
+  });
+
+  it('will clear its timer when the run stops', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+
+    class Test extends Steps {
+      async run() {
+        this.then({ min: 1 });
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.advanceTimersByTimeAsync(0);
+    test.then.stop();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('will not be answered', async () => {
+    class Test extends Steps {
+      async run() {
+        this.then({ min: 1 });
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    test.then.stop();
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+  });
+
+  it('will throw on an unknown unit, a value not a number, or beside steps', async () => {
+    const cases: object[] = [{ secs: 1 }, { sec: '1' }, { sec: -1 }, { toString: 1 }];
+
+    class Test extends Steps {
+      async run(duration: object) {
+        this.then(duration as { sec: number });
+      }
+    }
+
+    for (const duration of cases)
+      await expect(Test.new().run(duration)).rejects.toThrow(
+        `then() takes a duration of ms, sec, min, hr and day as numbers - got ${Object.keys(duration)[0]}.`
+      );
+
+    class Beside extends Steps {
+      async run() {
+        this.then({ sec: 1 }, this.a());
+      }
+
+      protected a() {}
+    }
+
+    await expect(Beside.new().run()).rejects.toThrow('then() takes a duration alone - this.then({ sec: 10 }).');
   });
 });
 
@@ -3026,7 +3173,7 @@ describe('gate', () => {
       }
 
       protected async visit(site: string) {
-        this.then({ max: 2 });
+        this.then.only(2);
         this.scan(site);
       }
 
@@ -3071,7 +3218,7 @@ describe('gate', () => {
       }
 
       protected async visit(site: string) {
-        this.then({ max: () => this.limit });
+        this.then.only(() => this.limit);
         this.scan(site);
       }
 
@@ -3121,7 +3268,7 @@ describe('gate', () => {
       }
 
       protected async visit(site: string) {
-        this.then({ max: ($) => (reads(), $.settings.limit) });
+        this.then.only(($) => (reads(), $.settings.limit));
         this.scan(site);
       }
 
@@ -3168,11 +3315,9 @@ describe('gate', () => {
       }
 
       protected async visit(site: string) {
-        this.then({
-          max: ($) => {
-            reads(site);
-            return $.settings.limit;
-          }
+        this.then.only(($) => {
+          reads(site);
+          return $.settings.limit;
         });
         this.scan(site);
       }
@@ -3216,9 +3361,11 @@ describe('gate', () => {
       limit = 0;
 
       async run() {
-        this.then({ max: ($) => (reads(), $.limit) });
-        this.run();
+        this.then.only(($) => (reads(), $.limit));
+        this.scan();
       }
+
+      protected async scan() {}
     }
 
     const test = Test.new();
@@ -3248,7 +3395,7 @@ describe('gate', () => {
       }
 
       async run() {
-        this.then({ max: ($) => $.limit });
+        this.then.only(($) => $.limit);
         this.scan();
       }
 
@@ -3264,14 +3411,15 @@ describe('gate', () => {
     ready.resolve();
   });
 
-  it('will wait after ms before taking a slot', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  it('will wait a duration before taking a slot', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
     const scan = vi.fn();
 
     class Test extends Steps {
       async run() {
-        this.then({ after: 1000 });
+        this.then({ sec: 1 });
+        this.then.only(1);
         this.scan();
       }
 
@@ -3285,7 +3433,7 @@ describe('gate', () => {
 
     await vi.advanceTimersByTimeAsync(999);
     expect(scan).not.toHaveBeenCalled();
-    expect(test.then.status).toBe('running');
+    expect(test.then.status).toBe('waiting');
 
     await vi.advanceTimersByTimeAsync(1);
     await result;
@@ -3301,7 +3449,7 @@ describe('gate', () => {
       name = '';
 
       async run() {
-        this.then({ key: lock, max: 1 });
+        this.then.only(1, lock);
         this.work();
       }
 
@@ -3344,7 +3492,7 @@ describe('gate', () => {
       }
 
       protected async work(name: string) {
-        this.then({ key: 'db', max: 1 });
+        this.then.only(1, 'db');
         this.query(name);
       }
 
@@ -3373,13 +3521,13 @@ describe('gate', () => {
 
     class Test extends Journal {
       async run() {
-        this.then({ max: 1 });
+        this.then.only(1);
         this.a();
         this.b();
       }
 
       protected async a() {
-        this.then({ max: 1 });
+        this.then.only(1);
         order.push('a');
       }
 
@@ -3404,12 +3552,12 @@ describe('gate', () => {
       }
 
       protected async visit(site: string) {
-        this.then({ max: 1 });
+        this.then.only(1);
         this.inner(site);
       }
 
       protected async inner(site: string) {
-        this.then({ max: 1 });
+        this.then.only(1);
         this.finish(site);
       }
 
@@ -3434,7 +3582,7 @@ describe('gate', () => {
       }
 
       protected async visit(site: string) {
-        this.then({ max: 1 });
+        this.then.only(1);
         this.scan(site);
       }
 
@@ -3458,7 +3606,7 @@ describe('gate', () => {
   });
 
   it('will not hold a slot through a retry\'s backoff', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
     const scanned: string[] = [];
     let failed = false;
@@ -3469,7 +3617,9 @@ describe('gate', () => {
       }
 
       protected async visit(site: string) {
-        this.then({ max: 1, after: this.then.retried && 1000 });
+        if (this.then.retried) this.then({ sec: 1 });
+
+        this.then.only(1);
         this.scan(site);
       }
 
@@ -3503,12 +3653,12 @@ describe('gate', () => {
 
     class Test extends Steps {
       async run() {
-        this.then({ key: 'db', max: 1 });
+        this.then.only(1, 'db');
         this.visit('a').catch(this.again);
       }
 
       protected async visit(site: string) {
-        this.then({ key: 'db', max: 1 });
+        this.then.only(1, 'db');
         this.scan(site);
       }
 
@@ -3537,9 +3687,9 @@ describe('gate', () => {
 
     class Failing extends Steps {
       async run() {
-        this.then({ key: lock, max: 1 });
+        this.then.only(1, lock);
         this.fail();
-        this.then({ key: lock, max: 1 });
+        this.then.only(1, lock);
         this.never();
       }
 
@@ -3555,7 +3705,7 @@ describe('gate', () => {
 
     class Other extends Steps {
       async run() {
-        this.then({ key: lock, max: 1 });
+        this.then.only(1, lock);
         this.work();
       }
 
@@ -3595,7 +3745,7 @@ describe('gate', () => {
       }
 
       protected async visit(site: string) {
-        this.then({ key: lock, max: 1 });
+        this.then.only(1, lock);
         this.hold(site);
       }
 
@@ -3607,7 +3757,7 @@ describe('gate', () => {
 
     class Other extends Steps {
       async run() {
-        this.then({ key: lock, max: 1 });
+        this.then.only(1, lock);
         this.work();
       }
 
@@ -3642,7 +3792,7 @@ describe('gate', () => {
 
     class Test extends Steps {
       async run() {
-        this.then({ key: lock, max: 1 });
+        this.then.only(1, lock);
         this.hold();
       }
 
@@ -3677,7 +3827,7 @@ describe('gate', () => {
       }
 
       protected async first() {
-        this.then({ max: 0 });
+        this.then.only(0);
         this.never();
       }
 
@@ -3686,7 +3836,7 @@ describe('gate', () => {
       }
 
       protected async waiter() {
-        this.then({ max: 0, key: 'other' });
+        this.then.only(0, 'other');
         this.never();
       }
 
@@ -3718,7 +3868,7 @@ describe('gate', () => {
 
       protected async slow() {
         await Promise.resolve();
-        this.then({});
+        this.then.only(1);
         this.never();
       }
 
@@ -3733,38 +3883,27 @@ describe('gate', () => {
     expect(never).not.toHaveBeenCalled();
   });
 
-  it('will not group or return a gate', async () => {
-    class Grouped extends Steps {
-      async run() {
-        this.then(this.then({}) as never);
-      }
-    }
-
-    class Returned extends Steps {
-      async run() {
-        this.hold();
-      }
-
-      protected async hold() {
-        return this.then({}) as never;
-      }
-    }
-
-    await expect(Grouped.new().run()).rejects.toThrow('a gate cannot be grouped.');
-    await expect(Returned.new().run()).rejects.toThrow('hold returned a value; a step returns nothing - its undo is this.then.undo(...).');
-  });
-
-  it('will throw outside a step, or beside steps', async () => {
+  it('will throw outside a step, or without a count', async () => {
     class Test extends Steps {
       async run() {
-        this.then({ max: 1 }, this.a());
+        this.then.only('1' as never);
       }
-
-      protected async a() {}
     }
 
-    expect(() => Test.new().then({} as never)).toThrow('then(steps) must be called inside a step.');
-    await expect(Test.new().run()).rejects.toThrow('then() takes a gate alone - this.then({ max, after, key }).');
+    expect(() => Test.new().then.only(1)).toThrow('only must be called inside a step.');
+    await expect(Test.new().run()).rejects.toThrow('only() takes a count, or a function returning one.');
+  });
+
+  it('will type a count read from the instance', () => {
+    class Test extends Steps {
+      limit = 1;
+
+      async run() {
+        expectTypeOf(this.then.only(($) => $.limit)).toEqualTypeOf<void>();
+      }
+    }
+
+    expect(Test.new().then.status).toBe('idle');
   });
 });
 
@@ -3970,30 +4109,33 @@ describe('catch', () => {
     expect(record(test)[0].next).toMatchObject([{ key: 'then', rescue: 'again', group: [{ key: 'a' }, { key: 'b' }] }]);
   });
 
-  it('will retry an inline step and a wait', async () => {
+  it('will retry a step and a race', async () => {
     const order: string[] = [];
     let first = true;
 
     class Test extends Steps {
       async run() {
-        this.then(() => {
-          order.push('inline');
+        this.flaky().catch(this.again);
+        this.then(this.reply, this.watch()).catch(this.again);
+      }
 
-          if (first) {
-            first = false;
-            throw new Error('inline');
-          }
-        }).catch(this.again);
+      protected async flaky() {
+        order.push('step');
 
-        this.then(this.reply, async () => {
-          const retried = order.includes('watcher');
+        if (first) {
+          first = false;
+          throw new Error('step');
+        }
+      }
 
-          order.push('watcher');
+      protected async watch() {
+        const retried = order.includes('watcher');
 
-          if (!retried) throw new Error('watcher');
+        order.push('watcher');
 
-          this.reply();
-        }).catch(this.again);
+        if (!retried) throw new Error('watcher');
+
+        this.reply();
       }
 
       reply() {
@@ -4006,7 +4148,7 @@ describe('catch', () => {
     }
 
     await Test.new().run();
-    expect(order).toEqual(['inline', 'inline', 'watcher', 'watcher', 'reply']);
+    expect(order).toEqual(['step', 'step', 'watcher', 'watcher', 'reply']);
   });
 
   it('will throw for retry outside a handler, or once settled', async () => {
@@ -4054,8 +4196,8 @@ describe('catch', () => {
     await expect(Bare.new().run()).rejects.toThrow('catch() retries from a handler: .catch(this.rescan), rescan(error) { if (this.then.retried >= 3) throw error; this.then.retry(); }');
   });
 
-  it('will back off a retry with a slot', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  it('will back off a retry with a duration', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
     let tries = 0;
 
@@ -4065,7 +4207,8 @@ describe('catch', () => {
       }
 
       protected async attempt() {
-        this.then({ after: 100 * this.then.retried });
+        if (this.then.retried) this.then({ ms: 100 * this.then.retried });
+
         this.scan();
       }
 
@@ -4183,13 +4326,15 @@ describe('catch', () => {
     expect(record(test).map((entry) => [entry.id, entry.unwound])).toEqual([['run#1', undefined], ['a#1', true], ['b#1', undefined], ['c#1', undefined], ['d#1', undefined]]);
   });
 
-  it('will catch an answer or watcher of a caught wait', async () => {
+  it('will catch an answer or racer of a caught wait', async () => {
     class Test extends Steps {
       async run() {
         this.then(this.answer).catch();
-        this.then(this.answer, async () => {
-          throw new Error('watcher');
-        }).catch();
+        this.then(this.answer, this.watch()).catch();
+      }
+
+      protected async watch() {
+        throw new Error('racer');
       }
 
       async answer() {
@@ -4280,22 +4425,21 @@ describe('catch', () => {
     await expect(Test.new().run()).rejects.toThrow('a wrote value after scheduling b.');
   });
 
-  it('will not catch slot or end', async () => {
+  it('will not catch end', async () => {
     const errors: unknown[] = [];
 
     class Test extends Steps {
       async run() {
-        for (const token of [() => this.then({}), () => this.then.end()])
-          try {
-            (token() as unknown as Promise<void>).catch();
-          } catch (error) {
-            errors.push(error);
-          }
+        try {
+          (this.then.end() as unknown as Promise<void>).catch();
+        } catch (error) {
+          errors.push(error);
+        }
       }
     }
 
     await Test.new().run().catch(() => {});
-    expect(errors).toEqual([new Error('a gate cannot be caught.'), new Error('end() cannot be caught.')]);
+    expect(errors).toEqual([new Error('end() cannot be caught.')]);
   });
 
   it('will throw for a handler not a function', async () => {
@@ -5252,16 +5396,14 @@ describe('undo', () => {
     expect(record(test).map((entry) => entry.unwound)).toEqual([undefined, undefined, 'failed']);
   });
 
-  it('will not plan an end, slot or wait in a compensation', async () => {
+  it('will not plan an end, gate or wait in a compensation', async () => {
     class Test extends Steps {
-      async run() {
-        this.first();
+      async run(plan: (self: Test) => void) {
+        this.first(plan);
       }
 
-      first() {
-        this.then.undo(() => {
-          this.then.end();
-        });
+      first(plan: (self: Test) => void) {
+        this.then.undo(() => plan(this));
         this.second();
       }
 
@@ -5270,7 +5412,9 @@ describe('undo', () => {
       }
     }
 
-    await expect(Test.new().run()).rejects.toThrow('end() cannot run in an undo.');
+    await expect(Test.new().run((self) => self.then.end())).rejects.toThrow('end() cannot run in an undo.');
+    await expect(Test.new().run((self) => self.then.only(1))).rejects.toThrow('a gate cannot run in an undo.');
+    await expect(Test.new().run((self) => void self.then({ sec: 1 }))).rejects.toThrow('wait() cannot run in an undo.');
   });
 
   it('will throw for a compensation in run', async () => {
@@ -6292,14 +6436,17 @@ describe('commit', () => {
   });
 
   it('will throw if commit is called after its step settled', async () => {
+    let held!: Steps.Controller;
+
     class Test extends Steps {
       async run() {
-        this.then(this.reply, async () => {
-          this.then.commit();
-        });
+        held = this.then;
+        this.later();
       }
 
-      reply() {}
+      protected later() {
+        held.commit();
+      }
     }
 
     await expect(Test.new().run()).rejects.toThrow('run has settled; commit cannot run.');
@@ -7989,7 +8136,7 @@ describe('review', () => {
       protected async b() {}
     }
 
-    await expect(Test.new().run()).rejects.toThrow('then() takes called steps or step references, not both.');
+    await expect(Test.new().run()).rejects.toThrow('then() takes steps, not a function - declare the work as a step.');
     expect(handler).not.toHaveBeenCalled();
   });
 
@@ -8105,7 +8252,7 @@ describe('review', () => {
     const queued = test.run();
 
     await vi.waitFor(() => expect(test.then.status).toBe('failed'));
-    test.then.stop({ reason: 'later' });
+    test.then.stop('later');
     undone.resolve();
 
     await expect(result).rejects.toThrow('boom');

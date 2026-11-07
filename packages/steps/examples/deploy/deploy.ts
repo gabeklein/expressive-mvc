@@ -1,7 +1,7 @@
 import { has, map, Model } from '@expressive/mvc';
 import { Steps } from '@expressive/steps';
 
-import { chat, ci, db, delay, fleet, git, HOUR, MINUTE, pager, registry, SECOND } from './services';
+import { chat, ci, db, fleet, git, pager, registry } from './services';
 
 export class Release extends Model {
   version = '';
@@ -71,8 +71,9 @@ export class Deploy extends Steps {
   }
 
   protected async test() {
-    // a replay waits 1s, then 2s - a gate without max is a plain delay; backoff lives in the retried step
-    this.then({ after: this.then.retried * SECOND });
+    // a replay waits 1s, then 2s first - backoff lives in the retried step
+    if (this.then.retried) this.then({ sec: this.then.retried });
+
     this.suite();
   }
 
@@ -109,29 +110,33 @@ export class Deploy extends Steps {
   }
 
   protected async approval() {
-    // park until promote or abort answers; plain functions after them are watchers
-    this.then(
-      this.promote,
-      this.abort,
-      async (signal) => {
-        await delay(15 * MINUTE, { signal });
-        pager.nudge(`${this.version} awaits approval`);     // settles without answering - the wait stays open
-      },
-      async (signal) => {
-        await delay(HOUR, { signal });
-        this.abort('nobody approved');
-      }
-    );
+    // park until promote or reject answers; the steps called beside them race the answer,
+    // started with the wait and cancelled once one answers
+    this.then(this.promote, this.reject, this.remind(), this.expire());
   }
 
-  // answering steps are public - from outside they exist only while the gate waits
+  protected async remind() {
+    this.then({ min: 15 });
+    this.nudge();       // settles without answering - the wait stays open
+  }
+
+  protected async nudge() {
+    pager.nudge(`${this.version} awaits approval`);
+  }
+
+  protected async expire() {
+    this.then({ hr: 1 });
+    this.reject('nobody approved');
+  }
+
+  // answering steps are public - from outside they exist only while the wait is open
   async promote(approver: string) {
     this.approver = approver;
   }
 
-  async abort(reason: string) {
-    // cancel and unwind everything committed, newest first - the reason becomes the Stopped error's message and cause
-    this.then.stop({ undo: true, reason: `canary rejected: ${reason}` });
+  async reject(reason: string) {
+    // halt and unwind everything committed, newest first - the reason becomes the Stopped error's message and cause
+    this.then.abort(`canary rejected: ${reason}`);
   }
 
   protected async migrate() {

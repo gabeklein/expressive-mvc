@@ -22,7 +22,7 @@ it('will pull every page and end with its values', async () => {
     ['run#1', []],
     ['page#1', ['cursor']],
     ['page#2', ['cursor']],
-    ['then#1', ['acked']]
+    ['ack#1', ['acked']]
   ]);
 
   // Feed's method stayed plain: page called it inline, and it reads from outside
@@ -68,5 +68,5 @@ it('will wait for a token before pulling', async () => {
   sync.token = 't1';
 
   await done;
-  expect(record(sync.pull).map((entry) => entry.id)).toEqual(['run#1', 'page#1', 'page#2', 'then#1']);
+  expect(record(sync.pull).map((entry) => entry.id)).toEqual(['run#1', 'page#1', 'page#2', 'ack#1']);
 });

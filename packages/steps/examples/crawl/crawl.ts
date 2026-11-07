@@ -1,7 +1,7 @@
 import { has, map } from '@expressive/mvc';
 import { Steps } from '@expressive/steps';
 
-import { browser, SECOND, stats, type Product } from './services';
+import { browser, stats, type Product } from './services';
 
 // many sites scanned at once into one live, deduped list - limit and retries read as the run goes
 export class Crawl extends Steps {
@@ -29,12 +29,11 @@ export class Crawl extends Steps {
   protected async visit(site: string) {
     const { retried } = this.then;
 
-    // a gate: at most `limit` sites at once - read through `$`, so a UI raising or lowering it mid-run takes effect
     // a replay waits 1s, 2s, then 4s first, then queues behind the sites already waiting
-    this.then({
-      max: ($) => $.limit,
-      after: retried && SECOND * 2 ** (retried - 1)
-    });
+    if (retried) this.then({ sec: 2 ** (retried - 1) });
+
+    // a gate: only `limit` sites at once - read through `$`, so a UI raising or lowering it mid-run takes effect
+    this.then.only(($) => $.limit);
 
     this.scan(site);
   }

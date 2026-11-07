@@ -58,6 +58,11 @@ interface Hold {
   from: string;
 }
 
+interface Slot {
+  max: number | ((...args: any[]) => number);
+  key: unknown;
+}
+
 interface Waiter {
   hold: Hold;
   max(): number;
@@ -75,6 +80,7 @@ const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const ISSUED = new WeakMap<object, Frame>();
 const RETRY = new WeakSet<Function>();
 const RULES = new WeakSet<Error>();
+const UNITS: Record<string, number> = { ms: 1, sec: 1e3, min: 6e4, hr: 36e5, day: 864e5 };
 
 const TOKEN = {
   catch(this: Steps.Node, handler?: unknown) {
@@ -92,10 +98,13 @@ declare namespace Steps {
   interface Node {
     id: string;
     key: string;
+    /** Arguments - a duration wait's milliseconds. */
     args: unknown[];
     group?: Node[];
-    /** Keys of the steps which may answer this wait. */
+    /** Keys of the steps which may answer this wait - none for a duration. */
     answers?: string[];
+    /** Steps raced against the answers - cancelled once one answers. */
+    race?: Node;
     /** Caught by `.catch()`: a step given the error (its key), `then` for a function, or `true` for none. */
     rescue?: string | true;
   }
@@ -139,20 +148,8 @@ declare namespace Steps {
     args: unknown[];
     /** Keys of the steps which may answer it. */
     answers: string[];
-  }
-
-  /** A gate in the plan - `this.then({ max, after, key })`. */
-  interface Gate<T = any> {
-    /**
-     * Slots held at once. Default: no limit. A function taking `$` - the instance's tracking proxy - is
-     * re-read when anything it read through `$` changes, other Models included; one taking nothing,
-     * when a slot frees and when the instance updates.
-     */
-    max?: number | (($: T) => number);
-    /** Milliseconds from reaching the gate before it queues. */
-    after?: number;
-    /** Share the queue: an object across groups and instances, any other value across this instance. Default: the enclosing group's, else the instance's. */
-    key?: unknown;
+    /** When a duration wait closes, in epoch milliseconds. */
+    until?: number;
   }
 
   interface Snapshot {
@@ -166,10 +163,10 @@ declare namespace Steps {
 
   interface Controller<T extends Model = Model> {
     /**
-     * Inside a step: a gate at this point in the plan - wait `after` ms, then queue FIFO for one of
-     * `max` slots. What this step schedules after it runs holding the slot, until done.
+     * Inside a step: park this point in the plan for a duration - units summed. The next step in
+     * sequence runs once it passes.
      */
-    <This>(this: This, gate: Steps.Gate<T>): void;
+    <This>(this: This, duration: { ms?: number; sec?: number; min?: number; hr?: number; day?: number }): Promise<void>;
 
     /**
      * Inside a step: call `each` per item - a function issuing a step, or a step itself -
@@ -178,29 +175,20 @@ declare namespace Steps {
     <I, This>(this: This, items: Iterable<I>, each: (item: I, index: number) => unknown): Promise<void>;
 
     /**
-     * Inside a step: an anonymous step at this point in the plan, given an `AbortSignal` aborted
-     * when the run stops. Not durable.
+     * Inside a step: park this point in the plan until a call to one of these steps answers it - from
+     * outside, or from a step called beside them (see below). The next step in sequence runs once the
+     * answer, and all it schedules, is done.
      */
-    <This>(this: This, step: (signal: AbortSignal) => unknown): Promise<void>;
-
-    /**
-     * Inside a step: park this point in the plan until a call to one of these steps answers it -
-     * from outside, or from a watcher: a plain function started when the plan reaches the wait,
-     * given an `AbortSignal` aborted once the wait closes. The next step in sequence runs once
-     * the answer, and all it schedules, is done.
-     */
-    <This>(this: This, ...steps: [...steps: ((...args: any[]) => unknown)[], watcher: (signal: AbortSignal) => unknown]): Promise<void>;
-
-    <This>(
-      this: This,
-      ...steps: [...steps: ((...args: any[]) => unknown)[], watcher: (signal: AbortSignal) => unknown, other: (signal: AbortSignal) => unknown]
-    ): Promise<void>;
-
     <This>(this: This, ...steps: ((...args: any[]) => unknown)[]): Promise<void>;
 
     /**
      * Inside a step: run these tokens as one parallel group at this point in the plan.
      * The next step in sequence runs once every member, and all it schedules, is done.
+     *
+     * Beside steps uncalled - `this.then(this.allow, this.deny, this.timeout(call))` - each called step
+     * is a racer, started when the plan reaches the wait. Once a call answers, the racers which did not
+     * make it lose: signals aborted, what they scheduled dropped, gates released; a step in flight
+     * settles, then each losing branch unwinds - undos run, fields restored. The winner keeps all it did.
      */
     <This>(this: This, ...steps: unknown[]): Promise<void>;
 
@@ -225,16 +213,30 @@ declare namespace Steps {
      */
     end(): void;
     /**
-     * Cancel: discard pending steps and queued runs; in-flight steps settle and commit.
-     * `undo` - also unwind the run as a failure would. `reason` - the `cause` of the `'Stopped'`
-     * error the run and queue reject with, and its message when a string.
+     * Inside a step: a gate at this point in the plan - queue FIFO for one of `max` slots; what this
+     * step schedules after it runs holding the slot, until done. A function taking `$` - the instance's
+     * tracking proxy - is re-read when anything it read through `$` changes, other Models included; one
+     * taking nothing, when a slot frees and when the instance updates. `0` pauses. `key` shares the
+     * queue: an object across groups and instances, any other value across this instance. Default: the
+     * enclosing group's, else the instance's.
      */
-    stop(options?: { undo?: boolean; reason?: unknown }): void;
+    only(max: number | (($: T) => number), key?: unknown): void;
+    /**
+     * Halt, keeping what was done: discard pending steps and queued runs; in-flight steps settle and
+     * commit. `reason` - the `cause` of the `'Stopped'` error the run and queue reject with, and its
+     * message when a string.
+     */
+    stop(reason?: unknown): void;
+    /**
+     * Halt and unwind, as a failure would - the run's undos run, newest first, and fields are restored.
+     * An undo which throws fails the run: its error, given the `'Stopped'` error as `cause`.
+     */
+    abort(reason?: unknown): void;
     /** Inside a step: a point of no return - the step is not caught, restored or undone, and the unwind stops here. */
     commit(): void;
     /**
      * Inside a step: its undo - run when an unwind passes through the step: its own failure after this
-     * call, a later failure caught by a `.catch` whose branch includes it, the run failing, `stop({ undo: true })`.
+     * call, a later failure caught by a `.catch` whose branch includes it, the run failing, `abort()`.
      * Steps called for it - `this.then.undo(this.release(hold))`, several a group - are claimed, not
      * scheduled, and recorded with their args. A function is process-local: given the error, it runs on
      * unwind in this process, dropped on restart. Runs before fields are restored; keys it writes are
@@ -245,8 +247,8 @@ declare namespace Steps {
     /** Inside a `.catch` handler: restore the caught branch's fields now; writes after it stand. */
     restore(): void;
     /**
-     * Inside a step: its `AbortSignal` - aborted on `stop()`, an outside `end`, a failure elsewhere,
-     * and once the step settles. A step rejecting with its reason is not a failure.
+     * Inside a step: its `AbortSignal` - aborted on `stop()` or `abort()`, an outside `end`, a failure
+     * elsewhere, a race lost, and once the step settles. A step rejecting with its reason is not a failure.
      */
     readonly signal: AbortSignal;
     /** Inside a step: how many times `then.retry()` replayed it - 0 on a first run. In a handler, the failed one's. */
@@ -289,7 +291,7 @@ function install<T extends Steps>(self: T) {
     status: () => control.status,
     active: () => control.active,
     queue: () => control.queue.map((ticket) => ticket.args),
-    waiting: () => control.run.waits.map(({ id, step, args, answers }) => ({ id, step, args, answers })),
+    waiting: () => control.run.waits.map(({ id, step, args, answers, until }) => ({ id, step, args, answers, ...until !== undefined && { until } })),
     runs: () => control.runs,
     error: () => control.error
   };
@@ -307,7 +309,9 @@ function install<T extends Steps>(self: T) {
     self: { value: self },
     get: { value: () => Object.fromEntries(KEYS.map((key) => [key, read[key]()])) },
     end: { value: (...value: unknown[]) => void (valueless(value), control.conclude()) },
-    stop: { value: (options: { undo?: boolean; reason?: unknown } = {}) => control.stop(options.undo, options.reason) },
+    stop: { value: (reason?: unknown) => control.stop(false, reason) },
+    abort: { value: (reason?: unknown) => control.stop(true, reason) },
+    only: { value: () => outside('only') },
     commit: { value: () => outside('commit') },
     undo: { value: () => outside('undo') },
     restore: { value: () => outside('restore') },
@@ -515,7 +519,7 @@ class Control extends Model {
 
     if (!current) return;
 
-    const message = typeof reason == 'string' ? reason : `${this._self} was stopped.`;
+    const message = typeof reason == 'string' ? reason : `${this._self} was ${undo ? 'aborted' : 'stopped'}.`;
     const stopped = Object.assign(new Error(message, reason === undefined ? undefined : { cause: reason }), { name: 'Stopped' });
 
     for (const ticket of queue) ticket.reject(stopped);
@@ -541,9 +545,8 @@ class Run extends Model {
   _inline = new Map<string, Function>();
   _errors = new Map<string, unknown>();
   _owner = new Map<string, Frame>();
-  _watchers = new Map<string, Function[]>();
   _parent = new Map<string, string>();
-  _slots = new Map<string, Steps.Gate>();
+  _slots = new Map<string, Slot>();
   _catches = new Map<string, Rescue>();
   _branches = new Map<string, Branch>();
   _lineage = new Map<string, Lineage>();
@@ -556,6 +559,7 @@ class Run extends Model {
   _spent = new Set<string>();
   _unwinding?: Promise<unknown> = undefined;
   _drained: (() => void)[] = [];
+  _quiet = new Set<() => void>();
   _halted?: 'failed' | 'stopped' = undefined;
   _ending?: boolean = undefined;
   _settling?: boolean = undefined;
@@ -649,7 +653,51 @@ class Run extends Model {
       }
     }
     else if (item.key == 'end') await this.terminate(item);
-    else await this.descend(await this.invoke(item));
+    else {
+      const wait = this.racing(item);
+
+      if (wait) return void this.wake(wait, item.key, item.args, item);
+
+      await this.descend(await this.invoke(item));
+    }
+  }
+
+  racing(item: Steps.Node) {
+    const line = this.line(item.id);
+
+    return this.waits.filter((wait) => !!wait._race && line.includes(wait.id) && wait.answers.includes(item.key))[0];
+  }
+
+  lose(wait: Wait, won: string[], answer: Steps.Node) {
+    const race = wait._race!;
+    const losers = (race.group || [race]).filter((racer) => !won.includes(racer.id));
+    const cause = Object.assign(new Error(`${answer.key} answered ${wait.id}.`), { name: 'Stopped' });
+
+    for (const racer of losers) this._dropped.add(racer.id);
+    for (const frame of this.discard()) frame._abort.abort();
+    for (const [release, from] of this._holding) if (this.dropped(from)) release();
+
+    for (const racer of losers)
+      this.serial(async () => {
+        await this.quiet(racer.id);
+        (await this.recover(racer, cause))();
+      });
+  }
+
+  quiet(id: string) {
+    const busy = () => this.flight().some((frame) => this.line(frame.id).includes(id));
+
+    return new Promise<void>((resolve) => {
+      const check = () => {
+        if (busy()) return;
+
+        this._quiet.delete(check);
+        resolve();
+      };
+
+      this._quiet.add(check);
+      check();
+    });
   }
 
   terminate(item: Steps.Node) {
@@ -712,11 +760,9 @@ class Run extends Model {
   }
 
   copy(item: Steps.Node, retried = this.retried(item) + 1): Steps.Node {
-    const { id, key, args, group, answers } = item;
+    const { id, key, args, group, answers, race } = item;
     const node = this.node(key, args);
-    const fn = this._inline.get(id);
     const rescue = this._catches.get(id);
-    const watchers = this._watchers.get(id);
 
     this._retried.set(node.id, retried);
 
@@ -727,11 +773,10 @@ class Run extends Model {
     }
 
     if (answers) node.answers = answers;
-    if (watchers) this._watchers.set(node.id, watchers);
 
-    if (fn) {
-      this._inline.set(node.id, fn);
-      this._owner.set(node.id, this._owner.get(id)!);
+    if (race) {
+      node.race = this.copy(race, retried);
+      adopt(this._parent, [node.race], node.id);
     }
 
     if (rescue) {
@@ -779,10 +824,6 @@ class Run extends Model {
     return true;
   }
 
-  fail(error: unknown, id: string) {
-    if (!this.caught(error, id)) this.halt('failed', error);
-  }
-
   discard() {
     for (const wait of this.waits.filter((wait) => this.dropped(wait.id))) this.waits.delete(wait);
     for (const [id, cancel] of this._pending) if (this.dropped(id)) cancel();
@@ -819,7 +860,7 @@ class Run extends Model {
     if (this.stale() || this.dropped(item.id)) return;
 
     const { id } = item;
-    const { max = Infinity, after = 0, key } = this._slots.get(id)!;
+    const { max, key } = this._slots.get(id)!;
     const gate = this.gate(from, key);
     const line = this.line(from.id);
     const hold: Hold = { run: this, from: from.id };
@@ -827,14 +868,12 @@ class Run extends Model {
     const self = this.control._self;
 
     return new Promise<(() => void) | undefined>((resolve) => {
-      let timer: ReturnType<typeof setTimeout> | undefined;
       let quiet: (() => void) | undefined;
       let limit = 0;
       let over = false;
 
       const finish = (release?: () => void) => {
         over = true;
-        clearTimeout(timer);
         quiet?.();
         this._pending.delete(id);
         resolve(release);
@@ -856,30 +895,25 @@ class Run extends Model {
         }
       };
 
-      const join = () => {
-        if (inside) return finish(() => {});
-
-        if (typeof max == 'function')
-          quiet = max.length
-            ? watch(self, ($) => {
-                limit = max($);
-                pump(gate);
-
-                return over ? null : undefined;
-              })
-            : listener(self, (key) => void (signal(key) && pump(gate)));
-
-        gate.queue.push(waiter);
-        pump(gate);
-      };
+      if (inside) return finish(() => {});
 
       this._pending.set(id, () => {
         gate.queue = gate.queue.filter((each) => each !== waiter);
         finish();
       });
 
-      if (after > 0) timer = setTimeout(join, after);
-      else join();
+      if (typeof max == 'function')
+        quiet = max.length
+          ? watch(self, ($) => {
+              limit = max($);
+              pump(gate);
+
+              return over ? null : undefined;
+            })
+          : listener(self, (key) => void (signal(key) && pump(gate)));
+
+      gate.queue.push(waiter);
+      pump(gate);
     });
   }
 
@@ -903,14 +937,16 @@ class Run extends Model {
     }
 
     return new Promise<Answer | undefined>((resolve) => {
-      const { id, answers } = item;
-      const wait = this.waits.add({ id, step: from.key, args: from.args, answers, _from: from, _park: resolve });
+      const { id, answers, race, args } = item;
+      const until = answers!.length ? undefined : Date.now() + (args[0] as number);
 
-      for (const watcher of this._watchers.get(item.id) || []) wait.watch(watcher);
+      this.waits.add({ id, step: from.key, args: from.args, answers, until, _race: race, _from: from, _park: resolve });
+
+      if (race) void this.exec(race, from);
     });
   }
 
-  wake(wait: Wait, key: string, args: unknown[]) {
+  wake(wait: Wait, key: string, args: unknown[], node = this.node(key, args)) {
     const { _ticket } = this;
     let done!: () => void;
     let fail!: (error: unknown) => void;
@@ -921,12 +957,14 @@ class Run extends Model {
     });
 
     const answer = { done: () => (this._halted ? fail(this.reason()) : done()), fail } as Answer;
-
-    const node = this.node(key, args);
+    const won = this.line(node.id);
 
     wait._answer = answer;
     this._parent.set(node.id, wait.id);
     this.waits.delete(wait);
+
+    if (wait._race) this.lose(wait, won, node);
+
     answer.frame = this.invoke(node, wait.id);
 
     return answered;
@@ -946,7 +984,7 @@ class Run extends Model {
     const lineage = this._lineage.get(id);
     const fn = inline || control._steps.get(key)!;
     const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), _retried: this.retried(node), ...lineage && { _restore: lineage.restore, _caught: lineage.caught } });
-    const input = this._errors.has(id) ? [this._errors.get(id)] : inline && !lineage?.restore ? [frame._abort.signal] : args;
+    const input = this._errors.has(id) ? [this._errors.get(id)] : args;
     let body = false;
 
     control.active = key;
@@ -1029,6 +1067,8 @@ class Run extends Model {
     } finally {
       this.frames.delete(frame);
       control.active = this.flight().at(-1)?.key;
+
+      for (const check of [...this._quiet]) check();
 
       if (!this.flight().length) for (const resolve of this._drained.splice(0)) resolve();
     }
@@ -1145,7 +1185,15 @@ class Run extends Model {
 
       this.refill(unwound);
 
-      if (unwound.failed) this.blame(unwound.failed.cause);
+      if (unwound.failed) {
+        const { cause } = unwound.failed;
+        const stopped = this._halted == 'stopped';
+
+        if (stopped && cause instanceof Error && cause.cause === undefined) cause.cause = this._stopped;
+        if (stopped) this.control.status = 'failed';
+
+        this.blame(cause);
+      }
     }
 
     const { _tail: tail } = this;
@@ -1197,7 +1245,7 @@ class Run extends Model {
     for (const entry of pending.reverse()) {
       const comps = this._comps.get(entry.id);
 
-      if (ids && this.stale()) break;
+      if (ids && this._halted) break;
       if (entry.unwound == 'failed') break;
 
       if (entry.irreversible || entry.committed) {
@@ -1398,6 +1446,7 @@ class Frame extends Model {
 
     if (this._undo && UNPLANNED.includes(key)) throw rule(`${named(key)} cannot run in an undo.`);
     if (this._settled) throw rule(`${this.key} has settled; ${key} cannot run.`);
+    if (key == 'run') throw rule('run is the entry - loop with a step: a step which schedules itself again.');
 
     const token = run.node(key, args);
 
@@ -1488,20 +1537,20 @@ class Frame extends Model {
       const [items, each] = args as [unknown, (item: unknown, index: number) => unknown];
       const fns = args.filter((arg) => typeof arg == 'function');
       const refs = fns.map((fn) => this.keyOf(fn)).filter(Boolean) as string[];
-      let gates = args.filter(plain);
+      const tokens = args.filter((arg) => arg && typeof arg == 'object');
+      let timed = args.some(plain);
       let mapped = args.length == 2 && iterable(items) && typeof each == 'function';
-      let grouped = args.length && args.every((arg) => arg && typeof arg == 'object');
-      let functions = args.length && fns.length == args.length;
-      let mixed = fns.length && args.some((arg) => arg && typeof arg == 'object');
+      let grouped = args.length && tokens.length == args.length;
+      let waits = refs.length && refs.length == fns.length && refs.length + tokens.length == args.length;
 
-      if (gates.length && args.length > 1) throw rule('then() takes a gate alone - this.then({ max, after, key }).');
-      if (gates.length) return this.slot(items as Steps.Gate);
+      if (timed && args.length > 1) throw rule('then() takes a duration alone - this.then({ sec: 10 }).');
+      if (timed) return this.delay(items as Record<string, unknown>);
       if (mapped) return this.group(Array.from(items as Iterable<unknown>, each));
       if (grouped) return this.group(args);
-      if (functions && refs.length) return this.wait(refs, fns.filter((fn) => !this.keyOf(fn)));
-      if (functions && args.length == 1) return this.inline(items as Function);
-      if (mixed) throw rule('then() takes called steps or step references, not both.');
-      if (functions && args.length == 2 && this._point && !this._settled) return this._point(fns[0] as any, fns[1] as any);
+      if (waits) return this.wait(refs, tokens);
+      if (refs.length) throw rule('then() takes steps uncalled to answer and called ones to race - not other functions.');
+      if (fns.length == 2 && args.length == 2 && this._point && !this._settled) return this._point(fns[0] as any, fns[1] as any);
+      if (fns.length == 1) throw rule('then() takes steps, not a function - declare the work as a step.');
 
       throw rule('a step cannot await its own run.');
     };
@@ -1513,6 +1562,7 @@ class Frame extends Model {
       signal: { get: () => this._abort.signal },
       retried: { get: () => this._retried },
       retry: { value: retry },
+      only: { value: (max: unknown, key?: unknown) => this.slot(max, key) },
       undo: { value: (...args: unknown[]) => this.compensation(args) },
       restore: {
         value: () => {
@@ -1605,18 +1655,28 @@ class Frame extends Model {
     this.arm();
   }
 
-  slot(options: Steps.Gate) {
+  slot(max: unknown, key: unknown) {
+    if (typeof max != 'number' && typeof max != 'function') throw rule('only() takes a count, or a function returning one.');
+
     const token = this.issue('gate', []);
 
-    this.run._slots.set(token.id, options);
+    this.run._slots.set(token.id, { max: max as Slot['max'], key });
+  }
 
-    return token;
+  delay(duration: Record<string, unknown>) {
+    let ms = 0;
+
+    for (const [unit, value] of Object.entries(duration))
+      if (!Object.hasOwn(UNITS, unit) || typeof value != 'number' || !(value >= 0))
+        throw rule(`then() takes a duration of ms, sec, min, hr and day as numbers - got ${unit}.`);
+      else ms += value * UNITS[unit];
+
+    return Object.assign(this.issue('wait', [ms]), { answers: [] });
   }
 
   group(members: unknown[]) {
     for (const member of members as Steps.Node[])
       if (!this._items.includes(member)) throw rule(`then() takes steps called by ${this.key}.`);
-      else if (member.key == 'gate') throw rule('a gate cannot be grouped.');
 
     const group = Object.assign(this.run.node('then', []), { group: members as Steps.Node[] });
 
@@ -1630,21 +1690,13 @@ class Frame extends Model {
     return group;
   }
 
-  inline(fn: Function) {
-    const token = this.issue('then', []);
-
-    this.run._inline.set(token.id, fn);
-    this.run._owner.set(token.id, this);
-
-    return token;
-  }
-
-  wait(answers: string[], watchers: Function[]) {
+  wait(answers: string[], racers: unknown[]) {
     for (const key of answers) if (key == 'run') throw rule('run cannot answer a wait.');
 
-    const token = Object.assign(this.issue('wait', []), { answers });
+    const [race] = racers.length ? this.claimed(racers, 'then() races steps called for it - this.then(this.allow, this.timeout(call)).') : [];
+    const token = Object.assign(this.issue('wait', []), { answers }, race && { race });
 
-    if (watchers.length) this.run._watchers.set(token.id, watchers);
+    if (race) adopt(this.run._parent, [race], token.id);
 
     return token;
   }
@@ -1747,39 +1799,29 @@ class Wait extends Model {
   step = '';
   args: unknown[] = [];
   answers: string[] = [];
+  until?: number = undefined;
 
   _from!: Frame;
   _park!: (answer?: Answer) => void;
   _answer?: Answer = undefined;
-  _abort = new AbortController();
+  _race?: Steps.Node = undefined;
   _open = true;
 
   protected new() {
-    const { run, answers } = this;
+    const { run, answers, until } = this;
     const { _self: self } = run.control;
+    const timer = until === undefined ? undefined : setTimeout(() => run.waits.delete(this), until - Date.now());
 
     for (const key of answers) if (!run.accepts(key, this)) event(self, key);
 
     return () => {
       this._open = false;
+      clearTimeout(timer);
 
       for (const key of answers) if (!run.accepts(key)) event(self, key);
 
-      this._abort.abort();
       this._park(this._answer);
     };
-  }
-
-  watch(watcher: Function) {
-    const { signal } = this._abort;
-
-    (async () => watcher.call(this._from._proxy, signal))().catch((error) => this.fail(error));
-  }
-
-  fail(error: unknown) {
-    const { run } = this;
-
-    if (this._open) run.fail(error, this.id);
   }
 }
 

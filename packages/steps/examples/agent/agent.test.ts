@@ -61,7 +61,7 @@ it('will offer allow only while a tool call waits', async () => {
 
   await vi.waitFor(() => expect(agent.allow).toBeDefined());
 
-  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+  const [call] = agent.then.waiting.filter((wait) => wait.step == 'tool').map((wait) => wait.args[0] as ToolCall);
 
   await agent.allow(call);
 
@@ -76,7 +76,7 @@ it('will resolve allow once its tool has run', async () => {
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
-  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+  const [call] = agent.then.waiting.filter((wait) => wait.step == 'tool').map((wait) => wait.args[0] as ToolCall);
 
   // an answer's Promise settles once that step and what it scheduled are done - not the whole run
   await agent.allow(call);
@@ -89,14 +89,15 @@ it('will answer the tool call it is given', async () => {
   const agent = journal(Agent).new();
   const reply = agent.run('write notes, write docs');
 
-  await vi.waitFor(() => expect(agent.then.waiting).toHaveLength(2));
+  await vi.waitFor(() => expect(agent.then.waiting).toHaveLength(4));
 
-  const [notes, docs] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+  const [notes, docs] = agent.then.waiting.filter((wait) => wait.step == 'tool').map((wait) => wait.args[0] as ToolCall);
 
   // routed by first argument: the wait opened by tool(docs) takes it
   await agent.allow(docs);
 
-  expect(agent.then.waiting.map((wait) => wait.args[0])).toEqual([notes]);
+  // docs' timeout lost the race - its minute is dropped with it
+  expect(agent.then.waiting.map((wait) => [wait.step, wait.args[0]])).toEqual([['tool', notes], ['timeout', notes]]);
   expect(agent.messages.get(-1)).toEqual({ role: 'tool', content: 'call_1_1: write docs ok' });
 
   await agent.deny(notes);
@@ -114,7 +115,7 @@ it('will deny a tool call', async () => {
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
-  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+  const [call] = agent.then.waiting.filter((wait) => wait.step == 'tool').map((wait) => wait.args[0] as ToolCall);
 
   await agent.deny(call);
 
@@ -129,7 +130,7 @@ it('will throw if allow is called after its wait closed', async () => {
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
   const { allow } = agent;
-  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+  const [call] = agent.then.waiting.filter((wait) => wait.step == 'tool').map((wait) => wait.args[0] as ToolCall);
 
   allow(call);
 
@@ -235,7 +236,7 @@ it('will retry a tool, keeping what the tool pushed from outside', async () => {
 });
 
 it('will deny a tool call nobody answers within a minute', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
   const agent = Agent.new();
   const reply = agent.run('write notes');
@@ -249,14 +250,14 @@ it('will deny a tool call nobody answers within a minute', async () => {
 });
 
 it('will time out each tool call on its own', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
   const agent = journal(Agent).new();
   const reply = agent.run('write notes, write docs');
 
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
 
-  const [notes, docs] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+  const [notes, docs] = agent.then.waiting.filter((wait) => wait.step == 'tool').map((wait) => wait.args[0] as ToolCall);
 
   await agent.allow(docs);
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
@@ -269,7 +270,7 @@ it('will time out each tool call on its own', async () => {
 });
 
 it('will time out parallel tool calls each against its own wait', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
   const agent = journal(Agent).new();
   const reply = agent.run('write notes, write docs');
@@ -284,18 +285,18 @@ it('will time out parallel tool calls each against its own wait', async () => {
 });
 
 it('will not let a stale timeout deny the next turn', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
   const agent = Agent.new();
   const first = agent.run('write notes');
 
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
-  await agent.allow(agent.then.waiting[0].args[0] as ToolCall);
+  await agent.allow(agent.then.waiting.find((wait) => wait.step == 'tool')!.args[0] as ToolCall);
   await first;
 
   const second = agent.run('write docs');
 
-  // the first run's watcher was aborted when its wait closed; this wait gets a fresh minute
+  // the first run's timeout lost its race when allow answered; this wait gets a fresh minute
   await vi.advanceTimersByTimeAsync(MINUTE / 2);
   expect(agent.then.status).toBe('waiting');
 
@@ -332,7 +333,7 @@ it('will steer later tool calls by writing mode', async () => {
 
   await vi.waitFor(() => expect(agent.then.status).toBe('waiting'));
 
-  const [call] = agent.then.waiting.map((wait) => wait.args[0] as ToolCall);
+  const [call] = agent.then.waiting.filter((wait) => wait.step == 'tool').map((wait) => wait.args[0] as ToolCall);
 
   agent.mode = 'yolo';
   agent.steers.push('write docs');

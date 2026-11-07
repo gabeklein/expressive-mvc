@@ -1,7 +1,7 @@
 import { has } from '@expressive/mvc';
 import { Steps } from '@expressive/steps';
 
-import { delay, MINUTE, model, result, safe, toolCalls, tools, user, type Message, type ToolCall } from './services';
+import { model, result, safe, toolCalls, tools, user, type Message, type ToolCall } from './services';
 
 // a long-lived instance whose fields are the product: each reply and tool result commits, so a failed turn keeps what earlier steps pushed
 export class Agent extends Steps {
@@ -53,15 +53,18 @@ export class Agent extends Steps {
     // mode is read when the step runs, so writing it from outside steers later calls
     let allowed = this.mode === 'yolo';
 
-    // else park until allow or deny answers - the watcher denies after a minute
+    // else park until allow or deny answers - timeout races them, denying after a minute
     // a throw from exec runs it once more in its place - its own pushes undone first
     if (allowed || this.mode === 'auto' && safe(call))
       this.exec(call).catch(this.reexec);
     else
-      this.then(this.allow, this.deny, async (signal) => {
-        await delay(MINUTE, { signal });
-        this.deny(call);
-      });
+      this.then(this.allow, this.deny, this.timeout(call));
+  }
+
+  // a racer: started with the wait, cancelled once allow or deny answers
+  protected async timeout(call: ToolCall) {
+    this.then({ min: 1 });
+    this.deny(call);
   }
 
   protected async exec(call: ToolCall) {

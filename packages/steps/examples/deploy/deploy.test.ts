@@ -37,7 +37,12 @@ it('will release through the gate', async () => {
   // the canaries are live while the gate waits
   expect([...deploy.live.keys()].sort()).toEqual(['web-1', 'web-4']);
   expect(deploy.then.status).toBe('waiting');
-  expect(deploy.then.waiting).toEqual([{ id: 'wait#1', step: 'approval', args: [], answers: ['promote', 'abort'] }]);
+  // the racers' durations are waits too - each closes on its own, unless an answer cancels it first
+  expect(deploy.then.waiting).toEqual([
+    { id: 'wait#1', step: 'approval', args: [], answers: ['promote', 'reject'] },
+    { id: 'wait#2', step: 'remind', args: [], answers: [], until: expect.any(Number) },
+    { id: 'wait#3', step: 'expire', args: [], answers: [], until: expect.any(Number) }
+  ]);
 
   await deploy.promote('gabe');
 
@@ -60,6 +65,8 @@ it('will release through the gate', async () => {
     'install',
     'install',
     'approval',
+    'remind',
+    'expire',
     'promote',
     'migrate',
     'rollout',
@@ -86,7 +93,7 @@ it('will log every step through before and after', async () => {
 });
 
 it('will retry a flaky test suite with backoff', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
   const test = vi.spyOn(ci, 'test').mockRejectedValueOnce(new Error('flaky')).mockRejectedValueOnce(new Error('flaky'));
   const deploy = create();
@@ -130,7 +137,7 @@ it('will abort the test suite when stopped', async () => {
   expect(test.mock.calls[0][1].signal.aborted).toBe(true);
   expect(test).toHaveBeenCalledTimes(1);
   expect(deploy.report).toBe(`1.2.0 stopped: ${deploy} was stopped.`);
-  // a plain stop does not unwind - stop({ undo: true }) would
+  // a plain stop does not unwind - abort() would
   expect(record(deploy).find((entry) => entry.key == 'build')!.unwound).toBeUndefined();
 });
 
@@ -147,7 +154,7 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   const stopped = { name: 'Stopped', message: 'canary rejected: error rate', cause: 'canary rejected: error rate' };
 
   // the answer's own Promise settles with the run it stopped
-  await expect(deploy.abort('error rate')).rejects.toMatchObject(stopped);
+  await expect(deploy.reject('error rate')).rejects.toMatchObject(stopped);
   await expect(release).rejects.toMatchObject(stopped);
 
   expect(fleet.uninstall).toHaveBeenCalledWith('web-1');
@@ -169,7 +176,9 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
     ['install', true],
     ['install', true],
     ['approval', undefined],
-    ['abort', undefined],
+    ['remind', undefined],
+    ['expire', undefined],
+    ['reject', undefined],
     ['uninstall', undefined],
     ['uninstall', undefined],
     ['untag', undefined],
@@ -178,7 +187,7 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
 });
 
 it('will nudge on-call, then abort a gate nobody answers', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   vi.spyOn(pager, 'nudge');
 
   const deploy = create();

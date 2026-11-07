@@ -67,7 +67,7 @@ it('will scan at most limit sites at once, following a limit changed mid-run', a
 });
 
 it('will retry a failing site with backoff, keeping what other sites found', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
   const search = vi.spyOn(browser, 'search');
 
@@ -93,7 +93,7 @@ it('will retry a failing site with backoff, keeping what other sites found', asy
 });
 
 it('will skip a site after three retries', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
 
   vi.spyOn(browser, 'search').mockImplementation(async (site) => {
     if (site == 'down') throw new Error('blocked');

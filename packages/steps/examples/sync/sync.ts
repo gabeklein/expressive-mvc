@@ -47,10 +47,12 @@ export class Pull extends Steps {
     if (more)
       this.page();                        // a step scheduling itself - loops until the last page
     else
-      this.then(async (signal) => {       // an inline step, journaled then#1 and given its own signal
-        await api.ack(this.cursor, { signal });
-        this.acked = this.cursor;         // an arrow's writes are the inline step's - in then#1's wrote
-      });
+      this.ack();
+  }
+
+  protected async ack() {
+    await api.ack(this.cursor, { signal: this.then.signal });
+    this.acked = this.cursor;
   }
 
   // run returns nothing - the run resolves with undefined; the data is in fields

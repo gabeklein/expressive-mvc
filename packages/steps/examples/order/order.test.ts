@@ -155,7 +155,7 @@ it('will undo an order stopped mid-shipment', async () => {
   const result = order.run();
 
   await vi.waitFor(() => expect(order.then.active).toBe('ship'));
-  order.then.stop({ undo: true });
+  order.then.abort();
   expect(order.then.status).toBe('stopped');
 
   // a step in flight settles and commits first, then the unwind takes it back too
@@ -165,7 +165,7 @@ it('will undo an order stopped mid-shipment', async () => {
   expect(courier.cancel).toHaveBeenCalledWith('trk_1');
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(order.charge).toBeUndefined();
-  expect(order.notice).toBe(`Order c1 was not placed: ${order} was stopped.`);
+  expect(order.notice).toBe(`Order c1 was not placed: ${order} was aborted.`);
 });
 
 it('will refund and backorder when no courier is free', async () => {
