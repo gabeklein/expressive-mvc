@@ -1667,6 +1667,8 @@ class Frame extends Model {
   delay(duration: Record<string, unknown>) {
     let ms = 0;
 
+    if (!Object.keys(duration).length) throw rule('then() takes a duration of ms, sec, min, hr and day as numbers - got none.');
+
     for (const [unit, value] of Object.entries(duration))
       if (!Object.hasOwn(UNITS, unit) || typeof value != 'number' || !(value >= 0))
         throw rule(`then() takes a duration of ms, sec, min, hr and day as numbers - got ${unit}.`);

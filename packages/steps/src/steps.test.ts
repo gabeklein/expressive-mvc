@@ -3135,6 +3135,14 @@ describe('durations', () => {
   it('will throw on an unknown unit, a value not a number, or beside steps', async () => {
     const cases: object[] = [{ secs: 1 }, { sec: '1' }, { sec: -1 }, { toString: 1 }];
 
+    class Empty extends Steps {
+      async run() {
+        this.then({});
+      }
+    }
+
+    await expect(Empty.new().run()).rejects.toThrow('then() takes a duration of ms, sec, min, hr and day as numbers - got none.');
+
     class Test extends Steps {
       async run(duration: object) {
         this.then(duration as { sec: number });
@@ -6709,7 +6717,7 @@ describe('durable handlers', () => {
 
     expect(errors).toEqual([
       'then() takes called steps or step references, not both.',
-      usage,
+      'then() takes a duration of ms, sec, min, hr and day as numbers - got none.',
       usage,
       usage,
       usage

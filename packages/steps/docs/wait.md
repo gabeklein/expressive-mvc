@@ -97,7 +97,7 @@ protected async test() {
 
 - Status is `waiting`; `then.waiting` lists it with `until` - when it closes, epoch milliseconds.
 - Journaled as `{ id: 'wait#1', key: 'wait', args: [1500], answers: [] }` - `args` holds the milliseconds.
-- An unknown unit or a value not a non-negative number throws `then() takes a duration of ms, sec, min, hr and day as numbers - got secs.`; a duration beside steps, `then() takes a duration alone - this.then({ sec: 10 }).`
+- No unit, an unknown one, or a value not a non-negative number throws `then() takes a duration of ms, sec, min, hr and day as numbers - got secs.`; a duration beside steps, `then() takes a duration alone - this.then({ sec: 10 }).`
 - `end`, `stop`, `abort`, a failure, a caught failure in its branch and a lost race clear its timer.
 
 ## Rules
