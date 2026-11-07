@@ -27,13 +27,13 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
-    this.then.on({ undo: this.release(hold) });
+    this.then.on({ undo: () => inventory.release(hold) });
     this.pay();
   }
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.on({ undo: this.refund(this.charge.id) });
+    this.then.on({ undo: () => stripe.refund(this.charge!.id) });
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
   }
@@ -44,14 +44,6 @@ class SubmitOrder extends Steps {
 
   protected async receipt(url: string) {
     await mail.send(this.cart.email, url);
-  }
-
-  protected async release(hold: string) {
-    await inventory.release(hold);
-  }
-
-  protected async refund(chargeId: string) {
-    await stripe.refund(chargeId);
   }
 }
 

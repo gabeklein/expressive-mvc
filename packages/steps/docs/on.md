@@ -1,23 +1,34 @@
 # On - Outcomes, All or Nothing
 
-A step returns nothing. One that changes the world registers what happens on each outcome with `this.then.on({ undo: this.release(hold) })` - steps called for it, or functions. An unwind - a failed run, `abort()`, a failure a [`.catch`](catch.md) takes, or a [lost race](wait.md#racers) - goes back through the committed steps newest first, running each one's handlers, then restores the fields of every step it took back.
+A step returns nothing. One that changes the world registers what happens on each outcome with `this.then.on({ … })`. An unwind - a failed run, `abort()`, a failure a [`.catch`](catch.md) takes, or a [lost race](wait.md#racers) - goes back through the committed steps newest first, running each one's handlers, then restores the fields of every step it took back.
 
 Every step is atomic: one that throws or is aborted has its own writes restored - fields and [collections](#collections).
-
-Policy: step references are recorded; functions belong to the process.
 
 ## Handlers
 
 ```ts
-protected async reserve() {
-  const hold = await inventory.hold(this.cart.items);
+protected async create(row: Row) {
+  await Image.insert(row);
 
-  this.then.on({ undo: this.release(hold) });
-  this.pay().catch(this.noCourier);
+  this.then.on({
+    abort() {
+      this.status = 'cancelled';
+      return Image.delete(this.name);
+    },
+    error(error) {
+      this.error = String(error);
+      return Image.update(this.name, { status: 'error' });
+    },
+    done() {
+      this.preview.close();
+    }
+  });
+
+  this.start();
 }
 ```
 
-Register right after the effect a handler takes back - as `defer` would - usually just above what the step schedules.
+Register right after the effect - as `defer` would - usually just above what the step schedules. A handler is called on the instance - method shorthand reads and writes fields - and may return a Promise, awaited before the next.
 
 A handler covers its step and everything it schedules - the subtree. Outcomes, each firing as it reaches the subtree, deepest step first, newest first within a step:
 
@@ -29,32 +40,20 @@ A handler covers its step and everything it schedules - the subtree. Outcomes, e
 | `stop` | `stop()` while the subtree was unfinished - nothing is undone | the `'Stopped'` error |
 | `done` | the subtree ended, any way - last, after the others; on a clean finish, alone | nothing |
 
-```ts
-protected async rollout() {
-  this.then.on({ error: this.alert(`${this.version} rollout failed`) });
-
-  for (const host of this.rest) this.upgrade(host);
-}
-```
-
-Each value is:
-
-- a step called for it - `{ undo: this.release(hold) }`; several in an array, `{ undo: [this.cancel(id), this.refund(charge)] }`, run as one group. Claimed, not scheduled - the step may keep working and awaiting after. Recorded with their args, which they run with.
-- or a function - process-local: given the table's argument, run in this process, dropped on restart. Right for process resources: `{ done: () => clearTimeout(timer) }`. Recorded as `then`.
-
-An array mixing them throws `then() takes called steps or step references, not both.`; a bare step method throws - call it: `this.release(hold)`. An unknown key throws `then.on() takes undo, error, abort, stop and done - got finally.`; an `undefined` value is skipped.
-
 - `error` observes - it never recovers; the failure goes on. Recovery is [`.catch`](catch.md), which also keeps a failure from the handlers above it.
 - `done` on a clean finish runs before the next step in sequence. One that throws fails that subtree, as a step would.
 - A step completed earlier, taken back by a later failure, gets `undo` only - `error` reaches the failing step's own line; `abort` reaches every step taken back.
-- Steps a handler runs keep their own signatures and run with what they schedule and groups, before older handlers. They reach `before`/`after`, so a log shows them; they are taken back by nothing.
-- Registration is synchronous, anywhere in the body, any number.
+- Registration is synchronous, anywhere in the body, any number. An unknown key throws `then.on() takes undo, error, abort, stop and done - got finally.`; an `undefined` value is skipped.
 - Registered before its step fails, a handler runs for that failure too and sees the step's partial writes - restored after `undo`.
-- Handlers run before fields are restored, so they read the state as the run left it. Keys they, or steps they run, write are kept.
+- Handlers run before fields are restored, so they read the state as the run left it. Keys they write are kept.
 - A handler that throws fails the unwind there. `end`, gates and waits throw in one: `end() cannot run in an undo.`
 - `run` registers none - `run cleans up in its tail - try/catch around await this.` Cleanup there is a [tail](runs.md#run-and-the-result).
 
-Entry: `on: { undo: [{ id: 'release#1', key: 'release', args: ['hold_sku'] }] }` - by outcome, a group node for several, `then` for a function. The steps they ran get their own entries. Ids are minted at registration, so a handler never run leaves a gap.
+### Steps as handlers - durable runs
+
+A function lives in this process. For a durable run - future - whose compensation is an external effect that must survive a restart, a handler can be a step called for it: `{ undo: this.release(hold) }`, several in an array run as one group. Claimed, not scheduled; recorded with their args, which they run with; they reach `before`/`after` and are taken back by nothing. An array mixing steps and functions throws `then.on() takes called steps or step references, not both.`; a bare step method throws - call it.
+
+Entry: `on: { undo: [{ id: 'then#2', key: 'then', args: [] }] }` - by outcome; `then` for a function, the step's node for a step, a group node for several. Ids are minted at registration, so a handler never run leaves a gap.
 
 ## The unwind
 

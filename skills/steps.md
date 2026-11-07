@@ -27,7 +27,7 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);   // the step's work
 
-    this.then.on({ undo: this.release(hold) });                  // its undo, right after the effect - runs only on unwind
+    this.then.on({ undo: () => inventory.release(hold) });                  // its undo, right after the effect - runs only on unwind
     this.pay().catch(this.noCourier);                     // then hand off
   }
 
@@ -38,7 +38,7 @@ class SubmitOrder extends Steps {
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.on({ undo: this.refund(this.charge.id) });
+    this.then.on({ undo: () => stripe.refund(this.charge!.id) });
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
   }
@@ -56,14 +56,6 @@ class SubmitOrder extends Steps {
 
   protected async backorder() {
     await mail.send(this.cart.email, backorderUrl(this.cart));
-  }
-
-  protected async release(hold: string) {
-    await inventory.release(hold);
-  }
-
-  protected async refund(chargeId: string) {
-    await stripe.refund(chargeId);
   }
 }
 
@@ -103,7 +95,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 | `this.then({ min: 1 })` | duration - parks for `ms`/`sec`/`min`/`hr`/`day`, summed |
 | `this.then.only(2)` / `.only(1, lock)` | gate - only so many at once |
 | `this.then.end()` | end the run here - pending discarded; takes no value |
-| `this.then.on({ undo: this.release(x) })` | handlers for this step's subtree - `undo`, `error`, `abort`, `stop`, `done`; steps called for one are claimed, not scheduled |
+| `this.then.on({ undo() { … } })` | handlers for this step's subtree - `undo`, `error`, `abort`, `stop`, `done` |
 | `this.then.commit()` | point of no return |
 | `this.then.signal` | this step's `AbortSignal` - pass it to the call it awaits |
 
@@ -111,12 +103,22 @@ A plain function fails the run - work is a step. Every token takes `.catch(handl
 
 ## Outcomes - `then.on`
 
-Step references are recorded; functions belong to the process. A step returns nothing - a value fails the run. `this.then.on({ … })` registers handlers for the step and everything it schedules (its subtree) - right after the effect, usually just above scheduling. Each value is a step called for it (an array: a group) - claimed, not scheduled, recorded with its args - or a function: process-local, dropped on restart.
+A step returns nothing - a value fails the run. `this.then.on({ … })` registers handlers for the step and everything it schedules (its subtree) - right after the effect, usually just above scheduling. A handler is a function called on the instance - method shorthand reads and writes fields; a returned Promise is awaited.
 
 ```ts
-this.then.on({ undo: this.refund(chargeId) });          // take back the charge on error or abort
-this.then.on({ error: this.alert('rollout failed') });  // observe a failure below
-this.then.on({ done: () => clearTimeout(timer) });      // the subtree ended, any way
+this.then.on({
+  abort() {                                  // abort(), or a lost race
+    this.status = 'cancelled';
+    return Image.delete(this.name);
+  },
+  error(error) {                             // a failure below - observe, then undo
+    this.error = String(error);
+  },
+  undo: () => stripe.refund(chargeId),       // take back the effect
+  done() {                                   // the subtree ended, any way
+    this.preview.close();
+  }
+});
 ```
 
 | key | fires (deepest step first, newest first) | function gets |
@@ -130,8 +132,8 @@ this.then.on({ done: () => clearTimeout(timer) });      // the subtree ended, an
 - `error` observes, never recovers - recovery is `.catch`, which also stops a failure reaching handlers above it. A step finished earlier and taken back by a later failure gets `undo` only.
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
 - Unwind order: failure → handlers newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
-- Steps a handler calls run as part of the unwind (with what they schedule), before older handlers, and reach `before`/`after`. `end`, gates and waits throw there.
-- Registered before its step fails, handlers run for that failure too and see the step's partial writes. They run before fields are restored; keys they write are kept. A bare step method, a mix in an array, or an unknown key throws. `run` registers none - clean up in its tail.
+- Registered before its step fails, handlers run for that failure too and see the step's partial writes. They run before fields are restored; keys they write are kept. An unknown key throws. `run` registers none - clean up in its tail.
+- Durable runs (future): a handler whose external effect must survive a restart is a step called for it - `{ undo: this.release(hold) }`, an array a group - claimed, not scheduled, recorded with its args, reaching `before`/`after`. `end`, gates and waits throw in handlers.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
 - Removing a pool member or destroying a map value the step did not add is irreversible: the unwind stops there and warns.
 - Whole-run undo is `abort()`; partial is a [catch](#catch-and-retry).
@@ -166,12 +168,10 @@ async deny(call: ToolCall) { this.messages.push(denied(call)); }
 ## Catch and retry
 
 ```ts
-this.scan(site).catch(this.rescan);                       // a step method - recorded, given the error
-
-protected async rescan(error: unknown) {
+this.scan(site).catch((error) => {
   if (this.then.retried >= 3) throw error;
   this.then.retry();                                      // replay scan(site), args recorded
-}
+});
 
 protected async scan(site: string) {                     // backoff lives in the retried step
   if (this.then.retried) this.then({ sec: this.then.retried });
@@ -181,8 +181,8 @@ protected async scan(site: string) {                     // backoff lives in the
 
 - A failure in the token's branch (it and its subtree): failing step restored, rest of the branch discarded, the branch's undos run - then the handler runs in its place and the plan continues.
 - Handlers replace the branch - retry, fall back, rethrow. `.catch()` skips.
-  - `.catch(this.noCourier)` - a step method: runs given the error; recorded with it as `{ name, message, cause }` (an Error; anything else as thrown).
-  - `.catch((error) => { … })` - a function: `Promise.catch` semantics, its step calls scheduled; process-local - dropped on restart, so there the run fails instead of recovering.
+  - `.catch((error) => { … })` - a function, the default: `Promise.catch` semantics, its step calls scheduled; process-local - dropped on restart, so there the run fails instead of recovering.
+  - `.catch(this.noCourier)` - a step method, for a durable run whose recovery must survive a restart: runs given the error; recorded with it as `{ name, message, cause }` (an Error; anything else as thrown).
 - The handler sees the branch's failed state; once its body returns, the branch's fields are restored except keys it wrote, then what it scheduled runs. `this.then.restore()` restores early.
 - It recovers by scheduling, or throws to keep failing - an expected failure is a typed error (`throw new NoCourier()`) the handler checks, rethrowing the rest. A wait in a handler asks for another try; put it under a caught step to catch the next failure too.
 - `this.then.retry()` in a handler replays what the catch is attached to - the failed step or the whole group - with its recorded args, under the same handler. The handler holds the policy; past it, throw or fall back. Throws outside a handler; `.catch(this.then.retry)` throws.

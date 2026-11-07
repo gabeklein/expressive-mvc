@@ -11,7 +11,7 @@ A token issued in a step - a step call, a group, a wait - takes `.catch(handler?
 protected async reserve() {
   const hold = await inventory.hold(this.cart.items);
 
-  this.then.on({ undo: this.release(hold) });
+  this.then.on({ undo: () => inventory.release(hold) });
   this.pay().catch(this.noCourier);
 }
 
@@ -37,28 +37,24 @@ A failure that is expected - no courier, a declined card - is a typed error thro
 
 ## Handlers
 
-Step references are recorded; functions belong to the process.
-
 | handler | runs on failure | recorded |
 | --- | --- | --- |
-| `.catch(this.noCourier)` - a step method | the step, given the error alone | its key; its entry's args hold the error as `{ name, message, cause }` (an Error; anything else as thrown) |
 | `.catch((error) => { … })` - a function | given the error, as `Promise.catch` - a [function handler](steps.md#function-handlers) whose step calls schedule | `then` - process-local |
+| `.catch(this.noCourier)` - a step method | the step, given the error alone | its key; its entry's args hold the error as `{ name, message, cause }` (an Error; anything else as thrown) |
 
-- A step method runs given the error, whatever it declares. In process it gets the original; the durable tier will rebuild it from the record - `'Stopped'` included.
-- A function is dropped on restart: the failure then has no handler there, and the run fails instead of recovering. Use it where losing the branch is acceptable, or for what only this process can do.
+- A function is the default. It lives in this process: under a durable host - future - a restart drops it, and the run fails instead of recovering.
+- A step method is for a durable run whose recovery must survive a restart. It runs given the error, whatever it declares - in process the original; the durable tier rebuilds it from the record, `'Stopped'` included.
 
 ## Retry
 
 A retry is a handler calling `this.then.retry()` - the policy lives in the handler, coordination first:
 
 ```ts
-this.scan(site).catch(this.rescan);
-
-protected async rescan(error: unknown) {
+this.scan(site).catch((error) => {
   if (this.then.retried >= 3) throw error;
 
   this.then.retry();
-}
+});
 
 protected async scan(site: string) {
   if (this.then.retried) this.then({ sec: this.then.retried });

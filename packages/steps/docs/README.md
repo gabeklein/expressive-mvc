@@ -25,13 +25,13 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
-    this.then.on({ undo: this.release(hold) });
+    this.then.on({ undo: () => inventory.release(hold) });
     this.pay();
   }
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.on({ undo: this.refund(this.charge.id) });
+    this.then.on({ undo: () => stripe.refund(this.charge!.id) });
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.then.end();
@@ -43,14 +43,6 @@ class SubmitOrder extends Steps {
 
   protected async receipt(url: string) {
     await mail.send(this.cart.email, url);
-  }
-
-  protected async release(hold: string) {
-    await inventory.release(hold);
-  }
-
-  protected async refund(chargeId: string) {
-    await stripe.refund(chargeId);
   }
 }
 
@@ -76,7 +68,7 @@ protected async sample(body: RenderBody) {
 
 Reporting state - progress, a status line - is ordinary fields, written in the steps; the UI reads them in a subscribed render or a `get()` effect. A failed or re-run try restores what it wrote - that try did not happen - and the catch handler or the next step writes fresh values. A value that must outlive a failed try is written unmanaged - `this.is.progress = p`, or through a `_` helper, which runs on `this.is` - or lives on an owned Model; still reactive, never restored.
 
-Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`, then `end`. A `courier.book` failure unwinds every committed step, newest first, running the undos each registered with `this.then.on({ undo })` - `refund('ch_42')`, then `inventory.release('hold_sku')` - then restoring the fields of every step it took back ([on.md](on.md#the-unwind)).
+Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`, then `end`. A `courier.book` failure unwinds every committed step, newest first, running the undos each registered with `this.then.on({ undo })` - `stripe.refund('ch_42')`, then `inventory.release('hold_sku')` - then restoring the fields of every step it took back ([on.md](on.md#the-unwind)).
 
 - [contract.md](contract.md) - the contract: members, visibility, when each runs; composition - a `Steps` model held as a field
 - [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, function handlers, the step signal, pending values, the first-call rule, calls after a step settles, helpers, `end`, what a step may return

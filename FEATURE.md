@@ -52,7 +52,7 @@ Shipped behavior is documented in [packages/steps/docs/](packages/steps/docs/REA
 - **No outcome hook - cleanup is `run`'s tail.** `exit(outcome)` was removed before 0.1: `try`/`catch`/`finally` around `await this` covers done, failed and stopped, after the unwind and `back`, and `this.then.status` tells a stop from a failure. Two runs have no tail - a `run` without `await this`, and a failure before `run` reaches it; cleanup they need is the undo of the step that made the mess.
 - **`then.end()` from outside ends early** - the `end` token's own path, run now. Pending discarded (not journaled), waits released, in-flight signals aborted, in-flight steps settle and commit, then `run`'s `await this` resolves and its tail returns the result - nothing undone; the queue proceeds. Idle, or already ending/halted, it does nothing. An in-flight failure meanwhile still fails the run.
 - **`stop(reason?)` halts; `abort(reason?)` halts and unwinds.** Pending discarded, waits released, in-flight signals aborted, in-flight steps settle and commit but schedule nothing, status `stopped`, queue cleared with each queued Promise rejecting with an error named `'Stopped'`, the current run rejecting with it once in-flight steps settle. `abort` then unwinds as a failure does - status `aborted`, its error named `'Aborted'` (`<instance> was aborted.` without a reason), undos given it - the counterpart of `commit`. An undo throwing during an abort fails the run: status `failed`, `error` the thrown value, given the `'Aborted'` error as `cause` when it is an Error without one. `reason` is the `'Stopped'` error's `cause`, and its message when a string; the run, the queue, undos and `run`'s tail see that one error; `then.error` stays unset. `set(null)` stops. Finishing never destroys the instance. Split from `stop({ undo?, reason? })` before 0.1 - two outcomes, two verbs.
-- **`this.then(...steps)` waits.** Step references, no array - a token parking that point in the plan, answered by any one of the listed steps; what follows runs after the answer's subtree. Called steps among them are racers (below). Journaled `{ id: 'wait#n', key: 'wait', args: [], answers, race? }`; status `waiting`; `then.waiting` lists `{ id, step, args, answers, until? }` - the opening step's key and args. `run`/`end` cannot answer. A wait reached while function undos are held warns once per run - a durable-tier constraint surfaced early.
+- **`this.then(...steps)` waits.** Step references, no array - a token parking that point in the plan, answered by any one of the listed steps; what follows runs after the answer's subtree. Called steps among them are racers (below). Journaled `{ id: 'wait#n', key: 'wait', args: [], answers, race? }`; status `waiting`; `then.waiting` lists `{ id, step, args, answers, until? }` - the opening step's key and args. `run`/`end` cannot answer. Function handlers held at a wait no longer warn - with no durable host there is nothing to warn for; see Durability (future).
 - **Answering steps are present only while waited for.** Every step but `run` is an own non-enumerable getter: from outside it reads the step while an open wait in the current run accepts it, else `undefined`; the read `touch`es its key and a change in the accepted set emits `event(instance, key)`. Inside a step every step reads through the proxy as usual. The declared type stays non-optional. An outside call answers the open wait whose opening step's first argument is `===` its own, else the oldest accepting it - journaled `wake: <id>`, run in the wait's place. It returns a Promise resolving when that step and its subtree complete (also when an outside `end` drops the subtree), rejecting with the run's error if it fails or stops first; awaiting it counts as awaiting the run. No buffering.
 - **Racers.** A step called among a wait's arguments is claimed from the plan and started when the plan reaches the wait; journaled on the wait token as `race` (one node, a group for several), so a replay races again. Inside a racer's branch, an item keyed as one of the wait's answers answers that wait (reusing the token id) instead of running as a child. The wait closes on its first answer - outside or a racer's; the racer whose branch answered wins and keeps all it did. Losers: signals aborted, branch dropped (pending, waits, gates), held gate slots released; a step in flight settles, then each losing branch unwinds over the serialized unwind chain as a caught branch does - undos newest first given an `'Aborted'` error (`<answer> answered wait#n.`), fields restored except keys undos wrote. Effects without an undo stay. An opt-out (keeping a loser's effects) is undecided. A racer settling without answering leaves the wait open - a nudge. One throwing fails the run, or the catch around the wait. Watchers - plain functions given an `AbortSignal`, writes unmanaged, not journaled - were replaced by racers before 0.1: a timeout is a step (`this.then({ min: 1 }); this.deny(call);`), recorded and resumable.
 - **Durations: `this.then({ ms, sec, min, hr, day })`.** One plain object, at least one unit, summed, own keys only, non-negative numbers - else `then() takes a duration of ms, sec, min, hr and day as numbers - got <unit>.`; beside anything it throws `then() takes a duration alone`. A wait with no answers: journaled `{ id: 'wait#n', key: 'wait', args: [ms], answers: [] }`, listed in `then.waiting` with `until` (epoch ms), a `setTimeout` closing it; cleared by end, stop, abort, failure, a caught failure or a lost race. In-process - the durable tier persists `until`. Replaces the gate's `after` and the planned `this.then.sleep(ms)`.
@@ -62,7 +62,7 @@ Shipped behavior is documented in [packages/steps/docs/](packages/steps/docs/REA
 - **A pending read waits.** A step throwing a `Promise` - mvc's suspense, from an unset `set<T>()` or a getter over one - runs the `undo` handlers it registered, restores its writes, drops its tokens and runs again from the top once it resolves: no entry, no hooks refired, no `retry` counted. A rejection is the try's error. `stop()`/an outside `end` meanwhile aborts it as its signal would. Past `commit()` or an irreversible change it fails as any throw.
 - **`.catch(handler?)` on a token; `this.then.retry()`, `this.then.retried`, `this.then.restore()`.** Tokens share a prototype with `catch` and no `then`; `.catch` returns the same token, journaled with `rescue`. Typed by the native `Promise.catch` - step calls and `this.then(...)` are `Promise<void>`; no augmentation, no `Steps.Plan` (a widened `catch(token)` was tried and dropped for `retry()`). The branch is the token's subtree by the plan's parent chain. A body throw in it - not a rule violation, not past `commit()` or irreversible, not an abort, not while stopping or ending - is caught by the nearest active caught token: the failing frame restored and journaled `{ id, key, args, next: [], wrote: [], error }`, the branch discarded (pending dropped, waits released, slots cancelled, in-flight aborted), its undos run - serialized across branches - then the handler replaces the branch (retry, fall back, rethrow): a step method runs given the error alone, recorded as its key with the error serialized in its entry's args (`{ name, message, cause }` - in process the original; rebuilding on resume, `'Stopped'` included, is the durable tier's); a function runs given the error with `Promise.catch` semantics as an anonymous step, recorded `then` - process-local, so on restart the branch has no handler and the run fails instead of recovering. `.catch()` skips. **`this.then.retry()`** in a handler schedules what the catch is attached to again - the failed step, or the whole group - as a copy of the node with its recorded args, caught by the same handler: the handler never needs the args, and durable replay is "run that node again". Retry is always a handler calling `retry()` - the policy (limit, fallback) lives in the handler, coordination first, and a throw there propagates. `.catch(this.then.retry)` throws, pointing to the handler form - an unconditional loop exited from inside the retried step looped on any stray throw, so it was dropped. `retry()` outside a handler throws. **`this.then.retried`** counts replays - 0 on a first run; a handler reads the failed one's; a replayed group's members carry it; an entry past 0 carries `retried`. Calling a step again from a handler is a new step, retried 0 - the implicit issuer/caught-step counting was dropped. Backoff belongs in the retried step - a duration read from `retried`; the failed try's slots are released before the replay queues. A handler with a body sees the branch's failed state; once it returns, the branch's fields are restored except keys it wrote - their priors pass to the handler's entry. `this.then.restore()` in a handler restores now. A handler throwing goes to the next catch; entries already taken back are not taken back twice. An end token throws.
 - **Hooks.** Two names: `before(key, args)`, `after(key, entry)` - the base stays thin, extensions add more if they earn it. Per-step `before<Step>`/`after<Step>` were removed before 0.1: magic names, unchecked by types, one use across the examples and none in two dogfood ports - work for one step belongs in it, or a branch on `key`. The `back(reason)` hook left with `then.back`: a note on failure is written in `run`'s tail or a catch handler. Order: before → step → after; once per step - a catch handler is its own step - not for undos. Raw instance as `this`, writes unjournaled, return ignored. No `skip` argument - replay is the durable tier's to add, as a trailing argument, if it needs one.
-- **Runner surface.** `status` (`idle | running | waiting | stopped | aborted | failed`), `active` (a step in flight, the latest invoked with a group), `queue`, `waiting`, `runs`, `error` - enumerable getters, so `{ ...instance.then }` is a snapshot; `self`; `end`, `stop`, `abort`, `only`, `commit`, `undo`, `restore`, `retry()`, `signal`, `retried`; a non-enumerable `get()` snapshot.
+- **Runner surface.** `status` (`idle | running | waiting | stopped | aborted | failed`), `active` (a step in flight, the latest invoked with a group), `queue`, `waiting`, `runs`, `error` - enumerable getters, so `{ ...instance.then }` is a snapshot; `self`; `end`, `stop`, `abort`, `only`, `commit`, `on`, `restore`, `retry()`, `signal`, `retried`; a non-enumerable `get()` snapshot.
 - **The Runner keeps no journal.** Entries exist transiently: each committed step's is handed to `after(step, entry)` - a class wanting a log keeps them, and a later unwind updates a kept entry in place (`unwound`, `halted`). A try a catch took reaches `after` with `error` - a recipe or log shows the failed attempt beside its replacement. Entries the runtime makes for its own unwind - a failed try that kept its writes or registered undos, an implicit `end` - reach no hook. Internally a run keeps its light entries (no values) for the unwind to walk, the undo registry, and every step's priors - all dropped when the run ends. Record retention is not this package's concern: exhaustive logging and dashboards move to `@expressive/inspect` through an observation seam - designed next, generically for companion UIs, e.g. a `/__steps` page component droppable into a router.
 - **Data lives in fields and args.** Fields persist across runs; args are step-scoped and journaled. Any value reaching `run`'s result flows through one or the other.
 - **Core changes go upstream.** Public mvc API only - `@expressive/mvc` is a workspace peer.
@@ -85,7 +85,7 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
-    this.then.on({ undo: this.release(hold) });
+    this.then.on({ undo: () => inventory.release(hold) });
     this.pay().catch(this.noCourier);
   }
 
@@ -98,7 +98,7 @@ class SubmitOrder extends Steps {
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.on({ undo: this.refund(this.charge.id) });
+    this.then.on({ undo: () => stripe.refund(this.charge!.id) });
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.then.end();
@@ -110,7 +110,7 @@ class SubmitOrder extends Steps {
     if (!booking) throw new NoCourier('no courier');
 
     this.tracking = booking.id;
-    this.then.on({ undo: this.cancel(booking.id) });
+    this.then.on({ undo: () => courier.cancel(booking.id) });
   }
 
   // receipt, backorder, and the undos release, refund, cancel - each one call
@@ -152,20 +152,28 @@ class Agent extends Steps {
     let allowed = this.mode === 'yolo';
 
     if (allowed || this.mode === 'auto' && safe(call))
-      this.exec(call).catch(this.exec);
+      this.exec(call).catch(this.reexec);
     else
-      this.then(this.allow, this.deny, async (signal) => {
-        await delay(MINUTE, { signal });
-        this.deny(call);
-      });
+      this.then(this.allow, this.deny, this.timeout(call));
+  }
+
+  protected async timeout(call: ToolCall) {
+    this.then({ min: 1 });
+    this.deny(call);
   }
 
   protected async exec(call: ToolCall) {
     this.messages.push(result(call, await tools.run(call)));
   }
 
+  protected async reexec(error: unknown) {
+    if (this.then.retried) throw error;
+
+    this.then.retry();
+  }
+
   async allow(call: ToolCall) {
-    this.exec(call).catch(this.exec);
+    this.exec(call).catch(this.reexec);
   }
 
   async deny(call: ToolCall) {
@@ -297,6 +305,18 @@ Open questions:
 - Steps the caller scheduled before `back()` have run when the token is reached and are unwound with the rest; the caller's own entry stays.
 - Function handlers of one step in flight together keep the settled-proxy rule - writes unmanaged, step calls outside calls; the proxy cannot tell them apart.
 
+## Durability (future)
+
+Opt-in through a durable host; nothing changes for in-process runs.
+
+- Checkpointed field values, not replay. The one bounded replay is `run` before `await this` - it must only schedule, deterministically.
+- Step effects are at-least-once: a step is `commit()`-ed or idempotent.
+- Durable gates and answers need stable keys, not object identity.
+- Fields steps write are state; instruction fields (`get`, `has`, owned Models) are environment, resolved again on resume.
+- Classes carry a stable id and version; a step removed since fails as a hot update's does (`removed by a hot update`).
+- Under a durable host, function handlers for `undo`/`error`/`abort` (and `.catch` functions) warn, or reject in strict mode; `done`/`stop` functions are fine. Durable compensation is a step called for the handler.
+- The journal - `after` and its entries - is the host seam.
+
 ## Durable tier (parked)
 
 A resumable sequence of runnables with checkpoints. It attaches to the shipped `Steps` class - options as `static readonly` members, hooks declared there. Nothing here is base-tier behavior.
@@ -304,7 +324,7 @@ A resumable sequence of runnables with checkpoints. It attaches to the shipped `
 - **Record.** `get()` extended with `pending` and values; `{ class, args, journal }` is enough to rebuild an instance mid-swing, so instances are fungible - resume, retry, fork to debug are one operation with a different cursor. Values must survive structured clone: `has`/`map` children snapshot recursively, `get()` references re-resolve by context, `ref` and computed fields are skipped, `set(async)` factories journaled like steps.
 - **`save(record)` / `wake(at)`.** Seams on the class where they read as its business, config where a host supplies them, class winning. `save` is awaited before the next step - durability is "every commit awaited". `wake` defaults to `setTimeout`; a host persists `wakeAt` and resumes later.
 - **`resume`.** `run.resume(Type, record)` rebuilds: values overlay, then the pending plan with its journaled args. Construction and resume are one operation - an overlay, then the entry.
-- **Durable undo by returned token only.** Closures do not survive a resume; `{ key, args }` does. The base tier's `wait`/`sleep` warning is this constraint surfaced early.
+- **Durable handlers are steps.** Closures do not survive a resume; a step called for a handler (`{ key, args }`) does - see Durability (future).
 - **Durable timers - revisit with the hot path.** A duration's `setTimeout` dies with the process. Its deadline is the record's (`args: [ms]` on the token, `until` on the wait) - the durable tier persists `until` and re-arms it; a racer `this.then({ day: 1 }); this.refund();` is then a recorded timeout firing a named answer step.
 - **Hydration hooks.** `before`/`after` may gain a trailing replay flag - true when a step is restored from the record - appended so the base-tier signature stays valid.
 - **Slot form.** `run(Type, cfg)` - a host ships `const durable = (cfg) => run(self, { save, wake, ...cfg })`.

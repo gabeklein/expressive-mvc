@@ -219,7 +219,7 @@ Each step that commits is one entry, handed to [`after`](hooks.md) - the runner 
     ] },
     { id: 'end#1', key: 'end', args: [] }
   ],
-  undo: [{ id: 'refund#1', key: 'refund', args: ['ch_42'] }]
+  on: { undo: [{ id: 'then#2', key: 'then', args: [] }] }
 }
 ```
 
