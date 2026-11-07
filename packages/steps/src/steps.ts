@@ -68,8 +68,9 @@ const HOOKS = new Set(['before', 'after']);
 const KEYS = ['status', 'active', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
 const GATES = new WeakMap<object, Gate>();
-const UNCAUGHT = ['slot', 'end'];
-const UNPLANNED = ['end', 'slot', 'wait'];
+const UNCAUGHT = ['gate', 'end'];
+const UNPLANNED = ['end', 'gate', 'wait'];
+const RESERVED = ['then', 'end', 'gate', 'wait'];
 const ISSUED = new WeakMap<object, Frame>();
 const RETRY = new WeakSet<Function>();
 
@@ -334,6 +335,7 @@ function install<T extends Steps>(self: T) {
       if (skip) continue;
 
       if (key == 'end') throw new Error(`${self.constructor.name} declares end; return the result from run, end early with this.then.end().`);
+      if (RESERVED.includes(key)) throw new Error(`${self.constructor.name} declares ${key}; then, end, gate and wait name plan tokens - rename the step.`);
 
       if (HOOKS.has(key)) {
         if (!hooks.has(key)) hooks.set(key, unbind(desc.get!));
@@ -782,7 +784,7 @@ class Run extends Model {
 
   async sequence(items: Steps.Node[], from: Frame): Promise<void> {
     for (const [index, item] of items.entries()) {
-      if (item.key != 'slot') {
+      if (item.key != 'gate') {
         await this.exec(item, from);
         continue;
       }
@@ -1590,7 +1592,7 @@ class Frame extends Model {
   }
 
   slot(options: Steps.Gate) {
-    const token = this.issue('slot', []);
+    const token = this.issue('gate', []);
 
     this.run._slots.set(token.id, options);
 
@@ -1600,7 +1602,7 @@ class Frame extends Model {
   group(members: unknown[]) {
     for (const member of members as Steps.Node[])
       if (!this._items.includes(member)) throw new Error(`then() takes steps called by ${this.key}.`);
-      else if (member.key == 'slot') throw new Error('a gate cannot be grouped.');
+      else if (member.key == 'gate') throw new Error('a gate cannot be grouped.');
 
     const group = Object.assign(this.run.node('then', []), { group: members as Steps.Node[] });
 
@@ -1776,7 +1778,7 @@ function serial(error: unknown) {
 }
 
 function named(key: string) {
-  return key == 'slot' ? 'a gate' : `${key}()`;
+  return key == 'gate' ? 'a gate' : `${key}()`;
 }
 
 function plain(value: unknown) {

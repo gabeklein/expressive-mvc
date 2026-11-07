@@ -306,14 +306,14 @@ describe('steps', () => {
       mode = 'ask';
 
       async run() {
-        this.wait();
+        this.pause();
 
         await this;
 
         return this.mode;
       }
 
-      protected async wait() {
+      protected async pause() {
         await flushMicrotasks();
       }
     }
@@ -1203,6 +1203,21 @@ describe('end', () => {
     expect(() => new Test()).toThrow('Test declares end; return the result from run, end early with this.then.end().');
   });
 
+  it('will fail if a class declares a name plan tokens use', () => {
+    class Gate extends Steps {
+      async run() {}
+
+      protected async gate() {}
+    }
+
+    class Wait extends Steps {
+      async wait() {}
+    }
+
+    expect(() => new Gate()).toThrow('Gate declares gate; then, end, gate and wait name plan tokens - rename the step.');
+    expect(() => new Wait()).toThrow('Wait declares wait; then, end, gate and wait name plan tokens - rename the step.');
+  });
+
   it('will fail if a step is called after end', async () => {
     const a = vi.fn();
 
@@ -1772,14 +1787,14 @@ describe('then', () => {
 
     class Test extends Steps {
       async run() {
-        this.wait();
+        this.pause();
 
         await this;
 
         return 'done';
       }
 
-      protected async wait() {
+      protected async pause() {
         await flushMicrotasks();
       }
     }
@@ -2098,10 +2113,10 @@ describe('stop', () => {
 
       protected hold() {
         this.then.undo(undo);
-        this.wait();
+        this.pause();
       }
 
-      protected async wait() {
+      protected async pause() {
         await work;
       }
     }
@@ -3037,7 +3052,7 @@ describe('gate', () => {
     work.get('d')!.resolve();
     await result;
     expect(record(test)[1].next).toEqual([
-      { id: 'slot#1', key: 'slot', args: [] },
+      { id: 'gate#1', key: 'gate', args: [] },
       { id: 'scan#1', key: 'scan', args: ['a'] }
     ]);
   });
@@ -3375,7 +3390,7 @@ describe('gate', () => {
 
     await test.run();
     expect(order).toEqual(['a', 'b']);
-    expect(record(test)[0].next.map((node) => node.id)).toEqual(['slot#1', 'a#1', 'b#1']);
+    expect(record(test)[0].next.map((node) => node.id)).toEqual(['gate#1', 'a#1', 'b#1']);
   });
 
   it('will re-enter a slot held above it', async () => {

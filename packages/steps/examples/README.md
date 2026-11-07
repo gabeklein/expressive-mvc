@@ -60,8 +60,8 @@ A PR adding a feature extends an example and this table.
 | answering steps present only while waited, reactive | `Agent.allow`; agent test `will offer allow only while a tool call waits` |
 | routing by first argument | agent test `will answer the tool call it is given` |
 | per-call Promise of an answer | agent test `will resolve allow once its tool has run` |
-| watcher timeout with `signal` | `Agent.tool`, `Deploy.gate` |
-| nudge - a watcher that does not answer | `Deploy.gate`; deploy test `will nudge on-call, then abort a gate nobody answers` |
+| watcher timeout with `signal` | `Agent.tool`, `Deploy.approval` |
+| nudge - a watcher that does not answer | `Deploy.approval`; deploy test `will nudge on-call, then abort a gate nobody answers` |
 
 ## Gate and catch
 

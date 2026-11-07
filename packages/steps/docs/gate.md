@@ -29,4 +29,4 @@ class Crawl extends Steps {
 - A [replay](catch.md#retry) queues again: the failed try's slots are released before it, so it waits its `after`, then queues behind those already waiting.
 - `stop()`, an outside `end` or a failure releases the run's held slots and cancels its waiting ones; a [caught failure](catch.md) cancels waiting gates in its branch.
 
-The token is journaled in the step's `next` as `{ id: 'slot#1', key: 'slot', args: [] }`; options are not journaled. A write after it fails the run as after any token. A gate stands alone - `this.then({ max }, this.a())` throws `then() takes a gate alone - this.then({ max, after, key }).` It cannot be grouped (`a gate cannot be grouped.`) or caught.
+The token is journaled in the step's `next` as `{ id: 'gate#1', key: 'gate', args: [] }`; options are not journaled. A write after it fails the run as after any token. A gate stands alone - `this.then({ max }, this.a())` throws `then() takes a gate alone - this.then({ max, after, key }).` It cannot be grouped (`a gate cannot be grouped.`) or caught.

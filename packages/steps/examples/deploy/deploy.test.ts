@@ -37,7 +37,7 @@ it('will release through the gate', async () => {
   // the canaries are live while the gate waits
   expect([...deploy.live.keys()].sort()).toEqual(['web-1', 'web-4']);
   expect(deploy.then.status).toBe('waiting');
-  expect(deploy.then.waiting).toEqual([{ id: 'wait#1', step: 'gate', args: [], answers: ['promote', 'abort'] }]);
+  expect(deploy.then.waiting).toEqual([{ id: 'wait#1', step: 'approval', args: [], answers: ['promote', 'abort'] }]);
 
   await deploy.promote('gabe');
 
@@ -59,7 +59,7 @@ it('will release through the gate', async () => {
     'canary',
     'install',
     'install',
-    'gate',
+    'approval',
     'promote',
     'migrate',
     'rollout',
@@ -168,7 +168,7 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
     ['canary', true],
     ['install', true],
     ['install', true],
-    ['gate', undefined],
+    ['approval', undefined],
     ['abort', undefined],
     ['uninstall', undefined],
     ['uninstall', undefined],

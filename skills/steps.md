@@ -190,7 +190,7 @@ protected async scan(site: string) {                     // backoff lives in the
 
 ## Hooks
 
-Only `before` and `after` are hooks (any other name is a step); protected, synchronous, raw instance as `this`, writes unjournaled.
+Only `before` and `after` are hooks (any other name is a step; `then`, `end`, `gate`, `wait` are reserved for plan tokens and throw); protected, synchronous, raw instance as `this`, writes unjournaled.
 
 - `before(step, args)` / `after(step, entry)` around every step. `after` gets each committed entry - the Runner keeps no journal, so a log is `this.log.push(entry)`. A try a catch took arrives with `entry.error`; a called `end` arrives too (an implicit one does not).
 

@@ -93,7 +93,7 @@ export class Deploy extends Steps {
     this.canaries = this._spread(2);
 
     this.then(this.canaries, this.install);     // a mapped group: install(host, index) per canary, in parallel
-    this.gate();                                // scheduled by canary, so it runs before migrate - depth-first
+    this.approval();                                // scheduled by canary, so it runs before migrate - depth-first
   }
 
   protected async install(host: string) {
@@ -108,7 +108,7 @@ export class Deploy extends Steps {
     this.live.delete(host);
   }
 
-  protected async gate() {
+  protected async approval() {
     // park until promote or abort answers; plain functions after them are watchers
     this.then(
       this.promote,

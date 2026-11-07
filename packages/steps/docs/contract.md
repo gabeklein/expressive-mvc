@@ -15,7 +15,7 @@ class Steps extends Model {
 | `before(step, args)` | `protected` | before each step ([hooks.md](hooks.md)) |
 | `after(step, entry)` | `protected` | after each step commits ([hooks.md](hooks.md)) |
 
-Other methods are steps, `protected async` by convention ([README.md](README.md#conventions)).
+Other methods are steps, `protected async` by convention ([README.md](README.md#conventions)). `then`, `end`, `gate` and `wait` name plan tokens - a step so named throws at construction.
 
 ## Composition
 
