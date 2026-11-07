@@ -68,12 +68,11 @@ A PR adding a feature extends an example and this table.
 | feature | where |
 | --- | --- |
 | `this.then.slot({ max })` - a group's concurrency, `max: ($) => $.limit` tracked live | `Crawl.visit`; crawl test `will scan at most limit sites at once, following a limit changed mid-run` |
-| `this.then.slot({ after })` - backoff, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
+| `this.then.slot({ after })` - backoff read from `this.then.retried`, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
 | `.catch()` - skip a failing branch | `Crawl.run` (`report`); crawl test `will end even when the report fails` |
-| `.catch(this.step)` - retry by re-running the issuing step, `this.then.retry`; the re-run queues for its slot again | `Deploy.test`; deploy test `will retry a flaky test suite with backoff` |
-| `this.then(this.scan(site)).catch(this.visit(site))` - a `Steps.Plan` caught with a step called for it, recorded as the retry; `(error) => …` for the skip that needs the error, process-local | `Crawl.visit`; crawl test `will retry a failing site with backoff, keeping what other sites found` |
-| `this.then(this.exec(call)).catch(this.exec(call))` - the caught step itself, once, recorded | `Agent.tool`, `Agent.allow`; agent test `will retry a tool, keeping what the tool pushed from outside` |
-| a handler passing the error to a step - a group settling with what succeeded | `Crawl.skip`; crawl test `will skip a site after three retries` |
+| `.catch(this.retest)` - a step method calling `this.then.retry()` until `retried` reaches a limit; the replay queues for its slot again | `Deploy.test`, `Deploy.retest`; deploy test `will retry a flaky test suite with backoff` |
+| `.catch(this.then.retry)` - unconditional replay; the retried step ends the loop by returning to a fallback | `Crawl.run`, `Crawl.visit`; crawl tests `will retry a failing site with backoff, keeping what other sites found`, `will skip a site after three retries` |
+| a step method retrying once - `if (this.then.retried) throw error;` | `Agent.reexec`; agent test `will retry a tool, keeping what the tool pushed from outside` |
 
 ## Hooks, signal
 

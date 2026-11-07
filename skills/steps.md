@@ -153,23 +153,28 @@ async deny(call: ToolCall) { this.messages.push(denied(call)); }
 ## Catch and retry
 
 ```ts
-protected async visit(site: string) {
-  this.then.slot({ max: ($) => $.limit, after: this.then.retry && 1000 * 2 ** (this.then.retry - 1) });
+this.scan(site).catch(this.rescan);                       // a step method - recorded, given the error
 
-  const scan = this.then(this.scan(site));                  // a Steps.Plan - its catch takes steps called for it
+protected async rescan(error: unknown) {
+  if (this.then.retried >= 3) throw error;
+  this.then.retry();                                      // replay scan(site), args recorded
+}
 
-  if (this.then.retry < 3) scan.catch(this.visit(site));    // recorded with its args
-  else scan.catch((error) => { this.skip(site, error); });  // process-local
+protected async scan(site: string) {                     // backoff lives in the retried step
+  this.then.slot({ after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
+  this.fetch(site);
 }
 
 - A failure in the token's branch (it and its subtree): failing step restored, rest of the branch discarded, the branch's undos run - then the handler runs in its place and the plan continues.
 - Handlers replace the branch - retry, fall back, rethrow. `.catch()` skips.
-  - `plan.catch(this.visit(site))` - steps called for a `Steps.Plan`'s catch (`this.then(...)`'s return; several a group): recorded with args. A step call's own `catch` is `Promise.catch`-typed - wrap it in `this.then(...)`.
   - `.catch(this.noCourier)` - a step method: runs given the error; recorded with it as `{ name, message, cause }`.
+  - `.catch(this.then.retry)` - replay unconditionally; recorded `retry`.
   - `.catch((error) => { … })` - a function: `Promise.catch` semantics, its step calls scheduled; process-local - dropped on restart, so there the run fails instead of recovering.
 - The handler sees the branch's failed state; once its body returns, the branch's fields are restored except keys it wrote, then what it scheduled runs. `this.then.reset()` restores early.
 - It recovers by scheduling, or throws to keep failing - an expected failure is a typed error (`throw new NoCourier()`) the handler checks, rethrowing the rest. A wait in a handler asks for another try; put it under a caught step to catch the next failure too.
-- `this.then.retry` - re-run count, `0` on a first run; a step a handler runs counts one past the issuer when it is the issuing step, 1 when it is the caught step. Read it in the step - a function handler's `this.then` is its own.
+- `this.then.retry()` in a handler replays what the catch is attached to - the failed step or the whole group - with its recorded args, under the same handler. Throws outside a handler.
+- `this.then.retried` - replays so far, `0` on a first run; a handler reads the failed one's. Calling a step again from a handler is a new step - `0`.
+- With `.catch(this.then.retry)` the retried step ends its loop: `if (this.then.retried > 3) return void this.skip(site);` - a throw there is retried again.
 - Not caught: rule violations, past `commit()`/irreversible, aborts, failures while stopping or ending.
 
 ## Slot

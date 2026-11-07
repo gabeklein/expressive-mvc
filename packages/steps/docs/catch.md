@@ -1,6 +1,6 @@
 # Catch - Recovery per Branch
 
-A token issued in a step - a step call, a group, an inline step, a wait - takes `.catch(handler?)`; a plan from `this.then(...)` - a `Steps.Plan` - also takes steps called for it. It returns the same token, still one plan item and not awaitable. The token and everything it schedules, transitively, is its branch. When a step in the branch throws, the run does not fail:
+A token issued in a step - a step call, a group, an inline step, a wait - takes `.catch(handler?)`. It returns the same token, still one plan item and not awaitable. The token and everything it schedules, transitively, is its branch. When a step in the branch throws, the run does not fail:
 
 1. The failing step's own writes are restored, as always; it is journaled `{ id, key, args, next: [], wrote: [], error }`.
 2. The rest of the branch is discarded: pending items dropped, open waits released, slots cancelled, steps in flight aborted - they settle and commit.
@@ -41,34 +41,40 @@ Step references are recorded; functions belong to the process.
 
 | handler | runs on failure | recorded |
 | --- | --- | --- |
-| `this.then(this.scan(site)).catch(this.visit(site))` - steps called for a plan's `catch`, several a group | the steps, with their args | the steps and args |
 | `.catch(this.noCourier)` - a step method | the step, given the error alone | its key; its entry's args hold the error as `{ name, message, cause }` |
+| `.catch(this.then.retry)` | the caught token again - [retry](#retry) | `retry` |
 | `.catch((error) => { … })` - a function | given the error, as `Promise.catch` - an [inline step](steps.md#inline-steps) whose step calls schedule | `then` - process-local |
 
-- Steps called for a catch are claimed, not scheduled; a step call's own `catch` is `Promise.catch`-typed, so wrap it: `this.then(this.scan(site))`. This is how a recorded handler gets args.
 - A step method runs given the error, whatever it declares. In process it gets the original; the durable tier will rebuild it from the record - `'Stopped'` included.
 - A function is dropped on restart: the failure then has no handler there, and the run fails instead of recovering. Use it where losing the branch is acceptable, or for what only this process can do.
 
 ## Retry
 
+`this.then.retry()` in a handler - a step method or a function - schedules what the catch is attached to again: the failed step, or the whole group for `this.then(a, b).catch(…)`, with its recorded args, caught by the same handler. The handler never needs the args; a replay is "run that node again".
+
 ```ts
-protected async visit(site: string) {
-  this.then.slot({ max: ($) => $.limit, after: this.then.retry && 1000 * 2 ** (this.then.retry - 1) });
+protected async rescan(error: unknown) {
+  if (this.then.retried >= 3) throw error;
 
-  const scan = this.then(this.scan(site));
-
-  if (this.then.retry < 3) scan.catch(this.visit(site));
-  else scan.catch((error) => { this.skip(site, error); });
+  this.then.retry();
 }
 ```
 
-`this.then.retry` counts re-runs - `0` on a step's first run, so `!this.then.retry` means it has not failed. Read it in the step; inside a function handler `this.then` is the handler's. A step a handler runs counts:
+`.catch(this.then.retry)` retries unconditionally. The retried step ends the loop - give up by scheduling a fallback and returning; a throw there is caught and retried again:
 
-- the issuing step again - `visit` inside `visit`'s catch - one past the issuer: `visit` at retry 2 schedules one at retry 3;
-- the caught step again - `this.then(this.exec(call)).catch(this.exec(call))` - retry 1; its own failure is not caught, so it runs once more at most;
-- any other step `0`.
+```ts
+protected async visit(site: string) {
+  if (this.then.retried > 3) return void this.skip(site);
 
-An entry past 0 carries `retry`. Backoff is a [slot](slot.md) with `after` read from `retry`. A handler re-running its issuer releases the issuer's slots first - it waits `after`, then queues behind other waiters; any other handler under a held slot re-enters it, so `max` is not exceeded and nothing deadlocks. A step waiting on a [pending value](steps.md#pending-values) is not re-run: the wait counts no retry.
+  this.then.slot({ max: ($) => $.limit, after: this.then.retried && 1000 * 2 ** (this.then.retried - 1) });
+  this.scan(site);
+}
+```
+
+- `this.then.retried` - how many times `retry()` replayed the step, `0` on a first run; in a handler, the failed one's. A replayed group's members carry it too. An entry past 0 carries `retried`.
+- Backoff belongs in the retried step: a [slot](slot.md) with `after` read from `retried`. The failed try's slots are released before the replay queues, so it waits `after`, then queues behind other waiters.
+- Calling a step again from a handler is a new step, not a replay - `retried` stays `0`.
+- `retry()` outside a handler throws `retry() must be called in a .catch handler.` A step waiting on a [pending value](steps.md#pending-values) is not replayed: the wait counts no retry.
 
 ## Not caught
 
@@ -77,4 +83,4 @@ An entry past 0 carries `retry`. Backoff is a [slot](slot.md) with `after` read 
 - A step rejecting with its own aborted [signal](steps.md#the-step-signal)'s reason is no failure.
 - A hook's throw, an undo's throw, and any failure while the run is stopping or ending.
 
-`slot` and `end` tokens throw `slot() cannot be caught.`; anything else throws `catch() takes a step, a function, steps called for it or nothing.` Outside a step, `then.retry` throws `retry must be read inside a step.`
+`slot` and `end` tokens throw `slot() cannot be caught.`; a handler that is not a function throws `catch() takes a step, a function or nothing.` Outside a step, `then.retry()` and `then.retried` throw.

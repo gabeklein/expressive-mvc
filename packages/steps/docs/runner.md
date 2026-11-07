@@ -18,7 +18,8 @@
 | `reset()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
 | `slot({ max?, after?, key? })` | in a step: wait for a free slot, then run what follows holding it ([slot.md](slot.md)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
-| `retry` | in a step: `0`, or how many times it was re-run from its own catch ([catch.md](catch.md#retry)) |
+| `retried` | in a step: how many times `retry()` replayed it - `0` on a first run ([catch.md](catch.md#retry)) |
+| `retry()` | in a catch handler: replay what the catch is attached to ([catch.md](catch.md#retry)) |
 | `then(...tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
 | `then(fn)` | in a step: an inline step ([steps.md](steps.md#inline-steps)) |
 | `then(...steps, ...watchers)` | in a step: a wait answered by one of these steps ([wait.md](wait.md)) |
@@ -33,7 +34,7 @@ The Runner keeps no journal. Each step's entry is handed to `after(step, entry)`
 
 `wrote` names the fields the step wrote, collections changed in place included - no values.
 
-`commit`, `undo`, `reset`, `slot`, `signal` and `retry` outside a step throw.
+`commit`, `undo`, `reset`, `retry`, `slot`, `signal` and `retried` outside a step throw.
 
 `status`, `active`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them.
 
