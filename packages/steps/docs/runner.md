@@ -10,12 +10,12 @@
 | `waiting` | open waits, `{ id, step, args, answers }`, oldest first ([wait.md](wait.md)) |
 | `runs` | finished runs - ended, failed or stopped |
 | `error` | what failed the run, or what an undo threw |
-| `on` | the instance |
+| `self` | the instance |
 | `end()` | in a step: end the run where the plan reaches it ([steps.md](steps.md#end-is-terminal)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |
-| `stop(undo?, reason?)` | cancel ([runs.md](runs.md#stop)) |
+| `stop({ undo?, reason? })` | cancel ([runs.md](runs.md#stop)) |
 | `commit()` | in a step: a point of no return ([undo.md](undo.md#commit)) |
 | `undo(...steps)`, `undo(fn)` | in a step: register its undo ([undo.md](undo.md#undos)) |
-| `reset()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
+| `restore()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
 | `then({ max?, after?, key? })` | in a step: a gate - wait for a free slot, then run what follows holding it ([gate.md](gate.md)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
 | `retried` | in a step: how many times `retry()` replayed it - `0` on a first run ([catch.md](catch.md#retry)) |
@@ -34,7 +34,7 @@ The Runner keeps no journal. Each step's entry is handed to `after(step, entry)`
 
 `wrote` names the fields the step wrote, collections changed in place included - no values.
 
-`commit`, `undo`, `reset`, `retry`, `signal` and `retried` outside a step throw; so does `then(steps)` or a gate.
+`commit`, `undo`, `restore`, `retry`, `signal` and `retried` outside a step throw; so does `then(steps)` or a gate.
 
 `status`, `active`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them.
 

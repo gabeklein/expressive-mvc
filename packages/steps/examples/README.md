@@ -15,8 +15,8 @@ A PR adding a feature extends an example and this table.
 | `await instance` joins an active run | agent test `will join a turn in progress` |
 | idle await rejects when `run` takes args | agent test `will reject an idle await without a prompt` |
 | `then.stop()` | agent test `will abort the model call when stopped mid-turn`, deploy test `will abort the test suite when stopped` |
-| `then.stop(true)` | order test `will undo an order stopped mid-shipment` |
-| `this.then.stop(true, reason)` - cancel and unwind from a step, the reason carried in the `'Stopped'` error | `Deploy.abort`; deploy test `will roll back the canaries and the build when the gate aborts` |
+| `then.stop({ undo: true })` | order test `will undo an order stopped mid-shipment` |
+| `this.then.stop({ undo: true, reason })` - cancel and unwind from a step, the reason carried in the `'Stopped'` error | `Deploy.abort`; deploy test `will roll back the canaries and the build when the gate aborts` |
 | `then.end()` from outside | agent test `will end a turn early from outside` |
 | `set(null)` stops | agent test `will stop a turn when destroyed` |
 

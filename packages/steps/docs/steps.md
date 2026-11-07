@@ -119,7 +119,7 @@ Inside a step, `this.then`:
 - tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
-Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.undo(...steps)` ([undo.md](undo.md#undos)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retried`, `then.retry()` and `then.reset()` ([catch.md](catch.md)).
+Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.undo(...steps)` ([undo.md](undo.md#undos)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retried`, `then.retry()` and `then.restore()` ([catch.md](catch.md)).
 
 Every token takes `.catch(handler?)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
 

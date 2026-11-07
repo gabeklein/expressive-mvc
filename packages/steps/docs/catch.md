@@ -26,7 +26,7 @@ protected async noCourier(error: unknown) {
 - `.catch()` - the branch is skipped. A group whose members each catch settles with what succeeded.
 - A handler's steps keep their own signatures and run in the branch's place.
 - A handler throwing - rethrowing included - fails like any step: the next caught token around it takes it, else the run fails. Entries the branch already took back are not taken back twice.
-- `this.then.reset()` in a handler restores the branch's fields now - writes after it stand: `this.then.reset(); this.notice = 'retrying';`. Outside a handler it throws `reset() must be called in a .catch handler.`
+- `this.then.restore()` in a handler restores the branch's fields now - writes after it stand: `this.then.restore(); this.notice = 'retrying';`. Outside a handler it throws `restore() must be called in a .catch handler.`
 - The token is journaled with `rescue` - steps called for it, a step method's key, `then` for a function, `true` for none: `{ id: 'then#1', key: 'then', args: [], group: [scan], rescue: [{ id: 'visit#2', key: 'visit', args: ['a'] }] }`.
 - Nested catches: the nearest enclosing caught token takes a failure; one in a handler belongs to the branch around it. A second failure in a branch already failing is journaled and absorbed.
 - A wait's branch is its answer and the answer's subtree; a watcher throwing is caught there too. A handler opening a wait - `this.then(this.pay)` - asks for another try; put that wait under a caught step to catch the next failure too.

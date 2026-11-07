@@ -118,12 +118,12 @@ Step references are recorded; functions belong to the process. A step returns no
 - A bare step method or a mix throws.
 
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
-- An undo runs on any unwind through its step - its own failure after registering, a later failure caught by a `.catch` whose branch includes it, run failure, `stop(true)`. Order: failure → undos newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
+- An undo runs on any unwind through its step - its own failure after registering, a later failure caught by a `.catch` whose branch includes it, run failure, `stop({ undo: true })`. Order: failure → undos newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
 - Steps an undo calls run as part of the unwind (with what they schedule), before older undos, and reach `before`/`after`. `end`, gates and waits throw there.
 - An undo registered before its step fails runs for that failure too, seeing the step's partial writes. It sees the unwound state, its own writes are kept; it never recovers. `run` registers none - clean up in its tail.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
 - Removing a pool member or destroying a map value the step did not add is irreversible: the unwind stops there and warns.
-- Whole-run undo is `stop(true)`; partial is a [catch](#catch-and-retry).
+- Whole-run undo is `stop({ undo: true })`; partial is a [catch](#catch-and-retry).
 - Plain arrays/objects mutated in place are invisible - assign, or use `has`/`map`.
 
 ## Waits
@@ -169,7 +169,7 @@ protected async scan(site: string) {                     // backoff lives in the
 - Handlers replace the branch - retry, fall back, rethrow. `.catch()` skips.
   - `.catch(this.noCourier)` - a step method: runs given the error; recorded with it as `{ name, message, cause }`.
   - `.catch((error) => { … })` - a function: `Promise.catch` semantics, its step calls scheduled; process-local - dropped on restart, so there the run fails instead of recovering.
-- The handler sees the branch's failed state; once its body returns, the branch's fields are restored except keys it wrote, then what it scheduled runs. `this.then.reset()` restores early.
+- The handler sees the branch's failed state; once its body returns, the branch's fields are restored except keys it wrote, then what it scheduled runs. `this.then.restore()` restores early.
 - It recovers by scheduling, or throws to keep failing - an expected failure is a typed error (`throw new NoCourier()`) the handler checks, rethrowing the rest. A wait in a handler asks for another try; put it under a caught step to catch the next failure too.
 - `this.then.retry()` in a handler replays what the catch is attached to - the failed step or the whole group - with its recorded args, under the same handler. The handler holds the policy; past it, throw or fall back. Throws outside a handler; `.catch(this.then.retry)` throws.
 - `this.then.retried` - replays so far, `0` on a first run; a handler reads the failed one's. Calling a step again from a handler is a new step - `0`.
@@ -184,7 +184,7 @@ protected async scan(site: string) {                     // backoff lives in the
 
 ## Stop and end
 
-- `then.stop(undo?, reason?)` - cancels: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with an error named `'Stopped'` (`reason` as `cause`). `stop(true)` also unwinds. `set(null)` stops.
+- `then.stop({ undo?, reason? })` - cancels: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with an error named `'Stopped'` (`reason` as `cause`). `stop({ undo: true })` also unwinds. `set(null)` stops.
 - `then.end()` - ends early, keeping everything: in a step at its place in the plan, from outside now. `await this` resolves; the tail builds the result from fields. Why it ended early is data - write a field before calling it. Passing a value throws.
 - A failed run nobody awaited rethrows uncaught two microtasks later.
 
