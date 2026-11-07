@@ -17,7 +17,7 @@ export default () => (
     <p>
       A <code>Steps</code> model, its methods steps: <code>run</code> reserves the
       cart, <code>reserve</code> schedules <code>pay</code>, and <code>pay</code>{' '}
-      parks on <code>this.then(this.approve, this.decline, timeout)</code>. While
+      parks on <code>this.then(this.approve, this.decline, this.timeout())</code> - <code>timeout</code> races the answer, declining once its duration passes. While
       that wait is open, <code>checkout.approve</code> and{' '}
       <code>checkout.decline</code> read as callable steps, so their buttons
       appear and disappear with it. Approving ships and mails the receipt in
@@ -31,8 +31,8 @@ export default () => (
       <code>this.then.undo(this.cancel(authorization))</code> - a step called
       for it, recorded with its args and journaled as it runs - and restores{' '}
       <code>pay</code>'s fields; the hold stays. <code>declined</code> then waits on{' '}
-      <code>this.then(this.pay)</code> for another card. Stop cancels and unwinds
-      everything. The journal below is <code>checkout.log</code>, filled by the{' '}
+      <code>this.then(this.pay)</code> for another card. Stop aborts - halts and
+      unwinds everything. The journal below is <code>checkout.log</code>, filled by the{' '}
       <code>after</code> hook with each step's entry.
     </small>
   </div>
@@ -74,7 +74,7 @@ class Storefront extends Component {
           {checkout.approve && <button onClick={() => checkout.approve()}>Approve</button>}
           {checkout.decline && <button onClick={() => checkout.decline()}>Decline</button>}
           {checkout.pay && <button onClick={() => checkout.pay(card)}>Try another card</button>}
-          {working && <button onClick={() => checkout.then.stop({ undo: true, reason: 'Order cancelled.' })}>Stop</button>}
+          {working && <button onClick={() => checkout.then.abort('Order cancelled.')}>Stop</button>}
         </div>
         <p className="status">
           Status: {status}
@@ -143,10 +143,12 @@ class Checkout extends Steps {
     this.authorization = authorization;
     this.notice = '';
     this.then.undo(this.cancel(authorization));
-    this.then(this.approve, this.decline, async (signal) => {
-      await delay(APPROVAL, signal);
-      this.decline('timed out');
-    });
+    this.then(this.approve, this.decline, this.timeout());
+  }
+
+  protected async timeout() {
+    this.then({ ms: APPROVAL });
+    this.decline('timed out');
   }
 
   async approve() {
