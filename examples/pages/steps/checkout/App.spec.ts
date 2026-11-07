@@ -120,7 +120,7 @@ test('will stop and unwind mid-run', async ({ page }) => {
   await authorize(page);
   await page.getByRole('button', { name: 'Stop' }).click();
 
-  await expect(page.locator('.status')).toHaveText('Status: stopped');
+  await expect(page.locator('.status')).toHaveText('Status: aborted');
   await expect(page.locator('.notice')).toHaveText('Order cancelled.');
   await expect(page.getByRole('button', { name: 'Approve' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);

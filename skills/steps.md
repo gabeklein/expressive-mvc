@@ -189,7 +189,7 @@ protected async scan(site: string) {                     // backoff lives in the
 ## Stop and end
 
 - `then.stop(reason?)` - halts, keeping what was done: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with an error named `'Stopped'` (`reason` as `cause`). `set(null)` stops.
-- `then.abort(reason?)` - halts the same way, then unwinds the run as a failure would - `commit`'s counterpart. An undo throwing fails the run (`failed`, its error given the `'Stopped'` error as `cause`).
+- `then.abort(reason?)` - halts the same way, then unwinds the run as a failure would - `commit`'s counterpart. Status `aborted`, error named `'Aborted'`. An undo throwing fails the run (`failed`, its error given the `'Aborted'` error as `cause`).
 - `then.end()` - ends early, keeping everything: in a step at its place in the plan, from outside now. `await this` resolves; the tail builds the result from fields. Why it ended early is data - write a field before calling it. Passing a value throws.
 - A failed run nobody awaited throws uncaught two microtasks later.
 
@@ -203,7 +203,7 @@ Entry: `{ id: 'pay#1', key, args, wrote, next, undo?, unwound?, wake?, retried?,
 
 ## Runner - `this.then`
 
-`status` (`idle | running | waiting | stopped | failed`), `active` (step in flight), `queue`, `waiting`, `runs`, `error` - reactive through the instance (`x.get(($) => $.then.status)`, or in a render), enumerable for a `{ ...x.then }` snapshot; `then.get()` snapshots too. `then` is not in `instance.get()`.
+`status` (`idle | running | waiting | stopped | aborted | failed`), `active` (step in flight), `queue`, `waiting`, `runs`, `error` - reactive through the instance (`x.get(($) => $.then.status)`, or in a render), enumerable for a `{ ...x.then }` snapshot; `then.get()` snapshots too. `then` is not in `instance.get()`.
 
 ## Conventions
 

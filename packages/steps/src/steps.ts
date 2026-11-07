@@ -89,7 +89,7 @@ const TOKEN = {
 };
 
 declare namespace Steps {
-  type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'failed';
+  type Status = 'idle' | 'running' | 'waiting' | 'stopped' | 'aborted' | 'failed';
 
   /** What `run` returns - the run's result. */
   type Result<T> = T extends { run(...args: any[]): infer R } ? Awaited<R> : unknown;
@@ -201,7 +201,7 @@ declare namespace Steps {
     readonly queue: readonly unknown[][];
     /** Open waits, oldest first. */
     readonly waiting: readonly Steps.Wait[];
-    /** Runs finished - ended, failed or stopped. */
+    /** Runs finished - ended, failed, stopped or aborted. */
     readonly runs: number;
     readonly error: unknown;
 
@@ -228,8 +228,9 @@ declare namespace Steps {
      */
     stop(reason?: unknown): void;
     /**
-     * Halt and unwind, as a failure would - the run's undos run, newest first, and fields are restored.
-     * An undo which throws fails the run: its error, given the `'Stopped'` error as `cause`.
+     * Halt and unwind, as a failure would - status `'aborted'`; the run's undos run, newest first, and
+     * fields are restored. The run and queue reject with an `'Aborted'` error, `reason` as for `stop`.
+     * An undo which throws fails the run: its error, given the `'Aborted'` error as `cause`.
      */
     abort(reason?: unknown): void;
     /** Inside a step: a point of no return - the step is not caught, restored or undone, and the unwind stops here. */
@@ -520,7 +521,7 @@ class Control extends Model {
     if (!current) return;
 
     const message = typeof reason == 'string' ? reason : `${this._self} was ${undo ? 'aborted' : 'stopped'}.`;
-    const stopped = Object.assign(new Error(message, reason === undefined ? undefined : { cause: reason }), { name: 'Stopped' });
+    const stopped = Object.assign(new Error(message, reason === undefined ? undefined : { cause: reason }), { name: undo ? 'Aborted' : 'Stopped' });
 
     for (const ticket of queue) ticket.reject(stopped);
 
@@ -528,7 +529,7 @@ class Control extends Model {
 
     current._stopped = stopped;
     current.release();
-    current.halt('stopped', undefined, undo);
+    current.halt(undo ? 'aborted' : 'stopped', undefined, undo);
   }
 }
 
@@ -560,7 +561,7 @@ class Run extends Model {
   _unwinding?: Promise<unknown> = undefined;
   _drained: (() => void)[] = [];
   _quiet = new Set<() => void>();
-  _halted?: 'failed' | 'stopped' = undefined;
+  _halted?: 'failed' | 'stopped' | 'aborted' = undefined;
   _ending?: boolean = undefined;
   _settling?: boolean = undefined;
   _error?: unknown = undefined;
@@ -671,7 +672,7 @@ class Run extends Model {
   lose(wait: Wait, won: string[], answer: Steps.Node) {
     const race = wait._race!;
     const losers = (race.group || [race]).filter((racer) => !won.includes(racer.id));
-    const cause = Object.assign(new Error(`${answer.key} answered ${wait.id}.`), { name: 'Stopped' });
+    const cause = Object.assign(new Error(`${answer.key} answered ${wait.id}.`), { name: 'Aborted' });
 
     for (const racer of losers) this._dropped.add(racer.id);
     for (const frame of this.discard()) frame._abort.abort();
@@ -1156,7 +1157,7 @@ class Run extends Model {
     this.waits.clear();
   }
 
-  halt(status: 'failed' | 'stopped', error?: unknown, undo = status == 'failed') {
+  halt(status: 'failed' | 'stopped' | 'aborted', error?: unknown, undo = status == 'failed') {
     const { control } = this;
 
     if (this._halted || this._settling) return;
@@ -1187,7 +1188,7 @@ class Run extends Model {
 
       if (unwound.failed) {
         const { cause } = unwound.failed;
-        const stopped = this._halted == 'stopped';
+        const stopped = this._halted == 'aborted';
 
         if (stopped && cause instanceof Error && cause.cause === undefined) cause.cause = this._stopped;
         if (stopped) this.control.status = 'failed';

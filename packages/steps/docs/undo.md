@@ -48,7 +48,7 @@ A step that throws, breaks a rule, or returns a value fails the run:
 6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys an undo wrote. Each taken-back entry that had undos or wrote is marked `unwound: true`.
 7. `await this` in `run` rejects with `error` - the tail runs on the restored fields ([runs.md](runs.md#run-and-the-result)); without one, the run rejects with `error`.
 
-`run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `stopped`, undos given the `'Stopped'` error ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md) and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
+`run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `aborted`, undos given the `'Aborted'` error ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md) and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
 
 ## Keeping a value
 

@@ -151,11 +151,11 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   const release = deploy.run();
 
   await untilGate(deploy);
-  const stopped = { name: 'Stopped', message: 'canary rejected: error rate', cause: 'canary rejected: error rate' };
+  const aborted = { name: 'Aborted', message: 'canary rejected: error rate', cause: 'canary rejected: error rate' };
 
-  // the answer's own Promise settles with the run it stopped
-  await expect(deploy.reject('error rate')).rejects.toMatchObject(stopped);
-  await expect(release).rejects.toMatchObject(stopped);
+  // the answer's own Promise settles with the run it aborted
+  await expect(deploy.reject('error rate')).rejects.toMatchObject(aborted);
+  await expect(release).rejects.toMatchObject(aborted);
 
   expect(fleet.uninstall).toHaveBeenCalledWith('web-1');
   expect(fleet.uninstall).toHaveBeenCalledWith('web-4');
@@ -164,8 +164,8 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   expect(registry.unpublish).toHaveBeenCalledWith('app-1.2.0.tgz');
   expect(git.untag).toHaveBeenCalledWith('1.2.0');
   expect(db.migrate).not.toHaveBeenCalled();
-  expect(deploy.then.status).toBe('stopped');
-  expect(deploy.report).toBe('1.2.0 stopped: canary rejected: error rate');
+  expect(deploy.then.status).toBe('aborted');
+  expect(deploy.report).toBe('1.2.0 aborted: canary rejected: error rate');
   // entries with a compensation or a write are taken back - compensations run, fields restored; the steps compensations call follow
   expect(record(deploy).map((entry) => [entry.key, entry.unwound])).toEqual([
     ['run', undefined],
@@ -191,7 +191,7 @@ it('will nudge on-call, then abort a gate nobody answers', async () => {
   vi.spyOn(pager, 'nudge');
 
   const deploy = create();
-  const failed = expect(deploy.run()).rejects.toMatchObject({ name: 'Stopped', message: 'canary rejected: nobody approved' });
+  const failed = expect(deploy.run()).rejects.toMatchObject({ name: 'Aborted', message: 'canary rejected: nobody approved' });
 
   await vi.advanceTimersByTimeAsync(15 * MINUTE);
   expect(pager.nudge).toHaveBeenCalledWith('1.2.0 awaits approval');

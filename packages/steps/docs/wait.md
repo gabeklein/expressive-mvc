@@ -76,7 +76,7 @@ protected async timeout(call: ToolCall) {
 }
 ```
 
-- The wait closes on its first answer - an outside call or a racer's. The racer whose branch answered wins and keeps all it did. The others lose: signals abort, what they have yet to run is dropped, open waits and gates below them release; a step in flight settles first. Then each losing branch unwinds as a [caught failure](catch.md) does - its undos run newest first, given a `'Stopped'` error (`deny answered wait#1.`), and the fields it wrote are restored. Effects without an undo stay.
+- The wait closes on its first answer - an outside call or a racer's. The racer whose branch answered wins and keeps all it did. The others lose: signals abort, what they have yet to run is dropped, open waits and gates below them release; a step in flight settles first. Then each losing branch unwinds as a [caught failure](catch.md) does - its undos run newest first, given an `'Aborted'` error (`deny answered wait#1.`), and the fields it wrote are restored. Effects without an undo stay.
 - A racer that settles without answering leaves the wait open - a nudge (`this.then({ day: 1 }); this.notify();`), not a decision.
 - A racer that throws fails the run, or the `.catch` around the wait.
 - `end`, `stop`, `abort` and a failure close every open wait and abort its racers.

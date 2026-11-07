@@ -4,11 +4,11 @@
 
 | member | |
 | --- | --- |
-| `status` | `'idle' \| 'running' \| 'waiting' \| 'stopped' \| 'failed'` - `idle` from construction and after a run ends |
+| `status` | `'idle' \| 'running' \| 'waiting' \| 'stopped' \| 'aborted' \| 'failed'` - `idle` from construction and after a run ends |
 | `active` | key of a step in flight, else `undefined`; with a group in flight, the latest invoked |
 | `queue` | argument arrays of queued `run()` calls |
 | `waiting` | open waits, `{ id, step, args, answers, until? }`, oldest first ([wait.md](wait.md)) |
-| `runs` | finished runs - ended, failed or stopped |
+| `runs` | finished runs - ended, failed, stopped or aborted |
 | `error` | what failed the run, or what an undo threw |
 | `self` | the instance |
 | `end()` | in a step: end the run where the plan reaches it ([steps.md](steps.md#end-is-terminal)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |

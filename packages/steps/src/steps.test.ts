@@ -1697,13 +1697,13 @@ describe('stop', () => {
 
     await flushMicrotasks();
     test.then.abort();
-    expect(test.then.status).toBe('stopped');
+    expect(test.then.status).toBe('aborted');
     work.resolve();
 
-    await expect(result).rejects.toMatchObject({ name: 'Stopped', message: `${test} was aborted.` });
-    expect(undo).toHaveBeenCalledWith(expect.objectContaining({ name: 'Stopped' }));
+    await expect(result).rejects.toMatchObject({ name: 'Aborted', message: `${test} was aborted.` });
+    expect(undo).toHaveBeenCalledWith(expect.objectContaining({ name: 'Aborted' }));
     expect(test.value).toBe(0);
-    expect(test.then.status).toBe('stopped');
+    expect(test.then.status).toBe('aborted');
     expect(record(test).map((entry) => entry.unwound)).toEqual([undefined, true, undefined]);
   });
 
@@ -1741,7 +1741,7 @@ describe('stop', () => {
     expect(test.value).toBe(1);
   });
 
-  it('will fail an abort whose undo throws, given the stop as cause', async () => {
+  it('will fail an abort whose undo throws, given the abort as cause', async () => {
     const work = mockPromise();
 
     class Test extends Steps {
@@ -1771,7 +1771,7 @@ describe('stop', () => {
     const error = await result.catch((error) => error);
 
     expect(error.message).toBe('stuck');
-    expect(error.cause).toMatchObject({ name: 'Stopped', message: 'cancelled', cause: 'cancelled' });
+    expect(error.cause).toMatchObject({ name: 'Aborted', message: 'cancelled', cause: 'cancelled' });
     expect(test.then.status).toBe('failed');
     expect(test.then.error).toBe(error);
   });
@@ -1962,7 +1962,7 @@ describe('stop', () => {
     test.then.abort('cancelled by user');
     work.resolve();
 
-    const stopped = { name: 'Stopped', message: 'cancelled by user', cause: 'cancelled by user' };
+    const stopped = { name: 'Aborted', message: 'cancelled by user', cause: 'cancelled by user' };
 
     await expect(second).rejects.toMatchObject(stopped);
     await expect(first).rejects.toMatchObject(stopped);
@@ -2644,7 +2644,7 @@ describe('races', () => {
     await result;
     expect(lost).toHaveBeenCalled();
     expect(later).not.toHaveBeenCalled();
-    expect(undo).toHaveBeenCalledWith(expect.objectContaining({ name: 'Stopped', message: 'reply answered wait#1.' }));
+    expect(undo).toHaveBeenCalledWith(expect.objectContaining({ name: 'Aborted', message: 'reply answered wait#1.' }));
     expect(test.value).toBe(0);
   });
 

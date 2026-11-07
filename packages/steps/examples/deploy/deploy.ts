@@ -135,7 +135,7 @@ export class Deploy extends Steps {
   }
 
   async reject(reason: string) {
-    // halt and unwind everything committed, newest first - the reason becomes the Stopped error's message and cause
+    // halt and unwind everything committed, newest first - the reason becomes the Aborted error's message and cause
     this.then.abort(`canary rejected: ${reason}`);
   }
 
