@@ -52,20 +52,25 @@ export class Deploy extends Steps {
   }
 
   protected async build() {
-    this.artifact = await ci.build(this.version);
-    this.then.catch(this.unpublish, this.artifact);
+    const artifact = await ci.build(this.version);
+
+    this.artifact = artifact;
+    // compensations run only on unwind, newest first - the steps they call run as part of it
+    this.then.catch(() => {
+      this.unpublish(artifact);
+    });
 
     await git.tag(this.version);
-    // compensations run only on unwind, newest first - a step and its args, so durable
-    this.then.catch(this.untag, this.version);
+    this.then.catch(() => {
+      this.untag(this.version);
+    });
   }
 
-  // a compensation gets the error first, then its args
-  protected async unpublish(_error: unknown, artifact: string) {
+  protected async unpublish(artifact: string) {
     await registry.unpublish(artifact);
   }
 
-  protected async untag(_error: unknown, version: string) {
+  protected async untag(version: string) {
     await git.untag(version);
   }
 
@@ -94,11 +99,13 @@ export class Deploy extends Steps {
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
 
-    // a step compensation is durable - a closure here would warn once the gate waits
-    this.then.catch(this.uninstall, host);
+    // a compensation is a closure - it warns once the gate waits, as it would not survive a resume
+    this.then.catch(() => {
+      this.uninstall(host);
+    });
   }
 
-  protected async uninstall(_error: unknown, host: string) {
+  protected async uninstall(host: string) {
     await fleet.uninstall(host);
     this.live.delete(host);
   }
@@ -147,7 +154,9 @@ export class Deploy extends Steps {
     fleet.drain(host);
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
-    this.then.catch(this.uninstall, host);
+    this.then.catch(() => {
+      this.uninstall(host);
+    });
     fleet.serve(host);
   }
 

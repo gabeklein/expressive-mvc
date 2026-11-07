@@ -15,7 +15,7 @@ export class Crawl extends Steps {
     this.query = query;
 
     // a mapped group - visit per site, in parallel
-    this.then(this.sites, (site) => this.visit(undefined, site));
+    this.then(this.sites, this.visit);
 
     // best effort - a failing post is caught and skipped, and the run still ends
     this.report().catch();
@@ -26,8 +26,7 @@ export class Crawl extends Steps {
     return [...this.products.values()];
   }
 
-  // a step and its own .catch handler: the error comes first, unused on a first try
-  protected async visit(_error: unknown, site: string) {
+  protected async visit(site: string) {
     // at most `limit` sites at once - read through `$`, so a UI raising or lowering it mid-run takes effect
     // a re-run waits 1s, 2s, then 4s first, then queues behind the sites already waiting
     this.then.slot({
@@ -35,9 +34,14 @@ export class Crawl extends Steps {
       after: this.then.retry && SECOND * 2 ** (this.then.retry - 1)
     });
 
-    // a failed scan runs visit again in its place, given the error then the scan's args, retry counting up;
-    // after three, skip - the group settles with the sites that answered
-    this.scan(site).catch(this.then.retry < 3 ? this.visit : this.skip);
+    // a failed scan runs the handler in its place: visit again, retry counting up; after three, skip -
+    // the group settles with the sites that answered. retry is read here - in the handler it is the handler's
+    const { retry } = this.then;
+
+    this.scan(site).catch((error) => {
+      if (retry < 3) this.visit(site);
+      else this.skip(site, error);
+    });
   }
 
   protected async scan(site: string) {
@@ -48,8 +52,8 @@ export class Crawl extends Steps {
       if (!this.products.has(product.sku)) this.products.set(product.sku, product);
   }
 
-  // a .catch handler gets the error, then the failed token's args
-  protected async skip(error: unknown, site: string) {
+  // a .catch handler gets the error - and calls steps, which run in the failed branch's place
+  protected async skip(site: string, error: unknown) {
     this.skipped.push(`${site}: ${(error as Error).message}`);
   }
 

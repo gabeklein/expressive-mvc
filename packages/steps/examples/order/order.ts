@@ -29,14 +29,16 @@ export class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
-    // a compensation runs only on unwind, given the error then its args - a step and args, so durable
-    this.then.catch(this.release, hold);
+    // a compensation runs only on unwind; the steps it calls run as part of the unwind
+    this.then.catch(() => {
+      this.release(hold);
+    });
 
     // calling a step schedules it - pay runs once reserve settles; if pay or anything it schedules fails, noCourier runs in its place
     this.pay().catch(this.noCourier);
   }
 
-  protected async release(_error: unknown, hold: string) {
+  protected async release(hold: string) {
     await inventory.release(hold);
   }
 
@@ -50,16 +52,19 @@ export class SubmitOrder extends Steps {
   }
 
   protected async pay() {
-    this.charge = await stripe.charge(this.cart.total);
-    this.then.catch(this.refund, this.charge.id);
+    const charge = await stripe.charge(this.cart.total);
+
+    this.charge = charge;
+    this.then.catch(() => {
+      this.refund(charge.id);
+    });
 
     // one parallel group; the run ends once it is done - then.end() must be the last call
-    this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
+    this.then(this.ship(charge.id), this.receipt(charge.receiptUrl));
     this.then.end();
   }
 
-  // runs before pay's fields are restored, so it could still read this.charge
-  protected async refund(_error: unknown, chargeId: string) {
+  protected async refund(chargeId: string) {
     await stripe.refund(chargeId);
   }
 
@@ -72,10 +77,12 @@ export class SubmitOrder extends Steps {
     this.tracking = booking.id;
 
     // ship owns its compensation - cancelled if receipt, beside it, fails
-    this.then.catch(this.cancel, booking.id);
+    this.then.catch(() => {
+      this.cancel(booking.id);
+    });
   }
 
-  protected async cancel(_error: unknown, tracking: string) {
+  protected async cancel(tracking: string) {
     await courier.cancel(tracking);
   }
 

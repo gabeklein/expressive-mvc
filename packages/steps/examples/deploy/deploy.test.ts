@@ -159,7 +159,7 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   expect(db.migrate).not.toHaveBeenCalled();
   expect(deploy.then.status).toBe('stopped');
   expect(deploy.report).toBe('1.2.0 stopped: canary rejected: error rate');
-  // entries with a compensation or a write are taken back - compensations run, fields restored
+  // entries with a compensation or a write are taken back - compensations run, fields restored; the steps compensations call follow
   expect(record(deploy).map((entry) => [entry.key, entry.unwound])).toEqual([
     ['run', undefined],
     ['build', true],
@@ -169,7 +169,11 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
     ['install', true],
     ['install', true],
     ['gate', undefined],
-    ['abort', undefined]
+    ['abort', undefined],
+    ['uninstall', undefined],
+    ['uninstall', undefined],
+    ['untag', undefined],
+    ['unpublish', undefined]
   ]);
 });
 
@@ -210,10 +214,11 @@ it('will uninstall upgraded hosts when the rollout fails', async () => {
   expect(fleet.serve).not.toHaveBeenCalledWith('web-3');
   // migrate committed, so the unwind halts there: canaries and build stay
   expect(registry.unpublish).not.toHaveBeenCalled();
-  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.unwound]).slice(-3)).toEqual([
+  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.unwound]).slice(-4)).toEqual([
     ['migrate#1', true, true, undefined],
     ['rollout#1', undefined, undefined, undefined],
-    ['upgrade#1', undefined, undefined, true]
+    ['upgrade#1', undefined, undefined, true],
+    ['uninstall#1', undefined, undefined, undefined]
   ]);
 });
 

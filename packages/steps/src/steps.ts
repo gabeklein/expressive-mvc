@@ -29,7 +29,11 @@ interface Answer {
 interface Rescue {
   key?: string;
   fn?: Function;
-  args?: unknown[];
+}
+
+interface Caught {
+  item: Steps.Node;
+  from: Frame;
 }
 
 type Restore = (into?: Frame, all?: boolean) => void;
@@ -46,7 +50,8 @@ interface Branch {
 
 interface Lineage {
   retry: number;
-  restore: Restore;
+  restore?: Restore;
+  caught?: Caught;
 }
 
 interface Gate {
@@ -70,11 +75,12 @@ const KEYS = ['status', 'active', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
 const GATES = new WeakMap<object, Gate>();
 const UNCAUGHT = ['slot', 'end'];
+const UNPLANNED = ['end', 'slot', 'wait'];
 const ISSUED = new WeakMap<object, Frame>();
 
 const TOKEN = {
-  catch(this: Steps.Node, handler?: unknown, ...args: unknown[]) {
-    return ISSUED.get(this)!.rescue(this, handler, args);
+  catch(this: Steps.Node, handler?: unknown) {
+    return ISSUED.get(this)!.rescue(this, handler);
   }
 };
 
@@ -106,7 +112,7 @@ declare namespace Steps {
     next: Node[];
     /** Fields the step wrote, collections changed in place included. */
     wrote: string[];
-    /** Compensations the step registered with `then.catch()`, in order: the handler's key - `then` for a function - and args. */
+    /** Compensations the step registered with `then.catch()`, in order: the step's key, or `then` for a function. */
     compensate?: Node[];
     /** Taken back by an unwind - compensations run, fields restored; `'failed'` when a compensation threw. */
     unwound?: true | 'failed';
@@ -126,11 +132,6 @@ declare namespace Steps {
     implicit?: true;
   }
 
-  /** A failure handler: the error first, then its args. */
-  type Handler = (error: any, ...args: any[]) => unknown;
-
-  /** Args a handler takes after the error - `never` unless it takes the error as `unknown` or `any`. */
-  type Args<H> = H extends (error: infer E, ...args: infer A) => any ? (unknown extends E ? A : never) : never;
 
   interface Wait {
     id: string;
@@ -229,10 +230,10 @@ declare namespace Steps {
     /**
      * Inside a step: its compensation - run when an unwind takes the step back: a failure caught by a
      * `.catch` above it, the run failing, `stop(true)`, or the step itself failing after this call.
-     * Given the error, then `args`; runs before fields are restored, and keys it writes are kept.
-     * Compensations run newest first and never recover - the failure goes on.
+     * Given the error; steps it calls run as part of the unwind. Runs before fields are restored, and
+     * keys it writes are kept. Compensations run newest first and never recover - the failure goes on.
      */
-    catch<H extends Steps.Handler>(handler: H, ...args: Steps.Args<H>): void;
+    catch(handler: (error: unknown) => unknown): void;
     /** Inside a `.catch` handler: restore the caught branch's fields now; writes after it stand. */
     reset(): void;
     /**
@@ -264,19 +265,6 @@ declare namespace Steps {
    * active run; idle, it calls `run()`, or rejects if `run` takes arguments.
    */
   type Runner<T extends Model = Model> = Controller<T> & Thenable<T>;
-}
-
-declare global {
-  interface Promise<T> {
-    /**
-     * On a step call inside a step: handle a failure of the step and all it schedules - unwind the
-     * branch, then run `handler` in its place given the error, then `args` (default: the step's).
-     */
-    catch<H extends Steps.Handler>(
-      handler: H,
-      ...args: Steps.Args<H> extends [unknown, ...unknown[]] ? Steps.Args<H> | [] : never
-    ): Promise<T>;
-  }
 }
 
 function install<T extends Steps>(self: T) {
@@ -678,23 +666,28 @@ class Run extends Model {
 
     if (this.stale() || !rescue.fn) return restore();
 
-    const { key, fn, args } = rescue;
-    const node = this.node(key || 'then', [cause, ...(args || (key == item.key ? item.args.slice(1) : item.args))]);
-    const issuer = key != item.key && key == from.key;
-    const repeats = key == item.key ? 0 : issuer ? from._retry : -1;
+    const { key, fn } = rescue;
+    const node = this.node(key || 'then', [cause]);
+    const caught = { item, from };
 
     this._parent.set(node.id, this._parent.get(item.id)!);
-    this._lineage.set(node.id, { retry: repeats + 1, restore });
+    this._lineage.set(node.id, key ? { retry: this.retrying(key, caught), restore } : { retry: 0, restore, caught });
 
     if (!key) {
       this._inline.set(node.id, fn);
       this._owner.set(node.id, from);
     }
 
-    if (issuer) for (const [release, id] of this._holding) if (id == from.id) release();
-
     await this.exec(node, from);
     restore();
+  }
+
+  retrying(key: string, { item, from }: Caught) {
+    const issuer = key != item.key && key == from.key;
+
+    if (issuer) for (const [release, id] of this._holding) if (id == from.id) release();
+
+    return key == item.key ? 1 : issuer ? from._retry + 1 : 0;
   }
 
   async recover(item: Steps.Node, cause: unknown): Promise<Restore> {
@@ -894,14 +887,14 @@ class Run extends Model {
     for (const release of this._holding.keys()) release();
   }
 
-  async invoke(node: Steps.Node, wake?: string): Promise<Frame | undefined> {
+  async invoke(node: Steps.Node, wake?: string, undo?: boolean): Promise<Frame | undefined> {
     const { control } = this;
     const { id, key, args } = node;
     const inline = this._inline.get(id);
     const lineage = this._lineage.get(id);
     const fn = inline || control._steps.get(key)!;
-    const frame = this.frames.add({ id, key, args, _wake: wake, _owner: this._owner.get(id), ...lineage && { _retry: lineage.retry, _restore: lineage.restore } });
-    const input = inline && !lineage ? [frame._abort.signal] : args;
+    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), ...lineage && { _retry: lineage.retry, _restore: lineage.restore, _caught: lineage.caught } });
+    const input = inline && !lineage?.restore ? [frame._abort.signal] : args;
     let body = false;
 
     control.active = key;
@@ -946,14 +939,18 @@ class Run extends Model {
     } catch (error) {
       const { signal } = frame._abort;
       const fixed = frame._lost.size || frame._committed;
-      const comps = !fixed && frame._comps.length ? frame._comps : undefined;
+      const aborted = signal.aborted && error === signal.reason;
+      const comps = !fixed && !undo && frame._comps.length ? frame._comps : undefined;
+      const defer = comps && !aborted && !this.stale();
       const entry: Steps.Entry = { id, key, args, next: [], wrote: [], error, ...frame._retry && { retry: frame._retry } };
 
       frame._settled = true;
 
-      if (!fixed) this.restore(frame._prior, frame._log);
+      if (!fixed && !defer) this.restore(frame._prior, frame._log);
 
       frame._restore?.();
+
+      if (undo) throw error;
 
       if (comps) {
         entry.compensate = comps;
@@ -961,7 +958,8 @@ class Run extends Model {
         this._entries.push(entry);
       }
 
-      if (signal.aborted && error === signal.reason) return;
+      if (defer) this._held.set(id, { prior: frame._prior, log: frame._log });
+      if (aborted) return;
 
       if (body && !fixed && this.caught(error, id)) {
         if (!comps) this._entries.push(entry);
@@ -1177,14 +1175,22 @@ class Run extends Model {
   }
 
   async compensate(item: Steps.Node, cause: unknown) {
-    const frame = this.frames.add({ id: item.id, key: item.key, args: item.args, _undo: true });
+    const frame = this.frames.add({ id: item.id, key: item.key, args: item.args, _undo: true, _owner: this._owner.get(item.id) });
     const fn = this._inline.get(item.id) || this.control._steps.get(item.key)!;
 
     try {
-      await fn.apply(frame._proxy, [cause, ...item.args]);
+      await fn.call(frame._proxy, cause);
     } finally {
       this.frames.delete(frame);
     }
+
+    await this.undo(frame._items);
+  }
+
+  async undo(items: Steps.Node[]): Promise<void> {
+    for (const item of items)
+      if (item.group) await Promise.all(item.group.map((member) => this.undo([member])));
+      else await this.undo((await this.invoke(item, undefined, true))!._items);
   }
 
   refill({ undone, values }: Unwound, into?: Frame, all?: boolean) {
@@ -1248,6 +1254,7 @@ class Frame extends Model {
   _undo?: boolean = undefined;
   _retry = 0;
   _restore?: Restore = undefined;
+  _caught?: Caught = undefined;
   _committed?: boolean = undefined;
   _violation?: string = undefined;
   _late?: boolean = undefined;
@@ -1307,7 +1314,7 @@ class Frame extends Model {
 
     if (run.waits.any((wait) => wait._from === this)) return;
 
-    const live = run.flight().filter((frame) => frame.within(this));
+    const live = [...run.frames].filter((frame) => frame.within(this));
 
     return live.length == 1 ? live[0] : undefined;
   }
@@ -1333,10 +1340,14 @@ class Frame extends Model {
   issue(key: string, args: unknown[]) {
     const { run } = this;
 
-    if (this._undo) throw new Error(`${this.key} is a compensation; ${key} cannot run.`);
+    if (this._undo && UNPLANNED.includes(key)) throw new Error(`${key}() cannot run in a compensation.`);
     if (this._settled) throw new Error(`${this.key} has settled; ${key} cannot run.`);
 
     const token = run.node(key, args);
+    const { _caught: caught } = this;
+    const retry = caught && run.retrying(key, caught);
+
+    if (retry) run._lineage.set(token.id, { retry });
 
     ISSUED.set(token, this);
     this._items.push(token);
@@ -1442,7 +1453,7 @@ class Frame extends Model {
       end: { value: (...value: unknown[]) => (valueless(value), this.issue('end', [])) },
       signal: { get: () => this._abort.signal },
       retry: { get: () => this._retry },
-      catch: { value: (handler: unknown, ...args: unknown[]) => this.compensation(handler, args) },
+      catch: { value: (handler: unknown) => this.compensation(handler) },
       reset: {
         value: () => {
           if (!this._restore) throw new Error('reset() must be called in a .catch handler.');
@@ -1463,7 +1474,7 @@ class Frame extends Model {
     return (this._view = view as unknown as Steps.Controller);
   }
 
-  compensation(handler: unknown, args: unknown[]) {
+  compensation(handler: unknown) {
     const { run } = this;
     const key = this.keyOf(handler);
 
@@ -1471,21 +1482,22 @@ class Frame extends Model {
     if (this._settled) throw new Error(`${this.key} has settled; catch cannot run.`);
     if (typeof handler != 'function') throw new Error('then.catch() takes a step or a function.');
 
-    const node = run.node(key || 'then', args);
+    const node = run.node(key || 'then', []);
 
     if (!key) run._inline.set(node.id, handler);
 
+    run._owner.set(node.id, this);
     this._comps.push(node);
   }
 
-  rescue(token: Steps.Node, handler: unknown, args: unknown[]) {
+  rescue(token: Steps.Node, handler: unknown) {
     const key = this.keyOf(handler);
 
     if (UNCAUGHT.includes(token.key)) throw new Error(`${token.key}() cannot be caught.`);
     if (handler && typeof handler != 'function') throw new Error('catch() takes a step, a function or nothing.');
 
     token.rescue = handler ? key || 'then' : true;
-    this.run._catches.set(token.id, { key, fn: handler as Function | undefined, ...args.length && { args } });
+    this.run._catches.set(token.id, { key, fn: handler as Function | undefined });
 
     return token;
   }
@@ -1563,6 +1575,7 @@ class Frame extends Model {
     else if (_lost.size) entry.irreversible = [..._lost];
 
     if (!root) run._held.set(id, { prior: this._prior, log: this._log });
+    if (this._undo) run._spent.add(id);
 
     run._entries.push(entry);
 
