@@ -77,6 +77,7 @@ test('will decline an approval nobody answers', async ({ page }) => {
 
   await expect(page.locator('.notice')).toHaveText('Card timed out.');
   await expect(page.getByRole('button', { name: 'Try another card' })).toBeVisible();
+  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'decline#1', 'cancel#1', 'declined#1', 'another#1']);
 });
 
 test('will retry with another card after a decline', async ({ page }) => {
@@ -125,6 +126,7 @@ test('will stop and unwind mid-run', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);
   await expect(field(page, 'Hold')).toHaveText('-');
   await expect(field(page, 'Authorization')).toHaveText('-');
+  await expect(ids(page)).toHaveText(['run#1', 'reserve#1', 'pay#1', 'cancel#1', 'release#1']);
 
   await page.getByRole('button', { name: 'Place order' }).click();
   await expect(page.locator('.status')).toHaveText('Status: running · reserve');
