@@ -54,11 +54,9 @@ export class Agent extends Steps {
     let allowed = this.mode === 'yolo';
 
     // else park until allow or deny answers - the watcher denies after a minute
-    // a throw from exec runs it once more in its place - its own pushes undone first
+    // a throw from exec runs it once more in its place - steps called for a plan's catch are recorded with their args
     if (allowed || this.mode === 'auto' && safe(call))
-      this.exec(call).catch(() => {
-        this.exec(call);
-      });
+      this.then(this.exec(call)).catch(this.exec(call));
     else
       this.then(this.allow, this.deny, async (signal) => {
         await delay(MINUTE, { signal });
@@ -73,9 +71,7 @@ export class Agent extends Steps {
 
   // answering steps: public, and defined on the instance only while a wait accepts them
   async allow(call: ToolCall) {
-    this.exec(call).catch(() => {
-      this.exec(call);
-    });
+    this.then(this.exec(call)).catch(this.exec(call));
   }
 
   async deny(call: ToolCall) {

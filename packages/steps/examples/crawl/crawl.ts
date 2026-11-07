@@ -34,18 +34,16 @@ export class Crawl extends Steps {
       after: this.then.retry && SECOND * 2 ** (this.then.retry - 1)
     });
 
-    // a failed scan runs visit again in its place, retry counting up - a handler without parameters runs now,
-    // only calling steps, so the retry is recorded; after three, skip with the error - a handler with a parameter,
-    // run after the failure, in memory only. The group settles with the sites that answered
-    this.scan(site).catch(
-      this.then.retry < 3
-        ? () => {
-            this.visit(site);
-          }
-        : (error) => {
-            this.skip(site, error);
-          }
-    );
+    // a failed scan runs visit again in its place, retry counting up - a step called for a plan's catch is
+    // recorded with its args; after three, skip with the error - a function, process-local. The group settles
+    // with the sites that answered
+    const scan = this.then(this.scan(site));
+
+    if (this.then.retry < 3) scan.catch(this.visit(site));
+    else
+      scan.catch((error) => {
+        this.skip(site, error);
+      });
   }
 
   protected async scan(site: string) {
