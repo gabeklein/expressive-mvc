@@ -71,7 +71,7 @@ A PR adding a feature extends an example and this table.
 | `this.then.slot({ after })` - backoff read from `this.then.retried`, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
 | `.catch()` - skip a failing branch | `Crawl.run` (`report`); crawl test `will end even when the report fails` |
 | `.catch(this.retest)` - a step method calling `this.then.retry()` until `retried` reaches a limit; the replay queues for its slot again | `Deploy.test`, `Deploy.retest`; deploy test `will retry a flaky test suite with backoff` |
-| `.catch(this.then.retry)` - unconditional replay; the retried step ends the loop by returning to a fallback | `Crawl.run`, `Crawl.visit`; crawl tests `will retry a failing site with backoff, keeping what other sites found`, `will skip a site after three retries` |
+| `.catch(this.revisit)` - a step-method handler replaying `visit` up to three times, then noting the error as data | `Crawl.run`, `Crawl.revisit`; crawl tests `will retry a failing site with backoff, keeping what other sites found`, `will skip a site after three retries` |
 | a step method retrying once - `if (this.then.retried) throw error;` | `Agent.reexec`; agent test `will retry a tool, keeping what the tool pushed from outside` |
 
 ## Hooks, signal

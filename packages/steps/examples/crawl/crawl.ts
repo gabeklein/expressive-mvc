@@ -14,8 +14,8 @@ export class Crawl extends Steps {
   async run(query: string) {
     this.query = query;
 
-    // a mapped group - visit per site, in parallel; a failed visit is replayed with its args, recorded
-    this.then(this.sites, (site) => this.visit(site).catch(this.then.retry));
+    // a mapped group - visit per site, in parallel; a failed visit runs revisit in its place
+    this.then(this.sites, (site) => this.visit(site).catch(this.revisit));
 
     // best effort - a failing post is caught and skipped, and the run still ends
     this.report().catch();
@@ -28,9 +28,6 @@ export class Crawl extends Steps {
 
   protected async visit(site: string) {
     const { retried } = this.then;
-
-    // the retried step ends its own loop - give up by scheduling the fallback and returning; a throw would retry again
-    if (retried > 3) return void this.skip(site);
 
     // at most `limit` sites at once - read through `$`, so a UI raising or lowering it mid-run takes effect
     // a replay waits 1s, 2s, then 4s first, then queues behind the sites already waiting
@@ -50,8 +47,11 @@ export class Crawl extends Steps {
       if (!this.products.has(product.sku)) this.products.set(product.sku, product);
   }
 
-  protected async skip(site: string) {
-    this.skipped.push(site);
+  // a step method as the handler - recorded, given the error; it holds the retry policy: replay visit with its
+  // args up to three times, then note why and let the group settle with the sites that answered
+  protected async revisit(error: unknown) {
+    if (this.then.retried < 3) this.then.retry();
+    else this.skipped.push((error as Error).message);
   }
 
   protected async report() {

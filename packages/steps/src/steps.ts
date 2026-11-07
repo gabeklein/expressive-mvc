@@ -29,7 +29,6 @@ interface Answer {
 interface Rescue {
   key?: string;
   fn?: Function;
-  retry?: boolean;
 }
 
 type Restore = (into?: Frame, all?: boolean) => void;
@@ -94,7 +93,7 @@ declare namespace Steps {
     group?: Node[];
     /** Keys of the steps which may answer this wait. */
     answers?: string[];
-    /** Caught by `.catch()`: a step given the error (its key), `retry` for `then.retry`, `then` for a function, or `true` for none. */
+    /** Caught by `.catch()`: a step given the error (its key), `then` for a function, or `true` for none. */
     rescue?: string | true;
   }
 
@@ -249,8 +248,8 @@ declare namespace Steps {
     readonly retried: number;
     /**
      * Inside a `.catch` handler: schedule what the catch is attached to again - the failed step, or the
-     * whole group - with its recorded args, still caught by the same handler. `.catch(this.then.retry)`
-     * retries unconditionally. Backoff belongs in the retried step: `slot({ after })` read from `retried`.
+     * whole group - with its recorded args, still caught by the same handler. The handler holds the policy:
+     * `if (this.then.retried >= 3) throw error; this.then.retry();`. Backoff belongs in the retried step.
      */
     retry(): void;
   }
@@ -671,19 +670,10 @@ class Run extends Model {
 
     const { cause } = branch.failed;
     const restore = await this.serial(() => this.recover(item, cause));
-    const { key, fn, retry } = rescue;
+    const { key, fn } = rescue;
     const parent = this._parent.get(item.id)!;
 
-    if (this.stale() || !(fn || retry)) return restore();
-
-    if (retry) {
-      const again = this.copy(item);
-
-      this._parent.set(again.id, parent);
-      restore();
-
-      return this.exec(again, from);
-    }
+    if (this.stale() || !fn) return restore();
 
     const node = this.node(key || 'then', key ? [serial(cause)] : [cause]);
 
@@ -1574,13 +1564,14 @@ class Frame extends Model {
 
   rescue(token: Steps.Node, handler: unknown) {
     const key = this.keyOf(handler);
-    const retry = RETRY.has(handler as Function);
 
     if (UNCAUGHT.includes(token.key)) throw new Error(`${token.key}() cannot be caught.`);
     if (handler && typeof handler != 'function') throw new Error('catch() takes a step, a function or nothing.');
+    if (RETRY.has(handler as Function))
+      throw new Error('catch() retries from a handler: .catch(this.rescan), rescan(error) { if (this.then.retried >= 3) throw error; this.then.retry(); }');
 
-    token.rescue = retry ? 'retry' : handler ? key || 'then' : true;
-    this.run._catches.set(token.id, retry ? { retry } : { key, fn: handler as Function | undefined });
+    token.rescue = handler ? key || 'then' : true;
+    this.run._catches.set(token.id, { key, fn: handler as Function | undefined });
 
     return token;
   }

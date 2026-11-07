@@ -3413,7 +3413,7 @@ describe('slot', () => {
 
     class Test extends Steps {
       async run() {
-        this.then(['a', 'b', 'c'], (site) => this.visit(site).catch(this.then.retry));
+        this.then(['a', 'b', 'c'], (site) => this.visit(site).catch(this.again));
       }
 
       protected async visit(site: string) {
@@ -3430,6 +3430,10 @@ describe('slot', () => {
           throw new Error('down');
         }
       }
+
+      protected async again() {
+        this.then.retry();
+      }
     }
 
     await Test.new().run();
@@ -3444,7 +3448,7 @@ describe('slot', () => {
 
     class Test extends Steps {
       async run() {
-        this.then(['a', 'b'], (site) => this.visit(site).catch(this.then.retry));
+        this.then(['a', 'b'], (site) => this.visit(site).catch(this.again));
       }
 
       protected async visit(site: string) {
@@ -3459,6 +3463,10 @@ describe('slot', () => {
           failed = true;
           throw new Error('down');
         }
+      }
+
+      protected async again() {
+        this.then.retry();
       }
     }
 
@@ -3479,7 +3487,7 @@ describe('slot', () => {
     class Test extends Steps {
       async run() {
         this.then.slot({ key: 'db', max: 1 });
-        this.visit('a').catch(this.then.retry);
+        this.visit('a').catch(this.again);
       }
 
       protected async visit(site: string) {
@@ -3494,6 +3502,10 @@ describe('slot', () => {
           failed = true;
           throw new Error('down');
         }
+      }
+
+      protected async again() {
+        this.then.retry();
       }
     }
 
@@ -3909,7 +3921,7 @@ describe('catch', () => {
 
     class Test extends Journal {
       async run() {
-        this.then(this.a('x'), this.b('y')).catch(this.then.retry);
+        this.then(this.a('x'), this.b('y')).catch(this.again);
       }
 
       protected async a(arg: string) {
@@ -3921,45 +3933,17 @@ describe('catch', () => {
 
         if (!this.then.retried) throw new Error('b');
       }
+
+      protected async again() {
+        this.then.retry();
+      }
     }
 
     const test = Test.new();
 
     await test.run();
     expect(order).toEqual(['a x 0', 'b y 0', 'a x 1', 'b y 1']);
-    expect(record(test)[0].next).toMatchObject([{ key: 'then', rescue: 'retry', group: [{ key: 'a' }, { key: 'b' }] }]);
-  });
-
-  it('will end a retry loop when the retried step returns early, not when it throws', async () => {
-    const order: string[] = [];
-
-    class Test extends Steps {
-      async run() {
-        this.scan('x').catch(this.then.retry);
-      }
-
-      protected async scan(site: string) {
-        const { retried } = this.then;
-
-        order.push(`scan ${retried}`);
-
-        if (retried == 2) throw new Error('give up');
-
-        if (retried >= 3) {
-          this.skip(site);
-          return;
-        }
-
-        throw new Error('down');
-      }
-
-      protected async skip(site: string) {
-        order.push(`skip ${site}`);
-      }
-    }
-
-    await Test.new().run();
-    expect(order).toEqual(['scan 0', 'scan 1', 'scan 2', 'scan 3', 'skip x']);
+    expect(record(test)[0].next).toMatchObject([{ key: 'then', rescue: 'again', group: [{ key: 'a' }, { key: 'b' }] }]);
   });
 
   it('will retry an inline step and a wait', async () => {
@@ -3975,7 +3959,7 @@ describe('catch', () => {
             first = false;
             throw new Error('inline');
           }
-        }).catch(this.then.retry);
+        }).catch(this.again);
 
         this.then(this.reply, async () => {
           const retried = order.includes('watcher');
@@ -3985,11 +3969,15 @@ describe('catch', () => {
           if (!retried) throw new Error('watcher');
 
           this.reply();
-        }).catch(this.then.retry);
+        }).catch(this.again);
       }
 
       reply() {
         order.push('reply');
+      }
+
+      protected async again() {
+        this.then.retry();
       }
     }
 
@@ -4029,8 +4017,17 @@ describe('catch', () => {
       }
     }
 
+    class Bare extends Steps {
+      async run() {
+        this.fail().catch(this.then.retry);
+      }
+
+      protected async fail() {}
+    }
+
     await expect(Outside.new().run()).rejects.toThrow('retry() must be called in a .catch handler.');
     await expect(Settled.new().run()).rejects.toThrow('handle has settled; retry cannot run.');
+    await expect(Bare.new().run()).rejects.toThrow('catch() retries from a handler: .catch(this.rescan), rescan(error) { if (this.then.retried >= 3) throw error; this.then.retry(); }');
   });
 
   it('will back off a retry with a slot', async () => {
@@ -4040,7 +4037,7 @@ describe('catch', () => {
 
     class Test extends Steps {
       async run() {
-        this.attempt().catch(this.then.retry);
+        this.attempt().catch(this.again);
       }
 
       protected async attempt() {
@@ -4050,6 +4047,10 @@ describe('catch', () => {
 
       protected async scan() {
         if (++tries < 3) throw new Error('later');
+      }
+
+      protected async again() {
+        this.then.retry();
       }
     }
 
@@ -4453,7 +4454,7 @@ describe('suspense', () => {
 
     class Test extends Journal {
       async run() {
-        this.flaky().catch(this.then.retry);
+        this.flaky().catch(this.again);
       }
 
       protected async flaky() {
@@ -4461,6 +4462,10 @@ describe('suspense', () => {
 
         if (retries.length == 1) throw pending;
         if (retries.length == 2) throw new Error('flaky');
+      }
+
+      protected async again() {
+        this.then.retry();
       }
     }
 
@@ -4474,6 +4479,7 @@ describe('suspense', () => {
     expect(retries).toEqual([0, 0, 1]);
     expect(record(test).slice(1)).toEqual([
       { id: 'flaky#1', key: 'flaky', args: [], wrote: [], next: [], error: new Error('flaky') },
+      { id: 'again#1', key: 'again', args: [{ name: 'Error', message: 'flaky' }], wrote: [], next: [{ id: 'flaky#2', key: 'flaky', args: [], rescue: 'again' }] },
       { id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], retried: 1 }
     ]);
   });
@@ -4484,11 +4490,15 @@ describe('suspense', () => {
 
     class Test extends Journal {
       async run() {
-        this.flaky().catch(this.then.retry);
+        this.flaky().catch(this.again);
       }
 
       protected async flaky() {
         if (++tries == 1) throw pending;
+      }
+
+      protected async again() {
+        this.then.retry();
       }
     }
 
@@ -4500,7 +4510,7 @@ describe('suspense', () => {
 
     await result;
     expect(tries).toBe(2);
-    expect(record(test).slice(1).map(({ retried, error }) => [retried, error])).toEqual([[undefined, new Error('gone')], [1, undefined]]);
+    expect(record(test).slice(1).map(({ key, retried, error }) => [key, retried, error])).toEqual([['flaky', undefined, new Error('gone')], ['again', undefined, undefined], ['flaky', 1, undefined]]);
   });
 
   it('will not fire hooks again', async () => {

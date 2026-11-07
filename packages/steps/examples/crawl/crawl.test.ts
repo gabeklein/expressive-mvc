@@ -109,7 +109,7 @@ it('will skip a site after three retries', async () => {
   await vi.advanceTimersByTimeAsync(7 * SECOND);
 
   expect(await found).toEqual([product('lamp', 'up')]);
-  expect(crawl.skipped.get()).toEqual(['down']);
+  expect(crawl.skipped.get()).toEqual(['blocked']);
 });
 
 it('will end even when the report fails', async () => {
