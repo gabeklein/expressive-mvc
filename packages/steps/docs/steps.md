@@ -118,9 +118,9 @@ Inside a step, `this.then`:
 - tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
-Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.catch(handler, ...args)` ([undo.md](undo.md#compensations)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retry` and `then.reset()` ([catch.md](catch.md)).
+Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.catch(handler)` ([undo.md](undo.md#compensations)), `then.slot({ max, after, key })` ([slot.md](slot.md)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retry` and `then.reset()` ([catch.md](catch.md)).
 
-Every token takes `.catch(handler?, ...args)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
+Every token takes `.catch(handler?)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
 
 Every form returns a token typed `Promise<void>`, as a step call is - not awaitable, `.catch` typed. `then.slot()` is typed `void`.
 

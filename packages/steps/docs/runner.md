@@ -14,7 +14,7 @@
 | `end()` | in a step: end the run where the plan reaches it ([steps.md](steps.md#end-is-terminal)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |
 | `stop(undo?, reason?)` | cancel ([runs.md](runs.md#stop)) |
 | `commit()` | in a step: a point of no return ([undo.md](undo.md#commit)) |
-| `catch(handler, ...args)` | in a step: register its compensation ([undo.md](undo.md#compensations)) |
+| `catch(handler)` | in a step: register its compensation ([undo.md](undo.md#compensations)) |
 | `reset()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
 | `slot({ max?, after?, key? })` | in a step: wait for a free slot, then run what follows holding it ([slot.md](slot.md)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |

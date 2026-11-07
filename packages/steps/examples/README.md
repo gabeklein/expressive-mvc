@@ -41,7 +41,7 @@ A PR adding a feature extends an example and this table.
 
 | feature | where |
 | --- | --- |
-| `this.then.catch(step, ...args)` - a durable compensation | `SubmitOrder.reserve` (`release`), `SubmitOrder.pay` (`refund`), `Deploy.install` (`uninstall`) |
+| `this.then.catch(() => { this.step(x); })` - a compensation calling steps, run in the unwind | `SubmitOrder.reserve` (`release`), `SubmitOrder.pay` (`refund`), `Deploy.install` (`uninstall`) |
 | a step owning its compensation - undone when a sibling fails | `SubmitOrder.ship` (`cancel`); order test `will cancel the booking when the receipt fails` |
 | several compensations in one step, newest first | `Deploy.build` |
 | every step taken back has its fields restored | `SubmitOrder`, `Deploy.canary`; deploy test `will roll back the canaries and the build when the gate aborts` |
@@ -70,9 +70,10 @@ A PR adding a feature extends an example and this table.
 | `this.then.slot({ max })` - a group's concurrency, `max: ($) => $.limit` tracked live | `Crawl.visit`; crawl test `will scan at most limit sites at once, following a limit changed mid-run` |
 | `this.then.slot({ after })` - backoff, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
 | `.catch()` - skip a failing branch | `Crawl.run` (`report`); crawl test `will end even when the report fails` |
-| `.catch(this.step)` - retry by re-running the issuing step, given the error first, `this.then.retry`; the re-run queues for its slot again | `Deploy.test`, `Crawl.visit`; deploy test `will retry a flaky test suite with backoff` |
-| `.catch(this.step)` - the caught step itself, once, the error in place of its first arg | `Agent.tool`, `Agent.allow`; agent test `will retry a tool, keeping what the tool pushed from outside` |
-| `.catch(this.other)` - a handler given the error then the token's args; a group settling with what succeeded | `Crawl.skip`; crawl test `will skip a site after three retries` |
+| `.catch(this.step)` - retry by re-running the issuing step, `this.then.retry`; the re-run queues for its slot again | `Deploy.test`; deploy test `will retry a flaky test suite with backoff` |
+| `.catch((error) => …)` - a handler calling `visit` again or `skip`, `retry` read in the step | `Crawl.visit`; crawl test `will retry a failing site with backoff, keeping what other sites found` |
+| `.catch(() => { this.exec(call); })` - the caught step itself, once | `Agent.tool`, `Agent.allow`; agent test `will retry a tool, keeping what the tool pushed from outside` |
+| a handler passing the error to a step - a group settling with what succeeded | `Crawl.skip`; crawl test `will skip a site after three retries` |
 
 ## Hooks, signal
 
