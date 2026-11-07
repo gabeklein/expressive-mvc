@@ -1372,7 +1372,7 @@ class Frame extends Model {
   issue(key: string, args: unknown[]) {
     const { run } = this;
 
-    if (this._undo && UNPLANNED.includes(key)) throw new Error(`${key}() cannot run in a compensation.`);
+    if (this._undo && UNPLANNED.includes(key)) throw new Error(`${key}() cannot run in an undo.`);
     if (this._settled) throw new Error(`${this.key} has settled; ${key} cannot run.`);
 
     const token = run.node(key, args);

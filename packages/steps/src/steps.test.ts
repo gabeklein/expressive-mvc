@@ -5124,7 +5124,7 @@ describe('undo', () => {
       }
     }
 
-    await expect(Test.new().run()).rejects.toThrow('end() cannot run in a compensation.');
+    await expect(Test.new().run()).rejects.toThrow('end() cannot run in an undo.');
   });
 
   it('will throw for a compensation in run', async () => {
