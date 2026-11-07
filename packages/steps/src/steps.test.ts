@@ -811,7 +811,7 @@ describe('functions', () => {
       }
 
       protected async charge() {
-        this.then.undo(refund);
+        this.then.on({ undo: refund });
         this.fail();
       }
 
@@ -824,7 +824,7 @@ describe('functions', () => {
 
     await expect(test.run()).rejects.toThrow('boom');
     expect(refund).toHaveBeenCalledWith(new Error('boom'));
-    expect(record(test)[1]).toMatchObject({ undo: [{ id: 'then#1', key: 'then', args: [] }], unwound: true });
+    expect(record(test)[1]).toMatchObject({ on: { undo: [{ id: 'then#1', key: 'then', args: [] }] }, unwound: true });
     expect(record(test)[1].next).toEqual([{ id: 'fail#1', key: 'fail', args: [] }]);
   });
 });
@@ -980,7 +980,7 @@ describe('end', () => {
         if (fail) throw new Error('declined');
 
         this.paid = true;
-        this.then.undo(this.refund());
+        this.then.on({ undo: this.refund() });
         this.then.end();
       }
 
@@ -993,7 +993,7 @@ describe('end', () => {
 
     expect(await test.run(false)).toBe('paid');
     expect(refund).not.toHaveBeenCalled();
-    expect(record(test)[1]).toMatchObject({ id: 'pay#1', next: [{ id: 'end#1', key: 'end' }], undo: [{ id: 'refund#1', key: 'refund' }] });
+    expect(record(test)[1]).toMatchObject({ id: 'pay#1', next: [{ id: 'end#1', key: 'end' }], on: { undo: [{ id: 'refund#1', key: 'refund' }] } });
   });
 
   it('will end with the first end the plan reaches', async () => {
@@ -1683,7 +1683,7 @@ describe('stop', () => {
 
       protected first() {
         this.value = 1;
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.second();
       }
 
@@ -1720,7 +1720,7 @@ describe('stop', () => {
 
       protected first() {
         this.value = 1;
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.second();
       }
 
@@ -1750,8 +1750,10 @@ describe('stop', () => {
       }
 
       protected first() {
-        this.then.undo(() => {
-          throw new Error('stuck');
+        this.then.on({
+          undo: () => {
+            throw new Error('stuck');
+          }
         });
         this.second();
       }
@@ -1787,8 +1789,10 @@ describe('stop', () => {
       protected first() {
         const error = thrown.shift();
 
-        this.then.undo(() => {
-          throw error;
+        this.then.on({
+          undo: () => {
+            throw error;
+          }
         });
         this.second();
       }
@@ -1945,7 +1949,7 @@ describe('stop', () => {
       }
 
       protected hold() {
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.pause();
       }
 
@@ -2356,7 +2360,7 @@ describe('wait', () => {
       }
 
       protected hold() {
-        this.then.undo(() => {});
+        this.then.on({ undo: () => {} });
         this.ask();
         this.ask();
       }
@@ -2378,7 +2382,7 @@ describe('wait', () => {
     await result;
 
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith(`${test} is waiting with closure compensations held; a closure does not survive a resume.`);
+    expect(warn).toHaveBeenCalledWith(`${test} is waiting with function handlers held; a closure does not survive a resume.`);
   });
 
   it('will release waits on stop', async () => {
@@ -2615,7 +2619,7 @@ describe('races', () => {
 
       protected async watch() {
         this.value = 1;
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.poll();
       }
 
@@ -2665,13 +2669,13 @@ describe('races', () => {
       protected async publish() {
         this.post = 'draft';
         posted.push('draft');
-        this.then.undo(unpost);
+        this.then.on({ undo: unpost });
         await work;
       }
 
       protected async timeout() {
         this.warned = true;
-        this.then.undo(unwarn);
+        this.then.on({ undo: unwarn });
         this.reply();
       }
 
@@ -3931,7 +3935,7 @@ describe('catch', () => {
 
       protected async a() {
         this.value = 1;
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.a1();
       }
 
@@ -3959,7 +3963,7 @@ describe('catch', () => {
           { id: 'b#1', key: 'b', args: [] }
         ]
       },
-      expect.objectContaining({ id: 'a#1', undo: [{ id: 'then#1', key: 'then', args: [] }], unwound: true }),
+      expect.objectContaining({ id: 'a#1', on: { undo: [{ id: 'then#1', key: 'then', args: [] }] }, unwound: true }),
       expect.objectContaining({ id: 'a1#1', error: new Error('boom') }),
       expect.objectContaining({ id: 'b#1' })
     ]);
@@ -4367,8 +4371,10 @@ describe('catch', () => {
       }
 
       protected async a() {
-        this.then.undo(() => {
-          throw new Error('undo');
+        this.then.on({
+          undo: () => {
+            throw new Error('undo');
+          }
         });
         this.b();
       }
@@ -4394,7 +4400,7 @@ describe('catch', () => {
       }
 
       protected async a() {
-        this.then.undo(() => gate);
+        this.then.on({ undo: () => gate });
         this.b();
       }
 
@@ -4469,7 +4475,7 @@ describe('catch', () => {
 
     expect(() => test.then.retried).toThrow('retried must be read inside a step.');
     expect(() => test.then.retry()).toThrow('retry must be called inside a step.');
-    expect(() => test.then.undo(() => {})).toThrow('undo must be called inside a step.');
+    expect(() => test.then.on({ undo: () => {} })).toThrow('on must be called inside a step.');
     expect(() => test.then.restore()).toThrow('restore must be called inside a step.');
   });
 });
@@ -4936,7 +4942,7 @@ describe('hooks', () => {
       }
 
       protected async hold() {
-        this.then.undo(() => void order.push('undo'));
+        this.then.on({ undo: () => void order.push('undo') });
         this.fail();
       }
 
@@ -5010,13 +5016,13 @@ describe('undo', () => {
 
       zero() {
         this.a = 1;
-        this.then.undo(() => void order.push(`undo zero a=${this.a}`));
+        this.then.on({ undo: () => void order.push(`undo zero a=${this.a}`) });
         this.first();
       }
 
       first() {
         this.b = 2;
-        this.then.undo(() => void order.push(`undo first b=${this.b}`));
+        this.then.on({ undo: () => void order.push(`undo first b=${this.b}`) });
         this.second();
       }
 
@@ -5031,7 +5037,7 @@ describe('undo', () => {
     await expect(test.run()).rejects.toThrow('boom');
     expect(order).toEqual(['undo first b=2', 'undo zero a=1']);
     expect(test.get()).toMatchObject({ a: 0, b: 0, c: 0 });
-    expect(record(test).map((entry) => [entry.key, entry.undo?.length, entry.unwound])).toEqual([
+    expect(record(test).map((entry) => [entry.key, entry.on?.undo?.length, entry.unwound])).toEqual([
       ['run', undefined, undefined],
       ['zero', 1, true],
       ['first', 1, true]
@@ -5132,7 +5138,7 @@ describe('undo', () => {
       }
 
       async a() {
-        this.then.undo(undo);
+        this.then.on({ undo });
         await work;
         this.value = 1;
       }
@@ -5163,8 +5169,10 @@ describe('undo', () => {
       }
 
       async first() {
-        this.then.undo(() => {
-          this.release('r1');
+        this.then.on({
+          undo: () => {
+            this.release('r1');
+          }
         });
         this.second();
       }
@@ -5182,7 +5190,7 @@ describe('undo', () => {
 
     await expect(test.run()).rejects.toThrow('boom');
     expect(undo).toHaveBeenCalledWith('r1');
-    expect(record(test)[1].undo).toEqual([{ id: 'then#1', key: 'then', args: [] }]);
+    expect(record(test)[1].on?.undo).toEqual([{ id: 'then#1', key: 'then', args: [] }]);
     expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'first#1', 'release#1']);
   });
 
@@ -5195,13 +5203,15 @@ describe('undo', () => {
       }
 
       async first() {
-        this.then.undo(() => void order.push('first'));
+        this.then.on({ undo: () => void order.push('first') });
         this.second();
       }
 
       async second() {
-        this.then.undo(() => {
-          this.refund();
+        this.then.on({
+          undo: () => {
+            this.refund();
+          }
         });
         this.fail();
       }
@@ -5236,8 +5246,10 @@ describe('undo', () => {
       }
 
       async first() {
-        this.then.undo(() => {
-          this.refund();
+        this.then.on({
+          undo: () => {
+            this.refund();
+          }
         });
         this.fail();
       }
@@ -5266,8 +5278,8 @@ describe('undo', () => {
       }
 
       protected async first() {
-        this.then.undo(() => void order.push('a'));
-        this.then.undo(() => void order.push('b'));
+        this.then.on({ undo: () => void order.push('a') });
+        this.then.on({ undo: () => void order.push('b') });
         this.fail();
       }
 
@@ -5292,9 +5304,11 @@ describe('undo', () => {
       }
 
       protected async charge() {
-        this.then.undo(() => {
-          seen.push(this.value);
-          this.other = 5;
+        this.then.on({
+          undo: () => {
+            seen.push(this.value);
+            this.other = 5;
+          }
         });
         this.value = 1;
         this.other = 1;
@@ -5325,7 +5339,7 @@ describe('undo', () => {
       protected async charge() {
         const { signal } = this.then;
 
-        this.then.undo(() => void seen.push(this.value));
+        this.then.on({ undo: () => void seen.push(this.value) });
         this.value = 1;
         await new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('late'))));
       }
@@ -5355,8 +5369,10 @@ describe('undo', () => {
       protected async first() {
         this.value = 1;
         this.notice = 'placed';
-        this.then.undo((error) => {
-          this.notice = `took back ${this.value}: ${(error as Error).message}`;
+        this.then.on({
+          undo: (error) => {
+            this.notice = `took back ${this.value}: ${(error as Error).message}`;
+          }
         });
         this.fail();
       }
@@ -5381,13 +5397,15 @@ describe('undo', () => {
       }
 
       first() {
-        this.then.undo(() => void order.push('undo first'));
+        this.then.on({ undo: () => void order.push('undo first') });
         this.second();
       }
 
       second() {
-        this.then.undo(() => {
-          throw new Error('undo failed');
+        this.then.on({
+          undo: () => {
+            throw new Error('undo failed');
+          }
         });
         this.third();
       }
@@ -5411,7 +5429,7 @@ describe('undo', () => {
       }
 
       first(plan: (self: Test) => void) {
-        this.then.undo(() => plan(this));
+        this.then.on({ undo: () => plan(this) });
         this.second();
       }
 
@@ -5428,25 +5446,26 @@ describe('undo', () => {
   it('will throw for a compensation in run', async () => {
     class Test extends Steps {
       async run() {
-        this.then.undo(() => {});
+        this.then.on({ undo: () => {} });
       }
     }
 
     await expect(Test.new().run()).rejects.toThrow('run cleans up in its tail - try/catch around await this.');
   });
 
-  it('will throw for a compensation not a function', async () => {
+  it('will throw for a handler not a step or function, or an unknown outcome', async () => {
     class Test extends Steps {
-      async run() {
-        this.first();
+      async run(handlers: object) {
+        this.first(handlers);
       }
 
-      protected async first() {
-        (this.then.undo as (handler: unknown) => void)('x');
+      protected async first(handlers: object) {
+        this.then.on(handlers as never);
       }
     }
 
-    await expect(Test.new().run()).rejects.toThrow('then.undo() takes steps called for it - this.release(id) - or one function.');
+    await expect(Test.new().run({ undo: 'x' })).rejects.toThrow('then.on() takes steps called for it - { undo: this.release(id) } - or a function.');
+    await expect(Test.new().run({ finally: () => {} })).rejects.toThrow('then.on() takes undo, error, abort, stop and done - got finally.');
   });
 
   it('will throw for a compensation once settled', async () => {
@@ -5463,13 +5482,366 @@ describe('undo', () => {
       }
 
       protected async second() {
-        held!.undo(() => {});
+        held!.on({ undo: () => {} });
       }
     }
 
-    await expect(Test.new().run()).rejects.toThrow('first has settled; undo cannot run.');
+    await expect(Test.new().run()).rejects.toThrow('first has settled; on cannot run.');
   });
 
+});
+
+describe('on', () => {
+  function log(order: string[], name: string) {
+    return {
+      error: (error: unknown) => void order.push(`error ${name}: ${(error as Error).message}`),
+      abort: (error: unknown) => void order.push(`abort ${name}: ${(error as Error).name}`),
+      stop: (error: unknown) => void order.push(`stop ${name}: ${(error as Error).name}`),
+      undo: () => void order.push(`undo ${name}`),
+      done: () => void order.push(`done ${name}`)
+    };
+  }
+
+  it('will fire only done once the subtree completes', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+        this.c();
+      }
+
+      protected a() {
+        this.then.on(log(order, 'a'));
+        this.b();
+      }
+
+      protected b() {
+        order.push('b');
+      }
+
+      protected c() {
+        order.push('c');
+      }
+    }
+
+    await Test.new().run();
+    expect(order).toEqual(['b', 'done a', 'c']);
+  });
+
+  it('will fire error, undo and done deepest first on a failure', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.z();
+        this.a();
+      }
+
+      protected z() {
+        this.then.on(log(order, 'z'));
+      }
+
+      protected a() {
+        this.then.on(log(order, 'a'));
+        this.b();
+      }
+
+      protected b() {
+        this.then.on(log(order, 'b'));
+        this.fail();
+      }
+
+      protected fail() {
+        throw new Error('boom');
+      }
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('boom');
+    expect(order).toEqual([
+      'done z',
+      'error b: boom',
+      'undo b',
+      'done b',
+      'error a: boom',
+      'undo a',
+      'done a',
+      'undo z'
+    ]);
+  });
+
+  it('will fire for the failing step itself', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected a() {
+        this.then.on(log(order, 'a'));
+        throw new Error('own');
+      }
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('own');
+    expect(order).toEqual(['error a: own', 'undo a', 'done a']);
+  });
+
+  it('will not fire error above a catch which took it', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected a() {
+        this.then.on(log(order, 'a'));
+        this.b().catch();
+      }
+
+      protected async b() {
+        this.then.on(log(order, 'b'));
+        this.fail();
+      }
+
+      protected fail() {
+        throw new Error('boom');
+      }
+    }
+
+    await Test.new().run();
+    expect(order).toEqual(['error b: boom', 'undo b', 'done b', 'done a']);
+  });
+
+  it('will fire abort and undo on abort, done where unfinished', async () => {
+    const order: string[] = [];
+    const work = mockPromise();
+
+    class Test extends Steps {
+      async run() {
+        this.z();
+        this.a();
+      }
+
+      protected z() {
+        this.then.on(log(order, 'z'));
+      }
+
+      protected a() {
+        this.then.on(log(order, 'a'));
+        this.slow();
+      }
+
+      protected async slow() {
+        await work;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.active).toBe('slow'));
+    test.then.abort();
+    work.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Aborted' });
+    expect(order).toEqual(['done z', 'abort a: Aborted', 'undo a', 'done a', 'abort z: Aborted', 'undo z']);
+  });
+
+  it('will fire stop and done where unfinished on stop, undoing nothing', async () => {
+    const order: string[] = [];
+    const work = mockPromise();
+
+    class Test extends Steps {
+      async run() {
+        this.z();
+        this.a();
+      }
+
+      protected z() {
+        this.then.on(log(order, 'z'));
+      }
+
+      protected a() {
+        this.then.on(log(order, 'a'));
+        this.slow();
+      }
+
+      protected async slow() {
+        await work;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.active).toBe('slow'));
+    test.then.stop();
+    work.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(order).toEqual(['done z', 'stop a: Stopped', 'done a']);
+  });
+
+  it('will fire abort, undo and done for a racer which lost', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.then(this.reply, this.watch());
+      }
+
+      protected async watch() {
+        this.then.on(log(order, 'watch'));
+        this.then({ min: 1 });
+      }
+
+      reply() {}
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.waiting).toHaveLength(2));
+    test.reply();
+    await result;
+
+    expect(order).toEqual(['abort watch: Aborted', 'undo watch', 'done watch']);
+  });
+
+  it('will fire done of an unfinished subtree when ended from outside', async () => {
+    const order: string[] = [];
+    const work = mockPromise();
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected a() {
+        this.then.on(log(order, 'a'));
+        this.slow();
+      }
+
+      protected async slow() {
+        await work;
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.active).toBe('slow'));
+    test.then.end();
+    work.resolve();
+
+    await result;
+    expect(order).toEqual(['done a']);
+  });
+
+  it('will run steps called for a handler, recorded with their args', async () => {
+    const notes: string[] = [];
+
+    class Test extends Journal {
+      async run() {
+        this.a();
+      }
+
+      protected a() {
+        this.then.on({ done: [this.note('x'), this.note('y')], undo: undefined });
+        this.b();
+      }
+
+      protected async b() {}
+
+      protected async note(text: string) {
+        notes.push(text);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run();
+    expect(notes).toEqual(['x', 'y']);
+    expect(record(test)[1].on).toMatchObject({ done: [{ key: 'then', group: [{ key: 'note', args: ['x'] }, { key: 'note', args: ['y'] }] }] });
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'a#1', 'b#1', 'note#1', 'note#2']);
+  });
+
+  it('will fail the run if done throws', async () => {
+    const work = mockPromise();
+
+    class Clean extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected a() {
+        this.then.on({ done: () => { throw new Error('done'); } });
+      }
+    }
+
+    class Ended extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected a() {
+        this.then.on({ done: () => { throw new Error('ended'); } });
+        this.slow();
+      }
+
+      protected async slow() {
+        await work;
+      }
+    }
+
+    await expect(Clean.new().run()).rejects.toThrow('done');
+
+    const caught = vi.fn();
+
+    class Caught extends Steps {
+      async run() {
+        this.a().catch(caught);
+      }
+
+      protected async a() {
+        this.then.on({ done: () => { throw new Error('caught'); } });
+      }
+    }
+
+    await Caught.new().run();
+    expect(caught).toHaveBeenCalledWith(new Error('caught'));
+
+    const ended = Ended.new();
+    const result = ended.run();
+
+    await vi.waitFor(() => expect(ended.then.active).toBe('slow'));
+    ended.then.end();
+    work.resolve();
+
+    await expect(result).rejects.toThrow('ended');
+    expect(ended.then.status).toBe('failed');
+  });
+
+  it('will type outcomes', () => {
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected a() {
+        this.then.on({ undo: this.b(), error: (error) => void error, done: [this.b(), this.b()] });
+        // @ts-expect-error
+        this.then.on({ finally: () => {} });
+      }
+
+      protected async b() {}
+    }
+
+    expect(Test.new().then.status).toBe('idle');
+  });
 });
 
 describe('collections', () => {
@@ -6248,7 +6620,7 @@ describe('irreversible', () => {
       }
 
       async charge() {
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.items.clear();
         this.values.delete('a');
         this.values.set('b');
@@ -6267,7 +6639,7 @@ describe('irreversible', () => {
     expect(undo).toHaveBeenCalledTimes(1);
     expect(test.items.size).toBe(0);
     expect([...test.values.keys()]).toEqual(['c']);
-    expect(record(test)[1]).toMatchObject({ undo: [{ id: 'then#1', key: 'then', args: [] }], unwound: true });
+    expect(record(test)[1]).toMatchObject({ on: { undo: [{ id: 'then#1', key: 'then', args: [] }] }, unwound: true });
     expect(record(test)[1].irreversible).toBeUndefined();
   });
 
@@ -6379,7 +6751,7 @@ describe('commit', () => {
       }
 
       protected async pay() {
-        this.then.undo(refund);
+        this.then.on({ undo: refund });
         this.then.commit();
         this.charged = true;
         this.notify();
@@ -6387,7 +6759,7 @@ describe('commit', () => {
 
       protected async notify() {
         this.notified = true;
-        this.then.undo(recall);
+        this.then.on({ undo: recall });
         this.ship();
       }
 
@@ -6474,7 +6846,7 @@ describe('durable handlers', () => {
 
       protected async reserve() {
         this.hold = 'h1';
-        this.then.undo(this.release('h1'));
+        this.then.on({ undo: this.release('h1') });
         await Promise.resolve();
         this.hold = 'h2';
         this.fail();
@@ -6494,7 +6866,7 @@ describe('durable handlers', () => {
     await expect(test.run()).rejects.toThrow('boom');
     expect(released).toHaveBeenCalledWith('h1', 'h2');
     expect(test.hold).toBe('');
-    expect(record(test)[1]).toMatchObject({ next: [{ key: 'fail' }], undo: [{ id: 'release#1', key: 'release', args: ['h1'] }] });
+    expect(record(test)[1]).toMatchObject({ next: [{ key: 'fail' }], on: { undo: [{ id: 'release#1', key: 'release', args: ['h1'] }] } });
     expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'reserve#1', 'release#1']);
   });
 
@@ -6507,7 +6879,7 @@ describe('durable handlers', () => {
       }
 
       protected async pay() {
-        this.then.undo(this.cancel('a'), this.refund('b'));
+        this.then.on({ undo: [this.cancel('a'), this.refund('b')] });
         this.fail();
       }
 
@@ -6530,7 +6902,7 @@ describe('durable handlers', () => {
 
     await expect(test.run()).rejects.toThrow('boom');
     expect(order).toEqual(['cancel a', 'refund b', 'cancelled']);
-    expect(record(test)[1].undo).toMatchObject([{ key: 'then', group: [{ key: 'cancel' }, { key: 'refund' }] }]);
+    expect(record(test)[1].on?.undo).toMatchObject([{ key: 'then', group: [{ key: 'cancel' }, { key: 'refund' }] }]);
   });
 
   it('will give a step method its error, recorded durably', async () => {
@@ -6567,7 +6939,7 @@ describe('durable handlers', () => {
       }
 
       protected async pay(fail: boolean) {
-        this.then.undo(undo);
+        this.then.on({ undo });
 
         if (fail) throw new Error('declined');
       }
@@ -6613,7 +6985,7 @@ describe('durable handlers', () => {
 
       protected async first() {
         this.second();
-        this.then.undo(this.undo());
+        this.then.on({ undo: this.undo() });
       }
 
       protected async second() {
@@ -6638,7 +7010,7 @@ describe('durable handlers', () => {
       }
 
       protected async first() {
-        this.then.undo(this.undo());
+        this.then.on({ undo: this.undo() });
         await Promise.resolve();
         order.push('worked');
         this.second();
@@ -6693,11 +7065,11 @@ describe('durable handlers', () => {
 
       protected async first() {
         const tries = [
-          () => this.then.undo(this.a(), (() => {}) as never),
-          () => this.then.undo(this.then({}) as never),
-          () => this.then.undo(),
-          () => this.then.undo({} as never),
-          () => this.then.undo(this.a as never),
+          () => this.then.on({ undo: [this.a(), (() => {}) as never] }),
+          () => this.then.on({ undo: this.then({}) as never }),
+          () => this.then.on(undefined as never),
+          () => this.then.on({ undo: {} as never }),
+          () => this.then.on({ undo: this.a as never }),
         ];
 
         for (const attempt of tries)
@@ -6713,7 +7085,7 @@ describe('durable handlers', () => {
 
     await Test.new().run().catch(() => {});
 
-    const usage = 'then.undo() takes steps called for it - this.release(id) - or one function.';
+    const usage = 'then.on() takes steps called for it - { undo: this.release(id) } - or a function.';
 
     expect(errors).toEqual([
       'then() takes called steps or step references, not both.',
@@ -6743,7 +7115,7 @@ describe('recover', () => {
 
       protected async reserve() {
         this.hold = 'h1';
-        this.then.undo(release);
+        this.then.on({ undo: release });
         this.pay().catch(this.recover);
       }
 
@@ -6756,7 +7128,7 @@ describe('recover', () => {
 
       protected async pay() {
         this.charge = 'c1';
-        this.then.undo(refund);
+        this.then.on({ undo: refund });
         this.ship();
       }
 
@@ -7043,7 +7415,7 @@ describe('recover', () => {
       }
 
       async receipt() {
-        this.then.undo(recall);
+        this.then.on({ undo: recall });
         signals.push(this.then.signal);
         await mailed;
       }
@@ -7051,7 +7423,7 @@ describe('recover', () => {
       async notify() {
         const { signal } = this.then;
 
-        this.then.undo(unnotify);
+        this.then.on({ undo: unnotify });
         await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
       }
     }
@@ -7108,13 +7480,13 @@ describe('recover', () => {
       }
 
       async pay() {
-        this.then.undo(refund);
+        this.then.on({ undo: refund });
         this.then.commit();
         this.notify();
       }
 
       async notify() {
-        this.then.undo(recall);
+        this.then.on({ undo: recall });
         this.ship();
       }
 
@@ -7187,7 +7559,7 @@ describe('recover', () => {
 
       async pay(card: string) {
         this.card = card;
-        this.then.undo(() => refund(card));
+        this.then.on({ undo: () => refund(card) });
         this.ship();
       }
 
@@ -7233,7 +7605,7 @@ describe('recover', () => {
       }
 
       protected async outer() {
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.inner();
       }
 
@@ -7259,11 +7631,13 @@ describe('recover', () => {
       }
 
       protected async side(name: string) {
-        this.then.undo(async () => {
-          order.push(`${name} start`);
-          await Promise.resolve();
-          await Promise.resolve();
-          order.push(`${name} end`);
+        this.then.on({
+          undo: async () => {
+            order.push(`${name} start`);
+            await Promise.resolve();
+            await Promise.resolve();
+            order.push(`${name} end`);
+          }
         });
         await Promise.resolve();
         throw new Error(name);
@@ -7283,13 +7657,15 @@ describe('recover', () => {
       }
 
       async first() {
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.second().catch();
       }
 
       async second() {
-        this.then.undo(() => {
-          throw new Error('undo');
+        this.then.on({
+          undo: () => {
+            throw new Error('undo');
+          }
         });
         this.third();
       }
@@ -7321,12 +7697,12 @@ describe('recover', () => {
       }
 
       async zero() {
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.first();
       }
 
       async first() {
-        this.then.undo(() => refunded);
+        this.then.on({ undo: () => refunded });
         this.second();
       }
 
@@ -7362,7 +7738,7 @@ describe('recover', () => {
       }
 
       async first() {
-        this.then.undo(undo);
+        this.then.on({ undo });
         this.then(this.slow(), this.quick());
       }
 
@@ -7569,7 +7945,7 @@ describe('failures', () => {
       }
     }
 
-    await expect(Test.new().run()).rejects.toThrow('first returned a value; a step returns nothing - its undo is this.then.undo(...).');
+    await expect(Test.new().run()).rejects.toThrow('first returned a value; a step returns nothing - its undo is this.then.on({ undo }).');
   });
 
   it('will reject when a step writes after scheduling', async () => {
@@ -8108,7 +8484,7 @@ describe('review', () => {
       }
 
       protected async charge() {
-        this.then.undo(this.release('t' + order.length));
+        this.then.on({ undo: this.release('t' + order.length) });
         order.push('try');
         order.push(`price ${this.price}`);
       }
@@ -8158,8 +8534,10 @@ describe('review', () => {
 
       protected async first() {
         this.value = 1;
-        this.then.undo(() => {
-          this.value = 1;
+        this.then.on({
+          undo: () => {
+            this.value = 1;
+          }
         });
         this.fail();
       }
@@ -8185,7 +8563,7 @@ describe('review', () => {
 
       protected async first() {
         this.notice = 'placed';
-        this.then.undo(this.note());
+        this.then.on({ undo: this.note() });
         this.fail();
       }
 
@@ -8246,7 +8624,7 @@ describe('review', () => {
       }
 
       protected async first() {
-        this.then.undo(() => undone);
+        this.then.on({ undo: () => undone });
         this.fail();
       }
 

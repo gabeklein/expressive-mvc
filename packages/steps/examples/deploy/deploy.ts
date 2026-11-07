@@ -55,11 +55,11 @@ export class Deploy extends Steps {
     const artifact = await ci.build(this.version);
 
     this.artifact = artifact;
-    // undos run only on unwind, newest first - steps called for them are recorded with their args
-    this.then.undo(this.unpublish(artifact));
+    // undos run only on unwind, newest first - steps called for them are claimed, recorded with their args
+    this.then.on({ undo: this.unpublish(artifact) });
 
     await git.tag(this.version);
-    this.then.undo(this.untag(this.version));
+    this.then.on({ undo: this.untag(this.version) });
   }
 
   protected async unpublish(artifact: string) {
@@ -101,7 +101,7 @@ export class Deploy extends Steps {
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
 
-    this.then.undo(this.uninstall(host));
+    this.then.on({ undo: this.uninstall(host) });
   }
 
   protected async uninstall(host: string) {
@@ -149,7 +149,14 @@ export class Deploy extends Steps {
   protected async rollout() {
     const rest = this.hosts.filter((host) => !this.canaries.includes(host));
 
+    // outcomes of rollout and all it schedules - error observes a failure below, never recovers
+    this.then.on({ error: this.alert(`${this.version} rollout failed`) });
+
     for (const host of rest) this.upgrade(host);     // a plain loop schedules in sequence - one host at a time
+  }
+
+  protected async alert(text: string) {
+    await chat.post(text);
   }
 
   // drained while it installs - a host that fails stays drained; one upgraded is uninstalled on unwind
@@ -157,7 +164,7 @@ export class Deploy extends Steps {
     fleet.drain(host);
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
-    this.then.undo(this.uninstall(host));
+    this.then.on({ undo: this.uninstall(host) });
     fleet.serve(host);
   }
 

@@ -209,6 +209,7 @@ it('will uninstall upgraded hosts when the rollout fails', async () => {
   vi.spyOn(fleet, 'uninstall');
   vi.spyOn(fleet, 'serve');
   vi.spyOn(registry, 'unpublish');
+  vi.spyOn(chat, 'post');
 
   const deploy = create();
   const release = deploy.run();
@@ -217,17 +218,19 @@ it('will uninstall upgraded hosts when the rollout fails', async () => {
   await deploy.promote('gabe');
 
   await expect(release).rejects.toThrow('disk full');
+  expect(chat.post).toHaveBeenCalledWith('1.2.0 rollout failed');
   expect(fleet.uninstall).toHaveBeenCalledTimes(1);
   expect(fleet.uninstall).toHaveBeenCalledWith('web-2');
   expect([...deploy.live.keys()].sort()).toEqual(['web-1', 'web-4']);
   expect(fleet.serve).not.toHaveBeenCalledWith('web-3');
   // migrate committed, so the unwind halts there: canaries and build stay
   expect(registry.unpublish).not.toHaveBeenCalled();
-  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.unwound]).slice(-4)).toEqual([
+  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.unwound]).slice(-5)).toEqual([
     ['migrate#1', true, true, undefined],
     ['rollout#1', undefined, undefined, undefined],
     ['upgrade#1', undefined, undefined, true],
-    ['uninstall#3', undefined, undefined, undefined]
+    ['uninstall#3', undefined, undefined, undefined],
+    ['alert#1', undefined, undefined, undefined]
   ]);
 });
 

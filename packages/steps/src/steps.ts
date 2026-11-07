@@ -26,6 +26,14 @@ interface Answer {
   fail(error: unknown): void;
 }
 
+type Kind = 'undo' | 'error' | 'abort' | 'stop' | 'done';
+type Mode = 'error' | 'abort' | 'stop';
+
+interface Handler {
+  kind: Kind;
+  node: Steps.Node;
+}
+
 interface Rescue {
   key?: string;
   fn?: Function;
@@ -40,7 +48,7 @@ interface Unwound {
 }
 
 interface Branch {
-  failed?: { cause: unknown };
+  failed?: { cause: unknown; at: string };
 }
 
 interface Lineage {
@@ -80,6 +88,8 @@ const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const ISSUED = new WeakMap<object, Frame>();
 const RETRY = new WeakSet<Function>();
 const RULES = new WeakSet<Error>();
+const KINDS: Kind[] = ['undo', 'error', 'abort', 'stop', 'done'];
+const MODES = { failed: 'error', aborted: 'abort', stopped: 'stop' } as const;
 const UNITS: Record<string, number> = { ms: 1, sec: 1e3, min: 6e4, hr: 36e5, day: 864e5 };
 
 const TOKEN = {
@@ -119,9 +129,9 @@ declare namespace Steps {
     next: Node[];
     /** Fields the step wrote, collections changed in place included. */
     wrote: string[];
-    /** Undos the step registered with `then.undo()`, in order: steps called for it, or `then` for a function. */
-    undo?: Node[];
-    /** Taken back by an unwind - undos run, fields restored; `'failed'` when an undo threw. */
+    /** Handlers the step registered with `then.on()`, by outcome, in order: steps called for one, or `then` for a function. */
+    on?: { [K in 'undo' | 'error' | 'abort' | 'stop' | 'done']?: Node[] };
+    /** Taken back by an unwind - undos run, fields restored; `'failed'` when a handler threw. */
     unwound?: true | 'failed';
     /** Id of the wait this step answered. */
     wake?: string;
@@ -236,15 +246,17 @@ declare namespace Steps {
     /** Inside a step: a point of no return - the step is not caught, restored or undone, and the unwind stops here. */
     commit(): void;
     /**
-     * Inside a step: its undo - run when an unwind passes through the step: its own failure after this
-     * call, a later failure caught by a `.catch` whose branch includes it, the run failing, `abort()`.
-     * Steps called for it - `this.then.undo(this.release(hold))`, several a group - are claimed, not
-     * scheduled, and recorded with their args. A function is process-local: given the error, it runs on
-     * unwind in this process, dropped on restart. Runs before fields are restored; keys it writes are
-     * kept. Undos run newest first and never recover.
+     * Inside a step: handlers for the outcome of this step and all it schedules - each a step called for
+     * it (claimed, not scheduled; recorded with its args), several in an array (a group), or a function
+     * (process-local, dropped on restart; given the error or reason). Deepest step first, newest first:
+     * - `error` - a step in the subtree failed and no `.catch` below took it; observes, never recovers;
+     * - `abort` - `abort()`, or the subtree lost a race;
+     * - `undo` - after `error` or `abort`: take back what the step did; fields are restored after it;
+     * - `stop` - `stop()` while the subtree was unfinished; nothing is undone;
+     * - `done` - the subtree ended, any way - last.
+     * Keys a handler writes are kept.
      */
-    undo(...steps: Promise<void>[]): void;
-    undo(fn: (error: unknown) => unknown): void;
+    on(handlers: { [K in 'undo' | 'error' | 'abort' | 'stop' | 'done']?: Promise<void> | readonly Promise<void>[] | ((reason: unknown) => unknown) }): void;
     /** Inside a `.catch` handler: restore the caught branch's fields now; writes after it stand. */
     restore(): void;
     /**
@@ -314,7 +326,7 @@ function install<T extends Steps>(self: T) {
     abort: { value: (reason?: unknown) => control.stop(true, reason) },
     only: { value: () => outside('only') },
     commit: { value: () => outside('commit') },
-    undo: { value: () => outside('undo') },
+    on: { value: () => outside('on') },
     restore: { value: () => outside('restore') },
     signal: { get: () => outside('signal', 'read') },
     retry: { value: () => outside('retry') },
@@ -529,7 +541,7 @@ class Control extends Model {
 
     current._stopped = stopped;
     current.release();
-    current.halt(undo ? 'aborted' : 'stopped', undefined, undo);
+    current.halt(undo ? 'aborted' : 'stopped');
   }
 }
 
@@ -541,7 +553,8 @@ class Run extends Model {
   _ticket!: Ticket;
   _entries: Steps.Entry[] = [];
   _counts = new Map<string, number>();
-  _comps = new Map<string, Steps.Node[]>();
+  _on = new Map<string, Handler[]>();
+  _finished = new Set<string>();
   _held = new Map<string, Held>();
   _inline = new Map<string, Function>();
   _errors = new Map<string, unknown>();
@@ -562,6 +575,7 @@ class Run extends Model {
   _drained: (() => void)[] = [];
   _quiet = new Set<() => void>();
   _halted?: 'failed' | 'stopped' | 'aborted' = undefined;
+  _at?: string = undefined;
   _ending?: boolean = undefined;
   _settling?: boolean = undefined;
   _error?: unknown = undefined;
@@ -649,7 +663,10 @@ class Run extends Model {
       const answer = await this.park(item, from!);
 
       if (answer) {
-        await this.descend(await answer.frame);
+        const frame = await answer.frame;
+
+        await this.descend(frame);
+        await this.complete(frame);
         answer.done();
       }
     }
@@ -659,8 +676,29 @@ class Run extends Model {
 
       if (wait) return void this.wake(wait, item.key, item.args, item);
 
-      await this.descend(await this.invoke(item));
+      const frame = await this.invoke(item);
+
+      await this.descend(frame);
+      await this.complete(frame);
     }
+  }
+
+  async complete(frame?: Frame) {
+    const on = frame && this._on.get(frame.id);
+
+    if (!on || this.stale() || this.dropped(frame!.id)) return;
+
+    this._finished.add(frame!.id);
+
+    try {
+      await this.fire(on, 'done', undefined, new Set());
+    } catch (error) {
+      if (!this.caught(error, frame!.id)) this.halt('failed', error, frame!.id);
+    }
+  }
+
+  async fire(on: Handler[] | undefined, kind: Kind, cause: unknown, kept: Set<string>) {
+    for (const { kind: is, node } of [...(on || [])].reverse()) if (is == kind) await this.compensate(node, cause, kept);
   }
 
   racing(item: Steps.Node) {
@@ -681,7 +719,7 @@ class Run extends Model {
     for (const racer of losers)
       this.serial(async () => {
         await this.quiet(racer.id);
-        (await this.recover(racer, cause))();
+        (await this.recover(racer, cause, 'abort'))();
       });
   }
 
@@ -732,8 +770,8 @@ class Run extends Model {
 
     if (!branch.failed) return;
 
-    const { cause } = branch.failed;
-    const restore = await this.serial(() => this.recover(item, cause));
+    const { cause, at } = branch.failed;
+    const restore = await this.serial(() => this.recover(item, cause, 'error', this.line(at)));
     const { key, fn } = rescue;
     const parent = this._parent.get(item.id)!;
 
@@ -788,9 +826,9 @@ class Run extends Model {
     return node;
   }
 
-  async recover(item: Steps.Node, cause: unknown): Promise<Restore> {
+  async recover(item: Steps.Node, cause: unknown, mode: Mode, line?: string[]): Promise<Restore> {
     const ids = this._entries.filter((entry) => !this._spent.has(entry.id) && this.line(entry.id).includes(item.id));
-    const unwound = await this.unwind(cause, new Set(ids.map((entry) => entry.id)));
+    const unwound = await this.unwind(cause, mode, new Set(ids.map((entry) => entry.id)), line);
     let done = false;
 
     const restore: Restore = (into, all) => {
@@ -817,7 +855,7 @@ class Run extends Model {
 
     if (branch.failed) return true;
 
-    branch.failed = { cause: error };
+    branch.failed = { cause: error, at: id };
     this._dropped.add(at);
 
     for (const frame of this.discard()) frame._abort.abort();
@@ -930,11 +968,11 @@ class Run extends Model {
   }
 
   park(item: Steps.Node, from: Frame) {
-    let closures = [...this._comps.values()].some((list) => list.some((node) => this._inline.has(node.id)));
+    let closures = [...this._on.values()].some((list) => list.some(({ node }) => this._inline.has(node.id)));
 
     if (closures && !this._warned) {
       this._warned = true;
-      console.warn(`${this.control._self} is waiting with closure compensations held; a closure does not survive a resume.`);
+      console.warn(`${this.control._self} is waiting with function handlers held; a closure does not survive a resume.`);
     }
 
     return new Promise<Answer | undefined>((resolve) => {
@@ -1016,7 +1054,7 @@ class Run extends Model {
           body = !frame._settled;
 
           if (error instanceof Promise && body && !fixed) {
-            for (const item of [...frame._comps].reverse()) await this.compensate(item, error, new Set());
+            await this.fire(frame._on, 'undo', error, new Set());
 
             this.reset(frame);
 
@@ -1035,8 +1073,8 @@ class Run extends Model {
       const { signal } = frame._abort;
       const fixed = frame._lost.size || frame._committed;
       const aborted = signal.aborted && error === signal.reason;
-      const comps = !fixed && !undo && frame._comps.length ? frame._comps : undefined;
-      const defer = comps && !aborted && !this.stale();
+      const on = !fixed && !undo && frame._on.length ? frame._on : undefined;
+      const defer = on && !aborted && !this.stale();
       const entry: Steps.Entry = { id, key, args, next: [], wrote: [], error, ...frame._retried && { retried: frame._retried } };
 
       frame._settled = true;
@@ -1047,9 +1085,9 @@ class Run extends Model {
 
       if (undo) throw error;
 
-      if (comps) {
-        entry.undo = comps;
-        this._comps.set(id, comps);
+      if (on) {
+        entry.on = grouped(on);
+        this._on.set(id, on);
         this._entries.push(entry);
       }
 
@@ -1057,14 +1095,14 @@ class Run extends Model {
       if (aborted) return;
 
       if (body && !fixed && this.caught(error, id)) {
-        if (!comps) this._entries.push(entry);
+        if (!on) this._entries.push(entry);
 
         try {
           control.hook('after', key, entry);
         } catch (thrown) {
-          this.halt('failed', thrown);
+          this.halt('failed', thrown, id);
         }
-      } else this.halt('failed', error);
+      } else this.halt('failed', error, id);
     } finally {
       this.frames.delete(frame);
       control.active = this.flight().at(-1)?.key;
@@ -1086,7 +1124,7 @@ class Run extends Model {
       _items: [],
       _wrote: new Set(),
       _prior: {},
-      _comps: [],
+      _on: [],
       _violation: undefined,
       _late: undefined
     });
@@ -1099,6 +1137,14 @@ class Run extends Model {
 
     if (this._unwinding) await this._unwinding;
     if (this._halted) return;
+
+    const open = this._entries.filter((entry) => this._on.has(entry.id) && !this._finished.has(entry.id) && !this._spent.has(entry.id));
+
+    try {
+      for (const entry of open.reverse()) await this.fire(this._on.get(entry.id), 'done', undefined, new Set());
+    } catch (thrown) {
+      return this.halt('failed', thrown);
+    }
 
     const { id } = item || this.node('end', []);
     const entry = { id, key: 'end', args: [], next: [], wrote: [], ...!item && { implicit: true as const } };
@@ -1152,17 +1198,18 @@ class Run extends Model {
     control.runs++;
     this._entries = [];
     this._held.clear();
-    this._comps.clear();
+    this._on.clear();
     this.frames.clear();
     this.waits.clear();
   }
 
-  halt(status: 'failed' | 'stopped' | 'aborted', error?: unknown, undo = status == 'failed') {
+  halt(status: 'failed' | 'stopped' | 'aborted', error?: unknown, at?: string) {
     const { control } = this;
 
     if (this._halted || this._settling) return;
 
     this._halted = status;
+    this._at = at;
     control.status = status;
 
     for (const frame of this.frames) frame._abort.abort();
@@ -1173,28 +1220,27 @@ class Run extends Model {
     }
 
     this.release();
-    this.finalize(undo);
+    this.finalize(MODES[status]);
   }
 
-  async finalize(undo: boolean) {
+  async finalize(mode: Mode) {
     await this.drain();
 
     if (this._unwinding) await this._unwinding;
 
-    if (undo) {
-      const unwound = await this.unwind(this.reason());
+    const { _at: at } = this;
+    const unwound = await this.unwind(this.reason(), mode, undefined, at ? this.line(at) : undefined);
 
-      this.refill(unwound);
+    this.refill(unwound);
 
-      if (unwound.failed) {
-        const { cause } = unwound.failed;
-        const stopped = this._halted == 'aborted';
+    if (unwound.failed) {
+      const { cause } = unwound.failed;
+      const halted = mode != 'error';
 
-        if (stopped && cause instanceof Error && cause.cause === undefined) cause.cause = this._stopped;
-        if (stopped) this.control.status = 'failed';
+      if (halted && cause instanceof Error && cause.cause === undefined) cause.cause = this._stopped;
+      if (halted) this.control.status = 'failed';
 
-        this.blame(cause);
-      }
+      this.blame(cause);
     }
 
     const { _tail: tail } = this;
@@ -1237,39 +1283,48 @@ class Run extends Model {
     this.control.advance();
   }
 
-  async unwind(cause: unknown, ids?: Set<string>): Promise<Unwound> {
+  async unwind(cause: unknown, mode: Mode, ids?: Set<string>, line: string[] = []): Promise<Unwound> {
     const { control, _entries: entries } = this;
     const pending = entries.filter((entry) => (ids ? ids.has(entry.id) : !this._spent.has(entry.id)));
     const kept = new Set<string>();
     const undone: Steps.Entry[] = [];
+    let halted = mode == 'stop';
 
     for (const entry of pending.reverse()) {
-      const comps = this._comps.get(entry.id);
+      const on = this._on.get(entry.id);
+      const open = !this._finished.has(entry.id);
 
       if (ids && this._halted) break;
       if (entry.unwound == 'failed') break;
 
-      if (entry.irreversible || entry.committed) {
-        entry.halted = true;
+      if (!halted && (entry.irreversible || entry.committed)) {
+        entry.halted = halted = true;
 
         if (entry.irreversible)
           console.warn(`${control._self} stopped unwinding at ${entry.id}: ${entry.irreversible.join(', ')} cannot be restored.`);
-
-        break;
       }
 
-      if (!comps && 'error' in entry) continue;
+      if (!on && 'error' in entry) continue;
 
       try {
-        for (const item of [...(comps || [])].reverse()) await this.compensate(item, cause, kept);
+        if (mode == 'error' && line.includes(entry.id)) await this.fire(on, 'error', cause, kept);
+        if (mode == 'abort') await this.fire(on, 'abort', cause, kept);
+        if (mode == 'stop' && open) await this.fire(on, 'stop', cause, kept);
+        if (!halted) await this.fire(on, 'undo', cause, kept);
+
+        this._finished.add(entry.id);
+
+        if (open) await this.fire(on, 'done', undefined, kept);
       } catch (thrown) {
         entry.unwound = 'failed';
         return { undone, kept, failed: { cause: thrown } };
       }
 
-      if (comps || (this._held.has(entry.id) && entry.wrote.length)) entry.unwound = true;
-
       this._spent.add(entry.id);
+
+      if (halted) continue;
+      if (on?.some((handler) => handler.kind == 'undo') || (this._held.has(entry.id) && entry.wrote.length)) entry.unwound = true;
+
       undone.push(entry);
     }
 
@@ -1358,7 +1413,7 @@ class Frame extends Model {
   _prior: Record<string, unknown> = {};
   _wrappers = new Map<Collection, Collection>();
   _log: Log = [];
-  _comps: Steps.Node[] = [];
+  _on: Handler[] = [];
   _changed = new Set<string>();
   _lost = new Set<string>();
   _wake?: string = undefined;
@@ -1564,7 +1619,7 @@ class Frame extends Model {
       retried: { get: () => this._retried },
       retry: { value: retry },
       only: { value: (max: unknown, key?: unknown) => this.slot(max, key) },
-      undo: { value: (...args: unknown[]) => this.compensation(args) },
+      on: { value: (handlers: unknown) => this.handle(handlers) },
       restore: {
         value: () => {
           if (!this._restore) throw rule('restore() must be called in a .catch handler.');
@@ -1584,25 +1639,29 @@ class Frame extends Model {
     return (this._view = view as unknown as Steps.Controller);
   }
 
-  compensation(args: unknown[]) {
+  handle(handlers: unknown) {
     const { run } = this;
-    const [handler] = args;
+    const usage = 'then.on() takes steps called for it - { undo: this.release(id) } - or a function.';
 
     if (this.id == run._root) throw rule('run cleans up in its tail - try/catch around await this.');
-    if (this._settled) throw rule(`${this.key} has settled; undo cannot run.`);
+    if (this._settled) throw rule(`${this.key} has settled; on cannot run.`);
+    if (!plain(handlers)) throw rule(usage);
 
-    if (args.length == 1 && typeof handler == 'function' && !this.keyOf(handler)) {
-      const node = run.node('then', []);
+    for (const [kind, value] of Object.entries(handlers as object)) {
+      if (!KINDS.includes(kind as Kind)) throw rule(`then.on() takes undo, error, abort, stop and done - got ${kind}.`);
+      if (value === undefined) continue;
 
-      run._inline.set(node.id, handler);
-      run._owner.set(node.id, this);
+      let node: Steps.Node;
 
-      return void this._comps.push(node);
+      if (typeof value == 'function' && !this.keyOf(value)) {
+        node = run.node('then', []);
+        run._inline.set(node.id, value);
+        run._owner.set(node.id, this);
+      }
+      else [node] = this.claimed(Array.isArray(value) ? value : [value], usage);
+
+      this._on.push({ kind: kind as Kind, node });
     }
-
-    const [node] = this.claimed(args, 'then.undo() takes steps called for it - this.release(id) - or one function.');
-
-    this._comps.push(node);
   }
 
   claimed(args: unknown[], usage: string) {
@@ -1705,7 +1764,7 @@ class Frame extends Model {
   }
 
   commit(out: unknown) {
-    const { run, id, key, _items: items, _violation, _late, _wake, _lost, _comps } = this;
+    const { run, id, key, _items: items, _violation, _late, _wake, _lost, _on } = this;
 
     if (_violation) throw rule(`${key} wrote ${_violation} after scheduling ${items[0].key}.`);
     if (_late && !items.length) throw rule('run awaited work before its plan - it takes arguments, calls steps and awaits this.');
@@ -1713,7 +1772,7 @@ class Frame extends Model {
 
     const root = id == run._root;
 
-    if (!root && out !== undefined) throw rule(`${key} returned a value; a step returns nothing - its undo is this.then.undo(...).`);
+    if (!root && out !== undefined) throw rule(`${key} returned a value; a step returns nothing - its undo is this.then.on({ undo }).`);
 
     const end = items.findIndex((item) => item.key == 'end');
 
@@ -1726,11 +1785,12 @@ class Frame extends Model {
     if (_wake) entry.wake = _wake;
     if (this._retried) entry.retried = this._retried;
 
-    if (_comps.length) {
-      entry.undo = _comps;
-      run._comps.set(id, _comps);
+    if (_on.length) {
+      entry.on = grouped(_on);
+      run._on.set(id, _on);
     }
-    else if (_lost.size) entry.irreversible = [..._lost];
+
+    if (_lost.size && !_on.some((handler) => handler.kind == 'undo')) entry.irreversible = [..._lost];
 
     if (!root) run._held.set(id, { prior: this._prior, log: this._log });
     if (this._undo) run._spent.add(id);
@@ -1826,6 +1886,14 @@ class Wait extends Model {
       this._park(this._answer);
     };
   }
+}
+
+function grouped(on: Handler[]) {
+  const out: NonNullable<Steps.Entry['on']> = {};
+
+  for (const { kind, node } of on) (out[kind] ||= []).push(node);
+
+  return out;
 }
 
 function serial(error: unknown) {
