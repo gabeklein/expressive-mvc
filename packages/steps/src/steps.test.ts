@@ -5431,7 +5431,7 @@ describe('undo', () => {
     }
 
     await expect(Test.new().run({ undo: 'x' })).rejects.toThrow('then.on() takes steps called for it - { undo: this.release(id) } - or a function.');
-    await expect(Test.new().run({ finally: () => {} })).rejects.toThrow('then.on() takes undo, error, abort, stop and close - got finally.');
+    await expect(Test.new().run({ finally: () => {} })).rejects.toThrow('then.on() takes undo, catch, abort, stop and close - got finally.');
   });
 
   it('will throw for a compensation once settled', async () => {
@@ -5460,7 +5460,6 @@ describe('undo', () => {
 describe('on', () => {
   function log(order: string[], name: string) {
     return {
-      error: (error: unknown) => void order.push(`error ${name}: ${(error as Error).message}`),
       abort: (error: unknown) => void order.push(`abort ${name}: ${(error as Error).name}`),
       stop: (error: unknown) => void order.push(`stop ${name}: ${(error as Error).name}`),
       undo: () => void order.push(`undo ${name}`),
@@ -5468,7 +5467,7 @@ describe('on', () => {
     };
   }
 
-  it('will fire only done once the subtree completes', async () => {
+  it('will fire only close once the subtree completes', async () => {
     const order: string[] = [];
 
     class Test extends Steps {
@@ -5495,7 +5494,7 @@ describe('on', () => {
     expect(order).toEqual(['b', 'close a', 'c']);
   });
 
-  it('will fire error, undo and done deepest first on a failure', async () => {
+  it('will fire undo and close deepest first on a failure', async () => {
     const order: string[] = [];
 
     class Test extends Steps {
@@ -5524,16 +5523,7 @@ describe('on', () => {
     }
 
     await expect(Test.new().run()).rejects.toThrow('boom');
-    expect(order).toEqual([
-      'close z',
-      'error b: boom',
-      'undo b',
-      'close b',
-      'error a: boom',
-      'undo a',
-      'close a',
-      'undo z'
-    ]);
+    expect(order).toEqual(['close z', 'undo b', 'close b', 'undo a', 'close a', 'undo z']);
   });
 
   it('will fire for the failing step itself', async () => {
@@ -5551,10 +5541,10 @@ describe('on', () => {
     }
 
     await expect(Test.new().run()).rejects.toThrow('own');
-    expect(order).toEqual(['error a: own', 'undo a', 'close a']);
+    expect(order).toEqual(['undo a', 'close a']);
   });
 
-  it('will not fire error above a catch which took it', async () => {
+  it('will not undo above a catch which took it', async () => {
     const order: string[] = [];
 
     class Test extends Steps {
@@ -5578,7 +5568,7 @@ describe('on', () => {
     }
 
     await Test.new().run();
-    expect(order).toEqual(['error b: boom', 'undo b', 'close b', 'close a']);
+    expect(order).toEqual(['undo b', 'close b', 'close a']);
   });
 
   it('will fire abort and undo on abort, done where unfinished', async () => {
@@ -5798,7 +5788,7 @@ describe('on', () => {
       }
 
       protected a() {
-        this.then.on({ undo: this.b(), error: (error) => void error, close: [this.b(), this.b()] });
+        this.then.on({ undo: this.b(), catch: (error) => void error, close: [this.b(), this.b()] });
         // @ts-expect-error
         this.then.on({ finally: () => {} });
       }
@@ -5807,6 +5797,315 @@ describe('on', () => {
     }
 
     expect(Test.new().then.status).toBe('idle');
+  });
+});
+
+describe('on catch', () => {
+  it('will recover a failure below, keeping the step and undoing what failed', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      kept = '';
+      lost = '';
+
+      async run() {
+        this.a();
+        this.c();
+      }
+
+      protected async a() {
+        this.kept = 'a';
+        this.then.on({
+          catch: (error) => void order.push(`catch ${(error as Error).message}`),
+          undo: () => void order.push('undo a'),
+          close: () => void order.push('close a')
+        });
+        this.b();
+      }
+
+      protected async b() {
+        this.lost = 'b';
+        this.then.on({ undo: () => void order.push('undo b') });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async c() {
+        order.push('c');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run();
+    expect(order).toEqual(['undo b', 'catch boom', 'close a', 'c']);
+    expect(test.kept).toBe('a');
+    expect(test.lost).toBe('');
+    expect(test.then.status).toBe('idle');
+  });
+
+  it('will pass a rethrown failure to the caller\'s catch, inner first', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.a().catch((error) => void order.push(`caller ${(error as Error).message}`));
+      }
+
+      protected async a() {
+        this.then.on({
+          catch: (error) => {
+            order.push('own');
+            throw new Error(`${(error as Error).message} again`);
+          },
+          undo: () => void order.push('undo a')
+        });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    await Test.new().run();
+    expect(order).toEqual(['own', 'undo a', 'caller boom again']);
+  });
+
+  it('will replay the step a catch belongs to', async () => {
+    const tries: number[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.a('x');
+      }
+
+      protected async a(arg: string) {
+        tries.push(this.then.retried);
+        this.then.on({
+          catch: (error) => {
+            if (this.then.retried >= 2) throw error;
+            this.then.retry();
+          }
+        });
+        this.fail(arg);
+      }
+
+      protected async fail(arg: string) {
+        if (tries.length < 3) throw new Error(arg);
+      }
+    }
+
+    await Test.new().run();
+    expect(tries).toEqual([0, 1, 2]);
+  });
+
+  it('will schedule a step called for catch in place, reading the error', async () => {
+    const seen: unknown[] = [];
+
+    class Test extends Journal {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        seen.push(this.then.error);
+        this.then.on({ catch: this.fallback('b') });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async fallback(name: string) {
+        seen.push(name, this.then.error);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run();
+    expect(seen).toEqual([undefined, 'b', new Error('boom')]);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'a#1', 'fail#1', 'fallback#1']);
+  });
+
+  it('will not run catch once an undo below fails the run', async () => {
+    const caught = vi.fn();
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({ catch: caught });
+        this.b();
+      }
+
+      protected async b() {
+        this.then.on({
+          undo: () => {
+            throw new Error('undo');
+          }
+        });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('undo');
+    expect(caught).not.toHaveBeenCalled();
+  });
+
+  it('will recover in an answer to a wait', async () => {
+    const caught = vi.fn();
+
+    class Test extends Steps {
+      async run() {
+        this.then(this.allow);
+      }
+
+      async allow() {
+        this.then.on({ catch: caught });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    await test.allow();
+    await result;
+    expect(caught).toHaveBeenCalledWith(new Error('boom'));
+  });
+
+  it('will not catch its own step\'s failure, or take two', async () => {
+    const caught = vi.fn();
+
+    class Own extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({ catch: caught });
+        throw new Error('own');
+      }
+    }
+
+    class Twice extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({ catch: caught });
+        this.then.on({ catch: caught });
+      }
+    }
+
+    await expect(Own.new().run()).rejects.toThrow('own');
+    await expect(Twice.new().run()).rejects.toThrow('then.on() takes one catch per step.');
+    expect(caught).not.toHaveBeenCalled();
+  });
+
+  it('will not catch a failure once the run is stopping', async () => {
+    const caught = vi.fn();
+    const work = mockPromise();
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({ catch: caught });
+        this.slow();
+      }
+
+      protected async slow() {
+        await work;
+        throw new Error('late');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.active).toBe('slow'));
+    test.then.stop();
+    work.resolve();
+
+    await expect(result).rejects.toMatchObject({ name: 'Stopped' });
+    expect(caught).not.toHaveBeenCalled();
+  });
+});
+
+describe('close', () => {
+  it('will give close why the subtree ended', async () => {
+    const seen: unknown[] = [];
+
+    class Test extends Steps {
+      async run(mode: string) {
+        this.a(mode);
+      }
+
+      protected async a(mode: string) {
+        this.then.on({ close: (reason) => void seen.push(reason) });
+
+        if (mode == 'fail') this.fail();
+        if (mode == 'recover') this.b();
+        if (mode == 'halt') this.slow();
+      }
+
+      protected async b() {
+        this.then.on({ catch: () => {} });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async slow() {
+        const { signal } = this.then;
+
+        await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
+      }
+    }
+
+    await Test.new().run('clean');
+    await Test.new().run('recover');
+    await expect(Test.new().run('fail')).rejects.toThrow('boom');
+
+    for (const halt of ['abort', 'stop'] as const) {
+      const test = Test.new();
+      const result = test.run('halt');
+
+      await vi.waitFor(() => expect(test.then.active).toBe('slow'));
+      test.then[halt]();
+      await result.catch(() => {});
+    }
+
+    expect(seen).toEqual([
+      undefined,
+      undefined,
+      new Error('boom'),
+      expect.objectContaining({ name: 'Aborted' }),
+      expect.objectContaining({ name: 'Stopped' })
+    ]);
   });
 });
 
@@ -6061,39 +6360,6 @@ describe('races and halts', () => {
     await result;
     expect(test.then.status).toBe('idle');
     expect(record(test).find((entry) => entry.key == 'poll')).toMatchObject({ error: new Error('poll') });
-  });
-
-  it('will fire error handlers when done throws at the end', async () => {
-    const log: string[] = [];
-
-    class Test extends Steps {
-      async run() {
-        this.a();
-      }
-
-      protected async a() {
-        this.then.on({
-          error: (error) => void log.push(`error ${(error as Error).message}`),
-          close: () => {
-            throw new Error('close');
-          }
-        });
-        this.then(this.allow);
-      }
-
-      async allow() {
-        this.then.end();
-      }
-    }
-
-    const test = Test.new();
-    const result = test.run();
-
-    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
-    test.allow();
-
-    await expect(result).rejects.toThrow('close');
-    expect(log).toEqual(['error close']);
   });
 
   it('will call a handler plainly, not on the instance', async () => {
