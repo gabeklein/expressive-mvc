@@ -177,14 +177,14 @@ it('will keep what a failing turn committed', async () => {
     });
 
   await expect(agent.run('write notes')).rejects.toThrow('overloaded');
-  // no step returns an undo or true: committed pushes stay, the failing turn's own draft chunks are restored
+  // committed pushes stay - the unwind halts at the newest commit; the failing turn's own draft chunks are restored
   expect([...agent.messages].map((message) => message.content)).toEqual(['write notes', '', 'call_1_0: write notes ok']);
   expect(agent.draft.size).toBe(0);
-  expect(record(agent).map((entry) => [entry.id, entry.wrote, entry.undone])).toEqual([
-    ['run#1', ['messages'], undefined],
-    ['turn#1', ['messages'], undefined],
-    ['tool#1', [], undefined],
-    ['exec#1', ['messages'], undefined]
+  expect(record(agent).map((entry) => [entry.id, entry.wrote, entry.committed, entry.halted])).toEqual([
+    ['run#1', ['messages'], undefined, undefined],
+    ['turn#1', ['messages'], true, undefined],
+    ['tool#1', [], undefined, undefined],
+    ['exec#1', ['messages'], true, true]
   ]);
 });
 

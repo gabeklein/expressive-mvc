@@ -13,7 +13,7 @@ export interface Released {
   approver: string;
 }
 
-// undos put the world back, and an unwind restores the fields of the steps returning them - the rest stay as they were left
+// compensations put the world back, and an unwind restores the fields of every step it takes back
 export class Deploy extends Steps {
   version!: string;
   hosts: string[] = [];
@@ -53,17 +53,19 @@ export class Deploy extends Steps {
 
   protected async build() {
     this.artifact = await ci.build(this.version);
-    await git.tag(this.version);
+    this.then.catch(this.unpublish, this.artifact);
 
-    // a returned group is the undo - its members run concurrently, only on unwind
-    return this.then(this.unpublish(this.artifact), this.untag(this.version));
+    await git.tag(this.version);
+    // compensations run only on unwind, newest first - a step and its args, so durable
+    this.then.catch(this.untag, this.version);
   }
 
-  protected async unpublish(artifact: string) {
+  // a compensation gets the error first, then its args
+  protected async unpublish(_error: unknown, artifact: string) {
     await registry.unpublish(artifact);
   }
 
-  protected async untag(version: string) {
+  protected async untag(_error: unknown, version: string) {
     await git.untag(version);
   }
 
@@ -86,20 +88,17 @@ export class Deploy extends Steps {
 
     this.then(this.canaries, this.install);     // a mapped group: install(host, index) per canary, in parallel
     this.gate();                                // scheduled by canary, so it runs before migrate - depth-first
-
-    // nothing to call on unwind, but true keeps the prior - an unwind restores canaries
-    return true;
   }
 
   protected async install(host: string) {
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
 
-    // a returned token is a durable undo - a closure here would warn once the gate waits
-    return this.uninstall(host);
+    // a step compensation is durable - a closure here would warn once the gate waits
+    this.then.catch(this.uninstall, host);
   }
 
-  protected async uninstall(host: string) {
+  protected async uninstall(_error: unknown, host: string) {
     await fleet.uninstall(host);
     this.live.delete(host);
   }
@@ -141,32 +140,16 @@ export class Deploy extends Steps {
     const rest = this.hosts.filter((host) => !this.canaries.includes(host));
 
     for (const host of rest) this.upgrade(host);     // a plain loop schedules in sequence - one host at a time
-
-    // a returned wait is the undo: an unwind parks here until an operator answers, else reverts after 10 minutes
-    return this.then(this.revert, this.keep, async (signal) => {
-      await delay(10 * MINUTE, { signal });
-      return this.revert();
-    });
   }
 
-  // drained while it installs - a host that fails stays drained
+  // drained while it installs - a host that fails stays drained; one upgraded is uninstalled on unwind
   protected async upgrade(host: string) {
     fleet.drain(host);
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
+    this.then.catch(this.uninstall, host);
     fleet.serve(host);
   }
-
-  // an unwind answer runs as an undo frame: no hooks, cannot schedule
-  async revert() {
-    const upgraded = [...this.live.keys()].filter((host) => !this.canaries.includes(host));
-
-    await Promise.all(upgraded.map((host) => fleet.uninstall(host)));
-
-    for (const host of upgraded) this.live.delete(host);
-  }
-
-  async keep() {}
 
   protected async retire() {
     const [oldest] = this.releases;
@@ -182,7 +165,7 @@ export class Deploy extends Steps {
     await chat.post(`${this.version} is live on ${this.live.size} hosts`);
   }
 
-  // before and after wrap every step, answers included; writes here are in no entry
+  // before and after wrap every step, answers included - not compensations; writes here are in no entry
   protected before(step: string, args: unknown[]) {
     this.log.push(`${step}(${args.join(', ')})`);
   }

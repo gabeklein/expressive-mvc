@@ -3,7 +3,7 @@ import { Steps } from '@expressive/steps';
 
 import { delay, MINUTE, model, result, safe, toolCalls, tools, user, type Message, type ToolCall } from './services';
 
-// a long-lived instance whose fields are the product: no step returns an undo or true, so a failed turn keeps what earlier steps committed
+// a long-lived instance whose fields are the product: each reply and tool result commits, so a failed turn keeps what earlier steps pushed
 export class Agent extends Steps {
   mode: 'ask' | 'auto' | 'yolo' = 'ask';
   messages = has<Message>();
@@ -37,6 +37,9 @@ export class Agent extends Steps {
     this.draft.clear();
     this.messages.push(reply, ...steers.map(user));
 
+    // the point of no return: a later failure keeps this reply - its unwind halts here
+    this.then.commit();
+
     if (calling) {
       this.then(calls, this.tool);      // a mapped group: tool(call, index) per call, in parallel
       this.turn();                      // the loop - runs once every tool is done
@@ -51,9 +54,9 @@ export class Agent extends Steps {
     let allowed = this.mode === 'yolo';
 
     // else park until allow or deny answers - the watcher denies after a minute
-    // a throw from exec runs it once more in its place - its own pushes undone first, so nothing repeats
+    // a throw from exec runs it once more in its place, given the error then the call - its own pushes undone first
     if (allowed || this.mode === 'auto' && safe(call))
-      this.exec(call).catch(this.exec);
+      this.exec(undefined, call).catch(this.exec);
     else
       this.then(this.allow, this.deny, async (signal) => {
         await delay(MINUTE, { signal });
@@ -61,13 +64,15 @@ export class Agent extends Steps {
       });
   }
 
-  protected async exec(call: ToolCall) {
+  // a step and its own .catch handler: the error comes first, unused on a first try
+  protected async exec(_error: unknown, call: ToolCall) {
     this.messages.push(result(call, await tools.run(call)));
+    this.then.commit();
   }
 
   // answering steps: public, and defined on the instance only while a wait accepts them
   async allow(call: ToolCall) {
-    this.exec(call).catch(this.exec);
+    this.exec(undefined, call).catch(this.exec);
   }
 
   async deny(call: ToolCall) {

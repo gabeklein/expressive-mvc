@@ -5,9 +5,11 @@ type Collection = has.List<unknown> | has.Pool<unknown> | map.Managed<unknown, u
 type Change = [out: unknown, changed: boolean, undo?: () => void, lost?: boolean];
 type Mutator = (...args: any[]) => Change;
 
+type Log = [key: string, undo: () => void][];
+
 interface Held {
   prior: Record<string, unknown>;
-  log: (() => void)[];
+  log: Log;
 }
 
 interface Ticket {
@@ -24,19 +26,18 @@ interface Answer {
   fail(error: unknown): void;
 }
 
-interface Undo {
-  how: Function | Steps.Node;
-  from: Frame;
-}
-
-interface Back {
-  key: string;
-  reason: unknown;
-}
-
 interface Rescue {
   key?: string;
   fn?: Function;
+  args?: unknown[];
+}
+
+type Restore = (into?: Frame, all?: boolean) => void;
+
+interface Unwound {
+  undone: Steps.Entry[];
+  values: Map<string, unknown>;
+  failed?: { cause: unknown };
 }
 
 interface Branch {
@@ -45,7 +46,7 @@ interface Branch {
 
 interface Lineage {
   retry: number;
-  caught: unknown;
+  restore: Restore;
 }
 
 interface Gate {
@@ -64,17 +65,16 @@ interface Waiter {
   grant(): void;
 }
 
-const HOOKS = new Set(['before', 'after', 'back']);
+const HOOKS = new Set(['before', 'after']);
 const KEYS = ['status', 'active', 'queue', 'waiting', 'runs', 'error'] as const;
 const SLACK = 8;
 const GATES = new WeakMap<object, Gate>();
-const INERT = ['back', 'slot'];
-const UNCAUGHT = [...INERT, 'end'];
+const UNCAUGHT = ['slot', 'end'];
 const ISSUED = new WeakMap<object, Frame>();
 
 const TOKEN = {
-  catch(this: Steps.Node, handler?: unknown) {
-    return ISSUED.get(this)!.rescue(this, handler);
+  catch(this: Steps.Node, handler?: unknown, ...args: unknown[]) {
+    return ISSUED.get(this)!.rescue(this, handler, args);
   }
 };
 
@@ -106,8 +106,10 @@ declare namespace Steps {
     next: Node[];
     /** Fields the step wrote, collections changed in place included. */
     wrote: string[];
-    undo?: 'closure' | Node;
-    undone?: true | 'failed';
+    /** Compensations the step registered with `then.catch()`, in order: the handler's key - `then` for a function - and args. */
+    compensate?: Node[];
+    /** Taken back by an unwind - compensations run, fields restored; `'failed'` when a compensation threw. */
+    unwound?: true | 'failed';
     /** Id of the wait this step answered. */
     wake?: string;
     /** How many times the step was re-run from its own `.catch`, when past the first. */
@@ -116,17 +118,19 @@ declare namespace Steps {
     error?: unknown;
     /** Collections changed in a way no restore can undo - the unwind stops here. */
     irreversible?: string[];
-    /** The step called `then.commit()` - not retried, not restored, the unwind stops here. */
+    /** The step called `then.commit()` - not retried, restored or compensated; the unwind stops here. */
     committed?: true;
     /** The unwind stopped at this entry; it and every entry before it stay applied. */
     halted?: true;
     /** An `end` the runtime added - the plan drained without one. */
     implicit?: true;
-    /** A `back` entry: id of the entry it went back to, which stays. */
-    to?: string;
-    /** A `back` entry: the reason given to `back`. A halted entry: the reason given to `stop()` while the unwind was parked here. */
-    reason?: unknown;
   }
+
+  /** A failure handler: the error first, then its args. */
+  type Handler = (error: any, ...args: any[]) => unknown;
+
+  /** Args a handler takes after the error - `never` unless it takes the error as `unknown` or `any`. */
+  type Args<H> = H extends (error: infer E, ...args: infer A) => any ? (unknown extends E ? A : never) : never;
 
   interface Wait {
     id: string;
@@ -169,7 +173,7 @@ declare namespace Steps {
 
     /**
      * Inside a step: an anonymous step at this point in the plan, given an `AbortSignal` aborted
-     * when the run stops. Returned, it is the step's undo. Not durable.
+     * when the run stops. Not durable.
      */
     <This>(this: This, step: (signal: AbortSignal) => unknown): Promise<void>;
 
@@ -177,7 +181,7 @@ declare namespace Steps {
      * Inside a step: park this point in the plan until a call to one of these steps answers it -
      * from outside, or from a watcher: a plain function started when the plan reaches the wait,
      * given an `AbortSignal` aborted once the wait closes. The next step in sequence runs once
-     * the answer, and all it schedules, is done. Returned, it parks the unwind until answered.
+     * the answer, and all it schedules, is done.
      */
     <This>(this: This, ...steps: [...steps: ((...args: any[]) => unknown)[], watcher: (signal: AbortSignal) => unknown]): Promise<void>;
 
@@ -191,7 +195,6 @@ declare namespace Steps {
     /**
      * Inside a step: run these tokens as one parallel group at this point in the plan.
      * The next step in sequence runs once every member, and all it schedules, is done.
-     * Returned, its members are the step's undo.
      */
     <This>(this: This, ...steps: unknown[]): Promise<void>;
 
@@ -221,19 +224,22 @@ declare namespace Steps {
      * error the run and queue reject with, and its message when a string.
      */
     stop(undo?: boolean, reason?: unknown): void;
-    /** Inside a step: a point of no return - the step is not caught, restored or unwound. */
+    /** Inside a step: a point of no return - the step is not caught, restored or compensated, and the unwind stops here. */
     commit(): void;
+    /**
+     * Inside a step: its compensation - run when an unwind takes the step back: a failure caught by a
+     * `.catch` above it, the run failing, `stop(true)`, or the step itself failing after this call.
+     * Given the error, then `args`; runs before fields are restored, and keys it writes are kept.
+     * Compensations run newest first and never recover - the failure goes on.
+     */
+    catch<H extends Steps.Handler>(handler: H, ...args: Steps.Args<H>): void;
+    /** Inside a `.catch` handler: restore the caught branch's fields now; writes after it stand. */
+    reset(): void;
     /**
      * Inside a step: wait at this point in the plan for a free slot in a FIFO queue, `after` ms
      * from reaching it. What this step schedules after it runs holding the slot, until done.
      */
     slot(options?: Steps.Slot<T>): void;
-    /**
-     * Inside a step: unwind every entry committed after `step`'s latest, newest first, discard
-     * what they scheduled, then call the `back` hook with `reason`. What this step schedules
-     * after it runs next.
-     */
-    back(step: (...args: any[]) => unknown, reason?: unknown): void;
     /**
      * Inside a step: its `AbortSignal` - aborted on `stop()`, an outside `end`, a failure elsewhere,
      * and once the step settles. A step rejecting with its reason is not a failure.
@@ -241,8 +247,6 @@ declare namespace Steps {
     readonly signal: AbortSignal;
     /** Inside a step: 0, or one more than the step it re-runs from that step's own `.catch`. */
     readonly retry: number;
-    /** Inside a `.catch` handler: what the caught branch threw; else `undefined`. */
-    readonly caught: unknown;
   }
 
   interface Thenable<T extends Model = Model> {
@@ -260,6 +264,19 @@ declare namespace Steps {
    * active run; idle, it calls `run()`, or rejects if `run` takes arguments.
    */
   type Runner<T extends Model = Model> = Controller<T> & Thenable<T>;
+}
+
+declare global {
+  interface Promise<T> {
+    /**
+     * On a step call inside a step: handle a failure of the step and all it schedules - unwind the
+     * branch, then run `handler` in its place given the error, then `args` (default: the step's).
+     */
+    catch<H extends Steps.Handler>(
+      handler: H,
+      ...args: Steps.Args<H> extends [unknown, ...unknown[]] ? Steps.Args<H> | [] : never
+    ): Promise<T>;
+  }
 }
 
 function install<T extends Steps>(self: T) {
@@ -295,11 +312,11 @@ function install<T extends Steps>(self: T) {
     end: { value: (...value: unknown[]) => void (valueless(value), control.conclude()) },
     stop: { value: (undo?: boolean, reason?: unknown) => control.stop(undo, reason) },
     commit: { value: () => outside('commit') },
-    back: { value: () => outside('back') },
+    catch: { value: () => outside('catch') },
+    reset: { value: () => outside('reset') },
     slot: { value: () => outside('slot') },
     signal: { get: () => outside('signal', 'read') },
-    retry: { get: () => outside('retry', 'read') },
-    caught: { get: () => outside('caught', 'read') }
+    retry: { get: () => outside('retry', 'read') }
   });
 
   event(runner);
@@ -374,9 +391,6 @@ class Steps extends Model {
 
   /** After each step commits, once per step. */
   protected after?(step: string, entry: Steps.Entry): void;
-
-  /** Once an unwind completes, halted or not: given `reason` from `then.back()`, else the error the run rejects with. */
-  protected back?(reason: unknown): void;
 }
 
 class Control extends Model {
@@ -500,8 +514,6 @@ class Control extends Model {
 
     queue.clear();
 
-    if (current._halted == 'failed') current._cut = { reason };
-
     current._stopped = stopped;
     current.release();
     current.halt('stopped', undefined, undo);
@@ -516,12 +528,11 @@ class Run extends Model {
   _ticket!: Ticket;
   _entries: Steps.Entry[] = [];
   _counts = new Map<string, number>();
-  _undo = new Map<string, Undo>();
+  _comps = new Map<string, Steps.Node[]>();
   _held = new Map<string, Held>();
   _inline = new Map<string, Function>();
   _owner = new Map<string, Frame>();
   _watchers = new Map<string, Function[]>();
-  _backs = new Map<string, Back>();
   _parent = new Map<string, string>();
   _slots = new Map<string, Steps.Slot>();
   _catches = new Map<string, Rescue>();
@@ -532,9 +543,8 @@ class Run extends Model {
   _pending = new Map<string, () => void>();
   _holding = new Map<() => void, string>();
   _dropped = new Set<string>();
-  _kept = new Set<string>();
   _spent = new Set<string>();
-  _backing?: Promise<void> = undefined;
+  _unwinding?: Promise<unknown> = undefined;
   _drained: (() => void)[] = [];
   _halted?: 'failed' | 'stopped' = undefined;
   _ending?: boolean = undefined;
@@ -542,8 +552,6 @@ class Run extends Model {
   _error?: unknown = undefined;
   _stopped?: Error = undefined;
   _warned?: boolean = undefined;
-  _backed?: boolean = undefined;
-  _cut?: { reason: unknown } = undefined;
   _root?: string = undefined;
   _result?: unknown = undefined;
   _tail?: Promise<unknown> = undefined;
@@ -599,12 +607,7 @@ class Run extends Model {
   }
 
   dropped(id: string) {
-    for (const at of this.line(id)) {
-      if (this._kept.has(at)) return false;
-      if (this._dropped.has(at)) return true;
-    }
-
-    return false;
+    return this.line(id).some((at) => this._dropped.has(at));
   }
 
   line(id: string) {
@@ -635,7 +638,6 @@ class Run extends Model {
         answer.done();
       }
     }
-    else if (item.key == 'back') await this.back(item, from!);
     else if (item.key == 'end') await this.terminate(item);
     else await this.descend(await this.invoke(item));
   }
@@ -648,13 +650,16 @@ class Run extends Model {
     return this.end(item);
   }
 
-  back(item: Steps.Node, from: Frame) {
-    const prior = this._backing;
-
-    return (this._backing = (async () => {
+  serial<T>(task: () => Promise<T>) {
+    const prior = this._unwinding;
+    const next = (async () => {
       await prior;
-      await this.retreat(item, from);
-    })());
+      return task();
+    })();
+
+    this._unwinding = next;
+
+    return next;
   }
 
   async guard(item: Steps.Node, from: Frame, rescue: Rescue) {
@@ -668,24 +673,18 @@ class Run extends Model {
 
     if (!branch.failed) return;
 
-    const prior = this._backing;
-    const recovered = (this._backing = (async () => {
-      await prior;
-      await this.recover(item);
-    })());
-
-    await recovered;
-
-    if (this.stale() || !rescue.fn) return;
-
-    const { key, fn } = rescue;
     const { cause } = branch.failed;
-    const node = this.node(key || 'then', key ? item.args : []);
+    const restore = await this.serial(() => this.recover(item, cause));
+
+    if (this.stale() || !rescue.fn) return restore();
+
+    const { key, fn, args } = rescue;
+    const node = this.node(key || 'then', [cause, ...(args || (key == item.key ? item.args.slice(1) : item.args))]);
     const issuer = key != item.key && key == from.key;
     const repeats = key == item.key ? 0 : issuer ? from._retry : -1;
 
     this._parent.set(node.id, this._parent.get(item.id)!);
-    this._lineage.set(node.id, { retry: repeats + 1, caught: cause });
+    this._lineage.set(node.id, { retry: repeats + 1, restore });
 
     if (!key) {
       this._inline.set(node.id, fn);
@@ -695,13 +694,27 @@ class Run extends Model {
     if (issuer) for (const [release, id] of this._holding) if (id == from.id) release();
 
     await this.exec(node, from);
+    restore();
   }
 
-  async recover(item: Steps.Node) {
+  async recover(item: Steps.Node, cause: unknown): Promise<Restore> {
     const ids = this._entries.filter((entry) => !this._spent.has(entry.id) && this.line(entry.id).includes(item.id));
-    const failed = await this.unwind(new Set(ids.map((entry) => entry.id)));
+    const unwound = await this.unwind(cause, new Set(ids.map((entry) => entry.id)));
+    let done = false;
 
-    if (failed) this.halt('failed', failed.cause);
+    const restore: Restore = (into, all) => {
+      if (done) return;
+
+      done = true;
+      this.refill(unwound, into, all);
+    };
+
+    if (unwound.failed) {
+      restore();
+      this.halt('failed', unwound.failed.cause);
+    }
+
+    return restore;
   }
 
   caught(error: unknown, id: string) {
@@ -726,60 +739,10 @@ class Run extends Model {
   }
 
   discard() {
-    for (const wait of this.waits.filter((wait) => !wait._undo && this.dropped(wait.id))) this.waits.delete(wait);
+    for (const wait of this.waits.filter((wait) => this.dropped(wait.id))) this.waits.delete(wait);
     for (const [id, cancel] of this._pending) if (this.dropped(id)) cancel();
 
     return this.flight().filter((frame) => this.dropped(frame.id));
-  }
-
-  async retreat(item: Steps.Node, from: Frame) {
-    if (this.stale() || this.dropped(item.id)) return;
-
-    const { _entries: entries } = this;
-    const { key, reason } = this._backs.get(item.id)!;
-    const live = (entry: Steps.Entry) => entry.id != from.id && !('error' in entry) && !this._spent.has(entry.id);
-    const at = entries.findLastIndex((entry) => entry.key == key && live(entry));
-
-    if (at < 0) return this.halt('failed', new Error(`back() found no committed ${key}.`));
-
-    const ids = new Set(entries.slice(at + 1).filter(live).map((entry) => entry.id));
-
-    for (const id of ids) {
-      this._dropped.add(id);
-      this._kept.delete(id);
-    }
-
-    this._kept.add(from.id);
-
-    const flying = this.discard();
-
-    for (const frame of flying) {
-      frame._abort.abort();
-      ids.add(frame.id);
-    }
-
-    await Promise.all(flying.map((frame) => frame._gone));
-
-    if (this.stale()) return;
-
-    const failed = await this.unwind(ids);
-
-    if (failed) return this.halt('failed', failed.cause);
-    if (this.stale()) return;
-
-    const entry: Steps.Entry = { id: item.id, key: 'back', args: [], next: [], wrote: [], to: entries[at].id };
-
-    if (reason !== undefined) entry.reason = reason;
-
-    this._spent.add(item.id);
-    entries.push(entry);
-
-    const thrown = this.fire('back', reason);
-
-    if (thrown) {
-      this._backed = true;
-      this.halt('failed', thrown.cause);
-    }
   }
 
   async descend(frame?: Frame) {
@@ -886,17 +849,17 @@ class Run extends Model {
     return group ? gate(this._gates, group) : gate(control._gates, control);
   }
 
-  park(item: Steps.Node, from: Frame, undo?: boolean) {
-    let closures = [...this._undo.values()].some(({ how }) => typeof how == 'function');
+  park(item: Steps.Node, from: Frame) {
+    let closures = [...this._comps.values()].some((list) => list.some((node) => this._inline.has(node.id)));
 
     if (closures && !this._warned) {
       this._warned = true;
-      console.warn(`${this.control._self} is waiting with undo closures held; a closure does not survive a resume.`);
+      console.warn(`${this.control._self} is waiting with closure compensations held; a closure does not survive a resume.`);
     }
 
-    return new Promise<Answer | undefined>((resolve, reject) => {
+    return new Promise<Answer | undefined>((resolve) => {
       const { id, answers } = item;
-      const wait = this.waits.add({ id, step: from.key, args: from.args, answers, _from: from, _undo: undo, _park: resolve, _fail: reject });
+      const wait = this.waits.add({ id, step: from.key, args: from.args, answers, _from: from, _park: resolve });
 
       for (const watcher of this._watchers.get(item.id) || []) wait.watch(watcher);
     });
@@ -912,14 +875,14 @@ class Run extends Model {
       fail = rej;
     });
 
-    const answer = { done: () => (this._halted && !wait._undo ? _ticket.promise.catch(fail) : done()), fail } as Answer;
+    const answer = { done: () => (this._halted ? _ticket.promise.catch(fail) : done()), fail } as Answer;
 
     const node = this.node(key, args);
 
     wait._answer = answer;
     this._parent.set(node.id, wait.id);
     this.waits.delete(wait);
-    answer.frame = this.invoke(node, wait.id, wait._undo);
+    answer.frame = this.invoke(node, wait.id);
 
     return answered;
   }
@@ -931,21 +894,20 @@ class Run extends Model {
     for (const release of this._holding.keys()) release();
   }
 
-  async invoke(node: Steps.Node, wake?: string, undo?: boolean): Promise<Frame | undefined> {
+  async invoke(node: Steps.Node, wake?: string): Promise<Frame | undefined> {
     const { control } = this;
     const { id, key, args } = node;
     const inline = this._inline.get(id);
     const lineage = this._lineage.get(id);
     const fn = inline || control._steps.get(key)!;
-    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), ...lineage && { _retry: lineage.retry, _caught: lineage.caught } });
-    const input = inline ? [lineage ? lineage.caught : frame._abort.signal] : args;
-    const hooks = !undo;
+    const frame = this.frames.add({ id, key, args, _wake: wake, _owner: this._owner.get(id), ...lineage && { _retry: lineage.retry, _restore: lineage.restore } });
+    const input = inline && !lineage ? [frame._abort.signal] : args;
     let body = false;
 
     control.active = key;
 
     try {
-      if (hooks) control.hook('before', key, args);
+      control.hook('before', key, args);
 
       for (;;)
         try {
@@ -956,7 +918,8 @@ class Run extends Model {
 
           const entry = frame.commit(out);
 
-          if (hooks) control.hook('after', key, entry);
+          frame._restore?.(frame);
+          control.hook('after', key, entry);
 
           return frame;
         } catch (thrown) {
@@ -983,17 +946,25 @@ class Run extends Model {
     } catch (error) {
       const { signal } = frame._abort;
       const fixed = frame._lost.size || frame._committed;
+      const comps = !fixed && frame._comps.length ? frame._comps : undefined;
+      const entry: Steps.Entry = { id, key, args, next: [], wrote: [], error, ...frame._retry && { retry: frame._retry } };
 
       frame._settled = true;
 
       if (!fixed) this.restore(frame._prior, frame._log);
-      if (undo) throw error;
+
+      frame._restore?.();
+
+      if (comps) {
+        entry.compensate = comps;
+        this._comps.set(id, comps);
+        this._entries.push(entry);
+      }
+
       if (signal.aborted && error === signal.reason) return;
 
       if (body && !fixed && this.caught(error, id)) {
-        const entry = { id, key, args, next: [], wrote: [], error, ...frame._retry && { retry: frame._retry } };
-
-        this._entries.push(entry);
+        if (!comps) this._entries.push(entry);
 
         try {
           control.hook('after', key, entry);
@@ -1020,6 +991,7 @@ class Run extends Model {
       _items: [],
       _wrote: new Set(),
       _prior: {},
+      _comps: [],
       _violation: undefined,
       _late: undefined
     });
@@ -1030,7 +1002,7 @@ class Run extends Model {
 
     await this.drain();
 
-    if (this._backing) await this._backing;
+    if (this._unwinding) await this._unwinding;
     if (this._halted) return;
 
     const { id } = item || this.node('end', []);
@@ -1085,7 +1057,7 @@ class Run extends Model {
     control.runs++;
     this._entries = [];
     this._held.clear();
-    this._undo.clear();
+    this._comps.clear();
     this.frames.clear();
     this.waits.clear();
   }
@@ -1112,13 +1084,14 @@ class Run extends Model {
   async finalize(undo: boolean) {
     await this.drain();
 
-    if (this._backing) await this._backing;
+    if (this._unwinding) await this._unwinding;
 
     if (undo) {
-      const failed = await this.unwind();
+      const unwound = await this.unwind(this.reason());
 
-      if (failed) this.blame(failed.cause);
-      if (!this._backed) this.fire('back', this.reason());
+      this.refill(unwound);
+
+      if (unwound.failed) this.blame(unwound.failed.cause);
     }
 
     const { _tail: tail } = this;
@@ -1161,16 +1134,20 @@ class Run extends Model {
     this.control.advance();
   }
 
-  async unwind(ids?: Set<string>) {
+  async unwind(cause: unknown, ids?: Set<string>): Promise<Unwound> {
     const { control, _entries: entries } = this;
+    const self = control._self as any;
+    const pending = entries.filter((entry) => (ids ? ids.has(entry.id) : !this._spent.has(entry.id)));
+    const values = new Map<string, unknown>();
+    const undone: Steps.Entry[] = [];
 
-    for (let i = entries.length - 1; i >= 0; i--) {
-      const entry = entries[i];
-      const undo = this._undo.get(entry.id);
+    for (const entry of pending) for (const key in this._held.get(entry.id)?.prior) values.set(key, self[key]);
 
-      if (ids ? !ids.has(entry.id) : this._spent.has(entry.id)) continue;
-      if (ids && this.stale()) return;
-      if (entry.undone == 'failed') break;
+    for (const entry of pending.reverse()) {
+      const comps = this._comps.get(entry.id);
+
+      if (ids && this.stale()) break;
+      if (entry.unwound == 'failed') break;
 
       if (entry.irreversible || entry.committed) {
         entry.halted = true;
@@ -1181,41 +1158,58 @@ class Run extends Model {
         break;
       }
 
-      if ('error' in entry) continue;
+      if (!comps && 'error' in entry) continue;
 
       try {
-        let done = !undo || (await this.undo(entry, undo.how, undo.from));
-
-        if (!done && ids && this.stale()) return;
-
-        if (!done) {
-          entry.halted = true;
-
-          if (this._cut && this._cut.reason !== undefined) entry.reason = this._cut.reason;
-
-          break;
-        }
-
-        const held = this._held.get(entry.id);
-
-        if (held) this.restore(held.prior, held.log);
-        if (undo || held) entry.undone = true;
-
-        this._spent.add(entry.id);
-      } catch (cause) {
-        entry.undone = 'failed';
-        return { cause };
+        for (const item of [...(comps || [])].reverse()) await this.compensate(item, cause);
+      } catch (thrown) {
+        entry.unwound = 'failed';
+        return { undone, values, failed: { cause: thrown } };
       }
+
+      if (comps || (this._held.has(entry.id) && entry.wrote.length)) entry.unwound = true;
+
+      this._spent.add(entry.id);
+      undone.push(entry);
+    }
+
+    return { undone, values };
+  }
+
+  async compensate(item: Steps.Node, cause: unknown) {
+    const frame = this.frames.add({ id: item.id, key: item.key, args: item.args, _undo: true });
+    const fn = this._inline.get(item.id) || this.control._steps.get(item.key)!;
+
+    try {
+      await fn.apply(frame._proxy, [cause, ...item.args]);
+    } finally {
+      this.frames.delete(frame);
     }
   }
 
-  fire(key: string, arg: unknown) {
-    try {
-      this.control.hook(key, arg);
-    } catch (cause) {
-      this.blame(cause);
-      return { cause };
+  refill({ undone, values }: Unwound, into?: Frame, all?: boolean) {
+    const self = this.control._self as any;
+    const prior = new Map<string, unknown>();
+    const log: Log = [];
+
+    for (const entry of undone) {
+      const held = this._held.get(entry.id);
+
+      if (!held) continue;
+
+      for (const key in held.prior) prior.set(key, held.prior[key]);
+
+      log.push(...[...held.log].reverse());
     }
+
+    for (const [key, value] of prior) {
+      const wrote = into?._wrote.has(key);
+
+      if (wrote) into!._prior[key] = value;
+      if (all || (!wrote && self[key] === values.get(key))) self[key] = value;
+    }
+
+    for (const [key, undo] of log) if (all || !into?._changed.has(key)) undo();
   }
 
   blame(cause: unknown) {
@@ -1223,54 +1217,11 @@ class Run extends Model {
     this.control.error = cause;
   }
 
-  async undo(entry: Steps.Entry, how: Function | Steps.Node, from: Frame): Promise<boolean> {
-    if (typeof how != 'function' && how.group) {
-      const done = await Promise.all(how.group.map((member) => this.undo(entry, member, from)));
-
-      return done.every(Boolean);
-    }
-
-    if (typeof how != 'function' && how.answers) return this.compensate(how, from);
-
-    const frame = this.frames.add({ id: `${entry.id}:undo`, key: entry.key, args: [], _undo: true });
-    const { _proxy } = frame;
-    const inline = typeof how != 'function' && this._inline.get(how.id);
-
-    try {
-      if (typeof how == 'function') await how.call(_proxy);
-      else if (inline) await inline.call(_proxy, frame._abort.signal);
-      else await this.control._steps.get(how.key)!.apply(_proxy, how.args);
-
-      return true;
-    } finally {
-      this.frames.delete(frame);
-    }
-  }
-
-  async compensate(item: Steps.Node, from: Frame) {
-    const answer = await this.park(item, from, true);
-
-    if (!answer) return false;
-
-    let frame: Frame | undefined;
-
-    try {
-      frame = await answer.frame;
-    } catch (error) {
-      answer.fail(error);
-      throw error;
-    }
-
-    answer.done();
-
-    return !frame!._committed;
-  }
-
-  restore(prior: Record<string, unknown>, log: (() => void)[]) {
+  restore(prior: Record<string, unknown>, log: Log) {
     const self = this.control._self as any;
 
     for (const key in prior) self[key] = prior[key];
-    for (const undo of [...log].reverse()) undo();
+    for (const [, undo] of [...log].reverse()) undo();
   }
 }
 
@@ -1289,13 +1240,14 @@ class Frame extends Model {
   _wrote = new Set<string>();
   _prior: Record<string, unknown> = {};
   _wrappers = new Map<Collection, Collection>();
-  _log: (() => void)[] = [];
+  _log: Log = [];
+  _comps: Steps.Node[] = [];
   _changed = new Set<string>();
   _lost = new Set<string>();
   _wake?: string = undefined;
   _undo?: boolean = undefined;
   _retry = 0;
-  _caught?: unknown = undefined;
+  _restore?: Restore = undefined;
   _committed?: boolean = undefined;
   _violation?: string = undefined;
   _late?: boolean = undefined;
@@ -1381,7 +1333,7 @@ class Frame extends Model {
   issue(key: string, args: unknown[]) {
     const { run } = this;
 
-    if (this._undo) throw new Error(`${run.control._self} is ${run.control.status}; ${key} cannot run.`);
+    if (this._undo) throw new Error(`${this.key} is a compensation; ${key} cannot run.`);
     if (this._settled) throw new Error(`${this.key} has settled; ${key} cannot run.`);
 
     const token = run.node(key, args);
@@ -1490,8 +1442,14 @@ class Frame extends Model {
       end: { value: (...value: unknown[]) => (valueless(value), this.issue('end', [])) },
       signal: { get: () => this._abort.signal },
       retry: { get: () => this._retry },
-      caught: { get: () => this._caught },
-      back: { value: (step?: unknown, reason?: unknown) => this.back(step, reason) },
+      catch: { value: (handler: unknown, ...args: unknown[]) => this.compensation(handler, args) },
+      reset: {
+        value: () => {
+          if (!this._restore) throw new Error('reset() must be called in a .catch handler.');
+
+          this._restore(this, true);
+        }
+      },
       slot: { value: (options: Steps.Slot = {}) => this.slot(options) },
       commit: {
         value: () => {
@@ -1505,27 +1463,29 @@ class Frame extends Model {
     return (this._view = view as unknown as Steps.Controller);
   }
 
-  back(step: unknown, reason: unknown) {
+  compensation(handler: unknown, args: unknown[]) {
     const { run } = this;
-    const key = this.keyOf(step);
+    const key = this.keyOf(handler);
 
-    if (!key) throw new Error('back() takes a step to go back to; stop(true) unwinds the whole run.');
+    if (this.id == run._root) throw new Error('run cleans up in its tail - try/catch around await this.');
+    if (this._settled) throw new Error(`${this.key} has settled; catch cannot run.`);
+    if (typeof handler != 'function') throw new Error('then.catch() takes a step or a function.');
 
-    const token = this.issue('back', []);
+    const node = run.node(key || 'then', args);
 
-    run._backs.set(token.id, { key, reason });
+    if (!key) run._inline.set(node.id, handler);
 
-    return token;
+    this._comps.push(node);
   }
 
-  rescue(token: Steps.Node, handler: unknown) {
+  rescue(token: Steps.Node, handler: unknown, args: unknown[]) {
     const key = this.keyOf(handler);
 
     if (UNCAUGHT.includes(token.key)) throw new Error(`${token.key}() cannot be caught.`);
     if (handler && typeof handler != 'function') throw new Error('catch() takes a step, a function or nothing.');
 
     token.rescue = handler ? key || 'then' : true;
-    this.run._catches.set(token.id, { key, fn: handler as Function | undefined });
+    this.run._catches.set(token.id, { key, fn: handler as Function | undefined, ...args.length && { args } });
 
     return token;
   }
@@ -1541,7 +1501,7 @@ class Frame extends Model {
   group(members: unknown[]) {
     for (const member of members as Steps.Node[])
       if (!this._items.includes(member)) throw new Error(`then() takes steps called by ${this.key}.`);
-      else if (INERT.includes(member.key)) throw new Error(`${member.key}() cannot be grouped.`);
+      else if (member.key == 'slot') throw new Error(`${member.key}() cannot be grouped.`);
 
     const group = Object.assign(this.run.node('then', []), { group: members as Steps.Node[] });
 
@@ -1575,24 +1535,15 @@ class Frame extends Model {
   }
 
   commit(out: unknown) {
-    const { run, id, key, _items: items, _violation, _late, _wake, _lost } = this;
+    const { run, id, key, _items: items, _violation, _late, _wake, _lost, _comps } = this;
 
     if (_violation) throw new Error(`${key} wrote ${_violation} after scheduling ${items[0].key}.`);
     if (_late && !items.length) throw new Error('run awaited work before its plan - it takes arguments, calls steps and awaits this.');
     if (_late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
 
-    let undo: Function | Steps.Node | undefined;
-    let keep = false;
-    let token = items.includes(out as Steps.Node) && !INERT.includes((out as Steps.Node).key);
+    const root = id == run._root;
 
-    if (key == 'run') void out;
-    else if (typeof out == 'function') undo = out;
-    else if (token) {
-      undo = out as Steps.Node;
-      items.splice(items.indexOf(undo), 1);
-    }
-    else if (typeof out == 'boolean') keep = out;
-    else if (out !== undefined) throw new Error(`${key} returned a value; a step returns nothing, true, or its undo.`);
+    if (!root && out !== undefined) throw new Error(`${key} returned a value; a step returns nothing - its undo is this.then.catch(handler).`);
 
     const end = items.findIndex((item) => item.key == 'end');
 
@@ -1605,14 +1556,13 @@ class Frame extends Model {
     if (_wake) entry.wake = _wake;
     if (this._retry) entry.retry = this._retry;
 
-    if (undo) {
-      entry.undo = typeof undo == 'function' ? 'closure' : undo;
-      run._undo.set(id, { how: undo, from: this });
+    if (_comps.length) {
+      entry.compensate = _comps;
+      run._comps.set(id, _comps);
     }
     else if (_lost.size) entry.irreversible = [..._lost];
 
-    if (undo || keep) run._held.set(id, { prior: this._prior, log: this._log });
-    if (this._undo) run._spent.add(id);
+    if (!root) run._held.set(id, { prior: this._prior, log: this._log });
 
     run._entries.push(entry);
 
@@ -1666,7 +1616,7 @@ class Frame extends Model {
 
     if (!changed) return out;
     if (at._items.length) at._violation ||= key;
-    if (undo) at._log.push(undo);
+    if (undo) at._log.push([key, undo]);
     if (lost) at._lost.add(key);
 
     at._changed.add(key);
@@ -1683,9 +1633,7 @@ class Wait extends Model {
   answers: string[] = [];
 
   _from!: Frame;
-  _undo?: boolean = undefined;
   _park!: (answer?: Answer) => void;
-  _fail!: (error: unknown) => void;
   _answer?: Answer = undefined;
   _abort = new AbortController();
   _open = true;
@@ -1715,11 +1663,7 @@ class Wait extends Model {
   fail(error: unknown) {
     const { run } = this;
 
-    if (!this._open) return;
-    if (!this._undo) return run.fail(error, this.id);
-
-    this._fail(error);
-    run.waits.delete(this);
+    if (this._open) run.fail(error, this.id);
   }
 }
 

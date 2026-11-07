@@ -2,7 +2,9 @@ import { Steps } from '@expressive/steps';
 
 import { courier, inventory, mail, stripe, type Cart, type Charge } from './services';
 
-// all or nothing: every step that writes a field returns its undo, so a failed run puts each field back
+export class NoCourier extends Error {}
+
+// all or nothing: a step that changes the world registers its compensation, and an unwind restores the fields of every step it takes back
 export class SubmitOrder extends Steps {
   cart!: Cart;
   charge?: Charge = undefined;
@@ -13,7 +15,13 @@ export class SubmitOrder extends Steps {
   async run() {
     this.reserve();
 
-    await this;
+    // the tail runs after the unwind, on the restored fields - a write here is in no entry
+    try {
+      await this;
+    } catch (error) {
+      this.notice = `Order ${this.cart.id} was not placed: ${(error as Error).message}`;
+      throw error;
+    }
 
     return { orderId: this.charge?.id, tracking: this.tracking };
   }
@@ -21,38 +29,54 @@ export class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
-    // calling a step schedules it - pay runs once reserve settles
-    this.pay();
+    // a compensation runs only on unwind, given the error then its args - a step and args, so durable
+    this.then.catch(this.release, hold);
 
-    // a returned closure is this step's undo; runs only on unwind
-    return () => inventory.release(hold);
+    // calling a step schedules it - pay runs once reserve settles; if pay or anything it schedules fails, noCourier runs in its place
+    this.pay().catch(this.noCourier);
+  }
+
+  protected async release(_error: unknown, hold: string) {
+    await inventory.release(hold);
+  }
+
+  // a .catch handler runs once the failed branch is unwound - pay refunded; it recovers by scheduling, or throws to keep failing
+  protected async noCourier(error: unknown) {
+    if (!(error instanceof NoCourier)) throw error;
+
+    // a handler's own writes are kept
+    this.notice = `Order ${this.cart.id} was not placed: no courier`;
+    this.backorder();
   }
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
+    this.then.catch(this.refund, this.charge.id);
 
     // one parallel group; the run ends once it is done - then.end() must be the last call
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.then.end();
+  }
 
-    // a returned step token is the undo: refund never runs forward, only on unwind - and charge is restored after it
-    return this.refund(this.charge.id);
+  // runs before pay's fields are restored, so it could still read this.charge
+  protected async refund(_error: unknown, chargeId: string) {
+    await stripe.refund(chargeId);
   }
 
   protected async ship(chargeId: string) {
     const booking = await courier.book(this.cart, chargeId);
 
-    if (booking) {
-      this.tracking = booking.id;
+    // no courier free: fail with a type the plan handles - pay is refunded, the hold kept, and the order backordered
+    if (!booking) throw new NoCourier('no courier');
 
-      // a returned inline step is the undo, typed void so ship stays Promise<void>
-      return this.then(() => courier.cancel(booking.id));
-    }
+    this.tracking = booking.id;
 
-    // no courier free: fail forward - unwind what committed after reserve (pay is refunded,
-    // receipt dropped), keep the hold, and backorder; the run does not fail
-    this.then.back(this.reserve, 'no courier');
-    this.backorder();
+    // ship owns its compensation - cancelled if receipt, beside it, fails
+    this.then.catch(this.cancel, booking.id);
+  }
+
+  protected async cancel(_error: unknown, tracking: string) {
+    await courier.cancel(tracking);
   }
 
   protected async backorder() {
@@ -62,14 +86,5 @@ export class SubmitOrder extends Steps {
 
   protected async receipt(url: string) {
     await mail.send(this.cart.email, url);
-  }
-
-  protected async refund(chargeId: string) {
-    await stripe.refund(chargeId);
-  }
-
-  // after any unwind - given back()'s reason, else the error; writes here are in no entry, so no unwind restores them
-  protected back(reason: unknown) {
-    this.notice = `Order ${this.cart.id} was not placed: ${reason instanceof Error ? reason.message : reason}`;
   }
 }

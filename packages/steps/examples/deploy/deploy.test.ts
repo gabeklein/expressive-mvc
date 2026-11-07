@@ -131,7 +131,7 @@ it('will abort the test suite when stopped', async () => {
   expect(test).toHaveBeenCalledTimes(1);
   expect(deploy.report).toBe(`1.2.0 stopped: ${deploy} was stopped.`);
   // a plain stop does not unwind - stop(true) would
-  expect(record(deploy).find((entry) => entry.key == 'build')!.undone).toBeUndefined();
+  expect(record(deploy).find((entry) => entry.key == 'build')!.unwound).toBeUndefined();
 });
 
 it('will roll back the canaries and the build when the gate aborts', async () => {
@@ -159,8 +159,8 @@ it('will roll back the canaries and the build when the gate aborts', async () =>
   expect(db.migrate).not.toHaveBeenCalled();
   expect(deploy.then.status).toBe('stopped');
   expect(deploy.report).toBe('1.2.0 stopped: canary rejected: error rate');
-  // only entries returning an undo or true are undone - their fields restored too
-  expect(record(deploy).map((entry) => [entry.key, entry.undone])).toEqual([
+  // entries with a compensation or a write are taken back - compensations run, fields restored
+  expect(record(deploy).map((entry) => [entry.key, entry.unwound])).toEqual([
     ['run', undefined],
     ['build', true],
     ['test', undefined],
@@ -189,7 +189,7 @@ it('will nudge on-call, then abort a gate nobody answers', async () => {
   expect(deploy.live.size).toBe(0);
 });
 
-it('will ask before reverting a failed rollout', async () => {
+it('will uninstall upgraded hosts when the rollout fails', async () => {
   vi.spyOn(fleet, 'install').mockImplementation(async (host) => {
     if (host == 'web-3') throw new Error('disk full');
   });
@@ -203,47 +203,18 @@ it('will ask before reverting a failed rollout', async () => {
   await untilGate(deploy);
   await deploy.promote('gabe');
 
-  // the unwind parks on rollout's returned wait; the run has failed but not yet rejected
-  await vi.waitFor(() => expect(deploy.keep).toBeDefined());
-  expect(deploy.then.status).toBe('waiting');
-  expect(deploy.then.error).toEqual(new Error('disk full'));
-  expect(deploy.then.waiting).toEqual([{ id: 'wait#2', step: 'rollout', args: [], answers: ['revert', 'keep'] }]);
-
-  await deploy.keep();
-
   await expect(release).rejects.toThrow('disk full');
-  expect(fleet.uninstall).not.toHaveBeenCalled();
-  expect([...deploy.live.keys()].sort()).toEqual(['web-1', 'web-2', 'web-4']);
-  expect(fleet.serve).not.toHaveBeenCalledWith('web-3');
-  // migrate committed, so the unwind halts there: canaries and build stay
-  expect(registry.unpublish).not.toHaveBeenCalled();
-  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.undone]).slice(-3)).toEqual([
-    ['migrate#1', true, true, undefined],
-    ['rollout#1', undefined, undefined, true],
-    ['upgrade#1', undefined, undefined, undefined]
-  ]);
-});
-
-it('will revert a failed rollout nobody answers', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-  vi.spyOn(fleet, 'install').mockImplementation(async (host) => {
-    if (host == 'web-3') throw new Error('disk full');
-  });
-  vi.spyOn(fleet, 'uninstall');
-
-  const deploy = create();
-  const failed = expect(deploy.run()).rejects.toThrow('disk full');
-
-  await vi.advanceTimersByTimeAsync(0);
-  await deploy.promote('gabe');
-
-  await vi.advanceTimersByTimeAsync(10 * MINUTE);
-  await failed;
-
   expect(fleet.uninstall).toHaveBeenCalledTimes(1);
   expect(fleet.uninstall).toHaveBeenCalledWith('web-2');
   expect([...deploy.live.keys()].sort()).toEqual(['web-1', 'web-4']);
-  expect(record(deploy).find((entry) => entry.key == 'rollout')).toMatchObject({ undone: true });
+  expect(fleet.serve).not.toHaveBeenCalledWith('web-3');
+  // migrate committed, so the unwind halts there: canaries and build stay
+  expect(registry.unpublish).not.toHaveBeenCalled();
+  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.unwound]).slice(-3)).toEqual([
+    ['migrate#1', true, true, undefined],
+    ['rollout#1', undefined, undefined, undefined],
+    ['upgrade#1', undefined, undefined, true]
+  ]);
 });
 
 it('will stop unwinding at the retired release', async () => {
@@ -259,7 +230,7 @@ it('will stop unwinding at the retired release', async () => {
   await deploy.promote('gabe');
 
   await expect(release).rejects.toThrow('chat is down');
-  // a deleted pool member cannot come back: the unwind halts at retire with a warning, before reaching rollout's wait
+  // a deleted pool member cannot come back: the unwind halts at retire with a warning, before reaching the upgrades
   expect(record(deploy).at(-1)).toMatchObject({ key: 'retire', irreversible: ['releases'], halted: true });
   expect(warn).toHaveBeenCalledWith(`${deploy} stopped unwinding at retire#1: releases cannot be restored.`);
   expect(deploy.then.status).toBe('failed');

@@ -115,11 +115,12 @@ it('will unwind what succeeded when a step fails', async () => {
   expect(inventory.release).toHaveBeenCalledWith('hold_sku');
   expect(order.charge).toBeUndefined();
   expect(order.notice).toBe('Order c1 was not placed: no couriers');
-  // each step with an undo is undone and its fields restored - receipt returned none, so nothing ran for it
-  expect(record(order).map((entry) => [entry.id, entry.undo && (entry.undo == 'closure' ? 'closure' : entry.undo.key), entry.undone])).toEqual([
+  // each step taken back runs its compensations and has its fields restored - receipt had neither, so it is not marked
+  expect(record(order).map((entry) => [entry.id, entry.compensate?.map((node) => node.key), entry.unwound])).toEqual([
     ['run#1', undefined, undefined],
-    ['reserve#1', 'closure', true],
-    ['pay#1', 'refund', true],
+    ['reserve#1', ['release'], true],
+    ['pay#1', ['refund'], true],
+    ['ship#1', undefined, undefined],
     ['receipt#1', undefined, undefined]
   ]);
 });
@@ -132,11 +133,11 @@ it('will cancel the booking when the receipt fails', async () => {
   const order = Order.new({ cart });
 
   await expect(order.run()).rejects.toThrow('mailbox full');
-  // ship committed beside the failing receipt, so its inline undo ran
+  // ship committed beside the failing receipt, so its own compensation ran
   expect(courier.cancel).toHaveBeenCalledWith('trk_c1_ch_42');
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(order.tracking).toBe('');
-  expect(record(order).find((entry) => entry.key == 'ship')!.undo).toMatchObject({ key: 'then' });
+  expect(record(order).find((entry) => entry.key == 'ship')!.compensate).toMatchObject([{ key: 'cancel', args: ['trk_c1_ch_42'] }]);
 });
 
 it('will undo an order stopped mid-shipment', async () => {
@@ -171,21 +172,22 @@ it('will refund and backorder when no courier is free', async () => {
 
   const order = Order.new({ cart });
 
-  // back() is not a failure: the run ends through backorder's end
+  // a caught failure: noCourier recovers, and the run ends through backorder's end
   expect(await order.run()).toEqual({ orderId: undefined, tracking: '' });
   expect(order.then.status).toBe('idle');
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(inventory.release).not.toHaveBeenCalled();
   expect(mail.send).toHaveBeenCalledWith('a@b.c', 'https://orders.test/c1/backorder');
-  // pay's undo refunded it and put its charge back; the back hook got the reason
+  // pay's compensation refunded it and its charge was put back; the handler wrote the notice
   expect(order.charge).toBeUndefined();
   expect(order.notice).toBe('Order c1 was not placed: no courier');
-  expect(record(order).map((entry) => [entry.id, entry.undone])).toEqual([
+  expect(record(order).map((entry) => [entry.id, entry.unwound])).toEqual([
     ['run#1', undefined],
     ['reserve#1', undefined],
     ['pay#1', true],
     ['ship#1', undefined],
     ['receipt#1', undefined],
+    ['noCourier#1', undefined],
     ['backorder#1', undefined],
     ['end#2', undefined]
   ]);
