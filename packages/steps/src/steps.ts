@@ -35,7 +35,7 @@ type Restore = (into?: Frame, all?: boolean) => void;
 
 interface Unwound {
   undone: Steps.Entry[];
-  values: Map<string, unknown>;
+  kept: Set<string>;
   failed?: { cause: unknown };
 }
 
@@ -74,6 +74,7 @@ const RESERVED = ['then', 'end', 'gate', 'wait'];
 const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const ISSUED = new WeakMap<object, Frame>();
 const RETRY = new WeakSet<Function>();
+const RULES = new WeakSet<Error>();
 
 const TOKEN = {
   catch(this: Steps.Node, handler?: unknown) {
@@ -277,7 +278,7 @@ declare namespace Steps {
 
 function install<T extends Steps>(self: T) {
   const runner = function (onfulfilled?: unknown, onrejected?: unknown) {
-    if (onfulfilled && typeof onfulfilled == 'object') throw new Error('then(steps) must be called inside a step.');
+    if (onfulfilled && typeof onfulfilled == 'object') throw rule('then(steps) must be called inside a step.');
 
     return control.settled().then(onfulfilled as any, onrejected as any);
   } as Steps.Runner<T>;
@@ -341,8 +342,8 @@ function install<T extends Steps>(self: T) {
 
         if (skip) continue;
 
-        if (key == 'end') throw new Error(`${self.constructor.name} declares end; return the result from run, end early with this.then.end().`);
-        if (RESERVED.includes(key)) throw new Error(`${self.constructor.name} declares ${key}; then, end, gate and wait name plan tokens - rename the step.`);
+        if (key == 'end') throw rule(`${self.constructor.name} declares end; return the result from run, end early with this.then.end().`);
+        if (RESERVED.includes(key)) throw rule(`${self.constructor.name} declares ${key}; then, end, gate and wait name plan tokens - rename the step.`);
 
         if (HOOKS.has(key)) {
           if (!hooks.has(key)) hooks.set(key, unbind(desc.get!));
@@ -433,7 +434,7 @@ class Control extends Model {
 
     if (wait) return current!.wake(wait, key, args);
 
-    throw new Error(`${key} cannot be called from outside; call run() to start a run.`);
+    throw rule(`${key} cannot be called from outside; call run() to start a run.`);
   }
 
   accepts(key: string) {
@@ -762,7 +763,7 @@ class Run extends Model {
   }
 
   caught(error: unknown, id: string) {
-    const at = !this.stale() && this.line(id).find((each) => this._branches.has(each));
+    const at = !this.stale() && !RULES.has(error as Error) && this.line(id).find((each) => this._branches.has(each));
 
     if (!at) return false;
 
@@ -919,7 +920,7 @@ class Run extends Model {
       fail = rej;
     });
 
-    const answer = { done: () => (this._halted ? _ticket.promise.catch(fail) : done()), fail } as Answer;
+    const answer = { done: () => (this._halted ? fail(this.reason()) : done()), fail } as Answer;
 
     const node = this.node(key, args);
 
@@ -953,7 +954,7 @@ class Run extends Model {
     try {
       control.hook('before', key, args);
 
-      if (!fn) throw new Error(`${key} was removed by a hot update.`);
+      if (!fn) throw rule(key == 'run' ? `${control._self} declares no run - add async run() to start a run.` : `${key} was removed by a hot update.`);
 
       for (;;)
         try {
@@ -976,6 +977,8 @@ class Run extends Model {
           body = !frame._settled;
 
           if (error instanceof Promise && body && !fixed) {
+            for (const item of [...frame._comps].reverse()) await this.compensate(item, error, new Set());
+
             this.reset(frame);
 
             const failed = await frame.pause(error);
@@ -1187,12 +1190,9 @@ class Run extends Model {
 
   async unwind(cause: unknown, ids?: Set<string>): Promise<Unwound> {
     const { control, _entries: entries } = this;
-    const self = control._self as any;
     const pending = entries.filter((entry) => (ids ? ids.has(entry.id) : !this._spent.has(entry.id)));
-    const values = new Map<string, unknown>();
+    const kept = new Set<string>();
     const undone: Steps.Entry[] = [];
-
-    for (const entry of pending) for (const key in this._held.get(entry.id)?.prior) values.set(key, self[key]);
 
     for (const entry of pending.reverse()) {
       const comps = this._comps.get(entry.id);
@@ -1212,10 +1212,10 @@ class Run extends Model {
       if (!comps && 'error' in entry) continue;
 
       try {
-        for (const item of [...(comps || [])].reverse()) await this.compensate(item, cause);
+        for (const item of [...(comps || [])].reverse()) await this.compensate(item, cause, kept);
       } catch (thrown) {
         entry.unwound = 'failed';
-        return { undone, values, failed: { cause: thrown } };
+        return { undone, kept, failed: { cause: thrown } };
       }
 
       if (comps || (this._held.has(entry.id) && entry.wrote.length)) entry.unwound = true;
@@ -1224,31 +1224,38 @@ class Run extends Model {
       undone.push(entry);
     }
 
-    return { undone, values };
+    return { undone, kept };
   }
 
-  async compensate(item: Steps.Node, cause: unknown) {
+  async compensate(item: Steps.Node, cause: unknown, kept: Set<string>) {
     const fn = this._inline.get(item.id);
 
-    if (!fn) return this.undo([item]);
+    if (!fn) return this.undo([item], kept);
 
     const frame = this.frames.add({ id: item.id, key: item.key, args: item.args, _undo: true, _owner: this._owner.get(item.id) });
     try {
       await fn.call(frame._proxy, cause);
     } finally {
       this.frames.delete(frame);
+      for (const key of frame._wrote) kept.add(key);
     }
 
-    await this.undo(frame._items);
+    await this.undo(frame._items, kept);
   }
 
-  async undo(items: Steps.Node[]): Promise<void> {
+  async undo(items: Steps.Node[], kept: Set<string>): Promise<void> {
     for (const item of items)
-      if (item.group) await Promise.all(item.group.map((member) => this.undo([member])));
-      else await this.undo((await this.invoke(item, undefined, true))!._items);
+      if (item.group) await Promise.all(item.group.map((member) => this.undo([member], kept)));
+      else {
+        const frame = (await this.invoke(item, undefined, true))!;
+
+        for (const key of frame._wrote) kept.add(key);
+
+        await this.undo(frame._items, kept);
+      }
   }
 
-  refill({ undone, values }: Unwound, into?: Frame, all?: boolean) {
+  refill({ undone, kept }: Unwound, into?: Frame, all?: boolean) {
     const self = this.control._self as any;
     const prior = new Map<string, unknown>();
     const log: Log = [];
@@ -1267,7 +1274,7 @@ class Run extends Model {
       const wrote = into?._wrote.has(key);
 
       if (wrote) into!._prior[key] = value;
-      if (all || (!wrote && self[key] === values.get(key))) self[key] = value;
+      if (all || (!wrote && !kept.has(key))) self[key] = value;
     }
 
     for (const [key, undo] of log) if (all || !into?._changed.has(key)) undo();
@@ -1315,10 +1322,7 @@ class Frame extends Model {
   _late?: boolean = undefined;
   _armed = 0;
   _settled?: boolean = undefined;
-  _result?: unknown = undefined;
-  _left!: () => void;
   _point?: (done: (value?: unknown) => void, fail: (error: unknown) => void) => void = undefined;
-  _gone = new Promise<void>((resolve) => (this._left = resolve));
 
   protected new() {
     const { _self: self, _steps, _runner } = this.run.control;
@@ -1358,10 +1362,7 @@ class Frame extends Model {
       }
     });
 
-    return () => {
-      this._abort.abort();
-      this._left();
-    };
+    return () => this._abort.abort();
   }
 
   live() {
@@ -1395,8 +1396,8 @@ class Frame extends Model {
   issue(key: string, args: unknown[]) {
     const { run } = this;
 
-    if (this._undo && UNPLANNED.includes(key)) throw new Error(`${named(key)} cannot run in an undo.`);
-    if (this._settled) throw new Error(`${this.key} has settled; ${key} cannot run.`);
+    if (this._undo && UNPLANNED.includes(key)) throw rule(`${named(key)} cannot run in an undo.`);
+    if (this._settled) throw rule(`${this.key} has settled; ${key} cannot run.`);
 
     const token = run.node(key, args);
 
@@ -1414,7 +1415,7 @@ class Frame extends Model {
 
     if (wait) return run.wake(wait, key, args);
 
-    throw new Error(`${this.key} has settled; ${key} cannot run.`);
+    throw rule(`${this.key} has settled; ${key} cannot run.`);
   }
 
   async pause(pending: Promise<unknown>) {
@@ -1438,7 +1439,7 @@ class Frame extends Model {
     return new Promise((resolve, reject) => {
       this._point = (done, fail) => {
         if (this._late) {
-          const error = new Error('run awaited work before its plan - it takes arguments, calls steps and awaits this.');
+          const error = rule('run awaited work before its plan - it takes arguments, calls steps and awaits this.');
 
           fail(error);
           return reject(error);
@@ -1493,16 +1494,16 @@ class Frame extends Model {
       let functions = args.length && fns.length == args.length;
       let mixed = fns.length && args.some((arg) => arg && typeof arg == 'object');
 
-      if (gates.length && args.length > 1) throw new Error('then() takes a gate alone - this.then({ max, after, key }).');
+      if (gates.length && args.length > 1) throw rule('then() takes a gate alone - this.then({ max, after, key }).');
       if (gates.length) return this.slot(items as Steps.Gate);
       if (mapped) return this.group(Array.from(items as Iterable<unknown>, each));
       if (grouped) return this.group(args);
       if (functions && refs.length) return this.wait(refs, fns.filter((fn) => !this.keyOf(fn)));
       if (functions && args.length == 1) return this.inline(items as Function);
-      if (mixed) throw new Error('then() takes called steps or step references, not both.');
+      if (mixed) throw rule('then() takes called steps or step references, not both.');
       if (functions && args.length == 2 && this._point && !this._settled) return this._point(fns[0] as any, fns[1] as any);
 
-      throw new Error('a step cannot await its own run.');
+      throw rule('a step cannot await its own run.');
     };
 
     Object.setPrototypeOf(view, this.run.control._runner);
@@ -1515,14 +1516,14 @@ class Frame extends Model {
       undo: { value: (...args: unknown[]) => this.compensation(args) },
       restore: {
         value: () => {
-          if (!this._restore) throw new Error('restore() must be called in a .catch handler.');
+          if (!this._restore) throw rule('restore() must be called in a .catch handler.');
 
           this._restore(this, true);
         }
       },
       commit: {
         value: () => {
-          if (this._settled) throw new Error(`${this.key} has settled; commit cannot run.`);
+          if (this._settled) throw rule(`${this.key} has settled; commit cannot run.`);
 
           this._committed = true;
         }
@@ -1536,8 +1537,8 @@ class Frame extends Model {
     const { run } = this;
     const [handler] = args;
 
-    if (this.id == run._root) throw new Error('run cleans up in its tail - try/catch around await this.');
-    if (this._settled) throw new Error(`${this.key} has settled; undo cannot run.`);
+    if (this.id == run._root) throw rule('run cleans up in its tail - try/catch around await this.');
+    if (this._settled) throw rule(`${this.key} has settled; undo cannot run.`);
 
     if (args.length == 1 && typeof handler == 'function' && !this.keyOf(handler)) {
       const node = run.node('then', []);
@@ -1562,8 +1563,8 @@ class Frame extends Model {
       return this._items.includes(node) && !UNPLANNED.includes(node.key) && (node.group || _steps.has(node.key));
     });
 
-    if (fns.length && fns.length < args.length) throw new Error('then() takes called steps or step references, not both.');
-    if (!args.length || !steps) throw new Error(usage);
+    if (fns.length && fns.length < args.length) throw rule('then() takes called steps or step references, not both.');
+    if (!args.length || !steps) throw rule(usage);
 
     return this.claim([args.length > 1 ? this.group(args) : (args[0] as Steps.Node)]);
   }
@@ -1583,10 +1584,10 @@ class Frame extends Model {
   rescue(token: Steps.Node, handler: unknown) {
     const key = this.keyOf(handler);
 
-    if (UNCAUGHT.includes(token.key)) throw new Error(`${named(token.key)} cannot be caught.`);
-    if (handler && typeof handler != 'function') throw new Error('catch() takes a step, a function or nothing.');
+    if (UNCAUGHT.includes(token.key)) throw rule(`${named(token.key)} cannot be caught.`);
+    if (handler && typeof handler != 'function') throw rule('catch() takes a step, a function or nothing.');
     if (RETRY.has(handler as Function))
-      throw new Error('catch() retries from a handler: .catch(this.rescan), rescan(error) { if (this.then.retried >= 3) throw error; this.then.retry(); }');
+      throw rule('catch() retries from a handler: .catch(this.rescan), rescan(error) { if (this.then.retried >= 3) throw error; this.then.retry(); }');
 
     token.rescue = handler ? key || 'then' : true;
     this.run._catches.set(token.id, { key, fn: handler as Function | undefined });
@@ -1597,8 +1598,8 @@ class Frame extends Model {
   retry() {
     const { run, _caught: caught } = this;
 
-    if (!caught) throw new Error('retry() must be called in a .catch handler.');
-    if (this._settled) throw new Error(`${this.key} has settled; retry cannot run.`);
+    if (!caught) throw rule('retry() must be called in a .catch handler.');
+    if (this._settled) throw rule(`${this.key} has settled; retry cannot run.`);
 
     this._items.push(run.copy(caught));
     this.arm();
@@ -1614,8 +1615,8 @@ class Frame extends Model {
 
   group(members: unknown[]) {
     for (const member of members as Steps.Node[])
-      if (!this._items.includes(member)) throw new Error(`then() takes steps called by ${this.key}.`);
-      else if (member.key == 'gate') throw new Error('a gate cannot be grouped.');
+      if (!this._items.includes(member)) throw rule(`then() takes steps called by ${this.key}.`);
+      else if (member.key == 'gate') throw rule('a gate cannot be grouped.');
 
     const group = Object.assign(this.run.node('then', []), { group: members as Steps.Node[] });
 
@@ -1639,7 +1640,7 @@ class Frame extends Model {
   }
 
   wait(answers: string[], watchers: Function[]) {
-    for (const key of answers) if (key == 'run') throw new Error('run cannot answer a wait.');
+    for (const key of answers) if (key == 'run') throw rule('run cannot answer a wait.');
 
     const token = Object.assign(this.issue('wait', []), { answers });
 
@@ -1651,17 +1652,17 @@ class Frame extends Model {
   commit(out: unknown) {
     const { run, id, key, _items: items, _violation, _late, _wake, _lost, _comps } = this;
 
-    if (_violation) throw new Error(`${key} wrote ${_violation} after scheduling ${items[0].key}.`);
-    if (_late && !items.length) throw new Error('run awaited work before its plan - it takes arguments, calls steps and awaits this.');
-    if (_late) throw new Error(`${key} kept working after scheduling ${items[0].key}.`);
+    if (_violation) throw rule(`${key} wrote ${_violation} after scheduling ${items[0].key}.`);
+    if (_late && !items.length) throw rule('run awaited work before its plan - it takes arguments, calls steps and awaits this.');
+    if (_late) throw rule(`${key} kept working after scheduling ${items[0].key}.`);
 
     const root = id == run._root;
 
-    if (!root && out !== undefined) throw new Error(`${key} returned a value; a step returns nothing - its undo is this.then.undo(...).`);
+    if (!root && out !== undefined) throw rule(`${key} returned a value; a step returns nothing - its undo is this.then.undo(...).`);
 
     const end = items.findIndex((item) => item.key == 'end');
 
-    if (end >= 0 && end < items.length - 1) throw new Error('end must be the last call in a step.');
+    if (end >= 0 && end < items.length - 1) throw rule('end must be the last call in a step.');
 
     adopt(run._parent, items, id);
 
@@ -1790,6 +1791,14 @@ function serial(error: unknown) {
   return { name, message, ...cause !== undefined && { cause } };
 }
 
+function rule(message: string) {
+  const error = new Error(message);
+
+  RULES.add(error);
+
+  return error;
+}
+
 function named(key: string) {
   return key == 'gate' ? 'a gate' : `${key}()`;
 }
@@ -1811,11 +1820,11 @@ function iterable(value: unknown): value is Iterable<unknown> {
 }
 
 function valueless(args: unknown[]) {
-  if (args.length) throw new Error('end() takes no value; the result is what run returns.');
+  if (args.length) throw rule('end() takes no value; the result is what run returns.');
 }
 
 function outside(key: string, verb = 'called'): never {
-  throw new Error(`${key} must be ${verb} inside a step.`);
+  throw rule(`${key} must be ${verb} inside a step.`);
 }
 
 class Handled<T> extends Promise<T> {

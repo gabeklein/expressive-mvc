@@ -6448,7 +6448,7 @@ describe('durable handlers', () => {
     expect(seen).toHaveBeenCalledWith('down');
   });
 
-  it('will keep a step scheduling after a handler claims its tokens', async () => {
+  it('will keep a step scheduling after an undo claims its tokens', async () => {
     const order: string[] = [];
 
     class Test extends Steps {
@@ -6472,6 +6472,34 @@ describe('durable handlers', () => {
 
     await Test.new().run();
     expect(order).toEqual(['second']);
+  });
+
+  it('will keep a step working after an undo claims its tokens', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        this.then.undo(this.undo());
+        await Promise.resolve();
+        order.push('worked');
+        this.second();
+      }
+
+      protected async second() {
+        order.push('second');
+      }
+
+      protected async undo() {
+        order.push('undo');
+      }
+    }
+
+    await Test.new().run();
+    expect(order).toEqual(['worked', 'second']);
   });
 
   it('will give a function handler the failed step\'s retried count', async () => {
@@ -7795,6 +7823,38 @@ describe('hot update', () => {
     return Test as unknown as ReturnType<typeof added>;
   }
 
+  function waiting(seen: string[], tag: string) {
+    class Test extends Steps {
+      async run() {
+        this.then(this.reply);
+      }
+
+      async reply() {
+        seen.push(tag);
+      }
+    }
+
+    return Test;
+  }
+
+  it('will keep an open wait answerable across a patch', async () => {
+    const seen: string[] = [];
+    const Test = waiting(seen, 'old');
+    const patch = hot(Test);
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.reply).toBeDefined());
+    expect(patch(waiting(seen, 'new'))).toBe(Test);
+
+    await flushMicrotasks();
+    expect(test.reply).toBeDefined();
+
+    await test.reply();
+    await result;
+    expect(seen).toEqual(['new']);
+  });
+
   it('will run a patched step body on a live instance', async () => {
     const seen: string[] = [];
     const Test = body(seen, 'a1');
@@ -7841,5 +7901,291 @@ describe('hot update', () => {
 
     await expect(result).rejects.toThrow('b was removed by a hot update.');
     expect(seen).toEqual(['after run', 'a', 'after a']);
+  });
+});
+
+describe('review', () => {
+  it('will reject an answer whose subtree failed when the tail catches', async () => {
+    class Test extends Steps {
+      async run() {
+        this.ask();
+
+        try {
+          await this;
+        } catch {
+          return 'handled';
+        }
+      }
+
+      protected async ask() {
+        this.then(this.reply);
+      }
+
+      async reply() {
+        this.boom();
+      }
+
+      protected async boom() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.reply).toBeDefined());
+
+    const answered = test.reply();
+
+    await expect(answered).rejects.toThrow('boom');
+    expect(await result).toBe('handled');
+  });
+
+  it('will run undos a suspended try registered before running it again', async () => {
+    const pending = mockPromise<number>();
+    const order: string[] = [];
+
+    class Test extends Steps {
+      price = set<number>();
+
+      async run() {
+        this.charge();
+      }
+
+      protected async charge() {
+        this.then.undo(this.release('t' + order.length));
+        order.push('try');
+        order.push(`price ${this.price}`);
+      }
+
+      protected async release(id: string) {
+        order.push(`release ${id}`);
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await flushMicrotasks();
+    test.price = 3;
+    pending.resolve(3);
+
+    await result;
+    expect(order).toEqual(['try', 'release t0', 'try', 'price 3']);
+  });
+
+  it('will not catch a rule broken in a step body', async () => {
+    const handler = vi.fn();
+
+    class Test extends Steps {
+      async run() {
+        this.a().catch(handler);
+      }
+
+      protected async a() {
+        this.then(this.b(), (() => {}) as never);
+      }
+
+      protected async b() {}
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('then() takes called steps or step references, not both.');
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('will keep a key an undo writes, even to the value it held', async () => {
+    class Test extends Steps {
+      value = 0;
+
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        this.value = 1;
+        this.then.undo(() => {
+          this.value = 1;
+        });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.run()).rejects.toThrow('boom');
+    expect(test.value).toBe(1);
+  });
+
+  it('will keep a key a step run by an undo writes', async () => {
+    class Test extends Steps {
+      notice = '';
+
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        this.notice = 'placed';
+        this.then.undo(this.note());
+        this.fail();
+      }
+
+      protected async note() {
+        this.notice = 'taken back';
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.run()).rejects.toThrow('boom');
+    expect(test.notice).toBe('taken back');
+  });
+
+  it('will reject a run on a class without run', async () => {
+    class Test extends Steps {}
+
+    await expect(Test.new().then).rejects.toThrow(/declares no run - add async run\(\) to start a run\./);
+  });
+
+  it('will resolve an answer and drop what follows when ended from outside', async () => {
+    const after = vi.fn();
+
+    class Test extends Steps {
+      async run() {
+        this.then(this.reply);
+        this.later();
+      }
+
+      async reply() {
+        this.then.end();
+      }
+
+      protected async later() {
+        after();
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.reply).toBeDefined());
+    await test.reply();
+    await result;
+    expect(after).not.toHaveBeenCalled();
+  });
+
+  it('will keep the failure when stopped during its unwind, rejecting the queue', async () => {
+    const undone = mockPromise();
+
+    class Test extends Steps {
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        this.then.undo(() => undone);
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+    const queued = test.run();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('failed'));
+    test.then.stop({ reason: 'later' });
+    undone.resolve();
+
+    await expect(result).rejects.toThrow('boom');
+    await expect(queued).rejects.toMatchObject({ name: 'Stopped', cause: 'later' });
+    expect(test.then.status).toBe('failed');
+    expect(test.then.error).toEqual(new Error('boom'));
+  });
+
+  it('will let a handler change a collection the branch changed', async () => {
+    class Test extends Steps {
+      items = has<string>();
+
+      async run() {
+        this.first().catch(this.handle);
+      }
+
+      protected async first() {
+        this.items.push('a');
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async handle() {
+        this.items.push('b');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run();
+    expect(test.items.get()).toEqual(['a', 'b']);
+  });
+
+  it('will retry a group with a wait, the copy answerable', async () => {
+    const ids: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.then(this.then(this.reply), this.fail()).catch(this.again);
+      }
+
+      async reply() {}
+
+      protected async fail() {
+        if (!this.then.retried) throw new Error('boom');
+      }
+
+      protected async again() {
+        this.then.retry();
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.waiting[0]?.id).toBe('wait#2'));
+    ids.push(test.then.waiting[0].id);
+    await test.reply();
+    await result;
+    expect(ids).toEqual(['wait#2']);
+  });
+
+  it('will mark a run awaited through catch or finally', async () => {
+    const caught = mockUncaught();
+
+    class Test extends Steps {
+      async run() {
+        throw new Error('boom');
+      }
+    }
+
+    const handled = vi.fn();
+
+    await Test.new().run().catch(handled);
+    await Test.new().run().finally(() => {}).catch(() => {});
+    await flushMicrotasks();
+    expect(handled).toHaveBeenCalled();
+    expect(caught).toEqual([]);
   });
 });
