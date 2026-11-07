@@ -55,15 +55,11 @@ export class Deploy extends Steps {
     const artifact = await ci.build(this.version);
 
     this.artifact = artifact;
-    // compensations run only on unwind, newest first - the steps they call run as part of it
-    this.then.catch(() => {
-      this.unpublish(artifact);
-    });
+    // compensations run only on unwind, newest first - steps called for them are recorded, so durable
+    this.then.catch(this.unpublish(artifact));
 
     await git.tag(this.version);
-    this.then.catch(() => {
-      this.untag(this.version);
-    });
+    this.then.catch(this.untag(this.version));
   }
 
   protected async unpublish(artifact: string) {
@@ -99,10 +95,7 @@ export class Deploy extends Steps {
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
 
-    // a compensation is a closure - it warns once the gate waits, as it would not survive a resume
-    this.then.catch(() => {
-      this.uninstall(host);
-    });
+    this.then.catch(this.uninstall(host));
   }
 
   protected async uninstall(host: string) {
@@ -154,9 +147,7 @@ export class Deploy extends Steps {
     fleet.drain(host);
     await fleet.install(host, this.artifact);
     this.live.set(host, this.artifact);
-    this.then.catch(() => {
-      this.uninstall(host);
-    });
+    this.then.catch(this.uninstall(host));
     fleet.serve(host);
   }
 

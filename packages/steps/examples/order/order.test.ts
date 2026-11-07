@@ -140,8 +140,8 @@ it('will cancel the booking when the receipt fails', async () => {
   expect(courier.cancel).toHaveBeenCalledWith('trk_c1_ch_42');
   expect(stripe.refund).toHaveBeenCalledWith('ch_42');
   expect(order.tracking).toBe('');
-  expect(record(order).find((entry) => entry.key == 'ship')!.compensate).toMatchObject([{ key: 'then', args: [] }]);
-  expect(record(order).find((entry) => entry.key == 'cancel')).toMatchObject({ args: ['trk_c1_ch_42'] });
+  // the compensation is recorded as the step called for it, with its args
+  expect(record(order).find((entry) => entry.key == 'ship')!.compensate).toEqual([{ id: 'cancel#1', key: 'cancel', args: ['trk_c1_ch_42'] }]);
 });
 
 it('will undo an order stopped mid-shipment', async () => {

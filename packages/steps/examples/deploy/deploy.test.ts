@@ -218,7 +218,7 @@ it('will uninstall upgraded hosts when the rollout fails', async () => {
     ['migrate#1', true, true, undefined],
     ['rollout#1', undefined, undefined, undefined],
     ['upgrade#1', undefined, undefined, true],
-    ['uninstall#1', undefined, undefined, undefined]
+    ['uninstall#3', undefined, undefined, undefined]
   ]);
 });
 

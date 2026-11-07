@@ -1942,7 +1942,7 @@ describe('stop', () => {
 
       protected first() {
         this.value = 1;
-        this.then.catch(undo);
+        this.then.catch((error) => undo(error));
         this.second();
       }
 
@@ -2097,7 +2097,7 @@ describe('stop', () => {
       }
 
       protected hold() {
-        this.then.catch(undo);
+        this.then.catch((error) => undo(error));
         this.wait();
       }
 
@@ -2508,7 +2508,7 @@ describe('wait', () => {
       }
 
       protected hold() {
-        this.then.catch(() => {});
+        this.then.catch((_error) => {});
         this.ask();
         this.ask();
       }
@@ -3650,7 +3650,7 @@ describe('slot', () => {
 
     class Test extends Steps {
       async run() {
-        this.then(this.first(), this.second()).catch(caught);
+        this.then(this.first(), this.second()).catch((error) => caught(error));
       }
 
       protected async first() {
@@ -3754,7 +3754,7 @@ describe('catch', () => {
 
       protected async a() {
         this.value = 1;
-        this.then.catch(undo);
+        this.then.catch((error) => undo(error));
         this.a1();
       }
 
@@ -3864,7 +3864,7 @@ describe('catch', () => {
     expect(record(test).map((entry) => [entry.id, entry.args])).toEqual([
       ['run#1', []],
       ['scan#1', ['x']],
-      ['fallback#1', [new Error('x is down')]],
+      ['fallback#1', [{ name: 'Error', message: 'x is down' }]],
       ['after1#1', []]
     ]);
   });
@@ -3900,10 +3900,8 @@ describe('catch', () => {
       ['run#1', undefined, undefined],
       ['visit#1', undefined, undefined],
       ['scan#1', undefined, 'a is down'],
-      ['then#2', undefined, undefined],
       ['visit#2', 1, undefined],
       ['scan#2', undefined, 'a is down'],
-      ['then#3', undefined, undefined],
       ['visit#3', 2, 'give up']
     ]);
   });
@@ -4082,7 +4080,7 @@ describe('catch', () => {
       }
 
       protected async a() {
-        this.then.catch(() => {
+        this.then.catch((_error) => {
           throw new Error('undo');
         });
         this.b();
@@ -4105,11 +4103,11 @@ describe('catch', () => {
 
     class Test extends Steps {
       async run() {
-        this.a().catch(handler);
+        this.a().catch((error) => handler(error));
       }
 
       protected async a() {
-        this.then.catch(() => gate);
+        this.then.catch((_error) => gate);
         this.b();
       }
 
@@ -4366,7 +4364,7 @@ describe('suspense', () => {
     expect(retries).toEqual([0, 0, 1]);
     expect(record(test).slice(1)).toEqual([
       { id: 'flaky#1', key: 'flaky', args: [], wrote: [], next: [], error: new Error('flaky') },
-      { id: 'flaky#2', key: 'flaky', args: [new Error('flaky')], wrote: [], next: [], retry: 1 }
+      { id: 'flaky#2', key: 'flaky', args: [{ name: 'Error', message: 'flaky' }], wrote: [], next: [], retry: 1 }
     ]);
   });
 
@@ -4642,7 +4640,7 @@ describe('hooks', () => {
       }
 
       protected async hold() {
-        this.then.catch(() => void order.push('undo'));
+        this.then.catch((_error) => void order.push('undo'));
         this.fail();
       }
 
@@ -4716,13 +4714,13 @@ describe('compensate', () => {
 
       zero() {
         this.a = 1;
-        this.then.catch(() => void order.push(`undo zero a=${this.a}`));
+        this.then.catch((_error) => void order.push(`undo zero a=${this.a}`));
         this.first();
       }
 
       first() {
         this.b = 2;
-        this.then.catch(() => void order.push(`undo first b=${this.b}`));
+        this.then.catch((_error) => void order.push(`undo first b=${this.b}`));
         this.second();
       }
 
@@ -4838,7 +4836,7 @@ describe('compensate', () => {
       }
 
       async a() {
-        this.then.catch(undo);
+        this.then.catch((error) => undo(error));
         await work;
         this.value = 1;
       }
@@ -4869,7 +4867,7 @@ describe('compensate', () => {
       }
 
       async first() {
-        this.then.catch(() => {
+        this.then.catch((_error) => {
           this.release('r1');
         });
         this.second();
@@ -4901,12 +4899,12 @@ describe('compensate', () => {
       }
 
       async first() {
-        this.then.catch(() => void order.push('first'));
+        this.then.catch((_error) => void order.push('first'));
         this.second();
       }
 
       async second() {
-        this.then.catch(() => {
+        this.then.catch((_error) => {
           this.refund();
         });
         this.fail();
@@ -4942,7 +4940,7 @@ describe('compensate', () => {
       }
 
       async first() {
-        this.then.catch(() => {
+        this.then.catch((_error) => {
           this.refund();
         });
         this.fail();
@@ -4972,8 +4970,8 @@ describe('compensate', () => {
       }
 
       protected async first() {
-        this.then.catch(() => void order.push('a'));
-        this.then.catch(() => void order.push('b'));
+        this.then.catch((_error) => void order.push('a'));
+        this.then.catch((_error) => void order.push('b'));
         this.fail();
       }
 
@@ -4998,7 +4996,7 @@ describe('compensate', () => {
       }
 
       protected async charge() {
-        this.then.catch(() => {
+        this.then.catch((_error) => {
           seen.push(this.value);
           this.other = 5;
         });
@@ -5031,7 +5029,7 @@ describe('compensate', () => {
       protected async charge() {
         const { signal } = this.then;
 
-        this.then.catch(() => void seen.push(this.value));
+        this.then.catch((_error) => void seen.push(this.value));
         this.value = 1;
         await new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('late'))));
       }
@@ -5089,12 +5087,12 @@ describe('compensate', () => {
       }
 
       first() {
-        this.then.catch(() => void order.push('undo first'));
+        this.then.catch((_error) => void order.push('undo first'));
         this.second();
       }
 
       second() {
-        this.then.catch(() => {
+        this.then.catch((_error) => {
           throw new Error('undo failed');
         });
         this.third();
@@ -5119,7 +5117,7 @@ describe('compensate', () => {
       }
 
       first() {
-        this.then.catch(() => {
+        this.then.catch((_error) => {
           this.then.end();
         });
         this.second();
@@ -5136,7 +5134,7 @@ describe('compensate', () => {
   it('will throw for a compensation in run', async () => {
     class Test extends Steps {
       async run() {
-        this.then.catch(() => {});
+        this.then.catch((_error) => {});
       }
     }
 
@@ -5154,7 +5152,7 @@ describe('compensate', () => {
       }
     }
 
-    await expect(Test.new().run()).rejects.toThrow('then.catch() takes a step or a function.');
+    await expect(Test.new().run()).rejects.toThrow('then.catch() takes steps called for it, or one function.');
   });
 
   it('will throw for a compensation once settled', async () => {
@@ -5956,7 +5954,7 @@ describe('irreversible', () => {
       }
 
       async charge() {
-        this.then.catch(undo);
+        this.then.catch((error) => undo(error));
         this.items.clear();
         this.values.delete('a');
         this.values.set('b');
@@ -6087,7 +6085,7 @@ describe('commit', () => {
       }
 
       protected async pay() {
-        this.then.catch(refund);
+        this.then.catch((error) => refund(error));
         this.then.commit();
         this.charged = true;
         this.notify();
@@ -6095,7 +6093,7 @@ describe('commit', () => {
 
       protected async notify() {
         this.notified = true;
-        this.then.catch(recall);
+        this.then.catch((error) => recall(error));
         this.ship();
       }
 
@@ -6166,6 +6164,362 @@ describe('commit', () => {
   });
 });
 
+describe('durable handlers', () => {
+  it('will compensate with a step called for it, and keep working after', async () => {
+    const released = vi.fn();
+
+    class Test extends Journal {
+      hold = '';
+
+      async run() {
+        this.reserve();
+      }
+
+      protected async reserve() {
+        this.hold = 'h1';
+        this.then.catch(this.release('h1'));
+        await Promise.resolve();
+        this.hold = 'h2';
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async release(hold: string) {
+        released(hold, this.hold);
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.run()).rejects.toThrow('boom');
+    expect(released).toHaveBeenCalledWith('h1', 'h2');
+    expect(test.hold).toBe('');
+    expect(record(test)[1]).toMatchObject({ next: [{ key: 'fail' }], compensate: [{ id: 'release#1', key: 'release', args: ['h1'] }] });
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'reserve#1', 'release#1']);
+  });
+
+  it('will run steps called for one compensation as a group', async () => {
+    const order: string[] = [];
+
+    class Test extends Journal {
+      async run() {
+        this.pay();
+      }
+
+      protected async pay() {
+        this.then.catch(this.cancel('a'), this.refund('b'));
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async cancel(id: string) {
+        order.push(`cancel ${id}`);
+        await Promise.resolve();
+        order.push('cancelled');
+      }
+
+      protected async refund(id: string) {
+        order.push(`refund ${id}`);
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.run()).rejects.toThrow('boom');
+    expect(order).toEqual(['cancel a', 'refund b', 'cancelled']);
+    expect(record(test)[1].compensate).toMatchObject([{ key: 'then', group: [{ key: 'cancel' }, { key: 'refund' }] }]);
+  });
+
+  it('will record steps a compensation without parameters calls', async () => {
+    const order: string[] = [];
+
+    class Test extends Journal {
+      async run() {
+        this.pay('ch_1');
+      }
+
+      protected async pay(charge: string) {
+        this.then.catch(() => {
+          this.refund(charge);
+        });
+        this.then.catch(() => {
+          this.then(this.notify('a'), this.notify('b'));
+        });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async refund(charge: string) {
+        order.push(`refund ${charge}`);
+      }
+
+      protected async notify(to: string) {
+        order.push(`notify ${to}`);
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.run()).rejects.toThrow('boom');
+    expect(order).toEqual(['notify a', 'notify b', 'refund ch_1']);
+    expect(record(test)[1].compensate).toMatchObject([
+      { id: 'refund#1', key: 'refund', args: ['ch_1'] },
+      { key: 'then', group: [{ key: 'notify', args: ['a'] }, { key: 'notify', args: ['b'] }] }
+    ]);
+  });
+
+  it('will give a step method its error, recorded durably', async () => {
+    const seen = vi.fn();
+
+    class Test extends Journal {
+      async run() {
+        this.pay();
+      }
+
+      protected async pay() {
+        this.then.catch(this.note);
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom', { cause: 'card' });
+      }
+
+      protected async note(error: unknown) {
+        seen(error);
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.run()).rejects.toThrow('boom');
+    expect(seen).toHaveBeenCalledWith(new Error('boom'));
+    expect(record(test)[1].compensate).toEqual([{ id: 'note#1', key: 'note', args: [{ name: 'Error', message: 'boom', cause: 'card' }] }]);
+    expect(record(test).at(-1)).toMatchObject({ id: 'note#1', args: [{ name: 'Error', message: 'boom', cause: 'card' }] });
+  });
+
+  it('will record a thrown value that is not an Error as is', async () => {
+    const seen = vi.fn();
+
+    class Test extends Steps {
+      async run() {
+        this.scan().catch(this.skip);
+      }
+
+      protected async scan() {
+        throw 'down';
+      }
+
+      protected async skip(error: unknown) {
+        seen(error);
+      }
+    }
+
+    await Test.new().run();
+    expect(seen).toHaveBeenCalledWith('down');
+  });
+
+  it('will catch with steps a handler without parameters calls, recorded on the token', async () => {
+    const order: string[] = [];
+
+    class Test extends Journal {
+      async run() {
+        this.scan('x').catch(() => {
+          this.then(this.notify('a'), this.notify('b'));
+          this.skip('x');
+        });
+      }
+
+      protected async scan(site: string) {
+        throw new Error(`${site} is down`);
+      }
+
+      protected async notify(to: string) {
+        order.push(`notify ${to}`);
+      }
+
+      protected async skip(site: string) {
+        order.push(`skip ${site}`);
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run();
+    expect(order).toEqual(['notify a', 'notify b', 'skip x']);
+    expect(record(test)[0].next[0].rescue).toMatchObject([{ key: 'then', group: [{ key: 'notify' }, { key: 'notify' }] }, { id: 'skip#1', key: 'skip', args: ['x'] }]);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'scan#1', 'notify#1', 'notify#2', 'skip#1']);
+  });
+
+  it('will keep a step scheduling after a handler claims its tokens', async () => {
+    const order: string[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        this.second();
+        this.then.catch(this.undo());
+      }
+
+      protected async second() {
+        order.push('second');
+      }
+
+      protected async undo() {
+        order.push('undo');
+      }
+    }
+
+    await Test.new().run();
+    expect(order).toEqual(['second']);
+  });
+
+  it('will count retries of steps a handler with parameters calls', async () => {
+    const calls: unknown[][] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.visit('x');
+      }
+
+      protected async visit(site: string) {
+        calls.push(['visit', this.then.retry]);
+
+        if (this.then.retry < 2)
+          this.scan(site).catch((error) => {
+            calls.push([(error as Error).message]);
+            this.visit(site);
+          });
+      }
+
+      protected async scan(site: string) {
+        throw new Error(`${site} is down`);
+      }
+    }
+
+    await Test.new().run();
+    expect(calls).toEqual([['visit', 0], ['x is down'], ['visit', 1], ['x is down'], ['visit', 2]]);
+  });
+
+  it('will throw when a handler without parameters reads, writes, awaits or plans', async () => {
+    const errors: unknown[] = [];
+
+    class Test extends Steps {
+      value = 0;
+
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        const tries = [
+          () => this.then.catch(() => void this.value),
+          () => this.then.catch(() => void (this.value = 1)),
+          () => this.then.catch(async () => {}),
+          () => this.then.catch(() => this.then.end()),
+          () => this.second().catch(() => void this.value)
+        ];
+
+        for (const attempt of tries)
+          try {
+            attempt();
+          } catch (error) {
+            errors.push((error as Error).message);
+          }
+      }
+
+      protected async second() {}
+    }
+
+    await Test.new().run().catch(() => {});
+
+    const rule = 'a catch handler without parameters runs at registration and only schedules steps; it';
+
+    expect(errors).toEqual([
+      `${rule} read \`value\` - read it in the step it calls.`,
+      `${rule} wrote \`value\` - write it in the step it calls.`,
+      `${rule} returned a promise - give it a parameter to run after the failure.`,
+      `${rule} called end().`,
+      `${rule} read \`value\` - read it in the step it calls.`
+    ]);
+  });
+
+  it('will throw for a compensation calling no step or two in sequence', async () => {
+    const errors: unknown[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        for (const handler of [() => {}, () => void (this.a(), this.a())])
+          try {
+            this.then.catch(handler);
+          } catch (error) {
+            errors.push((error as Error).message);
+          }
+      }
+
+      protected async a() {}
+    }
+
+    await Test.new().run().catch(() => {});
+    expect(errors).toEqual([
+      'a compensation without parameters calls one step, or a group: this.then(a, b).',
+      'a compensation without parameters calls one step, or a group: this.then(a, b).'
+    ]);
+  });
+
+  it('will throw for compensation steps not called for it', async () => {
+    const errors: unknown[] = [];
+
+    class Test extends Steps {
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        const tries = [
+          () => this.then.catch(this.a(), () => {}),
+          () => this.then.catch(this.then.slot() as never),
+          () => this.then.catch(),
+          () => this.then.catch({} as never)
+        ];
+
+        for (const attempt of tries)
+          try {
+            attempt();
+          } catch (error) {
+            errors.push((error as Error).message);
+          }
+      }
+
+      protected async a() {}
+    }
+
+    await Test.new().run().catch(() => {});
+    expect(errors).toEqual([
+      'then() takes called steps or step references, not both.',
+      'then.catch() takes steps called for it, or one function.',
+      'then.catch() takes steps called for it, or one function.',
+      'then.catch() takes steps called for it, or one function.'
+    ]);
+  });
+});
+
 describe('recover', () => {
   class NoCourier extends Error {}
 
@@ -6184,7 +6538,7 @@ describe('recover', () => {
 
       protected async reserve() {
         this.hold = 'h1';
-        this.then.catch(release);
+        this.then.catch((error) => release(error));
         this.pay().catch(this.recover);
       }
 
@@ -6197,7 +6551,7 @@ describe('recover', () => {
 
       protected async pay() {
         this.charge = 'c1';
-        this.then.catch(refund);
+        this.then.catch((error) => refund(error));
         this.ship();
       }
 
@@ -6484,7 +6838,7 @@ describe('recover', () => {
       }
 
       async receipt() {
-        this.then.catch(recall);
+        this.then.catch((error) => recall(error));
         signals.push(this.then.signal);
         await mailed;
       }
@@ -6492,7 +6846,7 @@ describe('recover', () => {
       async notify() {
         const { signal } = this.then;
 
-        this.then.catch(unnotify);
+        this.then.catch((error) => unnotify(error));
         await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
       }
     }
@@ -6549,13 +6903,13 @@ describe('recover', () => {
       }
 
       async pay() {
-        this.then.catch(refund);
+        this.then.catch((error) => refund(error));
         this.then.commit();
         this.notify();
       }
 
       async notify() {
-        this.then.catch(recall);
+        this.then.catch((error) => recall(error));
         this.ship();
       }
 
@@ -6628,7 +6982,7 @@ describe('recover', () => {
 
       async pay(card: string) {
         this.card = card;
-        this.then.catch(() => refund(card));
+        this.then.catch((_error) => refund(card));
         this.ship();
       }
 
@@ -6649,7 +7003,7 @@ describe('recover', () => {
     await vi.waitFor(() => expect(test.pay).toBeDefined());
     expect(refund).toHaveBeenCalledWith('card1');
     expect(test.card).toBe('');
-    expect(test.then.waiting).toEqual([{ id: 'wait#1', step: 'declined', args: [new Error('declined')], answers: ['pay'] }]);
+    expect(test.then.waiting).toEqual([{ id: 'wait#1', step: 'declined', args: [{ name: 'Error', message: 'declined' }], answers: ['pay'] }]);
 
     await test.pay('card2');
     await result;
@@ -6674,7 +7028,7 @@ describe('recover', () => {
       }
 
       protected async outer() {
-        this.then.catch(undo);
+        this.then.catch((error) => undo(error));
         this.inner();
       }
 
@@ -6700,7 +7054,7 @@ describe('recover', () => {
       }
 
       protected async side(name: string) {
-        this.then.catch(async () => {
+        this.then.catch(async (_error) => {
           order.push(`${name} start`);
           await Promise.resolve();
           await Promise.resolve();
@@ -6724,12 +7078,12 @@ describe('recover', () => {
       }
 
       async first() {
-        this.then.catch(undo);
+        this.then.catch((error) => undo(error));
         this.second().catch();
       }
 
       async second() {
-        this.then.catch(() => {
+        this.then.catch((_error) => {
           throw new Error('undo');
         });
         this.third();
@@ -6762,12 +7116,12 @@ describe('recover', () => {
       }
 
       async zero() {
-        this.then.catch(undo);
+        this.then.catch((error) => undo(error));
         this.first();
       }
 
       async first() {
-        this.then.catch(() => refunded);
+        this.then.catch((_error) => refunded);
         this.second();
       }
 
@@ -6803,7 +7157,7 @@ describe('recover', () => {
       }
 
       async first() {
-        this.then.catch(undo);
+        this.then.catch((error) => undo(error));
         this.then(this.slow(), this.quick());
       }
 
