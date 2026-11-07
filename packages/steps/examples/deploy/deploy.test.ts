@@ -130,7 +130,7 @@ it('will abort the test suite when stopped', async () => {
   expect(test.mock.calls[0][1].signal.aborted).toBe(true);
   expect(test).toHaveBeenCalledTimes(1);
   expect(deploy.report).toBe(`1.2.0 stopped: ${deploy} was stopped.`);
-  // a plain stop does not unwind - stop(true) would
+  // a plain stop does not unwind - stop({ undo: true }) would
   expect(record(deploy).find((entry) => entry.key == 'build')!.unwound).toBeUndefined();
 });
 

@@ -36,7 +36,7 @@ describe('steps', () => {
 
     const test = Test.new();
 
-    expect(test.then.on).toBe(test);
+    expect(test.then.self).toBe(test);
     expect(test.then.status).toBe('idle');
     expect(order).toEqual([]);
 
@@ -1972,7 +1972,7 @@ describe('stop', () => {
     const result = test.run();
 
     await flushMicrotasks();
-    test.then.stop(true);
+    test.then.stop({ undo: true });
     work.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
@@ -2128,7 +2128,7 @@ describe('stop', () => {
     const second = test.run();
 
     await flushMicrotasks();
-    test.then.stop(true, 'cancelled by user');
+    test.then.stop({ undo: true, reason: 'cancelled by user' });
     work.resolve();
 
     const stopped = { name: 'Stopped', message: 'cancelled by user', cause: 'cancelled by user' };
@@ -2153,7 +2153,7 @@ describe('stop', () => {
     const test = Test.new();
     const result = test.run();
 
-    test.then.stop(false, reason);
+    test.then.stop({ reason: reason });
     work.resolve();
 
     const error = await result.catch((error) => error);
@@ -4318,7 +4318,7 @@ describe('catch', () => {
     expect(() => test.then.retried).toThrow('retried must be read inside a step.');
     expect(() => test.then.retry()).toThrow('retry must be called inside a step.');
     expect(() => test.then.undo(() => {})).toThrow('undo must be called inside a step.');
-    expect(() => test.then.reset()).toThrow('reset must be called inside a step.');
+    expect(() => test.then.restore()).toThrow('restore must be called inside a step.');
   });
 });
 
@@ -6686,7 +6686,7 @@ describe('recover', () => {
 
       protected async handle() {
         this.value = 7;
-        this.then.reset();
+        this.then.restore();
         seen.push(this.value, this.other);
         this.other = 9;
       }
@@ -6749,7 +6749,7 @@ describe('recover', () => {
 
       protected async handle() {
         this.items.push('b');
-        this.then.reset();
+        this.then.restore();
       }
     }
 
@@ -6832,11 +6832,11 @@ describe('recover', () => {
       }
 
       protected async first() {
-        this.then.reset();
+        this.then.restore();
       }
     }
 
-    await expect(Test.new().run()).rejects.toThrow('reset() must be called in a .catch handler.');
+    await expect(Test.new().run()).rejects.toThrow('restore() must be called in a .catch handler.');
   });
 
   it('will abort and compensate parallel steps a caught failure discards', async () => {
@@ -7584,7 +7584,7 @@ describe('Steps', () => {
     expectTypeOf(test.then.status).toEqualTypeOf<Steps.Status>();
     expectTypeOf<Awaited<Test>>().toEqualTypeOf<{ n: number }>();
     expect(result).toEqual({ n: 2 });
-    expect(test.then.on).toBe(test);
+    expect(test.then.self).toBe(test);
     expect(record(test).map((entry) => entry.key)).toEqual(['run']);
   });
 

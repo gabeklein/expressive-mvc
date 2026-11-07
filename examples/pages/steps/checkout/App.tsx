@@ -74,7 +74,7 @@ class Storefront extends Component {
           {checkout.approve && <button onClick={() => checkout.approve()}>Approve</button>}
           {checkout.decline && <button onClick={() => checkout.decline()}>Decline</button>}
           {checkout.pay && <button onClick={() => checkout.pay(card)}>Try another card</button>}
-          {working && <button onClick={() => checkout.then.stop(true, 'Order cancelled.')}>Stop</button>}
+          {working && <button onClick={() => checkout.then.stop({ undo: true, reason: 'Order cancelled.' })}>Stop</button>}
         </div>
         <p className="status">
           Status: {status}

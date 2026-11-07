@@ -204,7 +204,7 @@ declare namespace Steps {
     <This>(this: This, ...steps: unknown[]): Promise<void>;
 
     /** The instance this controller runs. */
-    readonly on: T;
+    readonly self: T;
     readonly status: Steps.Status;
     /** Key of a step in flight - the latest invoked, with a group in flight. */
     readonly active: string | undefined;
@@ -228,12 +228,12 @@ declare namespace Steps {
      * `undo` - also unwind the run as a failure would. `reason` - the `cause` of the `'Stopped'`
      * error the run and queue reject with, and its message when a string.
      */
-    stop(undo?: boolean, reason?: unknown): void;
+    stop(options?: { undo?: boolean; reason?: unknown }): void;
     /** Inside a step: a point of no return - the step is not caught, restored or undone, and the unwind stops here. */
     commit(): void;
     /**
      * Inside a step: its undo - run when an unwind passes through the step: its own failure after this
-     * call, a later failure caught by a `.catch` whose branch includes it, the run failing, `stop(true)`.
+     * call, a later failure caught by a `.catch` whose branch includes it, the run failing, `stop({ undo: true })`.
      * Steps called for it - `this.then.undo(this.release(hold))`, several a group - are claimed, not
      * scheduled, and recorded with their args. A function is process-local: given the error, it runs on
      * unwind in this process, dropped on restart. Runs before fields are restored; keys it writes are
@@ -242,7 +242,7 @@ declare namespace Steps {
     undo(...steps: Promise<void>[]): void;
     undo(fn: (error: unknown) => unknown): void;
     /** Inside a `.catch` handler: restore the caught branch's fields now; writes after it stand. */
-    reset(): void;
+    restore(): void;
     /**
      * Inside a step: its `AbortSignal` - aborted on `stop()`, an outside `end`, a failure elsewhere,
      * and once the step settles. A step rejecting with its reason is not a failure.
@@ -303,13 +303,13 @@ function install<T extends Steps>(self: T) {
 
   Object.defineProperties(runner, {
     then: { value: runner },
-    on: { value: self },
+    self: { value: self },
     get: { value: () => Object.fromEntries(KEYS.map((key) => [key, read[key]()])) },
     end: { value: (...value: unknown[]) => void (valueless(value), control.conclude()) },
-    stop: { value: (undo?: boolean, reason?: unknown) => control.stop(undo, reason) },
+    stop: { value: (options: { undo?: boolean; reason?: unknown } = {}) => control.stop(options.undo, options.reason) },
     commit: { value: () => outside('commit') },
     undo: { value: () => outside('undo') },
-    reset: { value: () => outside('reset') },
+    restore: { value: () => outside('restore') },
     signal: { get: () => outside('signal', 'read') },
     retry: { value: () => outside('retry') },
     retried: { get: () => outside('retried', 'read') }
@@ -1513,9 +1513,9 @@ class Frame extends Model {
       retried: { get: () => this._retried },
       retry: { value: retry },
       undo: { value: (...args: unknown[]) => this.compensation(args) },
-      reset: {
+      restore: {
         value: () => {
-          if (!this._restore) throw new Error('reset() must be called in a .catch handler.');
+          if (!this._restore) throw new Error('restore() must be called in a .catch handler.');
 
           this._restore(this, true);
         }
