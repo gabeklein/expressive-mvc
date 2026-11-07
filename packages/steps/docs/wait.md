@@ -76,7 +76,7 @@ protected async timeout(call: ToolCall) {
 }
 ```
 
-- The wait closes on its first answer - an outside call or a racer's. The racer whose branch answered wins and keeps all it did. The others lose: signals abort, what they have yet to run is dropped, open waits and gates below them release; a step in flight settles first. Then each losing branch unwinds as a [caught failure](catch.md) does - its undos run newest first, given an `'Aborted'` error (`deny answered wait#1.`), and the fields it wrote are restored. Effects without an undo stay.
+- The wait closes on its first answer - an outside call or a racer's. The racer whose branch answered wins and keeps all it did. The others lose: signals abort, what they have yet to run is dropped, open waits and gates below them release; a step in flight settles first. Then each losing branch unwinds - its [handlers](on.md#handlers) run `abort`, `undo`, then `done`, newest first, given an `'Aborted'` error (`deny answered wait#1.`), and the fields it wrote are restored. Effects without an `undo` stay.
 - A racer that settles without answering leaves the wait open - a nudge (`this.then({ day: 1 }); this.notify();`), not a decision.
 - A racer that throws fails the run, or the `.catch` around the wait.
 - `end`, `stop`, `abort` and a failure close every open wait and abort its racers.
@@ -103,5 +103,5 @@ protected async test() {
 ## Rules
 
 - `run` cannot answer a wait - listing it fails the run (`run cannot answer a wait.`).
-- A wait reached while function undos are held logs `console.warn` once per run - closures will not survive a resume in the durable tier; register a step instead ([undo.md](undo.md#undos)).
+- A wait reached while function handlers are held logs `console.warn` once per run - closures will not survive a resume in the durable tier; register a step instead ([on.md](on.md#handlers)).
 - `stop()`, `abort()`, a failure, and `then.end()` from outside release open waits and abort their racers.

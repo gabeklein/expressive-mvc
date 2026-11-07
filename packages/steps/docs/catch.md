@@ -4,14 +4,14 @@ A token issued in a step - a step call, a group, a wait - takes `.catch(handler?
 
 1. The failing step's own writes are restored, as always; it is journaled `{ id, key, args, next: [], wrote: [], error }`.
 2. The rest of the branch is discarded: pending items dropped, open waits released, slots cancelled, steps in flight aborted - they settle and commit.
-3. The branch unwinds as a failed run would ([undo.md](undo.md#the-unwind)): undos newest first, halting at a `committed` or irreversible entry. Outside the branch nothing is touched - parallel siblings keep their writes.
+3. The branch unwinds as a failed run would ([on.md](on.md#the-unwind)): undos newest first, halting at a `committed` or irreversible entry. Outside the branch nothing is touched - parallel siblings keep their writes.
 4. The handler, if any, runs in the branch's place, seeing the branch's state as it failed. Once its body returns, the branch's fields are restored - except keys it wrote - before what it scheduled runs. The plan then continues with the next item, the branch counting as done.
 
 ```ts
 protected async reserve() {
   const hold = await inventory.hold(this.cart.items);
 
-  this.then.undo(this.release(hold));
+  this.then.on({ undo: this.release(hold) });
   this.pay().catch(this.noCourier);
 }
 
@@ -76,7 +76,7 @@ protected async scan(site: string) {
 ## Not caught
 
 - A broken rule - a write after scheduling, lateness, a returned value - fails the run.
-- A step that called [`commit()`](undo.md#commit) or made an [irreversible](undo.md#irreversible) change fails the run, journaled with `committed`/`irreversible` and `error`, its writes kept.
+- A step that called [`commit()`](on.md#commit) or made an [irreversible](on.md#irreversible) change fails the run, journaled with `committed`/`irreversible` and `error`, its writes kept.
 - A step rejecting with its own aborted [signal](steps.md#the-step-signal)'s reason is no failure.
 - A hook's throw, an undo's throw, and any failure while the run is stopping or ending.
 

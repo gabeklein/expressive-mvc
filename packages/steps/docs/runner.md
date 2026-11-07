@@ -9,13 +9,13 @@
 | `queue` | argument arrays of queued `run()` calls |
 | `waiting` | open waits, `{ id, step, args, answers, until? }`, oldest first ([wait.md](wait.md)) |
 | `runs` | finished runs - ended, failed, stopped or aborted |
-| `error` | what failed the run, or what an undo threw |
+| `error` | what failed the run, or what a handler threw |
 | `self` | the instance |
 | `end()` | in a step: end the run where the plan reaches it ([steps.md](steps.md#end-is-terminal)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |
 | `stop(reason?)` | halt, keeping what was done ([runs.md](runs.md#stop-and-abort)) |
 | `abort(reason?)` | halt and unwind ([runs.md](runs.md#stop-and-abort)) |
-| `commit()` | in a step: a point of no return ([undo.md](undo.md#commit)) |
-| `undo(...steps)`, `undo(fn)` | in a step: register its undo ([undo.md](undo.md#undos)) |
+| `commit()` | in a step: a point of no return ([on.md](on.md#commit)) |
+| `on({ undo, error, abort, stop, done })` | in a step: handlers for its subtree's outcomes ([on.md](on.md#handlers)) |
 | `restore()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
 | `only(max, key?)` | in a step: a gate - wait for a free slot, then run what follows holding it ([gate.md](gate.md)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
@@ -28,10 +28,10 @@
 ## Entry
 
 ```ts
-{ id, key, args, next, wrote, undo?, unwound?, wake?, retried?, error?, irreversible?, committed?, halted?, implicit? }
+{ id, key, args, next, wrote, on?, unwound?, wake?, retried?, error?, irreversible?, committed?, halted?, implicit? }
 ```
 
-The Runner keeps no journal. Each step's entry is handed to `after(step, entry)` as it commits, a caught try's with `error` ([hooks.md](hooks.md)); a class wanting a log keeps them - `this.log.push(entry)`. A later unwind updates a kept entry in place: `unwound`, `halted` ([undo.md](undo.md#the-unwind)). See [steps.md](steps.md#entry).
+The Runner keeps no journal. Each step's entry is handed to `after(step, entry)` as it commits, a caught try's with `error` ([hooks.md](hooks.md)); a class wanting a log keeps them - `this.log.push(entry)`. A later unwind updates a kept entry in place: `unwound`, `halted` ([on.md](on.md#the-unwind)). See [steps.md](steps.md#entry).
 
 `wrote` names the fields the step wrote, collections changed in place included - no values.
 

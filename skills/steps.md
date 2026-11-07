@@ -27,7 +27,7 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);   // the step's work
 
-    this.then.undo(this.release(hold));                  // its undo, right after the effect - runs only on unwind
+    this.then.on({ undo: this.release(hold) });                  // its undo, right after the effect - runs only on unwind
     this.pay().catch(this.noCourier);                     // then hand off
   }
 
@@ -38,7 +38,7 @@ class SubmitOrder extends Steps {
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.undo(this.refund(this.charge.id));
+    this.then.on({ undo: this.refund(this.charge.id) });
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
   }
@@ -103,24 +103,35 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 | `this.then({ min: 1 })` | duration - parks for `ms`/`sec`/`min`/`hr`/`day`, summed |
 | `this.then.only(2)` / `.only(1, lock)` | gate - only so many at once |
 | `this.then.end()` | end the run here - pending discarded; takes no value |
-| `this.then.undo(this.release(x))` | register this step's undo - the step called for it, claimed, not scheduled |
+| `this.then.on({ undo: this.release(x) })` | handlers for this step's subtree - `undo`, `error`, `abort`, `stop`, `done`; steps called for one are claimed, not scheduled |
 | `this.then.commit()` | point of no return |
 | `this.then.signal` | this step's `AbortSignal` - pass it to the call it awaits |
 
 A plain function fails the run - work is a step. Every token takes `.catch(handler?)`.
 
-## Undo
+## Outcomes - `then.on`
 
-Step references are recorded; functions belong to the process. A step returns nothing - a value fails the run. Register its undo right after the effect, usually just above scheduling:
+Step references are recorded; functions belong to the process. A step returns nothing - a value fails the run. `this.then.on({ … })` registers handlers for the step and everything it schedules (its subtree) - right after the effect, usually just above scheduling. Each value is a step called for it (an array: a group) - claimed, not scheduled, recorded with its args - or a function: process-local, dropped on restart.
 
-- `this.then.undo(this.refund(chargeId))` - steps called for it (several a group): claimed, not scheduled - the step may keep working after - recorded with their args.
-- `this.then.undo(() => clearTimeout(timer))` - one function: process-local, given the error, dropped on restart. Fine for process resources.
-- A bare step method or a mix throws.
+```ts
+this.then.on({ undo: this.refund(chargeId) });          // take back the charge on error or abort
+this.then.on({ error: this.alert('rollout failed') });  // observe a failure below
+this.then.on({ done: () => clearTimeout(timer) });      // the subtree ended, any way
+```
 
+| key | fires (deepest step first, newest first) | function gets |
+| --- | --- | --- |
+| `error` | a step in the subtree failed, no `.catch` below took it; then `undo` | the error |
+| `abort` | `abort()`, or the subtree lost a race; then `undo` | `'Aborted'` error |
+| `undo` | after `error`/`abort` | the error |
+| `stop` | `stop()` with the subtree unfinished - no undo | `'Stopped'` error |
+| `done` | subtree ended any way - last; alone on a clean finish, before the next sibling | nothing |
+
+- `error` observes, never recovers - recovery is `.catch`, which also stops a failure reaching handlers above it. A step finished earlier and taken back by a later failure gets `undo` only.
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
-- An undo runs on any unwind through its step - its own failure after registering, a later failure caught by a `.catch` whose branch includes it, run failure, `abort()`, its branch losing a race. Order: failure → undos newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
-- Steps an undo calls run as part of the unwind (with what they schedule), before older undos, and reach `before`/`after`. `end`, gates and waits throw there.
-- Registered before its step fails, it runs for that failure too and sees the step's partial writes. Runs before fields are restored; keys it writes are kept; never recovers. `run` registers none - clean up in its tail.
+- Unwind order: failure → handlers newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
+- Steps a handler calls run as part of the unwind (with what they schedule), before older handlers, and reach `before`/`after`. `end`, gates and waits throw there.
+- Registered before its step fails, handlers run for that failure too and see the step's partial writes. They run before fields are restored; keys they write are kept. A bare step method, a mix in an array, or an unknown key throws. `run` registers none - clean up in its tail.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
 - Removing a pool member or destroying a map value the step did not add is irreversible: the unwind stops there and warns.
 - Whole-run undo is `abort()`; partial is a [catch](#catch-and-retry).
@@ -199,7 +210,7 @@ Only `before` and `after` are hooks (any other name is a step; `then`, `end`, `g
 
 - `before(step, args)` / `after(step, entry)` around every step. `after` gets each committed entry - the Runner keeps no journal, so a log is `this.log.push(entry)`. A try a catch took arrives with `entry.error`; a called `end` arrives too (an implicit one does not).
 
-Entry: `{ id: 'pay#1', key, args, wrote, next, undo?, unwound?, wake?, retried?, error?, irreversible?, committed?, halted?, implicit? }` - no values.
+Entry: `{ id: 'pay#1', key, args, wrote, next, on?, unwound?, wake?, retried?, error?, irreversible?, committed?, halted?, implicit? }` - no values.
 
 ## Runner - `this.then`
 

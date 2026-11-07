@@ -1,40 +1,60 @@
-# Undo - All or Nothing
+# On - Outcomes, All or Nothing
 
-A step returns nothing. One that changes the world registers its undo with `this.then.undo(this.release(hold))` - the step that takes it back, called for it. An unwind - a failed run, `abort()`, a failure a [`.catch`](catch.md) takes, or a [lost race](wait.md#racers) - goes back through the committed steps newest first, running each one's undos, then restores the fields of every step it took back.
+A step returns nothing. One that changes the world registers what happens on each outcome with `this.then.on({ undo: this.release(hold) })` - steps called for it, or functions. An unwind - a failed run, `abort()`, a failure a [`.catch`](catch.md) takes, or a [lost race](wait.md#racers) - goes back through the committed steps newest first, running each one's handlers, then restores the fields of every step it took back.
 
 Every step is atomic: one that throws or is aborted has its own writes restored - fields and [collections](#collections).
 
 Policy: step references are recorded; functions belong to the process.
 
-## Undos
+## Handlers
 
 ```ts
 protected async reserve() {
   const hold = await inventory.hold(this.cart.items);
 
-  this.then.undo(this.release(hold));
+  this.then.on({ undo: this.release(hold) });
   this.pay().catch(this.noCourier);
 }
 ```
 
-Register an undo right after the effect it takes back - as `defer` would - usually just above what the step schedules.
+Register right after the effect a handler takes back - as `defer` would - usually just above what the step schedules.
 
-`this.then.undo(…)` takes:
+A handler covers its step and everything it schedules - the subtree. Outcomes, each firing as it reaches the subtree, deepest step first, newest first within a step:
 
-- steps called for it - `this.then.undo(this.release(hold))`; several, `this.then.undo(this.cancel(id), this.refund(charge))`, run as one group. Claimed, not scheduled - the step may keep working and awaiting after. Recorded with their args.
-- or one function - process-local: given the error, it runs on unwind in this process and is dropped on restart. Right for process resources: `this.then.undo(() => clearTimeout(timer))`. Recorded as `then`.
+| key | fires | given |
+| --- | --- | --- |
+| `error` | a step in the subtree failed, no `.catch` below took it - then `undo` | the error |
+| `abort` | `abort()`, or the subtree lost a [race](wait.md#racers) - then `undo` | the `'Aborted'` error |
+| `undo` | after `error` or `abort`: take back what the step did | the error |
+| `stop` | `stop()` while the subtree was unfinished - nothing is undone | the `'Stopped'` error |
+| `done` | the subtree ended, any way - last, after the others; on a clean finish, alone | nothing |
 
-Mixing them throws `then() takes called steps or step references, not both.`; a bare step method throws - call it: `this.release(hold)`.
+```ts
+protected async rollout() {
+  this.then.on({ error: this.alert(`${this.version} rollout failed`) });
 
-- An undo runs on any unwind passing through its step: the step's own failure after registering it, a later failure caught by a `.catch` whose branch includes the step, the run failing, `abort()`, the step's branch losing a [race](wait.md#racers). Never on success.
-- Steps it runs keep their own signatures and run as part of the unwind, with what they schedule and groups, before older undos. They reach `before`/`after`, so a log shows them; they are taken back by nothing.
-- Registration is synchronous, anywhere in the body, any number. A step's undos run newest first.
-- Registered before its step fails, an undo runs for that failure too and sees the step's partial writes - restored after it.
-- It runs before fields are restored, so it reads the state as the run left it. Keys it, or a step it runs, writes are kept.
-- It never recovers - the failure goes on. A step it runs throwing fails the unwind there. `end`, gates and waits throw in it: `end() cannot run in an undo.`
+  for (const host of this.rest) this.upgrade(host);
+}
+```
+
+Each value is:
+
+- a step called for it - `{ undo: this.release(hold) }`; several in an array, `{ undo: [this.cancel(id), this.refund(charge)] }`, run as one group. Claimed, not scheduled - the step may keep working and awaiting after. Recorded with their args, which they run with.
+- or a function - process-local: given the table's argument, run in this process, dropped on restart. Right for process resources: `{ done: () => clearTimeout(timer) }`. Recorded as `then`.
+
+An array mixing them throws `then() takes called steps or step references, not both.`; a bare step method throws - call it: `this.release(hold)`. An unknown key throws `then.on() takes undo, error, abort, stop and done - got finally.`; an `undefined` value is skipped.
+
+- `error` observes - it never recovers; the failure goes on. Recovery is [`.catch`](catch.md), which also keeps a failure from the handlers above it.
+- `done` on a clean finish runs before the next step in sequence. One that throws fails that subtree, as a step would.
+- A step completed earlier, taken back by a later failure, gets `undo` only - `error` reaches the failing step's own line; `abort` reaches every step taken back.
+- Steps a handler runs keep their own signatures and run with what they schedule and groups, before older handlers. They reach `before`/`after`, so a log shows them; they are taken back by nothing.
+- Registration is synchronous, anywhere in the body, any number.
+- Registered before its step fails, a handler runs for that failure too and sees the step's partial writes - restored after `undo`.
+- Handlers run before fields are restored, so they read the state as the run left it. Keys they, or steps they run, write are kept.
+- A handler that throws fails the unwind there. `end`, gates and waits throw in one: `end() cannot run in an undo.`
 - `run` registers none - `run cleans up in its tail - try/catch around await this.` Cleanup there is a [tail](runs.md#run-and-the-result).
 
-Entry: `undo: [{ id: 'release#1', key: 'release', args: ['hold_sku'] }]` - a group node for several, `then` for a function. The steps it ran get their own entries. Ids are minted at registration, so an undo never run leaves a gap.
+Entry: `on: { undo: [{ id: 'release#1', key: 'release', args: ['hold_sku'] }] }` - by outcome, a group node for several, `then` for a function. The steps they ran get their own entries. Ids are minted at registration, so a handler never run leaves a gap.
 
 ## The unwind
 
@@ -42,13 +62,13 @@ A step that throws, breaks a rule, or returns a value fails the run:
 
 1. Status `failed`, `error` set; pending steps are discarded, open waits released, in-flight steps' [signals](steps.md#the-step-signal) aborted; the failing step's own writes are restored, unless it is [irreversible](#irreversible) or [committed](#commit).
 2. Steps still in flight - parallel members - settle; their commits are recorded.
-3. Every committed entry, newest first, runs its undos; a failed step that registered some runs them too.
-4. An undo that throws: `unwound: 'failed'`, `error` replaced by what it threw, the unwind stops there.
-5. An `irreversible` or `committed` entry stops the unwind: `halted: true` ([Collections](#collections), [Commit](#commit)).
-6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys an undo wrote. Each taken-back entry that had undos or wrote is marked `unwound: true`.
+3. Every committed entry, newest first, runs its handlers - `error` on the failing step's line, then `undo`, then `done` where unfinished; a failed step that registered some runs them too.
+4. A handler that throws: `unwound: 'failed'`, `error` replaced by what it threw, the unwind stops there.
+5. An `irreversible` or `committed` entry stops the undoing: `halted: true` - it and older entries run no `undo`, though `error` and `done` still reach them ([Collections](#collections), [Commit](#commit)).
+6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys a handler wrote. Each taken-back entry that had an `undo` or wrote is marked `unwound: true`.
 7. `await this` in `run` rejects with `error` - the tail runs on the restored fields ([runs.md](runs.md#run-and-the-result)); without one, the run rejects with `error`.
 
-`run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `aborted`, undos given the `'Aborted'` error ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md) and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
+`run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `aborted`, `abort` in place of `error`, handlers given the `'Aborted'` error; `stop()` runs only `stop` and `done`, restoring nothing ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md) and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
 
 ## Keeping a value
 
@@ -56,7 +76,7 @@ A step's writes are restored whenever an unwind takes it back. To keep one past 
 
 - commit the step - [`this.then.commit()`](#commit) - when everything before it should stand too: an agent's reply, a captured charge;
 - write it unmanaged - `this.is.notice = …`, or in a `_` helper, which runs on `this.is`;
-- write it in an undo or a [catch handler](catch.md) - their keys are kept;
+- write it in a handler or a [catch handler](catch.md) - their keys are kept;
 - write it in `run`'s tail, which runs after the unwind.
 
 ## Commit
