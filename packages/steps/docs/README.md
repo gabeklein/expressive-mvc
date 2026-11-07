@@ -79,10 +79,10 @@ Reporting state - progress, a status line - is ordinary fields, written in the s
 Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`, then `end`. A `courier.book` failure unwinds every committed step, newest first, running the undos each registered with `this.then.undo(…)` - `refund('ch_42')`, then `inventory.release('hold_sku')` - then restoring the fields of every step it took back ([undo.md](undo.md#the-unwind)).
 
 - [contract.md](contract.md) - the contract: members, visibility, when each runs; composition - a `Steps` model held as a field
-- [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, inline steps, the step signal, pending values, the first-call rule, calls after a step settles, helpers, `end`, what a step may return
+- [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, function handlers, the step signal, pending values, the first-call rule, calls after a step settles, helpers, `end`, what a step may return
 - [runs.md](runs.md) - `run`, repeating, the queue, awaiting, `end` from outside, `stop`, steering
-- [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called - from outside or by a watcher; answering steps are present only while waited for
-- [gate.md](gate.md) - `this.then({ max, after, key })`: a gate - concurrency per group, instance or shared key (`max: 1` + key = mutex); a delay
+- [wait.md](wait.md) - `this.then(...steps)` parks until one of those steps is called - from outside or by a racer, losers unwound; `this.then({ sec })` a duration; answering steps are present only while waited for
+- [gate.md](gate.md) - `this.then.only(max, key?)`: a gate - concurrency per group, instance or shared key (`only(1, key)` = mutex)
 - [catch.md](catch.md) - `.catch(handler?)` on a token: a failing branch unwinds and the run continues - skipped, or a handler in its place; recorded and process-local handlers; the unwind order; typed failures; `restore()`; `this.then.retry()` replays, `retried` counts
 - [hooks.md](hooks.md) - `before`/`after` around every step; cleanup in `run`'s tail
 - [undo.md](undo.md) - undos registered with `this.then.undo(this.release(hold))`, the unwind on failure, restored fields, keeping a value, `commit()`, collections

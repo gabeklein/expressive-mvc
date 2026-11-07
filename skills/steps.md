@@ -84,14 +84,14 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 - Without `await this`, `run` settles at once - result `void` (chained style).
 - `return await this` is a TS circularity (TS7023) - return from fields.
 - Cleanup on every outcome - done, failed, stopped - is `try`/`catch`/`finally` around `await this`. A run failing before `await this`, or without it, has no tail; that cleanup belongs in a step's undo.
-- Inside a step, `this.run(x)` is an ordinary step call - how a loop repeats.
+- `run` is entry only - inside a step `this.run()` throws; a loop is a step scheduling itself.
 
 ## A step body is a plan
 
 - Calling a step inside a step does not run it: it returns an inert token (not awaitable - `await this.a()` does nothing), scheduled after the caller settles cleanly. A caller that throws schedules nothing.
 - Tokens run in issue order, depth-first: each with everything it schedules, before the next sibling.
 - **The first call ends the step's work.** After its first token a step may only issue tokens and return. A write after it fails the run; settling more than a few microtasks after the last token fails it too. A sync side effect after scheduling is invisible to the guard - side effects are steps.
-- Loops are plain loops, or `this.run(x)` again.
+- Loops are plain loops, or a step scheduling itself.
 
 `this.then` inside a step, by argument:
 
@@ -99,15 +99,15 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 | --- | --- |
 | `this.then(this.a(x), this.b(y))` | parallel group - members run concurrently, the group completes when all have |
 | `this.then(items, this.step)` / `(items, (item) => this.step(item))` | mapped group |
-| `this.then(async (signal) => …)` | inline step - a full step journaled `then#n`, not durable |
-| `this.then(this.allow, this.deny, watcher?)` | wait - parks until one of those steps is called |
+| `this.then(this.allow, this.deny, this.timeout(x)?)` | wait - parks until one of those steps is called; called steps race it |
+| `this.then({ min: 1 })` | duration - parks for `ms`/`sec`/`min`/`hr`/`day`, summed |
+| `this.then.only(2)` / `.only(1, lock)` | gate - only so many at once |
 | `this.then.end()` | end the run here - pending discarded; takes no value |
-| `this.then({ max, after, key })` | a gate - concurrency / delay |
 | `this.then.undo(this.release(x))` | register this step's undo - the step called for it, claimed, not scheduled |
 | `this.then.commit()` | point of no return |
 | `this.then.signal` | this step's `AbortSignal` - pass it to the call it awaits |
 
-Tokens mixed with functions fail the run. Every token takes `.catch(handler?)`.
+A plain function fails the run - work is a step. Every token takes `.catch(handler?)`.
 
 ## Undo
 
@@ -118,12 +118,12 @@ Step references are recorded; functions belong to the process. A step returns no
 - A bare step method or a mix throws.
 
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
-- An undo runs on any unwind through its step - its own failure after registering, a later failure caught by a `.catch` whose branch includes it, run failure, `stop({ undo: true })`. Order: failure → undos newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
+- An undo runs on any unwind through its step - its own failure after registering, a later failure caught by a `.catch` whose branch includes it, run failure, `abort()`, its branch losing a race. Order: failure → undos newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
 - Steps an undo calls run as part of the unwind (with what they schedule), before older undos, and reach `before`/`after`. `end`, gates and waits throw there.
 - Registered before its step fails, it runs for that failure too and sees the step's partial writes. Runs before fields are restored; keys it writes are kept; never recovers. `run` registers none - clean up in its tail.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
 - Removing a pool member or destroying a map value the step did not add is irreversible: the unwind stops there and warns.
-- Whole-run undo is `stop({ undo: true })`; partial is a [catch](#catch-and-retry).
+- Whole-run undo is `abort()`; partial is a [catch](#catch-and-retry).
 - Plain arrays/objects mutated in place are invisible - assign, or use `has`/`map`.
 
 ## Waits
@@ -133,21 +133,23 @@ protected async tool(call: ToolCall) {
   let allowed = this.mode === 'yolo';
 
   if (allowed) this.exec(call);
-  else
-    this.then(this.allow, this.deny, async (signal) => {
-      await delay(MINUTE, { signal });
-      this.deny(call);                 // watcher answers on timeout
-    });
+  else this.then(this.allow, this.deny, this.timeout(call));
+}
+
+protected async timeout(call: ToolCall) {   // a racer - starts with the wait
+  this.then({ min: 1 });
+  this.deny(call);                          // answers the wait it races
 }
 
 async allow(call: ToolCall) { this.exec(call); }
 async deny(call: ToolCall) { this.messages.push(denied(call)); }
 ```
 
-- Status `waiting`; `then.waiting` lists `{ id, step, args, answers }`, reactive.
+- Status `waiting`; `then.waiting` lists `{ id, step, args, answers, until? }`, reactive - durations included.
 - Answering steps are public and read `undefined` from outside unless an open wait accepts them - the read tracks, so a view shows a button only while it applies: `agent.allow && <button onClick={() => agent.allow(call)} />`.
 - An outside call answers the wait whose opening step's first argument `===` its own, else the oldest. Its Promise resolves when that answer's subtree is done.
-- A watcher (plain function) starts when the plan reaches the wait, gets an `AbortSignal`; the first answer closes the wait and aborts every watcher. One settling without answering leaves the wait open.
+- A step called beside the answers is a racer: claimed, started when the plan reaches the wait. Inside it, a call to an answer answers that wait. The first answer closes the wait; the racer that answered keeps all it did. The rest lose: signals aborted, unscheduled work dropped, gates released; a step in flight settles, then each losing branch unwinds - undos run, fields restored. Effects without an undo stay. One settling without answering leaves the wait open (a nudge).
+- `this.then({ ms, sec, min, hr, day })` - a duration: a wait nothing answers, journaled `wait#n` with `args: [ms]`. Backoff, timeouts, nudges.
 - Nothing is buffered: an outside call no wait accepts throws.
 
 ## Catch and retry
@@ -161,7 +163,7 @@ protected async rescan(error: unknown) {
 }
 
 protected async scan(site: string) {                     // backoff lives in the retried step
-  this.then({ after: this.then.retried * SECOND });
+  if (this.then.retried) this.then({ sec: this.then.retried });
   this.fetch(site);
 }
 ```
@@ -178,14 +180,16 @@ protected async scan(site: string) {                     // backoff lives in the
 
 ## Gate
 
-`this.then({ max?, after?, key? })` - a plain object is a gate, a token: waits `after` ms, then queues FIFO for one of `max` slots; what the step schedules after it runs holding the slot. Stands alone - beside steps it throws.
+`this.then.only(max, key?)` - a gate, a token: queues FIFO for one of `max` slots; what the step schedules after it runs holding the slot. Returns nothing.
 
-- `max` - number, or `($) => $.limit` read live through the tracking proxy (a UI can change it mid-run); `0` pauses; omitted = no limit, so `this.then({ after })` is a delay.
-- `key` - none: the enclosing group's queue; an object (a shared Model): one queue across instances - `max: 1` + key is a mutex; a primitive: per instance.
+- `max` - number, or `($) => $.limit` read live through the tracking proxy (a UI can change it mid-run); `0` pauses.
+- `key` - none: the enclosing group's queue; an object (a shared Model): one queue across instances - `only(1, this.manager)` is a mutex; a primitive: per instance.
+- A delay before queueing is a duration ahead of it.
 
 ## Stop and end
 
-- `then.stop({ undo?, reason? })` - cancels: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with an error named `'Stopped'` (`reason` as `cause`). `stop({ undo: true })` also unwinds. `set(null)` stops.
+- `then.stop(reason?)` - halts, keeping what was done: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with an error named `'Stopped'` (`reason` as `cause`). `set(null)` stops.
+- `then.abort(reason?)` - halts the same way, then unwinds the run as a failure would - `commit`'s counterpart. An undo throwing fails the run (`failed`, its error given the `'Stopped'` error as `cause`).
 - `then.end()` - ends early, keeping everything: in a step at its place in the plan, from outside now. `await this` resolves; the tail builds the result from fields. Why it ended early is data - write a field before calling it. Passing a value throws.
 - A failed run nobody awaited throws uncaught two microtasks later.
 

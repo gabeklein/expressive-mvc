@@ -107,9 +107,9 @@ async run(ref: LoraRef) {
 
 Idle, or with the run already ending, stopped or failed, it does nothing. A step in flight failing meanwhile fails the run as usual.
 
-## Stop
+## Stop and abort
 
-`then.stop({ undo?, reason? })` - or `this.then.stop()` in a step - cancels the active run, rejecting it and the queue:
+`then.stop(reason?)` - or `this.then.stop()` in a step - halts the active run, keeping what was done, rejecting it and the queue:
 
 - status `stopped` at once; pending steps are discarded; open waits are released;
 - in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - `after` sees their entries, what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
@@ -118,7 +118,7 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 
 `reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. undos and the tail see the same error; `then.error` stays unset.
 
-`stop({ undo: true })` also unwinds the run as a failure would ([undo.md](undo.md)), undos given the `'Stopped'` error; an undo that throws sets `error` and the run rejects with it. During a [caught branch's](catch.md) unwind, `stop()` stops it between undos. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
+`then.abort(reason?)` halts the same way, then unwinds the run as a failure would ([undo.md](undo.md)) - the counterpart of [`commit`](undo.md#commit). Status `stopped`; undos get the `'Stopped'` error, `` `${instance} was aborted.` `` without a reason. An undo that throws fails the run: status `failed`, `error` and the rejection are what it threw, given the `'Stopped'` error as `cause` when it is an Error without one. During a [caught branch's](catch.md) unwind, `stop()` stops it between undos. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 
 A stopped run is not rethrown uncaught.
 

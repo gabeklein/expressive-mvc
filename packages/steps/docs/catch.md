@@ -1,6 +1,6 @@
 # Catch - Recovery per Branch
 
-A token issued in a step - a step call, a group, an inline step, a wait - takes `.catch(handler?)`. It returns the same token, still one plan item and not awaitable. The token and everything it schedules, transitively, is its branch. When a step in the branch throws, the run does not fail:
+A token issued in a step - a step call, a group, a wait - takes `.catch(handler?)`. It returns the same token, still one plan item and not awaitable. The token and everything it schedules, transitively, is its branch. When a step in the branch throws, the run does not fail:
 
 1. The failing step's own writes are restored, as always; it is journaled `{ id, key, args, next: [], wrote: [], error }`.
 2. The rest of the branch is discarded: pending items dropped, open waits released, slots cancelled, steps in flight aborted - they settle and commit.
@@ -29,7 +29,7 @@ protected async noCourier(error: unknown) {
 - `this.then.restore()` in a handler restores the branch's fields now - writes after it stand: `this.then.restore(); this.notice = 'retrying';`. Outside a handler it throws `restore() must be called in a .catch handler.`
 - The token is journaled with `rescue` - a step method's key, `then` for a function, `true` for none: `{ id: 'scan#1', key: 'scan', args: ['a'], rescue: 'rescan' }`.
 - Nested catches: the nearest enclosing caught token takes a failure; one in a handler belongs to the branch around it. A second failure in a branch already failing is journaled and absorbed.
-- A wait's branch is its answer and the answer's subtree; a watcher throwing is caught there too. A handler opening a wait - `this.then(this.pay)` - asks for another try; put that wait under a caught step to catch the next failure too.
+- A wait's branch is its answer and the answer's subtree; a racer throwing is caught there too. A handler opening a wait - `this.then(this.pay)` - asks for another try; put that wait under a caught step to catch the next failure too.
 
 Order of an unwind: a step fails → undos run, newest first, back to the nearest `.catch` whose branch holds the failure → that catch's handler runs in the branch's place → no catch, and the run fails after undoing the rest.
 
@@ -42,7 +42,7 @@ Step references are recorded; functions belong to the process.
 | handler | runs on failure | recorded |
 | --- | --- | --- |
 | `.catch(this.noCourier)` - a step method | the step, given the error alone | its key; its entry's args hold the error as `{ name, message, cause }` (an Error; anything else as thrown) |
-| `.catch((error) => { … })` - a function | given the error, as `Promise.catch` - an [inline step](steps.md#inline-steps) whose step calls schedule | `then` - process-local |
+| `.catch((error) => { … })` - a function | given the error, as `Promise.catch` - a [function handler](steps.md#function-handlers) whose step calls schedule | `then` - process-local |
 
 - A step method runs given the error, whatever it declares. In process it gets the original; the durable tier will rebuild it from the record - `'Stopped'` included.
 - A function is dropped on restart: the failure then has no handler there, and the run fails instead of recovering. Use it where losing the branch is acceptable, or for what only this process can do.
@@ -61,7 +61,7 @@ protected async rescan(error: unknown) {
 }
 
 protected async scan(site: string) {
-  this.then({ after: this.then.retried * 1000 });
+  if (this.then.retried) this.then({ sec: this.then.retried });
   this.fetch(site);
 }
 ```
@@ -69,7 +69,7 @@ protected async scan(site: string) {
 `retry()` schedules what the catch is attached to again - the failed step, or the whole group for `this.then(a, b).catch(…)` - with its recorded args, caught by the same handler. The handler never needs the args; a replay is "run that node again". Past the limit the handler throws - the failure goes on - or falls back by scheduling something else.
 
 - `this.then.retried` - how many times `retry()` replayed the step, `0` on a first run; in a handler, the failed one's. A replayed group's members carry it too. An entry past 0 carries `retried`.
-- Backoff belongs in the retried step: a [gate](gate.md) with `after` read from `retried`. The failed try's slots are released before the replay queues, so it waits `after`, then queues behind other waiters.
+- Backoff belongs in the retried step: a [duration](wait.md#durations) read from `retried`. The failed try's slots are released before the replay queues, so it waits, then queues behind other waiters.
 - Calling a step again from a handler is a new step, not a replay - `retried` stays `0`.
 - `retry()` outside a handler throws `retry() must be called in a .catch handler.`; `.catch(this.then.retry)` throws, pointing to the handler form. A step waiting on a [pending value](steps.md#pending-values) is not replayed: the wait counts no retry.
 
@@ -80,4 +80,4 @@ protected async scan(site: string) {
 - A step rejecting with its own aborted [signal](steps.md#the-step-signal)'s reason is no failure.
 - A hook's throw, an undo's throw, and any failure while the run is stopping or ending.
 
-Gates and `end` throw `a gate cannot be caught.` / `end() cannot be caught.`; a handler that is not a function throws `catch() takes a step, a function or nothing.` Outside a step, `then.retry()` and `then.retried` throw.
+`end` throws `end() cannot be caught.`; a handler that is not a function throws `catch() takes a step, a function or nothing.` Outside a step, `then.retry()` and `then.retried` throw.

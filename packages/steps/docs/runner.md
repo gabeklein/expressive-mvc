@@ -7,22 +7,23 @@
 | `status` | `'idle' \| 'running' \| 'waiting' \| 'stopped' \| 'failed'` - `idle` from construction and after a run ends |
 | `active` | key of a step in flight, else `undefined`; with a group in flight, the latest invoked |
 | `queue` | argument arrays of queued `run()` calls |
-| `waiting` | open waits, `{ id, step, args, answers }`, oldest first ([wait.md](wait.md)) |
+| `waiting` | open waits, `{ id, step, args, answers, until? }`, oldest first ([wait.md](wait.md)) |
 | `runs` | finished runs - ended, failed or stopped |
 | `error` | what failed the run, or what an undo threw |
 | `self` | the instance |
 | `end()` | in a step: end the run where the plan reaches it ([steps.md](steps.md#end-is-terminal)); outside: end the active run now ([runs.md](runs.md#end-from-outside)) |
-| `stop({ undo?, reason? })` | cancel ([runs.md](runs.md#stop)) |
+| `stop(reason?)` | halt, keeping what was done ([runs.md](runs.md#stop-and-abort)) |
+| `abort(reason?)` | halt and unwind ([runs.md](runs.md#stop-and-abort)) |
 | `commit()` | in a step: a point of no return ([undo.md](undo.md#commit)) |
 | `undo(...steps)`, `undo(fn)` | in a step: register its undo ([undo.md](undo.md#undos)) |
 | `restore()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
-| `then({ max?, after?, key? })` | in a step: a gate - wait for a free slot, then run what follows holding it ([gate.md](gate.md)) |
+| `only(max, key?)` | in a step: a gate - wait for a free slot, then run what follows holding it ([gate.md](gate.md)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
 | `retried` | in a step: how many times `retry()` replayed it - `0` on a first run ([catch.md](catch.md#retry)) |
 | `retry()` | in a catch handler: replay what the catch is attached to ([catch.md](catch.md#retry)) |
 | `then(...tokens)`, `then(items, each)` | in a step: a parallel group ([steps.md](steps.md#parallel-groups)) |
-| `then(fn)` | in a step: an inline step ([steps.md](steps.md#inline-steps)) |
-| `then(...steps, ...watchers)` | in a step: a wait answered by one of these steps ([wait.md](wait.md)) |
+| `then(...steps, ...racers)` | in a step: a wait answered by one of these steps, raced by called ones ([wait.md](wait.md)) |
+| `then({ ms, sec, min, hr, day })` | in a step: a duration ([wait.md](wait.md#durations)) |
 
 ## Entry
 
@@ -34,7 +35,7 @@ The Runner keeps no journal. Each step's entry is handed to `after(step, entry)`
 
 `wrote` names the fields the step wrote, collections changed in place included - no values.
 
-`commit`, `undo`, `restore`, `retry`, `signal` and `retried` outside a step throw; so does `then(steps)` or a gate.
+`commit`, `undo`, `restore`, `retry`, `only`, `signal` and `retried` outside a step throw; so does `then(steps)`.
 
 `status`, `active`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them.
 
@@ -61,7 +62,7 @@ const Status = () => {
 
 A tracking read of `then` is a callable view of the Runner: its members subscribe, and calling it joins as the instance's `then` does. mvc reserves `then` - it is not in `Object.keys(instance)` or `instance.get()`; `then.get()` snapshots the Runner.
 
-Effects wait for the instance to be ready and, under a component, for the host to commit - the run does not: a `Steps` owned by a component not yet committed runs, and its watchers attach on commit.
+Effects wait for the instance to be ready and, under a component, for the host to commit - the run does not: a `Steps` owned by a component not yet committed runs, and its effects attach on commit.
 
 ## Steering
 

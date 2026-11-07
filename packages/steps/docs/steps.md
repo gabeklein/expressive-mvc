@@ -2,7 +2,7 @@
 
 Every method on the class is a step - its bases' up to `Steps` included, `Model`'s not ([contract.md](contract.md)). Steps are `protected async` by convention ([README.md](README.md#conventions)), each wrapped as an own non-enumerable property of the instance, the prototype untouched. Not steps: `new`, getters, `_`-prefixed helpers, and `before`/`after` hooks ([hooks.md](hooks.md)). A step runs with a proxy as `this`: writes through it are listed in the entry's `wrote` - and restored if the step fails; reads pass through.
 
-`run` is the entry ([runs.md](runs.md)). Inside a step, `this.run(x)` is an ordinary step call - how a loop repeats.
+`run` is the entry ([runs.md](runs.md)), never a step to schedule - inside a step, `this.run()` throws `run is the entry - loop with a step: a step which schedules itself again.`
 
 ## Calling a step schedules it
 
@@ -32,16 +32,15 @@ protected async a() {
 }
 ```
 
-Loops are plain loops, or `this.run()` again:
+Loops are plain loops, or a step scheduling itself:
 
 ```ts
-async run(until: number) {
-  let done = this.count == until;
+protected async page() {
+  const page = await api.page(this.cursor);
 
-  if (done) return;
+  this.cursor = page.next;
 
-  this.count++;
-  this.run(until);
+  if (page.next) this.page();
 }
 ```
 
@@ -67,25 +66,11 @@ this.then(calls, this.tool);           // tool(call, index)
 
 Members must be tokens this step issued (`then() takes steps called by run.`). An array is not a group - `[]` is only the `items` of a mapped group.
 
-## Inline steps
+## Function handlers
 
-`this.then(fn)` with one plain function is an anonymous step: journaled `then#n` (key `then`, `args: []`) and run in its place in the plan as a full step - its own entry, write guard, return guard, hooks with key `then`. It receives its [signal](#the-step-signal), so a `fetch` or timer ends early. Not durable - the function lives in memory.
+A function given to [`.catch`](catch.md#handlers) runs as an anonymous step: journaled `then#n` (key `then`), its own entry, write guard and hooks. An arrow's `this` is the enclosing step's settled proxy, which hands writes, step calls, collection reads and `this.then` to the handler in flight - its writes are in its entry, its step calls schedule. A `function` gets the handler's own proxy as `this`. Nested arrows resolve to the innermost. The hand-off needs exactly one handler of that step in flight, and no wait that step opened still open; otherwise the settled proxy is as is - writes unmanaged, step calls [settled calls](#calls-after-a-step-settles).
 
-```ts
-protected async pay() {
-  this.charge = await stripe.charge(this.cart.total);
-
-  this.then(async (signal) => {
-    await fetch(this.cart.hook, { method: 'POST', signal });
-  });
-}
-```
-
-Like any step it returns nothing - an arrow returning `fetch(…)` fails the run.
-
-An arrow and a `function` are equivalent: a `function` gets the inline step's own proxy as `this`; an arrow's `this` is the enclosing step's settled proxy, which hands writes, step calls, collection reads and `this.then` to the inline step in flight - its writes are in its entry and restored on throw, its step calls schedule, `this.then.signal` is its own. Nested arrows resolve to the innermost.
-
-The hand-off needs exactly one inline step of that step in flight, and no wait that step opened still open. Two inline arrows of one step running at once - a group of them - see the settled proxy as is: writes unmanaged, step calls [settled calls](#calls-after-a-step-settles). Use `function`, or a method step, there. While the step's wait is open, its proxy stays its [watchers'](wait.md#watchers). Anything else calling through it meanwhile - a timer, a lost watcher - lands in the inline step.
+`this.then(fn)` is not a step - it throws `then() takes steps, not a function - declare the work as a step.`
 
 ## The step signal
 
@@ -103,9 +88,9 @@ protected async turn() {
 }
 ```
 
-Aborted on `stop()`, on an outside [`end`](runs.md#end-from-outside), when the run fails elsewhere, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not caught, it reaches no hook. A different error thrown after the abort fails the run as usual.
+Aborted on `stop()` and `abort()`, on an outside [`end`](runs.md#end-from-outside), when the run fails elsewhere, when its [race](wait.md#racers) is lost, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not caught, it reaches no hook. A different error thrown after the abort fails the run as usual.
 
-Inline steps and watchers also receive their signal as a parameter - a watcher's `this.then.signal` is the opening step's, not the wait's - use the parameter. Outside a step, `then.signal` throws `signal must be read inside a step.`
+Outside a step, `then.signal` throws `signal must be read inside a step.`
 
 ## `then` by argument
 
@@ -113,17 +98,16 @@ Inside a step, `this.then`:
 
 - `(...tokens)` - tokens this step issued: a parallel group;
 - `(items, each)` - an iterable and a mapper, or a step: a mapped group;
-- `(...steps)` - steps of this instance (`this.allow`), plus any plain functions as watchers: a wait ([wait.md](wait.md));
-- `(fn)` - one plain function: an inline step;
-- `({ max, after, key })` - one plain object: a [gate](gate.md);
-- tokens mixed with functions fail the run: `then() takes called steps or step references, not both.`;
+- `(...steps, ...racers)` - steps of this instance uncalled (`this.allow`), plus tokens as [racers](wait.md#racers): a wait ([wait.md](wait.md));
+- `({ ms, sec, min, hr, day })` - one plain object: a [duration](wait.md#durations);
+- one plain function fails the run: `then() takes steps, not a function - declare the work as a step.`;
 - anything else - two plain functions, `await this` included - fails the run: `a step cannot await its own run.`
 
-Its members, in a step: `then.end()` ([end](#end-is-terminal)), `then.undo(...steps)` ([undo.md](undo.md#undos)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retried`, `then.retry()` and `then.restore()` ([catch.md](catch.md)).
+Its members, in a step: `then.only(max, key?)` ([gate.md](gate.md)), `then.end()` ([end](#end-is-terminal)), `then.undo(...steps)` ([undo.md](undo.md#undos)), `then.commit()` ([undo.md](undo.md#commit)), `then.signal` ([signal](#the-step-signal)), `then.retried`, `then.retry()` and `then.restore()` ([catch.md](catch.md)).
 
 Every token takes `.catch(handler?)` - a failure in its branch unwinds the branch and the run continues ([catch.md](catch.md)).
 
-Every form returns a token typed `Promise<void>`, as a step call is - not awaitable, `.catch` typed. A gate, `then({ max, after, key })` ([gate.md](gate.md)), is typed `void`.
+Every form returns a token typed `Promise<void>`, as a step call is - not awaitable, `.catch` typed. `then.only()` returns nothing.
 
 Outside a step, `then(f, r)` is the thenable ([runs.md](runs.md#awaiting-the-instance---start-or-join)); `then(steps)` throws `then(steps) must be called inside a step.`
 
@@ -166,7 +150,7 @@ A sync side effect after scheduling - a mailer call - is invisible to the guard.
 
 ## Calls after a step settles
 
-A step called through the proxy of a step that has settled - from a timer, a watcher - is an outside call: nothing is buffered. It answers an open wait accepting it - one the settled step opened first, else as any outside call ([wait.md](wait.md#answering-steps)) - or throws `run has settled; second cannot run.` It is bound to its run: once that run ends, every call through it throws. Writes through a settled proxy are unmanaged - in no entry, not restored. An [inline arrow](#inline-steps) in flight takes both over.
+A step called through the proxy of a step that has settled - from a timer - is an outside call: nothing is buffered. It answers an open wait accepting it - one the settled step opened first, else as any outside call ([wait.md](wait.md#answering-steps)) - or throws `run has settled; second cannot run.` It is bound to its run: once that run ends, every call through it throws. Writes through a settled proxy are unmanaged - in no entry, not restored. A [function handler](#function-handlers) in flight takes both over.
 
 ## Helpers
 
@@ -210,7 +194,7 @@ An early exit is calling `end` - no flag threaded through later steps.
 
 - `end` must be the last call in its step: a step call, group, wait or gate issued after it fails the run (`end must be the last call in a step.`) - a second `end` included. Registering an undo is not a call - `this.then.end()` may precede `this.then.undo(…)`.
 - Two branches of a group each scheduling `end`: the first the plan reaches ends the run; the other is discarded with the rest.
-- A failure or `stop()` takes precedence - `end` reached after either does nothing; a [caught branch's](catch.md) unwind in progress stops, as for an outside `end`.
+- A failure, `stop()` or `abort()` takes precedence - `end` reached after either does nothing; a [caught branch's](catch.md) unwind in progress stops, as for an outside `end`.
 
 From outside, `then.end()` ends the active run now ([runs.md](runs.md#end-from-outside)).
 

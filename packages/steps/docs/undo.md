@@ -1,6 +1,6 @@
 # Undo - All or Nothing
 
-A step returns nothing. One that changes the world registers its undo with `this.then.undo(this.release(hold))` - the step that takes it back, called for it. An unwind - a failed run, `stop({ undo: true })`, or a failure a [`.catch`](catch.md) takes - goes back through the committed steps newest first, running each one's undos, then restores the fields of every step it took back.
+A step returns nothing. One that changes the world registers its undo with `this.then.undo(this.release(hold))` - the step that takes it back, called for it. An unwind - a failed run, `abort()`, a failure a [`.catch`](catch.md) takes, or a [lost race](wait.md#racers) - goes back through the committed steps newest first, running each one's undos, then restores the fields of every step it took back.
 
 Every step is atomic: one that throws or is aborted has its own writes restored - fields and [collections](#collections).
 
@@ -26,7 +26,7 @@ Register an undo right after the effect it takes back - as `defer` would - usual
 
 Mixing them throws `then() takes called steps or step references, not both.`; a bare step method throws - call it: `this.release(hold)`.
 
-- An undo runs on any unwind passing through its step: the step's own failure after registering it, a later failure caught by a `.catch` whose branch includes the step, the run failing, `stop({ undo: true })`. Never on success.
+- An undo runs on any unwind passing through its step: the step's own failure after registering it, a later failure caught by a `.catch` whose branch includes the step, the run failing, `abort()`, the step's branch losing a [race](wait.md#racers). Never on success.
 - Steps it runs keep their own signatures and run as part of the unwind, with what they schedule and groups, before older undos. They reach `before`/`after`, so a log shows them; they are taken back by nothing.
 - Registration is synchronous, anywhere in the body, any number. A step's undos run newest first.
 - Registered before its step fails, an undo runs for that failure too and sees the step's partial writes - restored after it.
@@ -48,7 +48,7 @@ A step that throws, breaks a rule, or returns a value fails the run:
 6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys an undo wrote. Each taken-back entry that had undos or wrote is marked `unwound: true`.
 7. `await this` in `run` rejects with `error` - the tail runs on the restored fields ([runs.md](runs.md#run-and-the-result)); without one, the run rejects with `error`.
 
-`run`'s own writes are never restored - it is the entry, not a step to take back. `stop({ undo: true })` unwinds the same way with status `stopped`, undos given the `'Stopped'` error ([runs.md](runs.md#stop)). A [caught branch](catch.md) runs steps 3-6 over the branch only, and the run goes on.
+`run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `stopped`, undos given the `'Stopped'` error ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md) and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
 
 ## Keeping a value
 
@@ -86,7 +86,7 @@ A `has` list, `has` pool or `map` read by a step through `this` comes back wrapp
 - Attribution is per step: parallel steps changing one collection each record their own changes. Restoring a step replays its own inverses, newest first; siblings' changes stay unless they are taken back too.
 - An inverse finds what the step left by identity: a pushed or put value is removed at the nearest equal item to where it went; a `set` is put back where its value now is; a popped or cleared value goes back at its old index; a pool member the step added is deleted - destroyed when owned; a map key the step added is deleted, a changed or removed one set back. A value a sibling already removed or replaced is skipped.
 - A change through the wrapper after the step's first token fails the run, as a field write does (`run wrote items after scheduling later.`).
-- Changes not through a step's wrapper are unmanaged - from outside, through `this.is`, in `_` helpers, or through a wrapper kept after its step settled. A kept wrapper hands a change to the step's [inline arrow](steps.md#inline-steps) in flight, as the step's proxy does.
+- Changes not through a step's wrapper are unmanaged - from outside, through `this.is`, in `_` helpers, or through a wrapper kept after its step settled. A kept wrapper hands a change to the step's [function handler](steps.md#function-handlers) in flight, as the step's proxy does.
 
 ### Irreversible
 

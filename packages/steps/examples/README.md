@@ -1,6 +1,6 @@
 # Examples
 
-Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undos, recovering from a typed failure with `.catch`; [agent](agent/agent.ts) - a long-lived instance whose steps commit, keeping what they wrote: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, watchers, `commit`, undos by step and args, hooks, cleanup in `run`'s tail; [crawl](crawl/crawl.ts) - many branches at once: a gate with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - composition: a class that cannot extend `Steps` holds one as a field. Shipped behavior is documented in [docs/](../docs/README.md).
+Five classes, each with mocked services and a test file read as a scenario walkthrough. Together they cover every shipped feature; comments mark the point a feature is used. Reading order: [order](order/order.ts) - the transaction: steps, groups, undos, recovering from a typed failure with `.catch`; [agent](agent/agent.ts) - a long-lived instance whose steps commit, keeping what they wrote: runs that repeat and queue, waits answered from outside, steering; [deploy](deploy/deploy.ts) - the pipeline that uses the rest: retry with backoff, racers, `commit`, undos by step and args, hooks, cleanup in `run`'s tail; [crawl](crawl/crawl.ts) - many branches at once: a gate with a live limit, `.catch` and `retry`, parallel writes to one `map`; [sync](sync/sync.ts) - composition: a class that cannot extend `Steps` holds one as a field. Shipped behavior is documented in [docs/](../docs/README.md).
 
 A PR adding a feature extends an example and this table.
 
@@ -15,8 +15,8 @@ A PR adding a feature extends an example and this table.
 | `await instance` joins an active run | agent test `will join a turn in progress` |
 | idle await rejects when `run` takes args | agent test `will reject an idle await without a prompt` |
 | `then.stop()` | agent test `will abort the model call when stopped mid-turn`, deploy test `will abort the test suite when stopped` |
-| `then.stop({ undo: true })` | order test `will undo an order stopped mid-shipment` |
-| `this.then.stop({ undo: true, reason })` - cancel and unwind from a step, the reason carried in the `'Stopped'` error | `Deploy.abort`; deploy test `will roll back the canaries and the build when the gate aborts` |
+| `then.abort()` | order test `will undo an order stopped mid-shipment` |
+| `this.then.abort(reason)` - halt and unwind from a step, the reason carried in the `'Stopped'` error | `Deploy.reject`; deploy test `will roll back the canaries and the build when the gate aborts` |
 | `then.end()` from outside | agent test `will end a turn early from outside` |
 | `set(null)` stops | agent test `will stop a turn when destroyed` |
 
@@ -29,8 +29,7 @@ A PR adding a feature extends an example and this table.
 | mapped group `this.then(items, this.step)` | `Agent.turn`, `Deploy.canary`, `Crawl.run` |
 | loop - a step scheduling itself | `Agent.turn`, `Pull.page` |
 | loop - a plain `for` scheduling serially | `Deploy.rollout` |
-| inline step `this.then(async (signal) => …)` | `Pull.page` |
-| inline arrow - its writes are its own | `Pull.page` (`acked`); sync test `will pull every page and end with its values` |
+| a step scheduling itself - a loop | `Pull.page` |
 | a pending `set<T>()` read waits | `Sync.token`, read by `Pull.page`; sync test `will wait for a token before pulling` |
 | `_` helper - computes, the step assigns | `Deploy._spread`, `Deploy.canary` |
 | `run`'s return typing the result | `SubmitOrder.run`, `Agent.run`, `Deploy.run`, `Crawl.run` |
@@ -60,15 +59,15 @@ A PR adding a feature extends an example and this table.
 | answering steps present only while waited, reactive | `Agent.allow`; agent test `will offer allow only while a tool call waits` |
 | routing by first argument | agent test `will answer the tool call it is given` |
 | per-call Promise of an answer | agent test `will resolve allow once its tool has run` |
-| watcher timeout with `signal` | `Agent.tool`, `Deploy.approval` |
-| nudge - a watcher that does not answer | `Deploy.approval`; deploy test `will nudge on-call, then abort a gate nobody answers` |
+| racer timeout - a duration, then an answer | `Agent.timeout`, `Deploy.expire` |
+| nudge - a racer that does not answer | `Deploy.remind`; deploy test `will nudge on-call, then abort a gate nobody answers` |
 
 ## Gate and catch
 
 | feature | where |
 | --- | --- |
-| `this.then({ max })` - a group's concurrency, `max: ($) => $.limit` tracked live | `Crawl.visit`; crawl test `will scan at most limit sites at once, following a limit changed mid-run` |
-| `this.then({ after })` - backoff read from `this.then.retried`, a plain delay | `Deploy.test`, `Crawl.visit` (fake timers) |
+| `this.then.only(max)` - a group's concurrency, `($) => $.limit` tracked live | `Crawl.visit`; crawl test `will scan at most limit sites at once, following a limit changed mid-run` |
+| `this.then({ sec })` - backoff read from `this.then.retried`, a duration | `Deploy.test`, `Crawl.visit` (fake timers) |
 | `.catch()` - skip a failing branch | `Crawl.run` (`report`); crawl test `will end even when the report fails` |
 | `.catch(this.retest)` - a step method calling `this.then.retry()` until `retried` reaches a limit; the replay queues at its gate again | `Deploy.test`, `Deploy.retest`; deploy test `will retry a flaky test suite with backoff` |
 | `.catch(this.revisit)` - a step-method handler replaying `visit` up to three times, then noting the error as data | `Crawl.run`, `Crawl.revisit`; crawl tests `will retry a failing site with backoff, keeping what other sites found`, `will skip a site after three retries` |
