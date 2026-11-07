@@ -236,6 +236,8 @@ Later, on `Steps` - the durable tier: `save`/`load`/`wake`, a trailing replay fl
 
 Held: a class-level `catch` hook - recovery is per token (`.catch`).
 
+Deferred: `this.then.catch` is intentionally absent. Its candidate purpose is callee-declared recovery - a step stating its own default handler (e.g. `scan`'s retry) instead of every caller attaching `token.catch`. Deferred until the same handler repeats across call sites; the name stays reserved for that.
+
 Deferred: `property = run(X, ...args)` (a child run nested under one step of the parent) - superseded by the held design below, child `Steps`s as plan items.
 
 Learned from agent-focus (porting an ACP client: one long step awaiting `session/prompt` while transcript chunks stream into state) - not built:
