@@ -25,13 +25,13 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);
 
-    this.then.on({ undo: () => inventory.release(hold) });
+    this.then.on({ reset: () => inventory.release(hold) });
     this.pay();
   }
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.on({ undo: () => stripe.refund(this.charge!.id) });
+    this.then.on({ reset: () => stripe.refund(this.charge!.id) });
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
     this.then.end();
@@ -77,7 +77,7 @@ Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`
 - [gate.md](gate.md) - `this.then.only(max, key?)`: a gate - concurrency per group, instance or shared key (`only(1, key)` = mutex)
 - [catch.md](catch.md) - `.catch(handler?)` on a token: a failing branch unwinds and the run continues - skipped, or a handler in its place; recorded and process-local handlers; the unwind order; typed failures; `restore()`; `this.then.retry()` replays, `retried` counts
 - [hooks.md](hooks.md) - `before`/`after` around every step; cleanup in `run`'s tail
-- [on.md](on.md) - `this.then.on({ undo, catch, abort, stop, close })` handlers per subtree, the unwind on failure, restored fields, keeping a value, `commit()`, collections
+- [on.md](on.md) - `this.then.on({ reset, catch, close })` handlers per subtree, the unwind on failure, restored fields, keeping a value, `commit()`, collections
 - [runner.md](runner.md) - the controller: members, reactivity, snapshot
 
 ## Conventions

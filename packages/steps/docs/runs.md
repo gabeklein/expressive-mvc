@@ -113,14 +113,14 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 
 - status `stopped` at once; pending steps are discarded; open waits are released;
 - in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - `after` sees their entries, what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
-- queued runs are dropped: `queue` empties, each queued Promise rejects with an error named `'Stopped'`;
+- queued runs are dropped: `queue` empties, each queued Promise rejects with a `Steps.Stopped` - named `'Stopped'`, `instanceof` works;
 - once in-flight steps have settled, the run's Promise rejects with that error.
 
 Stopped in `run`'s tail - the plan already done - the current run finishes with what `run` returns; only the queue rejects.
 
 `reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. undos and the tail see the same error; `then.error` stays unset.
 
-`then.abort(reason?)` halts the same way, then unwinds the run as a failure would ([on.md](on.md)) - the counterpart of [`commit`](on.md#commit). Status `aborted`; the run, the queue and undos get an error named `'Aborted'` - `reason` as for `stop`, `` `${instance} was aborted.` `` without one. An undo that throws fails the run: status `failed`, `error` and the rejection are what it threw, given the `'Aborted'` error as `cause` when it is an Error without one. During a [caught branch's](catch.md) unwind, `stop()` stops it between undos. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
+`then.abort(reason?)` halts the same way, then unwinds the run as a failure would ([on.md](on.md)) - the counterpart of [`commit`](on.md#commit). Status `aborted`; the run, the queue and `close` handlers get a `Steps.Aborted` (named `'Aborted'`) - `reason` as for `stop`, `` `${instance} was aborted.` `` without one. An undo that throws fails the run: status `failed`, `error` and the rejection are what it threw, given the `'Aborted'` error as `cause` when it is an Error without one. During a [caught branch's](catch.md) unwind, `stop()` stops it between undos. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 
 A stopped run is not rethrown uncaught.
 

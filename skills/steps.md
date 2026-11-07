@@ -27,7 +27,7 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);   // the step's work
 
-    this.then.on({ undo: () => inventory.release(hold) });                  // its undo, right after the effect - runs only on unwind
+    this.then.on({ reset: () => inventory.release(hold) });                 // right after the effect - runs only when taken back
     this.pay().catch(this.noCourier);                     // then hand off
   }
 
@@ -38,7 +38,7 @@ class SubmitOrder extends Steps {
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.on({ undo: () => stripe.refund(this.charge!.id) });
+    this.then.on({ reset: () => stripe.refund(this.charge!.id) });
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
   }
@@ -95,7 +95,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 | `this.then({ min: 1 })` | duration - parks for `ms`/`sec`/`min`/`hr`/`day`, summed |
 | `this.then.only(2)` / `.only(1, lock)` | gate - only so many at once |
 | `this.then.end()` | end the run here - pending discarded; takes no value |
-| `this.then.on({ undo: () => release(hold) })` | handlers for this step's subtree - `undo`, `catch`, `abort`, `stop`, `close` |
+| `this.then.on({ reset: () => release(hold) })` | handlers for this step's subtree - `reset`, `catch`, `close` |
 | `this.then.commit()` | point of no return |
 | `this.then.signal` | this step's `AbortSignal` - pass it to the call it awaits |
 
@@ -107,33 +107,31 @@ A step returns nothing - a value fails the run. `this.then.on({ … })` register
 
 ```ts
 this.then.on({
-  undo: () => stripe.refund(chargeId),       // take back the effect
-  abort: async () => {                       // abort(), or a lost race
-    this.status = 'cancelled';
-    await Image.delete(this.name);
-  },
+  reset: () => stripe.refund(chargeId),      // the step is taken back - reset its effect
   catch: (error) => {                        // a failure below - return recovers, throw passes on
     if (!(error instanceof Busy)) throw error;
     this.later();
   },
-  close: (reason) => this.preview.close()    // a finally over the subtree, given why
+  close: async (reason) => {                 // a finally over the subtree, given why
+    this.preview.close();
+    if (reason instanceof Steps.Aborted) await Image.delete(this.name);
+  }
 });
 ```
 
 | key | fires (deepest step first, newest first) | function gets |
 | --- | --- | --- |
+| `reset` | the step is taken back - a failure leaving the subtree, `abort()`, a lost race | nothing |
 | `catch` | a step below failed, no `.catch` closer took it - return recovers, throw passes on | the error |
-| `abort` | `abort()`, or the subtree lost a race; then `undo` | `'Aborted'` error |
-| `undo` | a failure leaving the subtree, or `abort` | the error |
-| `stop` | `stop()` with the subtree unfinished - no undo | `'Stopped'` error |
-| `close` | subtree ended any way, last; alone on a clean finish | `undefined` if clean (recovered or `then.end()` too), else the error / `'Aborted'` / `'Stopped'` |
+| `close` | subtree ended any way, last; alone on a clean finish | `undefined` if clean (recovered or `then.end()` too), else the error, a `Steps.Aborted` (abort, lost race) or a `Steps.Stopped` (stop) |
 
-- To observe a failure without recovering, read `reason` in `close`; `catch` is for recovery.
-- `catch` returning recovers at its step: the failed part of the subtree unwinds, the step's effects stay, its `undo` does not run; steps it schedules replace the rest. It covers from registration on, the rest of the step's own body included (a throw there resets the step first); one per step; it runs before a `.catch` on the step's call (inner first); `this.then.retry()` replays the step. A step finished earlier and taken back by a later failure gets `undo` only.
+- `reset` takes back the step's effects; `this.then.restore()` puts a caught branch's fields back now.
+- To observe a failure, an abort or a stop, read `reason` in `close`; `catch` is for recovery. `stop()` resets nothing.
+- `catch` returning recovers at its step: the failed part of the subtree unwinds, the step's effects stay, its `reset` does not run; steps it schedules replace the rest. It covers from registration on, the rest of the step's own body included (a throw there resets the step first); one per step; it runs before a `.catch` on the step's call (inner first); `this.then.retry()` replays the step. A step finished earlier and taken back by a later failure gets `reset` and no `close`.
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
 - Unwind order: failure → handlers newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
 - Registered before its step fails, handlers run for that failure too and see the step's partial writes. They run before fields are restored; keys they write are kept. An unknown key throws. `run` registers none - clean up in its tail.
-- Durable runs (future): a handler whose external effect must survive a restart is a step called for it - `{ undo: this.release(hold) }`, an array a group - claimed, not scheduled, recorded with its args, reaching `before`/`after`; one called for `catch` reads the error from `this.then.error`. `end`, gates and waits throw in handlers.
+- Durable runs (future): a handler whose external effect must survive a restart is a step called for it - `{ reset: this.release(hold) }`, an array a group - claimed, not scheduled, recorded with its args, reaching `before`/`after`; one called for `catch` or `close` reads the error or reason from `this.then.error`. `end`, gates and waits throw in handlers.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
 - Removing a pool member or destroying a map value the step did not add is irreversible: the unwind stops there and warns.
 - Whole-run undo is `abort()`; partial is a [catch](#catch-and-retry).
@@ -199,8 +197,8 @@ protected async scan(site: string) {                     // backoff lives in the
 
 ## Stop and end
 
-- `then.stop(reason?)` - halts, keeping what was done: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with an error named `'Stopped'` (`reason` as `cause`). `set(null)` stops.
-- `then.abort(reason?)` - halts the same way, then unwinds the run as a failure would - `commit`'s counterpart. Status `aborted`, error named `'Aborted'`. An undo throwing fails the run (`failed`, its error given the `'Aborted'` error as `cause`).
+- `then.stop(reason?)` - halts, keeping what was done: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with a `Steps.Stopped` (`reason` as `cause`), also the step signals' reason. `set(null)` stops.
+- `then.abort(reason?)` - halts the same way, then unwinds the run as a failure would - `commit`'s counterpart. Status `aborted`; the run rejects with a `Steps.Aborted` (`stop()`: a `Steps.Stopped`), named as such. An undo throwing fails the run (`failed`, its error given the `'Aborted'` error as `cause`).
 - `then.end()` - ends early, keeping everything: in a step at its place in the plan, from outside now. `await this` resolves; the tail builds the result from fields. Why it ended early is data - write a field before calling it. Passing a value throws.
 - A failed run nobody awaited throws uncaught two microtasks later.
 

@@ -16,7 +16,7 @@ A PR adding a feature extends an example and this table.
 | idle await rejects when `run` takes args | agent test `will reject an idle await without a prompt` |
 | `then.stop()` | agent test `will abort the model call when stopped mid-turn`, deploy test `will abort the test suite when stopped` |
 | `then.abort()` | order test `will undo an order stopped mid-shipment` |
-| `this.then.abort(reason)` - halt and unwind from a step, the reason carried in the `'Aborted'` error | `Deploy.reject`; deploy test `will roll back the canaries and the build when the gate aborts` |
+| `this.then.abort(reason)` - halt and unwind from a step, the reason carried in the `Steps.Aborted` it rejects with | `Deploy.reject`; deploy test `will roll back the canaries and the build when the gate aborts` |
 | `then.end()` from outside | agent test `will end a turn early from outside` |
 | `set(null)` stops | agent test `will stop a turn when destroyed` |
 
@@ -40,8 +40,8 @@ A PR adding a feature extends an example and this table.
 
 | feature | where |
 | --- | --- |
-| `this.then.on({ undo: async () => { … } })` - an undo | `SubmitOrder.reserve`, `SubmitOrder.pay`, `SubmitOrder.ship` |
-| `this.then.on({ undo: this.step(x) })` - a step called for an undo, recorded with its args: the durable form | `Deploy.build` (`unpublish`, `untag`), `Deploy.install` (`uninstall`) |
+| `this.then.on({ reset: async () => { … } })` - an undo | `SubmitOrder.reserve`, `SubmitOrder.pay`, `SubmitOrder.ship` |
+| `this.then.on({ reset: this.step(x) })` - a step called for an undo, recorded with its args: the durable form | `Deploy.build` (`unpublish`, `untag`), `Deploy.install` (`uninstall`) |
 | `this.then.on({ close: async (reason) => { … } })` - observe how the subtree ended, a failure included | `Deploy.rollout`; deploy test `will uninstall upgraded hosts when the rollout fails` |
 | a step owning its undo - undone when a sibling fails | `SubmitOrder.ship` (`cancel`); order test `will cancel the booking when the receipt fails` |
 | several undos in one step, newest first | `Deploy.build` |

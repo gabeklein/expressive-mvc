@@ -15,7 +15,7 @@
 | `stop(reason?)` | halt, keeping what was done ([runs.md](runs.md#stop-and-abort)) |
 | `abort(reason?)` | halt and unwind ([runs.md](runs.md#stop-and-abort)) |
 | `commit()` | in a step: a point of no return ([on.md](on.md#commit)) |
-| `on({ undo, catch, abort, stop, close })` | in a step: handlers for its subtree's outcomes ([on.md](on.md#handlers)) |
+| `on({ reset, catch, close })` | in a step: handlers for its subtree's outcomes ([on.md](on.md#handlers)) |
 | `restore()` | in a catch handler: restore the caught branch's fields now ([catch.md](catch.md)) |
 | `only(max, key?)` | in a step: a gate - wait for a free slot, then run what follows holding it ([gate.md](gate.md)) |
 | `signal` | in a step: its `AbortSignal` ([steps.md](steps.md#the-step-signal)) |
@@ -35,7 +35,7 @@ The Runner keeps no journal. Each step's entry is handed to `after(step, entry)`
 
 `wrote` names the fields the step wrote, collections changed in place included - no values.
 
-`commit`, `undo`, `restore`, `retry`, `only`, `signal` and `retried` outside a step throw; so does `then(steps)`.
+`commit`, `on`, `restore`, `retry`, `only`, `signal` and `retried` outside a step throw; so does `then(steps)`.
 
 `status`, `active`, `queue`, `waiting`, `runs` and `error` are enumerable getters: `{ ...order.then }` is a plain snapshot of them.
 

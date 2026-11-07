@@ -11,7 +11,7 @@ A token issued in a step - a step call, a group, a wait - takes `.catch(handler?
 protected async reserve() {
   const hold = await inventory.hold(this.cart.items);
 
-  this.then.on({ undo: () => inventory.release(hold) });
+  this.then.on({ reset: () => inventory.release(hold) });
   this.pay().catch(this.noCourier);
 }
 

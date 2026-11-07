@@ -200,7 +200,7 @@ From outside, `then.end()` ends the active run now ([runs.md](runs.md#end-from-o
 
 ## What a step returns
 
-Nothing. Any value fails the run (`first returned a value; a step returns nothing - its undo is this.then.on({ undo }).`) - a step's undo is one it [registers](on.md#handlers): `this.then.on({ undo: this.release(hold) })`. `run`'s return is the result.
+Nothing. Any value fails the run (`first returned a value; a step returns nothing - its undo is this.then.on({ reset }).`) - a step's undo is one it [registers](on.md#handlers): `this.then.on({ reset: this.release(hold) })`. `run`'s return is the result.
 
 ## Entry
 
@@ -219,7 +219,7 @@ Each step that commits is one entry, handed to [`after`](hooks.md) - the runner 
     ] },
     { id: 'end#1', key: 'end', args: [] }
   ],
-  on: { undo: [{ id: 'then#2', key: 'then', args: [] }] }
+  on: { reset: [{ id: 'then#2', key: 'then', args: [] }] }
 }
 ```
 
