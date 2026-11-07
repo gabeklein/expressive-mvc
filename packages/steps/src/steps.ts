@@ -29,12 +29,7 @@ interface Answer {
 interface Rescue {
   key?: string;
   fn?: Function;
-  nodes?: Steps.Node[];
-}
-
-interface Caught {
-  item: Steps.Node;
-  from: Frame;
+  retry?: boolean;
 }
 
 type Restore = (into?: Frame, all?: boolean) => void;
@@ -50,9 +45,8 @@ interface Branch {
 }
 
 interface Lineage {
-  retry: number;
-  restore?: Restore;
-  caught?: Caught;
+  restore: Restore;
+  caught: Steps.Node;
 }
 
 interface Gate {
@@ -78,9 +72,10 @@ const GATES = new WeakMap<object, Gate>();
 const UNCAUGHT = ['slot', 'end'];
 const UNPLANNED = ['end', 'slot', 'wait'];
 const ISSUED = new WeakMap<object, Frame>();
+const RETRY = new WeakSet<Function>();
 
 const TOKEN = {
-  catch(this: Steps.Node, ...handler: unknown[]) {
+  catch(this: Steps.Node, handler?: unknown) {
     return ISSUED.get(this)!.rescue(this, handler);
   }
 };
@@ -99,21 +94,12 @@ declare namespace Steps {
     group?: Node[];
     /** Keys of the steps which may answer this wait. */
     answers?: string[];
-    /** Caught by `.catch()`: steps called for it, a step given the error (its key), `then` for a function, or `true` for none. */
-    rescue?: Node[] | string | true;
+    /** Caught by `.catch()`: a step given the error (its key), `retry` for `then.retry`, `then` for a function, or `true` for none. */
+    rescue?: string | true;
   }
 
   /** What a step call inside a step returns - inert, not awaitable. */
   type Token = Readonly<Node>;
-
-  /**
-   * What `this.then(...)` returns - a plan item, not awaitable. Its `catch` also takes steps called for it:
-   * `this.then(this.scan(site)).catch(this.visit(site))` - recorded with their args.
-   */
-  interface Plan extends Promise<void> {
-    catch<R = never>(onrejected?: ((reason: any) => R | PromiseLike<R>) | null): Promise<void | R>;
-    catch(...steps: Promise<void>[]): Plan;
-  }
 
   interface Entry {
     id: string;
@@ -128,8 +114,8 @@ declare namespace Steps {
     unwound?: true | 'failed';
     /** Id of the wait this step answered. */
     wake?: string;
-    /** How many times the step was re-run from its own `.catch`, when past the first. */
-    retry?: number;
+    /** How many times `then.retry()` replayed the step, when past its first run. */
+    retried?: number;
     /** What the step threw - a caught failure, or one which kept its writes. */
     error?: unknown;
     /** Collections changed in a way no restore can undo - the unwind stops here. */
@@ -180,13 +166,13 @@ declare namespace Steps {
      * Inside a step: call `each` per item - a function issuing a step, or a step itself -
      * and run the tokens as one parallel group.
      */
-    <I, This>(this: This, items: Iterable<I>, each: (item: I, index: number) => unknown): Steps.Plan;
+    <I, This>(this: This, items: Iterable<I>, each: (item: I, index: number) => unknown): Promise<void>;
 
     /**
      * Inside a step: an anonymous step at this point in the plan, given an `AbortSignal` aborted
      * when the run stops. Not durable.
      */
-    <This>(this: This, step: (signal: AbortSignal) => unknown): Steps.Plan;
+    <This>(this: This, step: (signal: AbortSignal) => unknown): Promise<void>;
 
     /**
      * Inside a step: park this point in the plan until a call to one of these steps answers it -
@@ -199,15 +185,15 @@ declare namespace Steps {
     <This>(
       this: This,
       ...steps: [...steps: ((...args: any[]) => unknown)[], watcher: (signal: AbortSignal) => unknown, other: (signal: AbortSignal) => unknown]
-    ): Steps.Plan;
+    ): Promise<void>;
 
-    <This>(this: This, ...steps: ((...args: any[]) => unknown)[]): Steps.Plan;
+    <This>(this: This, ...steps: ((...args: any[]) => unknown)[]): Promise<void>;
 
     /**
      * Inside a step: run these tokens as one parallel group at this point in the plan.
      * The next step in sequence runs once every member, and all it schedules, is done.
      */
-    <This>(this: This, ...steps: unknown[]): Steps.Plan;
+    <This>(this: This, ...steps: unknown[]): Promise<void>;
 
     /** The instance this controller runs. */
     readonly on: T;
@@ -259,8 +245,14 @@ declare namespace Steps {
      * and once the step settles. A step rejecting with its reason is not a failure.
      */
     readonly signal: AbortSignal;
-    /** Inside a step: 0, or one more than the step it re-runs from that step's own `.catch`. */
-    readonly retry: number;
+    /** Inside a step: how many times `then.retry()` replayed it - 0 on a first run. In a handler, the failed one's. */
+    readonly retried: number;
+    /**
+     * Inside a `.catch` handler: schedule what the catch is attached to again - the failed step, or the
+     * whole group - with its recorded args, still caught by the same handler. `.catch(this.then.retry)`
+     * retries unconditionally. Backoff belongs in the retried step: `slot({ after })` read from `retried`.
+     */
+    retry(): void;
   }
 
   interface Thenable<T extends Model = Model> {
@@ -317,7 +309,8 @@ function install<T extends Steps>(self: T) {
     reset: { value: () => outside('reset') },
     slot: { value: () => outside('slot') },
     signal: { get: () => outside('signal', 'read') },
-    retry: { get: () => outside('retry', 'read') }
+    retry: { value: () => outside('retry') },
+    retried: { get: () => outside('retried', 'read') }
   });
 
   event(runner);
@@ -540,6 +533,7 @@ class Run extends Model {
   _catches = new Map<string, Rescue>();
   _branches = new Map<string, Branch>();
   _lineage = new Map<string, Lineage>();
+  _retried = new Map<string, number>();
   _gates = new Map<string, Gate>();
   _groups = new Set<string>();
   _pending = new Map<string, () => void>();
@@ -677,30 +671,27 @@ class Run extends Model {
 
     const { cause } = branch.failed;
     const restore = await this.serial(() => this.recover(item, cause));
-    const { key, fn, nodes } = rescue;
-    const caught = { item, from };
+    const { key, fn, retry } = rescue;
+    const parent = this._parent.get(item.id)!;
 
-    if (this.stale() || !(fn || nodes)) return restore();
+    if (this.stale() || !(fn || retry)) return restore();
 
-    if (nodes) {
-      adopt(this._parent, nodes, this._parent.get(item.id)!);
+    if (retry) {
+      const again = this.copy(item);
 
-      for (const node of flat(nodes)) {
-        const retry = this.retrying(node.key, caught);
-
-        if (retry) this._lineage.set(node.id, { retry });
-      }
-
+      this._parent.set(again.id, parent);
       restore();
-      return this.sequence(nodes, from);
+
+      return this.exec(again, from);
     }
 
     const node = this.node(key || 'then', key ? [serial(cause)] : [cause]);
 
     if (key) this._errors.set(node.id, cause);
 
-    this._parent.set(node.id, this._parent.get(item.id)!);
-    this._lineage.set(node.id, key ? { retry: this.retrying(key, caught), restore } : { retry: 0, restore, caught });
+    this._parent.set(node.id, parent);
+    this._lineage.set(node.id, { restore, caught: item });
+    this._retried.set(node.id, this.retried(item));
 
     if (!key) {
       this._inline.set(node.id, fn!);
@@ -711,13 +702,39 @@ class Run extends Model {
     restore();
   }
 
-  retrying(key: string, { item, from }: Caught) {
-    const own = flat([item]).some((node) => node.key == key);
-    const issuer = !own && key == from.key;
+  retried(item: Steps.Node) {
+    return this._retried.get(item.id) || 0;
+  }
 
-    if (issuer) for (const [release, id] of this._holding) if (id == from.id) release();
+  copy(item: Steps.Node, retried = this.retried(item) + 1): Steps.Node {
+    const { id, key, args, group, answers } = item;
+    const node = this.node(key, args);
+    const fn = this._inline.get(id);
+    const rescue = this._catches.get(id);
+    const watchers = this._watchers.get(id);
 
-    return own ? 1 : issuer ? from._retry + 1 : 0;
+    this._retried.set(node.id, retried);
+
+    if (group) {
+      node.group = group.map((member) => this.copy(member, retried));
+      this._groups.add(node.id);
+      adopt(this._parent, node.group, node.id);
+    }
+
+    if (answers) node.answers = answers;
+    if (watchers) this._watchers.set(node.id, watchers);
+
+    if (fn) {
+      this._inline.set(node.id, fn);
+      this._owner.set(node.id, this._owner.get(id)!);
+    }
+
+    if (rescue) {
+      node.rescue = item.rescue;
+      this._catches.set(node.id, rescue);
+    }
+
+    return node;
   }
 
   async recover(item: Steps.Node, cause: unknown): Promise<Restore> {
@@ -923,7 +940,7 @@ class Run extends Model {
     const inline = this._inline.get(id);
     const lineage = this._lineage.get(id);
     const fn = inline || control._steps.get(key)!;
-    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), ...lineage && { _retry: lineage.retry, _restore: lineage.restore, _caught: lineage.caught } });
+    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), _retried: this.retried(node), ...lineage && { _restore: lineage.restore, _caught: lineage.caught } });
     const input = this._errors.has(id) ? [this._errors.get(id)] : inline && !lineage?.restore ? [frame._abort.signal] : args;
     let body = false;
 
@@ -972,7 +989,7 @@ class Run extends Model {
       const aborted = signal.aborted && error === signal.reason;
       const comps = !fixed && !undo && frame._comps.length ? frame._comps : undefined;
       const defer = comps && !aborted && !this.stale();
-      const entry: Steps.Entry = { id, key, args, next: [], wrote: [], error, ...frame._retry && { retry: frame._retry } };
+      const entry: Steps.Entry = { id, key, args, next: [], wrote: [], error, ...frame._retried && { retried: frame._retried } };
 
       frame._settled = true;
 
@@ -1284,9 +1301,9 @@ class Frame extends Model {
   _lost = new Set<string>();
   _wake?: string = undefined;
   _undo?: boolean = undefined;
-  _retry = 0;
+  _retried = 0;
   _restore?: Restore = undefined;
-  _caught?: Caught = undefined;
+  _caught?: Steps.Node = undefined;
   _committed?: boolean = undefined;
   _violation?: string = undefined;
   _late?: boolean = undefined;
@@ -1376,10 +1393,6 @@ class Frame extends Model {
     if (this._settled) throw new Error(`${this.key} has settled; ${key} cannot run.`);
 
     const token = run.node(key, args);
-    const { _caught: caught } = this;
-    const retry = caught && run.retrying(key, caught);
-
-    if (retry) run._lineage.set(token.id, { retry });
 
     ISSUED.set(token, this);
     this._items.push(token);
@@ -1460,6 +1473,10 @@ class Frame extends Model {
   view(): Steps.Controller {
     if (this._view) return this._view;
 
+    const retry = () => this.retry();
+
+    RETRY.add(retry);
+
     const view = (...args: unknown[]) => {
       const [items, each] = args as [unknown, (item: unknown, index: number) => unknown];
       const fns = args.filter((arg) => typeof arg == 'function');
@@ -1484,7 +1501,8 @@ class Frame extends Model {
       then: { value: view },
       end: { value: (...value: unknown[]) => (valueless(value), this.issue('end', [])) },
       signal: { get: () => this._abort.signal },
-      retry: { get: () => this._retry },
+      retried: { get: () => this._retried },
+      retry: { value: retry },
       undo: { value: (...args: unknown[]) => this.compensation(args) },
       reset: {
         value: () => {
@@ -1554,24 +1572,27 @@ class Frame extends Model {
     return nodes;
   }
 
-  rescue(token: Steps.Node, args: unknown[]) {
-    const [handler] = args;
+  rescue(token: Steps.Node, handler: unknown) {
     const key = this.keyOf(handler);
-    const single = args.length < 2 && (handler == null || typeof handler == 'function');
+    const retry = RETRY.has(handler as Function);
 
     if (UNCAUGHT.includes(token.key)) throw new Error(`${token.key}() cannot be caught.`);
+    if (handler && typeof handler != 'function') throw new Error('catch() takes a step, a function or nothing.');
 
-    if (single) {
-      token.rescue = handler ? key || 'then' : true;
-      this.run._catches.set(token.id, { key, fn: handler as Function | undefined });
-    } else {
-      const nodes = this.claimed(args, 'catch() takes a step, a function, steps called for it or nothing.');
-
-      token.rescue = nodes;
-      this.run._catches.set(token.id, { nodes });
-    }
+    token.rescue = retry ? 'retry' : handler ? key || 'then' : true;
+    this.run._catches.set(token.id, retry ? { retry } : { key, fn: handler as Function | undefined });
 
     return token;
+  }
+
+  retry() {
+    const { run, _caught: caught } = this;
+
+    if (!caught) throw new Error('retry() must be called in a .catch handler.');
+    if (this._settled) throw new Error(`${this.key} has settled; retry cannot run.`);
+
+    this._items.push(run.copy(caught));
+    this.arm();
   }
 
   slot(options: Steps.Slot) {
@@ -1638,7 +1659,7 @@ class Frame extends Model {
     const entry: Steps.Entry = { ...this.journal(), next: items };
 
     if (_wake) entry.wake = _wake;
-    if (this._retry) entry.retry = this._retry;
+    if (this._retried) entry.retried = this._retried;
 
     if (_comps.length) {
       entry.undo = _comps;
@@ -1758,10 +1779,6 @@ function serial(error: unknown) {
   const { name, message, cause } = error;
 
   return { name, message, ...cause !== undefined && { cause } };
-}
-
-function flat(nodes: Steps.Node[]): Steps.Node[] {
-  return nodes.flatMap((node) => (node.group ? flat(node.group) : [node]));
 }
 
 function signal(key: unknown) {

@@ -3413,14 +3413,12 @@ describe('slot', () => {
 
     class Test extends Steps {
       async run() {
-        this.then(['a', 'b', 'c'], this.visit);
+        this.then(['a', 'b', 'c'], (site) => this.visit(site).catch(this.then.retry));
       }
 
       protected async visit(site: string) {
         this.then.slot({ max: 1 });
-        this.scan(site).catch(() => {
-          this.visit(site);
-        });
+        this.scan(site);
       }
 
       protected async scan(site: string) {
@@ -3446,14 +3444,12 @@ describe('slot', () => {
 
     class Test extends Steps {
       async run() {
-        this.then(['a', 'b'], this.visit);
+        this.then(['a', 'b'], (site) => this.visit(site).catch(this.then.retry));
       }
 
       protected async visit(site: string) {
-        this.then.slot({ max: 1, after: this.then.retry && 1000 });
-        this.scan(site).catch(() => {
-          this.visit(site);
-        });
+        this.then.slot({ max: 1, after: this.then.retried && 1000 });
+        this.scan(site);
       }
 
       protected async scan(site: string) {
@@ -3483,14 +3479,12 @@ describe('slot', () => {
     class Test extends Steps {
       async run() {
         this.then.slot({ key: 'db', max: 1 });
-        this.visit('a');
+        this.visit('a').catch(this.then.retry);
       }
 
       protected async visit(site: string) {
         this.then.slot({ key: 'db', max: 1 });
-        this.scan(site).catch(() => {
-          this.visit(site);
-        });
+        this.scan(site);
       }
 
       protected async scan(site: string) {
@@ -3848,7 +3842,7 @@ describe('catch', () => {
       }
 
       protected async fallback(error: unknown) {
-        seen(error, this.then.retry);
+        seen(error, this.then.retried);
       }
 
       protected async after1() {
@@ -3869,61 +3863,174 @@ describe('catch', () => {
     ]);
   });
 
-  it('will count retries of a step re-run from its own catch', async () => {
+  it('will count retries of a step replayed by retry()', async () => {
     const retries: number[] = [];
 
     class Test extends Journal {
       async run() {
-        this.then(['a'], (site) => this.visit(site).catch());
+        this.then(['a'], (site) => this.visit(site).catch(this.revisit));
       }
 
       protected async visit(site: string) {
-        retries.push(this.then.retry);
-
-        if (this.then.retry == 2) throw new Error('give up');
-
-        this.then(this.scan(site)).catch(this.visit(site));
+        retries.push(this.then.retried);
+        this.scan(site);
       }
 
       protected async scan(site: string) {
         throw new Error(`${site} is down`);
+      }
+
+      protected async revisit(error: unknown) {
+        if (this.then.retried >= 2) throw error;
+
+        this.then.retry();
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.run()).rejects.toThrow('a is down');
+    expect(retries).toEqual([0, 1, 2]);
+    expect(record(test).map(({ id, retried, error }) => [id, retried, (error as Error)?.message])).toEqual([
+      ['run#1', undefined, undefined],
+      ['visit#1', undefined, undefined],
+      ['scan#1', undefined, 'a is down'],
+      ['revisit#1', undefined, undefined],
+      ['visit#2', 1, undefined],
+      ['scan#2', undefined, 'a is down'],
+      ['revisit#2', 1, undefined],
+      ['visit#3', 2, undefined],
+      ['scan#3', undefined, 'a is down']
+    ]);
+  });
+
+  it('will retry a group as a whole, with its args', async () => {
+    const order: string[] = [];
+
+    class Test extends Journal {
+      async run() {
+        this.then(this.a('x'), this.b('y')).catch(this.then.retry);
+      }
+
+      protected async a(arg: string) {
+        order.push(`a ${arg} ${this.then.retried}`);
+      }
+
+      protected async b(arg: string) {
+        order.push(`b ${arg} ${this.then.retried}`);
+
+        if (!this.then.retried) throw new Error('b');
       }
     }
 
     const test = Test.new();
 
     await test.run();
-    expect(retries).toEqual([0, 1, 2]);
-    expect(record(test).map(({ id, retry, error }) => [id, retry, (error as Error)?.message])).toEqual([
-      ['run#1', undefined, undefined],
-      ['visit#1', undefined, undefined],
-      ['scan#1', undefined, 'a is down'],
-      ['visit#2', 1, undefined],
-      ['scan#2', undefined, 'a is down'],
-      ['visit#3', 2, 'give up']
-    ]);
+    expect(order).toEqual(['a x 0', 'b y 0', 'a x 1', 'b y 1']);
+    expect(record(test)[0].next).toMatchObject([{ key: 'then', rescue: 'retry', group: [{ key: 'a' }, { key: 'b' }] }]);
   });
 
-  it('will count a step a handler calls again on its own failure as a first repeat', async () => {
-    const calls: unknown[][] = [];
+  it('will end a retry loop when the retried step returns early, not when it throws', async () => {
+    const order: string[] = [];
 
     class Test extends Steps {
       async run() {
-        this.scan('x').catch(() => {
-          this.scan('x');
-        });
+        this.scan('x').catch(this.then.retry);
       }
 
       protected async scan(site: string) {
-        calls.push([site, this.then.retry]);
+        const { retried } = this.then;
+
+        order.push(`scan ${retried}`);
+
+        if (retried == 2) throw new Error('give up');
+
+        if (retried >= 3) {
+          this.skip(site);
+          return;
+        }
+
         throw new Error('down');
+      }
+
+      protected async skip(site: string) {
+        order.push(`skip ${site}`);
       }
     }
 
-    const test = Test.new();
+    await Test.new().run();
+    expect(order).toEqual(['scan 0', 'scan 1', 'scan 2', 'scan 3', 'skip x']);
+  });
 
-    await expect(test.run()).rejects.toThrow('down');
-    expect(calls).toEqual([['x', 0], ['x', 1]]);
+  it('will retry an inline step and a wait', async () => {
+    const order: string[] = [];
+    let first = true;
+
+    class Test extends Steps {
+      async run() {
+        this.then(() => {
+          order.push('inline');
+
+          if (first) {
+            first = false;
+            throw new Error('inline');
+          }
+        }).catch(this.then.retry);
+
+        this.then(this.reply, async () => {
+          const retried = order.includes('watcher');
+
+          order.push('watcher');
+
+          if (!retried) throw new Error('watcher');
+
+          this.reply();
+        }).catch(this.then.retry);
+      }
+
+      reply() {
+        order.push('reply');
+      }
+    }
+
+    await Test.new().run();
+    expect(order).toEqual(['inline', 'inline', 'watcher', 'watcher', 'reply']);
+  });
+
+  it('will throw for retry outside a handler, or once settled', async () => {
+    let held: Steps.Controller | undefined;
+
+    class Outside extends Steps {
+      async run() {
+        this.first();
+      }
+
+      protected async first() {
+        this.then.retry();
+      }
+    }
+
+    class Settled extends Steps {
+      async run() {
+        this.fail().catch(this.handle);
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async handle() {
+        held = this.then;
+        this.later();
+      }
+
+      protected async later() {
+        held!.retry();
+      }
+    }
+
+    await expect(Outside.new().run()).rejects.toThrow('retry() must be called in a .catch handler.');
+    await expect(Settled.new().run()).rejects.toThrow('handle has settled; retry cannot run.');
   });
 
   it('will back off a retry with a slot', async () => {
@@ -3933,8 +4040,12 @@ describe('catch', () => {
 
     class Test extends Steps {
       async run() {
-        this.then.slot({ after: 100 * this.then.retry });
-        this.scan().catch(this.then.retry < 2 ? this.run : undefined);
+        this.attempt().catch(this.then.retry);
+      }
+
+      protected async attempt() {
+        this.then.slot({ after: 100 * this.then.retried });
+        this.scan();
       }
 
       protected async scan() {
@@ -4171,7 +4282,7 @@ describe('catch', () => {
       protected async a() {}
     }
 
-    await expect(Test.new().run()).rejects.toThrow('catch() takes a step, a function, steps called for it or nothing.');
+    await expect(Test.new().run()).rejects.toThrow('catch() takes a step, a function or nothing.');
   });
 
   it('will throw retry, catch and reset outside a step', () => {
@@ -4179,7 +4290,8 @@ describe('catch', () => {
 
     const test = Test.new();
 
-    expect(() => test.then.retry).toThrow('retry must be read inside a step.');
+    expect(() => test.then.retried).toThrow('retried must be read inside a step.');
+    expect(() => test.then.retry()).toThrow('retry must be called inside a step.');
     expect(() => test.then.undo(() => {})).toThrow('undo must be called inside a step.');
     expect(() => test.then.reset()).toThrow('reset must be called inside a step.');
   });
@@ -4341,11 +4453,11 @@ describe('suspense', () => {
 
     class Test extends Journal {
       async run() {
-        this.flaky().catch(this.flaky);
+        this.flaky().catch(this.then.retry);
       }
 
       protected async flaky() {
-        retries.push(this.then.retry);
+        retries.push(this.then.retried);
 
         if (retries.length == 1) throw pending;
         if (retries.length == 2) throw new Error('flaky');
@@ -4362,7 +4474,7 @@ describe('suspense', () => {
     expect(retries).toEqual([0, 0, 1]);
     expect(record(test).slice(1)).toEqual([
       { id: 'flaky#1', key: 'flaky', args: [], wrote: [], next: [], error: new Error('flaky') },
-      { id: 'flaky#2', key: 'flaky', args: [{ name: 'Error', message: 'flaky' }], wrote: [], next: [], retry: 1 }
+      { id: 'flaky#2', key: 'flaky', args: [], wrote: [], next: [], retried: 1 }
     ]);
   });
 
@@ -4372,7 +4484,7 @@ describe('suspense', () => {
 
     class Test extends Journal {
       async run() {
-        this.flaky().catch(this.flaky);
+        this.flaky().catch(this.then.retry);
       }
 
       protected async flaky() {
@@ -4388,7 +4500,7 @@ describe('suspense', () => {
 
     await result;
     expect(tries).toBe(2);
-    expect(record(test).slice(1).map(({ retry, error }) => [retry, error])).toEqual([[undefined, new Error('gone')], [1, undefined]]);
+    expect(record(test).slice(1).map(({ retried, error }) => [retried, error])).toEqual([[undefined, new Error('gone')], [1, undefined]]);
   });
 
   it('will not fire hooks again', async () => {
@@ -6302,55 +6414,6 @@ describe('durable handlers', () => {
     expect(seen).toHaveBeenCalledWith('down');
   });
 
-  it('will catch a plan with steps called for it, recorded on the token', async () => {
-    const order: string[] = [];
-
-    class Test extends Journal {
-      async run() {
-        this.then(this.scan('x')).catch(this.skip('x'));
-        this.then(this.scan('y')).catch(this.notify('a'), this.notify('b'));
-      }
-
-      protected async scan(site: string) {
-        throw new Error(`${site} is down`);
-      }
-
-      protected async notify(to: string) {
-        order.push(`notify ${to}`);
-      }
-
-      protected async skip(site: string) {
-        order.push(`skip ${site}`);
-      }
-    }
-
-    const test = Test.new();
-
-    await test.run();
-    expect(order).toEqual(['skip x', 'notify a', 'notify b']);
-    expect(record(test)[0].next).toMatchObject([
-      { key: 'then', group: [{ key: 'scan', args: ['x'] }], rescue: [{ id: 'skip#1', key: 'skip', args: ['x'] }] },
-      { key: 'then', group: [{ key: 'scan', args: ['y'] }], rescue: [{ key: 'then', group: [{ key: 'notify', args: ['a'] }, { key: 'notify', args: ['b'] }] }] }
-    ]);
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'scan#1', 'skip#1', 'scan#2', 'notify#1', 'notify#2']);
-  });
-
-  it('will type steps called for a catch on a plan only', () => {
-    class Test extends Steps {
-      async run() {
-        this.then(this.scan()).catch(this.skip());
-        // @ts-expect-error - a step call's catch takes a function or a step method
-        this.scan().catch(this.skip());
-      }
-
-      protected async scan() {}
-
-      protected async skip() {}
-    }
-
-    void Test;
-  });
-
   it('will keep a step scheduling after a handler claims its tokens', async () => {
     const order: string[] = [];
 
@@ -6377,22 +6440,21 @@ describe('durable handlers', () => {
     expect(order).toEqual(['second']);
   });
 
-  it('will count retries of steps a handler with parameters calls', async () => {
+  it('will give a function handler the failed step\'s retried count', async () => {
     const calls: unknown[][] = [];
 
     class Test extends Steps {
       async run() {
-        this.visit('x');
+        this.visit('x').catch((error) => {
+          calls.push([(error as Error).message, this.then.retried]);
+
+          if (this.then.retried < 2) this.then.retry();
+        });
       }
 
       protected async visit(site: string) {
-        calls.push(['visit', this.then.retry]);
-
-        if (this.then.retry < 2)
-          this.scan(site).catch((error) => {
-            calls.push([(error as Error).message]);
-            this.visit(site);
-          });
+        calls.push(['visit', this.then.retried]);
+        this.scan(site);
       }
 
       protected async scan(site: string) {
@@ -6401,7 +6463,7 @@ describe('durable handlers', () => {
     }
 
     await Test.new().run();
-    expect(calls).toEqual([['visit', 0], ['x is down'], ['visit', 1], ['x is down'], ['visit', 2]]);
+    expect(calls).toEqual([['visit', 0], ['x is down', 0], ['visit', 1], ['x is down', 1], ['visit', 2], ['x is down', 2]]);
   });
 
   it('will throw for undo or catch steps not called for it', async () => {
@@ -6419,8 +6481,6 @@ describe('durable handlers', () => {
           () => this.then.undo(),
           () => this.then.undo({} as never),
           () => this.then.undo(this.a as never),
-          () => this.then(this.a()).catch(this.a(), (() => {}) as never),
-          () => this.then(this.a()).catch({} as never, {} as never)
         ];
 
         for (const attempt of tries)
@@ -6443,9 +6503,7 @@ describe('durable handlers', () => {
       usage,
       usage,
       usage,
-      usage,
-      'then() takes called steps or step references, not both.',
-      'catch() takes a step, a function, steps called for it or nothing.'
+      usage
     ]);
   });
 });

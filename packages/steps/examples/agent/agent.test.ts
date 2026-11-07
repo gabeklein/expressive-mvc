@@ -225,10 +225,10 @@ it('will retry a tool, keeping what the tool pushed from outside', async () => {
     'call_1_0: write notes ok',
     'done'
   ]);
-  // after sees the failed try with its error, then the re-run - it carries retry 1
+  // after sees the failed try with its error, then the replay - it carries retried 1
   const tries = record(agent).filter((entry) => entry.key == 'exec');
 
-  expect(tries.map((entry) => [entry.retry, (entry.error as Error)?.message])).toEqual([
+  expect(tries.map((entry) => [entry.retried, (entry.error as Error)?.message])).toEqual([
     [undefined, 'timeout'],
     [1, undefined]
   ]);

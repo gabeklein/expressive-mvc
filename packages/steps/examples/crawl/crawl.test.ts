@@ -88,8 +88,8 @@ it('will retry a failing site with backoff, keeping what other sites found', asy
   await vi.advanceTimersByTimeAsync(SECOND);
   expect((await found).map((item) => item.sku)).toEqual(['b-sku', 'a-sku']);
 
-  // the failed scan never commits; visit's re-run carries retry 1
-  expect(record(crawl).filter((entry) => entry.retry).map((entry) => [entry.id, entry.retry])).toEqual([['visit#3', 1]]);
+  // the failed scan never commits; visit's replay carries retried 1
+  expect(record(crawl).filter((entry) => entry.retried).map((entry) => [entry.id, entry.retried])).toEqual([['visit#3', 1]]);
 });
 
 it('will skip a site after three retries', async () => {
@@ -109,7 +109,7 @@ it('will skip a site after three retries', async () => {
   await vi.advanceTimersByTimeAsync(7 * SECOND);
 
   expect(await found).toEqual([product('lamp', 'up')]);
-  expect(crawl.skipped.get()).toEqual(['down: blocked']);
+  expect(crawl.skipped.get()).toEqual(['down']);
 });
 
 it('will end even when the report fails', async () => {

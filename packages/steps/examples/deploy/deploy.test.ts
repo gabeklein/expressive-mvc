@@ -102,10 +102,10 @@ it('will retry a flaky test suite with backoff', async () => {
   await vi.advanceTimersByTimeAsync(2 * SECOND);
   expect(test).toHaveBeenCalledTimes(3);
 
-  // after sees each failed suite with its error; each re-run of test carries its retry count
+  // after sees each failed suite with its error; each replay of test carries its retried count
   const tries = record(deploy).filter((entry) => entry.key == 'test' || entry.key == 'suite');
 
-  expect(tries.map((entry) => [entry.id, entry.retry])).toEqual([
+  expect(tries.map((entry) => [entry.id, entry.retried])).toEqual([
     ['test#1', undefined],
     ['suite#1', undefined],
     ['test#2', 1],

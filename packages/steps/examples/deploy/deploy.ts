@@ -29,7 +29,7 @@ export class Deploy extends Steps {
   // run awaits the plan and returns its result, typing `await deploy`
   async run(): Promise<Released> {
     this.build();
-    this.test();
+    this.test().catch(this.retest);
     this.canary();
     this.migrate();
     this.rollout();
@@ -71,11 +71,16 @@ export class Deploy extends Steps {
   }
 
   protected async test() {
-    // a retry waits 1s, then 2s - a slot without max is a plain delay
-    this.then.slot({ after: this.then.retry * SECOND });
+    // a replay waits 1s, then 2s - a slot without max is a plain delay; backoff lives in the retried step
+    this.then.slot({ after: this.then.retried * SECOND });
+    this.suite();
+  }
 
-    // a failed suite runs test again in its place - retry counts the re-runs - three tries in all
-    this.suite().catch(this.then.retry < 2 ? this.test : undefined);
+  // a failed suite replays test with its args - three tries in all; past that the error goes on
+  protected async retest(error: unknown) {
+    if (this.then.retried >= 2) throw error;
+
+    this.then.retry();
   }
 
   protected async suite() {
