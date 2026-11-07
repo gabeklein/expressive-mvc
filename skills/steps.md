@@ -1,6 +1,6 @@
 # Steps
 
-`@expressive/steps` - multi-step processes as Models. `class X extends Steps`: every method is a step, a step schedules the next by calling it, fields carry data between steps. Each step is atomic and registers its own compensation; a failure unwinds what committed. Runs repeat, queue, and park on waits answered from outside. `0.1`, in-process only - nothing persists across a restart.
+`@expressive/steps` - multi-step processes as Models. `class X extends Steps`: every method is a step, a step schedules the next by calling it, fields carry data between steps. Each step is atomic and registers its own undo; a failure unwinds what committed. Runs repeat, queue, and park on waits answered from outside. `0.1`, in-process only - nothing persists across a restart.
 
 ```bash
 npm install @expressive/steps @expressive/mvc
@@ -27,7 +27,7 @@ class SubmitOrder extends Steps {
   protected async reserve() {
     const hold = await inventory.hold(this.cart.items);   // the step's work
 
-    this.then.catch(this.release(hold));                  // its compensation - claimed, runs only on unwind
+    this.then.undo(this.release(hold));                  // its undo, right after the effect - runs only on unwind
     this.pay().catch(this.noCourier);                     // then hand off
   }
 
@@ -38,7 +38,7 @@ class SubmitOrder extends Steps {
 
   protected async pay() {
     this.charge = await stripe.charge(this.cart.total);
-    this.then.catch(this.refund(this.charge.id));
+    this.then.undo(this.refund(this.charge.id));
 
     this.then(this.ship(this.charge.id), this.receipt(this.charge.receiptUrl));
   }
@@ -83,7 +83,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 - The run settles with what `run` returns or throws - that types `x.run()` and `await x`. `then.status`/`then.error` record what the plan did, so a tail catching a failure resolves the run while status stays `failed`.
 - Without `await this`, `run` settles at once - result `void` (chained style, still valid).
 - `return await this` is a TS circularity (TS7023) - return from fields.
-- Cleanup on every outcome - done, failed, stopped - is `try`/`catch`/`finally` around `await this`. A run failing before `await this`, or without it, has no tail; that cleanup belongs in a step's compensation.
+- Cleanup on every outcome - done, failed, stopped - is `try`/`catch`/`finally` around `await this`. A run failing before `await this`, or without it, has no tail; that cleanup belongs in a step's undo.
 - Inside a step, `this.run(x)` is an ordinary step call - how a loop repeats.
 
 ## A step body is a plan
@@ -103,7 +103,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 | `this.then(this.allow, this.deny, watcher?)` | wait - parks until one of those steps is called |
 | `this.then.end()` | end the run here - pending discarded; takes no value |
 | `this.then.slot({ max, after, key })` | concurrency gate / delay |
-| `this.then.catch(this.undo(x))` | register this step's compensation - the step called for it, not scheduled |
+| `this.then.undo(this.release(x))` | register this step's undo - the step called for it, claimed, not scheduled |
 | `this.then.commit()` | point of no return |
 | `this.then.signal` | this step's `AbortSignal` - pass it to the call it awaits |
 
@@ -111,12 +111,16 @@ Tokens mixed with functions fail the run. Every token takes `.catch(handler?)`.
 
 ## Undo
 
-A step returns nothing - a value fails the run. Its undo is a compensation: `this.then.catch(this.refund(chargeId))` - steps called for it (several make a group) are claimed, not scheduled, and recorded with their args; the step may keep working after. Or one [handler](#catch-and-retry). Registered anywhere in the body, synchronously.
+Step references are recorded; functions belong to the process. A step returns nothing - a value fails the run. Register its undo right after the effect, usually just above scheduling:
+
+- `this.then.undo(this.refund(chargeId))` - steps called for it (several a group): claimed, not scheduled - the step may keep working after - recorded with their args.
+- `this.then.undo(() => clearTimeout(timer))` - one function: process-local, given the error, dropped on restart. Fine for process resources.
+- A bare step method or a mix throws.
 
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
-- On failure every committed step unwinds, newest first: its compensations run (newest first), then the fields of every step taken back are restored. `run`'s writes never are.
-- Steps a compensation calls run as part of the unwind (with what they schedule), before older compensations, and reach `before`/`after`. `end`, `slot` and waits throw there.
-- A compensation registered before its step fails runs for that failure too, seeing the step's partial writes. It sees the unwound state, its own writes are kept; it never recovers. `run` registers none - clean up in its tail.
+- An undo runs on any unwind through its step - its own failure after registering, a later failure caught by a `.catch` whose branch includes it, run failure, `stop(true)`. Order: failure → undos newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
+- Steps an undo calls run as part of the unwind (with what they schedule), before older undos, and reach `before`/`after`. `end`, `slot` and waits throw there.
+- An undo registered before its step fails runs for that failure too, seeing the step's partial writes. It sees the unwound state, its own writes are kept; it never recovers. `run` registers none - clean up in its tail.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
 - Removing a pool member or destroying a map value the step did not add is irreversible: the unwind stops there and warns.
 - Whole-run undo is `stop(true)`; partial is a [catch](#catch-and-retry).
@@ -151,22 +155,21 @@ async deny(call: ToolCall) { this.messages.push(denied(call)); }
 ```ts
 protected async visit(site: string) {
   this.then.slot({ max: ($) => $.limit, after: this.then.retry && 1000 * 2 ** (this.then.retry - 1) });
-  this.scan(site).catch(this.then.retry < 3 ? () => { this.visit(site); } : (error) => { this.skip(site, error); });
+
+  const scan = this.then(this.scan(site));                  // a Steps.Plan - its catch takes steps called for it
+
+  if (this.then.retry < 3) scan.catch(this.visit(site));    // recorded with its args
+  else scan.catch((error) => { this.skip(site, error); });  // process-local
 }
 
-protected async skip(site: string, error: unknown) {
-  this.skipped.push(`${site}: ${(error as Error).message}`);
-}
-```
-
-- A failure in the token's branch (it and its subtree): failing step restored, rest of the branch discarded, the branch's compensations run - then the handler runs in its place and the plan continues.
-- Handlers, on both catches - `.catch()` skips:
-  - `() => { this.visit(site); }` - no parameters: runs now, strict - only step calls; a field read or write, a promise, or `end`/`slot`/a wait throws. The steps it called run on failure and are recorded (`rescue`, `compensate`) with their args - durable.
-  - `this.noCourier` - a step method, whatever its parameters: runs on failure given the error; recorded with the error as `{ name, message, cause }` - durable.
-  - `(error) => { … }` - parameters: runs on failure as an inline step, its step calls scheduled; journaled `then` - in memory only.
+- A failure in the token's branch (it and its subtree): failing step restored, rest of the branch discarded, the branch's undos run - then the handler runs in its place and the plan continues.
+- Handlers replace the branch - retry, fall back, rethrow. `.catch()` skips.
+  - `plan.catch(this.visit(site))` - steps called for a `Steps.Plan`'s catch (`this.then(...)`'s return; several a group): recorded with args. A step call's own `catch` is `Promise.catch`-typed - wrap it in `this.then(...)`.
+  - `.catch(this.noCourier)` - a step method: runs given the error; recorded with it as `{ name, message, cause }`.
+  - `.catch((error) => { … })` - a function: `Promise.catch` semantics, its step calls scheduled; process-local - dropped on restart, so there the run fails instead of recovering.
 - The handler sees the branch's failed state; once its body returns, the branch's fields are restored except keys it wrote, then what it scheduled runs. `this.then.reset()` restores early.
 - It recovers by scheduling, or throws to keep failing - an expected failure is a typed error (`throw new NoCourier()`) the handler checks, rethrowing the rest. A wait in a handler asks for another try; put it under a caught step to catch the next failure too.
-- `this.then.retry` - re-run count, `0` on a first run; a step a handler calls counts one past the issuer when it is the issuing step, 1 when it is the caught step.
+- `this.then.retry` - re-run count, `0` on a first run; a step a handler runs counts one past the issuer when it is the issuing step, 1 when it is the caught step. Read it in the step - a function handler's `this.then` is its own.
 - Not caught: rule violations, past `commit()`/irreversible, aborts, failures while stopping or ending.
 
 ## Slot
@@ -188,7 +191,7 @@ Only `before` and `after` are hooks (any other name is a step); protected, synch
 
 - `before(step, args)` / `after(step, entry)` around every step. `after` gets each committed entry - the Runner keeps no journal, so a log is `this.log.push(entry)`. A try a catch took arrives with `entry.error`; a called `end` arrives too (an implicit one does not).
 
-Entry: `{ id: 'pay#1', key, args, wrote, next, compensate?, unwound?, wake?, retry?, error?, irreversible?, committed?, halted? }` - no values. The shape is provisional until the durable tier.
+Entry: `{ id: 'pay#1', key, args, wrote, next, undo?, unwound?, wake?, retry?, error?, irreversible?, committed?, halted? }` - no values. The shape is provisional until the durable tier.
 
 ## Runner - `this.then`
 
@@ -198,7 +201,7 @@ Entry: `{ id: 'pay#1', key, args, wrote, next, compensate?, unwound?, wake?, ret
 
 - Steps are `protected async`; `run` and answering steps public. `_`-prefixed methods are helpers, not steps - they run on the instance, unmanaged.
 - **Coordination first.** A `Steps` class is the process's template. Each step awaits the one call doing its work, then schedules, groups, gates or catches what follows. Request building, stream handling, parsing, choosing between sources go in functions or in a Model the run owns, finds with `get()`, or reports to.
-- Report fields (progress, a status line) are ordinary fields written in steps; the UI subscribes. A failed try restores them - that try did not happen. To keep a value across a failed try write it unmanaged (`this.is.progress = p`, a `_` helper, an owned Model), in a compensation or catch handler, or in `run`'s tail. UI text is derived from state, not stored.
+- Report fields (progress, a status line) are ordinary fields written in steps; the UI subscribes. A failed try restores them - that try did not happen. To keep a value across a failed try write it unmanaged (`this.is.progress = p`, a `_` helper, an owned Model), in an undo or catch handler, or in `run`'s tail. UI text is derived from state, not stored.
 - A class already extending another Model or a `Component` holds a `Steps` model as a field (`pull = new Pull()`), which reaches its owner with `get(Owner)`.
 - Effects on `then` wait for the instance to be ready (and a component's host to commit); runs do not.
 

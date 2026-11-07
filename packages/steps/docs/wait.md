@@ -86,5 +86,5 @@ protected async tool(call: ToolCall) {
 ## Rules
 
 - `run` and `end` cannot answer a wait - listing one fails the run (`end cannot answer a wait.`).
-- A wait reached while function compensations are held logs `console.warn` once per run - closures will not survive a resume in the durable tier; register a step instead ([undo.md](undo.md#compensations)).
+- A wait reached while function undos are held logs `console.warn` once per run - closures will not survive a resume in the durable tier; register a step instead ([undo.md](undo.md#undos)).
 - `stop()`, a failure, and `then.end()` from outside release open waits and abort their watchers.

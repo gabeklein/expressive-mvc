@@ -1,10 +1,12 @@
-# Undo - Compensations and the Unwind
+# Undo - All or Nothing
 
-A step returns nothing. One that changes the world registers its compensation with `this.then.undo(this.release(hold))` - the step that undoes it, called for it. An unwind - a failed run, `stop(true)`, or a failure a [`.catch`](catch.md) takes - goes through the committed steps newest first, running each one's compensations, then restores the fields of every step it took back. A half-done plan leaves nothing behind.
+A step returns nothing. One that changes the world registers its undo with `this.then.undo(this.release(hold))` - the step that takes it back, called for it. An unwind - a failed run, `stop(true)`, or a failure a [`.catch`](catch.md) takes - goes back through the committed steps newest first, running each one's undos, then restores the fields of every step it took back.
 
 Every step is atomic: one that throws or is aborted has its own writes restored - fields and [collections](#collections).
 
-## Compensations
+Policy: step references are recorded; functions belong to the process.
+
+## Undos
 
 ```ts
 protected async reserve() {
@@ -13,32 +15,26 @@ protected async reserve() {
   this.then.undo(this.release(hold));
   this.pay().catch(this.noCourier);
 }
-
-protected async release(hold: string) {
-  await inventory.release(hold);
-}
 ```
+
+Register an undo right after the effect it takes back - as `defer` would - usually just above what the step schedules.
 
 `this.then.undo(…)` takes:
 
-- steps called for it - `this.then.undo(this.release(hold))`; several, `this.then.undo(this.cancel(id), this.refund(charge))`, are one group. Claimed, not scheduled: the step may keep working and awaiting after;
-- or one handler, as a token's [`.catch`](catch.md#handlers) does - a function without parameters calling one step or a group, a step method given the error, or a function with parameters given the error.
+- steps called for it - `this.then.undo(this.release(hold))`; several, `this.then.undo(this.cancel(id), this.refund(charge))`, run as one group. Claimed, not scheduled - the step may keep working and awaiting after. Recorded with their args.
+- or one function - process-local: given the error, it runs on unwind in this process and is dropped on restart. Right for process resources: `this.then.undo(() => clearTimeout(timer))`. Recorded as `then`.
 
-| handler | runs | recorded | durable |
-| --- | --- | --- | --- |
-| `() => { this.visit(site); }` - no parameters | now, at registration - it may only call steps; what it calls runs on failure | the steps it called, with their args | yes |
-| `this.noCourier` - a step method | on failure, given the error alone | the step, and the error as `{ name, message, cause }` | yes |
-| `(error) => { … }` - parameters | on failure, given the error | `then` | no - in memory |
+Mixing them throws `then() takes called steps or step references, not both.`; a bare step method throws - call it: `this.release(hold)`.
 
-- Steps it runs keep their own signatures and run as part of the unwind, with what they schedule and groups, before older compensations. They reach `before`/`after`, so a log shows them.
-- A function with parameters does not survive a resume in the durable tier - a wait reached while one is held warns ([wait.md](wait.md)).
-- Registration is synchronous: anywhere in the body, before or after scheduling, any number. A step's compensations run newest first.
-- Registered before a step fails, a compensation runs for that failure too, and sees that step's partial writes - they are restored after it.
-- It runs before fields are restored, so it reads the state as the run left it. Keys it, or a step it calls, writes are kept.
-- It never recovers - the failure goes on. A step it calls throwing fails the unwind there. `end`, `slot` and waits throw in it: `end() cannot run in a compensation.`
+- An undo runs on any unwind passing through its step: the step's own failure after registering it, a later failure caught by a `.catch` whose branch includes the step, the run failing, `stop(true)`. Never on success.
+- Steps it runs keep their own signatures and run as part of the unwind, with what they schedule and groups, before older undos. They reach `before`/`after`, so a log shows them; they are taken back by nothing.
+- Registration is synchronous, anywhere in the body, any number. A step's undos run newest first.
+- Registered before its step fails, an undo runs for that failure too and sees the step's partial writes - restored after it.
+- It runs before fields are restored, so it reads the state as the run left it. Keys it, or a step it runs, writes are kept.
+- It never recovers - the failure goes on. A step it runs throwing fails the unwind there. `end`, `slot` and waits throw in it: `end() cannot run in an undo.`
 - `run` registers none - `run cleans up in its tail - try/catch around await this.` Cleanup there is a [tail](runs.md#run-and-the-result).
 
-Entry: `compensate: [{ id: 'release#1', key: 'release', args: ['hold_sku'] }]` - a group node for several, `then` for a function with parameters. The steps it ran get their own entries. Ids are minted at registration, so one never run leaves a gap.
+Entry: `undo: [{ id: 'release#1', key: 'release', args: ['hold_sku'] }]` - a group node for several, `then` for a function. The steps it ran get their own entries. Ids are minted at registration, so an undo never run leaves a gap.
 
 ## The unwind
 
@@ -46,13 +42,13 @@ A step that throws, breaks a rule, or returns a value fails the run:
 
 1. Status `failed`, `error` set; pending steps are discarded, open waits released, in-flight steps' [signals](steps.md#the-step-signal) aborted; the failing step's own writes are restored, unless it is [irreversible](#irreversible) or [committed](#commit).
 2. Steps still in flight - parallel members - settle; their commits are recorded.
-3. Every committed entry, newest first, runs its compensations; a failed step that registered some runs them too.
-4. A compensation that throws: `unwound: 'failed'`, `error` replaced by what it threw, the unwind stops there.
+3. Every committed entry, newest first, runs its undos; a failed step that registered some runs them too.
+4. An undo that throws: `unwound: 'failed'`, `error` replaced by what it threw, the unwind stops there.
 5. An `irreversible` or `committed` entry stops the unwind: `halted: true` ([Collections](#collections), [Commit](#commit)).
-6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys a compensation wrote. Each taken-back entry that compensated or wrote is marked `unwound: true`.
+6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys an undo wrote. Each taken-back entry that had undos or wrote is marked `unwound: true`.
 7. `await this` in `run` rejects with `error` - the tail runs on the restored fields ([runs.md](runs.md#run-and-the-result)); without one, the run rejects with `error`.
 
-`run`'s own writes are never restored - it is the entry, not a step to take back. `stop(true)` unwinds the same way with status `stopped`, compensations given the `'Stopped'` error ([runs.md](runs.md#stop)). A [caught branch](catch.md) runs steps 3-6 over the branch only, and the run goes on.
+`run`'s own writes are never restored - it is the entry, not a step to take back. `stop(true)` unwinds the same way with status `stopped`, undos given the `'Stopped'` error ([runs.md](runs.md#stop)). A [caught branch](catch.md) runs steps 3-6 over the branch only, and the run goes on.
 
 ## Keeping a value
 
@@ -60,7 +56,7 @@ A step's writes are restored whenever an unwind takes it back. To keep one past 
 
 - commit the step - [`this.then.commit()`](#commit) - when everything before it should stand too: an agent's reply, a captured charge;
 - write it unmanaged - `this.is.notice = …`, or in a `_` helper, which runs on `this.is`;
-- write it in a compensation or a [catch handler](catch.md) - their keys are kept;
+- write it in an undo or a [catch handler](catch.md) - their keys are kept;
 - write it in `run`'s tail, which runs after the unwind.
 
 ## Commit
@@ -69,7 +65,7 @@ A step's writes are restored whenever an unwind takes it back. To keep one past 
 
 - its failure is not [caught](catch.md);
 - if it throws after `commit()`, its own writes stay; its failing try is journaled with `committed: true` and `error`;
-- the unwind stops at its entry - `halted: true` - running none of its compensations and nothing before it. No warning: the stop is deliberate.
+- the unwind stops at its entry - `halted: true` - running none of its undos and nothing before it. No warning: the stop is deliberate.
 
 ```ts
 protected async pay() {
@@ -94,12 +90,12 @@ A `has` list, `has` pool or `map` read by a step through `this` comes back wrapp
 
 ### Irreversible
 
-Some changes cannot be put back: a pool member removed by `delete` or `clear`, and a map value destroyed when removed or replaced (an owned `Model`) - unless the step added it itself. Detected per step, through its wrapper; a member destroyed directly is unmanaged. A step making one without registering a compensation is irreversible: its entry carries `irreversible: ['<field>', …]`.
+Some changes cannot be put back: a pool member removed by `delete` or `clear`, and a map value destroyed when removed or replaced (an owned `Model`) - unless the step added it itself. Detected per step, through its wrapper; a member destroyed directly is unmanaged. A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`.
 
 - The unwind stops at the first irreversible entry, newest first. Entries after it are taken back; it and every entry before it stay applied; it gets `halted: true`; `error` stays the original failure. `console.warn` names it once: `<instance> stopped unwinding at drop#1: items cannot be restored.`
 - A failing step that made one keeps its writes - fields included - and is journaled with `error` and `irreversible`, so the unwind halts there.
 - An irreversible step's failure is not caught ([catch.md](catch.md)).
-- A step registering a compensation is reversible: the unwind runs it, then restores what can be restored.
+- A step registering an undo is reversible: the unwind runs it, then restores what can be restored.
 
 A map restores through its own `set(key, value)`: a factory map (`map((key) => …)`) passes the old value to its factory, so only keys the step added are restored exactly.
 
