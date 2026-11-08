@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { browserRouter, location, mount, settle } from "../../test.setup";
 import { Route } from ".";
-import { runtime } from "./call";
+import { client } from "./call";
+import { runtime } from "./twin";
 
 function Boom(): any {
   throw new Error("kaboom");
@@ -474,7 +475,7 @@ describe("seat", () => {
       twin: (init.headers as Record<string, string>)["x-expressive-twin"],
       reply: (body, status = 200) => resolve(new Response(JSON.stringify(body), { status, headers: { "x-expressive-epoch": "e1" } })),
     }))));
-    ({ twin, define } = runtime(Model, def, Context, Route));
+    ({ twin, define } = runtime(client, Model, def, Context, Route));
   });
 
   afterEach(() => vi.unstubAllGlobals());

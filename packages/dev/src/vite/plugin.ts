@@ -7,13 +7,15 @@ import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../server/config";
 import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project } from "./project";
-import { runtime } from "../client/call";
+import { client } from "../client/call";
+import { runtime } from "../client/twin";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
-import { dispatch, isCall, verify, type Endpoint, type Exports, type Pooled, type Seats } from "../server/call";
+import { dispatch, isCall, verify, type Seats } from "../server/call";
 import { send, toRequest } from "../server/node";
 import { isStream, stream } from "../server/stream";
 import { install } from "../server/context";
+import { twins, type Endpoint, type Exports, type Pooled } from "../server/twin";
 import { scanExports, scanSidecar, scanTwin, type Sources, type Twin } from "./scan";
 
 const MAIN = "main.tsx";
@@ -192,7 +194,7 @@ export function expressive(): Plugin<Host> {
           return [
             `import { Context, Model, def } from "@expressive/mvc";`,
             `import { Route } from "@expressive/dev";`,
-            `export const { call, define, twin } = (${runtime})(Model, def, Context, Route);`,
+            `export const { call, define, twin } = (${runtime})(${client}, Model, def, Context, Route);`,
           ].join("\n");
         case mainId:
           return bootstrap(project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!));
@@ -223,7 +225,7 @@ export function expressive(): Plugin<Host> {
         if (isStream(request)) return void send(res, stream(request)).catch(next);
         if (!isCall(request)) return next();
 
-        dispatch(request, endpoints, true, seatsOf(host, project)).then(response => send(res, response)).catch(next);
+        dispatch(request, endpoints, true, seatsOf(host, project), twins).then(response => send(res, response)).catch(next);
       });
 
       return () => {
