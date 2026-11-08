@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { sep } from "node:path";
 import { init, parse } from "es-module-lexer";
 import { transformWithOxc, type ESTree } from "vite";
-import { isClass, moduleOf, scanModule, type ErrorClass, type Module, type Sources, type Value } from "@expressive/rpc/internal/vite";
+import * as root from "@expressive/rpc";
+import { isClass, moduleOf, scanModule, type ErrorClass, type Module, type Sources, type Value } from "@expressive/rpc/vite";
 
 import type { ExportScanner, Remote } from "./routes";
 
@@ -87,7 +88,12 @@ interface Found {
 }
 
 const LIBRARY = /^@expressive\//;
-const ERRORS = "@expressive/rpc/http";
+const ERRORS = "@expressive/rpc";
+
+const isHttpError = (name: string) => {
+  const Type = (root as Record<string, unknown>)[name];
+  return typeof Type == "function" && Type.prototype instanceof Error;
+};
 
 export interface TwinScan {
   twin?: Twin;
@@ -275,7 +281,7 @@ async function baseOf({ cls, module }: Found, sources: Sources, problems: string
   const imported = module.imports.get(base.name);
 
   if (!imported || imported.type) return { owner, global: base.name };
-  if (imported.from === ERRORS) return { owner, error: base.name };
+  if (imported.from === ERRORS && isHttpError(imported.name)) return { owner, error: base.name };
   if (LIBRARY.test(imported.from)) return { owner, library: true };
 
   const file = await sources.resolve(imported.from, module.file);

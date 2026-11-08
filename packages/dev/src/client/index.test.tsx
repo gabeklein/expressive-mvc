@@ -3,7 +3,7 @@
 
 import { Context, def, Model, set } from "@expressive/mvc";
 import { Link, Redirect } from "@expressive/router";
-import { client } from "@expressive/rpc/http";
+import { client } from "@expressive/rpc";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { browserRouter, location, mount, settle } from "../../test.setup";

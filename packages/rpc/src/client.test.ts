@@ -3,11 +3,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Endpoint } from "../call";
-import { handler } from "./call";
-import * as http from "./client";
+import type { Endpoint } from "./call";
+import { handler } from "./http/call";
+import * as shared from "./client";
 
-const { client } = http;
+const { client } = shared;
 
 interface Reply {
   body: unknown;
@@ -181,15 +181,15 @@ describe("configure", () => {
   });
 
   it("will configure the shared client its exports call through", async () => {
-    http.configure({ transport });
-    const Limit = http.define("/tally#Limit", "Limit");
+    shared.configure({ transport });
+    const Limit = shared.define("/tally#Limit", "Limit");
 
-    expect(await http.call("/tally", "add", [2, 3])).toBe(5);
+    expect(await shared.call("/tally", "add", [2, 3])).toBe(5);
     expect(transport).toHaveBeenCalledTimes(1);
 
-    http.configure({ transport: undefined });
+    shared.configure({ transport: undefined });
     serve({ body: { error: "/tally#Limit", message: "Over" }, status: 409 });
 
-    await expect(http.call("/tally", "add", [])).rejects.toBeInstanceOf(Limit);
+    await expect(shared.call("/tally", "add", [])).rejects.toBeInstanceOf(Limit);
   });
 });

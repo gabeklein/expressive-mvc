@@ -1,7 +1,6 @@
 import "@expressive/dom";
 
-import { install as resolve } from "@expressive/rpc";
-import { onBuild } from "@expressive/rpc/internal";
+import { install as resolve, onBuild } from "@expressive/rpc/protocol";
 
 import { track } from "./version";
 

@@ -1,5 +1,5 @@
 import { Model } from "@expressive/mvc";
-import { Current, Forbidden } from "@expressive/rpc/http";
+import { Current, Forbidden } from "@expressive/rpc";
 
 export default class Admin extends Model {
   static key() {

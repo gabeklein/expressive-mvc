@@ -24,7 +24,6 @@ interface Runtime {
 const ENV = "rpc";
 const ENTRY = "\0@expressive/rpc/server";
 const RUNTIME = "\0@expressive/rpc/runtime";
-const HTTP = "@expressive/rpc/http";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
 const INDEX = ["ts", "js", "mts", "mjs"].map(ext => `index.${ext}`);
 
@@ -70,7 +69,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
       return {
         builder: command === "build" ? {} : undefined,
         build: user.build?.outDir ? undefined : { outDir: "dist/client" },
-        optimizeDeps: { include: [HTTP] },
+        optimizeDeps: { include: ["@expressive/rpc"] },
         environments: {
           [ENV]: {
             consumer: "server",
@@ -113,7 +112,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
       const resolve: Resolve = async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id;
 
       if (id === ENTRY) return manifest.entry(await gates(resolve));
-      if (id === RUNTIME) return `export { handler } from "${HTTP}";\nexport { install, verify } from "@expressive/rpc";\n`;
+      if (id === RUNTIME) return `export { handler } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
       if (this.environment.config.consumer !== "client") return;
 
       const at = located(id.split("?")[0]);

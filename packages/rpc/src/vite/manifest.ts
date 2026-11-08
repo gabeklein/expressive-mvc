@@ -71,7 +71,7 @@ export class Manifest<E extends Exposed = Exposed> {
     return [...groups.values()];
   }
 
-  stub(exposed: E, locate: Locate, { from = "@expressive/rpc/http", at = pathOf(exposed), imports = [], lines = [] }: Stub = {}): string {
+  stub(exposed: E, locate: Locate, { from = "@expressive/rpc", at = pathOf(exposed), imports = [], lines = [] }: Stub = {}): string {
     const json = JSON.stringify;
     const before = new Set<string>();
 
@@ -133,7 +133,7 @@ export class Manifest<E extends Exposed = Exposed> {
     });
 
     return [
-      `import { install, verify } from "@expressive/rpc";`,
+      `import { install, verify } from "@expressive/rpc/protocol";`,
       `import { handler } from "@expressive/rpc/http";`,
       ...files.map(file => `import * as ${alias(file)} from ${json(file)};`),
       "",

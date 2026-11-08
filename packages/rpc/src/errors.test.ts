@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { Endpoint } from "../call";
-import { handler } from "./call";
+import type { Endpoint } from "./call";
+import { handler } from "./http/call";
 import { client } from "./client";
 import * as errors from "./errors";
 

@@ -18,7 +18,7 @@ const SOURCES: InlineConfig["resolve"] = {
 
 const GATE = (check: string, error: string) => `
   import { Model } from "@expressive/mvc";
-  import { Current, ${error} } from "@expressive/rpc/http";
+  import { Current, ${error} } from "@expressive/rpc";
   export default class Gate extends Model {
     static key() {
       const token = Current.get().request.headers.get("authorization");
@@ -33,9 +33,9 @@ const APP = {
   "index.html": `<!doctype html><html><body><script type="module" src="/src/main.ts"></script></body></html>`,
   "src/main.ts": `import { list, Over } from "../api/todos"; import { stats } from "../api/admin/stats"; console.log(list, Over, stats);`,
   "api/index.ts": GATE("!token", "Unauthorized"),
-  "api/errors.ts": `import { HttpError } from "@expressive/rpc/http"; export class Billing extends HttpError { status = 402 }`,
+  "api/errors.ts": `import { HttpError } from "@expressive/rpc"; export class Billing extends HttpError { status = 402 }`,
   "api/todos.ts": `
-    import { HttpError, NotFound } from "@expressive/rpc/http";
+    import { HttpError, NotFound } from "@expressive/rpc";
     import { Billing } from "./errors";
     export class Over extends HttpError { status = 409 }
     export class Late extends Billing {}
@@ -89,7 +89,7 @@ async function install(root: string) {
   };
 
   await lib("mvc", { index: "src/index.ts", "jsx-runtime": "src/jsx-runtime.ts" }, { ".": "./index.js", "./jsx-runtime": "./jsx-runtime.js" });
-  await lib("rpc", { index: "src/index.ts", http: "src/http/server.ts", client: "src/http/client.ts" }, { ".": "./index.js", "./http": { browser: "./client.js", default: "./http.js" } });
+  await lib("rpc", { index: "src/server.ts", client: "src/client.ts", http: "src/http.ts", protocol: "src/protocol.ts" }, { ".": { browser: "./client.js", default: "./index.js" }, "./http": "./http.js", "./protocol": "./protocol.js" });
 }
 
 async function serve(root: string, config: InlineConfig = {}) {
@@ -136,7 +136,7 @@ describe("client", () => {
     expect(stub).toContain('define("/#todos:Over", "Over", "http:HttpError")');
     expect(stub).toContain('import "/api/errors.ts";');
     expect(stub).toContain('define("/#todos:Late", "Late", "/#errors:Billing")');
-    expect(stub).toMatch(/import \{ call, define \} from ".*rpc\/src\/http/);
+    expect(stub).toMatch(/import \{ call, define \} from ".*rpc\/src\/index\.ts"/);
     expect(stub).not.toContain("Too long");
     expect((await server.transformRequest("/api/admin/stats.ts"))!.code).toContain('const at = "/admin"');
   });
@@ -149,17 +149,21 @@ describe("client", () => {
     );
   });
 
-  it("will throw if client code imports a server-only name from @expressive/rpc/http, but not server code", async () => {
+  it("will throw if client code imports a server-only name, the host adapter or the plumbing, but not server code", async () => {
     const server = await serve(project({
-      "src/server.ts": `import { Current } from "@expressive/rpc/http"; export const a = Current;`,
-      "src/ok.ts": `import { NotFound, type Current } from "@expressive/rpc/http"; export const a: Current | string = NotFound.name;`,
+      "src/server.ts": `import { Current } from "@expressive/rpc"; export const a = Current;`,
+      "src/host.ts": `import { handler } from "@expressive/rpc/http"; export const a = handler;`,
+      "src/plumbing.ts": `import { within } from "@expressive/rpc/protocol"; export const a = within;`,
+      "src/ok.ts": `import { NotFound, type Current } from "@expressive/rpc"; export const a: Current | string = NotFound.name;`,
     }));
 
-    await expect(server.transformRequest("/src/server.ts")).rejects.toThrow(
-      "src/server.ts imports Current from @expressive/rpc/http, which only a server has - its browser build does not export it.",
-    );
+    await expect(server.transformRequest("/src/server.ts")).rejects.toThrow("src/server.ts imports Current from @expressive/rpc, which only its server build exports.");
+    await expect(server.transformRequest("/src/host.ts")).rejects.toThrow("src/host.ts imports @expressive/rpc/http, the host adapter - only a server entry uses it.");
+    await expect(server.transformRequest("/src/plumbing.ts")).rejects.toThrow("src/plumbing.ts imports @expressive/rpc/protocol, server plumbing - only a server or host module uses it.");
     expect((await server.transformRequest("/src/ok.ts"))!.code).toContain("NotFound");
     expect((await server.environments.rpc.transformRequest("/src/server.ts"))!.code).toContain("Current");
+    expect((await server.environments.rpc.transformRequest("/src/host.ts"))!.code).toContain("handler");
+    expect((await server.environments.rpc.transformRequest("/src/plumbing.ts"))!.code).toContain("within");
   });
 
   it("will keep the dependency scan out of the folder", async () => {
@@ -348,9 +352,9 @@ describe("build", () => {
     expect(await post("/", "todos:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
   });
 
-  it("will guard only scripts that mention @expressive/rpc/http", async () => {
+  it("will guard only scripts that mention @expressive/rpc", async () => {
     const root = project({
-      "src/notes.json": `{ "server": "import { Current } from \\"@expressive/rpc/http\\";" }`,
+      "src/notes.json": `{ "server": "import { Current } from \\"@expressive/rpc\\";" }`,
       "src/main.ts": `import notes from "./notes.json"; import { list } from "../api/todos"; console.log(notes.server, list);`,
     });
     const { client } = await build(root);

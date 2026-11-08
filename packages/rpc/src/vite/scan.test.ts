@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { isClass, scanModule, type Extension, type Sources } from "./scan";
 
-const HTTP = `import { Current, HttpError, NotFound } from "@expressive/rpc/http";`;
+const HTTP = `import { Current, HttpError, NotFound } from "@expressive/rpc";`;
 const MVC = `import { Model } from "@expressive/mvc";`;
 
 function scan(source: string, file = "/app/api/todos.ts", others: Record<string, string> = {}, extension?: Extension) {
@@ -193,7 +193,8 @@ describe("error classes", () => {
 
     expect(problems).toEqual([
       "Cart is a class but not an Error - only error classes reach the client; a Model it constructs is a twin, which needs @expressive/dev.",
-      ...["Plain", "Store", "Request"].map(name => `${name} is a class but not an Error - only error classes reach the client.`),
+      ...["Plain", "Store"].map(name => `${name} is a class but not an Error - only error classes reach the client.`),
+      "Request is a class but not an Error - only error classes reach the client; a Model it constructs is a twin, which needs @expressive/dev.",
     ]);
   });
 
@@ -226,6 +227,11 @@ describe("gates", () => {
   it("will take an index's default Model as its folder's gate", async () => {
     expect(await scan(`${MVC} export default class Gate extends Model {} export async function ping() {}`, "/app/api/index.ts"))
       .toEqual({ calls: ["ping"], errors: [], gate: true, problems: [] });
+  });
+
+  it("will take a gate extending a root class that is not an http error, as Current", async () => {
+    expect(await scan(`import { Current } from "@expressive/rpc"; export default class Gate extends Current {}`, "/app/api/index.ts"))
+      .toEqual({ calls: [], errors: [], gate: true, problems: [] });
   });
 
   it("will follow a gate's default through a local name and an imported base", async () => {

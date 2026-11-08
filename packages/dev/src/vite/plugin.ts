@@ -10,10 +10,9 @@ import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject
 import { runtime } from "../client/twin";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
-import { verify, type Seats } from "@expressive/rpc";
 import { isCall, toNode } from "@expressive/rpc/http";
-import { dispatch } from "@expressive/rpc/internal";
-import { SCRIPT, guardScript, type Sources } from "@expressive/rpc/internal/vite";
+import { dispatch, verify, type Seats } from "@expressive/rpc/protocol";
+import { SCRIPT, guardScript, type Sources } from "@expressive/rpc/vite";
 import { isStream, stream } from "../server/stream";
 import { install } from "../server/install";
 import { twins, type Endpoint, type Exports, type Pooled } from "../server/twin";
@@ -37,7 +36,7 @@ const DEPS = [
   "@expressive/dom/jsx-runtime",
   "@expressive/dom/jsx-dev-runtime",
   "@expressive/router",
-  "@expressive/rpc/http",
+  "@expressive/rpc",
   "@expressive/dev",
   "@expressive/dev/jsx-runtime",
   "@expressive/dev/jsx-dev-runtime",
@@ -181,7 +180,7 @@ export function expressive(): Plugin<Host> {
           return [
             `import { Context, Model, def } from "@expressive/mvc";`,
             `import { Route } from "@expressive/dev";`,
-            `import { client } from "@expressive/rpc/http";`,
+            `import { client } from "@expressive/rpc";`,
             `export const { call, define, twin } = (${runtime})(client, Model, def, Context, Route);`,
           ].join("\n");
         case mainId:
