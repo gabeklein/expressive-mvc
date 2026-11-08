@@ -11,6 +11,8 @@ const PACKAGES = fileURLToPath(new URL("../../../", import.meta.url));
 
 const SOURCES: InlineConfig["resolve"] = {
   alias: [
+    // The plugin provides the calls module; keep it from the sources alias below.
+    { find: /^@expressive\/rpc\/calls$/, replacement: "@expressive/rpc/calls" },
     { find: /^@expressive\/([^/]+)$/, replacement: `${PACKAGES}$1/src` },
     { find: /^@expressive\/([^/]+)\/(.+)$/, replacement: `${PACKAGES}$1/src/$2` },
   ],
@@ -154,12 +156,14 @@ describe("client", () => {
       "src/server.ts": `import { Current } from "@expressive/rpc"; export const a = Current;`,
       "src/host.ts": `import { handler } from "@expressive/rpc/http"; export const a = handler;`,
       "src/plumbing.ts": `import { within } from "@expressive/rpc/protocol"; export const a = within;`,
+      "src/calls.ts": `import { handle } from "@expressive/rpc/calls"; export const a = handle;`,
       "src/ok.ts": `import { NotFound, type Current } from "@expressive/rpc"; export const a: Current | string = NotFound.name;`,
     }));
 
     await expect(server.transformRequest("/src/server.ts")).rejects.toThrow("src/server.ts imports Current from @expressive/rpc, which only its server build exports.");
     await expect(server.transformRequest("/src/host.ts")).rejects.toThrow("src/host.ts imports @expressive/rpc/http, the host adapter - only a server entry uses it.");
     await expect(server.transformRequest("/src/plumbing.ts")).rejects.toThrow("src/plumbing.ts imports @expressive/rpc/protocol, server plumbing - only a server or host module uses it.");
+    await expect(server.transformRequest("/src/calls.ts")).rejects.toThrow("src/calls.ts imports @expressive/rpc/calls, the server's calls - only its entry uses them.");
     expect((await server.transformRequest("/src/ok.ts"))!.code).toContain("NotFound");
     expect((await server.environments.rpc.transformRequest("/src/server.ts"))!.code).toContain("Current");
     expect((await server.environments.rpc.transformRequest("/src/host.ts"))!.code).toContain("handler");
@@ -291,6 +295,52 @@ describe("dev server", () => {
   });
 });
 
+const ENTRY = {
+  "src/main.ts": `import { tick } from "../api/tally"; console.log(tick);`,
+  "lib/count.ts": `export let count = 0; export const bump = () => ++count;`,
+  "api/tally.ts": `import { bump } from "../lib/count"; export async function tick() { return bump(); }`,
+  "server.ts": `
+    import { handle } from "@expressive/rpc/calls";
+    import { count } from "./lib/count";
+
+    export class Room {}
+
+    export default {
+      async fetch(request: Request, env: any, ctx: any) {
+        const { pathname } = new URL(request.url);
+
+        if (pathname === "/count") return Response.json({ count, name: env?.NAME ?? null });
+        if (pathname === "/cf") return new Response(String(await import("cloudflare:workers")));
+        if (pathname === "/later") {
+          ctx.passThroughOnException();
+          ctx.waitUntil(Promise.reject(new Error("late")));
+          return new Response("ok");
+        }
+        if (pathname === "/stream") {
+          const text = new TextEncoder();
+          let more: () => void = () => {};
+          const second = new Promise<void>(go => (more = go));
+          (globalThis as any).more = more;
+
+          return new Response(new ReadableStream({
+            async start(controller) {
+              controller.enqueue(text.encode("a\\n"));
+              await second;
+              controller.enqueue(text.encode("b\\n"));
+              controller.close();
+            },
+          }), { headers: { "content-type": "application/x-ndjson" } });
+        }
+
+        return (await handle(request)) ?? env?.ASSETS?.fetch(request) ?? new Response("Not here.", { status: 404 });
+      },
+      async scheduled() {
+        return "ran";
+      },
+    };
+  `,
+};
+
 describe("build", () => {
   async function build(root: string, options?: Options, config: InlineConfig = {}) {
     const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc(options)], resolve: SOURCES, ...config }, null);
@@ -368,4 +418,72 @@ describe("build", () => {
 
     expect(await post("/", "ping")).toEqual({ status: 200, body: { value: "pong" } });
   });
+
+  it("will bundle the entry as the server, sharing its modules with the calls", async () => {
+    const root = project(ENTRY);
+    const { server, post } = await build(root, { entry: "server.ts", opaque: false });
+    const bundled = await import(pathToFileURL(join(root, "dist/server/index.js")).href);
+    const code = readFileSync(join(root, "dist/server/index.js"), "utf8");
+
+    expect(await post("/", "tally:tick", "a")).toEqual({ status: 200, body: { value: 1 } });
+    expect(await (await server.fetch(new Request("http://localhost/count"))).json()).toEqual({ count: 1, name: null });
+    expect((await server.fetch(new Request("http://localhost/"))).status).toBe(404);
+    expect(await server.scheduled()).toBe("ran");
+    expect(bundled.Room).toBeTypeOf("function");
+    expect(code).toContain(`import("cloudflare:workers")`);
+    expect(code).not.toMatch(/(?:from|import)\s*"@expressive\/rpc\/calls"/);
+  });
+});
+
+describe("entry", () => {
+  const get = (server: ViteDevServer, path: string) => fetch(new URL(path, server.resolvedUrls!.local[0]));
+
+  it("will run the app's entry in dev, with the calls, its own routes and Vite for the rest", async () => {
+    const { server, post } = await listen(project(ENTRY), { plugins: [rpc({ entry: "server.ts", env: () => ({ NAME: "dev" }) })] });
+
+    await server.transformRequest("/api/tally.ts");
+
+    expect(await post("/", "tally:tick", [], "a")).toEqual({ status: 200, body: { value: 1 } });
+    expect(await post("/", "tally:tick")).toMatchObject({ status: 401 });
+    expect(await (await get(server, "/count")).json()).toEqual({ count: 1, name: "dev" });
+    expect(await (await get(server, "/")).text()).toContain(`<script type="module"`);
+  });
+
+  it("will stream a route's response as it is written", async () => {
+    const { server } = await listen(project(ENTRY), { plugins: [rpc({ entry: "server.ts" })] });
+    const reader = (await get(server, "/stream")).body!.getReader();
+    const text = new TextDecoder();
+
+    expect(text.decode((await reader.read()).value)).toBe("a\n");
+    (globalThis as any).more();
+    expect(text.decode((await reader.read()).value)).toBe("b\n");
+    expect((await reader.read()).done).toBe(true);
+  });
+
+  it("will log a rejected waitUntil without failing the response", async () => {
+    const { server } = await listen(project(ENTRY), { plugins: [rpc({ entry: "server.ts" })] });
+    const error = vi.spyOn(server.config.logger, "error");
+
+    expect(await (await get(server, "/later")).text()).toBe("ok");
+    await vi.waitFor(() => expect(error).toHaveBeenCalledWith("server.ts waitUntil: Error: late"));
+  });
+
+  it("will take an edit to the entry on the next request", async () => {
+    const root = project(ENTRY);
+    const { server } = await listen(root, { plugins: [rpc({ entry: "server.ts" })] });
+
+    expect(await (await get(server, "/count")).json()).toEqual({ count: 0, name: null });
+
+    await new Promise(ready => setTimeout(ready, 300));
+    writeFileSync(join(root, "server.ts"), readFileSync(join(root, "server.ts"), "utf8").replace("name: env?.NAME ?? null", `name: "edited"`));
+
+    await vi.waitFor(async () => expect(await (await get(server, "/count")).json()).toEqual({ count: 0, name: "edited" }), { timeout: 5000 });
+  }, 15_000);
+
+  it("will fail a request when the entry has no default fetch", async () => {
+    const { server } = await listen(project({ ...ENTRY, "server.ts": `export default {};` }), { plugins: [rpc({ entry: "server.ts" })] });
+
+    expect((await get(server, "/count")).status).toBe(500);
+  });
+
 });

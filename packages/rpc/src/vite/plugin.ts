@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve as resolvePath } from "node:path";
 import type { Plugin, RunnableDevEnvironment } from "vite";
 
 import type { Endpoint, Seats } from "../call";
@@ -12,6 +12,18 @@ import { scanModule } from "./scan";
 export interface Options {
   dir?: string;
   opaque?: boolean;
+  /**
+   * The app's own server module, Worker-shaped: `export default { fetch(request, env, ctx) }`.
+   * It gets the calls from `@expressive/rpc/calls`, runs on the dev server and is bundled as
+   * `dist/server/index.js`. Without one, the server answers calls and hands the rest to `env.ASSETS`.
+   */
+  entry?: string;
+  /** Bindings the entry's `fetch` gets as `env` in dev - say, wrangler's `getPlatformProxy().env`. */
+  env?: () => object | Promise<object>;
+}
+
+interface Entry {
+  fetch?: (request: Request, env: object, ctx: object) => Response | undefined | Promise<Response | undefined>;
 }
 
 type Resolve = (spec: string, importer: string) => Promise<string | undefined>;
@@ -24,13 +36,19 @@ interface Runtime {
 const ENV = "rpc";
 const ENTRY = "\0@expressive/rpc/server";
 const RUNTIME = "\0@expressive/rpc/runtime";
+const CALLS_SPEC = "@expressive/rpc/calls";
+const CALLS = "\0@expressive/rpc/calls";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
 const INDEX = ["ts", "js", "mts", "mjs"].map(ext => `index.${ext}`);
 
-export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
+export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): Plugin {
   let root = "";
   let folder = "";
+  let main: string | undefined;
   let manifest = new Manifest();
+
+  // In dev, `@expressive/rpc/calls` reaches the plugin's handler through this, one per plugin.
+  const bridge = Symbol.for(`@expressive/rpc/calls#${randomBytes(8).toString("hex")}`);
 
   const located = (file: string) => locate(folder, file);
 
@@ -81,12 +99,13 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
     },
 
     configEnvironment(name, config) {
-      if (name === ENV) config.build!.rolldownOptions = { input: { index: ENTRY } };
+      if (name === ENV) config.build!.rolldownOptions = { input: { index: ENTRY }, external: [/^cloudflare:/] };
     },
 
     configResolved(config) {
       root = config.root;
       folder = join(realpathSync(root), dir);
+      main = entry && resolvePath(root, entry);
     },
 
     buildStart() {
@@ -101,6 +120,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
 
     async resolveId(id, importer, options) {
       if (id === ENTRY || id === RUNTIME) return id;
+      if (id === CALLS_SPEC && this.environment.name === ENV) return CALLS;
       if (!("scan" in options && options.scan) || !/^[./]/.test(id)) return;
 
       const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
@@ -111,7 +131,9 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
     async load(id) {
       const resolve: Resolve = async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id;
 
-      if (id === ENTRY) return manifest.entry(await gates(resolve));
+      if (id === ENTRY && main) return `export * from ${JSON.stringify(main)};\nexport { default } from ${JSON.stringify(main)};\n`;
+      if (id === ENTRY) return `import { handle } from "${CALLS_SPEC}";\n\nexport default { async fetch(request, env) { return (await handle(request)) ?? env?.ASSETS?.fetch(request) ?? new Response("Not found.", { status: 404 }); } };\n`;
+      if (id === CALLS) return this.environment.mode === "dev" ? `const handle = globalThis[Symbol.for(${JSON.stringify(bridge.description)})];\n\nexport { handle };\n` : manifest.calls(await gates(resolve));
       if (id === RUNTIME) return `export { handler } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
       if (this.environment.config.consumer !== "client") return;
 
@@ -161,9 +183,32 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
         return gate && (await runner.import(gate.file)).default;
       };
 
-      server.middlewares.use(toNode(async request => {
+      const handle = async (request: Request) => {
         const loaded = await runtime();
         return loaded.handler(endpoints(loaded), { dev: true, seats })(request);
+      };
+
+      Object.assign(globalThis, { [bridge]: handle });
+
+      if (!main) return void server.middlewares.use(toNode(handle));
+
+      const file = main;
+      const ctx = {
+        waitUntil: (promise: unknown) => void Promise.resolve(promise).catch((error: unknown) => server.config.logger.error(`${relative(root, file)} waitUntil: ${error}`)),
+        passThroughOnException() {},
+      };
+      let bindings: Promise<object> | undefined;
+
+      server.middlewares.use(toNode(async request => {
+        const { default: app }: { default?: Entry } = await runner.import(file);
+
+        if (typeof app?.fetch != "function") throw new Error(`${relative(root, file)} must default-export { fetch(request, env, ctx) }.`);
+
+        const next = new Response(null, { status: 404 });
+        const ASSETS = { fetch: async () => next };
+        const response = await app.fetch(request, { ...(await (bindings ??= Promise.resolve(env?.() ?? {}))), ASSETS }, ctx);
+
+        return response === next ? undefined : response;
       }));
     },
   };

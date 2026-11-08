@@ -28,6 +28,10 @@
       "browser": "./dist/index.client.js",
       "default": "./dist/index.server.js"
     },
+    "./calls": {
+      "types": "./dist/calls.d.ts",
+      "default": "./dist/calls.js"
+    },
     "./http": {
       "types": "./dist/http.d.ts",
       "default": "./dist/http.js"
