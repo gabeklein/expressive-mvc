@@ -4053,7 +4053,8 @@ describe('catch', () => {
       ['scan#2', undefined, 'a is down'],
       ['revisit#2', 1, undefined],
       ['visit#3', 2, undefined],
-      ['scan#3', undefined, 'a is down']
+      ['scan#3', undefined, 'a is down'],
+      ['revisit#3', 2, 'a is down']
     ]);
   });
 
@@ -6445,6 +6446,138 @@ describe('Aborted and Stopped', () => {
     expect(close.mock.calls).toEqual([[], [], []]);
     expect(record(failed).find((entry) => entry.key == 'aborted')).toMatchObject({ args: [{ name: 'Error', message: 'boom' }] });
     expect(record(test).find((entry) => entry.key == 'aborted')).toMatchObject({ args: [] });
+  });
+});
+
+describe('second review', () => {
+  class NoCourier extends Error {}
+
+  it('will run a function catch as the node it registered', async () => {
+    class Test extends Journal {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({ catch: () => {} });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run();
+
+    const [handler] = record(test)[1].on!.catch!;
+
+    expect(record(test).at(-1)).toMatchObject({ id: handler.id, args: [new Error('boom')] });
+  });
+
+  it('will call a catch function plainly', async () => {
+    let self: unknown = 'unset';
+
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({
+          catch() {
+            self = this;
+          }
+        });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    await Test.new().run();
+    expect(self).toBeUndefined();
+  });
+
+  it('will take a step method with a narrowed parameter for catch and abort', () => {
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({ catch: this.fallback, abort: this.failed });
+      }
+
+      protected async fallback(error: NoCourier) {
+        void error;
+      }
+
+      protected async failed(error?: Error) {
+        void error;
+      }
+    }
+
+    expectTypeOf<Steps.On['catch']>().toEqualTypeOf<Steps.Handler | undefined>();
+    expect(Test.new().then.status).toBe('idle');
+  });
+
+  it('will journal a failing answer with the wait it answered', async () => {
+    class Test extends Journal {
+      async run() {
+        this.then(this.allow).catch();
+      }
+
+      async allow() {
+        throw new Error('denied');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.status).toBe('waiting'));
+    await test.allow().catch(() => {});
+    await result.catch(() => {});
+
+    expect(record(test).at(-1)).toMatchObject({ key: 'allow', wake: 'wait#1', error: new Error('denied') });
+  });
+
+  it('will journal a catch handler which fails the run', async () => {
+    class Test extends Journal {
+      async run(hook: boolean) {
+        this.hook = hook;
+        this.a().catch(this.again);
+      }
+
+      hook = false;
+
+      protected async a() {
+        throw new Error('boom');
+      }
+
+      protected async again(error: unknown) {
+        if (!this.hook) this.then.on({ close: () => {} });
+
+        throw new Error(`still ${(error as Error).message}`);
+      }
+
+      protected after(key: string, entry: Steps.Entry) {
+        super.after!(key, entry);
+
+        if (this.hook && key == 'again') throw new Error('after');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.run(false)).rejects.toThrow('still boom');
+    expect(record(test).at(-1)).toMatchObject({ key: 'again', error: new Error('still boom') });
+    await expect(Test.new().run(true)).rejects.toThrow('after');
   });
 });
 

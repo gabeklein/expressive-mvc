@@ -131,9 +131,9 @@ declare namespace Steps {
     next: Node[];
     /** Fields the step wrote, collections changed in place included. */
     wrote: string[];
-    /** Handlers the step registered with `then.on()`, by outcome, in order: steps called for one, or `then` for a function. */
+    /** Handlers the step registered with `then.on()`, by outcome, in order: a step method given uncalled or steps called for one (by key), or `then` for a function. */
     on?: { [K in keyof On]?: Node[] };
-    /** Taken back by an unwind - undos run, fields restored; `'failed'` when a handler threw. */
+    /** Taken back by an unwind - resets run, fields restored; `'failed'` when a handler threw. */
     unwound?: true | 'failed';
     /** Id of the wait this step answered. */
     wake?: string;
@@ -164,8 +164,8 @@ declare namespace Steps {
     until?: number;
   }
 
-  /** A `then.on` handler: a function; or for a durable run, a step method uncalled - given the error or reason - or steps called for it. */
-  type Handler = ((reason: unknown) => unknown) | Promise<void> | readonly Promise<void>[];
+  /** A `then.on` handler: a function, given the error, or nothing on cancellation; or for a durable run, a step method uncalled - given the same - or steps called for it. */
+  type Handler = { handler(reason?: unknown): unknown }['handler'] | Promise<void> | readonly Promise<void>[];
 
   /** Handlers for the outcomes of a step's subtree - `this.then.on({ ... })`. */
   interface On {
@@ -227,7 +227,7 @@ declare namespace Steps {
      * Beside steps uncalled - `this.then(this.allow, this.deny, this.timeout(call))` - each called step
      * is a racer, started when the plan reaches the wait. Once a call answers, the racers which did not
      * make it lose: signals aborted, what they scheduled dropped, gates released; a step in flight
-     * settles, then each losing branch unwinds - undos run, fields restored. The winner keeps all it did.
+     * settles, then each losing branch unwinds - resets run, fields restored. The winner keeps all it did.
      */
     <This>(this: This, ...steps: unknown[]): Promise<void>;
 
@@ -267,9 +267,9 @@ declare namespace Steps {
      */
     stop(reason?: unknown): void;
     /**
-     * Halt and unwind, as a failure would - status `'aborted'`; the run's undos run, newest first, and
-     * fields are restored. The run and queue reject with an `'Aborted'` error, `reason` as for `stop`.
-     * An undo which throws fails the run: its error, given the `'Aborted'` error as `cause`.
+     * Halt and unwind, as a failure would - status `'aborted'`; the run's resets run, newest first, and
+     * fields are restored. The run and queue reject with a `Steps.Aborted`, `reason` as for `stop`.
+     * A reset which throws fails the run: its error, given the `Steps.Aborted` as `cause`.
      */
     abort(reason?: unknown): void;
     /** Inside a step: a point of no return - the step is not caught, restored or undone, and the unwind stops here. */
@@ -593,6 +593,7 @@ class Run extends Model {
   _losing = new Map<string, Promise<unknown>>();
   _held = new Map<string, Held>();
   _inline = new Map<string, Function>();
+  _plain = new Set<string>();
   _errors = new Map<string, unknown>();
   _owner = new Map<string, Frame>();
   _parent = new Map<string, string>();
@@ -743,14 +744,7 @@ class Run extends Model {
 
     if (this.stale()) return restore();
 
-    let node = this.given(handler, cause);
-    const fn = this._inline.get(node.id);
-
-    if (fn) {
-      node = this.node('then', [cause]);
-      this._inline.set(node.id, fn);
-      this._owner.set(node.id, frame!);
-    }
+    const node = this.given(handler, cause);
 
     this._parent.set(node.id, id);
     this._lineage.set(node.id, { restore, caught: item! });
@@ -826,6 +820,7 @@ class Run extends Model {
       node.args = [serial(cause)];
       this._errors.set(node.id, cause);
     }
+    else if (kind == 'catch' && this._inline.has(node.id)) node.args = [cause];
 
     return node;
   }
@@ -1176,7 +1171,7 @@ class Run extends Model {
 
       for (;;)
         try {
-          const call = fn.apply(frame._proxy, input);
+          const call = this._plain.has(id) ? fn(...input) : fn.apply(frame._proxy, input);
           const out = id == this._root ? await frame.open(call) : await call;
 
           frame._settled = true;
@@ -1224,7 +1219,7 @@ class Run extends Model {
       const aborted = signal.aborted && error === signal.reason;
       const on = !fixed && !undo && frame._on.length ? frame._on : undefined;
       const defer = on && !aborted && !this.stale();
-      const entry: Steps.Entry = { id, key, args, next: [], wrote: [], error, ...frame._retried && { retried: frame._retried } };
+      const entry: Steps.Entry = { id, key, args, next: [], wrote: [], error, ...wake && { wake }, ...frame._retried && { retried: frame._retried } };
 
       frame._settled = true;
 
@@ -1265,7 +1260,7 @@ class Run extends Model {
         } catch (thrown) {
           this.halt('failed', thrown);
         }
-      } else this.halt('failed', error);
+      } else this.fault(frame, entry, !on, error);
     } finally {
       this.frames.delete(frame);
       control.active = this.flight().at(-1)?.key;
@@ -1274,6 +1269,20 @@ class Run extends Model {
 
       if (!this.flight().length) for (const resolve of this._drained.splice(0)) resolve();
     }
+  }
+
+  fault(frame: Frame, entry: Steps.Entry, push: boolean, error: unknown) {
+    if (frame._caught) {
+      if (push) this._entries.push(entry);
+
+      try {
+        this.control.hook('after', entry.key, entry);
+      } catch (thrown) {
+        error = thrown;
+      }
+    }
+
+    this.halt('failed', error);
   }
 
   reset(frame: Frame) {
@@ -1828,6 +1837,7 @@ class Frame extends Model {
         node = run.node('then', []);
         run._inline.set(node.id, value);
         run._owner.set(node.id, this);
+        run._plain.add(node.id);
       }
       else [node] = this.claimed(Array.isArray(value) ? value : [value], usage, 'then.on()');
 

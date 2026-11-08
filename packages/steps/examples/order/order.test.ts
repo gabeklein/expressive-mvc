@@ -115,13 +115,15 @@ it('will unwind what succeeded when a step fails', async () => {
   expect(inventory.release).toHaveBeenCalledWith('hold_sku');
   expect(order.charge).toBeUndefined();
   expect(order.notice).toBe('Order c1 was not placed: no couriers');
-  // each step taken back runs its undo and has its fields restored - receipt had neither, so it is not marked
-  expect(record(order).map((entry) => [entry.id, entry.on?.reset?.length, entry.unwound])).toEqual([
-    ['run#1', undefined, undefined],
-    ['reserve#1', 1, true],
-    ['pay#1', 1, true],
-    ['ship#1', undefined, undefined],
-    ['receipt#1', undefined, undefined]
+  // each step taken back runs its reset and has its fields restored - receipt had neither, so it is not marked;
+  // noCourier, the catch handler, rethrew - its attempt is journaled with the error
+  expect(record(order).map((entry) => [entry.id, entry.on?.reset?.length, entry.unwound, (entry.error as Error)?.message])).toEqual([
+    ['run#1', undefined, undefined, undefined],
+    ['reserve#1', 1, true, undefined],
+    ['pay#1', 1, true, undefined],
+    ['ship#1', undefined, undefined, 'no couriers'],
+    ['receipt#1', undefined, undefined, undefined],
+    ['noCourier#1', undefined, undefined, 'no couriers']
   ]);
 });
 
