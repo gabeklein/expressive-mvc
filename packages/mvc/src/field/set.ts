@@ -1,5 +1,6 @@
 import { listener, capture, observer } from '../observable';
-import { access, compute, event, Model, update } from '../state';
+import { event, Model } from '../model';
+import { access, compute, update } from '../store';
 import { def } from './def';
 
 declare namespace set {
@@ -100,7 +101,7 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
       );
 
     if (typeof value == 'function' && value.length > 0) {
-      compute.call(subject, value as () => unknown, key);
+      compute(subject, key, value as () => unknown);
       return;
     }
 
