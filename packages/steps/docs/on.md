@@ -11,8 +11,8 @@ protected async create(row: Row) {
   await Image.insert(row);
 
   this.then.on({
-    abort: async (reason) => {
-      if (reason instanceof Steps.Aborted) {
+    abort: async (error) => {
+      if (!error) {
         this.status = 'cancelled';
         await Image.delete(this.name);
       } else {
@@ -34,10 +34,11 @@ A handler covers its step and everything it schedules - the subtree. Deepest ste
 | key | fires | given |
 | --- | --- | --- |
 | `catch` | a step below failed, no `.catch` closer to it took it - recovery: return recovers, throw passes it on | the error |
-| `abort` | the subtree ended without completing - a failure no `catch` recovered, `abort()`, a lost [race](wait.md#racers), `stop()` - the counterpart of [`commit()`](#commit) | why: the error, a `Steps.Aborted` (abort, lost race) or a `Steps.Stopped` (stop) |
+| `abort` | the subtree ended without completing - a failure no `catch` recovered, `abort()`, a lost [race](wait.md#racers), `stop()` - the counterpart of [`commit()`](#commit) | the error of a failure; nothing for a cancellation - `abort()`, `stop()`, a lost race |
 | `reset` | the step is taken back - a failure leaving the subtree, `abort()`, a lost race; not `stop()`: reset its effects | nothing |
 | `close` | the subtree ended, any way - a finally over it, last | nothing |
 
+- To tell `abort()` from `stop()` in `abort`, read `this.then.status` - `aborted` or `stopped`.
 - `abort` does not fire on a clean end, a failure recovered by a `catch`, or [`then.end()`](steps.md#end-is-terminal) cutting the run short. It fires for a subtree still unfinished when the unwind reaches it - a step that completed earlier and is taken back gets `reset` only.
 - `reset` takes back the step's effects; [`this.then.restore()`](catch.md#handlers) instead puts a caught branch's fields back now.
 - `catch` returning recovers at this step: the failed part of its subtree unwinds - aborts, resets, fields restored - the step's own effects stay and its `reset` does not run; steps the handler schedules replace the rest of the subtree. Throwing - the error or a new one - passes the failure on: `abort`, `reset` and `close` follow. It covers from registration on, the rest of the step's own body included - a try opening at the `on()` line; a throw there resets the step (writes restored, resets so far run) before `catch` decides. One per step. `this.then.retry()` in it replays the step with its recorded args. See [catch.md](catch.md#a-calls-catch-or-a-steps-own) for `.catch` beside it.
@@ -52,7 +53,7 @@ A handler covers its step and everything it schedules - the subtree. Deepest ste
 
 A function lives in this process. For a durable run - future - whose compensation is an external effect that must survive a restart, a handler can be a step:
 
-- a step method, uncalled - `{ catch: this.fallback, abort: this.settle }`: run with the error or reason as its only argument, recorded as `token.catch(this.step)` is - an Error as `{ name, message, cause }`, so a `Steps.Aborted` or `Steps.Stopped` is recognisable by `name` (in process the step gets the original instance; a durable host rebuilds it by name). As `catch` its completion recovers and its throw passes on; it may schedule. As `reset` or `close` it is called with no arguments.
+- a step method, uncalled - `{ catch: this.fallback, abort: this.settle }`: run with the error as its only argument - none for a cancellation - recorded as `token.catch(this.step)` is, an Error as `{ name, message, cause }` (in process the step gets the original). As `catch` its completion recovers and its throw passes on; it may schedule. As `reset` or `close` it is called with no arguments.
 - a step called for it - `{ reset: this.release(hold) }` - with args recorded at registration; several in an array run as one group. For `catch` it is scheduled in the failed part's place, for `abort` run, both without the reason.
 
 Claimed, not scheduled; they reach `before`/`after` and are taken back by nothing. An array mixing steps and functions throws `then.on() takes called steps or step references, not both.`
@@ -71,7 +72,7 @@ A step that throws, breaks a rule, or returns a value fails the run:
 6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys a handler wrote. Each taken-back entry that had an `undo` or wrote is marked `unwound: true`.
 7. `await this` in `run` rejects with `error` - the tail runs on the restored fields ([runs.md](runs.md#run-and-the-result)); without one, the run rejects with `error`.
 
-`run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `aborted`, `abort` given a `Steps.Aborted`; `stop()` runs only `abort`, given a `Steps.Stopped`, and `close`, restoring nothing ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md), an `on({ catch })` recovering - over its step's subtree, the step excluded - and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
+`run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `aborted`, `abort` given nothing; `stop()` runs only `abort`, given nothing, and `close`, restoring nothing ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md), an `on({ catch })` recovering - over its step's subtree, the step excluded - and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
 
 ## Keeping a value
 
