@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { Model } from "@expressive/mvc";
 
-import { dispatch, isCall, resolve, verify, walkOf, type Endpoint, type Seats } from "./call";
-
-const at = (...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
+import type { Endpoint, Seats } from "../call";
+import { dispatch, failure, handler, isCall, reply, type Tier } from "./call";
 
 const TAB = crypto.randomUUID();
 
@@ -29,27 +28,6 @@ async function send(endpoints: Endpoint[], req: ReturnType<typeof request>, dev 
   const { status, body } = await sent(endpoints, req, dev, seats);
   return { status, body };
 }
-
-describe("call endpoints", () => {
-  const endpoints = [at("blog", ":slug"), at("blog", "new"), at("docs", "*"), at()];
-
-  it("will match a path to the most specific sidecar", () => {
-    expect(resolve(endpoints, ["blog", "new"])?.endpoint.pattern).toEqual(["blog", "new"]);
-    expect(resolve(endpoints, ["blog", "hello"])?.endpoint.pattern).toEqual(["blog", ":slug"]);
-    expect(resolve(endpoints, ["docs", "a", "b"])?.endpoint.pattern).toEqual(["docs", "*"]);
-    expect(resolve(endpoints, [])?.endpoint.pattern).toEqual([]);
-  });
-
-  it("will bind a path's segments to the sidecar's pattern", () => {
-    expect(resolve(endpoints, ["blog", "hello"])?.segments).toEqual(["blog", "hello"]);
-    expect(resolve(endpoints, ["docs", "a", "b"])?.segments).toEqual(["docs", "a/b"]);
-  });
-
-  it("will not match a path no sidecar owns", () => {
-    expect(resolve(endpoints, ["blog"])).toBeUndefined();
-    expect(resolve(endpoints, ["blog", "a", "b"])).toBeUndefined();
-  });
-});
 
 describe("call dispatch", () => {
   const calls: Record<string, unknown> = {
@@ -156,27 +134,59 @@ describe("call dispatch", () => {
   });
 });
 
-describe("walk", () => {
-  const at =(...pattern: string[]): Endpoint => ({ pattern, exports: async () => ({ calls: {}, classes: {} }) });
+describe("handler", () => {
+  const endpoints: Endpoint[] = [{ pattern: ["tally"], exports: async () => ({ calls: { add: async (a: number, b: number) => a + b }, classes: {} }) }];
 
-  it("will take each segment's pattern from the folder that claims it, else the segment itself", () => {
-    const list = [at("blog"), at("blog", ":slug"), at("blog", "new")];
-
-    expect(walkOf(list, ["blog", "hello", "edit"])).toEqual({ pattern: ["blog", ":slug", "edit"], segments: ["blog", "hello", "edit"] });
-    expect(walkOf(list, ["blog", "new"])).toEqual({ pattern: ["blog", "new"], segments: ["blog", "new"] });
-    expect(walkOf(list, ["about"])).toEqual({ pattern: ["about"], segments: ["about"] });
-    expect(walkOf(list, [])).toEqual({ pattern: [], segments: [] });
+  it("will answer a call, from a list or a function of one", async () => {
+    for (const handle of [handler(endpoints), handler(() => endpoints, { dev: true })]) {
+      const response = await handle(fetched(request("/tally", "add", "[1, 2]")));
+      expect(await response!.json()).toEqual({ value: 3 });
+    }
   });
 
-  it("will end at a catch-all, which takes the rest of the path", () => {
-    expect(walkOf([at("docs", "*")], ["docs", "a", "b"])).toEqual({ pattern: ["docs", "*"], segments: ["docs", "a/b"] });
+  it("will pass on a request that is not a call", async () => {
+    expect(await handler(endpoints)(new Request("http://localhost/tally"))).toBeUndefined();
   });
 });
 
-describe("verify", () => {
-  it("will throw if an exported class is not an Error subclass", () => {
-    expect(() => verify("/tally", { calls: {}, classes: { Ok: class extends Error {} } })).not.toThrow();
-    expect(() => verify("/tally", { calls: {}, classes: { Bad: class {} } })).toThrow("/tally exports Bad, which is neither an async function nor an Error subclass.");
-    expect(() => verify("/tally", { calls: {}, classes: { Odd: 1 } })).toThrow("exports Odd");
+describe("failure", () => {
+  it("will reply an error as a call would, with the headers given", async () => {
+    class Gone extends Error { status = 410; }
+    const endpoints: Endpoint[] = [{ pattern: [], exports: async () => ({ calls: {}, classes: { "#Gone": Gone } }) }];
+    const response = await failure(new Gone("Gone"), endpoints, false, { "x-a": "1" });
+
+    expect(response.status).toBe(410);
+    expect(response.headers.get("x-a")).toBe("1");
+    expect(await response.json()).toEqual({ error: "#Gone", message: "Gone", status: 410 });
+  });
+});
+
+describe("tier", () => {
+  const add = async (a: number, b: number) => a + b;
+  const endpoints: Endpoint[] = [{ pattern: ["tally"], exports: async () => ({ calls: { add }, classes: {} }) }];
+
+  it("will let a tier take a call, given what the request resolved to", async () => {
+    const tier: Tier<any> = vi.fn(async ({ pathname, exports }, fn) => async (args: unknown[]) => reply(200, { pathname, fn: fn === add, exports: !!exports, args }));
+    const response = await dispatch(fetched(request("/tally", "add", "[1]")), () => endpoints, false, undefined, tier);
+
+    expect(await response.json()).toEqual({ pathname: "/tally", fn: true, exports: true, args: [1] });
+  });
+
+  it("will reply 404 to what no tier takes, and hand it no call for a pull or an unnamed request", async () => {
+    const tier = vi.fn(async () => undefined);
+
+    expect((await dispatch(fetched(request("/tally", undefined, "[]")), () => endpoints, false, undefined, tier)).status).toBe(404);
+    expect((await dispatch(fetched(request("/tally", "add", "[]", "application/json", { "x-expressive-get": "default" })), () => endpoints, false, undefined, tier)).status).toBe(404);
+    expect(tier.mock.calls.map(call => (call as unknown[])[1])).toEqual([undefined, undefined]);
+  });
+});
+
+describe("reply", () => {
+  it("will send no body for no value", async () => {
+    const response = reply(304, undefined, { "x-a": "1" });
+
+    expect(response.status).toBe(304);
+    expect(response.headers.get("x-a")).toBe("1");
+    expect(response.body).toBeNull();
   });
 });

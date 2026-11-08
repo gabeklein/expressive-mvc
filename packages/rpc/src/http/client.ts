@@ -1,0 +1,90 @@
+import { registry } from "../registry";
+import { ERRORS } from "./errors";
+
+export {
+  BadRequest,
+  Conflict,
+  Forbidden,
+  Gone,
+  HttpError,
+  InternalError,
+  MethodNotAllowed,
+  NotFound,
+  NotImplemented,
+  PayloadTooLarge,
+  PaymentRequired,
+  Redirect,
+  ServiceUnavailable,
+  TooManyRequests,
+  Unauthorized,
+  UnprocessableEntity,
+} from "./errors";
+
+export type Transport = (request: Request) => Promise<Response>;
+
+export interface ClientOptions {
+  base?: string;
+  transport?: Transport;
+  headers?(): Record<string, string>;
+  reply?(res: Response): Promise<void>;
+}
+
+export function client(initial: ClientOptions = {}) {
+  const options = { ...initial };
+  const { define, rebuild } = registry(ERRORS);
+
+  function configure(next: ClientOptions): void {
+    Object.assign(options, next);
+  }
+
+  function pathOf(pattern: string[], name: string, from = location.pathname): string {
+    const at = from.split("/").filter(Boolean);
+    const path = pattern.map((part, i) => {
+      if (part === "*") return at.slice(i).join("/");
+
+      const matches = at[i] !== undefined && (part.startsWith(":") || part === at[i]);
+
+      if (!matches)
+        throw new Error(`${name}() belongs to /${pattern.join("/")} and cannot be called from ${from}.`);
+
+      return at[i];
+    });
+
+    return "/" + path.join("/");
+  }
+
+  async function send(path: string, headers: Record<string, string>, body: unknown): Promise<any> {
+    const { base = "", transport } = options;
+    const url = base + path;
+    const init = {
+      method: "POST",
+      headers: { "content-type": "application/json", ...options.headers?.(), ...headers },
+      body: JSON.stringify(body),
+    };
+    const res = await (transport ? transport(new Request(new URL(url, globalThis.location?.href), init)) : fetch(url, init));
+
+    await options.reply?.(res);
+
+    return settle(res);
+  }
+
+  async function settle(res: Response): Promise<any> {
+    if (res.status === 304) return;
+
+    const body = await res.json();
+
+    if (res.ok) return body;
+
+    throw rebuild(body);
+  }
+
+  async function call(pattern: string[], name: string, args: unknown[]): Promise<unknown> {
+    const reply = await send(pathOf(pattern, name), { "x-expressive-call": name }, args);
+
+    return reply.value;
+  }
+
+  return { call, configure, define, pathOf, send };
+}
+
+export const { call, configure, define } = client();

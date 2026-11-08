@@ -31,11 +31,14 @@ export function toRequest(req: IncomingMessage, res: ServerResponse): Request {
 }
 
 export async function send(res: ServerResponse, response: Response): Promise<void> {
-  res.statusCode = response.status;
-  response.headers.forEach((value, name) => res.setHeader(name, value));
+  const cookies = response.headers.getSetCookie();
 
+  res.statusCode = response.status;
+  response.headers.forEach((value, name) => name !== "set-cookie" && res.setHeader(name, value));
+
+  if (cookies.length) res.setHeader("set-cookie", cookies);
   if (!response.body) return void res.end();
-  if (response.headers.get("content-type") !== "text/event-stream") return void res.end(Buffer.from(await response.arrayBuffer()));
+  if (response.headers.get("content-type")?.startsWith("application/json")) return void res.end(Buffer.from(await response.arrayBuffer()));
 
   res.flushHeaders();
 
@@ -44,4 +47,23 @@ export async function send(res: ServerResponse, response: Response): Promise<voi
   for (let read = await reader.read(); !read.done; read = await reader.read()) res.write(read.value);
 
   res.end();
+}
+
+export function toNode(handler: (request: Request) => Promise<Response | undefined>) {
+  return (req: IncomingMessage, res: ServerResponse, next?: (error?: unknown) => void): void => {
+    handler(toRequest(req, res))
+      .then(response => {
+        if (response) return send(res, response);
+        if (next) return next();
+
+        res.statusCode = 404;
+        res.end();
+      })
+      .catch(error => {
+        if (next) return next(error);
+
+        res.statusCode = 500;
+        res.end();
+      });
+  };
 }

@@ -1,11 +1,7 @@
-import "@expressive/dom";
-
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import { Context, Model } from "@expressive/mvc";
 import { resolver } from "@expressive/mvc/jsx-runtime";
-
-import { track } from "./version";
 
 interface Layer {
   prefix: string;
@@ -43,10 +39,11 @@ const TTL = 300;
 const store = new AsyncLocalStorage<Frame>();
 const SEATED = new WeakSet<Owned>();
 let top: Layer | undefined;
+let built: ((instance: Model) => void) | undefined;
 
 function frame(): Frame {
   const frame = store.getStore();
-  if (!frame) throw new Error("Server Model resolves only within a sidecar call.");
+  if (!frame) throw new Error("Server Model resolves only within a call.");
   return frame;
 }
 
@@ -186,7 +183,7 @@ function create(Type: Owned, layer: Layer): Entry {
   const ready = Promise.resolve(instance.get(() => {}));
   const entry: Entry = { Type, layer, context, instance, ready, remove, refs: 0 };
 
-  track(instance);
+  built?.(instance);
   instance.set(null, () => drop(entry));
 
   return entry;
@@ -213,7 +210,7 @@ export function construct(Type: Model.Type, off = false): { instance: Model; dro
   const context = (layer ? scope(layer) : detachedContext()).push(Type);
   const instance = context.get(Type)!;
 
-  track(instance);
+  built?.(instance);
 
   if (layer) {
     layer.pooled++;
@@ -232,6 +229,10 @@ export function construct(Type: Model.Type, off = false): { instance: Model; dro
 
 export function seated(): Model | undefined {
   return frame().layer.seat?.instance;
+}
+
+export function onBuild(hook: (instance: Model) => void) {
+  built = hook;
 }
 
 export function install() {

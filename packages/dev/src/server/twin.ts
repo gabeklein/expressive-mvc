@@ -1,8 +1,10 @@
 import { Model } from "@expressive/mvc";
 
-import { failure, inFolder, reply, seatsAlong, walkOf, type Call, type Endpoint as Base, type Exports as Plain, type Handle, type Incoming, type Seats } from "./call";
+import { seatsAlong, walkOf, within, type Call, type Endpoint as Base, type Exports as Plain, type Seats } from "@expressive/rpc";
+import { construct, failure, inFolder, seated, type Handle, type Incoming } from "@expressive/rpc/internal";
+import { reply } from "@expressive/rpc/http";
+
 import { begin, catchUp, connect, end, frameOf, hold, release, renew, twinOf, type Connection, type Shape } from "./connection";
-import { construct, seated, within } from "./context";
 
 export interface Exports extends Plain {
   seat?: Shape & { methods: Record<string, string> };

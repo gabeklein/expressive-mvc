@@ -54,6 +54,7 @@
         "@expressive/dom": "workspace:*",
         "@expressive/inspect": "workspace:*",
         "@expressive/router": "workspace:*",
+        "@expressive/rpc": "workspace:*",
         "es-module-lexer": "^1.6.0",
         "vite": "^8.0.0",
       },
@@ -177,6 +178,22 @@
       },
       "peerDependencies": {
         "@expressive/mvc": "^0.94.1",
+      },
+    },
+    "packages/rpc": {
+      "name": "@expressive/rpc",
+      "version": "0.0.0",
+      "dependencies": {
+        "es-module-lexer": "^1.6.0",
+      },
+      "devDependencies": {
+        "@expressive/mvc": "workspace:*",
+        "@types/node": "^25.2.0",
+        "tsdown": "^0.20.1",
+        "vite": "^8.0.0",
+      },
+      "peerDependencies": {
+        "@expressive/mvc": "^0.94.0",
       },
     },
     "website": {
@@ -424,6 +441,8 @@
     "@expressive/react": ["@expressive/react@workspace:packages/react"],
 
     "@expressive/router": ["@expressive/router@workspace:packages/router"],
+
+    "@expressive/rpc": ["@expressive/rpc@workspace:packages/rpc"],
 
     "@expressive/steps": ["@expressive/steps@workspace:packages/steps"],
 
