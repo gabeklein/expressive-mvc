@@ -684,6 +684,27 @@ describe("seat", () => {
     expect(root.textContent).toBe("caught: Not yours");
   });
 
+  it("will show the refusing route's own Catch", async () => {
+    define("/#Denied", "Denied");
+    const Gate = twin(["gated"], {}, ["user"], "Gate");
+    const Tree = () => (
+      <Route>
+        <Route to="gated" remote={Gate as any} fallback={<i>loading</i>} Catch={Err}>
+          <Route as={Page} />
+        </Route>
+      </Route>
+    );
+
+    location("/gated");
+    const root = await mount(Tree);
+    expect(root.textContent).toBe("loading");
+
+    sent[0].reply({ error: "/#Denied", message: "Not yours", status: 403 }, 403);
+    await settle();
+
+    expect(root.textContent).toBe("caught: Not yours");
+  });
+
   it("will redirect where the server's refusal carries a 3xx status and a location", async () => {
     define("/#SignIn", "SignIn");
     const Gate = twin(["gated"], {}, ["user"], "Gate");
