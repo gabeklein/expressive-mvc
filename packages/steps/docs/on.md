@@ -56,7 +56,7 @@ A function lives in this process. For a durable run - future - whose compensatio
 - a step method, uncalled - `{ catch: this.fallback, abort: this.settle }`: run with the error as its only argument - none for a cancellation - recorded as `token.catch(this.step)` is, an Error as `{ name, message, cause }` (in process the step gets the original). As `catch` its completion recovers and its throw passes on; it may schedule. As `reset` or `close` it is called with no arguments.
 - a step called for it - `{ reset: this.release(hold) }` - with args recorded at registration; several in an array run as one group. For `catch` it is scheduled in the failed part's place, for `abort` run, both without the reason.
 
-Claimed, not scheduled; they reach `before`/`after` and are taken back by nothing. An array mixing steps and functions throws `then.on() takes called steps or step references, not both.`
+Claimed, not scheduled; they reach `before`/`after` and are taken back by nothing. A method handler's `args` in `entry.on` are written when it fires - the entry is updated in place. An array mixing steps and functions throws `then.on() takes called steps or step references, not both.`
 
 Entry: `on: { reset: [{ id: 'then#2', key: 'then', args: [] }] }` - by outcome; `then` for a function, the step's node for a step, a group node for several. Ids are minted at registration, so a handler never run leaves a gap.
 
@@ -69,7 +69,7 @@ A step that throws, breaks a rule, or returns a value fails the run:
 3. Every committed entry, newest first, runs its handlers - `abort` where unfinished, `reset`, then `close` where unfinished; a failed step that registered some runs them too.
 4. A handler that throws: `unwound: 'failed'`, `error` replaced by what it threw, the unwind stops there.
 5. An `irreversible` or `committed` entry stops the undoing: `halted: true` - it and older entries run no `reset`, though `close` still reaches them ([Collections](#collections), [Commit](#commit)).
-6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys a handler wrote. Each taken-back entry that had an `undo` or wrote is marked `unwound: true`.
+6. Fields and collection changes of every step taken back are restored - to their values before the earliest such step wrote them - except keys a handler wrote. Each taken-back entry that had a `reset` or wrote is marked `unwound: true`.
 7. `await this` in `run` rejects with `error` - the tail runs on the restored fields ([runs.md](runs.md#run-and-the-result)); without one, the run rejects with `error`.
 
 `run`'s own writes are never restored - it is the entry, not a step to take back. `abort()` unwinds the same way with status `aborted`, `abort` given nothing; `stop()` runs only `abort`, given nothing, and `close`, restoring nothing ([runs.md](runs.md#stop-and-abort)). A [caught branch](catch.md), an `on({ catch })` recovering - over its step's subtree, the step excluded - and a losing [racer](wait.md#racers) run steps 3-6 over the branch only, and the run goes on.
@@ -89,7 +89,7 @@ A step's writes are restored whenever an unwind takes it back. To keep one past 
 
 - its failure is not [caught](catch.md);
 - if it throws after `commit()`, its own writes stay; its failing try is journaled with `committed: true` and `error`;
-- the unwind stops at its entry - `halted: true` - running none of its undos and nothing before it. No warning: the stop is deliberate.
+- the unwind stops at its entry - `halted: true` - running none of its resets and nothing before it. No warning: the stop is deliberate.
 
 ```ts
 protected async pay() {
@@ -114,7 +114,7 @@ A `has` list, `has` pool or `map` read by a step through `this` comes back wrapp
 
 ### Irreversible
 
-Some changes cannot be put back: a pool member removed by `delete` or `clear`, and a map value destroyed when removed or replaced (an owned `Model`) - unless the step added it itself. Detected per step, through its wrapper; a member destroyed directly is unmanaged. A step making one without registering an undo is irreversible: its entry carries `irreversible: ['<field>', …]`.
+Some changes cannot be put back: a pool member removed by `delete` or `clear`, and a map value destroyed when removed or replaced (an owned `Model`) - unless the step added it itself. Detected per step, through its wrapper; a member destroyed directly is unmanaged. A step making one without registering a `reset` is irreversible: its entry carries `irreversible: ['<field>', …]`.
 
 - The unwind stops at the first irreversible entry, newest first. Entries after it are taken back; it and every entry before it stay applied; it gets `halted: true`; `error` stays the original failure. `console.warn` names it once: `<instance> stopped unwinding at drop#1: items cannot be restored.`
 - A failing step that made one keeps its writes - fields included - and is journaled with `error` and `irreversible`, so the unwind halts there.

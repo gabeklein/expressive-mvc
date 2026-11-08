@@ -68,7 +68,7 @@ protected async sample(body: RenderBody) {
 
 Reporting state - progress, a status line - is ordinary fields, written in the steps; the UI reads them in a subscribed render or a `get()` effect. A failed or re-run try restores what it wrote - that try did not happen - and the catch handler or the next step writes fresh values. A value that must outlive a failed try is written unmanaged - `this.is.progress = p`, or through a `_` helper, which runs on `this.is` - or lives on an owned Model; still reactive, never restored.
 
-Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`, then `end`. A `courier.book` failure unwinds every committed step, newest first, running the undos each registered with `this.then.on({ undo })` - `stripe.refund('ch_42')`, then `inventory.release('hold_sku')` - then restoring the fields of every step it took back ([on.md](on.md#the-unwind)).
+Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`, then `end`. A `courier.book` failure unwinds every committed step, newest first, running the resets each registered with `this.then.on({ reset })` - `stripe.refund('ch_42')`, then `inventory.release('hold_sku')` - then restoring the fields of every step it took back ([on.md](on.md#the-unwind)).
 
 - [contract.md](contract.md) - the contract: members, visibility, when each runs; composition - a `Steps` model held as a field
 - [steps.md](steps.md) - a step body is a plan: tokens, sequence, groups, function handlers, the step signal, pending values, the first-call rule, calls after a step settles, helpers, `end`, what a step may return
@@ -77,7 +77,7 @@ Entries of a clean run: `run#1 → reserve#1 → pay#1 → ship#1 ∥ receipt#1`
 - [gate.md](gate.md) - `this.then.only(max, key?)`: a gate - concurrency per group, instance or shared key (`only(1, key)` = mutex)
 - [catch.md](catch.md) - `.catch(handler?)` on a token: a failing branch unwinds and the run continues - skipped, or a handler in its place; recorded and process-local handlers; the unwind order; typed failures; `restore()`; `this.then.retry()` replays, `retried` counts
 - [hooks.md](hooks.md) - `before`/`after` around every step; cleanup in `run`'s tail
-- [on.md](on.md) - `this.then.on({ reset, catch, close })` handlers per subtree, the unwind on failure, restored fields, keeping a value, `commit()`, collections
+- [on.md](on.md) - `this.then.on({ reset, catch, abort, close })` handlers per subtree, the unwind on failure, restored fields, keeping a value, `commit()`, collections
 - [runner.md](runner.md) - the controller: members, reactivity, snapshot
 
 ## Conventions

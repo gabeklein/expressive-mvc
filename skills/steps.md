@@ -1,6 +1,6 @@
 # Steps
 
-`@expressive/steps` - multi-step processes as Models. `class X extends Steps`: every method is a step, a step schedules the next by calling it, fields carry data between steps. Each step is atomic and registers its own undo; a failure unwinds what committed. Runs repeat, queue, and park on waits answered from outside. `0.1`, in-process only - nothing persists across a restart.
+`@expressive/steps` - multi-step processes as Models. `class X extends Steps`: every method is a step, a step schedules the next by calling it, fields carry data between steps. Each step is atomic and registers its own reset; a failure unwinds what committed. Runs repeat, queue, and park on waits answered from outside. `0.1`, in-process only - nothing persists across a restart.
 
 ```bash
 npm install @expressive/steps @expressive/mvc
@@ -75,13 +75,14 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 - The run settles with what `run` returns or throws - that types `x.run()` and `await x`. `then.status`/`then.error` record what the plan did, so a tail catching a failure resolves the run while status stays `failed`.
 - Without `await this`, `run` settles at once - result `void` (chained style).
 - `return await this` is a TS circularity (TS7023) - return from fields.
-- Cleanup on every outcome - done, failed, stopped - is `try`/`catch`/`finally` around `await this`. A run failing before `await this`, or without it, has no tail; that cleanup belongs in a step's undo.
+- Cleanup on every outcome - done, failed, stopped - is `try`/`catch`/`finally` around `await this`. A run failing before `await this`, or without it, has no tail; that cleanup belongs in a step's reset.
 - `run` is entry only - inside a step `this.run()` throws; a loop is a step scheduling itself.
 
 ## A step body is a plan
 
 - Calling a step inside a step does not run it: it returns an inert token (not awaitable - `await this.a()` does nothing), scheduled after the caller settles cleanly. A caller that throws schedules nothing.
 - Tokens run in issue order, depth-first: each with everything it schedules, before the next sibling.
+- Step arguments are journaled: pass only need-to-know handoffs - what differs between calls, or a value one step found and hands the next. State shared across steps or read from outside is a field. Secrets are neither - pass a reference and resolve it in the step that uses it (`const token = await vault.get(cardRef)`).
 - **The first call ends the step's work.** After its first token a step may only issue tokens and return. A write after it fails the run; settling more than a few microtasks after the last token fails it too. A sync side effect after scheduling is invisible to the guard - side effects are steps.
 - Loops are plain loops, or a step scheduling itself.
 
@@ -160,7 +161,7 @@ async deny(call: ToolCall) { this.messages.push(denied(call)); }
 - Status `waiting`; `then.waiting` lists `{ id, step, args, answers, until? }`, reactive - durations included.
 - Answering steps are public and read `undefined` from outside unless an open wait accepts them - the read tracks, so a view shows a button only while it applies: `agent.allow && <button onClick={() => agent.allow(call)} />`.
 - An outside call answers the wait whose opening step's first argument `===` its own, else the oldest. Its Promise resolves when that answer's subtree is done.
-- A step called beside the answers is a racer: claimed, started when the plan reaches the wait. Inside it, a call to an answer answers that wait. The first answer closes the wait; the racer that answered keeps all it did. The rest lose: signals aborted, unscheduled work dropped, gates released; a step in flight settles, then each losing branch unwinds - undos run, fields restored. Effects without an undo stay. One settling without answering leaves the wait open (a nudge).
+- A step called beside the answers is a racer: claimed, started when the plan reaches the wait. Inside it, a call to an answer answers that wait. The first answer closes the wait; the racer that answered keeps all it did. The rest lose: signals aborted, unscheduled work dropped, gates released; a step in flight settles, then each losing branch unwinds - resets run, fields restored. Effects without a reset stay. One settling without answering leaves the wait open (a nudge).
 - `this.then({ ms, sec, min, hr, day })` - a duration: a wait nothing answers, journaled `wait#n` with `args: [ms]`. Backoff, timeouts, nudges.
 - Nothing is buffered: an outside call no wait accepts throws.
 
@@ -178,7 +179,7 @@ protected async scan(site: string) {                     // backoff lives in the
 }
 ```
 
-- A failure in the token's branch (it and its subtree): failing step restored, rest of the branch discarded, the branch's undos run - then the handler runs in its place and the plan continues.
+- A failure in the token's branch (it and its subtree): failing step restored, rest of the branch discarded, the branch's resets run - then the handler runs in its place and the plan continues.
 - Handlers replace the branch - retry, fall back, rethrow. `.catch()` skips.
   - `.catch((error) => { … })` - a function, the default: `Promise.catch` semantics, its step calls scheduled; process-local - dropped on restart, so there the run fails instead of recovering.
   - `.catch(this.noCourier)` - a step method, for a durable run whose recovery must survive a restart: runs given the error; recorded with it as `{ name, message, cause }` (an Error; anything else as thrown).
@@ -201,7 +202,7 @@ protected async scan(site: string) {                     // backoff lives in the
 ## Stop and end
 
 - `then.stop(reason?)` - halts, keeping what was done: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with a `Steps.Stopped` (`reason` as `cause`), also the step signals' reason. `set(null)` stops.
-- `then.abort(reason?)` - halts the same way, then unwinds the run as a failure would - `commit`'s counterpart. Status `aborted`; the run rejects with a `Steps.Aborted` (`stop()`: a `Steps.Stopped`), named as such. An undo throwing fails the run (`failed`, its error given the `'Aborted'` error as `cause`).
+- `then.abort(reason?)` - halts the same way, then unwinds the run as a failure would - `commit`'s counterpart. Status `aborted`; the run rejects with a `Steps.Aborted` (`stop()`: a `Steps.Stopped`), named as such. A reset throwing fails the run (`failed`, its error given the `'Aborted'` error as `cause`).
 - `then.end()` - ends early, keeping everything: in a step at its place in the plan, from outside now. `await this` resolves; the tail builds the result from fields. Why it ended early is data - write a field before calling it. Passing a value throws.
 - A failed run nobody awaited throws uncaught two microtasks later.
 
@@ -221,7 +222,7 @@ Entry: `{ id: 'pay#1', key, args, wrote, next, on?, unwound?, wake?, retried?, e
 
 - Steps are `protected async`; `run` and answering steps public. `_`-prefixed methods are helpers, not steps - they run on the instance, unmanaged.
 - **Coordination first.** A `Steps` class is the process's template. Each step awaits the one call doing its work, then schedules, groups, gates or catches what follows. Request building, stream handling, parsing, choosing between sources go in functions or in a Model the run owns, finds with `get()`, or reports to.
-- Report fields (progress, a status line) are ordinary fields written in steps; the UI subscribes. A failed try restores them - that try did not happen. To keep a value across a failed try write it unmanaged (`this.is.progress = p`, a `_` helper, an owned Model), in an undo or catch handler, or in `run`'s tail. UI text is derived from state, not stored.
+- Report fields (progress, a status line) are ordinary fields written in steps; the UI subscribes. A failed try restores them - that try did not happen. To keep a value across a failed try write it unmanaged (`this.is.progress = p`, a `_` helper, an owned Model), in a handler of `then.on` or a catch, or in `run`'s tail. UI text is derived from state, not stored.
 - A class already extending another Model or a `Component` holds a `Steps` model as a field (`pull = new Pull()`), which reaches its owner with `get(Owner)`.
 - Effects on `then` wait for the instance to be ready (and a component's host to commit); runs do not.
 

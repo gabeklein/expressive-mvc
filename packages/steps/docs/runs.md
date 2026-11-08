@@ -118,9 +118,9 @@ Idle, or with the run already ending, stopped or failed, it does nothing. A step
 
 Stopped in `run`'s tail - the plan already done - the current run finishes with what `run` returns; only the queue rejects.
 
-`reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. undos and the tail see the same error; `then.error` stays unset.
+`reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. resets and the tail see the same error; `then.error` stays unset.
 
-`then.abort(reason?)` halts the same way, then unwinds the run as a failure would ([on.md](on.md)) - the counterpart of [`commit`](on.md#commit). Status `aborted`; `abort` handlers get no error; the run and the queue reject with a `Steps.Aborted` (named `'Aborted'`) - `reason` as for `stop`, `` `${instance} was aborted.` `` without one. An undo that throws fails the run: status `failed`, `error` and the rejection are what it threw, given the `'Aborted'` error as `cause` when it is an Error without one. During a [caught branch's](catch.md) unwind, `stop()` stops it between undos. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
+`then.abort(reason?)` halts the same way, then unwinds the run as a failure would ([on.md](on.md)) - the counterpart of [`commit`](on.md#commit). Status `aborted`; `abort` handlers get no error; the run and the queue reject with a `Steps.Aborted` (named `'Aborted'`) - `reason` as for `stop`, `` `${instance} was aborted.` `` without one. A reset that throws fails the run: status `failed`, `error` and the rejection are what it threw, given the `'Aborted'` error as `cause` when it is an Error without one. During a [caught branch's](catch.md) unwind, `stop()` stops it between resets. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 
 A stopped run is not rethrown uncaught.
 

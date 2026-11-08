@@ -4,7 +4,7 @@ A token issued in a step - a step call, a group, a wait - takes `.catch(handler?
 
 1. The failing step's own writes are restored, as always; it is journaled `{ id, key, args, next: [], wrote: [], error }`.
 2. The rest of the branch is discarded: pending items dropped, open waits released, slots cancelled, steps in flight aborted - they settle and commit.
-3. The branch unwinds as a failed run would ([on.md](on.md#the-unwind)): undos newest first, halting at a `committed` or irreversible entry. Outside the branch nothing is touched - parallel siblings keep their writes.
+3. The branch unwinds as a failed run would ([on.md](on.md#the-unwind)): resets newest first, halting at a `committed` or irreversible entry. Outside the branch nothing is touched - parallel siblings keep their writes.
 4. The handler, if any, runs in the branch's place, seeing the branch's state as it failed. Once its body returns, the branch's fields are restored - except keys it wrote - before what it scheduled runs. The plan then continues with the next item, the branch counting as done.
 
 ```ts
@@ -31,7 +31,7 @@ protected async noCourier(error: unknown) {
 - Nested catches: the nearest enclosing caught token takes a failure; one in a handler belongs to the branch around it. A second failure in a branch already failing is journaled and absorbed.
 - A wait's branch is its answer and the answer's subtree; a racer throwing is caught there too. A handler opening a wait - `this.then(this.pay)` - asks for another try; put that wait under a caught step to catch the next failure too.
 
-Order of an unwind: a step fails → undos run, newest first, back to the nearest `.catch` whose branch holds the failure → that catch's handler runs in the branch's place → no catch, and the run fails after undoing the rest.
+Order of an unwind: a step fails → resets run, newest first, back to the nearest `.catch` whose branch holds the failure → that catch's handler runs in the branch's place → no catch, and the run fails after undoing the rest.
 
 A failure that is expected - no courier, a declined card - is a typed error thrown where it is found and handled where the plan can recover. A handler that does not know it rethrows.
 
@@ -91,6 +91,6 @@ protected async scan(site: string) {
 - A broken rule - a write after scheduling, lateness, a returned value - fails the run.
 - A step that called [`commit()`](on.md#commit) or made an [irreversible](on.md#irreversible) change fails the run, journaled with `committed`/`irreversible` and `error`, its writes kept.
 - A step rejecting with its own aborted [signal](steps.md#the-step-signal)'s reason is no failure.
-- A hook's throw, an undo's throw, and any failure while the run is stopping or ending.
+- A hook's throw, a reset's throw, and any failure while the run is stopping or ending.
 
 `end` throws `end() cannot be caught.`; a handler that is not a function throws `catch() takes a step, a function or nothing.` Outside a step, `then.retry()` and `then.retried` throw.

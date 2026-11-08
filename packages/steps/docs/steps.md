@@ -16,6 +16,8 @@ protected async reserve() {
 }
 ```
 
+Step arguments are journaled - pass only need-to-know handoffs: what differs between calls, or a value one step found and hands the next. State shared across steps, or read from outside, is a field. Secrets are neither - pass a reference and resolve it in the step that uses it: `const token = await vault.get(cardRef)`.
+
 ## Sequence, depth-first
 
 Tokens a step issues run one after another, in issue order. Each runs to completion - including everything it schedules, transitively - before the next sibling starts.
@@ -115,7 +117,7 @@ Writes are attributed per frame with members in flight: each member's entry list
 
 ## Pending values
 
-A step reading a pending value - an unset `set<T>()`, an async factory, a getter over one - waits for it instead of failing. mvc throws a suspense Promise; the step's try ends there: undos it registered run (newest first), its writes are restored, its tokens dropped, then it runs again from the top once the Promise resolves. No entry for the suspended try, no hooks refired, no [`retried`](catch.md#retry) counted - though token ids it issued stay counted (`report#2` commits). Status stays `running`, `active` names the step.
+A step reading a pending value - an unset `set<T>()`, an async factory, a getter over one - waits for it instead of failing. mvc throws a suspense Promise; the step's try ends there: resets it registered run (newest first), its writes are restored, its tokens dropped, then it runs again from the top once the Promise resolves. No entry for the suspended try, no hooks refired, no [`retried`](catch.md#retry) counted - though token ids it issued stay counted (`report#2` commits). Status stays `running`, `active` names the step.
 
 ```ts
 class Checkout extends Steps {
@@ -200,7 +202,7 @@ From outside, `then.end()` ends the active run now ([runs.md](runs.md#end-from-o
 
 ## What a step returns
 
-Nothing. Any value fails the run (`first returned a value; a step returns nothing - its undo is this.then.on({ reset }).`) - a step's undo is one it [registers](on.md#handlers): `this.then.on({ reset: this.release(hold) })`. `run`'s return is the result.
+Nothing. Any value fails the run (`first returned a value; a step returns nothing - its undo is this.then.on({ reset }).`) - a step's reset is one it [registers](on.md#handlers): `this.then.on({ reset: this.release(hold) })`. `run`'s return is the result.
 
 ## Entry
 
@@ -225,6 +227,6 @@ Each step that commits is one entry, handed to [`after`](hooks.md) - the runner 
 
 Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `error` - a caught failure ([catch.md](catch.md)), or a failing step that kept its writes; `retried` - a replay by `then.retry()`; `unwound` - the unwind ([on.md](on.md#the-unwind)); `irreversible`, `halted` - collection changes no restore can undo ([on.md](on.md#irreversible)); `committed` - [`then.commit()`](on.md#commit); `implicit` - an `end` the runtime added ([end](#end-is-terminal)).
 
-A try a catch took reaches `after` with `error`. The runtime makes entries no hook is handed, for its own unwind: a failed try that kept its writes or registered undos (`error`), and an implicit `end`. An entry holds no values - an unwind restores fields from priors the runtime keeps until the run ends ([on.md](on.md#the-unwind)).
+A try a catch took reaches `after` with `error`. The runtime makes entries no hook is handed, for its own unwind: a failed try that kept its writes or registered resets (`error`), and an implicit `end`. An entry holds no values - an unwind restores fields from priors the runtime keeps until the run ends ([on.md](on.md#the-unwind)).
 
 Writes from outside the run, through `this.is`, in helpers, or in hooks are in no entry.

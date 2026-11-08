@@ -1,6 +1,6 @@
 # @expressive/steps
 
-Multi-step processes as Expressive Models. Extend `Steps` and every method is a step: a step schedules the next by calling it, fields carry data between them. `run()` takes the arguments, schedules, waits for the run with `await this`, and returns the result. Each step is atomic and registers its own undo, so a failure unwinds what committed. Runs repeat, queue and park on waits answered from outside; status is reactive on `this.then`.
+Multi-step processes as Expressive Models. Extend `Steps` and every method is a step: a step schedules the next by calling it, fields carry data between them. `run()` takes the arguments, schedules, waits for the run with `await this`, and returns the result. Each step is atomic and registers its own reset, so a failure unwinds what committed. Runs repeat, queue and park on waits answered from outside; status is reactive on `this.then`.
 
 In-process only for now - no durable persistence.
 

@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries, providing context, async suspense, router, multi-step processes with undo and waits (steps) - and when auditing a codebase for fit.
+description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries, providing context, async suspense, router, multi-step processes with resets and waits (steps) - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
@@ -17,7 +17,7 @@ A class-based state backbone - reactive MVC in plain classes, rendered by React 
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 | `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
-| `@expressive/steps`  | Preview   | Multi-step processes as Models: steps, undo, waits, retries, concurrency gates. In-process. |
+| `@expressive/steps`  | Preview   | Multi-step processes as Models: steps, resets, waits, retries, concurrency gates. In-process. |
 
 ### Installing
 
