@@ -70,7 +70,7 @@ export default class Session extends Model {
 }
 ```
 
-Inside a call, `Session.get()` finds that instance; `Current.get()` is the request - `.request` (a Web `Request`), `.url`, `.cookies` - read-only, server-only. A gate instance is cached per key for `static ttl` seconds - an optimization: derive its state from the request, never from an earlier call. Calls cannot set response headers or cookies yet.
+Inside a call, `Session.get()` finds that instance; `Current.get()` is the request - `.request` (a Web `Request`), `.url`, `.cookies` - read-only, server-only. A gate instance is cached per key for `static ttl` seconds - an optimization: derive its state from the request, never from an earlier call. Calls cannot set response headers or cookies yet - answer those requests from a [server entry](#server-entry).
 
 ## Client
 
@@ -89,19 +89,51 @@ configure({
 
 `client(options)` builds a separate one. Without a `location`, a relative `base` throws - pass an absolute one.
 
+## Server entry
+
+To put routes beside the calls - cookies, uploads, downloads, streams, a `scheduled` handler or Durable Object classes - write the server yourself and name it:
+
+```ts
+// vite.config.ts
+export default defineConfig({ plugins: [rpc({ entry: "server.ts" })] });
+```
+
+```ts
+// server.ts
+import { handle } from "@expressive/rpc/calls";
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/health") return Response.json({ ok: true });
+
+    return (await handle(request)) ?? env.ASSETS.fetch(request);
+  },
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {},
+};
+
+export { Room } from "./room";   // a Durable Object, say
+```
+
+- `handle(request)` answers a call and gives anything else `undefined`.
+- The entry and the calls share one copy of every module, in dev and in the build.
+- `vite build` bundles the entry as `dist/server/index.js`, its other exports included.
+- In dev the entry's `fetch` runs on every request before Vite, with `ctx.waitUntil` logging a rejection. `env` is `rpc({ env })`'s result (say, wrangler's `getPlatformProxy().env`) plus an `ASSETS` that hands the request back to Vite.
+- `@expressive/rpc/calls` is the server's: a client import fails the build, and a call to `handle` outside a server the plugin builds or runs throws. One rpc dev server per process serves it.
+
 ## Build and deploy
 
-`vite build` emits `dist/client` and `dist/server/index.js`, a self-contained `export default { fetch(request, env) }` holding only the calls the client imported. Non-call requests go to `env.ASSETS` when bound, else 404.
+`vite build` emits `dist/client` and `dist/server/index.js`, a self-contained bundle holding only the calls the client imported - the app's entry, or by default `export default { fetch(request, env) }`, which hands non-call requests to `env.ASSETS` when bound, else 404. `cloudflare:` imports stay external.
 
 - **Cloudflare Workers:** `main: "dist/server/index.js"`, `compatibility_flags: ["nodejs_compat"]` (required), `no_bundle: true`, `assets: { directory: "dist/client", binding: "ASSETS", run_worker_first: true }`.
-- **Node:** `toNode(server.fetch)` from `@expressive/rpc/http` is a `(req, res)` handler; serve static files yourself.
+- **Node:** `toNode(server.fetch)` from `@expressive/rpc/http` is a `(req, res, next?)` handler - `next` gets what the server answers `undefined`; serve static files yourself.
 
 Use `vite build` or `createBuilder().buildApp()` - the legacy `build()` API builds the client only.
 
 ## Limits
 
 - Arguments and results are JSON - no `Date`, `Map`, binary.
-- Worker bindings (`env`) and `ctx` do not reach calls - import `env` from `cloudflare:workers`.
-- The generated server is the whole Worker entry: it cannot sit beside other routes, a Durable Object export or a `scheduled` handler.
+- Worker bindings (`env`) and `ctx` do not reach calls - import `env` and `waitUntil` from `cloudflare:workers`, or handle the request in the entry.
 - Module state lives per isolate or process - keep shared state in a store.
 - An error class extending a package's export (`extends ZodError`) is not followed; the server checks it is an `Error` at startup.
