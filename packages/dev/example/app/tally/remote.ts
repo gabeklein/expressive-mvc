@@ -1,5 +1,6 @@
 import { Model } from "@expressive/mvc";
 import { Current } from "@expressive/dev/server";
+import { HttpError } from "@expressive/rpc/http";
 
 export class Overflow extends Error {
   status = 409;
@@ -7,6 +8,10 @@ export class Overflow extends Error {
   constructor(public limit: number) {
     super(`The tally stops at ${limit}.`);
   }
+}
+
+export class Closed extends HttpError {
+  status = 423;
 }
 
 export default class Tally extends Model {
@@ -30,4 +35,8 @@ export async function where() {
 
 export async function fail(): Promise<never> {
   throw new Error("Nope");
+}
+
+export async function close(): Promise<never> {
+  throw new Closed("The tally is closed.");
 }

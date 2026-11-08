@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { Manifest, type Exposed as Plain } from "@expressive/rpc/internal/vite";
 
 import type { Remote } from "./routes";
 import type { Shape } from "../server/connection";
@@ -22,26 +22,12 @@ export function shapeOf({ fields, children }: Twin): Shape {
   return children ? { fields, children: Object.fromEntries(Object.entries(children).map(([field, child]) => [field, shapeOf(child)])) } : { fields };
 }
 
-export interface Exposed extends Remote {
-  calls: string[];
-  classes: string[];
+export interface Exposed extends Remote, Plain {
   pooled: Twin[];
   seat?: Twin;
 }
 
-export class Exposure {
-  readonly remotes = new Map<string, Exposed>();
-
-  constructor(readonly salt?: string) {}
-
-  callId(remote: Remote, name: string): string {
-    return this.salt ? this.seal(globalId(remote, name)) : localId(remote, name);
-  }
-
-  classId(remote: Remote, name: string): string {
-    return this.seal(globalId(remote, name));
-  }
-
+export class Exposure extends Manifest<Exposed> {
   methodIds(remote: Remote, twin: Twin, pooled: boolean): Record<string, string> {
     return Object.fromEntries(pathsOf(twin).map(path => [this.methodId(remote, twin, pooled, path), path]));
   }
@@ -64,22 +50,4 @@ export class Exposure {
   private methodId(remote: Remote, twin: Twin, pooled: boolean, path: string): string {
     return pooled ? this.classId(remote, `${twin.name}.${path}`) : this.callId(remote, `default.${path}`);
   }
-
-  byPattern(): Exposed[][] {
-    const groups = new Map<string, Exposed[]>();
-
-    for (const remote of this.remotes.values()) {
-      const key = remote.pattern.join("/");
-      groups.set(key, [...(groups.get(key) ?? []), remote]);
-    }
-
-    return [...groups.values()];
-  }
-
-  private seal(id: string): string {
-    return this.salt ? createHash("sha256").update(this.salt + id).digest("base64url").slice(0, 16) : id;
-  }
 }
-
-const localId = ({ module }: Remote, name: string) => (module ? `${module}:${name}` : name);
-const globalId = (remote: Remote, name: string) => `/${remote.pattern.join("/")}#${localId(remote, name)}`;

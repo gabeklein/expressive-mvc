@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { dirname, relative, sep } from "node:path";
 
+import type { Exports } from "../call";
 import type { ErrorClass, Parent } from "./scan";
 
 export const SCRIPT = /\.[cm]?[jt]sx?$/;
@@ -14,6 +15,15 @@ export interface Located {
 export interface Exposed extends Located {
   calls: string[];
   errors: ErrorClass[];
+}
+
+export type Locate = (file: string) => Located | undefined;
+
+export interface Stub {
+  from?: string;
+  at?: unknown;
+  imports?: string[];
+  lines?: string[];
 }
 
 export function locate(dir: string, file: string): Located | undefined {
@@ -33,8 +43,8 @@ export const pathOf = ({ pattern }: Located) => "/" + pattern.join("/");
 const localId = ({ module }: Located, name: string) => (module ? `${module}:${name}` : name);
 const globalId = (at: Located, name: string) => `${pathOf(at)}#${localId(at, name)}`;
 
-export class Manifest {
-  readonly modules = new Map<string, Exposed>();
+export class Manifest<E extends Exposed = Exposed> {
+  readonly modules = new Map<string, E>();
 
   constructor(readonly salt?: string) {}
 
@@ -46,12 +56,12 @@ export class Manifest {
     return this.seal(globalId(at, name));
   }
 
-  parentId(parent: Parent, locate: (file: string) => Located | undefined): string {
+  parentId(parent: Parent, locate: Locate): string {
     return "id" in parent ? parent.id : this.classId(locate(parent.file)!, parent.name);
   }
 
-  byPattern(): Exposed[][] {
-    const groups = new Map<string, Exposed[]>();
+  byPattern(): E[][] {
+    const groups = new Map<string, E[]>();
 
     for (const exposed of this.modules.values()) {
       const key = pathOf(exposed);
@@ -61,7 +71,7 @@ export class Manifest {
     return [...groups.values()];
   }
 
-  stub(exposed: Exposed, locate: (file: string) => Located | undefined): string {
+  stub(exposed: E, locate: Locate, { from = "@expressive/rpc/http", at = pathOf(exposed), imports = [], lines = [] }: Stub = {}): string {
     const json = JSON.stringify;
     const before = new Set<string>();
 
@@ -69,16 +79,45 @@ export class Manifest {
       if (parent && "file" in parent && parent.file !== exposed.file) before.add(importOf(exposed.file, parent.file));
 
     return [
-      `import { call, define } from "@expressive/rpc/http";`,
+      `import { ${["call", "define", ...imports].join(", ")} } from ${json(from)};`,
       ...[...before].map(spec => `import ${json(spec)};`),
-      `const at = ${json(pathOf(exposed))};`,
+      `const at = ${json(at)};`,
       ...exposed.calls.map(name => `export const ${name} = (...args) => call(at, ${json(this.callId(exposed, name))}, args);`),
       ...exposed.errors.map(({ name, parent }) => {
         const args = [json(this.classId(exposed, name)), json(name), ...(parent ? [json(this.parentId(parent, locate))] : [])];
         return `export const ${name} = define(${args.join(", ")});`;
       }),
+      ...lines,
       "",
     ].join("\n");
+  }
+
+  table(group: E[], alias: (file: string) => string): string {
+    const pick = (names: (exposed: E) => string[], id: (exposed: E, name: string) => string) =>
+      group.flatMap(exposed => names(exposed).map(name => `${JSON.stringify(id(exposed, name))}: ${alias(exposed.file)}.${name}`)).join(", ");
+
+    const calls = pick(exposed => exposed.calls, (exposed, name) => this.callId(exposed, name));
+    const classes = pick(exposed => exposed.errors.map(error => error.name), (exposed, name) => this.classId(exposed, name));
+
+    return `calls: { ${calls} }, classes: { ${classes} }`;
+  }
+
+  async exports(group: E[], load: (file: string) => Promise<Record<string, unknown>>, check: (file: string, exports: Exports) => void): Promise<Exports> {
+    const calls: Record<string, unknown> = {};
+    const classes: Record<string, unknown> = {};
+
+    for (const exposed of group) {
+      const mod = await load(exposed.file);
+      const own: Record<string, unknown> = {};
+
+      for (const name of exposed.calls) calls[this.callId(exposed, name)] = mod[name];
+      for (const { name } of exposed.errors) own[this.classId(exposed, name)] = mod[name];
+
+      check(exposed.file, { calls, classes: own });
+      Object.assign(classes, own);
+    }
+
+    return { calls, classes };
   }
 
   entry(gates: Located[]): string {
@@ -87,14 +126,8 @@ export class Manifest {
     const alias = (file: string) => `m${files.indexOf(file)}`;
 
     const endpoints = this.byPattern().map((group, i) => {
-      const pick = (names: (exposed: Exposed) => string[], id: (exposed: Exposed, name: string) => string) =>
-        group.flatMap(exposed => names(exposed).map(name => `${json(id(exposed, name))}: ${alias(exposed.file)}.${name}`)).join(", ");
-
-      const calls = pick(exposed => exposed.calls, (exposed, name) => this.callId(exposed, name));
-      const classes = pick(exposed => exposed.errors.map(error => error.name), (exposed, name) => this.classId(exposed, name));
-
       return [
-        `const e${i} = { calls: { ${calls} }, classes: { ${classes} } };`,
+        `const e${i} = { ${this.table(group, alias)} };`,
         `verify(${json(pathOf(group[0]))}, e${i});`,
       ];
     });

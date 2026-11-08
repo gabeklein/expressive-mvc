@@ -1,12 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join, relative } from "node:path";
-import { transformWithOxc, type Plugin, type RunnableDevEnvironment } from "vite";
+import type { Plugin, RunnableDevEnvironment } from "vite";
 
 import type { Endpoint, Seats } from "../call";
-import { guard } from "../guard";
 import { toNode } from "../http/node";
-import { Manifest, SCRIPT, locate, type Exposed, type Located } from "./manifest";
+import { guardScript } from "./guard";
+import { Manifest, locate, type Exposed, type Located } from "./manifest";
 import { scanModule } from "./scan";
 
 export interface Options {
@@ -129,10 +129,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
 
     async transform(code, id) {
       const file = id.split("?")[0];
-
-      if (this.environment.config.consumer !== "client" || !SCRIPT.test(file) || !code.includes(HTTP)) return;
-
-      const problem = guard((await transformWithOxc(code, file, { jsx: { runtime: "automatic" } })).code);
+      const problem = this.environment.config.consumer === "client" && (await guardScript(code, file));
 
       if (problem) this.error(`${relative(root, file)} ${problem}`);
     },
@@ -157,23 +154,7 @@ export function rpc({ dir = "api", opaque = true }: Options = {}): Plugin {
       const endpoints = ({ verify }: Runtime): Endpoint[] =>
         manifest.byPattern().map(group => ({
           pattern: group[0].pattern,
-          async exports() {
-            const calls: Record<string, unknown> = {};
-            const classes: Record<string, unknown> = {};
-
-            for (const exposed of group) {
-              const mod = await runner.import(exposed.file);
-              const own: Record<string, unknown> = {};
-
-              for (const name of exposed.calls) calls[manifest.callId(exposed, name)] = mod[name];
-              for (const { name } of exposed.errors) own[manifest.classId(exposed, name)] = mod[name];
-
-              verify(relative(root, exposed.file), { calls, classes: own });
-              Object.assign(classes, own);
-            }
-
-            return { calls, classes };
-          },
+          exports: () => manifest.exports(group, file => runner.import(file), (file, exports) => verify(relative(root, file), exports)),
         }));
 
       const seats: Seats = async pattern => {
