@@ -1470,3 +1470,30 @@ describe('tracked lookup', () => {
     expect(caught).toEqual([new Error(`Could not find ${Test} in context.`)]);
   });
 });
+
+it.fails('will prefer explicit over two earlier implicit entries', () => {
+  class Base extends Model {}
+
+  const context = new Context();
+  const explicit = Base.new();
+
+  context.add(Base.new());
+  context.add(Base.new());
+  context.add(explicit, true);
+
+  expect(context.get(Base)).toBe(explicit);
+});
+
+it.fails('will call cleanup returned for an already-registered upstream state', () => {
+  class Upstream extends Model {}
+
+  const parent = new Context();
+  const child = parent.push();
+  const cleanup = vi.fn();
+
+  parent.add(Upstream.new(), true);
+  child.get(Upstream, () => cleanup);
+  parent.pop();
+
+  expect(cleanup).toBeCalledTimes(1);
+});

@@ -640,3 +640,17 @@ describe('pool subscriptions', () => {
     expect(await fires(pool, ($) => [...$], () => pool.add())).toBe(1);
   });
 });
+
+it.fails('will not insert a destroyed model', () => {
+  class Item extends Model {}
+  class Owner extends Model {
+    items = has((item: Item) => item);
+  }
+
+  const owner = Owner.new();
+  const dead = Item.new();
+  dead.set(null);
+
+  expect(() => owner.items.add(dead)).toThrow();
+  expect(owner.items.size).toBe(0);
+});
