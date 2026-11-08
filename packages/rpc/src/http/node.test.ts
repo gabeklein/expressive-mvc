@@ -93,7 +93,7 @@ describe("node response", () => {
 
     expect(res.flushHeaders).not.toHaveBeenCalled();
     expect(res.write).not.toHaveBeenCalled();
-    expect(res.end.mock.calls[0][0].toString()).toBe('{"a":1}');
+    expect(Buffer.from(res.end.mock.calls[0][0]).toString()).toBe('{"a":1}');
   });
 
   it("will flush any other body's headers, then write each chunk as it arrives", async () => {

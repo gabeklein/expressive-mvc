@@ -3,8 +3,9 @@ import type { Fault } from "./call";
 export function registry(known: Record<string, new (message: string) => Error> = {}) {
   const classes = new Map(Object.entries(known));
 
-  function define(id: string, name: string): ErrorConstructor {
-    const named = { [name]: class extends Error {} };
+  function define(id: string, name: string, parent?: string): ErrorConstructor {
+    const Base = (parent !== undefined && classes.get(parent)) || Error;
+    const named = { [name]: class extends Base {} };
     const Type = named[name] as ErrorConstructor;
 
     Type.prototype.name = name;

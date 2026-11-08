@@ -36,6 +36,10 @@
     "./internal": {
       "types": "./dist/internal.d.ts",
       "default": "./dist/internal.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
     }
   },
   "engines": {
@@ -45,13 +49,22 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit --incremental",
     "coverage": "vitest run --coverage",
-    "test": "bun run typecheck && bun run coverage"
+    "test": "bun run typecheck && bun run coverage",
+    "example": "cd example && vite",
+    "example:build": "cd example && vite build",
+    "example:e2e": "cd example && bun run e2e"
   },
   "dependencies": {
     "es-module-lexer": "^1.6.0"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.94.0"
+    "@expressive/mvc": "^0.94.0",
+    "vite": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@expressive/mvc": "workspace:*",
