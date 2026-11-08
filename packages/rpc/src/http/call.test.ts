@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Model } from "@expressive/mvc";
 
 import type { Endpoint, Seats } from "../call";
+import { Current, install } from "../context";
 import { dispatch, failure, handler, isCall, reply, type Tier } from "./call";
 
 const TAB = crypto.randomUUID();
@@ -188,5 +189,42 @@ describe("reply", () => {
     expect(response.status).toBe(304);
     expect(response.headers.get("x-a")).toBe("1");
     expect(response.body).toBeNull();
+  });
+});
+
+describe("headers from a call", () => {
+  install();
+
+  const calls = {
+    login: async () => {
+      const current = Current.get();
+
+      current.setCookie("session", "abc");
+      current.setCookie("seen", "1", { httpOnly: false });
+      current.setHeader("cache-control", "no-store");
+      current.setHeader("content-type", "text/plain");
+    },
+    logout: async () => {
+      Current.get().deleteCookie("session");
+      throw new Error("Signed out.");
+    },
+  };
+  const endpoints: Endpoint[] = [{ pattern: ["auth"], exports: async () => ({ calls, classes: {} }) }];
+
+  it("will add them to the reply, keeping the reply's own", async () => {
+    const response = await dispatch(fetched(request("/auth", "login", "[]")), () => endpoints, false);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.getSetCookie()).toEqual(["session=abc; Path=/; HttpOnly; SameSite=Lax", "seen=1; Path=/; SameSite=Lax"]);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8");
+    expect(await response.json()).toEqual({});
+  });
+
+  it("will add them to a failure too", async () => {
+    const response = await dispatch(fetched(request("/auth", "logout", "[]")), () => endpoints, false);
+
+    expect(response.status).toBe(500);
+    expect(response.headers.getSetCookie()).toEqual(["session=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax"]);
   });
 });

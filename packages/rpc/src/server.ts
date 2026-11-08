@@ -1,2 +1,2 @@
 export * from "./client";
-export { Current } from "./context";
+export { Current, type CookieOptions } from "./context";

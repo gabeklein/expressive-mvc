@@ -1,5 +1,6 @@
 import { attempt, fault, inFolder, locate, type Call, type Endpoint, type Exports, type Match, type Outcome, type Seats } from "../call";
 import { parse, stringify } from "../codec";
+import { headersOf } from "../context";
 import { ERRORS } from "../errors";
 
 export function isCall(request: Request): boolean {
@@ -52,7 +53,20 @@ export async function dispatch<E extends Exports>(request: Request, endpoints: (
 
   if (!args) return reply(400, { message: "Expected a JSON array of arguments." });
 
-  return handle(args);
+  return withHeaders(await handle(args), headersOf(request));
+}
+
+/** Add what the call set to its reply - the reply's own headers win. */
+function withHeaders(response: Response, extra?: Headers): Response {
+  if (!extra) return response;
+
+  const headers = new Headers(response.headers);
+
+  extra.forEach((value, name) => name === "set-cookie" || response.headers.has(name) || headers.set(name, value));
+
+  for (const cookie of extra.getSetCookie()) headers.append("set-cookie", cookie);
+
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
 function plain(incoming: Incoming, fn: Call): Handle {
