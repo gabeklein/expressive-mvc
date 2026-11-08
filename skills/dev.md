@@ -78,7 +78,7 @@ export async function add(by: number) {
 
 - One seat per location: `/blog/a` and `/blog/b` hold separate ones; a seat lower down shadows one above.
 - `protected static key()` narrows the folder's context by what it returns - an identity from verified data (`Current.get().cookies`, a seat above via `get()`). `undefined` passes through; throwing refuses the call.
-- `Current` (from `@expressive/dev/server`) is the request: `.request`, `.url`, `.cookies`. Read-only.
+- `Current` (from `@expressive/dev/server`) is the request: `.request`, `.url`, `.cookies`, read-only. `setCookie(name, value, options?)`, `deleteCookie(name)` and `setHeader(name, value)` go out on the reply to that call, a twin's call or pull included.
 - Process-wide state: a module-level `X.new(Context.root)`, found by `get()` from any call.
 
 ## Twins (experimental)

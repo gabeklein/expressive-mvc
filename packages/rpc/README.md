@@ -43,7 +43,7 @@ try {
 - **Errors** - `HttpError` and its subclasses (`NotFound`, `Forbidden`, `Conflict`, ...) set the reply's status and are rebuilt on the client, so `instanceof` works. Export your own subclasses from the folder.
 - **Gates** - an `index.ts` default `Model` with `static key()` runs before every call in its folder and below: throw to refuse.
 - **Values** - `Date`, `BigInt`, `Map`, `Set`, `Uint8Array` and `undefined` in arrays survive the trip, tagged inside plain JSON.
-- **Request** - `Current.get().request`, `.url` and `.cookies` inside a call.
+- **Request** - `Current.get().request`, `.url` and `.cookies` inside a call, and `setCookie`, `deleteCookie` and `setHeader` for its reply.
 - **Client** - `configure({ base, headers, transport, reply })` for cross-origin servers, auth headers or a custom fetch.
 - **Server entry** - `rpc({ entry: "server.ts" })` makes your own Worker-shaped module the server: it gets the calls as `handle(request)` from `@expressive/rpc/calls` and adds routes, a `scheduled` handler or Durable Objects beside them, sharing their modules in dev and build.
 

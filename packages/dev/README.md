@@ -124,7 +124,8 @@ export async function add(by: number) {
 ```
 
 `Current` (from `@expressive/dev/server`) is the request in progress, readable from any server
-Model or function in a call: `Current.get().url`, `.cookies`, `.request` (a Web `Request`). Its accessors read the
+Model or function in a call: `Current.get().url`, `.cookies`, `.request` (a Web `Request`); `setCookie`, `deleteCookie`
+and `setHeader` go out on that call's reply. Its accessors read the
 call live, so a reused instance may hold it in a field (`current = get(Current)`) but should not
 copy its values into its own.
 

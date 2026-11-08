@@ -74,7 +74,32 @@ export default class Session extends Model {
 }
 ```
 
-Inside a call, `Session.get()` finds that instance; `Current.get()` is the request - `.request` (a Web `Request`), `.url`, `.cookies` - read-only, server-only. A gate instance is cached per key for `static ttl` seconds - an optimization: derive its state from the request, never from an earlier call. Calls cannot set response headers or cookies yet - answer those requests from a [server entry](#server-entry).
+Inside a call, `Session.get()` finds that instance; `Current.get()` is the request - `.request` (a Web `Request`), `.url`, `.cookies` - read-only, server-only. A gate instance is cached per key for `static ttl` seconds - an optimization: derive its state from the request, never from an earlier call.
+
+`Current` also writes the reply. A gate's `key()` can use it too, and what it sets goes out on a failure as well:
+
+```ts
+// api/auth.ts
+import { Current, Unauthorized } from "@expressive/rpc";
+
+export async function login(user: string, password: string) {
+  const session = await sessions.open(user, password);
+
+  if (!session) throw new Unauthorized("Wrong password.");
+
+  Current.get().setCookie("session", session.id, { maxAge: 60 * 60 * 24 * 30 });
+}
+
+export async function logout() {
+  Current.get().deleteCookie("session");
+}
+```
+
+- `setCookie(name, value, options?)` - `HttpOnly`, `SameSite=Lax` and `Path=/` unless told otherwise, and `Secure` when the request came over https. Options: `maxAge` (seconds), `expires`, `path`, `domain`, `secure`, `httpOnly`, `sameSite`, `partitioned`. The value is URI-encoded, as `.cookies` decodes it.
+- `deleteCookie(name, options?)` - pass the `path` and `domain` it was set with.
+- `setHeader(name, value)` - any other header. The reply's own (`content-type` and the like) win.
+
+`.cookies` stays the request's: a cookie set in this call is read on the next one. Set-Cookie reaches a browser's cookie jar on its own; a cross-origin client needs `credentials: "include"` in its `transport`. A non-cookie header is read through `configure({ reply })`.
 
 ## Client
 
