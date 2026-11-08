@@ -73,6 +73,7 @@ Continue with [Getting Started](https://expressive.dev/docs/getting-started/), e
 | [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom) | MVC-native browser renderer with no React underneath - same core and router, native events, built-in styling. Early `0.x`; expect change. |
 | [`@expressive/router`](https://www.npmjs.com/package/@expressive/router) | Host-agnostic router built on Expressive components, for the React adapter and the DOM renderer alike. |
 | [`@expressive/inspect`](https://www.npmjs.com/package/@expressive/inspect) | Dev-only in-process inspector: registry, ownership tree, path queries, and a frame journal for tests, browser drivers, and agents. |
+| [`@expressive/steps`](https://www.npmjs.com/package/@expressive/steps) | Multi-step processes as Models: every method a step, with undo, waits, retries and concurrency gates, and the instance awaitable for its result. In-process; early `0.x`. |
 
 All packages are pre-1.0 under one discipline: breaking changes land only in minor versions, each documented by a changeset in the package's CHANGELOG - patch releases are always safe to take.
 
