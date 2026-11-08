@@ -36,8 +36,8 @@ interface Runtime {
 const ENV = "rpc";
 const ENTRY = "\0@expressive/rpc/server";
 const RUNTIME = "\0@expressive/rpc/runtime";
-const CALLS_SPEC = "@expressive/rpc/calls";
-const CALLS = "\0@expressive/rpc/calls";
+// `@expressive/rpc/calls` holds this key: its dev server's handler, or - built - the module the calls replace.
+const CALLS = "@expressive/rpc/calls#dev";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
 const INDEX = ["ts", "js", "mts", "mjs"].map(ext => `index.${ext}`);
 
@@ -47,8 +47,6 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
   let main: string | undefined;
   let manifest = new Manifest();
 
-  // In dev, `@expressive/rpc/calls` reaches the plugin's handler through this, one per plugin.
-  const bridge = Symbol.for(`@expressive/rpc/calls#${randomBytes(8).toString("hex")}`);
 
   const located = (file: string) => locate(folder, file);
 
@@ -120,7 +118,6 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
     async resolveId(id, importer, options) {
       if (id === ENTRY || id === RUNTIME) return id;
-      if (id === CALLS_SPEC && this.environment.name === ENV) return CALLS;
       if (!("scan" in options && options.scan) || !/^[./]/.test(id)) return;
 
       const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
@@ -132,8 +129,7 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
       const resolve: Resolve = async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id;
 
       if (id === ENTRY && main) return `export * from ${JSON.stringify(main)};\nexport { default } from ${JSON.stringify(main)};\n`;
-      if (id === ENTRY) return `import { handle } from "${CALLS_SPEC}";\n\nexport default { async fetch(request, env) { return (await handle(request)) ?? env?.ASSETS?.fetch(request) ?? new Response("Not found.", { status: 404 }); } };\n`;
-      if (id === CALLS) return this.environment.mode === "dev" ? `const handle = globalThis[Symbol.for(${JSON.stringify(bridge.description)})];\n\nexport { handle };\n` : manifest.calls(await gates(resolve));
+      if (id === ENTRY) return `import { handle } from "@expressive/rpc/calls";\n\nexport default { async fetch(request, env) { return (await handle(request)) ?? env?.ASSETS?.fetch(request) ?? new Response("Not found.", { status: 404 }); } };\n`;
       if (id === RUNTIME) return `export { handler } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
       if (this.environment.config.consumer !== "client") return;
 
@@ -150,6 +146,12 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
     async transform(code, id) {
       const file = id.split("?")[0];
+
+      if (this.environment.name === ENV && this.environment.mode === "build" && code.includes(CALLS)) {
+        const resolve: Resolve = async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id;
+        return { code: manifest.calls(await gates(resolve)), map: null };
+      }
+
       const problem = this.environment.config.consumer === "client" && (await guardScript(code, file));
 
       if (problem) this.error(`${relative(root, file)} ${problem}`);
@@ -188,7 +190,10 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
         return loaded.handler(endpoints(loaded), { dev: true, seats })(request);
       };
 
-      Object.assign(globalThis, { [bridge]: handle });
+      Object.assign(globalThis, { [Symbol.for(CALLS)]: handle });
+      server.httpServer?.once("close", () => {
+        if (Reflect.get(globalThis, Symbol.for(CALLS)) === handle) Reflect.deleteProperty(globalThis, Symbol.for(CALLS));
+      });
 
       if (!main) return void server.middlewares.use(toNode(handle));
 

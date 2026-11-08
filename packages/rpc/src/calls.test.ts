@@ -1,5 +1,19 @@
-import { expect, it } from "vitest";
+import { afterEach, expect, it } from "vitest";
 
-it("will throw when imported outside the rpc() plugin's server", async () => {
-  await expect(import("./calls")).rejects.toThrow("@expressive/rpc/calls is provided by the rpc() Vite plugin to the server it builds");
+import { handle } from "./calls";
+
+const DEV = Symbol.for("@expressive/rpc/calls#dev");
+
+afterEach(() => void delete (globalThis as Record<symbol, unknown>)[DEV]);
+
+it("will throw outside a server the rpc() plugin builds or runs", async () => {
+  await expect(handle(new Request("http://localhost/"))).rejects.toThrow("@expressive/rpc/calls answers only in a server the rpc() Vite plugin builds or runs");
+});
+
+it("will hand a request to the dev server's handler", async () => {
+  const response = new Response("dev");
+
+  Object.assign(globalThis, { [DEV]: async () => response });
+
+  expect(await handle(new Request("http://localhost/"))).toBe(response);
 });

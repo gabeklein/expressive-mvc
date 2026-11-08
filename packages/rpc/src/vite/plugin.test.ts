@@ -11,8 +11,6 @@ const PACKAGES = fileURLToPath(new URL("../../../", import.meta.url));
 
 const SOURCES: InlineConfig["resolve"] = {
   alias: [
-    // The plugin provides the calls module; keep it from the sources alias below.
-    { find: /^@expressive\/rpc\/calls$/, replacement: "@expressive/rpc/calls" },
     { find: /^@expressive\/([^/]+)$/, replacement: `${PACKAGES}$1/src` },
     { find: /^@expressive\/([^/]+)\/(.+)$/, replacement: `${PACKAGES}$1/src/$2` },
   ],
@@ -479,6 +477,17 @@ describe("entry", () => {
 
     await vi.waitFor(async () => expect(await (await get(server, "/count")).json()).toEqual({ count: 0, name: "edited" }), { timeout: 5000 });
   }, 15_000);
+
+  it("will keep the newer dev server's calls when an older one closes", async () => {
+    const older = await listen(project(ENTRY), { plugins: [rpc({ entry: "server.ts" })] });
+    const { server, post } = await listen(project(ENTRY), { plugins: [rpc({ entry: "server.ts" })] });
+
+    await server.transformRequest("/api/tally.ts");
+    servers.splice(servers.indexOf(older.server), 1);
+    await older.server.close();
+
+    expect(await post("/", "tally:tick", [], "a")).toEqual({ status: 200, body: { value: 1 } });
+  });
 
   it("will fail a request when the entry has no default fetch", async () => {
     const { server } = await listen(project({ ...ENTRY, "server.ts": `export default {};` }), { plugins: [rpc({ entry: "server.ts" })] });
