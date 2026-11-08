@@ -1,5 +1,11 @@
 # @expressive/mvc
 
+## 0.94.1
+
+### Patch Changes
+
+- [#626](https://github.com/gabeklein/expressive-mvc/pull/626) [`72f0d74`](https://github.com/gabeklein/expressive-mvc/commit/72f0d742007dfd23b9103b314a9367319de50f7b) `def<T>` no longer types a union including `undefined` as `unknown` - `def<X | undefined>` fields keep `X | undefined`.
+
 ## 0.94.0
 
 ### Minor Changes
