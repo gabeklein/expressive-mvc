@@ -100,6 +100,8 @@ async function serve(root: string, config: InlineConfig = {}) {
     plugins: [rpc()],
     resolve: SOURCES,
     optimizeDeps: { noDiscovery: true, include: [] },
+    // one address family: on a dual-stack host, "localhost" can reach another process holding the same port on the other
+    server: { host: "127.0.0.1" },
     ...config,
   });
 
