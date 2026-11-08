@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, expectTypeOf, onTestFinished } from 'vitest';
 import { Context, resolver, within } from './context';
-import { Model } from './state';
+import { Model } from './model';
 import { get } from './field/get';
 import { has } from './field/has';
 import { map } from './field/map';
