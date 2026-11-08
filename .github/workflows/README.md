@@ -28,6 +28,9 @@ Beside `verify`, one run per push also holds:
   shows red on the PR that caused it without blocking the merge. Budgets are
   re-set once per release, not per feature: a PR on `main` re-sets them and
   every size claim in the docs, before the Version Packages PR merges.
+- `dev` - `packages/dev`'s example specs against its dev server and its built
+  server. Runs for a PR into any branch, since dev's PRs target its trunk. Not
+  a required check.
 
 `verify` and `e2e` are required checks, matched by job name - renaming either
 job needs the branch protection updated with it.
