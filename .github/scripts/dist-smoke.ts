@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
  * published declarations with `skipLibCheck` off, bundled and minified so
  * `sideEffects` tree-shaking applies, then driven under happy-dom.
  */
-const PACKAGES = ['mvc', 'react', 'dom', 'router', 'inspect'];
+const PACKAGES = ['mvc', 'react', 'dom', 'router', 'inspect', 'steps'];
 
 function run(cmd: string[], cwd: string) {
   const { exitCode, stdout, stderr } = Bun.spawnSync(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });

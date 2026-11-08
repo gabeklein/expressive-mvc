@@ -52,7 +52,7 @@ it('will apply during serve only, after other transforms', () => {
 describe('skip', () => {
   it.each([
     ['a non-script module', 'class A {}', '/src/app.css'],
-    ['the mvc runtime itself', 'class A {}', '/mvc/src/state.js'],
+    ['the mvc runtime itself', 'class A {}', '/mvc/src/model.js'],
     ['the dom runtime itself', 'export const App = () => null;', '/dom/src/lazy.js'],
     ['a dependency', 'class A {}', '/node_modules/lib/index.js'],
     ['a module without classes or components', 'export const title = "no class";', undefined],

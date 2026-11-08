@@ -123,6 +123,13 @@ function observe<T extends object>(
   return Object.defineProperty(proxy, Observing, { value: observing });
 }
 
+function unwrap<T>(value: T): T {
+  while (value instanceof Object && Object.prototype.hasOwnProperty.call(value, Observing))
+    value = Object.getPrototypeOf(value);
+
+  return value;
+}
+
 function touch(from: object, key: any): void;
 function touch<T>(from: object, key: any, value?: T): T;
 function touch(from: object, key: any, value?: any) {
@@ -482,6 +489,8 @@ function capture(scope: (release: (update?: boolean | null) => void) => void) {
 }
 
 export {
+  REFRESH,
+  unwrap,
   listener,
   event,
   Observer,

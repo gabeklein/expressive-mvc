@@ -1,6 +1,6 @@
 import { vi, describe, it, expect } from 'vitest';
 import { Context } from '../context';
-import { Model } from '../state';
+import { Model } from '../model';
 import { fires } from '../../test.setup';
 import { get } from './get';
 import { has } from './has';

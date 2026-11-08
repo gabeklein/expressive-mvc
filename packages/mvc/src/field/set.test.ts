@@ -1,6 +1,6 @@
 import { vi, describe, it, expect } from 'vitest';
 import { mockPromise, mockWarn, flushMicrotasks } from '../../test.setup';
-import { Model } from '../state';
+import { Model } from '../model';
 import { set } from './set';
 
 const warn = mockWarn();

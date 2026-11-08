@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { flushMicrotasks, mockError, mockPromise, mockUncaught } from '../test.setup';
 import { watch } from './observable';
 import { enqueue, hold, pending } from './dispatch';
-import { Model } from './state';
+import { Model } from './model';
 
 describe('dispatch', () => {
   mockError();

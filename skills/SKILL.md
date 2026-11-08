@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries, providing context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries, providing context, async suspense, router, multi-step processes with resets and waits (steps) - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
@@ -19,6 +19,7 @@ A class-based state backbone - reactive MVC in plain classes, rendered by React 
 | `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
 | `@expressive/rpc`    | Preview   | Typed server calls for a Vite client build - one folder of modules, stubs on the client. |
 | `@expressive/dev`    | Preview   | App host: `expressive dev`/`build`, file routes, sidecar calls, server Models. |
+| `@expressive/steps`  | Preview   | Multi-step processes as Models: steps, resets, waits, retries, concurrency gates. In-process. |
 
 ### Installing
 
@@ -344,6 +345,10 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 - [rpc.md](rpc.md) - `@expressive/rpc`: the api folder, module rules, http errors, gates and `Current`, client `configure`, Worker/Node deploy, limits
 - [dev.md](dev.md) - `@expressive/dev`: app layout, route module exports, sidecars, server Model and seats, twins (experimental), commands
+
+### Steps
+
+- [steps.md](steps.md) - `@expressive/steps`: `run` as entry and result, `await this`, a step body as a plan, groups, waits and racers, durations, `then.on` outcome handlers (reset/catch/abort/close; functions, or step methods for durable runs), `.catch` handlers, `then.retry()`, `then.only` gates, stop/abort/end, hooks, coordination-first conventions
 
 ### Examples
 

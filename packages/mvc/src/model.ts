@@ -7,17 +7,16 @@ import {
   Observer,
   observer,
   queued,
+  REFRESH,
   touch,
   watch
 } from './observable';
+import { access, apply, compute, entries, HELD, manage, store, values, type Config } from './store';
 
 const define = Object.defineProperty;
 
 /** Register for all active states via string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
-
-/** Internal state assigned to states. */
-const STORE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
 /** Models under construction - added on `new`, removed when activated or released.
  *  Also carries work to run at the deadline, which `def` uses to bound its registry. */
@@ -42,12 +41,6 @@ const GETTERS = new WeakMap<Function, Map<string, () => unknown>>();
 
 /** Replacement for a getter captured by live computed properties, for hot patching. */
 const LATEST = new WeakMap<Function, Function>();
-
-/** Event every observer treats as watched, forcing a refresh after a hot patch. */
-const REFRESH = Symbol.for('@expressive/mvc.refresh');
-
-/** Stale flags for compute closures awaiting refresh on next access. */
-const STALE = new WeakSet<() => void>();
 
 /** Whether the deadline which drains `PENDING` is already queued for this tick. */
 let QUEUED = false;
@@ -191,13 +184,7 @@ declare namespace Model {
   type Setter<T> = (value: T, previous: T) => T | void;
 
   /** Descriptor config for a managed property. */
-  type Apply<T = any> = {
-    value?: T;
-    get?: ((source: Model) => T) | boolean;
-    set?: Setter<T> | boolean;
-    enumerable?: boolean;
-    // destroy?: () => void;
-  };
+  type Apply<T = any> = Config<T, Model>;
 
   /** Descriptor config for set() overload - enforces type when key is a known field. */
   type Define<T, K> = K extends Field<T> ? Apply<T[K] | Export<T[K]>> : Apply;
@@ -413,6 +400,9 @@ abstract class Model {
       });
     if (typeof arg2 == 'function') return callback(self, arg2, arg1);
     if (arg1 === null) return observer(self) === null;
+    if (arg2 !== false && !(arg1 in store(self)) && METHODS.get(self.constructor)!.has(arg1))
+      return unbind((self as any)[arg1]);
+
     return access(self, arg1, arg2);
   }
 
@@ -531,7 +521,7 @@ abstract class Model {
    * Yeilds the key and current value for each property.
    */
   [Symbol.iterator](): Iterator<[string, unknown]> {
-    return Object.entries(STORE.get(this.is)!)[Symbol.iterator]();
+    return entries(this.is)[Symbol.iterator]();
   }
 
   /**
@@ -597,23 +587,19 @@ abstract class Model {
     this: Model.Extends<T>,
     setup: NonNullable<Model.On<T>['setup']>
   ): () => boolean;
+
   static on<T extends Model>(
     this: Model.Extends<T>,
     handler: Model.On<T>
   ): () => boolean;
+
   static on<T extends Model>(
     this: Model.Extends<T>,
     handler: Model.On<T> | NonNullable<Model.On<T>['setup']>
   ) {
     if (typeof handler == 'function') handler = { setup: handler };
 
-    let setup = SETUP.get(this);
-
-    if (!setup) SETUP.set(this, (setup = new Set()));
-
-    setup.add(handler);
-
-    return () => setup.delete(handler);
+    return subscribe(SETUP, this, handler);
   }
 }
 
@@ -659,44 +645,6 @@ function init(state: Model, ...args: Model.Args) {
   const { before, after } = bootstrap(T);
 
   ID.set(state, `${T}-${uid()}`);
-  STORE.set(state, {});
-
-  const waits: Promise<unknown>[] = [];
-  const children: (() => void)[] = [];
-  const active = { waits, children, held: false };
-
-  function observe() {
-    if (waits.length) active.held = true;
-
-    for (const key in state) {
-      const desc: PropertyDescriptor = Object.getOwnPropertyDescriptor(state, key) || {};
-
-      if (!('value' in desc) || !desc.configurable) continue;
-
-      if (key[0] == '_' || key == 'then') unmanaged(state, key, desc.value);
-      else apply(state, key, desc, true);
-    }
-  }
-
-  function settle() {
-    const o = observer(state, true);
-    const { wait } = o;
-
-    o.wait = undefined;
-    children.forEach((release) => release());
-
-    capture((release) => {
-      listener(state, () => release(null), null);
-
-      for (const handler of after) {
-        const out = handler.call(state, state);
-
-        if (typeof out == 'function') listener(state, out, null);
-      }
-    });
-
-    wait?.forEach((resolve) => resolve());
-  }
 
   listener(state, (key) => {
     const rest = trailing(state);
@@ -705,68 +653,7 @@ function init(state: Model, ...args: Model.Args) {
 
     if (key === null) return null;
 
-    args.forEach(function find(arg) {
-      if (Array.isArray(arg)) arg.forEach(find);
-      else if (arg instanceof Context) home(state, arg);
-    });
-
-    if (!PARENT.has(state)) parent(state, host(state) || null);
-
-    const above = PARENT.get(state);
-    const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
-    const up = above ? ACTIVE.get(above) : undefined;
-
-    if (owns) listener(state, () => void owns.delete(state), null);
-
-    active.held = !!up?.held;
-    ACTIVE.set(state, active);
-
-    capture((release) => {
-      const queue = [...before, observe, ...args];
-
-      listener(state, () => release(null), null);
-
-      for (let i = 0; i < queue.length; i++) {
-        const arg = queue[i];
-        const called = typeof arg == 'function';
-        const out = called ? arg.call(state, state) : arg;
-
-        if (out instanceof Context) continue;
-
-        if (out instanceof Promise) {
-          waits.push(out);
-          out.catch((err) => report('setup', state, err));
-        } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
-        else if (typeof out == 'function') listener(state, out, null);
-        else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
-      }
-    });
-
-    const settled = waits.length ? Promise.all(waits) : undefined;
-    const hold = active.held || !!settled;
-    const failed = (error: unknown) => {
-      CAUSE.set(state, error);
-      event(state, null);
-    };
-    const release = () => {
-      if (observer(state) !== null) settle();
-    };
-
-    ACTIVE.delete(state);
-
-    if (hold) observer(state, true).wait = new Set();
-
-    if (up && hold) {
-      if (settled) up.waits.push(settled.then(undefined, failed));
-      up.children.push(release);
-    }
-    else if (settled) settled.then(release, failed);
-    else settle();
-
-    if (owns) {
-      owns.add(state);
-      OWNED.get(above)?.forEach((cb) => cb(state));
-    }
+    activate(state, args, before, after);
 
     let end = rest.length;
 
@@ -794,13 +681,109 @@ function init(state: Model, ...args: Model.Args) {
   PENDING.add(state);
 }
 
-function unmanaged(state: Model, key: string, value: unknown) {
-  define(state, key, {
-    configurable: true,
-    enumerable: false,
-    get: () => value,
-    set: (next) => { value = next }
+/**
+ * Bring a Model up within its parent and context - run setup handlers and
+ * arguments, then settle it now, after its own async setup, or with a parent
+ * still holding.
+ */
+function activate(
+  state: Model,
+  args: Model.Args,
+  before: Set<Model.Init>,
+  after: Set<NonNullable<Model.On['ready']>>
+) {
+  const waits: Promise<unknown>[] = [];
+  const children: (() => void)[] = [];
+  const active = { waits, children, held: false };
+
+  function observe() {
+    if (waits.length) active.held = true;
+
+    manage(state);
+  }
+
+  function settle() {
+    const o = observer(state, true);
+    const { wait } = o;
+
+    o.wait = undefined;
+    children.forEach((release) => release());
+
+    capture((release) => {
+      listener(state, () => release(null), null);
+
+      for (const handler of after) {
+        const out = handler.call(state, state);
+
+        if (typeof out == 'function') listener(state, out, null);
+      }
+    });
+
+    wait?.forEach((resolve) => resolve());
+  }
+
+  args.forEach(function find(arg) {
+    if (Array.isArray(arg)) arg.forEach(find);
+    else if (arg instanceof Context) home(state, arg);
   });
+
+  if (!PARENT.has(state)) parent(state, host(state) || null);
+
+  const above = PARENT.get(state);
+  const owns = above && (OWNS.get(above) || OWNS.set(above, new Set()).get(above)!);
+  const up = above ? ACTIVE.get(above) : undefined;
+
+  if (owns) listener(state, () => void owns.delete(state), null);
+
+  active.held = !!up?.held;
+  ACTIVE.set(state, active);
+
+  capture((release) => {
+    const queue = [...before, observe, ...args];
+
+    listener(state, () => release(null), null);
+
+    for (let i = 0; i < queue.length; i++) {
+      const arg = queue[i];
+      const called = typeof arg == 'function';
+      const out = called ? arg.call(state, state) : arg;
+
+      if (out instanceof Context) continue;
+
+      if (out instanceof Promise) {
+        waits.push(out);
+        out.catch((err) => report('setup', state, err));
+      } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
+      else if (typeof out == 'function') listener(state, out, null);
+      else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
+    }
+  });
+
+  const settled = waits.length ? Promise.all(waits) : undefined;
+  const hold = active.held || !!settled;
+  const failed = (error: unknown) => {
+    CAUSE.set(state, error);
+    event(state, null);
+  };
+  const release = () => {
+    if (observer(state) !== null) settle();
+  };
+
+  ACTIVE.delete(state);
+
+  if (hold) observer(state, true).wait = new Set();
+
+  if (up && hold) {
+    if (settled) up.waits.push(settled.then(undefined, failed));
+    up.children.push(release);
+  }
+  else if (settled) settled.then(release, failed);
+  else settle();
+
+  if (owns) {
+    owns.add(state);
+    OWNED.get(above)?.forEach((cb) => cb(state));
+  }
 }
 
 /**
@@ -852,7 +835,7 @@ function bootstrap(T: Model.Extends) {
   }
 
   if (getters.size)
-    before.add((self) => getters.forEach(compute, self));
+    before.add((self) => getters.forEach(getter, self));
 
   return { before, after };
 }
@@ -891,7 +874,7 @@ function classify(
     if (typeof value !== 'function') continue;
 
     if (key[0] == '_') {
-      const run = function (this: Model, ...args: unknown[]) { return value.apply(this.is || this, args) };
+      function run(this: Model, ...args: unknown[]) { return value.apply(this.is || this, args) }
 
       UNBIND.set(run, value);
       define(type.prototype, key, { ...desc, value: run });
@@ -931,158 +914,15 @@ function stages<K extends 'method' | 'catch'>(T: Model.Extends, key: K): Set<Non
   return found;
 }
 
-/**
- * Install a reactive computed property on a state instance, derived from a prototype
- * getter or an arity-bearing `set` factory.
- *
- * The getter is invoked with the tracking proxy as both `this` and its first argument;
- * reads of managed properties through it create subscriptions. Result is cached and
- * emits a keyed event when stale.
- */
-function compute(this: Model, getter: (self: any) => unknown, key: string) {
-  const store = STORE.get(this)!;
-  let reset: (() => void) | undefined;
-  let isAsync: boolean;
-  let suspended = false;
-  let waiting: Promise<unknown> | undefined;
-  let proxy: any;
+/** Install a prototype getter as a computed property, following its hot-patched replacements. */
+function getter(this: Model, get: Function, key: string) {
+  compute(this, key, function (this: Model, self: Model) {
+    let latest = get;
 
-  const connect = () => {
-    reset = watch(
-      this,
-      (current) => {
-        proxy = current;
+    for (let next; (next = LATEST.get(latest)); ) latest = next;
 
-        if (!(key in store) || STALE.delete(run)) run(!reset);
-
-        return (didUpdate) => {
-          if (didUpdate) {
-            STALE.add(run);
-            event(this, key, true);
-          }
-        };
-      },
-      false
-    );
-  };
-
-  const run = (initial?: boolean) => {
-    let next: unknown;
-
-    waiting = undefined;
-
-    try {
-      next = latest(getter).call(proxy, proxy);
-    } catch (err) {
-      if (err instanceof Promise) {
-        if (initial) {
-          suspended = true;
-          throw err;
-        }
-
-        const retry = () => {
-          if (waiting === err && observer(this) !== null) run();
-        };
-
-        waiting = err;
-        err.then(retry, retry);
-
-        if (suspended) return;
-      } else if (initial) {
-        console.warn(`An exception was thrown while initializing ${this}.${key}.`);
-        throw err;
-      } else report('getter', this, err, key);
-    }
-
-    suspended = false;
-    update(this, key, next, !isAsync);
-  };
-
-  apply(
-    this,
-    key,
-    {
-      enumerable: true,
-      set: false,
-      get: () => {
-        if (!proxy) {
-          if (observer(this) === null) return store[key];
-
-          connect();
-          isAsync = true;
-        }
-
-        if (STALE.delete(run)) run();
-
-        return access(this, key, suspended);
-      }
-    },
-    true
-  );
-}
-
-/**
- * Define or update a managed property using a descriptor config.
- * If the property already is managed, config will only accept value.
- * If the property does not exist, it will be created and made reactive.
- *
- * @param state - Model to apply property to.
- * @param key - Property to define or update.
- * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
- * @param silent - If an update does occur, listeners will not be refreshed automatically.
- */
-function apply(
-  state: Model,
-  key: string,
-  config: Model.Apply,
-  silent?: boolean
-) {
-  const desc = Object.getOwnPropertyDescriptor(state, key);
-
-  if (desc && 'get' in desc) {
-    if (Object.keys(config).some((k) => k != 'value'))
-      throw new Error(`Property ${key} on ${state} is already defined.`);
-    if ('value' in config) update(state, key, config.value, silent);
-    return;
-  }
-
-  function set(value: unknown, silent?: boolean) {
-    update(state, key, value, silent, true);
-  }
-
-  define(state, key, {
-    configurable: true,
-    enumerable: config.enumerable !== false,
-    get(this: Model) {
-      const value =
-        typeof config.get == 'function'
-          ? config.get(this)
-          : access(state, key, config.get);
-
-      return touch(this, key, value);
-    },
-    set(next: any, silent?: boolean) {
-      if (config.set === false)
-        throw new Error(`${state}.${String(key)} is read-only.`);
-
-      if (typeof config.set == 'function')
-        try {
-          const output = config.set(next, STORE.get(state)![key]);
-          if (output !== undefined) next = output;
-        } catch (err: unknown) {
-          if (err === false) return;
-          if (err === true) {
-            set(next, true);
-            return;
-          }
-          throw err;
-        }
-
-      set(next, silent);
-    }
+    return latest.call(this, self);
   });
-
-  if ('value' in config) set(config.value, silent);
 }
 
 function provides(ctx: Context, value: Model) {
@@ -1090,40 +930,6 @@ function provides(ctx: Context, value: Model) {
     const entries = ctx.provide.get(value.constructor as Model.Extends);
     if (entries) for (const [state] of entries) if (state === value) return true;
   }
-}
-
-function child(state: Model) {
-  let cleanup: (() => void) | undefined;
-  const ctx = Context.get(state);
-
-  function reset() {
-    if (cleanup) cleanup();
-    cleanup = undefined;
-  }
-
-  listener(state, reset, null);
-
-  return (value: unknown) => {
-    reset();
-
-    if (!(value instanceof Model)) return;
-
-    if (parent(value, state)) {
-      const remove = join(state, value);
-      cleanup = () => {
-        cancel();
-        remove();
-        event(value, null);
-      };
-      const cancel = listener(state, cleanup, null);
-    } else if (!provides(ctx, value)) {
-      cleanup = join(state, value);
-    }
-
-    event(value);
-
-    CHILDREN.get(state)?.forEach((cb) => cb(value));
-  };
 }
 
 /**
@@ -1146,22 +952,16 @@ function trailing(state: Model) {
  * claimed later. Returns a callback to stop watching.
  */
 function children(state: Model, callback: (child: Model) => void) {
-  const store = STORE.get(state)!;
+  const data = store(state);
   const keys = ADOPT.get(state);
 
   if (keys)
     for (const key of keys.keys()) {
-      const value = store[key as string];
+      const value = data[key as string];
       if (value instanceof Model) callback(value);
     }
 
-  let set = CHILDREN.get(state);
-
-  if (!set) CHILDREN.set(state, (set = new Set()));
-
-  set.add(callback);
-
-  return () => set!.delete(callback);
+  return subscribe(CHILDREN, state, callback);
 }
 
 function owner(state: Model, required?: boolean) {
@@ -1184,81 +984,20 @@ function owned(state: Model, callback: (child: Model) => void | (() => void)) {
 
   OWNS.get(state)?.forEach(each);
 
-  let set = OWNED.get(state);
+  const remove = subscribe(OWNED, state, each);
 
-  if (!set) OWNED.set(state, (set = new Set()));
-
-  set.add(each);
-
-  return () => void set!.delete(each);
+  return () => void remove();
 }
 
-/** Currently accumulating export. Stores real values of placeholder properties such as ref() or child states. */
-let EXPORT: Map<any, any> | undefined;
+/** Add an item to the set kept for a key, creating it if needed. Returns a callback to remove it. */
+function subscribe<K extends object, T>(map: WeakMap<K, Set<T>>, key: K, item: T) {
+  let set = map.get(key);
 
-function values<T extends Model>(state: T): Model.Values<T> {
-  const values = {} as any;
-  let notRecursive;
+  if (!set) map.set(key, (set = new Set()));
 
-  if (!EXPORT) {
-    notRecursive = true;
-    EXPORT = new Map();
-  }
+  set.add(item);
 
-  EXPORT.set(state, values);
-
-  for (let [key, value] of state) {
-    if (EXPORT.has(value)) value = EXPORT.get(value);
-    else if (
-      value &&
-      typeof value == 'object' &&
-      'get' in value &&
-      typeof value.get === 'function'
-    )
-      value = value.get();
-
-    values[key] = value;
-  }
-
-  if (notRecursive) EXPORT = undefined;
-
-  return Object.freeze(values);
-}
-
-function access(state: Model, property: string, required?: boolean) {
-  const store = STORE.get(state)!;
-
-  if (property in store || required === false) {
-    const value = store[property];
-
-    if (value !== undefined || !required) return value;
-  }
-
-  if (METHODS.get(state.constructor)!.has(property))
-    return unbind((state as any)[property]);
-
-  if (observer(state) === null) return undefined;
-
-  const error = new Error(`${state}.${property} is not yet available.`);
-  const promise = new Promise<any>((resolve, reject) => {
-    listener(state, (key) => {
-      if (key === property) {
-        resolve(store[key]);
-        return null;
-      }
-
-      if (key === null) {
-        reject(CAUSE.has(state) ? CAUSE.get(state) : new Error(`${state} is destroyed.`));
-      }
-    });
-  });
-
-  throw Object.assign(promise, {
-    toString: () => String(error),
-    name: 'Suspense',
-    message: error.message,
-    stack: error.stack
-  });
+  return () => set!.delete(item);
 }
 
 function plain(value: unknown): value is Model.Assign<Model> {
@@ -1295,41 +1034,6 @@ function assign(state: Model, data: Model.Assign<Model>, silent?: boolean) {
 }
 
 /**
- * Update a property on a state instance and notify listeners.
- *
- * This is used internally to update properties, but can also be used to update properties which are not managed by state, or to update values without triggering setters.
- *
- * A destroyed state stores the write without dispatch, reports it unless `silent`, and returns `false`.
- */
-function update<T>(
-  state: Model,
-  key: Model.Event<T>,
-  value: T,
-  silent?: boolean,
-  own?: boolean
-) {
-  const store = STORE.get(state)!;
-
-  if (value instanceof Model) value = value.is as T;
-
-  if (observer(state) === null) {
-    if (!silent) report('dead', state, new Error(`Tried to update ${state}.${String(key)} but state is destroyed.`), String(key));
-    store[key] = value;
-    return false;
-  }
-
-  if (key in store && value === store[key]) return false;
-
-  store[key] = value;
-
-  if (!silent) event(state, key);
-
-  if (own) adopt(state, key, value);
-
-  return true;
-}
-
-/**
  * Pass an error along `catch` handlers - most-derived class first, last registered
  * first, one on several classes once at the outermost - until one returns nothing. Passed off
  * the end, a destroyed write outputs nothing, `unused` warns, anything else escapes uncaught;
@@ -1352,6 +1056,7 @@ function report(kind: Parameters<NonNullable<Model.On['catch']>>[1], owner: obje
 }
 
 REPORT.as = report;
+HELD.adopt = adopt;
 
 /**
  * Hand a value stored by an owning writer to that property's adopter,
@@ -1369,18 +1074,44 @@ function adopt(state: Model, key: unknown, value: unknown) {
 
   let claim = keys.get(key);
 
-  if (!claim) {
-    if (!(value instanceof Model)) return;
-    keys.set(key, (claim = child(state)));
+  if (claim) return claim(value);
+
+  if (!(value instanceof Model)) return;
+
+  let cleanup: (() => void) | undefined;
+  const ctx = Context.get(state);
+
+  function reset() {
+    if (cleanup) cleanup();
+    cleanup = undefined;
   }
 
-  claim(value);
-}
+  listener(state, reset, null);
 
-/** Resolve a getter to its latest hot-patched replacement. */
-function latest(getter: Function) {
-  for (let next; (next = LATEST.get(getter)); ) getter = next;
-  return getter;
+  claim = (value: unknown) => {
+    reset();
+
+    if (!(value instanceof Model)) return;
+
+    if (parent(value, state)) {
+      const remove = join(state, value);
+      cleanup = () => {
+        cancel();
+        remove();
+        event(value, null);
+      };
+      const cancel = listener(state, cleanup, null);
+    } else if (!provides(ctx, value)) {
+      cleanup = join(state, value);
+    }
+
+    event(value);
+
+    CHILDREN.get(state)?.forEach((cb) => cb(value));
+  };
+
+  keys.set(key, claim);
+  claim(value);
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */
@@ -1413,4 +1144,4 @@ function parent(child: object, value?: Model | null) {
 }
 
 export type { Got, Handler, Keyed };
-export { adopt, event, plain, unbind, Model, observed, parent, children, owned, trailing, PENDING, STORE, uid, access, update, apply, compute, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
+export { adopt, event, plain, unbind, Model, observed, parent, children, owned, trailing, PENDING, uid, getter, classify, METHODS, GETTERS, SETUP, UNBIND, LATEST };
