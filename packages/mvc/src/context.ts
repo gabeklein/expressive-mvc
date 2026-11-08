@@ -1,5 +1,5 @@
 import { event as signal, listener, Observer, touch } from "./observable";
-import { event, Model, observed, parent, uid } from "./state";
+import { event, Model, observed, parent, uid } from "./model";
 
 const CONTEXT = Symbol("context");
 const STACK: [Context, Model][] = [];
