@@ -26,7 +26,7 @@ interface Answer {
   fail(error: unknown): void;
 }
 
-type Kind = 'reset' | 'catch' | 'close';
+type Kind = 'reset' | 'catch' | 'abort' | 'close';
 type Mode = 'error' | 'abort' | 'stop';
 
 interface Handler {
@@ -90,7 +90,7 @@ const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const ISSUED = new WeakMap<object, Frame>();
 const RETRY = new WeakSet<Function>();
 const RULES = new WeakSet<Error>();
-const KINDS: Kind[] = ['reset', 'catch', 'close'];
+const KINDS: Kind[] = ['reset', 'catch', 'abort', 'close'];
 const MODES = { failed: 'error', aborted: 'abort', stopped: 'stop' } as const;
 const UNITS: Record<string, number> = { ms: 1, sec: 1e3, min: 6e4, hr: 36e5, day: 864e5 };
 
@@ -174,13 +174,15 @@ declare namespace Steps {
     /**
      * A failure below, no `.catch` closer to it took it - for recovery. Returning recovers - the failed part
      * of the subtree unwinds, the step's own effects stay, steps it schedules replace the rest; throwing
-     * passes it on. To observe without recovering, read `close`'s reason.
+     * passes it on.
      */
     catch?: Handler;
     /**
-     * The subtree ended, any way - a finally over it, last. Given why: `undefined` when it ended cleanly (a
-     * failure recovered included, `then.end()` too), else the error, a `Steps.Aborted` or a `Steps.Stopped`.
+     * The subtree ended without completing - given why: the error of a failure no `catch` recovered, a
+     * `Steps.Aborted` (`abort()`, a lost race) or a `Steps.Stopped` (`stop()`). Before `reset`.
      */
+    abort?: Handler;
+    /** The subtree ended, any way - a finally over it, last. */
     close?: Handler;
   }
 
@@ -804,11 +806,11 @@ class Run extends Model {
 
   async fire(on: Handler[] | undefined, kind: Kind, cause: unknown, kept: Set<string>) {
     for (const handler of [...(on || [])].reverse())
-      if (handler.kind == kind) await this.compensate(this.given(handler, cause), cause, kept, kind == 'reset');
+      if (handler.kind == kind) await this.compensate(this.given(handler, cause), cause, kept, kind == 'reset' || kind == 'close');
   }
 
   given({ node, bare, kind }: Handler, cause: unknown) {
-    if (bare && kind != 'reset') {
+    if (bare && (kind == 'catch' || kind == 'abort')) {
       node.args = [serial(cause)];
       this._errors.set(node.id, cause);
     }
@@ -1457,11 +1459,12 @@ class Run extends Model {
       if (!on && 'error' in entry) continue;
 
       try {
+        if (open) await this.fire(on, 'abort', cause, kept);
         if (!halted && !this._reset.has(entry.id)) await this.fire(on, 'reset', undefined, kept);
 
         this._finished.add(entry.id);
 
-        if (open) await this.fire(on, 'close', cause, kept);
+        if (open) await this.fire(on, 'close', undefined, kept);
       } catch (thrown) {
         entry.unwound = 'failed';
         return { undone, kept, failed: { cause: thrown } };
@@ -1801,7 +1804,7 @@ class Frame extends Model {
     if (!plain(handlers)) throw rule(usage);
 
     for (const [kind, value] of Object.entries(handlers as object)) {
-      if (!KINDS.includes(kind as Kind)) throw rule(`then.on() takes reset, catch and close - got ${kind}.`);
+      if (!KINDS.includes(kind as Kind)) throw rule(`then.on() takes reset, catch, abort and close - got ${kind}.`);
       if (value === undefined) continue;
       if (kind == 'catch' && this._on.some((handler) => handler.kind == 'catch')) throw rule('then.on() takes one catch per step.');
 

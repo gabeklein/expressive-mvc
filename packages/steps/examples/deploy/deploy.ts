@@ -150,10 +150,10 @@ export class Deploy extends Steps {
   protected async rollout() {
     const rest = this.hosts.filter((host) => !this.canaries.includes(host));
 
-    // close sees how rollout and all it schedules ended - a reason means it failed; observing, not recovering
+    // abort - rollout and all it schedules ended without completing; observing, not recovering
     this.then.on({
-      close: async (reason) => {
-        if (reason) await chat.post(`${this.version} rollout failed`);
+      abort: async (reason) => {
+        if (!(reason instanceof Steps.Stopped)) await chat.post(`${this.version} rollout failed`);
       }
     });
 
