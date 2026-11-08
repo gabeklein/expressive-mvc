@@ -193,3 +193,35 @@ describe("configure", () => {
     await expect(shared.call("/tally", "add", [])).rejects.toBeInstanceOf(Limit);
   });
 });
+
+describe("values", () => {
+  it("will carry what JSON loses both ways through a call, in process", async () => {
+    const later = vi.fn(async (when: Date, step: bigint | undefined, tags: Set<string>) => ({ at: new Date(when.getTime() + Number(step ?? 1000n)), tags: [...tags], step }));
+    const endpoints: Endpoint[] = [{ pattern: ["clock"], exports: async () => ({ calls: { later }, classes: {} }) }];
+    const inProcess = handler(endpoints);
+    const rpc = client({ base: "http://localhost", transport: async request => (await inProcess(request))! });
+    const when = new Date("2026-11-08T12:00:00.000Z");
+
+    expect(await rpc.call("/clock", "later", [when, undefined, new Set(["a"])])).toEqual({ at: new Date("2026-11-08T12:00:01.000Z"), tags: ["a"] });
+    expect(later).toHaveBeenCalledWith(when, undefined, new Set(["a"]));
+  });
+
+  it("will carry a thrown error's fields the same way", async () => {
+    class Late extends Error {
+      due = new Date("2026-11-08T12:00:00.000Z");
+      left = 3n;
+    }
+
+    const check = async () => {
+      throw new Late("Overdue.");
+    };
+    const endpoints: Endpoint[] = [{ pattern: ["clock"], exports: async () => ({ calls: { check }, classes: { "clock#Late": Late } }) }];
+    const inProcess = handler(endpoints);
+    const rpc = client({ base: "http://localhost", transport: async request => (await inProcess(request))! });
+    const Remote = rpc.define("clock#Late", "Late");
+    const error = await rpc.call("/clock", "check", []).catch(error => error);
+
+    expect(error).toBeInstanceOf(Remote);
+    expect(error).toMatchObject({ message: "Overdue.", due: new Date("2026-11-08T12:00:00.000Z"), left: 3n });
+  });
+});

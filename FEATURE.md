@@ -109,7 +109,7 @@ Agreed direction, staged below. The stateless call lane carved out of dev as a V
   - A Worker isolate holds module state per isolate; the example's in-memory store relies on `wrangler dev` keeping one.
   - An error class extending a package's export (`extends ZodError`) is not followed - the server checks it is an `Error` on boot (dev: per call).
   - Dev re-scans a folder's index for its gate on every call.
-  5. Codec - before any published artifact, since a package pins the wire.
+  5. Codec - before any published artifact, since a package pins the wire. First step done: `src/codec.ts` - JSON plus EJSON-style one-key tags (`$date`, `$bigint`, `$number`, `$map`, `$set`, `$binary`, `$undefined` in arrays, `$escape` for a plain object that would read as a tag), applied where the client sends and settles and where the server reads arguments and replies, so twins' frames ride it too. Objects keep JSON's rules (`toJSON`, `undefined` dropped) so twin patches keep their meaning. Left on this stage: error classes moved onto it, and explicit extensions.
   6. Library mode.
 
 ## Transport
@@ -278,7 +278,7 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 
 - Status helpers - an exported error class's `status` field covers it for now. If wanted: naming (`NotFound` and `Redirect` collide with existing exports; leaning `Status.NotFound(...)`; `expressive-rpc` had `Forbidden`, `NotFound`, `Internal`, `BadInput`).
 - Public references (`session = get(Session)`): left server-only (the build refuses a public one until decided), or projected from the server as an address the client resolves to the twin it holds for that instance.
-- What counts as serializable on the wire - its own phase: a general codec in place of JSON, tagging `Date`, `Map`, `Set`, `BigInt`, `undefined` and more, with error classes (rebuilt today only when thrown) moved onto it, and room for explicitly supported extensions. Later on the same pipeline: functions sent as an id in a callback registry, called back through the same dispatch as methods and plain calls. The connection id is transport only, never part of a key.
+- What counts as serializable on the wire - the codec (RPC stage 5) tags `Date`, `Map`, `Set`, `BigInt`, non-finite numbers, binary and `undefined` in arrays; still open: error classes (rebuilt today only when thrown) moved onto it, and room for explicitly supported extensions. Later on the same pipeline: functions sent as an id in a callback registry, called back through the same dispatch as methods and plain calls. The connection id is transport only, never part of a key.
 - How params reach server code - the walk already matches the path against dev's route table (not the router, which stays client-side); `Route.get().match` or something plainer, decided when step 2 needs it.
 - Optimistic writes - with `set` (Later): a local write sent with `If-Match`, rolled back on 409.
 - Demand as an mvc primitive - see Twins.
@@ -296,7 +296,7 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - Dogfood asks (2026-11-05), undecided:
   - Host routes: a call cannot set response headers or cookies (`Current` is read-only), and dev's `serve()` serves only calls, the stream and static files. Asked: response headers from a call, and for dev the same hook. rpc's side - routes beside the calls, sharing their modules in dev and build - is its server entry (`rpc({ entry })`, RPC above).
   - rpc's server bundle is self-contained (`noExternal: true`), so a host process wrapping it from outside holds a second copy of mvc and the app's modules - a server entry avoids that by being the bundle; dev's SSR bundle externalizes `node_modules`. Pick one.
-  - Binary arguments (JSON codec only - see the wire codec above); a per-call `AbortSignal` or timeout on stubs.
+  - Binary arguments: `Uint8Array` crosses base64 in the codec (stage 5); streams and `Blob` go through a server entry. A per-call `AbortSignal` or timeout on stubs.
   - An rpc gate's async `new()` is cached for the TTL, so a logout lands only when it expires (`ttl = 0` is the workaround) - an argument for a per-pass `use()` gate in rpc.
   - Layout: `app/` sits at the project root, every directory is a route, and a sidecar is importable only from its folder down. Asked: non-route folders (`_x/`, `(group)/`), or root sidecars importable from anywhere.
   - dev does not host an rpc `api/` folder yet, though Agreed shape gives sidecars and the rpc folder one invocation path; an app adding `rpc()` beside dev gets plain `{ value }` replies in dev and a server with no api/ endpoints in build. dev also does not re-export the `HttpError` family.

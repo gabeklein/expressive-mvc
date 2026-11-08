@@ -1,4 +1,5 @@
 import { attempt, fault, inFolder, locate, type Call, type Endpoint, type Exports, type Match, type Outcome, type Seats } from "../call";
+import { parse, stringify } from "../codec";
 import { ERRORS } from "../errors";
 
 export function isCall(request: Request): boolean {
@@ -60,7 +61,7 @@ function plain(incoming: Incoming, fn: Call): Handle {
 
 async function readArgs(request: Request): Promise<unknown[] | undefined> {
   try {
-    const args: unknown = JSON.parse(await request.text());
+    const args = parse(await request.text());
     return Array.isArray(args) ? args : undefined;
   } catch {
     return undefined;
@@ -84,5 +85,5 @@ function statusOf(status?: number): number {
 export function reply(status: number, value?: unknown, headers: Record<string, string> = {}): Response {
   if (value === undefined) return new Response(null, { status, headers });
 
-  return new Response(JSON.stringify(value), { status, headers: { ...headers, "content-type": "application/json; charset=utf-8" } });
+  return new Response(stringify(value), { status, headers: { ...headers, "content-type": "application/json; charset=utf-8" } });
 }

@@ -1,3 +1,4 @@
+import { parse, stringify } from "./codec";
 import { registry } from "./registry";
 import { ERRORS } from "./errors";
 
@@ -68,7 +69,7 @@ export function client(initial: ClientOptions = {}) {
     const init = {
       method: "POST",
       headers: { "content-type": "application/json", ...options.headers?.(), ...headers },
-      body: JSON.stringify(body),
+      body: stringify(body),
     };
     const res = await (transport ? transport(new Request(new URL(url, globalThis.location?.href), init)) : fetch(url, init));
 
@@ -80,7 +81,7 @@ export function client(initial: ClientOptions = {}) {
   async function settle(res: Response): Promise<any> {
     if (res.status === 304) return;
 
-    const body = await res.json();
+    const body = parse(await res.text()) as any;
 
     if (res.ok) return body;
 
