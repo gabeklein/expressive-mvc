@@ -102,7 +102,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 - JSDoc on public API is the exception: it ships in the `.d.ts`, shows on hover, and is the per-symbol reference - signature, contract, edge cases. Skills keep when, why and how things compose, and point at symbols instead of restating them. Shape each block:
   - First line: what it does, under ~100 characters, standalone - completion lists show only that. Don't restate the name or types.
   - Then a blank line and the contract: defaults, constraints, failure modes - one fact per sentence, under the skill token rules.
-  - `@example` only where usage isn't obvious from the signature: the common case, 2-8 lines. `bun .github/scripts/example-check.ts` typechecks every one - a fragment runs in a step/method body with `this` as the instance; free names are placeholders.
+  - `@example` only where usage isn't obvious from the signature: the common case, 2-8 lines. `bun .github/scripts/example-check.ts` typechecks every one - statements run in a method body, fields and methods in a class body, on a subclass of the package's host class (`Model`, `Steps`); free names are placeholders.
   - `@param` only when name and type don't say it; no `@returns` that restates the type. Each overload gets its own block.
   - Put a block directly above its declaration - the bundler attaches it to the next one.
 - **Always ask before adding new public surface.** Do not introduce new exported
