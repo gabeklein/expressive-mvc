@@ -122,16 +122,4 @@ class AppState extends Model {
 
 A raw Promise throws `Direct promises are not supported in set(...)`. Use a factory (`set(() => promise)` or `set(async () => value)`) so async work starts during activation/access - a promise constructed in a field initializer can keep running for instances React abandons, especially under StrictMode.
 
-## Type Signatures
-
-```ts
-function set<T>(value?: undefined, onUpdate?: set.Callback<T>): T;
-function set<T>(value: T, onUpdate?: set.Callback<T>): T;
-function set<T>(factory: () => T | Promise<T>, required?: true): T;
-function set<T>(factory: () => T | Promise<T>, required: boolean): T | undefined;
-function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
-function set<T, S = any>(compute: (this: S, self: S) => T): T;
-
-type set.Callback<T> = (this: Model, next: T, previous: T) => ((next: T) => void) | Promise<any> | void | boolean;
-type set.Factory<T, S> = (this: S, property: string) => Promise<T> | T;
-```
+Per-overload contract: JSDoc on hover, or `node_modules/@expressive/mvc/dist/field/set.d.ts`.

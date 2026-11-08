@@ -4,47 +4,52 @@ import { access, compute, update } from '../store';
 import { def } from './def';
 
 declare namespace set {
+  /**
+   * Runs on each assignment with `(next, previous)` - throw `false` to reject, `true` to skip the event.
+   *
+   * Any other throw propagates to the assigner, value unchanged. A returned function runs on the next
+   * assignment, with the new value. Effects created inside are released on the next assignment. Other
+   * return values, promises and `false` included, are ignored. `this` is not the instance - use an
+   * arrow function.
+   */
   type Callback<T, S = any> = (
     this: S,
     next: T,
     previous: T
   ) => ((next: T) => void) | Promise<any> | void | boolean;
 
+  /** Factory initializer - `this` is the instance. A declared parameter makes it a computed instead. */
   type Factory<T, S = any> = (this: S, property: string) => Promise<T> | T;
 }
 
 /**
- * Set a property as a placeholder, initially `undefined` but required.
+ * Required field with no initial value - reads suspend until it is assigned.
  *
- * Property cannot be accessed until it is defined. If accessed while undefined, a hybrid
- * `Promise`/`Error` (aka: [Suspense](https://reactjs.org/docs/concurrent-mode-suspense.html)) will be thrown.
- *
- * Non-enumerable; writable only if `onUpdate` callback is provided.
- *
- * @param value - Starting value (undefined for suspense placeholder).
- * @param onUpdate - Callback run when property is set.
+ * Writable and non-enumerable. A read before assignment throws a Promise that is also
+ * Error-shaped (`<instance>.<key> is not yet available.`) - it resolves on assignment and
+ * rejects if the instance is destroyed. `onUpdate` runs on each assignment - see {@link set.Callback}.
  */
 function set<T>(value?: undefined, onUpdate?: set.Callback<T>): T;
 
 /**
- * Set property with an async factory function.
- * If required is not defined, factory runs lazily on first access.
- * If async, or returns a promise, suspense is thrown upon access until resolved.
+ * Value from a factory, run once - lazily on first read, or on activation if `required` is `true`.
  *
- * Non-enumerable and read-only.
+ * Read-only and non-enumerable. `this` is the instance. The factory must declare no parameters -
+ * one parameter makes it a computed. An async result suspends reads until resolved; a rejection
+ * rethrows on later reads. A factory that suspends on another pending field re-runs once it
+ * resolves. A synchronous throw warns and rethrows - a lazy factory retries on the next read.
  *
- * @param factory - Zero-arg async callback to produce property value.
- * @param required - Pass `true` to run factory immediately and require value.
+ * @example
+ * config = set(() => loadConfig());
+ * user = set(async () => api.user(), true);
  */
 function set<T>(factory: () => T | Promise<T>, required?: true): T;
 
 /**
- * Set property with a lazy factory, no suspense.
+ * Lazy factory - with `false`, reads `undefined` while pending instead of suspending.
  *
- * Non-enumerable and read-only.
- *
- * @param factory - Zero-arg callback to produce property value.
- * @param required - Pass `false` to allow undefined while pending.
+ * Read-only and non-enumerable. Runs on first read. The field updates when the result resolves.
+ * Passing `true` behaves as the required overload.
  */
 function set<T>(
   factory: () => T | Promise<T>,
@@ -52,42 +57,47 @@ function set<T>(
 ): T | undefined;
 
 /**
- * Set property with a factory and update callback.
+ * Writable field seeded by a factory on activation - `onUpdate` runs for the seed and each assignment.
  *
- * Non-enumerable but writable via the callback.
- *
- * @param factory - Callback to produce initial value.
- * @param onUpdate - Callback run when property is updated.
+ * Non-enumerable. The factory runs on activation, not on first read. Its result is assigned through
+ * `onUpdate` with `previous` undefined. An async result suspends reads until resolved, then
+ * overwrites any value assigned meanwhile. See {@link set.Callback}.
  */
 function set<T>(factory: () => T | Promise<T>, onUpdate: set.Callback<T>): T;
 
 /**
- * Define a reactive computed property - the instruction equivalent of a getter.
+ * Computed field - re-derives when a managed property it reads updates; the instruction form of a getter.
  *
- * Unlike a zero-arg factory (which runs once and caches), the compute function
- * re-runs whenever any managed property it reads is updated. It receives the
- * instance as both `this` and its first argument, so arrow functions work.
+ * Arity selects this form - the function must declare a parameter; `set(() => x)` is a one-shot
+ * factory. Receives the instance as `this` and first argument - arrow functions work. Computes on
+ * first read. Enumerable and read-only, like a getter. A subclass may narrow its type with `declare`,
+ * which a getter does not allow. A throw on first compute warns and rethrows; later throws report to
+ * `catch` as `getter`.
  *
- * Enumerable and read-only, matching a prototype getter. Because it assigns
- * through an instruction rather than a concrete getter, subclasses may refine
- * the property's type with `declare`.
- *
- * @param compute - Function of arity >= 1; receives the instance to derive from.
+ * @example
+ * class Person extends Model {
+ *   first = 'John';
+ *   last = 'Doe';
+ *   full = set((self: Person) => `${self.first} ${self.last}`);
+ * }
  */
 function set<T, S = any>(compute: (this: S, self: S) => T): T;
 
-/**
- * Set a property with a non-function, non-Promise value.
- *
- * Non-enumerable but writable. Unlike plain assignment (`= value`), this
- * property is excluded from snapshots and `ref(this)`.
- *
- * @param value - Starting value for property.
- * @param onUpdate - Optional callback run when property is set.
- */
 // TODO: if onUpdate is not defined, should this have behavior unique to simple assignment?
 // I'm thinking default behavior should be to assign value directly to property, without triggering any additional updates.
 // All this requires is a default callback which throws true, silent updates are already implemented.
+/**
+ * Writable default, hidden from enumeration - unlike plain assignment.
+ *
+ * Non-enumerable - excluded from `Object.keys`, spread and `ref(this)`; still in `get()` snapshots.
+ * A Promise throws a TypeError on activation - pass a factory. A function is taken as a factory
+ * or computed, never stored. `onUpdate` runs on each assignment - see {@link set.Callback}.
+ *
+ * @example
+ * name = set('', (next) => {
+ *   if (next.length > 50) throw false;
+ * });
+ */
 function set<T>(
   value: T extends Promise<any> ? never : T,
   onUpdate?: set.Callback<T>

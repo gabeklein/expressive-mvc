@@ -45,32 +45,7 @@ custom = def<string>((key, subject) => ({
 }));
 ```
 
-| Option | Value | Meaning |
-| --- | --- | --- |
-| `get` | function | called on access with the subscriber (or the instance if none) |
-| | `true` | required - throws suspense if not yet set |
-| | `false` | optional - `undefined` if not yet set |
-| | `undefined` | no special getter behavior |
-| `set` | function | called on assignment with `(next, prev)`; throw `false` to reject, `true` to accept silently; return a value to override |
-| | `false` | read-only (throws on assignment) |
-| | `undefined` | no special setter behavior |
-
-## Type Signatures
-
-```ts
-function def<T>(factory: def.Factory<T>): T;
-
-type def.Factory<T, M extends Model> = (
-  this: M,
-  key: Extract<Model.Field<M>, string>,
-  thisArg: M,
-  state: Model.Values<M>
-) => def.Config<T> | (() => void) | void;
-
-interface def.Config<T> extends Model.Apply<T> {
-  destroy?: () => void;
-}
-```
+Per-option contract: JSDoc on hover, or `node_modules/@expressive/mvc/dist/field/def.d.ts`.
 
 ## Child Instance (No Instruction Needed)
 
