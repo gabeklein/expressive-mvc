@@ -223,7 +223,7 @@ export function expressive(): Plugin<Host> {
           if (req.method !== "GET" || !req.headers.accept?.includes("text/html")) return next();
 
           try {
-            const html = await server.transformIndexHtml(req.originalUrl ?? req.url!, readShell());
+            const html = await server.transformIndexHtml(req.originalUrl!, readShell());
             res.setHeader("Content-Type", "text/html");
             res.end(html);
           } catch (error) {

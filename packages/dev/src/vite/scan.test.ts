@@ -216,6 +216,15 @@ describe("twin scan", () => {
     });
   });
 
+  it("will name an anonymous default in a loop of bases", async () => {
+    const { problems } = await twin(`import A from "./a"; export default class Tally extends A {}`, {
+      "/app/a.ts": `import B from "./b"; export default class extends B {}`,
+      "/app/b.ts": `import A from "./a"; export default class B extends A {}`,
+    });
+
+    expect(problems).toEqual(["default extends B, which extends default - a class cannot extend itself."]);
+  });
+
   it("will report a sync method a seat inherits", async () => {
     const { problems } = await twin(`import { Base } from "./base"; export default class A extends Base {}`, {
       "/app/base.ts": `${HEAD} export class Base extends Model { tick() {} }`,
@@ -272,6 +281,40 @@ describe("twin scan", () => {
     `);
 
     expect(scanned).toEqual({ name: "Shop", methods: [], fields: ["at", "when", "other"] });
+  });
+
+  it("will leave a field plain when its declared class cannot be followed", async () => {
+    const { twin: scanned } = await twin(`${HEAD}
+      import type { Gone } from "./nowhere";
+      import type { Flag } from "./flag";
+      import type * as Lib from "./lib";
+      export default class Shop extends Model { gone?: Gone; flag?: Flag; ns?: Lib.Cart; made = Shop.create(); }
+    `, { "/app/flag.ts": "export const Flag = 1;" });
+
+    expect(scanned).toEqual({ name: "Shop", methods: [], fields: ["gone", "flag", "ns", "made"] });
+  });
+
+  it("will scan an owned child declared with null or undefined", async () => {
+    const { twin: scanned } = await twin(`${HEAD}
+      class Line extends Model { qty = 1; }
+      export default class Shop extends Model { line?: Line | null | undefined; }
+    `);
+
+    expect(scanned).toEqual({ name: "Shop", methods: [], fields: ["line"], children: { line: { name: "Line", methods: [], fields: ["qty"] } } });
+  });
+
+  it("will skip a constructor, setters and static blocks", async () => {
+    const { twin: scanned, problems } = await twin(`${HEAD}
+      export default class Shop extends Model {
+        static { }
+        constructor() { super(); }
+        set label(value: string) {}
+        async buy() {}
+      }
+    `);
+
+    expect(problems).toEqual([]);
+    expect(scanned).toEqual({ name: "Shop", methods: ["buy"], fields: [] });
   });
 
   it("will refuse a public reference and a child that holds itself", async () => {

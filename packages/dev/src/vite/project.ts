@@ -84,7 +84,7 @@ function injectBeforeBody(html: string, tag: string): string {
     : html + "\n" + tag + "\n";
 }
 
-export function serverEntry(project: Project, from: string, exposure: Exposure, seats: Remote[] = []): string {
+export function serverEntry(project: Project, from: string, exposure: Exposure, seats: Remote[]): string {
   const configSpec = project.configPath && JSON.stringify(importRel(from, project.configPath));
   const files = [...new Set([...exposure.modules.keys(), ...seats.map(seat => seat.file)])];
   const modules = files.map(file => JSON.stringify(importRel(from, file)));

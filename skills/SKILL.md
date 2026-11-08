@@ -17,6 +17,8 @@ A class-based state backbone - reactive MVC in plain classes, rendered by React 
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 | `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
+| `@expressive/rpc`    | Preview   | Typed server calls for a Vite client build - one folder of modules, stubs on the client. |
+| `@expressive/dev`    | Preview   | App host: `expressive dev`/`build`, file routes, sidecar calls, server Models. |
 | `@expressive/steps`  | Preview   | Multi-step processes as Models: steps, resets, waits, retries, concurrency gates. In-process. |
 
 ### Installing
@@ -338,6 +340,11 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 ### Inspect
 
 - [inspect.md](inspect.md) - `@expressive/inspect`: install entry, instances in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, orphans and `health()`, bridge and Vite relay
+
+### Server
+
+- [rpc.md](rpc.md) - `@expressive/rpc`: the api folder, module rules, http errors, gates and `Current`, client `configure`, Worker/Node deploy, limits
+- [dev.md](dev.md) - `@expressive/dev`: app layout, route module exports, sidecars, server Model and seats, twins (experimental), commands
 
 ### Steps
 

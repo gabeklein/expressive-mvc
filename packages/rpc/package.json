@@ -1,9 +1,8 @@
 {
   "name": "@expressive/rpc",
   "version": "0.0.0",
-  "description": "Plain calls from an Expressive client to its server: a transport-neutral core and its HTTP flavor.",
+  "description": "Typed server calls for any Vite client build: a folder of async functions, stubs on the client, a Worker or Node server bundle.",
   "license": "MIT",
-  "private": true,
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@expressive.dev",
@@ -71,5 +70,15 @@
     "@types/node": "^25.2.0",
     "tsdown": "^0.20.1",
     "vite": "^8.0.0"
+  },
+  "keywords": [
+    "expressive",
+    "rpc",
+    "vite",
+    "cloudflare-workers",
+    "server-functions"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }
