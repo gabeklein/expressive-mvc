@@ -1,50 +1,53 @@
-import { EventEmitter } from "node:events";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { connect } from "./connection";
 import { isStream, stream } from "./stream";
 
-function request(url: string, method = "GET") {
-  return Object.assign(new EventEmitter(), { url, method });
-}
+const request = (url: string, method = "GET", signal?: AbortSignal) => new Request(`http://localhost${url}`, { method, signal });
 
-function response() {
-  return { statusCode: 0, writeHead: vi.fn(), flushHeaders: vi.fn(), write: vi.fn(), end: vi.fn() };
+function opened() {
+  const id = crypto.randomUUID();
+  const aborted = new AbortController();
+  const response = stream(request(`/.expressive/stream?connection=${id}`, "GET", aborted.signal));
+
+  return { response, aborted, connection: connect(id)!, reader: response.body!.getReader() };
 }
 
 describe("stream", () => {
   it("will identify a GET of the stream path, whatever its query", () => {
-    expect(isStream(request("/.expressive/stream?connection=x") as any)).toBe(true);
-    expect(isStream(request("/.expressive/stream", "POST") as any)).toBe(false);
-    expect(isStream(request("/.expressive/streams") as any)).toBe(false);
-    expect(isStream(Object.assign(request(""), { url: undefined }) as any)).toBe(false);
+    expect(isStream(request("/.expressive/stream?connection=x"))).toBe(true);
+    expect(isStream(request("/.expressive/stream", "POST"))).toBe(false);
+    expect(isStream(request("/.expressive/streams"))).toBe(false);
   });
 
   it("will reply 400 without a connection id", () => {
-    const res = response();
+    const response = stream(request("/.expressive/stream"));
 
-    stream(request("/.expressive/stream") as any, res as any);
-
-    expect(res.statusCode).toBe(400);
-    expect(res.end).toHaveBeenCalled();
-    expect(res.writeHead).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    expect(response.body).toBeNull();
   });
 
-  it("will hold the response open as an event stream on the tab's connection, until the request closes", () => {
-    const id = crypto.randomUUID();
-    const req = request(`/.expressive/stream?connection=${id}`);
-    const res = response();
+  it("will hold the response open as an event stream on the tab's connection, until the request aborts", async () => {
+    const { response, aborted, connection, reader } = opened();
 
-    stream(req as any, res as any);
-
-    const connection = connect(id)!;
-
-    expect(res.writeHead).toHaveBeenCalledWith(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
-    expect(res.flushHeaders).toHaveBeenCalled();
-    expect(res.write).toHaveBeenCalledWith(`event: hello\ndata: {"epoch":"${connection.epoch}"}\n\n`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/event-stream");
+    expect(response.headers.get("cache-control")).toBe("no-cache");
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe(`event: hello\ndata: {"epoch":"${connection.epoch}"}\n\n`);
     expect(connection.sink).toBeDefined();
 
-    req.emit("close");
+    aborted.abort();
+
     expect(connection.sink).toBeUndefined();
+    expect((await reader.read()).done).toBe(true);
+  });
+
+  it("will stop listening when its reader cancels", async () => {
+    const { aborted, connection, reader } = opened();
+
+    await reader.cancel();
+    expect(connection.sink).toBeUndefined();
+
+    expect(() => aborted.abort()).not.toThrow();
   });
 });

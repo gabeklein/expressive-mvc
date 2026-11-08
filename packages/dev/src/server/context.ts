@@ -2,7 +2,6 @@ import "@expressive/dom";
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
-import type { IncomingMessage } from "node:http";
 import { Context, Model } from "@expressive/mvc";
 import { resolver } from "@expressive/mvc/jsx-runtime";
 
@@ -30,7 +29,7 @@ interface Entry {
 }
 
 interface Frame {
-  request: IncomingMessage;
+  request: Request;
   layer: Layer;
   held: Set<Entry>;
 }
@@ -150,7 +149,7 @@ function release(entry: Entry) {
   entry.timer.unref();
 }
 
-export async function within<T>(request: IncomingMessage, segments: string[], run: () => T, seats: (Seat | undefined)[] = []): Promise<Awaited<T>> {
+export async function within<T>(request: Request, segments: string[], run: () => T, seats: (Seat | undefined)[] = []): Promise<Awaited<T>> {
   const frame: Frame = { request, layer: root(), held: new Set() };
 
   return await store.run(frame, async (): Promise<Awaited<T>> => {
@@ -259,22 +258,22 @@ const readOnly = () => {
 };
 
 export class Current extends Model {
-  get request(): IncomingMessage {
+  get request(): Request {
     return frame().request;
   }
-  set request(_: IncomingMessage) {
+  set request(_: Request) {
     readOnly();
   }
 
   get url(): URL {
-    return new URL(this.request.url ?? "/", "http://localhost");
+    return new URL(this.request.url);
   }
   set url(_: URL) {
     readOnly();
   }
 
   get cookies(): Record<string, string> {
-    return parseCookies(this.request.headers.cookie);
+    return parseCookies(this.request.headers.get("cookie") ?? undefined);
   }
   set cookies(_: Record<string, string>) {
     readOnly();
