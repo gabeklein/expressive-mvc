@@ -16,7 +16,7 @@
     "build:site": "bun run build && bun .github/scripts/size-limit.ts && bun run --filter website build",
     "changeset": "changeset",
     "ci:version": "changeset version && bun install",
-    "ci:publish": "bun run build && bun .github/scripts/dist-smoke.ts && bun .github/scripts/native-check.ts && bun .github/scripts/pin-workspace.ts && changeset publish"
+    "ci:publish": "bun run build && bun .github/scripts/dist-smoke.ts && bun .github/scripts/native-check.ts && changeset publish"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^1.0.1",
