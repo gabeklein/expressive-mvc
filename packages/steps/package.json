@@ -1,6 +1,6 @@
 {
   "name": "@expressive/steps",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Runnable Models: every method a step, fields the data between them - with rollback, waits and an awaitable result.",
   "keywords": [
     "expressive",
