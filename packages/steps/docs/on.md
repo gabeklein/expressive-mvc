@@ -46,7 +46,7 @@ A handler covers its step and everything it schedules - the subtree. Deepest ste
 - Registration is synchronous, anywhere in the body, any number. An unknown key throws `then.on() takes reset, catch, abort and close - got finally.`; an `undefined` value is skipped.
 - Registered before its step fails, a handler runs for that failure too and sees the step's partial writes - restored after `reset`, or for `catch` after it returns.
 - Handlers run before fields are restored, so they read the state as the run left it. Keys they write are kept.
-- A handler that throws fails the unwind there. `end`, gates and waits throw in one: `end() cannot run in an undo.`
+- A handler that throws fails the unwind there. `end`, gates and waits throw in one: `end() cannot run in an undo.` So does `then.on()` - `then.on() cannot run in a handler step - use try/finally inside it.`
 - `run` registers none - `run cleans up in its tail - try/catch around await this.` Cleanup there is a [tail](runs.md#run-and-the-result).
 
 ### Steps as handlers - durable runs

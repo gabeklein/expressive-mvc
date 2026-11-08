@@ -98,11 +98,11 @@ async run(ref: LoraRef) {
 
 ## End from outside
 
-`then.end()` from outside ends the active run now, without undoing anything - what an `end` token does when the plan reaches it ([steps.md](steps.md#end-is-terminal)):
+`then.end()` finishes what's running and schedules nothing more - to halt now, `stop()` or `abort()`. From outside it does what an `end` token does when the plan reaches it ([steps.md](steps.md#end-is-terminal)):
 
 - pending steps are discarded - not journaled; open waits are released;
-- in-flight steps' [signals](steps.md#the-step-signal) abort; they settle and commit - what they schedule never runs; one rejecting with its signal's reason is dropped, its writes restored;
-- then `await this` in `run` resolves and the run settles with what `run` returns, as a normal end;
+- steps in flight run on - signals not aborted - and commit; writes and effects stand, nothing is undone, and what they schedule is dropped; `close` fires, `abort` and `reset` do not;
+- once they settle, `await this` in `run` resolves and the run settles with what `run` returns, as a normal end;
 - the queue proceeds - the next queued run starts.
 
 Idle, or with the run already ending, stopped or failed, it does nothing. A step in flight failing meanwhile fails the run as usual.

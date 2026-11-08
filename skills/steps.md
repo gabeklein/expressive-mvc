@@ -82,6 +82,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 
 - Calling a step inside a step does not run it: it returns an inert token (not awaitable - `await this.a()` does nothing), scheduled after the caller settles cleanly. A caller that throws schedules nothing.
 - Tokens run in issue order, depth-first: each with everything it schedules, before the next sibling.
+- Inputs and shared state are ordinary fields. `_` fields are unmanaged - not restored, not observable, not in `wrote`, not checkpointed by a future durable host: only for process-local values like a cache or a handle.
 - Step arguments are journaled: pass only need-to-know handoffs - what differs between calls, or a value one step found and hands the next. State shared across steps or read from outside is a field. Secrets are neither - pass a reference and resolve it in the step that uses it (`const token = await vault.get(cardRef)`).
 - **The first call ends the step's work.** After its first token a step may only issue tokens and return. A write after it fails the run; settling more than a few microtasks after the last token fails it too. A sync side effect after scheduling is invisible to the guard - side effects are steps.
 - Loops are plain loops, or a step scheduling itself.
@@ -203,14 +204,14 @@ protected async scan(site: string) {                     // backoff lives in the
 
 - `then.stop(reason?)` - halts, keeping what was done: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with a `Steps.Stopped` (`reason` as `cause`), also the step signals' reason. `set(null)` stops.
 - `then.abort(reason?)` - halts the same way, then unwinds the run as a failure would - `commit`'s counterpart. Status `aborted`; the run rejects with a `Steps.Aborted` (`stop()`: a `Steps.Stopped`), named as such. A reset throwing fails the run (`failed`, its error given the `'Aborted'` error as `cause`).
-- `then.end()` - ends early, keeping everything: in a step at its place in the plan, from outside now. `await this` resolves; the tail builds the result from fields. Why it ended early is data - write a field before calling it. Passing a value throws.
+- `then.end()` - ends early, keeping everything: in a step at its place in the plan, from outside now. It finishes what's running - signals not aborted, writes standing, what they schedule dropped, only `close` fires - and schedules nothing more; to halt now, `stop()` or `abort()`. `await this` resolves; the tail builds the result from fields. Why it ended early is data - write a field before calling it. Passing a value throws.
 - A failed run nobody awaited throws uncaught two microtasks later.
 
 ## Hooks
 
 Only `before` and `after` are hooks (any other name is a step; `then`, `end`, `gate`, `wait` are reserved for plan tokens and throw); protected, synchronous, raw instance as `this`, writes unjournaled.
 
-- `before(step, args)` / `after(step, entry)` around every step. `after` gets each committed entry - the Runner keeps no journal, so a log is `this.log.push(entry)`. A try a catch took arrives with `entry.error`; a called `end` arrives too (an implicit one does not).
+- `before(step, args)` / `after(step, entry)` around every step. `after` gets each committed entry - the Runner keeps no journal, so a log is `this.log.push(entry)`. A try a catch took, and the failure ending the run, arrive with `entry.error`; a called `end` arrives too (an implicit one does not).
 
 Entry: `{ id: 'pay#1', key, args, wrote, next, on?, unwound?, wake?, retried?, error?, irreversible?, committed?, halted?, implicit? }` - no values.
 

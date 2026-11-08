@@ -16,6 +16,8 @@ protected async reserve() {
 }
 ```
 
+Inputs and shared state are ordinary fields. `_` fields are unmanaged - not restored, not observable, not in `wrote`, not checkpointed by a future durable host: only for process-local values like a cache or a handle.
+
 Step arguments are journaled - pass only need-to-know handoffs: what differs between calls, or a value one step found and hands the next. State shared across steps, or read from outside, is a field. Secrets are neither - pass a reference and resolve it in the step that uses it: `const token = await vault.get(cardRef)`.
 
 ## Sequence, depth-first
@@ -90,7 +92,7 @@ protected async turn() {
 }
 ```
 
-Aborted on `stop()` and `abort()`, on an outside [`end`](runs.md#end-from-outside), when the run fails elsewhere, when its [race](wait.md#racers) is lost, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not caught, it reaches no hook. A different error thrown after the abort fails the run as usual.
+Aborted on `stop()` and `abort()`, when the run fails elsewhere, when its [race](wait.md#racers) is lost, and once the step settles. A step rejecting with its signal's `reason` after the runtime aborted it is not a new failure: its writes are restored - `draft`'s chunks above - nothing it scheduled runs, it is not caught, it reaches no hook. A different error thrown after the abort fails the run as usual.
 
 Outside a step, `then.signal` throws `signal must be read inside a step.`
 
@@ -132,7 +134,7 @@ class Checkout extends Steps {
 ```
 
 - A rejection is the try's error - [caught](catch.md) if its branch is, else the run fails with it.
-- `stop()` or an outside `end` while waiting aborts the step as for its [signal](#the-step-signal) - writes restored, no entry, no new failure.
+- `stop()` while waiting aborts the step as for its [signal](#the-step-signal) - writes restored, no entry, no new failure; `end()` waits for the value.
 - A step past [`commit()`](on.md#commit), or with an irreversible change, cannot start over: the Promise fails it as any throw. So does one thrown from an `after` hook.
 - Any thrown `Promise` counts, not only mvc's.
 
@@ -170,7 +172,7 @@ private _double(n: number) {
 
 ## `end` is terminal
 
-`end` is a token like any other - it runs at its place in the plan, depth-first, and running it ends the run. Whatever is still pending is discarded, not journaled; open waits and slots are released; steps in flight - other members of a group - have their [signals](#the-step-signal) aborted, settle and commit, and what they schedule never runs. The same as [`then.end()` from outside](runs.md#end-from-outside).
+`end` is a token like any other - it runs at its place in the plan, depth-first, and running it ends the run. Whatever is still pending is discarded, not journaled; open waits and slots are released; steps in flight - other members of a group - finish, signals not aborted, and commit; what they schedule never runs. `end()` finishes what's running and schedules nothing more; to halt now, `stop()` or `abort()`. The same as [`then.end()` from outside](runs.md#end-from-outside).
 
 `this.then.end()` takes no value - one throws: the result is what `run` returns once its run is done ([runs.md](runs.md#run-and-the-result)). A class may not declare `end` - it throws at construction. The end is journaled `{ id: 'end#n', key: 'end', args: [], next: [], wrote: [] }`, `implicit: true` when the plan drained. An `end` called - in a step or from outside - is handed to `after` like any entry, so a trace shows where a run was cut short; an implicit one is not.
 
@@ -227,6 +229,6 @@ Each step that commits is one entry, handed to [`after`](hooks.md) - the runner 
 
 Optional: `wake` - the wait a step answered ([wait.md](wait.md)); `error` - a caught failure ([catch.md](catch.md)), or a failing step that kept its writes; `retried` - a replay by `then.retry()`; `unwound` - the unwind ([on.md](on.md#the-unwind)); `irreversible`, `halted` - collection changes no restore can undo ([on.md](on.md#irreversible)); `committed` - [`then.commit()`](on.md#commit); `implicit` - an `end` the runtime added ([end](#end-is-terminal)).
 
-A try a catch took reaches `after` with `error`. The runtime makes entries no hook is handed, for its own unwind: a failed try that kept its writes or registered resets (`error`), and an implicit `end`. An entry holds no values - an unwind restores fields from priors the runtime keeps until the run ends ([on.md](on.md#the-unwind)).
+A try a catch took, and the failure that ends the run, reach `after` with `error`. The runtime makes entries no hook is handed, for its own unwind: a suspended try's resets, and an implicit `end`. An entry holds no values - an unwind restores fields from priors the runtime keeps until the run ends ([on.md](on.md#the-unwind)).
 
 Writes from outside the run, through `this.is`, in helpers, or in hooks are in no entry.
