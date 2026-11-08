@@ -1,4 +1,4 @@
-import { event } from './observable';
+import { event, REFRESH } from './observable';
 import {
   Model,
   GETTERS,
@@ -7,9 +7,9 @@ import {
   SETUP,
   UNBIND,
   classify,
-  compute,
+  getter,
   type Handler
-} from './state';
+} from './model';
 
 interface Entry {
   type: Function;
@@ -42,7 +42,6 @@ const SUBCLASSES = new WeakMap<Function, Set<Model.Extends>>();
 
 const MODULES = new Map<string, Record<string, Entry>>();
 const LISTENERS = new Set<(event: Replaced) => void>();
-const REFRESH = Symbol.for('@expressive/mvc.refresh');
 const PRIVATE = /(?:^|[\s;{}*])#[\w$]+(?=[\s=;(}])/;
 
 /** Begin tracking live instances, so a hot patch can reach them. */
@@ -182,7 +181,7 @@ function patch(prev: Model.Extends, next: Model.Extends, own: Handler[]): Model[
       if (PAST.has(UNBIND.get(Object.getOwnPropertyDescriptor(state, key)?.value))) delete (state as any)[key];
 
     for (const [key, get] of GETTERS.get(state.constructor)!)
-      if (!knownGetters.has(key) && get === getters!.get(key)) compute.call(state, get, key);
+      if (!knownGetters.has(key) && get === getters!.get(key)) getter.call(state, get, key);
   }
 
   return live;

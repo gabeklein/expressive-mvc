@@ -5,9 +5,9 @@ export { map } from './field/map';
 export { set } from './field/set';
 export { ref } from './field/ref';
 
-import { Model } from './state';
+import { Model } from './model';
 
-export { Model, unbind } from './state';
+export { Model, unbind } from './model';
 
 /** @deprecated Import `{ Model }` as a named export. Adapter-augmented `Model.*` types are not visible through the default alias. */
 export default Model;
