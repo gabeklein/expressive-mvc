@@ -1,9 +1,8 @@
 {
   "name": "@expressive/dev",
   "version": "0.0.0",
-  "description": "Vite host for Expressive apps: file-based routes on @expressive/dom and a server lane.",
+  "description": "App host for Expressive: expressive dev/build over Vite, file-based routes on @expressive/dom, server calls and server Models.",
   "license": "MIT",
-  "private": true,
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@expressive.dev",
@@ -80,5 +79,12 @@
     "@playwright/test": "^1.63.0",
     "@types/node": "^25.2.0",
     "tsdown": "^0.20.1"
-  }
+  },
+  "keywords": [
+    "expressive",
+    "mvc",
+    "vite",
+    "rpc",
+    "framework"
+  ]
 }
