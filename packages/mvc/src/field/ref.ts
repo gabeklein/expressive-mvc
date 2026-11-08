@@ -1,5 +1,6 @@
 import { listener, capture } from '../observable';
-import { Model, update } from '../model';
+import { Model } from '../model';
+import { update } from '../store';
 import { def } from './def';
 
 const { defineProperty, defineProperties } = Object;

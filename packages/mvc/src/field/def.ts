@@ -1,5 +1,6 @@
 import { listener } from '../observable';
-import { PENDING, Model, STORE, uid, apply } from '../model';
+import { PENDING, Model, uid } from '../model';
+import { apply, store } from '../store';
 
 declare namespace def {
   /**
@@ -38,7 +39,7 @@ function def<T>(arg1: def.Factory<T>) {
 
 Model.on({
   setup(self) {
-    const store = STORE.get(self)!;
+    const data = store(self);
 
     for (const key in self) {
       const property: PropertyDescriptor = Object.getOwnPropertyDescriptor(self, key) || {};
@@ -60,7 +61,7 @@ Model.on({
       discard(self, pending);
       delete (self as any)[key];
 
-      const output = instruction.call(self, key, self, store);
+      const output = instruction.call(self, key, self, data);
 
       if (!output) continue;
 
