@@ -120,13 +120,15 @@ Stopped in `run`'s tail - the plan already done - the current run finishes with 
 
 `reason` is that error's `cause`, and its message when a string - else `` `${instance} was stopped.` ``. undos and the tail see the same error; `then.error` stays unset.
 
-`then.abort(reason?)` halts the same way, then unwinds the run as a failure would ([on.md](on.md)) - the counterpart of [`commit`](on.md#commit). Status `aborted`; the run, the queue and `close` handlers get a `Steps.Aborted` (named `'Aborted'`) - `reason` as for `stop`, `` `${instance} was aborted.` `` without one. An undo that throws fails the run: status `failed`, `error` and the rejection are what it threw, given the `'Aborted'` error as `cause` when it is an Error without one. During a [caught branch's](catch.md) unwind, `stop()` stops it between undos. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
+`then.abort(reason?)` halts the same way, then unwinds the run as a failure would ([on.md](on.md)) - the counterpart of [`commit`](on.md#commit). Status `aborted`; the run, the queue and `abort` handlers get a `Steps.Aborted` (named `'Aborted'`) - `reason` as for `stop`, `` `${instance} was aborted.` `` without one. An undo that throws fails the run: status `failed`, `error` and the rejection are what it threw, given the `'Aborted'` error as `cause` when it is an Error without one. During a [caught branch's](catch.md) unwind, `stop()` stops it between undos. Stopping when idle does nothing. `set(null)` on the instance stops it. Finishing never destroys the instance.
 
 A stopped run is not rethrown uncaught.
 
 ## Unawaited failures
 
 A failed run nobody awaited - neither `run()`'s Promise nor the instance - rethrows uncaught two microtasks after rejecting. `await` it, or `.then` it, before then - or let it surface.
+
+Under bun's test runner, assert a rejection with `.catch` - `const error = await job.run().catch((e) => e)` - not `expect(p).rejects`: bun inspects the promise without calling `.then`, so Steps reports it unawaited.
 
 ## Steering - a mailbox
 

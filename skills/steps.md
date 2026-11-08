@@ -95,7 +95,7 @@ Inputs are fields (`X.new({ cart })`) or `run`'s arguments. Nothing starts on it
 | `this.then({ min: 1 })` | duration - parks for `ms`/`sec`/`min`/`hr`/`day`, summed |
 | `this.then.only(2)` / `.only(1, lock)` | gate - only so many at once |
 | `this.then.end()` | end the run here - pending discarded; takes no value |
-| `this.then.on({ reset: () => release(hold) })` | handlers for this step's subtree - `reset`, `catch`, `close` |
+| `this.then.on({ reset: () => release(hold) })` | handlers for this step's subtree - `reset`, `catch`, `abort`, `close` |
 | `this.then.commit()` | point of no return |
 | `this.then.signal` | this step's `AbortSignal` - pass it to the call it awaits |
 
@@ -112,26 +112,27 @@ this.then.on({
     if (!(error instanceof Busy)) throw error;
     this.later();
   },
-  close: async (reason) => {                 // a finally over the subtree, given why
-    this.preview.close();
+  abort: async (reason) => {                 // ended without completing - reason says why
     if (reason instanceof Steps.Aborted) await Image.delete(this.name);
-  }
+  },
+  close: () => this.preview.close()          // a finally over the subtree
 });
 ```
 
 | key | fires (deepest step first, newest first) | function gets |
 | --- | --- | --- |
-| `reset` | the step is taken back - a failure leaving the subtree, `abort()`, a lost race | nothing |
 | `catch` | a step below failed, no `.catch` closer took it - return recovers, throw passes on | the error |
-| `close` | subtree ended any way, last; alone on a clean finish | `undefined` if clean (recovered or `then.end()` too), else the error, a `Steps.Aborted` (abort, lost race) or a `Steps.Stopped` (stop) |
+| `abort` | ended without completing - a failure no `catch` recovered, `abort()`, a lost race, `stop()`; `commit()`'s counterpart | why: the error, a `Steps.Aborted` or a `Steps.Stopped` |
+| `reset` | the step is taken back - a failure leaving the subtree, `abort()`, a lost race; not `stop()` | nothing |
+| `close` | subtree ended any way, last - a finally; alone on a clean finish | nothing |
 
+- One step's order: `catch` → `abort` → `reset` → `close`. `abort` skips a clean end, a recovered failure and `then.end()`; it reaches a subtree still unfinished - a step that completed earlier and is taken back gets `reset` only.
 - `reset` takes back the step's effects; `this.then.restore()` puts a caught branch's fields back now.
-- To observe a failure, an abort or a stop, read `reason` in `close`; `catch` is for recovery. `stop()` resets nothing.
-- `catch` returning recovers at its step: the failed part of the subtree unwinds, the step's effects stay, its `reset` does not run; steps it schedules replace the rest. It covers from registration on, the rest of the step's own body included (a throw there resets the step first); one per step; it runs before a `.catch` on the step's call (inner first); `this.then.retry()` replays the step. A step finished earlier and taken back by a later failure gets `reset` and no `close`.
+- `catch` returning recovers at its step: the failed part of the subtree unwinds, the step's effects stay, its `reset` does not run; steps it schedules replace the rest. It covers from registration on, the rest of the step's own body included (a throw there resets the step first); one per step; it runs before a `.catch` on the step's call (inner first); `this.then.retry()` replays the step. 
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
 - Unwind order: failure → handlers newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
 - Registered before its step fails, handlers run for that failure too and see the step's partial writes. They run before fields are restored; keys they write are kept. An unknown key throws. `run` registers none - clean up in its tail.
-- Durable runs (future): a handler whose external effect must survive a restart is a step: a method uncalled - `{ catch: this.fallback, close: this.settle }`, run with the error or reason as its only argument (recorded as `{ name, message, cause }`; `reset` gets none) - or one called for it, `{ reset: this.release(hold) }`, an array a group, with args recorded. Claimed, not scheduled; reaching `before`/`after`. `end`, gates and waits throw in handlers.
+- Durable runs (future): a handler whose external effect must survive a restart is a step: a method uncalled - `{ catch: this.fallback, abort: this.settle }`, run with the error or reason as its only argument (recorded as `{ name, message, cause }`; `reset` and `close` get none) - or one called for it, `{ reset: this.release(hold) }`, an array a group, with args recorded. Claimed, not scheduled; reaching `before`/`after`. `end`, gates and waits throw in handlers.
 - `this.then.commit()` - the step's failure is not caught and the unwind stops at it (`halted`): what came before stands - e.g. a transcript the run is building.
 - Removing a pool member or destroying a map value the step did not add is irreversible: the unwind stops there and warns.
 - Whole-run undo is `abort()`; partial is a [catch](#catch-and-retry).
@@ -186,6 +187,7 @@ protected async scan(site: string) {                     // backoff lives in the
 - `this.then.retry()` in a handler replays what the catch is attached to - the failed step or the whole group - with its recorded args, under the same handler. The handler holds the policy; past it, throw or fall back. Throws outside a handler; `.catch(this.then.retry)` throws.
 - `this.then.retried` - replays so far, `0` on a first run; a handler reads the failed one's. Calling a step again from a handler is a new step - `0`.
 - Not caught: rule violations, past `commit()`/irreversible, aborts, failures while stopping or ending.
+- Choosing a catch form: a called step (`on({ catch })` only) - a fixed fallback, args known now, recorded, never sees the error, always recovers unless it fails; a step method - a fallback depending on the error, recorded; a function - judgement, may rethrow or `retry()`, process-local.
 
 ## Gate
 
@@ -235,3 +237,5 @@ expect(stripe.refund).toHaveBeenCalledWith('ch_42');   // the unwind ran
 ```
 
 Collect entries for assertions with an `after` hook on a test subclass.
+
+Under bun's test runner, assert a rejection with `await job.run().catch((e) => e)`, not `expect(p).rejects` - bun inspects the promise without calling `.then`, so Steps reports it unawaited.

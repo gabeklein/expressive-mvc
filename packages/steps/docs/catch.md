@@ -52,6 +52,12 @@ A failure that is expected - no courier, a declined card - is a typed error thro
 
 Inner first: a failure meets the step's own `catch` before a `.catch` on its call - throwing there passes it to the caller's. `retry()` in either replays the step the catch belongs to. Either takes a step method uncalled - `.catch(this.fallback)`, `on({ catch: this.fallback })` - run with the error, recorded.
 
+Choosing a form:
+
+- a called step - `on({ catch: this.fallback('cached') })`: a fixed fallback, args known now, recorded; never sees the error - it always recovers unless it fails itself. `on` only.
+- a step method - `.catch(this.fallback)`: a fallback depending on the error, recorded.
+- a function - `.catch((error) => …)`: judgement - may rethrow or `retry()`; process-local.
+
 ## Retry
 
 A retry is a handler calling `this.then.retry()` - the policy lives in the handler, coordination first:
