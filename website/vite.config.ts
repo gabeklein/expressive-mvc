@@ -199,7 +199,7 @@ function serveSkills(): Plugin {
     async writeBundle({ dir: outDir }) {
       if (!outDir) return;
 
-      await mkdir(join(outDir, 'llm'), { recursive: true });
+      await mkdir(join(outDir, 'llm', dirname(EXAMPLES_INDEX)), { recursive: true });
 
       for (const [prefix, dir] of mounts)
         await cp(dir, join(outDir, 'llm', prefix), { recursive: true });
