@@ -159,38 +159,7 @@ snapshot.get('a'); // exported product values
 
 ## Type Signature
 
-```ts
-function map<K, V>(entries?: Iterable<readonly [K, V]> | false | null): map.Insert<K, V>;
-function map<A extends [unknown, ...unknown[]], V>(make: (...args: A) => V): map.Create<A, V>;
-
-// runtime base, reachable as map.Managed: reactive native Map subclass.
-// Declares reads, removal, and iteration; the public shapes below narrow set.
-declare class Managed<K, V> extends Map<K, V> {
-  readonly size: number;
-  get(): ReadonlyMap<K, Model.Export<V>>;
-  get(key: K): V | undefined;
-  has(key: K): boolean;
-  delete(key: K): boolean;
-  clear(): void;
-  set(key: K, ...rest: unknown[]): this;
-  entries<R>(fn: (entry: [K, V]) => R): Iterable<R>;
-  keys<R>(fn: (key: K) => R): Iterable<R>;
-  values<R>(fn: (value: V, key: K) => R): Iterable<R>;
-  // plus plain entries/keys/values/forEach/[Symbol.iterator]
-}
-
-// both public shapes extend the class, each narrowing set to its mode
-interface map.Create<A extends [unknown, ...unknown[]], V> extends Managed<A[0], V> {
-  set(...args: A): this; // the factory's own signature; A[0] is the key
-}
-
-interface map.Insert<K, V> extends Managed<K, V> {
-  set(key: K, value: V): this;
-}
-
-// the class itself is surfaced as map.Managed (value + type)
-export { Managed };
-```
+Per-member contract: JSDoc on hover, or `node_modules/@expressive/mvc/dist/field/map.d.ts`.
 
 At runtime both modes are one class, `map.Managed` (a native `Map` subclass; a keyed map uses the identity factory) - the seam adapters extend for rendering facades.
 
