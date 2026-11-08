@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive-mvc",
@@ -172,7 +171,7 @@
     },
     "packages/steps": {
       "name": "@expressive/steps",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@expressive/mvc": "workspace:*",
         "tsdown": "^0.20.1",
