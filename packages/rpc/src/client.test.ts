@@ -193,3 +193,16 @@ describe("configure", () => {
     await expect(shared.call("/tally", "add", [])).rejects.toBeInstanceOf(Limit);
   });
 });
+
+describe("values", () => {
+  it("will carry what JSON loses both ways through a call, in process", async () => {
+    const later = vi.fn(async (when: Date, step: bigint | undefined, tags: Set<string>) => ({ at: new Date(when.getTime() + Number(step ?? 1000n)), tags: [...tags], step }));
+    const endpoints: Endpoint[] = [{ pattern: ["clock"], exports: async () => ({ calls: { later }, classes: {} }) }];
+    const inProcess = handler(endpoints);
+    const rpc = client({ base: "http://localhost", transport: async request => (await inProcess(request))! });
+    const when = new Date("2026-11-08T12:00:00.000Z");
+
+    expect(await rpc.call("/clock", "later", [when, undefined, new Set(["a"])])).toEqual({ at: new Date("2026-11-08T12:00:01.000Z"), tags: ["a"] });
+    expect(later).toHaveBeenCalledWith(when, undefined, new Set(["a"]));
+  });
+});
