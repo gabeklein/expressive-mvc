@@ -83,4 +83,61 @@ describe("serve", () => {
     server.close();
     vi.restoreAllMocks();
   });
+
+  it("will reply 404 with no file and no shell", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const server = serve({ config: { port: 0 }, client: mkdtempSync(join(tmpdir(), "client-")) });
+    await new Promise(done => server.once("listening", done));
+
+    const { port } = server.address() as AddressInfo;
+    const status = await new Promise<number>(done => request({ port, path: "/" }, res => (res.resume(), done(res.statusCode!))).end());
+
+    expect(status).toBe(404);
+
+    server.close();
+    vi.restoreAllMocks();
+  });
+
+  it("will check sidecars before it listens, on port 3000 by default", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const exports = vi.fn(async () => ({ calls: {}, classes: { Oops: class Oops extends Error {} } }));
+
+    const server = serve({ config: {}, client: tmpdir(), sidecars: [{ pattern: ["todos"], exports } as any] });
+    const listen = vi.spyOn(server, "listen").mockImplementation(((port: number, done: () => void) => (done(), server)) as any);
+
+    await vi.waitFor(() => expect(listen).toHaveBeenCalled());
+
+    expect(exports).toHaveBeenCalled();
+    expect(listen.mock.calls[0][0]).toBe(3000);
+    expect(log).toHaveBeenCalledWith("Expressive running at http://localhost:3000/");
+
+    vi.restoreAllMocks();
+  });
+
+  it("will serve the stream, a seated call, and a file of unknown type", async () => {
+    const { Model } = await import("@expressive/mvc");
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const dir = mkdtempSync(join(tmpdir(), "client-"));
+    writeFileSync(join(dir, "data.bin"), "1");
+
+    const exports = async () => ({ calls: { add: async (a: number, b: number) => a + b }, classes: {} });
+    const server = serve({ config: { port: 0 }, client: dir, sidecars: [{ pattern: ["tally"], exports } as any], seats: [{ pattern: ["tally"], Type: class Tally extends Model {} as any }] });
+    await new Promise(done => server.once("listening", done));
+
+    const base = `http://localhost:${(server.address() as AddressInfo).port}`;
+    const abort = new AbortController();
+    const stream = await fetch(`${base}/.expressive/stream?connection=${crypto.randomUUID()}`, { signal: abort.signal });
+    const call = await fetch(`${base}/tally`, { method: "POST", headers: { "content-type": "application/json", "x-expressive-connection": crypto.randomUUID(), "x-expressive-call": "add" }, body: "[2, 3]" });
+    const file = await fetch(`${base}/data.bin`);
+
+    expect(stream.headers.get("content-type")).toBe("text/event-stream");
+    expect(await call.json()).toMatchObject({ value: 5 });
+    expect(file.headers.get("content-type")).toBe("application/octet-stream");
+
+    abort.abort();
+    server.closeAllConnections();
+    server.close();
+    vi.restoreAllMocks();
+  });
 });

@@ -37,6 +37,16 @@ describe("versions", () => {
     expect(changedSince(tally, versionOf(tally), FIELDS)).toEqual([]);
   });
 
+  it("will not advance for an event that is not a field", () => {
+    const tally = Tally.new();
+    track(tally);
+    const before = versionOf(tally);
+
+    tally.set(Symbol("event"));
+
+    expect(versionOf(tally)).toBe(before);
+  });
+
   it("will treat an unknown or foreign generation as everything changed", () => {
     const tally = Tally.new();
     track(tally);

@@ -272,6 +272,36 @@ describe("app/ routing (codegen)", () => {
     expect(out).toContain("import RootEnter, { Page as Root, Layout as RootLayout }");
   });
 
+  it("will ignore files that are not modules", async () => {
+    expect(await generate({ "index.tsx": PAGE, "notes.md": "# notes" })).not.toContain("notes");
+  });
+
+  it("will suffix an alias another route already took", async () => {
+    const out = await generate({ "index.tsx": PAGE, "a/index.tsx": `${PAGE}\n${LAYOUT}`, "a/layout/index.tsx": PAGE });
+    expect(out).toContain('const ALayout = () => import("../app/a/index.tsx").then(m => m.Layout);');
+    expect(out).toContain('const ALayout_ = () => import("../app/a/layout/index.tsx").then(m => m.Page);');
+  });
+
+  it("will suffix a remote's alias another route already took", async () => {
+    const out = await generate({
+      "index.tsx": PAGE,
+      "(x-remote).tsx": PAGE,
+      "x/index.tsx": PAGE,
+      "x/remote.ts": "import { Model } from '@expressive/mvc'; export default class S extends Model {}",
+    });
+    expect(out).toContain('<Route to="x" remote={XRemote_}>');
+  });
+
+  it("will import a lone default and provide it around the children", async () => {
+    const out = await generate({ "index.tsx": SCOPE, "a/index.tsx": PAGE });
+    expect(out).toContain('import RootScope from "../app/index.tsx";');
+    expect(out).toContain("const RootScoped = props => <Component for={RootScope}>{props.children}</Component>;");
+  });
+
+  it("will not route a leaf without a page", async () => {
+    expect(await generate({ "index.tsx": PAGE, "go/index.tsx": ENTER })).not.toContain('to="go"');
+  });
+
   it("module always exports a default App component, host-neutral", async () => {
     const out = await generate({ "index.tsx": PAGE });
     expect(out).toContain("const App = () => (");

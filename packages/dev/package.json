@@ -57,7 +57,7 @@
   "scripts": {
     "build": "tsdown",
     "typecheck": "tsc --noEmit --incremental",
-    "coverage": "vitest run",
+    "coverage": "vitest run --coverage",
     "test": "bun run typecheck && bun run coverage",
     "example": "cd example && node ../dist/cli.js dev",
     "example:build": "cd example && node ../dist/cli.js build",

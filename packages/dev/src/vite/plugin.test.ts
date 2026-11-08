@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -641,5 +641,99 @@ describe("vite host", () => {
     expect(html).toContain('<div id="root"></div>');
     expect(html).toMatch(/<script type="module" crossorigin src="\/assets\/index-[^"]+\.js"><\/script>/);
     expect(html).not.toContain(".expressive/main.tsx");
+  });
+
+  it("will throw if config is read before the dev server runs", async () => {
+    await expect(expressive().api!.config()).rejects.toThrow("The dev server is not running.");
+  });
+
+  it("will read no config without index.ts, or one without a default", async () => {
+    const host = expressive();
+    await serve(project({ "app/index.tsx": PAGE }), host);
+    expect(await host.api!.config()).toEqual({});
+
+    const other = expressive();
+    await serve(project({ "app/index.tsx": PAGE, "index.ts": "export const port = 1;" }), other);
+    expect(await other.api!.config()).toEqual({});
+  });
+
+  it("will resolve the working directory as the root by default", () => {
+    const host = expressive() as any;
+    expect(() => host.config({}, { command: "serve", mode: "development" })).toThrow("Missing app.tsx");
+  });
+
+  it("will serve a project's own index.html as the shell", async () => {
+    const server = await serve(project({ "app/index.tsx": PAGE, "index.html": "<html><body><p>mine</p></body></html>" }));
+    await server.listen(0);
+
+    const page = await fetch(new URL("/", server.resolvedUrls!.local[0]), { headers: { accept: "text/html" } });
+    const html = await page.text();
+
+    expect(html).toContain("<p>mine</p>");
+    expect(html).toContain('<div id="root"></div>');
+  });
+
+  it("will leave requests that are not for a page to Vite", async () => {
+    const server = await serve(project({ "app/index.tsx": PAGE }));
+    await server.listen(0);
+
+    const res = await fetch(new URL("/missing.json", server.resolvedUrls!.local[0]), { headers: { accept: "application/json" } });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("will pass a shell that fails to transform to Vite's error handler", async () => {
+    const boom = { name: "boom", transformIndexHtml() { throw new Error("boom"); } };
+    const server = await createServer({
+      root: project({ "app/index.tsx": PAGE }),
+      configFile: false,
+      logLevel: "silent",
+      plugins: [expressive(), boom],
+      resolve: SOURCES,
+      optimizeDeps: { noDiscovery: true, include: [] },
+    });
+    servers.push(server);
+    await server.listen(0);
+
+    const res = await fetch(new URL("/", server.resolvedUrls!.local[0]), { headers: { accept: "text/html" } });
+
+    expect(res.status).toBe(500);
+  });
+
+  it("will resolve a remote-named import outside app/ as usual", async () => {
+    const server = await serve(project({ "app.tsx": "import { x } from './remote'; export default () => x", "remote.ts": "export const x = 1;" }));
+
+    const app = await server.transformRequest("/app.tsx");
+
+    expect(app?.code).toContain("/remote.ts");
+  });
+
+  it("will reload the page when a file under app/ is added or removed", async () => {
+    const root = realpathSync(project({ "app/index.tsx": PAGE }));
+    const server = await serve(root);
+    const sent: unknown[] = [];
+    server.ws.send = ((payload: unknown) => void sent.push(payload)) as any;
+
+    server.watcher.emit("add", join(root, "app/about.tsx"));
+    await server.transformRequest("/.expressive/routes.tsx");
+    server.watcher.emit("unlink", join(root, "app/about.tsx"));
+    server.watcher.emit("add", join(root, "elsewhere.ts"));
+
+    expect(sent).toEqual([{ type: "full-reload" }, { type: "full-reload" }]);
+  });
+
+  it("builds the node service for a single-file project", async () => {
+    const { server } = await buildBoth({ "app.tsx": "export default () => <h1>hi</h1>" });
+
+    expect(server).toContain('from "@expressive/dev/server"');
+  });
+
+  it("will salt ids when index.ts has no default", async () => {
+    const config = clientBuild(project({ "app/index.tsx": PAGE, "index.ts": "export const port = 1;" }), { write: false });
+    config.configFile = false;
+    config.logLevel = "silent";
+    config.resolve = SOURCES;
+
+    await expect(build(config)).resolves.toBeDefined();
   });
 });

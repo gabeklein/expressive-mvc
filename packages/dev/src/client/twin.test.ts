@@ -492,6 +492,16 @@ describe("stream", () => {
     source.emit("beat", { sum: 0 });
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
   });
+
+  it("will leave a twin without a version out of the checksum", async () => {
+    const { fetch, source, id } = await attached({ body: snap({}, "o:1") });
+    twin(["tally"], {}, [], "Other").new();
+
+    source.emit("beat", { sum: fnv(`${id}@g:1`) });
+    await settle();
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("pooled twin", () => {
