@@ -4,7 +4,7 @@ import { element, elements } from './element';
 import { Component } from './component';
 import { has } from './field/has';
 import { map } from './field/map';
-import { Model } from './state';
+import { Model } from './model';
 
 afterEach(() => elements(undefined));
 

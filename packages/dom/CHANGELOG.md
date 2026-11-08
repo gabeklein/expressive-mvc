@@ -1,5 +1,25 @@
 # @expressive/dom
 
+## 0.10.0
+
+### Minor Changes
+
+- [#621](https://github.com/gabeklein/expressive-mvc/pull/621) [`fbd4d44`](https://github.com/gabeklein/expressive-mvc/commit/fbd4d44f0f0f53090e3e1ba333b446a2c155b8ac) `Css` gains macros for properties where px is wrong: `transitionDuration`, `transitionDelay`, `animationDuration` and `animationDelay` take numbers as milliseconds, and `rotate` takes degrees. The `rem`, `em`, `px` and `media` exports are removed - write other units as strings, and conditions on a `$name` field (`$mobile = '@media (max-width: 900px)'`).
+
+- [#629](https://github.com/gabeklein/expressive-mvc/pull/629) [`e38c545`](https://github.com/gabeklein/expressive-mvc/commit/e38c545abbaee0f4f42057c999f9c0e2f7800b3d) Warn in development when a `_name` attribute matches no rule, suggesting the nearest rule name. A `$name` condition written as a value now throws.
+
+- [#623](https://github.com/gabeklein/expressive-mvc/pull/623) [`0d67321`](https://github.com/gabeklein/expressive-mvc/commit/0d673219351d46ba227255e82339bc8ad4943c99) `Css` gains `transition`, which takes an object keyed by property (`{ opacity: 200, transform: { duration: 300, easing: 'ease-out' } }`) with times in milliseconds, and `offsetRotate`, which takes degrees. Maps accept a number only for properties where one is valid CSS, so `color: 5`, `animation: ['spin', 1]` or `flex: [1, 1, 200]` is a type error; a map for a pack without `default`, plain `style()` included, accepts only unitless numbers and `0`.
+
+- [#617](https://github.com/gabeklein/expressive-mvc/pull/617) [`da139b2`](https://github.com/gabeklein/expressive-mvc/commit/da139b26a8fce30ac9d7b32230d8393dc4946c41) A `Style` pack names conditions with `$name` fields (`$mobile = '@media (max-width: 900px)'`), used as `$mobile: { … }` keys in any map styled by that pack and overridable by a subclass. The fallback method for keys no macro handles is renamed from `'*'` to `default`.
+
+- [#618](https://github.com/gabeklein/expressive-mvc/pull/618) [`ce992da`](https://github.com/gabeklein/expressive-mvc/commit/ce992da672180115caef810025e548fac3626db8) `App.use(...maps)` takes pack rules - element defaults, roles and condition blocks applied to elements written by every component that `style` styles, below each component's own declarations and rules. Each call with maps is its own scope; `use()` without maps stays shared per class. `style(X)` with no map joins the pack, and subcomponents without a map receive its rules. The conflict error now reads `is already styled by another pack`.
+
+### Patch Changes
+
+- [#633](https://github.com/gabeklein/expressive-mvc/pull/633) [`283bafe`](https://github.com/gabeklein/expressive-mvc/commit/283bafe8ca164c5555f34b1896aae252bbd336aa) A `catch` that sets a new `fallback` while its boundary is already hidden by a suspension now shows that fallback, instead of the one drawn when the boundary hid.
+- Updated dependencies [[`72f0d74`](https://github.com/gabeklein/expressive-mvc/commit/72f0d742007dfd23b9103b314a9367319de50f7b)]:
+  - @expressive/mvc@0.94.1
+
 ## 0.9.0
 
 ### Minor Changes
