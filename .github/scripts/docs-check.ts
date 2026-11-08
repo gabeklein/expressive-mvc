@@ -1,4 +1,5 @@
 import { Glob } from 'bun';
+import { dirname, join, normalize } from 'path';
 import { withWorkspaceLinks } from './workspace-links';
 
 /**
@@ -34,11 +35,35 @@ const slugify = (heading: string) =>
 
 type Doc = { path: string; text: string };
 
+/** Installed skills sit side by side, so a skill links a sibling as `../expressive-<pkg>/`. */
+const skills = new Map<string, string>();
+
+for await (const path of new Glob('packages/*/skills/*/SKILL.md').scan('.'))
+  skills.set(path.split('/')[3], dirname(path));
+
+/** Path within the installed skills layout to its source file. */
+const fromSkills = (path: string) => {
+  const [name, ...rest] = path.split('/');
+  const dir = skills.get(name);
+
+  return dir && join(dir, ...rest);
+};
+
+const toSkills = (path: string) => path.replace(/^packages\/[^/]+\/skills\//, '');
+
 const docs: Doc[] = [];
 
-for (const pattern of ['skills/**/*.md', 'website/content/**/*.{md,mdx}', 'website/public/llms.txt'])
+for (const pattern of ['packages/*/skills/**/*.md', 'website/content/**/*.{md,mdx}', 'website/public/llms.txt'])
   for await (const path of new Glob(pattern).scan('.'))
     docs.push({ path, text: await Bun.file(path).text() });
+
+/** GitHub's own slug - every space a hyphen - since agents read skills as GitHub renders them. */
+const headings = (text: string) =>
+  new Set(
+    [...text.matchAll(/^#{1,6}\s+(.+?)\s*$/gm)].map(([, heading]) =>
+      heading.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s/g, '-')
+    )
+  );
 
 /** Heading slugs per docs-site route, for anchor resolution. */
 const routes = new Map<string, Set<string>>();
@@ -97,13 +122,29 @@ for (const { path, text } of docs) {
     if (target === GENERATED_LLM)
       continue;
 
+    const source = fromSkills(target);
     const found = await Promise.all(
-      ['skills', 'website/content/llm'].map((dir) => Bun.file(`${dir}/${target}`).exists())
+      [source, `website/content/llm/${target}`].map((file) => !!file && Bun.file(file).exists())
     );
 
     if (!found.includes(true))
       problems.push(`${at(path, text, match.index)}  links /llm/${target}, but no such document exists`);
   }
+
+  // --- links between skill files must resolve once installed, anchors included ---
+  if (path.startsWith('packages/'))
+    for (const match of text.matchAll(/\]\((\.{0,2}[^)\s:#]*\.md)(?:#([^)\s]+))?\)/g)) {
+      const [, target, anchor] = match;
+      const file = fromSkills(normalize(join(dirname(toSkills(path)), target)));
+
+      if (!file || !(await Bun.file(file).exists())) {
+        problems.push(`${at(path, text, match.index)}  links ${target}, which is not in any installed skill`);
+        continue;
+      }
+
+      if (anchor && !headings(await Bun.file(file).text()).has(anchor))
+        problems.push(`${at(path, text, match.index)}  links ${target}#${anchor}, but that file has no such heading`);
+    }
 
   // --- internal docs links must resolve, anchors included ---
   for (const match of text.matchAll(/\]\((\/docs\/[^)\s]*)\)/g)) {
