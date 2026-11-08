@@ -230,6 +230,14 @@ describe("app/ routing (codegen)", () => {
     expect(out).toContain('<Route to="*" as={DocsCatchall} />');
   });
 
+  it("will declare static segments before params, and params before a catch-all", async () => {
+    const out = await generate({ "index.tsx": PAGE, "[...].tsx": PAGE, "[id]/index.tsx": PAGE, "gallery/index.tsx": PAGE, "(about).tsx": PAGE });
+    const order = ['to="about"', 'to="gallery"', 'to=":id"', 'to="*"'].map(to => out.indexOf(to));
+
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order[0]).toBeGreaterThan(-1);
+  });
+
   it("bare-named files are support modules, ignored", async () => {
     const out = await generate({ "index.tsx": PAGE, "Logo.tsx": PAGE, "blog/index.tsx": PAGE, "blog/Card.tsx": PAGE });
     expect(out).not.toContain("Logo");

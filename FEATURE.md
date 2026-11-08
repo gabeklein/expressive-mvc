@@ -24,7 +24,7 @@ Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based rou
 - **dom on the server.** Needed for JSX rendered to HTML (responses, emails), not SSR.
 - **Monkey-patch first.** Where mvc or an adapter lacks a seam, dev patches it in one file, replaced when upstream catches up. Stress-tests the concept before committing upstream.
 - **Server `get`/`use` are dev's, permanently.** Request-scoped resolution is a host concern - no core or dom change. mvc core has no static `get`/`use` - adapters install them; the server installs its own over dom's (after dom evaluates) in the dev host and the built service; the client keeps dom's.
-- **Process globals stay core's.** `static global` with a module-scope `X.new()` registers in the real root, untouched by requests. Opt-in sugar for this (#473) is the maintainer's call and blocks nothing here.
+- **Process globals stay core's.** A module-scope `X.new(Context.root)` registers in the real root, untouched by requests (`static global` was removed from mvc and now throws). Opt-in sugar for this (#473) is the maintainer's call and blocks nothing here.
 
 ## Landed
 
@@ -164,7 +164,7 @@ Cached contexts, keyed. Each route layer resolves a cached `Context`; per-reques
 - **Lifetime.** A context lives while anything in it does - in-flight calls, instances within their TTL (default 300 seconds, `0` to opt out), attached twins, child contexts. Its seat's end pops it and everything below, owned members included.
 - **Model a folder's functions share is its seat's.** A free function reaches it with `X.get()` - the seat, or a member it owns. A folder whose functions need Model declares a `default` class.
 - **`static use`** - the full-control override when reuse needs spelling out.
-- **Process globals** are not keys: `static global`, created at module scope (e.g. an OAuth client). Reached from either lane.
+- **Process globals** are not keys: `X.new(Context.root)` at module scope (e.g. an OAuth client). Reached from either lane.
 - **Owned members** (`cart = new Cart()`) never run `key()` - their lifetime is their owner's. Most server Model should be owned members rather than free instances.
 - **The tab's pool.** Client constructions live in the connection's context, not a route layer: their lifetime is the client reference's, which navigation does not decide, and sharing by location is the seat's job. Each pooled instance keeps the layer it was built under (its fiber's route), so its `get()` fields resolve and every gate above runs on each call. A pooled instance holds its layers alive.
 
@@ -260,7 +260,7 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - **`use()` returning an instance handed down to the next layer** (memo-like): superseded by `static key`.
 - **Key as a tuple scoped by an instance**: keys stay plain and unique per class; `key()` salts them itself.
 - **Scope as an object** (`{ session, tab, path }`): dev asserting a shape; the prefix is one opaque string with one purpose.
-- **`key = false` for process globals**: globals are `static global` at module scope instead (Agreed shape).
+- **`key = false` for process globals**: globals are created in `Context.root` at module scope instead (Agreed shape).
 - **TTL defaulting to Infinity or 0**: Infinity never frees; 0 rebuilds Model between calls, so a twin looks broken until its class sets a TTL. Five minutes instead.
 - **Keyed `X.use()` off the route chain** (`Account.use()` resolving through the class's own key): `key` is for seats.
 - **`{fn}.{idx}` slots** for `use()` in free functions, hook-style: peer calls and branches shift slots silently.
@@ -292,6 +292,14 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
   - Nested seats attach one depth at a time - a child Route renders only once its parent is admitted.
   - A cold load shows nothing above the root's `Loading` slot until the root seat (if any) attaches - the root Route's own fallback is `null`.
   - The generated tree passes the seat class as the `remote` prop, which the field turns into the instance; hand-written `<Route remote={Seat}>` is untyped.
+- Dogfood asks (2026-11-05), undecided:
+  - Host routes: a call cannot set response headers or cookies (`Current` is read-only); rpc's server bundle falls back only to `env.ASSETS`, and dev's `serve()` serves only calls, the stream and static files. Asked: response headers from a call, a `fetch` fallback hook in both servers, and a `middleware` option (or the runner) so host routes share module instances with calls.
+  - rpc's server bundle is self-contained (`noExternal: true`), so a host process holds a second copy of mvc and the app's modules; dev's SSR bundle externalizes `node_modules`. Pick one.
+  - Binary arguments (JSON codec only - see the wire codec above); a per-call `AbortSignal` or timeout on stubs.
+  - An rpc gate's async `new()` is cached for the TTL, so a logout lands only when it expires (`ttl = 0` is the workaround) - an argument for a per-pass `use()` gate in rpc.
+  - Layout: `app/` sits at the project root, every directory is a route, and a sidecar is importable only from its folder down. Asked: non-route folders (`_x/`, `(group)/`), or root sidecars importable from anywhere.
+  - dev does not host an rpc `api/` folder yet, though Agreed shape gives sidecars and the rpc folder one invocation path; an app adding `rpc()` beside dev gets plain `{ value }` replies in dev and a server with no api/ endpoints in build. dev also does not re-export the `HttpError` family.
+  - Server code runs on Vite's module runner: a Bun app launches Vite under Bun (`bun --bun vite`), and the runner gives Node's `import.meta` (`import.meta.dir` is undefined). Needs a doc line.
 
 ## Upstream (bullpen)
 
