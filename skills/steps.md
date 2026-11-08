@@ -128,7 +128,7 @@ this.then.on({
 
 - One step's order: `catch` → `abort` → `reset` → `close`. `abort` skips a clean end, a recovered failure and `then.end()`; it reaches a subtree still unfinished - a step that completed earlier and is taken back gets `reset` only.
 - `reset` takes back the step's effects; `this.then.restore()` puts a caught branch's fields back now.
-- `catch` returning recovers at its step: the failed part of the subtree unwinds, the step's effects stay, its `reset` does not run; steps it schedules replace the rest. It covers from registration on, the rest of the step's own body included (a throw there resets the step first); one per step; it runs before a `.catch` on the step's call (inner first); `this.then.retry()` replays the step. 
+- `catch` returning recovers at its step: the failed part of the subtree unwinds, the step's effects stay, its `reset` does not run; steps it schedules replace the rest. It covers from registration on, the rest of the step's own body included (a throw there runs its resets, then `catch` sees the failed values, restored once it returns); one per step; it runs before a `.catch` on the step's call (inner first); `this.then.retry()` replays the step. 
 - Every step is atomic: one that throws or is aborted has its own writes restored, fields and `has`/`map` changes alike.
 - Unwind order: failure → handlers newest first back to the nearest catch holding it → that catch's handler → no catch, the run fails. Then the fields of every step taken back are restored; `run`'s never are.
 - Registered before its step fails, handlers run for that failure too and see the step's partial writes. They run before fields are restored; keys they write are kept. An unknown key throws. `run` registers none - clean up in its tail.
@@ -187,6 +187,7 @@ protected async scan(site: string) {                     // backoff lives in the
 - `this.then.retry()` in a handler replays what the catch is attached to - the failed step or the whole group - with its recorded args, under the same handler. The handler holds the policy; past it, throw or fall back. Throws outside a handler; `.catch(this.then.retry)` throws.
 - `this.then.retried` - replays so far, `0` on a first run; a handler reads the failed one's. Calling a step again from a handler is a new step - `0`.
 - Not caught: rule violations, past `commit()`/irreversible, aborts, failures while stopping or ending.
+- `catch` replaces a failed attempt; its resets have already run. To keep partial work, handle the error inside the step with `try`/`catch`.
 - Choosing a catch form: a called step (`on({ catch })` only) - a fixed fallback, args known now, recorded, never sees the error, always recovers unless it fails; a step method - a fallback depending on the error, recorded; a function - judgement, may rethrow or `retry()`, process-local.
 
 ## Gate
