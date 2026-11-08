@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, expectTypeOf } from 'vitest';
 import { Context } from '../context';
-import { Model } from '../state';
+import { Model } from '../model';
 import { get } from './get';
 import { has } from './has';
 import { set } from './set';
