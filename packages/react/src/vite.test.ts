@@ -46,7 +46,7 @@ it('will apply during serve only, after other transforms', () => {
 
 it.each([
   ['will skip a non-script module', 'class A {}', '/src/app.css'],
-  ['will skip the mvc runtime itself', 'class A {}', '/mvc/src/state.js'],
+  ['will skip the mvc runtime itself', 'class A {}', '/mvc/src/model.js'],
   ['will skip a dependency', 'class A {}', '/node_modules/lib/index.js'],
   ['will skip a module without classes', 'export const title = "no class";', undefined],
   ['will skip a module mentioning class without declaring one', 'export const className = "a";', undefined]

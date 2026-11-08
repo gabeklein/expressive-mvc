@@ -9,7 +9,7 @@ import {
   classify,
   compute,
   type Handler
-} from './state';
+} from './model';
 
 interface Entry {
   type: Function;
