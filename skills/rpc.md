@@ -74,7 +74,50 @@ export default class Session extends Model {
 }
 ```
 
-Inside a call, `Session.get()` finds that instance; `Current.get()` is the request - `.request` (a Web `Request`), `.url`, `.cookies` - read-only, server-only. A gate instance is cached per key for `static ttl` seconds - an optimization: derive its state from the request, never from an earlier call. Calls cannot set response headers or cookies yet - answer those requests from a [server entry](#server-entry).
+Inside a call, `Session.get()` finds that instance; `Current.get()` is the request - `.request` (a Web `Request`), `.url`, `.cookies` - read-only, server-only. A gate instance is cached per key for `static ttl` seconds - an optimization: derive its state from the request, never from an earlier call.
+
+### Cookies
+
+Declare the cookies the app uses as fields of a `Cookies` subclass - one field per cookie, its initial value the default when the request has none - and read and write them as a Model:
+
+```ts
+// lib/cookies.ts - a non-Error class cannot be exported from api/
+import { Cookies } from "@expressive/rpc";
+
+export class AppCookies extends Cookies {
+  static options = { session: { maxAge: 60 * 60 * 24 * 30 } };
+
+  session?: string = undefined;
+  theme = "light";
+}
+```
+
+```ts
+// api/auth.ts
+import { Unauthorized } from "@expressive/rpc";
+import { AppCookies } from "../lib/cookies";
+
+export async function login(user: string, password: string) {
+  const session = await sessions.open(user, password);
+
+  if (!session) throw new Unauthorized("Wrong password.");
+
+  AppCookies.set({ session: session.id });
+}
+
+export async function logout() {
+  AppCookies.set({ session: undefined });
+}
+```
+
+- `AppCookies.get()` is this request's instance - one per request and class, built from its `cookie` header. A field the request lacks keeps its default. Reads see this call's writes.
+- `AppCookies.set({ ... })` is sugar for `AppCookies.get().set({ ... })`. When the call replies, each field that changed goes out as `Set-Cookie`, and one set to `undefined` is removed with the path and domain it was set with. It goes out on a failure too, and a gate's `key()` can use it.
+- `static options` holds per-cookie options by field: `maxAge` (seconds), `expires`, `path`, `domain`, `secure`, `httpOnly`, `sameSite`, `partitioned`. Unset ones are `HttpOnly`, `SameSite=Lax` and `Path=/`, plus `Secure` over https. Values are strings, URI-encoded on the wire.
+- Reach it through `AppCookies.get()` within a call, never `get(AppCookies)` as a field - a Model reused across calls would hold one request's cookies, so it is not in context and that lookup fails.
+
+Set-Cookie reaches a browser's cookie jar on its own; a cross-origin client needs `credentials: "include"` in its `transport`.
+
+`Current` is the lower level, for adapters and libraries: `.request`, `.url`, `.cookies` (every cookie as sent, undeclared ones included) and `setHeader(name, value)` for any other reply header - the reply's own (`content-type` and the like) win; read one on the client through `configure({ reply })`.
 
 ## Client
 

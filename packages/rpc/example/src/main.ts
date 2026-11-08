@@ -1,5 +1,6 @@
 import { configure, Forbidden, HttpError, NotFound, Unauthorized } from "@expressive/rpc";
 import { stats } from "../api/admin/stats";
+import { theme } from "../api/prefs";
 import { add, done, list, ProOnly, type Todo } from "../api/todos";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -71,6 +72,10 @@ $("missing").onclick = () => attempt(async () => void (await done("missing")));
 $("stats").onclick = () => attempt(async () => {
   const { total, done } = await stats();
   $("count").textContent = `${done} of ${total} done`;
+});
+
+$("dark").onclick = () => attempt(async () => {
+  $("theme").textContent = `was ${(await theme("dark")) ?? "unset"}`;
 });
 
 $<HTMLFormElement>("new").onsubmit = event => {

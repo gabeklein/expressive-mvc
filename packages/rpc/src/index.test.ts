@@ -155,13 +155,13 @@ describe("build", () => {
     expect(missing).toEqual([]);
   });
 
-  it("will give the server build every name the browser build has, and Current", () => {
+  it("will give the server build every name the browser build has, Current and Cookies", () => {
     initSync();
 
     const names = (file: string) => parse(readFileSync(join(dist, file), "utf8"))[1].map(({ n }) => n).sort();
 
     expect(names("index.client.js")).toEqual(expect.arrayContaining(["HttpError", "call", "client", "configure", "define"]));
-    expect(names("index.server.js")).toEqual([...names("index.client.js"), "Current"].sort());
+    expect(names("index.server.js")).toEqual([...names("index.client.js"), "Cookies", "Current"].sort());
   });
 
   it("will keep node out of the browser build", () => {

@@ -254,6 +254,39 @@ function parseCookies(header = ""): Record<string, string> {
   return Object.fromEntries(pairs);
 }
 
+interface Outgoing {
+  headers: Headers;
+  flush: Set<() => void>;
+}
+
+const outgoing = new WeakMap<Request, Outgoing>();
+
+/** The request of the call in progress, if any. */
+export function active(): Request | undefined {
+  return store.getStore()?.request;
+}
+
+/** The reply-to-be of the call in progress: headers to add, and work to run just before they are read. */
+export function outgoingOf(request = frame().request): Outgoing {
+  let out = outgoing.get(request);
+
+  if (!out) outgoing.set(request, (out = { headers: new Headers(), flush: new Set() }));
+
+  return out;
+}
+
+/** What the calls on `request` asked to add to its reply. */
+export function headersOf(request: Request): Headers | undefined {
+  const out = outgoing.get(request);
+
+  if (!out) return;
+
+  out.flush.forEach(flush => flush());
+  out.flush.clear();
+
+  return out.headers;
+}
+
 const readOnly = () => {
   throw new Error("Current is read-only.");
 };
@@ -278,5 +311,13 @@ export class Current extends Model {
   }
   set cookies(_: Record<string, string>) {
     readOnly();
+  }
+
+  /** Set a header on this call's reply. The reply's own (`content-type` and the like) win. For cookies, see `Cookies`. */
+  setHeader(name: string, value: string): void {
+    const { headers } = outgoingOf();
+
+    if (name.toLowerCase() === "set-cookie") headers.append(name, value);
+    else headers.set(name, value);
   }
 }

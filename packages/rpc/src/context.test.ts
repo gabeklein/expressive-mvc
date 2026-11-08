@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Context, get, set, Model } from "@expressive/mvc";
 
-import { construct, Current, install, onBuild, seated, within, type Seat } from "./context";
+import { construct, Current, headersOf, install, onBuild, seated, within, type Seat } from "./context";
 
 const request = (url = "/", cookie = "") => new Request(`http://localhost${url}`, { headers: { cookie } });
 const call = <T>(segments: string[], run: () => T) => within(request("/" + segments.join("/")), segments, run);
@@ -317,6 +317,25 @@ describe("Current", () => {
       expect(() => { current.url = {}; }).toThrow("Current is read-only.");
       expect(() => { current.cookies = {}; }).toThrow("Current is read-only.");
     });
+  });
+  it("will gather headers for the reply", async () => {
+    const req = new Request("https://example.com/");
+
+    expect(headersOf(req)).toBeUndefined();
+
+    await within(req, [], () => {
+      const current = Current.get();
+
+      current.setHeader("cache-control", "no-store");
+      current.setHeader("cache-control", "private");
+      current.setHeader("Set-Cookie", "raw=1");
+      current.setHeader("set-cookie", "raw=2");
+    });
+
+    const headers = headersOf(req)!;
+
+    expect(headers.get("cache-control")).toBe("private");
+    expect(headers.getSetCookie()).toEqual(["raw=1", "raw=2"]);
   });
 });
 

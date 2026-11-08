@@ -77,8 +77,8 @@ export async function add(by: number) {
 ```
 
 - One seat per location: `/blog/a` and `/blog/b` hold separate ones; a seat lower down shadows one above.
-- `protected static key()` narrows the folder's context by what it returns - an identity from verified data (`Current.get().cookies`, a seat above via `get()`). `undefined` passes through; throwing refuses the call.
-- `Current` (from `@expressive/dev/server`) is the request: `.request`, `.url`, `.cookies`. Read-only.
+- `protected static key()` narrows the folder's context by what it returns - an identity from verified data (a `Cookies` field, a seat above via `get()`). `undefined` passes through; throwing refuses the call.
+- `Cookies` (from `@expressive/dev/server`, as in rpc): a subclass declares cookies as fields; `AppCookies.get()` reads this request's and `AppCookies.set({ ... })` sends `Set-Cookie` with the reply - a twin's call or pull included. `Current` is the lower level: `.request`, `.url`, `.cookies`, read-only, and `setHeader(name, value)`.
 - Process-wide state: a module-level `X.new(Context.root)`, found by `get()` from any call.
 
 ## Twins (experimental)

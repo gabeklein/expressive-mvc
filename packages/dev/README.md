@@ -124,7 +124,8 @@ export async function add(by: number) {
 ```
 
 `Current` (from `@expressive/dev/server`) is the request in progress, readable from any server
-Model or function in a call: `Current.get().url`, `.cookies`, `.request` (a Web `Request`). Its accessors read the
+Model or function in a call: `Current.get().url`, `.cookies`, `.request` (a Web `Request`), and `setHeader` for
+that call's reply. Cookies the app uses are better declared as a `Cookies` subclass (see below). Its accessors read the
 call live, so a reused instance may hold it in a field (`current = get(Current)`) but should not
 copy its values into its own.
 
@@ -157,7 +158,7 @@ export class Page extends Component {
 ```
 
 `static key()` narrows the folder's context, and everything below it, by what it returns - an
-identity from `Current.get().cookies`, or a value from a seat above through `get()`. Undefined passes
+identity from a `Cookies` field, or a value from a seat above through `get()`. Undefined passes
 the location through; throwing denies the call. Build the key from verified data only - a raw cookie
 lets the client pick its context - and declare it `protected`. The seat lives for `static ttl` after
 its last call; when it ends, its context and everything below go with it.
@@ -174,6 +175,12 @@ ends the twin; returning, or a change of the folder's own params, builds a fresh
 
 ```ts
 // app/account/remote.ts
+import { Cookies } from "@expressive/dev/server";
+
+class AppCookies extends Cookies {
+  session?: string = undefined;
+}
+
 export class SignIn extends Error {
   status = 302;
   location = "/login";
@@ -184,13 +191,13 @@ export default class Account extends Model {
   admin = false;
 
   protected static key() {
-    const { session } = Current.get().cookies;
+    const { session } = AppCookies.get();
     if (!session) throw new SignIn("Sign in first.");
     return session;
   }
 
   protected async new() {
-    const user = await db.user(Current.get().cookies.session);
+    const user = await db.user(AppCookies.get().session!);
 
     this.name = user.name;
     this.admin = user.admin;
