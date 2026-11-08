@@ -1,13 +1,13 @@
 {
   "name": "@expressive/steps",
   "version": "0.0.0",
-  "description": "Runnable Models: every method a step, fields the data between them - with undo, waits and an awaitable result.",
+  "description": "Runnable Models: every method a step, fields the data between them - with rollback, waits and an awaitable result.",
   "keywords": [
     "expressive",
     "mvc",
     "workflow",
     "steps",
-    "undo",
+    "rollback",
     "state"
   ],
   "license": "MIT",
