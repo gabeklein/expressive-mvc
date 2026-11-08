@@ -4594,7 +4594,7 @@ describe('suspense', () => {
     await expect(result).rejects.toThrow('gone');
     expect(test.value).toBe(0);
     expect(test.then.status).toBe('failed');
-    expect(record(test)).toEqual([]);
+    expect(record(test)).toEqual([expect.objectContaining({ id: 'run#1', error: new Error('gone') })]);
   });
 
   it('will not count a suspended try as a retry', async () => {
@@ -4714,7 +4714,7 @@ describe('suspense', () => {
     expect(record(test)).toEqual([]);
   });
 
-  it('will end without the step when ended while waiting', async () => {
+  it('will end once a step waiting on a value finishes', async () => {
     class Test extends Journal {
       price = set<number>();
 
@@ -4728,6 +4728,7 @@ describe('suspense', () => {
 
     await flushMicrotasks();
     test.then.end();
+    test.price = 1;
 
     expect(await result).toBeUndefined();
     expect(test.then.status).toBe('idle');
@@ -5007,7 +5008,8 @@ describe('undo', () => {
     expect(record(test).map((entry) => [entry.key, entry.on?.reset?.length, entry.unwound])).toEqual([
       ['run', undefined, undefined],
       ['zero', 1, true],
-      ['first', 1, true]
+      ['first', 1, true],
+      ['second', undefined, undefined]
     ]);
   });
 
@@ -5037,7 +5039,8 @@ describe('undo', () => {
     expect(test.get()).toMatchObject({ kept: 1, value: 0 });
     expect(record(test).map((entry) => [entry.id, entry.unwound])).toEqual([
       ['run#1', undefined],
-      ['write#1', true]
+      ['write#1', true],
+      ['fail#1', undefined]
     ]);
   });
 
@@ -5123,6 +5126,7 @@ describe('undo', () => {
     expect(test.value).toBe(0);
     expect(record(test).map((entry) => [entry.key, entry.unwound])).toEqual([
       ['run', undefined],
+      ['b', undefined],
       ['a', true]
     ]);
   });
@@ -5158,7 +5162,7 @@ describe('undo', () => {
     await expect(test.run()).rejects.toThrow('boom');
     expect(undo).toHaveBeenCalledWith('r1');
     expect(record(test)[1].on?.reset).toEqual([{ id: 'then#1', key: 'then', args: [] }]);
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'first#1', 'release#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'first#1', 'second#1', 'release#1']);
   });
 
   it('will run what a compensation\'s steps schedule, groups included, before older compensations', async () => {
@@ -5289,7 +5293,7 @@ describe('undo', () => {
     await expect(test.run()).rejects.toThrow('declined');
     expect(seen).toEqual([1]);
     expect(test.get()).toMatchObject({ value: 0, other: 5 });
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'charge#1']);
   });
 
   it('will restore a step failing while the run ends before compensating it', async () => {
@@ -5304,11 +5308,10 @@ describe('undo', () => {
       }
 
       protected async charge() {
-        const { signal } = this.then;
-
         this.then.on({ reset: () => void seen.push(this.value) });
         this.value = 1;
-        await new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('late'))));
+        await work;
+        throw new Error('late');
       }
     }
 
@@ -5386,7 +5389,7 @@ describe('undo', () => {
 
     await expect(test.run()).rejects.toThrow('undo failed');
     expect(order).toEqual([]);
-    expect(record(test).map((entry) => entry.unwound)).toEqual([undefined, undefined, 'failed']);
+    expect(record(test).map((entry) => entry.unwound)).toEqual([undefined, undefined, 'failed', undefined]);
   });
 
   it('will not plan an end, gate or wait in a compensation', async () => {
@@ -6581,6 +6584,117 @@ describe('second review', () => {
   });
 });
 
+describe('third pass', () => {
+  it('will call a .catch function plainly', async () => {
+    let self: unknown = 'unset';
+
+    class Test extends Steps {
+      async run() {
+        this.a().catch(function (this: unknown) {
+          self = this;
+        });
+      }
+
+      protected async a() {
+        throw new Error('boom');
+      }
+    }
+
+    await Test.new().run();
+    expect(self).toBeUndefined();
+  });
+
+  it('will journal and hand to after the step whose failure ends the run', async () => {
+    class Test extends Journal {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        throw new Error('boom');
+      }
+    }
+
+    const test = Test.new();
+
+    await expect(test.run()).rejects.toThrow('boom');
+    expect(record(test).at(-1)).toMatchObject({ id: 'a#1', error: new Error('boom') });
+  });
+
+  it('will not register handlers in a handler step', async () => {
+    class Test extends Steps {
+      async run() {
+        this.a();
+      }
+
+      protected async a() {
+        this.then.on({ reset: this.undo() });
+        this.fail();
+      }
+
+      protected async undo() {
+        this.then.on({ close: () => {} });
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+    }
+
+    await expect(Test.new().run()).rejects.toThrow('then.on() cannot run in a handler step - use try/finally inside it.');
+  });
+
+  it('will end gracefully - what runs finishes, what it schedules is dropped', async () => {
+    const work = mockPromise();
+    const order: string[] = [];
+    let signal!: AbortSignal;
+
+    class Test extends Journal {
+      value = 0;
+
+      async run() {
+        this.then(this.slow(), this.stop());
+
+        await this;
+
+        return this.value;
+      }
+
+      protected async slow() {
+        signal = this.then.signal;
+        this.then.on({
+          reset: () => void order.push('reset'),
+          abort: () => void order.push('abort'),
+          close: () => void order.push('close')
+        });
+        await work;
+        this.value = 1;
+        this.later();
+      }
+
+      protected async stop() {
+        this.then.end();
+      }
+
+      protected async later() {
+        order.push('later');
+      }
+    }
+
+    const test = Test.new();
+    const result = test.run();
+
+    await vi.waitFor(() => expect(test.then.active).toBe('slow'));
+    expect(signal.aborted).toBe(false);
+    work.resolve();
+
+    expect(await result).toBe(1);
+    expect(order).toEqual(['close']);
+    expect(test.then.status).toBe('idle');
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'stop#1', 'slow#1', 'end#1']);
+  });
+});
+
 describe('outcome order', () => {
   it('will catch, then abort, reset and close a step whose catch passes the failure on', async () => {
     const order: string[] = [];
@@ -6960,7 +7074,7 @@ describe('collections', () => {
 
     await expect(test.run()).rejects.toThrow('boom');
     expect(test.items.get()).toEqual(['a', 'b', 'c']);
-    expect(record(test)).toEqual([expect.objectContaining({ id: 'run#1' }), expect.objectContaining({ wrote: ['items'], unwound: true })]);
+    expect(record(test)).toEqual([expect.objectContaining({ id: 'run#1' }), expect.objectContaining({ wrote: ['items'], unwound: true }), expect.objectContaining({ id: 'fail#1', error: new Error('boom') })]);
   });
 
   it('will record nothing for a read without change', async () => {
@@ -7071,7 +7185,8 @@ describe('collections', () => {
     expect(record(test).map((entry) => [entry.key, entry.wrote, entry.unwound])).toEqual([
       ['run', [], undefined],
       ['write', ['items'], true],
-      ['read', [], undefined]
+      ['read', [], undefined],
+      ['fail', [], undefined]
     ]);
   });
 
@@ -7535,7 +7650,7 @@ describe('collections', () => {
     await expect(test.run()).rejects.toThrow('boom');
     expect(test.values.size).toBe(0);
     expect(test.plain.size).toBe(0);
-    expect(record(test)).toEqual([]);
+    expect(record(test)).toEqual([expect.objectContaining({ id: 'run#1', error: new Error('boom') })]);
   });
 
   it('will keep a sibling\'s pool members when a parallel step fails', async () => {
@@ -7597,7 +7712,7 @@ describe('collections', () => {
 
     await expect(test.run()).rejects.toThrow('boom');
     expect(test.items.size).toBe(0);
-    expect(record(test)).toEqual([]);
+    expect(record(test)).toEqual([expect.objectContaining({ id: 'run#1', error: new Error('boom') })]);
   });
 });
 
@@ -7641,7 +7756,8 @@ describe('irreversible', () => {
     expect(test.then.error).toEqual(new Error('boom'));
     expect(record(test).map((entry) => [entry.key, entry.irreversible, entry.halted, entry.unwound])).toEqual([
       ['run', undefined, undefined, undefined],
-      ['drop', ['items'], true, undefined]
+      ['drop', ['items'], true, undefined],
+      ['fail', undefined, undefined, undefined]
     ]);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith(`${test} stopped unwinding at drop#1: items cannot be restored.`);
@@ -7684,7 +7800,8 @@ describe('irreversible', () => {
     expect(record(test).map((entry) => [entry.key, entry.unwound])).toEqual([
       ['run', undefined],
       ['drop', undefined],
-      ['write', true]
+      ['write', true],
+      ['fail', undefined]
     ]);
   });
 
@@ -7786,7 +7903,7 @@ describe('irreversible', () => {
     await expect(test.run()).rejects.toThrow('boom');
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(test.value).toBe(1);
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'drop#1']);
     expect(warn).toHaveBeenCalledWith(`${test} stopped unwinding at drop#1: items cannot be restored.`);
   });
 
@@ -7817,7 +7934,7 @@ describe('irreversible', () => {
 
     await expect(test.run()).rejects.toThrow('boom');
     expect(test.value).toBe(2);
-    expect(record(test).map((entry) => [entry.key, entry.halted, entry.unwound])).toEqual([['run', undefined, undefined]]);
+    expect(record(test).map((entry) => [entry.key, entry.halted, entry.unwound])).toEqual([['run', undefined, undefined], ['drop', true, undefined]]);
     expect(warn).toHaveBeenCalledWith(`${test} stopped unwinding at drop#1: items cannot be restored.`);
   });
 });
@@ -7864,7 +7981,8 @@ describe('commit', () => {
     expect(record(test).map((entry) => [entry.key, entry.committed, entry.halted, entry.unwound])).toEqual([
       ['run', undefined, undefined, undefined],
       ['pay', true, true, undefined],
-      ['notify', undefined, undefined, true]
+      ['notify', undefined, undefined, true],
+      ['ship', undefined, undefined, undefined]
     ]);
   });
 
@@ -7891,7 +8009,7 @@ describe('commit', () => {
     await expect(test.run()).rejects.toThrow('boom');
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(test.value).toBe(1);
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'pay#1']);
   });
 
   it('will throw if commit is called outside a step', () => {
@@ -7953,7 +8071,7 @@ describe('durable handlers', () => {
     expect(released).toHaveBeenCalledWith('h1', 'h2');
     expect(test.hold).toBe('');
     expect(record(test)[1]).toMatchObject({ next: [{ key: 'fail' }], on: { reset: [{ id: 'release#1', key: 'release', args: ['h1'] }] } });
-    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'reserve#1', 'release#1']);
+    expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'reserve#1', 'fail#1', 'release#1']);
   });
 
   it('will run steps called for one compensation as a group', async () => {
@@ -8909,7 +9027,11 @@ describe('signal', () => {
     expect(record(test)).toEqual([]);
   });
 
-  it('will abort the signal of a step in flight on an outside end', async () => {
+  it('will let a step in flight finish on an outside end, dropping what it schedules', async () => {
+    const work = mockPromise();
+    const later = vi.fn();
+    let signal!: AbortSignal;
+
     class Test extends Journal {
       value = 0;
 
@@ -8918,8 +9040,14 @@ describe('signal', () => {
       }
 
       async slow() {
+        signal = this.then.signal;
         this.value = 1;
-        await aborted(this.then.signal);
+        await work;
+        this.later();
+      }
+
+      later() {
+        later();
       }
     }
 
@@ -8928,10 +9056,13 @@ describe('signal', () => {
 
     await flushMicrotasks();
     test.then.end();
+    expect(signal.aborted).toBe(false);
+    work.resolve();
 
     await result;
-    expect(test.value).toBe(0);
-    expect(record(test).map((entry) => entry.key)).toEqual(['run', 'end']);
+    expect(test.value).toBe(1);
+    expect(later).not.toHaveBeenCalled();
+    expect(record(test).map((entry) => entry.key)).toEqual(['run', 'slow', 'end']);
   });
 
   it('will abort the signal of a step in flight when another fails', async () => {
@@ -9320,7 +9451,8 @@ describe('Steps', () => {
     expect(order).toEqual([
       ['before', 'run'],
       ['after', 'run', 'run#1'],
-      ['before', 'fail']
+      ['before', 'fail'],
+      ['after', 'fail', 'fail#1']
     ]);
   });
 
@@ -9517,7 +9649,7 @@ describe('hot update', () => {
     work.resolve();
 
     await expect(result).rejects.toThrow('b was removed by a hot update.');
-    expect(seen).toEqual(['after run', 'a', 'after a']);
+    expect(seen).toEqual(['after run', 'a', 'after a', 'after b']);
   });
 });
 

@@ -593,7 +593,6 @@ class Run extends Model {
   _losing = new Map<string, Promise<unknown>>();
   _held = new Map<string, Held>();
   _inline = new Map<string, Function>();
-  _plain = new Set<string>();
   _errors = new Map<string, unknown>();
   _owner = new Map<string, Frame>();
   _parent = new Map<string, string>();
@@ -872,8 +871,6 @@ class Run extends Model {
 
   terminate(item: Steps.Node) {
     this.release();
-
-    for (const frame of this.flight()) frame._abort.abort();
 
     return this.end(item);
   }
@@ -1171,7 +1168,7 @@ class Run extends Model {
 
       for (;;)
         try {
-          const call = this._plain.has(id) ? fn(...input) : fn.apply(frame._proxy, input);
+          const call = inline ? fn(...input) : fn.apply(frame._proxy, input);
           const out = id == this._root ? await frame.open(call) : await call;
 
           frame._settled = true;
@@ -1203,7 +1200,7 @@ class Run extends Model {
             error = failed.cause;
           }
 
-          if (fixed) this._entries.push({ ...frame.journal(), error, ...irreversible.length && { irreversible } });
+          if (fixed) this._entries.push((frame._fixed = { ...frame.journal(), error, ...irreversible.length && { irreversible } }));
 
           throw error;
         }
@@ -1260,7 +1257,7 @@ class Run extends Model {
         } catch (thrown) {
           this.halt('failed', thrown);
         }
-      } else this.fault(frame, entry, !on, error);
+      } else this.fault(frame._fixed || entry, !on && !frame._fixed, error);
     } finally {
       this.frames.delete(frame);
       control.active = this.flight().at(-1)?.key;
@@ -1271,15 +1268,13 @@ class Run extends Model {
     }
   }
 
-  fault(frame: Frame, entry: Steps.Entry, push: boolean, error: unknown) {
-    if (frame._caught) {
-      if (push) this._entries.push(entry);
+  fault(entry: Steps.Entry, push: boolean, error: unknown) {
+    if (push) this._entries.push(entry);
 
-      try {
-        this.control.hook('after', entry.key, entry);
-      } catch (thrown) {
-        error = thrown;
-      }
+    try {
+      this.control.hook('after', entry.key, entry);
+    } catch (thrown) {
+      error = thrown;
     }
 
     this.halt('failed', error);
@@ -1597,6 +1592,7 @@ class Frame extends Model {
   _failed?: { cause: unknown } = undefined;
   _committed?: boolean = undefined;
   _entry?: Steps.Entry = undefined;
+  _fixed?: Steps.Entry = undefined;
   _violation?: string = undefined;
   _late?: boolean = undefined;
   _armed = 0;
@@ -1821,6 +1817,7 @@ class Frame extends Model {
     const usage = 'then.on() takes steps called for it - { reset: this.release(id) } - or a function.';
 
     if (this.id == run._root) throw rule('run cleans up in its tail - try/catch around await this.');
+    if (this._undo) throw rule('then.on() cannot run in a handler step - use try/finally inside it.');
     if (this._settled) throw rule(`${this.key} has settled; on cannot run.`);
     if (!plain(handlers)) throw rule(usage);
 
@@ -1837,7 +1834,6 @@ class Frame extends Model {
         node = run.node('then', []);
         run._inline.set(node.id, value);
         run._owner.set(node.id, this);
-        run._plain.add(node.id);
       }
       else [node] = this.claimed(Array.isArray(value) ? value : [value], usage, 'then.on()');
 

@@ -185,7 +185,8 @@ it('will keep what a failing turn committed', async () => {
     ['run#1', ['messages'], undefined, undefined],
     ['turn#1', ['messages'], true, undefined],
     ['tool#1', [], undefined, undefined],
-    ['exec#1', ['messages'], true, true]
+    ['exec#1', ['messages'], true, true],
+    ['turn#2', [], undefined, undefined]
   ]);
 });
 

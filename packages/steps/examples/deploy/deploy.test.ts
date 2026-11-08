@@ -225,10 +225,12 @@ it('will uninstall upgraded hosts when the rollout fails', async () => {
   expect(fleet.serve).not.toHaveBeenCalledWith('web-3');
   // migrate committed, so the unwind halts there: canaries and build stay
   expect(registry.unpublish).not.toHaveBeenCalled();
-  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.unwound]).slice(-4)).toEqual([
+  // the failing upgrade is journaled with its error, before the unwind's uninstall
+  expect(record(deploy).map((entry) => [entry.id, entry.committed, entry.halted, entry.unwound]).slice(-5)).toEqual([
     ['migrate#1', true, true, undefined],
     ['rollout#1', undefined, undefined, undefined],
     ['upgrade#1', undefined, undefined, true],
+    ['upgrade#2', undefined, undefined, undefined],
     ['uninstall#3', undefined, undefined, undefined]
   ]);
 });
@@ -247,7 +249,8 @@ it('will stop unwinding at the retired release', async () => {
 
   await expect(release).rejects.toThrow('chat is down');
   // a deleted pool member cannot come back: the unwind halts at retire with a warning, before reaching the upgrades
-  expect(record(deploy).at(-1)).toMatchObject({ key: 'retire', irreversible: ['releases'], halted: true });
+  expect(record(deploy).find((entry) => entry.key == 'retire')).toMatchObject({ irreversible: ['releases'], halted: true });
+  expect(record(deploy).at(-1)).toMatchObject({ key: 'announce', error: new Error('chat is down') });
   expect(warn).toHaveBeenCalledWith(`${deploy} stopped unwinding at retire#1: releases cannot be restored.`);
   expect(deploy.then.status).toBe('failed');
   expect(fleet.uninstall).not.toHaveBeenCalled();
