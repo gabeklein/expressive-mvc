@@ -1,0 +1,14 @@
+/llm/SKILL.md /llm/expressive-mvc/SKILL.md 301
+/llm/design.md /llm/expressive-mvc/design.md 301
+/llm/state/* /llm/expressive-mvc/state/:splat 301
+/llm/field/* /llm/expressive-mvc/field/:splat 301
+/llm/examples/basic.md /llm/expressive-mvc/examples/basic.md 301
+/llm/examples/audit.md /llm/expressive-mvc/examples/audit.md 301
+/llm/react/* /llm/expressive-react/:splat 301
+/llm/router/router.md /llm/expressive-router/SKILL.md 301
+/llm/router/production.md /llm/expressive-router/production.md 301
+/llm/dom/dom.md /llm/expressive-dom/SKILL.md 301
+/llm/inspect.md /llm/expressive-inspect/SKILL.md 301
+/llm/rpc.md /llm/expressive-rpc/SKILL.md 301
+/llm/steps.md /llm/expressive-steps/SKILL.md 301
+/llm/dev.md /llm/expressive-dev/SKILL.md 301

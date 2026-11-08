@@ -60,7 +60,7 @@ class Counter extends Component {
 
 No reducers, selectors, dependency arrays, or action wrappers. Update a property and every consumer that reads it updates automatically.
 
-The adapter is renderer-agnostic, so the same install covers React Native and Expo - exercised on an iOS simulator and an Android emulator in both Debug and Release builds (Expo SDK 57, React Native 0.86) and gated per release on Metro resolution and a Hermes build. See [React Native](skills/react/react.md#react-native) for the three boundaries.
+The adapter is renderer-agnostic, so the same install covers React Native and Expo - exercised on an iOS simulator and an Android emulator in both Debug and Release builds (Expo SDK 57, React Native 0.86) and gated per release on Metro resolution and a Hermes build. See [React Native](packages/react/skills/expressive-react/react.md#react-native) for the three boundaries.
 
 Continue with [Getting Started](https://expressive.dev/docs/getting-started/), explore the [guides](https://expressive.dev/docs/guides/state-classes/), or browse the [API reference](https://expressive.dev/docs/api/state/).
 
@@ -80,11 +80,11 @@ All packages are pre-1.0 under one discipline: breaking changes land only in min
 ## Learn more
 
 - [Why classes?](https://expressive.dev/docs/why-classes/)
-- [Design decisions](skills/design.md)
+- [Design decisions](packages/mvc/skills/expressive-mvc/design.md)
 - [Migrating from hooks](https://expressive.dev/docs/migrating-from-hooks/)
 - [Comparisons with other state libraries](https://expressive.dev/docs/comparisons/)
 - [Live examples](https://expressive.dev/examples/)
-- [Using Expressive with a coding agent](skills/SKILL.md)
+- [Using Expressive with a coding agent](packages/mvc/skills/expressive-mvc/SKILL.md)
 
 ## Contributing
 

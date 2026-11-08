@@ -110,4 +110,4 @@ Instances a host never committed - a render thrown away, a StrictMode twin - sta
 
 Property names survive minification; class names do not. Each class gets a stable `typeId` and a construction `site`. Name them with `label(Type, 'Composer')`, `static displayName`, or `resolve({ T3: 'Composer' })`, or keep names at build time (`keepNames`, `keep_classnames`).
 
-Full reference: [skills/inspect.md](https://github.com/gabeklein/expressive-mvc/blob/main/skills/inspect.md).
+Full reference: [skills/expressive-inspect](https://github.com/gabeklein/expressive-mvc/blob/main/packages/inspect/skills/expressive-inspect/SKILL.md), shipped in the package.

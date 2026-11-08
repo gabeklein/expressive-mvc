@@ -48,4 +48,4 @@ try {
 - **Client** - `configure({ base, headers, transport, reply })` for cross-origin servers, auth headers or a custom fetch.
 - **Server entry** - `rpc({ entry: "server.ts" })` makes your own Worker-shaped module the server: it gets the calls as `handle(request)` from `@expressive/rpc/calls` and adds routes, a `scheduled` handler or Durable Objects beside them, sharing their modules in dev and build.
 
-Full reference: [skills/rpc.md](https://github.com/gabeklein/expressive-mvc/blob/main/skills/rpc.md). A runnable app is in [`example/`](https://github.com/gabeklein/expressive-mvc/tree/main/packages/rpc/example).
+Full reference: [skills/expressive-rpc](https://github.com/gabeklein/expressive-mvc/blob/main/packages/rpc/skills/expressive-rpc/SKILL.md), shipped in the package. A runnable app is in [`example/`](https://github.com/gabeklein/expressive-mvc/tree/main/packages/rpc/example).

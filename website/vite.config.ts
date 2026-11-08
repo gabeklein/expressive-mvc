@@ -153,8 +153,20 @@ function examplesIndex(tree: ExampleDirectory[]) {
 }
 
 function serveSkills(): Plugin {
-  // Site-owned llm content overlays the skills copy under the same /llm root.
-  const dirs = [resolve(__dirname, '../skills'), resolve(__dirname, 'content/llm')];
+  const packages = resolve(__dirname, '../packages');
+  const mounts: [prefix: string, dir: string][] = [
+    ...readdirSync(packages).flatMap((pkg) => {
+      const skills = join(packages, pkg, 'skills');
+
+      try {
+        return readdirSync(skills).map((name): [string, string] => [`/${name}`, join(skills, name)]);
+      } catch {
+        return [];
+      }
+    }),
+    ['', resolve(__dirname, 'content/llm')]
+  ];
+
   return {
     name: 'serve-llm',
     configureServer(server) {
@@ -168,9 +180,13 @@ function serveSkills(): Plugin {
           return;
         }
 
-        for (const dir of dirs)
+        const url = req.url || '/';
+
+        for (const [prefix, dir] of mounts)
           try {
-            const content = await readFile(join(dir, req.url || '/'));
+            if (!url.startsWith(`${prefix}/`)) continue;
+
+            const content = await readFile(join(dir, url.slice(prefix.length)));
             res.setHeader('Content-Type', 'text/plain');
             res.end(content);
             return;
@@ -185,8 +201,8 @@ function serveSkills(): Plugin {
 
       await mkdir(join(outDir, 'llm'), { recursive: true });
 
-      for (const dir of dirs)
-        await cp(dir, join(outDir, 'llm'), { recursive: true });
+      for (const [prefix, dir] of mounts)
+        await cp(dir, join(outDir, 'llm', prefix), { recursive: true });
 
       const { module } = await runnerImport<{ tree: ExampleDirectory[] }>(EXAMPLES);
 
