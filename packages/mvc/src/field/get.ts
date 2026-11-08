@@ -6,6 +6,11 @@ import type { Got, Keyed } from '../model';
 import { def } from './def';
 
 declare namespace get {
+  /**
+   * Runs as a match is assigned, with the match and the instance holding the field.
+   *
+   * Return a function to clean up when that match leaves; downstream, return `false` to decline it.
+   */
   type Callback<T = any> = (
     state: T,
     subject: Model
@@ -13,11 +18,22 @@ declare namespace get {
 }
 
 /**
- * Fetches upstream Model from context with optional lifecycle callback.
- * Callback runs on mount and can return cleanup function for unmount.
+ * Nearest upstream instance of a type - owner, then ancestors and their children, then context.
  *
- * @param Type - Type of Model to fetch.
- * @param callback - Optional lifecycle callback, receives (state, subject). Can return cleanup function.
+ * Nearest match wins - an ancestor beats a sibling at its own level. Never resolves to itself.
+ * A sibling replaced on its ancestor updates the field. A match in the owner tree wins over context.
+ * Context is the fallback - a closer provider arriving replaces the value; a provider leaving
+ * suspends reads until another arrives. Throws if none resolves by the time the owning tree activates.
+ * `get(Model)` is the owner - throws if none.
+ * Callback runs per match assigned, not on the match's own updates - a returned function runs when
+ * that match is replaced or leaves, or this instance is destroyed. Non-enumerable.
+ *
+ * @example
+ * app = get(App);
+ * socket = get(Socket, (socket) => {
+ *   socket.join(this);
+ *   return () => socket.leave(this);
+ * });
  */
 function get<T extends Model>(
   Type: Model.Extends<T>,
@@ -25,10 +41,10 @@ function get<T extends Model>(
 ): T;
 
 /**
- * Fetches and assigns the controller which spawned this host.
+ * Nearest upstream instance of a type, or `undefined` while there is none - never throws.
  *
- * @param Type - Type of controller compatible with this class.
- * @param required - If false, property may be undefined. Otherwise will throw.
+ * Resolves as the required form does. A context provider leaving resets the field to `undefined`.
+ * `get(Model, false)` is the owner, if any. Non-enumerable.
  */
 function get<T extends Model>(
   Type: Model.Extends<T>,
@@ -36,14 +52,20 @@ function get<T extends Model>(
 ): T | undefined;
 
 /**
- * Collects downstream Models, accumulating all instances of specified type
- * for which this is an ancestor. Returns an array that updates as Models
- * are added or removed. Callback runs on each registration and can return
- * cleanup or false to prevent registration.
+ * Every instance of a type below this one in context - a new array as they arrive and leave.
  *
- * @param Type - Type of Model to collect.
- * @param downstream - Must be true to enable downstream mode.
- * @param callback - Optional lifecycle callback, receives (state, subject). May return false to prevent registration.
+ * Subclasses match; superclasses do not. Starts empty. Repeat registrations are ignored.
+ * `get(Model, true)` lists instances this one owns directly - not grandchildren or context.
+ * Callback runs per arrival with a ready instance - return `false` to skip it, or a function run
+ * as it leaves, before either side is destroyed. Effects created in the callback stop then too.
+ * Non-enumerable.
+ *
+ * @param downstream - Collect below instead of looking up.
+ * @example
+ * items = get(Item, true, (item) => {
+ *   if (item.hidden) return false;
+ *   return () => console.log('removed', item);
+ * });
  */
 function get<T extends Model>(
   Type: Model.Extends<T>,
@@ -52,13 +74,13 @@ function get<T extends Model>(
 ): T[];
 
 /**
- * Fetches a single downstream Model of specified type.
- * Updates when a matching child appears or is removed.
- * Throws if not found.
+ * One instance of a type below this one in context - reads suspend until it arrives.
  *
- * @param Type - Type of Model to fetch.
- * @param downstream - Must be true to enable downstream mode.
- * @param required - Throw if no match found.
+ * Updates as a match arrives or is destroyed. Ignores upstream matches.
+ * `get(Model, true, true)` is an instance this one owns directly. Non-enumerable.
+ *
+ * @param downstream - Look below instead of up.
+ * @param single - Required single match instead of a list.
  */
 function get<T extends Model>(
   Type: Model.Extends<T>,
@@ -67,13 +89,13 @@ function get<T extends Model>(
 ): T;
 
 /**
- * Fetches a single downstream Model of specified type.
- * Updates when a matching child appears or is removed.
- * Returns undefined if not found.
+ * One instance of a type below this one in context, or `undefined` while there is none.
  *
- * @param Type - Type of Model to fetch.
- * @param downstream - Must be true to enable downstream mode.
- * @param required - If false, returns undefined if no match found.
+ * Updates as a match arrives or is destroyed. Ignores upstream matches.
+ * `get(Model, true, false)` is an instance this one owns directly. Non-enumerable.
+ *
+ * @param downstream - Look below instead of up.
+ * @param required - Optional single match instead of a list.
  */
 function get<T extends Model>(
   Type: Model.Extends<T>,
@@ -82,13 +104,15 @@ function get<T extends Model>(
 ): T | undefined;
 
 /**
- * Fetches through `Type.get(...args)` as this field is defined, with this
- * Model as origin. Resolves once; a thrown Promise suspends the field and
- * retries once settled. Applies where the first argument is neither boolean
- * nor function - a key for a class overriding static `get`.
+ * Value of `Type.get(...args)`, fetched as the field is defined with this instance as origin.
  *
- * @param Type - Class to fetch from.
- * @param args - Arguments for `Type.get`.
+ * For a class overriding static `get` - applies when the first argument is neither boolean nor
+ * function; arguments must match the override. Resolves once, before `new()` - never reassigned.
+ * A thrown Promise suspends reads and retries once settled; an Error throws from construction.
+ * The result is not adopted. Non-enumerable.
+ *
+ * @example
+ * buyer = get(User, 5);
  */
 function get<C extends Model.Extends>(
   Type: C,

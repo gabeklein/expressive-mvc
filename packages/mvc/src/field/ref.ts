@@ -6,73 +6,81 @@ import { def } from './def';
 const { defineProperty, defineProperties } = Object;
 
 declare namespace ref {
+  /** Builds the value for one key of a mapped proxy - `this` is the source instance. */
   type Map<T extends Model, R> = (
     this: T,
     key: Model.Field<T> & string,
     state: T
   ) => R;
 
+  /**
+   * Runs as a new value is set, `this` the instance.
+   *
+   * Return a function to receive the next value as this one is replaced.
+   */
   type Callback<T> = (
     argument: T
   ) => ((next: T | null) => void) | Promise<void> | void | boolean;
 
   /** Callable ref that also exposes ref-object properties. */
   interface Object<T = any> {
-    /** Set the current value of this reference. */
+    /** Sets the value - same as assigning `current`. */
     (value: T | null): void;
 
-    /** Current value held by this reference. */
+    /** Value held - reading does not subscribe; writing dispatches an update for `key`. */
     current: T;
 
-    /** Model instance this reference belongs to. */
+    /** Instance this reference belongs to. */
     is: Model;
 
-    /** Key of property on state this reference belongs to. */
+    /** Property on `is` this reference belongs to. */
     key: string;
 
     /**
-     * Subscribe to changes of this reference.
+     * Calls back with the new value after each update to `key`; returns unsubscribe.
      *
-     * @param callback - Callback to invoke with the current value when it changes.
-     * @returns Unsubscribe function to stop listening to changes.
+     * Not called for the current value.
      */
     get(callback: (value: T) => void): () => void;
 
-    /** Retrieve current value. */
+    /** Value held - `null` until set; does not subscribe. */
     get(): T | null;
   }
 
-  /** Object with references to all managed values of `T`. */
+  /** A ref-object per enumerable field of `T`. */
   type Proxy<T extends Model> = { [P in Model.Field<T>]-?: Object<T[P]> } & {
     get(): T;
   };
 
+  /** A mapped value per enumerable field of `T`. */
   type CustomProxy<T extends Model, R> = { [P in Model.Field<T>]-?: R } & {
     get(): T;
   };
 }
 
 /**
- * Creates an object with references to all managed values.
- * Each property is a function to set value in state when invoked.
+ * Object with a ref-object for each field of an instance - `.current` reads and writes the field.
  *
- * *Properties are simultaneously a ref-function and ref-object, use as needed.*
+ * Keys are the instance's enumerable fields as it activates - computed getters included, read-only;
+ * `ref` and `set` fields excluded. Keys are non-enumerable on the proxy. Throws on a plain object.
+ * Non-enumerable; excluded from snapshots.
  *
- * Non-enumerable; excluded from snapshots and `ref(this)`.
- *
- * @param state - Source state from which to reference values.
+ * @example
+ * name = '';
+ * email = '';
+ * fields = ref(this);
  */
 function ref<T extends Model>(state: T): ref.Proxy<T>;
 
 /**
- * Creates an object with values based on managed values.
- * Each property will invoke map function on first access supply
- * the its return value going forward.
+ * Object with a mapped value for each field of an instance, built on first access.
  *
- * Non-enumerable; excluded from snapshots and `ref(this)`.
+ * Map runs once per key, `this` the instance; the result is cached. Keys as for `ref(state)`.
+ * Non-enumerable; excluded from snapshots.
  *
- * @param state - Source state from which to reference values.
- * @param map - Function producing the placeholder value for any given property.
+ * @example
+ * name = '';
+ * inputs = ref(this, (key) => createInput(key));
  */
 function ref<T extends Model, R>(
   state: T,
@@ -80,23 +88,27 @@ function ref<T extends Model, R>(
 ): ref.CustomProxy<T, R>;
 
 /**
- * Creates a ref-compatible property.
- * Callable to set the value, with ref-object properties for reading and subscribing.
+ * Mutable reference - call it, or assign `.current`, to set; `null` until set.
  *
- * Non-enumerable; excluded from snapshots and `ref(this)`.
+ * Writes dispatch an update like any field; reading `.current` does not subscribe.
+ * The value appears in snapshots; the field itself is non-enumerable.
+ * Callback runs synchronously per new value, skipping `null` - an identical value is ignored.
+ * A function it returns runs with the next value as this one is replaced, `null` included;
+ * effects created in the callback stop then too.
  *
- * @param callback - Optional callback to synchronously fire when reference is first set or does update.
+ * @example
+ * element = ref<HTMLDivElement>((el) => {
+ *   const observer = new ResizeObserver(() => this.measure());
+ *   observer.observe(el);
+ *   return () => observer.disconnect();
+ * });
  */
 function ref<T>(callback?: ref.Callback<T>): ref.Object<T>;
 
 /**
- * Creates a ref-compatible property.
- * Callable to set the value, with ref-object properties for reading and subscribing.
+ * Mutable reference whose callback also runs for `null` when `ignoreNull` is `false`.
  *
- * Non-enumerable; excluded from snapshots and `ref(this)`.
- *
- * @param callback - Optional callback to synchronously fire when reference is first set or does update.
- * @param ignoreNull - Default `true`. If `false`, will still callback with `null`.
+ * Otherwise as `ref(callback)`.
  */
 function ref<T>(
   callback: ref.Callback<T | null>,
