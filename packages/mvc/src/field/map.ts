@@ -2,7 +2,7 @@ import { join } from '../context';
 import { def } from './def';
 import { element } from '../element';
 import { event, listener, touch } from '../observable';
-import { Model, parent } from '../state';
+import { Model, parent } from '../model';
 
 const SHAPE = Symbol('shape');
 const KEYED = (_key: unknown, value: unknown) => value;
