@@ -1,5 +1,11 @@
 # @expressive/dom
 
+## 0.10.1
+
+### Patch Changes
+
+- [#648](https://github.com/gabeklein/expressive-mvc/pull/648) [`ac9785c`](https://github.com/gabeklein/expressive-mvc/commit/ac9785cb36540a46c41c9a90ecf0b5adcb715edb) Importing `@expressive/dom` no longer fails to typecheck with circular-type errors in the style macros (`'css' implicitly has type 'any'`, `Type 'Registry' recursively references itself`) in projects that compile its source.
+
 ## 0.10.0
 
 ### Minor Changes
