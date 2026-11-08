@@ -1,5 +1,59 @@
 # @expressive/dom
 
+## 0.10.0
+
+### Minor Changes
+
+- [#621](https://github.com/gabeklein/expressive-mvc/pull/621) [`fbd4d44`](https://github.com/gabeklein/expressive-mvc/commit/fbd4d44f0f0f53090e3e1ba333b446a2c155b8ac) `Css` gains macros for properties where px is wrong: `transitionDuration`, `transitionDelay`, `animationDuration` and `animationDelay` take numbers as milliseconds, and `rotate` takes degrees. The `rem`, `em`, `px` and `media` exports are removed - write other units as strings, and conditions on a `$name` field (`$mobile = '@media (max-width: 900px)'`).
+
+- [#629](https://github.com/gabeklein/expressive-mvc/pull/629) [`e38c545`](https://github.com/gabeklein/expressive-mvc/commit/e38c545abbaee0f4f42057c999f9c0e2f7800b3d) Warn in development when a `_name` attribute matches no rule, suggesting the nearest rule name. A `$name` condition written as a value now throws.
+
+- [#623](https://github.com/gabeklein/expressive-mvc/pull/623) [`0d67321`](https://github.com/gabeklein/expressive-mvc/commit/0d673219351d46ba227255e82339bc8ad4943c99) `Css` gains `transition`, which takes an object keyed by property (`{ opacity: 200, transform: { duration: 300, easing: 'ease-out' } }`) with times in milliseconds, and `offsetRotate`, which takes degrees. Maps accept a number only for properties where one is valid CSS, so `color: 5`, `animation: ['spin', 1]` or `flex: [1, 1, 200]` is a type error; a map for a pack without `default`, plain `style()` included, accepts only unitless numbers and `0`.
+
+- [#617](https://github.com/gabeklein/expressive-mvc/pull/617) [`da139b2`](https://github.com/gabeklein/expressive-mvc/commit/da139b26a8fce30ac9d7b32230d8393dc4946c41) A `Style` pack names conditions with `$name` fields (`$mobile = '@media (max-width: 900px)'`), used as `$mobile: { … }` keys in any map styled by that pack and overridable by a subclass. The fallback method for keys no macro handles is renamed from `'*'` to `default`.
+
+- [#618](https://github.com/gabeklein/expressive-mvc/pull/618) [`ce992da`](https://github.com/gabeklein/expressive-mvc/commit/ce992da672180115caef810025e548fac3626db8) `App.use(...maps)` takes pack rules - element defaults, roles and condition blocks applied to elements written by every component that `style` styles, below each component's own declarations and rules. Each call with maps is its own scope; `use()` without maps stays shared per class. `style(X)` with no map joins the pack, and subcomponents without a map receive its rules. The conflict error now reads `is already styled by another pack`.
+
+### Patch Changes
+
+- [#633](https://github.com/gabeklein/expressive-mvc/pull/633) [`283bafe`](https://github.com/gabeklein/expressive-mvc/commit/283bafe8ca164c5555f34b1896aae252bbd336aa) A `catch` that sets a new `fallback` while its boundary is already hidden by a suspension now shows that fallback, instead of the one drawn when the boundary hid.
+- Updated dependencies [[`72f0d74`](https://github.com/gabeklein/expressive-mvc/commit/72f0d742007dfd23b9103b314a9367319de50f7b)]:
+  - @expressive/mvc@0.94.1
+
+## 0.9.0
+
+### Minor Changes
+
+- [#614](https://github.com/gabeklein/expressive-mvc/pull/614) [`38b995b`](https://github.com/gabeklein/expressive-mvc/commit/38b995b0df5c4b959490fc03540ef7e6acb81665) Descendant scopes apply only to elements the caller's own JSX writes. A nested rule under a `_rule` on a child component element, such as `_card: { _label: {...} }`, no longer styles `_label` elements inside the child's render. The class from `_card` still reaches the child's root through `style`, and `children` the caller passes in still take the nested rules. A child meant to be restyled from outside exposes that through `style` or a managed prop.
+
+- [#609](https://github.com/gabeklein/expressive-mvc/pull/609) [`79e1e88`](https://github.com/gabeklein/expressive-mvc/commit/79e1e88622f3f5e9c1c3eacc058320c1955d2457) A rule, condition or subcomponent body in a `style()` map may be an array of maps, merged in order at every depth with falsy entries skipped - `_bar: [tabs, { [wide]: { _button: { height: '30px' } } }]` instead of re-spreading each nested level.
+
+  Repeated `style()` layers now merge nested `_` scopes rule by rule; previously a later layer's `_item` replaced an earlier layer's.
+
+- [#612](https://github.com/gabeklein/expressive-mvc/pull/612) [`075c694`](https://github.com/gabeklein/expressive-mvc/commit/075c69461020699c74c86a400eb7beb524ef0ff8) Macro packs are classes. Extend `Style` (or the shipped `Css`, which replaces `css`) with one method per macro, and `App.use()` returns a `style` whose maps are typed from the class - no `macro.Registry` augmentation. A component's maps resolve against the pack that styled it. Subclasses layer over their base, falling through as before, and `'*'` is a method.
+
+  Breaking: `macro()`, `macro.Registry`, `macro.From` and `css` are removed, and with them global rules. Move `macro({ _button: … })` element defaults into a shared map layered as an extra `style()` argument.
+
+### Patch Changes
+
+- [#608](https://github.com/gabeklein/expressive-mvc/pull/608) [`b3a272b`](https://github.com/gabeklein/expressive-mvc/commit/b3a272b1c70cec00c47373039c7f4f68a6f48f01) A `_rule` under a top-level `:` state combined with an `@` condition, in either order, now styles its descendants instead of being dropped.
+
+## 0.8.2
+
+### Patch Changes
+
+- [#600](https://github.com/gabeklein/expressive-mvc/pull/600) [`c20f54e`](https://github.com/gabeklein/expressive-mvc/commit/c20f54e815da87c137b4f7ba04ebdf5c70b5d3f9) `media()` returns a literal type built from the query, so its result works as a computed key in a typed `style()` map. Features are joined in the order of the query interface rather than insertion order.
+
+- [#603](https://github.com/gabeklein/expressive-mvc/pull/603) [`de29195`](https://github.com/gabeklein/expressive-mvc/commit/de291952b8696897a8792e558888bf74f5482d89) Popping a context destroys the Components the renderer constructed within it, as in the React and Preact hosts.
+
+## 0.8.1
+
+### Patch Changes
+
+- [#598](https://github.com/gabeklein/expressive-mvc/pull/598) [`f4cb7aa`](https://github.com/gabeklein/expressive-mvc/commit/f4cb7aa2df567473ed0e080da57c9b0b3c9d9bf8) Importing `@expressive/dom` no longer fails to typecheck with circular-type errors in the style macros (`'css' implicitly has type 'any'`, `Type 'Registry' recursively references itself`) in projects that compile its source.
+- Updated dependencies [[`0eba921`](https://github.com/gabeklein/expressive-mvc/commit/0eba921db3ef0f10fda222b42ef270c8de0cb781)]:
+  - @expressive/mvc@0.94.0
+
 ## 0.8.0
 
 ### Minor Changes

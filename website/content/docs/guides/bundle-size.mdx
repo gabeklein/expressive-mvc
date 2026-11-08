@@ -17,10 +17,10 @@ Minified, then gzipped. React is a peer dependency and excluded, as it would alr
 | `@expressive/react` — `Model`, `Component`, instructions | ~11.8 kB |
 | `@expressive/react` — the above plus `has` and `map` collections | ~12.5 kB |
 | `@expressive/react` — every export | ~13.5 kB |
-| `@expressive/mvc` + `@expressive/dom` — renderer without style helpers | ~18.3 kB |
-| `@expressive/mvc` + `@expressive/dom` — every export, including styling | ~21.7 kB |
-| `@expressive/router` — every export | ~13.7 kB |
-| `@expressive/react` + `@expressive/router` | ~16.3 kB |
+| `@expressive/mvc` + `@expressive/dom` — renderer without style helpers | ~18.5 kB |
+| `@expressive/mvc` + `@expressive/dom` — every export, including styling | ~22.7 kB |
+| `@expressive/router` — every export | ~13.8 kB |
+| `@expressive/react` + `@expressive/router` | ~16.4 kB |
 
 A typical React app lands around **11.8 kB**. There are no runtime dependencies, so that is the whole cost — nothing else arrives behind it.
 
@@ -38,7 +38,7 @@ If a third-party size service quotes something different from this table, the me
 
 The headless core shakes properly: importing only `Model` costs ~6.9 kB against ~10.8 kB for everything, so unused instructions genuinely do not ship. It is built unbundled — one module per source file, `sideEffects: false` — and its module-level work only touches classes the same module exports, which is what makes that declaration safe.
 
-The appearance system is likewise optional: renderer imports measure ~18.3 kB; adding `style` and `macro` raises the total to ~21.7 kB. The renderer retains only the small token protocol needed to accept styles registered elsewhere. Unlike the React rows, these figures include `@expressive/mvc`, which `@expressive/dom` does not re-export and an app therefore imports directly.
+The appearance system is likewise optional: renderer imports measure ~18.5 kB; adding `style` and `Style` raises the total to ~22.7 kB. The renderer retains only the small token protocol needed to accept styles registered elsewhere. Unlike the React rows, these figures include `@expressive/mvc`, which `@expressive/dom` does not re-export and an app therefore imports directly.
 
 The React adapter has a **floor you cannot shake below: ~10.8 kB**, reached by importing it at all. That is deliberate and worth being plain about. The adapter works by patching types it does not own, at import time:
 

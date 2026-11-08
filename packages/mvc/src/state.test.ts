@@ -4177,7 +4177,51 @@ describe('on setup / ready stages (static)', () => {
     expect(handler).toBeCalledWith(expect.objectContaining({ message: 'failed' }), 'setup', undefined);
     expect(test.get(null)).toBe(true);
     expect(effect).not.toBeCalled();
-    await expect(Promise.resolve(settled)).rejects.toThrow(`${test} is destroyed.`);
+    await expect(Promise.resolve(settled)).rejects.toThrow('failed');
+  });
+
+  it('will reject a pending read with the error an async new() rejects', async () => {
+    class Test extends Model {
+      value = set<number>();
+
+      protected async new() {
+        throw new Error('not found');
+      }
+    }
+
+    Test.on({ catch: () => {} });
+
+    const test = Test.new();
+    let pending: unknown;
+
+    try {
+      test.get('value', true);
+    } catch (thrown) {
+      pending = thrown;
+    }
+
+    await expect(pending).rejects.toThrow('not found');
+  });
+
+  it('will reject an awaited child with the error its setup rejects', async () => {
+    class Child extends Model {
+      protected async new() {
+        throw new Error('not found');
+      }
+    }
+
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    Parent.on({ catch: () => {} });
+    Child.on({ catch: () => {} });
+
+    const parent = Parent.new();
+    const { child } = parent;
+
+    await expect(Promise.resolve(child.get(() => {}))).rejects.toThrow('not found');
+    await expect(Promise.resolve(parent.get(() => {}))).resolves.toBeUndefined();
   });
 
   it('will defer effects until an async new() resolves', async () => {

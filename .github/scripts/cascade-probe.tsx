@@ -1,9 +1,8 @@
 /** @jsxImportSource @expressive/dom */
 import { Component } from '@expressive/mvc';
-import { css, macro, render, style } from '@expressive/dom';
+import { Css, render } from '@expressive/dom';
 
-macro(css);
-macro({ _output: { color: 'rgb(5, 5, 5)', padding: '5px' } });
+const style = Css.use();
 
 const out: string[] = [];
 
@@ -49,7 +48,7 @@ function Units() {
   return <span _box>units</span>;
 }
 
-style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, marginInline: 4 } });
+style(Units, { _box: { paddingTop: 5, zIndex: 3, marginBlockEnd: 2, marginInline: 4, rotate: 45, animationDuration: [200, 0], offsetRotate: 30, transition: { opacity: { duration: 300, easing: 'linear', delay: 100 }, color: 50 } } });
 
 function Nested() {
   return <section _frame><em>deep</em></section>;
@@ -97,9 +96,17 @@ function Tip() {
 
 style(Tip, { _tip: { '::before': { content: '"x"' } } });
 
+const shell = Css.use({ _kbd: { color: 'rgb(20, 20, 20)', padding: '9px' } });
+
+function Keys() {
+  return <kbd _key><kbd /></kbd>;
+}
+
+shell(Keys, { color: 'rgb(21, 21, 21)', _key: { padding: '3px' } });
+
 const root = document.getElementById('app')!;
 
-render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /><Field /></>, root);
+render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /><Field /><Keys /></>, root);
 
 const leaf = root.querySelector('b')!;
 const inline = root.querySelector('i')!;
@@ -113,13 +120,16 @@ check('custom property', getComputedStyle(frame).getPropertyValue('--depth').tri
 const box = root.querySelector('span')!;
 const readout = root.querySelector('output')!;
 
-check('base beats global rule', getComputedStyle(readout).color, 'rgb(7, 7, 7)');
 check('own rule beats base', getComputedStyle(readout).padding, '6px');
 
 check('px appended where required', getComputedStyle(box).paddingTop, '5px');
 check('unitless left alone', getComputedStyle(box).zIndex, '3');
 check('logical property sized', getComputedStyle(box).marginBlockEnd, '2px');
 check('logical axis sized', getComputedStyle(box).marginLeft, '4px');
+check('rotate in degrees', getComputedStyle(box).rotate, '45deg');
+check('durations in ms', getComputedStyle(box).animationDuration, '0.2s, 0s');
+check('transitions by property', `${getComputedStyle(box).transitionProperty} / ${getComputedStyle(box).transitionDuration} / ${getComputedStyle(box).transitionDelay}`, 'opacity, color / 0.3s, 0.05s / 0.1s, 0s');
+check('offset rotate in degrees', getComputedStyle(box).offsetRotate, '30deg');
 const [toggle, picked] = root.querySelectorAll('input');
 
 check('state beats base', getComputedStyle(toggle).color, 'rgb(11, 11, 11)');
@@ -134,6 +144,10 @@ const hint = root.querySelector('label b')!;
 check('group state off', getComputedStyle(hint).color, 'rgb(13, 13, 13)');
 root.querySelector<HTMLInputElement>('label input')!.focus();
 check('group state styles descendant', getComputedStyle(hint).color, 'rgb(14, 14, 14)');
+const [key, inner] = root.querySelectorAll('kbd');
+check('base beats pack rule', getComputedStyle(key).color, 'rgb(21, 21, 21)');
+check('own rule beats pack rule', getComputedStyle(key).padding, '3px');
+check('pack rule applies', getComputedStyle(inner).color, 'rgb(20, 20, 20)');
 check('leaf carries door classes', String(leaf.className.includes('-d1') && leaf.className.includes('-d2')), 'true');
 
 document.querySelector('style[data-expressive]')!.remove();

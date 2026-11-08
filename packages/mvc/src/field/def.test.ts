@@ -1,4 +1,4 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, expectTypeOf } from 'vitest';
 import { Model } from '../state';
 import { def } from './def';
 
@@ -117,6 +117,24 @@ describe('instruction', () => {
 
       await expect(test).toHaveUpdated();
       expect(effect).toBeCalledTimes(2);
+    });
+
+    it('will read get (required) on each access', () => {
+      const config = { get: true };
+
+      class Test extends Model {
+        value = def(() => config);
+      }
+
+      const test = Test.new();
+
+      expect(() => test.value).toThrow(expect.any(Promise));
+
+      config.get = false;
+      expect(test.value).toBeUndefined();
+
+      config.get = true;
+      expect(() => test.value).toThrow(expect.any(Promise));
     });
   });
 
@@ -261,5 +279,23 @@ describe('reuse', () => {
     expect(() => def(() => ({ value: 1 }))).toThrowError(/no Model under construction/);
     expect(Test.new().value).toBe(1);
     expect(() => def(() => ({ value: 2 }))).toThrowError(/no Model under construction/);
+  });
+});
+
+describe('types', () => {
+  it('will keep a union including undefined', () => {
+    class Test extends Model {
+      maybe = def<string | undefined>(() => ({ get: () => undefined }));
+    }
+
+    expectTypeOf(Test.new().maybe).toEqualTypeOf<string | undefined>();
+  });
+
+  it('will type a factory returning nothing as unknown', () => {
+    class Test extends Model {
+      value = def(() => {});
+    }
+
+    expectTypeOf(Test.new().value).toEqualTypeOf<unknown>();
   });
 });

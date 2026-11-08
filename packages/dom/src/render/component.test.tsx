@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Component, Model, has } from '@expressive/mvc';
+import { Component, Context, Model, has } from '@expressive/mvc';
 import { render } from '../index';
 import { flushMicrotasks, mockPromise, mount, place } from '../../test.setup';
 
@@ -70,6 +70,24 @@ describe('component', () => {
 
     await flushMicrotasks();
     expect(effect).toBeCalledTimes(1);
+  });
+
+  it('will destroy owned Components when their context pops', () => {
+    let child!: Child;
+
+    class Child extends Component {}
+    class Parent extends Component {
+      render() {
+        return <Child is={(c) => void (child = c)} />;
+      }
+    }
+
+    const [parent] = mount(Parent);
+
+    Context.get(parent).pop();
+
+    expect(child.get(null)).toBe(true);
+    expect(parent.get(null)).toBe(true);
   });
 
   it('will retain a class Component when its VNode props object is unchanged', async () => {

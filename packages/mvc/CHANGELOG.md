@@ -1,5 +1,17 @@
 # @expressive/mvc
 
+## 0.94.1
+
+### Patch Changes
+
+- [#626](https://github.com/gabeklein/expressive-mvc/pull/626) [`72f0d74`](https://github.com/gabeklein/expressive-mvc/commit/72f0d742007dfd23b9103b314a9367319de50f7b) `def<T>` no longer types a union including `undefined` as `unknown` - `def<X | undefined>` fields keep `X | undefined`.
+
+## 0.94.0
+
+### Minor Changes
+
+- [#597](https://github.com/gabeklein/expressive-mvc/pull/597) [`0eba921`](https://github.com/gabeklein/expressive-mvc/commit/0eba921db3ef0f10fda222b42ef270c8de0cb781) An instance destroyed because its setup rejected - an `async new()`, a setup handler or a constructor callback - rejects awaited effects (`await state.get(() => {})`) and pending reads of required values with that error instead of `{state} is destroyed.` The error still reports to `catch` as `setup`.
+
 ## 0.93.0
 
 ### Minor Changes

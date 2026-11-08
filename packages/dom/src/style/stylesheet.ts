@@ -3,6 +3,7 @@ import { registerEmitter } from './protocol';
 import type { Block } from './protocol';
 import { applyDeclarations } from './declarations';
 import type { Declaration } from './declarations';
+import type { Numeric, Single, Unitless } from './numeric';
 
 type Member = Extract<keyof CSSStyleDeclaration, string>;
 
@@ -10,44 +11,37 @@ type Settable = {
   [K in Member]-?: CSSStyleDeclaration[K] extends Function ? never : K;
 }[Member];
 
-type Key =
+type Macro<T> = Extract<
+  Exclude<{ [K in keyof T]-?: T[K] extends (...args: any[]) => unknown ? K : never }[keyof T], 'default'>,
+  string
+>;
+
+type Named<T> = Extract<
+  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends string ? K : never : never }[keyof T],
+  string
+>;
+
+type Argument<F> = F extends (...args: infer P) => any
+  ? P extends [] ? true : P[0] | (undefined extends P[0] ? true : never)
+  : never;
+
+type Key<T> =
   | style.Property
-  | keyof macro.Registry
+  | Macro<T>
   | `--${string}`
   | `_${string}`
+  | Named<T>
   | style.Condition;
 
-type Argument<K extends keyof macro.Registry> =
-  macro.Registry[K] extends (value: infer A, ...rest: any[]) => any ? A : never;
+type Layers<T> = readonly (style.Map<T> | Layers<T> | false | null | undefined)[] & { [K in style.Property | Macro<T>]?: unknown };
 
-declare namespace macro {
-  /**
-   * Macros visible to a style map. A pack augments this interface to declare
-   * what it registers with `macro()`.
-   */
-  interface Registry {}
+type Body<T> = style.Map<T> | Layers<T>;
 
-  /**
-   * Registry entries for the macros in a pack, so one line declares them all:
-   * `interface Registry extends macro.From<typeof pack> {}`.
-   */
-  type From<T> = {
-    [K in keyof T as K extends `_${string}` | `$${string}` | '*' ? never : K]: T[K];
-  };
+type Literal = string | boolean | null | undefined | readonly Literal[];
 
-  /** Maps one argument to style, or to keys which resolve further. */
-  type Fn = (value: any, key: string) => unknown;
+type Zero = Literal | 0 | readonly Zero[];
 
-  /**
-   * Body of a `macro()` map. A name declared in {@link Registry} must match its
-   * declaration; an undeclared one is accepted, and becomes checkable at call
-   * sites once a module augments `Registry` with it.
-   */
-  type Map =
-    & Partial<Registry>
-    & { [K in `_${string}`]?: style.Map }
-    & Record<string, Fn | style.Map | undefined>;
-}
+type Numbers<T> = T extends { default(...args: any[]): unknown } ? Numeric : Unitless;
 
 declare namespace style {
   /** CSS property names, minus the CSSOM's own members. */
@@ -69,16 +63,64 @@ declare namespace style {
     | readonly Value[];
 
   /**
-   * Body of a `style()` map. Bare keys are declarations or macro calls,
-   * `_name` opens a rule or descendant scope, `:state` and `@media …` apply
-   * their body conditionally, and `$name` is reserved.
+   * Body of a `style()` map. Bare keys are declarations or calls to a macro
+   * of `T`, `_name` opens a rule or descendant scope, `:state` and `@media …`
+   * apply their body conditionally, as does `$name` for a condition named on
+   * `T`. A rule or condition body may be an array of maps, merged in order.
    */
-  type Map = {
-    [K in Key]?:
-      K extends `_${string}` | Condition ? Map :
-      K extends keyof macro.Registry ? Argument<K> | (undefined extends Argument<K> ? true : never) :
-      Value;
+  type Map<T = {}> = {
+    [K in Key<T>]?:
+      K extends `_${string}` | Condition | Named<T> ? Body<T> :
+      K extends Macro<T> ? Argument<T[K]> :
+      K extends Single ? number | Literal :
+      K extends Numbers<T> | `--${string}` ? Value :
+      K extends Numeric ? Zero :
+      Literal;
   };
+
+  /** A `style()` whose maps may call the macros of `T`. */
+  interface Apply<T> {
+    <C extends object>(type: C, ...maps: (Map<T> | false | null | undefined)[]): C;
+  }
+}
+
+/**
+ * Base class for a macro pack. Each method is a macro, layered over the class
+ * it extends; `default` handles any key no macro owns. A `$name` field holds
+ * a condition (`'@media …'` or `':state'`) maps may use as a key.
+ */
+class Style {
+  /**
+   * The `style()` for this pack. Without maps, one per class. Each call with
+   * maps is its own scope - their rules style only elements written by
+   * components it styles, below their own declarations.
+   */
+  static use<T extends Style>(
+    this: new () => T,
+    ...rules: (style.Map<T> | false | null | undefined)[]
+  ): style.Apply<T> {
+    const given = rules.filter(Boolean) as appearance.StyleMap[];
+    const shared = !given.length;
+    let apply = shared ? bound.get(this) : undefined;
+
+    if (!apply) {
+      let pack: appearance.Pack | undefined;
+
+      apply = (type, ...maps) => {
+        pack ||= {
+          label: this.name,
+          layers: layers(this),
+          rules: given
+        };
+
+        return register(type, maps, pack);
+      };
+
+      if (shared) bound.set(this, apply);
+    }
+
+    return apply;
+  }
 }
 
 interface Sheet {
@@ -89,18 +131,54 @@ interface Sheet {
 }
 
 const sheets = new WeakMap<Document, Sheet>();
+const bound = new WeakMap<Function, style.Apply<any>>();
 let groups = 0;
 
 function style<T extends object>(type: T, ...maps: (style.Map | false | null | undefined)[]): T {
-  for (const rules of maps) if (rules) appearance.style(type, rules);
+  return register(type, maps);
+}
+
+function register<T extends object>(type: T, maps: readonly unknown[], pack?: appearance.Pack): T {
+  const present = maps.filter(Boolean) as appearance.StyleMap[];
+
+  for (const rules of present.length || !pack ? present : [{}]) appearance.style(type, rules, pack);
   registerEmitter(emit);
   return type;
 }
 
-function macro(rules: macro.Map): macro.Map {
-  appearance.macro(rules);
-  registerEmitter(emit);
-  return rules;
+function layers(type: Function) {
+  const instance = new (type as new () => object)();
+  const maps: appearance.StyleMap[] = [];
+  const conditions: appearance.StyleMap = {};
+
+  for (const [key, value] of Object.entries(instance)) {
+    if (key[0] != '$')
+      throw new Error(`Field "${key}" on ${type.name} is reserved. Define macros as methods.`);
+
+    if (typeof value != 'string' || value[0] != '@' && value[0] != ':')
+      throw new Error(`Condition "${key}" on ${type.name} must start with "@" or ":".`);
+
+    conditions[key] = value;
+  }
+
+  for (let proto = type.prototype; proto !== Style.prototype; proto = Object.getPrototypeOf(proto)) {
+    const map = proto === type.prototype ? conditions : {};
+
+    for (const key of Object.getOwnPropertyNames(proto)) {
+      if (key == 'constructor') continue;
+
+      const { value } = Object.getOwnPropertyDescriptor(proto, key)!;
+
+      if (typeof value != 'function' || key[0] == '_' || key[0] == '$')
+        throw new Error(`"${key}" on ${type.name} must be a method with a bare name.`);
+
+      map[key] = value.bind(instance);
+    }
+
+    maps.unshift(map);
+  }
+
+  return maps;
 }
 
 function emit(block: Block, depth: number, document: Document) {
@@ -171,4 +249,4 @@ function serialize(document: Document, declarations: Declaration) {
   return value.cssText;
 }
 
-export { macro, style };
+export { Style, style };

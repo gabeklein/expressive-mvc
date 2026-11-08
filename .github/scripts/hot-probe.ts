@@ -6,6 +6,7 @@ import type { Plugin } from 'vite';
 import inspect from '../../packages/inspect/src/vite';
 import domHot from '../../packages/dom/src/vite';
 import reactHot from '../../packages/react/src/vite';
+import { Browser, CHROME, until } from './chrome';
 
 /**
  * Class and component HMR, end to end: a fixture app per host, on the examples
@@ -16,7 +17,6 @@ import reactHot from '../../packages/react/src/vite';
  * Vite's module runner the way a session host would. The browser modes skip
  * when Chrome is absent; set `CHROME` to a binary.
  */
-const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const chrome = await Bun.file(CHROME).exists();
 
 type Mode = 'react' | 'strict' | 'dom';
@@ -237,8 +237,18 @@ export const Routed = () => (
   </Route>
 );
 `,
+  'pack.ts': `import { Style } from '@expressive/dom';
+
+class Pack extends Style {
+  tone(value: string) {
+    return { color: value };
+  }
+}
+
+export const style = Pack.use();
+`,
   'badge.tsx': `import { Component } from '@expressive/mvc';
-import { style } from '@expressive/dom';
+import { style } from './pack';
 
 export class Badge extends Component {
   clicks = 0;
@@ -248,7 +258,7 @@ export class Badge extends Component {
   }
 }
 
-style(Badge, { color: 'rgb(255, 0, 0)' });
+style(Badge, { tone: 'rgb(255, 0, 0)' });
 
 export const Wrapper = () => <div id="wrapper"><Badge /></div>;
 `,
@@ -572,99 +582,6 @@ async function serve(mode: Mode, dir: string) {
   return { server, base: `http://localhost:${address.port}` };
 }
 
-class Browser {
-  private ws!: WebSocket;
-  private id = 0;
-  private pending = new Map<number, (value: any) => void>();
-  private proc!: ReturnType<typeof Bun.spawn>;
-  errors: string[] = [];
-  warnings: string[] = [];
-
-  async open(url: string, profile: string) {
-    const targets = await this.launch(profile).catch(() => this.launch(profile));
-
-    this.ws = new WebSocket(targets.webSocketDebuggerUrl);
-    await new Promise((ready) => (this.ws.onopen = ready));
-    this.ws.onmessage = (event) => {
-      const message = JSON.parse(String(event.data));
-      if (message.id) this.pending.get(message.id)?.(message);
-      else if (message.method == 'Runtime.consoleAPICalled' && message.params.type == 'warning')
-        this.warnings.push(message.params.args.map((arg: any) => arg.value ?? arg.description).join(' '));
-      else if (message.method == 'Runtime.consoleAPICalled' && message.params.type == 'error')
-        this.errors.push(message.params.args.map((arg: any) => arg.value ?? arg.description).join(' '));
-      else if (message.method == 'Runtime.exceptionThrown')
-        this.errors.push(message.params.exceptionDetails.exception?.description || message.params.exceptionDetails.text);
-    };
-
-    await this.send('Runtime.enable');
-    await this.send('Page.navigate', { url });
-  }
-
-  private async launch(profile: string) {
-    const port = 9300 + Math.floor(Math.random() * 500);
-
-    this.proc = Bun.spawn([
-      CHROME, '--headless=new', '--disable-gpu', '--no-sandbox', `--remote-debugging-port=${port}`,
-      `--user-data-dir=${profile}`, 'about:blank'
-    ], { stdout: 'ignore', stderr: 'ignore' });
-
-    try {
-      return await until(async () => {
-        const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-        return list.find((target: any) => target.type == 'page');
-      }, 15000);
-    } catch (error) {
-      this.proc.kill();
-      await this.proc.exited;
-      throw error;
-    }
-  }
-
-  send(method: string, params = {}) {
-    return new Promise<any>((done) => {
-      const id = ++this.id;
-      this.pending.set(id, done);
-      this.ws.send(JSON.stringify({ id, method, params }));
-    });
-  }
-
-  async eval(expression: string) {
-    const reply = await this.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
-    return reply.result?.result?.value;
-  }
-
-  text(selector: string) {
-    return this.eval(`document.querySelector(${JSON.stringify(selector)})?.textContent ?? null`);
-  }
-
-  color(selector: string) {
-    return this.eval(`(() => { const node = document.querySelector(${JSON.stringify(selector)}); return node && getComputedStyle(node).color; })()`);
-  }
-
-  async close() {
-    this.ws?.close();
-    this.proc?.kill();
-    await this.proc?.exited;
-  }
-}
-
-async function until<T>(check: () => Promise<T | undefined | false | null>, timeout = 6000): Promise<T> {
-  const end = Date.now() + timeout;
-  let last: unknown;
-
-  while (Date.now() < end) {
-    try {
-      const value = await check();
-      if (value) return value as T;
-    } catch (error) {
-      last = error;
-    }
-    await Bun.sleep(100);
-  }
-
-  throw new Error(`timed out${last ? `: ${last}` : ''}`);
-}
-
 const sleep = (ms: number) => Bun.sleep(ms);
 
 async function run(mode: Mode) {
@@ -678,6 +595,7 @@ async function run(mode: Mode) {
 
   if (mode != 'dom') {
     delete files['badge.tsx'];
+    delete files['pack.ts'];
     delete files['folio.tsx'];
   }
 
@@ -866,9 +784,19 @@ async function run(mode: Mode) {
       await scenario('style map edit applies without a reset (dom)', async () => {
         await relay('set', 'Badge.clicks', 5);
         await see('#badge', 'badge 5');
-        await edit('badge.tsx', "style(Badge, { color: 'rgb(255, 0, 0)' });", "style(Badge, { color: 'rgb(0, 128, 0)' });");
+        await edit('badge.tsx', "style(Badge, { tone: 'rgb(255, 0, 0)' });", "style(Badge, { tone: 'rgb(0, 128, 0)' });");
         await until(async () => (await browser.color('#badge')) == 'rgb(0, 128, 0)');
         check((await browser.text('#badge')) == 'badge 5', 'clicks reset');
+        check(await alive(), 'page reloaded');
+      });
+
+    if (mode == 'dom')
+      await scenario('style pack edit rebinds its components without a reset (dom)', async () => {
+        await relay('set', 'Badge.clicks', 6);
+        await see('#badge', 'badge 6');
+        await edit('pack.ts', 'return { color: value };', "return { color: value == 'rgb(0, 128, 0)' ? 'rgb(0, 0, 255)' : value };");
+        await until(async () => (await browser.color('#badge')) == 'rgb(0, 0, 255)');
+        check((await browser.text('#badge')) == 'badge 6', 'clicks reset');
         check(await alive(), 'page reloaded');
       });
 

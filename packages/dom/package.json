@@ -1,6 +1,6 @@
 {
   "name": "@expressive/dom",
-  "version": "0.8.0",
+  "version": "0.10.0",
   "description": "MVC-native DOM renderer.",
   "license": "MIT",
   "author": {
@@ -57,7 +57,7 @@
     "test": "bun run typecheck && bun run coverage"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.93.0",
+    "@expressive/mvc": "^0.94.1",
     "vite": ">=5"
   },
   "peerDependenciesMeta": {
