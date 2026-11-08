@@ -91,7 +91,7 @@ class Profile extends Component {
 }
 ```
 
-Suspense fits load-once data the view cannot render without. Keep explicit `loading` / `error` fields when the fetch is user-initiated, stale content stays visible during refresh, or errors render inline - see [set.md](../field/set.md).
+Suspense fits load-once data the view cannot render without. Keep explicit `loading` / `error` fields when the fetch is user-initiated, stale content stays visible during refresh, or errors render inline - see [expressive-mvc/field/set.md](../expressive-mvc/field/set.md).
 
 ## Domain Rows in a Pool
 
@@ -324,7 +324,7 @@ Session.on({
 });
 ```
 
-Construction stays with the consumer - `session = new Session()` on the owning Component. No subclass (`class ViewSession extends Session`), no `Session.new()` in the adapter. Inbound snapshots land with `set(values)` - a superset payload is fine, extra keys drop ([set.md](../state/set.md)).
+Construction stays with the consumer - `session = new Session()` on the owning Component. No subclass (`class ViewSession extends Session`), no `Session.new()` in the adapter. Inbound snapshots land with `set(values)` - a superset payload is fine, extra keys drop ([expressive-mvc/state/set.md](../expressive-mvc/state/set.md)).
 
 ## Context Sharing
 
@@ -576,7 +576,7 @@ class Canvas extends Component {
 }
 ```
 
-Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(Model)` - see [context.md](../state/context.md#ownership-vs-context).
+Each rendered `Layer` is owned by the `Canvas` rendering it, so the callback runs as it mounts and the cleanup when it unmounts. Downstream `get(Layer, true)` would also find them, but through context - it needs the type, and would include Layers a nested Component owns. Ownership stays one level deep. The other direction, a reusable child finding whoever constructed it without naming the type, is `get(Model)` - see [expressive-mvc/state/context.md](../expressive-mvc/state/context.md#ownership-vs-context).
 
 ## Refactoring Hooks Into a Class
 

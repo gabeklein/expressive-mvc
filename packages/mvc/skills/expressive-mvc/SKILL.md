@@ -29,9 +29,9 @@ npm install @expressive/mvc @expressive/react    # + @expressive/router for rout
 
 `@expressive/mvc` is a peer dependency - add it to `package.json` and import `Model`, `Component` and every instruction from it, whatever the host. `@expressive/react` supplies the host: import it once from your entry module so it registers. It exports nothing for app code - import `{ Model }` by name from the core; adapter-augmented `Model.*` types are invisible through the core's deprecated default export.
 
-React Native / Expo need no setup beyond three boundaries ([react/react.md](react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
+React Native / Expo need no setup beyond three boundaries ([expressive-react/react.md](../expressive-react/react.md#react-native)): add `@expressive` to `jest-expo`'s `transformIgnorePatterns`; use `Router`, not `BrowserRouter`; `Link`/`NavLinks` render DOM, so navigate through `Router`.
 
-For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `Model`, `Component` and instructions come from `@expressive/mvc`, while `render`, `Portal`, `style` and `Style` come from `@expressive/dom`. Its FC semantics, renderer API, portals, code splitting, and transition constraints are in [dom/dom.md](dom/dom.md).
+For a client-only DOM app without React, install `@expressive/mvc` and `@expressive/dom`. `@expressive/dom` is a sidecar and re-exports nothing - `Model`, `Component` and instructions come from `@expressive/mvc`, while `render`, `Portal`, `style` and `Style` come from `@expressive/dom`. Its FC semantics, renderer API, portals, code splitting, and transition constraints are in [expressive-dom](../expressive-dom/SKILL.md).
 
 ## Start With Ownership, Not APIs
 
@@ -55,7 +55,7 @@ Counter-rules:
 
 ## Golden-Path Refactor Algorithm
 
-**Before refactoring existing React code, read [react/refactor.md](react/refactor.md)** - it expands every step with before/after examples and ends with the review checklist. The short form:
+**Before refactoring existing React code, read [expressive-react/refactor.md](../expressive-react/refactor.md)** - it expands every step with before/after examples and ends with the review checklist. The short form:
 
 1. Identify lifecycle and ownership boundaries before translating any hooks.
 2. Separate headless workflow state from display-intrinsic state.
@@ -70,11 +70,11 @@ Counter-rules:
 11. May assign thru subscribed proxies; `is` only to retain the root object alongside sibling destructuring.
 12. A gated widget mounts unconditionally and gates itself, falling thru when unset; where the parent reads the field for its own content, the gated value is a Model field and the child reads it with `.get()`.
 13. Split `render()` and long JSX at conditionals and non-interacting siblings into honestly-named local FCs - units you'd delete or move whole; one-op conditionals and formatted scalars stay inline. Consolidate scopes that share dependencies and hold no nested logic.
-14. Audit the result against the checklist in [react/refactor.md](react/refactor.md).
+14. Audit the result against the checklist in [expressive-react/refactor.md](../expressive-react/refactor.md).
 
 For large apps, scope a one-shot conversion to route/page controls and their domain pools; leave mature leaf widgets on hooks until parent domains stabilize.
 
-Write output in the conventions of [react/style.md](react/style.md). They are opinion, not semantics - but they exist to keep reactive dependencies auditable, and the golden path applies them by default.
+Write output in the conventions of [expressive-react/style.md](../expressive-react/style.md). They are opinion, not semantics - but they exist to keep reactive dependencies auditable, and the golden path applies them by default.
 
 ## Core API
 
@@ -119,7 +119,7 @@ Field initializers that configure reactive behavior. Each has multiple overloads
 
 For **computed values**, declare a normal class getter - getters on a Model subclass are auto-promoted to memoized, dependency-tracked properties. See [state/computed.md](state/computed.md) for tracking rules and when a derivation should *not* be a getter.
 
-`pending(work)` is not a field helper but imports alongside them - it marks the updates `work` queues non-urgent and resolves once every reader has taken them. See [Transitions](react/component.md#transitions).
+`pending(work)` is not a field helper but imports alongside them - it marks the updates `work` queues non-urgent and resolves once every reader has taken them. See [Transitions](../expressive-react/component.md#transitions).
 
 Do not pass a bare promise to `set()`. Use `set(() => promise)` or `set(async () => value)` so work starts during activation/access instead of construction.
 
@@ -172,7 +172,7 @@ function Parent({ counter }: { counter: Counter }) {
 
 Static `.get()` is a React hook - call unconditionally at the top of a component or `render()`, never inside branch, event handlers, or loops. Outside render it resolves root, untracked - no error, possibly the wrong instance; a handler uses what the render's snapshot destructured. (Instance method get is not a hook.)
 
-State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [react/react.md](react/react.md) for optional lookup, presence boundaries and custom lookup.
+State a view owns is a `Component`, or `<Component for={X}>` above FCs calling `X.get()` when a subtree shares it - FCs own nothing. Use `Model.get()` when the instance comes from context. To render an instance you already hold, make it a `Component` and place as `{instance}` - subscription belongs to the placed instance, not the surrounding function. See [expressive-react/react.md](../expressive-react/react.md) for optional lookup, presence boundaries and custom lookup.
 
 ## The Dependency Snapshot
 
@@ -249,7 +249,7 @@ function SettingsEditor() {
 }
 ```
 
-The child renders only where the instance exists - no fallback values threaded through its body, no Model values passed as props. A gated value with one view of its own is a `Component`, placed as `{draft}`. Both shapes in full: [react/refactor.md](react/refactor.md) step 12.
+The child renders only where the instance exists - no fallback values threaded through its body, no Model values passed as props. A gated value with one view of its own is a `Component`, placed as `{draft}`. Both shapes in full: [expressive-react/refactor.md](../expressive-react/refactor.md) step 12.
 
 ## Providing Context
 
@@ -281,11 +281,11 @@ const counter = CounterView.new();
 
 An activated instance renders directly, arrays included; its owner keeps lifecycle, so unmount detaches without destroying.
 
-PascalCase methods become reactive subcomponents - **extension points** a subclass would replace or wrap, not general decomposition. Otherwise write a freestanding FC calling `MyComponent.get()`. Details: [react/component.md](react/component.md).
+PascalCase methods become reactive subcomponents - **extension points** a subclass would replace or wrap, not general decomposition. Otherwise write a freestanding FC calling `MyComponent.get()`. Details: [expressive-react/component.md](../expressive-react/component.md).
 
 ## Rules & Counter-Rules
 
-Every broad rule here has a locality constraint. Apply both halves. When auditing a result, weigh findings by the severity labels defined in [react/refactor.md](react/refactor.md) - invariant, default, heuristic, style - and never fail a heuristic on its numerical signal alone.
+Every broad rule here has a locality constraint. Apply both halves. When auditing a result, weigh findings by the severity labels defined in [expressive-react/refactor.md](../expressive-react/refactor.md) - invariant, default, heuristic, style - and never fail a heuristic on its numerical signal alone.
 
 | Rule                                                        | Counter-rule                                                                                                                        |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -299,7 +299,9 @@ Every broad rule here has a locality constraint. Apply both halves. When auditin
 
 ## File Reference
 
-Fetch these for detailed documentation when the task requires deeper knowledge. **Read `react/refactor.md` in full before any hook-migration or refactor task.**
+Fetch these for detailed documentation when the task requires deeper knowledge. **Read `expressive-react/refactor.md` in full before any hook-migration or refactor task.**
+
+Each package ships its own skill. `../expressive-<pkg>/` links assume skills installed side by side (`.claude/skills/`, `.agents/skills/`); reading from `node_modules`, the same files are at `node_modules/@expressive/<pkg>/skills/expressive-<pkg>/`.
 
 ### Design intent
 
@@ -307,8 +309,8 @@ Fetch these for detailed documentation when the task requires deeper knowledge. 
 
 ### Golden path
 
-- [react/refactor.md](react/refactor.md) - the refactor algorithm expanded: ownership triage, mechanical-setter and prop-drilling anti-patterns, single-consumer getters, dependency snapshots and conditional subscriptions, presence boundaries, restrained `is`, subcomponent overuse, extract-then-consolidate, review checklist
-- [react/style.md](react/style.md) - style profile: snapshot formatting, affirmative conditions, render fallthrough vs operational guards
+- [expressive-react/refactor.md](../expressive-react/refactor.md) - the refactor algorithm expanded: ownership triage, mechanical-setter and prop-drilling anti-patterns, single-consumer getters, dependency snapshots and conditional subscriptions, presence boundaries, restrained `is`, subcomponent overuse, extract-then-consolidate, review checklist
+- [expressive-react/style.md](../expressive-react/style.md) - style profile: snapshot formatting, affirmative conditions, render fallthrough vs operational guards
 
 ### Model (core)
 
@@ -324,38 +326,38 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 ### React
 
-- [react/react.md](react/react.md) - Model.get() (optional lookup, presence boundaries, custom lookup), effects at commit, providing state, transparent writes, SSR, Vite hot reload
-- [react/component.md](react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
-- [react/patterns.md](react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controls, router bridge, host-agnostic domain model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
+- [expressive-react/react.md](../expressive-react/react.md) - Model.get() (optional lookup, presence boundaries, custom lookup), effects at commit, providing state, transparent writes, SSR, Vite hot reload
+- [expressive-react/component.md](../expressive-react/component.md) - Component class, props, children, extending a base, subcomponent extension points, error boundaries
+- [expressive-react/patterns.md](../expressive-react/patterns.md) - Recipes: forms, async, domain-row and form-chip pools, region controls, router bridge, host-agnostic domain model + view adapter, presence boundary, contextual children, debounce, async effects, awaiting a pending value, effects
 
 ### JSX
 
-- [dom/dom.md](dom/dom.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, Vite hot reload, exclusions
+- [expressive-dom](../expressive-dom/SKILL.md) - client DOM render/unmount, stateless FC scopes, MVC snapshots, native events, portals, lazy boundaries, transitions, Vite hot reload, exclusions
 
 ### Router
 
-- [router/router.md](router/router.md) - route declarations, lexical matching, guards, Suspense, navigation state, and UI
-- [router/production.md](router/production.md) - choose `Router` vs `BrowserRouter`, page-data ownership, navigation settlement, testing, host boundaries, and unsupported browser behavior
+- [expressive-router](../expressive-router/SKILL.md) - route declarations, lexical matching, guards, Suspense, navigation state, and UI
+- [expressive-router/production.md](../expressive-router/production.md) - choose `Router` vs `BrowserRouter`, page-data ownership, navigation settlement, testing, host boundaries, and unsupported browser behavior
 
 ### Inspect
 
-- [inspect.md](inspect.md) - `@expressive/inspect`: install entry, instances in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, orphans and `health()`, bridge and Vite relay
+- [expressive-inspect](../expressive-inspect/SKILL.md) - `@expressive/inspect`: install entry, instances in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, orphans and `health()`, bridge and Vite relay
 
 ### Server
 
-- [rpc.md](rpc.md) - `@expressive/rpc`: the api folder, module rules, http errors, gates and `Current`, client `configure`, Worker/Node deploy, limits
-- [dev.md](dev.md) - `@expressive/dev`: app layout, route module exports, sidecars, server Model and seats, twins (experimental), commands
+- [expressive-rpc](../expressive-rpc/SKILL.md) - `@expressive/rpc`: the api folder, module rules, http errors, gates and `Current`, client `configure`, Worker/Node deploy, limits
+- [expressive-dev](../expressive-dev/SKILL.md) - `@expressive/dev`: app layout, route module exports, sidecars, server Model and seats, twins (experimental), commands
 
 ### Steps
 
-- [steps.md](steps.md) - `@expressive/steps`: `run` as entry and result, `await this`, a step body as a plan, groups, waits and racers, durations, `then.on` outcome handlers (reset/catch/abort/close; functions, or step methods for durable runs), `.catch` handlers, `then.retry()`, `then.only` gates, stop/abort/end, hooks, coordination-first conventions
+- [expressive-steps](../expressive-steps/SKILL.md) - `@expressive/steps`: `run` as entry and result, `await this`, a step body as a plan, groups, waits and racers, durations, `then.on` outcome handlers (reset/catch/abort/close; functions, or step methods for durable runs), `.catch` handlers, `then.retry()`, `then.only` gates, stop/abort/end, hooks, coordination-first conventions
 
 ### Examples
 
 - [examples/basic.md](examples/basic.md) - Complete working examples from simple to intermediate
 - [examples/audit.md](examples/audit.md) - Guide for evaluating whether Expressive MVC fits a codebase
 
-**Runnable examples** - optional; this skill is complete offline. `https://expressive.dev/examples/<group>/<name>` serves a working program's every source file as plain HTML (no JS needed). Fetch one for a full reference implementation rather than a snippet:
+**Runnable examples** - optional; the skills are complete offline. `https://expressive.dev/examples/<group>/<name>` serves a working program's every source file as plain HTML (no JS needed). Fetch one for a full reference implementation rather than a snippet:
 
 | Group | Pages |
 | --- | --- |
@@ -370,4 +372,4 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 
 Audit a conversion as a separate pass over the diff - self-audits while authoring under-report architecture gaps.
 
-Fit and migration candidates: [examples/audit.md](examples/audit.md); approved migrations follow [react/refactor.md](react/refactor.md). Positioning: website-only [why](https://expressive.dev/llm/why.md), [comparisons](https://expressive.dev/llm/comparisons.md), and [dom vs React](https://expressive.dev/llm/dom.md).
+Fit and migration candidates: [examples/audit.md](examples/audit.md); approved migrations follow [expressive-react/refactor.md](../expressive-react/refactor.md). Positioning: website-only [why](https://expressive.dev/llm/why.md), [comparisons](https://expressive.dev/llm/comparisons.md), and [dom vs React](https://expressive.dev/llm/dom.md).

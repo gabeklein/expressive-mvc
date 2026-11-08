@@ -108,7 +108,7 @@ const flags = Flags.new(Context.root);
 Context.root.get(Flags); // flags, until destroyed
 ```
 
-> **Server render:** root is process-wide, so anything held there is *shared across requests*. Keep per-request data in a `<Component for>`. See [Server render](../react/react.md#server-render-ssr--rsc).
+> **Server render:** root is process-wide, so anything held there is *shared across requests*. Keep per-request data in a `<Component for>`. See [Server render](../../expressive-react/react.md#server-render-ssr--rsc).
 
 ## Hierarchical Contexts
 

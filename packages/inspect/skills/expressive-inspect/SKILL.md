@@ -1,3 +1,8 @@
+---
+name: expressive-inspect
+description: In-process inspector for Expressive MVC (@expressive/inspect) - registry of live instances, ownership tree, path reads, frame journal with causality, orphans and health. Use when debugging or testing Expressive state from an agent, browser tool, test or driver, or wiring the Vite or server relay.
+---
+
 # Inspect
 
 `@expressive/inspect` - in-process inspector over live instances: registry, ownership, path reads, a frame journal with causality. No UI; network only through the dev-server relay ([Vite](#vite)) or a handler your server mounts ([Server](#server)). Base layer for agents (via a browser tool or a driver's `evaluate`), devtools, and test helpers.
@@ -68,7 +73,7 @@ inspect.health() // { orphans, collected, copies, caught: { Destroyed, Inactive,
 ```
 
 - `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only instances from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it. Counted only where inspect is loaded; a bundle that never imports it goes unseen.
-- `caught` - reports by `kind`, handled or not ([Model.on()](state/state.md#modelon)). Inspect's `catch` joins each class as its first instance activates, ahead of app handlers registered before then, and passes each report on - behavior is unchanged. A handler registered on that class afterward runs first; one that handles or replaces a report hides the original. `journal.clear()` zeroes the counts - clear per test to assert on one test's reports.
+- `caught` - reports by `kind`, handled or not ([Model.on()](../expressive-mvc/state/state.md#modelon)). Inspect's `catch` joins each class as its first instance activates, ahead of app handlers registered before then, and passes each report on - behavior is unchanged. A handler registered on that class afterward runs first; one that handles or replaces a report hides the original. `journal.clear()` zeroes the counts - clear per test to assert on one test's reports.
 
 ## Addresses (across a boundary)
 

@@ -148,7 +148,7 @@ Selection flags, per-row status, row actions live on the member (`message.select
 
 A row earns a pool with any one of: mutable UI state (selection, expanded), async lifecycle (upload, watch, progress), actions (remove, retry). Demoting it to a plain DTO is not economy: status reads thru lookups, and a method call on a raw instance creates no subscription - progress rendered only thru `page.importFor(id)` never repaints. Tracked reads reach the member thru the pool or its own `render()`.
 
-A factory earns its line only when the seed must transform: fat payload folded to one field (`has((dto: MessageDto) => new Message({ info: dto, id: dto.id }))`), a rename, a colliding key dropped, multi-argument construction (`has((file: File) => new Attachment({ file }))`). Keep members small: promote a payload key to reactive field only when views render it or it changes independently; the rest stays whole as `info`. Normalize API `null` to `undefined` here so presence fields stay optional. See [has.md](../field/has.md) for pool surface, [patterns.md](patterns.md) for worked recipes.
+A factory earns its line only when the seed must transform: fat payload folded to one field (`has((dto: MessageDto) => new Message({ info: dto, id: dto.id }))`), a rename, a colliding key dropped, multi-argument construction (`has((file: File) => new Attachment({ file }))`). Keep members small: promote a payload key to reactive field only when views render it or it changes independently; the rest stays whole as `info`. Normalize API `null` to `undefined` here so presence fields stay optional. See [expressive-mvc/field/has.md](../expressive-mvc/field/has.md) for pool surface, [patterns.md](patterns.md) for worked recipes.
 
 Behavior parity does not exempt this step - parity constrains observable behavior, not code shape ("no redesigns" means UI and public contracts). Entry ownership is an invariant, not a style option.
 
@@ -237,9 +237,9 @@ Once ownership is settled:
 - `useEffect` setup/teardown -> `protected new()` returning cleanup; browser-only resources -> an effect declared in `new()`, which waits for commit.
 - Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`; updates batch, one re-run per flush however many trigger fields changed.
 - `useCallback` handlers -> auto-bound class methods - pass directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
-- `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
+- `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([expressive-mvc/state/state.md](../expressive-mvc/state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
 - Repeated `postMessage`-style calls over a typed union -> one signal helper (`signal('setLabel', { id })`). The union is the API - no per-message facade methods.
-- Inbound host snapshots -> `this.set(values)` - unknown keys are ignored, missing keys stay; no `apply()`/`pick` facade ([set.md](../state/set.md)).
+- Inbound host snapshots -> `this.set(values)` - unknown keys are ignored, missing keys stay; no `apply()`/`pick` facade ([expressive-mvc/state/set.md](../expressive-mvc/state/set.md)).
 - Route params -> props on the page owner. Working identity (session, selection) is a separate field a reaction soft-syncs - never the URL param itself. Fusing them shows as stale-prop workarounds: fresh ids threaded thru arguments to outrun the route, shadow fields remembering the last route. Router recipe in [patterns.md](patterns.md).
 
 ```tsx
