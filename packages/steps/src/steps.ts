@@ -178,8 +178,8 @@ declare namespace Steps {
      */
     catch?: Handler;
     /**
-     * The subtree ended without completing - given why: the error of a failure no `catch` recovered, a
-     * `Steps.Aborted` (`abort()`, a lost race) or a `Steps.Stopped` (`stop()`). Before `reset`.
+     * The subtree ended without completing, before `reset` - given the error of a failure no `catch`
+     * recovered; nothing for a cancellation (`abort()`, `stop()`, a lost race). `then.status` tells which.
      */
     abort?: Handler;
     /** The subtree ended, any way - a finally over it, last. */
@@ -806,11 +806,11 @@ class Run extends Model {
 
   async fire(on: Handler[] | undefined, kind: Kind, cause: unknown, kept: Set<string>) {
     for (const handler of [...(on || [])].reverse())
-      if (handler.kind == kind) await this.compensate(this.given(handler, cause), cause, kept, kind == 'reset' || kind == 'close');
+      if (handler.kind == kind) await this.compensate(this.given(handler, cause), cause, kept, kind == 'reset' || kind == 'close' || cause === undefined);
   }
 
   given({ node, bare, kind }: Handler, cause: unknown) {
-    if (bare && (kind == 'catch' || kind == 'abort')) {
+    if (bare && (kind == 'catch' || (kind == 'abort' && cause !== undefined))) {
       node.args = [serial(cause)];
       this._errors.set(node.id, cause);
     }
@@ -1459,7 +1459,7 @@ class Run extends Model {
       if (!on && 'error' in entry) continue;
 
       try {
-        if (open) await this.fire(on, 'abort', cause, kept);
+        if (open) await this.fire(on, 'abort', mode == 'error' ? cause : undefined, kept);
         if (!halted && !this._reset.has(entry.id)) await this.fire(on, 'reset', undefined, kept);
 
         this._finished.add(entry.id);

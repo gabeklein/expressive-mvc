@@ -5461,7 +5461,7 @@ describe('on', () => {
   function log(order: string[], name: string) {
     return {
       reset: () => void order.push(`reset ${name}`),
-      abort: (reason: unknown) => void order.push(`abort ${name}: ${(reason as Error).name}`),
+      abort: (error?: unknown) => void order.push(error ? `abort ${name}: ${(error as Error).name}` : `abort ${name}`),
       close: () => void order.push(`close ${name}`)
     };
   }
@@ -5570,7 +5570,7 @@ describe('on', () => {
     expect(order).toEqual(['abort b: Error', 'reset b', 'close b', 'close a']);
   });
 
-  it('will abort with an Aborted, then reset and close', async () => {
+  it('will abort with no error, then reset and close', async () => {
     const order: string[] = [];
     const work = mockPromise();
 
@@ -5602,10 +5602,10 @@ describe('on', () => {
     work.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Aborted' });
-    expect(order).toEqual(['close z', 'abort a: Aborted', 'reset a', 'close a', 'reset z']);
+    expect(order).toEqual(['close z', 'abort a', 'reset a', 'close a', 'reset z']);
   });
 
-  it('will abort with a Stopped on stop, resetting nothing', async () => {
+  it('will abort with no error on stop, resetting nothing', async () => {
     const order: string[] = [];
     const work = mockPromise();
 
@@ -5637,7 +5637,7 @@ describe('on', () => {
     work.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
-    expect(order).toEqual(['close z', 'abort a: Stopped', 'close a']);
+    expect(order).toEqual(['close z', 'abort a', 'close a']);
   });
 
   it('will abort and reset a racer which lost', async () => {
@@ -5663,7 +5663,7 @@ describe('on', () => {
     test.reply();
     await result;
 
-    expect(order).toEqual(['abort watch: Aborted', 'reset watch', 'close watch']);
+    expect(order).toEqual(['abort watch', 'reset watch', 'close watch']);
   });
 
   it('will close an unfinished subtree when ended from outside, without abort', async () => {
@@ -6230,7 +6230,7 @@ describe('on catch', () => {
 });
 
 describe('close', () => {
-  it('will give abort why the subtree ended without completing', async () => {
+  it('will give abort the error of a failure, nothing for a cancellation', async () => {
     const seen: unknown[] = [];
 
     class Test extends Steps {
@@ -6239,7 +6239,7 @@ describe('close', () => {
       }
 
       protected async a(mode: string) {
-        this.then.on({ abort: (reason) => void seen.push(reason) });
+        this.then.on({ abort: (error) => void seen.push(error, this.then.status) });
 
         if (mode == 'fail') this.fail();
         if (mode == 'recover') this.b();
@@ -6275,12 +6275,12 @@ describe('close', () => {
       await result.catch(() => {});
     }
 
-    expect(seen).toEqual([new Error('boom'), expect.any(Steps.Aborted), expect.any(Steps.Stopped)]);
+    expect(seen).toEqual([new Error('boom'), 'failed', undefined, 'aborted', undefined, 'stopped']);
   });
 });
 
 describe('Aborted and Stopped', () => {
-  it('will reject runs and abort subtrees with instances of each', async () => {
+  it('will reject runs and abort signals with instances of each, abort handlers with nothing', async () => {
     const reasons: unknown[] = [];
     const signals: unknown[] = [];
 
@@ -6290,7 +6290,7 @@ describe('Aborted and Stopped', () => {
       }
 
       protected async a() {
-        this.then.on({ abort: (reason) => void reasons.push(reason) });
+        this.then.on({ abort: (...args) => void reasons.push(args) });
         this.slow();
       }
 
@@ -6320,24 +6320,29 @@ describe('Aborted and Stopped', () => {
     expect(errors[0]).toBeInstanceOf(Steps.Aborted);
     expect(errors[1]).toBeInstanceOf(Steps.Stopped);
     expect(errors).toMatchObject([{ name: 'Aborted' }, { name: 'Stopped' }]);
-    expect(reasons).toEqual(errors);
+    expect(reasons).toEqual([[], []]);
     expect(signals).toEqual(errors);
   });
 
-  it('will run step methods given for abort with the reason, close and reset with none, recorded', async () => {
+  it('will run a step method given for abort with the error, close and reset with none, recorded', async () => {
     const seen: unknown[] = [];
     const reset = vi.fn();
     const close = vi.fn();
 
     class Test extends Journal {
-      async run(halt: boolean) {
-        this.a(halt);
+      async run(mode: string) {
+        this.a(mode);
       }
 
-      protected async a(halt: boolean) {
+      protected async a(mode: string) {
         this.then.on({ abort: this.aborted, close: this.closed, reset: this.unwind });
 
-        if (halt) this.slow();
+        if (mode == 'halt') this.slow();
+        if (mode == 'fail') this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
       }
 
       protected async slow() {
@@ -6346,8 +6351,8 @@ describe('Aborted and Stopped', () => {
         await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
       }
 
-      protected async aborted(reason: unknown) {
-        seen.push(reason);
+      protected async aborted(...args: unknown[]) {
+        seen.push(args);
       }
 
       protected async closed(...args: unknown[]) {
@@ -6359,20 +6364,24 @@ describe('Aborted and Stopped', () => {
       }
     }
 
-    await Test.new().run(false);
+    await Test.new().run('clean');
+
+    const failed = Test.new();
+
+    await failed.run('fail').catch(() => {});
 
     const test = Test.new();
-    const result = test.run(true);
+    const result = test.run('halt');
 
     await vi.waitFor(() => expect(test.then.active).toBe('slow'));
     test.then.abort();
     await result.catch(() => {});
 
-    expect(seen).toHaveLength(1);
-    expect(seen[0]).toBeInstanceOf(Steps.Aborted);
-    expect(reset).toHaveBeenCalledWith();
-    expect(close.mock.calls).toEqual([[], []]);
-    expect(record(test).find((entry) => entry.key == 'aborted')).toMatchObject({ args: [{ name: 'Aborted' }] });
+    expect(seen).toEqual([[new Error('boom')], []]);
+    expect(reset.mock.calls).toEqual([[], []]);
+    expect(close.mock.calls).toEqual([[], [], []]);
+    expect(record(failed).find((entry) => entry.key == 'aborted')).toMatchObject({ args: [{ name: 'Error', message: 'boom' }] });
+    expect(record(test).find((entry) => entry.key == 'aborted')).toMatchObject({ args: [] });
   });
 });
 
@@ -6525,7 +6534,7 @@ describe('races and halts', () => {
       }
 
       protected async setup() {
-        this.then.on({ abort: (reason) => void log.push(`abort setup: ${(reason as Error).name}`), close: () => void log.push('close setup') });
+        this.then.on({ abort: (...args) => void log.push(`abort setup ${args.length}`), close: () => void log.push('close setup') });
         this.then(this.allow, this.timeout());
       }
 
@@ -6554,7 +6563,7 @@ describe('races and halts', () => {
     slow.resolve();
 
     await expect(result).rejects.toMatchObject({ name: 'Stopped' });
-    expect(log).toEqual(['untimeout', 'untimeout done', 'abort setup: Stopped', 'close setup']);
+    expect(log).toEqual(['untimeout', 'untimeout done', 'abort setup 0', 'close setup']);
   });
 
   it('will journal a step once when its after hook throws', async () => {
@@ -6697,8 +6706,8 @@ describe('races and halts', () => {
       protected async a() {
         this.status = 'running';
         this.then.on({
-          abort: async (reason) => {
-            if (!(reason instanceof Steps.Aborted)) return;
+          abort: async (error) => {
+            if (error) return;
 
             this.status = 'cancelled';
             await Promise.resolve();
