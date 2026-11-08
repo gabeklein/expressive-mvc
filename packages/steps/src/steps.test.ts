@@ -6105,16 +6105,75 @@ describe('on catch', () => {
     expect(test.note).toBe('undone');
   });
 
-  it('will replay its step from a catch of its own body', async () => {
-    const tries: number[] = [];
+  it('will show a catch of its own body the failed values, restoring them after', async () => {
+    const seen: unknown[] = [];
 
     class Test extends Steps {
+      value = 0;
+      note = '';
+      items = has<string>();
+
+      async run(mode: string) {
+        this.a(mode);
+      }
+
+      protected async a(mode: string) {
+        this.value = 1;
+        this.note = 'body';
+        this.items.push('x');
+        this.then.on({
+          catch: () => {
+            seen.push(this.value, this.items.size);
+
+            if (mode == 'restore') {
+              this.then.restore();
+              seen.push(this.value, this.items.size);
+            }
+
+            if (mode == 'write') this.note = 'handler';
+            if (mode == 'collection') this.items.push('y');
+          }
+        });
+        throw new Error('own');
+      }
+    }
+
+    const plain = Test.new();
+    const restored = Test.new();
+    const written = Test.new();
+
+    await plain.run('plain');
+    await restored.run('restore');
+    await written.run('write');
+
+    const changed = Test.new();
+
+    await changed.run('collection');
+
+    expect(seen).toEqual([1, 1, 1, 1, 0, 0, 1, 1, 1, 1]);
+    expect([...changed.items]).toEqual(['x', 'y']);
+    expect(plain.get()).toMatchObject({ value: 0, note: '' });
+    expect(plain.items.size).toBe(0);
+    expect(restored.get()).toMatchObject({ value: 0, note: '' });
+    expect(written.get()).toMatchObject({ value: 0, note: 'handler' });
+    expect(written.items.size).toBe(0);
+  });
+
+  it('will replay its step from a catch of its own body', async () => {
+    const tries: number[] = [];
+    const values: number[] = [];
+
+    class Test extends Steps {
+      value = 0;
+
       async run() {
         this.a('x');
       }
 
       protected async a(arg: string) {
         tries.push(this.then.retried);
+        values.push(this.value);
+        this.value++;
         this.then.on({
           catch: () => {
             this.then.retry();
@@ -6125,8 +6184,12 @@ describe('on catch', () => {
       }
     }
 
-    await Test.new().run();
+    const test = Test.new();
+
+    await test.run();
     expect(tries).toEqual([0, 1, 2]);
+    expect(values).toEqual([0, 0, 0]);
+    expect(test.value).toBe(1);
   });
 
   it('will fail the run if an undo throws resetting its own body', async () => {

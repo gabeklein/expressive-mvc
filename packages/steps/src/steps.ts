@@ -776,11 +776,23 @@ class Run extends Model {
       this.halt('failed', thrown);
     }
 
-    for (const key of kept) delete prior[key];
+    const self = this.control._self as any;
+    let done = false;
 
-    this.restore(prior, log);
+    return (into, all) => {
+      if (done) return;
 
-    return () => {};
+      done = true;
+
+      for (const key in prior) {
+        const wrote = into?._wrote.has(key);
+
+        if (wrote) into!._prior[key] = prior[key];
+        if (all || (!wrote && !kept.has(key))) self[key] = prior[key];
+      }
+
+      for (const [key, undo] of [...log].reverse()) if (all || !into?._changed.has(key)) undo();
+    };
   }
 
   async complete(frame?: Frame) {
